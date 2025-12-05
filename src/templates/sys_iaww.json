@@ -1,0 +1,16 @@
+{
+  "id": "sys_iaww",
+  "name": "美麗新世界 (It's a Wonderful World)",
+  "description": "卡片引擎構築，依顏色倍率計分。",
+  "createdAt": 1700000000005,
+  "columns": [
+    { "id": "base", "name": "基本分 (指示物/卡片)", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "gen", "name": "將軍 (紅)", "type": "number", "isScoring": true, "weight": 1, "unit": "個" },
+    { "id": "fin", "name": "金融家 (藍)", "type": "number", "isScoring": true, "weight": 1, "unit": "個" },
+    { "id": "blue", "name": "藍卡加分", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "yellow", "name": "黃卡加分", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "green", "name": "綠卡加分", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "red", "name": "紅卡加分", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "black", "name": "黑卡加分", "type": "number", "isScoring": true, "weight": 1, "unit": "分" }
+  ]
+}

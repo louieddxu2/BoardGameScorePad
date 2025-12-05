@@ -1,0 +1,16 @@
+{
+  "id": "sys_gwt_nz",
+  "name": "大西部：紐西蘭 (GWT: New Zealand)",
+  "description": "包含剪毛、鳥類卡與商店獎勵。",
+  "createdAt": 1700000000004,
+  "columns": [
+    { "id": "c1", "name": "金錢", "type": "number", "isScoring": true, "weight": 0.2, "unit": "元 ($5=1分)", "rounding": "floor" },
+    { "id": "c2", "name": "建築物", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "c3", "name": "城市運送", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "c4", "name": "鳥類卡/羊毛", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "c5", "name": "危險/導航軌", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "c6", "name": "任務卡", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "c7", "name": "玩家圖板解鎖", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "c8", "name": "商店獎勵", "type": "number", "isScoring": true, "weight": 1, "unit": "分" }
+  ]
+}

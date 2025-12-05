@@ -1,0 +1,12 @@
+{
+  "id": "sys_fromage",
+  "name": "Fromage",
+  "description": "起司工匠骰子遊戲。",
+  "createdAt": 1700000000009,
+  "columns": [
+    { "id": "prestige", "name": "聲望軌", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "blueprints", "name": "藍圖", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "cheesemaker", "name": "起司工匠 (屏風)", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "cheese", "name": "起司板塊", "type": "number", "isScoring": true, "weight": 1, "unit": "分" }
+  ]
+}

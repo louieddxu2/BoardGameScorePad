@@ -1,0 +1,13 @@
+{
+  "id": "sys_keyflow",
+  "name": "Key Flow",
+  "description": "卡片輪抽建設遊戲。",
+  "createdAt": 1700000000006,
+  "columns": [
+    { "id": "c1", "name": "村莊卡 (Icon)", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "c2", "name": "冬季卡 (計分)", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "c3", "name": "動物", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "c4", "name": "Keyples", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "c5", "name": "技能/資源", "type": "number", "isScoring": true, "weight": 1, "unit": "分" }
+  ]
+}

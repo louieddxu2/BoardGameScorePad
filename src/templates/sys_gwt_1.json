@@ -1,0 +1,17 @@
+{
+  "id": "sys_gwt_1",
+  "name": "大西部開拓者 (GWT)",
+  "description": "包含《北方鐵路》擴充計分項目。",
+  "createdAt": 1700000000002,
+  "columns": [
+    { "id": "c1", "name": "金錢", "type": "number", "isScoring": true, "weight": 0.2, "unit": "元 ($5=1分)", "rounding": "floor", "quickButtons": [5, 10, 20] },
+    { "id": "c2", "name": "建築物", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "c3", "name": "城市運送 (圓片)", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "c4", "name": "火車站", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "c5", "name": "危險板塊", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "c6", "name": "任務卡 (目標)", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "c7", "name": "玩家圖板解鎖", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "c8", "name": "支線車站 (擴充)", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
+    { "id": "c9", "name": "其他 (員工/工作)", "type": "number", "isScoring": true, "weight": 1, "unit": "分" }
+  ]
+}
