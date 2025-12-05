@@ -70,7 +70,7 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
   // Drag and Drop State
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartY = useRef<number>(0);
   const isDraggingRef = useRef(false);
   
