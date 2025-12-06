@@ -25,127 +25,143 @@ export const DEFAULT_TEMPLATES: GameTemplate[] = [
       { "id": "bonus_points", "name": "紅利分數", "type": "number", "isScoring": true, "weight": 1, "unit": "分" }
     ]
   },
-  {
-    "id": "sys_gwt_1",
-    "name": "大西部開拓者：美利堅",
-    "description": "",
-    "createdAt": 1700000000002,
-    "columns": [
-      {
-        "id": "c1",
-        "name": "金錢",
-        "type": "number",
-        "isScoring": true,
-        "weight": 0.2,
-        "unit": "元",
-        "rounding": "floor",
-        "quickButtons": [5, 10, 20],
-        "mappingRules": []
-      },
-      {
-        "id": "c2",
-        "name": "建築物",
-        "type": "number",
-        "isScoring": true,
-        "weight": 1,
-        "unit": "分"
-      },
-      {
-        "id": "b90c04a6-2d91-4b84-b9b0-ddc6b5ff5285",
-        "name": "牛卡",
-        "type": "number",
-        "isScoring": true,
-        "weight": 1,
-        "options": [],
-        "mappingRules": [],
-        "unit": "分",
-        "rounding": "none",
-        "quickButtons": []
-      },
-      {
-        "id": "c3",
-        "name": "城市運送",
-        "type": "number",
-        "isScoring": true,
-        "weight": 1,
-        "unit": "分",
-        "mappingRules": []
-      },
-      {
-        "id": "c4",
-        "name": "火車站",
-        "type": "number",
-        "isScoring": true,
-        "weight": 1,
-        "unit": "分",
-        "mappingRules": []
-      },
-      {
-        "id": "c5",
-        "name": "危險板塊",
-        "type": "number",
-        "isScoring": true,
-        "weight": 1,
-        "unit": "分"
-      },
-      {
-        "id": "c9",
-        "name": "專家",
-        "type": "number",
-        "isScoring": true,
-        "weight": 4,
-        "unit": "位",
-        "mappingRules": []
-      },
-      {
-        "id": "c6",
-        "name": "目標卡",
-        "type": "number",
-        "isScoring": true,
-        "weight": 1,
-        "unit": "分",
-        "mappingRules": []
-      },
-      {
-        "id": "c7",
-        "name": "移動3分解鎖",
-        "type": "select",
-        "isScoring": true,
-        "weight": 1,
-        "unit": "",
-        "options": [
-          {
-            "value": 3,
-            "label": "有"
-          },
-          {
-            "value": 0,
-            "label": "無"
-          }
-        ],
-        "calculationType": "standard"
-      },
-      {
-        "id": "c8",
-        "name": "結束玩家",
-        "type": "select",
-        "isScoring": true,
-        "weight": 1,
-        "unit": "",
-        "options": [
-          {
-            "value": 2,
-            "label": "是"
-          },
-          {
-            "value": 0,
-            "label": "否"
-          }
-        ],
-        "calculationType": "standard"
-      }
-    ]
-  },
+{
+  "id": "c90e7603-9973-4fcd-aadc-28313f39f002",
+  "name": "大西部開拓者：美利堅",
+  "description": "",
+  "createdAt": 1765014287484,
+  "columns": [
+    {
+      "id": "c1",
+      "name": "金錢",
+      "type": "number",
+      "isScoring": true,
+      "weight": 0.2,
+      "unit": "元",
+      "rounding": "floor",
+      "quickButtons": [
+        5,
+        10,
+        20
+      ],
+      "mappingRules": []
+    },
+    {
+      "id": "c2",
+      "name": "建築物",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分"
+    },
+    {
+      "id": "c3",
+      "name": "城市",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分",
+      "mappingRules": []
+    },
+    {
+      "id": "c4",
+      "name": "車站",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分",
+      "mappingRules": []
+    },
+    {
+      "id": "c5",
+      "name": "危險板塊",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分"
+    },
+    {
+      "id": "b90c04a6-2d91-4b84-b9b0-ddc6b5ff5285",
+      "name": "牛卡",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "options": [],
+      "mappingRules": [],
+      "unit": "分",
+      "rounding": "none",
+      "quickButtons": []
+    },
+    {
+      "id": "c6",
+      "name": "目標卡",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分",
+      "mappingRules": []
+    },
+    {
+      "id": "66642525-6806-4b23-938e-3a53f69b67f7",
+      "name": "站長板塊",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "options": [],
+      "mappingRules": [],
+      "unit": "分",
+      "rounding": "none",
+      "quickButtons": []
+    },
+    {
+      "id": "c9",
+      "name": "專家",
+      "type": "number",
+      "isScoring": true,
+      "weight": 4,
+      "unit": "位",
+      "mappingRules": []
+    },
+    {
+      "id": "c7",
+      "name": "移動3分解鎖",
+      "type": "select",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "",
+      "options": [
+        {
+          "value": 3,
+          "label": "有"
+        },
+        {
+          "value": 0,
+          "label": "無"
+        }
+      ],
+      "calculationType": "standard"
+    },
+    {
+      "id": "c8",
+      "name": "結束玩家",
+      "type": "select",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "",
+      "options": [
+        {
+          "value": 2,
+          "label": "是"
+        },
+        {
+          "value": 0,
+          "label": "否"
+        }
+      ],
+      "calculationType": "standard"
+    }
+  ]
+},
   {
     "id": "sys_gwt_arg",
     "name": "大西部：阿根廷 (GWT: Argentina)",

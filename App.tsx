@@ -1,6 +1,7 @@
 
 
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AppView, GameTemplate, GameSession, Player } from './types';
 import { DEFAULT_TEMPLATES, COLORS } from './src/constants';
 import { calculatePlayerTotal } from './utils/scoring';
@@ -8,6 +9,15 @@ import TemplateEditor from './components/TemplateEditor';
 import SessionView from './components/SessionView';
 import ConfirmationModal from './components/shared/ConfirmationModal';
 import { Plus, Play, Trash2, Dice5, Users, X, Minus, ChevronDown, ChevronRight, LayoutGrid, Library, FolderInput, Code, Check, Sparkles, RefreshCw, ArchiveRestore, Download } from 'lucide-react';
+
+// --- Helper Functions ---
+const getTouchDistance = (touches: TouchList): number => {
+  const [touch1, touch2] = [touches[0], touches[1]];
+  return Math.sqrt(
+    Math.pow(touch2.clientX - touch1.clientX, 2) +
+    Math.pow(touch2.clientY - touch1.clientY, 2)
+  );
+};
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.DASHBOARD);
@@ -43,34 +53,99 @@ const App: React.FC = () => {
   const [installPromptEvent, setInstallPromptEvent] = useState<any | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
 
+  // --- Mobile Pinch-to-Zoom Logic ---
+  const [zoomLevel, setZoomLevel] = useState(1.0);
+  const [showZoomIndicator, setShowZoomIndicator] = useState(false);
+  const touchStartDist = useRef(0);
+  const initialZoomRef = useRef(1.0);
+  const zoomIndicatorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Apply zoom on startup from localStorage
+  useEffect(() => {
+    const savedZoom = localStorage.getItem('app_zoom_level');
+    if (savedZoom) {
+      const newZoom = parseFloat(savedZoom);
+      setZoomLevel(newZoom);
+      document.documentElement.style.fontSize = `${16 * newZoom}px`;
+    }
+  }, []);
+
+  // Handle touch events for pinch-to-zoom
+  useEffect(() => {
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        touchStartDist.current = getTouchDistance(e.touches);
+        initialZoomRef.current = zoomLevel;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const currentDist = getTouchDistance(e.touches);
+        const scale = currentDist / touchStartDist.current;
+        let newZoom = initialZoomRef.current * scale;
+        
+        // Clamp zoom level between 50% and 200%
+        newZoom = Math.max(0.5, Math.min(2.0, newZoom));
+        
+        setZoomLevel(newZoom);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      touchStartDist.current = 0;
+    };
+
+    window.addEventListener('touchstart', handleTouchStart);
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd);
+    window.addEventListener('touchcancel', handleTouchEnd);
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handleTouchEnd);
+    };
+  }, [zoomLevel]);
+  
+  // Effect to apply zoom and show indicator
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${16 * zoomLevel}px`;
+    localStorage.setItem('app_zoom_level', String(zoomLevel));
+    
+    if (touchStartDist.current > 0) { // Only show indicator during an active gesture
+      setShowZoomIndicator(true);
+      if (zoomIndicatorTimer.current) clearTimeout(zoomIndicatorTimer.current);
+      
+      zoomIndicatorTimer.current = setTimeout(() => {
+        setShowZoomIndicator(false);
+      }, 1500);
+    }
+    
+    return () => {
+      if (zoomIndicatorTimer.current) clearTimeout(zoomIndicatorTimer.current);
+    };
+  }, [zoomLevel]);
+
+
   // --- PWA Install Logic ---
   useEffect(() => {
-    // 優先檢查 localStorage 中是否已記錄安裝狀態
     const pwaInstalled = localStorage.getItem('pwa_installed') === 'true';
-
-    // 檢查 App 是否已在獨立模式下運行
     if (pwaInstalled || window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true);
-      return; // 如果已安裝，則無需監聽安裝提示
+      return;
     }
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setInstallPromptEvent(e);
-      console.log("`beforeinstallprompt` event was fired.");
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
-  }, []);
-
-  useEffect(() => {
     const handleAppInstalled = () => {
-        console.log('PWA was installed');
-        // 使用 localStorage 永久記錄安裝狀態
         localStorage.setItem('pwa_installed', 'true');
         setIsInstalled(true);
         setInstallPromptEvent(null);
@@ -79,34 +154,28 @@ const App: React.FC = () => {
     window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
-        window.removeEventListener('appinstalled', handleAppInstalled);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
-
   const handleInstallClick = async () => {
-    if (!installPromptEvent) {
-      return;
-    }
+    if (!installPromptEvent) return;
     installPromptEvent.prompt();
-    const { outcome } = await installPromptEvent.userChoice;
-    console.log(`User response to the install prompt: ${outcome}`);
+    await installPromptEvent.userChoice;
     setInstallPromptEvent(null);
   };
 
   // --- Initial Load ---
   useEffect(() => {
     try {
-        // Load User Templates
         const savedTemplates = localStorage.getItem('sm_templates');
         const parsedUserTemplates = savedTemplates ? JSON.parse(savedTemplates) : [];
 
-        // Load System Overrides
         const savedOverrides = localStorage.getItem('sm_system_overrides');
         const parsedOverrides = savedOverrides ? JSON.parse(savedOverrides) : {};
         setSystemOverrides(parsedOverrides);
         
-        // Load Known System IDs
         const savedKnownIds = localStorage.getItem('sm_known_sys_ids');
         const parsedKnownIds = savedKnownIds ? JSON.parse(savedKnownIds) : [];
         setKnownSysIds(parsedKnownIds);
@@ -131,16 +200,10 @@ const App: React.FC = () => {
         if (savedSession && savedActiveTemplateId) {
             const session = JSON.parse(savedSession);
             
-            // Reconstruct the template source
-            // 1. Check user templates
             let template = templates.find(t => t.id === savedActiveTemplateId);
-            
-            // 2. Check system overrides
             if (!template && systemOverrides[savedActiveTemplateId]) {
                 template = systemOverrides[savedActiveTemplateId];
             }
-
-            // 3. Check defaults
             if (!template) {
                 template = DEFAULT_TEMPLATES.find(t => t.id === savedActiveTemplateId);
             }
@@ -181,18 +244,8 @@ const App: React.FC = () => {
 
 
   // --- Logic Helpers ---
-
-  // Check if an ID belongs to the system defaults
   const isSystemTemplate = (id: string) => DEFAULT_TEMPLATES.some(dt => dt.id === id);
-
-  // Get the effective system template (Default OR Overridden)
-  const getSystemTemplates = () => {
-      return DEFAULT_TEMPLATES.map(dt => {
-          return systemOverrides[dt.id] ? systemOverrides[dt.id] : dt;
-      });
-  };
-  
-  // Calculate new templates
+  const getSystemTemplates = () => DEFAULT_TEMPLATES.map(dt => systemOverrides[dt.id] || dt);
   const newSystemTemplatesCount = DEFAULT_TEMPLATES.filter(dt => !knownSysIds.includes(dt.id)).length;
 
   const handleUpdatePlayerHistory = (newName: string) => {
@@ -220,16 +273,13 @@ const App: React.FC = () => {
   const handleConfirmSetup = () => {
     if (!pendingTemplate) return;
 
-    const players: Player[] = [];
-    for (let i = 0; i < setupPlayerCount; i++) {
-        players.push({
-            id: crypto.randomUUID(),
-            name: `玩家 ${i + 1}`,
-            scores: {},
-            totalScore: 0,
-            color: COLORS[i % COLORS.length]
-        });
-    }
+    const players: Player[] = Array.from({ length: setupPlayerCount }, (_, i) => ({
+      id: crypto.randomUUID(),
+      name: `玩家 ${i + 1}`,
+      scores: {},
+      totalScore: 0,
+      color: COLORS[i % COLORS.length]
+    }));
 
     const newSession: GameSession = {
       id: crypto.randomUUID(),
@@ -272,20 +322,13 @@ const App: React.FC = () => {
           if (!importJson.trim()) return;
           const parsed = JSON.parse(importJson);
           
-          // Basic Validation
           if (!parsed.name || !Array.isArray(parsed.columns)) {
               throw new Error("格式錯誤：缺少必要欄位 (name, columns)");
           }
 
-          // Force new ID to treat as a user template
           parsed.id = crypto.randomUUID();
           parsed.createdAt = Date.now();
-          
-          // Ensure column IDs exist
-          parsed.columns = parsed.columns.map((col: any) => ({
-              ...col,
-              id: col.id || crypto.randomUUID()
-          }));
+          parsed.columns = parsed.columns.map((col: any) => ({ ...col, id: col.id || crypto.randomUUID() }));
 
           handleSaveTemplate(parsed);
           setShowImportModal(false);
@@ -295,19 +338,16 @@ const App: React.FC = () => {
       }
   };
   
-  // Sync new system templates (mark all as known)
   const handleSyncNewTemplates = (e: React.MouseEvent) => {
       e.stopPropagation();
       const allIds = DEFAULT_TEMPLATES.map(t => t.id);
       setKnownSysIds(allIds);
-      setIsSystemLibOpen(true); // Auto open to show
+      setIsSystemLibOpen(true);
   };
   
-  // Restore System Template Logic
   const handleRestoreSystem = () => {
       if (!restoreTarget) return;
       
-      // 1. Backup current override to user templates
       const backup: GameTemplate = {
           ...restoreTarget,
           id: crypto.randomUUID(),
@@ -316,7 +356,6 @@ const App: React.FC = () => {
       };
       setTemplates(prev => [backup, ...prev]);
       
-      // 2. Remove override
       const newOverrides = { ...systemOverrides };
       delete newOverrides[restoreTarget.id];
       setSystemOverrides(newOverrides);
@@ -325,7 +364,6 @@ const App: React.FC = () => {
   };
 
   // --- Session Updates ---
-
   const handleSessionUpdate = useCallback((updatedSession: GameSession) => {
     if (activeTemplate) {
         const playersWithTotal = updatedSession.players.map(p => ({
@@ -341,17 +379,12 @@ const App: React.FC = () => {
   const handleTemplateUpdate = (updatedTemplate: GameTemplate) => {
       setActiveTemplate(updatedTemplate);
 
-      // Persist the update
       if (isSystemTemplate(updatedTemplate.id)) {
-          // It's a system template -> Save to Overrides
-          const newOverrides = { ...systemOverrides, [updatedTemplate.id]: updatedTemplate };
-          setSystemOverrides(newOverrides);
+          setSystemOverrides(prev => ({ ...prev, [updatedTemplate.id]: updatedTemplate }));
       } else {
-          // It's a user template -> Save to Templates list
           setTemplates(prev => prev.map(t => t.id === updatedTemplate.id ? updatedTemplate : t));
       }
       
-      // Recalculate scores if columns changed
       if (currentSession) {
           const updatedPlayers = currentSession.players.map(player => ({
              ...player,
@@ -364,11 +397,7 @@ const App: React.FC = () => {
   const handleResetScores = () => {
     if (!currentSession) return;
     
-    const resetPlayers = currentSession.players.map(p => ({
-        ...p,
-        scores: {},
-        totalScore: 0
-    }));
+    const resetPlayers = currentSession.players.map(p => ({ ...p, scores: {}, totalScore: 0 }));
     
     const newSession: GameSession = {
         ...currentSession,
@@ -378,17 +407,13 @@ const App: React.FC = () => {
     };
     
     setCurrentSession(newSession);
-    localStorage.setItem('sm_current_session', JSON.stringify(newSession));
   };
 
   const adjustSetupCount = (delta: number) => {
-    const newCount = Math.max(1, Math.min(12, setupPlayerCount + delta));
-    setSetupPlayerCount(newCount);
+    setSetupPlayerCount(prev => Math.max(1, Math.min(12, prev + delta)));
   };
 
-
   // --- Render Components ---
-
   if (view === AppView.TEMPLATE_CREATOR) {
     return <TemplateEditor onSave={handleSaveTemplate} onCancel={() => setView(AppView.DASHBOARD)} />;
   }
@@ -415,10 +440,8 @@ const App: React.FC = () => {
   }
 
   const effectiveSystemTemplates = getSystemTemplates();
-
   const canInstall = !!installPromptEvent;
 
-  // Dashboard Render
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
       <header className="p-4 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 flex justify-between items-center shadow-md">
@@ -426,15 +449,14 @@ const App: React.FC = () => {
           <div className="bg-emerald-500/10 p-1.5 rounded-lg border border-emerald-500/20">
             <Dice5 size={24} />
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-white">萬用桌遊計分板 BoardGameScorePad</h1>
+          <h1 className="text-xl font-bold tracking-tight text-white">萬用桌遊計分板</h1>
         </div>
         <div className="flex items-center gap-2">
             <button
               onClick={handleInstallClick}
-              disabled={isInstalled || !canInstall}
               className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${
                 isInstalled
-                  ? 'opacity-0 pointer-events-none'
+                  ? 'w-0 p-0 opacity-0 pointer-events-none' // Effectively disappears
                   : canInstall
                     ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/50 active:scale-95'
                     : 'bg-slate-700 text-slate-500 cursor-wait'
@@ -444,13 +466,13 @@ const App: React.FC = () => {
                   ? '應用程式已安裝'
                   : canInstall
                     ? '安裝應用程式以便離線使用'
-                    : '等待安裝條件滿足 (請與頁面互動)'
+                    : '等待安裝條件滿足'
               }
             >
-              {isInstalled ? null : (
+              {!isInstalled && (
                 <>
                   <Download size={14} />
-                  {'安裝 App'}
+                  <span>安裝 App</span>
                 </>
               )}
             </button>
@@ -458,6 +480,7 @@ const App: React.FC = () => {
       </header>
 
       <main className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* ... (rest of dashboard JSX remains the same) ... */}
         
         {/* User Library Section */}
         <div className="space-y-2">
@@ -475,20 +498,14 @@ const App: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2">
                     <button 
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setShowImportModal(true);
-                        }}
+                        onClick={(e) => { e.stopPropagation(); setShowImportModal(true); }}
                         className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
                         title="匯入 JSON"
                     >
                         <FolderInput size={18} />
                     </button>
                     <button 
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setView(AppView.TEMPLATE_CREATOR);
-                        }}
+                        onClick={(e) => { e.stopPropagation(); setView(AppView.TEMPLATE_CREATOR); }}
                         className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg shadow-emerald-900/50 transition-all active:scale-95"
                     >
                         <Plus size={14} /> 新增
@@ -571,10 +588,7 @@ const App: React.FC = () => {
                                 <h3 className="text-sm font-bold text-indigo-100 leading-tight line-clamp-2">{t.name}</h3>
                                 {systemOverrides[t.id] && (
                                     <button 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setRestoreTarget(t);
-                                        }}
+                                        onClick={(e) => { e.stopPropagation(); setRestoreTarget(t); }}
                                         className="flex items-center gap-1 mt-1 text-[9px] text-yellow-500 font-normal border border-yellow-500/30 px-1.5 py-0.5 rounded hover:bg-yellow-900/20 transition-colors"
                                     >
                                         <RefreshCw size={8} /> 已修改 (還原)
@@ -693,6 +707,11 @@ const App: React.FC = () => {
               </div>
           </div>
       )}
+
+      {/* Zoom Indicator */}
+      <div className={`zoom-indicator ${showZoomIndicator ? 'opacity-100' : 'opacity-0'}`}>
+        {Math.round(zoomLevel * 100)}%
+      </div>
     </div>
   );
 };
