@@ -45,10 +45,13 @@ const App: React.FC = () => {
 
   // --- PWA Install Logic ---
   useEffect(() => {
-    // Check if the app is already running in standalone mode
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    // 優先檢查 localStorage 中是否已記錄安裝狀態
+    const pwaInstalled = localStorage.getItem('pwa_installed') === 'true';
+
+    // 檢查 App 是否已在獨立模式下運行
+    if (pwaInstalled || window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true);
-      return; // No need to listen for the install prompt
+      return; // 如果已安裝，則無需監聽安裝提示
     }
 
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -67,6 +70,8 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleAppInstalled = () => {
         console.log('PWA was installed');
+        // 使用 localStorage 永久記錄安裝狀態
+        localStorage.setItem('pwa_installed', 'true');
         setIsInstalled(true);
         setInstallPromptEvent(null);
     };
@@ -77,6 +82,7 @@ const App: React.FC = () => {
         window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
+
 
   const handleInstallClick = async () => {
     if (!installPromptEvent) {
