@@ -1,7 +1,3 @@
-
-
-
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { GameSession, GameTemplate, Player, ScoreColumn } from '../types';
 import { ArrowLeft, Check, X, ArrowRight, ArrowDown, Trophy, RotateCcw, Crown, ChevronDown, Palette, History, Settings, Eraser, ListPlus, Share2, Image, Copy, GripVertical, Edit2, Plus, Square, CheckSquare, CopyPlus } from 'lucide-react';
@@ -117,10 +113,10 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
     }
   }, [editingPlayerId]);
 
-  // Back Button Logic within SessionView
+  // Back Button Logic within SessionView (Listens to global event from App.tsx)
   useEffect(() => {
     const handleSessionBackPress = () => {
-        // Priority: Close menus/modals within the session first.
+        // This function defines the closing priority WITHIN the session view.
         if (showShareMenu) {
             setShowShareMenu(false);
             return;
@@ -139,7 +135,9 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
             return;
         }
         
-        // If nothing internal was closed, then exit the session.
+        // If no internal UI layer was closed, it's time to exit the session.
+        // App.tsx's popstate listener has already trapped the history,
+        // so calling onExit will safely transition the view without exiting the app.
         onExit();
     };
 
@@ -509,18 +507,27 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
           
           {extraControls}
 
-          <div className="flex bg-slate-900/80 rounded border border-slate-700 p-0.5 shrink-0 ml-2 backdrop-blur-sm">
-              <button onClick={() => setAdvanceDirection('horizontal')} className={`p-1 rounded ${advanceDirection === 'horizontal' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}><ArrowRight size={14}/></button>
-              <button onClick={() => setAdvanceDirection('vertical')} className={`p-1 rounded ${advanceDirection === 'vertical' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}><ArrowDown size={14}/></button>
+          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+            <span className="text-xs text-indigo-400 font-bold">輸入後</span>
+            <div className="flex bg-slate-900/80 rounded-md border border-slate-700 p-0.5 backdrop-blur-sm">
+                <button
+                    onClick={() => setAdvanceDirection('vertical')}
+                    className={`p-1.5 rounded-sm transition-colors ${advanceDirection === 'vertical' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-white'}`}
+                    aria-label="下一步移至下方"
+                    title="下一步移至下方"
+                >
+                    <ArrowDown size={14}/>
+                </button>
+                <button
+                    onClick={() => setAdvanceDirection('horizontal')}
+                    className={`p-1.5 rounded-sm transition-colors ${advanceDirection === 'horizontal' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-white'}`}
+                    aria-label="下一步移至右方"
+                    title="下一步移至右方"
+                >
+                    <ArrowRight size={14}/>
+                </button>
+            </div>
           </div>
-          
-          <button 
-            onClick={() => { setEditingCell(null); setEditingPlayerId(null); }}
-            className="ml-2 hover:opacity-100 opacity-60"
-            style={{ color: player.color }}
-          >
-              <ChevronDown size={20} />
-          </button>
       </div>
   );
 

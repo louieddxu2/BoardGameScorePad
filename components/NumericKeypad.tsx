@@ -247,7 +247,6 @@ const NumericKeypad: React.FC<NumericKeypadProps> = ({
       const factors = getFactors();
       const unitA = column.subUnits?.[0] || '數量';
       const unitB = column.subUnits?.[1] || '單價';
-      const unitTotal = column.unit || '分';
       
       const n1 = parseFloat(String(factors[0])) || 0;
       const n2 = parseFloat(String(factors[1])) || 0;
@@ -301,7 +300,7 @@ const NumericKeypad: React.FC<NumericKeypadProps> = ({
                   {/* Result Preview */}
                   <div className="mt-auto pt-2 border-t border-slate-800 flex justify-between items-center px-1">
                       <span className="text-lg text-slate-600">=</span>
-                      <span className="text-xl font-bold text-emerald-400">{total} <span className="text-xs font-normal text-slate-500">{unitTotal}</span></span>
+                      <span className="text-xl font-bold text-emerald-400">{total}</span>
                   </div>
               </div>
           </div>

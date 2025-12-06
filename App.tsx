@@ -261,76 +261,72 @@ const App: React.FC = () => {
     }
   }, [currentSession, activeTemplate]);
 
-  // --- Back Button / History Management ---
-  const handleBackPress = useCallback(() => {
-    // This function defines the priority of what to close on back press.
-    if (showDataModal) {
-      setShowDataModal(false);
-      return;
-    }
-    if (templateToDelete) {
-      setTemplateToDelete(null);
-      return;
-    }
-    if (restoreTarget) {
-      setRestoreTarget(null);
-      return;
-    }
-    if (pendingTemplate) {
-      setPendingTemplate(null);
-      return;
-    }
-    if (isSearchActive) {
+  // --- New, Robust Back Button / History Management ---
+  useEffect(() => {
+    const executeBackLogic = () => {
+      // The hierarchy of what to close, from top-most layer to bottom.
+      if (pendingTemplate) {
+        setPendingTemplate(null);
+        return true;
+      }
+      if (showDataModal) {
+        setShowDataModal(false);
+        return true;
+      }
+      if (templateToDelete) {
+        setTemplateToDelete(null);
+        return true;
+      }
+      if (restoreTarget) {
+        setRestoreTarget(null);
+        return true;
+      }
+      if (isSearchActive) {
         setIsSearchActive(false);
         setSearchQuery('');
-        return;
-    }
-    if (view === AppView.TEMPLATE_CREATOR) {
-      setView(AppView.DASHBOARD);
-      return;
-    }
-    if (view === AppView.ACTIVE_SESSION) {
-      // SessionView handles its own internal back presses (like closing panels).
-      // If the event bubbles up to here, it means we should exit the session.
-      // We use a custom event to signal the SessionView to check its internal state first.
-      const event = new CustomEvent('app-back-press');
-      window.dispatchEvent(event);
-      return;
-    }
-
-    // If no app-specific state was handled, allow default browser behavior
-    // This allows the user to navigate away from the app.
-    // We check if we are not at the root history state before going back.
-    if (window.history.length > 1) {
-       window.history.back();
-    }
-  }, [view, isSearchActive, pendingTemplate, showDataModal, templateToDelete, restoreTarget]);
-
-  useEffect(() => {
-    const handlePopState = (event: PopStateEvent) => {
-        // The popstate event is fired when the history changes.
-        // We use our handler to decide what UI change to make.
-        handleBackPress();
+        return true;
+      }
+      if (view === AppView.TEMPLATE_CREATOR) {
+        setView(AppView.DASHBOARD);
+        return true;
+      }
+      if (view === AppView.ACTIVE_SESSION) {
+        // Delegate to SessionView. It will decide if it can handle the back press
+        // (e.g., by closing a panel) or if it should call onExit.
+        window.dispatchEvent(new CustomEvent('app-back-press'));
+        // We assume session view will handle it, so we return true.
+        // The final `onExit` call from SessionView will change the `view` state,
+        // bringing us back to the dashboard.
+        return true;
+      }
+      
+      // If we've reached here, we are on the dashboard with nothing open.
+      // There's nothing for the app to handle internally.
+      return false;
     };
-    
+
+    const handlePopState = () => {
+      const wasHandled = executeBackLogic();
+      
+      if (wasHandled) {
+        // If we handled the back press internally (e.g., closed a modal),
+        // we push a new state to "trap" the history, preventing an accidental app exit.
+        history.pushState(null, '');
+      }
+      // If `wasHandled` is false, we do nothing, allowing the browser
+      // to perform its default back action (e.g., exit the PWA).
+    };
+
     window.addEventListener('popstate', handlePopState);
+    
+    // On component mount, we push an initial state. This ensures that the very
+    // first back press from the root dashboard screen is caught by our listener.
+    history.pushState(null, '');
+
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [handleBackPress]);
-
-  // Push state to history when a modal or new view is opened
-  useEffect(() => {
-    const state = { view, pendingTemplate: !!pendingTemplate, showDataModal };
-    const currentHash = window.location.hash.substring(1);
-    const newHash = view !== AppView.DASHBOARD ? view.toLowerCase() : '';
-    
-    // Only push state if the logical state has changed, to avoid duplicate entries
-    if (currentHash !== newHash) {
-        history.pushState(state, '', `#${newHash}`);
-    }
-  }, [view, pendingTemplate, showDataModal]);
-
+  }, [view, isSearchActive, pendingTemplate, showDataModal, templateToDelete, restoreTarget]);
 
   // --- Logic Helpers ---
   const isSystemTemplate = (id: string) => DEFAULT_TEMPLATES.some(dt => dt.id === id);
@@ -605,6 +601,13 @@ const App: React.FC = () => {
     setCurrentSession(newSession);
   };
 
+  const handleExitSession = () => {
+      localStorage.removeItem('sm_current_session');
+      localStorage.removeItem('sm_active_template_id');
+      setCurrentSession(null);
+      setView(AppView.DASHBOARD);
+  };
+
   const adjustSetupCount = (delta: number) => {
     setSetupPlayerCount(prev => Math.max(1, Math.min(12, prev + delta)));
   };
@@ -625,12 +628,7 @@ const App: React.FC = () => {
         onUpdatePlayerHistory={handleUpdatePlayerHistory}
         onResetScores={handleResetScores}
         onUpdateTemplate={handleTemplateUpdate}
-        onExit={() => {
-            localStorage.removeItem('sm_current_session');
-            localStorage.removeItem('sm_active_template_id');
-            setCurrentSession(null);
-            setView(AppView.DASHBOARD);
-        }}
+        onExit={handleExitSession}
       />
     );
   }
@@ -908,43 +906,47 @@ const App: React.FC = () => {
                         <div 
                             key={t.id}
                             onClick={() => initSetup(t)}
-                            className="bg-slate-800 rounded-xl p-3 border border-slate-700 shadow-md hover:border-indigo-500/50 hover:bg-slate-750 transition-all cursor-pointer relative flex flex-col justify-between h-20 group"
+                            className="bg-slate-800 rounded-xl p-3 border border-slate-700 shadow-md hover:border-indigo-500/50 hover:bg-slate-750 transition-all cursor-pointer relative flex flex-col h-20 group"
                         >
                             <div className="pr-8">
                                 <h3 className="text-sm font-bold text-indigo-100 leading-tight line-clamp-2">{t.name}</h3>
                             </div>
-                            <div className="flex justify-between items-end mt-1">
-                                <div className="flex items-center">
-                                    {systemOverrides[t.id] ? (
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); setRestoreTarget(t); }}
-                                            className="flex items-center gap-1 text-[9px] text-yellow-500 font-normal border border-yellow-500/30 px-1.5 py-0.5 rounded hover:bg-yellow-900/20 transition-colors"
-                                        >
-                                            <RefreshCw size={8} /> 備份並還原
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={(e) => handleCopySystemTemplate(t, e)}
-                                            className="flex items-center gap-1 text-xs text-slate-300 font-bold bg-slate-700/50 hover:bg-slate-700 px-2 py-1 rounded-md transition-colors"
-                                        >
-                                            <Copy size={12} /> 建立副本
-                                        </button>
-                                    )}
-                                </div>
-                                <button 
-                                    onClick={(e) => handleCopyJSON(t, e)}
-                                    className="p-1.5 text-slate-600 hover:text-indigo-400 rounded transition-colors"
-                                    title="複製 JSON"
-                                >
-                                    {copiedId === t.id ? <Check size={14} className="text-emerald-500" /> : <Code size={14} />}
-                                </button>
-                            </div>
-                             <button
+                            
+                            {/* Pin Button - Top Right */}
+                            <button
                                 onClick={(e) => handleTogglePin(t.id, e)}
-                                className="absolute top-2 right-2 p-1.5 text-slate-600 hover:text-yellow-400 hover:bg-slate-700 rounded-md transition-colors"
+                                className="absolute top-1 right-1 p-1.5 text-slate-600 hover:text-yellow-400 hover:bg-slate-700 rounded-md transition-colors"
                                 title="釘選"
                             >
                                 <Pin size={16} />
+                            </button>
+                            
+                            {/* Create Copy/Restore Button - Bottom Left */}
+                            <div className="absolute bottom-1 left-1">
+                                {systemOverrides[t.id] ? (
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); setRestoreTarget(t); }}
+                                        className="flex items-center gap-1 text-[9px] text-yellow-500 font-normal border border-yellow-500/30 px-1.5 py-0.5 rounded hover:bg-yellow-900/20 transition-colors"
+                                    >
+                                        <RefreshCw size={8} /> 備份並還原
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={(e) => handleCopySystemTemplate(t, e)}
+                                        className="flex items-center gap-1 text-[10px] text-slate-300 font-bold bg-slate-700/50 hover:bg-slate-700 px-1.5 py-1 rounded-md transition-colors"
+                                    >
+                                        <Copy size={11} /> 建立副本
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Copy JSON Button - Bottom Right */}
+                            <button 
+                                onClick={(e) => handleCopyJSON(t, e)}
+                                className="absolute bottom-1 right-1 p-1.5 text-slate-600 hover:text-indigo-400 rounded transition-colors"
+                                title="複製 JSON"
+                            >
+                                {copiedId === t.id ? <Check size={14} className="text-emerald-500" /> : <Code size={14} />}
                             </button>
                         </div>
                     ))}
