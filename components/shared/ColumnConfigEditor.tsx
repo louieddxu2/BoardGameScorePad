@@ -13,6 +13,12 @@ interface ColumnConfigEditorProps {
 
 type EditorTab = 'basic' | 'mapping' | 'select';
 
+// Helper to determine if a color is dark and needs a light text shadow for contrast
+const isColorDark = (hex: string): boolean => {
+    const darkColors = ['#a16207', '#6b7280', '#1f2937']; // Brown, Gray, Black
+    return darkColors.includes(hex.toLowerCase());
+};
+
 const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave, onDelete, onClose }) => {
   // Local state for editing
   const [editedCol, setEditedCol] = useState<ScoreColumn>(() => {
@@ -147,14 +153,17 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
               <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-2">標示顏色</label>
                   <div className="flex items-center gap-2 flex-wrap">
-                      {COLORS.map(c => (
+                      {COLORS.map(c => {
+                        const isDark = isColorDark(c);
+                        return (
                           <button
                               key={c}
                               onClick={() => setEditedCol({ ...editedCol, color: c })}
-                              className={`w-8 h-8 rounded-full shadow-lg border-2 transition-transform active:scale-90 ${editedCol.color === c ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                              className={`w-8 h-8 rounded-full shadow-lg border-2 transition-transform active:scale-90 ${editedCol.color === c ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'} ${isDark ? 'ring-1 ring-white/50' : ''}`}
                               style={{backgroundColor: c}}
                           />
-                      ))}
+                        );
+                      })}
                       <button
                           onClick={() => setEditedCol({ ...editedCol, color: undefined })}
                           className={`w-8 h-8 rounded-full shadow-lg border-2 flex items-center justify-center bg-slate-700 text-slate-400 transition-transform active:scale-90 ${!editedCol.color ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'}`}

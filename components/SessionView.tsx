@@ -21,6 +21,12 @@ interface SessionViewProps {
   onResetScores: () => void;
 }
 
+// Helper to determine if a color is dark and needs a light text shadow for contrast
+const isColorDark = (hex: string): boolean => {
+    const darkColors = ['#a16207', '#6b7280', '#1f2937']; // Brown, Gray, Black
+    return darkColors.includes(hex.toLowerCase());
+};
+
 // Extracted Component to prevent re-mounting issues
 const UnifiedInputLayout = ({ 
     leftContent,
@@ -52,6 +58,7 @@ const UnifiedInputLayout = ({
 );
 
 const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHistory, onUpdateSession, onUpdateTemplate, onUpdatePlayerHistory, onExit, onResetScores }) => {
+  const enhancedTextShadow = '1px 0 1px rgba(255,255,255,0.5), -1px 0 1px rgba(255,255,255,0.5), 0 1px 1px rgba(255,255,255,0.5), 0 -1px 1px rgba(255,255,255,0.5)';
   // State
   const [editingCell, setEditingCell] = useState<{playerId: string, colId: string} | null>(null);
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
@@ -452,7 +459,15 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
       >
           <span className="text-xs shrink-0 font-bold opacity-70" style={{ color: player.color }}>{title}</span>
           <div className="w-px h-4 bg-white/10 mx-1" />
-          <span className="text-sm font-bold truncate max-w-[120px]" style={{ color: player.color }}>{player.name}</span>
+          <span 
+            className="text-sm font-bold truncate max-w-[120px]" 
+            style={{ 
+              color: player.color,
+              ...(isColorDark(player.color) && { textShadow: enhancedTextShadow })
+            }}
+          >
+            {player.name}
+          </span>
           
           <div className="flex-1"></div>
           
@@ -505,14 +520,17 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
                 <div className="w-1/3 bg-slate-800/50 rounded-xl p-2 overflow-y-auto custom-scrollbar border border-slate-700/50">
                     <div className="text-[10px] text-slate-500 font-bold uppercase mb-2 flex items-center justify-center gap-1"><Palette size={10}/> 顏色</div>
                     <div className="grid grid-cols-1 gap-2 justify-items-center">
-                        {COLORS.map(c => (
+                        {COLORS.map(c => {
+                          const isDark = isColorDark(c);
+                          return (
                             <button
                                 key={c}
                                 onClick={() => updatePlayerColor(player.id, c)}
-                                className={`w-8 h-8 rounded-full shadow-lg border-2 transition-transform active:scale-90 ${player.color === c ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                                className={`w-8 h-8 rounded-full shadow-lg border-2 transition-transform active:scale-90 ${player.color === c ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'} ${isDark ? 'ring-1 ring-white/50' : ''}`}
                                 style={{backgroundColor: c}}
                             />
-                        ))}
+                          );
+                        })}
                     </div>
                 </div>
                 
@@ -881,7 +899,15 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
                                     borderBottomWidth: '2px'
                                 }}
                             >
-                                <span className="text-xs font-bold truncate max-w-full" style={{ color: p.color }}>{p.name}</span>
+                                <span 
+                                    className="text-xs font-bold truncate max-w-full" 
+                                    style={{ 
+                                        color: p.color,
+                                        ...(isColorDark(p.color) && { textShadow: enhancedTextShadow })
+                                    }}
+                                >
+                                    {p.name}
+                                </span>
                             </div>
                         ))}
                     </div>
@@ -916,7 +942,12 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
                                 >
                                     <span 
                                       className="text-xs font-bold text-slate-300 w-full text-center break-words whitespace-normal leading-tight"
-                                      style={{ ...(col.color && { color: col.color })}}
+                                      style={{
+                                          ...(col.color && { 
+                                              color: col.color,
+                                              ...(isColorDark(col.color) && { textShadow: enhancedTextShadow })
+                                          })
+                                      }}
                                     >
                                       {col.name}
                                     </span>
@@ -1000,7 +1031,15 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
                                 borderTopWidth: '2px'
                             }}
                         >
-                            <span className="font-black text-lg" style={{ color: p.color }}>{p.totalScore}</span>
+                            <span 
+                                className="font-black text-lg" 
+                                style={{ 
+                                    color: p.color,
+                                    ...(isColorDark(p.color) && { textShadow: enhancedTextShadow })
+                                }}
+                            >
+                                {p.totalScore}
+                            </span>
                             {winners.includes(p.id) && session.players.length > 1 && (
                                 <Crown size={14} className="text-yellow-400 absolute top-1 right-1" fill="currentColor" />
                             )}
@@ -1036,7 +1075,15 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
                 <div className="flex bg-slate-800 border-b border-slate-700">
                     <div className="w-[70px] p-3 border-r border-slate-700 font-bold text-slate-400 text-sm flex items-center justify-center text-center">計分項目</div>
                     {session.players.map(p => (
-                        <div key={p.id} className="w-[60px] flex-1 p-3 border-r border-slate-700 text-center font-bold" style={{ color: p.color, backgroundColor: `${p.color}10` }}>
+                        <div 
+                            key={p.id} 
+                            className="w-[60px] flex-1 p-3 border-r border-slate-700 text-center font-bold" 
+                            style={{ 
+                                color: p.color, 
+                                backgroundColor: `${p.color}10`,
+                                ...(isColorDark(p.color) && { textShadow: enhancedTextShadow })
+                            }}
+                        >
                             {p.name}
                         </div>
                     ))}
@@ -1045,7 +1092,12 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
                 {template.columns.map(col => (
                      <div key={col.id} className="flex border-b border-slate-800">
                          <div className="w-[70px] p-3 border-r border-slate-800 bg-slate-800/50 text-xs font-bold text-slate-300 flex flex-col items-center justify-center text-center break-words">
-                            <span style={{ ...(col.color && { color: col.color }) }}>
+                            <span style={{
+                                ...(col.color && { 
+                                    color: col.color,
+                                    ...(isColorDark(col.color) && { textShadow: enhancedTextShadow })
+                                })
+                            }}>
                                {col.name}
                             </span>
                              {col.isScoring && (
@@ -1085,7 +1137,15 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
                 <div className="flex bg-slate-800 border-t-2 border-slate-700">
                     <div className="w-[70px] p-3 border-r border-slate-700 font-black text-emerald-400 italic text-center flex items-center justify-center">TOTAL</div>
                     {session.players.map(p => (
-                         <div key={p.id} className="w-[60px] flex-1 p-3 border-r border-slate-700 text-center font-black text-xl" style={{ color: p.color, backgroundColor: `${p.color}10` }}>
+                         <div 
+                            key={p.id} 
+                            className="w-[60px] flex-1 p-3 border-r border-slate-700 text-center font-black text-xl" 
+                            style={{ 
+                                color: p.color, 
+                                backgroundColor: `${p.color}10`,
+                                ...(isColorDark(p.color) && { textShadow: enhancedTextShadow })
+                            }}
+                        >
                              {p.totalScore}
                          </div>
                     ))}
