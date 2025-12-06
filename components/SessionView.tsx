@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { GameSession, GameTemplate, Player, ScoreColumn } from '../types';
 import { ArrowLeft, Check, X, ArrowRight, ArrowDown, Trophy, RotateCcw, Crown, ChevronDown, Palette, History, Settings, Eraser, ListPlus, Share2, Image, Copy, GripVertical, Edit2, Plus, Square, CheckSquare, CopyPlus } from 'lucide-react';
@@ -822,6 +823,7 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
                         onChange={(e) => setTempTitle(e.target.value)}
                         onBlur={handleTitleSubmit}
                         onKeyDown={(e) => e.key === 'Enter' && handleTitleSubmit()}
+                        onFocus={(e) => e.target.select()}
                         className="bg-slate-900 text-white font-bold text-lg px-2 py-1 rounded border border-emerald-500 w-full outline-none"
                     />
                  ) : (

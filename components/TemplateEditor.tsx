@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { GameTemplate, ScoreColumn } from '../types';
 import { Save, ArrowLeft, Layers, Minus, Plus } from 'lucide-react';
@@ -104,6 +105,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
               placeholder="例如：卡坦島、璀璨寶石..."
               className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-xl font-bold text-white focus:border-emerald-500 focus:outline-none placeholder-slate-600 transition-colors"
               autoFocus
+              onFocus={(e) => e.target.select()}
             />
           </div>
 

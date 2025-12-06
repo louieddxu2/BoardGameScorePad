@@ -5,7 +5,7 @@ import { calculatePlayerTotal } from './utils/scoring';
 import TemplateEditor from './components/TemplateEditor';
 import SessionView from './components/SessionView';
 import ConfirmationModal from './components/shared/ConfirmationModal';
-import { Plus, Play, Trash2, Dice5, Users, X, Minus, ChevronDown, ChevronRight, LayoutGrid, Library, FolderInput, Code, Check, Sparkles, RefreshCw, ArchiveRestore, Download, Copy, CheckSquare, Square, ArrowRightLeft, Mail, Send, Pin } from 'lucide-react';
+import { Plus, Play, Trash2, Dice5, Users, X, Minus, ChevronDown, ChevronRight, LayoutGrid, Library, FolderInput, Code, Check, Sparkles, RefreshCw, ArchiveRestore, Download, Copy, CheckSquare, Square, ArrowRightLeft, Mail, Send, Pin, Search } from 'lucide-react';
 
 // --- Helper Functions ---
 const getTouchDistance = (touches: TouchList): number => {
@@ -32,6 +32,8 @@ const App: React.FC = () => {
   const [pendingTemplate, setPendingTemplate] = useState<GameTemplate | null>(null);
   const [setupPlayerCount, setSetupPlayerCount] = useState(4);
   const [playerHistory, setPlayerHistory] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchActive, setIsSearchActive] = useState(false);
   
   // Modal States
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
@@ -332,7 +334,7 @@ const App: React.FC = () => {
 
   const handleCopyJSON = (template: GameTemplate, e: React.MouseEvent) => {
       e.stopPropagation();
-      const json = JSON.stringify(template);
+      const json = JSON.stringify(template, null, 2);
       navigator.clipboard.writeText(json).then(() => {
           setCopiedId(template.id);
           setTimeout(() => setCopiedId(null), 2000);
@@ -566,47 +568,84 @@ const App: React.FC = () => {
   const effectiveSystemTemplates = getSystemTemplates();
   const canInstall = !!installPromptEvent;
 
-  // --- Dashboard Data Prep ---
+  // --- Dashboard Data Prep & Filtering ---
   const allSystemTemplates = getSystemTemplates();
   const allTemplates = [...templates, ...allSystemTemplates];
+
+  const filterTemplates = (t: GameTemplate) => 
+    t.name.toLowerCase().includes(searchQuery.toLowerCase());
 
   const pinnedTemplates = pinnedIds
     .map(id => allTemplates.find(t => t.id === id))
     .filter((t): t is GameTemplate => t !== undefined);
 
+  const filteredPinnedTemplates = pinnedTemplates.filter(filterTemplates);
   const userTemplatesToShow = templates.filter(t => !pinnedIds.includes(t.id));
+  const filteredUserTemplates = userTemplatesToShow.filter(filterTemplates);
   const systemTemplatesToShow = allSystemTemplates.filter(t => !pinnedIds.includes(t.id));
-
+  const filteredSystemTemplates = systemTemplatesToShow.filter(filterTemplates);
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
-      <header className="p-4 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 flex justify-between items-center shadow-md">
-        <div className="flex items-center gap-2 text-emerald-500">
-          <div className="bg-emerald-500/10 p-1.5 rounded-lg border border-emerald-500/20">
-            <Dice5 size={24} />
-          </div>
-          <h1 className="text-xl font-bold tracking-tight text-white">萬用桌遊計分板</h1>
-        </div>
-        <div className="flex items-center gap-2">
-            <button
-              className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${
-                isInstalled
-                  ? 'bg-transparent text-transparent pointer-events-none' // Visually hidden but present in DOM
-                  : canInstall
-                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/50 active:scale-95'
-                    : 'bg-slate-700 text-slate-500 cursor-wait'
-              }`}
-              onClick={handleInstallClick}
-              disabled={!canInstall || isInstalled}
+      <header className="p-2.5 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 flex items-center gap-2 shadow-md h-[58px]">
+        
+        {isSearchActive ? (
+          <div className="flex items-center gap-2 w-full animate-in fade-in duration-300">
+            <Search size={20} className="text-emerald-500 shrink-0 ml-1" />
+            <input 
+                type="text"
+                placeholder="搜尋遊戲..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+                className="w-full bg-transparent text-white focus:outline-none placeholder-slate-500"
+            />
+            <button 
+                onClick={() => {
+                  setIsSearchActive(false);
+                  setSearchQuery('');
+                }}
+                className="text-slate-400 hover:text-white p-2"
             >
-              {!isInstalled && (
-                <>
-                  <Download size={14} />
-                  <span>安裝 App</span>
-                </>
-              )}
+                <X size={20} />
             </button>
-        </div>
+          </div>
+        ) : (
+          <div className="flex justify-between items-center w-full animate-in fade-in duration-300">
+            <div className="flex items-center gap-2 text-emerald-500">
+              <div className="bg-emerald-500/10 p-1.5 rounded-lg border border-emerald-500/20">
+                <Dice5 size={24} />
+              </div>
+              <h1 className="text-xl font-bold tracking-tight text-white">計分板</h1>
+            </div>
+            <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsSearchActive(true)}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                >
+                  <Search size={20} />
+                </button>
+                <button
+                  className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${
+                    isInstalled
+                      ? 'bg-transparent text-transparent pointer-events-none' // Visually hidden but present in DOM
+                      : canInstall
+                        ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/50 active:scale-95'
+                        : 'bg-slate-700 text-slate-500 cursor-wait'
+                  }`}
+                  onClick={handleInstallClick}
+                  disabled={!canInstall || isInstalled}
+                >
+                  {!isInstalled && (
+                    <>
+                      <Download size={14} />
+                      <span className="hidden sm:inline">安裝 App</span>
+                    </>
+                  )}
+                </button>
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -623,14 +662,14 @@ const App: React.FC = () => {
                         <h3 className="text-base font-bold text-white flex items-center gap-2">
                             <Pin size={18} className="text-yellow-400" />
                             已釘選
-                            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{pinnedTemplates.length}</span>
+                            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{filteredPinnedTemplates.length}</span>
                         </h3>
                     </div>
                 </div>
 
                 {isPinnedLibOpen && (
                     <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                        {pinnedTemplates.map(t => {
+                        {filteredPinnedTemplates.map(t => {
                             const isSystem = isSystemTemplate(t.id);
                             const cardBg = isSystem ? 'bg-slate-800' : 'bg-slate-800';
                             const cardHoverBg = isSystem ? 'hover:bg-slate-750' : 'hover:bg-slate-750';
@@ -667,6 +706,11 @@ const App: React.FC = () => {
                                 </div>
                             );
                         })}
+                        {pinnedTemplates.length > 0 && filteredPinnedTemplates.length === 0 && (
+                            <div className="col-span-2 text-center py-8 text-slate-500 text-sm italic">
+                                在已釘選中找不到符合的遊戲
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -684,7 +728,7 @@ const App: React.FC = () => {
                     <h3 className="text-base font-bold text-white flex items-center gap-2">
                         <LayoutGrid size={18} className="text-emerald-500" />
                         我的遊戲庫
-                        <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{userTemplatesToShow.length}</span>
+                        <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{filteredUserTemplates.length}</span>
                     </h3>
                 </div>
                 <div className="flex items-center gap-2">
@@ -710,12 +754,17 @@ const App: React.FC = () => {
 
             {isUserLibOpen && (
                 <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                    {templates.length === 0 && (
+                    {userTemplatesToShow.length === 0 && (
                          <div className="col-span-2 text-center py-8 text-slate-500 text-sm italic border-2 border-dashed border-slate-800 rounded-xl">
                             還沒有建立遊戲模板
                          </div>
                     )}
-                    {userTemplatesToShow.map(t => (
+                    {userTemplatesToShow.length > 0 && filteredUserTemplates.length === 0 && (
+                         <div className="col-span-2 text-center py-8 text-slate-500 text-sm italic">
+                            在我的遊戲庫中找不到符合的遊戲
+                         </div>
+                    )}
+                    {filteredUserTemplates.map(t => (
                         <div 
                             key={t.id}
                             onClick={() => initSetup(t)}
@@ -765,10 +814,10 @@ const App: React.FC = () => {
                     <h3 className="text-base font-bold text-white flex items-center gap-2">
                         <Library size={18} className="text-indigo-400" />
                         內建遊戲庫
-                        <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{systemTemplatesToShow.length}</span>
+                        <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{filteredSystemTemplates.length}</span>
                     </h3>
                 </div>
-                {newSystemTemplatesCount > 0 && (
+                {newSystemTemplatesCount > 0 && !searchQuery && (
                     <button 
                         onClick={handleSyncNewTemplates}
                         className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg shadow-indigo-900/50 transition-all animate-pulse"
@@ -780,7 +829,12 @@ const App: React.FC = () => {
 
             {isSystemLibOpen && (
                 <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                    {systemTemplatesToShow.map(t => (
+                    {systemTemplatesToShow.length > 0 && filteredSystemTemplates.length === 0 && (
+                        <div className="col-span-2 text-center py-8 text-slate-500 text-sm italic">
+                            在內建遊戲庫中找不到符合的遊戲
+                        </div>
+                    )}
+                    {filteredSystemTemplates.map(t => (
                         <div 
                             key={t.id}
                             onClick={() => initSetup(t)}
@@ -891,6 +945,7 @@ const App: React.FC = () => {
                                   placeholder='[ {"name": "Game A", ...}, {"name": "Game B", ...} ]'
                                   value={importJson}
                                   onChange={(e) => setImportJson(e.target.value)}
+                                  onFocus={(e) => e.target.select()}
                               />
                               {importError && (
                                   <div className="text-red-400 text-xs bg-red-900/20 p-2 rounded border border-red-500/20">

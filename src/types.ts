@@ -1,4 +1,5 @@
 
+
 export type ColumnType = 'number' | 'text' | 'select' | 'boolean';
 export type RoundingMode = 'none' | 'round' | 'floor' | 'ceil';
 export type CalculationType = 'standard' | 'product';
@@ -15,14 +16,17 @@ export interface MappingRule {
 }
 
 export interface ScoreValue {
-  value: number;
+  // FIX: 將 `value` 和 `factors` 的類型與根 `types.ts` 同步，以允許處理中的字串值。
+  value: number | string;
   history: string[]; // e.g. ["10", "+5", "-2"]
-  factors?: [number, number]; // e.g. [5, 3] for 5 * 3
+  factors?: [number | string, number | string]; // e.g. [5, 3] for 5 * 3
 }
 
 export interface ScoreColumn {
   id: string;
   name: string;
+  // FIX: 新增可選的 `color` 屬性以解決 `src/constants.ts` 中的類型錯誤。
+  color?: string;
   type: ColumnType;
   isScoring: boolean;
   weight?: number; // Multiplier
@@ -52,6 +56,8 @@ export interface GameTemplate {
   description?: string;
   columns: ScoreColumn[];
   createdAt: number;
+  // FIX: 新增可選的 `isPinned` 屬性以與根 `types.ts` 保持一致。
+  isPinned?: boolean; // For UI state, not persisted in template JSON
 }
 
 export interface GameSession {
