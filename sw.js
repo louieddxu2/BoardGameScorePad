@@ -5,7 +5,7 @@ const CORE_ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  'https://cdn.tailwindcss.com'
+  './icon.svg' // 將本地圖示加入預快取，確保離線時也能顯示
 ];
 
 self.addEventListener('install', (event) => {
