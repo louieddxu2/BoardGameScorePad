@@ -51,7 +51,7 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
             {rawVal !== undefined ? displayScore : '-'}
          </span>
          {option && (
-             <span className="absolute bottom-1 right-1 text-[9px] text-slate-500 font-medium bg-slate-900/80 px-1 rounded border border-slate-700 truncate max-w-[90%]">
+             <span className="absolute bottom-1 right-1 text-xs text-emerald-400 font-medium bg-slate-900/80 px-1 rounded border border-slate-700 truncate max-w-[90%]">
                  {option.label}
              </span>
          )}
@@ -61,7 +61,6 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
 
   // Number / Mapped Number / Product Render
   let unitText = column.unit || '';
-  // Mapped check handled by logic inside, but UI is consistent for number types now
 
   // Check for Product Factors
   let productUI = null;
@@ -72,11 +71,11 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
       
       productUI = (
         <span className="absolute bottom-1 right-1 flex items-baseline bg-slate-900/80 px-1 rounded border border-slate-800/50 max-w-full overflow-hidden">
-             <span className="text-[11px] font-bold font-mono text-indigo-300 leading-none">{a}</span>
-             <span className="text-[8px] text-slate-500 ml-[1px] leading-none">{ua}</span>
-             <span className="text-[9px] text-slate-600 mx-[2px] leading-none">×</span>
-             <span className="text-[11px] font-bold font-mono text-indigo-300 leading-none">{b}</span>
-             <span className="text-[8px] text-slate-500 ml-[1px] leading-none">{ub}</span>
+             <span className="text-sm font-bold font-mono text-emerald-400 leading-none">{a}</span>
+             <span className="text-xs text-emerald-400 ml-[1px] leading-none">{ua}</span>
+             <span className="text-sm text-slate-600 mx-[2px] leading-none">×</span>
+             <span className="text-sm font-bold font-mono text-emerald-400 leading-none">{b}</span>
+             <span className="text-xs text-emerald-400 ml-[1px] leading-none">{ub}</span>
         </span>
       );
   }
@@ -102,9 +101,9 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
         {/* Info Text (Unit or Mapped Source or Product Equation) */}
         {rawVal !== undefined && (
             productUI ? productUI : (
-                <span className="absolute bottom-1 right-1 text-[10px] font-mono flex items-baseline">
+                <span className="absolute bottom-1 right-1 text-sm font-mono flex items-baseline">
                    <span className="text-emerald-400 font-bold">{displayValue}</span>
-                   {unitText && <span className="text-slate-500 text-[8px] ml-0.5">{unitText}</span>}
+                   {unitText && <span className="text-emerald-400 text-xs ml-0.5">{unitText}</span>}
                 </span>
             )
         )}

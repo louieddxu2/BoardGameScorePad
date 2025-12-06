@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, ArrowDown, Delete, Ruler, Calculator, Hash, X, Dot } from 'lucide-react';
 import { ScoreColumn } from '../types';
@@ -392,7 +393,7 @@ const NumericKeypad: React.FC<NumericKeypadProps> = ({
           <button 
             key={num} 
             onClick={() => handleNumClick(num)} 
-            className={`text-2xl font-bold rounded-xl shadow-sm transition-all touch-manipulation active:scale-95 h-full ${overwrite ? 'bg-indigo-600 text-white shadow-indigo-900/50 hover:bg-indigo-500' : 'bg-slate-800 text-slate-100 hover:bg-slate-700 border border-slate-700'}`}
+            className={`text-2xl font-bold rounded-xl shadow-sm transition-all touch-manipulation active:scale-95 flex items-center justify-center ${overwrite ? 'bg-indigo-600 text-white shadow-indigo-900/50 hover:bg-indigo-500' : 'bg-slate-800 text-slate-100 hover:bg-slate-700 border border-slate-700'}`}
           >
             {num}
           </button>
@@ -407,18 +408,18 @@ const NumericKeypad: React.FC<NumericKeypadProps> = ({
             </button>
             <button 
                 onClick={handleDecimal} 
-                className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xl rounded-b-xl border border-slate-700 active:scale-95 transition-transform"
+                className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xl rounded-b-xl border border-slate-700 active:scale-95 transition-transform flex items-center justify-center"
             >
-                <Dot size={24} className="mx-auto" />
+                <Dot size={24} />
             </button>
         </div>
         <button 
           onClick={() => handleNumClick(0)} 
-          className={`text-2xl font-bold rounded-xl touch-manipulation active:scale-95 transition-all h-full ${overwrite ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-white border border-slate-700'}`}
+          className={`text-2xl font-bold rounded-xl touch-manipulation active:scale-95 transition-all flex items-center justify-center ${overwrite ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-white border border-slate-700'}`}
         >
           0
         </button>
-        <button onClick={handleBackspace} className="bg-slate-800 hover:bg-red-900/30 text-red-400 rounded-xl flex items-center justify-center border border-slate-700 active:scale-95 transition-transform h-full"><Delete size={24} /></button>
+        <button onClick={handleBackspace} className="bg-slate-800 hover:bg-red-900/30 text-red-400 rounded-xl flex items-center justify-center border border-slate-700 active:scale-95 transition-transform"><Delete size={24} /></button>
       </div>
       <div className="col-span-1 flex flex-col h-full overflow-hidden" style={{ gap: '8px' }}>
          <div className="flex-1 overflow-hidden rounded-xl bg-slate-800/20 p-2 border border-slate-800">

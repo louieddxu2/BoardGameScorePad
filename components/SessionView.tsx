@@ -87,6 +87,9 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
   // Add Column Modal State
   const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
   const [selectedColumnIdsToCopy, setSelectedColumnIdsToCopy] = useState<string[]>([]);
+  
+  // Exit Confirmation State
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   // Refs for sync scrolling
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -117,6 +120,10 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
   useEffect(() => {
     const handleSessionBackPress = () => {
         // This function defines the closing priority WITHIN the session view.
+        if (showExitConfirm) {
+            setShowExitConfirm(false);
+            return;
+        }
         if (showShareMenu) {
             setShowShareMenu(false);
             return;
@@ -135,10 +142,8 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
             return;
         }
         
-        // If no internal UI layer was closed, it's time to exit the session.
-        // App.tsx's popstate listener has already trapped the history,
-        // so calling onExit will safely transition the view without exiting the app.
-        onExit();
+        // If no internal UI layer was closed, prompt to exit the session.
+        setShowExitConfirm(true);
     };
 
     window.addEventListener('app-back-press', handleSessionBackPress);
@@ -146,30 +151,45 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
     return () => {
         window.removeEventListener('app-back-press', handleSessionBackPress);
     };
-  }, [showShareMenu, editingColumn, isAddColumnModalOpen, editingCell, editingPlayerId, onExit]);
+  }, [showExitConfirm, showShareMenu, editingColumn, isAddColumnModalOpen, editingCell, editingPlayerId, onExit]);
 
 
-  // Scroll active cell to top
+  // Scroll active cell into view, targeting the row above it for better context.
   useEffect(() => {
     if (editingCell) {
-        // Use a double requestAnimationFrame to ensure the DOM layout (specifically the Spacer height)
-        // has fully updated and the browser has recalculated the scrollHeight before we attempt to scroll.
+      // Use a double requestAnimationFrame to ensure the DOM layout has fully updated.
+      requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                const rowEl = document.getElementById(`row-${editingCell.colId}`);
-                if (rowEl && tableContainerRef.current) {
-                    const container = tableContainerRef.current;
-                    // Dynamically calculate header height (sticky header)
-                    const headerEl = container.querySelector('.sticky.top-0');
-                    const headerHeight = headerEl ? headerEl.clientHeight : 48;
+          if (!tableContainerRef.current) return;
 
-                    const rowTop = rowEl.offsetTop;
-                    container.scrollTo({ top: rowTop - headerHeight, behavior: 'smooth' });
-                }
-            });
+          const container = tableContainerRef.current;
+          const headerEl = container.querySelector<HTMLElement>('.sticky.top-0');
+          const headerHeight = headerEl ? headerEl.offsetHeight : 48;
+
+          const activeColumnIndex = template.columns.findIndex(c => c.id === editingCell.colId);
+          
+          if (activeColumnIndex === -1) return;
+
+          let targetRowElement: HTMLElement | null = null;
+          
+          // If editing a row that is not the first one, target the row above it for context.
+          if (activeColumnIndex > 0) {
+            const previousColumn = template.columns[activeColumnIndex - 1];
+            targetRowElement = document.getElementById(`row-${previousColumn.id}`);
+          } else {
+            // If it is the first row, target the row itself.
+            targetRowElement = document.getElementById(`row-${editingCell.colId}`);
+          }
+
+          if (targetRowElement) {
+            const rowTop = targetRowElement.offsetTop;
+            // Scroll to position the target row just below the sticky header.
+            container.scrollTo({ top: rowTop - headerHeight, behavior: 'smooth' });
+          }
         });
+      });
     }
-  }, [editingCell?.colId, editingCell?.playerId]);
+  }, [editingCell, template.columns]);
 
   // Actions
   const updateScore = (playerId: string, colId: string, value: any) => {
@@ -747,6 +767,23 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
             onConfirm={() => { onResetScores(); setShowResetConfirm(false); }}
         />
 
+        <ConfirmationModal
+            isOpen={showExitConfirm}
+            title="確定要返回目錄嗎？"
+            message={
+        <>
+            計分板裡的分數紀錄不會保留。
+            <br />
+            （計分板的架構會自動儲存）
+        </>
+    }
+            confirmText="離開"
+            cancelText="取消"
+            isDangerous={false}
+            onCancel={() => setShowExitConfirm(false)}
+            onConfirm={onExit}
+        />
+
         <ConfirmationModal 
             isOpen={!!columnToDelete}
             title="確定刪除此項目？"
@@ -854,7 +891,7 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
         {/* Top Bar */}
         <div className="flex-none bg-slate-800 p-2 flex items-center justify-between border-b border-slate-700 shadow-md z-20">
              <div className="flex items-center gap-2 flex-1 min-w-0 mr-2">
-                 <button onClick={onExit} className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 shrink-0"><ArrowLeft size={20} /></button>
+                 <button onClick={() => setShowExitConfirm(true)} className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 shrink-0"><ArrowLeft size={20} /></button>
                  
                  {/* Title Editor */}
                  {isEditingTitle ? (
@@ -930,13 +967,13 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
             <div className="absolute inset-0 z-0 overflow-auto bg-slate-900 custom-scrollbar pb-32" ref={tableContainerRef} onScroll={handleTableScroll}>
                  <div className="min-w-fit relative">
                     {/* Header Row */}
-                    <div className="flex sticky top-0 z-20">
+                    <div className="flex sticky top-0 z-20 bg-slate-800">
                         <div className="sticky left-0 w-[70px] bg-slate-800 border-r border-b border-slate-700 p-2 flex items-center justify-center z-30 shadow-sm"><Trophy size={20} className="text-emerald-500" /></div>
                         {session.players.map(p => (
                             <div 
                                 key={p.id} 
                                 onClick={(e) => handleHeaderClick(p.id, e)}
-                                className={`min-w-[54px] flex-1 border-r border-b border-slate-700 p-2 flex flex-col items-center justify-center relative cursor-pointer transition-all ${editingPlayerId === p.id ? 'z-20 ring-2 ring-inset ring-white/50' : 'hover:bg-slate-800'}`}
+                                className={`min-w-[54px] flex-1 border-r border-b border-slate-700 p-2 flex flex-col items-center justify-center relative cursor-pointer transition-all ${editingPlayerId === p.id ? 'z-20 ring-2 ring-inset ring-white/50' : ''}`}
                                 style={{ 
                                     backgroundColor: `${p.color}20`, // 20% opacity of player color
                                     borderBottomColor: p.color,
@@ -1057,7 +1094,7 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
 
         {/* Total Score Bar - Floating Absolute */}
         <div 
-            className="absolute left-0 right-0 h-12 bg-slate-900 border-t border-slate-700 flex z-30 overflow-hidden shadow-[0_-4px_10px_rgba(0,0,0,0.5)] transition-all duration-300 ease-in-out"
+            className={`absolute left-0 right-0 h-12 border-t border-slate-700 flex z-30 overflow-hidden shadow-[0_-4px_10px_rgba(0,0,0,0.5)] transition-all duration-300 ease-in-out ${isPanelOpen ? 'bg-slate-900/75 backdrop-blur' : 'bg-slate-900'}`}
             style={{ bottom: panelHeight }}
         >
             <div className="w-[70px] bg-slate-800 border-r border-slate-700 flex items-center justify-center shrink-0 z-40 relative">

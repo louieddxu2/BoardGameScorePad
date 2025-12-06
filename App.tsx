@@ -71,6 +71,9 @@ const App: React.FC = () => {
   const initialZoomRef = useRef(1.0);
   const zoomIndicatorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Ref to fix back button behavior when exiting a session
+  const isExitingSession = useRef(false);
+
   // Apply zoom on startup from localStorage
   useEffect(() => {
     const savedZoom = localStorage.getItem('app_zoom_level');
@@ -180,6 +183,10 @@ const App: React.FC = () => {
   // --- Initial Load ---
   useEffect(() => {
     try {
+        // Per user request, always start at dashboard. Clear any lingering session.
+        localStorage.removeItem('sm_current_session');
+        localStorage.removeItem('sm_active_template_id');
+
         const savedTemplates = localStorage.getItem('sm_templates');
         const parsedUserTemplates = savedTemplates ? JSON.parse(savedTemplates) : [];
 
@@ -194,6 +201,9 @@ const App: React.FC = () => {
         const savedPinnedIds = localStorage.getItem('sm_pinned_ids');
         const parsedPinnedIds = savedPinnedIds ? JSON.parse(savedPinnedIds) : [];
         setPinnedIds(parsedPinnedIds);
+        
+        const savedHistory = localStorage.getItem('sm_player_history');
+        if (savedHistory) setPlayerHistory(JSON.parse(savedHistory));
 
         setTemplates(parsedUserTemplates);
 
@@ -202,37 +212,6 @@ const App: React.FC = () => {
         setTemplates([]);
     }
   }, []);
-
-  // --- Restore Session ---
-  useEffect(() => {
-    try {
-        const savedSession = localStorage.getItem('sm_current_session');
-        const savedActiveTemplateId = localStorage.getItem('sm_active_template_id');
-        const savedHistory = localStorage.getItem('sm_player_history');
-        
-        if (savedHistory) setPlayerHistory(JSON.parse(savedHistory));
-
-        if (savedSession && savedActiveTemplateId) {
-            const session = JSON.parse(savedSession);
-            
-            let template = templates.find(t => t.id === savedActiveTemplateId);
-            if (!template && systemOverrides[savedActiveTemplateId]) {
-                template = systemOverrides[savedActiveTemplateId];
-            }
-            if (!template) {
-                template = DEFAULT_TEMPLATES.find(t => t.id === savedActiveTemplateId);
-            }
-
-            if (template && session) {
-                setCurrentSession(session);
-                setActiveTemplate(template);
-                setView(AppView.ACTIVE_SESSION);
-            }
-        }
-    } catch (e) {
-        console.error("Failed to restore session", e);
-    }
-  }, [templates, systemOverrides]);
 
   // --- Persistence ---
   useEffect(() => {
@@ -292,29 +271,29 @@ const App: React.FC = () => {
       }
       if (view === AppView.ACTIVE_SESSION) {
         // Delegate to SessionView. It will decide if it can handle the back press
-        // (e.g., by closing a panel) or if it should call onExit.
+        // (e.g., by closing a panel) or if it should show a confirmation.
         window.dispatchEvent(new CustomEvent('app-back-press'));
-        // We assume session view will handle it, so we return true.
-        // The final `onExit` call from SessionView will change the `view` state,
-        // bringing us back to the dashboard.
         return true;
       }
       
       // If we've reached here, we are on the dashboard with nothing open.
-      // There's nothing for the app to handle internally.
       return false;
     };
 
     const handlePopState = () => {
       const wasHandled = executeBackLogic();
       
-      if (wasHandled) {
-        // If we handled the back press internally (e.g., closed a modal),
-        // we push a new state to "trap" the history, preventing an accidental app exit.
+      // If the back action was handled internally (e.g., closing a modal)
+      // AND we are NOT in the process of exiting the session view,
+      // push a new state to "trap" the history and prevent app exit.
+      if (wasHandled && !isExitingSession.current) {
         history.pushState(null, '');
       }
-      // If `wasHandled` is false, we do nothing, allowing the browser
-      // to perform its default back action (e.g., exit the PWA).
+      
+      // The exiting flag is a one-time signal. Reset it after the popstate has been processed.
+      if (isExitingSession.current) {
+        isExitingSession.current = false;
+      }
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -602,10 +581,10 @@ const App: React.FC = () => {
   };
 
   const handleExitSession = () => {
-      localStorage.removeItem('sm_current_session');
-      localStorage.removeItem('sm_active_template_id');
-      setCurrentSession(null);
-      setView(AppView.DASHBOARD);
+      // Signal to the popstate handler that this is an intentional navigation
+      // and it should NOT push a new history state.
+      isExitingSession.current = true;
+      history.back();
   };
 
   const adjustSetupCount = (delta: number) => {
