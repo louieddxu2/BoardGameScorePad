@@ -17,9 +17,8 @@ export default defineConfig({
           src: 'sw.js',
           dest: '.'
         },
-        // 如果您有圖標檔案，例如 pwa-192x192.png，請確保它們也在這裡
         {
-          src: '*.png',
+          src: 'icon.svg',
           dest: '.'
         }
       ]
