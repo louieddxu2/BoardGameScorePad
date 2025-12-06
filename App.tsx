@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { AppView, GameTemplate, GameSession, Player } from './types';
 import { DEFAULT_TEMPLATES, COLORS } from './src/constants';
@@ -6,7 +7,7 @@ import { calculatePlayerTotal } from './utils/scoring';
 import TemplateEditor from './components/TemplateEditor';
 import SessionView from './components/SessionView';
 import ConfirmationModal from './components/shared/ConfirmationModal';
-import { Plus, Play, Trash2, Dice5, Users, X, Minus, ChevronDown, ChevronRight, LayoutGrid, Library, FolderInput, Code, Check, Sparkles, RefreshCw, ArchiveRestore } from 'lucide-react';
+import { Plus, Play, Trash2, Dice5, Users, X, Minus, ChevronDown, ChevronRight, LayoutGrid, Library, FolderInput, Code, Check, Sparkles, RefreshCw, ArchiveRestore, Download } from 'lucide-react';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.DASHBOARD);
@@ -37,6 +38,55 @@ const App: React.FC = () => {
 
   // Copy Feedback
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // PWA Install Prompt State
+  const [installPromptEvent, setInstallPromptEvent] = useState<any | null>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+
+  // --- PWA Install Logic ---
+  useEffect(() => {
+    // Check if the app is already running in standalone mode
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true);
+      return; // No need to listen for the install prompt
+    }
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallPromptEvent(e);
+      console.log("`beforeinstallprompt` event was fired.");
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleAppInstalled = () => {
+        console.log('PWA was installed');
+        setIsInstalled(true);
+        setInstallPromptEvent(null);
+    };
+
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+        window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!installPromptEvent) {
+      return;
+    }
+    installPromptEvent.prompt();
+    const { outcome } = await installPromptEvent.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    setInstallPromptEvent(null);
+  };
 
   // --- Initial Load ---
   useEffect(() => {
@@ -360,6 +410,8 @@ const App: React.FC = () => {
 
   const effectiveSystemTemplates = getSystemTemplates();
 
+  const canInstall = !!installPromptEvent;
+
   // Dashboard Render
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
@@ -369,6 +421,29 @@ const App: React.FC = () => {
             <Dice5 size={24} />
           </div>
           <h1 className="text-xl font-bold tracking-tight text-white">萬用桌遊計分板 BoardGameScorePad</h1>
+        </div>
+        <div className="flex items-center gap-2">
+            <button
+              onClick={handleInstallClick}
+              disabled={isInstalled || !canInstall}
+              className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${
+                isInstalled
+                  ? 'bg-slate-700 text-slate-400 cursor-default'
+                  : canInstall
+                  ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/50 active:scale-95'
+                  : 'bg-slate-700 text-slate-500 cursor-wait'
+              }`}
+              title={
+                isInstalled
+                  ? '應用程式已安裝'
+                  : canInstall
+                  ? '安裝應用程式以便離線使用'
+                  : '等待安裝條件滿足 (請與頁面互動)'
+              }
+            >
+              {isInstalled ? <Check size={14} /> : <Download size={14} />}
+              {isInstalled ? '已安裝' : '安裝 App'}
+            </button>
         </div>
       </header>
 

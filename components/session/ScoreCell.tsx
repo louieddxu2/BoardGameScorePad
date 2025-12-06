@@ -40,13 +40,18 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
   // Select Render
   if (column.type === 'select') {
     const option = column.options?.find(opt => opt.value === rawVal);
+    // Main Score: White (Positive/Zero), Red (Negative), Slate (Empty)
+    const scoreColor = rawVal !== undefined 
+        ? (displayScore < 0 ? 'text-red-400' : 'text-white') 
+        : 'text-slate-600';
+
     return (
       <div onClick={onClick} className={`min-w-[54px] flex-1 min-h-[4rem] border-r border-b border-slate-800 flex flex-col items-center justify-center relative cursor-pointer transition-colors ${isActive ? 'bg-emerald-900/30 ring-1 ring-inset ring-emerald-500' : 'bg-slate-900 hover:bg-slate-800'}`}>
-         <span className={`text-xl font-bold ${rawVal !== undefined && rawVal < 0 ? 'text-red-400' : rawVal !== undefined ? 'text-emerald-300' : 'text-slate-600'}`}>
+         <span className={`text-xl font-bold ${scoreColor}`}>
             {rawVal !== undefined ? displayScore : '-'}
          </span>
          {option && (
-             <span className="absolute bottom-1 right-1 text-[9px] text-slate-400 font-medium bg-slate-900/80 px-1 rounded border border-slate-700 truncate max-w-[90%]">
+             <span className="absolute bottom-1 right-1 text-[9px] text-emerald-400 font-medium bg-slate-900/80 px-1 rounded border border-slate-700 truncate max-w-[90%]">
                  {option.label}
              </span>
          )}
@@ -56,10 +61,6 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
 
   // Number / Mapped Number / Product Render
   let unitText = column.unit || '';
-  let isMapped = false;
-  if (column.mappingRules && column.mappingRules.length > 0 && rawVal !== undefined) {
-      isMapped = true;
-  }
 
   // Check for Product Factors
   let productUI = null;
@@ -70,18 +71,23 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
       
       productUI = (
         <span className="absolute bottom-1 right-1 flex items-baseline bg-slate-900/80 px-1 rounded border border-slate-800/50 max-w-full overflow-hidden">
-             <span className="text-[11px] font-bold font-mono text-indigo-200 leading-none">{a}</span>
-             <span className="text-[8px] text-indigo-400/70 ml-[1px] leading-none">{ua}</span>
+             <span className="text-[11px] font-bold font-mono text-emerald-400 leading-none">{a}</span>
+             <span className="text-[8px] text-emerald-400 ml-[1px] leading-none">{ua}</span>
              <span className="text-[9px] text-slate-600 mx-[2px] leading-none">×</span>
-             <span className="text-[11px] font-bold font-mono text-indigo-200 leading-none">{b}</span>
-             <span className="text-[8px] text-indigo-400/70 ml-[1px] leading-none">{ub}</span>
+             <span className="text-[11px] font-bold font-mono text-emerald-400 leading-none">{b}</span>
+             <span className="text-[8px] text-emerald-400 ml-[1px] leading-none">{ub}</span>
         </span>
       );
   }
 
+  // Main Score Color Logic for Numbers
+  const mainScoreColor = rawVal !== undefined 
+      ? (displayScore < 0 ? 'text-red-400' : 'text-white') 
+      : 'text-slate-600';
+
   return (
     <div onClick={onClick} className={`min-w-[54px] flex-1 min-h-[4rem] border-r border-b border-slate-800 flex items-center justify-between px-1 relative cursor-pointer select-none transition-colors ${isActive ? 'bg-emerald-900/30 ring-1 ring-inset ring-emerald-500' : 'bg-slate-900 hover:bg-slate-800'}`}>
-        <span className={`flex-1 text-center text-xl font-bold tracking-tight ${displayScore < 0 ? 'text-red-400' : rawVal !== undefined ? 'text-white' : 'text-slate-600'}`}>
+        <span className={`flex-1 text-center text-xl font-bold tracking-tight ${mainScoreColor}`}>
             {displayValue !== undefined ? displayScore : '-'}
         </span>
         
@@ -95,8 +101,9 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
         {/* Info Text (Unit or Mapped Source or Product Equation) */}
         {rawVal !== undefined && (
             productUI ? productUI : (
-                <span className="absolute bottom-1 right-1 text-[10px] text-emerald-400 font-mono">
-                   {displayValue} {unitText}
+                <span className="absolute bottom-1 right-1 text-[10px] font-mono flex items-baseline">
+                   <span className="text-emerald-400 font-bold">{displayValue}</span>
+                   {unitText && <span className="text-emerald-400 text-[8px] ml-0.5">{unitText}</span>}
                 </span>
             )
         )}
