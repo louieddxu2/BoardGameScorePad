@@ -1,11 +1,13 @@
 
+
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
   title: string;
-  message: string;
+  // FIX: Changed message prop type to React.ReactNode to allow passing JSX elements.
+  message: React.ReactNode;
   confirmText?: string;
   cancelText?: string;
   onConfirm: () => void;
