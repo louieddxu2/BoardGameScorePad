@@ -261,6 +261,76 @@ const App: React.FC = () => {
     }
   }, [currentSession, activeTemplate]);
 
+  // --- Back Button / History Management ---
+  const handleBackPress = useCallback(() => {
+    // This function defines the priority of what to close on back press.
+    if (showDataModal) {
+      setShowDataModal(false);
+      return;
+    }
+    if (templateToDelete) {
+      setTemplateToDelete(null);
+      return;
+    }
+    if (restoreTarget) {
+      setRestoreTarget(null);
+      return;
+    }
+    if (pendingTemplate) {
+      setPendingTemplate(null);
+      return;
+    }
+    if (isSearchActive) {
+        setIsSearchActive(false);
+        setSearchQuery('');
+        return;
+    }
+    if (view === AppView.TEMPLATE_CREATOR) {
+      setView(AppView.DASHBOARD);
+      return;
+    }
+    if (view === AppView.ACTIVE_SESSION) {
+      // SessionView handles its own internal back presses (like closing panels).
+      // If the event bubbles up to here, it means we should exit the session.
+      // We use a custom event to signal the SessionView to check its internal state first.
+      const event = new CustomEvent('app-back-press');
+      window.dispatchEvent(event);
+      return;
+    }
+
+    // If no app-specific state was handled, allow default browser behavior
+    // This allows the user to navigate away from the app.
+    // We check if we are not at the root history state before going back.
+    if (window.history.length > 1) {
+       window.history.back();
+    }
+  }, [view, isSearchActive, pendingTemplate, showDataModal, templateToDelete, restoreTarget]);
+
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+        // The popstate event is fired when the history changes.
+        // We use our handler to decide what UI change to make.
+        handleBackPress();
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [handleBackPress]);
+
+  // Push state to history when a modal or new view is opened
+  useEffect(() => {
+    const state = { view, pendingTemplate: !!pendingTemplate, showDataModal };
+    const currentHash = window.location.hash.substring(1);
+    const newHash = view !== AppView.DASHBOARD ? view.toLowerCase() : '';
+    
+    // Only push state if the logical state has changed, to avoid duplicate entries
+    if (currentHash !== newHash) {
+        history.pushState(state, '', `#${newHash}`);
+    }
+  }, [view, pendingTemplate, showDataModal]);
+
 
   // --- Logic Helpers ---
   const isSystemTemplate = (id: string) => DEFAULT_TEMPLATES.some(dt => dt.id === id);
@@ -1033,7 +1103,7 @@ const App: React.FC = () => {
       {/* Setup Game Modal */}
       {pendingTemplate && (
           <div 
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
             onClick={() => setPendingTemplate(null)}
           >
               <div 

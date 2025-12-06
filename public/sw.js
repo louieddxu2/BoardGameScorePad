@@ -1,4 +1,4 @@
-const CACHE_NAME = 'boardgame-scorepad-v12';
+const CACHE_NAME = 'boardgame-scorepad-v13';
 
 // 核心靜態資源 (使用絕對路徑以確保可靠性)
 // 移除了 manifest.json，因為 Vite 會在 build 時對其檔名進行 hash 處理，

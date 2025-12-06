@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { GameSession, GameTemplate, Player, ScoreColumn } from '../types';
 import { ArrowLeft, Check, X, ArrowRight, ArrowDown, Trophy, RotateCcw, Crown, ChevronDown, Palette, History, Settings, Eraser, ListPlus, Share2, Image, Copy, GripVertical, Edit2, Plus, Square, CheckSquare, CopyPlus } from 'lucide-react';
@@ -115,6 +116,40 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
         }
     }
   }, [editingPlayerId]);
+
+  // Back Button Logic within SessionView
+  useEffect(() => {
+    const handleSessionBackPress = () => {
+        // Priority: Close menus/modals within the session first.
+        if (showShareMenu) {
+            setShowShareMenu(false);
+            return;
+        }
+        if (editingColumn) {
+            setEditingColumn(null);
+            return;
+        }
+        if (isAddColumnModalOpen) {
+            setIsAddColumnModalOpen(false);
+            return;
+        }
+        if (editingCell || editingPlayerId) {
+            setEditingCell(null);
+            setEditingPlayerId(null);
+            return;
+        }
+        
+        // If nothing internal was closed, then exit the session.
+        onExit();
+    };
+
+    window.addEventListener('app-back-press', handleSessionBackPress);
+
+    return () => {
+        window.removeEventListener('app-back-press', handleSessionBackPress);
+    };
+  }, [showShareMenu, editingColumn, isAddColumnModalOpen, editingCell, editingPlayerId, onExit]);
+
 
   // Scroll active cell to top
   useEffect(() => {
