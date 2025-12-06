@@ -26,10 +26,10 @@ export const DEFAULT_TEMPLATES: GameTemplate[] = [
     ]
   },
 {
-  "id": "c90e7603-9973-4fcd-aadc-28313f39f002",
+  "id": "2b8c966f-a8b6-46f1-9168-5f75837251c7",
   "name": "大西部開拓者：美利堅",
   "description": "",
-  "createdAt": 1765014287484,
+  "createdAt": 1765015515359,
   "columns": [
     {
       "id": "c1",
@@ -115,7 +115,7 @@ export const DEFAULT_TEMPLATES: GameTemplate[] = [
     },
     {
       "id": "c9",
-      "name": "專家",
+      "name": "專家第5、6位",
       "type": "number",
       "isScoring": true,
       "weight": 4,
@@ -162,27 +162,161 @@ export const DEFAULT_TEMPLATES: GameTemplate[] = [
     }
   ]
 },
-  {
-    "id": "sys_gwt_arg",
-    "name": "大西部：阿根廷 (GWT: Argentina)",
-    "description": "包含農夫、港口與糧食機制。",
-    "createdAt": 1700000000003,
-    "columns": [
-      { "id": "c1", "name": "金錢", "type": "number", "isScoring": true, "weight": 0.2, "unit": "元 ($5=1分)", "rounding": "floor" },
-      { "id": "c2", "name": "建築物", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
-      { "id": "c3", "name": "城市/港口", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
-      { "id": "c4", "name": "火車站", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
-      { "id": "c5", "name": "農夫 (含紅利)", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
-      { "id": "c6", "name": "任務卡", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
-      { "id": "c7", "name": "玩家圖板解鎖", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
-      { "id": "c8", "name": "糧食/其他", "type": "number", "isScoring": true, "weight": 1, "unit": "分" }
-    ]
-  },
 {
-  "id": "7d844523-2a19-4b09-bc81-bd46d83d1e8d",
+  "id": "90abf8d1-03fa-41a7-9d0a-822b59fe1063",
+  "name": "大西部開拓者：阿根廷",
+  "description": "",
+  "createdAt": 1765015265826,
+  "columns": [
+    {
+      "id": "c1",
+      "name": "金錢",
+      "type": "number",
+      "isScoring": true,
+      "weight": 0.2,
+      "unit": "元",
+      "rounding": "floor",
+      "quickButtons": [
+        5,
+        10,
+        20
+      ],
+      "mappingRules": []
+    },
+    {
+      "id": "c2",
+      "name": "建築物",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分"
+    },
+    {
+      "id": "c3",
+      "name": "船",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分",
+      "mappingRules": []
+    },
+    {
+      "id": "1778f7eb-071e-47ab-b670-9738c9967119",
+      "name": "城市地圖",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "options": [],
+      "mappingRules": [],
+      "unit": "分",
+      "rounding": "none",
+      "quickButtons": []
+    },
+    {
+      "id": "c4",
+      "name": "車站",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分",
+      "mappingRules": []
+    },
+    {
+      "id": "c5",
+      "name": "農夫板塊",
+      "type": "number",
+      "isScoring": true,
+      "weight": 2,
+      "unit": "片",
+      "mappingRules": []
+    },
+    {
+      "id": "b90c04a6-2d91-4b84-b9b0-ddc6b5ff5285",
+      "name": "牛卡",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "options": [],
+      "mappingRules": [],
+      "unit": "分",
+      "rounding": "none",
+      "quickButtons": []
+    },
+    {
+      "id": "c6",
+      "name": "目標卡",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分",
+      "mappingRules": []
+    },
+    {
+      "id": "66642525-6806-4b23-938e-3a53f69b67f7",
+      "name": "站長板塊",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "options": [],
+      "mappingRules": [],
+      "unit": "分",
+      "rounding": "none",
+      "quickButtons": []
+    },
+    {
+      "id": "c9",
+      "name": "專家第5、6位",
+      "type": "number",
+      "isScoring": true,
+      "weight": 4,
+      "unit": "位",
+      "mappingRules": []
+    },
+    {
+      "id": "c7",
+      "name": "移動2分解鎖",
+      "type": "select",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "",
+      "options": [
+        {
+          "value": 2,
+          "label": "有"
+        },
+        {
+          "value": 0,
+          "label": "無"
+        }
+      ],
+      "calculationType": "standard"
+    },
+    {
+      "id": "c8",
+      "name": "結束遊戲2分",
+      "type": "select",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "",
+      "options": [
+        {
+          "value": 2,
+          "label": "是"
+        },
+        {
+          "value": 0,
+          "label": "否"
+        }
+      ],
+      "calculationType": "standard"
+    }
+  ]
+},
+{
+  "id": "e7b513f8-a476-446b-8871-a032e2ee32cb",
   "name": "大西部開拓者：紐西蘭",
   "description": "包含剪毛、鳥類卡與商店獎勵。",
-  "createdAt": 1765012461244,
+  "createdAt": 1765014488176,
   "columns": [
     {
       "id": "c1",
@@ -307,7 +441,7 @@ export const DEFAULT_TEMPLATES: GameTemplate[] = [
     },
     {
       "id": "c7",
-      "name": "移動3分解鎖",
+      "name": "手牌3分解鎖",
       "type": "select",
       "isScoring": true,
       "weight": 1,
@@ -326,7 +460,7 @@ export const DEFAULT_TEMPLATES: GameTemplate[] = [
     },
     {
       "id": "c8",
-      "name": "工人第5格",
+      "name": "專家第5位",
       "type": "number",
       "isScoring": true,
       "weight": 4,

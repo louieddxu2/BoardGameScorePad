@@ -390,7 +390,14 @@ const NumericKeypad: React.FC<NumericKeypadProps> = ({
     <div className="flex-1 min-h-0 grid grid-cols-4 gap-2 p-2 select-none bg-slate-900 border-t border-slate-800 h-full">
       <div className="col-span-3 grid grid-cols-3 grid-rows-4 gap-2 h-full">
         {[7, 8, 9, 4, 5, 6, 1, 2, 3].map(num => (
-          <button key={num} onClick={() => handleNumClick(num)} className={`text-2xl font-bold rounded-xl shadow-sm transition-all touch-manipulation active:scale-95 h-full ${overwrite ? 'bg-indigo-600 text-white shadow-indigo-900/50 hover:bg-indigo-500' : 'bg-slate-800 text-slate-100 hover:bg-slate-700 border border-slate-700'}`}>{num}</button>
+          <button 
+            key={num} 
+            onClick={() => handleNumClick(num)} 
+            className={`font-bold rounded-xl shadow-sm transition-all touch-manipulation active:scale-95 h-full ${overwrite ? 'bg-indigo-600 text-white shadow-indigo-900/50 hover:bg-indigo-500' : 'bg-slate-800 text-slate-100 hover:bg-slate-700 border border-slate-700'}`}
+            style={{ fontSize: 'clamp(20px, 1.5rem, 40px)' }}
+          >
+            {num}
+          </button>
         ))}
         {/* Split container for +/- and . */}
         <div className="flex flex-col gap-1 h-full">
@@ -407,7 +414,13 @@ const NumericKeypad: React.FC<NumericKeypadProps> = ({
                 <Dot size={24} className="mx-auto" />
             </button>
         </div>
-        <button onClick={() => handleNumClick(0)} className={`text-2xl font-bold rounded-xl touch-manipulation active:scale-95 transition-all h-full ${overwrite ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-white border border-slate-700'}`}>0</button>
+        <button 
+          onClick={() => handleNumClick(0)} 
+          className={`font-bold rounded-xl touch-manipulation active:scale-95 transition-all h-full ${overwrite ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-white border border-slate-700'}`}
+          style={{ fontSize: 'clamp(20px, 1.5rem, 40px)' }}
+        >
+          0
+        </button>
         <button onClick={handleBackspace} className="bg-slate-800 hover:bg-red-900/30 text-red-400 rounded-xl flex items-center justify-center border border-slate-700 active:scale-95 transition-transform h-full"><Delete size={24} /></button>
       </div>
       <div className="col-span-1 flex flex-col gap-2 h-full overflow-hidden">
