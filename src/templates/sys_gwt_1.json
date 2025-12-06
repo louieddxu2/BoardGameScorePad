@@ -1,17 +1,126 @@
+
 {
   "id": "sys_gwt_1",
-  "name": "大西部開拓者 (GWT)",
+  "name": "大西部開拓者",
   "description": "包含《北方鐵路》擴充計分項目。",
   "createdAt": 1700000000002,
   "columns": [
-    { "id": "c1", "name": "金錢", "type": "number", "isScoring": true, "weight": 0.2, "unit": "元 ($5=1分)", "rounding": "floor", "quickButtons": [5, 10, 20] },
-    { "id": "c2", "name": "建築物", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
-    { "id": "c3", "name": "城市運送 (圓片)", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
-    { "id": "c4", "name": "火車站", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
-    { "id": "c5", "name": "危險板塊", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
-    { "id": "c6", "name": "任務卡 (目標)", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
-    { "id": "c7", "name": "玩家圖板解鎖", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
-    { "id": "c8", "name": "支線車站 (擴充)", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
-    { "id": "c9", "name": "其他 (員工/工作)", "type": "number", "isScoring": true, "weight": 1, "unit": "分" }
+    {
+      "id": "c1",
+      "name": "金錢",
+      "type": "number",
+      "isScoring": true,
+      "weight": 0.2,
+      "unit": "元",
+      "rounding": "floor",
+      "quickButtons": [
+        5,
+        10,
+        20
+      ],
+      "mappingRules": []
+    },
+    {
+      "id": "c2",
+      "name": "建築物",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分"
+    },
+    {
+      "id": "b90c04a6-2d91-4b84-b9b0-ddc6b5ff5285",
+      "name": "牛卡",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "options": [],
+      "mappingRules": [],
+      "unit": "分",
+      "rounding": "none",
+      "quickButtons": []
+    },
+    {
+      "id": "c3",
+      "name": "城市運送",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分",
+      "mappingRules": []
+    },
+    {
+      "id": "c4",
+      "name": "火車站",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分",
+      "mappingRules": []
+    },
+    {
+      "id": "c5",
+      "name": "危險板塊",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分"
+    },
+    {
+      "id": "c9",
+      "name": "專家",
+      "type": "number",
+      "isScoring": true,
+      "weight": 4,
+      "unit": "位",
+      "mappingRules": []
+    },
+    {
+      "id": "c6",
+      "name": "目標卡",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分",
+      "mappingRules": []
+    },
+    {
+      "id": "c7",
+      "name": "移動3分解鎖",
+      "type": "select",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "",
+      "options": [
+        {
+          "value": 3,
+          "label": "有"
+        },
+        {
+          "value": 0,
+          "label": "無"
+        }
+      ],
+      "calculationType": "standard"
+    },
+    {
+      "id": "c8",
+      "name": "結束玩家",
+      "type": "select",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "",
+      "options": [
+        {
+          "value": 2,
+          "label": "是"
+        },
+        {
+          "value": 0,
+          "label": "否"
+        }
+      ],
+      "calculationType": "standard"
+    }
   ]
 }
