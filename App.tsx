@@ -429,25 +429,31 @@ const App: React.FC = () => {
           <h1 className="text-xl font-bold tracking-tight text-white">萬用桌遊計分板 BoardGameScorePad</h1>
         </div>
         <div className="flex items-center gap-2">
-            {!isInstalled && (
-              <button
-                onClick={handleInstallClick}
-                disabled={!canInstall}
-                className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${
-                  canInstall
+            <button
+              onClick={handleInstallClick}
+              disabled={isInstalled || !canInstall}
+              className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${
+                isInstalled
+                  ? 'opacity-0 pointer-events-none'
+                  : canInstall
                     ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/50 active:scale-95'
                     : 'bg-slate-700 text-slate-500 cursor-wait'
-                }`}
-                title={
-                  canInstall
+              }`}
+              title={
+                isInstalled
+                  ? '應用程式已安裝'
+                  : canInstall
                     ? '安裝應用程式以便離線使用'
                     : '等待安裝條件滿足 (請與頁面互動)'
-                }
-              >
-                <Download size={14} />
-                {'安裝 App'}
-              </button>
-            )}
+              }
+            >
+              {isInstalled ? null : (
+                <>
+                  <Download size={14} />
+                  {'安裝 App'}
+                </>
+              )}
+            </button>
         </div>
       </header>
 
