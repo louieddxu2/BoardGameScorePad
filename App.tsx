@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AppView, GameTemplate, GameSession, Player } from './types';
 import { DEFAULT_TEMPLATES, COLORS } from './src/constants';
@@ -8,7 +5,7 @@ import { calculatePlayerTotal } from './utils/scoring';
 import TemplateEditor from './components/TemplateEditor';
 import SessionView from './components/SessionView';
 import ConfirmationModal from './components/shared/ConfirmationModal';
-import { Plus, Play, Trash2, Dice5, Users, X, Minus, ChevronDown, ChevronRight, LayoutGrid, Library, FolderInput, Code, Check, Sparkles, RefreshCw, ArchiveRestore, Download } from 'lucide-react';
+import { Plus, Play, Trash2, Dice5, Users, X, Minus, ChevronDown, ChevronRight, LayoutGrid, Library, FolderInput, Code, Check, Sparkles, RefreshCw, ArchiveRestore, Download, Copy, CheckSquare, Square, ArrowRightLeft, Mail, Send } from 'lucide-react';
 
 // --- Helper Functions ---
 const getTouchDistance = (touches: TouchList): number => {
@@ -37,9 +34,18 @@ const App: React.FC = () => {
   
   // Modal States
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
-  const [showImportModal, setShowImportModal] = useState(false);
+  
+  // Data Management Modal State
+  const [showDataModal, setShowDataModal] = useState(false);
+  const [activeModalTab, setActiveModalTab] = useState<'import' | 'export'>('import');
+  
+  // Import State
   const [importJson, setImportJson] = useState('');
   const [importError, setImportError] = useState<string | null>(null);
+  
+  // Export State
+  const [exportSelectedIds, setExportSelectedIds] = useState<string[]>([]);
+
   const [restoreTarget, setRestoreTarget] = useState<GameTemplate | null>(null); // For system restore confirmation
   
   // Dashboard Sections
@@ -48,6 +54,7 @@ const App: React.FC = () => {
 
   // Copy Feedback
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isExportCopying, setIsExportCopying] = useState(false);
 
   // PWA Install Prompt State
   const [installPromptEvent, setInstallPromptEvent] = useState<any | null>(null);
@@ -265,6 +272,12 @@ const App: React.FC = () => {
     setIsUserLibOpen(true);
   };
 
+  const handleBatchSaveTemplates = (newTemplates: GameTemplate[]) => {
+      setTemplates(prev => [...newTemplates, ...prev]);
+      setView(AppView.DASHBOARD);
+      setIsUserLibOpen(true);
+  };
+
   const initSetup = (template: GameTemplate) => {
     setPendingTemplate(template);
     setSetupPlayerCount(4);
@@ -309,33 +322,110 @@ const App: React.FC = () => {
 
   const handleCopyJSON = (template: GameTemplate, e: React.MouseEvent) => {
       e.stopPropagation();
-      const json = JSON.stringify(template, null, 2);
+      const json = JSON.stringify(template);
       navigator.clipboard.writeText(json).then(() => {
           setCopiedId(template.id);
           setTimeout(() => setCopiedId(null), 2000);
       });
   };
 
+  // --- Batch Import / Export Logic ---
+  
   const handleImportJSON = () => {
       try {
           setImportError(null);
           if (!importJson.trim()) return;
           const parsed = JSON.parse(importJson);
           
-          if (!parsed.name || !Array.isArray(parsed.columns)) {
-              throw new Error("格式錯誤：缺少必要欄位 (name, columns)");
+          let itemsToImport: any[] = [];
+          
+          if (Array.isArray(parsed)) {
+              itemsToImport = parsed;
+          } else {
+              itemsToImport = [parsed];
+          }
+          
+          const validTemplates: GameTemplate[] = [];
+
+          itemsToImport.forEach(item => {
+              if (!item.name || !Array.isArray(item.columns)) {
+                  throw new Error(`格式錯誤：${item.name || '未命名'} 缺少必要欄位`);
+              }
+              
+              // Regenerate IDs to avoid conflicts
+              validTemplates.push({
+                  ...item,
+                  id: crypto.randomUUID(),
+                  createdAt: Date.now(),
+                  columns: item.columns.map((col: any) => ({ ...col, id: col.id || crypto.randomUUID() }))
+              });
+          });
+
+          if (validTemplates.length > 0) {
+            handleBatchSaveTemplates(validTemplates);
+            setShowDataModal(false);
+            setImportJson('');
+            alert(`成功匯入 ${validTemplates.length} 筆模板！`);
+          } else {
+              setImportError("沒有可匯入的有效資料");
           }
 
-          parsed.id = crypto.randomUUID();
-          parsed.createdAt = Date.now();
-          parsed.columns = parsed.columns.map((col: any) => ({ ...col, id: col.id || crypto.randomUUID() }));
-
-          handleSaveTemplate(parsed);
-          setShowImportModal(false);
-          setImportJson('');
-      } catch (e) {
-          setImportError("無效的 JSON 格式或資料不完整");
+      } catch (e: any) {
+          setImportError(e.message || "無效的 JSON 格式");
       }
+  };
+
+  const toggleExportSelection = (id: string) => {
+      setExportSelectedIds(prev => 
+          prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+      );
+  };
+
+  const handleSelectAllExport = () => {
+      if (exportSelectedIds.length === templates.length) {
+          setExportSelectedIds([]);
+      } else {
+          setExportSelectedIds(templates.map(t => t.id));
+      }
+  };
+
+  const handleExportCopy = () => {
+      const selectedTemplates = templates.filter(t => exportSelectedIds.includes(t.id));
+      if (selectedTemplates.length === 0) return;
+
+      const json = JSON.stringify(selectedTemplates);
+      navigator.clipboard.writeText(json).then(() => {
+          setIsExportCopying(true);
+          setTimeout(() => setIsExportCopying(false), 2000);
+      });
+  };
+
+  const handleShareToDev = () => {
+      const selectedTemplates = templates.filter(t => exportSelectedIds.includes(t.id));
+      if (selectedTemplates.length === 0) return;
+
+      const json = JSON.stringify(selectedTemplates);
+      
+      navigator.clipboard.writeText(json).then(() => {
+          setIsExportCopying(true);
+          setTimeout(() => setIsExportCopying(false), 2000);
+
+          const email = "louieddxu2@gmail.com";
+          const dateStr = new Date().toLocaleDateString();
+          const subject = `【萬用桌遊計分板】分享遊戲模板 (${dateStr})`;
+          
+          const body = `開發者你好！這是我製作的計分板
+↓↓↓ 資料已複製，請在下方貼上(Ctrl+V)↓↓↓
+貼上後按下「傳送」
+--------------------------------------------------
+
+--------------------------------------------------`;
+          
+          window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      }).catch(err => {
+          console.error("Failed to copy:", err);
+          alert("自動複製失敗，請手動複製後再寄信。");
+      });
   };
   
   const handleSyncNewTemplates = (e: React.MouseEvent) => {
@@ -453,21 +543,15 @@ const App: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
             <button
-              onClick={handleInstallClick}
               className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${
                 isInstalled
-                  ? 'w-0 p-0 opacity-0 pointer-events-none' // Effectively disappears
+                  ? 'bg-transparent text-transparent pointer-events-none' // Visually hidden but present in DOM
                   : canInstall
                     ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/50 active:scale-95'
                     : 'bg-slate-700 text-slate-500 cursor-wait'
               }`}
-              title={
-                isInstalled
-                  ? '應用程式已安裝'
-                  : canInstall
-                    ? '安裝應用程式以便離線使用'
-                    : '等待安裝條件滿足'
-              }
+              onClick={handleInstallClick}
+              disabled={!canInstall || isInstalled}
             >
               {!isInstalled && (
                 <>
@@ -498,11 +582,15 @@ const App: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2">
                     <button 
-                        onClick={(e) => { e.stopPropagation(); setShowImportModal(true); }}
+                        onClick={(e) => { 
+                            e.stopPropagation(); 
+                            setActiveModalTab('import');
+                            setShowDataModal(true); 
+                        }}
                         className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
-                        title="匯入 JSON"
+                        title="資料管理 (匯入/匯出)"
                     >
-                        <FolderInput size={18} />
+                        <ArrowRightLeft size={18} />
                     </button>
                     <button 
                         onClick={(e) => { e.stopPropagation(); setView(AppView.TEMPLATE_CREATOR); }}
@@ -632,35 +720,126 @@ const App: React.FC = () => {
             onConfirm={handleRestoreSystem}
       />
       
-      {/* Import Modal */}
-      {showImportModal && (
-          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border border-slate-800 flex flex-col max-h-[80vh]">
-                  <div className="p-4 border-b border-slate-800 flex justify-between items-center">
-                      <h3 className="text-lg font-bold text-white">匯入 JSON 模板</h3>
-                      <button onClick={() => setShowImportModal(false)} className="text-slate-500 hover:text-white"><X size={24} /></button>
+      {/* Data Management Modal (Import/Export) */}
+      {showDataModal && (
+          <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border border-slate-800 flex flex-col h-[600px] max-h-[85vh]">
+                  
+                  {/* Header with Tabs */}
+                  <div className="flex-none bg-slate-800 rounded-t-2xl">
+                    <div className="flex items-center justify-between p-4 border-b border-slate-700">
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                           <FolderInput size={20} className="text-emerald-500" /> 資料管理
+                        </h3>
+                        <button onClick={() => setShowDataModal(false)} className="text-slate-500 hover:text-white"><X size={24} /></button>
+                    </div>
+                    <div className="flex">
+                        <button 
+                            onClick={() => setActiveModalTab('import')}
+                            className={`flex-1 py-3 text-sm font-bold border-b-2 transition-colors ${activeModalTab === 'import' ? 'border-emerald-500 text-emerald-400 bg-slate-700/50' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
+                        >
+                            匯入模板 (JSON)
+                        </button>
+                        <button 
+                            onClick={() => setActiveModalTab('export')}
+                            className={`flex-1 py-3 text-sm font-bold border-b-2 transition-colors ${activeModalTab === 'export' ? 'border-indigo-500 text-indigo-400 bg-slate-700/50' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
+                        >
+                            批量匯出
+                        </button>
+                    </div>
                   </div>
-                  <div className="p-4 flex-1 overflow-hidden flex flex-col gap-4">
-                      <p className="text-sm text-slate-400">請貼上其他裝置分享的模板 JSON 代碼。</p>
-                      <textarea 
-                          className="flex-1 w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-300 focus:border-emerald-500 outline-none resize-none"
-                          placeholder='{"name": "...", "columns": [...] }'
-                          value={importJson}
-                          onChange={(e) => setImportJson(e.target.value)}
-                      />
-                      {importError && (
-                          <div className="text-red-400 text-xs bg-red-900/20 p-2 rounded border border-red-500/20">
-                              {importError}
+
+                  {/* Body Content */}
+                  <div className="flex-1 overflow-hidden p-4 bg-slate-900">
+                      {activeModalTab === 'import' ? (
+                          <div className="h-full flex flex-col gap-3 animate-in fade-in duration-200">
+                              <p className="text-sm text-slate-400 bg-slate-800 p-3 rounded-lg border border-slate-700">
+                                  支援貼上 <b>單一模板物件</b> 或 <b>多個模板的陣列</b>。系統會自動建立新的副本。
+                              </p>
+                              <textarea 
+                                  className="flex-1 w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-300 focus:border-emerald-500 outline-none resize-none"
+                                  placeholder='[ {"name": "Game A", ...}, {"name": "Game B", ...} ]'
+                                  value={importJson}
+                                  onChange={(e) => setImportJson(e.target.value)}
+                              />
+                              {importError && (
+                                  <div className="text-red-400 text-xs bg-red-900/20 p-2 rounded border border-red-500/20">
+                                      {importError}
+                                  </div>
+                              )}
+                              <button 
+                                  onClick={handleImportJSON}
+                                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2 mt-2"
+                              >
+                                  <Download size={20} /> 確認匯入
+                              </button>
+                          </div>
+                      ) : (
+                          <div className="h-full flex flex-col gap-2 animate-in fade-in duration-200">
+                              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                                  <p className="text-sm text-slate-400">
+                                      已選取 <span className="text-indigo-400 font-bold">{exportSelectedIds.length}</span> / {templates.length} 個模板
+                                  </p>
+                                  <button 
+                                    onClick={handleSelectAllExport}
+                                    className="text-xs text-indigo-400 hover:text-indigo-300 font-bold"
+                                  >
+                                      {exportSelectedIds.length === templates.length ? '取消全選' : '全選'}
+                                  </button>
+                              </div>
+                              
+                              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                                  {templates.length === 0 && (
+                                      <div className="text-center py-10 text-slate-500 italic">我的遊戲庫是空的</div>
+                                  )}
+                                  {templates.map(t => {
+                                      const isSelected = exportSelectedIds.includes(t.id);
+                                      return (
+                                          <div 
+                                            key={t.id}
+                                            onClick={() => toggleExportSelection(t.id)}
+                                            className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${isSelected ? 'bg-indigo-900/20 border-indigo-500/50' : 'bg-slate-800 border-slate-700 hover:bg-slate-750'}`}
+                                          >
+                                              {isSelected 
+                                                ? <CheckSquare size={20} className="text-indigo-500 shrink-0" />
+                                                : <Square size={20} className="text-slate-600 shrink-0" />
+                                              }
+                                              <span className={`text-sm font-bold truncate ${isSelected ? 'text-white' : 'text-slate-300'}`}>
+                                                  {t.name}
+                                              </span>
+                                          </div>
+                                      );
+                                  })}
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 mt-2">
+                                <button 
+                                    onClick={handleExportCopy}
+                                    disabled={exportSelectedIds.length === 0}
+                                    className={`py-3 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 ${
+                                        exportSelectedIds.length > 0 
+                                        ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-900/50' 
+                                        : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                                    }`}
+                                >
+                                    {isExportCopying ? <Check size={18} /> : <Copy size={18} />}
+                                    {isExportCopying ? '已複製' : '複製 JSON'}
+                                </button>
+                                <button 
+                                    onClick={handleShareToDev}
+                                    disabled={exportSelectedIds.length === 0}
+                                    className={`py-3 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 ${
+                                        exportSelectedIds.length > 0 
+                                        ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-900/50' 
+                                        : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                                    }`}
+                                >
+                                    <Mail size={18} />
+                                    分享給開發者
+                                </button>
+                              </div>
                           </div>
                       )}
-                  </div>
-                  <div className="p-4 border-t border-slate-800">
-                      <button 
-                          onClick={handleImportJSON}
-                          className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2"
-                      >
-                          <FolderInput size={20} /> 確認匯入
-                      </button>
                   </div>
               </div>
           </div>

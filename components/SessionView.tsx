@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { GameSession, GameTemplate, Player, ScoreColumn } from '../types';
-import { ArrowLeft, Check, X, ArrowRight, ArrowDown, Trophy, RotateCcw, Crown, ChevronDown, Palette, History, Settings, Eraser, ListPlus, Share2, Image, Copy, GripVertical, Edit2 } from 'lucide-react';
+import { ArrowLeft, Check, X, ArrowRight, ArrowDown, Trophy, RotateCcw, Crown, ChevronDown, Palette, History, Settings, Eraser, ListPlus, Share2, Image, Copy, GripVertical, Edit2, Plus, Square, CheckSquare, CopyPlus } from 'lucide-react';
 import NumericKeypad from './NumericKeypad';
 import ConfirmationModal from './shared/ConfirmationModal';
 import ColumnConfigEditor from './shared/ColumnConfigEditor';
@@ -77,6 +77,10 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
   // Share Menu State
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
+
+  // Add Column Modal State
+  const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
+  const [selectedColumnIdsToCopy, setSelectedColumnIdsToCopy] = useState<string[]>([]);
 
   // Refs for sync scrolling
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -234,8 +238,13 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
           setEditingPlayerId(playerId);
       }
   };
+  
+  const handleOpenAddColumnModal = () => {
+      setSelectedColumnIdsToCopy([]); // Reset selection when opening
+      setIsAddColumnModalOpen(true);
+  };
 
-  const handleAddColumn = () => {
+  const handleAddBlankColumn = () => {
       const newCol: ScoreColumn = {
           id: crypto.randomUUID(),
           name: `項目 ${template.columns.length + 1}`,
@@ -249,6 +258,45 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
           quickButtons: []
       };
       onUpdateTemplate({ ...template, columns: [...template.columns, newCol] });
+      setIsAddColumnModalOpen(false); // Close modal after adding
+  };
+  
+  const handleCopyColumns = () => {
+      if (selectedColumnIdsToCopy.length === 0) return;
+  
+      const newColumns = selectedColumnIdsToCopy.map(idToCopy => {
+          const originalColumn = template.columns.find(c => c.id === idToCopy);
+          if (!originalColumn) return null;
+  
+          // Deep copy and assign new ID
+          const newColumn = JSON.parse(JSON.stringify(originalColumn));
+          newColumn.id = crypto.randomUUID();
+          newColumn.name = `${originalColumn.name} (複製)`;
+          
+          return newColumn;
+      }).filter((c): c is ScoreColumn => c !== null);
+  
+      if (newColumns.length > 0) {
+          onUpdateTemplate({ ...template, columns: [...template.columns, ...newColumns] });
+      }
+  
+      setIsAddColumnModalOpen(false);
+  };
+  
+  const toggleColumnSelection = (colId: string) => {
+      setSelectedColumnIdsToCopy(prev =>
+          prev.includes(colId)
+              ? prev.filter(id => id !== colId)
+              : [...prev, colId]
+      );
+  };
+  
+  const handleSelectAllForCopy = () => {
+      if (selectedColumnIdsToCopy.length === template.columns.length) {
+          setSelectedColumnIdsToCopy([]);
+      } else {
+          setSelectedColumnIdsToCopy(template.columns.map(c => c.id));
+      }
   };
 
   const confirmDeleteColumn = () => {
@@ -662,6 +710,85 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
             />
         )}
 
+        {/* Add Column Modal */}
+        {isAddColumnModalOpen && (
+            <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border border-slate-800 flex flex-col h-[600px] max-h-[85vh]">
+                    {/* Header */}
+                    <div className="flex-none bg-slate-800 p-4 border-b border-slate-700 flex items-center justify-between">
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                            <ListPlus size={20} className="text-emerald-500" /> 新增計分項目
+                        </h3>
+                        <button onClick={() => setIsAddColumnModalOpen(false)} className="text-slate-500 hover:text-white"><X size={24} /></button>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 flex flex-col p-4 overflow-hidden gap-4">
+                        <button
+                            onClick={handleAddBlankColumn}
+                            className="w-full py-4 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl border border-slate-600 flex items-center justify-center gap-2 transition-colors active:scale-95"
+                        >
+                            <Plus size={20} /> 新增一個空白項目
+                        </button>
+
+                        <div className="flex flex-col flex-1 overflow-hidden border-t border-slate-800 pt-4">
+                            <div className="flex items-center justify-between pb-2">
+                                <p className="text-sm text-slate-400">或從現有項目複製：</p>
+                                <button
+                                    onClick={handleSelectAllForCopy}
+                                    className="text-xs text-indigo-400 hover:text-indigo-300 font-bold"
+                                >
+                                    {selectedColumnIdsToCopy.length === template.columns.length && template.columns.length > 0
+                                        ? '取消全選'
+                                        : '全選'}
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                                {template.columns.length === 0 && (
+                                    <div className="text-center py-10 text-slate-500 italic">沒有可複製的項目</div>
+                                )}
+                                {template.columns.map(col => {
+                                    const isSelected = selectedColumnIdsToCopy.includes(col.id);
+                                    return (
+                                        <div
+                                            key={col.id}
+                                            onClick={() => toggleColumnSelection(col.id)}
+                                            className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${isSelected ? 'bg-indigo-900/20 border-indigo-500/50' : 'bg-slate-800 border-slate-700 hover:bg-slate-750'}`}
+                                        >
+                                            {isSelected
+                                                ? <CheckSquare size={20} className="text-indigo-500 shrink-0" />
+                                                : <Square size={20} className="text-slate-600 shrink-0" />
+                                            }
+                                            <span className={`text-sm font-bold truncate ${isSelected ? 'text-white' : 'text-slate-300'}`}>
+                                                {col.name}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Footer */}
+                    <div className="flex-none p-4 bg-slate-800 border-t border-slate-700">
+                        <button
+                            onClick={handleCopyColumns}
+                            disabled={selectedColumnIdsToCopy.length === 0}
+                            className={`w-full py-3 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 ${
+                                selectedColumnIdsToCopy.length > 0
+                                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/50'
+                                    : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                            }`}
+                        >
+                            <CopyPlus size={18} />
+                            複製 {selectedColumnIdsToCopy.length} 個項目
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* Top Bar */}
         <div className="flex-none bg-slate-800 p-2 flex items-center justify-between border-b border-slate-700 shadow-md z-20">
              <div className="flex items-center gap-2 flex-1 min-w-0 mr-2">
@@ -693,7 +820,7 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
              </div>
              <div className="flex items-center gap-1 relative shrink-0">
                  <button 
-                    onClick={handleAddColumn} 
+                    onClick={handleOpenAddColumnModal} 
                     className="p-2 hover:bg-slate-700 hover:text-emerald-400 rounded-lg text-slate-400"
                     title="新增項目"
                  >

@@ -6,11 +6,11 @@ export const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#
 export const DEFAULT_TEMPLATES: GameTemplate[] = [
   {
     "id": "sys_agricola",
-    "name": "農家樂 (Agricola)",
+    "name": "農家樂",
     "description": "17世紀農莊經營，包含詳細的農作物與動物查表計分。",
     "createdAt": 1700000000001,
     "columns": [
-      { "id": "fields", "name": "耕地", "type": "number", "isScoring": true, "weight": 1, "unit": "塊", "mappingRules": [{ "max": 1, "score": -1 }, { "min": 2, "max": 2, "score": 1 }, { "min": 3, "max": 3, "score": 2 }, { "min": 4, "max": 4, "score": 3 }, { "min": 5, "score": 4 }] },
+      { "id": "fields", "name": "田地板塊", "type": "number", "isScoring": true, "weight": 1, "unit": "塊", "mappingRules": [{ "max": 1, "score": -1 }, { "min": 2, "max": 2, "score": 1 }, { "min": 3, "max": 3, "score": 2 }, { "min": 4, "max": 4, "score": 3 }, { "min": 5, "score": 4 }] },
       { "id": "pastures", "name": "牧場", "type": "number", "isScoring": true, "weight": 1, "unit": "個", "mappingRules": [{ "max": 0, "score": -1 }, { "min": 1, "max": 1, "score": 1 }, { "min": 2, "max": 2, "score": 2 }, { "min": 3, "max": 3, "score": 3 }, { "min": 4, "score": 4 }] },
       { "id": "grain", "name": "麥子", "type": "number", "isScoring": true, "weight": 1, "unit": "份", "mappingRules": [{ "max": 0, "score": -1 }, { "min": 1, "max": 3, "score": 1 }, { "min": 4, "max": 5, "score": 2 }, { "min": 6, "max": 7, "score": 3 }, { "min": 8, "score": 4 }] },
       { "id": "veg", "name": "蔬菜", "type": "number", "isScoring": true, "weight": 1, "unit": "份", "mappingRules": [{ "max": 0, "score": -1 }, { "min": 1, "max": 1, "score": 1 }, { "min": 2, "max": 2, "score": 2 }, { "min": 3, "max": 3, "score": 3 }, { "min": 4, "score": 4 }] },
@@ -26,7 +26,7 @@ export const DEFAULT_TEMPLATES: GameTemplate[] = [
     ]
   },
 {
-  "id": "2b8c966f-a8b6-46f1-9168-5f75837251c7",
+  "id": "sys_gwt_1",
   "name": "大西部開拓者：美利堅",
   "description": "",
   "createdAt": 1765015515359,
@@ -163,7 +163,7 @@ export const DEFAULT_TEMPLATES: GameTemplate[] = [
   ]
 },
 {
-  "id": "90abf8d1-03fa-41a7-9d0a-822b59fe1063",
+  "id": "sys_gwt_2",
   "name": "大西部開拓者：阿根廷",
   "description": "",
   "createdAt": 1765015265826,
@@ -313,7 +313,7 @@ export const DEFAULT_TEMPLATES: GameTemplate[] = [
   ]
 },
 {
-  "id": "e7b513f8-a476-446b-8871-a032e2ee32cb",
+  "id": "sys_gwt_3",
   "name": "大西部開拓者：紐西蘭",
   "description": "包含剪毛、鳥類卡與商店獎勵。",
   "createdAt": 1765014488176,
@@ -545,15 +545,153 @@ export const DEFAULT_TEMPLATES: GameTemplate[] = [
     ]
   },
   {
-    "id": "sys_harmonies",
-    "name": "和諧之森 (Harmonies)",
-    "description": "板塊放置與動物棲息地。",
-    "createdAt": 1700000000008,
-    "columns": [
-      { "id": "landscape", "name": "地形分數", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
-      { "id": "animals", "name": "動物分數", "type": "number", "isScoring": true, "weight": 1, "unit": "分" }
-    ]
-  },
+  "id": "sys_harmonies",
+  "name": "和諧之森",
+  "description": "板塊放置與動物棲息地。",
+  "createdAt": 1700000000008,
+  "columns": [
+    {
+      "id": "landscape",
+      "name": "樹木",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分",
+      "mappingRules": []
+    },
+    {
+      "id": "animals",
+      "name": "山脈",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分",
+      "mappingRules": []
+    },
+    {
+      "id": "c323392c-896a-4112-9186-1fcb8ac83cf9",
+      "name": "原野",
+      "type": "number",
+      "isScoring": true,
+      "weight": 5,
+      "options": [],
+      "mappingRules": [],
+      "unit": "群落",
+      "rounding": "none",
+      "quickButtons": []
+    },
+    {
+      "id": "7f170c04-1b93-4cd4-8a40-a6f109c5a2aa",
+      "name": "建築",
+      "type": "number",
+      "isScoring": true,
+      "weight": 5,
+      "options": [],
+      "mappingRules": [],
+      "unit": "個",
+      "rounding": "none",
+      "quickButtons": []
+    },
+    {
+      "id": "426c647a-0521-4bd0-9744-7c6cb6c84f87",
+      "name": "河流(A面)",
+      "type": "select",
+      "isScoring": true,
+      "weight": 1,
+      "options": [
+        {
+          "value": 0,
+          "label": "1格"
+        },
+        {
+          "value": 2,
+          "label": "2格"
+        },
+        {
+          "value": 5,
+          "label": "3格"
+        },
+        {
+          "value": 8,
+          "label": "4格"
+        },
+        {
+          "value": 11,
+          "label": "5格"
+        },
+        {
+          "value": 15,
+          "label": "6格"
+        },
+        {
+          "value": 19,
+          "label": "7格"
+        },
+        {
+          "value": 23,
+          "label": "8格"
+        },
+        {
+          "value": 27,
+          "label": "9格"
+        },
+        {
+          "value": 31,
+          "label": "10格"
+        },
+        {
+          "value": 35,
+          "label": "11格(應該不會用到更多吧(X))"
+        }
+      ],
+      "mappingRules": [
+        {
+          "score": 0
+        }
+      ],
+      "unit": "連接",
+      "rounding": "none",
+      "quickButtons": [],
+      "calculationType": "standard"
+    },
+    {
+      "id": "8bdc9128-38dc-4dc5-b46f-4678e9b107e0",
+      "name": "島嶼(B面)",
+      "type": "number",
+      "isScoring": true,
+      "weight": 5,
+      "options": [],
+      "mappingRules": [],
+      "unit": "塊",
+      "rounding": "none",
+      "quickButtons": []
+    },
+    {
+      "id": "693fa3df-cbef-4645-a3d2-bc260e97dabf",
+      "name": "動物卡（已完成）",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "options": [],
+      "mappingRules": [],
+      "unit": "分",
+      "rounding": "none",
+      "quickButtons": []
+    },
+    {
+      "id": "05a5b62e-cfe3-4b08-aaec-46f4739e9e8a",
+      "name": "動物卡（未完成）",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "options": [],
+      "mappingRules": [],
+      "unit": "",
+      "rounding": "none",
+      "quickButtons": []
+    }
+  ]
+},
   {
     "id": "sys_fromage",
     "name": "Fromage",
@@ -566,18 +704,76 @@ export const DEFAULT_TEMPLATES: GameTemplate[] = [
       { "id": "cheese", "name": "起司板塊", "type": "number", "isScoring": true, "weight": 1, "unit": "分" }
     ]
   },
-  {
-    "id": "sys_arnak",
-    "name": "阿納克遺跡 (Lost Ruins of Arnak)",
-    "description": "探險與研究，包含研究軌、神廟、守護者與卡片計分。",
-    "createdAt": 1700000000010,
-    "columns": [
-      { "id": "research", "name": "研究軌分數", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
-      { "id": "temple", "name": "神廟板塊", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
-      { "id": "idols", "name": "神像 (3分)", "type": "number", "isScoring": true, "weight": 3, "unit": "個" },
-      { "id": "guardians", "name": "守護者 (5分)", "type": "number", "isScoring": true, "weight": 5, "unit": "隻" },
-      { "id": "cards", "name": "卡片 (物品/神器)", "type": "number", "isScoring": true, "weight": 1, "unit": "分" },
-      { "id": "fear", "name": "恐懼卡 (扣分)", "type": "number", "isScoring": true, "weight": -1, "unit": "張" }
-    ]
-  }
+{
+  "id": "sys_arnak",
+  "name": "阿納克遺跡",
+  "description": "探險與研究，包含研究軌、神廟、守護者與卡片計分。",
+  "createdAt": 1700000000010,
+  "columns": [
+    {
+      "id": "research",
+      "name": "研究軌分數",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分"
+    },
+    {
+      "id": "temple",
+      "name": "神廟板塊",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分"
+    },
+    {
+      "id": "idols",
+      "name": "神像",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分",
+      "mappingRules": []
+    },
+    {
+      "id": "guardians",
+      "name": "守護者",
+      "type": "number",
+      "isScoring": true,
+      "weight": 5,
+      "unit": "隻",
+      "mappingRules": []
+    },
+    {
+      "id": "cards",
+      "name": "卡片",
+      "type": "number",
+      "isScoring": true,
+      "weight": 1,
+      "unit": "分",
+      "mappingRules": []
+    },
+    {
+      "id": "fear",
+      "name": "恐懼卡",
+      "type": "number",
+      "isScoring": true,
+      "weight": -1,
+      "unit": "張",
+      "mappingRules": []
+    },
+    {
+      "id": "7933a25f-52d5-4afa-a420-8358474c83d6",
+      "name": "恐懼板塊",
+      "type": "number",
+      "isScoring": true,
+      "weight": -2,
+      "options": [],
+      "mappingRules": [],
+      "unit": "個",
+      "rounding": "none",
+      "quickButtons": []
+    }
+  ]
+}
 ];
