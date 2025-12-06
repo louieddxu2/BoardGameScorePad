@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { ScoreColumn, ColumnType, MappingRule, SelectOption, RoundingMode } from '../../types';
-import { X, Ruler, Calculator, ListPlus, Settings, Save, Plus, Trash2, BoxSelect } from 'lucide-react';
+import { X, Ruler, Calculator, ListPlus, Settings, Save, Plus, Trash2, BoxSelect, Palette } from 'lucide-react';
+import { COLORS } from '../../src/constants';
 
 interface ColumnConfigEditorProps {
   column: ScoreColumn;
@@ -50,7 +51,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
         finalUpdates.mappingRules = [];
         // calculationType is already set in state
     } else {
-        finalUpdates.type = activeTab;
+        finalUpdates.type = 'select';
         finalUpdates.calculationType = 'standard';
     }
     
@@ -143,6 +144,26 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                   />
               </div>
               
+              <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">標示顏色</label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                      {COLORS.map(c => (
+                          <button
+                              key={c}
+                              onClick={() => setEditedCol({ ...editedCol, color: c })}
+                              className={`w-8 h-8 rounded-full shadow-lg border-2 transition-transform active:scale-90 ${editedCol.color === c ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                              style={{backgroundColor: c}}
+                          />
+                      ))}
+                      <button
+                          onClick={() => setEditedCol({ ...editedCol, color: undefined })}
+                          className={`w-8 h-8 rounded-full shadow-lg border-2 flex items-center justify-center bg-slate-700 text-slate-400 transition-transform active:scale-90 ${!editedCol.color ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                      >
+                         <X size={16}/>
+                      </button>
+                  </div>
+              </div>
+
               {/* Unit is relevant for number/basic/mapping */}
               {(activeTab === 'basic' || activeTab === 'mapping') && (
                   <div>

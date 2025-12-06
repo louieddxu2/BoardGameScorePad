@@ -674,16 +674,16 @@ const App: React.FC = () => {
                         >
                             <div className="pr-6">
                                 <h3 className="text-sm font-bold text-indigo-100 leading-tight line-clamp-2">{t.name}</h3>
+                            </div>
+                            <div className="flex justify-end items-end mt-1 gap-2">
                                 {systemOverrides[t.id] && (
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); setRestoreTarget(t); }}
-                                        className="flex items-center gap-1 mt-1 text-[9px] text-yellow-500 font-normal border border-yellow-500/30 px-1.5 py-0.5 rounded hover:bg-yellow-900/20 transition-colors"
+                                        className="flex items-center gap-1 text-[9px] text-yellow-500 font-normal border border-yellow-500/30 px-1.5 py-0.5 rounded hover:bg-yellow-900/20 transition-colors"
                                     >
                                         <RefreshCw size={8} /> 已修改 (還原)
                                     </button>
                                 )}
-                            </div>
-                            <div className="flex justify-end items-end mt-1">
                                 <button 
                                     onClick={(e) => handleCopyJSON(t, e)}
                                     className="p-1.5 text-slate-600 hover:text-indigo-400 rounded transition-colors"

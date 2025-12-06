@@ -1,4 +1,5 @@
 
+
 export type ColumnType = 'number' | 'text' | 'select' | 'boolean';
 export type RoundingMode = 'none' | 'round' | 'floor' | 'ceil';
 export type CalculationType = 'standard' | 'product';
@@ -23,6 +24,7 @@ export interface ScoreValue {
 export interface ScoreColumn {
   id: string;
   name: string;
+  color?: string;
   type: ColumnType;
   isScoring: boolean;
   weight?: number; // Multiplier

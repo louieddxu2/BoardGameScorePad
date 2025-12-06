@@ -1,4 +1,5 @@
 
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { GameSession, GameTemplate, Player, ScoreColumn } from '../types';
 import { ArrowLeft, Check, X, ArrowRight, ArrowDown, Trophy, RotateCcw, Crown, ChevronDown, Palette, History, Settings, Eraser, ListPlus, Share2, Image, Copy, GripVertical, Edit2, Plus, Square, CheckSquare, CopyPlus } from 'lucide-react';
@@ -908,27 +909,51 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
                                     onTouchMove={handleTouchMove}
                                     onTouchEnd={handleTouchEnd}
                                     data-row-id={col.id}
-                                    className={`sticky left-0 w-[70px] bg-slate-800 border-r border-b border-slate-700 p-2 flex flex-col justify-center cursor-pointer hover:bg-slate-700 transition-colors z-20 group select-none ${isDragging ? 'cursor-grabbing bg-slate-700' : 'cursor-grab'}`}
+                                    className={`sticky left-0 w-[70px] bg-slate-800 border-r-2 border-b border-slate-700 p-2 flex flex-col justify-center cursor-pointer hover:bg-slate-700 transition-colors z-20 group select-none ${isDragging ? 'cursor-grabbing bg-slate-700' : 'cursor-grab'}`}
+                                    style={{
+                                        borderRightColor: col.color || 'var(--border-slate-700)',
+                                    }}
                                 >
-                                    <span className="text-xs font-bold text-slate-300 w-full text-center break-words whitespace-normal leading-tight">{col.name}</span>
+                                    <span 
+                                      className="text-xs font-bold text-slate-300 w-full text-center break-words whitespace-normal leading-tight"
+                                      style={{ ...(col.color && { color: col.color })}}
+                                    >
+                                      {col.name}
+                                    </span>
                                     {col.isScoring && (
                                         <div className="text-[10px] text-slate-500 mt-1 flex flex-col items-center justify-center w-full leading-none">
-                                            {col.type === 'select' ? (
-                                                <div className="flex items-center gap-1">
-                                                    <Settings size={10} />
-                                                    {col.unit && <span className="scale-90">{col.unit}</span>}
-                                                </div>
-                                            ) : (
-                                                col.weight !== 1 ? (
-                                                    <div className="flex items-center justify-center gap-0.5 whitespace-nowrap w-full">
-                                                        <span className="text-emerald-500 font-bold font-mono">{col.weight}</span>
-                                                        <span className="text-slate-600 text-[9px]">×</span>
-                                                        <span className="truncate max-w-[40px]">{col.unit}</span>
-                                                    </div>
-                                                ) : (
-                                                    col.unit && <span className="scale-90 truncate max-w-full">{col.unit}</span>
-                                                )
-                                            )}
+                                            {(() => {
+                                                if (col.calculationType === 'product' && col.subUnits) {
+                                                    return (
+                                                        <div className="flex items-center justify-center gap-0.5 whitespace-nowrap w-full">
+                                                            <span className="truncate max-w-[30px]">{col.subUnits[0]}</span>
+                                                            <span className="text-slate-600 text-[9px]">×</span>
+                                                            <span className="truncate max-w-[30px]">{col.subUnits[1]}</span>
+                                                        </div>
+                                                    );
+                                                }
+                                                if (col.type === 'select') {
+                                                    return (
+                                                        <div className="flex items-center gap-1">
+                                                            <Settings size={10} />
+                                                            {col.unit && <span className="scale-90">{col.unit}</span>}
+                                                        </div>
+                                                    );
+                                                }
+                                                if (col.weight !== 1) {
+                                                    return (
+                                                        <div className="flex items-center justify-center gap-0.5 whitespace-nowrap w-full">
+                                                            <span className="text-emerald-500 font-bold font-mono">{col.weight}</span>
+                                                            <span className="text-slate-600 text-[9px]">×</span>
+                                                            <span className="truncate max-w-[40px]">{col.unit}</span>
+                                                        </div>
+                                                    );
+                                                }
+                                                if (col.unit) {
+                                                    return <span className="scale-90 truncate max-w-full">{col.unit}</span>;
+                                                }
+                                                return null;
+                                            })()}
                                         </div>
                                     )}
                                     {/* Drag Handle Indicator (Visual Only) */}
@@ -1020,18 +1045,32 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
                 {template.columns.map(col => (
                      <div key={col.id} className="flex border-b border-slate-800">
                          <div className="w-[70px] p-3 border-r border-slate-800 bg-slate-800/50 text-xs font-bold text-slate-300 flex flex-col items-center justify-center text-center break-words">
-                             {col.name}
+                            <span style={{ ...(col.color && { color: col.color }) }}>
+                               {col.name}
+                            </span>
                              {col.isScoring && (
                                 <div className="text-[10px] text-slate-500 mt-1 flex flex-col items-center">
-                                     {col.weight !== 1 ? (
-                                         <span className="flex items-center gap-0.5">
-                                            <span className="text-emerald-500 font-bold">{col.weight}</span>
-                                            <span>×</span>
-                                            <span>{col.unit}</span>
-                                         </span>
-                                     ) : (
-                                         <span>{col.unit}</span>
-                                     )}
+                                     {(() => {
+                                        if (col.calculationType === 'product' && col.subUnits) {
+                                            return (
+                                                <span className="flex items-center gap-0.5">
+                                                   <span>{col.subUnits[0]}</span>
+                                                   <span>×</span>
+                                                   <span>{col.subUnits[1]}</span>
+                                                </span>
+                                            );
+                                        }
+                                        if (col.weight !== 1) {
+                                            return (
+                                                <span className="flex items-center gap-0.5">
+                                                   <span className="text-emerald-500 font-bold">{col.weight}</span>
+                                                   <span>×</span>
+                                                   <span>{col.unit}</span>
+                                                </span>
+                                            );
+                                        }
+                                        return <span>{col.unit}</span>;
+                                    })()}
                                 </div>
                              )}
                          </div>
