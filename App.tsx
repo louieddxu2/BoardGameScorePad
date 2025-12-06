@@ -5,7 +5,7 @@ import { calculatePlayerTotal } from './utils/scoring';
 import TemplateEditor from './components/TemplateEditor';
 import SessionView from './components/SessionView';
 import ConfirmationModal from './components/shared/ConfirmationModal';
-import { Plus, Play, Trash2, Dice5, Users, X, Minus, ChevronDown, ChevronRight, LayoutGrid, Library, FolderInput, Code, Check, Sparkles, RefreshCw, ArchiveRestore, Download, Copy, CheckSquare, Square, ArrowRightLeft, Mail, Send } from 'lucide-react';
+import { Plus, Play, Trash2, Dice5, Users, X, Minus, ChevronDown, ChevronRight, LayoutGrid, Library, FolderInput, Code, Check, Sparkles, RefreshCw, ArchiveRestore, Download, Copy, CheckSquare, Square, ArrowRightLeft, Mail, Send, Pin } from 'lucide-react';
 
 // --- Helper Functions ---
 const getTouchDistance = (touches: TouchList): number => {
@@ -23,6 +23,7 @@ const App: React.FC = () => {
   const [templates, setTemplates] = useState<GameTemplate[]>([]);
   const [systemOverrides, setSystemOverrides] = useState<Record<string, GameTemplate>>({});
   const [knownSysIds, setKnownSysIds] = useState<string[]>([]); // Track which system IDs user has seen
+  const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   
   const [currentSession, setCurrentSession] = useState<GameSession | null>(null);
   const [activeTemplate, setActiveTemplate] = useState<GameTemplate | null>(null);
@@ -49,6 +50,7 @@ const App: React.FC = () => {
   const [restoreTarget, setRestoreTarget] = useState<GameTemplate | null>(null); // For system restore confirmation
   
   // Dashboard Sections
+  const [isPinnedLibOpen, setIsPinnedLibOpen] = useState(true);
   const [isUserLibOpen, setIsUserLibOpen] = useState(true);
   const [isSystemLibOpen, setIsSystemLibOpen] = useState(true);
 
@@ -187,6 +189,10 @@ const App: React.FC = () => {
         const parsedKnownIds = savedKnownIds ? JSON.parse(savedKnownIds) : [];
         setKnownSysIds(parsedKnownIds);
 
+        const savedPinnedIds = localStorage.getItem('sm_pinned_ids');
+        const parsedPinnedIds = savedPinnedIds ? JSON.parse(savedPinnedIds) : [];
+        setPinnedIds(parsedPinnedIds);
+
         setTemplates(parsedUserTemplates);
 
     } catch(e) {
@@ -238,6 +244,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('sm_known_sys_ids', JSON.stringify(knownSysIds));
   }, [knownSysIds]);
+
+  useEffect(() => {
+    localStorage.setItem('sm_pinned_ids', JSON.stringify(pinnedIds));
+  }, [pinnedIds]);
 
   useEffect(() => {
     if (currentSession && activeTemplate) {
@@ -329,6 +339,27 @@ const App: React.FC = () => {
       });
   };
 
+  const handleCopySystemTemplate = (template: GameTemplate, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newTemplate: GameTemplate = {
+        ...JSON.parse(JSON.stringify(template)), // Deep copy
+        id: crypto.randomUUID(),
+        createdAt: Date.now(),
+    };
+    setTemplates(prev => [newTemplate, ...prev]);
+  };
+
+  const handleTogglePin = (id: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      setPinnedIds(prev => {
+          if (prev.includes(id)) {
+              return prev.filter(pinnedId => pinnedId !== id);
+          } else {
+              return [id, ...prev]; // Add to the front
+          }
+      });
+  };
+
   // --- Batch Import / Export Logic ---
   
   const handleImportJSON = () => {
@@ -393,7 +424,9 @@ const App: React.FC = () => {
       const selectedTemplates = templates.filter(t => exportSelectedIds.includes(t.id));
       if (selectedTemplates.length === 0) return;
 
-      const json = JSON.stringify(selectedTemplates);
+      const templateStrings = selectedTemplates.map(t => `  ${JSON.stringify(t)}`);
+      const json = `[\n${templateStrings.join(',\n')}\n]`;
+      
       navigator.clipboard.writeText(json).then(() => {
           setIsExportCopying(true);
           setTimeout(() => setIsExportCopying(false), 2000);
@@ -404,7 +437,8 @@ const App: React.FC = () => {
       const selectedTemplates = templates.filter(t => exportSelectedIds.includes(t.id));
       if (selectedTemplates.length === 0) return;
 
-      const json = JSON.stringify(selectedTemplates);
+      const templateStrings = selectedTemplates.map(t => `  ${JSON.stringify(t)}`);
+      const json = `[\n${templateStrings.join(',\n')}\n]`;
       
       navigator.clipboard.writeText(json).then(() => {
           setIsExportCopying(true);
@@ -532,6 +566,18 @@ const App: React.FC = () => {
   const effectiveSystemTemplates = getSystemTemplates();
   const canInstall = !!installPromptEvent;
 
+  // --- Dashboard Data Prep ---
+  const allSystemTemplates = getSystemTemplates();
+  const allTemplates = [...templates, ...allSystemTemplates];
+
+  const pinnedTemplates = pinnedIds
+    .map(id => allTemplates.find(t => t.id === id))
+    .filter((t): t is GameTemplate => t !== undefined);
+
+  const userTemplatesToShow = templates.filter(t => !pinnedIds.includes(t.id));
+  const systemTemplatesToShow = allSystemTemplates.filter(t => !pinnedIds.includes(t.id));
+
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
       <header className="p-4 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 flex justify-between items-center shadow-md">
@@ -564,8 +610,69 @@ const App: React.FC = () => {
       </header>
 
       <main className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* ... (rest of dashboard JSX remains the same) ... */}
         
+        {/* Pinned Section */}
+        {pinnedTemplates.length > 0 && (
+            <div className="space-y-2">
+                <div 
+                    className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-700/50 cursor-pointer hover:bg-slate-800 transition-colors"
+                    onClick={() => setIsPinnedLibOpen(!isPinnedLibOpen)}
+                >
+                    <div className="flex items-center gap-2">
+                        {isPinnedLibOpen ? <ChevronDown size={20} className="text-yellow-400"/> : <ChevronRight size={20} className="text-slate-500"/>}
+                        <h3 className="text-base font-bold text-white flex items-center gap-2">
+                            <Pin size={18} className="text-yellow-400" />
+                            已釘選
+                            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{pinnedTemplates.length}</span>
+                        </h3>
+                    </div>
+                </div>
+
+                {isPinnedLibOpen && (
+                    <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                        {pinnedTemplates.map(t => {
+                            const isSystem = isSystemTemplate(t.id);
+                            const cardBg = isSystem ? 'bg-slate-800' : 'bg-slate-800';
+                            const cardHoverBg = isSystem ? 'hover:bg-slate-750' : 'hover:bg-slate-750';
+                            const cardBorder = isSystem ? 'border-indigo-500/50' : 'border-emerald-500/50';
+                            const cardTextColor = isSystem ? 'text-indigo-100' : 'text-white';
+                            
+                            return (
+                                <div 
+                                    key={`pinned-${t.id}`}
+                                    onClick={() => initSetup(t)}
+                                    className={`${cardBg} rounded-xl p-3 border border-slate-700 shadow-md ${cardHoverBg} hover:${cardBorder} transition-all cursor-pointer relative flex flex-col justify-between h-20 group`}
+                                >
+                                    <div className="pr-14">
+                                        <h3 className={`text-sm font-bold leading-tight line-clamp-2 ${cardTextColor}`}>{t.name}</h3>
+                                    </div>
+                                    
+                                    <div className="flex justify-end items-end mt-1">
+                                        <button 
+                                            onClick={(e) => handleCopyJSON(t, e)}
+                                            className="p-1.5 text-slate-600 hover:text-emerald-400 rounded transition-colors"
+                                            title="複製 JSON"
+                                        >
+                                            {copiedId === t.id ? <Check size={14} className="text-emerald-500" /> : <Code size={14} />}
+                                        </button>
+                                    </div>
+                                    
+                                    <button
+                                        onClick={(e) => handleTogglePin(t.id, e)}
+                                        className="absolute top-2 right-2 p-1.5 text-yellow-400 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors"
+                                        title="取消釘選"
+                                    >
+                                        <Pin size={16} fill="currentColor" />
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+        )}
+
+
         {/* User Library Section */}
         <div className="space-y-2">
             <div 
@@ -577,7 +684,7 @@ const App: React.FC = () => {
                     <h3 className="text-base font-bold text-white flex items-center gap-2">
                         <LayoutGrid size={18} className="text-emerald-500" />
                         我的遊戲庫
-                        <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{templates.length}</span>
+                        <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{userTemplatesToShow.length}</span>
                     </h3>
                 </div>
                 <div className="flex items-center gap-2">
@@ -608,13 +715,13 @@ const App: React.FC = () => {
                             還沒有建立遊戲模板
                          </div>
                     )}
-                    {templates.map(t => (
+                    {userTemplatesToShow.map(t => (
                         <div 
                             key={t.id}
                             onClick={() => initSetup(t)}
                             className="bg-slate-800 rounded-xl p-3 border border-slate-700 shadow-md hover:border-emerald-500/50 hover:bg-slate-750 transition-all cursor-pointer relative flex flex-col justify-between h-20 group"
                         >
-                            <div className="pr-6">
+                            <div className="pr-14">
                                 <h3 className="text-sm font-bold text-white leading-tight line-clamp-2">{t.name}</h3>
                             </div>
                             
@@ -627,10 +734,17 @@ const App: React.FC = () => {
                                     {copiedId === t.id ? <Check size={14} className="text-emerald-500" /> : <Code size={14} />}
                                 </button>
                             </div>
-
+                            
+                            <button
+                                onClick={(e) => handleTogglePin(t.id, e)}
+                                className="absolute top-2 right-10 p-1.5 text-slate-600 hover:text-yellow-400 hover:bg-slate-700 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                                title="釘選"
+                            >
+                                <Pin size={16} />
+                            </button>
                             <button 
                                 onClick={(e) => handleDeleteTemplate(t.id, e)}
-                                className="absolute top-2 right-2 p-1.5 text-slate-600 hover:text-red-400 hover:bg-slate-700 rounded-md transition-colors pointer-events-auto"
+                                className="absolute top-2 right-2 p-1.5 text-slate-600 hover:text-red-400 hover:bg-slate-700 rounded-md transition-colors opacity-0 group-hover:opacity-100"
                             >
                                 <Trash2 size={16} />
                             </button>
@@ -651,7 +765,7 @@ const App: React.FC = () => {
                     <h3 className="text-base font-bold text-white flex items-center gap-2">
                         <Library size={18} className="text-indigo-400" />
                         內建遊戲庫
-                        <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{effectiveSystemTemplates.length}</span>
+                        <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{systemTemplatesToShow.length}</span>
                     </h3>
                 </div>
                 {newSystemTemplatesCount > 0 && (
@@ -666,24 +780,33 @@ const App: React.FC = () => {
 
             {isSystemLibOpen && (
                 <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                    {effectiveSystemTemplates.map(t => (
+                    {systemTemplatesToShow.map(t => (
                         <div 
                             key={t.id}
                             onClick={() => initSetup(t)}
-                            className="bg-slate-800 rounded-xl p-3 border border-slate-700 shadow-md hover:border-indigo-500/50 hover:bg-slate-750 transition-all cursor-pointer relative flex flex-col justify-between h-20"
+                            className="bg-slate-800 rounded-xl p-3 border border-slate-700 shadow-md hover:border-indigo-500/50 hover:bg-slate-750 transition-all cursor-pointer relative flex flex-col justify-between h-20 group"
                         >
-                            <div className="pr-6">
+                            <div className="pr-8">
                                 <h3 className="text-sm font-bold text-indigo-100 leading-tight line-clamp-2">{t.name}</h3>
                             </div>
-                            <div className="flex justify-end items-end mt-1 gap-2">
-                                {systemOverrides[t.id] && (
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); setRestoreTarget(t); }}
-                                        className="flex items-center gap-1 text-[9px] text-yellow-500 font-normal border border-yellow-500/30 px-1.5 py-0.5 rounded hover:bg-yellow-900/20 transition-colors"
-                                    >
-                                        <RefreshCw size={8} /> 已修改 (還原)
-                                    </button>
-                                )}
+                            <div className="flex justify-between items-end mt-1">
+                                <div className="flex items-center">
+                                    {systemOverrides[t.id] ? (
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); setRestoreTarget(t); }}
+                                            className="flex items-center gap-1 text-[9px] text-yellow-500 font-normal border border-yellow-500/30 px-1.5 py-0.5 rounded hover:bg-yellow-900/20 transition-colors"
+                                        >
+                                            <RefreshCw size={8} /> 備份並還原
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={(e) => handleCopySystemTemplate(t, e)}
+                                            className="flex items-center gap-1 text-xs text-slate-300 font-bold bg-slate-700/50 hover:bg-slate-700 px-2 py-1 rounded-md transition-colors"
+                                        >
+                                            <Copy size={12} /> 建立副本
+                                        </button>
+                                    )}
+                                </div>
                                 <button 
                                     onClick={(e) => handleCopyJSON(t, e)}
                                     className="p-1.5 text-slate-600 hover:text-indigo-400 rounded transition-colors"
@@ -692,6 +815,13 @@ const App: React.FC = () => {
                                     {copiedId === t.id ? <Check size={14} className="text-emerald-500" /> : <Code size={14} />}
                                 </button>
                             </div>
+                             <button
+                                onClick={(e) => handleTogglePin(t.id, e)}
+                                className="absolute top-2 right-2 p-1.5 text-slate-600 hover:text-yellow-400 hover:bg-slate-700 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                                title="釘選"
+                            >
+                                <Pin size={16} />
+                            </button>
                         </div>
                     ))}
                 </div>

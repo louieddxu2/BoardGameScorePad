@@ -54,6 +54,7 @@ export interface GameTemplate {
   description?: string;
   columns: ScoreColumn[];
   createdAt: number;
+  isPinned?: boolean; // For UI state, not persisted in template JSON
 }
 
 export interface GameSession {
