@@ -97,8 +97,8 @@ const App: React.FC = () => {
         const scale = currentDist / touchStartDist.current;
         let newZoom = initialZoomRef.current * scale;
         
-        // Clamp zoom level between 50% and 200%
-        newZoom = Math.max(0.5, Math.min(2.0, newZoom));
+        // Clamp zoom level between 75% and 130%
+        newZoom = Math.max(0.75, Math.min(1.3, newZoom));
         
         setZoomLevel(newZoom);
       }
@@ -452,7 +452,7 @@ const App: React.FC = () => {
           
           const body = `開發者你好！這是我製作的計分板
 ↓↓↓ 資料已複製，請在下方貼上(Ctrl+V)↓↓↓
-貼上後按下「傳送」
+貼上後按下「傳送」，有其他想法亦可分享。
 --------------------------------------------------
 
 --------------------------------------------------`;
@@ -616,7 +616,7 @@ const App: React.FC = () => {
               <div className="bg-emerald-500/10 p-1.5 rounded-lg border border-emerald-500/20">
                 <Dice5 size={24} />
               </div>
-              <h1 className="text-xl font-bold tracking-tight text-white">計分板</h1>
+              <h1 className="text-xl font-bold tracking-tight text-white">萬用桌遊計分板</h1>
             </div>
             <div className="flex items-center gap-2">
                 <button
@@ -786,14 +786,14 @@ const App: React.FC = () => {
                             
                             <button
                                 onClick={(e) => handleTogglePin(t.id, e)}
-                                className="absolute top-2 right-10 p-1.5 text-slate-600 hover:text-yellow-400 hover:bg-slate-700 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                                className="absolute top-2 right-10 p-1.5 text-slate-600 hover:text-yellow-400 hover:bg-slate-700 rounded-md transition-colors"
                                 title="釘選"
                             >
                                 <Pin size={16} />
                             </button>
                             <button 
                                 onClick={(e) => handleDeleteTemplate(t.id, e)}
-                                className="absolute top-2 right-2 p-1.5 text-slate-600 hover:text-red-400 hover:bg-slate-700 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                                className="absolute top-2 right-2 p-1.5 text-slate-600 hover:text-red-400 hover:bg-slate-700 rounded-md transition-colors"
                             >
                                 <Trash2 size={16} />
                             </button>
@@ -871,7 +871,7 @@ const App: React.FC = () => {
                             </div>
                              <button
                                 onClick={(e) => handleTogglePin(t.id, e)}
-                                className="absolute top-2 right-2 p-1.5 text-slate-600 hover:text-yellow-400 hover:bg-slate-700 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                                className="absolute top-2 right-2 p-1.5 text-slate-600 hover:text-yellow-400 hover:bg-slate-700 rounded-md transition-colors"
                                 title="釘選"
                             >
                                 <Pin size={16} />
@@ -1032,8 +1032,14 @@ const App: React.FC = () => {
 
       {/* Setup Game Modal */}
       {pendingTemplate && (
-          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="bg-slate-900 w-full max-w-sm rounded-2xl shadow-2xl border border-slate-800">
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            onClick={() => setPendingTemplate(null)}
+          >
+              <div 
+                className="bg-slate-900 w-2/3 max-w-xs rounded-2xl shadow-2xl border border-slate-800"
+                onClick={(e) => e.stopPropagation()}
+              >
                   <div className="p-4 border-b border-slate-800 flex justify-between items-center">
                       <h3 className="text-base font-bold text-white truncate pr-2">{pendingTemplate.name}</h3>
                       <button onClick={() => setPendingTemplate(null)} className="text-slate-500 hover:text-white shrink-0">

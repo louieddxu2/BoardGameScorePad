@@ -1,5 +1,3 @@
-
-
 export type ColumnType = 'number' | 'text' | 'select' | 'boolean';
 export type RoundingMode = 'none' | 'round' | 'floor' | 'ceil';
 export type CalculationType = 'standard' | 'product';
