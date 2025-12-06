@@ -1,11 +1,11 @@
 const CACHE_NAME = 'boardgame-scorepad-v2';
 
-// 核心靜態資源 (只預先快取最基本的殼，其他採用動態快取)
+// 核心靜態資源 (使用絕對路徑以確保可靠性)
 const CORE_ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
-  './icon.svg' // 將本地圖示加入預快取，確保離線時也能顯示
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/icon.svg'
 ];
 
 self.addEventListener('install', (event) => {
