@@ -1,10 +1,12 @@
 const CACHE_NAME = 'boardgame-scorepad-v2';
 
 // 核心靜態資源 (使用絕對路徑以確保可靠性)
+// 移除了 manifest.json，因為 Vite 會在 build 時對其檔名進行 hash 處理，
+// 導致此處的靜態路徑失效而安裝失敗。
+// manifest 將會在瀏覽器請求時被 fetch 事件動態快取。
 const CORE_ASSETS = [
   '/',
   '/index.html',
-  '/manifest.json',
   '/icon.svg'
 ];
 
