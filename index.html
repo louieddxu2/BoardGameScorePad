@@ -32,12 +32,13 @@
         width: 100%;
         margin: 0;
         padding: 0;
+        /* 新增：禁止下拉重新整理的 CSS 解決方案 */
+        overscroll-behavior-y: contain;
       }
       body {
         background-color: #0f172a; /* Slate 900 */
         color: #f8fafc; /* Slate 50 */
         -webkit-tap-highlight-color: transparent;
-        overscroll-behavior-y: contain; /* 禁止下拉重整 */
       }
       .no-scrollbar::-webkit-scrollbar {
           display: none;
@@ -79,6 +80,7 @@
   }
 }
 </script>
+<link rel="stylesheet" href="/index.css">
 </head>
   <body>
     <div id="root"></div>
@@ -99,5 +101,37 @@
         });
       }
     </script>
-  </body>
+    
+    <!-- 新增：禁止下拉重新整理的 JavaScript 輔助方案 -->
+    <script>
+      (() => {
+        let startY = null;
+
+        document.body.addEventListener('touchstart', (e) => {
+          // 只有當頁面在最頂端時才記錄起始位置
+          if (document.documentElement.scrollTop === 0 && e.touches.length === 1) {
+            startY = e.touches[0].pageY;
+          } else {
+            startY = null;
+          }
+        }, { passive: true });
+
+        document.body.addEventListener('touchmove', (e) => {
+          if (startY === null) {
+            return;
+          }
+
+          const currentY = e.touches[0].pageY;
+          const isPullingDown = currentY > startY;
+
+          // 如果是在頂部向下滑動，則阻止預設行為
+          if (isPullingDown) {
+            e.preventDefault();
+          }
+        }, { passive: false });
+        
+      })();
+    </script>
+  <script type="module" src="/index.tsx"></script>
+</body>
 </html>

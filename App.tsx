@@ -183,10 +183,6 @@ const App: React.FC = () => {
   // --- Initial Load ---
   useEffect(() => {
     try {
-        // Per user request, always start at dashboard. Clear any lingering session.
-        localStorage.removeItem('sm_current_session');
-        localStorage.removeItem('sm_active_template_id');
-
         const savedTemplates = localStorage.getItem('sm_templates');
         const parsedUserTemplates = savedTemplates ? JSON.parse(savedTemplates) : [];
 
@@ -201,9 +197,6 @@ const App: React.FC = () => {
         const savedPinnedIds = localStorage.getItem('sm_pinned_ids');
         const parsedPinnedIds = savedPinnedIds ? JSON.parse(savedPinnedIds) : [];
         setPinnedIds(parsedPinnedIds);
-        
-        const savedHistory = localStorage.getItem('sm_player_history');
-        if (savedHistory) setPlayerHistory(JSON.parse(savedHistory));
 
         setTemplates(parsedUserTemplates);
 
@@ -212,6 +205,37 @@ const App: React.FC = () => {
         setTemplates([]);
     }
   }, []);
+
+  // --- Restore Session ---
+  useEffect(() => {
+    try {
+        const savedSession = localStorage.getItem('sm_current_session');
+        const savedActiveTemplateId = localStorage.getItem('sm_active_template_id');
+        const savedHistory = localStorage.getItem('sm_player_history');
+        
+        if (savedHistory) setPlayerHistory(JSON.parse(savedHistory));
+
+        if (savedSession && savedActiveTemplateId) {
+            const session = JSON.parse(savedSession);
+            
+            let template = templates.find(t => t.id === savedActiveTemplateId);
+            if (!template && systemOverrides[savedActiveTemplateId]) {
+                template = systemOverrides[savedActiveTemplateId];
+            }
+            if (!template) {
+                template = DEFAULT_TEMPLATES.find(t => t.id === savedActiveTemplateId);
+            }
+
+            if (template && session) {
+                setCurrentSession(session);
+                setActiveTemplate(template);
+                setView(AppView.ACTIVE_SESSION);
+            }
+        }
+    } catch (e) {
+        console.error("Failed to restore session", e);
+    }
+  }, [templates, systemOverrides]);
 
   // --- Persistence ---
   useEffect(() => {
@@ -281,6 +305,8 @@ const App: React.FC = () => {
     };
 
     const handlePopState = () => {
+      // Reset the exit flag at the beginning of every popstate event.
+      isExitingSession.current = false;
       const wasHandled = executeBackLogic();
       
       // If the back action was handled internally (e.g., closing a modal)
@@ -288,11 +314,6 @@ const App: React.FC = () => {
       // push a new state to "trap" the history and prevent app exit.
       if (wasHandled && !isExitingSession.current) {
         history.pushState(null, '');
-      }
-      
-      // The exiting flag is a one-time signal. Reset it after the popstate has been processed.
-      if (isExitingSession.current) {
-        isExitingSession.current = false;
       }
     };
 
@@ -584,7 +605,11 @@ const App: React.FC = () => {
       // Signal to the popstate handler that this is an intentional navigation
       // and it should NOT push a new history state.
       isExitingSession.current = true;
-      history.back();
+      
+      localStorage.removeItem('sm_current_session');
+      localStorage.removeItem('sm_active_template_id');
+      setCurrentSession(null);
+      setView(AppView.DASHBOARD);
   };
 
   const adjustSetupCount = (delta: number) => {

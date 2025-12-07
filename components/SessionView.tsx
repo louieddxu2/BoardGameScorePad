@@ -770,13 +770,7 @@ const SessionView: React.FC<SessionViewProps> = ({ session, template, playerHist
         <ConfirmationModal
             isOpen={showExitConfirm}
             title="確定要返回目錄嗎？"
-            message={
-        <>
-            計分板裡的分數紀錄不會保留。
-            <br />
-            （計分板的架構會自動儲存）
-        </>
-    }
+            message="你會失去目前的計分內容(記分板架構會自動儲存)。"
             confirmText="離開"
             cancelText="取消"
             isDangerous={false}
