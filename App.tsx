@@ -66,10 +66,8 @@ const App: React.FC = () => {
 
   // --- Mobile Pinch-to-Zoom Logic ---
   const [zoomLevel, setZoomLevel] = useState(1.0);
-  const [showZoomIndicator, setShowZoomIndicator] = useState(false);
   const touchStartDist = useRef(0);
   const initialZoomRef = useRef(1.0);
-  const zoomIndicatorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Ref to fix back button behavior when exiting a session
   const isExitingSession = useRef(false);
@@ -124,23 +122,10 @@ const App: React.FC = () => {
     };
   }, [zoomLevel]);
   
-  // Effect to apply zoom and show indicator
+  // Effect to apply zoom
   useEffect(() => {
     document.documentElement.style.fontSize = `${16 * zoomLevel}px`;
     localStorage.setItem('app_zoom_level', String(zoomLevel));
-    
-    if (touchStartDist.current > 0) { // Only show indicator during an active gesture
-      setShowZoomIndicator(true);
-      if (zoomIndicatorTimer.current) clearTimeout(zoomIndicatorTimer.current);
-      
-      zoomIndicatorTimer.current = setTimeout(() => {
-        setShowZoomIndicator(false);
-      }, 1500);
-    }
-    
-    return () => {
-      if (zoomIndicatorTimer.current) clearTimeout(zoomIndicatorTimer.current);
-    };
   }, [zoomLevel]);
 
 
@@ -1154,10 +1139,6 @@ const App: React.FC = () => {
           </div>
       )}
 
-      {/* Zoom Indicator */}
-      <div className={`zoom-indicator ${showZoomIndicator ? 'opacity-100' : 'opacity-0'}`}>
-        {Math.round(zoomLevel * 100)}%
-      </div>
     </div>
   );
 };
