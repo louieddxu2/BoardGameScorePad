@@ -1,5 +1,5 @@
 {
-  "name": "萬用桌遊計分板 BoardGameScorePad",
+  "name": "萬用桌遊計分板 BoardGameScorePad(重構)",
   "description": "萬能桌遊計分助手。自定義計分模板，支援 AI 自動生成，具備歷史記錄與自動加總功能。",
   "requestFramePermissions": []
 }

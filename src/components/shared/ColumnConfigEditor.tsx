@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { ScoreColumn, ColumnType, MappingRule, SelectOption, RoundingMode } from '../../types';
+import { ScoreColumn, SelectOption, MappingRule } from '../../types';
 import { X, Ruler, Calculator, ListPlus, Settings, Save, Plus, Trash2, BoxSelect } from 'lucide-react';
+import { COLORS } from '../../constants';
 
 interface ColumnConfigEditorProps {
   column: ScoreColumn;
@@ -11,6 +12,12 @@ interface ColumnConfigEditorProps {
 }
 
 type EditorTab = 'basic' | 'mapping' | 'select';
+
+// Helper to determine if a color is dark and needs a light text shadow for contrast
+const isColorDark = (hex: string): boolean => {
+    const darkColors = ['#a16207', '#6b7280', '#1f2937']; // Brown, Gray, Black
+    return darkColors.includes(hex.toLowerCase());
+};
 
 const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave, onDelete, onClose }) => {
   // Local state for editing
@@ -50,7 +57,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
         finalUpdates.mappingRules = [];
         // calculationType is already set in state
     } else {
-        finalUpdates.type = activeTab;
+        finalUpdates.type = 'select';
         finalUpdates.calculationType = 'standard';
     }
     
@@ -139,23 +146,33 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                     type="text" 
                     value={editedCol.name} 
                     onChange={e => setEditedCol({...editedCol, name: e.target.value})}
+                    onFocus={e => e.target.select()}
                     className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white focus:border-emerald-500 outline-none"
                   />
               </div>
               
-              {/* Unit is relevant for number/basic/mapping */}
-              {(activeTab === 'basic' || activeTab === 'mapping') && (
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">單位量詞 (Unit)</label>
-                    <input 
-                        type="text" 
-                        value={editedCol.unit || ''} 
-                        onChange={e => setEditedCol({...editedCol, unit: e.target.value})}
-                        placeholder={editedCol.calculationType === 'product' ? '最終分數位 (如: 分)' : '例如: 分, 隻, 塊'}
-                        className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white focus:border-emerald-500 outline-none"
-                    />
+              <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">標示顏色</label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                      {COLORS.map(c => {
+                        const isDark = isColorDark(c);
+                        return (
+                          <button
+                              key={c}
+                              onClick={() => setEditedCol({ ...editedCol, color: c })}
+                              className={`w-8 h-8 rounded-full shadow-lg border-2 transition-transform active:scale-90 ${editedCol.color === c ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'} ${isDark ? 'ring-1 ring-white/50' : ''}`}
+                              style={{backgroundColor: c}}
+                          />
+                        );
+                      })}
+                      <button
+                          onClick={() => setEditedCol({ ...editedCol, color: undefined })}
+                          className={`w-8 h-8 rounded-full shadow-lg border-2 flex items-center justify-center bg-slate-700 text-slate-400 transition-transform active:scale-90 ${!editedCol.color ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                      >
+                         <X size={16}/>
+                      </button>
                   </div>
-              )}
+              </div>
           </div>
 
           <div className="border-t border-slate-800 pt-6">
@@ -185,7 +202,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                     ...editedCol, 
                                     calculationType: 'product',
                                     // Set default units if empty or switching to product mode
-                                    subUnits: (editedCol.subUnits && editedCol.subUnits[0] && editedCol.subUnits[1]) ? editedCol.subUnits : ['分', '個']
+                                    subUnits: (editedCol.subUnits && editedCol.subUnits[0] && editedCol.subUnits[1]) ? editedCol.subUnits : ['數量', '單價']
                                 })}
                                 className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${
                                     editedCol.calculationType === 'product'
@@ -204,24 +221,29 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
 
                     {editedCol.calculationType === 'product' ? (
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 bg-indigo-900/10 p-4 rounded-xl border border-indigo-500/20">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">A 的單位</label>
-                                    <input 
-                                        type="text" 
-                                        value={editedCol.subUnits?.[0] || ''}
-                                        onChange={e => setEditedCol({ ...editedCol, subUnits: [e.target.value, editedCol.subUnits?.[1] || ''] })}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white text-center focus:border-indigo-500 outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">B 的單位</label>
-                                    <input 
-                                        type="text" 
-                                        value={editedCol.subUnits?.[1] || ''}
-                                        onChange={e => setEditedCol({ ...editedCol, subUnits: [editedCol.subUnits?.[0] || '', e.target.value] })}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white text-center focus:border-indigo-500 outline-none"
-                                    />
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">乘積單位 (Sub-units)</label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] text-slate-400 mb-1">因子 A 單位</label>
+                                        <input 
+                                            type="text" 
+                                            value={editedCol.subUnits?.[0] || ''}
+                                            onChange={e => setEditedCol({ ...editedCol, subUnits: [e.target.value, editedCol.subUnits?.[1] || ''] })}
+                                            onFocus={e => e.target.select()}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white text-center focus:border-indigo-500 outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] text-slate-400 mb-1">因子 B 單位</label>
+                                        <input 
+                                            type="text" 
+                                            value={editedCol.subUnits?.[1] || ''}
+                                            onChange={e => setEditedCol({ ...editedCol, subUnits: [editedCol.subUnits?.[0] || '', e.target.value] })}
+                                            onFocus={e => e.target.select()}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white text-center focus:border-indigo-500 outline-none"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                             <div className="bg-slate-900 border border-slate-700 p-4 rounded-xl flex items-center justify-center gap-2">
@@ -233,17 +255,31 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                             </div>
                         </div>
                     ) : (
-                        <div className="bg-slate-900 border border-slate-700 p-4 rounded-xl flex items-center justify-center gap-3 animate-in fade-in">
-                            <span className="text-slate-400 text-sm">輸入值</span>
-                            <span className="text-slate-600">×</span>
-                            <input 
-                                type="number" 
-                                value={editedCol.weight ?? 1} 
-                                onChange={e => setEditedCol({...editedCol, weight: parseFloat(e.target.value)})}
-                                className="w-20 bg-slate-800 border border-emerald-500/50 text-emerald-400 text-center font-bold p-2 rounded"
-                            />
-                            <span className="text-slate-600">=</span>
-                            <span className="text-white font-bold">得分</span>
+                        <div className="space-y-4 animate-in fade-in slide-in-from-top-2 bg-emerald-900/10 p-4 rounded-xl border border-emerald-500/20">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">單位量詞 (Unit)</label>
+                                <input 
+                                    type="text" 
+                                    value={editedCol.unit || ''} 
+                                    onChange={e => setEditedCol({...editedCol, unit: e.target.value})}
+                                    onFocus={e => e.target.select()}
+                                    placeholder="例如: 分, 隻, 塊"
+                                    className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white focus:border-emerald-500 outline-none"
+                                />
+                            </div>
+                            <div className="bg-slate-900 border border-slate-700 p-4 rounded-xl flex items-center justify-center gap-3">
+                                <span className="text-slate-400 text-sm">輸入值</span>
+                                <span className="text-slate-600">×</span>
+                                <input 
+                                    type="number" 
+                                    value={editedCol.weight ?? 1} 
+                                    onChange={e => setEditedCol({...editedCol, weight: parseFloat(e.target.value)})}
+                                    onFocus={e => e.target.select()}
+                                    className="w-20 bg-slate-800 border border-emerald-500/50 text-emerald-400 text-center font-bold p-2 rounded"
+                                />
+                                <span className="text-slate-600">=</span>
+                                <span className="text-white font-bold">得分</span>
+                            </div>
                         </div>
                     )}
 
@@ -278,12 +314,14 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                 <input 
                                     type="number" placeholder="Min" value={rule.min ?? ''} 
                                     onChange={e => updateMappingRule(idx, 'min', e.target.value ? parseFloat(e.target.value) : undefined)}
+                                    onFocus={e => e.target.select()}
                                     className="w-16 bg-slate-900 border border-slate-600 rounded p-2 text-center text-white"
                                 />
                                 <span className="text-slate-500">~</span>
                                 <input 
                                     type="number" placeholder="Max" value={rule.max ?? ''} 
                                     onChange={e => updateMappingRule(idx, 'max', e.target.value ? parseFloat(e.target.value) : undefined)}
+                                    onFocus={e => e.target.select()}
                                     className="w-16 bg-slate-900 border border-slate-600 rounded p-2 text-center text-white"
                                 />
                                 <span className="text-slate-500">➜</span>
@@ -291,6 +329,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                     <input 
                                         type="number" placeholder="Score" value={rule.score} 
                                         onChange={e => updateMappingRule(idx, 'score', parseFloat(e.target.value))}
+                                        onFocus={e => e.target.select()}
                                         className="w-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-bold rounded p-2 text-center"
                                     />
                                     <span className="absolute right-2 top-2.5 text-xs text-emerald-500/50">分</span>
@@ -317,6 +356,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                      <input 
                                         type="number" placeholder="0" value={opt.value} 
                                         onChange={e => updateOption(idx, 'value', parseFloat(e.target.value) || 0)}
+                                        onFocus={e => e.target.select()}
                                         className="w-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-mono font-bold rounded p-2 pl-3 text-right"
                                     />
                                     <span className="absolute left-2 top-2.5 text-xs text-slate-500">分</span>
@@ -325,6 +365,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                 <input 
                                     type="text" placeholder="選項說明 (如: 第一名)" value={opt.label} 
                                     onChange={e => updateOption(idx, 'label', e.target.value)}
+                                    onFocus={e => e.target.select()}
                                     className="flex-1 bg-slate-900 border border-slate-600 rounded p-2 text-white placeholder-slate-600"
                                 />
                                 <button onClick={() => removeOption(idx)} className="p-2 text-slate-500 hover:text-red-400"><Trash2 size={18}/></button>

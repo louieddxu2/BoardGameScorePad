@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Player, ScoreColumn } from '../../types';
 import { calculateColumnScore, getRawValue, getScoreHistory } from '../../utils/scoring';
@@ -102,7 +101,7 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
         {rawVal !== undefined && (
             productUI ? productUI : (
                 <span className="absolute bottom-1 right-1 text-sm font-mono flex items-baseline">
-                   <span className="text-emerald-400 font-bold">{displayValue}</span>
+                   <span className="text-emerald-400 font-bold">{String(displayValue)}</span>
                    {unitText && <span className="text-emerald-400 text-xs ml-0.5">{unitText}</span>}
                 </span>
             )

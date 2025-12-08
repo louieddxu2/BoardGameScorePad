@@ -1,3 +1,4 @@
+
 import { GameTemplate } from './types';
 
 export const COLORS = [
