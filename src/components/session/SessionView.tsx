@@ -1,4 +1,4 @@
-import React, 'react';
+import React from 'react';
 import { GameSession, GameTemplate, ScoreColumn, Player } from '../../types';
 import { useSessionState } from './hooks/useSessionState';
 import { useSessionEvents } from './hooks/useSessionEvents';
