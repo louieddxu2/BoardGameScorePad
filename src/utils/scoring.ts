@@ -1,5 +1,5 @@
 
-import { Player, ScoreColumn, GameTemplate } from '../types';
+import { Player, ScoreColumn, GameTemplate, MappingRule } from '../types';
 
 /**
  * Extracts a numeric value from a potential ScoreValue object or primitive number.
@@ -52,19 +52,81 @@ export const calculateColumnScore = (col: ScoreColumn, rawValue: any): number =>
 
   // Number logic
   if (col.type === 'number') {
-    // 1. Check Mapping Rules
+    // 1. Check Mapping Rules (these override other calculations)
     if (col.mappingRules && col.mappingRules.length > 0) {
-      const rule = col.mappingRules.find(r => {
+      
+      let maxBoundary = -Infinity;
+      let lastRuleScore = 0;
+      let lastRuleIsInfinite = false;
+
+      // First pass: Try to find a direct match
+      const rule = col.mappingRules.find((r, index, allRules) => {
+        // Determine effective Max
+        let effectiveMax: number;
+        if (r.max === 'next') {
+            const nextRule = allRules[index + 1];
+            if (nextRule && typeof nextRule.min === 'number') {
+                effectiveMax = nextRule.min - 1;
+            } else {
+                effectiveMax = Infinity; // Should technically not happen if structure is valid
+            }
+        } else {
+            effectiveMax = r.max === undefined ? Infinity : r.max;
+        }
+        
+        // Track the "global" max boundary for overflow logic later
+        if (effectiveMax > maxBoundary) {
+            maxBoundary = effectiveMax;
+            lastRuleScore = r.score;
+        }
+        if (effectiveMax === Infinity) {
+            lastRuleIsInfinite = true;
+        }
+
         const aboveMin = r.min === undefined || valNum >= r.min;
-        const belowMax = r.max === undefined || valNum <= r.max;
+        const belowMax = valNum <= effectiveMax;
         return aboveMin && belowMax;
       });
-      // If mapped, return the mapped score directly
-      return rule ? rule.score : 0; 
+
+      if (rule) {
+          return rule.score;
+      }
+
+      // If no direct match, check Overflow Strategy
+      // Only apply if the last rule is NOT infinite (i.e., we have hit a hard ceiling)
+      if (!lastRuleIsInfinite && valNum > maxBoundary) {
+          const strategy = col.mappingStrategy || 'linear'; // Default to linear
+          
+          if (strategy === 'zero') {
+              return 0; // Return 0 score (not 0 calculation, literally 0 points)
+          }
+          
+          if (strategy === 'linear') {
+              // Formula: BaseScore + floor((Val - Max) / Unit) * ScorePerUnit
+              const unit = col.linearUnit || 1; // Default "Per 1 unit"
+              const scorePerUnit = col.linearScore ?? 1; // Default "Add 1 score"
+              
+              const excess = valNum - maxBoundary;
+              const increments = Math.floor(excess / unit);
+              
+              return lastRuleScore + (increments * scorePerUnit);
+          }
+      }
+      
+      // If below min or no rules matched
+      return 0; 
     }
 
-    // 2. Standard Calculation: Value * Weight
-    let calculated = valNum * (col.weight ?? 1);
+    let calculated;
+
+    // 2. Product vs. Standard/Sum-Parts Calculation
+    if (col.calculationType === 'product') {
+        // Product mode: The raw value is already the score (A*B). Weight is ignored.
+        calculated = valNum;
+    } else {
+        // Standard & Sum-Parts mode: Value * Weight. For Sum-Parts, valNum is the pre-calculated sum.
+        calculated = valNum * (col.weight ?? 1);
+    }
 
     // 3. Rounding
     if (col.rounding) {

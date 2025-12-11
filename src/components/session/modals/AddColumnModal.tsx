@@ -49,7 +49,7 @@ const AddColumnModal: React.FC<AddColumnModalProps> = ({ columns, onClose, onAdd
                 {selectedColumnIds.length === columns.length && columns.length > 0 ? '取消全選' : '全選'}
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+            <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pr-1">
               {columns.map(col => {
                 const isSelected = selectedColumnIds.includes(col.id);
                 return (

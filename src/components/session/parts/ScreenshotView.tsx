@@ -1,23 +1,43 @@
 import React from 'react';
 import { GameSession, GameTemplate } from '../../../types';
-import { Trophy } from 'lucide-react';
+import { Trophy, Crown, Settings } from 'lucide-react';
 import ScoreCell from '../ScoreCell';
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
 
 interface ScreenshotViewProps {
   session: GameSession;
   template: GameTemplate;
+  zoomLevel: number;
 }
 
-const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template }) => {
+const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoomLevel }) => {
+  const winners = session.players
+    .filter(p => p.totalScore === Math.max(...session.players.map(pl => pl.totalScore)))
+    .map(p => p.id);
+
+  // --- Styles ---
+  const containerClass = 'bg-slate-900';
+  const headerIconBoxClass = 'bg-emerald-500/10 border border-emerald-500/20';
+  const getPlayerBg = (color: string) => `${color}20`;
+  const getPlayerBorderBottom = (color: string) => color;
+  const getColumnBorderRight = (color: string | undefined) => (color || 'var(--border-slate-700)');
+  const rowBorderClass = 'border-slate-700';
+
   return (
     <div
       id="screenshot-target"
-      className="fixed top-0 left-[-9999px] bg-slate-900 text-slate-100 p-4"
-      style={{ width: Math.max(400, 70 + session.players.length * 60) + 'px' }}
+      // Use w-fit + min-w-[100vw] to ensure it fills screen or expands for content
+      className={`fixed top-0 left-0 -z-50 text-slate-100 ${containerClass}`}
+      style={{ 
+        fontSize: `${16 * zoomLevel}px`,
+        fontFamily: 'Inter, sans-serif',
+        width: 'fit-content',
+        minWidth: '100vw'
+      }}
     >
-      <div className="mb-4 flex items-center gap-2">
-        <div className="bg-emerald-500/10 p-2 rounded border border-emerald-500/20">
+      {/* Header */}
+      <div id="ss-header" className="p-4 flex items-center gap-2">
+        <div className={`p-2 rounded ${headerIconBoxClass}`}>
           <Trophy className="text-emerald-500" />
         </div>
         <div>
@@ -25,51 +45,88 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template }) =>
           <p className="text-slate-500 text-xs">萬用桌遊計分板 • {new Date().toLocaleDateString()}</p>
         </div>
       </div>
-      <div className="border border-slate-700 rounded-xl overflow-hidden">
-        <div className="flex bg-slate-800 border-b border-slate-700">
-          <div className="w-[70px] p-3 border-r border-slate-700 font-bold text-slate-400 text-sm flex items-center justify-center text-center">計分項目</div>
+      
+      {/* Score Grid Container */}
+      <div id="screenshot-content">
+        
+        {/* Player Headers */}
+        <div id="ss-player-header-row" className={`flex border-b ${rowBorderClass} bg-slate-800`}>
+          <div className={`w-[70px] border-r ${rowBorderClass} p-2 shrink-0 flex items-center justify-center`}>
+            <span className="font-bold text-sm text-slate-400">玩家</span>
+          </div>
           {session.players.map(p => (
             <div
               key={p.id}
-              className="w-[60px] flex-1 p-3 border-r border-slate-700 text-center font-bold"
-              style={{ color: p.color, backgroundColor: `${p.color}10`, ...(isColorDark(p.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }}
+              className={`min-w-[54px] flex-1 border-r ${rowBorderClass} p-2 flex flex-col items-center justify-center`}
+              style={{ 
+                  backgroundColor: getPlayerBg(p.color),
+                  borderBottom: `2px solid ${getPlayerBorderBottom(p.color)}`
+              }}
             >
-              {p.name}
+              <span className="text-sm font-bold truncate max-w-full text-center" style={{ color: p.color, ...(isColorDark(p.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }}>
+                {p.name}
+              </span>
             </div>
           ))}
         </div>
+
+        {/* Rows */}
         {template.columns.map(col => (
-          <div key={col.id} className="flex border-b border-slate-800">
-            <div className="w-[70px] p-3 border-r border-slate-800 bg-slate-800/50 text-xs font-bold text-slate-300 flex flex-col items-center justify-center text-center break-words">
-              <span style={{ ...(col.color && { color: col.color, ...(isColorDark(col.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }) }}>{col.name}</span>
-              {col.isScoring && (
-                <div className="text-[10px] text-slate-500 mt-1 flex flex-col items-center">
-                  {(() => {
-                    if (col.calculationType === 'product' && col.subUnits) return <span className="flex items-center gap-0.5"><span>{col.subUnits[0]}</span><span>×</span><span>{col.subUnits[1]}</span></span>;
-                    if (col.weight !== 1 && col.weight !== undefined) return <span className="flex items-center gap-0.5"><span className="text-emerald-500 font-bold">{col.weight}</span><span>×</span><span>{col.unit}</span></span>;
-                    return <span>{col.unit}</span>;
-                  })()}
-                </div>
+          <div key={col.id} id={`ss-row-${col.id}`} className="flex">
+            <div
+              className={`w-[70px] border-r-2 border-b ${rowBorderClass} p-2 text-center shrink-0 flex flex-col justify-center bg-slate-800`}
+              style={{ borderRightColor: getColumnBorderRight(col.color) }}
+            >
+              <span className="text-sm font-bold text-slate-300 w-full break-words whitespace-normal leading-tight" style={{ ...(col.color && { color: col.color, ...(isColorDark(col.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }) }}>
+                  {col.name}
+              </span>
+               {col.isScoring && (
+                  <div className="text-xs text-slate-500 mt-1 flex flex-col items-center justify-center w-full leading-none">
+                      {(() => {
+                          if (col.calculationType === 'product' && col.subUnits) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="">{col.subUnits[0]}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="">{col.subUnits[1]}</span></div>;
+                          if (col.type === 'select') return <div className="flex items-center gap-1"><Settings size={10} />{col.unit && <span className="text-xs">{col.unit}</span>}</div>;
+                          if (col.weight !== 1) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="text-emerald-500 font-bold font-mono">{col.weight}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="">{col.unit}</span></div>;
+                          if (col.unit) return <span className="text-xs">{col.unit}</span>;
+                          return null;
+                      })()}
+                  </div>
               )}
             </div>
             {session.players.map(p => (
-              <div key={p.id} className="w-[60px] flex-1 p-2 border-r border-slate-800 flex items-center justify-center relative min-h-[50px]">
-                <ScoreCell player={p} column={col} isActive={false} onClick={() => {}} />
-              </div>
+              <ScoreCell
+                key={p.id}
+                player={p}
+                column={col}
+                isActive={false}
+                onClick={() => {}}
+                screenshotMode={false}
+              />
             ))}
           </div>
         ))}
-        <div className="flex bg-slate-800 border-t-2 border-slate-700">
-          <div className="w-[70px] p-3 border-r border-slate-700 font-black text-emerald-400 italic text-center flex items-center justify-center">TOTAL</div>
-          {session.players.map(p => (
-            <div
-              key={p.id}
-              className="w-[60px] flex-1 p-3 border-r border-slate-700 text-center font-black text-xl"
-              style={{ color: p.color, backgroundColor: `${p.color}10`, ...(isColorDark(p.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }}
-            >
-              {p.totalScore}
+
+        {/* Totals Bar */}
+        <div id="ss-totals-row" className={`flex h-10 border-t ${rowBorderClass} bg-slate-900`}>
+            <div className={`w-[70px] border-r ${rowBorderClass} p-2 shrink-0 flex items-center justify-center bg-slate-800`}>
+                <span className="font-black text-emerald-400 text-sm">總分</span>
             </div>
-          ))}
+            {session.players.map(p => (
+                <div
+                    key={p.id}
+                    className={`min-w-[54px] flex-1 border-r ${rowBorderClass} p-2 h-full flex items-center justify-center relative`}
+                    style={{ 
+                        backgroundColor: getPlayerBg(p.color),
+                        borderTop: `2px solid ${getPlayerBorderBottom(p.color)}`
+                    }}
+                >
+                    <span className="font-black text-lg" style={{ color: p.color, ...(isColorDark(p.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }}>
+                        {p.totalScore}
+                    </span>
+                    {winners.includes(p.id) && session.players.length > 1 && (
+                        <Crown size={14} className="text-yellow-400 absolute top-1 right-1" fill="currentColor" />
+                    )}
+                </div>
+            ))}
         </div>
       </div>
     </div>

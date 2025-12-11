@@ -19,6 +19,7 @@ interface SessionViewProps {
   session: GameSession;
   template: GameTemplate;
   playerHistory: string[];
+  zoomLevel: number;
   onUpdateSession: (session: GameSession) => void;
   onUpdateTemplate: (template: GameTemplate) => void;
   onUpdatePlayerHistory: (name: string) => void;
@@ -27,7 +28,7 @@ interface SessionViewProps {
 }
 
 const SessionView: React.FC<SessionViewProps> = (props) => {
-  const { session, template } = props;
+  const { session, template, zoomLevel } = props;
 
   const sessionState = useSessionState(props);
   const eventHandlers = useSessionEvents(props, sessionState);
@@ -42,7 +43,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     columnToDelete,
     isAddColumnModalOpen,
     showShareMenu,
-    isCopying
+    isCopying,
   } = sessionState.uiState;
 
   const { setUiState } = sessionState;
@@ -108,6 +109,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           onPlayerHeaderClick={eventHandlers.handlePlayerHeaderClick}
           onColumnHeaderClick={eventHandlers.handleColumnHeaderClick}
           onUpdateTemplate={props.onUpdateTemplate}
+          scrollContainerRef={sessionState.tableContainerRef}
         />
       </div>
 
@@ -130,7 +132,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       />
 
       {/* Hidden view for screenshot generation */}
-      <ScreenshotView session={session} template={template} />
+      <ScreenshotView session={session} template={template} zoomLevel={zoomLevel} />
     </div>
   );
 };

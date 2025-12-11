@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect } from 'react';
 import { GameSession, GameTemplate, ScoreColumn } from '../../../types';
-import { useSessionState, UIState } from './useSessionState';
+import { useSessionState } from './useSessionState';
 import { useSessionNavigation } from './useSessionNavigation';
-import html2canvas from 'html2canvas';
+import { toBlob } from 'html-to-image';
 
 interface SessionViewProps {
   session: GameSession;
@@ -141,22 +141,43 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
   
   const handleScreenshot = useCallback(async () => {
     setUiState(p => ({ ...p, isCopying: true, showShareMenu: false }));
+    
+    // Slight delay to ensure React renders the mode change and the DOM is ready
     setTimeout(async () => {
-      try {
-        const element = document.getElementById('screenshot-target');
-        if (element) {
-          const canvas = await html2canvas(element, { backgroundColor: '#0f172a', scale: 2 });
-          canvas.toBlob((blob) => {
-            if (blob) {
-              navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-                .then(() => alert("計分表圖片已複製到剪貼簿！"))
-                .catch(() => alert("複製失敗，請檢查瀏覽器權限。"));
+      const screenshotTarget = document.getElementById('screenshot-target');
+      if (screenshotTarget) {
+        try {
+          const width = screenshotTarget.offsetWidth;
+          const height = screenshotTarget.offsetHeight;
+
+          const blob = await toBlob(screenshotTarget, {
+            backgroundColor: '#0f172a',
+            pixelRatio: 1.5,
+            cacheBust: true,
+            width: width,
+            height: height,
+            style: {
+              transform: 'none', 
             }
           });
+
+          if (blob) {
+            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+            alert("計分表圖片已複製！");
+          } else {
+            throw new Error("Blob creation failed");
+          }
+        } catch (e) {
+          console.error("Screenshot failed:", e);
+          alert("截圖失敗。若您在 IDE 預覽視窗中，請嘗試點擊右上角「在新分頁開啟」後再試一次。");
+        } finally {
+          setUiState(p => ({ ...p, isCopying: false })); 
         }
-      } catch (e) { alert("截圖失敗"); } 
-      finally { setUiState(p => ({ ...p, isCopying: false })); }
-    }, 100);
+      } else {
+        setUiState(p => ({ ...p, isCopying: false })); 
+        alert("找不到截圖目標");
+      }
+    }, 200); 
   }, [setUiState]);
 
   return {

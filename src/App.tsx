@@ -26,50 +26,77 @@ const App: React.FC = () => {
 
   // Mobile Zoom
   const [zoomLevel, setZoomLevel] = useState(1.0);
+  const zoomLevelRef = useRef(1.0); // Keep track of zoom level for event listeners
   const touchStartDist = useRef(0);
   const initialZoomRef = useRef(1.0);
+  const isZooming = useRef(false);
   const isExitingSession = useRef(false);
 
   // --- Zoom Logic ---
   useEffect(() => {
     const savedZoom = localStorage.getItem('app_zoom_level');
     if (savedZoom) {
-      setZoomLevel(parseFloat(savedZoom));
+      const z = parseFloat(savedZoom);
+      setZoomLevel(z);
+      zoomLevelRef.current = z;
     }
   }, []);
 
   useEffect(() => {
     document.documentElement.style.fontSize = `${16 * zoomLevel}px`;
     localStorage.setItem('app_zoom_level', String(zoomLevel));
+    zoomLevelRef.current = zoomLevel;
   }, [zoomLevel]);
 
+  // Fix: Empty dependency array ensures listeners are bound only once.
+  // This prevents missing 'touchend' events during React re-renders which caused the "stuck" zoom state.
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
+      // 邏輯修正：嚴格的「會話式判斷」
+      // 只有當動作開始的那一瞬間是 2 指，才將 isZooming 設為 true，並進入縮放模式。
+      // 如果是一指按下去，isZooming 為 false，後續就算誤觸出現第 2 點也會被忽略。
       if (e.touches.length === 2) {
+        isZooming.current = true;
+        e.preventDefault(); // 立即阻止瀏覽器預設行為 (捲動/縮放)，搶奪控制權
+        
         touchStartDist.current = getTouchDistance(e.touches);
-        initialZoomRef.current = zoomLevel;
+        initialZoomRef.current = zoomLevelRef.current;
+      } else {
+        isZooming.current = false;
       }
     };
+    
     const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length === 2) {
-        e.preventDefault();
-        const currentDist = getTouchDistance(e.touches);
-        const scale = currentDist / touchStartDist.current;
-        setZoomLevel(Math.max(0.75, Math.min(1.3, initialZoomRef.current * scale)));
+      // 只在合法的縮放會話 (isZooming === true) 中執行縮放
+      if (isZooming.current && e.touches.length === 2) {
+        e.preventDefault(); // 縮放過程中持續阻止瀏覽器干擾
+        
+        if (touchStartDist.current > 0) {
+            const currentDist = getTouchDistance(e.touches);
+            const scale = currentDist / touchStartDist.current;
+            setZoomLevel(Math.max(0.75, Math.min(1.3, initialZoomRef.current * scale)));
+        }
       }
     };
-    const handleTouchEnd = () => { touchStartDist.current = 0; };
-    window.addEventListener('touchstart', handleTouchStart);
+    
+    const handleTouchEnd = () => { 
+        // 無條件結束縮放會話
+        isZooming.current = false;
+        touchStartDist.current = 0; 
+    };
+    
+    window.addEventListener('touchstart', handleTouchStart, { passive: false });
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('touchend', handleTouchEnd);
     window.addEventListener('touchcancel', handleTouchEnd);
+    
     return () => {
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
       window.removeEventListener('touchcancel', handleTouchEnd);
     };
-  }, [zoomLevel]);
+  }, []); // Dependencies must remain empty
 
   // --- PWA Logic ---
   useEffect(() => {
@@ -176,6 +203,7 @@ const App: React.FC = () => {
         session={appData.currentSession} 
         template={appData.activeTemplate} 
         playerHistory={appData.playerHistory}
+        zoomLevel={zoomLevel}
         onUpdateSession={appData.updateSession}
         onUpdatePlayerHistory={appData.updatePlayerHistory}
         onResetScores={appData.resetSessionScores}

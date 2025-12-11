@@ -19,6 +19,84 @@ export const COLORS = [
 
 export const DEFAULT_TEMPLATES: GameTemplate[] = 
 [
+  {
+    "id": "debug-clicker-showcase",
+    "name": "按鈕輸入展示場 (Demo)",
+    "description": "展示各種按鈕排版、修飾鍵與分項加總的組合效果。",
+    "createdAt": 1765030000000,
+    "columns": [
+      {
+        "id": "col-list-view",
+        "name": "清單模式 (1欄)",
+        "type": "number",
+        "isScoring": true,
+        "weight": 1,
+        "unit": "分",
+        "inputType": "clicker",
+        "buttonGridColumns": 1,
+        "quickActions": [
+          { "id": "btn-1", "label": "加一分", "value": 1, "color": "#10b981", "isModifier": false },
+          { "id": "btn-2", "label": "加五分", "value": 5, "color": "#3b82f6", "isModifier": false },
+          { "id": "btn-3", "label": "扣兩分", "value": -2, "color": "#ef4444", "isModifier": false },
+          { "id": "btn-4", "label": "大吉大利", "value": 88, "color": "#f59e0b", "isModifier": false }
+        ]
+      },
+      {
+        "id": "col-grid-2",
+        "name": "網格模式 (2欄+修飾)",
+        "type": "number",
+        "isScoring": true,
+        "weight": 1,
+        "unit": "個",
+        "inputType": "clicker",
+        "buttonGridColumns": 2,
+        "quickActions": [
+          { "id": "g2-1", "label": "戰士", "value": 10, "color": "#6366f1" },
+          { "id": "g2-2", "label": "法師", "value": 8, "color": "#8b5cf6" },
+          { "id": "g2-3", "label": "盜賊", "value": 12, "color": "#ec4899" },
+          { "id": "g2-4", "label": "牧師", "value": 6, "color": "#10b981" },
+          { "id": "g2-mod", "label": "升級 (修飾)", "value": 5, "color": "#f59e0b", "isModifier": true },
+          { "id": "g2-mod2", "label": "受傷 (修飾)", "value": -5, "color": "#ef4444", "isModifier": true }
+        ]
+      },
+      {
+        "id": "col-sum-parts-mixed",
+        "name": "分項加總+修飾鍵",
+        "type": "number",
+        "isScoring": true,
+        "weight": 1,
+        "unit": "分",
+        "calculationType": "sum-parts",
+        "inputType": "clicker",
+        "buttonGridColumns": 1,
+        "quickActions": [
+          { "id": "sp-1", "label": "第一局", "value": 0, "color": "#6b7280" },
+          { "id": "sp-2", "label": "獲得金幣", "value": 10, "color": "#facc15", "isModifier": true },
+          { "id": "sp-3", "label": "扣除稅金", "value": -2, "color": "#ef4444", "isModifier": true },
+          { "id": "sp-4", "label": "第二局", "value": 0, "color": "#6b7280" },
+          { "id": "sp-5", "label": "完美通關", "value": 50, "color": "#10b981", "isModifier": true }
+        ]
+      },
+       {
+        "id": "col-grid-3",
+        "name": "網格模式 (3欄)",
+        "type": "number",
+        "isScoring": true,
+        "weight": 1,
+        "unit": "點",
+        "inputType": "clicker",
+        "buttonGridColumns": 3,
+        "quickActions": [
+          { "id": "g3-1", "label": "紅", "value": 1, "color": "#ef4444" },
+          { "id": "g3-2", "label": "藍", "value": 2, "color": "#3b82f6" },
+          { "id": "g3-3", "label": "綠", "value": 3, "color": "#10b981" },
+          { "id": "g3-4", "label": "黃", "value": 4, "color": "#facc15" },
+          { "id": "g3-5", "label": "紫", "value": 5, "color": "#8b5cf6" },
+          { "id": "g3-6", "label": "黑", "value": 6, "color": "#1f2937" }
+        ]
+      }
+    ]
+  },
   {"id":"build-in-Harmonies","name":"和諧之森","description":"板塊放置與動物棲息地。","createdAt":1765028868494,"columns":[{"id":"landscape","name":"樹木","type":"number","isScoring":true,"weight":1,"unit":"分","mappingRules":[],"color":"#10b981"},{"id":"animals","name":"山脈","type":"number","isScoring":true,"weight":1,"unit":"分","mappingRules":[],"color":"#6b7280"},{"id":"c323392c-896a-4112-9186-1fcb8ac83cf9","name":"原野","type":"number","isScoring":true,"weight":5,"options":[],"mappingRules":[],"unit":"群落","rounding":"none","quickButtons":[],"color":"#f59e0b"},{"id":"7f170c04-1b93-4cd4-8a40-a6f109c5a2aa","name":"建築","type":"number","isScoring":true,"weight":5,"options":[],"mappingRules":[],"unit":"個","rounding":"none","quickButtons":[],"color":"#ef4444"},{"id":"426c647a-0521-4bd0-9744-7c6cb6c84f87","name":"河流(A面)","type":"select","isScoring":true,"weight":1,"options":[{"value":0,"label":"1格"},{"value":2,"label":"2格"},{"value":5,"label":"3格"},{"value":8,"label":"4格"},{"value":11,"label":"5格"},{"value":15,"label":"6格"},{"value":19,"label":"7格"},{"value":23,"label":"8格"},{"value":27,"label":"9格"},{"value":31,"label":"10格"},{"value":35,"label":"11格(應該不會用到更多吧(X))"}],"mappingRules":[{"score":0}],"unit":"連接","rounding":"none","quickButtons":[],"calculationType":"standard","color":"#3b82f6"},{"id":"8bdc9128-38dc-4dc5-b46f-4678e9b107e0","name":"島嶼(B面)","type":"number","isScoring":true,"weight":5,"options":[],"mappingRules":[],"unit":"塊","rounding":"none","quickButtons":[],"color":"#3b82f6"},{"id":"693fa3df-cbef-4645-a3d2-bc260e97dabf","name":"動物卡（已完成）","type":"number","isScoring":true,"weight":1,"options":[],"mappingRules":[],"unit":"分","rounding":"none","quickButtons":[]},{"id":"05a5b62e-cfe3-4b08-aaec-46f4739e9e8a","name":"動物卡（未完成）","type":"number","isScoring":true,"weight":1,"options":[],"mappingRules":[],"unit":"","rounding":"none","quickButtons":[]}]},
   {"id":"build-in-Lost Ruins of Arnak","name":"失落的阿納克遺跡","description":"探險與研究，包含研究軌、神廟、守護者與卡片計分。","createdAt":1765028866590,"columns":[{"id":"research","name":"研究軌分數","type":"number","isScoring":true,"weight":1,"unit":"分"},{"id":"temple","name":"神廟板塊","type":"number","isScoring":true,"weight":1,"unit":"分"},{"id":"idols","name":"神像","type":"number","isScoring":true,"weight":1,"unit":"分","mappingRules":[],"color":"#8b5cf6"},{"id":"guardians","name":"守護者","type":"number","isScoring":true,"weight":5,"unit":"隻","mappingRules":[]},{"id":"cards","name":"卡片","type":"number","isScoring":true,"weight":1,"unit":"分","mappingRules":[]},{"id":"fear","name":"恐懼卡","type":"number","isScoring":true,"weight":-1,"unit":"張","mappingRules":[],"color":"#1f2937"},{"id":"7933a25f-52d5-4afa-a420-8358474c83d6","name":"恐懼板塊","type":"number","isScoring":true,"weight":-2,"options":[],"mappingRules":[],"unit":"個","rounding":"none","quickButtons":[],"color":"#1f2937"}]},
   {"id":"build-in-Agricola","name":"農家樂","description":"17世紀農莊經營，包含詳細的農作物與動物查表計分。","createdAt":1765028724003,"columns":[{"id":"fields","name":"田地板塊","type":"number","isScoring":true,"weight":1,"unit":"塊","mappingRules":[{"max":1,"score":-1},{"min":2,"max":2,"score":1},{"min":3,"max":3,"score":2},{"min":4,"max":4,"score":3},{"min":5,"score":4}]},{"id":"pastures","name":"牧場","type":"number","isScoring":true,"weight":1,"unit":"個","mappingRules":[{"max":0,"score":-1},{"min":1,"max":1,"score":1},{"min":2,"max":2,"score":2},{"min":3,"max":3,"score":3},{"min":4,"score":4}]},{"id":"grain","name":"麥子","type":"number","isScoring":true,"weight":1,"unit":"份","mappingRules":[{"max":0,"score":-1},{"min":1,"max":3,"score":1},{"min":4,"max":5,"score":2},{"min":6,"max":7,"score":3},{"min":8,"score":4}],"color":"#facc15","calculationType":"standard"},{"id":"veg","name":"蔬菜","type":"number","isScoring":true,"weight":1,"unit":"份","mappingRules":[{"max":0,"score":-1},{"min":1,"max":1,"score":1},{"min":2,"max":2,"score":2},{"min":3,"max":3,"score":3},{"min":4,"score":4}],"color":"#ef4444","calculationType":"standard"},{"id":"sheep","name":"羊","type":"number","isScoring":true,"weight":1,"unit":"隻","mappingRules":[{"max":0,"score":-1},{"min":1,"max":3,"score":1},{"min":4,"max":5,"score":2},{"min":6,"max":7,"score":3},{"min":8,"score":4}],"calculationType":"standard"},{"id":"boar","name":"野豬","type":"number","isScoring":true,"weight":1,"unit":"隻","mappingRules":[{"max":0,"score":-1},{"min":1,"max":2,"score":1},{"min":3,"max":4,"score":2},{"min":5,"max":6,"score":3},{"min":7,"score":4}],"calculationType":"standard","color":"#1f2937"},{"id":"cattle","name":"牛","type":"number","isScoring":true,"weight":1,"unit":"隻","mappingRules":[{"max":0,"score":-1},{"min":1,"max":1,"score":1},{"min":2,"max":3,"score":2},{"min":4,"max":5,"score":3},{"min":6,"score":4}],"calculationType":"standard","color":"#a16207"},{"id":"unused","name":"空地扣分","type":"number","isScoring":true,"weight":-1,"unit":"格"},{"id":"family","name":"家庭成員","type":"number","isScoring":true,"weight":3,"unit":"人"},{"id":"house_clay","name":"磚屋","type":"number","isScoring":true,"weight":1,"unit":"間","color":"#f59e0b","mappingRules":[]},{"id":"house_stone","name":"石屋","type":"number","isScoring":true,"weight":2,"unit":"間","color":"#6b7280","mappingRules":[]},{"id":"dev_cards","name":"發展卡分數","type":"number","isScoring":true,"weight":1,"unit":"分","color":"#ef4444","mappingRules":[]},{"id":"bonus_points","name":"紅利分數","type":"number","isScoring":true,"weight":1,"unit":"分","color":"#f59e0b","mappingRules":[]}]},

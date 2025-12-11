@@ -15,7 +15,7 @@ const ShareMenu: React.FC<ShareMenuProps> = ({ isCopying, onScreenshot }) => {
         className="flex items-center gap-3 px-3 py-3 hover:bg-slate-700 rounded-lg text-sm text-white transition-colors text-left"
       >
         <Image size={16} className="text-emerald-400" />
-        {isCopying ? '擷取中...' : '複製圖片 (截圖)'}
+        {isCopying ? '處理中...' : '複製計分表截圖'}
       </button>
     </div>
   );

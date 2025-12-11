@@ -77,13 +77,21 @@ export const useSessionState = (props: SessionViewProps) => {
         const container = tableContainerRef.current;
         const headerEl = container.querySelector<HTMLElement>('.sticky.top-0');
         const headerHeight = headerEl ? headerEl.offsetHeight : 48;
-        const activeColumnIndex = props.template.columns.findIndex(c => c.id === uiState.editingCell!.colId);
-        if (activeColumnIndex === -1) return;
         
         const targetRowElement = document.getElementById(`row-${uiState.editingCell!.colId}`);
         if (targetRowElement) {
-          const rowTop = targetRowElement.offsetTop;
-          container.scrollTo({ top: rowTop - headerHeight, behavior: 'smooth' });
+          // **NEW LOGIC**: Find the previous row to bring it to the top.
+          const previousRowElement = targetRowElement.previousElementSibling as HTMLElement | null;
+
+          let scrollTopPosition = 0; // Default to top if it's the first row.
+
+          if (previousRowElement) {
+            // If a previous row exists, calculate its top position to scroll to.
+            const previousRowTop = previousRowElement.offsetTop;
+            scrollTopPosition = previousRowTop - headerHeight;
+          }
+          
+          container.scrollTo({ top: scrollTopPosition, behavior: 'smooth' });
         }
       });
     }
@@ -91,9 +99,7 @@ export const useSessionState = (props: SessionViewProps) => {
   
   // --- Derived State ---
   const isPanelOpen = uiState.editingCell !== null || uiState.editingPlayerId !== null;
-  const panelHeight = isPanelOpen
-    ? (uiState.editingPlayerId && uiState.isInputFocused) ? 'auto' : '45vh'
-    : '0px';
+  const panelHeight = isPanelOpen ? '40vh' : '0px';
 
   return {
     uiState,

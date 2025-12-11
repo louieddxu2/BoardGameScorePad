@@ -230,7 +230,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-4 space-y-4">
+      <main className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
         
         {/* Pinned Section */}
         {pinnedTemplates.length > 0 && (
@@ -246,12 +246,10 @@ const Dashboard: React.FC<DashboardProps> = ({
                 {isPinnedLibOpen && (
                     <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
                         {filteredPinnedTemplates.map(t => (
-                            <div key={`pinned-${t.id}`} onClick={() => onTemplateSelect(t)} className="bg-slate-800 rounded-xl p-3 border border-slate-700 shadow-md hover:bg-slate-750 transition-all cursor-pointer relative flex flex-col justify-between h-20 group">
-                                <h3 className="text-sm font-bold leading-tight line-clamp-2 pr-6 text-white">{t.name}</h3>
-                                <div className="flex justify-end items-end mt-1">
-                                    <button onClick={(e) => handleCopyJSON(t, e)} className="p-1.5 text-slate-600 hover:text-emerald-400 rounded transition-colors">{copiedId === t.id ? <Check size={14} className="text-emerald-500" /> : <Code size={14} />}</button>
-                                </div>
-                                <button onClick={(e) => { e.stopPropagation(); onTogglePin(t.id); }} className="absolute top-2 right-2 p-1.5 text-yellow-400 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors"><Pin size={16} fill="currentColor" /></button>
+                            <div key={`pinned-${t.id}`} onClick={() => onTemplateSelect(t)} className="bg-slate-800 rounded-xl p-3 border border-slate-700 shadow-md hover:bg-slate-750 transition-all cursor-pointer relative flex flex-col h-20 group">
+                                <h3 className="text-sm font-bold leading-tight line-clamp-2 pr-8 text-white">{t.name}</h3>
+                                <button onClick={(e) => { e.stopPropagation(); onTogglePin(t.id); }} className="absolute top-1 right-1 p-1.5 text-yellow-400 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors"><Pin size={16} fill="currentColor" /></button>
+                                <button onClick={(e) => handleCopyJSON(t, e)} className="absolute bottom-1 right-1 p-1.5 text-slate-600 hover:text-emerald-400 rounded transition-colors">{copiedId === t.id ? <Check size={14} className="text-emerald-500" /> : <Code size={14} />}</button>
                             </div>
                         ))}
                     </div>
@@ -277,13 +275,11 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
                     {userTemplatesToShow.length === 0 && <div className="col-span-2 text-center py-8 text-slate-500 text-sm italic border-2 border-dashed border-slate-800 rounded-xl">還沒有建立遊戲模板</div>}
                     {filteredUserTemplates.map(t => (
-                        <div key={t.id} onClick={() => onTemplateSelect(t)} className="bg-slate-800 rounded-xl p-3 border border-slate-700 shadow-md hover:border-emerald-500/50 hover:bg-slate-750 transition-all cursor-pointer relative flex flex-col justify-between h-20 group">
-                            <h3 className="text-sm font-bold text-white leading-tight line-clamp-2 pr-12">{t.name}</h3>
-                            <div className="flex justify-end items-end mt-1">
-                                <button onClick={(e) => handleCopyJSON(t, e)} className="p-1.5 text-slate-600 hover:text-emerald-400 rounded transition-colors">{copiedId === t.id ? <Check size={14} className="text-emerald-500" /> : <Code size={14} />}</button>
-                            </div>
-                            <button onClick={(e) => { e.stopPropagation(); onTogglePin(t.id); }} className="absolute top-2 right-10 p-1.5 text-slate-600 hover:text-yellow-400 hover:bg-slate-700 rounded-md transition-colors"><Pin size={16} /></button>
-                            <button onClick={(e) => { e.stopPropagation(); setTemplateToDelete(t.id); }} className="absolute top-2 right-2 p-1.5 text-slate-600 hover:text-red-400 hover:bg-slate-700 rounded-md transition-colors"><Trash2 size={16} /></button>
+                        <div key={t.id} onClick={() => onTemplateSelect(t)} className="bg-slate-800 rounded-xl p-3 border border-slate-700 shadow-md hover:border-emerald-500/50 hover:bg-slate-750 transition-all cursor-pointer relative flex flex-col h-20 group">
+                            <h3 className="text-sm font-bold text-white leading-tight line-clamp-2 pr-8">{t.name}</h3>
+                            <button onClick={(e) => { e.stopPropagation(); onTogglePin(t.id); }} className="absolute top-1 right-1 p-1.5 text-slate-600 hover:text-yellow-400 hover:bg-slate-700 rounded-md transition-colors"><Pin size={16} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); setTemplateToDelete(t.id); }} className="absolute bottom-1 left-1 p-1.5 text-slate-600 hover:text-red-400 hover:bg-slate-700 rounded-md transition-colors"><Trash2 size={16} /></button>
+                            <button onClick={(e) => handleCopyJSON(t, e)} className="absolute bottom-1 right-1 p-1.5 text-slate-600 hover:text-emerald-400 rounded transition-colors">{copiedId === t.id ? <Check size={14} className="text-emerald-500" /> : <Code size={14} />}</button>
                         </div>
                     ))}
                 </div>
@@ -340,7 +336,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+                  <div className="flex-1 p-4 overflow-y-auto no-scrollbar">
                       {activeModalTab === 'import' ? (
                           <div className="space-y-4">
                               <p className="text-sm text-slate-400">請貼上其他裝置分享的 JSON 資料：</p>
@@ -356,7 +352,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                       ) : (
                           <div className="space-y-4">
                               <p className="text-sm text-slate-400">選擇要匯出的遊戲：</p>
-                              <div className="bg-slate-800 rounded-xl border border-slate-700 max-h-64 overflow-y-auto custom-scrollbar p-2 space-y-1">
+                              <div className="bg-slate-800 rounded-xl border border-slate-700 max-h-64 overflow-y-auto no-scrollbar p-2 space-y-1">
                                   {userTemplates.length === 0 && <p className="text-center text-xs text-slate-500 py-4">沒有可匯出的自訂遊戲</p>}
                                   {userTemplates.map(t => (
                                       <div key={t.id} onClick={() => toggleExportSelection(t.id)} className={`flex items-center justify-between p-2 rounded-lg cursor-pointer border ${exportSelectedIds.includes(t.id) ? 'bg-indigo-900/30 border-indigo-500/50' : 'bg-transparent border-transparent hover:bg-slate-700'}`}>
