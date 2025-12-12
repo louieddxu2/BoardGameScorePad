@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { GameSession, GameTemplate, Player, ScoreColumn, QuickAction } from '../../../types';
 import { useSessionState } from '../hooks/useSessionState';
@@ -53,8 +52,15 @@ const PanelHeader: React.FC<{
       </>
     )}
     <div className="flex-1"></div>
-    <button onClick={onClear} className="bg-red-900/30 text-red-400 px-3 py-1 rounded text-xs border border-red-500/30 hover:bg-red-900/50 flex items-center gap-1 shrink-0"><Eraser size={12} /> 清除</button>
+    <button 
+        onMouseDown={(e) => e.preventDefault()} // Keep focus on input
+        onClick={onClear} 
+        className="bg-red-900/30 text-red-400 px-3 py-1 rounded text-xs border border-red-500/30 hover:bg-red-900/50 flex items-center gap-1 shrink-0"
+    >
+        <Eraser size={12} /> 清除
+    </button>
     <button
+      onMouseDown={(e) => e.preventDefault()} // Keep focus on input
       onClick={onDirectionToggle}
       className="bg-slate-700/50 hover:bg-slate-700 text-slate-300 px-3 h-8 rounded-lg flex items-center justify-center gap-1 text-xs font-bold transition-colors shrink-0 border border-slate-600"
     >
@@ -69,7 +75,7 @@ const PanelHeader: React.FC<{
 const InputPanel: React.FC<InputPanelProps> = (props) => {
   const { sessionState, eventHandlers, session, template, playerHistory, onUpdateSession, onUpdatePlayerHistory } = props;
   const { uiState, setUiState, panelHeight } = sessionState;
-  const { editingCell, editingPlayerId, advanceDirection, overwriteMode } = uiState;
+  const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused } = uiState;
 
   // Local state for keypad to decouple transient input from persisted score
   const [localKeypadValue, setLocalKeypadValue] = useState<any>(0);
@@ -143,7 +149,8 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
               onNameSubmit={eventHandlers.handlePlayerNameSubmit}
             />
         );
-        sidebarContentNode = <PlayerEditorInfo />;
+        // HIDE Sidebar content when focused
+        sidebarContentNode = isInputFocused ? null : <PlayerEditorInfo />;
         onNextAction = () => eventHandlers.handlePlayerNameSubmit(activePlayer!.id, uiState.tempPlayerName, true);
     }
 
@@ -246,7 +253,10 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
         }
 
         if (activeColumn.type === 'number') {
-            if (activeColumn.inputType === 'clicker') {
+            const hasMappingRules = activeColumn.mappingRules && activeColumn.mappingRules.length > 0;
+            const useClicker = activeColumn.inputType === 'clicker' && !hasMappingRules;
+
+            if (useClicker) {
                  // Use the new QuickButtonPad
                  mainContentNode = (
                     <QuickButtonPad column={activeColumn} onAction={handleQuickButtonAction} />
@@ -300,7 +310,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
   return (
     <div
-      className={`fixed bottom-0 left-0 right-0 z-50 bg-slate-950/50 backdrop-blur-sm border-t border-slate-700/50 shadow-[0_-8px_30px_rgba(0,0,0,0.5)] transition-transform duration-300 ease-in-out flex flex-col ${isPanelOpen ? 'translate-y-0' : 'translate-y-full'}`}
+      className={`fixed bottom-0 left-0 right-0 z-50 bg-slate-950/50 backdrop-blur-sm border-t border-slate-700/50 shadow-[0_-8px_30px_rgba(0,0,0,0.5)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isPanelOpen ? 'translate-y-0' : 'translate-y-full'}`}
       style={{ height: panelHeight }}
     >
       {activePlayer && (
@@ -320,6 +330,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             nextButtonDirection={advanceDirection}
             sidebarContent={sidebarContentNode}
             nextButtonContent={nextButtonContent}
+            isCompact={isInputFocused} // Enable compact mode when focused
           >
             {mainContentNode}
           </InputPanelLayout>

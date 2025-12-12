@@ -142,6 +142,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
         
         {/* Spacer / Bottom Drop Zone */}
         {/* Allows users to drag to the empty space at the bottom and have it count as the last item */}
+        {/* Removed transition-all to fix scroll calculation issue when panel opens */}
         <div 
             data-row-id={lastColId} 
             onDragOver={(e) => {
@@ -150,7 +151,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
             onDrop={(e) => {
                 if (lastColId) dnd.handleDrop(e, lastColId);
             }}
-            className={`w-full transition-all ${editingCell || editingPlayerId ? 'h-[40vh]' : 'h-24'}`} 
+            className={`w-full ${editingCell || editingPlayerId ? 'h-[40vh]' : 'h-24'}`} 
         />
       </div>
     </div>

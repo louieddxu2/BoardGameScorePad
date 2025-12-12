@@ -214,7 +214,9 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
+    // 使用 h-full 配合 index.html 的 100dvh，而不是 min-h-screen
+    // 這確保了應用程式在網址列隱藏時也能正確佔滿視窗，且捲動發生在內部 Dashboard 而不是 body
+    <div className="h-full bg-slate-900 text-slate-100 flex flex-col font-sans overflow-hidden">
       
       <Dashboard 
         userTemplates={appData.templates}

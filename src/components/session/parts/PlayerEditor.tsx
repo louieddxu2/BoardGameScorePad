@@ -29,21 +29,28 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
   return (
     // This root div is KEY. It respects the layout contract by handling its own scrolling.
     <div className="h-full overflow-y-auto no-scrollbar" onClick={e => e.stopPropagation()}>
-      <div className="flex flex-col gap-2 p-2 h-full">
-        <div className="flex-none h-[64px]">
+      <div className={`flex flex-col gap-2 h-full ${isInputFocused ? 'p-0' : 'p-2'}`}>
+        <div className="flex-none h-14">
           <input
             type="text"
             value={tempName}
             onChange={(e) => setTempName(e.target.value)}
             onFocus={(e) => { setIsInputFocused(true); e.target.select(); }}
-            onBlur={() => setTimeout(() => { onNameSubmit(player.id, tempName, false); setIsInputFocused(false); }, 200)}
+            // Critical: We removed setTimeout here to fix the flashing issue.
+            // Buttons that need to trigger actions without closing the keyboard (like Next/Clear)
+            // MUST use onMouseDown={(e) => e.preventDefault()} to prevent this blur from firing.
+            // This ensures that 'blur' only happens when the user genuinely closes the keyboard (or taps away).
+            onBlur={() => { 
+                onNameSubmit(player.id, tempName, false); 
+                setIsInputFocused(false); 
+            }}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
             placeholder="輸入名稱"
-            className="w-full h-full bg-slate-800 border border-slate-600 rounded-xl px-4 text-xl font-bold text-white outline-none focus:border-emerald-500 placeholder-slate-500"
+            className="w-full h-full bg-slate-800 border border-slate-600 rounded-xl px-4 text-xl font-bold text-white outline-none focus:border-emerald-500 placeholder-slate-500 transition-all"
           />
         </div>
         {!isInputFocused && (
-          <div className="flex-1 flex gap-2 min-h-0 animate-in fade-in duration-200">
+          <div className="flex-1 flex gap-2 min-h-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
             {/* Color Palette */}
             <div className="w-1/3 bg-slate-800/50 rounded-xl p-2 overflow-y-auto no-scrollbar border border-slate-700/50">
               <div className="text-[10px] text-slate-500 font-bold uppercase mb-2 flex items-center justify-center gap-1"><Palette size={10} /> 顏色</div>

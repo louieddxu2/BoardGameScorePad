@@ -3,8 +3,7 @@ export type ColumnType = 'number' | 'text' | 'select' | 'boolean';
 export type RoundingMode = 'none' | 'round' | 'floor' | 'ceil';
 export type CalculationType = 'standard' | 'product' | 'sum-parts';
 export type InputMethod = 'keypad' | 'clicker';
-// New: Strategy for handling values outside the defined mapping rules
-// 'cap' is removed as it's equivalent to an infinite last rule.
+// Deprecated: MappingStrategy is now handled per-rule via isLinear
 export type MappingStrategy = 'zero' | 'linear'; 
 
 export interface SelectOption {
@@ -15,7 +14,11 @@ export interface SelectOption {
 export interface MappingRule {
   min?: number; // Inclusive
   max?: number | 'next'; // Inclusive. 'next' means (nextRule.min - 1)
-  score: number;
+  score: number; // If isLinear, this is the slope (score per unit)
+  
+  // New fields for per-rule linear logic
+  isLinear?: boolean; 
+  unit?: number; // Denominator for linear calc (Every X units)
 }
 
 export interface QuickAction {
@@ -42,12 +45,10 @@ export interface ScoreColumn {
   options?: SelectOption[]; // For 'select' type
   mappingRules?: MappingRule[]; // For 'number' type with range lookups
   
-  // New fields for Mapping Overflow Strategy
-  mappingStrategy?: MappingStrategy; // Default 'linear'
-  linearUnit?: number;  // "Per X units" (denominator)
-  linearScore?: number; // "Add Y score" (numerator)
-
-  // Legacy (can be removed or kept for migration safety if needed)
+  // Legacy fields (kept for backward compatibility or migration)
+  mappingStrategy?: MappingStrategy; 
+  linearUnit?: number;  
+  linearScore?: number; 
   mappingStep?: number; 
 
   unit?: string; // e.g., "隻", "棟"

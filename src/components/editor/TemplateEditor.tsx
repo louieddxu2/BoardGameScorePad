@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GameTemplate, ScoreColumn } from '../../types';
 import { Save, ArrowLeft, Layers, Minus, Plus } from 'lucide-react';
+import { COLORS } from '../../constants';
 
 interface TemplateEditorProps {
   onSave: (template: GameTemplate) => void;
@@ -29,8 +30,6 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
     let newColumns: ScoreColumn[] = [];
 
     if (initialTemplate) {
-        // If editing, preserve existing columns up to the new count
-        // If count increased, add new ones. If decreased, slice.
         const existing = initialTemplate.columns;
         if (columnCount <= existing.length) {
             newColumns = existing.slice(0, columnCount);
@@ -51,7 +50,6 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
             newColumns = [...existing, ...added];
         }
     } else {
-        // Create new
         newColumns = Array.from({ length: columnCount }).map((_, i) => ({
             id: crypto.randomUUID(),
             name: `項目 ${i + 1}`,
@@ -62,14 +60,15 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
             mappingRules: [],
             unit: '',
             rounding: 'none',
-            quickButtons: []
+            quickButtons: [],
+            color: COLORS[i % COLORS.length]
         }));
     }
 
     const template: GameTemplate = {
       id: initialTemplate ? initialTemplate.id : crypto.randomUUID(),
       name: name.trim(),
-      description: `${columnCount} 個計分項目`,
+      description: initialTemplate?.description || `${columnCount} 個計分項目`,
       columns: newColumns,
       createdAt: initialTemplate ? initialTemplate.createdAt : Date.now(),
     };
@@ -78,78 +77,80 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 text-slate-100">
+    <div className="flex flex-col h-full bg-slate-900 text-slate-100 relative overflow-hidden">
       {/* Header */}
       <div className="flex-none bg-slate-800 p-4 shadow-md flex items-center justify-between border-b border-slate-700">
         <button onClick={onCancel} className="p-2 hover:bg-slate-700 rounded-full text-slate-400">
           <ArrowLeft size={24} />
         </button>
-        <h2 className="text-xl font-bold">{initialTemplate ? '編輯模板' : '快速建立模板'}</h2>
-        <div className="w-10"></div> {/* Spacer for centering */}
+        <h2 className="text-xl font-bold">{initialTemplate ? '編輯模板' : '建立新遊戲'}</h2>
+        <div className="w-10"></div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
-        
-        <div className="w-full max-w-md space-y-6">
-          {/* Name Input */}
-          <div className="space-y-2">
-            <label className="block text-sm font-bold text-slate-400 uppercase tracking-wider">
-              1. 遊戲名稱
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="例如：卡坦島、璀璨寶石..."
-              className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-xl font-bold text-white focus:border-emerald-500 focus:outline-none placeholder-slate-600 transition-colors"
-              autoFocus
-              onFocus={(e) => e.target.select()}
-            />
-          </div>
-
-          {/* Column Count Input */}
-          <div className="space-y-2">
-            <label className="block text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-              2. 計分項目數量 <span className="text-xs font-normal text-slate-500">(不含總分)</span>
-            </label>
+      <div className="flex-1 overflow-y-auto no-scrollbar">
+        <div className="flex flex-col items-center p-6 space-y-8 min-h-full">
             
-            <div className="flex items-center gap-4 bg-slate-800 p-3 rounded-xl border border-slate-700">
-                <button 
-                  onClick={() => adjustCount(-1)}
-                  className="w-14 h-14 rounded-lg bg-slate-700 hover:bg-slate-600 active:scale-95 transition-all flex items-center justify-center text-white border border-slate-600"
-                >
-                    <Minus size={24} />
-                </button>
-                
-                <div className="flex-1 flex flex-col items-center justify-center">
-                    <span className="text-4xl font-black font-mono text-emerald-400">{columnCount}</span>
-                    <span className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                        <Layers size={12} /> 列
-                    </span>
+            <div className="w-full max-w-md space-y-6">
+            
+            {/* Common Input: Name */}
+            <div className="space-y-2">
+                <label className="block text-sm font-bold text-slate-400 uppercase tracking-wider">
+                遊戲名稱
+                </label>
+                <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="例如：卡坦島、璀璨寶石..."
+                className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-xl font-bold text-white focus:border-emerald-500 focus:outline-none placeholder-slate-600 transition-colors"
+                autoFocus
+                />
+            </div>
+
+            {/* Manual Mode Content */}
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="space-y-2">
+                    <label className="block text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    計分項目數量 <span className="text-xs font-normal text-slate-500">(不含總分)</span>
+                    </label>
+                    
+                    <div className="flex items-center gap-4 bg-slate-800 p-3 rounded-xl border border-slate-700">
+                        <button 
+                            onClick={() => adjustCount(-1)}
+                            className="w-14 h-14 rounded-lg bg-slate-700 hover:bg-slate-600 active:scale-95 transition-all flex items-center justify-center text-white border border-slate-600"
+                        >
+                            <Minus size={24} />
+                        </button>
+                        
+                        <div className="flex-1 flex flex-col items-center justify-center">
+                            <span className="text-4xl font-black font-mono text-emerald-400">{columnCount}</span>
+                            <span className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                                <Layers size={12} /> 列
+                            </span>
+                        </div>
+
+                        <button 
+                            onClick={() => adjustCount(1)}
+                            className="w-14 h-14 rounded-lg bg-slate-700 hover:bg-slate-600 active:scale-95 transition-all flex items-center justify-center text-white border border-slate-600"
+                        >
+                            <Plus size={24} />
+                        </button>
+                    </div>
                 </div>
 
                 <button 
-                  onClick={() => adjustCount(1)}
-                  className="w-14 h-14 rounded-lg bg-slate-700 hover:bg-slate-600 active:scale-95 transition-all flex items-center justify-center text-white border border-slate-600"
+                    onClick={handleSave}
+                    className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white text-lg font-bold rounded-xl shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2 transition-transform active:scale-95"
                 >
-                    <Plus size={24} />
+                    <Save size={24} /> {initialTemplate ? '儲存變更' : '建立模板'}
                 </button>
+                <p className="text-center text-xs text-slate-500">
+                    提示：建立後，您可以在計分表中點擊標題來修改名稱或設定規則。
+                </p>
             </div>
-          </div>
 
-          <div className="pt-4">
-             <button 
-                onClick={handleSave}
-                className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white text-lg font-bold rounded-xl shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2 transition-transform active:scale-95"
-             >
-                <Save size={24} /> {initialTemplate ? '儲存變更' : '建立並儲存'}
-             </button>
-             <p className="text-center text-xs text-slate-500 mt-4">
-                提示：建立後，您可以在計分表中點擊標題來修改名稱或設定規則。
-             </p>
-          </div>
+            </div>
         </div>
-
       </div>
     </div>
   );

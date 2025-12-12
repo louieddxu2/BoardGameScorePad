@@ -9,6 +9,7 @@ interface TotalsBarProps {
   isPanelOpen: boolean;
   panelHeight: string;
   scrollRef: React.RefObject<HTMLDivElement>;
+  isHidden?: boolean; // New prop to control visibility
 }
 
 const TotalsBar: React.FC<TotalsBarProps> = ({
@@ -16,7 +17,8 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
   winners,
   isPanelOpen,
   panelHeight,
-  scrollRef
+  scrollRef,
+  isHidden = false
 }) => {
   useEffect(() => {
     const tableContainer = document.querySelector('.custom-scrollbar');
@@ -29,10 +31,11 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
     return () => tableContainer?.removeEventListener('scroll', handleTableScroll);
   }, [scrollRef]);
 
+  // Use opacity and pointer-events to hide, maintaining DOM stability and transition context
   return (
     <div
       id="live-totals-bar"
-      className={`absolute left-0 right-0 h-10 border-t border-slate-700 flex z-30 overflow-hidden shadow-[0_-4px_10px_rgba(0,0,0,0.5)] transition-all duration-300 ease-in-out ${isPanelOpen ? 'bg-slate-900/75 backdrop-blur' : 'bg-slate-900'}`}
+      className={`absolute left-0 right-0 h-10 border-t border-slate-700 flex z-30 overflow-hidden shadow-[0_-4px_10px_rgba(0,0,0,0.5)] transition-all duration-300 ease-in-out ${isPanelOpen ? 'bg-slate-900/75 backdrop-blur' : 'bg-slate-900'} ${isHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
       style={{ bottom: panelHeight }}
     >
       <div className="w-[70px] bg-slate-800 border-r border-slate-700 flex items-center justify-center shrink-0 z-40 relative border-t-2 border-transparent">

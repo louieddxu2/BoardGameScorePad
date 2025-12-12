@@ -26,13 +26,15 @@
       }
     </script>
     <style>
-      /* 關鍵修復：確保根元素佔滿整個螢幕高度，避免 h-full 失效 */
+      /* 關鍵修復：使用 dvh (Dynamic Viewport Height) 確保在網址列伸縮時高度正確 */
       html, body, #root {
-        height: 100%;
+        height: 100%;       /* Fallback for older browsers */
+        height: 100dvh;     /* Modern mobile viewport fix */
         width: 100%;
         margin: 0;
         padding: 0;
-        /* 新增：禁止下拉重新整理的 CSS 解決方案 */
+        /* 禁止 Body 層級的捲動，強制讓捲動發生在 App 內部的容器 */
+        overflow: hidden; 
         overscroll-behavior-y: contain;
       }
       body {
@@ -58,7 +60,8 @@
     "vite": "https://aistudiocdn.com/vite@^7.2.6",
     "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
     "html-to-image": "https://aistudiocdn.com/html-to-image@^1.11.11",
-    "vite-plugin-static-copy": "https://aistudiocdn.com/vite-plugin-static-copy@^3.1.4"
+    "vite-plugin-static-copy": "https://aistudiocdn.com/vite-plugin-static-copy@^3.1.4",
+    "@google/genai": "https://esm.sh/@google/genai@^1.33.0"
   }
 }
 </script>

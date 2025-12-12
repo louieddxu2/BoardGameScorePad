@@ -55,12 +55,9 @@ export const calculateColumnScore = (col: ScoreColumn, rawValue: any): number =>
     // 1. Check Mapping Rules (these override other calculations)
     if (col.mappingRules && col.mappingRules.length > 0) {
       
-      let maxBoundary = -Infinity;
-      let lastRuleScore = 0;
-      let lastRuleIsInfinite = false;
-
-      // First pass: Try to find a direct match
-      const rule = col.mappingRules.find((r, index, allRules) => {
+      // We look for the FIRST matching rule.
+      // Since rules are usually ordered Min -> Max, this works.
+      const ruleIndex = col.mappingRules.findIndex((r, index, allRules) => {
         // Determine effective Max
         let effectiveMax: number;
         if (r.max === 'next') {
@@ -68,63 +65,88 @@ export const calculateColumnScore = (col: ScoreColumn, rawValue: any): number =>
             if (nextRule && typeof nextRule.min === 'number') {
                 effectiveMax = nextRule.min - 1;
             } else {
-                effectiveMax = Infinity; // Should technically not happen if structure is valid
+                effectiveMax = Infinity; 
             }
         } else {
             effectiveMax = r.max === undefined ? Infinity : r.max;
         }
         
-        // Track the "global" max boundary for overflow logic later
-        if (effectiveMax > maxBoundary) {
-            maxBoundary = effectiveMax;
-            lastRuleScore = r.score;
-        }
-        if (effectiveMax === Infinity) {
-            lastRuleIsInfinite = true;
-        }
-
         const aboveMin = r.min === undefined || valNum >= r.min;
         const belowMax = valNum <= effectiveMax;
         return aboveMin && belowMax;
       });
 
-      if (rule) {
-          return rule.score;
-      }
+      if (ruleIndex !== -1) {
+          const rule = col.mappingRules[ruleIndex];
+          
+          // Case A: Standard Fixed Score
+          if (!rule.isLinear) {
+              return rule.score;
+          }
 
-      // If no direct match, check Overflow Strategy
-      // Only apply if the last rule is NOT infinite (i.e., we have hit a hard ceiling)
-      if (!lastRuleIsInfinite && valNum > maxBoundary) {
-          const strategy = col.mappingStrategy || 'linear'; // Default to linear
+          // Case B: Linear Progression ("Every")
+          // Formula: BaseScore + floor((Current - PrevEnd) / Unit) * Slope
           
-          if (strategy === 'zero') {
-              return 0; // Return 0 score (not 0 calculation, literally 0 points)
+          const unit = Math.max(1, rule.unit || 1);
+          const startVal = rule.min ?? 0; 
+          const prevEnd = startVal - 1;
+
+          // Calculate Base Score (Score at PrevEnd)
+          // We recursively call calculateColumnScore for the value 'prevEnd'
+          // This ensures we chain correctly if the previous rule was also linear or just flat.
+          // Note: If startVal is -Infinity (undefined min), this logic is fragile, but usually min is defined for linear rules.
+          let baseScore = 0;
+          if (rule.min !== undefined) {
+             // We pass 'false' as 2nd arg to avoid treating prevEnd as a raw object? No, rawValue can be number.
+             // We use a clone of column without the current linear rule to avoid infinite recursion?
+             // Actually, since prevEnd < rule.min, it strictly matches an EARLIER rule (or no rule).
+             // So recursion is safe and naturally terminates.
+             baseScore = calculateColumnScore(col, prevEnd);
           }
           
-          if (strategy === 'linear') {
-              // Formula: BaseScore + floor((Val - Max) / Unit) * ScorePerUnit
-              const unit = col.linearUnit || 1; // Default "Per 1 unit"
-              const scorePerUnit = col.linearScore ?? 1; // Default "Add 1 score"
-              
-              const excess = valNum - maxBoundary;
-              const increments = Math.floor(excess / unit);
-              
-              return lastRuleScore + (increments * scorePerUnit);
-          }
+          const offset = valNum - prevEnd;
+          // If offset < 0, it shouldn't have matched this rule, but just in case.
+          const increments = Math.floor(offset / unit);
+          
+          return baseScore + (increments * rule.score);
       }
       
-      // If below min or no rules matched
-      return 0; 
+      // Fallback: Legacy Overflow Logic (if no rule matched, e.g. gaps, though gaps usually return 0)
+      // This supports old templates that relied on global mappingStrategy
+      let maxBoundary = -Infinity;
+      let lastRuleScore = 0;
+      let lastRuleIsInfinite = false;
+
+      col.mappingRules.forEach((r, idx, all) => {
+          let eMax = r.max === 'next' ? (all[idx+1]?.min ? all[idx+1].min! - 1 : Infinity) : (r.max ?? Infinity);
+          if (eMax > maxBoundary) {
+              maxBoundary = eMax;
+              lastRuleScore = r.score;
+          }
+          if (eMax === Infinity) lastRuleIsInfinite = true;
+      });
+
+      if (!lastRuleIsInfinite && valNum > maxBoundary) {
+           const strategy = col.mappingStrategy || 'linear';
+           if (strategy === 'zero') return 0;
+           if (strategy === 'linear') {
+               const unit = col.linearUnit || 1;
+               const scorePerUnit = col.linearScore ?? 1;
+               const excess = valNum - maxBoundary;
+               const increments = Math.floor(excess / unit);
+               return lastRuleScore + (increments * scorePerUnit);
+           }
+      }
+
+      return 0; // Default for gaps
     }
 
     let calculated;
 
     // 2. Product vs. Standard/Sum-Parts Calculation
     if (col.calculationType === 'product') {
-        // Product mode: The raw value is already the score (A*B). Weight is ignored.
         calculated = valNum;
     } else {
-        // Standard & Sum-Parts mode: Value * Weight. For Sum-Parts, valNum is the pre-calculated sum.
         calculated = valNum * (col.weight ?? 1);
     }
 

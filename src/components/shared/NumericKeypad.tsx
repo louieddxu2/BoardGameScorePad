@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Delete, Ruler, Calculator, Hash, X, Dot, ArrowDown, PlusSquare, Trash2 } from 'lucide-react';
+import { Delete, Ruler, Calculator, Hash, X, Dot, ArrowDown, PlusSquare, Trash2, ArrowRight } from 'lucide-react';
 import { ScoreColumn } from '../../types';
-import { getRawValue, getScoreHistory } from '../../utils/scoring';
+import { getRawValue, getScoreHistory, calculateColumnScore } from '../../utils/scoring';
 
 interface NumericKeypadContentProps {
   value: any;
@@ -348,14 +348,74 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
 
     const unit = column.unit || '';
     if (column.mappingRules && column.mappingRules.length > 0) {
+        
+        // --- Calculate Active Rule & Breakdowns for Footer ---
+        const currentVal = parseFloat(String(getRawValue(value))) || 0;
+        let activeRule = null;
+        let effectiveMaxForActive: number | undefined = undefined;
+
+        // Find match
+        for (let idx = 0; idx < column.mappingRules.length; idx++) {
+            const rule = column.mappingRules[idx];
+            let effectiveMax = Infinity;
+            if (rule.max === 'next') {
+                const nextRule = column.mappingRules[idx + 1];
+                if (nextRule && typeof nextRule.min === 'number') {
+                    effectiveMax = nextRule.min - 1;
+                }
+            } else if (typeof rule.max === 'number') {
+                effectiveMax = rule.max;
+            }
+            
+            const isMatch = (rule.min === undefined || currentVal >= rule.min) && (currentVal <= effectiveMax);
+            if (isMatch) {
+                activeRule = rule;
+                effectiveMaxForActive = effectiveMax;
+                break;
+            }
+        }
+        
+        let footerCalculationNode: React.ReactNode = null;
+        
+        if (activeRule) {
+             if (activeRule.isLinear) {
+                 const min = activeRule.min ?? 0;
+                 const prevLimit = min - 1;
+                 const baseScore = calculateColumnScore(column, prevLimit);
+                 const ruleUnit = Math.max(1, activeRule.unit || 1);
+                 const excess = currentVal - prevLimit;
+                 const count = Math.floor(excess / ruleUnit);
+                 
+                 footerCalculationNode = (
+                     <div className="flex items-center gap-0.5 font-mono text-xs justify-end w-full leading-none whitespace-nowrap">
+                         <span className="text-indigo-300 font-bold">{baseScore}</span>
+                         <span className="text-slate-600 px-0.5 text-[10px]">+</span>
+                         <span className="text-emerald-400 font-bold">{activeRule.score}</span>
+                         <span className="text-slate-600 px-0.5 text-[10px]">×</span>
+                         <span className="text-white font-bold">{count}</span>
+                     </div>
+                 );
+             } else {
+                 footerCalculationNode = (
+                     <div className="flex items-center justify-end w-full">
+                        <span className="font-mono text-base font-bold text-emerald-400 leading-none">{activeRule.score}</span>
+                     </div>
+                 );
+             }
+        } else {
+             // Fallback for no match
+             footerCalculationNode = <span className="text-slate-500 text-[10px] italic">無規則</span>;
+        }
+
         return (
-            <div className="flex flex-col gap-1 h-full p-2">
+            <div className="flex flex-col h-full p-2 overflow-hidden">
                 <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0"><Ruler size={12} /> 查表規則</div>
+                
+                {/* Scrollable Rules List */}
                 <div className="flex-1 overflow-y-auto no-scrollbar space-y-1 py-1">
                     {column.mappingRules.map((rule, idx) => {
-                        const currentVal = parseFloat(String(getRawValue(value))) || 0;
-                        
-                        // Resolve effective max for comparison
+                        // ... Logic to resolve min/max for list display ...
+                        // Resolve effective max for comparison (re-calculated for loop scope)
                         let effectiveMax = Infinity;
                         if (rule.max === 'next') {
                             const nextRule = column.mappingRules?.[idx + 1];
@@ -366,34 +426,84 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
                             effectiveMax = rule.max;
                         }
 
-                        // Generate Label
-                        let label = '';
                         const displayMax = rule.max === 'next' && effectiveMax !== Infinity ? effectiveMax : rule.max;
-
-                        if (rule.min !== undefined && displayMax !== undefined && displayMax !== 'next') {
-                            if (rule.min === displayMax) label = `${rule.min}`;
-                            else label = `${rule.min} ~ ${displayMax}`;
-                        } else if (rule.min !== undefined) {
-                             label = `${rule.min} +`;
-                        } else if (displayMax !== undefined && displayMax !== 'next') {
-                             label = `~ ${displayMax}`;
-                        } else if (rule.max === 'next') {
-                             label = `~`;
-                        }
-
                         const isMatch = (rule.min === undefined || currentVal >= rule.min) && (currentVal <= effectiveMax);
                         
+                        // Default min to 0 for display if undefined
+                        const minVal = rule.min ?? 0;
+
+                        // Generate Nodes
+                        let labelNode: React.ReactNode;
+                        let scoreNode: React.ReactNode;
+                        const unitStr = column.unit || '';
+
+                        if (rule.isLinear) {
+                            labelNode = <span>{minVal}+{unitStr}</span>;
+                            scoreNode = (
+                                <span className="flex items-center gap-1 text-[10px] leading-none">
+                                    <span className="opacity-70">每</span>
+                                    <span className="font-bold">{rule.unit}</span>
+                                    <span className="opacity-70">加</span>
+                                    {/* Make 'b' (score) green and consistent size */}
+                                    <span className="font-bold text-emerald-400">{rule.score}</span>
+                                </span>
+                            );
+                        } else {
+                             let text = '';
+                             if (effectiveMax === Infinity) {
+                                 text = `${minVal}+${unitStr}`;
+                             } else if (minVal === effectiveMax) {
+                                 text = `${minVal}${unitStr}`;
+                             } else {
+                                 text = `${minVal}~${effectiveMax}${unitStr}`;
+                             }
+                             
+                             labelNode = <span>{text}</span>;
+                             scoreNode = <span>{rule.score}</span>;
+                        }
+
                         return (
                             <div 
                                 key={idx} 
                                 ref={isMatch ? activeRuleRef : null}
-                                className={`flex items-center justify-between text-xs px-2 py-1.5 rounded border ${isMatch ? 'bg-indigo-900/50 border-indigo-500/50' : 'bg-slate-800 border-slate-700/50'}`}
+                                className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded border transition-colors ${isMatch ? 'bg-indigo-900/50 border-indigo-500/50' : 'bg-slate-800 border-slate-700/50'}`}
                             >
-                                <span className={isMatch ? 'text-indigo-200' : 'text-slate-400'}>{label} <span className="text-[10px] opacity-70">{unit}</span></span>
-                                <span className={`font-bold font-mono ${isMatch ? 'text-white' : 'text-emerald-500'}`}>{rule.score} <span className="text-[9px] font-normal opacity-70">分</span></span>
+                                {/* Left: Condition (Right aligned) */}
+                                <div className={`flex-1 text-right ${isMatch ? 'text-indigo-200 font-bold' : 'text-slate-400 font-medium'}`}>
+                                    {labelNode}
+                                </div>
+                                
+                                {/* Center: Arrow */}
+                                <div className={`shrink-0 px-1 ${isMatch ? 'text-indigo-400' : 'text-slate-600'}`}>
+                                    <ArrowRight size={12} />
+                                </div>
+
+                                {/* Right: Score (Left aligned) */}
+                                <div className={`flex-1 text-left font-bold font-mono ${isMatch ? 'text-white' : 'text-emerald-500'}`}>
+                                    {scoreNode}
+                                </div>
                             </div>
                         );
                     })}
+                </div>
+
+                {/* Calculation Footer - Compact Version */}
+                <div className="mt-1 pt-1 border-t border-slate-700/50 shrink-0">
+                    <div className="flex items-center justify-between bg-slate-800/80 rounded border border-slate-700/50 px-2 py-1.5 gap-2">
+                        {/* Current Value - Reverted to White */}
+                        <div className="flex items-center gap-1 shrink-0">
+                            <span className="font-mono font-bold text-white text-sm leading-none">{currentVal}</span>
+                            {unit && <span className="text-slate-500 text-[10px] leading-none">{unit}</span>}
+                        </div>
+                        
+                        {/* Arrow */}
+                        <ArrowRight size={12} className="text-slate-600 shrink-0" />
+                        
+                        {/* Formula / Result */}
+                        <div className="flex-1 min-w-0 flex justify-end overflow-hidden">
+                           {footerCalculationNode}
+                        </div>
+                    </div>
                 </div>
             </div>
         );

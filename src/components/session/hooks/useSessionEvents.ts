@@ -53,11 +53,15 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
   // --- Event Handlers ---
 
   const handleGlobalClick = () => {
+    // 遮罩層現在會處理阻擋邏輯，這裡只需要專注於「點擊空白處關閉面板」
     setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null }));
   };
   
   const handleCellClick = (playerId: string, colId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // 不需要再檢查 isInputFocused，因為遮罩層會擋住所有點擊
+    
     if (uiState.editingCell?.playerId === playerId && uiState.editingCell?.colId === colId) {
       setUiState(p => ({ ...p, editingCell: null }));
     } else {
@@ -67,6 +71,9 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
   
   const handlePlayerHeaderClick = (playerId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // 不需要再檢查 isInputFocused
+
     if (uiState.editingPlayerId === playerId) {
       setUiState(p => ({ ...p, editingPlayerId: null }));
     } else {
@@ -76,6 +83,7 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
   
   const handleColumnHeaderClick = (e: React.MouseEvent, col: ScoreColumn) => {
     e.stopPropagation();
+    // 不需要再檢查 isInputFocused
     setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null, editingColumn: col }));
   };
 
@@ -87,11 +95,19 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
   };
   
   const handlePlayerNameSubmit = (playerId: string, newName: string, moveNext: boolean = false) => {
-      if (newName?.trim()) {
-          onUpdatePlayerHistory(newName.trim());
-          const players = session.players.map(p => p.id === playerId ? { ...p, name: newName } : p);
-          onUpdateSession({ ...session, players });
+      const trimmedName = newName?.trim();
+      
+      if (trimmedName) {
+          const currentPlayer = session.players.find(p => p.id === playerId);
+          
+          // Only update history and session if the name actually changed
+          if (currentPlayer && currentPlayer.name !== trimmedName) {
+              onUpdatePlayerHistory(trimmedName);
+              const players = session.players.map(p => p.id === playerId ? { ...p, name: trimmedName } : p);
+              onUpdateSession({ ...session, players });
+          }
       }
+      
       setUiState(p => ({ ...p, isInputFocused: false }));
       if (moveNext) {
           navigation.moveToNextPlayerOrCell(playerId);

@@ -69,37 +69,63 @@ export const useSessionState = (props: SessionViewProps) => {
     }
   }, [uiState.editingPlayerId, props.session.players]);
 
-  // Scroll active cell into view
+  // Scroll active cell (or player header) into view
   useEffect(() => {
-    if (uiState.editingCell) {
-      requestAnimationFrame(() => {
-        if (!tableContainerRef.current) return;
-        const container = tableContainerRef.current;
-        const headerEl = container.querySelector<HTMLElement>('.sticky.top-0');
+    const scrollToActive = () => {
+      if (!tableContainerRef.current) return;
+      const container = tableContainerRef.current;
+
+      // Case 1: Editing Player Name (Header) -> Scroll to absolute Top
+      if (uiState.editingPlayerId) {
+        container.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      // Case 2: Editing Cell
+      if (uiState.editingCell) {
+        const colIndex = props.template.columns.findIndex(c => c.id === uiState.editingCell!.colId);
+
+        // Case 2a: First Data Row -> Scroll to absolute Top
+        if (colIndex === 0) {
+          container.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
+
+        // Case 2b: Middle/Bottom Rows -> Scroll Previous Row to Top (Context)
+        const headerEl = document.getElementById('live-player-header-row');
         const headerHeight = headerEl ? headerEl.offsetHeight : 48;
         
-        const targetRowElement = document.getElementById(`row-${uiState.editingCell!.colId}`);
+        const targetRowElement = document.getElementById(`row-${uiState.editingCell.colId}`);
         if (targetRowElement) {
-          // **NEW LOGIC**: Find the previous row to bring it to the top.
           const previousRowElement = targetRowElement.previousElementSibling as HTMLElement | null;
-
-          let scrollTopPosition = 0; // Default to top if it's the first row.
-
-          if (previousRowElement) {
-            // If a previous row exists, calculate its top position to scroll to.
-            const previousRowTop = previousRowElement.offsetTop;
-            scrollTopPosition = previousRowTop - headerHeight;
-          }
           
-          container.scrollTo({ top: scrollTopPosition, behavior: 'smooth' });
+          if (previousRowElement) {
+            const previousRowTop = previousRowElement.offsetTop;
+            container.scrollTo({ top: previousRowTop - headerHeight, behavior: 'smooth' });
+          } else {
+            container.scrollTo({ top: targetRowElement.offsetTop - headerHeight, behavior: 'smooth' });
+          }
         }
-      });
-    }
-  }, [uiState.editingCell, props.template.columns]);
+      }
+    };
+
+    const timer = setTimeout(scrollToActive, 50);
+    return () => clearTimeout(timer);
+
+  }, [uiState.editingCell, uiState.editingPlayerId, props.template.columns]);
   
   // --- Derived State ---
   const isPanelOpen = uiState.editingCell !== null || uiState.editingPlayerId !== null;
-  const panelHeight = isPanelOpen ? '40vh' : '0px';
+  
+  // Dynamic Panel Height Logic:
+  // - If closed: 0px
+  // - If focused (keyboard open): '112px' (Header 40px + Input Layout 72px)
+  //   Using a fixed pixel value is CRITICAL for CSS transitions to work correctly.
+  //   'auto' does not support transitions and causes flickering.
+  // - If normal editing: '40vh' (standard height for keypad/history)
+  const panelHeight = isPanelOpen 
+    ? (uiState.isInputFocused ? '112px' : '40vh')
+    : '0px';
 
   return {
     uiState,

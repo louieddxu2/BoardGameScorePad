@@ -40,8 +40,8 @@ export const useSessionNavigation = ({
         const nextCol = template.columns[colIdx + 1];
         setEditingCell({ playerId: editingCell.playerId, colId: nextCol.id });
       } else if (playerIdx < session.players.length - 1) {
-        const nextCol = template.columns[0];
-        setEditingCell({ playerId: session.players[playerIdx + 1].id, colId: nextCol.id });
+        // Move to next player's NAME (Header)
+        setEditingPlayerId(session.players[playerIdx + 1].id);
       } else {
         setEditingCell(null); // End of grid
       }

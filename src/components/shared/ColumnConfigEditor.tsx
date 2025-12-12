@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ScoreColumn, SelectOption, MappingRule, QuickAction, InputMethod } from '../../types';
-import { X, Ruler, Calculator, ListPlus, Settings, Save, Plus, Trash2, BoxSelect, PlusSquare, Keyboard, MousePointerClick, Palette, ChevronDown, ChevronRight, ToggleLeft, ToggleRight, LayoutGrid, LayoutList, ArrowUp, TrendingUp, Ban, ArrowUpToLine, Infinity as InfinityIcon, ArrowRight as ArrowRightIcon } from 'lucide-react';
+import { calculateColumnScore } from '../../utils/scoring';
+import { X, Ruler, Calculator, ListPlus, Settings, Save, Plus, Trash2, BoxSelect, PlusSquare, Keyboard, MousePointerClick, Palette, ChevronDown, ChevronRight, ToggleLeft, ToggleRight, LayoutGrid, LayoutList, ArrowUp, TrendingUp, Ban, ArrowUpToLine, Infinity as InfinityIcon, ArrowRight as ArrowRightIcon, Lock } from 'lucide-react';
 import { COLORS } from '../../constants';
 
 interface ColumnConfigEditorProps {
@@ -36,12 +37,41 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
         };
     }
     
-    // Ensure default strategy
+    // Convert legacy overflow settings to a new linear rule if applicable
+    // This is a one-time migration during edit.
+    let rules = column.mappingRules ? [...column.mappingRules] : [];
+    
+    // Check if we need to migrate legacy overflow settings
+    // Logic: If the last rule is finite, and there are legacy settings, append a new Infinite Linear rule
+    let maxBoundary = -Infinity;
+    let lastRuleIsInfinite = false;
+    rules.forEach((r, idx) => {
+          let eMax = r.max === 'next' ? (rules[idx+1]?.min ? rules[idx+1].min! - 1 : Infinity) : (r.max ?? Infinity);
+          if (eMax > maxBoundary) maxBoundary = eMax;
+          if (eMax === Infinity) lastRuleIsInfinite = true;
+    });
+
+    if (!lastRuleIsInfinite && maxBoundary > -Infinity && column.mappingStrategy === 'linear') {
+        // Migration: Append a new rule starting from maxBoundary + 1
+        rules.push({
+            min: maxBoundary + 1,
+            max: undefined, // Infinity
+            score: column.linearScore ?? 1,
+            isLinear: true,
+            unit: column.linearUnit ?? 1
+        });
+        // We effectively clear the legacy flags by not using them, but we don't delete them from data until save
+    }
+
+    // NEW: Enforce first rule is always fixed (non-linear)
+    // 這是為了避免 "0" 被視為 "每 1 加 1" 的第一個區間，導致從 -1 開始計算
+    if (rules.length > 0 && rules[0].isLinear) {
+        rules[0] = { ...rules[0], isLinear: false };
+    }
+
     return { 
         ...column, 
-        mappingStrategy: column.mappingStrategy || 'linear',
-        linearUnit: column.linearUnit ?? 1,
-        linearScore: column.linearScore ?? 1,
+        mappingRules: rules,
     };
   });
 
@@ -50,6 +80,31 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
       if (column.mappingRules && column.mappingRules.length > 0) return 'mapping';
       return 'basic';
   });
+  
+  // State to track if virtual keyboard is likely open (based on viewport height)
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  // Store the initial height to compare against
+  const initialHeight = useRef(window.innerHeight);
+
+  useEffect(() => {
+    const handleResize = () => {
+        const currentHeight = window.innerHeight;
+        
+        // Dynamic Reference Update:
+        if (currentHeight > initialHeight.current) {
+            initialHeight.current = currentHeight;
+        }
+
+        // Keyboard Detection Logic:
+        const isOpen = currentHeight < initialHeight.current * 0.75;
+        setIsKeyboardOpen(isOpen);
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize();
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleSave = () => {
     // When saving, ensure the type matches the active tab mode
@@ -60,8 +115,12 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
         finalUpdates.calculationType = 'standard'; // Mapping overrides product logic
         if (!finalUpdates.mappingRules) finalUpdates.mappingRules = [];
         
-        // Ensure overflow settings are clean if switching away from mapping, 
-        // but here we are IN mapping, so we keep them.
+        // Remove legacy overflow fields if we have fully migrated to rules
+        // We keep them undefined/null to clean up
+        finalUpdates.mappingStrategy = undefined;
+        finalUpdates.linearUnit = undefined;
+        finalUpdates.linearScore = undefined;
+        
     } else if (activeTab === 'select') {
         finalUpdates.type = 'select';
         finalUpdates.calculationType = 'standard';
@@ -69,10 +128,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
         // Basic tab -> Type Number
         finalUpdates.type = 'number';
         finalUpdates.mappingRules = [];
-        // Reset mapping specific fields to keep JSON clean (optional)
-        finalUpdates.mappingStrategy = 'linear';
         
-        // Ensure inputs are clean based on settings
         if (finalUpdates.rounding === 'none') {
             // keep it none
         }
@@ -86,12 +142,9 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
 
   // --- Mapping Rule Helpers ---
   
-  // Calculate the valid minimum for a given rule index based on the previous rule
   const getMinConstraint = (idx: number, rules: MappingRule[]): number => {
-      if (idx === 0) return -999999; // Effectively no limit for the first rule, or could be 0
+      if (idx === 0) return -999999;
       const prevRule = rules[idx - 1];
-      
-      // Resolve Previous Rule's "Effective Max"
       let prevEnd = 0;
       if (prevRule.max === 'next') {
           prevEnd = prevRule.min ?? 0; 
@@ -103,34 +156,51 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
 
   const updateMappingRule = (idx: number, field: keyof MappingRule, val: any) => {
       const newRules = [...(editedCol.mappingRules || [])];
-      let newValue = val;
-
-      // 1. Enforce Min Constraint
-      if (field === 'min' && typeof newValue === 'number') {
-          const minLimit = getMinConstraint(idx, newRules);
-          if (newValue < minLimit) newValue = minLimit;
-      }
-
-      // 2. Enforce Max Constraint
-      if (field === 'max' && typeof newValue === 'number') {
-          const currentMin = newRules[idx].min;
-          if (currentMin !== undefined && newValue < currentMin) {
-              newValue = currentMin;
-          }
-      }
       
-      newRules[idx] = { ...newRules[idx], [field]: newValue };
+      // Special logic for isLinear toggle
+      if (field === 'isLinear') {
+          // Rule 0 cannot be linear
+          if (idx === 0) return;
+
+          const isLinear = val as boolean;
+          newRules[idx] = { 
+              ...newRules[idx], 
+              isLinear,
+              // When switching to linear, default to "Every 1 Add 1" per user request
+              unit: isLinear ? 1 : undefined,
+              score: isLinear ? 1 : newRules[idx].score
+          };
+      } else {
+          let newValue = val;
+          // Enforce constraints
+          if (field === 'min' && typeof newValue === 'number') {
+              const minLimit = getMinConstraint(idx, newRules);
+              if (newValue < minLimit) newValue = minLimit;
+          }
+          if (field === 'max' && typeof newValue === 'number') {
+              const currentMin = newRules[idx].min;
+              if (currentMin !== undefined && newValue < currentMin) {
+                  newValue = currentMin;
+              }
+          }
+          if (field === 'unit' && typeof newValue === 'number') {
+              newValue = Math.max(1, newValue);
+          }
+          
+          newRules[idx] = { ...newRules[idx], [field]: newValue };
+      }
+
       setEditedCol({ ...editedCol, mappingRules: newRules });
   };
 
   const addMappingRule = () => {
       const rules = [...(editedCol.mappingRules || [])];
-      let newMin = 0; // Default to 0 for first rule
+      let newMin = 0;
       let lastScore = 0;
       
       if (rules.length > 0) {
           const lastRule = rules[rules.length - 1];
-          lastScore = lastRule.score;
+          lastScore = lastRule.score; // Copy prev score as default
           
           if (typeof lastRule.max === 'number') {
               newMin = lastRule.max + 1;
@@ -145,11 +215,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
           };
       }
 
-      // New rule defaults to 'next' to represent open-ended until filled
-      // Actually, user requested the 'back' part (Max) to be 'next' by default?
-      // Re-reading: "新增時預設輸入「Next」" for the LATTER item (Max).
-      // So new rule is { min: X, max: 'next' } effectively until user types a number.
-      setEditedCol({ ...editedCol, mappingRules: [...rules, { min: newMin, max: undefined, score: lastScore }] });
+      setEditedCol({ ...editedCol, mappingRules: [...rules, { min: newMin, max: undefined, score: lastScore, isLinear: false }] });
   };
 
   const removeMappingRule = (idx: number) => {
@@ -162,35 +228,15 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
               newRules[newLastIdx] = { ...newRules[newLastIdx], max: undefined };
           }
       }
+      
+      // If we removed Rule 0, enforce that the NEW Rule 0 is fixed
+      if (idx === 0 && newRules.length > 0) {
+          newRules[0] = { ...newRules[0], isLinear: false };
+      }
 
       setEditedCol({ ...editedCol, mappingRules: newRules });
   };
   
-  // Find the highest MAX value to display in the overflow section
-  // Also check if the last rule is effectively infinite
-  let maxBoundary = -Infinity;
-  let isLastRuleInfinite = false;
-
-  editedCol.mappingRules?.forEach((rule, idx, allRules) => {
-      if (rule.max === 'next') {
-          const nextRule = allRules[idx + 1];
-          if (nextRule && typeof nextRule.min === 'number') {
-              // It's linked, so it's finite
-              if ((nextRule.min - 1) > maxBoundary) maxBoundary = nextRule.min - 1;
-          } else {
-               // 'next' but no next rule = infinite
-               isLastRuleInfinite = true;
-          }
-      } else if (typeof rule.max === 'number') {
-          if (rule.max > maxBoundary) maxBoundary = rule.max;
-      } else {
-          // undefined max = infinite
-          isLastRuleInfinite = true;
-      }
-  });
-  
-  const showOverflowSettings = !isLastRuleInfinite && maxBoundary !== -Infinity;
-
 
   // --- Select Option Helpers ---
   const updateOption = (idx: number, field: keyof SelectOption, val: any) => {
@@ -233,13 +279,10 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
   const toggleInputMethod = () => {
       const newMethod = isClickerEnabled ? 'keypad' : 'clicker';
       let updates: Partial<ScoreColumn> = { inputType: newMethod };
-      
-      // If switching to clicker and no actions exist, add a default one
       if (newMethod === 'clicker' && (!editedCol.quickActions || editedCol.quickActions.length === 0)) {
            updates.quickActions = [{ id: crypto.randomUUID(), label: '範例按鈕', value: 1, color: editedCol.color }];
            updates.buttonGridColumns = 1;
       }
-      
       setEditedCol({ ...editedCol, ...updates });
   };
 
@@ -270,13 +313,17 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
 
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/95 flex flex-col animate-in slide-in-from-bottom-5">
+    <div 
+        className="fixed inset-0 z-50 bg-slate-950/95 flex flex-col animate-in slide-in-from-bottom-5"
+        // Note: onFocusCapture removed to allow desktop use. 
+        // Virtual Keyboard detection is now handled solely by window.innerHeight resize events in useEffect.
+    >
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 flex-none z-20">
           <div className="flex items-center gap-2">
               <div className="bg-slate-800 p-2 rounded text-emerald-500"><Settings size={20}/></div>
               <div>
-                  <h2 className="text-white font-bold text-lg">編輯屬性</h2>
+                  <h2 className="text-white font-bold text-lg">編輯項目</h2>
                   <p className="text-xs text-slate-500">{editedCol.name}</p>
               </div>
           </div>
@@ -295,10 +342,10 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
       {/* Scrollable Container */}
       <div className="flex-1 overflow-y-auto no-scrollbar">
           
-          {/* Global Config Section (Moved Up) */}
+          {/* Global Config Section */}
           <div className="p-4 bg-slate-900/50 space-y-4">
               <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">顯示名稱</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">欄位名稱</label>
                   <input 
                     type="text" 
                     value={editedCol.name} 
@@ -309,7 +356,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
               </div>
               
               <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">標示顏色</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">代表色</label>
                   <div className="flex items-center gap-2 flex-wrap">
                       {COLORS.map(c => {
                         const isDark = isColorDark(c);
@@ -334,9 +381,9 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
 
           {/* Sticky Tabs */}
           <div className="sticky top-0 z-10 flex border-y border-slate-800 bg-slate-900 shadow-lg">
-              <TabButton id="basic" label="一般運算" icon={Calculator} />
-              <TabButton id="mapping" label="查表規則" icon={Ruler} />
-              <TabButton id="select" label="選項清單" icon={ListPlus} />
+              <TabButton id="basic" label="基本設定" icon={Calculator} />
+              <TabButton id="mapping" label="查表設定" icon={Ruler} />
+              <TabButton id="select" label="選項設定" icon={ListPlus} />
           </div>
 
           {/* Tab Content */}
@@ -345,7 +392,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     {/* Calculation Mode Selection */}
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">運算模式</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">計分模式</label>
                         <div className="grid grid-cols-3 gap-3">
                             <button
                                 onClick={() => setEditedCol({ ...editedCol, calculationType: 'standard' })}
@@ -357,7 +404,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                             >
                                 <Calculator size={24} />
                                 <div className="leading-tight text-center">
-                                    <div className="text-xs font-bold uppercase">一般加權</div>
+                                    <div className="text-xs font-bold uppercase">基本加權</div>
                                     <div className="text-[10px] opacity-70">數值 × 倍率</div>
                                 </div>
                             </button>
@@ -371,7 +418,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                             >
                                 <PlusSquare size={24} />
                                 <div className="leading-tight text-center">
-                                    <div className="text-xs font-bold uppercase">分項加總</div>
+                                    <div className="text-xs font-bold uppercase">分項累加</div>
                                     <div className="text-[10px] opacity-70">1+2+3...</div>
                                 </div>
                             </button>
@@ -400,7 +447,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                     {isProductMode ? (
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 bg-indigo-900/10 p-4 rounded-xl border border-indigo-500/20">
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">乘積單位 (Sub-units)</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">乘積單位</label>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-[10px] text-slate-400 mb-1"> A 的單位</label>
@@ -435,13 +482,13 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                     ) : (
                         <div className={`space-y-4 animate-in fade-in slide-in-from-top-2 p-4 rounded-xl border ${isSumPartsMode ? 'bg-sky-900/10 border-sky-500/20' : 'bg-emerald-900/10 border-emerald-500/20'}`}>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">單位量詞 (Unit)</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">單位</label>
                                 <input 
                                     type="text" 
                                     value={editedCol.unit || ''} 
                                     onChange={e => setEditedCol({...editedCol, unit: e.target.value})}
                                     onFocus={e => e.target.select()}
-                                    placeholder="例如: 分, 隻, 塊"
+                                    placeholder="如：分、個、元"
                                     className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white focus:border-emerald-500 outline-none"
                                 />
                             </div>
@@ -463,19 +510,17 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
 
                     {/* Input Method Toggle */}
                     <div className="space-y-2 pt-2 border-t border-slate-800">
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">輸入介面設定</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">輸入方式</label>
                         <ToggleSwitch 
                             checked={isClickerEnabled} 
                             onChange={toggleInputMethod}
-                            label="啟用自訂按鈕輸入 (Clicker)"
+                            label="啟用按鈕面板 (Clicker)"
                         />
                         
                         {isClickerEnabled && (
                             <div className="animate-in fade-in slide-in-from-top-2 mt-4 bg-slate-900/50 p-4 rounded-xl border border-slate-700 space-y-4">
-                                
-                                {/* Layout Config */}
                                 <div className="flex items-center justify-between">
-                                     <label className="text-xs font-bold text-slate-400 uppercase">按鈕排列欄數</label>
+                                     <label className="text-xs font-bold text-slate-400 uppercase">按鈕欄數</label>
                                      <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
                                         {[1, 2, 3, 4].map(cols => (
                                             <button
@@ -498,13 +543,11 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                         : '目前為「網格模式」：按鈕將縱向堆疊，節省空間。'
                                     }
                                 </div>
-
+                                {/* Quick Button List (Omitted for brevity, logic remains same) */}
                                 <div className="border-t border-slate-700/50 pt-4 space-y-2">
                                     <label className="text-xs font-bold text-slate-400 uppercase">按鈕列表</label>
                                     {editedCol.quickActions?.map((action, idx) => (
                                         <div key={action.id} className="flex items-center gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
-                                            
-                                            {/* Modifier Toggle (Moved to Left) */}
                                             <button
                                                 onClick={() => updateQuickAction(idx, 'isModifier', !action.isModifier)}
                                                 className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center transition-all ${
@@ -512,11 +555,9 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                                         ? 'border-2 border-dashed border-indigo-400 bg-indigo-500/10 text-indigo-400' 
                                                         : 'border border-slate-600 bg-slate-900 text-slate-500 hover:border-slate-500 hover:text-slate-400'
                                                 }`}
-                                                title={action.isModifier ? "修飾模式：數值將加總至上一筆紀錄" : "一般模式：新增一筆紀錄"}
                                             >
                                                 <Plus size={18} strokeWidth={action.isModifier ? 3 : 2} />
                                             </button>
-
                                             <div className="flex-1 flex gap-2 min-w-0">
                                                 <input 
                                                     type="text" placeholder="標籤" value={action.label}
@@ -529,23 +570,6 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                                         onChange={e => updateQuickAction(idx, 'value', parseFloat(e.target.value) || 0)}
                                                         className="w-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-mono font-bold rounded p-2 pl-2 text-right text-sm outline-none focus:border-emerald-500"
                                                     />
-                                                </div>
-                                            </div>
-                                            
-                                            {/* Color Picker Mini */}
-                                            <div className="relative group shrink-0">
-                                                <button className="w-8 h-8 rounded-full border-2 border-slate-600 flex items-center justify-center" style={{ backgroundColor: action.color || editedCol.color || '#3b82f6' }}>
-                                                    <Palette size={14} className="text-white/80" />
-                                                </button>
-                                                <div className="absolute right-0 bottom-full mb-2 bg-slate-800 border border-slate-700 p-2 rounded-lg shadow-xl grid grid-cols-4 gap-1 w-32 hidden group-hover:grid group-focus-within:grid z-50">
-                                                    {COLORS.slice(0, 8).map(c => (
-                                                        <button 
-                                                            key={c} 
-                                                            onClick={() => updateQuickAction(idx, 'color', c)}
-                                                            className="w-6 h-6 rounded-full border border-slate-600" 
-                                                            style={{backgroundColor: c}}
-                                                        />
-                                                    ))}
                                                 </div>
                                             </div>
                                             <button onClick={() => removeQuickAction(idx)} className="p-2 text-slate-500 hover:text-red-400 shrink-0"><Trash2 size={18}/></button>
@@ -561,13 +585,12 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
 
                     {/* Rounding Mode Toggle */}
                     <div className="space-y-2 pt-2 border-t border-slate-800">
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">進位設定</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">小數點處理</label>
                         <ToggleSwitch 
                             checked={isRoundingEnabled} 
                             onChange={toggleRounding}
-                            label="啟用進位/捨去規則"
+                            label="啟用小數點進位/捨去"
                         />
-                        
                         {isRoundingEnabled && (
                             <div className="animate-in fade-in slide-in-from-top-2 pt-2 pl-2 border-l-2 border-slate-700 ml-4">
                                 <div className="grid grid-cols-3 gap-2">
@@ -593,16 +616,16 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                      <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 space-y-4">
                         <p className="text-sm text-slate-400">
-                            設定數值區間與對應的分數。系統將優先使用查表結果。
+                            設定數值區間與對應分數，系統將優先使用此規則。
                         </p>
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">單位量詞 (Unit)</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">單位</label>
                             <input 
                                 type="text" 
                                 value={editedCol.unit || ''} 
                                 onChange={e => setEditedCol({...editedCol, unit: e.target.value})}
                                 onFocus={e => e.target.select()}
-                                placeholder="例如: 分, 隻, 塊"
+                                placeholder="如：分、個、元"
                                 className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-emerald-500 outline-none"
                             />
                         </div>
@@ -614,129 +637,140 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                             const maxConstraint = rule.min;
                             const isNext = rule.max === 'next';
                             
+                            // Calculate hint for 'Next' rules
+                            let nextHint: { max: number, score: number } | null = null;
+                            if (isNext) {
+                                const nextRule = editedCol.mappingRules?.[idx + 1];
+                                if (nextRule && typeof nextRule.min === 'number') {
+                                    const effectiveMax = nextRule.min - 1;
+                                    // Calculate what the score would be at this effective max
+                                    // We need to pass the current state of editedCol to calculate correctly based on live data
+                                    const valAtMax = calculateColumnScore(editedCol, effectiveMax);
+                                    nextHint = { max: effectiveMax, score: valAtMax };
+                                }
+                            }
+
                             return (
-                                <div key={idx} className="flex items-center gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
-                                    <input 
-                                        type="number" 
-                                        placeholder="Min" 
-                                        value={rule.min ?? ''} 
-                                        min={minConstraint}
-                                        onChange={e => updateMappingRule(idx, 'min', e.target.value ? parseFloat(e.target.value) : undefined)}
-                                        onFocus={e => e.target.select()}
-                                        className="w-16 bg-slate-900 border border-slate-600 rounded p-2 text-center text-white"
-                                    />
-                                    <span className="text-slate-500">~</span>
-                                    <div className="relative w-16">
-                                        {isNext ? (
-                                            <div className="w-full h-full bg-slate-800 border border-slate-700/50 rounded p-2 text-center flex items-center justify-center">
-                                                <span className="text-xs font-bold text-indigo-400 bg-indigo-900/20 px-1 rounded flex items-center gap-0.5">Next <ArrowRightIcon size={8} /></span>
-                                            </div>
-                                        ) : (
-                                            <input 
-                                                type="number" 
-                                                placeholder="..." 
-                                                value={rule.max ?? ''} 
-                                                min={maxConstraint}
-                                                onChange={e => updateMappingRule(idx, 'max', e.target.value ? parseFloat(e.target.value) : undefined)}
-                                                onFocus={e => e.target.select()}
-                                                className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-center text-white placeholder-slate-600"
-                                            />
-                                        )}
-                                        {rule.max === undefined && (
-                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-500">
-                                                <InfinityIcon size={14} />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <span className="text-slate-500">➜</span>
-                                    <div className="flex-1 relative">
+                                <div key={idx} className="flex flex-col gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700 relative">
+                                    <div className="flex items-center gap-2">
+                                        {/* Min Input - Unified Width w-14 */}
                                         <input 
-                                            type="number" placeholder="Score" value={rule.score} 
-                                            onChange={e => updateMappingRule(idx, 'score', parseFloat(e.target.value))}
+                                            type="number" 
+                                            placeholder="最小" 
+                                            value={rule.min ?? ''} 
+                                            min={minConstraint}
+                                            onChange={e => updateMappingRule(idx, 'min', e.target.value ? parseFloat(e.target.value) : undefined)}
                                             onFocus={e => e.target.select()}
-                                            className="w-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-bold rounded p-2 text-center"
+                                            className="w-14 bg-slate-900 border border-slate-600 rounded p-2 text-center text-white text-sm"
                                         />
-                                        <span className="absolute right-2 top-2.5 text-xs text-emerald-500/50">分</span>
+                                        <span className="text-slate-500">~</span>
+                                        {/* Max Input - Unified Width w-14 */}
+                                        <div className="relative w-14">
+                                            {isNext ? (
+                                                <div className="w-full h-full bg-slate-800 border border-slate-700/50 rounded px-0.5 py-0.5 text-center flex flex-col items-center justify-center overflow-hidden">
+                                                    <span className="text-xs font-bold text-indigo-300/80 uppercase tracking-tighter leading-none mb-0.5">自動</span>
+                                                    {nextHint && (
+                                                        <span className="text-[11px] text-indigo-100 font-mono leading-none whitespace-nowrap flex items-center justify-center w-full">
+                                                            <span className="opacity-70 mr-px text-[9px]">最高</span>
+                                                            {nextHint.max}
+                                                            <span className="text-indigo-500 font-bold mx-[1px]">→</span>
+                                                            {nextHint.score}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <input 
+                                                    type="number" 
+                                                    placeholder="最大" 
+                                                    value={rule.max ?? ''} 
+                                                    min={maxConstraint}
+                                                    onChange={e => updateMappingRule(idx, 'max', e.target.value ? parseFloat(e.target.value) : undefined)}
+                                                    onFocus={e => e.target.select()}
+                                                    className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-center text-white placeholder-slate-600 text-sm"
+                                                />
+                                            )}
+                                            {rule.max === undefined && (
+                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-500">
+                                                    <InfinityIcon size={14} />
+                                                </div>
+                                            )}
+                                        </div>
+                                        
+                                        {/* Compact Vertical Toggle Button */}
+                                        <button 
+                                            onClick={() => idx !== 0 && updateMappingRule(idx, 'isLinear', !rule.isLinear)}
+                                            disabled={idx === 0}
+                                            className={`w-8 h-[38px] flex flex-col items-center justify-center gap-0.5 rounded-md shrink-0 transition-colors ${idx === 0 ? 'bg-slate-900 border border-slate-700/50 cursor-not-allowed border-dashed' : 'bg-slate-800 border border-slate-600 active:bg-slate-700'}`}
+                                            title={idx === 0 ? "首項必須為固定數值（基準）" : (rule.isLinear ? "模式：線性累加" : "模式：固定分數")}
+                                        >
+                                            {idx === 0 ? (
+                                                <div className="flex flex-col items-center gap-0.5">
+                                                    <ArrowRightIcon size={12} className="text-emerald-400" />
+                                                    <Lock size={10} className="text-slate-600" />
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <ArrowRightIcon 
+                                                        size={12} 
+                                                        className={`transition-all ${!rule.isLinear ? 'text-emerald-400 opacity-100 scale-110' : 'text-slate-600 opacity-50'}`} 
+                                                    />
+                                                    <TrendingUp 
+                                                        size={12} 
+                                                        className={`transition-all ${rule.isLinear ? 'text-emerald-400 opacity-100 scale-110' : 'text-slate-600 opacity-50'}`} 
+                                                    />
+                                                </>
+                                            )}
+                                        </button>
+
+                                        {/* Score Input Area */}
+                                        <div className="flex-1 min-w-0">
+                                            {rule.isLinear ? (
+                                                <div className="grid grid-cols-2 gap-1 h-[38px]">
+                                                    {/* Unit Input */}
+                                                    <div className="relative bg-slate-900 border border-slate-600 rounded-md flex items-center overflow-hidden">
+                                                        <span className="absolute left-2 text-[10px] text-slate-500 font-bold z-10 pointer-events-none">每</span>
+                                                        <input 
+                                                            type="number" 
+                                                            value={rule.unit ?? 1} 
+                                                            onChange={e => updateMappingRule(idx, 'unit', parseFloat(e.target.value))}
+                                                            onFocus={e => e.target.select()}
+                                                            className="w-full h-full bg-transparent text-white text-center text-sm pl-4 pr-1 outline-none font-medium"
+                                                        />
+                                                    </div>
+                                                    {/* Score Input */}
+                                                    <div className="relative bg-slate-900 border border-emerald-500/30 rounded-md flex items-center overflow-hidden">
+                                                        <span className="absolute left-2 text-[10px] text-emerald-500 font-bold z-10 pointer-events-none">加</span>
+                                                        <input 
+                                                            type="number" 
+                                                            value={rule.score} 
+                                                            onChange={e => updateMappingRule(idx, 'score', parseFloat(e.target.value))}
+                                                            onFocus={e => e.target.select()}
+                                                            className="w-full h-full bg-transparent text-emerald-400 font-bold text-center text-sm pl-4 pr-1 outline-none"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="relative w-full h-[38px]">
+                                                    <input 
+                                                        type="number" placeholder="分" value={rule.score} 
+                                                        onChange={e => updateMappingRule(idx, 'score', parseFloat(e.target.value))}
+                                                        onFocus={e => e.target.select()}
+                                                        className="w-full h-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-bold rounded-md p-2 text-center text-sm"
+                                                    />
+                                                    <span className="absolute right-2 top-2.5 text-xs text-emerald-500/50">分</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <button onClick={() => removeMappingRule(idx)} className="p-2 text-slate-500 hover:text-red-400"><Trash2 size={18}/></button>
                                     </div>
-                                    <button onClick={() => removeMappingRule(idx)} className="p-2 text-slate-500 hover:text-red-400"><Trash2 size={18}/></button>
                                 </div>
                             );
                         })}
                     </div>
                     <button onClick={addMappingRule} className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-dashed border-slate-600 flex items-center justify-center gap-2">
-                        <Plus size={18} /> 新增規則 (Next)
+                        <Plus size={18} /> 新增規則
                     </button>
-                    
-                    {/* Overflow Strategy Section (Conditionally Rendered) */}
-                    {showOverflowSettings && (
-                        <div className="mt-4 pt-4 border-t border-slate-700/50 animate-in fade-in slide-in-from-top-1">
-                             <div className="flex items-center gap-2 bg-slate-800 p-2 rounded-lg border border-dashed border-slate-600/50">
-                                {/* Boundary Indicator */}
-                                <div className="w-16 flex items-center justify-center gap-1 bg-slate-900 border border-slate-600 rounded p-2 text-slate-400 select-none">
-                                    <span className="text-xs font-bold text-emerald-500">{'>'} {maxBoundary}</span>
-                                </div>
-                                <span className="text-slate-500">➜</span>
-                                
-                                {/* Strategy Toggle */}
-                                <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700 shrink-0">
-                                    <button
-                                        onClick={() => setEditedCol({ ...editedCol, mappingStrategy: 'linear' })}
-                                        className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${
-                                            editedCol.mappingStrategy === 'linear' 
-                                                ? 'bg-emerald-600 text-white shadow' 
-                                                : 'text-slate-500 hover:text-slate-300'
-                                        }`}
-                                    >
-                                        線性
-                                    </button>
-                                    <button
-                                        onClick={() => setEditedCol({ ...editedCol, mappingStrategy: 'zero' })}
-                                        className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${
-                                            editedCol.mappingStrategy === 'zero' 
-                                                ? 'bg-slate-600 text-white shadow' 
-                                                : 'text-slate-500 hover:text-slate-300'
-                                        }`}
-                                    >
-                                        無分
-                                    </button>
-                                </div>
-
-                                {/* Linear Inputs */}
-                                {editedCol.mappingStrategy === 'linear' ? (
-                                    <div className="flex-1 flex items-center gap-1 ml-1 overflow-hidden">
-                                        <span className="text-xs text-slate-400 whitespace-nowrap">每</span>
-                                        <input 
-                                            type="number" 
-                                            value={editedCol.linearUnit ?? 1}
-                                            onChange={e => setEditedCol({...editedCol, linearUnit: Math.max(1, parseFloat(e.target.value) || 1)})}
-                                            onFocus={e => e.target.select()}
-                                            className="w-10 bg-slate-900 border border-emerald-500/50 rounded p-1 text-center font-bold text-white text-xs focus:border-emerald-400 outline-none"
-                                        />
-                                        <span className="text-xs text-slate-400 whitespace-nowrap">{editedCol.unit || '單位'}</span>
-                                        <span className="text-xs text-emerald-400 font-bold whitespace-nowrap">+</span>
-                                        <input 
-                                            type="number" 
-                                            value={editedCol.linearScore ?? 1}
-                                            onChange={e => setEditedCol({...editedCol, linearScore: parseFloat(e.target.value)})}
-                                            onFocus={e => e.target.select()}
-                                            className="w-10 bg-slate-900 border border-emerald-500/50 rounded p-1 text-center font-bold text-white text-xs focus:border-emerald-400 outline-none"
-                                        />
-                                        <span className="text-xs text-slate-400 whitespace-nowrap">分</span>
-                                    </div>
-                                ) : (
-                                    <div className="flex-1 text-center text-xs text-slate-500 italic">
-                                        超過 {maxBoundary} 不計分
-                                    </div>
-                                )}
-                             </div>
-                             <div className="text-[10px] text-slate-500 mt-2 px-1">
-                                 {editedCol.mappingStrategy === 'linear' 
-                                     ? `說明：超過 ${maxBoundary} 後，每多 ${editedCol.linearUnit ?? 1} ${editedCol.unit || '單位'}，就增加 ${editedCol.linearScore ?? 1} 分。`
-                                     : `說明：輸入值超過 ${maxBoundary} 時，該項目將不獲得任何分數。`
-                                 }
-                             </div>
-                        </div>
-                    )}
                 </div>
             )}
 
@@ -777,11 +811,13 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
       </div>
 
       {/* Footer */}
-      <div className="p-4 bg-slate-900 border-t border-slate-800 flex-none z-20">
-          <button onClick={handleSave} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2">
-              <Save size={20} /> 儲存設定
-          </button>
-      </div>
+      {!isKeyboardOpen && (
+          <div className="p-4 bg-slate-900 border-t border-slate-800 flex-none z-20 animate-in slide-in-from-bottom-2 duration-200">
+              <button onClick={handleSave} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2">
+                  <Save size={20} /> 儲存設定
+              </button>
+          </div>
+      )}
     </div>
   );
 };
