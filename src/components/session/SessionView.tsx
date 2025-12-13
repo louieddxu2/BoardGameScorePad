@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { GameSession, GameTemplate, ScoreColumn, Player } from '../../types';
 import { useSessionState } from './hooks/useSessionState';
@@ -102,15 +103,19 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onClick={eventHandlers.handleGlobalClick}
       >
         {/* 
-           Focus Mask (遮罩層): 
-           當輸入框聚焦時顯示。它的層級 (z-40) 高於表格，但低於 InputPanel (z-50)。
-           點擊此處會物理性阻擋點擊表格，並透過 stopPropagation 防止觸發 handleGlobalClick。
-           點擊此處會自然導致 input 失焦 (blur)，進而觸發 PlayerEditor 中的 onBlur 邏輯來還原 UI。
+           Conditional Focus Mask:
+           Only show this transparent blocker when editing a PLAYER NAME and the keyboard is OPEN.
+           This allows the user to click anywhere to dismiss the keyboard (blur) without accidentally opening another cell.
+           
+           For normal cell editing (Keypad), this is deliberately omitted so users can jump between cells with one tap.
         */}
-        {isInputFocused && (
+        {editingPlayerId && isInputFocused && (
             <div 
-                className="fixed inset-0 z-40 bg-transparent"
-                onClick={(e) => e.stopPropagation()}
+                className="absolute inset-0 z-40 bg-transparent"
+                onClick={(e) => {
+                    e.stopPropagation(); // Block click from reaching grid
+                    setUiState(p => ({ ...p, isInputFocused: false })); // Blur input
+                }}
             />
         )}
         

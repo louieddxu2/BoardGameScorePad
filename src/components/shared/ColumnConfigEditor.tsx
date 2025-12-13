@@ -81,30 +81,73 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
       return 'basic';
   });
   
-  // State to track if virtual keyboard is likely open (based on viewport height)
+  // --- Robust Keyboard Detection (Plan B: Height Delta) ---
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
-  // Store the initial height to compare against
-  const initialHeight = useRef(window.innerHeight);
+  
+  // Track initial dimensions to compare against.
+  // We use refs to maintain the "Base" state (full screen) throughout the component lifecycle.
+  const baseDimensions = useRef({ 
+      height: typeof window !== 'undefined' ? (window.visualViewport?.height || window.innerHeight) : 0,
+      width: typeof window !== 'undefined' ? window.innerWidth : 0 
+  });
 
   useEffect(() => {
-    const handleResize = () => {
-        const currentHeight = window.innerHeight;
+    // Only apply on mobile/tablet widths
+    if (window.innerWidth >= 768) return;
+
+    // Reset base dimensions on mount to capture the full screen state
+    baseDimensions.current = {
+        height: window.visualViewport ? window.visualViewport.height : window.innerHeight,
+        width: window.innerWidth
+    };
+
+    const checkKeyboard = () => {
+        const currentHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+        const currentWidth = window.visualViewport ? window.visualViewport.width : window.innerWidth;
         
-        // Dynamic Reference Update:
-        if (currentHeight > initialHeight.current) {
-            initialHeight.current = currentHeight;
+        // 1. Rotation/Resize Check: If width changed significantly (>50px), it's likely a rotation or desktop resize.
+        // Update baseline and assume keyboard is closed (reset state).
+        if (Math.abs(currentWidth - baseDimensions.current.width) > 50) {
+            baseDimensions.current = { height: currentHeight, width: currentWidth };
+            setIsKeyboardOpen(false);
+            return;
         }
 
-        // Keyboard Detection Logic:
-        const isOpen = currentHeight < initialHeight.current * 0.75;
+        // 2. Height Delta Check (Plan B)
+        // If current available height is < 80% of the base height, the keyboard is likely open.
+        // This avoids false positives from simply clicking an input (focusin) without the screen shrinking.
+        const threshold = baseDimensions.current.height * 0.8;
+        const isOpen = currentHeight < threshold;
+        
         setIsKeyboardOpen(isOpen);
     };
 
-    window.addEventListener('resize', handleResize);
-    handleResize();
+    // Double Insurance: When focus leaves an input (Blur), force a re-check.
+    // This handles cases where the keyboard closes but the resize event might lag slightly.
+    const handleFocusOut = () => {
+        setTimeout(() => {
+            checkKeyboard();
+        }, 100);
+    };
 
-    return () => window.removeEventListener('resize', handleResize);
+    // Listen to resize events for maximum compatibility
+    window.addEventListener('resize', checkKeyboard);
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', checkKeyboard);
+    }
+    
+    // Removed 'focusin' listener to prevent hiding button on click without keyboard.
+    window.addEventListener('focusout', handleFocusOut);
+
+    return () => {
+        window.removeEventListener('resize', checkKeyboard);
+        if (window.visualViewport) {
+            window.visualViewport.removeEventListener('resize', checkKeyboard);
+        }
+        window.removeEventListener('focusout', handleFocusOut);
+    };
   }, []);
+
 
   const handleSave = () => {
     // When saving, ensure the type matches the active tab mode
@@ -315,8 +358,6 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
   return (
     <div 
         className="fixed inset-0 z-50 bg-slate-950/95 flex flex-col animate-in slide-in-from-bottom-5"
-        // Note: onFocusCapture removed to allow desktop use. 
-        // Virtual Keyboard detection is now handled solely by window.innerHeight resize events in useEffect.
     >
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 flex-none z-20">

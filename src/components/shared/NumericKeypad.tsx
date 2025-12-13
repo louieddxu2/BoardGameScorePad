@@ -353,6 +353,7 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
         const currentVal = parseFloat(String(getRawValue(value))) || 0;
         let activeRule = null;
         let effectiveMaxForActive: number | undefined = undefined;
+        let finalScore = 0;
 
         // Find match
         for (let idx = 0; idx < column.mappingRules.length; idx++) {
@@ -375,6 +376,21 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
             }
         }
         
+        // Calculate the score just for display purposes in the footer (same logic as scoring utils)
+        if (activeRule) {
+             if (activeRule.isLinear) {
+                 const min = activeRule.min ?? 0;
+                 const prevLimit = min - 1;
+                 const baseScore = calculateColumnScore(column, prevLimit);
+                 const ruleUnit = Math.max(1, activeRule.unit || 1);
+                 const excess = currentVal - prevLimit;
+                 const count = Math.floor(excess / ruleUnit);
+                 finalScore = baseScore + (count * activeRule.score);
+             } else {
+                 finalScore = activeRule.score;
+             }
+        }
+        
         let footerCalculationNode: React.ReactNode = null;
         
         if (activeRule) {
@@ -387,18 +403,18 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
                  const count = Math.floor(excess / ruleUnit);
                  
                  footerCalculationNode = (
-                     <div className="flex items-center gap-0.5 font-mono text-xs justify-end w-full leading-none whitespace-nowrap">
-                         <span className="text-indigo-300 font-bold">{baseScore}</span>
-                         <span className="text-slate-600 px-0.5 text-[10px]">+</span>
-                         <span className="text-emerald-400 font-bold">{activeRule.score}</span>
-                         <span className="text-slate-600 px-0.5 text-[10px]">×</span>
-                         <span className="text-white font-bold">{count}</span>
+                     <div className="flex items-center justify-end w-full leading-none whitespace-nowrap text-slate-400 font-mono text-[10px]">
+                         <span>{baseScore}</span>
+                         <span className="opacity-50">+</span>
+                         <span>{activeRule.score}</span>
+                         <span className="opacity-50">×</span>
+                         <span>{count}</span>
                      </div>
                  );
              } else {
                  footerCalculationNode = (
-                     <div className="flex items-center justify-end w-full">
-                        <span className="font-mono text-base font-bold text-emerald-400 leading-none">{activeRule.score}</span>
+                     <div className="flex items-center justify-end w-full text-[10px] text-slate-500 italic">
+                        固定分數
                      </div>
                  );
              }
@@ -440,13 +456,13 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
                         if (rule.isLinear) {
                             labelNode = <span>{minVal}+{unitStr}</span>;
                             scoreNode = (
-                                <span className="flex items-center gap-1 text-[10px] leading-none">
-                                    <span className="opacity-70">每</span>
-                                    <span className="font-bold">{rule.unit}</span>
-                                    <span className="opacity-70">加</span>
-                                    {/* Make 'b' (score) green and consistent size */}
-                                    <span className="font-bold text-emerald-400">{rule.score}</span>
-                                </span>
+                                <div className="flex flex-col items-end justify-center leading-tight">
+                                    <span className="text-[10px] text-slate-500">每{rule.unit}{unitStr}</span>
+                                    <span className="flex items-center">
+                                        <span className="text-[10px] text-slate-500">加</span>
+                                        <span className="font-bold text-emerald-400 text-sm">{rule.score}</span>
+                                    </span>
+                                </div>
                             );
                         } else {
                              let text = '';
@@ -459,7 +475,11 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
                              }
                              
                              labelNode = <span>{text}</span>;
-                             scoreNode = <span>{rule.score}</span>;
+                             scoreNode = (
+                                <span className="text-emerald-400 font-bold">
+                                    {rule.score}
+                                </span>
+                             );
                         }
 
                         return (
@@ -479,7 +499,7 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
                                 </div>
 
                                 {/* Right: Score (Left aligned) */}
-                                <div className={`flex-1 text-left font-bold font-mono ${isMatch ? 'text-white' : 'text-emerald-500'}`}>
+                                <div className={`flex-1 text-left font-mono ${isMatch ? 'text-white' : 'text-slate-400'}`}>
                                     {scoreNode}
                                 </div>
                             </div>
@@ -487,20 +507,24 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
                     })}
                 </div>
 
-                {/* Calculation Footer - Compact Version */}
-                <div className="mt-1 pt-1 border-t border-slate-700/50 shrink-0">
-                    <div className="flex items-center justify-between bg-slate-800/80 rounded border border-slate-700/50 px-2 py-1.5 gap-2">
-                        {/* Current Value - Reverted to White */}
-                        <div className="flex items-center gap-1 shrink-0">
-                            <span className="font-mono font-bold text-white text-sm leading-none">{currentVal}</span>
-                            {unit && <span className="text-slate-500 text-[10px] leading-none">{unit}</span>}
+                {/* Calculation Footer - Distinct Box Version */}
+                <div className="mt-2 shrink-0">
+                    <div className="bg-slate-900 rounded-lg border border-indigo-500/40 p-2 shadow-sm flex flex-col gap-1">
+                        {/* Top Row: Input -> Result */}
+                        <div className="flex justify-between items-center border-b border-indigo-500/20 pb-2 mb-0.5">
+                            {/* Modified Input Box */}
+                            <div className="bg-emerald-900/30 border border-emerald-500 rounded px-2 py-0.5 shadow-[0_0_10px_rgba(16,185,129,0.1)] flex items-baseline gap-1">
+                                 <span className="font-mono font-bold text-white text-sm leading-none">{currentVal}</span>
+                            </div>
+                            
+                            <ArrowRight size={12} className="text-slate-500" />
+                            
+                            <div className="flex items-center">
+                                <span className="text-emerald-400 font-bold text-sm">{finalScore}</span>
+                            </div>
                         </div>
-                        
-                        {/* Arrow */}
-                        <ArrowRight size={12} className="text-slate-600 shrink-0" />
-                        
-                        {/* Formula / Result */}
-                        <div className="flex-1 min-w-0 flex justify-end overflow-hidden">
+                        {/* Bottom Row: Breakdown */}
+                        <div className="flex justify-end min-h-[12px]">
                            {footerCalculationNode}
                         </div>
                     </div>
