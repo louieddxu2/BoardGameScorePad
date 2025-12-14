@@ -11,6 +11,7 @@ import InputPanelLayout from './InputPanelLayout';
 import { Eraser, ArrowRight, ArrowDown, Edit, Plus, ArrowUpToLine, RotateCcw } from 'lucide-react';
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
 import { getScoreHistory, getRawValue } from '../../../utils/scoring';
+import { useVisualViewportOffset } from '../../../hooks/useVisualViewportOffset';
 
 interface InputPanelProps {
   sessionState: ReturnType<typeof useSessionState>;
@@ -78,65 +79,14 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
   const { uiState, setUiState, panelHeight } = sessionState;
   const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused } = uiState;
 
+  // 使用我們新寫的 Hook 來偵測鍵盤偏移量
+  const visualViewportOffset = useVisualViewportOffset();
+
   // Local state for keypad to decouple transient input from persisted score
   const [localKeypadValue, setLocalKeypadValue] = useState<any>(0);
   
   // Lifted state for product mode
   const [activeFactorIdx, setActiveFactorIdx] = useState<0 | 1>(0);
-
-  // --- Robust Keyboard Detection ---
-  // Mirrors logic in ColumnConfigEditor to reliably detect keyboard state on mobile
-  const initialHeight = useRef(typeof window !== 'undefined' ? window.innerHeight : 0);
-  const lastWidth = useRef(typeof window !== 'undefined' ? window.innerWidth : 0);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (window.innerWidth >= 768) return; // Only relevant for mobile
-
-    initialHeight.current = window.innerHeight;
-    lastWidth.current = window.innerWidth;
-
-    const checkKeyboard = () => {
-        // Detect Rotation: If width changes significantly, reset baseline
-        if (Math.abs(window.innerWidth - lastWidth.current) > 50) {
-            initialHeight.current = window.innerHeight;
-            lastWidth.current = window.innerWidth;
-            // Usually keyboard closes on rotation, so force false to be safe
-            setUiState(prev => ({ ...prev, isInputFocused: false }));
-            return;
-        }
-
-        const threshold = initialHeight.current * 0.75; // Use 75% to account for larger toolbars
-        let isOpen = false;
-        
-        // 1. Visual Viewport (iOS & Modern Android)
-        if (window.visualViewport) {
-            if (window.visualViewport.height < threshold) isOpen = true;
-        }
-        
-        // 2. Window Inner Height (Legacy Android)
-        // If visualViewport didn't trigger, check if innerHeight itself shrank
-        if (!isOpen && window.innerHeight < threshold) isOpen = true;
-
-        // Sync local state with detected reality
-        // This ensures that if the user hides the keyboard (e.g. Back button), the UI expands
-        setUiState(prev => {
-            if (prev.isInputFocused !== isOpen) {
-                return { ...prev, isInputFocused: isOpen };
-            }
-            return prev;
-        });
-    };
-
-    window.addEventListener('resize', checkKeyboard);
-    if (window.visualViewport) window.visualViewport.addEventListener('resize', checkKeyboard);
-
-    return () => {
-        window.removeEventListener('resize', checkKeyboard);
-        if (window.visualViewport) window.visualViewport.removeEventListener('resize', checkKeyboard);
-    };
-  }, [setUiState]);
-
 
   useEffect(() => {
     setActiveFactorIdx(0); // Reset factor index when cell changes
@@ -365,8 +315,13 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
   return (
     <div
-      className={`fixed bottom-0 left-0 right-0 z-50 bg-slate-950/50 backdrop-blur-sm border-t border-slate-700/50 shadow-[0_-8px_30px_rgba(0,0,0,0.5)] transition-all ease-in-out flex flex-col overflow-hidden ${isPanelOpen ? 'translate-y-0' : 'translate-y-full'} ${isInputFocused ? 'duration-0' : 'duration-300'}`}
-      style={{ height: panelHeight }}
+      className={`fixed left-0 right-0 z-50 bg-slate-950/50 backdrop-blur-sm border-t border-slate-700/50 shadow-[0_-8px_30px_rgba(0,0,0,0.5)] transition-all ease-in-out flex flex-col overflow-hidden ${isPanelOpen ? 'translate-y-0' : 'translate-y-full'} ${isInputFocused ? 'duration-0' : 'duration-300'}`}
+      style={{ 
+          height: panelHeight,
+          // 關鍵修改：將偏移量加到 bottom 屬性
+          // 當系統鍵盤彈出時 (visualViewportOffset > 0)，整個面板會被抬高
+          bottom: visualViewportOffset 
+      }}
     >
       {activePlayer && (
         <PanelHeader

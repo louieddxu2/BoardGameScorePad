@@ -4,6 +4,7 @@ import { ScoreColumn, SelectOption, MappingRule, QuickAction, InputMethod } from
 import { calculateColumnScore } from '../../utils/scoring';
 import { X, Ruler, Calculator, ListPlus, Settings, Save, Plus, Trash2, BoxSelect, PlusSquare, Keyboard, MousePointerClick, Palette, ChevronDown, ChevronRight, ToggleLeft, ToggleRight, LayoutGrid, LayoutList, ArrowUp, TrendingUp, Ban, ArrowUpToLine, Infinity as InfinityIcon, ArrowRight as ArrowRightIcon, Lock } from 'lucide-react';
 import { COLORS } from '../../constants';
+import { useVisualViewportOffset } from '../../hooks/useVisualViewportOffset';
 
 interface ColumnConfigEditorProps {
   column: ScoreColumn;
@@ -77,76 +78,45 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
 
   const [activeTab, setActiveTab] = useState<EditorTab>(() => {
       if (column.type === 'select' || column.type === 'boolean') return 'select';
-      if (column.mappingRules && column.mappingRules.length > 0) return 'mapping';
+      
+      // Decide if we start in Mapping tab based on useMapping flag AND existence of rules
+      // If useMapping is explicitly false, we go to basic even if rules exist.
+      // If undefined (legacy), we default to mapping if rules exist.
+      const hasRules = column.mappingRules && column.mappingRules.length > 0;
+      if (column.useMapping === true) return 'mapping';
+      if (column.useMapping === false) return 'basic'; // Explicitly basic
+      if (hasRules) return 'mapping'; // Legacy default
+      
       return 'basic';
   });
-  
-  // --- Robust Keyboard Detection (Plan B: Height Delta) ---
-  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
-  
-  // Track initial dimensions to compare against.
-  // We use refs to maintain the "Base" state (full screen) throughout the component lifecycle.
-  const baseDimensions = useRef({ 
-      height: typeof window !== 'undefined' ? (window.visualViewport?.height || window.innerHeight) : 0,
-      width: typeof window !== 'undefined' ? window.innerWidth : 0 
-  });
 
+  // State for Color Picker in Quick Actions
+  const [quickActionColorPickerIdx, setQuickActionColorPickerIdx] = useState<number | null>(null);
+  
+  // --- Keyboard & Layout Handling ---
+  // 使用統一的 Hook 來偵測 iOS 的鍵盤覆蓋高度
+  const visualViewportOffset = useVisualViewportOffset();
+  
+  // 另外偵測視窗是否因為 Android 鍵盤彈出而變矮 (Resize 模式)
+  const [isResizedByKeyboard, setIsResizedByKeyboard] = useState(false);
+  
   useEffect(() => {
-    // Only apply on mobile/tablet widths
-    if (window.innerWidth >= 768) return;
-
-    // Reset base dimensions on mount to capture the full screen state
-    baseDimensions.current = {
-        height: window.visualViewport ? window.visualViewport.height : window.innerHeight,
-        width: window.innerWidth
-    };
-
-    const checkKeyboard = () => {
-        const currentHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-        const currentWidth = window.visualViewport ? window.visualViewport.width : window.innerWidth;
-        
-        // 1. Rotation/Resize Check: If width changed significantly (>50px), it's likely a rotation or desktop resize.
-        // Update baseline and assume keyboard is closed (reset state).
-        if (Math.abs(currentWidth - baseDimensions.current.width) > 50) {
-            baseDimensions.current = { height: currentHeight, width: currentWidth };
-            setIsKeyboardOpen(false);
-            return;
-        }
-
-        // 2. Height Delta Check (Plan B)
-        // If current available height is < 80% of the base height, the keyboard is likely open.
-        // This avoids false positives from simply clicking an input (focusin) without the screen shrinking.
-        const threshold = baseDimensions.current.height * 0.8;
-        const isOpen = currentHeight < threshold;
-        
-        setIsKeyboardOpen(isOpen);
-    };
-
-    // Double Insurance: When focus leaves an input (Blur), force a re-check.
-    // This handles cases where the keyboard closes but the resize event might lag slightly.
-    const handleFocusOut = () => {
-        setTimeout(() => {
-            checkKeyboard();
-        }, 100);
-    };
-
-    // Listen to resize events for maximum compatibility
-    window.addEventListener('resize', checkKeyboard);
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', checkKeyboard);
-    }
-    
-    // Removed 'focusin' listener to prevent hiding button on click without keyboard.
-    window.addEventListener('focusout', handleFocusOut);
-
-    return () => {
-        window.removeEventListener('resize', checkKeyboard);
-        if (window.visualViewport) {
-            window.visualViewport.removeEventListener('resize', checkKeyboard);
-        }
-        window.removeEventListener('focusout', handleFocusOut);
-    };
+      if (typeof window === 'undefined') return;
+      const initialHeight = window.innerHeight;
+      
+      const handleResize = () => {
+          // 如果高度縮小超過 150px (鍵盤通常高於此)，且寬度沒變 (排除旋轉)，判定為鍵盤開啟
+          const heightDiff = initialHeight - window.innerHeight;
+          setIsResizedByKeyboard(heightDiff > 150);
+      };
+      
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // 綜合判斷：只要有 Offset (iOS Overlay) 或高度縮減 (Android Resize)，就視為鍵盤開啟
+  // 為了更好的體驗，當鍵盤開啟時，我們隱藏底部的 Save 按鈕，讓畫面專注於輸入內容
+  const isKeyboardOpen = visualViewportOffset > 0 || isResizedByKeyboard;
 
 
   const handleSave = () => {
@@ -156,6 +126,8 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
     if (activeTab === 'mapping') {
         finalUpdates.type = 'number';
         finalUpdates.calculationType = 'standard'; // Mapping overrides product logic
+        finalUpdates.useMapping = true; // Explicitly enable mapping
+        
         if (!finalUpdates.mappingRules) finalUpdates.mappingRules = [];
         
         // Remove legacy overflow fields if we have fully migrated to rules
@@ -170,7 +142,8 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
     } else {
         // Basic tab -> Type Number
         finalUpdates.type = 'number';
-        finalUpdates.mappingRules = [];
+        finalUpdates.useMapping = false; // Explicitly disable mapping (but keep the rules data!)
+        // We do NOT clear mappingRules here anymore.
         
         if (finalUpdates.rounding === 'none') {
             // keep it none
@@ -298,6 +271,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
 
   // --- Quick Action Helpers ---
   const addQuickAction = () => {
+      // 預設標籤改為空字串，以符合需求
       const newAction: QuickAction = { id: crypto.randomUUID(), label: '', value: 1, color: editedCol.color, isModifier: false };
       setEditedCol({ ...editedCol, quickActions: [...(editedCol.quickActions || []), newAction] });
   };
@@ -323,7 +297,8 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
       const newMethod = isClickerEnabled ? 'keypad' : 'clicker';
       let updates: Partial<ScoreColumn> = { inputType: newMethod };
       if (newMethod === 'clicker' && (!editedCol.quickActions || editedCol.quickActions.length === 0)) {
-           updates.quickActions = [{ id: crypto.randomUUID(), label: '範例按鈕', value: 1, color: editedCol.color }];
+           // 預設標籤改為空字串
+           updates.quickActions = [{ id: crypto.randomUUID(), label: '', value: 1, color: editedCol.color }];
            updates.buttonGridColumns = 1;
       }
       setEditedCol({ ...editedCol, ...updates });
@@ -358,6 +333,9 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
   return (
     <div 
         className="fixed inset-0 z-50 bg-slate-950/95 flex flex-col animate-in slide-in-from-bottom-5"
+        // 這裡套用 visualViewportOffset，確保在 iOS 上即使鍵盤 Overlay，整個 Modal 也會縮上來
+        // 但我們選擇一個更聰明的策略：當鍵盤開啟時，隱藏 Footer，並讓 Content 填滿剩餘空間
+        style={{ paddingBottom: visualViewportOffset }}
     >
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 flex-none z-20">
@@ -428,7 +406,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
           </div>
 
           {/* Tab Content */}
-          <div className="p-4">
+          <div className="p-4 pb-24"> {/* Extra padding bottom so content isn't hidden behind keyboard or footer */}
             {activeTab === 'basic' && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     {/* Calculation Mode Selection */}
@@ -537,11 +515,20 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                 <span className="text-slate-400 text-sm">{isSumPartsMode ? '分項總和' : '輸入值'}</span>
                                 <span className="text-slate-600">×</span>
                                 <input 
-                                    type="number" 
+                                    type="text" 
+                                    inputMode="decimal"
                                     value={editedCol.weight ?? 1} 
-                                    onChange={e => setEditedCol({...editedCol, weight: parseFloat(e.target.value)})}
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        if (val === '' || val === '-') {
+                                            setEditedCol({...editedCol, weight: val as any});
+                                        } else {
+                                            const num = parseFloat(val);
+                                            if (!isNaN(num)) setEditedCol({...editedCol, weight: num});
+                                        }
+                                    }}
                                     onFocus={e => e.target.select()}
-                                    className="w-20 bg-slate-800 border border-emerald-500/50 text-emerald-400 text-center font-bold p-2 rounded"
+                                    className="w-20 bg-slate-800 border border-emerald-500/50 text-emerald-400 text-center font-bold p-2 rounded outline-none focus:border-emerald-500"
                                 />
                                 <span className="text-slate-600">=</span>
                                 <span className="text-white font-bold">得分</span>
@@ -584,36 +571,94 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                         : '目前為「網格模式」：按鈕將縱向堆疊，節省空間。'
                                     }
                                 </div>
-                                {/* Quick Button List (Omitted for brevity, logic remains same) */}
+                                
                                 <div className="border-t border-slate-700/50 pt-4 space-y-2">
                                     <label className="text-xs font-bold text-slate-400 uppercase">按鈕列表</label>
                                     {editedCol.quickActions?.map((action, idx) => (
-                                        <div key={action.id} className="flex items-center gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
-                                            <button
-                                                onClick={() => updateQuickAction(idx, 'isModifier', !action.isModifier)}
-                                                className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center transition-all ${
-                                                    action.isModifier 
-                                                        ? 'border-2 border-dashed border-indigo-400 bg-indigo-500/10 text-indigo-400' 
-                                                        : 'border border-slate-600 bg-slate-900 text-slate-500 hover:border-slate-500 hover:text-slate-400'
-                                                }`}
-                                            >
-                                                <Plus size={18} strokeWidth={action.isModifier ? 3 : 2} />
-                                            </button>
-                                            <div className="flex-1 flex gap-2 min-w-0">
-                                                <input 
-                                                    type="text" placeholder="標籤" value={action.label}
-                                                    onChange={e => updateQuickAction(idx, 'label', e.target.value)}
-                                                    className="flex-1 min-w-[60px] bg-slate-900 border border-slate-600 rounded p-2 text-white placeholder-slate-600 text-sm outline-none focus:border-emerald-500"
-                                                />
-                                                <div className="relative w-14 shrink-0">
+                                        <div key={action.id} className="bg-slate-800 p-2 rounded-lg border border-slate-700 transition-colors">
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => updateQuickAction(idx, 'isModifier', !action.isModifier)}
+                                                    className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center transition-all ${
+                                                        action.isModifier 
+                                                            ? 'border-2 border-dashed border-indigo-400 bg-indigo-500/10 text-indigo-400' 
+                                                            : 'border border-slate-600 bg-slate-900 text-slate-500 hover:border-slate-500 hover:text-slate-400'
+                                                    }`}
+                                                    title="切換為修飾鍵"
+                                                >
+                                                    <Plus size={18} strokeWidth={action.isModifier ? 3 : 2} />
+                                                </button>
+                                                
+                                                {/* Color Picker Toggle */}
+                                                <button
+                                                    onClick={() => setQuickActionColorPickerIdx(quickActionColorPickerIdx === idx ? null : idx)}
+                                                    className="w-9 h-9 shrink-0 rounded-lg border border-slate-600 flex items-center justify-center shadow-sm relative overflow-hidden"
+                                                    style={{ backgroundColor: action.color || editedCol.color || '#3b82f6' }}
+                                                    title="設定按鈕顏色"
+                                                >
+                                                    <Palette size={14} className={isColorDark(action.color || editedCol.color || '#3b82f6') ? 'text-white/80' : 'text-black/50'} />
+                                                </button>
+
+                                                <div className="flex-1 flex gap-2 min-w-0">
                                                     <input 
-                                                        type="number" placeholder="0" value={action.value}
-                                                        onChange={e => updateQuickAction(idx, 'value', parseFloat(e.target.value) || 0)}
-                                                        className="w-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-mono font-bold rounded p-2 pl-2 text-right text-sm outline-none focus:border-emerald-500"
+                                                        type="text" placeholder="標籤" value={action.label}
+                                                        onChange={e => updateQuickAction(idx, 'label', e.target.value)}
+                                                        onFocus={e => e.target.select()}
+                                                        className="flex-1 min-w-[40px] bg-slate-900 border border-slate-600 rounded p-2 text-white placeholder-slate-600 text-sm outline-none focus:border-emerald-500"
                                                     />
+                                                    <div className="relative w-14 shrink-0">
+                                                        <input 
+                                                            type="text" 
+                                                            inputMode="decimal"
+                                                            placeholder="0" 
+                                                            value={action.value}
+                                                            onChange={e => {
+                                                                const str = e.target.value;
+                                                                if (str === '-' || str === '') {
+                                                                    updateQuickAction(idx, 'value', str as any);
+                                                                    return;
+                                                                }
+                                                                const num = parseFloat(str);
+                                                                if (!isNaN(num)) {
+                                                                    updateQuickAction(idx, 'value', num);
+                                                                }
+                                                            }}
+                                                            onFocus={e => e.target.select()}
+                                                            className="w-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-mono font-bold rounded p-2 pl-2 text-right text-sm outline-none focus:border-emerald-500"
+                                                        />
+                                                    </div>
                                                 </div>
+                                                <button onClick={() => removeQuickAction(idx)} className="p-2 text-slate-500 hover:text-red-400 shrink-0"><Trash2 size={18}/></button>
                                             </div>
-                                            <button onClick={() => removeQuickAction(idx)} className="p-2 text-slate-500 hover:text-red-400 shrink-0"><Trash2 size={18}/></button>
+
+                                            {/* Color Picker Drawer */}
+                                            {quickActionColorPickerIdx === idx && (
+                                                <div className="mt-2 p-2 bg-slate-900 rounded-lg border border-slate-700 animate-in fade-in slide-in-from-top-1">
+                                                    <div className="flex flex-wrap gap-2 justify-start">
+                                                        {COLORS.map(c => (
+                                                            <button
+                                                                key={c}
+                                                                onClick={() => {
+                                                                    updateQuickAction(idx, 'color', c);
+                                                                    setQuickActionColorPickerIdx(null);
+                                                                }}
+                                                                className={`w-6 h-6 rounded-full shadow-sm border ${action.color === c ? 'border-white scale-110 ring-1 ring-white/50' : 'border-transparent opacity-80 hover:opacity-100'} ${isColorDark(c) ? 'ring-1 ring-white/30' : ''}`}
+                                                                style={{ backgroundColor: c }}
+                                                            />
+                                                        ))}
+                                                         <button
+                                                            onClick={() => {
+                                                                updateQuickAction(idx, 'color', undefined);
+                                                                setQuickActionColorPickerIdx(null);
+                                                            }}
+                                                             className={`w-6 h-6 rounded-full shadow-sm border flex items-center justify-center bg-slate-800 ${!action.color ? 'border-white scale-110' : 'border-slate-600 text-slate-500'}`}
+                                                             title="重置為預設"
+                                                         >
+                                                            <X size={12} />
+                                                         </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -679,15 +724,30 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                             const isNext = rule.max === 'next';
                             
                             // Calculate hint for 'Next' rules
-                            let nextHint: { max: number, score: number } | null = null;
+                            let nextHint: { max: number, score: number, base?: number, increments?: number } | null = null;
                             if (isNext) {
                                 const nextRule = editedCol.mappingRules?.[idx + 1];
                                 if (nextRule && typeof nextRule.min === 'number') {
                                     const effectiveMax = nextRule.min - 1;
+
+                                    // 修正：強制將預覽用的欄位型態設為 number，並啟用 useMapping (無論當前設定為何)。
+                                    // 這樣能確保即使目前 useMapping=false (在基本分頁)，預覽時仍能看到查表結果。
+                                    const previewCol: ScoreColumn = { ...editedCol, type: 'number', useMapping: true };
+
                                     // Calculate what the score would be at this effective max
                                     // We need to pass the current state of editedCol to calculate correctly based on live data
-                                    const valAtMax = calculateColumnScore(editedCol, effectiveMax);
-                                    nextHint = { max: effectiveMax, score: valAtMax };
+                                    const valAtMax = calculateColumnScore(previewCol, effectiveMax);
+                                    
+                                    // Calculate base breakdown if linear to prove to the user that we are using the previous rules
+                                    let base, increments;
+                                    if (rule.isLinear) {
+                                        const prevEnd = (rule.min ?? 0) - 1;
+                                        // Base score is strictly what the score WAS before this rule started applying
+                                        base = calculateColumnScore(previewCol, prevEnd);
+                                        increments = valAtMax - base;
+                                    }
+                                    
+                                    nextHint = { max: effectiveMax, score: valAtMax, base, increments };
                                 }
                             }
 
@@ -696,19 +756,31 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                     <div className="flex items-center gap-2">
                                         {/* Min Input - Unified Width w-14 */}
                                         <input 
-                                            type="number" 
+                                            type="text" 
+                                            inputMode="decimal"
                                             placeholder="最小" 
                                             value={rule.min ?? ''} 
-                                            min={minConstraint}
-                                            onChange={e => updateMappingRule(idx, 'min', e.target.value ? parseFloat(e.target.value) : undefined)}
+                                            // 移除 HTML min 屬性，改用 state 邏輯控制
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                if (val === '' || val === '-') {
+                                                    updateMappingRule(idx, 'min', val as any);
+                                                } else {
+                                                    const num = parseFloat(val);
+                                                    if (!isNaN(num)) updateMappingRule(idx, 'min', num);
+                                                }
+                                            }}
                                             onFocus={e => e.target.select()}
-                                            className="w-14 bg-slate-900 border border-slate-600 rounded p-2 text-center text-white text-sm"
+                                            className="w-14 bg-slate-900 border border-slate-600 rounded p-2 text-center text-white text-sm outline-none focus:border-emerald-500"
                                         />
                                         <span className="text-slate-500">~</span>
                                         {/* Max Input - Unified Width w-14 */}
                                         <div className="relative w-14">
                                             {isNext ? (
-                                                <div className="w-full h-full bg-slate-800 border border-slate-700/50 rounded px-0.5 py-0.5 text-center flex flex-col items-center justify-center overflow-hidden">
+                                                <div 
+                                                    className="w-full h-full bg-slate-800 border border-slate-700/50 rounded px-0.5 py-0.5 text-center flex flex-col items-center justify-center overflow-hidden cursor-help"
+                                                    title={nextHint ? `在此區間結束時 (${nextHint.max}):\n總分: ${nextHint.score}${nextHint.base !== undefined ? `\n(基礎分 ${nextHint.base} + 累加分 ${nextHint.increments})` : ''}` : ''}
+                                                >
                                                     <span className="text-xs font-bold text-indigo-300/80 uppercase tracking-tighter leading-none mb-0.5">自動</span>
                                                     {nextHint && (
                                                         <span className="text-[11px] text-indigo-100 font-mono leading-none whitespace-nowrap flex items-center justify-center w-full">
@@ -721,13 +793,21 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                                 </div>
                                             ) : (
                                                 <input 
-                                                    type="number" 
+                                                    type="text" 
+                                                    inputMode="decimal"
                                                     placeholder="最大" 
                                                     value={rule.max ?? ''} 
-                                                    min={maxConstraint}
-                                                    onChange={e => updateMappingRule(idx, 'max', e.target.value ? parseFloat(e.target.value) : undefined)}
+                                                    onChange={e => {
+                                                        const val = e.target.value;
+                                                        if (val === '' || val === '-') {
+                                                            updateMappingRule(idx, 'max', val as any);
+                                                        } else {
+                                                            const num = parseFloat(val);
+                                                            if (!isNaN(num)) updateMappingRule(idx, 'max', num);
+                                                        }
+                                                    }}
                                                     onFocus={e => e.target.select()}
-                                                    className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-center text-white placeholder-slate-600 text-sm"
+                                                    className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-center text-white placeholder-slate-600 text-sm outline-none focus:border-emerald-500"
                                                 />
                                             )}
                                             {rule.max === undefined && (
@@ -782,9 +862,18 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                                     <div className="relative bg-slate-900 border border-emerald-500/30 rounded-md flex items-center overflow-hidden">
                                                         <span className="absolute left-2 text-[10px] text-emerald-500 font-bold z-10 pointer-events-none">加</span>
                                                         <input 
-                                                            type="number" 
+                                                            type="text" 
+                                                            inputMode="decimal"
                                                             value={rule.score} 
-                                                            onChange={e => updateMappingRule(idx, 'score', parseFloat(e.target.value))}
+                                                            onChange={e => {
+                                                                const val = e.target.value;
+                                                                if (val === '' || val === '-') {
+                                                                    updateMappingRule(idx, 'score', val as any);
+                                                                } else {
+                                                                    const num = parseFloat(val);
+                                                                    if (!isNaN(num)) updateMappingRule(idx, 'score', num);
+                                                                }
+                                                            }}
                                                             onFocus={e => e.target.select()}
                                                             className="w-full h-full bg-transparent text-emerald-400 font-bold text-center text-sm pl-4 pr-1 outline-none"
                                                         />
@@ -793,10 +882,21 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                             ) : (
                                                 <div className="relative w-full h-[38px]">
                                                     <input 
-                                                        type="number" placeholder="分" value={rule.score} 
-                                                        onChange={e => updateMappingRule(idx, 'score', parseFloat(e.target.value))}
+                                                        type="text" 
+                                                        inputMode="decimal"
+                                                        placeholder="分" 
+                                                        value={rule.score} 
+                                                        onChange={e => {
+                                                            const val = e.target.value;
+                                                            if (val === '' || val === '-') {
+                                                                updateMappingRule(idx, 'score', val as any);
+                                                            } else {
+                                                                const num = parseFloat(val);
+                                                                if (!isNaN(num)) updateMappingRule(idx, 'score', num);
+                                                            }
+                                                        }}
                                                         onFocus={e => e.target.select()}
-                                                        className="w-full h-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-bold rounded-md p-2 text-center text-sm"
+                                                        className="w-full h-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-bold rounded-md p-2 text-center text-sm outline-none focus:border-emerald-500"
                                                     />
                                                     <span className="absolute right-2 top-2.5 text-xs text-emerald-500/50">分</span>
                                                 </div>
@@ -825,10 +925,21 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                             <div key={idx} className="flex items-center gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
                                 <div className="relative w-24">
                                      <input 
-                                        type="number" placeholder="0" value={opt.value} 
-                                        onChange={e => updateOption(idx, 'value', parseFloat(e.target.value) || 0)}
+                                        type="text" 
+                                        inputMode="decimal"
+                                        placeholder="0" 
+                                        value={opt.value} 
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            if (val === '' || val === '-') {
+                                                updateOption(idx, 'value', val as any);
+                                            } else {
+                                                const num = parseFloat(val);
+                                                if (!isNaN(num)) updateOption(idx, 'value', num);
+                                            }
+                                        }}
                                         onFocus={e => e.target.select()}
-                                        className="w-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-mono font-bold rounded p-2 pl-3 text-right"
+                                        className="w-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-mono font-bold rounded p-2 pl-3 text-right outline-none focus:border-emerald-500"
                                     />
                                     <span className="absolute left-2 top-2.5 text-xs text-slate-500">分</span>
                                 </div>
@@ -851,7 +962,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
           </div>
       </div>
 
-      {/* Footer */}
+      {/* Footer - Hides when keyboard is open on mobile */}
       {!isKeyboardOpen && (
           <div className="p-4 bg-slate-900 border-t border-slate-800 flex-none z-20 animate-in slide-in-from-bottom-2 duration-200">
               <button onClick={handleSave} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2">

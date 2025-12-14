@@ -52,8 +52,11 @@ export const calculateColumnScore = (col: ScoreColumn, rawValue: any): number =>
 
   // Number logic
   if (col.type === 'number') {
+    
     // 1. Check Mapping Rules (these override other calculations)
-    if (col.mappingRules && col.mappingRules.length > 0) {
+    // Only apply if useMapping is NOT explicitly false.
+    // (Undefined defaults to true if rules exist, for backward compatibility)
+    if (col.useMapping !== false && col.mappingRules && col.mappingRules.length > 0) {
       
       // We look for the FIRST matching rule.
       // Since rules are usually ordered Min -> Max, this works.

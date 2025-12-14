@@ -28,6 +28,10 @@ export const NumericKeypadContent: React.FC<NumericKeypadContentProps> = (props)
     setActiveFactorIdx,
   } = props;
   
+  const triggerHaptic = () => {
+      if (navigator.vibrate) navigator.vibrate(10);
+  };
+
   const getCurrentValueRaw = (): string => {
     if (typeof value === 'object' && value !== null && 'value' in value) {
       return String(value.value ?? 0);
@@ -58,6 +62,7 @@ export const NumericKeypadContent: React.FC<NumericKeypadContentProps> = (props)
 
 
   const handleNumClick = (num: number) => {
+    triggerHaptic();
     const processValue = (currentValStr: string) => {
       if (overwrite) {
         return String(num);
@@ -92,6 +97,7 @@ export const NumericKeypadContent: React.FC<NumericKeypadContentProps> = (props)
   };
 
   const handleToggleSign = () => {
+    triggerHaptic();
     const processValue = (currentValStr: string) => {
       // Case A: Start of input (prefixing)
       if (overwrite || currentValStr === '0') {
@@ -125,6 +131,7 @@ export const NumericKeypadContent: React.FC<NumericKeypadContentProps> = (props)
   };
 
   const handleDecimal = () => {
+      triggerHaptic();
       const processValue = (currentValStr: string) => {
         if (overwrite) return "0.";
         if (currentValStr.includes('.')) return currentValStr;
@@ -149,6 +156,7 @@ export const NumericKeypadContent: React.FC<NumericKeypadContentProps> = (props)
   };
 
   const handleBackspace = () => {
+    triggerHaptic();
     const processValue = (currentStr: string) => {
         if (overwrite) return '0';
         if (currentStr.length <= 1 || (currentStr.startsWith('-') && currentStr.length <= 2)) {

@@ -45,6 +45,10 @@ export interface ScoreColumn {
   options?: SelectOption[]; // For 'select' type
   mappingRules?: MappingRule[]; // For 'number' type with range lookups
   
+  // Controls whether mapping rules are active. 
+  // If undefined, defaults to true if mappingRules has content (backward compatibility).
+  useMapping?: boolean; 
+
   // Legacy fields (kept for backward compatibility or migration)
   mappingStrategy?: MappingStrategy; 
   linearUnit?: number;  
