@@ -9,47 +9,52 @@ import { Player } from '../types';
 export const usePlayerWidthSync = (players: Player[]) => {
   const observerRef = useRef<ResizeObserver | null>(null);
 
+  // [關鍵優化]
+  // 建立一個僅包含 "ID" 與 "名稱" 的特徵字串。
+  // 我們不希望 useEffect 在 `players` 內的 `scores` 或 `totalScore` 改變時執行 (這會導致輸入分數時頻閃)，
+  // 只有當玩家 "數量改變" 或 "改名" (這些才會影響 Header 寬度) 時，才需要重置佈局。
+  const layoutSignature = players.map(p => `${p.id}:${p.name}`).join('|');
+
   useEffect(() => {
-    // 1. 處理視窗縮放 (Zoom/Resize)
-    // 這是解決「無法縮小」的關鍵：在重繪前，先釋放下方欄位的寬度限制，
-    // 讓容器能自然縮小，接著 ResizeObserver 才會抓到正確縮小後的 Header 寬度。
-    const handleResize = () => {
-      // 這裡不需擔心效能，因為只有在改變視窗大小時觸發
+    // 定義重置邏輯：清除所有由 JS 設定的強制寬度
+    const resetWidths = () => {
       players.forEach(p => {
         const cells = document.querySelectorAll(`.player-col-${p.id}`);
         cells.forEach((c) => {
            const el = c as HTMLElement;
-           // 清空寬度，讓它回歸 min-content 或 flex 預設，允許容器收縮
+           // 清空寬度，讓它回歸 CSS 定義的預設值 (flex-auto 或 min-content)
            el.style.width = '';
            el.style.minWidth = '';
            el.style.maxWidth = '';
         });
       });
     };
-    
-    // 使用 capture 確保盡早觸發
-    window.addEventListener('resize', handleResize, { capture: true });
 
-    // 2. 建立 Observer 監聽表頭寬度
+    // 1. 當佈局特徵改變 (改名/增減人) 時，立即重置寬度，讓 flex-auto 重新計算
+    resetWidths();
+
+    // 2. 處理視窗縮放 (Zoom/Resize)
+    window.addEventListener('resize', resetWidths, { capture: true });
+
+    // 3. 建立 Observer 監聽表頭寬度
     observerRef.current = new ResizeObserver((entries) => {
-      // 使用 requestAnimationFrame 解決 "Loop completed with undelivered notifications"
+      // 使用 requestAnimationFrame 避免 "Loop completed with undelivered notifications"
       window.requestAnimationFrame(() => {
         for (const entry of entries) {
           const target = entry.target as HTMLElement;
-          // 取得精確的像素寬度 (包含小數點)
-          const width = entry.contentRect.width; 
+          
+          // 取得 Header 目前由瀏覽器計算出的精確寬度 (包含 Flex 伸展後)
+          const exactWidth = target.getBoundingClientRect().width;
+          const pixelWidth = `${exactWidth}px`;
+          
           const playerId = target.getAttribute('data-player-header-id');
           
-          if (playerId && width > 0) {
-            // 加上 padding/border 的補償 (因為 contentRect 不含 border，但 style.width 通常指 border-box)
-            // 這裡簡單使用 getBoundingClientRect 來獲取最準確的渲染寬度
-            const exactWidth = target.getBoundingClientRect().width;
-            const pixelWidth = `${exactWidth}px`;
-
+          if (playerId && exactWidth > 0) {
             const cells = document.querySelectorAll(`.player-col-${playerId}`);
             cells.forEach((cell) => {
                const el = cell as HTMLElement;
-               // 只有當數值真的改變時才寫入，減少 DOM 操作
+               // 將 Header 的寬度同步鎖定給所有下方的 Cells
+               // 只有當數值真的改變時才寫入，減少 DOM 操作與頻閃
                if (el.style.width !== pixelWidth) {
                    el.style.width = pixelWidth;
                    el.style.minWidth = pixelWidth;
@@ -70,8 +75,9 @@ export const usePlayerWidthSync = (players: Player[]) => {
     });
 
     return () => {
-        window.removeEventListener('resize', handleResize, { capture: true });
+        window.removeEventListener('resize', resetWidths, { capture: true });
         if (observerRef.current) observerRef.current.disconnect();
     };
-  }, [players]); // 當玩家列表改變時重新綁定
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layoutSignature]); // 關鍵：僅依賴佈局特徵字串，忽略 players 內的分數變動
 };
