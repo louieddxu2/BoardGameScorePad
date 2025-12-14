@@ -34,19 +34,24 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
         <span className="font-black text-emerald-400 text-sm">總分</span>
       </div>
       <div className="flex-1 overflow-x-auto no-scrollbar" ref={scrollRef}>
-        <div className="flex min-w-fit h-full">
+        <div id="live-totals-inner" className="flex min-w-fit h-full">
           {players.map(p => (
             <div
               key={p.id}
-              className="min-w-[54px] flex-1 border-r border-slate-800 flex items-center justify-center relative h-full"
+              className="min-w-[54px] flex-1 border-r border-slate-800 flex flex-col items-center justify-center relative h-full px-1"
               style={{ backgroundColor: `${p.color}20`, borderTopColor: p.color, borderTopWidth: '2px' }}
             >
-              <span className="font-black text-lg" style={{ color: p.color, ...(isColorDark(p.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }}>
-                {p.totalScore}
-              </span>
-              {winners.includes(p.id) && players.length > 1 && (
-                <Crown size={14} className="text-yellow-400 absolute top-1 right-1" fill="currentColor" />
-              )}
+              {/* Force Layout Sizing: Hidden name mimics header width pressure */}
+              <div className="h-0 overflow-hidden invisible font-bold text-sm px-2 w-full text-center">{p.name}</div>
+              
+              <div className="flex items-center justify-center w-full h-full relative">
+                <span className="font-black text-lg leading-none" style={{ color: p.color, ...(isColorDark(p.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }}>
+                    {p.totalScore}
+                </span>
+                {winners.includes(p.id) && players.length > 1 && (
+                    <Crown size={14} className="text-yellow-400 absolute -top-1 -right-0.5" fill="currentColor" />
+                )}
+              </div>
             </div>
           ))}
         </div>

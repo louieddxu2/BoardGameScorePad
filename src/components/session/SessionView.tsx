@@ -56,27 +56,45 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     .filter(p => p.totalScore === Math.max(...session.players.map(pl => pl.totalScore)))
     .map(p => p.id);
 
-  // --- Scroll Synchronization ---
-  // Ensures that when the user scrolls the main grid, the totals bar follows horizontally.
+  // --- Scroll & Layout Synchronization ---
+  // 1. Syncs horizontal scroll position between Grid and TotalsBar.
+  // 2. Syncs physical width of TotalsBar inner container to match Grid inner container (for Zoom alignment).
   useEffect(() => {
-    const grid = sessionState.tableContainerRef.current;
-    const bar = sessionState.totalBarScrollRef.current;
+    const gridScrollWrapper = sessionState.tableContainerRef.current;
+    const barScrollWrapper = sessionState.totalBarScrollRef.current;
+    
+    // We need to target the *content* containers, not the scroll wrappers
+    const gridContent = document.getElementById('live-grid-container');
+    const barContent = document.getElementById('live-totals-inner');
 
-    if (!grid || !bar) return;
+    if (!gridScrollWrapper || !barScrollWrapper || !gridContent || !barContent) return;
 
+    // A. Scroll Sync
     const handleScroll = () => {
-      // Sync the bar's scroll position to the grid's
-      if (bar.scrollLeft !== grid.scrollLeft) {
-          bar.scrollLeft = grid.scrollLeft;
+      if (barScrollWrapper.scrollLeft !== gridScrollWrapper.scrollLeft) {
+          barScrollWrapper.scrollLeft = gridScrollWrapper.scrollLeft;
       }
     };
+    gridScrollWrapper.addEventListener('scroll', handleScroll, { passive: true });
+
+    // B. Width Sync (ResizeObserver)
+    const resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+            if (entry.target === gridContent) {
+                // Force the totals bar inner width to match the grid's content width
+                // This ensures that when zoom expands the grid, the totals bar expands equally
+                barContent.style.width = `${entry.contentRect.width}px`;
+            }
+        }
+    });
+    resizeObserver.observe(gridContent);
 
     // Initial sync
     handleScroll();
 
-    grid.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
-      grid.removeEventListener('scroll', handleScroll);
+      gridScrollWrapper.removeEventListener('scroll', handleScroll);
+      resizeObserver.disconnect();
     };
   }, [sessionState.tableContainerRef, sessionState.totalBarScrollRef]);
 
