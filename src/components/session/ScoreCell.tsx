@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Player, ScoreColumn } from '../../types';
 import { calculateColumnScore, getRawValue, getScoreHistory } from '../../utils/scoring';
@@ -101,9 +102,11 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
       );
   }
 
-  const showAdvancedSumPartsLayout = isSumPartsMode && history.length > 0;
+  // Allow disabling the list view for Sum Parts via config
+  const showParts = column.showPartsInGrid ?? true;
+  const showAdvancedSumPartsLayout = isSumPartsMode && history.length > 0 && showParts;
 
-  // Dynamic Row Height Logic for Sum Parts
+  // Dynamic Row Height Logic for Sum Parts (List View)
   if (showAdvancedSumPartsLayout) {
     return (
       <div onClick={onClick} className={`${baseContainerClasses} ${visualClasses} flex-row !items-stretch`}>
@@ -129,7 +132,7 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
     );
   }
 
-  // Standard Render for everything else
+  // Standard Render for everything else (including Sum Parts in "Total Only" mode)
   return (
     <div onClick={onClick} className={`${baseContainerClasses} ${visualClasses}`}>
       
@@ -143,7 +146,7 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
         productUI ? (
           productUI
         ) : (
-          // Standard Mode (or Sum Parts with 0 entries, which is the initial state)
+          // Standard Mode (or Sum Parts with 0 entries, or Sum Parts in Total Only mode)
           <span className="absolute bottom-1 right-1 text-sm font-mono flex items-baseline">
               <span className="text-emerald-400 font-bold">{String(displayValue)}</span>
               {column.unit && <span className="text-emerald-400/80 text-xs ml-0.5">{column.unit}</span>}

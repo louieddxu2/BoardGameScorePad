@@ -67,6 +67,9 @@ export interface ScoreColumn {
   // New fields for Product Mode
   calculationType?: CalculationType; 
   subUnits?: [string, string]; // [Unit A name, Unit B name]
+  
+  // Display Options
+  showPartsInGrid?: boolean; // For sum-parts: true = list parts, false = show total only
 }
 
 export interface Player {

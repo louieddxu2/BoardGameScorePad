@@ -268,8 +268,8 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
         if (activeColumn.type === 'number') {
             const hasMappingRules = activeColumn.mappingRules && activeColumn.mappingRules.length > 0;
-            // 關鍵修改：如果是乘積模式，強制不使用 Clicker (即使 inputType 是 clicker)
-            const useClicker = !isProductMode && activeColumn.inputType === 'clicker' && !hasMappingRules;
+            // 關鍵修改：限制只有在 Sum Parts 模式且設定為 clicker 時才使用 clicker
+            const useClicker = isSumPartsMode && activeColumn.inputType === 'clicker' && !hasMappingRules;
 
             if (useClicker) {
                  // Use the new QuickButtonPad

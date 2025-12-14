@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { GameSession, GameTemplate, ScoreColumn, Player } from '../../types';
 import { useSessionState } from './hooks/useSessionState';
 import { useSessionEvents } from './hooks/useSessionEvents';
@@ -55,6 +55,30 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const winners = session.players
     .filter(p => p.totalScore === Math.max(...session.players.map(pl => pl.totalScore)))
     .map(p => p.id);
+
+  // --- Scroll Synchronization ---
+  // Ensures that when the user scrolls the main grid, the totals bar follows horizontally.
+  useEffect(() => {
+    const grid = sessionState.tableContainerRef.current;
+    const bar = sessionState.totalBarScrollRef.current;
+
+    if (!grid || !bar) return;
+
+    const handleScroll = () => {
+      // Sync the bar's scroll position to the grid's
+      if (bar.scrollLeft !== grid.scrollLeft) {
+          bar.scrollLeft = grid.scrollLeft;
+      }
+    };
+
+    // Initial sync
+    handleScroll();
+
+    grid.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      grid.removeEventListener('scroll', handleScroll);
+    };
+  }, [sessionState.tableContainerRef, sessionState.totalBarScrollRef]);
 
   return (
     <div className="flex flex-col h-full bg-slate-900 text-slate-100 overflow-hidden relative">

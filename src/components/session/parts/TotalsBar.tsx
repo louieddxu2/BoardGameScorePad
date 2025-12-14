@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { Player } from '../../../types';
 import { Crown } from 'lucide-react';
@@ -20,16 +21,7 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
   scrollRef,
   isHidden = false
 }) => {
-  useEffect(() => {
-    const tableContainer = document.querySelector('.custom-scrollbar');
-    const handleTableScroll = () => {
-      if (tableContainer && scrollRef.current) {
-        scrollRef.current.scrollLeft = tableContainer.scrollLeft;
-      }
-    };
-    tableContainer?.addEventListener('scroll', handleTableScroll);
-    return () => tableContainer?.removeEventListener('scroll', handleTableScroll);
-  }, [scrollRef]);
+  // Logic moved to parent (SessionView) to ensure reliable ref access
 
   // Use opacity and pointer-events to hide, maintaining DOM stability and transition context
   return (

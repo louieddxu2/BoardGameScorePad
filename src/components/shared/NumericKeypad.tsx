@@ -301,6 +301,11 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
       const currentInputRaw = (typeof localKeypadValue === 'object') ? localKeypadValue.value : localKeypadValue;
       const currentInputStr = String(currentInputRaw || '0');
       
+      // Determine if we should show the input preview.
+      // We HIDE it if we are in "Clicker" mode AND there are no mapping rules (which would force keypad mode).
+      const hasMappingRules = column.mappingRules && column.mappingRules.length > 0;
+      const showInputPreview = !(column.inputType === 'clicker' && !hasMappingRules);
+
       return (
         <div className="flex flex-col h-full">
             <div className="text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 flex items-center gap-1 shrink-0 px-2 pt-2">
@@ -347,16 +352,18 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
                 </div>
             </div>
 
-            {/* Footer Container */}
-            <div className="shrink-0 px-2 pb-1 relative">
-                {/* Simple Divider */}
-                <div className="border-t border-white/20 mb-1"></div>
-                
-                {/* Current Input Box */}
-                <div className="bg-emerald-900/30 border border-emerald-500 rounded-md px-2 py-0.5 text-right shadow-[0_0_10px_rgba(16,185,129,0.1)]">
-                    <span className="text-2xl font-bold text-white font-mono leading-tight">{currentInputStr}</span>
+            {/* Footer Container - Only show if using Keypad (not Clicker) */}
+            {showInputPreview && (
+                <div className="shrink-0 px-2 pb-1 relative">
+                    {/* Simple Divider */}
+                    <div className="border-t border-white/20 mb-1"></div>
+                    
+                    {/* Current Input Box */}
+                    <div className="bg-emerald-900/30 border border-emerald-500 rounded-md px-2 py-0.5 text-right shadow-[0_0_10px_rgba(16,185,129,0.1)]">
+                        <span className="text-2xl font-bold text-white font-mono leading-tight">{currentInputStr}</span>
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
       );
     }

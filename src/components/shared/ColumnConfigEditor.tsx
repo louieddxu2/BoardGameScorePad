@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ScoreColumn, SelectOption, MappingRule, QuickAction, InputMethod } from '../../types';
 import { calculateColumnScore } from '../../utils/scoring';
-import { X, Ruler, Calculator, ListPlus, Settings, Save, Plus, Trash2, BoxSelect, PlusSquare, Keyboard, MousePointerClick, Palette, ChevronDown, ChevronRight, ToggleLeft, ToggleRight, LayoutGrid, LayoutList, ArrowUp, TrendingUp, Ban, ArrowUpToLine, Infinity as InfinityIcon, ArrowRight as ArrowRightIcon, Lock } from 'lucide-react';
+import { X, Ruler, Calculator, ListPlus, Settings, Save, Plus, Trash2, BoxSelect, PlusSquare, Keyboard, MousePointerClick, Palette, ChevronDown, ChevronRight, ToggleLeft, ToggleRight, LayoutGrid, LayoutList, ArrowUp, TrendingUp, Ban, ArrowUpToLine, Infinity as InfinityIcon, ArrowRight as ArrowRightIcon, Lock, Eye, EyeOff } from 'lucide-react';
 import { COLORS } from '../../constants';
 import { useVisualViewportOffset } from '../../hooks/useVisualViewportOffset';
 import ConfirmationModal from './ConfirmationModal';
@@ -583,139 +583,167 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                         </div>
                     )}
 
-                    {/* Input Method Toggle - Hide if Product Mode */}
-                    {!isProductMode && (
-                        <div className="space-y-2 pt-2 border-t border-slate-800">
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-2">輸入方式</label>
-                            <ToggleSwitch 
-                                checked={isClickerEnabled} 
-                                onChange={toggleInputMethod}
-                                label="自訂按鈕加減面板"
-                            />
-                            
-                            {isClickerEnabled && (
-                                <div className="animate-in fade-in slide-in-from-top-2 mt-4 bg-slate-900/50 p-4 rounded-xl border border-slate-700 space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-xs font-bold text-slate-400 uppercase">按鈕欄數</label>
-                                        <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
-                                            {[1, 2, 3, 4].map(cols => (
-                                                <button
-                                                    key={cols}
-                                                    onClick={() => setEditedCol({ ...editedCol, buttonGridColumns: cols })}
-                                                    className={`w-8 h-8 rounded flex items-center justify-center text-xs font-bold transition-colors ${
-                                                        (editedCol.buttonGridColumns || 1) === cols 
-                                                            ? 'bg-slate-600 text-white' 
-                                                            : 'text-slate-500 hover:text-slate-300'
-                                                    }`}
-                                                >
-                                                    {cols}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div className="text-[10px] text-slate-500 mb-2">
-                                        {(editedCol.buttonGridColumns || 1) === 1 
-                                            ? '目前為「清單模式」：按鈕將橫向排列，最適合閱讀。' 
-                                            : '目前為「網格模式」：按鈕將縱向堆疊，節省空間。'
-                                        }
-                                    </div>
-                                    
-                                    <div className="border-t border-slate-700/50 pt-4 space-y-2">
-                                        <label className="text-xs font-bold text-slate-400 uppercase">按鈕列表</label>
-                                        {editedCol.quickActions?.map((action, idx) => (
-                                            <div key={action.id} className="bg-slate-800 p-2 rounded-lg border border-slate-700 transition-colors">
-                                                <div className="flex items-center gap-2">
-                                                    <button
-                                                        onClick={() => updateQuickAction(idx, 'isModifier', !action.isModifier)}
-                                                        className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center transition-all ${
-                                                            action.isModifier 
-                                                                ? 'border-2 border-dashed border-indigo-400 bg-indigo-500/10 text-indigo-400' 
-                                                                : 'border border-slate-600 bg-slate-900 text-slate-500 hover:border-slate-500 hover:text-slate-400'
-                                                        }`}
-                                                        title="切換為額外添加鍵"
-                                                    >
-                                                        <Plus size={18} strokeWidth={action.isModifier ? 3 : 2} />
-                                                    </button>
-                                                    
-                                                    {/* Color Picker Toggle */}
-                                                    <button
-                                                        onClick={() => setQuickActionColorPickerIdx(quickActionColorPickerIdx === idx ? null : idx)}
-                                                        className="w-9 h-9 shrink-0 rounded-lg border border-slate-600 flex items-center justify-center shadow-sm relative overflow-hidden"
-                                                        style={{ backgroundColor: action.color || editedCol.color || '#3b82f6' }}
-                                                        title="設定按鈕顏色"
-                                                    >
-                                                        <Palette size={14} className={isColorDark(action.color || editedCol.color || '#3b82f6') ? 'text-white/80' : 'text-black/50'} />
-                                                    </button>
-
-                                                    <div className="flex-1 flex gap-2 min-w-0">
-                                                        <input 
-                                                            type="text" placeholder="標籤" value={action.label}
-                                                            onChange={e => updateQuickAction(idx, 'label', e.target.value)}
-                                                            onFocus={e => e.target.select()}
-                                                            className="flex-1 min-w-[40px] bg-slate-900 border border-slate-600 rounded p-2 text-white placeholder-slate-600 text-sm outline-none focus:border-emerald-500"
-                                                        />
-                                                        <div className="relative w-14 shrink-0">
-                                                            <input 
-                                                                type="text" 
-                                                                inputMode="decimal"
-                                                                placeholder="0" 
-                                                                value={action.value}
-                                                                onChange={e => {
-                                                                    const str = e.target.value;
-                                                                    if (str === '-' || str === '') {
-                                                                        updateQuickAction(idx, 'value', str as any);
-                                                                        return;
-                                                                    }
-                                                                    const num = parseFloat(str);
-                                                                    if (!isNaN(num)) {
-                                                                        updateQuickAction(idx, 'value', num);
-                                                                    }
-                                                                }}
-                                                                onFocus={e => e.target.select()}
-                                                                className="w-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-mono font-bold rounded p-2 pl-2 text-right text-sm outline-none focus:border-emerald-500"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <button onClick={() => removeQuickAction(idx)} className="p-2 text-slate-500 hover:text-red-400 shrink-0"><Trash2 size={18}/></button>
-                                                </div>
-
-                                                {/* Color Picker Drawer */}
-                                                {quickActionColorPickerIdx === idx && (
-                                                    <div className="mt-2 p-2 bg-slate-900 rounded-lg border border-slate-700 animate-in fade-in slide-in-from-top-1">
-                                                        <div className="flex flex-wrap gap-2 justify-start">
-                                                            {COLORS.map(c => (
-                                                                <button
-                                                                    key={c}
-                                                                    onClick={() => {
-                                                                        updateQuickAction(idx, 'color', c);
-                                                                        setQuickActionColorPickerIdx(null);
-                                                                    }}
-                                                                    className={`w-6 h-6 rounded-full shadow-sm border ${action.color === c ? 'border-white scale-110 ring-1 ring-white/50' : 'border-transparent opacity-80 hover:opacity-100'} ${isColorDark(c) ? 'ring-1 ring-white/30' : ''}`}
-                                                                    style={{ backgroundColor: c }}
-                                                                />
-                                                            ))}
-                                                            <button
-                                                                onClick={() => {
-                                                                    updateQuickAction(idx, 'color', undefined);
-                                                                    setQuickActionColorPickerIdx(null);
-                                                                }}
-                                                                className={`w-6 h-6 rounded-full shadow-sm border flex items-center justify-center bg-slate-800 ${!action.color ? 'border-white scale-110' : 'border-slate-600 text-slate-500'}`}
-                                                                title="重置為預設"
-                                                            >
-                                                                <X size={12} />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <button onClick={addQuickAction} className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-dashed border-slate-600 flex items-center justify-center gap-2 text-sm">
-                                        <Plus size={16} /> 新增按鈕
+                    {/* Input Method Toggle - Only for Sum Parts Mode */}
+                    {isSumPartsMode && (
+                        <>
+                            <div className="space-y-2 pt-2 border-t border-slate-800">
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">格內顯示方式</label>
+                                <div className="grid grid-cols-2 gap-2 bg-slate-800 p-1 rounded-xl border border-slate-700">
+                                    <button
+                                        onClick={() => setEditedCol({ ...editedCol, showPartsInGrid: true })}
+                                        className={`flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${
+                                            (editedCol.showPartsInGrid ?? true) === true 
+                                                ? 'bg-sky-600 text-white shadow-sm' 
+                                                : 'text-slate-400 hover:text-slate-200'
+                                        }`}
+                                    >
+                                        <Eye size={14} /> 顯示各項
+                                    </button>
+                                    <button
+                                        onClick={() => setEditedCol({ ...editedCol, showPartsInGrid: false })}
+                                        className={`flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${
+                                            (editedCol.showPartsInGrid ?? true) === false
+                                                ? 'bg-sky-600 text-white shadow-sm' 
+                                                : 'text-slate-400 hover:text-slate-200'
+                                        }`}
+                                    >
+                                        <EyeOff size={14} /> 僅顯示總和
                                     </button>
                                 </div>
-                            )}
-                        </div>
+                            </div>
+
+                            <div className="space-y-2 pt-2 border-t border-slate-800">
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">輸入方式</label>
+                                <ToggleSwitch 
+                                    checked={isClickerEnabled} 
+                                    onChange={toggleInputMethod}
+                                    label="自訂按鈕加減面板"
+                                />
+                                
+                                {isClickerEnabled && (
+                                    <div className="animate-in fade-in slide-in-from-top-2 mt-4 bg-slate-900/50 p-4 rounded-xl border border-slate-700 space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-xs font-bold text-slate-400 uppercase">按鈕欄數</label>
+                                            <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+                                                {[1, 2, 3, 4].map(cols => (
+                                                    <button
+                                                        key={cols}
+                                                        onClick={() => setEditedCol({ ...editedCol, buttonGridColumns: cols })}
+                                                        className={`w-8 h-8 rounded flex items-center justify-center text-xs font-bold transition-colors ${
+                                                            (editedCol.buttonGridColumns || 1) === cols 
+                                                                ? 'bg-slate-600 text-white' 
+                                                                : 'text-slate-500 hover:text-slate-300'
+                                                        }`}
+                                                    >
+                                                        {cols}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="text-[10px] text-slate-500 mb-2">
+                                            {(editedCol.buttonGridColumns || 1) === 1 
+                                                ? '目前為「清單模式」：按鈕將橫向排列，最適合閱讀。' 
+                                                : '目前為「網格模式」：按鈕將縱向堆疊，節省空間。'
+                                            }
+                                        </div>
+                                        
+                                        <div className="border-t border-slate-700/50 pt-4 space-y-2">
+                                            <label className="text-xs font-bold text-slate-400 uppercase">按鈕列表</label>
+                                            {editedCol.quickActions?.map((action, idx) => (
+                                                <div key={action.id} className="bg-slate-800 p-2 rounded-lg border border-slate-700 transition-colors">
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => updateQuickAction(idx, 'isModifier', !action.isModifier)}
+                                                            className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center transition-all ${
+                                                                action.isModifier 
+                                                                    ? 'border-2 border-dashed border-indigo-400 bg-indigo-500/10 text-indigo-400' 
+                                                                    : 'border border-slate-600 bg-slate-900 text-slate-500 hover:border-slate-500 hover:text-slate-400'
+                                                            }`}
+                                                            title="切換為額外添加鍵"
+                                                        >
+                                                            <Plus size={18} strokeWidth={action.isModifier ? 3 : 2} />
+                                                        </button>
+                                                        
+                                                        {/* Color Picker Toggle */}
+                                                        <button
+                                                            onClick={() => setQuickActionColorPickerIdx(quickActionColorPickerIdx === idx ? null : idx)}
+                                                            className="w-9 h-9 shrink-0 rounded-lg border border-slate-600 flex items-center justify-center shadow-sm relative overflow-hidden"
+                                                            style={{ backgroundColor: action.color || editedCol.color || '#3b82f6' }}
+                                                            title="設定按鈕顏色"
+                                                        >
+                                                            <Palette size={14} className={isColorDark(action.color || editedCol.color || '#3b82f6') ? 'text-white/80' : 'text-black/50'} />
+                                                        </button>
+
+                                                        <div className="flex-1 flex gap-2 min-w-0">
+                                                            <input 
+                                                                type="text" placeholder="標籤" value={action.label}
+                                                                onChange={e => updateQuickAction(idx, 'label', e.target.value)}
+                                                                onFocus={e => e.target.select()}
+                                                                className="flex-1 min-w-[40px] bg-slate-900 border border-slate-600 rounded p-2 text-white placeholder-slate-600 text-sm outline-none focus:border-emerald-500"
+                                                            />
+                                                            <div className="relative w-14 shrink-0">
+                                                                <input 
+                                                                    type="text" 
+                                                                    inputMode="decimal"
+                                                                    placeholder="0" 
+                                                                    value={action.value}
+                                                                    onChange={e => {
+                                                                        const str = e.target.value;
+                                                                        if (str === '-' || str === '') {
+                                                                            updateQuickAction(idx, 'value', str as any);
+                                                                            return;
+                                                                        }
+                                                                        const num = parseFloat(str);
+                                                                        if (!isNaN(num)) {
+                                                                            updateQuickAction(idx, 'value', num);
+                                                                        }
+                                                                    }}
+                                                                    onFocus={e => e.target.select()}
+                                                                    className="w-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-mono font-bold rounded p-2 pl-2 text-right text-sm outline-none focus:border-emerald-500"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <button onClick={() => removeQuickAction(idx)} className="p-2 text-slate-500 hover:text-red-400 shrink-0"><Trash2 size={18}/></button>
+                                                    </div>
+
+                                                    {/* Color Picker Drawer */}
+                                                    {quickActionColorPickerIdx === idx && (
+                                                        <div className="mt-2 p-2 bg-slate-900 rounded-lg border border-slate-700 animate-in fade-in slide-in-from-top-1">
+                                                            <div className="flex flex-wrap gap-2 justify-start">
+                                                                {COLORS.map(c => (
+                                                                    <button
+                                                                        key={c}
+                                                                        onClick={() => {
+                                                                            updateQuickAction(idx, 'color', c);
+                                                                            setQuickActionColorPickerIdx(null);
+                                                                        }}
+                                                                        className={`w-6 h-6 rounded-full shadow-sm border ${action.color === c ? 'border-white scale-110 ring-1 ring-white/50' : 'border-transparent opacity-80 hover:opacity-100'} ${isColorDark(c) ? 'ring-1 ring-white/30' : ''}`}
+                                                                        style={{ backgroundColor: c }}
+                                                                    />
+                                                                ))}
+                                                                <button
+                                                                    onClick={() => {
+                                                                        updateQuickAction(idx, 'color', undefined);
+                                                                        setQuickActionColorPickerIdx(null);
+                                                                    }}
+                                                                    className={`w-6 h-6 rounded-full shadow-sm border flex items-center justify-center bg-slate-800 ${!action.color ? 'border-white scale-110' : 'border-slate-600 text-slate-500'}`}
+                                                                    title="重置為預設"
+                                                                >
+                                                                    <X size={12} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <button onClick={addQuickAction} className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-dashed border-slate-600 flex items-center justify-center gap-2 text-sm">
+                                            <Plus size={16} /> 新增按鈕
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </>
                     )}
 
                     {/* Rounding Mode Toggle */}
