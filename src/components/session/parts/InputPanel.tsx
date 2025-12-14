@@ -185,7 +185,16 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     setUiState(p => ({ ...p, overwriteMode: true }));
                 }
             } else if (isProductMode && activeFactorIdx === 0) {
-                 setActiveFactorIdx(1);
+                 // Check if the first factor is 0. If so, skip the second factor.
+                 const currentVal = activePlayer.scores[activeColumn.id];
+                 const factors = (typeof currentVal === 'object' && currentVal?.factors) ? currentVal.factors : [0, 0];
+                 const n1 = parseFloat(String(factors[0])) || 0;
+                 
+                 if (n1 === 0) {
+                     eventHandlers.moveToNext();
+                 } else {
+                     setActiveFactorIdx(1);
+                 }
             } else {
                 eventHandlers.moveToNext();
             }
@@ -259,7 +268,8 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
         if (activeColumn.type === 'number') {
             const hasMappingRules = activeColumn.mappingRules && activeColumn.mappingRules.length > 0;
-            const useClicker = activeColumn.inputType === 'clicker' && !hasMappingRules;
+            // 關鍵修改：如果是乘積模式，強制不使用 Clicker (即使 inputType 是 clicker)
+            const useClicker = !isProductMode && activeColumn.inputType === 'clicker' && !hasMappingRules;
 
             if (useClicker) {
                  // Use the new QuickButtonPad
@@ -296,6 +306,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                   column={activeColumn} 
                   value={cellScoreObject} 
                   activeFactorIdx={activeFactorIdx}
+                  setActiveFactorIdx={setActiveFactorIdx} // 傳遞切換函式
                   localKeypadValue={isSumPartsMode ? localKeypadValue : undefined}
                   onDeleteLastPart={isSumPartsMode ? handleDeleteLastPart : undefined}
                 />;

@@ -206,11 +206,12 @@ interface NumericKeypadInfoProps {
   column: ScoreColumn;
   value: any;
   activeFactorIdx?: 0 | 1;
+  setActiveFactorIdx?: (idx: 0 | 1) => void;
   localKeypadValue?: any;
   onDeleteLastPart?: () => void;
 }
 
-export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, value, activeFactorIdx, localKeypadValue, onDeleteLastPart }) => {
+export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, value, activeFactorIdx, setActiveFactorIdx, localKeypadValue, onDeleteLastPart }) => {
     
     const activeRuleRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -256,13 +257,16 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
 
       return (
         <div className="flex flex-col h-full p-2">
-          <div className="text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 flex items-center gap-1 shrink-0"><Calculator size={12} /> 乘積運算</div>
+          <div className="text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 flex items-center gap-1 shrink-0"><Calculator size={12} /> 乘積輸入</div>
           
           <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar py-2 space-y-1">
               
               {/* Factor A Input */}
-              <div className="flex items-center gap-1.5">
-                  <div className={`flex-1 px-2 py-0.5 rounded-md border transition-all overflow-x-auto no-scrollbar flex items-center ${isFactorAActive ? 'bg-emerald-900/30 border-emerald-500' : 'bg-slate-900 border-slate-700'}`}>
+              <div 
+                className="flex items-center gap-1.5 cursor-pointer group" 
+                onClick={() => setActiveFactorIdx?.(0)}
+              >
+                  <div className={`flex-1 px-2 py-0.5 rounded-md border transition-all overflow-x-auto no-scrollbar flex items-center ${isFactorAActive ? 'bg-emerald-900/30 border-emerald-500' : 'bg-slate-900 border-slate-700 group-hover:border-slate-600'}`}>
                       <span className={`text-xl font-bold font-mono text-right w-full whitespace-nowrap leading-tight ${isFactorAActive ? 'text-white' : 'text-slate-400'}`}>{String(factors[0])}</span>
                   </div>
                   <span className={`shrink-0 text-xs uppercase text-right ${isFactorAActive ? 'text-emerald-400 font-bold' : 'text-slate-500'}`}>{unitA}</span>
@@ -272,8 +276,11 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
               <div className="flex items-center justify-center text-slate-600"><X size={12} /></div>
 
               {/* Factor B Input */}
-              <div className="flex items-center gap-1.5">
-                  <div className={`flex-1 px-2 py-0.5 rounded-md border transition-all overflow-x-auto no-scrollbar flex items-center ${isFactorBActive ? 'bg-emerald-900/30 border-emerald-500' : 'bg-slate-900 border-slate-700'}`}>
+              <div 
+                className="flex items-center gap-1.5 cursor-pointer group"
+                onClick={() => setActiveFactorIdx?.(1)}
+              >
+                  <div className={`flex-1 px-2 py-0.5 rounded-md border transition-all overflow-x-auto no-scrollbar flex items-center ${isFactorBActive ? 'bg-emerald-900/30 border-emerald-500' : 'bg-slate-900 border-slate-700 group-hover:border-slate-600'}`}>
                       <span className={`text-xl font-bold font-mono text-right w-full whitespace-nowrap leading-tight ${isFactorBActive ? 'text-white' : 'text-slate-400'}`}>{String(factors[1])}</span>
                   </div>
                   <span className={`shrink-0 text-xs uppercase text-right ${isFactorBActive ? 'text-emerald-400 font-bold' : 'text-slate-500'}`}>{unitB}</span>
@@ -297,7 +304,7 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
       return (
         <div className="flex flex-col h-full">
             <div className="text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 flex items-center gap-1 shrink-0 px-2 pt-2">
-              <PlusSquare size={12} /> 分項加總
+              <PlusSquare size={12} /> 分項累加
             </div>
             
             {/* 
@@ -433,7 +440,7 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
 
         return (
             <div className="flex flex-col h-full p-2 overflow-hidden">
-                <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0"><Ruler size={12} /> 查表規則</div>
+                <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0"><Ruler size={12} /> 範圍查表</div>
                 
                 {/* Scrollable Rules List */}
                 <div className="flex-1 overflow-y-auto no-scrollbar space-y-1 py-1">
@@ -550,7 +557,7 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
 
     return (
         <div className="flex flex-col gap-2 h-full p-2">
-            <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0"><Calculator size={12} /> 計算規則</div>
+            <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0"><Calculator size={12} /> 數值運算</div>
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 py-2">
                 <div className="bg-slate-800 rounded p-2 border border-slate-700 text-center">
                     <div className="flex items-center justify-center gap-0.5 whitespace-nowrap">

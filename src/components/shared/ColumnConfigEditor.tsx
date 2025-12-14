@@ -1,10 +1,11 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ScoreColumn, SelectOption, MappingRule, QuickAction, InputMethod } from '../../types';
 import { calculateColumnScore } from '../../utils/scoring';
 import { X, Ruler, Calculator, ListPlus, Settings, Save, Plus, Trash2, BoxSelect, PlusSquare, Keyboard, MousePointerClick, Palette, ChevronDown, ChevronRight, ToggleLeft, ToggleRight, LayoutGrid, LayoutList, ArrowUp, TrendingUp, Ban, ArrowUpToLine, Infinity as InfinityIcon, ArrowRight as ArrowRightIcon, Lock } from 'lucide-react';
 import { COLORS } from '../../constants';
 import { useVisualViewportOffset } from '../../hooks/useVisualViewportOffset';
+import ConfirmationModal from './ConfirmationModal';
 
 interface ColumnConfigEditorProps {
   column: ScoreColumn;
@@ -22,8 +23,10 @@ const isColorDark = (hex: string): boolean => {
 };
 
 const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave, onDelete, onClose }) => {
-  // Local state for editing
-  const [editedCol, setEditedCol] = useState<ScoreColumn>(() => {
+  
+  // --- Initialization Logic ---
+  // We need to run this logic once to get the starting state, and keep a copy for dirty checking.
+  const getInitialState = (): ScoreColumn => {
     // Auto-convert boolean to select on init
     if (column.type === 'boolean') {
         const yesScore = column.weight ?? 0;
@@ -39,11 +42,9 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
     }
     
     // Convert legacy overflow settings to a new linear rule if applicable
-    // This is a one-time migration during edit.
     let rules = column.mappingRules ? [...column.mappingRules] : [];
     
     // Check if we need to migrate legacy overflow settings
-    // Logic: If the last rule is finite, and there are legacy settings, append a new Infinite Linear rule
     let maxBoundary = -Infinity;
     let lastRuleIsInfinite = false;
     rules.forEach((r, idx) => {
@@ -53,7 +54,6 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
     });
 
     if (!lastRuleIsInfinite && maxBoundary > -Infinity && column.mappingStrategy === 'linear') {
-        // Migration: Append a new rule starting from maxBoundary + 1
         rules.push({
             min: maxBoundary + 1,
             max: undefined, // Infinity
@@ -61,11 +61,9 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
             isLinear: true,
             unit: column.linearUnit ?? 1
         });
-        // We effectively clear the legacy flags by not using them, but we don't delete them from data until save
     }
 
     // NEW: Enforce first rule is always fixed (non-linear)
-    // 這是為了避免 "0" 被視為 "每 1 加 1" 的第一個區間，導致從 -1 開始計算
     if (rules.length > 0 && rules[0].isLinear) {
         rules[0] = { ...rules[0], isLinear: false };
     }
@@ -74,30 +72,31 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
         ...column, 
         mappingRules: rules,
     };
-  });
+  };
+
+  // Lazy initialization of state
+  const [editedCol, setEditedCol] = useState<ScoreColumn>(getInitialState);
+  
+  // Keep a ref to the initial state for dirty checking comparison
+  // We serialize it to avoid object reference issues
+  const initialStringifiedRef = useRef(JSON.stringify(getInitialState()));
 
   const [activeTab, setActiveTab] = useState<EditorTab>(() => {
       if (column.type === 'select' || column.type === 'boolean') return 'select';
       
-      // Decide if we start in Mapping tab based on useMapping flag AND existence of rules
-      // If useMapping is explicitly false, we go to basic even if rules exist.
-      // If undefined (legacy), we default to mapping if rules exist.
       const hasRules = column.mappingRules && column.mappingRules.length > 0;
       if (column.useMapping === true) return 'mapping';
-      if (column.useMapping === false) return 'basic'; // Explicitly basic
-      if (hasRules) return 'mapping'; // Legacy default
+      if (column.useMapping === false) return 'basic';
+      if (hasRules) return 'mapping';
       
       return 'basic';
   });
 
-  // State for Color Picker in Quick Actions
   const [quickActionColorPickerIdx, setQuickActionColorPickerIdx] = useState<number | null>(null);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   
   // --- Keyboard & Layout Handling ---
-  // 使用統一的 Hook 來偵測 iOS 的鍵盤覆蓋高度
   const visualViewportOffset = useVisualViewportOffset();
-  
-  // 另外偵測視窗是否因為 Android 鍵盤彈出而變矮 (Resize 模式)
   const [isResizedByKeyboard, setIsResizedByKeyboard] = useState(false);
   
   useEffect(() => {
@@ -105,7 +104,6 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
       const initialHeight = window.innerHeight;
       
       const handleResize = () => {
-          // 如果高度縮小超過 150px (鍵盤通常高於此)，且寬度沒變 (排除旋轉)，判定為鍵盤開啟
           const heightDiff = initialHeight - window.innerHeight;
           setIsResizedByKeyboard(heightDiff > 150);
       };
@@ -114,9 +112,49 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
       return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // 綜合判斷：只要有 Offset (iOS Overlay) 或高度縮減 (Android Resize)，就視為鍵盤開啟
-  // 為了更好的體驗，當鍵盤開啟時，我們隱藏底部的 Save 按鈕，讓畫面專注於輸入內容
   const isKeyboardOpen = visualViewportOffset > 0 || isResizedByKeyboard;
+
+  useEffect(() => {
+      if (isKeyboardOpen) {
+          const timer = setTimeout(() => {
+              const activeEl = document.activeElement;
+              if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+                  activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+              }
+          }, 300);
+          return () => clearTimeout(timer);
+      }
+  }, [isKeyboardOpen]);
+
+  // --- Dirty Check & Close Handling ---
+  
+  const hasUnsavedChanges = () => {
+      return JSON.stringify(editedCol) !== initialStringifiedRef.current;
+  };
+
+  const handleAttemptClose = () => {
+      if (hasUnsavedChanges()) {
+          setShowDiscardConfirm(true);
+      } else {
+          onClose();
+      }
+  };
+
+  // 攔截手機返回鍵 (Back Button Interceptor)
+  useEffect(() => {
+      const handleBackPress = (e: Event) => {
+          // IMPORTANT: 使用 capture: true 註冊此監聽器，確保我們比父層 (SessionView) 先收到事件
+          // 如果有未儲存的變更，我們就阻止事件繼續傳遞，並顯示確認視窗
+          // 如果沒有變更，我們也阻止傳遞，並直接呼叫 onClose (這樣流程比較乾淨，由子元件控制關閉)
+          e.stopImmediatePropagation();
+          handleAttemptClose();
+      };
+
+      window.addEventListener('app-back-press', handleBackPress, { capture: true });
+      return () => {
+          window.removeEventListener('app-back-press', handleBackPress, { capture: true });
+      };
+  }, [editedCol]); // 依賴 editedCol 以便 handleAttemptClose 取得最新狀態 (或者使用 Ref)
 
 
   const handleSave = () => {
@@ -130,8 +168,6 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
         
         if (!finalUpdates.mappingRules) finalUpdates.mappingRules = [];
         
-        // Remove legacy overflow fields if we have fully migrated to rules
-        // We keep them undefined/null to clean up
         finalUpdates.mappingStrategy = undefined;
         finalUpdates.linearUnit = undefined;
         finalUpdates.linearScore = undefined;
@@ -142,8 +178,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
     } else {
         // Basic tab -> Type Number
         finalUpdates.type = 'number';
-        finalUpdates.useMapping = false; // Explicitly disable mapping (but keep the rules data!)
-        // We do NOT clear mappingRules here anymore.
+        finalUpdates.useMapping = false; 
         
         if (finalUpdates.rounding === 'none') {
             // keep it none
@@ -337,6 +372,17 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
         // 但我們選擇一個更聰明的策略：當鍵盤開啟時，隱藏 Footer，並讓 Content 填滿剩餘空間
         style={{ paddingBottom: visualViewportOffset }}
     >
+      <ConfirmationModal 
+          isOpen={showDiscardConfirm}
+          title="放棄變更？"
+          message="您有未儲存的變更，離開後將會遺失。"
+          confirmText="放棄並離開"
+          cancelText="繼續編輯"
+          isDangerous={true}
+          onConfirm={onClose}
+          onCancel={() => setShowDiscardConfirm(false)}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 flex-none z-20">
           <div className="flex items-center gap-2">
@@ -354,7 +400,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
               >
                   <Trash2 size={20}/>
               </button>
-              <button onClick={onClose} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-lg border border-slate-700"><X size={20}/></button>
+              <button onClick={handleAttemptClose} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-lg border border-slate-700"><X size={20}/></button>
           </div>
       </div>
 
@@ -400,9 +446,9 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
 
           {/* Sticky Tabs */}
           <div className="sticky top-0 z-10 flex border-y border-slate-800 bg-slate-900 shadow-lg">
-              <TabButton id="basic" label="基本設定" icon={Calculator} />
-              <TabButton id="mapping" label="查表設定" icon={Ruler} />
-              <TabButton id="select" label="選項設定" icon={ListPlus} />
+              <TabButton id="basic" label="數值運算" icon={Calculator} />
+              <TabButton id="mapping" label="範圍查表" icon={Ruler} />
+              <TabButton id="select" label="列表選單" icon={ListPlus} />
           </div>
 
           {/* Tab Content */}
@@ -446,6 +492,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                 onClick={() => setEditedCol({ 
                                     ...editedCol, 
                                     calculationType: 'product',
+                                    // inputType: 'keypad', // REMOVED: Do not override inputType for Product mode
                                     subUnits: (editedCol.subUnits && editedCol.subUnits[0] && editedCol.subUnits[1]) ? editedCol.subUnits : ['分', '個']
                                 })}
                                 className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${
@@ -536,138 +583,140 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                         </div>
                     )}
 
-                    {/* Input Method Toggle */}
-                    <div className="space-y-2 pt-2 border-t border-slate-800">
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">輸入方式</label>
-                        <ToggleSwitch 
-                            checked={isClickerEnabled} 
-                            onChange={toggleInputMethod}
-                            label="啟用按鈕面板 (Clicker)"
-                        />
-                        
-                        {isClickerEnabled && (
-                            <div className="animate-in fade-in slide-in-from-top-2 mt-4 bg-slate-900/50 p-4 rounded-xl border border-slate-700 space-y-4">
-                                <div className="flex items-center justify-between">
-                                     <label className="text-xs font-bold text-slate-400 uppercase">按鈕欄數</label>
-                                     <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
-                                        {[1, 2, 3, 4].map(cols => (
-                                            <button
-                                                key={cols}
-                                                onClick={() => setEditedCol({ ...editedCol, buttonGridColumns: cols })}
-                                                className={`w-8 h-8 rounded flex items-center justify-center text-xs font-bold transition-colors ${
-                                                    (editedCol.buttonGridColumns || 1) === cols 
-                                                        ? 'bg-slate-600 text-white' 
-                                                        : 'text-slate-500 hover:text-slate-300'
-                                                }`}
-                                            >
-                                                {cols}
-                                            </button>
-                                        ))}
-                                     </div>
-                                </div>
-                                <div className="text-[10px] text-slate-500 mb-2">
-                                    {(editedCol.buttonGridColumns || 1) === 1 
-                                        ? '目前為「清單模式」：按鈕將橫向排列，最適合閱讀。' 
-                                        : '目前為「網格模式」：按鈕將縱向堆疊，節省空間。'
-                                    }
-                                </div>
-                                
-                                <div className="border-t border-slate-700/50 pt-4 space-y-2">
-                                    <label className="text-xs font-bold text-slate-400 uppercase">按鈕列表</label>
-                                    {editedCol.quickActions?.map((action, idx) => (
-                                        <div key={action.id} className="bg-slate-800 p-2 rounded-lg border border-slate-700 transition-colors">
-                                            <div className="flex items-center gap-2">
+                    {/* Input Method Toggle - Hide if Product Mode */}
+                    {!isProductMode && (
+                        <div className="space-y-2 pt-2 border-t border-slate-800">
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-2">輸入方式</label>
+                            <ToggleSwitch 
+                                checked={isClickerEnabled} 
+                                onChange={toggleInputMethod}
+                                label="自訂按鈕加減面板"
+                            />
+                            
+                            {isClickerEnabled && (
+                                <div className="animate-in fade-in slide-in-from-top-2 mt-4 bg-slate-900/50 p-4 rounded-xl border border-slate-700 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs font-bold text-slate-400 uppercase">按鈕欄數</label>
+                                        <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+                                            {[1, 2, 3, 4].map(cols => (
                                                 <button
-                                                    onClick={() => updateQuickAction(idx, 'isModifier', !action.isModifier)}
-                                                    className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center transition-all ${
-                                                        action.isModifier 
-                                                            ? 'border-2 border-dashed border-indigo-400 bg-indigo-500/10 text-indigo-400' 
-                                                            : 'border border-slate-600 bg-slate-900 text-slate-500 hover:border-slate-500 hover:text-slate-400'
+                                                    key={cols}
+                                                    onClick={() => setEditedCol({ ...editedCol, buttonGridColumns: cols })}
+                                                    className={`w-8 h-8 rounded flex items-center justify-center text-xs font-bold transition-colors ${
+                                                        (editedCol.buttonGridColumns || 1) === cols 
+                                                            ? 'bg-slate-600 text-white' 
+                                                            : 'text-slate-500 hover:text-slate-300'
                                                     }`}
-                                                    title="切換為修飾鍵"
                                                 >
-                                                    <Plus size={18} strokeWidth={action.isModifier ? 3 : 2} />
+                                                    {cols}
                                                 </button>
-                                                
-                                                {/* Color Picker Toggle */}
-                                                <button
-                                                    onClick={() => setQuickActionColorPickerIdx(quickActionColorPickerIdx === idx ? null : idx)}
-                                                    className="w-9 h-9 shrink-0 rounded-lg border border-slate-600 flex items-center justify-center shadow-sm relative overflow-hidden"
-                                                    style={{ backgroundColor: action.color || editedCol.color || '#3b82f6' }}
-                                                    title="設定按鈕顏色"
-                                                >
-                                                    <Palette size={14} className={isColorDark(action.color || editedCol.color || '#3b82f6') ? 'text-white/80' : 'text-black/50'} />
-                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="text-[10px] text-slate-500 mb-2">
+                                        {(editedCol.buttonGridColumns || 1) === 1 
+                                            ? '目前為「清單模式」：按鈕將橫向排列，最適合閱讀。' 
+                                            : '目前為「網格模式」：按鈕將縱向堆疊，節省空間。'
+                                        }
+                                    </div>
+                                    
+                                    <div className="border-t border-slate-700/50 pt-4 space-y-2">
+                                        <label className="text-xs font-bold text-slate-400 uppercase">按鈕列表</label>
+                                        {editedCol.quickActions?.map((action, idx) => (
+                                            <div key={action.id} className="bg-slate-800 p-2 rounded-lg border border-slate-700 transition-colors">
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => updateQuickAction(idx, 'isModifier', !action.isModifier)}
+                                                        className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center transition-all ${
+                                                            action.isModifier 
+                                                                ? 'border-2 border-dashed border-indigo-400 bg-indigo-500/10 text-indigo-400' 
+                                                                : 'border border-slate-600 bg-slate-900 text-slate-500 hover:border-slate-500 hover:text-slate-400'
+                                                        }`}
+                                                        title="切換為額外添加鍵"
+                                                    >
+                                                        <Plus size={18} strokeWidth={action.isModifier ? 3 : 2} />
+                                                    </button>
+                                                    
+                                                    {/* Color Picker Toggle */}
+                                                    <button
+                                                        onClick={() => setQuickActionColorPickerIdx(quickActionColorPickerIdx === idx ? null : idx)}
+                                                        className="w-9 h-9 shrink-0 rounded-lg border border-slate-600 flex items-center justify-center shadow-sm relative overflow-hidden"
+                                                        style={{ backgroundColor: action.color || editedCol.color || '#3b82f6' }}
+                                                        title="設定按鈕顏色"
+                                                    >
+                                                        <Palette size={14} className={isColorDark(action.color || editedCol.color || '#3b82f6') ? 'text-white/80' : 'text-black/50'} />
+                                                    </button>
 
-                                                <div className="flex-1 flex gap-2 min-w-0">
-                                                    <input 
-                                                        type="text" placeholder="標籤" value={action.label}
-                                                        onChange={e => updateQuickAction(idx, 'label', e.target.value)}
-                                                        onFocus={e => e.target.select()}
-                                                        className="flex-1 min-w-[40px] bg-slate-900 border border-slate-600 rounded p-2 text-white placeholder-slate-600 text-sm outline-none focus:border-emerald-500"
-                                                    />
-                                                    <div className="relative w-14 shrink-0">
+                                                    <div className="flex-1 flex gap-2 min-w-0">
                                                         <input 
-                                                            type="text" 
-                                                            inputMode="decimal"
-                                                            placeholder="0" 
-                                                            value={action.value}
-                                                            onChange={e => {
-                                                                const str = e.target.value;
-                                                                if (str === '-' || str === '') {
-                                                                    updateQuickAction(idx, 'value', str as any);
-                                                                    return;
-                                                                }
-                                                                const num = parseFloat(str);
-                                                                if (!isNaN(num)) {
-                                                                    updateQuickAction(idx, 'value', num);
-                                                                }
-                                                            }}
+                                                            type="text" placeholder="標籤" value={action.label}
+                                                            onChange={e => updateQuickAction(idx, 'label', e.target.value)}
                                                             onFocus={e => e.target.select()}
-                                                            className="w-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-mono font-bold rounded p-2 pl-2 text-right text-sm outline-none focus:border-emerald-500"
+                                                            className="flex-1 min-w-[40px] bg-slate-900 border border-slate-600 rounded p-2 text-white placeholder-slate-600 text-sm outline-none focus:border-emerald-500"
                                                         />
+                                                        <div className="relative w-14 shrink-0">
+                                                            <input 
+                                                                type="text" 
+                                                                inputMode="decimal"
+                                                                placeholder="0" 
+                                                                value={action.value}
+                                                                onChange={e => {
+                                                                    const str = e.target.value;
+                                                                    if (str === '-' || str === '') {
+                                                                        updateQuickAction(idx, 'value', str as any);
+                                                                        return;
+                                                                    }
+                                                                    const num = parseFloat(str);
+                                                                    if (!isNaN(num)) {
+                                                                        updateQuickAction(idx, 'value', num);
+                                                                    }
+                                                                }}
+                                                                onFocus={e => e.target.select()}
+                                                                className="w-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-mono font-bold rounded p-2 pl-2 text-right text-sm outline-none focus:border-emerald-500"
+                                                            />
+                                                        </div>
                                                     </div>
+                                                    <button onClick={() => removeQuickAction(idx)} className="p-2 text-slate-500 hover:text-red-400 shrink-0"><Trash2 size={18}/></button>
                                                 </div>
-                                                <button onClick={() => removeQuickAction(idx)} className="p-2 text-slate-500 hover:text-red-400 shrink-0"><Trash2 size={18}/></button>
-                                            </div>
 
-                                            {/* Color Picker Drawer */}
-                                            {quickActionColorPickerIdx === idx && (
-                                                <div className="mt-2 p-2 bg-slate-900 rounded-lg border border-slate-700 animate-in fade-in slide-in-from-top-1">
-                                                    <div className="flex flex-wrap gap-2 justify-start">
-                                                        {COLORS.map(c => (
+                                                {/* Color Picker Drawer */}
+                                                {quickActionColorPickerIdx === idx && (
+                                                    <div className="mt-2 p-2 bg-slate-900 rounded-lg border border-slate-700 animate-in fade-in slide-in-from-top-1">
+                                                        <div className="flex flex-wrap gap-2 justify-start">
+                                                            {COLORS.map(c => (
+                                                                <button
+                                                                    key={c}
+                                                                    onClick={() => {
+                                                                        updateQuickAction(idx, 'color', c);
+                                                                        setQuickActionColorPickerIdx(null);
+                                                                    }}
+                                                                    className={`w-6 h-6 rounded-full shadow-sm border ${action.color === c ? 'border-white scale-110 ring-1 ring-white/50' : 'border-transparent opacity-80 hover:opacity-100'} ${isColorDark(c) ? 'ring-1 ring-white/30' : ''}`}
+                                                                    style={{ backgroundColor: c }}
+                                                                />
+                                                            ))}
                                                             <button
-                                                                key={c}
                                                                 onClick={() => {
-                                                                    updateQuickAction(idx, 'color', c);
+                                                                    updateQuickAction(idx, 'color', undefined);
                                                                     setQuickActionColorPickerIdx(null);
                                                                 }}
-                                                                className={`w-6 h-6 rounded-full shadow-sm border ${action.color === c ? 'border-white scale-110 ring-1 ring-white/50' : 'border-transparent opacity-80 hover:opacity-100'} ${isColorDark(c) ? 'ring-1 ring-white/30' : ''}`}
-                                                                style={{ backgroundColor: c }}
-                                                            />
-                                                        ))}
-                                                         <button
-                                                            onClick={() => {
-                                                                updateQuickAction(idx, 'color', undefined);
-                                                                setQuickActionColorPickerIdx(null);
-                                                            }}
-                                                             className={`w-6 h-6 rounded-full shadow-sm border flex items-center justify-center bg-slate-800 ${!action.color ? 'border-white scale-110' : 'border-slate-600 text-slate-500'}`}
-                                                             title="重置為預設"
-                                                         >
-                                                            <X size={12} />
-                                                         </button>
+                                                                className={`w-6 h-6 rounded-full shadow-sm border flex items-center justify-center bg-slate-800 ${!action.color ? 'border-white scale-110' : 'border-slate-600 text-slate-500'}`}
+                                                                title="重置為預設"
+                                                            >
+                                                                <X size={12} />
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button onClick={addQuickAction} className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-dashed border-slate-600 flex items-center justify-center gap-2 text-sm">
+                                        <Plus size={16} /> 新增按鈕
+                                    </button>
                                 </div>
-                                <button onClick={addQuickAction} className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-dashed border-slate-600 flex items-center justify-center gap-2 text-sm">
-                                    <Plus size={16} /> 新增按鈕
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* Rounding Mode Toggle */}
                     <div className="space-y-2 pt-2 border-t border-slate-800">
@@ -702,7 +751,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                      <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 space-y-4">
                         <p className="text-sm text-slate-400">
-                            設定數值區間與對應分數，系統將優先使用此規則。
+                            設定數值區間與對應分數，或是在區間內每a加b。
                         </p>
                         <div>
                             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">單位</label>
@@ -822,7 +871,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                             onClick={() => idx !== 0 && updateMappingRule(idx, 'isLinear', !rule.isLinear)}
                                             disabled={idx === 0}
                                             className={`w-8 h-[38px] flex flex-col items-center justify-center gap-0.5 rounded-md shrink-0 transition-colors ${idx === 0 ? 'bg-slate-900 border border-slate-700/50 cursor-not-allowed border-dashed' : 'bg-slate-800 border border-slate-600 active:bg-slate-700'}`}
-                                            title={idx === 0 ? "首項必須為固定數值（基準）" : (rule.isLinear ? "模式：線性累加" : "模式：固定分數")}
+                                            title={idx === 0 ? "首項必須為固定分數（基準）" : (rule.isLinear ? "模式：每a加b" : "模式：固定分數")}
                                         >
                                             {idx === 0 ? (
                                                 <div className="flex flex-col items-center gap-0.5">
@@ -910,7 +959,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                         })}
                     </div>
                     <button onClick={addMappingRule} className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-dashed border-slate-600 flex items-center justify-center gap-2">
-                        <Plus size={18} /> 新增規則
+                        <Plus size={18} /> 新增區間
                     </button>
                 </div>
             )}
@@ -918,7 +967,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
             {activeTab === 'select' && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     <p className="text-sm text-slate-400 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
-                        建立固定的選項清單。每個選項代表一個特定的分數。
+                        建立固定的選項列表，點按選擇對應到分數。
                     </p>
                     <div className="space-y-2">
                         {editedCol.options?.map((opt, idx) => (
@@ -945,7 +994,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                 </div>
                                 
                                 <input 
-                                    type="text" placeholder="選項說明 (如: 第一名)" value={opt.label} 
+                                    type="text" placeholder="選項說明文字" value={opt.label} 
                                     onChange={e => updateOption(idx, 'label', e.target.value)}
                                     onFocus={e => e.target.select()}
                                     className="flex-1 bg-slate-900 border border-slate-600 rounded p-2 text-white placeholder-slate-600"
