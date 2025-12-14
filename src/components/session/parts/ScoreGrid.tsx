@@ -63,8 +63,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
               onClick={(e) => onPlayerHeaderClick(p.id, e)}
               // 關鍵修改：
               // 改回 flex-auto，讓表頭在空間足夠時自動延展
-              // 保留 min-w-[54px] 確保不會縮得太小
-              className={`flex-auto w-auto min-w-[54px] border-r border-b border-slate-700 p-2 flex flex-col items-center justify-center relative cursor-pointer transition-all ${editingPlayerId === p.id ? 'z-20 ring-2 ring-inset ring-white/50' : ''}`}
+              // 改用 rem (3.375rem = 54px) 確保隨縮放係數變化
+              className={`flex-auto w-auto min-w-[3.375rem] border-r border-b border-slate-700 p-2 flex flex-col items-center justify-center relative cursor-pointer transition-all ${editingPlayerId === p.id ? 'z-20 ring-2 ring-inset ring-white/50' : ''}`}
               style={{ backgroundColor: `${p.color}20`, borderBottomColor: p.color, borderBottomWidth: '2px' }}
             >
               <span className="text-sm font-bold whitespace-nowrap" style={{ color: p.color, ...(isColorDark(p.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }}>

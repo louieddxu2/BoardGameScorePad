@@ -19,31 +19,36 @@ export const usePlayerWidthSync = (players: Player[]) => {
   useEffect(() => {
     // 建立 Observer
     observerRef.current = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        // 1. 取得表頭目前的精確寬度
-        const width = entry.borderBoxSize?.[0]?.inlineSize || entry.contentRect.width;
-        
-        // 2. 從 DOM 屬性取得 Player ID
-        const target = entry.target as HTMLElement;
-        const playerId = target.getAttribute('data-player-header-id');
-        
-        if (playerId && width > 0) {
-          // 3. 找出所有屬於這個玩家的欄位 (分數格 + 總分格)
-          // 我們使用 Class Selector 來選取，因為這最快且不受 React Render Cycle 影響
-          const cells = document.querySelectorAll(`.player-col-${playerId}`);
+      // 關鍵修復：使用 requestAnimationFrame 將寫入操作延遲到下一幀
+      // 這能避免 "ResizeObserver loop completed with undelivered notifications" 錯誤
+      window.requestAnimationFrame(() => {
+        for (const entry of entries) {
+          // 1. 取得表頭目前的精確寬度
+          const width = entry.borderBoxSize?.[0]?.inlineSize || entry.contentRect.width;
           
-          // 4. 強制同步寬度
-          const pixelWidth = `${width}px`;
-          cells.forEach((cell) => {
-             const el = cell as HTMLElement;
-             if (el.style.width !== pixelWidth) {
-                 el.style.width = pixelWidth;
-                 el.style.minWidth = pixelWidth;
-                 el.style.maxWidth = pixelWidth;
-             }
-          });
+          // 2. 從 DOM 屬性取得 Player ID
+          const target = entry.target as HTMLElement;
+          const playerId = target.getAttribute('data-player-header-id');
+          
+          if (playerId && width > 0) {
+            // 3. 找出所有屬於這個玩家的欄位 (分數格 + 總分格)
+            // 我們使用 Class Selector 來選取，因為這最快且不受 React Render Cycle 影響
+            const cells = document.querySelectorAll(`.player-col-${playerId}`);
+            
+            // 4. 強制同步寬度
+            const pixelWidth = `${width}px`;
+            cells.forEach((cell) => {
+               const el = cell as HTMLElement;
+               // 加入檢查，避免重複寫入導致的 Layout Thrashing
+               if (el.style.width !== pixelWidth) {
+                   el.style.width = pixelWidth;
+                   el.style.minWidth = pixelWidth;
+                   el.style.maxWidth = pixelWidth;
+               }
+            });
+          }
         }
-      }
+      });
     });
 
     // 開始監聽所有玩家的表頭

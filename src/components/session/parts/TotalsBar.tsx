@@ -44,9 +44,9 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
               // 1. 移除 flex-auto, shrink-0
               // 2. 加入 flex-none (禁止彈性)
               // 3. 加入 player-col-${player.id} 供 JS Hook 抓取並設定寬度
-              // 4. 預設 style={{ width: 54 }}
+              // 4. 預設 style={{ width: '3.375rem' }} (約 54px)
               className={`player-col-${p.id} flex-none border-r border-slate-800 flex flex-col items-center justify-center relative h-full overflow-hidden`}
-              style={{ width: '54px', backgroundColor: `${p.color}20`, borderTopColor: p.color, borderTopWidth: '2px' }}
+              style={{ width: '3.375rem', backgroundColor: `${p.color}20`, borderTopColor: p.color, borderTopWidth: '2px' }}
             >
               <span className="font-black text-lg leading-none w-full text-center truncate px-1" style={{ color: p.color, ...(isColorDark(p.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }}>
                 {p.totalScore}

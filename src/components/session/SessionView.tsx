@@ -90,16 +90,30 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     if (!gridContent || !totalContent) return;
 
     const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.target === gridContent) {
-           // We use offsetWidth to get the precise integer pixel width rendered by the browser.
-           // IMPORTANT: The Grid Container includes the sticky header column (70px).
-           // The TotalsBar content container ONLY contains the player columns (the 70px header is separate).
-           // Therefore, we must subtract 70px to ensure the player columns align perfectly.
-           const width = gridContent.offsetWidth;
-           totalContent.style.width = `${Math.max(0, width - 70)}px`;
+      // 關鍵修復：使用 requestAnimationFrame 避免 loop error
+      window.requestAnimationFrame(() => {
+        for (const entry of entries) {
+          if (entry.target === gridContent) {
+             // We use offsetWidth to get the precise integer pixel width rendered by the browser.
+             // IMPORTANT: The Grid Container includes the sticky header column.
+             // We must dynamically calculate the header width because it now uses rem and scales with zoom.
+             const gridWidth = gridContent.offsetWidth;
+             
+             // Try to find the sticky header element to get its exact current pixel width
+             // It's the first child of the header row
+             const stickyHeader = document.querySelector('#live-player-header-row > div:first-child') as HTMLElement;
+             const headerOffset = stickyHeader ? stickyHeader.offsetWidth : 70; // Fallback to 70 if not found (rare)
+
+             // The TotalsBar content container ONLY contains the player columns.
+             // Therefore, we must subtract the header width to ensure alignment.
+             const newTotalWidth = `${Math.max(0, gridWidth - headerOffset)}px`;
+             
+             if (totalContent.style.width !== newTotalWidth) {
+                 totalContent.style.width = newTotalWidth;
+             }
+          }
         }
-      }
+      });
     });
 
     observer.observe(gridContent);
