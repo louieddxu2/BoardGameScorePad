@@ -156,7 +156,16 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
         );
         // HIDE Sidebar content when focused
         sidebarContentNode = isInputFocused ? null : <PlayerEditorInfo />;
-        onNextAction = () => eventHandlers.handlePlayerNameSubmit(activePlayer!.id, uiState.tempPlayerName, true);
+        
+        // [關鍵修正]：在執行下一位邏輯前，先強制 blur() 當前焦點元素(輸入框)。
+        // 這會觸發虛擬鍵盤收起。雖然 InputPanelLayout 有 preventDefault 防止點擊時 blur，
+        // 但我們這裡手動呼叫 blur() 可以覆蓋該行為，達到「點擊後收鍵盤」的效果。
+        onNextAction = () => {
+            if (document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+            }
+            eventHandlers.handlePlayerNameSubmit(activePlayer!.id, uiState.tempPlayerName, true);
+        };
     }
 
   } else if (editingCell) {

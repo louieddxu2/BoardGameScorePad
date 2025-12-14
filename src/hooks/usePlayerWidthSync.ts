@@ -1,5 +1,4 @@
-
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { Player } from '../types';
 
 /**
@@ -15,7 +14,9 @@ export const usePlayerWidthSync = (players: Player[]) => {
   // 只有當玩家 "數量改變" 或 "改名" (這些才會影響 Header 寬度) 時，才需要重置佈局。
   const layoutSignature = players.map(p => `${p.id}:${p.name}`).join('|');
 
-  useEffect(() => {
+  // 使用 useLayoutEffect 而非 useEffect，確保在瀏覽器進行繪製(Paint)之前就執行重置。
+  // 這對於手機瀏覽器特別重要，能避免因執行時機過晚導致的佈局不同步或閃爍。
+  useLayoutEffect(() => {
     // 定義重置邏輯：清除所有由 JS 設定的強制寬度
     const resetWidths = () => {
       players.forEach(p => {
@@ -34,6 +35,7 @@ export const usePlayerWidthSync = (players: Player[]) => {
     resetWidths();
 
     // 2. 處理視窗縮放 (Zoom/Resize)
+    // 在手機上，鍵盤彈出或旋轉螢幕都會觸發 resize，此時必須重置寬度以適應新尺寸
     window.addEventListener('resize', resetWidths, { capture: true });
 
     // 3. 建立 Observer 監聽表頭寬度
@@ -79,5 +81,5 @@ export const usePlayerWidthSync = (players: Player[]) => {
         if (observerRef.current) observerRef.current.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layoutSignature]); // 關鍵：僅依賴佈局特徵字串，忽略 players 內的分數變動
+  }, [layoutSignature]); // 關鍵：僅依賴佈局特徵字串
 };
