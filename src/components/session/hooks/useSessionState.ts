@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { GameSession, GameTemplate } from '../../../types';
 
@@ -49,6 +50,11 @@ export const useSessionState = (props: SessionViewProps) => {
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const totalBarScrollRef = useRef<HTMLDivElement>(null);
+  
+  // New refs for Width Synchronization
+  // These point to the inner content div that determines the full scrollable width
+  const gridContentRef = useRef<HTMLDivElement>(null);
+  const totalContentRef = useRef<HTMLDivElement>(null);
   
   // --- Effects for state transitions ---
 
@@ -133,5 +139,7 @@ export const useSessionState = (props: SessionViewProps) => {
     panelHeight,
     tableContainerRef,
     totalBarScrollRef,
+    gridContentRef,
+    totalContentRef,
   };
 };

@@ -56,47 +56,56 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     .filter(p => p.totalScore === Math.max(...session.players.map(pl => pl.totalScore)))
     .map(p => p.id);
 
-  // --- Scroll & Layout Synchronization ---
-  // 1. Syncs horizontal scroll position between Grid and TotalsBar.
-  // 2. Syncs physical width of TotalsBar inner container to match Grid inner container (for Zoom alignment).
+  // --- Scroll Synchronization ---
+  // Ensures that when the user scrolls the main grid, the totals bar follows horizontally.
   useEffect(() => {
-    const gridScrollWrapper = sessionState.tableContainerRef.current;
-    const barScrollWrapper = sessionState.totalBarScrollRef.current;
-    
-    // We need to target the *content* containers, not the scroll wrappers
-    const gridContent = document.getElementById('live-grid-container');
-    const barContent = document.getElementById('live-totals-inner');
+    const grid = sessionState.tableContainerRef.current;
+    const bar = sessionState.totalBarScrollRef.current;
 
-    if (!gridScrollWrapper || !barScrollWrapper || !gridContent || !barContent) return;
+    if (!grid || !bar) return;
 
-    // A. Scroll Sync
     const handleScroll = () => {
-      if (barScrollWrapper.scrollLeft !== gridScrollWrapper.scrollLeft) {
-          barScrollWrapper.scrollLeft = gridScrollWrapper.scrollLeft;
+      // Sync the bar's scroll position to the grid's
+      if (bar.scrollLeft !== grid.scrollLeft) {
+          bar.scrollLeft = grid.scrollLeft;
       }
     };
-    gridScrollWrapper.addEventListener('scroll', handleScroll, { passive: true });
-
-    // B. Width Sync (ResizeObserver)
-    const resizeObserver = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-            if (entry.target === gridContent) {
-                // Force the totals bar inner width to match the grid's content width
-                // This ensures that when zoom expands the grid, the totals bar expands equally
-                barContent.style.width = `${entry.contentRect.width}px`;
-            }
-        }
-    });
-    resizeObserver.observe(gridContent);
 
     // Initial sync
     handleScroll();
 
+    grid.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
-      gridScrollWrapper.removeEventListener('scroll', handleScroll);
-      resizeObserver.disconnect();
+      grid.removeEventListener('scroll', handleScroll);
     };
   }, [sessionState.tableContainerRef, sessionState.totalBarScrollRef]);
+
+  // --- Width Synchronization (New!) ---
+  // Uses ResizeObserver to strictly force the TotalsBar content width to match the ScoreGrid content width.
+  // This solves the alignment issue during zoom/resize without needing complex HTML restructuring.
+  useEffect(() => {
+    const gridContent = sessionState.gridContentRef.current;
+    const totalContent = sessionState.totalContentRef.current;
+
+    if (!gridContent || !totalContent) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.target === gridContent) {
+           // We use offsetWidth to get the precise integer pixel width rendered by the browser.
+           // IMPORTANT: The Grid Container includes the sticky header column (70px).
+           // The TotalsBar content container ONLY contains the player columns (the 70px header is separate).
+           // Therefore, we must subtract 70px to ensure the player columns align perfectly.
+           const width = gridContent.offsetWidth;
+           totalContent.style.width = `${Math.max(0, width - 70)}px`;
+        }
+      }
+    });
+
+    observer.observe(gridContent);
+    return () => observer.disconnect();
+  }, [sessionState.gridContentRef, sessionState.totalContentRef]);
+
 
   return (
     <div className="flex flex-col h-full bg-slate-900 text-slate-100 overflow-hidden relative">
@@ -147,9 +156,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         {/* 
            Conditional Focus Mask:
            Only show this transparent blocker when editing a PLAYER NAME and the keyboard is OPEN.
-           This allows the user to click anywhere to dismiss the keyboard (blur) without accidentally opening another cell.
-           
-           For normal cell editing (Keypad), this is deliberately omitted so users can jump between cells with one tap.
         */}
         {editingPlayerId && isInputFocused && (
             <div 
@@ -171,6 +177,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           onColumnHeaderClick={eventHandlers.handleColumnHeaderClick}
           onUpdateTemplate={props.onUpdateTemplate}
           scrollContainerRef={sessionState.tableContainerRef}
+          contentRef={sessionState.gridContentRef}
         />
       </div>
 
@@ -180,6 +187,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         isPanelOpen={isPanelOpen}
         panelHeight={sessionState.panelHeight}
         scrollRef={sessionState.totalBarScrollRef}
+        contentRef={sessionState.totalContentRef}
         isHidden={isInputFocused}
       />
 

@@ -10,7 +10,8 @@ interface TotalsBarProps {
   isPanelOpen: boolean;
   panelHeight: string;
   scrollRef: React.RefObject<HTMLDivElement>;
-  isHidden?: boolean; // New prop to control visibility
+  contentRef: React.RefObject<HTMLDivElement>;
+  isHidden?: boolean;
 }
 
 const TotalsBar: React.FC<TotalsBarProps> = ({
@@ -19,11 +20,9 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
   isPanelOpen,
   panelHeight,
   scrollRef,
+  contentRef,
   isHidden = false
 }) => {
-  // Logic moved to parent (SessionView) to ensure reliable ref access
-
-  // Use opacity and pointer-events to hide, maintaining DOM stability and transition context
   return (
     <div
       id="live-totals-bar"
@@ -34,24 +33,27 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
         <span className="font-black text-emerald-400 text-sm">總分</span>
       </div>
       <div className="flex-1 overflow-x-auto no-scrollbar" ref={scrollRef}>
-        <div id="live-totals-inner" className="flex min-w-fit h-full">
+        <div 
+            className="flex min-w-fit h-full"
+            ref={contentRef}
+        >
           {players.map(p => (
             <div
               key={p.id}
-              className="min-w-[54px] flex-1 border-r border-slate-800 flex flex-col items-center justify-center relative h-full px-1"
-              style={{ backgroundColor: `${p.color}20`, borderTopColor: p.color, borderTopWidth: '2px' }}
+              // 關鍵修改：
+              // 1. 移除 flex-auto, shrink-0
+              // 2. 加入 flex-none (禁止彈性)
+              // 3. 加入 player-col-${player.id} 供 JS Hook 抓取並設定寬度
+              // 4. 預設 style={{ width: 54 }}
+              className={`player-col-${p.id} flex-none border-r border-slate-800 flex flex-col items-center justify-center relative h-full overflow-hidden`}
+              style={{ width: '54px', backgroundColor: `${p.color}20`, borderTopColor: p.color, borderTopWidth: '2px' }}
             >
-              {/* Force Layout Sizing: Hidden name mimics header width pressure */}
-              <div className="h-0 overflow-hidden invisible font-bold text-sm px-2 w-full text-center">{p.name}</div>
-              
-              <div className="flex items-center justify-center w-full h-full relative">
-                <span className="font-black text-lg leading-none" style={{ color: p.color, ...(isColorDark(p.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }}>
-                    {p.totalScore}
-                </span>
-                {winners.includes(p.id) && players.length > 1 && (
-                    <Crown size={14} className="text-yellow-400 absolute -top-1 -right-0.5" fill="currentColor" />
-                )}
-              </div>
+              <span className="font-black text-lg leading-none w-full text-center truncate px-1" style={{ color: p.color, ...(isColorDark(p.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }}>
+                {p.totalScore}
+              </span>
+              {winners.includes(p.id) && players.length > 1 && (
+                <Crown size={14} className="text-yellow-400 absolute top-0.5 right-0.5" fill="currentColor" />
+              )}
             </div>
           ))}
         </div>
