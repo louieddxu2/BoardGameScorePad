@@ -1,3 +1,4 @@
+
 import { useLayoutEffect, useRef } from 'react';
 import { Player } from '../types';
 
@@ -7,15 +8,14 @@ import { Player } from '../types';
  */
 export const usePlayerWidthSync = (players: Player[]) => {
   const observerRef = useRef<ResizeObserver | null>(null);
+  
+  // 記錄上一次的視窗寬度，用來過濾掉「只改變高度」(如手機鍵盤彈出) 的 resize 事件
+  const prevWindowWidth = useRef(typeof window !== 'undefined' ? window.innerWidth : 0);
 
   // [關鍵優化]
   // 建立一個僅包含 "ID" 與 "名稱" 的特徵字串。
-  // 我們不希望 useEffect 在 `players` 內的 `scores` 或 `totalScore` 改變時執行 (這會導致輸入分數時頻閃)，
-  // 只有當玩家 "數量改變" 或 "改名" (這些才會影響 Header 寬度) 時，才需要重置佈局。
   const layoutSignature = players.map(p => `${p.id}:${p.name}`).join('|');
 
-  // 使用 useLayoutEffect 而非 useEffect，確保在瀏覽器進行繪製(Paint)之前就執行重置。
-  // 這對於手機瀏覽器特別重要，能避免因執行時機過晚導致的佈局不同步或閃爍。
   useLayoutEffect(() => {
     // 定義重置邏輯：清除所有由 JS 設定的強制寬度
     const resetWidths = () => {
@@ -23,7 +23,6 @@ export const usePlayerWidthSync = (players: Player[]) => {
         const cells = document.querySelectorAll(`.player-col-${p.id}`);
         cells.forEach((c) => {
            const el = c as HTMLElement;
-           // 清空寬度，讓它回歸 CSS 定義的預設值 (flex-auto 或 min-content)
            el.style.width = '';
            el.style.minWidth = '';
            el.style.maxWidth = '';
@@ -31,21 +30,29 @@ export const usePlayerWidthSync = (players: Player[]) => {
       });
     };
 
-    // 1. 當佈局特徵改變 (改名/增減人) 時，立即重置寬度，讓 flex-auto 重新計算
+    // 1. 當佈局特徵改變 (改名/增減人) 時，無條件立即重置
+    // 這是由依賴項 [layoutSignature] 觸發的
     resetWidths();
 
     // 2. 處理視窗縮放 (Zoom/Resize)
-    // 在手機上，鍵盤彈出或旋轉螢幕都會觸發 resize，此時必須重置寬度以適應新尺寸
-    window.addEventListener('resize', resetWidths, { capture: true });
+    // 關鍵修正：加入寬度檢查，忽略手機鍵盤彈出造成的垂直 resize
+    const handleResize = () => {
+        const currentWidth = window.innerWidth;
+        // 只有當寬度發生變化 (縮放、旋轉螢幕) 時才重置
+        if (currentWidth !== prevWindowWidth.current) {
+            resetWidths();
+            prevWindowWidth.current = currentWidth;
+        }
+    };
+
+    window.addEventListener('resize', handleResize, { capture: true });
 
     // 3. 建立 Observer 監聽表頭寬度
     observerRef.current = new ResizeObserver((entries) => {
-      // 使用 requestAnimationFrame 避免 "Loop completed with undelivered notifications"
       window.requestAnimationFrame(() => {
         for (const entry of entries) {
           const target = entry.target as HTMLElement;
           
-          // 取得 Header 目前由瀏覽器計算出的精確寬度 (包含 Flex 伸展後)
           const exactWidth = target.getBoundingClientRect().width;
           const pixelWidth = `${exactWidth}px`;
           
@@ -55,8 +62,6 @@ export const usePlayerWidthSync = (players: Player[]) => {
             const cells = document.querySelectorAll(`.player-col-${playerId}`);
             cells.forEach((cell) => {
                const el = cell as HTMLElement;
-               // 將 Header 的寬度同步鎖定給所有下方的 Cells
-               // 只有當數值真的改變時才寫入，減少 DOM 操作與頻閃
                if (el.style.width !== pixelWidth) {
                    el.style.width = pixelWidth;
                    el.style.minWidth = pixelWidth;
@@ -68,7 +73,6 @@ export const usePlayerWidthSync = (players: Player[]) => {
       });
     });
 
-    // 開始監聽所有玩家的表頭
     players.forEach(p => {
         const headerEl = document.getElementById(`header-${p.id}`);
         if (headerEl && observerRef.current) {
@@ -77,9 +81,9 @@ export const usePlayerWidthSync = (players: Player[]) => {
     });
 
     return () => {
-        window.removeEventListener('resize', resetWidths, { capture: true });
+        window.removeEventListener('resize', handleResize, { capture: true });
         if (observerRef.current) observerRef.current.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layoutSignature]); // 關鍵：僅依賴佈局特徵字串
+  }, [layoutSignature]); 
 };

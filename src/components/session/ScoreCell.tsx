@@ -18,9 +18,10 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
 
   // 關鍵修改：
   // 1. 加入 `player-col-${player.id}` class，讓 JS Hook 可以抓到它。
-  // 2. 將 `flex-auto` 改為 `flex-none`。這很重要！
-  //    因為寬度已經由 JS 精確控制了，如果不設為 none，Flexbox 可能會因為內容多寡再次微調寬度，導致對齊誤差。
-  const baseContainerClasses = `player-col-${player.id} flex-none ${forceHeight || 'min-h-[4rem]'} border-r border-b relative cursor-pointer transition-colors select-none flex flex-col justify-center items-center overflow-hidden`;
+  // 2. 將 `flex-auto` 改為 `flex-none`。
+  // 3. 新增 `min-w-[3.375rem]` (54px) 作為 CSS 預設值，而不使用 inline style。
+  //    這讓 JS Hook 可以完全控制 style.width 而不會被 React re-render 覆蓋。
+  const baseContainerClasses = `player-col-${player.id} flex-none min-w-[3.375rem] ${forceHeight || 'min-h-[4rem]'} border-r border-b relative cursor-pointer transition-colors select-none flex flex-col justify-center items-center overflow-hidden`;
   
   // Determine Visual Style (Colors)
   let visualClasses = '';
@@ -37,7 +38,7 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
   // Boolean Render
   if (column.type === 'boolean') {
     return (
-      <div onClick={onClick} className={`${baseContainerClasses} ${visualClasses}`} style={{ width: '54px' }}>
+      <div onClick={onClick} className={`${baseContainerClasses} ${visualClasses}`}>
         {rawData ? <Check size={24} className="text-emerald-500" /> : <div className={`w-2 h-2 rounded-full ${screenshotMode ? 'bg-slate-700/50' : 'bg-slate-700'}`} />}
       </div>
     );
@@ -66,7 +67,7 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
         : 'text-slate-600';
 
     return (
-      <div onClick={onClick} className={`${baseContainerClasses} ${visualClasses}`} style={{ width: '54px' }}>
+      <div onClick={onClick} className={`${baseContainerClasses} ${visualClasses}`}>
          {/* Added w-full, text-center, truncate */}
          <span className={`text-xl font-bold w-full text-center truncate px-1 ${scoreColor} ${forceHeight ? 'leading-none' : ''}`}>
             {rawVal !== undefined ? displayScore : '-'}
@@ -111,7 +112,7 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
   // Dynamic Row Height Logic for Sum Parts (List View)
   if (showAdvancedSumPartsLayout) {
     return (
-      <div onClick={onClick} className={`${baseContainerClasses} ${visualClasses}`} style={{ width: '54px' }}>
+      <div onClick={onClick} className={`${baseContainerClasses} ${visualClasses}`}>
         
         <div className="w-full h-full flex flex-row items-stretch overflow-hidden">
             {/* Left side: Total Score. */}
@@ -139,7 +140,7 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
 
   // Standard Render
   return (
-    <div onClick={onClick} className={`${baseContainerClasses} ${visualClasses}`} style={{ width: '54px' }}>
+    <div onClick={onClick} className={`${baseContainerClasses} ${visualClasses}`}>
       
       {/* Centered Main Score - Added truncate/w-full */}
       <span className={`text-xl font-bold tracking-tight w-full text-center truncate px-1 ${mainScoreColor} ${forceHeight ? 'leading-none' : ''}`}>

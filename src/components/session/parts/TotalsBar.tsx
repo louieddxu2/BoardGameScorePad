@@ -41,10 +41,10 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
             <div
               key={p.id}
               // 關鍵修改：
-              // 1. 加入 player-col-${p.id}
-              // 2. 改為 flex-none，寬度完全由 JS 控制
-              className={`player-col-${p.id} flex-none border-r border-slate-800 flex flex-col items-center justify-center relative h-full overflow-hidden`}
-              style={{ width: '3.375rem', backgroundColor: `${p.color}20`, borderTopColor: p.color, borderTopWidth: '2px' }}
+              // 1. 移除 inline style width
+              // 2. 加入 min-w-[3.375rem]
+              className={`player-col-${p.id} flex-none min-w-[3.375rem] border-r border-slate-800 flex flex-col items-center justify-center relative h-full overflow-hidden`}
+              style={{ backgroundColor: `${p.color}20`, borderTopColor: p.color, borderTopWidth: '2px' }}
             >
               <span className="font-black text-lg leading-none w-full text-center truncate px-1" style={{ color: p.color, ...(isColorDark(p.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }}>
                 {p.totalScore}
