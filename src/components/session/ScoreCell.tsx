@@ -17,10 +17,9 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
   const rawData = player.scores[column.id];
 
   // 關鍵修改：
-  // 1. 移除 flex-auto, flex-1
-  // 2. 加入 flex-none (禁止彈性)
-  // 3. 加入 player-col-${player.id} 供 JS Hook 抓取並設定寬度
-  // 4. 預設 style={{ width: 54 }} 作為初始值 (Hook 執行後會覆蓋)
+  // 1. 加入 `player-col-${player.id}` class，讓 JS Hook 可以抓到它。
+  // 2. 將 `flex-auto` 改為 `flex-none`。這很重要！
+  //    因為寬度已經由 JS 精確控制了，如果不設為 none，Flexbox 可能會因為內容多寡再次微調寬度，導致對齊誤差。
   const baseContainerClasses = `player-col-${player.id} flex-none ${forceHeight || 'min-h-[4rem]'} border-r border-b relative cursor-pointer transition-colors select-none flex flex-col justify-center items-center overflow-hidden`;
   
   // Determine Visual Style (Colors)

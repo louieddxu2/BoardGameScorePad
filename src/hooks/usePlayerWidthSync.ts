@@ -3,43 +3,53 @@ import { useEffect, useRef } from 'react';
 import { Player } from '../types';
 
 /**
- * 這是一個佈局同步 Hook。
- * 它的作用是：
- * 1. 監聽「玩家表頭 (Header)」的寬度變化。
- * 2. 當表頭因為名字變長而被撐開時，取得其精確像素寬度。
- * 3. 尋找所有屬於該玩家的「分數格 (Cell)」與「總分格 (Total)」。
- * 4. 直接設定 style.width / minWidth / maxWidth，強制它們與表頭同寬。
- * 
- * 這比純 CSS (Flex/Grid) 更可靠，因為它能跨越不同的捲動容器 (Scroll Container) 進行對齊。
+ * 佈局同步 Hook
+ * 解決 Flexbox "Auto-fill" 與 "Column Alignment" 的衝突。
  */
 export const usePlayerWidthSync = (players: Player[]) => {
-  // 用來存放 ResizeObserver 的 Ref，確保元件卸載時能斷開連結
   const observerRef = useRef<ResizeObserver | null>(null);
 
   useEffect(() => {
-    // 建立 Observer
+    // 1. 處理視窗縮放 (Zoom/Resize)
+    // 這是解決「無法縮小」的關鍵：在重繪前，先釋放下方欄位的寬度限制，
+    // 讓容器能自然縮小，接著 ResizeObserver 才會抓到正確縮小後的 Header 寬度。
+    const handleResize = () => {
+      // 這裡不需擔心效能，因為只有在改變視窗大小時觸發
+      players.forEach(p => {
+        const cells = document.querySelectorAll(`.player-col-${p.id}`);
+        cells.forEach((c) => {
+           const el = c as HTMLElement;
+           // 清空寬度，讓它回歸 min-content 或 flex 預設，允許容器收縮
+           el.style.width = '';
+           el.style.minWidth = '';
+           el.style.maxWidth = '';
+        });
+      });
+    };
+    
+    // 使用 capture 確保盡早觸發
+    window.addEventListener('resize', handleResize, { capture: true });
+
+    // 2. 建立 Observer 監聽表頭寬度
     observerRef.current = new ResizeObserver((entries) => {
-      // 關鍵修復：使用 requestAnimationFrame 將寫入操作延遲到下一幀
-      // 這能避免 "ResizeObserver loop completed with undelivered notifications" 錯誤
+      // 使用 requestAnimationFrame 解決 "Loop completed with undelivered notifications"
       window.requestAnimationFrame(() => {
         for (const entry of entries) {
-          // 1. 取得表頭目前的精確寬度
-          const width = entry.borderBoxSize?.[0]?.inlineSize || entry.contentRect.width;
-          
-          // 2. 從 DOM 屬性取得 Player ID
           const target = entry.target as HTMLElement;
+          // 取得精確的像素寬度 (包含小數點)
+          const width = entry.contentRect.width; 
           const playerId = target.getAttribute('data-player-header-id');
           
           if (playerId && width > 0) {
-            // 3. 找出所有屬於這個玩家的欄位 (分數格 + 總分格)
-            // 我們使用 Class Selector 來選取，因為這最快且不受 React Render Cycle 影響
+            // 加上 padding/border 的補償 (因為 contentRect 不含 border，但 style.width 通常指 border-box)
+            // 這裡簡單使用 getBoundingClientRect 來獲取最準確的渲染寬度
+            const exactWidth = target.getBoundingClientRect().width;
+            const pixelWidth = `${exactWidth}px`;
+
             const cells = document.querySelectorAll(`.player-col-${playerId}`);
-            
-            // 4. 強制同步寬度
-            const pixelWidth = `${width}px`;
             cells.forEach((cell) => {
                const el = cell as HTMLElement;
-               // 加入檢查，避免重複寫入導致的 Layout Thrashing
+               // 只有當數值真的改變時才寫入，減少 DOM 操作
                if (el.style.width !== pixelWidth) {
                    el.style.width = pixelWidth;
                    el.style.minWidth = pixelWidth;
@@ -60,7 +70,8 @@ export const usePlayerWidthSync = (players: Player[]) => {
     });
 
     return () => {
+        window.removeEventListener('resize', handleResize, { capture: true });
         if (observerRef.current) observerRef.current.disconnect();
     };
-  }, [players.length]); // 當玩家數量改變時，重新綁定
+  }, [players]); // 當玩家列表改變時重新綁定
 };

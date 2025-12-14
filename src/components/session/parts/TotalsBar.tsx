@@ -41,10 +41,8 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
             <div
               key={p.id}
               // 關鍵修改：
-              // 1. 移除 flex-auto, shrink-0
-              // 2. 加入 flex-none (禁止彈性)
-              // 3. 加入 player-col-${player.id} 供 JS Hook 抓取並設定寬度
-              // 4. 預設 style={{ width: '3.375rem' }} (約 54px)
+              // 1. 加入 player-col-${p.id}
+              // 2. 改為 flex-none，寬度完全由 JS 控制
               className={`player-col-${p.id} flex-none border-r border-slate-800 flex flex-col items-center justify-center relative h-full overflow-hidden`}
               style={{ width: '3.375rem', backgroundColor: `${p.color}20`, borderTopColor: p.color, borderTopWidth: '2px' }}
             >
