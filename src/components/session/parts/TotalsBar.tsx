@@ -32,7 +32,7 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
       <div className="w-[70px] bg-slate-800 border-r border-slate-700 flex items-center justify-center shrink-0 z-40 relative border-t-2 border-transparent">
         <span className="font-black text-emerald-400 text-sm">總分</span>
       </div>
-      <div className="flex-1 overflow-x-auto no-scrollbar" ref={scrollRef}>
+      <div className="flex-1 overflow-hidden" ref={scrollRef}>
         <div 
             className="flex min-w-fit h-full"
             ref={contentRef}

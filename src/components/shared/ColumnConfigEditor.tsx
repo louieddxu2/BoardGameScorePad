@@ -567,7 +567,8 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                     value={editedCol.weight ?? 1} 
                                     onChange={e => {
                                         const val = e.target.value;
-                                        if (val === '' || val === '-') {
+                                        // Allow decimal intermediate state
+                                        if (val === '' || val === '-' || val.endsWith('.') || (val.includes('.') && val.endsWith('0'))) {
                                             setEditedCol({...editedCol, weight: val as any});
                                         } else {
                                             const num = parseFloat(val);
@@ -689,7 +690,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                                                     value={action.value}
                                                                     onChange={e => {
                                                                         const str = e.target.value;
-                                                                        if (str === '-' || str === '') {
+                                                                        if (str === '-' || str === '' || str.endsWith('.') || (str.includes('.') && str.endsWith('0'))) {
                                                                             updateQuickAction(idx, 'value', str as any);
                                                                             return;
                                                                         }
@@ -840,7 +841,8 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                             // 移除 HTML min 屬性，改用 state 邏輯控制
                                             onChange={e => {
                                                 const val = e.target.value;
-                                                if (val === '' || val === '-') {
+                                                // Allow decimal intermediate state
+                                                if (val === '' || val === '-' || val.endsWith('.') || (val.includes('.') && val.endsWith('0'))) {
                                                     updateMappingRule(idx, 'min', val as any);
                                                 } else {
                                                     const num = parseFloat(val);
@@ -876,7 +878,8 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                                     value={rule.max ?? ''} 
                                                     onChange={e => {
                                                         const val = e.target.value;
-                                                        if (val === '' || val === '-') {
+                                                        // Allow decimal intermediate state
+                                                        if (val === '' || val === '-' || val.endsWith('.') || (val.includes('.') && val.endsWith('0'))) {
                                                             updateMappingRule(idx, 'max', val as any);
                                                         } else {
                                                             const num = parseFloat(val);
@@ -928,9 +931,19 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                                     <div className="relative bg-slate-900 border border-slate-600 rounded-md flex items-center overflow-hidden">
                                                         <span className="absolute left-2 text-[10px] text-slate-500 font-bold z-10 pointer-events-none">每</span>
                                                         <input 
-                                                            type="number" 
+                                                            type="text"
+                                                            inputMode="decimal" 
                                                             value={rule.unit ?? 1} 
-                                                            onChange={e => updateMappingRule(idx, 'unit', parseFloat(e.target.value))}
+                                                            onChange={e => {
+                                                                const val = e.target.value;
+                                                                // Allow decimal intermediate state
+                                                                if (val === '' || val === '-' || val.endsWith('.') || (val.includes('.') && val.endsWith('0'))) {
+                                                                    updateMappingRule(idx, 'unit', val as any);
+                                                                } else {
+                                                                    const num = parseFloat(val);
+                                                                    if (!isNaN(num)) updateMappingRule(idx, 'unit', num);
+                                                                }
+                                                            }}
                                                             onFocus={e => e.target.select()}
                                                             className="w-full h-full bg-transparent text-white text-center text-sm pl-4 pr-1 outline-none font-medium"
                                                         />
@@ -944,7 +957,8 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                                             value={rule.score} 
                                                             onChange={e => {
                                                                 const val = e.target.value;
-                                                                if (val === '' || val === '-') {
+                                                                // Allow decimal intermediate state
+                                                                if (val === '' || val === '-' || val.endsWith('.') || (val.includes('.') && val.endsWith('0'))) {
                                                                     updateMappingRule(idx, 'score', val as any);
                                                                 } else {
                                                                     const num = parseFloat(val);
@@ -965,7 +979,8 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                                         value={rule.score} 
                                                         onChange={e => {
                                                             const val = e.target.value;
-                                                            if (val === '' || val === '-') {
+                                                            // Allow decimal intermediate state
+                                                            if (val === '' || val === '-' || val.endsWith('.') || (val.includes('.') && val.endsWith('0'))) {
                                                                 updateMappingRule(idx, 'score', val as any);
                                                             } else {
                                                                 const num = parseFloat(val);
@@ -1008,7 +1023,8 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                         value={opt.value} 
                                         onChange={e => {
                                             const val = e.target.value;
-                                            if (val === '' || val === '-') {
+                                            // Allow decimal intermediate state
+                                            if (val === '' || val === '-' || val.endsWith('.') || (val.includes('.') && val.endsWith('0'))) {
                                                 updateOption(idx, 'value', val as any);
                                             } else {
                                                 const num = parseFloat(val);
