@@ -34,19 +34,29 @@ export const NumericKeypadContent: React.FC<NumericKeypadContentProps> = (props)
 
   const getCurrentValueRaw = (): string => {
     if (typeof value === 'object' && value !== null && 'value' in value) {
-      return String(value.value ?? 0);
+      const val = value.value;
+      // FIX: Explicitly handle -0, because String(-0) results in "0"
+      if (Object.is(val, -0)) {
+        return '-0';
+      }
+      return String(val ?? 0);
     }
     return String(value ?? 0);
   };
 
   const getFactors = (): [string, string] => {
     if (typeof value === 'object' && value !== null && 'factors' in value && Array.isArray(value.factors) && value.factors.length === 2) {
-        return [String(value.factors[0]), String(value.factors[1])];
+        const [f1, f2] = value.factors;
+        // FIX: Explicitly handle -0 for both factors
+        const s1 = Object.is(f1, -0) ? '-0' : String(f1 ?? 0);
+        const s2 = Object.is(f2, -0) ? '-0' : String(f2 ?? 0);
+        return [s1, s2];
     }
     return ['0', '0'];
   };
 
-  const isProductMode = column.calculationType === 'product';
+  // --- Fix: Use `formula` instead of `calculationType`
+  const isProductMode = column.formula === 'a1×a2';
 
   const isToggleMode = (() => {
     if (overwrite) return false;
@@ -81,7 +91,7 @@ export const NumericKeypadContent: React.FC<NumericKeypadContentProps> = (props)
       const currentFactorStr = factors[activeFactorIdx];
       const newFactorStr = processValue(currentFactorStr);
 
-      const newFactors: [string|number, string|number] = [...factors];
+      const newFactors: (string|number)[] = [...factors];
       newFactors[activeFactorIdx] = newFactorStr.includes('.') ? newFactorStr : parseFloat(newFactorStr);
       
       const n1 = parseFloat(String(newFactors[0])) || 0;
@@ -116,7 +126,7 @@ export const NumericKeypadContent: React.FC<NumericKeypadContentProps> = (props)
       const currentFactorStr = factors[activeFactorIdx];
       const newFactorStr = processValue(currentFactorStr);
 
-      const newFactors: [string, string] = [...factors];
+      const newFactors: string[] = [...factors];
       newFactors[activeFactorIdx] = newFactorStr;
 
       const n1 = parseFloat(newFactors[0]) || 0;
@@ -142,7 +152,7 @@ export const NumericKeypadContent: React.FC<NumericKeypadContentProps> = (props)
           const factors = getFactors();
           const currentFactorStr = factors[activeFactorIdx];
           const newFactorStr = processValue(currentFactorStr);
-          const newFactors: [string, string] = [...factors];
+          const newFactors: string[] = [...factors];
           newFactors[activeFactorIdx] = newFactorStr;
           const n1 = parseFloat(newFactors[0]) || 0;
           const n2 = parseFloat(newFactors[1]) || 0;
@@ -170,7 +180,7 @@ export const NumericKeypadContent: React.FC<NumericKeypadContentProps> = (props)
         const currentFactorStr = factors[activeFactorIdx];
         const newFactorStr = processValue(currentFactorStr);
 
-        const newFactors: [string|number, string|number] = [...factors];
+        const newFactors: (string|number)[] = [...factors];
         newFactors[activeFactorIdx] = newFactorStr.includes('.') || newFactorStr === '-0' ? newFactorStr : parseFloat(newFactorStr);
 
         const n1 = parseFloat(String(newFactors[0])) || 0;
@@ -228,16 +238,19 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
     }, [rawValueForEffect]);
 
     // Prepare history parts safely
-    const historyParts = column.calculationType === 'sum-parts' ? getScoreHistory(value) : [];
+    // --- Fix: Use `formula` instead of `calculationType`
+    const historyParts = (column.formula || '').includes('+next') ? getScoreHistory(value) : [];
 
     // Effect 2: Auto-scroll history in Sum-Parts mode
     useEffect(() => {
-        if (column.calculationType === 'sum-parts' && scrollContainerRef.current) {
+        // --- Fix: Use `formula` instead of `calculationType`
+        if ((column.formula || '').includes('+next') && scrollContainerRef.current) {
             scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
         }
-    }, [historyParts.length, column.calculationType]);
+    }, [historyParts.length, column.formula]);
 
-    if (column.calculationType === 'product') {
+    // --- Fix: Use `formula` instead of `calculationType`
+    if (column.formula === 'a1×a2') {
       const factors = getFactors(value);
       const unitA = column.subUnits?.[0] || '數量';
       const unitB = column.subUnits?.[1] || '單價';
@@ -296,14 +309,16 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
       );
     }
     
-    if (column.calculationType === 'sum-parts') {
+    // --- Fix: Use `formula` instead of `calculationType`
+    if ((column.formula || '').includes('+next')) {
       const parts = historyParts;
       const currentInputRaw = (typeof localKeypadValue === 'object') ? localKeypadValue.value : localKeypadValue;
       const currentInputStr = String(currentInputRaw || '0');
       
       // Determine if we should show the input preview.
       // We HIDE it if we are in "Clicker" mode AND there are no mapping rules (which would force keypad mode).
-      const hasMappingRules = column.mappingRules && column.mappingRules.length > 0;
+      // --- Fix: Use `f1` instead of `mappingRules`
+      const hasMappingRules = column.f1 && column.f1.length > 0;
       const showInputPreview = !(column.inputType === 'clicker' && !hasMappingRules);
 
       return (
@@ -369,7 +384,8 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
     }
 
     const unit = column.unit || '';
-    if (column.mappingRules && column.mappingRules.length > 0) {
+    // --- Fix: Use `f1` instead of `mappingRules`
+    if (column.f1 && column.f1.length > 0) {
         
         // --- Calculate Active Rule & Breakdowns for Footer ---
         const currentVal = parseFloat(String(getRawValue(value))) || 0;
@@ -378,11 +394,13 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
         let finalScore = 0;
 
         // Find match
-        for (let idx = 0; idx < column.mappingRules.length; idx++) {
-            const rule = column.mappingRules[idx];
+        // --- Fix: Use `f1` instead of `mappingRules`
+        for (let idx = 0; idx < column.f1.length; idx++) {
+            const rule = column.f1[idx];
             let effectiveMax = Infinity;
             if (rule.max === 'next') {
-                const nextRule = column.mappingRules[idx + 1];
+                // --- Fix: Use `f1` instead of `mappingRules`
+                const nextRule = column.f1[idx + 1];
                 if (nextRule && typeof nextRule.min === 'number') {
                     effectiveMax = nextRule.min - 1;
                 }
@@ -403,7 +421,8 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
              if (activeRule.isLinear) {
                  const min = activeRule.min ?? 0;
                  const prevLimit = min - 1;
-                 const baseScore = calculateColumnScore(column, prevLimit);
+                 // --- Fix: `calculateColumnScore` expects an array
+                 const baseScore = calculateColumnScore(column, [prevLimit]);
                  const ruleUnit = Math.max(1, activeRule.unit || 1);
                  const excess = currentVal - prevLimit;
                  const count = Math.floor(excess / ruleUnit);
@@ -419,7 +438,8 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
              if (activeRule.isLinear) {
                  const min = activeRule.min ?? 0;
                  const prevLimit = min - 1;
-                 const baseScore = calculateColumnScore(column, prevLimit);
+                 // --- Fix: `calculateColumnScore` expects an array
+                 const baseScore = calculateColumnScore(column, [prevLimit]);
                  const ruleUnit = Math.max(1, activeRule.unit || 1);
                  const excess = currentVal - prevLimit;
                  const count = Math.floor(excess / ruleUnit);
@@ -451,12 +471,14 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
                 
                 {/* Scrollable Rules List */}
                 <div className="flex-1 overflow-y-auto no-scrollbar space-y-1 py-1">
-                    {column.mappingRules.map((rule, idx) => {
+                    {/* --- Fix: Use `f1` instead of `mappingRules` */}
+                    {column.f1.map((rule, idx) => {
                         // ... Logic to resolve min/max for list display ...
                         // Resolve effective max for comparison (re-calculated for loop scope)
                         let effectiveMax = Infinity;
                         if (rule.max === 'next') {
-                            const nextRule = column.mappingRules?.[idx + 1];
+                            // --- Fix: Use `f1` instead of `mappingRules`
+                            const nextRule = column.f1?.[idx + 1];
                             if (nextRule && typeof nextRule.min === 'number') {
                                 effectiveMax = nextRule.min - 1;
                             }
@@ -568,9 +590,10 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 py-2">
                 <div className="bg-slate-800 rounded p-2 border border-slate-700 text-center">
                     <div className="flex items-center justify-center gap-0.5 whitespace-nowrap">
-                        {(column.weight ?? 1) !== 1 ? (
+                        {/* --- Fix: Use `formula` and `constants` instead of `weight` */}
+                        {column.formula === 'a1×c1' ? (
                             <>
-                                <span className="text-xl font-bold text-emerald-400 font-mono leading-none">{column.weight ?? 1}</span>
+                                <span className="text-xl font-bold text-emerald-400 font-mono leading-none">{column.constants?.c1 ?? 1}</span>
                                 <span className="text-slate-500 text-xs leading-none">×</span>
                             </>
                         ) : null}
@@ -585,6 +608,11 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
 };
 
 const getFactors = (value: any): [string | number, string | number] => {
+  // New format: { parts: [a, b] }
+  if (value && Array.isArray(value.parts)) {
+    return [value.parts[0] ?? 0, value.parts[1] ?? 0];
+  }
+  // Legacy format: { factors: [a, b] }
   if (typeof value === 'object' && value !== null && 'factors' in value && Array.isArray(value.factors) && value.factors.length === 2) {
       return value.factors as [string | number, string | number];
   }

@@ -1,3 +1,6 @@
+
+
+
 import React, { useCallback, useEffect } from 'react';
 import { GameSession, GameTemplate, ScoreColumn } from '../../../types';
 import { useSessionState } from './useSessionState';
@@ -137,7 +140,7 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
   };
 
   const handleAddBlankColumn = () => {
-    const newCol: ScoreColumn = { id: crypto.randomUUID(), name: `項目 ${template.columns.length + 1}`, type: 'number', isScoring: true, weight: 1, options: [], mappingRules: [], unit: '', rounding: 'none', quickButtons: [] };
+    const newCol: ScoreColumn = { id: crypto.randomUUID(), name: `項目 ${template.columns.length + 1}`, isScoring: true, formula: 'a1', inputType: 'keypad', rounding: 'none' };
     onUpdateTemplate({ ...template, columns: [...template.columns, newCol] });
     setUiState(p => ({ ...p, isAddColumnModalOpen: false }));
   };

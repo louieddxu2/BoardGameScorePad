@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { GameTemplate, ScoreColumn } from '../../types';
 import { Save, ArrowLeft, Layers, Minus, Plus } from 'lucide-react';
@@ -45,14 +43,10 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
             const added = Array.from({ length: addedCount }).map((_, i) => ({
                 id: crypto.randomUUID(),
                 name: `項目 ${existing.length + i + 1}`,
-                type: 'number' as const,
                 isScoring: true,
-                weight: 1,
-                options: [],
-                mappingRules: [],
-                unit: '',
+                formula: 'a1',
+                inputType: 'keypad' as const,
                 rounding: 'none' as const,
-                quickButtons: []
             }));
             newColumns = [...existing, ...added];
         }
@@ -60,14 +54,10 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
         newColumns = Array.from({ length: columnCount }).map((_, i) => ({
             id: crypto.randomUUID(),
             name: `項目 ${i + 1}`,
-            type: 'number',
             isScoring: true,
-            weight: 1,
-            options: [],
-            mappingRules: [],
-            unit: '',
-            rounding: 'none',
-            quickButtons: [],
+            formula: 'a1',
+            inputType: 'keypad' as const,
+            rounding: 'none' as const,
             color: COLORS[i % COLORS.length]
         }));
     }

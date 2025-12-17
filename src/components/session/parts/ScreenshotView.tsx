@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { GameSession, GameTemplate } from '../../../types';
 import { Trophy, Crown, Settings } from 'lucide-react';
@@ -79,15 +78,16 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoom
               className={`w-[70px] border-r-2 border-b ${rowBorderClass} p-2 text-center shrink-0 flex flex-col justify-center bg-slate-800`}
               style={{ borderRightColor: getColumnBorderRight(col.color) }}
             >
-              <span className="text-sm font-bold text-slate-300 w-full break-words whitespace-pre-wrap leading-tight" style={{ ...(col.color && { color: col.color, ...(isColorDark(col.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }) }}>
+              <span className="text-sm font-bold text-slate-300 w-full break-words whitespace-normal leading-tight" style={{ ...(col.color && { color: col.color, ...(isColorDark(col.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }) }}>
                   {col.name}
               </span>
                {col.isScoring && (
                   <div className="text-xs text-slate-500 mt-1 flex flex-col items-center justify-center w-full leading-none">
                       {(() => {
-                          if (col.calculationType === 'product' && col.subUnits) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="">{col.subUnits[0]}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="">{col.subUnits[1]}</span></div>;
-                          if (col.type === 'select') return <div className="flex items-center gap-1"><Settings size={10} />{col.unit && <span className="text-xs">{col.unit}</span>}</div>;
-                          if (col.weight !== 1) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="text-emerald-500 font-bold font-mono">{col.weight}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="">{col.unit}</span></div>;
+                          // --- Fix: Use `formula` and `options` for logic, not `type` or `calculationType`
+                          if (col.formula === 'a1×a2' && col.subUnits) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="">{col.subUnits[0]}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="">{col.subUnits[1]}</span></div>;
+                          if (col.inputType === 'clicker' && !col.formula.includes('+next')) return <div className="flex items-center gap-1"><Settings size={10} />{col.unit && <span className="text-xs">{col.unit}</span>}</div>;
+                          if (col.formula === 'a1×c1') return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="text-emerald-500 font-bold font-mono">{col.constants?.c1 ?? 1}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="">{col.unit}</span></div>;
                           if (col.unit) return <span className="text-xs">{col.unit}</span>;
                           return null;
                       })()}

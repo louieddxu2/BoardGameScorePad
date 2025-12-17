@@ -1,170 +1,79 @@
 
-import { Player, ScoreColumn, GameTemplate, MappingRule } from '../types';
+import { Player, ScoreColumn, GameTemplate, ScoreValue } from '../types';
 
 /**
- * Extracts a numeric value from a potential ScoreValue object or primitive number.
- * Handles string inputs (e.g. "5.") by parsing them.
+ * Calculates the score for a single column based on its formula and input parts.
  */
-export const getRawValue = (score: any): number | undefined => {
-  if (score === undefined || score === null) return undefined;
-  if (typeof score === 'object' && 'value' in score) {
-    const val = score.value;
-    if (typeof val === 'string') {
-        const parsed = parseFloat(val);
-        return isNaN(parsed) ? 0 : parsed;
-    }
-    return Number(val);
-  }
-  if (typeof score === 'string') {
-      const parsed = parseFloat(score);
-      return isNaN(parsed) ? 0 : parsed;
-  }
-  return Number(score);
-};
+export const calculateColumnScore = (col: ScoreColumn, parts: number[]): number => {
+  if (!col.isScoring) return 0;
+  if (!parts || parts.length === 0) return 0;
 
-/**
- * Extracts the history array from a potential ScoreValue object.
- */
-export const getScoreHistory = (score: any): string[] => {
-  if (score && typeof score === 'object' && 'history' in score && Array.isArray(score.history)) {
-    return score.history;
+  let calculated = 0;
+
+  // --- Formula Parsing and Calculation ---
+
+  // 1. Sum of Parts: a1+next
+  if ((col.formula || '').includes('+next')) {
+    calculated = parts.reduce((sum, part) => sum + part, 0);
+    // Note: The old 'weight' for sum-parts is intentionally ignored as per new design.
   }
-  return [];
-};
-
-/**
- * Calculates the score for a single column based on the raw value and column rules.
- * Handles multipliers (weight), rounding, and mapping rules.
- */
-export const calculateColumnScore = (col: ScoreColumn, rawValue: any): number => {
-  // Boolean logic
-  if (col.type === 'boolean') {
-    return rawValue === true ? (col.weight ?? 0) : 0;
+  // 2. Product: a1×a2
+  else if (col.formula === 'a1×a2') {
+    const a = parts[0] ?? 0;
+    const b = parts[1] ?? 0;
+    calculated = a * b;
   }
-
-  const valNum = getRawValue(rawValue);
-  if (valNum === undefined || isNaN(valNum)) return 0;
-
-  // Select logic (Simple multiplication)
-  if (col.type === 'select') {
-    return valNum * (col.weight ?? 1);
-  }
-
-  // Number logic
-  if (col.type === 'number') {
-    
-    // 1. Check Mapping Rules (these override other calculations)
-    // Only apply if useMapping is NOT explicitly false.
-    // (Undefined defaults to true if rules exist, for backward compatibility)
-    if (col.useMapping !== false && col.mappingRules && col.mappingRules.length > 0) {
-      
-      // We look for the FIRST matching rule.
-      // Since rules are usually ordered Min -> Max, this works.
-      const ruleIndex = col.mappingRules.findIndex((r, index, allRules) => {
-        // Determine effective Max
-        let effectiveMax: number;
-        if (r.max === 'next') {
-            const nextRule = allRules[index + 1];
-            if (nextRule && typeof nextRule.min === 'number') {
-                effectiveMax = nextRule.min - 1;
-            } else {
-                effectiveMax = Infinity; 
-            }
-        } else {
-            effectiveMax = r.max === undefined ? Infinity : r.max;
-        }
-        
-        const aboveMin = r.min === undefined || valNum >= r.min;
-        const belowMax = valNum <= effectiveMax;
-        return aboveMin && belowMax;
+  // 3. Function Mapping: f1(a1)
+  else if (col.formula.startsWith('f1')) {
+    const valNum = parts[0] ?? 0;
+    const rules = col.f1 || [];
+    if (rules.length > 0) {
+      const ruleIndex = rules.findIndex((r, index, allRules) => {
+        let effectiveMax = r.max === 'next'
+          ? (allRules[index + 1]?.min ? allRules[index + 1].min! - 1 : Infinity)
+          : (r.max === undefined ? Infinity : r.max);
+        return (r.min === undefined || valNum >= r.min) && (valNum <= effectiveMax);
       });
 
       if (ruleIndex !== -1) {
-          const rule = col.mappingRules[ruleIndex];
-          
-          // Case A: Standard Fixed Score
-          if (!rule.isLinear) {
-              return rule.score;
+          const rule = rules[ruleIndex];
+          if (rule.isLinear) {
+            const startVal = rule.min ?? 0; 
+            const prevEnd = startVal - 1;
+            // Recursively call to get base score, passing only the value part.
+            const baseScore = calculateColumnScore(col, [prevEnd]);
+            const unit = Math.max(1, rule.unit || 1);
+            const offset = valNum - prevEnd;
+            const increments = Math.floor(offset / unit);
+            calculated = baseScore + (increments * rule.score);
+          } else {
+            calculated = rule.score;
           }
-
-          // Case B: Linear Progression ("Every")
-          // Formula: BaseScore + floor((Current - PrevEnd) / Unit) * Slope
-          
-          const unit = Math.max(1, rule.unit || 1);
-          const startVal = rule.min ?? 0; 
-          const prevEnd = startVal - 1;
-
-          // Calculate Base Score (Score at PrevEnd)
-          // We recursively call calculateColumnScore for the value 'prevEnd'
-          // This ensures we chain correctly if the previous rule was also linear or just flat.
-          // Note: If startVal is -Infinity (undefined min), this logic is fragile, but usually min is defined for linear rules.
-          let baseScore = 0;
-          if (rule.min !== undefined) {
-             // We pass 'false' as 2nd arg to avoid treating prevEnd as a raw object? No, rawValue can be number.
-             // We use a clone of column without the current linear rule to avoid infinite recursion?
-             // Actually, since prevEnd < rule.min, it strictly matches an EARLIER rule (or no rule).
-             // So recursion is safe and naturally terminates.
-             baseScore = calculateColumnScore(col, prevEnd);
-          }
-          
-          const offset = valNum - prevEnd;
-          // If offset < 0, it shouldn't have matched this rule, but just in case.
-          const increments = Math.floor(offset / unit);
-          
-          return baseScore + (increments * rule.score);
+      } else {
+        calculated = 0; // Default for gaps
       }
-      
-      // Fallback: Legacy Overflow Logic (if no rule matched, e.g. gaps, though gaps usually return 0)
-      // This supports old templates that relied on global mappingStrategy
-      let maxBoundary = -Infinity;
-      let lastRuleScore = 0;
-      let lastRuleIsInfinite = false;
-
-      col.mappingRules.forEach((r, idx, all) => {
-          let eMax = r.max === 'next' ? (all[idx+1]?.min ? all[idx+1].min! - 1 : Infinity) : (r.max ?? Infinity);
-          if (eMax > maxBoundary) {
-              maxBoundary = eMax;
-              lastRuleScore = r.score;
-          }
-          if (eMax === Infinity) lastRuleIsInfinite = true;
-      });
-
-      if (!lastRuleIsInfinite && valNum > maxBoundary) {
-           const strategy = col.mappingStrategy || 'linear';
-           if (strategy === 'zero') return 0;
-           if (strategy === 'linear') {
-               const unit = col.linearUnit || 1;
-               const scorePerUnit = col.linearScore ?? 1;
-               const excess = valNum - maxBoundary;
-               const increments = Math.floor(excess / unit);
-               return lastRuleScore + (increments * scorePerUnit);
-           }
-      }
-
-      return 0; // Default for gaps
     }
-
-    let calculated;
-
-    // 2. Product vs. Standard/Sum-Parts Calculation
-    if (col.calculationType === 'product') {
+  }
+  // 4. Standard Weighting: a1 or a1×c1
+  else {
+    const valNum = parts[0] ?? 0;
+    if (col.formula === 'a1×c1') {
+        calculated = valNum * (col.constants?.c1 ?? 1);
+    } else { // 'a1'
         calculated = valNum;
-    } else {
-        calculated = valNum * (col.weight ?? 1);
     }
-
-    // 3. Rounding
-    if (col.rounding) {
-      switch (col.rounding) {
-        case 'floor': calculated = Math.floor(calculated); break;
-        case 'ceil': calculated = Math.ceil(calculated); break;
-        case 'round': calculated = Math.round(calculated); break;
-      }
-    }
-    return calculated;
   }
 
-  return 0;
+  // --- Final Rounding ---
+  if (col.rounding && col.rounding !== 'none') {
+    switch (col.rounding) {
+      case 'floor': calculated = Math.floor(calculated); break;
+      case 'ceil': calculated = Math.ceil(calculated); break;
+      case 'round': calculated = Math.round(calculated); break;
+    }
+  }
+  
+  return calculated;
 };
 
 /**
@@ -174,9 +83,32 @@ export const calculatePlayerTotal = (player: Player, template: GameTemplate): nu
   let total = 0;
   template.columns.forEach(col => {
     if (col.isScoring) {
-      const rawScore = player.scores[col.id];
-      total += calculateColumnScore(col, rawScore);
+      const scoreValue: ScoreValue | undefined = player.scores[col.id];
+      const parts = scoreValue?.parts || [];
+      total += calculateColumnScore(col, parts);
     }
   });
   return total;
+};
+
+// --- Fix: Add missing helper functions for backward compatibility ---
+/**
+ * Extracts the primary numeric value from a ScoreValue object or legacy formats.
+ */
+export const getRawValue = (value: any): number => {
+    if (value === null || value === undefined) return 0;
+    if (value.parts && value.parts.length > 0) return value.parts[0]; // New format
+    if (typeof value === 'object' && 'value' in value) return parseFloat(String(value.value)) || 0; // Legacy
+    if (typeof value === 'number' || typeof value === 'string') return parseFloat(String(value)) || 0;
+    return 0;
+};
+
+/**
+ * Extracts the history array from score formats that support it.
+ */
+export const getScoreHistory = (value: any): string[] => {
+    if (value === null || value === undefined) return [];
+    if (value.parts) return value.parts.map(String); // New format
+    if (typeof value === 'object' && Array.isArray(value.history)) return value.history; // Legacy
+    return [];
 };

@@ -1,5 +1,3 @@
-
-
 import React, { useState } from 'react';
 import { GameTemplate } from '../../types';
 import { DEFAULT_TEMPLATES } from '../../constants';
@@ -10,6 +8,7 @@ import { useToast } from '../../hooks/useToast';
 interface DashboardProps {
   userTemplates: GameTemplate[];
   systemOverrides: Record<string, GameTemplate>;
+  systemTemplates: GameTemplate[]; // New prop: Pre-migrated system templates
   pinnedIds: string[];
   knownSysIds: string[];
   onTemplateSelect: (template: GameTemplate) => void;
@@ -28,6 +27,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({
   userTemplates,
   systemOverrides,
+  systemTemplates,
   pinnedIds,
   knownSysIds,
   onTemplateSelect,
@@ -68,11 +68,9 @@ const Dashboard: React.FC<DashboardProps> = ({
   const { showToast } = useToast();
 
   // --- Helpers ---
-  const isSystemTemplate = (id: string) => DEFAULT_TEMPLATES.some(dt => dt.id === id);
-  const getSystemTemplates = () => DEFAULT_TEMPLATES.map(dt => systemOverrides[dt.id] || dt);
   const newSystemTemplatesCount = DEFAULT_TEMPLATES.filter(dt => !knownSysIds.includes(dt.id)).length;
   
-  const allTemplates = [...userTemplates, ...getSystemTemplates()];
+  const allTemplates = [...userTemplates, ...systemTemplates];
 
   const filterTemplates = (t: GameTemplate) => 
     t.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -84,7 +82,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const filteredPinnedTemplates = pinnedTemplates.filter(filterTemplates);
   const userTemplatesToShow = userTemplates.filter(t => !pinnedIds.includes(t.id));
   const filteredUserTemplates = userTemplatesToShow.filter(filterTemplates);
-  const systemTemplatesToShow = getSystemTemplates().filter(t => !pinnedIds.includes(t.id));
+  const systemTemplatesToShow = systemTemplates.filter(t => !pinnedIds.includes(t.id));
   const filteredSystemTemplates = systemTemplatesToShow.filter(filterTemplates);
 
   // --- Handlers ---

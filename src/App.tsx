@@ -242,6 +242,7 @@ const App: React.FC = () => {
         <Dashboard 
           userTemplates={appData.templates}
           systemOverrides={appData.systemOverrides}
+          systemTemplates={appData.systemTemplates}
           pinnedIds={appData.pinnedIds}
           knownSysIds={appData.knownSysIds}
           onTemplateSelect={initSetup}

@@ -50,7 +50,8 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction }) => 
         {actions.map(action => {
             const bg = action.color || column.color || '#ffffff';
             const isDark = isColorDark(bg);
-            const isModifier = action.isModifier;
+            // FIX: Only show modifier style if it's actually in sum-parts mode
+            const isModifier = column.formula.includes('+next') && action.isModifier;
             const textColor = isDark ? 'white' : '#0f172a';
 
             return (

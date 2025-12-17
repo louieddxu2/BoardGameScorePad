@@ -1,6 +1,8 @@
 
+
+
 import React, { useState, useEffect, useRef } from 'react';
-import { GameSession, GameTemplate, Player, ScoreColumn, QuickAction } from '../../../types';
+import { GameSession, GameTemplate, Player, ScoreColumn, QuickAction, ScoreValue } from '../../../types';
 import { useSessionState } from '../hooks/useSessionState';
 import { useSessionEvents } from '../hooks/useSessionEvents';
 import { NumericKeypadContent, NumericKeypadInfo } from '../../shared/NumericKeypad';
@@ -78,36 +80,46 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
   const { uiState, setUiState, panelHeight } = sessionState;
   const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused } = uiState;
 
-  // 使用我們新寫的 Hook 來偵測鍵盤偏移量
   const visualViewportOffset = useVisualViewportOffset();
-
-  // Local state for keypad to decouple transient input from persisted score
   const [localKeypadValue, setLocalKeypadValue] = useState<any>(0);
-  
-  // Lifted state for product mode
   const [activeFactorIdx, setActiveFactorIdx] = useState<0 | 1>(0);
 
   useEffect(() => {
-    setActiveFactorIdx(0); // Reset factor index when cell changes
-    setLocalKeypadValue(0); // Reset temp keypad input
-    setUiState(p => ({ ...p, overwriteMode: true })); // Reset to overwrite mode
+    setActiveFactorIdx(0);
+    setLocalKeypadValue(0);
+    setUiState(p => ({ ...p, overwriteMode: true }));
   }, [editingCell]);
-
 
   const isPanelOpen = editingCell !== null || editingPlayerId !== null;
 
   const updateScore = (playerId: string, colId: string, value: any) => {
-    const players = session.players.map(p =>
-      p.id !== playerId ? p : { ...p, scores: { ...p.scores, [colId]: value } }
-    );
-    onUpdateSession({ ...session, players });
+    const players = session.players.map(p => {
+        if (p.id !== playerId) return p;
+        const newScores = { ...p.scores };
+        const col = template.columns.find(c => c.id === colId);
+
+        if (value === undefined || value === null || !col) {
+            delete newScores[colId];
+        } else {
+            let parts: number[] = [];
+            if ((col.formula || '').includes('+next')) {
+                parts = (value.history || []).map((s: string) => parseFloat(s)).filter((n: number) => !isNaN(n));
+            } else if (col.formula === 'a1×a2') {
+                parts = (value.factors || []).map((f: any) => parseFloat(String(f))).filter((n: number) => !isNaN(n));
+            } else {
+                const rawVal = (typeof value === 'object' && value.value !== undefined) ? value.value : value;
+                const num = parseFloat(String(rawVal));
+                if (!isNaN(num)) parts = [num];
+            }
+            newScores[colId] = { parts };
+        }
+        return { ...p, scores: newScores };
+    });
+    onUpdateSession({ ...session, players: players });
   };
 
   const handleDirectionToggle = () => {
-    setUiState(p => ({
-      ...p,
-      advanceDirection: p.advanceDirection === 'horizontal' ? 'vertical' : 'horizontal'
-    }));
+    setUiState(p => ({ ...p, advanceDirection: p.advanceDirection === 'horizontal' ? 'vertical' : 'horizontal' }));
   };
 
   const handleClear = () => {
@@ -117,7 +129,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
       const player = session.players.find(p => p.id === editingCell.playerId);
       const col = template.columns.find(c => c.id === editingCell.colId);
       if (player && col) {
-        if (col.calculationType === 'sum-parts') {
+        if ((col.formula || '').includes('+next')) {
             setLocalKeypadValue(0);
         }
         updateScore(player.id, col.id, undefined);
@@ -126,7 +138,6 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     }
   };
   
-  // --- Prepare Content ---
   let mainContentNode = null;
   let sidebarContentNode: React.ReactNode = null;
   let onNextAction = () => {};
@@ -143,66 +154,46 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     if (activePlayer) {
         mainContentNode = (
             <PlayerEditor
-              player={activePlayer}
-              playerHistory={playerHistory}
-              tempName={uiState.tempPlayerName}
+              player={activePlayer} playerHistory={playerHistory} tempName={uiState.tempPlayerName}
               setTempName={(name) => setUiState(p => ({ ...p, tempPlayerName: name }))}
-              isInputFocused={uiState.isInputFocused}
-              setIsInputFocused={(focused) => setUiState(p => ({ ...p, isInputFocused: focused }))}
+              isInputFocused={uiState.isInputFocused} setIsInputFocused={(focused) => setUiState(p => ({ ...p, isInputFocused: focused }))}
               onUpdatePlayerColor={(color) => onUpdateSession({ ...session, players: session.players.map(p => p.id === editingPlayerId ? { ...p, color } : p) })}
               onNameSubmit={eventHandlers.handlePlayerNameSubmit}
             />
         );
-        // HIDE Sidebar content when focused
         sidebarContentNode = isInputFocused ? null : <PlayerEditorInfo />;
-        
-        // [關鍵修正]：在執行下一位邏輯前，先強制 blur() 當前焦點元素(輸入框)。
-        // 這會觸發虛擬鍵盤收起。雖然 InputPanelLayout 有 preventDefault 防止點擊時 blur，
-        // 但我們這裡手動呼叫 blur() 可以覆蓋該行為，達到「點擊後收鍵盤」的效果。
         onNextAction = () => {
-            if (document.activeElement instanceof HTMLElement) {
-                document.activeElement.blur();
-            }
+            if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
             eventHandlers.handlePlayerNameSubmit(activePlayer!.id, uiState.tempPlayerName, true);
         };
     }
-
   } else if (editingCell) {
     activeColumn = template.columns.find(c => c.id === editingCell.colId);
     activePlayer = session.players.find(p => p.id === editingCell.playerId);
 
     if (activeColumn && activePlayer) {
-        const isProductMode = activeColumn.calculationType === 'product';
-        const isSumPartsMode = activeColumn.calculationType === 'sum-parts';
+        const isProductMode = activeColumn.formula === 'a1×a2';
+        const isSumPartsMode = (activeColumn.formula || '').includes('+next');
         const cellScoreObject = activePlayer.scores[activeColumn.id];
 
-        // Define Next Action based on mode
         onNextAction = () => {
-            if (isSumPartsMode) {
+            if (isSumPartsMode && activeColumn.inputType === 'keypad') {
                 const newPartRaw = (typeof localKeypadValue === 'object') ? localKeypadValue.value : localKeypadValue;
                 const newPart = parseFloat(String(newPartRaw)) || 0;
-
-                if (newPart === 0) {
-                    eventHandlers.moveToNext();
-                } else {
-                    const currentScore = cellScoreObject || { value: 0, history: [] };
-                    const newHistory = [...(currentScore.history || []), String(newPart)];
+                if (newPart !== 0) {
+                    const currentHistory = getScoreHistory(cellScoreObject);
+                    const newHistory = [...currentHistory, String(newPart)];
                     const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
                     updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
                     setLocalKeypadValue(0);
                     setUiState(p => ({ ...p, overwriteMode: true }));
+                } else {
+                    eventHandlers.moveToNext();
                 }
             } else if (isProductMode && activeFactorIdx === 0) {
-                 // Check if the first factor is 0. If so, skip the second factor.
-                 const currentVal = activePlayer.scores[activeColumn.id];
-                 const factors = (typeof currentVal === 'object' && currentVal?.factors) ? currentVal.factors : [0, 0];
-                 const n1 = parseFloat(String(factors[0])) || 0;
-                 
-                 if (n1 === 0) {
-                     eventHandlers.moveToNext();
-                 } else {
-                     setActiveFactorIdx(1);
-                 }
+                 const n1 = parseFloat(String(cellScoreObject?.parts?.[0] ?? 0)) || 0;
+                 if (n1 !== 0) setActiveFactorIdx(1);
+                 else eventHandlers.moveToNext();
             } else {
                 eventHandlers.moveToNext();
             }
@@ -210,9 +201,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
         const handleDeleteLastPart = () => {
             if (!activePlayer || !activeColumn) return;
-            const currentScore = activePlayer.scores[activeColumn.id];
-            const currentHistory = getScoreHistory(currentScore);
-            
+            const currentHistory = getScoreHistory(cellScoreObject);
             if (currentHistory.length > 0) {
                 const newHistory = currentHistory.slice(0, -1);
                 const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
@@ -222,150 +211,55 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
         const handleQuickButtonAction = (action: QuickAction) => {
              if (!activePlayer || !activeColumn) return;
-             const val = action.value;
              
              if (isSumPartsMode) {
-                  // Sum Parts Mode
-                  const currentScore = cellScoreObject || { value: 0, history: [] };
-                  let newHistory = [...(currentScore.history || [])];
-
-                  // Handle Modifier Logic: If modifier AND history exists, modify the last entry
+                  const currentHistory = getScoreHistory(cellScoreObject);
+                  let newHistory = [...currentHistory];
                   if (action.isModifier && newHistory.length > 0) {
-                       const lastVal = parseFloat(newHistory.pop() || '0');
-                       const newVal = lastVal + val;
-                       newHistory.push(String(newVal));
+                       newHistory[newHistory.length - 1] = String(parseFloat(newHistory[newHistory.length - 1]) + action.value);
                   } else {
-                       // Normal Append
-                       newHistory.push(String(val));
+                       newHistory.push(String(action.value));
                   }
-                  
                   const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
                   updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
-             } else {
-                  // Standard Accumulator Mode
-                  const currentVal = getRawValue(cellScoreObject) || 0;
-                  const newVal = currentVal + val;
-                  const currentHistory = getScoreHistory(cellScoreObject);
-                  
-                  // For standard mode, maybe we just log it differently? 
-                  // For now, standard mode usually just keeps a linear log.
-                  // But if modifier, we can try to merge visually? 
-                  // Keeping it simple for standard: Modifier acts like normal add but maybe we can denote it in history later.
-                  // Current implementation: just add to list.
-                  const newHistory = [...currentHistory, val > 0 ? `+${val}` : `${val}`];
-                  
-                  updateScore(activePlayer.id, activeColumn.id, { value: newVal, history: newHistory });
+             } else { // It's a select list, so it replaces the value and moves next
+                  updateScore(activePlayer.id, activeColumn.id, { value: action.value });
+                  eventHandlers.moveToNext();
              }
         };
 
-        // Determine button content dynamically
-        if (isSumPartsMode && activeColumn.inputType !== 'clicker') { // Only show upload button for keypad mode
-            const newPartRaw = (typeof localKeypadValue === 'object') ? localKeypadValue.value : localKeypadValue;
-            const newPart = parseFloat(String(newPartRaw)) || 0;
-            if (newPart !== 0) {
-                nextButtonContent = <ArrowUpToLine size={28} />;
-            }
+        if (isSumPartsMode && activeColumn.inputType === 'keypad') {
+            const newPart = parseFloat(String(getRawValue(localKeypadValue))) || 0;
+            if (newPart !== 0) nextButtonContent = <ArrowUpToLine size={28} />;
         } else if (isProductMode && activeFactorIdx === 0) {
-             const currentVal = activePlayer.scores[activeColumn.id];
-             const factors = (typeof currentVal === 'object' && currentVal?.factors) ? currentVal.factors : [0, 0];
-             const n1 = parseFloat(String(factors[0])) || 0;
-             if (n1 !== 0) {
-                 nextButtonContent = (<div className="flex flex-col items-center leading-none"><span className="text-xs">輸入 {activeColumn.subUnits?.[1] || 'B'}</span><ArrowDown size={16} /></div>);
-             }
+             const n1 = parseFloat(String(cellScoreObject?.parts?.[0] ?? 0)) || 0;
+             if (n1 !== 0) nextButtonContent = (<div className="flex flex-col items-center leading-none"><span className="text-xs">輸入 {activeColumn.subUnits?.[1] || 'B'}</span><ArrowDown size={16} /></div>);
         }
-
-        if (activeColumn.type === 'number') {
-            const hasMappingRules = activeColumn.mappingRules && activeColumn.mappingRules.length > 0;
-            // 關鍵修改：限制只有在 Sum Parts 模式且設定為 clicker 時才使用 clicker
-            const useClicker = isSumPartsMode && activeColumn.inputType === 'clicker' && !hasMappingRules;
-
-            if (useClicker) {
-                 // Use the new QuickButtonPad
-                 mainContentNode = (
-                    <QuickButtonPad column={activeColumn} onAction={handleQuickButtonAction} />
-                 );
-                 sidebarContentNode = <NumericKeypadInfo 
-                    column={activeColumn} 
-                    value={cellScoreObject}
-                    localKeypadValue={undefined}
-                    onDeleteLastPart={handleDeleteLastPart} // Works for both standard history and sum parts
-                 />;
-            } else {
-                // Use Standard Keypad
-                const keypadProps = {
-                    value: isSumPartsMode ? localKeypadValue : cellScoreObject,
-                    onChange: (val: any) => {
-                        if (isSumPartsMode) {
-                          setLocalKeypadValue(val);
-                        } else {
-                          updateScore(activePlayer!.id, activeColumn!.id, val)
-                        }
-                    },
-                    column: activeColumn,
-                    overwrite: overwriteMode,
-                    setOverwrite: (v: boolean) => setUiState(p => ({ ...p, overwriteMode: v })),
-                    onNext: onNextAction,
-                    activeFactorIdx: activeFactorIdx,
-                    setActiveFactorIdx: setActiveFactorIdx,
-                    playerId: activePlayer.id,
-                };
-                mainContentNode = <NumericKeypadContent {...keypadProps} />;
-                sidebarContentNode = <NumericKeypadInfo 
-                  column={activeColumn} 
-                  value={cellScoreObject} 
-                  activeFactorIdx={activeFactorIdx}
-                  setActiveFactorIdx={setActiveFactorIdx} // 傳遞切換函式
-                  localKeypadValue={isSumPartsMode ? localKeypadValue : undefined}
-                  onDeleteLastPart={isSumPartsMode ? handleDeleteLastPart : undefined}
-                />;
-            }
         
-        } else if (activeColumn.type === 'select' || activeColumn.type === 'boolean') {
-            // Convert boolean to options for unified handling
-            const options = activeColumn.type === 'boolean'
-                ? [
-                    { label: 'YES (達成)', value: activeColumn.weight ?? 0, color: '#10b981' },
-                    { label: 'NO (未達成)', value: 0, color: '#ef4444' }
-                  ]
-                : activeColumn.options || [];
-
-            // Transform options into quickActions for the QuickButtonPad component
-            const transformedColumnForPad: ScoreColumn = {
-                ...activeColumn,
-                // Use the configured number of columns, default to 1 for list-like appearance
-                buttonGridColumns: activeColumn.buttonGridColumns || 1, 
-                quickActions: options.map(opt => ({
-                    id: `${opt.label}-${opt.value}`, // Create a reasonably unique ID
-                    label: opt.label,
-                    value: opt.value,
-                    color: opt.color,
-                    isModifier: false, // Select options are never modifiers
-                }))
-            };
+        if (activeColumn.inputType === 'clicker') {
+             mainContentNode = ( <QuickButtonPad column={activeColumn} onAction={handleQuickButtonAction} /> );
+             if (isSumPartsMode) {
+                sidebarContentNode = <NumericKeypadInfo column={activeColumn} value={cellScoreObject} onDeleteLastPart={handleDeleteLastPart} />;
+             } else {
+                sidebarContentNode = ( <div className="flex flex-col h-full p-2 text-slate-400 text-xs"><div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0"><ListPlus size={12} /> 列表選單</div><div className="flex-1"></div></div> );
+             }
+        } else { // 'keypad'
+            let keypadValue;
+            if (isSumPartsMode) { keypadValue = localKeypadValue; } 
+            else if (isProductMode) { keypadValue = { factors: cellScoreObject?.parts ?? [0, 0] }; } 
+            else { keypadValue = { value: cellScoreObject?.parts?.[0] ?? 0 }; }
             
-            mainContentNode = (
-                <QuickButtonPad 
-                    column={transformedColumnForPad} 
-                    onAction={(action) => {
-                        // For boolean, we pass true/false. For select, we pass the number value.
-                        const valueToUpdate = activeColumn.type === 'boolean' ? action.value !== 0 : action.value;
-                        updateScore(activePlayer!.id, activeColumn!.id, valueToUpdate);
-                        eventHandlers.moveToNext();
-                    }}
-                />
-            );
-
-            // Sidebar Info
-            sidebarContentNode = (
-                <div className="flex flex-col h-full p-2 text-slate-400 text-xs">
-                    <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0">
-                        <ListPlus size={12} /> {activeColumn.type === 'boolean' ? '是/否' : '列表選單'}
-                    </div>
-                    <div className="flex-1">
-                        {/* Empty container to maintain layout, text removed as per user request */}
-                    </div>
-                </div>
-            );
+            mainContentNode = <NumericKeypadContent 
+                value={keypadValue}
+                onChange={(val: any) => isSumPartsMode ? setLocalKeypadValue(val) : updateScore(activePlayer!.id, activeColumn!.id, val)}
+                column={activeColumn} overwrite={overwriteMode} setOverwrite={(v: boolean) => setUiState(p => ({ ...p, overwriteMode: v }))}
+                onNext={onNextAction} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={setActiveFactorIdx} playerId={activePlayer.id}
+            />;
+            sidebarContentNode = <NumericKeypadInfo 
+              column={activeColumn} value={cellScoreObject} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={setActiveFactorIdx}
+              localKeypadValue={isSumPartsMode ? localKeypadValue : undefined}
+              onDeleteLastPart={isSumPartsMode ? handleDeleteLastPart : undefined}
+            />;
         }
     }
   }
@@ -373,32 +267,14 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
   return (
     <div
       className={`fixed left-0 right-0 z-50 bg-slate-950/50 backdrop-blur-sm border-t border-slate-700/50 shadow-[0_-8px_30px_rgba(0,0,0,0.5)] transition-all ease-in-out flex flex-col overflow-hidden ${isPanelOpen ? 'translate-y-0' : 'translate-y-full'} ${isInputFocused ? 'duration-0' : 'duration-300'}`}
-      style={{ 
-          height: panelHeight,
-          // 關鍵修改：將偏移量加到 bottom 屬性
-          // 當系統鍵盤彈出時 (visualViewportOffset > 0)，整個面板會被抬高
-          bottom: visualViewportOffset 
-      }}
+      style={{ height: panelHeight, bottom: visualViewportOffset }}
     >
       {activePlayer && (
-        <PanelHeader
-          player={activePlayer}
-          col={activeColumn}
-          isEditingPlayer={isEditingPlayerName}
-          onClear={handleClear}
-          onDirectionToggle={handleDirectionToggle}
-          direction={advanceDirection}
-        />
+        <PanelHeader player={activePlayer} col={activeColumn} isEditingPlayer={isEditingPlayerName} onClear={handleClear} onDirectionToggle={handleDirectionToggle} direction={advanceDirection} />
       )}
       <div className="flex-1 min-h-0 bg-slate-900">
         {mainContentNode && (
-          <InputPanelLayout
-            onNext={onNextAction}
-            nextButtonDirection={advanceDirection}
-            sidebarContent={sidebarContentNode}
-            nextButtonContent={nextButtonContent}
-            isCompact={isInputFocused} // Enable compact mode when focused
-          >
+          <InputPanelLayout onNext={onNextAction} nextButtonDirection={advanceDirection} sidebarContent={sidebarContentNode} nextButtonContent={nextButtonContent} isCompact={isInputFocused}>
             {mainContentNode}
           </InputPanelLayout>
         )}
