@@ -1,12 +1,11 @@
-
 import { useLayoutEffect, useRef } from 'react';
-import { Player } from '../types';
+import { Player, ScoreColumn } from '../types';
 
 /**
  * 佈局同步 Hook
  * 解決 Flexbox "Auto-fill" 與 "Column Alignment" 的衝突。
  */
-export const usePlayerWidthSync = (players: Player[]) => {
+export const usePlayerWidthSync = (players: Player[], columns: ScoreColumn[]) => {
   const observerRef = useRef<ResizeObserver | null>(null);
   
   // 記錄上一次的視窗寬度，用來過濾掉「只改變高度」(如手機鍵盤彈出) 的 resize 事件
@@ -15,6 +14,7 @@ export const usePlayerWidthSync = (players: Player[]) => {
   // [關鍵優化]
   // 建立一個僅包含 "ID" 與 "名稱" 的特徵字串。
   const layoutSignature = players.map(p => `${p.id}:${p.name}`).join('|');
+  const columnSignature = columns.map(c => c.id).join('|');
 
   useLayoutEffect(() => {
     // 定義重置邏輯：清除所有由 JS 設定的強制寬度
@@ -30,8 +30,8 @@ export const usePlayerWidthSync = (players: Player[]) => {
       });
     };
 
-    // 1. 當佈局特徵改變 (改名/增減人) 時，無條件立即重置
-    // 這是由依賴項 [layoutSignature] 觸發的
+    // 1. 當佈局特徵改變 (改名/增減人/增減欄) 時，無條件立即重置
+    // 這是由依賴項觸發的
     resetWidths();
 
     // 2. 處理視窗縮放 (Zoom/Resize)
@@ -85,5 +85,5 @@ export const usePlayerWidthSync = (players: Player[]) => {
         if (observerRef.current) observerRef.current.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layoutSignature]); 
+  }, [layoutSignature, columnSignature]); 
 };

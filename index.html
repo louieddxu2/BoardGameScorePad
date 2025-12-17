@@ -51,6 +51,18 @@
           -ms-overflow-style: none;
           scrollbar-width: none;
       }
+      /* Scoped Toast Animations */
+      @keyframes toast-fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes toast-fadeOut { from { opacity: 1; } to { opacity: 0; } }
+      @keyframes toast-slideInFromTop { from { transform: translateY(-1rem); } to { transform: translateY(0); } }
+      @keyframes toast-slideOutToTop { from { transform: translateY(0); } to { transform: translateY(-1rem); } }
+
+      .toast-enter-active {
+        animation: toast-fadeIn 0.3s ease-out, toast-slideInFromTop 0.3s ease-out;
+      }
+      .toast-exit-active {
+        animation: toast-fadeOut 0.3s ease-in forwards, toast-slideOutToTop 0.3s ease-in forwards;
+      }
     </style>
 <script type="importmap">
 {

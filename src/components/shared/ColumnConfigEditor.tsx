@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ScoreColumn, SelectOption, MappingRule, QuickAction, InputMethod } from '../../types';
 import { calculateColumnScore } from '../../utils/scoring';
 import { X, Ruler, Calculator, ListPlus, Settings, Save, Plus, Trash2, BoxSelect, PlusSquare, Keyboard, MousePointerClick, Palette, ChevronDown, ChevronRight, ToggleLeft, ToggleRight, LayoutGrid, LayoutList, ArrowUp, TrendingUp, Ban, ArrowUpToLine, Infinity as InfinityIcon, ArrowRight as ArrowRightIcon, Lock, Eye, EyeOff } from 'lucide-react';
-import { COLORS } from '../../constants';
+import { COLORS } from '../../colors';
 import { useVisualViewportOffset } from '../../hooks/useVisualViewportOffset';
 import ConfirmationModal from './ConfirmationModal';
 
@@ -77,6 +77,17 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
   // Lazy initialization of state
   const [editedCol, setEditedCol] = useState<ScoreColumn>(getInitialState);
   
+  // Name Textarea Auto-height Logic
+  const nameTextareaRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+      const textarea = nameTextareaRef.current;
+      if (textarea) {
+          // The two-step process is crucial for both growing and shrinking
+          textarea.style.height = 'auto'; 
+          textarea.style.height = `${textarea.scrollHeight}px`;
+      }
+  }, [editedCol.name]); // Reruns whenever the name value changes
+
   // Keep a ref to the initial state for dirty checking comparison
   // We serialize it to avoid object reference issues
   const initialStringifiedRef = useRef(JSON.stringify(getInitialState()));
@@ -93,6 +104,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
   });
 
   const [quickActionColorPickerIdx, setQuickActionColorPickerIdx] = useState<number | null>(null);
+  const [selectOptionColorPickerIdx, setSelectOptionColorPickerIdx] = useState<number | null>(null);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   
   // --- Keyboard & Layout Handling ---
@@ -307,7 +319,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
   // --- Quick Action Helpers ---
   const addQuickAction = () => {
       // 預設標籤改為空字串，以符合需求
-      const newAction: QuickAction = { id: crypto.randomUUID(), label: '', value: 1, color: editedCol.color, isModifier: false };
+      const newAction: QuickAction = { id: crypto.randomUUID(), label: '', value: 1, isModifier: false };
       setEditedCol({ ...editedCol, quickActions: [...(editedCol.quickActions || []), newAction] });
   };
 
@@ -333,7 +345,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
       let updates: Partial<ScoreColumn> = { inputType: newMethod };
       if (newMethod === 'clicker' && (!editedCol.quickActions || editedCol.quickActions.length === 0)) {
            // 預設標籤改為空字串
-           updates.quickActions = [{ id: crypto.randomUUID(), label: '', value: 1, color: editedCol.color }];
+           updates.quickActions = [{ id: crypto.randomUUID(), label: '', value: 1 }];
            updates.buttonGridColumns = 1;
       }
       setEditedCol({ ...editedCol, ...updates });
@@ -411,12 +423,13 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
           <div className="p-4 bg-slate-900/50 space-y-4">
               <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-1">欄位名稱</label>
-                  <input 
-                    type="text" 
+                  <textarea 
+                    ref={nameTextareaRef}
+                    rows={1}
                     value={editedCol.name} 
                     onChange={e => setEditedCol({...editedCol, name: e.target.value})}
                     onFocus={e => e.target.select()}
-                    className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white focus:border-emerald-500 outline-none"
+                    className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white focus:border-emerald-500 outline-none resize-none overflow-hidden"
                   />
               </div>
               
@@ -669,10 +682,10 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
                                                         <button
                                                             onClick={() => setQuickActionColorPickerIdx(quickActionColorPickerIdx === idx ? null : idx)}
                                                             className="w-9 h-9 shrink-0 rounded-lg border border-slate-600 flex items-center justify-center shadow-sm relative overflow-hidden"
-                                                            style={{ backgroundColor: action.color || editedCol.color || '#3b82f6' }}
+                                                            style={{ backgroundColor: action.color || editedCol.color || '#ffffff' }}
                                                             title="設定按鈕顏色"
                                                         >
-                                                            <Palette size={14} className={isColorDark(action.color || editedCol.color || '#3b82f6') ? 'text-white/80' : 'text-black/50'} />
+                                                            <Palette size={14} className={isColorDark(action.color || editedCol.color || '#ffffff') ? 'text-white/80' : 'text-black/50'} />
                                                         </button>
 
                                                         <div className="flex-1 flex gap-2 min-w-0">
@@ -1009,41 +1022,107 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, onSave,
 
             {activeTab === 'select' && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <p className="text-sm text-slate-400 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
-                        建立固定的選項列表，點按選擇對應到分數。
-                    </p>
-                    <div className="space-y-2">
-                        {editedCol.options?.map((opt, idx) => (
-                            <div key={idx} className="flex items-center gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
-                                <div className="relative w-24">
-                                     <input 
-                                        type="text" 
-                                        inputMode="decimal"
-                                        placeholder="0" 
-                                        value={opt.value} 
-                                        onChange={e => {
-                                            const val = e.target.value;
-                                            // Allow decimal intermediate state
-                                            if (val === '' || val === '-' || val.endsWith('.') || (val.includes('.') && val.endsWith('0'))) {
-                                                updateOption(idx, 'value', val as any);
-                                            } else {
-                                                const num = parseFloat(val);
-                                                if (!isNaN(num)) updateOption(idx, 'value', num);
-                                            }
-                                        }}
-                                        onFocus={e => e.target.select()}
-                                        className="w-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-mono font-bold rounded p-2 pl-3 text-right outline-none focus:border-emerald-500"
-                                    />
-                                    <span className="absolute left-2 top-2.5 text-xs text-slate-500">分</span>
+                    <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 space-y-4">
+                        <p className="text-sm text-slate-400">
+                            建立固定的選項列表，點按選擇對應到分數。
+                        </p>
+                         <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-slate-400 uppercase">按鈕欄數</label>
+                                <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+                                    {[1, 2, 3, 4].map(cols => (
+                                        <button
+                                            key={cols}
+                                            onClick={() => setEditedCol({ ...editedCol, buttonGridColumns: cols })}
+                                            className={`w-8 h-8 rounded flex items-center justify-center text-xs font-bold transition-colors ${
+                                                (editedCol.buttonGridColumns || 1) === cols 
+                                                    ? 'bg-slate-600 text-white' 
+                                                    : 'text-slate-500 hover:text-slate-300'
+                                            }`}
+                                        >
+                                            {cols}
+                                        </button>
+                                    ))}
                                 </div>
-                                
-                                <input 
-                                    type="text" placeholder="選項說明文字" value={opt.label} 
-                                    onChange={e => updateOption(idx, 'label', e.target.value)}
-                                    onFocus={e => e.target.select()}
-                                    className="flex-1 bg-slate-900 border border-slate-600 rounded p-2 text-white placeholder-slate-600"
-                                />
-                                <button onClick={() => removeOption(idx)} className="p-2 text-slate-500 hover:text-red-400"><Trash2 size={18}/></button>
+                            </div>
+                            <div className="text-[10px] text-slate-500">
+                                {(editedCol.buttonGridColumns || 1) === 1 
+                                    ? '目前為「清單模式」：按鈕將橫向排列，最適合閱讀。' 
+                                    : '目前為「網格模式」：按鈕將縱向堆疊，節省空間。'
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2 pt-4 border-t border-slate-800">
+                        <label className="text-xs font-bold text-slate-400 uppercase">選項列表</label>
+                        {editedCol.options?.map((opt, idx) => (
+                            <div key={idx} className="flex flex-col gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setSelectOptionColorPickerIdx(selectOptionColorPickerIdx === idx ? null : idx)}
+                                        className="w-9 h-9 shrink-0 rounded-lg border border-slate-600 flex items-center justify-center shadow-sm relative overflow-hidden"
+                                        style={{ backgroundColor: opt.color || editedCol.color || '#ffffff' }}
+                                        title="設定按鈕顏色"
+                                    >
+                                        <Palette size={14} className={isColorDark(opt.color || editedCol.color || '#ffffff') ? 'text-white/80' : 'text-black/50'} />
+                                    </button>
+                                    <input 
+                                        type="text" placeholder="選項說明文字" value={opt.label} 
+                                        onChange={e => updateOption(idx, 'label', e.target.value)}
+                                        onFocus={e => e.target.select()}
+                                        className="flex-1 bg-slate-900 border border-slate-600 rounded p-2 text-white placeholder-slate-600"
+                                    />
+                                    <div className="relative w-24">
+                                         <input 
+                                            type="text" 
+                                            inputMode="decimal"
+                                            placeholder="0" 
+                                            value={opt.value} 
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                // Allow decimal intermediate state
+                                                if (val === '' || val === '-' || val.endsWith('.') || (val.includes('.') && val.endsWith('0'))) {
+                                                    updateOption(idx, 'value', val as any);
+                                                } else {
+                                                    const num = parseFloat(val);
+                                                    if (!isNaN(num)) updateOption(idx, 'value', num);
+                                                }
+                                            }}
+                                            onFocus={e => e.target.select()}
+                                            className="w-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-mono font-bold rounded p-2 pl-3 text-right outline-none focus:border-emerald-500"
+                                        />
+                                        <span className="absolute left-2 top-2.5 text-xs text-slate-500">分</span>
+                                    </div>
+                                    <button onClick={() => removeOption(idx)} className="p-2 text-slate-500 hover:text-red-400"><Trash2 size={18}/></button>
+                                </div>
+                                {selectOptionColorPickerIdx === idx && (
+                                    <div className="mt-1 p-2 bg-slate-900 rounded-lg border border-slate-700 animate-in fade-in slide-in-from-top-1">
+                                        <div className="flex flex-wrap gap-2 justify-start">
+                                            {COLORS.map(c => (
+                                                <button
+                                                    key={c}
+                                                    onClick={() => {
+                                                        updateOption(idx, 'color', c);
+                                                        setSelectOptionColorPickerIdx(null);
+                                                    }}
+                                                    className={`w-6 h-6 rounded-full shadow-sm border ${opt.color === c ? 'border-white scale-110 ring-1 ring-white/50' : 'border-transparent opacity-80 hover:opacity-100'} ${isColorDark(c) ? 'ring-1 ring-white/30' : ''}`}
+                                                    style={{ backgroundColor: c }}
+                                                />
+                                            ))}
+                                            <button
+                                                onClick={() => {
+                                                    updateOption(idx, 'color', undefined);
+                                                    setSelectOptionColorPickerIdx(null);
+                                                }}
+                                                className={`w-6 h-6 rounded-full shadow-sm border flex items-center justify-center bg-slate-800 ${!opt.color ? 'border-white scale-110' : 'border-slate-600 text-slate-500'}`}
+                                                title="重置為預設"
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

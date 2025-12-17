@@ -25,12 +25,11 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction }) => 
   }
 
   const cols = column.buttonGridColumns || 1;
-  const rows = Math.ceil(actions.length / cols);
   
   // Layout Logic:
-  // If 1 column (List view), use Row layout (Label left, Value right).
-  // If > 1 column (Grid view), use Col layout (Label top, Value bottom).
-  const isListMode = cols === 1;
+  // If 1 or 2 columns, use Row layout (Label left, Value right).
+  // If > 2 columns (Grid view), use Col layout (Label top, Value bottom).
+  const isListMode = cols <= 2;
 
   // Minimum height per button to ensure usability.
   // Grid mode needs slightly more height for stacked text+number.
@@ -39,18 +38,17 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction }) => 
   return (
     <div className="h-full overflow-y-auto no-scrollbar p-2">
         <div 
-            className="grid gap-2"
+            className="grid gap-2 relative"
             style={{
-                // Use minHeight: 100% so if there are few items, they stretch to fill the scroll container.
-                // If there are many items, they will exceed 100% and trigger the parent's scroll.
-                minHeight: '100%', 
-                gridTemplateColumns: `repeat(${cols}, 1fr)`,
-                // minmax ensures buttons never get too small, but expand (1fr) to fill space if available.
-                gridTemplateRows: `repeat(${rows}, minmax(${minRowHeight}, 1fr))`
+                gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+                gridAutoRows: `minmax(${minRowHeight}, auto)`
             }}
         >
+        {/* Brightness reduction mask */}
+        <div className="absolute inset-0 bg-black/15 pointer-events-none z-10"></div>
+
         {actions.map(action => {
-            const bg = action.color || column.color || '#3b82f6';
+            const bg = action.color || column.color || '#ffffff';
             const isDark = isColorDark(bg);
             const isModifier = action.isModifier;
             const textColor = isDark ? 'white' : '#0f172a';
@@ -59,19 +57,17 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction }) => 
             <button
                 key={action.id}
                 onClick={() => handleAction(action)}
-                className={`rounded-xl flex items-center p-2 shadow-sm active:scale-95 transition-all relative h-full ${isListMode ? 'flex-row justify-between px-4' : 'flex-col justify-center'} ${isModifier ? 'border-dashed border-2 border-white/40' : 'border border-white/10'}`}
+                className={`rounded-xl flex items-center p-2 shadow-sm active:scale-95 transition-all relative h-full ${isListMode ? 'flex-row justify-between px-4' : 'flex-col justify-center'} ${isModifier ? 'border-dashed border-2 border-white/40' : 'border border-black/10'}`}
                 style={{ backgroundColor: bg }}
             >
-                {action.label && (
-                    <span 
-                        className={`font-bold leading-tight break-words pointer-events-none ${isListMode ? 'text-lg text-left' : 'text-sm text-center w-full mb-1'}`} 
-                        style={{ color: textColor }}
-                    >
-                        {action.label}
-                    </span>
-                )}
                 <span 
-                    className={`font-mono font-bold rounded-full text-white flex items-center justify-center shrink-0 pointer-events-none ${isListMode ? 'text-sm px-3 py-1 ml-2' : 'text-xs px-2 py-0.5'} ${isModifier ? 'bg-white/30' : 'bg-black/20'}`}
+                    className={`font-bold leading-tight break-words pointer-events-none ${isListMode ? 'text-[20px] text-left flex-1 min-w-0' : 'text-[16px] text-center w-full mb-1'}`} 
+                    style={{ color: textColor }}
+                >
+                    {action.label}
+                </span>
+                <span 
+                    className={`font-mono font-bold rounded-full text-white flex items-center justify-center shrink-0 pointer-events-none ${isListMode ? 'text-[16px] px-3 py-1 ml-2' : 'text-[14px] px-2 py-0.5'} ${isModifier ? 'bg-white/30' : 'bg-black/20'}`}
                 >
                     {action.value > 0 ? '+' : ''}{action.value}
                 </span>

@@ -1,8 +1,9 @@
-
-import React, { useEffect } from 'react';
-import { GameSession, GameTemplate, ScoreColumn, Player } from '../../types';
+import React, { useEffect, useCallback } from 'react';
+import { GameSession, GameTemplate } from '../../types';
 import { useSessionState } from './hooks/useSessionState';
 import { useSessionEvents } from './hooks/useSessionEvents';
+import { toBlob } from 'html-to-image';
+import { useToast } from '../../hooks/useToast';
 
 // Parts
 import SessionHeader from './parts/SessionHeader';
@@ -33,6 +34,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   const sessionState = useSessionState(props);
   const eventHandlers = useSessionEvents(props, sessionState);
+  const { showToast } = useToast();
 
   const {
     editingCell,
@@ -44,7 +46,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     columnToDelete,
     isAddColumnModalOpen,
     showShareMenu,
-    isCopying,
+    screenshotState,
     isInputFocused,
   } = sessionState.uiState;
 
@@ -55,6 +57,52 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const winners = session.players
     .filter(p => p.totalScore === Math.max(...session.players.map(pl => pl.totalScore)))
     .map(p => p.id);
+
+  // --- Screenshot Effect ---
+  useEffect(() => {
+    if (!screenshotState.active) return;
+
+    const takeScreenshot = async () => {
+      const screenshotTarget = document.getElementById('screenshot-target');
+      if (screenshotTarget) {
+        try {
+          const width = screenshotTarget.offsetWidth;
+          const height = screenshotTarget.offsetHeight;
+
+          const blob = await toBlob(screenshotTarget, {
+            backgroundColor: '#0f172a',
+            pixelRatio: 1.5,
+            cacheBust: true,
+            width: width,
+            height: height,
+            style: {
+              transform: 'none', 
+            }
+          });
+
+          if (blob) {
+            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+            showToast({ message: "計分表圖片已複製！", type: 'success' });
+          } else {
+            throw new Error("Blob creation failed");
+          }
+        } catch (e) {
+          console.error("Screenshot failed:", e);
+          showToast({ message: "截圖失敗，請在新分頁中再試一次。", type: 'error' });
+        } finally {
+          setUiState(p => ({ ...p, screenshotState: { ...p.screenshotState, active: false } })); 
+        }
+      } else {
+        setUiState(p => ({ ...p, screenshotState: { ...p.screenshotState, active: false } })); 
+        showToast({ message: "找不到截圖目標", type: 'error' });
+      }
+    };
+    
+    // Timeout to allow state to propagate and ScreenshotView to re-render with the correct mode
+    const timer = setTimeout(takeScreenshot, 200);
+    return () => clearTimeout(timer);
+
+  }, [screenshotState, setUiState, zoomLevel, showToast]);
 
   // --- Scroll Synchronization ---
   // Ensures that when the user scrolls the main grid, the totals bar follows horizontally.
@@ -153,14 +201,14 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         templateName={template.name}
         isEditingTitle={isEditingTitle}
         showShareMenu={showShareMenu}
-        isCopying={isCopying}
+        screenshotActive={screenshotState.active}
         onEditTitleToggle={(editing) => setUiState(prev => ({ ...prev, isEditingTitle: editing }))}
         onTitleSubmit={eventHandlers.handleTitleSubmit}
         onAddColumn={() => setUiState(prev => ({ ...prev, isAddColumnModalOpen: true }))}
         onReset={() => setUiState(prev => ({ ...prev, showResetConfirm: true }))}
         onExit={() => setUiState(prev => ({ ...prev, showExitConfirm: true }))}
         onShareMenuToggle={(show) => setUiState(prev => ({...prev, showShareMenu: show}))}
-        onScreenshot={eventHandlers.handleScreenshot}
+        onScreenshotRequest={eventHandlers.handleScreenshotRequest}
       />
       
       <div 
@@ -216,7 +264,12 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       />
 
       {/* Hidden view for screenshot generation */}
-      <ScreenshotView session={session} template={template} zoomLevel={zoomLevel} />
+      <ScreenshotView 
+        session={session} 
+        template={template} 
+        zoomLevel={zoomLevel} 
+        mode={screenshotState.mode} 
+      />
     </div>
   );
 };

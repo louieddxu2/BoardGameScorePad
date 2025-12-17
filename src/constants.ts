@@ -1,22 +1,6 @@
 
 import { GameTemplate } from './types';
 
-export const COLORS = [
-  '#10b981', // Emerald
-  '#3b82f6', // Blue
-  '#f59e0b', // Amber
-  '#ef4444', // Red
-  '#8b5cf6', // Violet
-  '#ec4899', // Pink
-  '#6366f1', // Indigo
-  '#14b8a6', // Teal
-  '#a16207', // Brown (Amber 700)
-  '#6b7280', // Gray (Gray 500)
-  '#fed7aa', // Skin (Orange 300)
-  '#1f2937', // Black (Gray 800)
-  '#facc15', // Yellow (Yellow 400)
-];
-
 export const DEFAULT_TEMPLATES: GameTemplate[] = 
 [
   {"id":"build-in-A Feast for Odin","name":"奧丁的盛宴","description":"5 個計分項目","columns":[{"id":"dfda777a-6d42-4c4f-b7b6-79780d3c9726","name":"船隻","type":"number","isScoring":true,"weight":1,"options":[],"mappingRules":[],"unit":"分","rounding":"none","quickButtons":[],"color":"#3b82f6"},{"id":"97a7b8b3-b6d6-4b93-b404-51a1b9522677","name":"移民","type":"number","isScoring":true,"weight":1,"options":[],"mappingRules":[],"unit":"分","rounding":"none","quickButtons":[],"color":"#10b981"},{"id":"c3148255-1aa8-4555-9631-7e3d1fcb6045","name":"探索板塊","type":"number","isScoring":true,"weight":1,"options":[],"mappingRules":[],"unit":"分","rounding":"none","quickButtons":[]},{"id":"adf0b43d-4a59-4262-ac23-6cffd76c8b9c","name":"工棚/房屋/工匠小屋","type":"number","isScoring":true,"weight":1,"options":[],"mappingRules":[],"unit":"分","rounding":"none","quickButtons":[],"color":"#10b981"},{"id":"80ea5e96-cb65-45dc-b743-d5b36b2cc533","name":"羊","type":"number","isScoring":true,"weight":2,"options":[],"mappingRules":[],"unit":"隻","rounding":"none","quickButtons":[]},{"id":"7de75729-1cbd-4de3-9926-e0b2c73fa095","name":"牛","type":"number","isScoring":true,"weight":3,"options":[],"mappingRules":[],"unit":"隻","rounding":"none","quickButtons":[],"color":"#a16207"},{"id":"5016af52-06a6-44d7-aeaa-7ad0a904d011","name":"豬","type":"number","isScoring":true,"weight":1,"options":[],"mappingRules":[],"unit":"隻","rounding":"none","quickButtons":[],"color":"#fed7aa"},{"id":"bc0d99df-0445-4bc7-95f4-9ea7b9530294","name":"馬","type":"number","isScoring":true,"weight":6,"options":[],"mappingRules":[],"unit":"隻","rounding":"none","quickButtons":[],"color":"#f59e0b"},{"id":"736d7fe1-1b14-4377-8921-34a6f645b0f2","name":"懷孕動物額外分","type":"number","isScoring":true,"weight":1,"options":[],"mappingRules":[],"unit":"分","rounding":"none","quickButtons":[]},{"id":"4410abd5-ed0b-4ffb-9b4e-b273e702c583","name":"職業卡牌","type":"number","isScoring":true,"weight":1,"options":[],"mappingRules":[],"unit":"分","rounding":"none","quickButtons":[],"color":"#ef4444"},{"id":"37fb79fe-6106-4637-9b32-40e0b508d05f","name":"銀幣","type":"number","isScoring":true,"weight":1,"options":[],"mappingRules":[],"unit":"個","rounding":"none","quickButtons":[],"color":"#6b7280","useMapping":false},{"id":"427eb6eb-acda-4087-9617-d50a50b98528","name":"英格蘭王冠","type":"select","isScoring":true,"weight":1,"options":[{"value":3,"label":"有"},{"value":0,"label":"無"}],"mappingRules":[],"unit":"分","rounding":"none","quickButtons":[],"color":"#facc15","calculationType":"standard"},{"id":"18bce3f6-ec19-487b-8845-1f3d39d3b7c8","name":"負分合計","type":"number","isScoring":true,"weight":1,"options":[],"mappingRules":[],"unit":"分","rounding":"none","quickButtons":[],"color":"#ef4444","useMapping":false}],"createdAt":1765703552351},

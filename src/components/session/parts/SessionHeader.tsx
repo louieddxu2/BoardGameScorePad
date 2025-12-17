@@ -6,28 +6,28 @@ interface SessionHeaderProps {
   templateName: string;
   isEditingTitle: boolean;
   showShareMenu: boolean;
-  isCopying: boolean;
+  screenshotActive: boolean;
   onEditTitleToggle: (editing: boolean) => void;
   onTitleSubmit: (newTitle: string) => void;
   onExit: () => void;
   onAddColumn: () => void;
   onReset: () => void;
   onShareMenuToggle: (show: boolean) => void;
-  onScreenshot: () => void;
+  onScreenshotRequest: (mode: 'full' | 'simple') => void;
 }
 
 const SessionHeader: React.FC<SessionHeaderProps> = ({
   templateName,
   isEditingTitle,
   showShareMenu,
-  isCopying,
+  screenshotActive,
   onEditTitleToggle,
   onTitleSubmit,
   onExit,
   onAddColumn,
   onReset,
   onShareMenuToggle,
-  onScreenshot
+  onScreenshotRequest
 }) => {
   const [tempTitle, setTempTitle] = useState('');
 
@@ -74,7 +74,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
         <div className="w-px h-6 bg-slate-700 mx-1"></div>
         <button onClick={() => onShareMenuToggle(!showShareMenu)} className="p-2 hover:bg-slate-700 hover:text-indigo-400 rounded-lg text-slate-400"><Share2 size={20} /></button>
         
-        {showShareMenu && <ShareMenu isCopying={isCopying} onScreenshot={onScreenshot} />}
+        {showShareMenu && <ShareMenu isCopying={screenshotActive} onScreenshotRequest={onScreenshotRequest} />}
         {showShareMenu && <div className="fixed inset-0 z-40" onClick={() => onShareMenuToggle(false)}></div>}
       </div>
     </div>

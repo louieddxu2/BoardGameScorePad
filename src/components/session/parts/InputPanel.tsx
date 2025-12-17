@@ -6,9 +6,8 @@ import { useSessionEvents } from '../hooks/useSessionEvents';
 import { NumericKeypadContent, NumericKeypadInfo } from '../../shared/NumericKeypad';
 import QuickButtonPad from '../../shared/QuickButtonPad';
 import PlayerEditor, { PlayerEditorInfo } from './PlayerEditor';
-import SelectOptionInput from './SelectOptionInput';
 import InputPanelLayout from './InputPanelLayout';
-import { Eraser, ArrowRight, ArrowDown, Edit, Plus, ArrowUpToLine, RotateCcw } from 'lucide-react';
+import { Eraser, ArrowRight, ArrowDown, Edit, Plus, ArrowUpToLine, ListPlus } from 'lucide-react';
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
 import { getScoreHistory, getRawValue } from '../../../utils/scoring';
 import { useVisualViewportOffset } from '../../../hooks/useVisualViewportOffset';
@@ -322,12 +321,50 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             }
         
         } else if (activeColumn.type === 'select' || activeColumn.type === 'boolean') {
+            // Convert boolean to options for unified handling
+            const options = activeColumn.type === 'boolean'
+                ? [
+                    { label: 'YES (達成)', value: activeColumn.weight ?? 0, color: '#10b981' },
+                    { label: 'NO (未達成)', value: 0, color: '#ef4444' }
+                  ]
+                : activeColumn.options || [];
+
+            // Transform options into quickActions for the QuickButtonPad component
+            const transformedColumnForPad: ScoreColumn = {
+                ...activeColumn,
+                // Use the configured number of columns, default to 1 for list-like appearance
+                buttonGridColumns: activeColumn.buttonGridColumns || 1, 
+                quickActions: options.map(opt => ({
+                    id: `${opt.label}-${opt.value}`, // Create a reasonably unique ID
+                    label: opt.label,
+                    value: opt.value,
+                    color: opt.color,
+                    isModifier: false, // Select options are never modifiers
+                }))
+            };
+            
             mainContentNode = (
-              <SelectOptionInput
-                column={activeColumn}
-                currentValue={cellScoreObject}
-                onSelect={(value) => { updateScore(activePlayer!.id, activeColumn!.id, value); eventHandlers.moveToNext(); }}
-              />
+                <QuickButtonPad 
+                    column={transformedColumnForPad} 
+                    onAction={(action) => {
+                        // For boolean, we pass true/false. For select, we pass the number value.
+                        const valueToUpdate = activeColumn.type === 'boolean' ? action.value !== 0 : action.value;
+                        updateScore(activePlayer!.id, activeColumn!.id, valueToUpdate);
+                        eventHandlers.moveToNext();
+                    }}
+                />
+            );
+
+            // Sidebar Info
+            sidebarContentNode = (
+                <div className="flex flex-col h-full p-2 text-slate-400 text-xs">
+                    <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0">
+                        <ListPlus size={12} /> {activeColumn.type === 'boolean' ? '是/否' : '列表選單'}
+                    </div>
+                    <div className="flex-1">
+                        {/* Empty container to maintain layout, text removed as per user request */}
+                    </div>
+                </div>
             );
         }
     }

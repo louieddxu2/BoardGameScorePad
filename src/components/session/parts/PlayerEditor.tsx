@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { Player } from '../../../types';
 import { Palette, History, Info, ArrowRight, ArrowDown } from 'lucide-react';
-import { COLORS } from '../../../constants';
+import { COLORS } from '../../../colors';
 import { isColorDark } from '../../../utils/ui';
 
 interface PlayerEditorProps {

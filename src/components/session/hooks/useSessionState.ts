@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { GameSession, GameTemplate } from '../../../types';
 
@@ -23,7 +22,7 @@ export interface UIState {
   columnToDelete: string | null;
   isAddColumnModalOpen: boolean;
   showShareMenu: boolean;
-  isCopying: boolean;
+  screenshotState: { active: boolean, mode: 'full' | 'simple' };
   advanceDirection: 'horizontal' | 'vertical';
   overwriteMode: boolean;
   isInputFocused: boolean;
@@ -41,7 +40,7 @@ export const useSessionState = (props: SessionViewProps) => {
     columnToDelete: null,
     isAddColumnModalOpen: false,
     showShareMenu: false,
-    isCopying: false,
+    screenshotState: { active: false, mode: 'full' },
     advanceDirection: 'horizontal',
     overwriteMode: true,
     isInputFocused: false,

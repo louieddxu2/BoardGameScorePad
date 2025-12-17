@@ -2,7 +2,6 @@ import React, { useCallback, useEffect } from 'react';
 import { GameSession, GameTemplate, ScoreColumn } from '../../../types';
 import { useSessionState } from './useSessionState';
 import { useSessionNavigation } from './useSessionNavigation';
-import { toBlob } from 'html-to-image';
 
 interface SessionViewProps {
   session: GameSession;
@@ -35,9 +34,13 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
   useEffect(() => {
     const handleSessionBackPress = () => {
       // Priority of closing UI layers
+
+      // SOLUTION: Add a guard clause. If the column editor is open,
+      // let it handle the back press event itself and do nothing here.
+      if (uiState.editingColumn) { return; }
+
       if (uiState.showExitConfirm) { setUiState(p => ({ ...p, showExitConfirm: false })); return; }
       if (uiState.showShareMenu) { setUiState(p => ({ ...p, showShareMenu: false })); return; }
-      if (uiState.editingColumn) { setUiState(p => ({ ...p, editingColumn: null })); return; }
       if (uiState.isAddColumnModalOpen) { setUiState(p => ({ ...p, isAddColumnModalOpen: false })); return; }
       if (uiState.editingCell || uiState.editingPlayerId) {
         setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null }));
@@ -155,45 +158,8 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
     setUiState(p => ({ ...p, isAddColumnModalOpen: false }));
   };
   
-  const handleScreenshot = useCallback(async () => {
-    setUiState(p => ({ ...p, isCopying: true, showShareMenu: false }));
-    
-    // Slight delay to ensure React renders the mode change and the DOM is ready
-    setTimeout(async () => {
-      const screenshotTarget = document.getElementById('screenshot-target');
-      if (screenshotTarget) {
-        try {
-          const width = screenshotTarget.offsetWidth;
-          const height = screenshotTarget.offsetHeight;
-
-          const blob = await toBlob(screenshotTarget, {
-            backgroundColor: '#0f172a',
-            pixelRatio: 1.5,
-            cacheBust: true,
-            width: width,
-            height: height,
-            style: {
-              transform: 'none', 
-            }
-          });
-
-          if (blob) {
-            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-            alert("計分表圖片已複製！");
-          } else {
-            throw new Error("Blob creation failed");
-          }
-        } catch (e) {
-          console.error("Screenshot failed:", e);
-          alert("截圖失敗。若您在 IDE 預覽視窗中，請嘗試點擊右上角「在新分頁開啟」後再試一次。");
-        } finally {
-          setUiState(p => ({ ...p, isCopying: false })); 
-        }
-      } else {
-        setUiState(p => ({ ...p, isCopying: false })); 
-        alert("找不到截圖目標");
-      }
-    }, 200); 
+  const handleScreenshotRequest = useCallback((mode: 'full' | 'simple') => {
+    setUiState(p => ({ ...p, showShareMenu: false, screenshotState: { active: true, mode } }));
   }, [setUiState]);
 
   return {
@@ -208,7 +174,7 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
     handleConfirmDeleteColumn,
     handleAddBlankColumn,
     handleCopyColumns,
-    handleScreenshot,
+    handleScreenshotRequest,
     moveToNext: navigation.moveToNextCell,
   };
 };

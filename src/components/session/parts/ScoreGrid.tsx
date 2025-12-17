@@ -34,8 +34,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
 }) => {
   const dnd = useColumnDragAndDrop({ template, onUpdateTemplate, scrollRef: scrollContainerRef });
   
-  // 啟用寬度同步 Hook
-  usePlayerWidthSync(session.players);
+  // 啟用寬度同步 Hook，並傳入欄位資訊
+  usePlayerWidthSync(session.players, template.columns);
 
   const dragIndex = template.columns.findIndex(c => c.id === dnd.draggingId);
   const lastColId = template.columns.length > 0 ? template.columns[template.columns.length - 1].id : null;
@@ -119,16 +119,16 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 className={`sticky left-0 w-[70px] bg-slate-800 border-r-2 border-b border-slate-700 p-2 flex flex-col justify-center cursor-pointer hover:bg-slate-700 transition-colors z-20 group select-none shrink-0 ${isDragging ? 'cursor-grabbing bg-slate-700' : 'cursor-grab'}`}
                 style={{ borderRightColor: col.color || 'var(--border-slate-700)' }}
               >
-                <span className="text-sm font-bold text-slate-300 w-full text-center break-words whitespace-normal leading-tight" style={{ ...(col.color && { color: col.color, ...(isColorDark(col.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }) }}>
+                <span className="text-sm font-bold text-slate-300 w-full text-center break-words whitespace-pre-wrap leading-tight" style={{ ...(col.color && { color: col.color, ...(isColorDark(col.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }) }}>
                   {col.name}
                 </span>
                 {col.isScoring && (
                     <div className="text-xs text-slate-500 mt-1 flex flex-col items-center justify-center w-full leading-none">
                         {(() => {
-                            if (col.calculationType === 'product' && col.subUnits) return <div className="flex items-center justify-center gap-0.5 whitespace-nowrap w-full"><span className="truncate max-w-[30px]">{col.subUnits[0]}</span><span className="text-slate-600 text-[11px]">×</span><span className="truncate max-w-[30px]">{col.subUnits[1]}</span></div>;
-                            if (col.type === 'select') return <div className="flex items-center gap-1"><Settings size={10} />{col.unit && <span className="text-xs">{col.unit}</span>}</div>;
-                            if (col.weight !== 1) return <div className="flex items-center justify-center gap-0.5 whitespace-nowrap w-full"><span className="text-emerald-500 font-bold font-mono">{col.weight}</span><span className="text-slate-600 text-[11px]">×</span><span className="truncate max-w-[40px]">{col.unit}</span></div>;
-                            if (col.unit) return <span className="text-xs truncate max-w-full">{col.unit}</span>;
+                            if (col.calculationType === 'product' && col.subUnits) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span>{col.subUnits[0]}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span>{col.subUnits[1]}</span></div>;
+                            if (col.type === 'select') return <div className="flex items-center justify-center gap-1 flex-wrap w-full"><Settings size={10} />{col.unit && <span className="text-xs break-words text-center">{col.unit}</span>}</div>;
+                            if (col.weight !== 1) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="text-emerald-500 font-bold font-mono">{col.weight}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="break-words text-center">{col.unit}</span></div>;
+                            if (col.unit) return <span className="text-xs break-words w-full text-center">{col.unit}</span>;
                             return null;
                         })()}
                     </div>

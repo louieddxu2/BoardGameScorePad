@@ -1,8 +1,10 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { GameTemplate, ScoreColumn } from '../../types';
 import { Save, ArrowLeft, Layers, Minus, Plus } from 'lucide-react';
-import { COLORS } from '../../constants';
+import { COLORS } from '../../colors';
+import { useToast } from '../../hooks/useToast';
 
 interface TemplateEditorProps {
   onSave: (template: GameTemplate) => void;
@@ -13,6 +15,7 @@ interface TemplateEditorProps {
 const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initialTemplate }) => {
   const [name, setName] = useState('');
   const [columnCount, setColumnCount] = useState(5);
+  const { showToast } = useToast();
 
   useEffect(() => {
       if (initialTemplate) {
@@ -26,7 +29,10 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
   };
 
   const handleSave = () => {
-    if (!name.trim()) return alert('請輸入遊戲名稱');
+    if (!name.trim()) {
+      showToast({ message: "請輸入遊戲名稱", type: 'warning' });
+      return;
+    }
 
     let newColumns: ScoreColumn[] = [];
 

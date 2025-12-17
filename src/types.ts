@@ -9,6 +9,7 @@ export type MappingStrategy = 'zero' | 'linear';
 export interface SelectOption {
   value: number;
   label: string;
+  color?: string;
 }
 
 export interface MappingRule {

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { GameSession, GameTemplate } from '../../../types';
 import { Trophy, Crown, Settings } from 'lucide-react';
@@ -8,9 +9,10 @@ interface ScreenshotViewProps {
   session: GameSession;
   template: GameTemplate;
   zoomLevel: number;
+  mode: 'full' | 'simple';
 }
 
-const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoomLevel }) => {
+const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoomLevel, mode }) => {
   const winners = session.players
     .filter(p => p.totalScore === Math.max(...session.players.map(pl => pl.totalScore)))
     .map(p => p.id);
@@ -77,7 +79,7 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoom
               className={`w-[70px] border-r-2 border-b ${rowBorderClass} p-2 text-center shrink-0 flex flex-col justify-center bg-slate-800`}
               style={{ borderRightColor: getColumnBorderRight(col.color) }}
             >
-              <span className="text-sm font-bold text-slate-300 w-full break-words whitespace-normal leading-tight" style={{ ...(col.color && { color: col.color, ...(isColorDark(col.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }) }}>
+              <span className="text-sm font-bold text-slate-300 w-full break-words whitespace-pre-wrap leading-tight" style={{ ...(col.color && { color: col.color, ...(isColorDark(col.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }) }}>
                   {col.name}
               </span>
                {col.isScoring && (
@@ -99,7 +101,8 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoom
                 column={col}
                 isActive={false}
                 onClick={() => {}}
-                screenshotMode={false}
+                screenshotMode={true}
+                simpleMode={mode === 'simple'}
               />
             ))}
           </div>

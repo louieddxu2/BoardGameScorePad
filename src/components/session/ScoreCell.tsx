@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Player, ScoreColumn } from '../../types';
 import { calculateColumnScore, getRawValue, getScoreHistory } from '../../utils/scoring';
@@ -11,9 +10,10 @@ interface ScoreCellProps {
   onClick: (e: React.MouseEvent) => void;
   forceHeight?: string;
   screenshotMode?: boolean;
+  simpleMode?: boolean; // New prop for simplified screenshot view
 }
 
-const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick, forceHeight, screenshotMode = false }) => {
+const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick, forceHeight, screenshotMode = false, simpleMode = false }) => {
   const rawData = player.scores[column.id];
 
   // 關鍵修改：
@@ -27,7 +27,7 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
   let visualClasses = '';
   if (screenshotMode) {
       // In screenshot mode (Text Only), everything is transparent except the text content
-      visualClasses = 'bg-transparent border-transparent';
+      visualClasses = 'bg-transparent border-slate-700';
   } else {
       // Live Mode
       visualClasses = isActive 
@@ -72,8 +72,8 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
          <span className={`text-xl font-bold w-full text-center truncate px-1 ${scoreColor} ${forceHeight ? 'leading-none' : ''}`}>
             {rawVal !== undefined ? displayScore : '-'}
          </span>
-         {option && (
-             <span className={`absolute bottom-1 right-1 text-xs font-medium px-1 rounded truncate max-w-[90%] ${screenshotMode ? 'text-emerald-400 border border-transparent' : 'text-emerald-400 bg-slate-900/80 border border-slate-700'}`}>
+         {!simpleMode && option && (
+             <span className={`absolute bottom-1 right-1 text-xs font-medium px-1 rounded truncate max-w-[90%] ${screenshotMode ? 'text-emerald-400/80' : 'text-emerald-400 bg-slate-900/80 border border-slate-700'}`}>
                  {option.label}
              </span>
          )}
@@ -95,12 +95,12 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
       const ub = column.subUnits?.[1] || '';
       
       productUI = (
-        <span className={`absolute bottom-1 right-1 flex items-baseline px-1 rounded max-w-full overflow-hidden ${screenshotMode ? 'border-transparent' : 'bg-slate-900/80 border border-slate-800/50'}`}>
+        <span className={`absolute bottom-1 right-1 flex items-baseline px-1 rounded max-w-full overflow-hidden ${screenshotMode ? '' : 'bg-slate-900/80 border border-slate-800/50'}`}>
              <span className="text-sm font-bold font-mono text-emerald-400 leading-none truncate">{a}</span>
-             <span className="text-xs text-emerald-400 ml-[1px] leading-none">{ua}</span>
+             <span className="text-xs text-emerald-400/80 ml-[1px] leading-none">{ua}</span>
              <span className="text-sm text-slate-600 mx-[2px] leading-none">×</span>
              <span className="text-sm font-bold font-mono text-emerald-400 leading-none truncate">{b}</span>
-             <span className="text-xs text-emerald-400 ml-[1px] leading-none">{ub}</span>
+             <span className="text-xs text-emerald-400/80 ml-[1px] leading-none">{ub}</span>
         </span>
       );
   }
@@ -115,24 +115,26 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
       <div onClick={onClick} className={`${baseContainerClasses} ${visualClasses}`}>
         
         <div className="w-full h-full flex flex-row items-stretch overflow-hidden">
-            {/* Left side: Total Score. */}
+            {/* Left side: Total Score. Takes full width if simpleMode is on */}
             <div className="flex-1 flex justify-center items-center min-w-0">
                 <span className={`text-xl font-bold tracking-tight w-full text-center truncate px-0.5 ${mainScoreColor} ${forceHeight ? 'leading-none' : ''}`}>
                     {displayValue !== undefined ? displayScore : '-'}
                 </span>
             </div>
     
-            {/* Right side: Parts List. */}
-            <div className="flex flex-col justify-end pb-1 pr-1 max-w-[50%]">
-                <div className="flex flex-col items-end font-mono leading-tight">
-                    {history.map((part, i) => (
-                    <div key={i} className="flex items-baseline text-sm max-w-full">
-                        <span className="text-emerald-400 font-bold truncate">{part}</span>
-                        {column.unit && <span className="text-emerald-400/80 text-xs ml-0.5 truncate">{column.unit}</span>}
-                    </div>
-                    ))}
-                </div>
-            </div>
+            {/* Right side: Parts List. Hidden in simple mode */}
+            {!simpleMode && (
+              <div className="flex flex-col justify-end pb-1 pr-1 max-w-[50%]">
+                  <div className="flex flex-col items-end font-mono leading-tight">
+                      {history.map((part, i) => (
+                      <div key={i} className="flex items-baseline text-sm max-w-full">
+                          <span className="text-emerald-400 font-bold truncate">{part}</span>
+                          {column.unit && <span className="text-emerald-400/80 text-xs ml-0.5 truncate">{column.unit}</span>}
+                      </div>
+                      ))}
+                  </div>
+              </div>
+            )}
         </div>
       </div>
     );
@@ -142,13 +144,13 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
   return (
     <div onClick={onClick} className={`${baseContainerClasses} ${visualClasses}`}>
       
-      {/* Centered Main Score - Added truncate/w-full */}
+      {/* Centered Main Score - Added truncate/w--full */}
       <span className={`text-xl font-bold tracking-tight w-full text-center truncate px-1 ${mainScoreColor} ${forceHeight ? 'leading-none' : ''}`}>
         {displayValue !== undefined ? displayScore : '-'}
       </span>
   
-      {/* Bottom Right Info */}
-      {rawVal !== undefined && (
+      {/* Bottom Right Info - Hidden in simple mode */}
+      {!simpleMode && rawVal !== undefined && (
         productUI ? (
           productUI
         ) : (

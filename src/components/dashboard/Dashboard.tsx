@@ -5,6 +5,7 @@ import { GameTemplate } from '../../types';
 import { DEFAULT_TEMPLATES } from '../../constants';
 import { Plus, Download, Dice5, Search, X, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, RefreshCw, Copy, Code, Trash2, Check, Mail } from 'lucide-react';
 import ConfirmationModal from '../shared/ConfirmationModal';
+import { useToast } from '../../hooks/useToast';
 
 interface DashboardProps {
   userTemplates: GameTemplate[];
@@ -63,6 +64,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   // Feedback
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isExportCopying, setIsExportCopying] = useState(false);
+  
+  const { showToast } = useToast();
 
   // --- Helpers ---
   const isSystemTemplate = (id: string) => DEFAULT_TEMPLATES.some(dt => dt.id === id);
@@ -136,7 +139,22 @@ const Dashboard: React.FC<DashboardProps> = ({
             onBatchImport(validTemplates);
             setShowDataModal(false);
             setImportJson('');
-            alert(`成功匯入 ${validTemplates.length} 筆模板！`);
+            
+            const MAX_NAMES_TO_SHOW = 5;
+            const namesToShow = validTemplates.slice(0, MAX_NAMES_TO_SHOW).map(t => `- ${t.name}`);
+            let message = namesToShow.join('\n');
+            if (validTemplates.length > MAX_NAMES_TO_SHOW) {
+                const remaining = validTemplates.length - MAX_NAMES_TO_SHOW;
+                message += `\n...與其他 ${remaining} 筆`;
+            }
+
+            showToast({ 
+                title: `成功匯入 ${validTemplates.length} 筆範本`, 
+                message: message, 
+                type: 'success',
+                duration: 7000 // A bit longer to allow reading
+            });
+
           } else {
               setImportError("沒有可匯入的有效資料");
           }
@@ -174,7 +192,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       }).catch(err => {
           console.error("Failed to copy:", err);
-          alert("自動複製失敗，請手動複製後再寄信。");
+          showToast({ title: "自動複製失敗", message: "請手動複製後再寄信。", type: 'error' });
       });
   };
 

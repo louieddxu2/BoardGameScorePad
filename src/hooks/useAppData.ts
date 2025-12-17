@@ -1,7 +1,8 @@
 
 import { useState, useEffect } from 'react';
 import { GameTemplate, GameSession, Player } from '../types';
-import { COLORS, DEFAULT_TEMPLATES } from '../constants';
+import { DEFAULT_TEMPLATES } from '../constants';
+import { COLORS } from '../colors';
 import { calculatePlayerTotal } from '../utils/scoring';
 
 /**
