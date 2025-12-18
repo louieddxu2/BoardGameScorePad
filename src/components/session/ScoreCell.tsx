@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Player, ScoreColumn, ScoreValue } from '../../types';
 import { calculateColumnScore } from '../../utils/scoring';
@@ -24,15 +25,15 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
   const scoreData: ScoreValue | undefined = player.scores[column.id];
   const parts = scoreData?.parts || [];
 
-  const baseContainerClasses = `player-col-${player.id} flex-none min-w-[3.375rem] ${forceHeight || 'min-h-[4rem]'} border-r border-b relative cursor-pointer transition-colors select-none flex flex-col justify-center items-center overflow-hidden`;
+  const baseContainerClasses = `player-col-${player.id} w-full ${forceHeight || ''} border-r border-b relative cursor-pointer transition-colors select-none flex flex-col justify-center items-center overflow-hidden`;
   
   let visualClasses = '';
   if (screenshotMode) {
-      visualClasses = 'bg-transparent border-slate-700';
+      visualClasses = 'bg-transparent border-slate-700 h-full';
   } else {
-      visualClasses = isActive 
+      visualClasses = `min-h-[4rem] ${isActive 
         ? 'bg-emerald-900/30 ring-1 ring-inset ring-emerald-500 border-slate-800' 
-        : 'bg-slate-900 hover:bg-slate-800 border-slate-800';
+        : 'bg-slate-900 hover:bg-slate-800 border-slate-800'}`;
   }
 
   const displayScore = calculateColumnScore(column, parts);
@@ -72,7 +73,7 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, column, isActive, onClick
              <span className="text-sm font-bold font-mono text-emerald-400 leading-none truncate">{formatDisplayNumber(a)}</span>
              <span className="text-xs text-emerald-400/80 ml-[1px] leading-none">{ua}</span>
              <span className="text-sm text-slate-600 mx-[2px] leading-none">×</span>
-             <span className="text-sm font-bold font-mono text-emerald-400 leading-none truncate">{formatDisplayNumber(b)}</span>
+             <span className="text-sm font-bold font-mono text-emerald-400 leading-none truncate">{formatDisplayNumber(b ?? 1)}</span>
              <span className="text-xs text-emerald-400/80 ml-[1px] leading-none">{ub}</span>
         </span>
       ) : null;

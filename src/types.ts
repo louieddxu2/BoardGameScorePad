@@ -1,6 +1,4 @@
 
-
-
 // --- Formula-based structure ---
 export interface ScoreValue {
   parts: number[];
@@ -42,9 +40,10 @@ export type InputMethod = 'keypad' | 'clicker';
 export interface MappingRule {
   min?: number; // Inclusive
   max?: number | 'next'; // Inclusive. 'next' means (nextRule.min - 1)
-  score: number; // If isLinear, this is the slope (score per unit)
+  score: number; // Used for fixed score
   
   isLinear?: boolean; 
+  unitScore?: number; // Explicit field for the slope (score per unit) in linear mode
   unit?: number; // Denominator for linear calc (Every X units)
 }
 

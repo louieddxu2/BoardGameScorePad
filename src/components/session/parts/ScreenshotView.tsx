@@ -4,14 +4,20 @@ import { Trophy, Crown, Settings } from 'lucide-react';
 import ScoreCell from '../ScoreCell';
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
 
+interface ScreenshotLayout {
+  itemWidth: number;
+  playerWidths: Record<string, number>;
+}
+
 interface ScreenshotViewProps {
   session: GameSession;
   template: GameTemplate;
   zoomLevel: number;
   mode: 'full' | 'simple';
+  layout: ScreenshotLayout | null;
 }
 
-const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoomLevel, mode }) => {
+const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoomLevel, mode, layout }) => {
   const winners = session.players
     .filter(p => p.totalScore === Math.max(...session.players.map(pl => pl.totalScore)))
     .map(p => p.id);
@@ -24,16 +30,23 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoom
   const getColumnBorderRight = (color: string | undefined) => (color || 'var(--border-slate-700)');
   const rowBorderClass = 'border-slate-700';
 
+  const itemColStyle = layout ? { width: `${layout.itemWidth}px`, flexShrink: 0 } : { width: '70px', flexShrink: 0 };
+  const getPlayerColStyle = (playerId: string) => {
+    if (layout && layout.playerWidths[playerId]) {
+      return { width: `${layout.playerWidths[playerId]}px`, flexShrink: 0 };
+    }
+    // Fallback if layout not ready, though it shouldn't be visible
+    return { minWidth: '54px', flex: '1 1 0%' };
+  };
+
   return (
     <div
       id="screenshot-target"
-      // Use w-fit + min-w-[100vw] to ensure it fills screen or expands for content
       className={`fixed top-0 left-0 -z-50 text-slate-100 ${containerClass}`}
       style={{ 
         fontSize: `${16 * zoomLevel}px`,
         fontFamily: 'Inter, sans-serif',
-        width: 'fit-content',
-        minWidth: '100vw'
+        width: 'fit-content', // Let content determine the width
       }}
     >
       {/* Header */}
@@ -52,14 +65,15 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoom
         
         {/* Player Headers */}
         <div id="ss-player-header-row" className={`flex border-b ${rowBorderClass} bg-slate-800`}>
-          <div className={`w-[70px] border-r ${rowBorderClass} p-2 shrink-0 flex items-center justify-center`}>
+          <div className={`border-r ${rowBorderClass} p-2 flex items-center justify-center`} style={itemColStyle}>
             <span className="font-bold text-sm text-slate-400">玩家</span>
           </div>
           {session.players.map(p => (
             <div
               key={p.id}
-              className={`min-w-[54px] flex-1 border-r ${rowBorderClass} p-2 flex flex-col items-center justify-center`}
+              className={`border-r ${rowBorderClass} p-2 flex flex-col items-center justify-center`}
               style={{ 
+                  ...getPlayerColStyle(p.id),
                   backgroundColor: getPlayerBg(p.color),
                   borderBottom: `2px solid ${getPlayerBorderBottom(p.color)}`
               }}
@@ -75,16 +89,23 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoom
         {template.columns.map(col => (
           <div key={col.id} id={`ss-row-${col.id}`} className="flex">
             <div
-              className={`w-[70px] border-r-2 border-b ${rowBorderClass} p-2 text-center shrink-0 flex flex-col justify-center bg-slate-800`}
-              style={{ borderRightColor: getColumnBorderRight(col.color) }}
+              className={`border-r-2 border-b ${rowBorderClass} p-2 text-center flex flex-col justify-center bg-slate-800`}
+              style={{ ...itemColStyle, borderRightColor: getColumnBorderRight(col.color) }}
             >
-              <span className="text-sm font-bold text-slate-300 w-full break-words whitespace-normal leading-tight" style={{ ...(col.color && { color: col.color, ...(isColorDark(col.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }) }}>
+              <span 
+                className="text-sm font-bold text-slate-300 w-full leading-tight" 
+                style={{ 
+                  whiteSpace: 'pre-wrap', 
+                  wordBreak: 'break-word',
+                  display: 'block',
+                  ...(col.color && { color: col.color, ...(isColorDark(col.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }) 
+                }}
+              >
                   {col.name}
               </span>
                {col.isScoring && (
                   <div className="text-xs text-slate-500 mt-1 flex flex-col items-center justify-center w-full leading-none">
                       {(() => {
-                          // --- Fix: Use `formula` and `options` for logic, not `type` or `calculationType`
                           if (col.formula === 'a1×a2' && col.subUnits) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="">{col.subUnits[0]}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="">{col.subUnits[1]}</span></div>;
                           if (col.inputType === 'clicker' && !col.formula.includes('+next')) return <div className="flex items-center gap-1"><Settings size={10} />{col.unit && <span className="text-xs">{col.unit}</span>}</div>;
                           if (col.formula === 'a1×c1') return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="text-emerald-500 font-bold font-mono">{col.constants?.c1 ?? 1}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="">{col.unit}</span></div>;
@@ -95,29 +116,32 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoom
               )}
             </div>
             {session.players.map(p => (
-              <ScoreCell
-                key={p.id}
-                player={p}
-                column={col}
-                isActive={false}
-                onClick={() => {}}
-                screenshotMode={true}
-                simpleMode={mode === 'simple'}
-              />
+              <div key={p.id} style={getPlayerColStyle(p.id)}>
+                <ScoreCell
+                  player={p}
+                  column={col}
+                  isActive={false}
+                  onClick={() => {}}
+                  screenshotMode={true}
+                  simpleMode={mode === 'simple'}
+                  forceHeight="4rem" // Ensure consistent row height
+                />
+              </div>
             ))}
           </div>
         ))}
 
         {/* Totals Bar */}
         <div id="ss-totals-row" className={`flex h-10 border-t ${rowBorderClass} bg-slate-900`}>
-            <div className={`w-[70px] border-r ${rowBorderClass} p-2 shrink-0 flex items-center justify-center bg-slate-800`}>
+            <div className={`border-r ${rowBorderClass} p-2 flex items-center justify-center bg-slate-800`} style={itemColStyle}>
                 <span className="font-black text-emerald-400 text-sm">總分</span>
             </div>
             {session.players.map(p => (
                 <div
                     key={p.id}
-                    className={`min-w-[54px] flex-1 border-r ${rowBorderClass} p-2 h-full flex items-center justify-center relative`}
+                    className={`border-r ${rowBorderClass} p-2 h-full flex items-center justify-center relative`}
                     style={{ 
+                        ...getPlayerColStyle(p.id),
                         backgroundColor: getPlayerBg(p.color),
                         borderTop: `2px solid ${getPlayerBorderBottom(p.color)}`
                     }}

@@ -11,9 +11,9 @@ interface NumericKeypadContentProps {
   column: ScoreColumn;
   overwrite: boolean;
   setOverwrite: (v: boolean) => void;
-  activeFactorIdx: 0 | 1; // Controlled from parent
-  setActiveFactorIdx: (v: 0 | 1) => void; // Controlled from parent
-  playerId: string; // Used to detect cell changes
+  activeFactorIdx: 0 | 1;
+  setActiveFactorIdx: (v: 0 | 1) => void;
+  playerId: string;
 }
 
 export const NumericKeypadContent: React.FC<NumericKeypadContentProps> = (props) => {
@@ -35,27 +35,26 @@ export const NumericKeypadContent: React.FC<NumericKeypadContentProps> = (props)
   const getCurrentValueRaw = (): string => {
     if (typeof value === 'object' && value !== null && 'value' in value) {
       const val = value.value;
-      // FIX: Explicitly handle -0, because String(-0) results in "0"
-      if (Object.is(val, -0)) {
-        return '-0';
-      }
+      if (Object.is(val, -0)) return '-0';
       return String(val ?? 0);
     }
     return String(value ?? 0);
   };
 
   const getFactors = (): [string, string] => {
-    if (typeof value === 'object' && value !== null && 'factors' in value && Array.isArray(value.factors) && value.factors.length === 2) {
-        const [f1, f2] = value.factors;
-        // FIX: Explicitly handle -0 for both factors
-        const s1 = Object.is(f1, -0) ? '-0' : String(f1 ?? 0);
-        const s2 = Object.is(f2, -0) ? '-0' : String(f2 ?? 0);
-        return [s1, s2];
+    let f1: any = 0;
+    let f2: any = 1;
+    
+    if (typeof value === 'object' && value !== null && 'factors' in value && Array.isArray(value.factors)) {
+        f1 = value.factors[0] ?? 0;
+        f2 = value.factors[1] ?? 1;
     }
-    return ['0', '0'];
+    
+    const s1 = Object.is(f1, -0) ? '-0' : String(f1);
+    const s2 = Object.is(f2, -0) ? '-0' : String(f2);
+    return [s1, s2];
   };
 
-  // --- Fix: Use `formula` instead of `calculationType`
   const isProductMode = column.formula === 'a1×a2';
 
   const isToggleMode = (() => {
@@ -74,15 +73,9 @@ export const NumericKeypadContent: React.FC<NumericKeypadContentProps> = (props)
   const handleNumClick = (num: number) => {
     triggerHaptic();
     const processValue = (currentValStr: string) => {
-      if (overwrite) {
-        return String(num);
-      }
-      if (currentValStr === '0') {
-        return String(num);
-      }
-      if (currentValStr === '-0') {
-        return `-${num}`;
-      }
+      if (overwrite) return String(num);
+      if (currentValStr === '0') return String(num);
+      if (currentValStr === '-0') return `-${num}`;
       return currentValStr + num;
     };
 
@@ -90,10 +83,8 @@ export const NumericKeypadContent: React.FC<NumericKeypadContentProps> = (props)
       const factors = getFactors();
       const currentFactorStr = factors[activeFactorIdx];
       const newFactorStr = processValue(currentFactorStr);
-
       const newFactors: (string|number)[] = [...factors];
       newFactors[activeFactorIdx] = newFactorStr.includes('.') ? newFactorStr : parseFloat(newFactorStr);
-      
       const n1 = parseFloat(String(newFactors[0])) || 0;
       const n2 = parseFloat(String(newFactors[1])) || 0;
       onChange({ value: n1 * n2, factors: newFactors, history: [] });
@@ -109,15 +100,9 @@ export const NumericKeypadContent: React.FC<NumericKeypadContentProps> = (props)
   const handleToggleSign = () => {
     triggerHaptic();
     const processValue = (currentValStr: string) => {
-      // Case A: Start of input (prefixing)
-      if (overwrite || currentValStr === '0') {
-        return '-0';
-      }
-      // Case B: Toggle existing number
+      if (overwrite || currentValStr === '0') return '-0';
       const numVal = parseFloat(currentValStr);
-      if (isNaN(numVal)) { // It might be a partial string like "5."
-        return currentValStr.startsWith('-') ? currentValStr.substring(1) : '-' + currentValStr;
-      }
+      if (isNaN(numVal)) return currentValStr.startsWith('-') ? currentValStr.substring(1) : '-' + currentValStr;
       return String(numVal * -1);
     };
 
@@ -125,10 +110,8 @@ export const NumericKeypadContent: React.FC<NumericKeypadContentProps> = (props)
       const factors = getFactors();
       const currentFactorStr = factors[activeFactorIdx];
       const newFactorStr = processValue(currentFactorStr);
-
       const newFactors: string[] = [...factors];
       newFactors[activeFactorIdx] = newFactorStr;
-
       const n1 = parseFloat(newFactors[0]) || 0;
       const n2 = parseFloat(newFactors[1]) || 0;
       onChange({ value: n1 * n2, factors: newFactors, history: [] });
@@ -147,7 +130,6 @@ export const NumericKeypadContent: React.FC<NumericKeypadContentProps> = (props)
         if (currentValStr.includes('.')) return currentValStr;
         return (currentValStr === '-0' ? '-0' : currentValStr) + '.';
       };
-
       if (isProductMode) {
           const factors = getFactors();
           const currentFactorStr = factors[activeFactorIdx];
@@ -169,20 +151,15 @@ export const NumericKeypadContent: React.FC<NumericKeypadContentProps> = (props)
     triggerHaptic();
     const processValue = (currentStr: string) => {
         if (overwrite) return '0';
-        if (currentStr.length <= 1 || (currentStr.startsWith('-') && currentStr.length <= 2)) {
-            return '0';
-        }
+        if (currentStr.length <= 1 || (currentStr.startsWith('-') && currentStr.length <= 2)) return '0';
         return currentStr.slice(0, -1);
     };
-
     if (isProductMode) {
         const factors = getFactors();
         const currentFactorStr = factors[activeFactorIdx];
         const newFactorStr = processValue(currentFactorStr);
-
         const newFactors: (string|number)[] = [...factors];
         newFactors[activeFactorIdx] = newFactorStr.includes('.') || newFactorStr === '-0' ? newFactorStr : parseFloat(newFactorStr);
-
         const n1 = parseFloat(String(newFactors[0])) || 0;
         const n2 = parseFloat(String(newFactors[1])) || 0;
         onChange({ value: n1*n2, factors: newFactors, history: [] });
@@ -222,41 +199,31 @@ interface NumericKeypadInfoProps {
 }
 
 export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, value, activeFactorIdx, setActiveFactorIdx, localKeypadValue, onDeleteLastPart }) => {
-    
     const activeRuleRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const rawValueForEffect = getRawValue(value);
 
-    // Effect 1: Auto-scroll to active rule mapping
     useEffect(() => {
         if (activeRuleRef.current) {
-            activeRuleRef.current.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
-            });
+            activeRuleRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }, [rawValueForEffect]);
 
-    // Prepare history parts safely
-    // --- Fix: Use `formula` instead of `calculationType`
     const historyParts = (column.formula || '').includes('+next') ? getScoreHistory(value) : [];
 
-    // Effect 2: Auto-scroll history in Sum-Parts mode
     useEffect(() => {
-        // --- Fix: Use `formula` instead of `calculationType`
         if ((column.formula || '').includes('+next') && scrollContainerRef.current) {
             scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
         }
     }, [historyParts.length, column.formula]);
 
-    // --- Fix: Use `formula` instead of `calculationType`
     if (column.formula === 'a1×a2') {
       const factors = getFactors(value);
       const unitA = column.subUnits?.[0] || '數量';
       const unitB = column.subUnits?.[1] || '單價';
       const unitTotal = column.unit || '分';
       const n1 = parseFloat(String(factors[0])) || 0;
-      const n2 = parseFloat(String(factors[1])) || 0;
+      const n2 = parseFloat(String(factors[1])) || 1;
       let total = n1 * n2;
       if (column.rounding) {
         switch (column.rounding) {
@@ -271,35 +238,20 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
       return (
         <div className="flex flex-col h-full p-2">
           <div className="text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 flex items-center gap-1 shrink-0"><Calculator size={12} /> 乘積輸入</div>
-          
           <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar py-2 space-y-1">
-              
-              {/* Factor A Input */}
-              <div 
-                className="flex items-center gap-1.5 cursor-pointer group" 
-                onClick={() => setActiveFactorIdx?.(0)}
-              >
+              <div className="flex items-center gap-1.5 cursor-pointer group" onClick={() => setActiveFactorIdx?.(0)}>
                   <div className={`flex-1 px-2 py-0.5 rounded-md border transition-all overflow-x-auto no-scrollbar flex items-center ${isFactorAActive ? 'bg-emerald-900/30 border-emerald-500' : 'bg-slate-900 border-slate-700 group-hover:border-slate-600'}`}>
                       <span className={`text-xl font-bold font-mono text-right w-full whitespace-nowrap leading-tight ${isFactorAActive ? 'text-white' : 'text-slate-400'}`}>{String(factors[0])}</span>
                   </div>
                   <span className={`shrink-0 text-xs uppercase text-right ${isFactorAActive ? 'text-emerald-400 font-bold' : 'text-slate-500'}`}>{unitA}</span>
               </div>
-              
-              {/* Multiply Symbol */}
               <div className="flex items-center justify-center text-slate-600"><X size={12} /></div>
-
-              {/* Factor B Input */}
-              <div 
-                className="flex items-center gap-1.5 cursor-pointer group"
-                onClick={() => setActiveFactorIdx?.(1)}
-              >
+              <div className="flex items-center gap-1.5 cursor-pointer group" onClick={() => setActiveFactorIdx?.(1)}>
                   <div className={`flex-1 px-2 py-0.5 rounded-md border transition-all overflow-x-auto no-scrollbar flex items-center ${isFactorBActive ? 'bg-emerald-900/30 border-emerald-500' : 'bg-slate-900 border-slate-700 group-hover:border-slate-600'}`}>
                       <span className={`text-xl font-bold font-mono text-right w-full whitespace-nowrap leading-tight ${isFactorBActive ? 'text-white' : 'text-slate-400'}`}>{String(factors[1])}</span>
                   </div>
                   <span className={`shrink-0 text-xs uppercase text-right ${isFactorBActive ? 'text-emerald-400 font-bold' : 'text-slate-500'}`}>{unitB}</span>
               </div>
-
-              {/* Result */}
               <div className="pt-1 border-t border-slate-800 flex justify-between items-center px-1">
                   <span className="text-lg text-slate-600">=</span>
                   <span className="text-xl font-bold text-emerald-400">{total} <span className="text-xs font-normal text-slate-500">{unitTotal}</span></span>
@@ -309,46 +261,26 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
       );
     }
     
-    // --- Fix: Use `formula` instead of `calculationType`
     if ((column.formula || '').includes('+next')) {
       const parts = historyParts;
       const currentInputRaw = (typeof localKeypadValue === 'object') ? localKeypadValue.value : localKeypadValue;
       const currentInputStr = String(currentInputRaw || '0');
-      
-      // Determine if we should show the input preview.
-      // We HIDE it if we are in "Clicker" mode AND there are no mapping rules (which would force keypad mode).
-      // --- Fix: Use `f1` instead of `mappingRules`
       const hasMappingRules = column.f1 && column.f1.length > 0;
       const showInputPreview = !(column.inputType === 'clicker' && !hasMappingRules);
 
       return (
         <div className="flex flex-col h-full">
-            <div className="text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 flex items-center gap-1 shrink-0 px-2 pt-2">
-              <PlusSquare size={12} /> 分項累加
-            </div>
-            
-            {/* 
-                History List Container
-                - Use a fragment or specific structure to handle the active last item.
-            */}
+            <div className="text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 flex items-center gap-1 shrink-0 px-2 pt-2"><PlusSquare size={12} /> 分項累加</div>
             <div className="flex-1 overflow-y-auto no-scrollbar px-2 py-1" ref={scrollContainerRef}>
                 <div className="min-h-full flex flex-col justify-end">
-                    {parts.length === 0 && (
-                         <div className="flex-1 flex items-center justify-center text-xs text-slate-600 italic">尚無分項</div>
-                    )}
+                    {parts.length === 0 && <div className="flex-1 flex items-center justify-center text-xs text-slate-600 italic">尚無分項</div>}
                     {parts.map((part, idx) => {
                         const isLast = idx === parts.length - 1;
                         if (isLast) {
                             return (
                                 <div key={idx} className="flex items-center justify-between pt-2 pb-1 relative animate-in fade-in slide-in-from-bottom-1">
                                     {onDeleteLastPart && (
-                                        <button 
-                                            onClick={onDeleteLastPart}
-                                            className="w-5 h-5 rounded-full bg-red-500 hover:bg-red-400 text-white flex items-center justify-center shadow-md border border-red-900 transition-transform active:scale-95"
-                                            title="刪除"
-                                        >
-                                            <X size={12} strokeWidth={3} />
-                                        </button>
+                                        <button onClick={onDeleteLastPart} className="w-5 h-5 rounded-full bg-red-500 hover:bg-red-400 text-white flex items-center justify-center shadow-md border border-red-900 transition-transform active:scale-95" title="刪除"><X size={12} strokeWidth={3} /></button>
                                     )}
                                     <div className="flex-1 text-right">
                                         <div className="inline-block bg-white/5 px-2 py-0.5 rounded border border-white/10">
@@ -358,22 +290,13 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
                                 </div>
                             );
                         }
-                        return (
-                            <div key={idx} className="text-sm text-slate-500 font-mono leading-tight text-right pr-1 pb-1">
-                                {part}
-                            </div>
-                        );
+                        return <div key={idx} className="text-sm text-slate-500 font-mono leading-tight text-right pr-1 pb-1">{part}</div>;
                     })}
                 </div>
             </div>
-
-            {/* Footer Container - Only show if using Keypad (not Clicker) */}
             {showInputPreview && (
                 <div className="shrink-0 px-2 pb-1 relative">
-                    {/* Simple Divider */}
                     <div className="border-t border-white/20 mb-1"></div>
-                    
-                    {/* Current Input Box */}
                     <div className="bg-emerald-900/30 border border-emerald-500 rounded-md px-2 py-0.5 text-right shadow-[0_0_10px_rgba(16,185,129,0.1)]">
                         <span className="text-2xl font-bold text-white font-mono leading-tight">{currentInputStr}</span>
                     </div>
@@ -384,30 +307,21 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
     }
 
     const unit = column.unit || '';
-    // --- Fix: Use `f1` instead of `mappingRules`
     if (column.f1 && column.f1.length > 0) {
-        
-        // --- Calculate Active Rule & Breakdowns for Footer ---
         const currentVal = parseFloat(String(getRawValue(value))) || 0;
         let activeRule = null;
         let effectiveMaxForActive: number | undefined = undefined;
         let finalScore = 0;
 
-        // Find match
-        // --- Fix: Use `f1` instead of `mappingRules`
         for (let idx = 0; idx < column.f1.length; idx++) {
             const rule = column.f1[idx];
             let effectiveMax = Infinity;
             if (rule.max === 'next') {
-                // --- Fix: Use `f1` instead of `mappingRules`
                 const nextRule = column.f1[idx + 1];
-                if (nextRule && typeof nextRule.min === 'number') {
-                    effectiveMax = nextRule.min - 1;
-                }
+                if (nextRule && typeof nextRule.min === 'number') effectiveMax = nextRule.min - 1;
             } else if (typeof rule.max === 'number') {
                 effectiveMax = rule.max;
             }
-            
             const isMatch = (rule.min === undefined || currentVal >= rule.min) && (currentVal <= effectiveMax);
             if (isMatch) {
                 activeRule = rule;
@@ -416,173 +330,112 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
             }
         }
         
-        // Calculate the score just for display purposes in the footer (same logic as scoring utils)
         if (activeRule) {
              if (activeRule.isLinear) {
                  const min = activeRule.min ?? 0;
                  const prevLimit = min - 1;
-                 // --- Fix: `calculateColumnScore` expects an array
                  const baseScore = calculateColumnScore(column, [prevLimit]);
                  const ruleUnit = Math.max(1, activeRule.unit || 1);
                  const excess = currentVal - prevLimit;
                  const count = Math.floor(excess / ruleUnit);
-                 finalScore = baseScore + (count * activeRule.score);
+                 // 關鍵修改：顯示邏輯對應新欄位
+                 const stepScore = activeRule.unitScore !== undefined ? activeRule.unitScore : activeRule.score;
+                 finalScore = baseScore + (count * stepScore);
              } else {
                  finalScore = activeRule.score;
              }
         }
         
         let footerCalculationNode: React.ReactNode = null;
-        
         if (activeRule) {
              if (activeRule.isLinear) {
                  const min = activeRule.min ?? 0;
                  const prevLimit = min - 1;
-                 // --- Fix: `calculateColumnScore` expects an array
                  const baseScore = calculateColumnScore(column, [prevLimit]);
                  const ruleUnit = Math.max(1, activeRule.unit || 1);
                  const excess = currentVal - prevLimit;
                  const count = Math.floor(excess / ruleUnit);
+                 const stepScore = activeRule.unitScore !== undefined ? activeRule.unitScore : activeRule.score;
                  
                  footerCalculationNode = (
                      <div className="flex items-center justify-end w-full leading-none whitespace-nowrap text-slate-400 font-mono text-[10px]">
                          <span>{baseScore}</span>
                          <span className="opacity-50">+</span>
-                         <span>{activeRule.score}</span>
+                         <span>{stepScore}</span>
                          <span className="opacity-50">×</span>
                          <span>{count}</span>
                      </div>
                  );
              } else {
-                 footerCalculationNode = (
-                     <div className="flex items-center justify-end w-full text-[10px] text-slate-500 italic">
-                        固定分數
-                     </div>
-                 );
+                 footerCalculationNode = <div className="flex items-center justify-end w-full text-[10px] text-slate-500 italic">固定分數</div>;
              }
         } else {
-             // Fallback for no match
              footerCalculationNode = <span className="text-slate-500 text-[10px] italic">無規則</span>;
         }
 
         return (
             <div className="flex flex-col h-full p-2 overflow-hidden">
                 <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0"><Ruler size={12} /> 範圍查表</div>
-                
-                {/* Scrollable Rules List */}
                 <div className="flex-1 overflow-y-auto no-scrollbar space-y-1 py-1">
-                    {/* --- Fix: Use `f1` instead of `mappingRules` */}
                     {column.f1.map((rule, idx) => {
-                        // ... Logic to resolve min/max for list display ...
-                        // Resolve effective max for comparison (re-calculated for loop scope)
                         let effectiveMax = Infinity;
                         if (rule.max === 'next') {
-                            // --- Fix: Use `f1` instead of `mappingRules`
                             const nextRule = column.f1?.[idx + 1];
-                            if (nextRule && typeof nextRule.min === 'number') {
-                                effectiveMax = nextRule.min - 1;
-                            }
+                            if (nextRule && typeof nextRule.min === 'number') effectiveMax = nextRule.min - 1;
                         } else if (typeof rule.max === 'number') {
                             effectiveMax = rule.max;
                         }
-
-                        const displayMax = rule.max === 'next' && effectiveMax !== Infinity ? effectiveMax : rule.max;
                         const isMatch = (rule.min === undefined || currentVal >= rule.min) && (currentVal <= effectiveMax);
-                        
-                        // Default min to 0 for display if undefined
                         const minVal = rule.min ?? 0;
-
-                        // Generate Nodes
                         let labelNode: React.ReactNode;
                         let scoreNode: React.ReactNode;
                         const unitStr = column.unit || '';
 
                         if (rule.isLinear) {
                             labelNode = <span>{minVal}+{unitStr}</span>;
+                            // 關鍵修改：顯示邏輯對應新欄位
+                            const stepScore = rule.unitScore !== undefined ? rule.unitScore : rule.score;
                             scoreNode = (
                                 <div className="flex flex-col items-end justify-center leading-tight">
                                     <span className="text-[10px] text-slate-500">每{rule.unit}{unitStr}</span>
                                     <span className="flex items-center">
                                         <span className="text-[10px] text-slate-500">加</span>
-                                        <span className="font-bold text-emerald-400 text-sm">{rule.score}</span>
+                                        <span className="font-bold text-emerald-400 text-sm">{stepScore}</span>
                                     </span>
                                 </div>
                             );
                         } else {
-                             let text = '';
-                             if (effectiveMax === Infinity) {
-                                 text = `${minVal}+${unitStr}`;
-                             } else if (minVal === effectiveMax) {
-                                 text = `${minVal}${unitStr}`;
-                             } else {
-                                 text = `${minVal}~${effectiveMax}${unitStr}`;
-                             }
-                             
+                             let text = (effectiveMax === Infinity) ? `${minVal}+${unitStr}` : (minVal === effectiveMax) ? `${minVal}${unitStr}` : `${minVal}~${effectiveMax}${unitStr}`;
                              labelNode = <span>{text}</span>;
-                             scoreNode = (
-                                <span className="text-emerald-400 font-bold">
-                                    {rule.score}
-                                </span>
-                             );
+                             scoreNode = <span className="text-emerald-400 font-bold">{rule.score}</span>;
                         }
 
                         return (
-                            <div 
-                                key={idx} 
-                                ref={isMatch ? activeRuleRef : null}
-                                className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded border transition-colors ${isMatch ? 'bg-indigo-900/50 border-indigo-500/50' : 'bg-slate-800 border-slate-700/50'}`}
-                            >
-                                {/* Left: Condition (Right aligned) */}
-                                <div className={`flex-1 text-right ${isMatch ? 'text-indigo-200 font-bold' : 'text-slate-400 font-medium'}`}>
-                                    {labelNode}
-                                </div>
-                                
-                                {/* Center: Arrow */}
-                                <div className={`shrink-0 px-1 ${isMatch ? 'text-indigo-400' : 'text-slate-600'}`}>
-                                    <ArrowRight size={12} />
-                                </div>
-
-                                {/* Right: Score (Left aligned) */}
-                                <div className={`flex-1 text-left font-mono ${isMatch ? 'text-white' : 'text-slate-400'}`}>
-                                    {scoreNode}
-                                </div>
+                            <div key={idx} ref={isMatch ? activeRuleRef : null} className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded border transition-colors ${isMatch ? 'bg-indigo-900/50 border-indigo-500/50' : 'bg-slate-800 border-slate-700/50'}`}>
+                                <div className={`flex-1 text-right ${isMatch ? 'text-indigo-200 font-bold' : 'text-slate-400 font-medium'}`}>{labelNode}</div>
+                                <div className={`shrink-0 px-1 ${isMatch ? 'text-indigo-400' : 'text-slate-600'}`}><ArrowRight size={12} /></div>
+                                <div className={`flex-1 text-left font-mono ${isMatch ? 'text-white' : 'text-slate-400'}`}>{scoreNode}</div>
                             </div>
                         );
                     })}
                 </div>
-
-                {/* Calculation Footer - Distinct Box Version */}
                 <div className="mt-2 shrink-0">
                     <div className="bg-slate-900 rounded-lg border border-indigo-500/40 p-2 shadow-sm flex flex-col gap-1">
-                        {/* Top Row: Input -> Result */}
                         <div className="flex justify-between items-center border-b border-indigo-500/20 pb-2 mb-0.5">
-                            {/* Modified Input Box */}
                             <div className="bg-emerald-900/30 border border-emerald-500 rounded px-2 py-0.5 shadow-[0_0_10px_rgba(16,185,129,0.1)] flex items-baseline gap-1">
                                  <span className="font-mono font-bold text-white text-sm leading-none">{currentVal}</span>
                             </div>
-                            
                             <ArrowRight size={12} className="text-slate-500" />
-                            
-                            <div className="flex items-center">
-                                <span className="text-emerald-400 font-bold text-sm">{finalScore}</span>
-                            </div>
+                            <div className="flex items-center"><span className="text-emerald-400 font-bold text-sm">{finalScore}</span></div>
                         </div>
-                        {/* Bottom Row: Breakdown */}
-                        <div className="flex justify-end min-h-[12px]">
-                           {footerCalculationNode}
-                        </div>
+                        <div className="flex justify-end min-h-[12px]">{footerCalculationNode}</div>
                     </div>
                 </div>
             </div>
         );
     }
     
-    let roundingText = '';
-    switch (column.rounding) {
-        case 'floor': roundingText = '無條件捨去'; break;
-        case 'ceil': roundingText = '無條件進位'; break;
-        case 'round': roundingText = '四捨五入'; break;
-    }
+    let roundingText = (column.rounding === 'floor') ? '無條件捨去' : (column.rounding === 'ceil') ? '無條件進位' : (column.rounding === 'round') ? '四捨五入' : '';
 
     return (
         <div className="flex flex-col gap-2 h-full p-2">
@@ -590,12 +443,8 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 py-2">
                 <div className="bg-slate-800 rounded p-2 border border-slate-700 text-center">
                     <div className="flex items-center justify-center gap-0.5 whitespace-nowrap">
-                        {/* --- Fix: Use `formula` and `constants` instead of `weight` */}
                         {column.formula === 'a1×c1' ? (
-                            <>
-                                <span className="text-xl font-bold text-emerald-400 font-mono leading-none">{column.constants?.c1 ?? 1}</span>
-                                <span className="text-slate-500 text-xs leading-none">×</span>
-                            </>
+                            <><span className="text-xl font-bold text-emerald-400 font-mono leading-none">{column.constants?.c1 ?? 1}</span><span className="text-slate-500 text-xs leading-none">×</span></>
                         ) : null}
                         <span className="text-base font-bold text-slate-200 leading-none">{unit || '分'}</span>
                     </div>
@@ -608,17 +457,12 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
 };
 
 const getFactors = (value: any): [string | number, string | number] => {
-  // New format: { parts: [a, b] }
-  if (value && Array.isArray(value.parts)) {
-    return [value.parts[0] ?? 0, value.parts[1] ?? 0];
+  if (value && Array.isArray(value.parts)) return [value.parts[0] ?? 0, value.parts[1] ?? 1];
+  if (typeof value === 'object' && value !== null && 'factors' in value && Array.isArray(value.factors)) {
+      return [value.factors[0] ?? 0, value.factors[1] ?? 1];
   }
-  // Legacy format: { factors: [a, b] }
-  if (typeof value === 'object' && value !== null && 'factors' in value && Array.isArray(value.factors) && value.factors.length === 2) {
-      return value.factors as [string | number, string | number];
-  }
-  return [0, 0];
+  return [0, 1];
 };
-
 
 const NumericKeypad = (props: any) => <NumericKeypadContent {...props} />;
 export default NumericKeypad;

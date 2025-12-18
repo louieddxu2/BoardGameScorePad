@@ -15,12 +15,11 @@ export const calculateColumnScore = (col: ScoreColumn, parts: number[]): number 
   // 1. Sum of Parts: a1+next
   if ((col.formula || '').includes('+next')) {
     calculated = parts.reduce((sum, part) => sum + part, 0);
-    // Note: The old 'weight' for sum-parts is intentionally ignored as per new design.
   }
   // 2. Product: a1×a2
   else if (col.formula === 'a1×a2') {
     const a = parts[0] ?? 0;
-    const b = parts[1] ?? 0;
+    const b = parts[1] ?? 1; // 預設值改為 1
     calculated = a * b;
   }
   // 3. Function Mapping: f1(a1)
@@ -40,17 +39,19 @@ export const calculateColumnScore = (col: ScoreColumn, parts: number[]): number 
           if (rule.isLinear) {
             const startVal = rule.min ?? 0; 
             const prevEnd = startVal - 1;
-            // Recursively call to get base score, passing only the value part.
+            // Recursively call to get base score
             const baseScore = calculateColumnScore(col, [prevEnd]);
             const unit = Math.max(1, rule.unit || 1);
             const offset = valNum - prevEnd;
             const increments = Math.floor(offset / unit);
-            calculated = baseScore + (increments * rule.score);
+            // 關鍵修改：優先使用 unitScore，若無則 fallback 到 score (向上相容)
+            const stepScore = rule.unitScore !== undefined ? rule.unitScore : rule.score;
+            calculated = baseScore + (increments * stepScore);
           } else {
             calculated = rule.score;
           }
       } else {
-        calculated = 0; // Default for gaps
+        calculated = 0;
       }
     }
   }
@@ -91,24 +92,17 @@ export const calculatePlayerTotal = (player: Player, template: GameTemplate): nu
   return total;
 };
 
-// --- Fix: Add missing helper functions for backward compatibility ---
-/**
- * Extracts the primary numeric value from a ScoreValue object or legacy formats.
- */
 export const getRawValue = (value: any): number => {
     if (value === null || value === undefined) return 0;
-    if (value.parts && value.parts.length > 0) return value.parts[0]; // New format
-    if (typeof value === 'object' && 'value' in value) return parseFloat(String(value.value)) || 0; // Legacy
+    if (value.parts && value.parts.length > 0) return value.parts[0];
+    if (typeof value === 'object' && 'value' in value) return parseFloat(String(value.value)) || 0;
     if (typeof value === 'number' || typeof value === 'string') return parseFloat(String(value)) || 0;
     return 0;
 };
 
-/**
- * Extracts the history array from score formats that support it.
- */
 export const getScoreHistory = (value: any): string[] => {
     if (value === null || value === undefined) return [];
-    if (value.parts) return value.parts.map(String); // New format
-    if (typeof value === 'object' && Array.isArray(value.history)) return value.history; // Legacy
+    if (value.parts) return value.parts.map(String);
+    if (typeof value === 'object' && Array.isArray(value.history)) return value.history;
     return [];
 };

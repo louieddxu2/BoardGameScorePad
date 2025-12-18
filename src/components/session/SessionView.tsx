@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import { GameSession, GameTemplate } from '../../types';
 import { useSessionState } from './hooks/useSessionState';
 import { useSessionEvents } from './hooks/useSessionEvents';
@@ -29,12 +29,21 @@ interface SessionViewProps {
   onResetScores: () => void;
 }
 
+// State for holding measured layout dimensions for screenshotting
+interface ScreenshotLayout {
+  itemWidth: number;
+  playerWidths: Record<string, number>;
+}
+
 const SessionView: React.FC<SessionViewProps> = (props) => {
   const { session, template, zoomLevel } = props;
 
   const sessionState = useSessionState(props);
   const eventHandlers = useSessionEvents(props, sessionState);
   const { showToast } = useToast();
+  
+  // New state to manage the two-step screenshot process
+  const [screenshotLayout, setScreenshotLayout] = useState<ScreenshotLayout | null>(null);
 
   const {
     editingCell,
@@ -57,15 +66,54 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const winners = session.players
     .filter(p => p.totalScore === Math.max(...session.players.map(pl => pl.totalScore)))
     .map(p => p.id);
+  
+  // --- New Screenshot Handler ---
+  const handleScreenshotRequest = useCallback((mode: 'full' | 'simple') => {
+    // Step 1: Measure the live grid layout
+    const itemHeaderEl = document.querySelector('#live-player-header-row > div:first-child') as HTMLElement;
+    const playerHeaderEls = document.querySelectorAll('[data-player-header-id]');
+    
+    if (!itemHeaderEl || playerHeaderEls.length === 0) {
+        showToast({ message: "無法測量佈局，截圖失敗。", type: 'error' });
+        return;
+    }
 
-  // --- Screenshot Effect ---
+    const measuredLayout: ScreenshotLayout = {
+        itemWidth: itemHeaderEl.offsetWidth,
+        playerWidths: {}
+    };
+
+    playerHeaderEls.forEach(el => {
+        const playerId = el.getAttribute('data-player-header-id');
+        if (playerId) {
+            measuredLayout.playerWidths[playerId] = (el as HTMLElement).offsetWidth;
+        }
+    });
+    
+    // Step 2: Set state to trigger re-render of ScreenshotView with correct dimensions
+    setScreenshotLayout(measuredLayout);
+    setUiState(p => ({ ...p, showShareMenu: false, screenshotState: { active: true, mode } }));
+
+  }, [setUiState, showToast]);
+
+
+  // --- Screenshot Effect (now listens to screenshotLayout) ---
   useEffect(() => {
-    if (!screenshotState.active) return;
+    // Only proceed if screenshot is active AND layout has been measured
+    if (!screenshotState.active || !screenshotLayout) return;
 
     const takeScreenshot = async () => {
+      // The target is now guaranteed to have re-rendered with the correct dimensions
       const screenshotTarget = document.getElementById('screenshot-target');
       if (screenshotTarget) {
         try {
+          // --- 關鍵修復：強制等待字型載入 ---
+          // 確保 `html-to-image` 執行時，瀏覽器已經下載並應用了 Inter 字型，
+          // 這樣 `white-space: pre-wrap` 才能基於正確的字元寬度計算換行。
+          // 字型大小需與截圖目標一致，因此乘以 zoomLevel
+          const fontStyles = `normal ${16 * zoomLevel}px Inter`;
+          await document.fonts.load(fontStyles);
+          
           const width = screenshotTarget.offsetWidth;
           const height = screenshotTarget.offsetHeight;
 
@@ -90,22 +138,24 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           console.error("Screenshot failed:", e);
           showToast({ message: "截圖失敗，請在新分頁中再試一次。", type: 'error' });
         } finally {
+          // Reset both states after completion
           setUiState(p => ({ ...p, screenshotState: { ...p.screenshotState, active: false } })); 
+          setScreenshotLayout(null);
         }
       } else {
         setUiState(p => ({ ...p, screenshotState: { ...p.screenshotState, active: false } })); 
+        setScreenshotLayout(null);
         showToast({ message: "找不到截圖目標", type: 'error' });
       }
     };
     
-    // Timeout to allow state to propagate and ScreenshotView to re-render with the correct mode
-    const timer = setTimeout(takeScreenshot, 200);
+    // Timeout allows React to commit the state update and re-render ScreenshotView
+    const timer = setTimeout(takeScreenshot, 50);
     return () => clearTimeout(timer);
 
-  }, [screenshotState, setUiState, zoomLevel, showToast]);
+  }, [screenshotState.active, screenshotLayout, setUiState, zoomLevel, showToast]);
 
   // --- Scroll Synchronization ---
-  // Ensures that when the user scrolls the main grid, the totals bar follows horizontally.
   useEffect(() => {
     const grid = sessionState.tableContainerRef.current;
     const bar = sessionState.totalBarScrollRef.current;
@@ -113,14 +163,10 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     if (!grid || !bar) return;
 
     const handleScroll = () => {
-      // Sync the bar's scroll position to the grid's
       if (bar.scrollLeft !== grid.scrollLeft) {
           bar.scrollLeft = grid.scrollLeft;
       }
     };
-
-    // Initial sync
-    handleScroll();
 
     grid.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
@@ -128,9 +174,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     };
   }, [sessionState.tableContainerRef, sessionState.totalBarScrollRef]);
 
-  // --- Width Synchronization (New!) ---
-  // Uses ResizeObserver to strictly force the TotalsBar content width to match the ScoreGrid content width.
-  // This solves the alignment issue during zoom/resize without needing complex HTML restructuring.
+  // --- Width Synchronization ---
   useEffect(() => {
     const gridContent = sessionState.gridContentRef.current;
     const totalContent = sessionState.totalContentRef.current;
@@ -138,22 +182,12 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     if (!gridContent || !totalContent) return;
 
     const observer = new ResizeObserver((entries) => {
-      // 關鍵修復：使用 requestAnimationFrame 避免 loop error
       window.requestAnimationFrame(() => {
         for (const entry of entries) {
           if (entry.target === gridContent) {
-             // We use offsetWidth to get the precise integer pixel width rendered by the browser.
-             // IMPORTANT: The Grid Container includes the sticky header column.
-             // We must dynamically calculate the header width because it now uses rem and scales with zoom.
              const gridWidth = gridContent.offsetWidth;
-             
-             // Try to find the sticky header element to get its exact current pixel width
-             // It's the first child of the header row
              const stickyHeader = document.querySelector('#live-player-header-row > div:first-child') as HTMLElement;
-             const headerOffset = stickyHeader ? stickyHeader.offsetWidth : 70; // Fallback to 70 if not found (rare)
-
-             // The TotalsBar content container ONLY contains the player columns.
-             // Therefore, we must subtract the header width to ensure alignment.
+             const headerOffset = stickyHeader ? stickyHeader.offsetWidth : 70;
              const newTotalWidth = `${Math.max(0, gridWidth - headerOffset)}px`;
              
              if (totalContent.style.width !== newTotalWidth) {
@@ -208,23 +242,19 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onReset={() => setUiState(prev => ({ ...prev, showResetConfirm: true }))}
         onExit={() => setUiState(prev => ({ ...prev, showExitConfirm: true }))}
         onShareMenuToggle={(show) => setUiState(prev => ({...prev, showShareMenu: show}))}
-        onScreenshotRequest={eventHandlers.handleScreenshotRequest}
+        onScreenshotRequest={handleScreenshotRequest}
       />
       
       <div 
         className="flex-1 overflow-hidden relative flex flex-col"
         onClick={eventHandlers.handleGlobalClick}
       >
-        {/* 
-           Conditional Focus Mask:
-           Only show this transparent blocker when editing a PLAYER NAME and the keyboard is OPEN.
-        */}
         {editingPlayerId && isInputFocused && (
             <div 
                 className="absolute inset-0 z-40 bg-transparent"
                 onClick={(e) => {
-                    e.stopPropagation(); // Block click from reaching grid
-                    setUiState(p => ({ ...p, isInputFocused: false })); // Blur input
+                    e.stopPropagation();
+                    setUiState(p => ({ ...p, isInputFocused: false }));
                 }}
             />
         )}
@@ -264,12 +294,15 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       />
 
       {/* Hidden view for screenshot generation */}
-      <ScreenshotView 
-        session={session} 
-        template={template} 
-        zoomLevel={zoomLevel} 
-        mode={screenshotState.mode} 
-      />
+      {screenshotState.active && (
+        <ScreenshotView 
+          session={session} 
+          template={template} 
+          zoomLevel={zoomLevel} 
+          mode={screenshotState.mode}
+          layout={screenshotLayout} 
+        />
+      )}
     </div>
   );
 };

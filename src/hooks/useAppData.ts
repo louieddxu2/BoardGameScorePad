@@ -8,60 +8,65 @@ import { calculatePlayerTotal } from '../utils/scoring';
 // --- Migration Logic ---
 
 const migrateColumn = (oldCol: any): ScoreColumn => {
-  if (oldCol.formula && oldCol.inputType) return oldCol; // Already migrated
-
-  let formula = 'a1';
-  let constants: { c1?: number } | undefined = undefined;
-  let f1: MappingRule[] | undefined = undefined;
+  // Base migration for structural changes
+  let formula = oldCol.formula || 'a1';
+  let constants: { c1?: number } | undefined = oldCol.constants;
+  let f1: MappingRule[] | undefined = oldCol.f1;
   let quickActions: QuickAction[] | undefined = oldCol.quickActions;
   let inputType: InputMethod = oldCol.inputType || 'keypad';
 
-  // Convert old options (from select/boolean) to new quickActions
-  if (oldCol.type === 'select' || oldCol.type === 'boolean') {
-    inputType = 'clicker';
-    formula = 'a1'; // Select list formula is always a1
-    const oldOptions = oldCol.options || (oldCol.type === 'boolean' ? [
-        { label: 'YES (達成)', value: oldCol.weight ?? 1 },
-        { label: 'NO (未達成)', value: 0 }
-    ] : []);
-    
-    quickActions = oldOptions.map((opt: any) => ({
-        id: crypto.randomUUID(),
-        label: opt.label,
-        value: opt.value,
-        color: opt.color,
-        isModifier: false // Select options are never modifiers
-    }));
-  } 
-  // Handle other old types
-  else if (oldCol.calculationType === 'sum-parts') {
-    formula = 'a1+next';
-    if (Array.isArray(oldCol.quickActions) && oldCol.quickActions.length > 0) {
-        inputType = 'clicker';
+  // Handling legacy types
+  if (!oldCol.formula || !oldCol.inputType) {
+    if (oldCol.type === 'select' || oldCol.type === 'boolean') {
+      inputType = 'clicker';
+      formula = 'a1';
+      const oldOptions = oldCol.options || (oldCol.type === 'boolean' ? [
+          { label: 'YES (達成)', value: oldCol.weight ?? 1 },
+          { label: 'NO (未達成)', value: 0 }
+      ] : []);
+      
+      quickActions = oldOptions.map((opt: any) => ({
+          id: crypto.randomUUID(),
+          label: opt.label,
+          value: opt.value,
+          color: opt.color,
+          isModifier: false
+      }));
+    } else if (oldCol.calculationType === 'sum-parts') {
+      formula = 'a1+next';
+      if (Array.isArray(oldCol.quickActions) && oldCol.quickActions.length > 0) {
+          inputType = 'clicker';
+      }
+    } else if (oldCol.calculationType === 'product') {
+      formula = 'a1×a2';
+    } else if (Array.isArray(oldCol.mappingRules) && oldCol.mappingRules.length > 0) {
+      formula = 'f1(a1)';
+      f1 = oldCol.mappingRules;
+    } else { 
+      if (oldCol.weight !== undefined && oldCol.weight !== 1) {
+        formula = 'a1×c1';
+        constants = { c1: oldCol.weight };
+      }
+      if (!oldCol.inputType && Array.isArray(oldCol.quickButtons) && oldCol.quickButtons.length > 0) {
+          inputType = 'clicker';
+          formula = 'a1+next';
+          quickActions = oldCol.quickButtons.map((v: number) => ({
+              id: crypto.randomUUID(),
+              label: `${v > 0 ? '+' : ''}${v}`,
+              value: v,
+          }));
+      }
     }
-  } else if (oldCol.calculationType === 'product') {
-    formula = 'a1×a2';
-  } 
-  // FIX: Relaxed check for mapping rules. 
-  // Old data might not have `useMapping: true` explicitly, but if mappingRules has content, it's a mapping column.
-  else if (Array.isArray(oldCol.mappingRules) && oldCol.mappingRules.length > 0) {
-    formula = 'f1(a1)';
-    f1 = oldCol.mappingRules;
-  } else { // Standard number
-    if (oldCol.weight !== undefined && oldCol.weight !== 1) {
-      formula = 'a1×c1';
-      constants = { c1: oldCol.weight };
-    }
-    // Infer clicker for old standard columns that had quick buttons (and assume they were for sum-parts)
-    if (!oldCol.inputType && Array.isArray(oldCol.quickButtons) && oldCol.quickButtons.length > 0) {
-        inputType = 'clicker';
-        formula = 'a1+next'; // This was their only use case
-        quickActions = oldCol.quickButtons.map((v: number) => ({
-            id: crypto.randomUUID(),
-            label: `${v > 0 ? '+' : ''}${v}`,
-            value: v,
-        }));
-    }
+  }
+
+  // [NEW MIGRATION] Support for unitScore distinction
+  if (f1 && Array.isArray(f1)) {
+    f1 = f1.map(rule => {
+      if (rule.isLinear && rule.unitScore === undefined) {
+        return { ...rule, unitScore: rule.score };
+      }
+      return rule;
+    });
   }
 
   const newCol: ScoreColumn = {
@@ -84,9 +89,7 @@ const migrateColumn = (oldCol: any): ScoreColumn => {
 };
 
 const migrateTemplate = (template: any): GameTemplate => {
-    if (!template || !template.columns?.length || (template.columns[0].formula && template.columns[0].inputType)) {
-        return template;
-    }
+    if (!template || !template.columns?.length) return template;
     return {
         ...template,
         columns: template.columns.map(migrateColumn)
@@ -101,7 +104,7 @@ const migrateScores = (scores: Record<string, any>, template: GameTemplate): Rec
         if (!col || oldScore === undefined || oldScore === null) return;
         
         if (typeof oldScore === 'object' && oldScore !== null && oldScore.parts) {
-            newScores[colId] = oldScore; // Already migrated
+            newScores[colId] = oldScore;
             return;
         }
 
@@ -122,9 +125,7 @@ const migrateScores = (scores: Record<string, any>, template: GameTemplate): Rec
              
              if (rawVal !== undefined) {
                 const num = parseFloat(String(rawVal));
-                if (!isNaN(num)) {
-                    parts = [num];
-                }
+                if (!isNaN(num)) parts = [num];
              }
         }
         newScores[colId] = { parts };
@@ -132,9 +133,6 @@ const migrateScores = (scores: Record<string, any>, template: GameTemplate): Rec
     return newScores;
 };
 
-/**
- * This hook manages the core application data and persistence layer.
- */
 export const useAppData = () => {
   const [templates, setTemplates] = useState<GameTemplate[]>([]);
   const [systemOverrides, setSystemOverrides] = useState<Record<string, GameTemplate>>({});
@@ -275,15 +273,9 @@ export const useAppData = () => {
       setSystemOverrides(newOverrides);
   };
 
-  // --- Computed System Templates ---
-  // Ensure that even built-in templates are migrated before being exposed to the UI.
-  // This handles the case where DEFAULT_TEMPLATES contains legacy JSON structures.
   const systemTemplates = useMemo(() => {
     return DEFAULT_TEMPLATES.map(dt => {
-      // If user has an override (edited system template), use that (it is already migrated on load/save)
       if (systemOverrides[dt.id]) return systemOverrides[dt.id];
-      
-      // Otherwise, use the built-in one, but ensure it's migrated to latest format
       return migrateTemplate(dt);
     });
   }, [systemOverrides]);

@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import { GameSession, GameTemplate, Player, ScoreColumn, QuickAction, ScoreValue } from '../../../types';
 import { useSessionState } from '../hooks/useSessionState';
@@ -57,6 +55,7 @@ const PanelHeader: React.FC<{
     <div className="flex-1"></div>
     <button 
         onMouseDown={(e) => e.preventDefault()} // Keep focus on input
+        // Use onClear prop instead of undefined handleClear
         onClick={onClear} 
         className="bg-red-900/30 text-red-400 px-3 py-1 rounded text-xs border border-red-500/30 hover:bg-red-900/50 flex items-center gap-1 shrink-0"
     >
@@ -75,7 +74,7 @@ const PanelHeader: React.FC<{
 );
 
 
-const InputPanel: React.FC<InputPanelProps> = (props) => {
+const InputPanel: React.FC<InputPanelLayoutProps & any> = (props: any) => {
   const { sessionState, eventHandlers, session, template, playerHistory, onUpdateSession, onUpdatePlayerHistory } = props;
   const { uiState, setUiState, panelHeight } = sessionState;
   const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused } = uiState;
@@ -87,16 +86,16 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
   useEffect(() => {
     setActiveFactorIdx(0);
     setLocalKeypadValue(0);
-    setUiState(p => ({ ...p, overwriteMode: true }));
-  }, [editingCell]);
+    setUiState((p: any) => ({ ...p, overwriteMode: true }));
+  }, [editingCell, setUiState]);
 
   const isPanelOpen = editingCell !== null || editingPlayerId !== null;
 
   const updateScore = (playerId: string, colId: string, value: any) => {
-    const players = session.players.map(p => {
+    const players = session.players.map((p: any) => {
         if (p.id !== playerId) return p;
         const newScores = { ...p.scores };
-        const col = template.columns.find(c => c.id === colId);
+        const col = template.columns.find((c: any) => c.id === colId);
 
         if (value === undefined || value === null || !col) {
             delete newScores[colId];
@@ -119,21 +118,21 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
   };
 
   const handleDirectionToggle = () => {
-    setUiState(p => ({ ...p, advanceDirection: p.advanceDirection === 'horizontal' ? 'vertical' : 'horizontal' }));
+    setUiState((p: any) => ({ ...p, advanceDirection: p.advanceDirection === 'horizontal' ? 'vertical' : 'horizontal' }));
   };
 
   const handleClear = () => {
     if (editingPlayerId) {
-      setUiState(p => ({ ...p, tempPlayerName: '' }));
+      setUiState((p: any) => ({ ...p, tempPlayerName: '' }));
     } else if (editingCell) {
-      const player = session.players.find(p => p.id === editingCell.playerId);
-      const col = template.columns.find(c => c.id === editingCell.colId);
+      const player = session.players.find((p: any) => p.id === editingCell.playerId);
+      const col = template.columns.find((c: any) => c.id === editingCell.colId);
       if (player && col) {
         if ((col.formula || '').includes('+next')) {
             setLocalKeypadValue(0);
         }
         updateScore(player.id, col.id, undefined);
-        setUiState(p => ({ ...p, overwriteMode: true }));
+        setUiState((p: any) => ({ ...p, overwriteMode: true }));
       }
     }
   };
@@ -148,16 +147,16 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
   let isEditingPlayerName = false;
 
   if (editingPlayerId) {
-    activePlayer = session.players.find(p => p.id === editingPlayerId);
+    activePlayer = session.players.find((p: any) => p.id === editingPlayerId);
     isEditingPlayerName = true;
     
     if (activePlayer) {
         mainContentNode = (
             <PlayerEditor
               player={activePlayer} playerHistory={playerHistory} tempName={uiState.tempPlayerName}
-              setTempName={(name) => setUiState(p => ({ ...p, tempPlayerName: name }))}
-              isInputFocused={uiState.isInputFocused} setIsInputFocused={(focused) => setUiState(p => ({ ...p, isInputFocused: focused }))}
-              onUpdatePlayerColor={(color) => onUpdateSession({ ...session, players: session.players.map(p => p.id === editingPlayerId ? { ...p, color } : p) })}
+              setTempName={(name) => setUiState((p: any) => ({ ...p, tempPlayerName: name }))}
+              isInputFocused={uiState.isInputFocused} setIsInputFocused={(focused) => setUiState((p: any) => ({ ...p, isInputFocused: focused }))}
+              onUpdatePlayerColor={(color) => onUpdateSession({ ...session, players: session.players.map((p: any) => p.id === editingPlayerId ? { ...p, color } : p) })}
               onNameSubmit={eventHandlers.handlePlayerNameSubmit}
             />
         );
@@ -168,8 +167,8 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
         };
     }
   } else if (editingCell) {
-    activeColumn = template.columns.find(c => c.id === editingCell.colId);
-    activePlayer = session.players.find(p => p.id === editingCell.playerId);
+    activeColumn = template.columns.find((c: any) => c.id === editingCell.colId);
+    activePlayer = session.players.find((p: any) => p.id === editingCell.playerId);
 
     if (activeColumn && activePlayer) {
         const isProductMode = activeColumn.formula === 'a1×a2';
@@ -184,9 +183,9 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     const currentHistory = getScoreHistory(cellScoreObject);
                     const newHistory = [...currentHistory, String(newPart)];
                     const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
-                    updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
+                    updateScore(activePlayer!.id, activeColumn!.id, { value: newSum, history: newHistory });
                     setLocalKeypadValue(0);
-                    setUiState(p => ({ ...p, overwriteMode: true }));
+                    setUiState((p: any) => ({ ...p, overwriteMode: true }));
                 } else {
                     eventHandlers.moveToNext();
                 }
@@ -246,13 +245,13 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
         } else { // 'keypad'
             let keypadValue;
             if (isSumPartsMode) { keypadValue = localKeypadValue; } 
-            else if (isProductMode) { keypadValue = { factors: cellScoreObject?.parts ?? [0, 0] }; } 
+            else if (isProductMode) { keypadValue = { factors: cellScoreObject?.parts ?? [0, 1] }; } 
             else { keypadValue = { value: cellScoreObject?.parts?.[0] ?? 0 }; }
             
             mainContentNode = <NumericKeypadContent 
                 value={keypadValue}
                 onChange={(val: any) => isSumPartsMode ? setLocalKeypadValue(val) : updateScore(activePlayer!.id, activeColumn!.id, val)}
-                column={activeColumn} overwrite={overwriteMode} setOverwrite={(v: boolean) => setUiState(p => ({ ...p, overwriteMode: v }))}
+                column={activeColumn} overwrite={overwriteMode} setOverwrite={(v: boolean) => setUiState((p: any) => ({ ...p, overwriteMode: v }))}
                 onNext={onNextAction} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={setActiveFactorIdx} playerId={activePlayer.id}
             />;
             sidebarContentNode = <NumericKeypadInfo 
