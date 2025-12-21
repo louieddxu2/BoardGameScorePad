@@ -1,9 +1,17 @@
+
 <!DOCTYPE html>
 <html lang="zh-Hant">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+    <!-- 關鍵修改：加入 interactive-widget=resizes-content -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, interactive-widget=resizes-content" />
     <title>萬用桌遊計分板 BoardGameScorePad</title>
+    
+    <!-- 釜底抽薪的修復：優先載入字型，並加入 crossorigin="anonymous" 以允許 JS 讀取 CSS 規則 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet" crossorigin="anonymous">
+
     <link rel="manifest" href="/manifest.json">
     <!-- 保留 Tailwind CSS CDN 以維持樣式設定的簡便性 -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -26,13 +34,15 @@
       }
     </script>
     <style>
-      /* 關鍵修復：確保根元素佔滿整個螢幕高度，避免 h-full 失效 */
+      /* 關鍵修復：使用 dvh (Dynamic Viewport Height) 確保在網址列伸縮時高度正確 */
       html, body, #root {
-        height: 100%;
+        height: 100%;       /* Fallback for older browsers */
+        height: 100dvh;     /* Modern mobile viewport fix */
         width: 100%;
         margin: 0;
         padding: 0;
-        /* 新增：禁止下拉重新整理的 CSS 解決方案 */
+        /* 禁止 Body 層級的捲動，強制讓捲動發生在 App 內部的容器 */
+        overflow: hidden; 
         overscroll-behavior-y: contain;
       }
       body {
@@ -47,6 +57,18 @@
           -ms-overflow-style: none;
           scrollbar-width: none;
       }
+      /* Scoped Toast Animations */
+      @keyframes toast-fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes toast-fadeOut { from { opacity: 1; } to { opacity: 0; } }
+      @keyframes toast-slideInFromTop { from { transform: translateY(-1rem); } to { transform: translateY(0); } }
+      @keyframes toast-slideOutToTop { from { transform: translateY(0); } to { transform: translateY(-1rem); } }
+
+      .toast-enter-active {
+        animation: toast-fadeIn 0.3s ease-out, toast-slideInFromTop 0.3s ease-out;
+      }
+      .toast-exit-active {
+        animation: toast-fadeOut 0.3s ease-in forwards, toast-slideOutToTop 0.3s ease-in forwards;
+      }
     </style>
 <script type="importmap">
 {
@@ -57,8 +79,12 @@
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
     "vite": "https://aistudiocdn.com/vite@^7.2.6",
     "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
-    "html2canvas": "https://aistudiocdn.com/html2canvas@^1.4.1",
-    "vite-plugin-static-copy": "https://aistudiocdn.com/vite-plugin-static-copy@^3.1.4"
+    "html-to-image": "https://aistudiocdn.com/html-to-image@^1.11.11",
+    "vite-plugin-static-copy": "https://aistudiocdn.com/vite-plugin-static-copy@^3.1.4",
+    "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
+    "vitest": "https://esm.sh/vitest@^4.0.15",
+    "@testing-library/react": "https://esm.sh/@testing-library/react@^16.3.0",
+    "@testing-library/jest-dom": "https://esm.sh/@testing-library/jest-dom@^6.9.1"
   }
 }
 </script>

@@ -1,52 +1,66 @@
 
-
-export type ColumnType = 'number' | 'text' | 'select' | 'boolean';
-export type RoundingMode = 'none' | 'round' | 'floor' | 'ceil';
-export type CalculationType = 'standard' | 'product';
-
-export interface SelectOption {
-  value: number;
-  label: string;
-}
-
-export interface MappingRule {
-  min?: number; // Inclusive
-  max?: number; // Inclusive
-  score: number;
-}
-
+// --- Formula-based structure ---
 export interface ScoreValue {
-  // FIX: 將 `value` 和 `factors` 的類型與根 `types.ts` 同步，以允許處理中的字串值。
-  value: number | string;
-  history: string[]; // e.g. ["10", "+5", "-2"]
-  factors?: [number | string, number | string]; // e.g. [5, 3] for 5 * 3
+  parts: number[];
 }
 
 export interface ScoreColumn {
   id: string;
   name: string;
-  // FIX: 新增可選的 `color` 屬性以解決 `src/constants.ts` 中的類型錯誤。
   color?: string;
-  type: ColumnType;
-  isScoring: boolean;
-  weight?: number; // Multiplier
-  options?: SelectOption[]; // For 'select' type
-  mappingRules?: MappingRule[]; // For 'number' type with range lookups
-  unit?: string; // e.g., "隻", "棟"
-  rounding?: RoundingMode; // Rounding logic
-  quickButtons?: number[]; // Custom quick add/sub button values
   
-  // New fields for Product Mode
-  calculationType?: CalculationType; 
-  subUnits?: [string, string]; // [Unit A name, Unit B name]
+  // Core Calculation Logic
+  formula: string; // e.g., "a1", "a1×c1", "a1+next", "f1(a1)", "a1×a2"
+  constants?: {
+    c1?: number;
+    // c2, c3... for future use
+  };
+  f1?: MappingRule[]; // Definition for the f1() function
+  // f2, f3... for future use
+  
+  // Input & UI Helpers
+  inputType: InputMethod; // 'keypad' | 'clicker' - NOW REQUIRED
+  quickActions?: QuickAction[];
+  
+  // Formatting & Display
+  unit?: string;
+  subUnits?: [string, string]; // For product formula
+  rounding?: RoundingMode;
+  showPartsInGrid?: boolean; // For a1+next formula
+  buttonGridColumns?: number; // For clicker/select UI
+  
+  // Meta
+  isScoring: boolean;
 }
 
-export interface Player {
+// --- Shared types (mostly unchanged) ---
+export type RoundingMode = 'none' | 'round' | 'floor' | 'ceil';
+export type InputMethod = 'keypad' | 'clicker';
+
+export interface MappingRule {
+  min?: number; // Inclusive
+  max?: number | 'next'; // Inclusive. 'next' means (nextRule.min - 1)
+  score: number; // Used for fixed score
+  
+  isLinear?: boolean; 
+  unitScore?: number; // Explicit field for the slope (score per unit) in linear mode
+  unit?: number; // Denominator for linear calc (Every X units)
+}
+
+export interface QuickAction {
   id: string;
+  label: string;
+  value: number;
+  color?: string;
+  isModifier?: boolean; // If true, adds to the last history item instead of creating a new one
+}
+
+// Player, GameTemplate, GameSession will now use the new ScoreColumn
+export interface Player {
+  id:string;
   name: string;
   color: string;
-  // scores value can be: number (legacy), ScoreValue (complex), boolean, or string
-  scores: Record<string, any>; 
+  scores: Record<string, ScoreValue>; 
   totalScore: number;
 }
 
@@ -56,7 +70,6 @@ export interface GameTemplate {
   description?: string;
   columns: ScoreColumn[];
   createdAt: number;
-  // FIX: 新增可選的 `isPinned` 屬性以與根 `types.ts` 保持一致。
   isPinned?: boolean; // For UI state, not persisted in template JSON
 }
 
