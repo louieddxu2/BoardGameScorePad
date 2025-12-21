@@ -1,8 +1,10 @@
+
 import React, { useState } from 'react';
 import { GameTemplate } from '../../types';
 import { DEFAULT_TEMPLATES } from '../../constants';
-import { Plus, Download, Dice5, Search, X, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, RefreshCw, Copy, Code, Trash2, Check, Mail } from 'lucide-react';
+import { Plus, Download, Dice5, Search, X, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, RefreshCw, Copy, Code, Trash2, Check, Mail, CircleHelp } from 'lucide-react';
 import ConfirmationModal from '../shared/ConfirmationModal';
+import InstallGuideModal from '../modals/InstallGuideModal';
 import { useToast } from '../../hooks/useToast';
 
 interface DashboardProps {
@@ -54,6 +56,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<GameTemplate | null>(null);
   const [showDataModal, setShowDataModal] = useState(false);
+  const [showInstallHelp, setShowInstallHelp] = useState(false); // New state for install guide
   const [activeModalTab, setActiveModalTab] = useState<'import' | 'export'>('import');
   
   // Import/Export State
@@ -232,14 +235,30 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <button onClick={() => setIsSearchActive(true)} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors">
                   <Search size={20} />
                 </button>
-                <button
-                  className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${isInstalled ? 'hidden' : canInstall ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg' : 'bg-slate-700 text-slate-500 cursor-wait'}`}
-                  onClick={onInstallClick}
-                  disabled={!canInstall || isInstalled}
-                >
-                    <Download size={14} />
-                    <span className="hidden sm:inline">安裝 App</span>
-                </button>
+                
+                {/* 
+                  INSTALL BUTTON LOGIC:
+                  1. If installed (PWA mode), hide completely.
+                  2. If NOT installed:
+                     a) If native prompt available (canInstall=true): Show standard "Install App" btn.
+                     b) If native prompt unavailable (iOS/Desktop): Show "How to Install" btn (Download + ?)
+                */}
+                {!isInstalled && (
+                  <button
+                    className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-lg active:scale-95 ${canInstall ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600'}`}
+                    onClick={canInstall ? onInstallClick : () => setShowInstallHelp(true)}
+                  >
+                      {/* Icon Composition */}
+                      <div className="relative">
+                        <Download size={14} />
+                        {!canInstall && (
+                           <CircleHelp size={10} className="absolute -bottom-1 -right-1.5 text-yellow-400 bg-slate-900 rounded-full" strokeWidth={3} />
+                        )}
+                      </div>
+                      
+                      <span className="hidden sm:inline">{canInstall ? '安裝 App' : '下載 App'}</span>
+                  </button>
+                )}
             </div>
           </div>
         )}
@@ -339,6 +358,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* Modals */}
       <ConfirmationModal isOpen={!!templateToDelete} title="確定刪除此模板？" message="此動作將無法復原。" confirmText="刪除" isDangerous={true} onCancel={() => setTemplateToDelete(null)} onConfirm={() => { if(templateToDelete) onTemplateDelete(templateToDelete); setTemplateToDelete(null); }} />
       <ConfirmationModal isOpen={!!restoreTarget} title="備份修改並還原？" message="此動作將把您目前的修改備份到「我的遊戲庫」，並將此內建遊戲還原為官方最新版本。" confirmText="備份並還原" onCancel={() => setRestoreTarget(null)} onConfirm={() => { if(restoreTarget) { const backup = { ...restoreTarget, id: crypto.randomUUID(), name: `${restoreTarget.name} (備份)`, createdAt: Date.now() }; onTemplateSave(backup); onRestoreSystem(restoreTarget.id); setRestoreTarget(null); } }} />
+      <InstallGuideModal isOpen={showInstallHelp} onClose={() => setShowInstallHelp(false)} />
 
       {/* Data Modal */}
       {showDataModal && (

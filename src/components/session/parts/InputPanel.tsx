@@ -74,7 +74,7 @@ const PanelHeader: React.FC<{
 );
 
 
-const InputPanel: React.FC<InputPanelLayoutProps & any> = (props: any) => {
+const InputPanel: React.FC<InputPanelProps> = (props) => {
   const { sessionState, eventHandlers, session, template, playerHistory, onUpdateSession, onUpdatePlayerHistory } = props;
   const { uiState, setUiState, panelHeight } = sessionState;
   const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused } = uiState;

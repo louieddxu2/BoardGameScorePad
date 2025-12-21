@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { GameSession, GameTemplate } from '../../../types';
 
@@ -12,6 +13,18 @@ interface SessionViewProps {
   onResetScores: () => void;
 }
 
+// Layout info needs to be passed to the modal
+export interface ScreenshotLayout {
+  itemWidth: number;
+  playerWidths: Record<string, number>;
+}
+
+export interface ScreenshotModalState {
+  isOpen: boolean;
+  initialMode: 'full' | 'simple';
+  layout: ScreenshotLayout | null;
+}
+
 export interface UIState {
   editingCell: { playerId: string; colId: string } | null;
   editingPlayerId: string | null;
@@ -22,7 +35,10 @@ export interface UIState {
   columnToDelete: string | null;
   isAddColumnModalOpen: boolean;
   showShareMenu: boolean;
-  screenshotState: { active: boolean, mode: 'full' | 'simple' };
+  
+  // Updated Screenshot State
+  screenshotModal: ScreenshotModalState;
+
   advanceDirection: 'horizontal' | 'vertical';
   overwriteMode: boolean;
   isInputFocused: boolean;
@@ -40,7 +56,14 @@ export const useSessionState = (props: SessionViewProps) => {
     columnToDelete: null,
     isAddColumnModalOpen: false,
     showShareMenu: false,
-    screenshotState: { active: false, mode: 'full' },
+    
+    // Initial state for the new modal
+    screenshotModal: {
+      isOpen: false,
+      initialMode: 'full',
+      layout: null
+    },
+
     advanceDirection: 'horizontal',
     overwriteMode: true,
     isInputFocused: false,
@@ -51,7 +74,6 @@ export const useSessionState = (props: SessionViewProps) => {
   const totalBarScrollRef = useRef<HTMLDivElement>(null);
   
   // New refs for Width Synchronization
-  // These point to the inner content div that determines the full scrollable width
   const gridContentRef = useRef<HTMLDivElement>(null);
   const totalContentRef = useRef<HTMLDivElement>(null);
   
@@ -122,12 +144,6 @@ export const useSessionState = (props: SessionViewProps) => {
   // --- Derived State ---
   const isPanelOpen = uiState.editingCell !== null || uiState.editingPlayerId !== null;
   
-  // Dynamic Panel Height Logic:
-  // - If closed: 0px
-  // - If focused (keyboard open): '112px' (Header 40px + Input Layout 72px)
-  //   Using a fixed pixel value is CRITICAL for CSS transitions to work correctly.
-  //   'auto' does not support transitions and causes flickering.
-  // - If normal editing: '40vh' (standard height for keypad/history)
   const panelHeight = isPanelOpen 
     ? (uiState.isInputFocused ? '112px' : '40vh')
     : '0px';

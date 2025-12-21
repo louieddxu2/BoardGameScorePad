@@ -1,8 +1,8 @@
-import React, { useEffect, useCallback, useState } from 'react';
+
+import React, { useEffect, useCallback } from 'react';
 import { GameSession, GameTemplate } from '../../types';
-import { useSessionState } from './hooks/useSessionState';
+import { useSessionState, ScreenshotLayout } from './hooks/useSessionState';
 import { useSessionEvents } from './hooks/useSessionEvents';
-import { toBlob } from 'html-to-image';
 import { useToast } from '../../hooks/useToast';
 
 // Parts
@@ -10,12 +10,13 @@ import SessionHeader from './parts/SessionHeader';
 import ScoreGrid from './parts/ScoreGrid';
 import TotalsBar from './parts/TotalsBar';
 import InputPanel from './parts/InputPanel';
-import ScreenshotView from './parts/ScreenshotView';
+// Removed: ScreenshotView import (now handled by Modal)
 
 // Modals
 import ConfirmationModal from '../shared/ConfirmationModal';
 import ColumnConfigEditor from '../shared/ColumnConfigEditor';
 import AddColumnModal from './modals/AddColumnModal';
+import ScreenshotModal from './modals/ScreenshotModal';
 
 interface SessionViewProps {
   session: GameSession;
@@ -29,12 +30,6 @@ interface SessionViewProps {
   onResetScores: () => void;
 }
 
-// State for holding measured layout dimensions for screenshotting
-interface ScreenshotLayout {
-  itemWidth: number;
-  playerWidths: Record<string, number>;
-}
-
 const SessionView: React.FC<SessionViewProps> = (props) => {
   const { session, template, zoomLevel } = props;
 
@@ -42,9 +37,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const eventHandlers = useSessionEvents(props, sessionState);
   const { showToast } = useToast();
   
-  // New state to manage the two-step screenshot process
-  const [screenshotLayout, setScreenshotLayout] = useState<ScreenshotLayout | null>(null);
-
   const {
     editingCell,
     editingPlayerId,
@@ -55,7 +47,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     columnToDelete,
     isAddColumnModalOpen,
     showShareMenu,
-    screenshotState,
+    screenshotModal,
     isInputFocused,
   } = sessionState.uiState;
 
@@ -67,9 +59,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     .filter(p => p.totalScore === Math.max(...session.players.map(pl => pl.totalScore)))
     .map(p => p.id);
   
-  // --- New Screenshot Handler ---
+  // --- New Screenshot Handler (Opens Modal) ---
   const handleScreenshotRequest = useCallback((mode: 'full' | 'simple') => {
-    // Step 1: Measure the live grid layout
+    // Measure layout to ensure screenshot matches live grid
     const itemHeaderEl = document.querySelector('#live-player-header-row > div:first-child') as HTMLElement;
     const playerHeaderEls = document.querySelectorAll('[data-player-header-id]');
     
@@ -90,70 +82,18 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         }
     });
     
-    // Step 2: Set state to trigger re-render of ScreenshotView with correct dimensions
-    setScreenshotLayout(measuredLayout);
-    setUiState(p => ({ ...p, showShareMenu: false, screenshotState: { active: true, mode } }));
+    // Open the modal with the measured layout
+    setUiState(p => ({ 
+        ...p, 
+        showShareMenu: false,
+        screenshotModal: {
+            isOpen: true,
+            initialMode: mode,
+            layout: measuredLayout
+        }
+    }));
 
   }, [setUiState, showToast]);
-
-
-  // --- Screenshot Effect (now listens to screenshotLayout) ---
-  useEffect(() => {
-    // Only proceed if screenshot is active AND layout has been measured
-    if (!screenshotState.active || !screenshotLayout) return;
-
-    const takeScreenshot = async () => {
-      // The target is now guaranteed to have re-rendered with the correct dimensions
-      const screenshotTarget = document.getElementById('screenshot-target');
-      if (screenshotTarget) {
-        try {
-          // --- 關鍵修復：強制等待字型載入 ---
-          // 確保 `html-to-image` 執行時，瀏覽器已經下載並應用了 Inter 字型，
-          // 這樣 `white-space: pre-wrap` 才能基於正確的字元寬度計算換行。
-          // 字型大小需與截圖目標一致，因此乘以 zoomLevel
-          const fontStyles = `normal ${16 * zoomLevel}px Inter`;
-          await document.fonts.load(fontStyles);
-          
-          const width = screenshotTarget.offsetWidth;
-          const height = screenshotTarget.offsetHeight;
-
-          const blob = await toBlob(screenshotTarget, {
-            backgroundColor: '#0f172a',
-            pixelRatio: 1.5,
-            cacheBust: true,
-            width: width,
-            height: height,
-            style: {
-              transform: 'none', 
-            }
-          });
-
-          if (blob) {
-            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-            showToast({ message: "計分表圖片已複製！", type: 'success' });
-          } else {
-            throw new Error("Blob creation failed");
-          }
-        } catch (e) {
-          console.error("Screenshot failed:", e);
-          showToast({ message: "截圖失敗，請在新分頁中再試一次。", type: 'error' });
-        } finally {
-          // Reset both states after completion
-          setUiState(p => ({ ...p, screenshotState: { ...p.screenshotState, active: false } })); 
-          setScreenshotLayout(null);
-        }
-      } else {
-        setUiState(p => ({ ...p, screenshotState: { ...p.screenshotState, active: false } })); 
-        setScreenshotLayout(null);
-        showToast({ message: "找不到截圖目標", type: 'error' });
-      }
-    };
-    
-    // Timeout allows React to commit the state update and re-render ScreenshotView
-    const timer = setTimeout(takeScreenshot, 50);
-    return () => clearTimeout(timer);
-
-  }, [screenshotState.active, screenshotLayout, setUiState, zoomLevel, showToast]);
 
   // --- Scroll Synchronization ---
   useEffect(() => {
@@ -230,12 +170,24 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         />
       )}
 
+      {screenshotModal.isOpen && (
+          <ScreenshotModal
+            isOpen={screenshotModal.isOpen}
+            initialMode={screenshotModal.initialMode}
+            layout={screenshotModal.layout}
+            session={session}
+            template={template}
+            zoomLevel={zoomLevel}
+            onClose={() => setUiState(p => ({ ...p, screenshotModal: { ...p.screenshotModal, isOpen: false } }))}
+          />
+      )}
+
       {/* --- Main UI --- */}
       <SessionHeader
         templateName={template.name}
         isEditingTitle={isEditingTitle}
         showShareMenu={showShareMenu}
-        screenshotActive={screenshotState.active}
+        screenshotActive={screenshotModal.isOpen}
         onEditTitleToggle={(editing) => setUiState(prev => ({ ...prev, isEditingTitle: editing }))}
         onTitleSubmit={eventHandlers.handleTitleSubmit}
         onAddColumn={() => setUiState(prev => ({ ...prev, isAddColumnModalOpen: true }))}
@@ -292,17 +244,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onUpdateSession={props.onUpdateSession}
         onUpdatePlayerHistory={props.onUpdatePlayerHistory}
       />
-
-      {/* Hidden view for screenshot generation */}
-      {screenshotState.active && (
-        <ScreenshotView 
-          session={session} 
-          template={template} 
-          zoomLevel={zoomLevel} 
-          mode={screenshotState.mode}
-          layout={screenshotLayout} 
-        />
-      )}
     </div>
   );
 };

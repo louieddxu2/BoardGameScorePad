@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { GameSession, GameTemplate } from '../../../types';
 import { Trophy, Crown, Settings } from 'lucide-react';
@@ -10,14 +11,24 @@ interface ScreenshotLayout {
 }
 
 interface ScreenshotViewProps {
+  id?: string; // New prop for unique identification
   session: GameSession;
   template: GameTemplate;
   zoomLevel: number;
   mode: 'full' | 'simple';
   layout: ScreenshotLayout | null;
+  className?: string; // Allow overriding positioning
 }
 
-const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoomLevel, mode, layout }) => {
+const ScreenshotView: React.FC<ScreenshotViewProps> = ({ 
+  id = "screenshot-target", 
+  session, 
+  template, 
+  zoomLevel, 
+  mode, 
+  layout,
+  className = "" 
+}) => {
   const winners = session.players
     .filter(p => p.totalScore === Math.max(...session.players.map(pl => pl.totalScore)))
     .map(p => p.id);
@@ -41,8 +52,10 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoom
 
   return (
     <div
-      id="screenshot-target"
-      className={`fixed top-0 left-0 -z-50 text-slate-100 ${containerClass}`}
+      id={id}
+      // CRITICAL FIX: Removed 'fixed top-0 left-0 -z-50' from default classes.
+      // Now it relies on the parent container or the passed className for positioning.
+      className={`text-slate-100 ${containerClass} ${className}`}
       style={{ 
         fontSize: `${16 * zoomLevel}px`,
         fontFamily: 'Inter, sans-serif',
@@ -50,7 +63,7 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoom
       }}
     >
       {/* Header */}
-      <div id="ss-header" className="p-4 flex items-center gap-2">
+      <div id={`${id}-header`} className="p-4 flex items-center gap-2">
         <div className={`p-2 rounded ${headerIconBoxClass}`}>
           <Trophy className="text-emerald-500" />
         </div>
@@ -61,10 +74,10 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoom
       </div>
       
       {/* Score Grid Container */}
-      <div id="screenshot-content">
+      <div id={`${id}-content`}>
         
         {/* Player Headers */}
-        <div id="ss-player-header-row" className={`flex border-b ${rowBorderClass} bg-slate-800`}>
+        <div id={`${id}-player-header-row`} className={`flex border-b ${rowBorderClass} bg-slate-800`}>
           <div className={`border-r ${rowBorderClass} p-2 flex items-center justify-center`} style={itemColStyle}>
             <span className="font-bold text-sm text-slate-400">玩家</span>
           </div>
@@ -87,7 +100,7 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoom
 
         {/* Rows */}
         {template.columns.map(col => (
-          <div key={col.id} id={`ss-row-${col.id}`} className="flex">
+          <div key={col.id} id={`${id}-row-${col.id}`} className="flex">
             <div
               className={`border-r-2 border-b ${rowBorderClass} p-2 text-center flex flex-col justify-center bg-slate-800`}
               style={{ ...itemColStyle, borderRightColor: getColumnBorderRight(col.color) }}
@@ -132,7 +145,7 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoom
         ))}
 
         {/* Totals Bar */}
-        <div id="ss-totals-row" className={`flex h-10 border-t ${rowBorderClass} bg-slate-900`}>
+        <div id={`${id}-totals-row`} className={`flex h-10 border-t ${rowBorderClass} bg-slate-900`}>
             <div className={`border-r ${rowBorderClass} p-2 flex items-center justify-center bg-slate-800`} style={itemColStyle}>
                 <span className="font-black text-emerald-400 text-sm">總分</span>
             </div>

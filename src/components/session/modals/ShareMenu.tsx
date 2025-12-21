@@ -1,8 +1,9 @@
+
 import React from 'react';
-import { Image, LayoutPanelLeft } from 'lucide-react';
+import { Image as ImageIcon, LayoutPanelLeft } from 'lucide-react';
 
 interface ShareMenuProps {
-  isCopying: boolean;
+  isCopying: boolean; // Keep prop name for compatibility, though logic changes
   onScreenshotRequest: (mode: 'full' | 'simple') => void;
 }
 
@@ -14,8 +15,8 @@ const ShareMenu: React.FC<ShareMenuProps> = ({ isCopying, onScreenshotRequest })
         disabled={isCopying}
         className="flex items-center gap-3 px-3 py-3 hover:bg-slate-700 rounded-lg text-sm text-white transition-colors text-left"
       >
-        <Image size={16} className="text-emerald-400" />
-        {isCopying ? '處理中...' : '複製完整截圖'}
+        <ImageIcon size={16} className="text-emerald-400" />
+        產生完整截圖
       </button>
       <button
         onClick={() => onScreenshotRequest('simple')}
@@ -23,7 +24,7 @@ const ShareMenu: React.FC<ShareMenuProps> = ({ isCopying, onScreenshotRequest })
         className="flex items-center gap-3 px-3 py-3 hover:bg-slate-700 rounded-lg text-sm text-white transition-colors text-left"
       >
         <LayoutPanelLeft size={16} className="text-sky-400" />
-        {isCopying ? '處理中...' : '複製簡潔截圖'}
+        產生簡潔截圖
       </button>
     </div>
   );
