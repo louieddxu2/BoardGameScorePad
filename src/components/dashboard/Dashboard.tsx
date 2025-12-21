@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { GameTemplate } from '../../types';
 import { DEFAULT_TEMPLATES } from '../../constants';
-import { Plus, Download, Dice5, Search, X, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, RefreshCw, Copy, Code, Trash2, Check, Mail, CircleHelp } from 'lucide-react';
+import { Plus, Download, Dice5, Search, X, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, RefreshCw, Copy, Code, Trash2, Check, Mail, HelpCircle } from 'lucide-react';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import InstallGuideModal from '../modals/InstallGuideModal';
 import { useToast } from '../../hooks/useToast';
@@ -252,7 +252,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                       <div className="relative">
                         <Download size={14} />
                         {!canInstall && (
-                           <CircleHelp size={10} className="absolute -bottom-1 -right-1.5 text-yellow-400 bg-slate-900 rounded-full" strokeWidth={3} />
+                           <HelpCircle size={10} className="absolute -bottom-1 -right-1.5 text-yellow-400 bg-slate-900 rounded-full" strokeWidth={3} />
                         )}
                       </div>
                       
