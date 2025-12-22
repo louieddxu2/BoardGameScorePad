@@ -15,7 +15,8 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        // 同步設定：優先使用 Inter (英文數字)，其次使用 Noto Sans TC (中文)，最後回退系統字
+        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
       },
     },
   },

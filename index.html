@@ -8,13 +8,27 @@
     
     <link rel="manifest" href="/manifest.json">
     
-    <!-- [雙保險策略] 1. 恢復 CDN：確保您在 IDE 預覽時立刻有字型與樣式 -->
+    <!-- [雙保險策略] 1. 恢復 CDN -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 修改：同時載入 Inter (英文/數字) 與 Noto Sans TC (繁體中文) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
     
-    <!-- [雙保險策略] 2. 本地建置：下方的 script 會引入 src/index.tsx，裡面包含了離線字型設定 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 新增：設定 Tailwind CDN 讓它知道要用什麼字型 -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+            },
+          },
+        },
+      }
+    </script>
+    
+    <!-- [雙保險策略] 2. 本地建置 -->
   <script type="importmap">
 {
   "imports": {
