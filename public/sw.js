@@ -1,8 +1,7 @@
 
-const CACHE_NAME = 'boardgame-scorepad-v2.1.1-release';
+const CACHE_NAME = 'boardgame-scorepad-v2.2.0-clean';
 
 // 核心靜態資源
-// 注意：不包含 index.css 或 manifest.json，這些由瀏覽器動態請求時快取
 const CORE_ASSETS = [
   '/',
   '/index.html',
@@ -39,19 +38,14 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // [過濾策略 1] 忽略非 GET 請求 (如 POST, PUT)
-  if (event.request.method !== 'GET') return;
+  // [策略] 只處理同源 (Same-Origin) 的 GET 請求
+  if (event.request.method !== 'GET' || url.origin !== self.location.origin) {
+    return;
+  }
 
-  // [過濾策略 2] 忽略跨域請求 (CDN, External APIs)
-  // 這會解決 Google Fonts 和 Tailwind CDN 的 Status 0 錯誤
-  // 讓瀏覽器直接處理這些外部資源，SW 不介入
-  if (url.origin !== self.location.origin) return;
-
-  // [過濾策略 3] 忽略開發環境雜訊 & Vercel 工具
+  // [策略] 忽略開發工具與 Vercel 特殊路徑
   if (url.pathname.includes('__vercel') || 
-      url.pathname.includes('_next') || 
-      url.pathname.startsWith('/@vite') ||
-      url.pathname.startsWith('/@react-refresh') ||
+      url.pathname.startsWith('/@') || 
       url.pathname.includes('chrome-extension')) {
     return;
   }
@@ -63,26 +57,28 @@ self.addEventListener('fetch', (event) => {
           return cachedResponse;
         }
 
-        return fetch(event.request).then((networkResponse) => {
-          // 確保回應有效且為 200 OK，才進行快取
-          // 這樣可以避免快取到 404 (如 index.css) 或 401 (如受保護的 manifest)
-          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+        return fetch(event.request)
+          .then((networkResponse) => {
+            // 關鍵修改：嚴格檢查回應狀態
+            // Vercel 預覽環境的 Manifest 401 錯誤會在這裡被過濾掉，不會寫入快取
+            // 404 (如舊的 index.css) 也會被過濾
+            if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+              return networkResponse;
+            }
+
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+
             return networkResponse;
-          }
-
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+          })
+          .catch(() => {
+            // 離線且無快取時的 Fallback
+            if (event.request.mode === 'navigate') {
+              return caches.match('/index.html');
+            }
           });
-
-          return networkResponse;
-        }).catch(() => {
-          // 離線時的 Fallback (可選)
-          // 如果請求的是頁面導航，可以回傳 index.html
-          if (event.request.mode === 'navigate') {
-            return caches.match('/index.html');
-          }
-        });
       })
   );
 });

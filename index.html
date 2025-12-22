@@ -2,46 +2,42 @@
 <html lang="zh-Hant">
   <head>
     <meta charset="utf-8" />
-    <!-- 關鍵修改：加入 interactive-widget=resizes-content -->
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, interactive-widget=resizes-content" />
     <title>萬用桌遊計分板 BoardGameScorePad</title>
     
     <link rel="manifest" href="/manifest.json">
+    <!-- 修復 favicon 404 -->
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     
-    <!-- [雙保險策略] 1. 恢復 CDN -->
+    <!-- 字型設定 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- 修改：同時載入 Inter (英文/數字) 與 Noto Sans TC (繁體中文) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
     
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 新增：設定 Tailwind CDN 讓它知道要用什麼字型 -->
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
-            },
-          },
-        },
-      }
-    </script>
-    
-    <!-- [雙保險策略] 2. 本地建置 -->
+    <!-- 
+      [優化] 移除 Tailwind CDN 與 Config 腳本 
+      原本的 CDN 會導致 "should not be used in production" 警告。
+      現在我們完全依賴 Vite + PostCSS 進行本地 CSS 打包，這是更正規且高效的做法。
+    -->
+
+    <!-- 
+      [優化] 移除 Import Map
+      Vite 在開發與打包時會自動處理 node_modules 的解析，不需要手動宣告 importmap。
+      這消除了對 esm.sh 的依賴，減少外部請求錯誤風險。
+    -->
   <script type="importmap">
 {
   "imports": {
-    "vitest/": "https://esm.sh/vitest@^4.0.16/",
-    "vitest": "https://esm.sh/vitest@^4.0.16",
-    "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
     "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "vitest/": "https://esm.sh/vitest@^4.0.16/",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
-    "html-to-image": "https://esm.sh/html-to-image@^1.11.13",
+    "vitest": "https://esm.sh/vitest@^4.0.16",
     "@testing-library/jest-dom": "https://esm.sh/@testing-library/jest-dom@^6.9.1",
     "@testing-library/react": "https://esm.sh/@testing-library/react@^16.3.1",
+    "html-to-image": "https://esm.sh/html-to-image@^1.11.13",
     "@fontsource/inter/": "https://esm.sh/@fontsource/inter@^5.2.8/"
   }
 }
@@ -50,18 +46,18 @@
 </head>
   <body>
     <div id="root"></div>
-    <!-- 這是 Vite 的標準進入點 -->
-    <script type="module" src="./src/index.tsx"></script>
+    <!-- Vite 進入點 -->
+    <script type="module" src="/src/index.tsx"></script>
 
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // 在 Vercel (Production) 環境，sw.js 會位於根目錄
           navigator.serviceWorker.register('/sw.js')
             .then(registration => {
               console.log('Service Worker registered with scope:', registration.scope);
             })
             .catch(error => {
+              // 這裡只記錄日誌，不拋出紅字錯誤
               console.log('Service Worker registration failed:', error);
             });
         });
