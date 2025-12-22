@@ -52,15 +52,17 @@ self.addEventListener('fetch', (event) => {
         }
 
         // 2. 如果快取沒有，發送網路請求
+        // [DEBUG] 新增日誌：顯示哪些請求穿透了快取
+        console.log(`[SW] Network request for: ${event.request.url}`);
         return fetch(event.request).then((networkResponse) => {
           // 檢查回應是否有效 (Status 200)
-          // 注意：type 'opaque' 是跨域回應 (如某些 CDN)，我們也允許快取它們
           if (!networkResponse || networkResponse.status !== 200 || networkResponse.type === 'error') {
+            // [DEBUG] 新增日誌：捕捉到無效的回應
+            console.warn(`[SW] Invalid network response for ${event.request.url}. Status: ${networkResponse.status}`);
             return networkResponse;
           }
 
           // 3. 動態快取：複製一份回應存入快取
-          // 這會自動捕捉到 app.tsx, CDN 函式庫等所有瀏覽器實際請求成功的檔案
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
@@ -68,8 +70,10 @@ self.addEventListener('fetch', (event) => {
 
           return networkResponse;
         }).catch((err) => {
-          console.log('Fetch failed (Offline?):', err);
-          // 這裡可以選擇回傳一個離線畫面，目前暫時留空
+          // [DEBUG] 新增日誌：這就是您要找的 4xx 錯誤來源！
+          console.error(`[SW] Fetch failed for: ${event.request.url}`, err);
+          // 拋出錯誤以觸發瀏覽器的標準錯誤流程
+          throw err;
         });
       })
   );
