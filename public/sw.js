@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'boardgame-scorepad-v2.4.0-stable';
+const CACHE_NAME = 'boardgame-scorepad-v2.4.2-stable';
 
 // 核心靜態資源 (這些會在新版安裝時強制快取)
 const CORE_ASSETS = [
