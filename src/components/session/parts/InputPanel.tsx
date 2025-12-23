@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { GameSession, GameTemplate, Player, ScoreColumn, QuickAction, ScoreValue } from '../../../types';
 import { useSessionState } from '../hooks/useSessionState';
@@ -82,6 +81,11 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
   const visualViewportOffset = useVisualViewportOffset();
   const [localKeypadValue, setLocalKeypadValue] = useState<any>(0);
   const [activeFactorIdx, setActiveFactorIdx] = useState<0 | 1>(0);
+
+  const handleFactorSwitch = (idx: 0 | 1) => {
+    setActiveFactorIdx(idx);
+    setUiState((p: any) => ({ ...p, overwriteMode: true }));
+  };
 
   useEffect(() => {
     setActiveFactorIdx(0);
@@ -191,7 +195,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                 }
             } else if (isProductMode && activeFactorIdx === 0) {
                  const n1 = parseFloat(String(cellScoreObject?.parts?.[0] ?? 0)) || 0;
-                 if (n1 !== 0) setActiveFactorIdx(1);
+                 if (n1 !== 0) handleFactorSwitch(1);
                  else eventHandlers.moveToNext();
             } else {
                 eventHandlers.moveToNext();
@@ -252,10 +256,10 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                 value={keypadValue}
                 onChange={(val: any) => isSumPartsMode ? setLocalKeypadValue(val) : updateScore(activePlayer!.id, activeColumn!.id, val)}
                 column={activeColumn} overwrite={overwriteMode} setOverwrite={(v: boolean) => setUiState((p: any) => ({ ...p, overwriteMode: v }))}
-                onNext={onNextAction} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={setActiveFactorIdx} playerId={activePlayer.id}
+                onNext={onNextAction} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={handleFactorSwitch} playerId={activePlayer.id}
             />;
             sidebarContentNode = <NumericKeypadInfo 
-              column={activeColumn} value={cellScoreObject} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={setActiveFactorIdx}
+              column={activeColumn} value={cellScoreObject} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={handleFactorSwitch}
               localKeypadValue={isSumPartsMode ? localKeypadValue : undefined}
               onDeleteLastPart={isSumPartsMode ? handleDeleteLastPart : undefined}
             />;

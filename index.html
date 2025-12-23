@@ -3,88 +3,33 @@
 <html lang="zh-Hant">
   <head>
     <meta charset="utf-8" />
-    <!-- 關鍵修改：加入 interactive-widget=resizes-content -->
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, interactive-widget=resizes-content" />
     <title>萬用桌遊計分板 BoardGameScorePad</title>
     
-    <!-- 釜底抽薪的修復：優先載入字型，並加入 crossorigin="anonymous" 以允許 JS 讀取 CSS 規則 -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet" crossorigin="anonymous">
-
     <link rel="manifest" href="/manifest.json">
-    <!-- 保留 Tailwind CSS CDN 以維持樣式設定的簡便性 -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              gray: {
-                750: '#2d3748',
-                850: '#1a202c',
-                950: '#0d1117',
-              }
-            },
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-            },
-          },
-        },
-      }
-    </script>
-    <style>
-      /* 關鍵修復：使用 dvh (Dynamic Viewport Height) 確保在網址列伸縮時高度正確 */
-      html, body, #root {
-        height: 100%;       /* Fallback for older browsers */
-        height: 100dvh;     /* Modern mobile viewport fix */
-        width: 100%;
-        margin: 0;
-        padding: 0;
-        /* 禁止 Body 層級的捲動，強制讓捲動發生在 App 內部的容器 */
-        overflow: hidden; 
-        overscroll-behavior-y: contain;
-      }
-      body {
-        background-color: #0f172a; /* Slate 900 */
-        color: #f8fafc; /* Slate 50 */
-        -webkit-tap-highlight-color: transparent;
-      }
-      .no-scrollbar::-webkit-scrollbar {
-          display: none;
-      }
-      .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-      }
-      /* Scoped Toast Animations */
-      @keyframes toast-fadeIn { from { opacity: 0; } to { opacity: 1; } }
-      @keyframes toast-fadeOut { from { opacity: 1; } to { opacity: 0; } }
-      @keyframes toast-slideInFromTop { from { transform: translateY(-1rem); } to { transform: translateY(0); } }
-      @keyframes toast-slideOutToTop { from { transform: translateY(0); } to { transform: translateY(-1rem); } }
-
-      .toast-enter-active {
-        animation: toast-fadeIn 0.3s ease-out, toast-slideInFromTop 0.3s ease-out;
-      }
-      .toast-exit-active {
-        animation: toast-fadeOut 0.3s ease-in forwards, toast-slideOutToTop 0.3s ease-in forwards;
-      }
-    </style>
-<script type="importmap">
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    
+    <!-- 
+      效能優化說明：
+      1. 英文/數字：使用打包在內的 Inter 字型 (透過 src/index.tsx 引入)。
+      2. 中文：使用使用者裝置的系統字型 (iOS 蘋方體 / Android 思源黑體 / Windows 微軟正黑體)。
+         這能確保 App 開啟速度最快，且完全支援離線使用，無需下載額外字型檔。
+    -->
+    
+  <script type="importmap">
 {
   "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.1/",
-    "react": "https://aistudiocdn.com/react@^19.2.1",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
-    "vite": "https://aistudiocdn.com/vite@^7.2.6",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
-    "html-to-image": "https://aistudiocdn.com/html-to-image@^1.11.11",
-    "vite-plugin-static-copy": "https://aistudiocdn.com/vite-plugin-static-copy@^3.1.4",
-    "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
-    "vitest": "https://esm.sh/vitest@^4.0.15",
-    "@testing-library/react": "https://esm.sh/@testing-library/react@^16.3.0",
-    "@testing-library/jest-dom": "https://esm.sh/@testing-library/jest-dom@^6.9.1"
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "html-to-image": "https://esm.sh/html-to-image@^1.11.13",
+    "vitest": "https://esm.sh/vitest@^4.0.16",
+    "vitest/": "https://esm.sh/vitest@^4.0.16/",
+    "@testing-library/react": "https://esm.sh/@testing-library/react@^16.3.1",
+    "@testing-library/jest-dom": "https://esm.sh/@testing-library/jest-dom@^6.9.1",
+    "@fontsource/inter/": "https://esm.sh/@fontsource/inter@^5.2.8/"
   }
 }
 </script>
@@ -92,22 +37,49 @@
 </head>
   <body>
     <div id="root"></div>
-    <!-- 這是 Vite 的標準進入點 -->
-    <script type="module" src="./index.tsx"></script>
+    <script type="module" src="/src/index.tsx"></script>
 
+    <!-- PWA 更新與錯誤急救處理 -->
     <script>
+      // 1. Service Worker 註冊
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // 在 Vercel (Production) 環境，sw.js 會位於根目錄
           navigator.serviceWorker.register('/sw.js')
             .then(registration => {
-              console.log('Service Worker registered with scope:', registration.scope);
+              console.log('SW Registered');
+              // 手動檢查更新
+              registration.update();
             })
             .catch(error => {
-              console.log('Service Worker registration failed:', error);
+              console.log('SW Registration failed:', error);
             });
         });
       }
+
+      // 2. 資源載入失敗急救 (偵測 JS 404 黑屏)
+      window.addEventListener('error', (e) => {
+        // 偵測是否為 Script 載入錯誤 (通常發生在 JS 404 但 HTML 舊時)
+        if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+           const root = document.getElementById('root');
+           // 如果 root 是空的，代表 React 根本沒跑起來
+           if (root && !root.hasChildNodes()) {
+              root.innerHTML = `
+                <div style="
+                  display:flex; flex-direction:column; align-items:center; justify-content:center; 
+                  height:100vh; background:#0f172a; color:#fff; text-align:center; padding:20px; font-family:sans-serif;">
+                  <h2 style="margin-bottom:10px; font-size:1.5rem;">應用程式已更新</h2>
+                  <p style="color:#94a3b8; margin-bottom:20px;">偵測到新版本資源，請點擊下方按鈕重新載入。</p>
+                  <button onclick="window.location.reload(true)" style="
+                    background:#10b981; color:white; border:none; padding:12px 24px; 
+                    border-radius:12px; font-weight:bold; font-size:1rem; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">
+                    立即更新
+                  </button>
+                  <p style="margin-top:20px; font-size:0.8rem; color:#64748b;">(若問題持續，請嘗試清除瀏覽器快取)</p>
+                </div>
+              `;
+           }
+        }
+      }, true);
     </script>
   <script type="module" src="/index.tsx"></script>
 </body>

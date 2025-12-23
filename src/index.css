@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global Layout Fixes (Ported from index.html) */
+html, body, #root {
+  height: 100%;       /* Fallback for older browsers */
+  height: 100dvh;     /* Modern mobile viewport fix */
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  /* 禁止 Body 層級的捲動，強制讓捲動發生在 App 內部的容器 */
+  overflow: hidden; 
+  overscroll-behavior-y: contain;
+}
+
+body {
+  background-color: #0f172a; /* Slate 900 */
+  color: #f8fafc; /* Slate 50 */
+  -webkit-tap-highlight-color: transparent;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Scoped Toast Animations */
+@keyframes toast-fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes toast-fadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes toast-slideInFromTop { from { transform: translateY(-1rem); } to { transform: translateY(0); } }
+@keyframes toast-slideOutToTop { from { transform: translateY(0); } to { transform: translateY(-1rem); } }
+
+.toast-enter-active {
+  animation: toast-fadeIn 0.3s ease-out, toast-slideInFromTop 0.3s ease-out;
+}
+.toast-exit-active {
+  animation: toast-fadeOut 0.3s ease-in forwards, toast-slideOutToTop 0.3s ease-in forwards;
+}
