@@ -1,3 +1,4 @@
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -15,8 +16,11 @@ export default {
         }
       },
       fontFamily: {
-        // 同步設定：優先使用 Inter (英文數字)，其次使用 Noto Sans TC (中文)，最後回退系統字
-        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+        // 簡化版設定：
+        // 1. Inter: 保留這個是因為我們有內建它，它的數字顯示(Tabular nums)比系統字更適合計分板。
+        // 2. system-ui: 現代瀏覽器的「萬能鑰匙」，它會自動對應到裝置最原生的字體。
+        // 3. sans-serif: 萬一 system-ui 失效的最後一道保險。
+        sans: ['Inter', 'system-ui', 'sans-serif'],
       },
     },
   },

@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-Hant">
   <head>
@@ -6,62 +7,79 @@
     <title>萬用桌遊計分板 BoardGameScorePad</title>
     
     <link rel="manifest" href="/manifest.json">
-    <!-- 修復 favicon 404 -->
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     
-    <!-- 字型設定 -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- 
+      效能優化說明：
+      1. 英文/數字：使用打包在內的 Inter 字型 (透過 src/index.tsx 引入)。
+      2. 中文：使用使用者裝置的系統字型 (iOS 蘋方體 / Android 思源黑體 / Windows 微軟正黑體)。
+         這能確保 App 開啟速度最快，且完全支援離線使用，無需下載額外字型檔。
+    -->
     
-    <!-- 
-      [優化] 移除 Tailwind CDN 與 Config 腳本 
-      原本的 CDN 會導致 "should not be used in production" 警告。
-      現在我們完全依賴 Vite + PostCSS 進行本地 CSS 打包，這是更正規且高效的做法。
-    -->
-
-    <!-- 
-      [優化] 移除 Import Map
-      Vite 在開發與打包時會自動處理 node_modules 的解析，不需要手動宣告 importmap。
-      這消除了對 esm.sh 的依賴，減少外部請求錯誤風險。
-    -->
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "vitest/": "https://esm.sh/vitest@^4.0.16/",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
-    "vitest": "https://esm.sh/vitest@^4.0.16",
-    "@testing-library/jest-dom": "https://esm.sh/@testing-library/jest-dom@^6.9.1",
-    "@testing-library/react": "https://esm.sh/@testing-library/react@^16.3.1",
-    "html-to-image": "https://esm.sh/html-to-image@^1.11.13",
-    "@fontsource/inter/": "https://esm.sh/@fontsource/inter@^5.2.8/"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@^19.2.3",
+        "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+        "react/": "https://esm.sh/react@^19.2.3/",
+        "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+        "vitest/": "https://esm.sh/vitest@^4.0.16/",
+        "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+        "vitest": "https://esm.sh/vitest@^4.0.16",
+        "@testing-library/jest-dom": "https://esm.sh/@testing-library/jest-dom@^6.9.1",
+        "@testing-library/react": "https://esm.sh/@testing-library/react@^16.3.1",
+        "html-to-image": "https://esm.sh/html-to-image@^1.11.13",
+        "@fontsource/inter/": "https://esm.sh/@fontsource/inter@^5.2.8/"
+      }
+    }
+    </script>
+  <link rel="stylesheet" href="/index.css">
 </head>
   <body>
     <div id="root"></div>
-    <!-- Vite 進入點 -->
     <script type="module" src="/src/index.tsx"></script>
 
+    <!-- PWA 更新與錯誤急救處理 -->
     <script>
+      // 1. Service Worker 註冊
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
             .then(registration => {
-              console.log('Service Worker registered with scope:', registration.scope);
+              console.log('SW Registered');
+              // 手動檢查更新
+              registration.update();
             })
             .catch(error => {
-              // 這裡只記錄日誌，不拋出紅字錯誤
-              console.log('Service Worker registration failed:', error);
+              console.log('SW Registration failed:', error);
             });
         });
       }
+
+      // 2. 資源載入失敗急救 (偵測 JS 404 黑屏)
+      window.addEventListener('error', (e) => {
+        // 偵測是否為 Script 載入錯誤 (通常發生在 JS 404 但 HTML 舊時)
+        if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+           const root = document.getElementById('root');
+           // 如果 root 是空的，代表 React 根本沒跑起來
+           if (root && !root.hasChildNodes()) {
+              root.innerHTML = `
+                <div style="
+                  display:flex; flex-direction:column; align-items:center; justify-content:center; 
+                  height:100vh; background:#0f172a; color:#fff; text-align:center; padding:20px; font-family:sans-serif;">
+                  <h2 style="margin-bottom:10px; font-size:1.5rem;">應用程式已更新</h2>
+                  <p style="color:#94a3b8; margin-bottom:20px;">偵測到新版本資源，請點擊下方按鈕重新載入。</p>
+                  <button onclick="window.location.reload(true)" style="
+                    background:#10b981; color:white; border:none; padding:12px 24px; 
+                    border-radius:12px; font-weight:bold; font-size:1rem; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">
+                    立即更新
+                  </button>
+                  <p style="margin-top:20px; font-size:0.8rem; color:#64748b;">(若問題持續，請嘗試清除瀏覽器快取)</p>
+                </div>
+              `;
+           }
+        }
+      }, true);
     </script>
   <script type="module" src="/index.tsx"></script>
 </body>
