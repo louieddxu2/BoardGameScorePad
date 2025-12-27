@@ -1,11 +1,11 @@
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { GameTemplate, GameSession, Player, ScoreColumn, ScoreValue, MappingRule, QuickAction, InputMethod } from '../types';
 import { DEFAULT_TEMPLATES } from '../constants';
 import { COLORS } from '../colors';
 import { calculatePlayerTotal } from '../utils/scoring';
 
-// --- Migration Logic ---
+// --- Migration Logic Helpers ---
 
 const migrateColumn = (oldCol: any): ScoreColumn => {
   // Base migration for structural changes
@@ -133,73 +133,137 @@ const migrateScores = (scores: Record<string, any>, template: GameTemplate): Rec
     return newScores;
 };
 
-export const useAppData = () => {
-  const [templates, setTemplates] = useState<GameTemplate[]>([]);
-  const [systemOverrides, setSystemOverrides] = useState<Record<string, GameTemplate>>({});
-  const [knownSysIds, setKnownSysIds] = useState<string[]>([]);
-  const [pinnedIds, setPinnedIds] = useState<string[]>([]);
-  const [currentSession, setCurrentSession] = useState<GameSession | null>(null);
-  const [activeTemplate, setActiveTemplate] = useState<GameTemplate | null>(null);
-  const [playerHistory, setPlayerHistory] = useState<string[]>([]);
+// --- Storage Helpers (Synchronous) ---
 
-  useEffect(() => {
+function loadFromStorage<T>(key: string, fallback: T, migrateFn?: (data: any) => T): T {
     try {
-        const savedTemplates = localStorage.getItem('sm_templates');
-        const parsedUserTemplates = savedTemplates ? JSON.parse(savedTemplates).map(migrateTemplate) : [];
-        setTemplates(parsedUserTemplates);
-
-        const savedOverrides = localStorage.getItem('sm_system_overrides');
-        const parsedOverrides = savedOverrides ? JSON.parse(savedOverrides) : {};
-        Object.keys(parsedOverrides).forEach(key => {
-            parsedOverrides[key] = migrateTemplate(parsedOverrides[key]);
-        });
-        setSystemOverrides(parsedOverrides);
-        
-        const savedKnownIds = localStorage.getItem('sm_known_sys_ids');
-        setKnownSysIds(savedKnownIds ? JSON.parse(savedKnownIds) : []);
-
-        const savedPinnedIds = localStorage.getItem('sm_pinned_ids');
-        setPinnedIds(savedPinnedIds ? JSON.parse(savedPinnedIds) : []);
-
-        const savedHistory = localStorage.getItem('sm_player_history');
-        if (savedHistory) setPlayerHistory(JSON.parse(savedHistory));
-
-    } catch(e) { console.error("Init Error", e); }
-  }, []);
-
-  useEffect(() => {
-    try {
-        const savedSession = localStorage.getItem('sm_current_session');
-        const savedActiveTemplateId = localStorage.getItem('sm_active_template_id');
-
-        if (savedSession && savedActiveTemplateId) {
-            let session = JSON.parse(savedSession);
-            let template = templates.find(t => t.id === savedActiveTemplateId) || systemOverrides[savedActiveTemplateId] || DEFAULT_TEMPLATES.find(t => t.id === savedActiveTemplateId);
-
-            if (template && session) {
-                template = migrateTemplate(template);
-                session.players = session.players.map((p: any) => ({ ...p, scores: migrateScores(p.scores, template) }));
-                setCurrentSession(session);
-                setActiveTemplate(template);
-            }
-        }
-    } catch (e) { console.error("Failed to restore session", e); }
-  }, [templates, systemOverrides]);
-
-  useEffect(() => { localStorage.setItem('sm_templates', JSON.stringify(templates)); }, [templates]);
-  useEffect(() => { localStorage.setItem('sm_system_overrides', JSON.stringify(systemOverrides)); }, [systemOverrides]);
-  useEffect(() => { localStorage.setItem('sm_known_sys_ids', JSON.stringify(knownSysIds)); }, [knownSysIds]);
-  useEffect(() => { localStorage.setItem('sm_pinned_ids', JSON.stringify(pinnedIds)); }, [pinnedIds]);
-  useEffect(() => {
-    if (currentSession && activeTemplate) {
-        localStorage.setItem('sm_current_session', JSON.stringify(currentSession));
-        localStorage.setItem('sm_active_template_id', activeTemplate.id);
-    } else {
-        localStorage.removeItem('sm_current_session');
-        localStorage.removeItem('sm_active_template_id');
+        const item = localStorage.getItem(key);
+        if (!item) return fallback;
+        const parsed = JSON.parse(item);
+        return migrateFn ? migrateFn(parsed) : parsed;
+    } catch (e) {
+        console.error(`Error loading ${key} from storage`, e);
+        return fallback;
     }
+}
+
+export const useAppData = () => {
+  // 1. Synchronous Initialization (Lazy Init)
+  // This ensures data is loaded BEFORE the first render, preventing any empty state overwrite.
+  
+  const [templates, setTemplates] = useState<GameTemplate[]>(() => 
+      loadFromStorage('sm_templates', [], (data) => Array.isArray(data) ? data.map(migrateTemplate) : [])
+  );
+
+  const [systemOverrides, setSystemOverrides] = useState<Record<string, GameTemplate>>(() => 
+      loadFromStorage('sm_system_overrides', {}, (data) => {
+          const migrated: Record<string, GameTemplate> = {};
+          Object.keys(data).forEach(key => { migrated[key] = migrateTemplate(data[key]); });
+          return migrated;
+      })
+  );
+
+  const [knownSysIds, setKnownSysIds] = useState<string[]>(() => 
+      loadFromStorage('sm_known_sys_ids', [])
+  );
+
+  const [pinnedIds, setPinnedIds] = useState<string[]>(() => 
+      loadFromStorage('sm_pinned_ids', [])
+  );
+
+  const [playerHistory, setPlayerHistory] = useState<string[]>(() => 
+      loadFromStorage('sm_player_history', [])
+  );
+
+  // Session needs special handling to resolve the active template immediately
+  const [sessionData, setSessionData] = useState<{session: GameSession | null, activeTemplate: GameTemplate | null}>(() => {
+      try {
+          const savedSessionStr = localStorage.getItem('sm_current_session');
+          const savedTemplateId = localStorage.getItem('sm_active_template_id');
+          
+          if (!savedSessionStr || !savedTemplateId) return { session: null, activeTemplate: null };
+
+          let session = JSON.parse(savedSessionStr);
+          
+          // We need to look up the template from the ALREADY loaded sources (but we are inside useState)
+          // Since templates/overrides state are initialized in the same render pass, we re-read storage for the lookup
+          // or use the logic below which re-fetches to be safe and synchronous.
+          
+          // Re-fetch raw for lookup to ensure we match the current state logic
+          const rawTemplates = loadFromStorage('sm_templates', [], (data) => Array.isArray(data) ? data.map(migrateTemplate) : []) as GameTemplate[];
+          const rawOverrides = loadFromStorage('sm_system_overrides', {}, (data) => {
+              const migrated: Record<string, GameTemplate> = {};
+              Object.keys(data).forEach(key => { migrated[key] = migrateTemplate(data[key]); });
+              return migrated;
+          }) as Record<string, GameTemplate>;
+
+          let template = rawTemplates.find(t => t.id === savedTemplateId) 
+                         || rawOverrides[savedTemplateId] 
+                         || DEFAULT_TEMPLATES.find(t => t.id === savedTemplateId);
+
+          if (template) {
+              template = migrateTemplate(template);
+              // Migrate session scores against the template
+              session.players = session.players.map((p: any) => ({ ...p, scores: migrateScores(p.scores, template) }));
+              return { session, activeTemplate: template };
+          }
+      } catch (e) {
+          console.error("Error init session", e);
+      }
+      return { session: null, activeTemplate: null };
+  });
+
+  const [currentSession, setCurrentSession] = useState<GameSession | null>(sessionData.session);
+  const [activeTemplate, setActiveTemplate] = useState<GameTemplate | null>(sessionData.activeTemplate);
+
+  // 2. Persistence Effects
+  // Because state starts populated, these effects will simply save the valid data back to storage.
+  // This is safe and standard.
+
+  const isFirstRender = useRef(true);
+  const isSessionFirstRender = useRef(true);
+
+  useEffect(() => {
+      if (isFirstRender.current) { isFirstRender.current = false; return; }
+      localStorage.setItem('sm_templates', JSON.stringify(templates));
+  }, [templates]);
+
+  useEffect(() => {
+      localStorage.setItem('sm_system_overrides', JSON.stringify(systemOverrides));
+  }, [systemOverrides]);
+
+  useEffect(() => {
+      localStorage.setItem('sm_known_sys_ids', JSON.stringify(knownSysIds));
+  }, [knownSysIds]);
+
+  useEffect(() => {
+      localStorage.setItem('sm_pinned_ids', JSON.stringify(pinnedIds));
+  }, [pinnedIds]);
+
+  useEffect(() => {
+      localStorage.setItem('sm_player_history', JSON.stringify(playerHistory));
+  }, [playerHistory]);
+
+  // SAFE SESSION PERSISTENCE
+  // We use a separate isSessionFirstRender flag to ensure we NEVER delete data on the first mount.
+  // We only want to delete data if the user explicitly performs an action that sets currentSession to null (like exitSession).
+  useEffect(() => {
+      if (isSessionFirstRender.current) { 
+          isSessionFirstRender.current = false; 
+          return; 
+      }
+      
+      if (currentSession && activeTemplate) {
+          localStorage.setItem('sm_current_session', JSON.stringify(currentSession));
+          localStorage.setItem('sm_active_template_id', activeTemplate.id);
+      } else {
+          localStorage.removeItem('sm_current_session');
+          localStorage.removeItem('sm_active_template_id');
+      }
   }, [currentSession, activeTemplate]);
-  useEffect(() => { localStorage.setItem('sm_player_history', JSON.stringify(playerHistory)); }, [playerHistory]);
+
+
+  // --- Actions ---
 
   const saveTemplate = (template: GameTemplate) => {
     const migratedTemplate = migrateTemplate(template);
