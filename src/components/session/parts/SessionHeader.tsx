@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, ListPlus, RotateCcw, Share2, Edit2, Lock, Unlock, CloudDownload } from 'lucide-react';
+import { ArrowLeft, ListPlus, RotateCcw, Share2, Edit2, Lock, Unlock, DownloadCloud } from 'lucide-react';
 import ShareMenu from '../modals/ShareMenu';
 
 interface SessionHeaderProps {
@@ -94,7 +94,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
                 className="p-2 rounded-lg transition-colors border border-sky-500/30 bg-sky-900/20 text-sky-400 animate-pulse hover:bg-sky-900/40"
                 title="下載雲端背景圖"
             >
-                <CloudDownload size={20} />
+                <DownloadCloud size={20} />
             </button>
         )}
 

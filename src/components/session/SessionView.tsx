@@ -6,7 +6,7 @@ import { useSessionEvents } from './hooks/useSessionEvents';
 import { useToast } from '../../hooks/useToast';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive'; // Import hook
 import { googleDriveService } from '../../services/googleDrive'; // Import service for auth check
-import { Upload, X, Image as ImageIcon, UploadCloud, CloudDownload } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, UploadCloud, DownloadCloud } from 'lucide-react';
 
 // Parts
 import SessionHeader from './parts/SessionHeader';
@@ -341,7 +341,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
                         onClick={handleModalCloudDownload} 
                         className="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 mt-2"
                       >
-                          <CloudDownload size={20} /> 從雲端下載
+                          <DownloadCloud size={20} /> 從雲端下載
                       </button>
                   )}
 
