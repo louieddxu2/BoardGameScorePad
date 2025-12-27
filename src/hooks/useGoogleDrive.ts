@@ -3,16 +3,29 @@ import { useState, useCallback } from 'react';
 import { googleDriveService, CloudFile } from '../services/googleDrive';
 import { useToast } from './useToast';
 import { GameTemplate } from '../types';
-import { useAppData } from './useAppData'; // Assuming we need to set the image
 
 export const useGoogleDrive = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const { showToast } = useToast();
-  // We need access to setSessionImage from app data if we want to restore background immediately
-  // However, hooks rule prevents conditional usage.
-  // We will handle the image setting in the component that calls restoreBackup.
 
-  const handleBackup = useCallback(async (template: GameTemplate, imageBase64?: string | null) => {
+  const handleError = (error: any, action: string) => {
+      console.error(`${action} Error:`, error);
+      
+      const errMsg = error.message || '';
+
+      // Error handling specifically for Auth issues
+      if (error.error === 'popup_closed_by_user') {
+          showToast({ message: "已取消登入", type: 'info' });
+      } else if (errMsg.includes('API has not been used') || errMsg.includes('is disabled')) {
+          showToast({ message: "設定錯誤：專案尚未啟用 Google Drive API。請至 Google Cloud Console 啟用。", type: 'error' });
+      } else if (error.status === 403 || error.status === 401) {
+          showToast({ message: "權限不足，請確認已授權 Google Drive 存取。", type: 'error' });
+      } else {
+          showToast({ message: `${action}失敗: ${errMsg || '網路錯誤'}`, type: 'error' });
+      }
+  };
+
+  const handleBackup = useCallback(async (template: GameTemplate, imageBase64?: string | null): Promise<GameTemplate | null> => {
     setIsSyncing(true);
     try {
       if (!googleDriveService.isAuthorized) {
@@ -21,20 +34,13 @@ export const useGoogleDrive = () => {
           showToast({ message: "正在上傳備份...", type: 'info' });
       }
       
-      await googleDriveService.backupTemplate(template, imageBase64);
+      const updatedTemplate = await googleDriveService.backupTemplate(template, imageBase64);
       
       showToast({ message: "備份成功！已上傳至雲端。", type: 'success' });
+      return updatedTemplate;
     } catch (error: any) {
-      console.error("Backup Error:", error);
-      
-      // Error handling specifically for Auth issues
-      if (error.error === 'popup_closed_by_user') {
-          showToast({ message: "取消登入", type: 'info' });
-      } else if (error.status === 403 || error.status === 401) {
-          showToast({ message: "權限不足，請確認已授權 Google Drive 存取。", type: 'error' });
-      } else {
-          showToast({ message: `備份失敗: ${error.message || '網路錯誤'}`, type: 'error' });
-      }
+      handleError(error, "備份");
+      return null;
     } finally {
       setIsSyncing(false);
     }
@@ -44,9 +50,8 @@ export const useGoogleDrive = () => {
       try {
           return await googleDriveService.listFiles();
       } catch (error: any) {
-          console.error("List Files Error:", error);
           if (error.error !== 'popup_closed_by_user') {
-             showToast({ message: `讀取列表失敗: ${error.message}`, type: 'error' });
+             handleError(error, "讀取列表");
           }
           throw error;
       }
@@ -55,14 +60,28 @@ export const useGoogleDrive = () => {
   const restoreBackup = useCallback(async (fileId: string): Promise<GameTemplate> => {
       setIsSyncing(true);
       try {
-          showToast({ message: "正在下載並還原...", type: 'info' });
+          showToast({ message: "正在下載設定檔...", type: 'info' });
           const template = await googleDriveService.getFileContent(fileId);
           showToast({ message: "還原成功！", type: 'success' });
           return template;
       } catch (error: any) {
-          console.error("Restore Error:", error);
-          showToast({ message: `還原失敗: ${error.message}`, type: 'error' });
+          handleError(error, "還原");
           throw error;
+      } finally {
+          setIsSyncing(false);
+      }
+  }, [showToast]);
+
+  const downloadCloudImage = useCallback(async (fileId: string): Promise<string | null> => {
+      setIsSyncing(true);
+      try {
+          showToast({ message: "正在下載圖片...", type: 'info' });
+          const base64 = await googleDriveService.downloadImage(fileId);
+          showToast({ message: "圖片載入完成", type: 'success' });
+          return base64;
+      } catch (error: any) {
+          handleError(error, "圖片下載");
+          return null;
       } finally {
           setIsSyncing(false);
       }
@@ -72,7 +91,8 @@ export const useGoogleDrive = () => {
     handleBackup,
     fetchFileList,
     restoreBackup,
+    downloadCloudImage,
     isSyncing,
-    isMockMode: false // Force false for production
+    isMockMode: false
   };
 };

@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { ArrowLeft, ListPlus, RotateCcw, Share2, Edit2, Lock, Unlock } from 'lucide-react';
+import { ArrowLeft, ListPlus, RotateCcw, Share2, Edit2, Lock, Unlock, CloudDownload } from 'lucide-react';
 import ShareMenu from '../modals/ShareMenu';
 
 interface SessionHeaderProps {
@@ -9,6 +10,7 @@ interface SessionHeaderProps {
   screenshotActive: boolean;
   isEditMode: boolean; // New prop
   hasVisuals?: boolean; // New prop: Check if template has coordinate data
+  hasCloudImage?: boolean; // New prop: Check if template has a cloud image ID
   onEditTitleToggle: (editing: boolean) => void;
   onTitleSubmit: (newTitle: string) => void;
   onExit: () => void;
@@ -18,6 +20,7 @@ interface SessionHeaderProps {
   onScreenshotRequest: (mode: 'full' | 'simple') => void;
   onToggleEditMode: () => void; // New callback
   onUploadImage?: () => void; // New callback
+  onCloudDownload?: () => void; // New callback
 }
 
 const SessionHeader: React.FC<SessionHeaderProps> = ({
@@ -27,6 +30,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   screenshotActive,
   isEditMode,
   hasVisuals,
+  hasCloudImage,
   onEditTitleToggle,
   onTitleSubmit,
   onExit,
@@ -35,7 +39,8 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   onShareMenuToggle,
   onScreenshotRequest,
   onToggleEditMode,
-  onUploadImage
+  onUploadImage,
+  onCloudDownload
 }) => {
   const [tempTitle, setTempTitle] = useState('');
 
@@ -82,6 +87,17 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
         )}
       </div>
       <div className="flex items-center gap-1 relative shrink-0">
+        {/* Cloud Download Shortcut */}
+        {hasCloudImage && onCloudDownload && (
+            <button 
+                onClick={onCloudDownload} 
+                className="p-2 rounded-lg transition-colors border border-sky-500/30 bg-sky-900/20 text-sky-400 animate-pulse hover:bg-sky-900/40"
+                title="下載雲端背景圖"
+            >
+                <CloudDownload size={20} />
+            </button>
+        )}
+
         <button 
             onClick={onToggleEditMode} 
             className={`p-2 rounded-lg transition-colors border ${isEditMode ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-900/50' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'}`}

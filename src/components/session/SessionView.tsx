@@ -5,7 +5,8 @@ import { useSessionState, ScreenshotLayout } from './hooks/useSessionState';
 import { useSessionEvents } from './hooks/useSessionEvents';
 import { useToast } from '../../hooks/useToast';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive'; // Import hook
-import { Upload, X, Image as ImageIcon, UploadCloud } from 'lucide-react';
+import { googleDriveService } from '../../services/googleDrive'; // Import service for auth check
+import { Upload, X, Image as ImageIcon, UploadCloud, CloudDownload } from 'lucide-react';
 
 // Parts
 import SessionHeader from './parts/SessionHeader';
@@ -33,12 +34,12 @@ interface SessionViewProps {
 }
 
 const SessionView: React.FC<SessionViewProps> = (props) => {
-  const { session, template, zoomLevel, baseImage, onUpdateImage } = props;
+  const { session, template, zoomLevel, baseImage, onUpdateImage, onUpdateTemplate } = props;
 
   const sessionState = useSessionState(props);
   const eventHandlers = useSessionEvents(props, sessionState);
   const { showToast } = useToast();
-  const { handleBackup, isSyncing } = useGoogleDrive(); // Use Drive Hook
+  const { handleBackup, downloadCloudImage, isSyncing } = useGoogleDrive(); // Use Drive Hook
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -49,17 +50,51 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   const hasPromptedRef = useRef(false);
 
+  const handleCloudDownload = useCallback(async () => {
+      if (template.cloudImageId) {
+          const imgBase64 = await downloadCloudImage(template.cloudImageId);
+          if (imgBase64) {
+              onUpdateImage(imgBase64);
+              return true;
+          }
+      }
+      return false;
+  }, [template.cloudImageId, downloadCloudImage, onUpdateImage]);
+
   // Check if we need to prompt for an image automatically
   useEffect(() => {
-      // Logic: If template has visual coordinates (implies it supports background), 
-      // but no baseImage is loaded, show modal.
-      const hasBackgroundDesign = !!template.globalVisuals || !!template.hasImage;
+      // 1. If image exists, do nothing
+      if (baseImage) return;
       
-      if (hasBackgroundDesign && !baseImage && !hasPromptedRef.current) {
+      // 2. If template doesn't support/need image, do nothing
+      const hasBackgroundDesign = !!template.globalVisuals || !!template.hasImage;
+      if (!hasBackgroundDesign) return;
+
+      // 3. Avoid repeated prompts
+      if (hasPromptedRef.current) return;
+      hasPromptedRef.current = true; // Mark as processed
+
+      // 4. Check Cloud Image status
+      if (template.cloudImageId) {
+          if (googleDriveService.isAuthorized) {
+              // 4a. Authorized: Auto Load
+              // We call the download function directly. 
+              // Note: We don't block UI, just start download. 
+              // If it fails, we might want to show the modal then, but for simplicity/UX, 
+              // if auto-load fails (e.g. 404), user can click the cloud button in header or we let them be.
+              // Here we try to show modal if it fails.
+              handleCloudDownload().then(success => {
+                  if (!success) setShowImageUploadModal(true);
+              });
+          } else {
+              // 4b. Not Authorized: Prompt with Cloud option
+              setShowImageUploadModal(true);
+          }
+      } else {
+          // 5. No Cloud Image: Prompt Upload only
           setShowImageUploadModal(true);
-          hasPromptedRef.current = true;
       }
-  }, [template.globalVisuals, template.hasImage, baseImage]);
+  }, [baseImage, template.globalVisuals, template.hasImage, template.cloudImageId, handleCloudDownload]);
 
   const {
     editingCell,
@@ -106,7 +141,11 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   const handleConfirmBackup = async () => {
       if (pendingImage) {
-          await handleBackup(template, pendingImage);
+          // IMPORTANT: handleBackup now returns the updated template with the Image ID
+          const updatedTemplate = await handleBackup(template, pendingImage);
+          if (updatedTemplate) {
+              onUpdateTemplate(updatedTemplate);
+          }
       }
       setShowDrivePrompt(false);
       setPendingImage(null);
@@ -125,6 +164,13 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const handleManualUploadClick = () => {
       setShowImageUploadModal(true);
       setUiState(prev => ({ ...prev, showShareMenu: false }));
+  };
+
+  const handleModalCloudDownload = async () => {
+      const success = await handleCloudDownload();
+      if (success) {
+          setShowImageUploadModal(false);
+      }
   };
 
   // --- Screenshot Handler (Stage 1: Measure & Open Modal) ---
@@ -239,7 +285,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
                   </div>
                   <h3 className="text-xl font-bold text-white text-center">備份到雲端？</h3>
                   <p className="text-slate-400 text-sm text-center">
-                      為了避免手機容量不足或清除快取時遺失圖片，建議將此背景圖備份到 Google Drive。
+                      為了避免手機容量不足，建議將此背景圖備份到 Google Drive。
                   </p>
                   
                   <div className="flex gap-3 w-full mt-2">
@@ -286,10 +332,20 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
                   </div>
                   <h3 className="text-xl font-bold text-white">設定計分紙背景</h3>
                   <p className="text-sm text-slate-400">
-                      此模板已設定好對應的格子位置。上傳圖片後即可直接在畫面上點擊輸入。
+                      此模板已設定好對應的格子位置。
+                      {template.cloudImageId ? "您可以從雲端還原背景，或重新上傳照片。" : "上傳圖片後即可直接在畫面上點擊輸入。"}
                   </p>
                   
-                  <button onClick={() => fileInputRef.current?.click()} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 mt-2">
+                  {template.cloudImageId && (
+                      <button 
+                        onClick={handleModalCloudDownload} 
+                        className="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 mt-2"
+                      >
+                          <CloudDownload size={20} /> 從雲端下載
+                      </button>
+                  )}
+
+                  <button onClick={() => fileInputRef.current?.click()} className={`w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 ${template.cloudImageId ? 'mt-1' : 'mt-2'}`}>
                       <Upload size={20} /> 上傳照片
                   </button>
                   <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
@@ -331,6 +387,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         screenshotActive={screenshotModal.isOpen} // Renamed prop usage
         isEditMode={isEditMode}
         hasVisuals={!!template.globalVisuals} // Pass visuals presence
+        hasCloudImage={!!template.cloudImageId && !baseImage} // Only show if we know ID but haven't loaded it
         onEditTitleToggle={(editing) => setUiState(prev => ({ ...prev, isEditingTitle: editing }))}
         onTitleSubmit={eventHandlers.handleTitleSubmit}
         onAddColumn={() => setUiState(prev => ({ ...prev, isAddColumnModalOpen: true }))}
@@ -340,6 +397,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onScreenshotRequest={handleScreenshotRequest}
         onToggleEditMode={() => setUiState(prev => ({ ...prev, isEditMode: !prev.isEditMode }))}
         onUploadImage={handleManualUploadClick} // Pass manual upload handler
+        onCloudDownload={handleCloudDownload} // Pass cloud download handler
       />
       
       <div 
@@ -364,7 +422,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           onCellClick={eventHandlers.handleCellClick}
           onPlayerHeaderClick={eventHandlers.handlePlayerHeaderClick}
           onColumnHeaderClick={eventHandlers.handleColumnHeaderClick}
-          onUpdateTemplate={props.onUpdateTemplate}
+          onUpdateTemplate={onUpdateTemplate}
           scrollContainerRef={sessionState.tableContainerRef}
           contentRef={sessionState.gridContentRef}
           baseImage={baseImage || undefined} // Pass runtime image down

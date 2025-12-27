@@ -127,6 +127,8 @@ class GoogleDriveService {
 
   private async findFile(name: string, parentId: string = 'root', mimeType?: string): Promise<DriveFile | null> {
     let query = `name = '${name}' and '${parentId}' in parents and trashed = false`;
+    // FIX: Only filter by mimeType if explicitly provided AND strictly needed. 
+    // For overwriting, we often want to find "any file with this name".
     if (mimeType) query += ` and mimeType = '${mimeType}'`;
     
     const data = await this.fetchDrive(
@@ -145,7 +147,8 @@ class GoogleDriveService {
   }
 
   private async uploadFile(name: string, parentId: string, mimeType: string, body: Blob | string): Promise<DriveFile> {
-    const existing = await this.findFile(name, parentId, mimeType);
+    // FIX: Do not filter by mimeType when checking for existence to ensure we overwrite regardless of previous type detection
+    const existing = await this.findFile(name, parentId);
     
     const metadata = { 
         name, 
@@ -180,28 +183,35 @@ class GoogleDriveService {
 
   // --- Public Methods ---
 
-  public async backupTemplate(template: GameTemplate, imageBase64?: string | null): Promise<void> {
+  public async backupTemplate(template: GameTemplate, imageBase64?: string | null): Promise<GameTemplate> {
     if (!this.isAuthorized) await this.signIn();
 
     // 1. 確保根目錄存在
     let root = await this.findFile('BoardGameScorePad', 'root', 'application/vnd.google-apps.folder');
     if (!root) root = await this.createFolder('BoardGameScorePad');
 
-    // 2. 建立/尋找遊戲專屬資料夾 (名稱+ID前綴，避免同名衝突)
-    // 為了讓還原時好辨識，我們用 name_shortID 的格式
+    // 2. 建立/尋找遊戲專屬資料夾
     const folderName = `${template.name.trim()}_${template.id.slice(0, 6)}`;
     let gameFolder = await this.findFile(folderName, root.id, 'application/vnd.google-apps.folder');
     if (!gameFolder) gameFolder = await this.createFolder(folderName, root.id);
 
-    // 3. 上傳 JSON 資料
-    const jsonContent = JSON.stringify(template, null, 2);
-    await this.uploadFile('data.json', gameFolder.id, 'application/json', jsonContent);
-
-    // 4. (選擇性) 上傳背景圖
+    // 3. 上傳圖片 (如果有的話) - 並取得 ID
+    let uploadedImageId = template.cloudImageId;
+    
     if (imageBase64) {
         const blob = base64ToBlob(imageBase64);
-        await this.uploadFile('background.jpg', gameFolder.id, 'image/jpeg', blob);
+        const uploadedFile = await this.uploadFile('background.jpg', gameFolder.id, 'image/jpeg', blob);
+        uploadedImageId = uploadedFile.id;
     }
+
+    // 4. 更新 Template 物件，包含最新的 cloudImageId
+    const updatedTemplate = { ...template, cloudImageId: uploadedImageId };
+
+    // 5. 上傳 JSON 資料
+    const jsonContent = JSON.stringify(updatedTemplate, null, 2);
+    await this.uploadFile('data.json', gameFolder.id, 'application/json', jsonContent);
+
+    return updatedTemplate;
   }
 
   public async listFiles(): Promise<CloudFile[]> {
@@ -211,9 +221,8 @@ class GoogleDriveService {
     const root = await this.findFile('BoardGameScorePad', 'root', 'application/vnd.google-apps.folder');
     if (!root) return [];
 
-    // 2. 列出所有子資料夾 (每一個子資料夾代表一個備份的遊戲)
+    // 2. 列出所有子資料夾
     const query = `'${root.id}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
-    // 排序：建立時間新到舊
     const data = await this.fetchDrive(
         `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&orderBy=createdTime desc&fields=files(id, name, createdTime)`
     );
@@ -228,43 +237,44 @@ class GoogleDriveService {
       const file = await this.findFile('data.json', folderId, 'application/json');
       if (!file) throw new Error("此備份中找不到 data.json");
 
-      // 2. 下載內容
+      // 2. 下載 JSON
       const response = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
           headers: { 'Authorization': `Bearer ${this.accessToken}` }
       });
       
       if (!response.ok) throw new Error("下載失敗");
-      const templateData = await response.json();
+      const templateData: GameTemplate = await response.json();
 
-      // 3. 檢查是否有 background.jpg
-      const bgFile = await this.findFile('background.jpg', folderId, 'image/jpeg');
-      if (bgFile) {
-          // 下載圖片並轉為 Base64
-          const bgResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${bgFile.id}?alt=media`, {
-            headers: { 'Authorization': `Bearer ${this.accessToken}` }
-          });
-          if (bgResponse.ok) {
-              const blob = await bgResponse.blob();
-              // Convert Blob to Base64 String
-              await new Promise<void>((resolve) => {
-                  const reader = new FileReader();
-                  reader.onloadend = () => {
-                      // 將圖片 Base64 注入到 runtime 的 image state，這部分需要透過 Hook 處理
-                      // 這裡我們先回傳原始 template，圖片處理交給外部
-                      // 但因為 GameTemplate 結構目前沒有直接存 Base64 (為了效能)，我們需要一種方式傳遞
-                      
-                      // 解決方案：我們約定，如果從雲端還原，我們可能需要將圖片暫存，或者直接寫入
-                      // 由於 App 架構設計是把圖片跟 JSON 分開，這裡我們先把 Base64 塞進一個臨時欄位
-                      // 注意：这個 `_tempImageBase64` 不是 GameTemplate 的標準欄位，但在 Restore 流程中會被取出
-                      (templateData as any)._tempImageBase64 = reader.result;
-                      resolve();
-                  };
-                  reader.readAsDataURL(blob);
-              });
+      // 3. 如果 JSON 裡沒有 cloudImageId (舊版備份)，但資料夾裡有 background.jpg，補上 ID
+      if (!templateData.cloudImageId) {
+          const bgFile = await this.findFile('background.jpg', folderId);
+          if (bgFile) {
+              templateData.cloudImageId = bgFile.id;
           }
       }
 
+      // 注意：這裡只回傳 Template JSON，不下載圖片
       return templateData;
+  }
+
+  public async downloadImage(fileId: string): Promise<string> {
+      if (!this.isAuthorized) await this.signIn();
+
+      const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+          headers: { 'Authorization': `Bearer ${this.accessToken}` }
+      });
+
+      if (!response.ok) throw new Error("圖片下載失敗");
+      
+      const blob = await response.blob();
+      
+      return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+              resolve(reader.result as string);
+          };
+          reader.readAsDataURL(blob);
+      });
   }
 }
 

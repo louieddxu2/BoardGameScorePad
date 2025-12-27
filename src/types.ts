@@ -124,7 +124,8 @@ export interface GameTemplate {
   // Visual Mapping (Modified)
   // baseImage is REMOVED to keep JSON small.
   // We use hasImage flag to prompt user to upload/scan image at runtime.
-  hasImage?: boolean; 
+  hasImage?: boolean;
+  cloudImageId?: string; // ID of the background image in Google Drive
   globalVisuals?: GlobalVisuals; // Textures for non-column areas (Player Header, Total Row)
 }
 
