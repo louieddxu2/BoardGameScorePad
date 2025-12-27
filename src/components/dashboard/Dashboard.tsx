@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { GameTemplate } from '../../types';
 import { DEFAULT_TEMPLATES } from '../../constants';
-import { Plus, Download, Dice5, Search, X, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, RefreshCw, Copy, Code, Trash2, Check, Mail, HelpCircle, CloudUpload, CloudDownload, FileJson, Clock } from 'lucide-react';
+import { Plus, Download, Dice5, Search, X, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, RefreshCw, Copy, Code, Trash2, Check, Mail, HelpCircle, UploadCloud, DownloadCloud, FileJson, Clock } from 'lucide-react';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import InstallGuideModal from '../modals/InstallGuideModal';
 import { useToast } from '../../hooks/useToast';
@@ -378,7 +378,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </h3>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button onClick={(e) => { e.stopPropagation(); openCloudRestore(); }} className="p-1.5 text-sky-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors" title="從雲端還原"><CloudDownload size={18} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); openCloudRestore(); }} className="p-1.5 text-sky-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors" title="從雲端還原"><DownloadCloud size={18} /></button>
                     <button onClick={(e) => { e.stopPropagation(); setActiveModalTab('import'); setShowDataModal(true); }} className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors" title="匯入/匯出 JSON"><ArrowRightLeft size={18} /></button>
                     <button onClick={(e) => { e.stopPropagation(); onTemplateCreate(); }} className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg active:scale-95"><Plus size={14} /> 新增</button>
                 </div>
@@ -392,7 +392,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <button onClick={(e) => { e.stopPropagation(); onTogglePin(t.id); }} className="absolute top-1 right-1 p-1.5 text-slate-600 hover:text-yellow-400 hover:bg-slate-700 rounded-md transition-colors"><Pin size={16} /></button>
                             <button onClick={(e) => { e.stopPropagation(); setTemplateToDelete(t.id); }} className="absolute bottom-1 left-1 p-1.5 text-slate-600 hover:text-red-400 hover:bg-slate-700 rounded-md transition-colors"><Trash2 size={16} /></button>
                             <div className="absolute bottom-1 right-1 flex gap-1">
-                                <button onClick={(e) => handleCloudBackup(t, e)} className="p-1.5 text-sky-500/70 hover:text-sky-400 rounded transition-colors" title="備份到 Google Drive"><CloudUpload size={14} /></button>
+                                <button onClick={(e) => handleCloudBackup(t, e)} className="p-1.5 text-sky-500/70 hover:text-sky-400 rounded transition-colors" title="備份到 Google Drive"><UploadCloud size={14} /></button>
                                 <button onClick={(e) => handleCopyJSON(t, e)} className="p-1.5 text-slate-600 hover:text-emerald-400 rounded transition-colors">{copiedId === t.id ? <Check size={14} className="text-emerald-500" /> : <Code size={14} />}</button>
                             </div>
                         </div>
@@ -446,7 +446,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               <div className="bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border border-slate-800 flex flex-col h-[600px] max-h-[85vh]">
                   <div className="flex-none bg-slate-800 rounded-t-2xl p-4 border-b border-slate-700 flex items-center justify-between">
                       <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                          <CloudDownload size={20} className="text-sky-400" /> 
+                          <DownloadCloud size={20} className="text-sky-400" /> 
                           雲端還原 
                           {isMockMode && <span className="text-xs bg-amber-900/50 text-amber-400 px-2 py-0.5 rounded border border-amber-500/30">模擬模式</span>}
                       </h3>
@@ -461,7 +461,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                           </div>
                       ) : cloudFiles.length === 0 ? (
                           <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500">
-                              <CloudUpload size={32} className="opacity-50" />
+                              <UploadCloud size={32} className="opacity-50" />
                               <span className="text-sm">雲端沒有找到備份檔案</span>
                           </div>
                       ) : (

@@ -10,7 +10,7 @@ interface TexturedScoreCellProps {
   player: Player;
   playerIndex: number;
   column: ScoreColumn;
-  allColumns?: ScoreColumn[]; // Added prop
+  allColumns?: ScoreColumn[];
   scoreValue: ScoreValue | undefined;
   baseImage: string;
   rect: { x: number, y: number, width: number, height: number };
@@ -19,7 +19,7 @@ interface TexturedScoreCellProps {
   minHeight?: string | number;
   simpleMode?: boolean;
   isEditMode?: boolean; 
-  limitX?: number; // New Prop for Right Bound limit
+  limitX?: number;
 }
 
 // Helper for number formatting
@@ -100,8 +100,6 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                 minHeight: minHeight, 
             }}
         >
-            {/* Removed outer active ring here. It is now on the inner div. */}
-            
             <SmartTextureLayer bgUrl={bgUrl} rect={rect} />
             
             <div 

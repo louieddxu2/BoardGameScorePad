@@ -5,7 +5,7 @@ import { useSessionState, ScreenshotLayout } from './hooks/useSessionState';
 import { useSessionEvents } from './hooks/useSessionEvents';
 import { useToast } from '../../hooks/useToast';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive'; // Import hook
-import { Upload, X, Image as ImageIcon, CloudUpload } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, UploadCloud } from 'lucide-react';
 
 // Parts
 import SessionHeader from './parts/SessionHeader';
@@ -235,7 +235,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           <div className="fixed inset-0 z-[70] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
               <div className="bg-slate-900 rounded-2xl border border-slate-700 shadow-2xl p-6 w-full max-w-sm flex flex-col items-center gap-4">
                   <div className="w-16 h-16 bg-sky-900/30 rounded-full flex items-center justify-center text-sky-400 mb-2 border border-sky-500/20">
-                      <CloudUpload size={32} />
+                      <UploadCloud size={32} />
                   </div>
                   <h3 className="text-xl font-bold text-white text-center">備份到雲端？</h3>
                   <p className="text-slate-400 text-sm text-center">
