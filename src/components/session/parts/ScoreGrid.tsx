@@ -454,6 +454,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                                                 : (!baseImage 
                                                     ? 'border-dashed border-white/20 hover:border-white/40 hover:bg-white/5' // Play Mode (No BG)
                                                     : 'border-transparent hover:border-black/10 hover:bg-black/5') // Play Mode (With BG)
+                                              )
                                         }
                                     `}
                                     style={{
