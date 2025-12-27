@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { GameSession, GameTemplate } from '../../../types';
 
@@ -13,16 +12,11 @@ interface SessionViewProps {
   onResetScores: () => void;
 }
 
-// Layout info needs to be passed to the modal
 export interface ScreenshotLayout {
   itemWidth: number;
   playerWidths: Record<string, number>;
-}
-
-export interface ScreenshotModalState {
-  isOpen: boolean;
-  initialMode: 'full' | 'simple';
-  layout: ScreenshotLayout | null;
+  playerHeaderHeight: number;
+  rowHeights: Record<string, number>;
 }
 
 export interface UIState {
@@ -35,49 +29,57 @@ export interface UIState {
   columnToDelete: string | null;
   isAddColumnModalOpen: boolean;
   showShareMenu: boolean;
-  
-  // Updated Screenshot State
-  screenshotModal: ScreenshotModalState;
-
+  screenshotModal: {
+    isOpen: boolean;
+    mode: 'full' | 'simple';
+    layout: ScreenshotLayout | null;
+  };
   advanceDirection: 'horizontal' | 'vertical';
   overwriteMode: boolean;
   isInputFocused: boolean;
   tempPlayerName: string;
+  isEditMode: boolean; // New state for Edit vs Play mode
 }
 
 export const useSessionState = (props: SessionViewProps) => {
-  const [uiState, setUiState] = useState<UIState>({
-    editingCell: null,
-    editingPlayerId: null,
-    editingColumn: null,
-    isEditingTitle: false,
-    showResetConfirm: false,
-    showExitConfirm: false,
-    columnToDelete: null,
-    isAddColumnModalOpen: false,
-    showShareMenu: false,
+  const [uiState, setUiState] = useState<UIState>(() => {
+    // Read initial edit mode from local storage.
+    // NEW: Default to true (Edit Mode) for new users. It only becomes false if explicitly saved as such.
+    const initialEditMode = typeof window !== 'undefined' ? localStorage.getItem('app_edit_mode') !== 'false' : true;
     
-    // Initial state for the new modal
-    screenshotModal: {
-      isOpen: false,
-      initialMode: 'full',
-      layout: null
-    },
-
-    advanceDirection: 'horizontal',
-    overwriteMode: true,
-    isInputFocused: false,
-    tempPlayerName: '',
+    return {
+      editingCell: null,
+      editingPlayerId: null,
+      editingColumn: null,
+      isEditingTitle: false,
+      showResetConfirm: false,
+      showExitConfirm: false,
+      columnToDelete: null,
+      isAddColumnModalOpen: false,
+      showShareMenu: false,
+      screenshotModal: { isOpen: false, mode: 'full', layout: null },
+      advanceDirection: 'horizontal',
+      overwriteMode: true,
+      isInputFocused: false,
+      tempPlayerName: '',
+      isEditMode: initialEditMode,
+    };
   });
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const totalBarScrollRef = useRef<HTMLDivElement>(null);
   
   // New refs for Width Synchronization
+  // These point to the inner content div that determines the full scrollable width
   const gridContentRef = useRef<HTMLDivElement>(null);
   const totalContentRef = useRef<HTMLDivElement>(null);
   
   // --- Effects for state transitions ---
+
+  // Persist Edit Mode whenever it changes
+  useEffect(() => {
+    localStorage.setItem('app_edit_mode', String(uiState.isEditMode));
+  }, [uiState.isEditMode]);
 
   // When active cell changes, enable overwrite mode
   useEffect(() => {
@@ -144,6 +146,12 @@ export const useSessionState = (props: SessionViewProps) => {
   // --- Derived State ---
   const isPanelOpen = uiState.editingCell !== null || uiState.editingPlayerId !== null;
   
+  // Dynamic Panel Height Logic:
+  // - If closed: 0px
+  // - If focused (keyboard open): '112px' (Header 40px + Input Layout 72px)
+  //   Using a fixed pixel value is CRITICAL for CSS transitions to work correctly.
+  //   'auto' does not support transitions and causes flickering.
+  // - If normal editing: '40vh' (standard height for keypad/history)
   const panelHeight = isPanelOpen 
     ? (uiState.isInputFocused ? '112px' : '40vh')
     : '0px';

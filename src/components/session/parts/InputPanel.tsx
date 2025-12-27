@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { GameSession, GameTemplate, Player, ScoreColumn, QuickAction, ScoreValue } from '../../../types';
 import { useSessionState } from '../hooks/useSessionState';
@@ -5,8 +6,9 @@ import { useSessionEvents } from '../hooks/useSessionEvents';
 import { NumericKeypadContent, NumericKeypadInfo } from '../../shared/NumericKeypad';
 import QuickButtonPad from '../../shared/QuickButtonPad';
 import PlayerEditor, { PlayerEditorInfo } from './PlayerEditor';
+import AutoScorePanel from './AutoScorePanel';
 import InputPanelLayout from './InputPanelLayout';
-import { Eraser, ArrowRight, ArrowDown, Edit, Plus, ArrowUpToLine, ListPlus } from 'lucide-react';
+import { Eraser, ArrowRight, ArrowDown, Edit, Plus, ArrowUpToLine, ListPlus, Calculator } from 'lucide-react';
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
 import { getScoreHistory, getRawValue } from '../../../utils/scoring';
 import { useVisualViewportOffset } from '../../../hooks/useVisualViewportOffset';
@@ -28,49 +30,62 @@ const PanelHeader: React.FC<{
   onClear: () => void;
   onDirectionToggle: () => void;
   direction: 'horizontal' | 'vertical';
-}> = ({ player, col, isEditingPlayer, onClear, onDirectionToggle, direction }) => (
-  <div
-    className="border-b h-10 flex items-center px-4 gap-2 overflow-x-auto no-scrollbar shrink-0 transition-colors"
-    style={{ backgroundColor: `${player.color}20`, borderColor: `${player.color}40` }}
-  >
-    {isEditingPlayer ? (
-      <>
-        <Edit size={12} className="shrink-0" style={{ color: player.color }} />
-        <span className="text-xs shrink-0 font-bold opacity-70" style={{ color: player.color }}>編輯玩家</span>
-        <div className="w-px h-4 bg-white/10 mx-1" />
-        <span className="text-sm font-bold truncate" style={{ color: player.color, ...(isColorDark(player.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }}>
-          {player.name}
-        </span>
-      </>
-    ) : (
-      <>
-        <span className="text-sm font-bold truncate" style={{ color: player.color, ...(isColorDark(player.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }}>
-          {player.name}
-        </span>
-        <div className="w-px h-4 bg-white/10 mx-1" />
-        <span className="text-xs shrink-0 font-bold opacity-70" style={{ color: player.color }}>{col?.name}</span>
-      </>
-    )}
-    <div className="flex-1"></div>
-    <button 
-        onMouseDown={(e) => e.preventDefault()} // Keep focus on input
-        // Use onClear prop instead of undefined handleClear
-        onClick={onClear} 
-        className="bg-red-900/30 text-red-400 px-3 py-1 rounded text-xs border border-red-500/30 hover:bg-red-900/50 flex items-center gap-1 shrink-0"
-    >
-        <Eraser size={12} /> 清除
-    </button>
-    <button
-      onMouseDown={(e) => e.preventDefault()} // Keep focus on input
-      onClick={onDirectionToggle}
-      className="bg-slate-700/50 hover:bg-slate-700 text-slate-300 px-3 h-8 rounded-lg flex items-center justify-center gap-1 text-xs font-bold transition-colors shrink-0 border border-slate-600"
-    >
-      <span className="text-emerald-400">下一項</span>
-      <span className={`font-mono transition-colors ${direction === 'vertical' ? 'text-emerald-400' : 'text-slate-600'}`}>↓</span>
-      <span className={`font-mono transition-colors ${direction === 'horizontal' ? 'text-emerald-400' : 'text-slate-600'}`}>→</span>
-    </button>
-  </div>
-);
+}> = ({ player, col, isEditingPlayer, onClear, onDirectionToggle, direction }) => {
+    
+  // Handle transparent color fallback
+  const isTransparent = player.color === 'transparent';
+  const displayColor = isTransparent ? '#e2e8f0' : player.color; // Slate 200 for text
+  const bgColor = isTransparent ? '#1e293b' : `${player.color}20`; // Slate 800 for bg if transparent
+  const borderColor = isTransparent ? '#334155' : `${player.color}40`; // Slate 700 for border
+
+  // Auto columns cannot be cleared manually
+  const isAuto = col?.inputType === 'auto';
+
+  return (
+      <div
+        className="border-b h-10 flex items-center px-4 gap-2 overflow-x-auto no-scrollbar shrink-0 transition-colors"
+        style={{ backgroundColor: bgColor, borderColor: borderColor }}
+      >
+        {isEditingPlayer ? (
+          <>
+            <Edit size={12} className="shrink-0" style={{ color: displayColor }} />
+            <span className="text-xs shrink-0 font-bold opacity-70" style={{ color: displayColor }}>編輯玩家</span>
+            <div className="w-px h-4 bg-white/10 mx-1" />
+            <span className="text-sm font-bold truncate" style={{ color: displayColor, ...(isColorDark(displayColor) && { textShadow: ENHANCED_TEXT_SHADOW }) }}>
+              {player.name}
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="text-sm font-bold truncate" style={{ color: displayColor, ...(isColorDark(displayColor) && { textShadow: ENHANCED_TEXT_SHADOW }) }}>
+              {player.name}
+            </span>
+            <div className="w-px h-4 bg-white/10 mx-1" />
+            <span className="text-xs shrink-0 font-bold opacity-70" style={{ color: displayColor }}>{col?.name}</span>
+          </>
+        )}
+        <div className="flex-1"></div>
+        {!isAuto && (
+            <button 
+                onMouseDown={(e) => e.preventDefault()} // Keep focus on input
+                onClick={onClear} 
+                className="bg-red-900/30 text-red-400 px-3 py-1 rounded text-xs border border-red-500/30 hover:bg-red-900/50 flex items-center gap-1 shrink-0"
+            >
+                <Eraser size={12} /> 清除
+            </button>
+        )}
+        <button
+          onMouseDown={(e) => e.preventDefault()} // Keep focus on input
+          onClick={onDirectionToggle}
+          className="bg-slate-700/50 hover:bg-slate-700 text-slate-300 px-3 h-8 rounded-lg flex items-center justify-center gap-1 text-xs font-bold transition-colors shrink-0 border border-slate-600"
+        >
+          <span className="text-emerald-400">下一項</span>
+          <span className={`font-mono transition-colors ${direction === 'vertical' ? 'text-emerald-400' : 'text-slate-600'}`}>↓</span>
+          <span className={`font-mono transition-colors ${direction === 'horizontal' ? 'text-emerald-400' : 'text-slate-600'}`}>→</span>
+        </button>
+      </div>
+  );
+};
 
 
 const InputPanel: React.FC<InputPanelProps> = (props) => {
@@ -81,11 +96,6 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
   const visualViewportOffset = useVisualViewportOffset();
   const [localKeypadValue, setLocalKeypadValue] = useState<any>(0);
   const [activeFactorIdx, setActiveFactorIdx] = useState<0 | 1>(0);
-
-  const handleFactorSwitch = (idx: 0 | 1) => {
-    setActiveFactorIdx(idx);
-    setUiState((p: any) => ({ ...p, overwriteMode: true }));
-  };
 
   useEffect(() => {
     setActiveFactorIdx(0);
@@ -128,10 +138,18 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
   const handleClear = () => {
     if (editingPlayerId) {
       setUiState((p: any) => ({ ...p, tempPlayerName: '' }));
+      const player = session.players.find(p => p.id === editingPlayerId);
+      if (player && player.name !== '') {
+        const updatedPlayers = session.players.map(p => 
+          p.id === editingPlayerId ? { ...p, name: '' } : p
+        );
+        onUpdateSession({ ...session, players: updatedPlayers });
+      }
     } else if (editingCell) {
       const player = session.players.find((p: any) => p.id === editingCell.playerId);
       const col = template.columns.find((c: any) => c.id === editingCell.colId);
-      if (player && col) {
+      // Auto columns should not be cleared by the clear button
+      if (player && col && col.inputType !== 'auto') {
         if ((col.formula || '').includes('+next')) {
             setLocalKeypadValue(0);
         }
@@ -179,27 +197,9 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
         const isSumPartsMode = (activeColumn.formula || '').includes('+next');
         const cellScoreObject = activePlayer.scores[activeColumn.id];
 
+        // Default next action
         onNextAction = () => {
-            if (isSumPartsMode && activeColumn.inputType === 'keypad') {
-                const newPartRaw = (typeof localKeypadValue === 'object') ? localKeypadValue.value : localKeypadValue;
-                const newPart = parseFloat(String(newPartRaw)) || 0;
-                if (newPart !== 0) {
-                    const currentHistory = getScoreHistory(cellScoreObject);
-                    const newHistory = [...currentHistory, String(newPart)];
-                    const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
-                    updateScore(activePlayer!.id, activeColumn!.id, { value: newSum, history: newHistory });
-                    setLocalKeypadValue(0);
-                    setUiState((p: any) => ({ ...p, overwriteMode: true }));
-                } else {
-                    eventHandlers.moveToNext();
-                }
-            } else if (isProductMode && activeFactorIdx === 0) {
-                 const n1 = parseFloat(String(cellScoreObject?.parts?.[0] ?? 0)) || 0;
-                 if (n1 !== 0) handleFactorSwitch(1);
-                 else eventHandlers.moveToNext();
-            } else {
-                eventHandlers.moveToNext();
-            }
+            eventHandlers.moveToNext();
         };
 
         const handleDeleteLastPart = () => {
@@ -231,15 +231,32 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
              }
         };
 
-        if (isSumPartsMode && activeColumn.inputType === 'keypad') {
-            const newPart = parseFloat(String(getRawValue(localKeypadValue))) || 0;
-            if (newPart !== 0) nextButtonContent = <ArrowUpToLine size={28} />;
-        } else if (isProductMode && activeFactorIdx === 0) {
-             const n1 = parseFloat(String(cellScoreObject?.parts?.[0] ?? 0)) || 0;
-             if (n1 !== 0) nextButtonContent = (<div className="flex flex-col items-center leading-none"><span className="text-xs">輸入 {activeColumn.subUnits?.[1] || 'B'}</span><ArrowDown size={16} /></div>);
-        }
-        
-        if (activeColumn.inputType === 'clicker') {
+        // --- Logic Branching by Input Type ---
+
+        if (activeColumn.inputType === 'auto') {
+            // Auto Calculation View
+            mainContentNode = (
+                <div className="h-full flex items-center justify-center bg-slate-900/50 rounded-xl border border-slate-700 p-4">
+                    <AutoScorePanel 
+                        column={activeColumn} 
+                        player={activePlayer} 
+                        allColumns={template.columns} 
+                    />
+                </div>
+            );
+            sidebarContentNode = (
+                <div className="flex flex-col h-full p-2 text-slate-400 text-xs">
+                    <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0">
+                        <Calculator size={12} /> 自動計算
+                    </div>
+                    <div className="flex-1 overflow-y-auto pt-2 space-y-2">
+                        <p>此欄位由公式自動產生結果。</p>
+                        <p>您無需手動輸入數值。</p>
+                    </div>
+                </div>
+            );
+        } else if (activeColumn.inputType === 'clicker') {
+             // Clicker / Quick Actions
              mainContentNode = ( <QuickButtonPad column={activeColumn} onAction={handleQuickButtonAction} /> );
              if (isSumPartsMode) {
                 sidebarContentNode = <NumericKeypadInfo column={activeColumn} value={cellScoreObject} onDeleteLastPart={handleDeleteLastPart} />;
@@ -247,6 +264,35 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                 sidebarContentNode = ( <div className="flex flex-col h-full p-2 text-slate-400 text-xs"><div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0"><ListPlus size={12} /> 列表選單</div><div className="flex-1"></div></div> );
              }
         } else { // 'keypad'
+            // Keypad Logic
+            if (isSumPartsMode) {
+                const newPart = parseFloat(String(getRawValue(localKeypadValue))) || 0;
+                if (newPart !== 0) nextButtonContent = <ArrowUpToLine size={28} />;
+                
+                onNextAction = () => {
+                    const part = parseFloat(String(getRawValue(localKeypadValue))) || 0;
+                    if (part !== 0) {
+                        const currentHistory = getScoreHistory(cellScoreObject);
+                        const newHistory = [...currentHistory, String(part)];
+                        const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
+                        updateScore(activePlayer!.id, activeColumn!.id, { value: newSum, history: newHistory });
+                        setLocalKeypadValue(0);
+                        setUiState((p: any) => ({ ...p, overwriteMode: true }));
+                    } else {
+                        eventHandlers.moveToNext();
+                    }
+                };
+            } else if (isProductMode) {
+                 const n1 = parseFloat(String(cellScoreObject?.parts?.[0] ?? 0)) || 0;
+                 if (n1 !== 0 && activeFactorIdx === 0) {
+                     nextButtonContent = (<div className="flex flex-col items-center leading-none"><span className="text-xs">輸入 {activeColumn.subUnits?.[1] || 'B'}</span><ArrowDown size={16} /></div>);
+                     onNextAction = () => {
+                         setActiveFactorIdx(1);
+                         setUiState((p: any) => ({ ...p, overwriteMode: true }));
+                     }
+                 }
+            }
+
             let keypadValue;
             if (isSumPartsMode) { keypadValue = localKeypadValue; } 
             else if (isProductMode) { keypadValue = { factors: cellScoreObject?.parts ?? [0, 1] }; } 
@@ -256,12 +302,13 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                 value={keypadValue}
                 onChange={(val: any) => isSumPartsMode ? setLocalKeypadValue(val) : updateScore(activePlayer!.id, activeColumn!.id, val)}
                 column={activeColumn} overwrite={overwriteMode} setOverwrite={(v: boolean) => setUiState((p: any) => ({ ...p, overwriteMode: v }))}
-                onNext={onNextAction} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={handleFactorSwitch} playerId={activePlayer.id}
+                onNext={onNextAction} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={setActiveFactorIdx} playerId={activePlayer.id}
             />;
             sidebarContentNode = <NumericKeypadInfo 
-              column={activeColumn} value={cellScoreObject} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={handleFactorSwitch}
+              column={activeColumn} value={cellScoreObject} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={setActiveFactorIdx}
               localKeypadValue={isSumPartsMode ? localKeypadValue : undefined}
               onDeleteLastPart={isSumPartsMode ? handleDeleteLastPart : undefined}
+              setOverwrite={(v) => setUiState((p: any) => ({ ...p, overwriteMode: v }))} // Pass setOverwrite
             />;
         }
     }

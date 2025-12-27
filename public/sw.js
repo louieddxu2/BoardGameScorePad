@@ -1,7 +1,7 @@
 
-const CACHE_NAME = 'boardgame-scorepad-v2.4.2-stable';
+const CACHE_NAME = 'boardgame-scorepad-v20-stable';
 
-// 核心靜態資源 (這些會在新版安裝時強制快取)
+// 核心靜態資源
 const CORE_ASSETS = [
   '/',
   '/index.html',
@@ -43,9 +43,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // [策略] 忽略開發工具與 Vercel 特殊路徑
+  // [關鍵修正] 忽略開發工具、Vite 內部路徑與 Vercel 特殊路徑
+  // 這能避免在開發環境中快取了 HMR 更新檔，導致瀏覽器卡在舊版
   if (url.pathname.includes('__vercel') || 
       url.pathname.startsWith('/@') || 
+      url.pathname.includes('node_modules') ||
       url.pathname.includes('chrome-extension')) {
     return;
   }
@@ -53,9 +55,6 @@ self.addEventListener('fetch', (event) => {
   // ============================================================
   // 策略 1: HTML 頁面導航 -> Stale-While-Revalidate (舊換新策略)
   // ============================================================
-  // 這是解決「離線白屏」的關鍵修改。
-  // 優先回傳「快取」中的舊版 HTML (保證與快取的 JS 版本匹配)。
-  // 同時在背景去網路抓新版 HTML 並更新快取，供「下一次」開啟使用。
   if (event.request.mode === 'navigate') {
     event.respondWith(
       (async () => {
@@ -97,8 +96,6 @@ self.addEventListener('fetch', (event) => {
   // ============================================================
   // 策略 2: 靜態資源 (JS/CSS/Images) -> Cache First (快取優先)
   // ============================================================
-  // 資源檔名通常有 Hash (如 index-abc.js)，內容變更檔名就會變。
-  // 所以只要快取裡有，就絕對可以用。
   event.respondWith(
     caches.match(event.request)
       .then((cachedResponse) => {
@@ -108,6 +105,7 @@ self.addEventListener('fetch', (event) => {
 
         return fetch(event.request)
           .then((networkResponse) => {
+            // 確保回應有效
             if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
               return networkResponse;
             }

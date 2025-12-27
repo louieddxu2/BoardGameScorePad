@@ -1,8 +1,141 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Global Layout Fixes (Ported from index.html) */
+@layer base {
+  /* 定義全域色彩變數 (使用 RGB 通道值以支援 Tailwind Opacity) */
+  :root {
+    /* =========================================
+       預設模式 (Dark Mode) - 原生配色
+       ========================================= */
+    
+    /* Slate Scale Mapping (RGB Channels) */
+    --c-slate-50: 248 250 252;   /* #f8fafc */
+    --c-slate-100: 241 245 249;  /* #f1f5f9 */
+    --c-slate-200: 226 232 240;  /* #e2e8f0 */
+    --c-slate-300: 203 213 225;  /* #cbd5e1 */
+    --c-slate-400: 148 163 184;  /* #94a3b8 */
+    --c-slate-500: 100 116 139;  /* #64748b */
+    --c-slate-600: 71 85 105;    /* #475569 */
+    --c-slate-700: 51 65 85;     /* #334155 */
+    --c-slate-800: 30 41 59;     /* #1e293b */
+    --c-slate-900: 15 23 42;     /* #0f172a */
+    --c-slate-950: 2 6 23;       /* #020617 */
+
+    /* Base Colors (RGB Channels) */
+    --c-white: 255 255 255;      /* #ffffff */
+    --c-black: 0 0 0;            /* #000000 */
+    
+    /* Semantic Colors (Default = Tailwind Standard) */
+    /* Emerald (Success/Main Action) */
+    --c-emerald-400: 52 211 153;  /* 亮綠 (文字用) */
+    --c-emerald-500: 16 185 129;  /* 標準綠 (按鈕背景) */
+    --c-emerald-600: 5 150 105;   /* 深綠 (按鈕Hover) */
+
+    /* Indigo (Primary/Info) */
+    --c-indigo-300: 165 180 252;
+    --c-indigo-400: 129 140 248;  /* 亮靛 (文字用) */
+    --c-indigo-500: 99 102 241;   /* 標準靛 */
+    --c-indigo-600: 79 70 229;
+    --c-indigo-900: 49 46 129;    /* 深靛 (背景Tint) */
+
+    /* Sky (Info/Secondary) */
+    --c-sky-300: 125 211 252;
+    --c-sky-400: 56 189 248;
+    --c-sky-500: 14 165 233;
+    --c-sky-600: 2 132 199;
+
+    /* Yellow/Amber (Warning/Highlight) */
+    --c-yellow-400: 250 204 21;   /* 亮黃 */
+    --c-amber-400: 251 191 36;
+    --c-amber-500: 245 158 11;
+
+    /* Red (Danger) */
+    --c-red-400: 248 113 113;     /* 亮紅 */
+    --c-red-500: 239 68 68;
+    --c-red-900: 127 29 29;
+
+    /* Helper for inline styles */
+    --border-slate-700: rgb(var(--c-slate-700));
+  }
+
+  /* 
+     使用 html[data-theme='light'] 確保優先權高於 :root
+     同時兼容 [data-theme='light'] 
+  */
+  html[data-theme='light'] {
+    /* =========================================
+       [Light Mode] - Pure White Edition
+       背景純白，卡片淡白(Slate-100)，文字深色
+       ========================================= */
+
+    /* --- Grayscale Mapping --- */
+    
+    /* 900 (背景): 強制純白 (#ffffff) */
+    --c-slate-900: 255 255 255; 
+    
+    /* 950 (深層/Modal背景): 映射為 Slate 50 (極淺灰) */
+    --c-slate-950: 248 250 252; 
+
+    /* 800 (卡片/容器): 映射為 Slate 100 (#f1f5f9) - 淡白色，與純白背景形成微弱層次 */
+    --c-slate-800: 241 245 249; 
+
+    /* 700 (邊框): 映射為 Slate 200 (淺灰線條) */
+    --c-slate-700: 226 232 240; 
+
+    /* 600 (次要邊框/分隔線): 映射為 Slate 300 */
+    --c-slate-600: 203 213 225;
+
+    /* 500 (中性文字): 保持 Slate 500，中性灰 */
+    --c-slate-500: 100 116 139;
+
+    /* 文字顏色加深以確保在白底上的對比度 */
+    --c-slate-400: 71 85 105;   /* Slate 600 */
+    --c-slate-300: 51 65 85;    /* Slate 700 */
+    --c-slate-200: 30 41 59;    /* Slate 800 */
+    --c-slate-100: 15 23 42;    /* Slate 900 */
+    --c-slate-50: 2 6 23;       /* Slate 950 */
+
+    /* Base Text Inversion */
+    --c-white: 15 23 42;        /* White text -> Dark Blue/Black */
+    --c-black: 255 255 255;     /* Black bg -> White */
+
+    /* --- Semantic Color Mapping (Darker for White BG) --- */
+    
+    /* Emerald */
+    --c-emerald-400: 5 150 105;   /* Emerald 600 */
+    --c-emerald-500: 16 185 129;  /* Emerald 500 (Keep vivid) */
+    --c-emerald-600: 4 120 87;    /* Emerald 700 */
+
+    /* Indigo */
+    --c-indigo-300: 79 70 229;    /* Indigo 600 */
+    --c-indigo-400: 67 56 202;    /* Indigo 700 */
+    --c-indigo-500: 99 102 241;   /* Indigo 500 */
+    --c-indigo-600: 55 48 163;    /* Indigo 800 */
+    --c-indigo-900: 238 242 255;  /* Indigo 50 (Tint) */
+
+    /* Sky */
+    --c-sky-300: 2 132 199;       /* Sky 600 */
+    --c-sky-400: 3 105 161;       /* Sky 700 */
+    --c-sky-500: 14 165 233;
+    --c-sky-600: 12 74 110;       /* Sky 900 */
+
+    /* Yellow/Amber */
+    --c-yellow-400: 202 138 4;    /* Yellow 600 */
+    --c-amber-400: 217 119 6;     /* Amber 600 */
+    --c-amber-500: 245 158 11;
+
+    /* Red */
+    --c-red-400: 220 38 38;       /* Red 600 */
+    --c-red-500: 239 68 68;
+    --c-red-900: 254 242 242;     /* Red 50 (Tint) */
+    
+    --border-slate-700: rgb(var(--c-slate-700));
+  }
+}
+
+/* 關鍵修復：使用 dvh (Dynamic Viewport Height) 確保在網址列伸縮時高度正確 */
 html, body, #root {
   height: 100%;       /* Fallback for older browsers */
   height: 100dvh;     /* Modern mobile viewport fix */
@@ -15,8 +148,9 @@ html, body, #root {
 }
 
 body {
-  background-color: #0f172a; /* Slate 900 */
-  color: #f8fafc; /* Slate 50 */
+  /* 使用變數，讓背景色自動切換 */
+  background-color: rgb(var(--c-slate-900)); 
+  color: rgb(var(--c-slate-50));
   -webkit-tap-highlight-color: transparent;
 }
 

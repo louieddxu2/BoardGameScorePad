@@ -1,10 +1,9 @@
 
-
-
 import React, { useCallback, useEffect } from 'react';
 import { GameSession, GameTemplate, ScoreColumn } from '../../../types';
 import { useSessionState } from './useSessionState';
 import { useSessionNavigation } from './useSessionNavigation';
+import { generateId } from '../../../utils/idGenerator';
 
 interface SessionViewProps {
   session: GameSession;
@@ -45,6 +44,7 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
       if (uiState.showExitConfirm) { setUiState(p => ({ ...p, showExitConfirm: false })); return; }
       if (uiState.showShareMenu) { setUiState(p => ({ ...p, showShareMenu: false })); return; }
       if (uiState.isAddColumnModalOpen) { setUiState(p => ({ ...p, isAddColumnModalOpen: false })); return; }
+      if (uiState.screenshotModal.isOpen) { setUiState(p => ({ ...p, screenshotModal: { ...p.screenshotModal, isOpen: false } })); return; }
       if (uiState.editingCell || uiState.editingPlayerId) {
         setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null }));
         return;
@@ -89,7 +89,9 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
   
   const handleColumnHeaderClick = (e: React.MouseEvent, col: ScoreColumn) => {
     e.stopPropagation();
-    // 不需要再檢查 isInputFocused
+    // 限制：只有在編輯模式下才能開啟欄位編輯器
+    if (!uiState.isEditMode) return;
+
     setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null, editingColumn: col }));
   };
 
@@ -101,17 +103,17 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
   };
   
   const handlePlayerNameSubmit = (playerId: string, newName: string, moveNext: boolean = false) => {
-      const trimmedName = newName?.trim();
+      const finalName = newName?.trim() ?? '';
+      const currentPlayer = session.players.find(p => p.id === playerId);
       
-      if (trimmedName) {
-          const currentPlayer = session.players.find(p => p.id === playerId);
-          
-          // Only update history and session if the name actually changed
-          if (currentPlayer && currentPlayer.name !== trimmedName) {
-              onUpdatePlayerHistory(trimmedName);
-              const players = session.players.map(p => p.id === playerId ? { ...p, name: trimmedName } : p);
-              onUpdateSession({ ...session, players });
+      // Only update if the name actually changed
+      if (currentPlayer && currentPlayer.name !== finalName) {
+          // Only add non-empty names to history
+          if (finalName) {
+              onUpdatePlayerHistory(finalName);
           }
+          const players = session.players.map(p => p.id === playerId ? { ...p, name: finalName } : p);
+          onUpdateSession({ ...session, players });
       }
       
       setUiState(p => ({ ...p, isInputFocused: false }));
@@ -140,7 +142,14 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
   };
 
   const handleAddBlankColumn = () => {
-    const newCol: ScoreColumn = { id: crypto.randomUUID(), name: `項目 ${template.columns.length + 1}`, isScoring: true, formula: 'a1', inputType: 'keypad', rounding: 'none' };
+    const newCol: ScoreColumn = { 
+        id: generateId(8), // Short ID for new columns
+        name: `項目 ${template.columns.length + 1}`, 
+        isScoring: true, 
+        formula: 'a1', 
+        inputType: 'keypad', 
+        rounding: 'none' 
+    };
     onUpdateTemplate({ ...template, columns: [...template.columns, newCol] });
     setUiState(p => ({ ...p, isAddColumnModalOpen: false }));
   };
@@ -150,7 +159,7 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
       const original = template.columns.find(c => c.id === idToCopy);
       if (!original) return null;
       const newColumn = JSON.parse(JSON.stringify(original));
-      newColumn.id = crypto.randomUUID();
+      newColumn.id = generateId(8); // Short ID for copied columns
       newColumn.name = `${original.name} (複製)`;
       return newColumn;
     }).filter((c): c is ScoreColumn => c !== null);
@@ -162,7 +171,9 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
   };
   
   const handleScreenshotRequest = useCallback((mode: 'full' | 'simple') => {
-    setUiState(p => ({ ...p, showShareMenu: false, screenshotState: { active: true, mode } }));
+    // Note: The actual measurement logic is in SessionView to access DOM
+    // This handler primarily signals the UI state change for menu closing
+    setUiState(p => ({ ...p, showShareMenu: false }));
   }, [setUiState]);
 
   return {

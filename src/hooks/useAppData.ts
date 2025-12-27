@@ -4,6 +4,7 @@ import { GameTemplate, GameSession, Player, ScoreColumn, ScoreValue, MappingRule
 import { DEFAULT_TEMPLATES } from '../constants';
 import { COLORS } from '../colors';
 import { calculatePlayerTotal } from '../utils/scoring';
+import { generateId } from '../utils/idGenerator';
 
 // --- Migration Logic ---
 
@@ -26,7 +27,7 @@ const migrateColumn = (oldCol: any): ScoreColumn => {
       ] : []);
       
       quickActions = oldOptions.map((opt: any) => ({
-          id: crypto.randomUUID(),
+          id: generateId(6),
           label: opt.label,
           value: opt.value,
           color: opt.color,
@@ -51,7 +52,7 @@ const migrateColumn = (oldCol: any): ScoreColumn => {
           inputType = 'clicker';
           formula = 'a1+next';
           quickActions = oldCol.quickButtons.map((v: number) => ({
-              id: crypto.randomUUID(),
+              id: generateId(6),
               label: `${v > 0 ? '+' : ''}${v}`,
               value: v,
           }));
@@ -69,6 +70,10 @@ const migrateColumn = (oldCol: any): ScoreColumn => {
     });
   }
 
+  // [NEW MIGRATION] Resolve Display Mode
+  // Default to 'row' if undefined. No legacy isHidden checks.
+  let displayMode: 'row' | 'overlay' | 'hidden' = oldCol.displayMode || 'row';
+
   const newCol: ScoreColumn = {
     id: oldCol.id,
     name: oldCol.name,
@@ -84,14 +89,26 @@ const migrateColumn = (oldCol: any): ScoreColumn => {
     rounding: oldCol.rounding || 'none',
     showPartsInGrid: oldCol.showPartsInGrid,
     buttonGridColumns: oldCol.buttonGridColumns,
+    displayMode: displayMode, 
+    visuals: oldCol.visuals,
+    contentLayout: oldCol.contentLayout,
+    // Ensure Auto-calc properties are preserved
+    isAuto: oldCol.isAuto,
+    variableMap: oldCol.variableMap
   };
   return newCol;
 };
 
 const migrateTemplate = (template: any): GameTemplate => {
     if (!template || !template.columns?.length) return template;
+    
+    // Remove legacy baseImage if it exists in older versions
+    const { baseImage, ...rest } = template;
+    
     return {
-        ...template,
+        ...rest,
+        // Ensure hasImage is true if legacy baseImage existed or if it's already set
+        hasImage: rest.hasImage || !!baseImage, 
         columns: template.columns.map(migrateColumn)
     };
 };
@@ -134,39 +151,61 @@ const migrateScores = (scores: Record<string, any>, template: GameTemplate): Rec
 };
 
 export const useAppData = () => {
-  const [templates, setTemplates] = useState<GameTemplate[]>([]);
-  const [systemOverrides, setSystemOverrides] = useState<Record<string, GameTemplate>>({});
-  const [knownSysIds, setKnownSysIds] = useState<string[]>([]);
-  const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+  // Use Lazy Initialization for all persisted states to avoid overwriting LS on mount
+  
+  // Theme State
+  const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
+      try {
+          return (localStorage.getItem('app_theme') as 'dark' | 'light') || 'dark';
+      } catch { return 'dark'; }
+  });
+
+  const [templates, setTemplates] = useState<GameTemplate[]>(() => {
+      try {
+          const savedTemplates = localStorage.getItem('sm_templates');
+          return savedTemplates ? JSON.parse(savedTemplates).map(migrateTemplate) : [];
+      } catch (e) { console.error(e); return []; }
+  });
+
+  const [systemOverrides, setSystemOverrides] = useState<Record<string, GameTemplate>>(() => {
+      try {
+          const savedOverrides = localStorage.getItem('sm_system_overrides');
+          const parsedOverrides = savedOverrides ? JSON.parse(savedOverrides) : {};
+          Object.keys(parsedOverrides).forEach(key => {
+              parsedOverrides[key] = migrateTemplate(parsedOverrides[key]);
+          });
+          return parsedOverrides;
+      } catch (e) { console.error(e); return {}; }
+  });
+
+  const [knownSysIds, setKnownSysIds] = useState<string[]>(() => {
+      try {
+          const savedKnownIds = localStorage.getItem('sm_known_sys_ids');
+          return savedKnownIds ? JSON.parse(savedKnownIds) : [];
+      } catch (e) { console.error(e); return []; }
+  });
+
+  const [pinnedIds, setPinnedIds] = useState<string[]>(() => {
+      try {
+          const savedPinnedIds = localStorage.getItem('sm_pinned_ids');
+          return savedPinnedIds ? JSON.parse(savedPinnedIds) : [];
+      } catch (e) { console.error(e); return []; }
+  });
+
+  const [playerHistory, setPlayerHistory] = useState<string[]>(() => {
+      try {
+          const savedHistory = localStorage.getItem('sm_player_history');
+          return savedHistory ? JSON.parse(savedHistory) : [];
+      } catch (e) { console.error(e); return []; }
+  });
+
   const [currentSession, setCurrentSession] = useState<GameSession | null>(null);
   const [activeTemplate, setActiveTemplate] = useState<GameTemplate | null>(null);
-  const [playerHistory, setPlayerHistory] = useState<string[]>([]);
+  
+  // Runtime image storage (not persisted in JSON)
+  const [sessionImage, setSessionImage] = useState<string | null>(null);
 
-  useEffect(() => {
-    try {
-        const savedTemplates = localStorage.getItem('sm_templates');
-        const parsedUserTemplates = savedTemplates ? JSON.parse(savedTemplates).map(migrateTemplate) : [];
-        setTemplates(parsedUserTemplates);
-
-        const savedOverrides = localStorage.getItem('sm_system_overrides');
-        const parsedOverrides = savedOverrides ? JSON.parse(savedOverrides) : {};
-        Object.keys(parsedOverrides).forEach(key => {
-            parsedOverrides[key] = migrateTemplate(parsedOverrides[key]);
-        });
-        setSystemOverrides(parsedOverrides);
-        
-        const savedKnownIds = localStorage.getItem('sm_known_sys_ids');
-        setKnownSysIds(savedKnownIds ? JSON.parse(savedKnownIds) : []);
-
-        const savedPinnedIds = localStorage.getItem('sm_pinned_ids');
-        setPinnedIds(savedPinnedIds ? JSON.parse(savedPinnedIds) : []);
-
-        const savedHistory = localStorage.getItem('sm_player_history');
-        if (savedHistory) setPlayerHistory(JSON.parse(savedHistory));
-
-    } catch(e) { console.error("Init Error", e); }
-  }, []);
-
+  // Restore Session Logic (Depends on loaded templates, so kept in Effect)
   useEffect(() => {
     try {
         const savedSession = localStorage.getItem('sm_current_session');
@@ -186,10 +225,19 @@ export const useAppData = () => {
     } catch (e) { console.error("Failed to restore session", e); }
   }, [templates, systemOverrides]);
 
+  // Persist changes
   useEffect(() => { localStorage.setItem('sm_templates', JSON.stringify(templates)); }, [templates]);
   useEffect(() => { localStorage.setItem('sm_system_overrides', JSON.stringify(systemOverrides)); }, [systemOverrides]);
   useEffect(() => { localStorage.setItem('sm_known_sys_ids', JSON.stringify(knownSysIds)); }, [knownSysIds]);
   useEffect(() => { localStorage.setItem('sm_pinned_ids', JSON.stringify(pinnedIds)); }, [pinnedIds]);
+  useEffect(() => { localStorage.setItem('sm_player_history', JSON.stringify(playerHistory)); }, [playerHistory]);
+  
+  // [CRITICAL] Sync Theme to HTML Root
+  useEffect(() => { 
+      localStorage.setItem('app_theme', themeMode);
+      document.documentElement.setAttribute('data-theme', themeMode);
+  }, [themeMode]);
+  
   useEffect(() => {
     if (currentSession && activeTemplate) {
         localStorage.setItem('sm_current_session', JSON.stringify(currentSession));
@@ -199,7 +247,8 @@ export const useAppData = () => {
         localStorage.removeItem('sm_active_template_id');
     }
   }, [currentSession, activeTemplate]);
-  useEffect(() => { localStorage.setItem('sm_player_history', JSON.stringify(playerHistory)); }, [playerHistory]);
+
+  const toggleTheme = () => setThemeMode(prev => prev === 'dark' ? 'light' : 'dark');
 
   const saveTemplate = (template: GameTemplate) => {
     const migratedTemplate = migrateTemplate(template);
@@ -221,14 +270,24 @@ export const useAppData = () => {
 
   const startSession = (template: GameTemplate, playerCount: number) => {
     const migratedTemplate = migrateTemplate(template);
+    
+    // If the template has coordinate data, it's designed for a texture.
+    const hasTexture = !!migratedTemplate.globalVisuals || !!migratedTemplate.hasImage;
+
+    const defaultColors = hasTexture 
+        ? Array(playerCount).fill('transparent') 
+        : Array.from({ length: playerCount }, (_, i) => COLORS[i % COLORS.length]);
+
     const players: Player[] = Array.from({ length: playerCount }, (_, i) => ({
-      id: crypto.randomUUID(),
+      id: generateId(8), // Short ID for players (8 chars)
       name: `玩家 ${i + 1}`,
       scores: {},
       totalScore: 0,
-      color: COLORS[i % COLORS.length]
+      color: defaultColors[i]
     }));
-    const newSession: GameSession = { id: crypto.randomUUID(), templateId: migratedTemplate.id, startTime: Date.now(), players: players, status: 'active' };
+    
+    // Session ID is globally unique enough with 12 chars
+    const newSession: GameSession = { id: generateId(12), templateId: migratedTemplate.id, startTime: Date.now(), players: players, status: 'active' };
     setActiveTemplate(migratedTemplate);
     setCurrentSession(newSession);
   };
@@ -245,12 +304,15 @@ export const useAppData = () => {
   const resetSessionScores = () => {
     if (!currentSession) return;
     const resetPlayers = currentSession.players.map(p => ({ ...p, scores: {}, totalScore: 0 }));
-    setCurrentSession({ ...currentSession, id: crypto.randomUUID(), players: resetPlayers, startTime: Date.now() });
+    setCurrentSession({ ...currentSession, id: generateId(12), players: resetPlayers, startTime: Date.now() });
   };
 
   const exitSession = () => {
       setCurrentSession(null);
       setActiveTemplate(null);
+      // We don't necessarily clear sessionImage, maybe they want to reuse it?
+      // But usually exit means done. Let's clear to save memory.
+      setSessionImage(null);
   };
 
   const updateActiveTemplate = (updatedTemplate: GameTemplate) => {
@@ -280,5 +342,12 @@ export const useAppData = () => {
     });
   }, [systemOverrides]);
 
-  return { templates, setTemplates, systemOverrides, systemTemplates, knownSysIds, pinnedIds, currentSession, activeTemplate, playerHistory, saveTemplate, deleteTemplate, togglePin, updatePlayerHistory, startSession, updateSession, resetSessionScores, exitSession, updateActiveTemplate, markSystemTemplatesSeen, restoreSystemTemplate };
+  return { 
+      templates, setTemplates, systemOverrides, systemTemplates, 
+      knownSysIds, pinnedIds, currentSession, activeTemplate, playerHistory, 
+      sessionImage, setSessionImage, themeMode, toggleTheme, // Export theme items
+      saveTemplate, deleteTemplate, togglePin, updatePlayerHistory, 
+      startSession, updateSession, resetSessionScores, exitSession, 
+      updateActiveTemplate, markSystemTemplatesSeen, restoreSystemTemplate 
+  };
 };

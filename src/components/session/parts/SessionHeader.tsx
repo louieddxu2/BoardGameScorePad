@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, ListPlus, RotateCcw, Share2, Edit2 } from 'lucide-react';
+import { ArrowLeft, ListPlus, RotateCcw, Share2, Edit2, Lock, Unlock } from 'lucide-react';
 import ShareMenu from '../modals/ShareMenu';
 
 interface SessionHeaderProps {
@@ -7,6 +7,8 @@ interface SessionHeaderProps {
   isEditingTitle: boolean;
   showShareMenu: boolean;
   screenshotActive: boolean;
+  isEditMode: boolean; // New prop
+  hasVisuals?: boolean; // New prop: Check if template has coordinate data
   onEditTitleToggle: (editing: boolean) => void;
   onTitleSubmit: (newTitle: string) => void;
   onExit: () => void;
@@ -14,6 +16,8 @@ interface SessionHeaderProps {
   onReset: () => void;
   onShareMenuToggle: (show: boolean) => void;
   onScreenshotRequest: (mode: 'full' | 'simple') => void;
+  onToggleEditMode: () => void; // New callback
+  onUploadImage?: () => void; // New callback
 }
 
 const SessionHeader: React.FC<SessionHeaderProps> = ({
@@ -21,17 +25,23 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   isEditingTitle,
   showShareMenu,
   screenshotActive,
+  isEditMode,
+  hasVisuals,
   onEditTitleToggle,
   onTitleSubmit,
   onExit,
   onAddColumn,
   onReset,
   onShareMenuToggle,
-  onScreenshotRequest
+  onScreenshotRequest,
+  onToggleEditMode,
+  onUploadImage
 }) => {
   const [tempTitle, setTempTitle] = useState('');
 
   const handleTitleClick = () => {
+    // Only allow title editing if in Edit Mode
+    if (!isEditMode) return;
     setTempTitle(templateName);
     onEditTitleToggle(true);
   };
@@ -62,19 +72,42 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
             className="bg-slate-900 text-white font-bold text-lg px-2 py-1 rounded border border-emerald-500 w-full outline-none"
           />
         ) : (
-          <div onClick={handleTitleClick} className="font-bold text-lg truncate flex items-center gap-2 cursor-pointer hover:bg-slate-700/50 px-2 py-1 rounded transition-colors group">
+          <div 
+            onClick={handleTitleClick} 
+            className={`font-bold text-lg truncate flex items-center gap-2 px-2 py-1 rounded transition-colors group ${isEditMode ? 'cursor-pointer hover:bg-slate-700/50' : ''}`}
+          >
             {templateName}
-            <Edit2 size={14} className="text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+            {isEditMode && <Edit2 size={14} className="text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />}
           </div>
         )}
       </div>
       <div className="flex items-center gap-1 relative shrink-0">
-        <button onClick={onAddColumn} className="p-2 hover:bg-slate-700 hover:text-emerald-400 rounded-lg text-slate-400"><ListPlus size={20} /></button>
+        <button 
+            onClick={onToggleEditMode} 
+            className={`p-2 rounded-lg transition-colors border ${isEditMode ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-900/50' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'}`}
+            title={isEditMode ? "鎖定編輯 (切換至使用模式)" : "解鎖編輯 (切換至編輯模式)"}
+        >
+            {isEditMode ? <Unlock size={20} /> : <Lock size={20} />}
+        </button>
+        
+        {/* Only show Add Column button in Edit Mode */}
+        {isEditMode && (
+            <button onClick={onAddColumn} className="p-2 hover:bg-slate-700 hover:text-emerald-400 rounded-lg text-slate-400"><ListPlus size={20} /></button>
+        )}
+        
         <button onClick={onReset} className="p-2 hover:bg-slate-700 hover:text-red-400 rounded-lg text-slate-400"><RotateCcw size={20} /></button>
+        
         <div className="w-px h-6 bg-slate-700 mx-1"></div>
         <button onClick={() => onShareMenuToggle(!showShareMenu)} className="p-2 hover:bg-slate-700 hover:text-indigo-400 rounded-lg text-slate-400"><Share2 size={20} /></button>
         
-        {showShareMenu && <ShareMenu isCopying={screenshotActive} onScreenshotRequest={onScreenshotRequest} />}
+        {showShareMenu && (
+            <ShareMenu 
+                isCopying={screenshotActive} 
+                onScreenshotRequest={onScreenshotRequest} 
+                hasVisuals={hasVisuals}
+                onUploadImage={onUploadImage}
+            />
+        )}
         {showShareMenu && <div className="fixed inset-0 z-40" onClick={() => onShareMenuToggle(false)}></div>}
       </div>
     </div>

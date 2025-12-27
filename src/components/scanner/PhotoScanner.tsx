@@ -1,0 +1,801 @@
+
+import React, { useState, useRef, useEffect } from 'react';
+import { Camera, Upload, X, Magnet, RotateCcw, BoxSelect, ScanLine, ZoomIn, Move, Download, Share2, ArrowRight, Check, RotateCw } from 'lucide-react';
+import { getPerspectiveTransform, findStrongestCorner, warpPerspective, calculateParallelogramPoint, getEdgeAngles, snapToEdge } from '../../utils/scanUtils';
+import { getTouchDistance } from '../../utils/ui';
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+interface PhotoScannerProps {
+  onClose: () => void;
+  // Modified signature to return raw data for restoration
+  onConfirm: (result: { processed: string; raw: string; points: Point[] }) => void;
+  // New props for state restoration
+  initialImage?: string | null;
+  initialPoints?: Point[];
+}
+
+interface ViewTransform {
+  x: number;
+  y: number;
+  scale: number;
+}
+
+const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initialImage, initialPoints }) => {
+  const [imageSrc, setImageSrc] = useState<string | null>(initialImage || null);
+  const [points, setPoints] = useState<Point[]>(initialPoints || []); 
+  const [activePointIdx, setActivePointIdx] = useState<number | null>(null);
+  const [isSnapping, setIsSnapping] = useState(true);
+  const [showPreview, setShowPreview] = useState(false);
+  const [rectifiedImage, setRectifiedImage] = useState<string | null>(null);
+  const [geometricGhost, setGeometricGhost] = useState<Point | null>(null);
+  
+  // NEW: Explicitly track dimensions to force re-render when image loads
+  const [sourceDimensions, setSourceDimensions] = useState<{w: number, h: number} | null>(null);
+
+  // Snapping Feedback
+  const [snapType, setSnapType] = useState<'none' | 'corner' | 'line'>('none');
+  
+  // Guide Lines
+  const [activeAngles, setActiveAngles] = useState<number[]>([]);
+  
+  // Magnifier State
+  const [magnifierPos, setMagnifierPos] = useState<{top: number, left: number} | null>(null);
+
+  // Velocity Tracking for "Slow Drag" Line Snapping
+  const lastMoveTime = useRef<number>(0);
+  const lastMovePos = useRef<{x: number, y: number} | null>(null);
+
+  // --- Pan & Zoom State ---
+  const [transform, setTransform] = useState<ViewTransform>({ x: 0, y: 0, scale: 1 });
+  const hasFittedRef = useRef(false); // Track if we have performed initial fit
+  
+  // 使用 Refs 來保存最新的狀態供 Event Listeners 使用，避免 useEffect 頻繁重新綁定
+  const stateRef = useRef({
+      activePointIdx,
+      points,
+      isSnapping,
+      transform,
+      imageSrc
+  });
+
+  // 同步 Ref
+  useEffect(() => {
+      stateRef.current = { activePointIdx, points, isSnapping, transform, imageSrc };
+  }, [activePointIdx, points, isSnapping, transform, imageSrc]);
+
+  const isDraggingView = useRef(false);
+  const lastPanPoint = useRef<{x: number, y: number} | null>(null);
+  const startPinchDist = useRef<number>(0);
+  const startPinchScale = useRef<number>(1);
+
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const magnifierCanvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Helper to fit image to screen
+  const fitImageToScreen = () => {
+      if (!canvasRef.current || !containerRef.current) return;
+      
+      const w = canvasRef.current.width;
+      const h = canvasRef.current.height;
+      const rect = containerRef.current.getBoundingClientRect();
+      
+      // Prevent division by zero or negative sizing
+      if (rect.width <= 0 || rect.height <= 0 || w === 0 || h === 0) return;
+
+      const scale = Math.min(rect.width / w, rect.height / h) * 0.9;
+      const tx = (rect.width - w * scale) / 2;
+      const ty = (rect.height - h * scale) / 2;
+      
+      setTransform({ x: tx, y: ty, scale });
+      hasFittedRef.current = true;
+  };
+
+  // Watch for container resize to ensure we fit properly (fixes "Shrunk" issue on mount)
+  useEffect(() => {
+      if (!containerRef.current || !imageSrc) return;
+      const resizeObserver = new ResizeObserver(() => {
+          // Only auto-fit if scale is suspiciously small (uninitialized)
+          if (stateRef.current.transform.scale < 0.01) {
+              fitImageToScreen();
+          }
+      });
+      resizeObserver.observe(containerRef.current);
+      return () => resizeObserver.disconnect();
+  }, [imageSrc]);
+
+  // 初始化圖片載入
+  // Dependency includes showPreview to ensure canvas is redrawn when returning from preview
+  useEffect(() => {
+    if (imageSrc && canvasRef.current && !showPreview) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        const maxDim = 1500; 
+        let w = img.width;
+        let h = img.height;
+        
+        // Resize logic
+        if (w > maxDim || h > maxDim) {
+          const ratio = Math.min(maxDim / w, maxDim / h);
+          w = Math.floor(w * ratio);
+          h = Math.floor(h * ratio);
+        }
+
+        canvas.width = w;
+        canvas.height = h;
+        
+        // IMPORTANT: Update state to force React to re-render the wrapper div with correct dimensions
+        setSourceDimensions({ w, h });
+        
+        ctx?.drawImage(img, 0, 0, w, h);
+
+        // 初始化選取點 (若無初始點，則預設全選)
+        if (stateRef.current.points.length === 0) {
+            setPoints([
+                { x: 0, y: 0 }, // TL
+                { x: w, y: 0 }, // TR
+                { x: w, y: h }, // BR
+                { x: 0, y: h }  // BL
+            ]);
+        }
+        
+        // Only fit if we haven't done it yet for this image context
+        // This prevents resetting the view when returning from preview
+        if (!hasFittedRef.current) {
+            fitImageToScreen();
+        }
+      };
+      img.src = imageSrc;
+    }
+  }, [imageSrc, showPreview]);
+
+  // 更新放大鏡內容
+  const updateMagnifier = (x: number, y: number, isLineSnapped: boolean) => {
+      const srcCanvas = canvasRef.current;
+      const magCanvas = magnifierCanvasRef.current;
+      if (!srcCanvas || !magCanvas) return;
+
+      const magCtx = magCanvas.getContext('2d');
+      if (!magCtx) return;
+
+      const zoom = 2; 
+      const size = 120; // 放大鏡尺寸
+
+      // 1. Clear & Background
+      magCtx.clearRect(0, 0, size, size);
+      magCtx.fillStyle = '#000';
+      magCtx.fillRect(0, 0, size, size);
+
+      // 2. Draw Image Transformed
+      magCtx.save();
+      magCtx.translate(size / 2, size / 2);
+      magCtx.scale(zoom, zoom);
+      magCtx.translate(-x, -y);
+      magCtx.drawImage(srcCanvas, 0, 0);
+      magCtx.restore();
+
+      // 3. Draw Crosshair
+      magCtx.strokeStyle = isLineSnapped ? '#facc15' : '#06b6d4'; 
+      magCtx.lineWidth = isLineSnapped ? 2 : 1;
+      
+      magCtx.beginPath();
+      magCtx.moveTo(size / 2, 0);
+      magCtx.lineTo(size / 2, size);
+      magCtx.moveTo(0, size / 2);
+      magCtx.lineTo(size, size / 2);
+      magCtx.stroke();
+      
+      // 4. Border
+      magCtx.strokeStyle = '#fff';
+      magCtx.lineWidth = 4;
+      magCtx.strokeRect(0, 0, size, size);
+  };
+
+  // --- Interaction Logic ---
+
+  // Convert Screen Coordinates (clientX, clientY) to Image Coordinates (Pixel x, y)
+  // 這裡使用 stateRef 確保在 event handler 內讀取到最新的 transform
+  const screenToImage = (clientX: number, clientY: number) => {
+      const { transform } = stateRef.current;
+      if (!containerRef.current) return { x: 0, y: 0 };
+      const rect = containerRef.current.getBoundingClientRect();
+      
+      // 1. Relative to container
+      const relX = clientX - rect.left;
+      const relY = clientY - rect.top;
+      
+      // 2. Remove Pan & Scale
+      const imgX = (relX - transform.x) / transform.scale;
+      const imgY = (relY - transform.y) / transform.scale;
+      
+      return { x: imgX, y: imgY };
+  };
+
+  const handlePointDrag = (clientX: number, clientY: number) => {
+        if (!canvasRef.current) return;
+        const { isSnapping, activePointIdx, points } = stateRef.current;
+
+        const { x, y } = screenToImage(clientX, clientY);
+
+        // 計算速度 (px/ms)
+        const now = Date.now();
+        const dt = now - lastMoveTime.current;
+        let speed = 100; 
+        if (lastMovePos.current && dt > 0) {
+            // Speed in image space
+            const dist = Math.sqrt(Math.pow(x - lastMovePos.current.x, 2) + Math.pow(y - lastMovePos.current.y, 2));
+            speed = dist / dt;
+        }
+        lastMoveTime.current = now;
+        lastMovePos.current = { x, y };
+
+        // Clamp to image bounds
+        const width = canvasRef.current.width;
+        const height = canvasRef.current.height;
+        const clampedX = Math.max(0, Math.min(x, width));
+        const clampedY = Math.max(0, Math.min(y, height));
+
+        let snappedX = clampedX;
+        let snappedY = clampedY;
+        let currentSnapType: 'none' | 'corner' | 'line' = 'none';
+        
+        const ctx = canvasRef.current.getContext('2d');
+
+        if (isSnapping && ctx && activePointIdx !== null) {
+            // 1. Geometric
+            const geoPoint = calculateParallelogramPoint(points, activePointIdx);
+            setGeometricGhost(geoPoint);
+
+            let geoSnapped = false;
+            if (geoPoint) {
+                const dist = Math.sqrt(Math.pow(clampedX - geoPoint.x, 2) + Math.pow(clampedY - geoPoint.y, 2));
+                if (dist < 40) { 
+                    snappedX = geoPoint.x;
+                    snappedY = geoPoint.y;
+                    geoSnapped = true;
+                    currentSnapType = 'corner';
+                }
+            }
+
+            if (!geoSnapped) {
+                // 2. Corner
+                const cornerResult = findStrongestCorner(ctx, clampedX, clampedY, 30); 
+                if (cornerResult) {
+                    snappedX = cornerResult.x;
+                    snappedY = cornerResult.y;
+                    currentSnapType = 'corner';
+                } 
+                // 3. Line (only when slow)
+                else if (speed < 0.8) { 
+                    const lineSnapResult = snapToEdge(ctx, clampedX, clampedY, 20);
+                    if (lineSnapResult) {
+                        snappedX = lineSnapResult.x;
+                        snappedY = lineSnapResult.y;
+                        currentSnapType = 'line';
+                    }
+                }
+            }
+        } else {
+            setGeometricGhost(null);
+        }
+
+        if (ctx) {
+            const currentAngles = getEdgeAngles(ctx, snappedX, snappedY);
+            setActiveAngles(currentAngles);
+        }
+
+        setSnapType(currentSnapType);
+        // 重要：這裡使用 functional update 確保基於最新 state 更新
+        setPoints(prev => prev.map((p, i) => i === activePointIdx ? { x: snappedX, y: snappedY } : p));
+        
+        // Update Magnifier visual position
+        const magOffset = 100;
+        let magTop = clientY - magOffset;
+        if (magTop < 50) magTop = clientY + magOffset; 
+        setMagnifierPos({ top: magTop, left: clientX });
+        updateMagnifier(snappedX, snappedY, currentSnapType === 'line');
+  };
+
+  const handlePanZoom = (clientX: number, clientY: number) => {
+      if (lastPanPoint.current) {
+          const dx = clientX - lastPanPoint.current.x;
+          const dy = clientY - lastPanPoint.current.y;
+          setTransform(prev => ({ ...prev, x: prev.x + dx, y: prev.y + dy }));
+          lastPanPoint.current = { x: clientX, y: clientY };
+      }
+  };
+
+  // --- Global Event Handlers (Attached to Window) ---
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+        const { activePointIdx } = stateRef.current;
+        if (activePointIdx !== null) {
+            e.preventDefault();
+            handlePointDrag(e.clientX, e.clientY);
+        } else if (isDraggingView.current) {
+            e.preventDefault();
+            handlePanZoom(e.clientX, e.clientY);
+        }
+    };
+    
+    const onTouchMove = (e: TouchEvent) => {
+        const { activePointIdx, transform } = stateRef.current;
+        
+        // 關鍵：阻止預設行為 (如瀏覽器縮放、捲動)
+        if (activePointIdx !== null || isDraggingView.current || e.touches.length === 2) {
+            e.preventDefault();
+        }
+
+        if (activePointIdx !== null) {
+            handlePointDrag(e.touches[0].clientX, e.touches[0].clientY);
+        } else if (e.touches.length === 2) {
+            // Pinch Zoom Logic
+            const dist = getTouchDistance(e.touches);
+            if (startPinchDist.current > 0) {
+                const scaleFactor = dist / startPinchDist.current;
+                const newScale = Math.max(0.1, Math.min(10, startPinchScale.current * scaleFactor));
+                
+                // Zoom towards center of screen (simpler and more stable than pointer-based for touch)
+                if (containerRef.current) {
+                    const rect = containerRef.current.getBoundingClientRect();
+                    const cx = rect.width / 2;
+                    const cy = rect.height / 2;
+                    
+                    // Logic: The point under the center should remain under the center
+                    // Image coords of center:
+                    const imgCx = (cx - transform.x) / transform.scale;
+                    const imgCy = (cy - transform.y) / transform.scale;
+                    
+                    const newTx = cx - (imgCx * newScale);
+                    const newTy = cy - (imgCy * newScale);
+                    
+                    setTransform({ x: newTx, y: newTy, scale: newScale });
+                }
+            }
+        } else if (isDraggingView.current && e.touches.length === 1) {
+            handlePanZoom(e.touches[0].clientX, e.touches[0].clientY);
+        }
+    };
+
+    const onEnd = () => {
+        setActivePointIdx(null);
+        isDraggingView.current = false;
+        lastPanPoint.current = null;
+        startPinchDist.current = 0;
+        
+        setGeometricGhost(null);
+        setMagnifierPos(null);
+        setActiveAngles([]);
+        setSnapType('none');
+        lastMovePos.current = null;
+    };
+
+    // 使用 { passive: false } 是關鍵，否則 preventDefault 會失效
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onEnd);
+    window.addEventListener('touchcancel', onEnd);
+
+    return () => {
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onEnd);
+        window.removeEventListener('touchmove', onTouchMove);
+        window.removeEventListener('touchend', onEnd);
+        window.removeEventListener('touchcancel', onEnd);
+    };
+  }, []); // 空依賴陣列：只綁定一次，依賴 stateRef 讀取最新狀態
+
+  // --- Local Event Starters ---
+
+  const handlePointerDown = (e: React.MouseEvent | React.TouchEvent, pointIdx: number | null) => {
+      // 停止事件冒泡
+      e.stopPropagation(); 
+
+      if (pointIdx !== null) {
+          // Start dragging point
+          setActivePointIdx(pointIdx);
+          lastMoveTime.current = Date.now();
+          lastMovePos.current = null;
+      } else {
+          // Start panning or zooming
+          const isTouch = 'touches' in e;
+          if (isTouch && (e as React.TouchEvent).touches.length === 2) {
+              startPinchDist.current = getTouchDistance((e as React.TouchEvent).touches);
+              startPinchScale.current = stateRef.current.transform.scale;
+              isDraggingView.current = false;
+          } else {
+              isDraggingView.current = true;
+              const clientX = isTouch ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
+              const clientY = isTouch ? (e as React.TouchEvent).touches[0].clientY : (e as React.MouseEvent).clientY;
+              lastPanPoint.current = { x: clientX, y: clientY };
+          }
+      }
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+      e.stopPropagation();
+      const { transform } = stateRef.current;
+      const scaleChange = -e.deltaY * 0.001;
+      const newScale = Math.max(0.1, Math.min(10, transform.scale * (1 + scaleChange)));
+      
+      // Zoom towards mouse pointer
+      if (containerRef.current) {
+          const rect = containerRef.current.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
+          
+          const imgX = (mouseX - transform.x) / transform.scale;
+          const imgY = (mouseY - transform.y) / transform.scale;
+          
+          const newTx = mouseX - (imgX * newScale);
+          const newTy = mouseY - (imgY * newScale);
+          
+          setTransform({ x: newTx, y: newTy, scale: newScale });
+      }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+          const newSrc = ev.target?.result as string;
+          setImageSrc(newSrc);
+          setPoints([]); // Reset points for new image
+          hasFittedRef.current = false; // Reset fit state for new image
+          setSourceDimensions(null); // Reset dimensions
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRotate = () => {
+      if (!canvasRef.current || !imageSrc) return;
+      
+      const img = new Image();
+      img.onload = () => {
+          const canvas = document.createElement('canvas');
+          // Swap dimensions
+          canvas.width = img.height;
+          canvas.height = img.width;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+              ctx.translate(canvas.width / 2, canvas.height / 2);
+              ctx.rotate(90 * Math.PI / 180);
+              ctx.drawImage(img, -img.width / 2, -img.height / 2);
+              
+              const newUrl = canvas.toDataURL();
+              setImageSrc(newUrl);
+              // Reset points to corners for the new orientation
+              setPoints([
+                  { x: 0, y: 0 },
+                  { x: canvas.width, y: 0 },
+                  { x: canvas.width, y: canvas.height },
+                  { x: 0, y: canvas.height }
+              ]);
+              
+              // Reset fit state so useEffect will re-fit to screen
+              hasFittedRef.current = false;
+          }
+      };
+      img.src = imageSrc;
+  };
+
+  const dist = (p1: Point, p2: Point) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+
+  const polygonPoints = points.length === 4 && canvasRef.current 
+    ? `${points[0].x},${points[0].y} ${points[1].x},${points[1].y} ${points[2].x},${points[2].y} ${points[3].x},${points[3].y}`
+    : "";
+
+  const handleRectify = () => {
+    if (!canvasRef.current || points.length !== 4) return;
+    
+    const srcCanvas = canvasRef.current;
+    const srcCtx = srcCanvas.getContext('2d');
+    if (!srcCtx) return;
+
+    const [tl, tr, br, bl] = points;
+    const widthTop = dist(tl, tr);
+    const widthBottom = dist(bl, br);
+    const heightLeft = dist(tl, bl);
+    const heightRight = dist(tr, br);
+
+    const maxWidth = Math.max(widthTop, widthBottom);
+    const maxHeight = Math.max(heightLeft, heightRight);
+
+    const maxResolution = 1500;
+    const scale = Math.min(1, maxResolution / Math.max(maxWidth, maxHeight));
+    const finalWidth = Math.floor(maxWidth * scale);
+    const finalHeight = Math.floor(maxHeight * scale);
+
+    const dstCanvas = document.createElement('canvas');
+    dstCanvas.width = finalWidth;
+    dstCanvas.height = finalHeight;
+    const dstCtx = dstCanvas.getContext('2d');
+    if (!dstCtx) return;
+
+    const dstPoints = [
+      { x: 0, y: 0 },
+      { x: finalWidth, y: 0 },
+      { x: finalWidth, y: finalHeight },
+      { x: 0, y: finalHeight }
+    ];
+    
+    const h = getPerspectiveTransform(dstPoints, points);
+    warpPerspective(srcCtx, dstCtx, srcCanvas.width, srcCanvas.height, finalWidth, finalHeight, h);
+    setRectifiedImage(dstCanvas.toDataURL('image/jpeg', 0.9));
+    setShowPreview(true);
+  };
+
+  const handleSaveToDevice = async () => {
+    if (!rectifiedImage) return;
+    try {
+        const response = await fetch(rectifiedImage);
+        const blob = await response.blob();
+        const file = new File([blob], `score-sheet-${Date.now()}.jpg`, { type: 'image/jpeg' });
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: '已校正計分表' });
+        } else {
+            const link = document.createElement('a');
+            link.href = rectifiedImage;
+            link.download = `score-sheet-${Date.now()}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    } catch (e: any) {
+        if (e.name !== 'AbortError') console.error("Save/Share failed", e);
+    }
+  };
+
+  const handleConfirm = () => {
+      // Return both processed and raw data for state persistence
+      if (rectifiedImage && imageSrc) {
+          onConfirm({
+              processed: rectifiedImage,
+              raw: imageSrc,
+              points: points
+          });
+      }
+      onClose();
+  };
+
+  if (showPreview) {
+    return (
+        <div className="fixed inset-0 z-[70] bg-slate-950 flex flex-col">
+            <header className="flex-none p-4 bg-slate-900 border-b border-slate-800 flex justify-center items-center relative">
+                <h2 className="text-white font-bold">預覽與確認</h2>
+            </header>
+            <main className="flex-1 w-full h-full flex items-center justify-center overflow-hidden p-4 bg-black/50">
+               {rectifiedImage ? (
+                   <img 
+                       src={rectifiedImage} 
+                       className="max-w-full max-h-full object-contain mx-auto shadow-2xl" 
+                       alt="校正結果" 
+                       style={{ display: 'block' }} 
+                   />
+               ) : (
+                   <div className="text-white">處理中...</div>
+               )}
+            </main>
+            <footer className="flex-none w-full p-4 bg-slate-900 border-t border-slate-800 flex justify-between items-center">
+               <button onClick={() => setShowPreview(false)} className="px-6 py-3 bg-slate-800 text-white rounded-xl border border-slate-700 font-bold">返回調整</button>
+               <div className="flex items-center gap-3">
+                    <button onClick={handleSaveToDevice} className="px-4 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold shadow-lg flex items-center gap-2">
+                        {navigator.share ? <Share2 size={18} /> : <Download size={18} />}
+                        <span className="hidden sm:inline">儲存圖片</span>
+                    </button>
+                    <button onClick={handleConfirm} className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2">
+                        <Check size={18} /> 完成
+                    </button>
+               </div>
+            </footer>
+        </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70] bg-slate-950 flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 flex-none z-50">
+        <button onClick={onClose} className="p-2 text-slate-400 hover:text-white"><X size={24} /></button>
+        <h2 className="text-white font-bold">掃描計分表</h2>
+        <div className="w-10"></div>
+      </div>
+
+      {/* Main Area */}
+      <div 
+           className="flex-1 relative overflow-hidden bg-black/50 touch-none select-none" 
+           ref={containerRef}
+           onMouseDown={(e) => handlePointerDown(e, null)}
+           onTouchStart={(e) => handlePointerDown(e, null)}
+           onWheel={handleWheel}
+      >
+        {!imageSrc ? (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center space-y-4 p-8">
+                <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-500">
+                <Camera size={40} />
+                </div>
+                <p className="text-slate-400">請拍攝或上傳計分表照片</p>
+                <button onClick={() => fileInputRef.current?.click()} className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl flex items-center gap-2 mx-auto">
+                <Upload size={20} /> 上傳照片
+                </button>
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+            </div>
+          </div>
+        ) : (
+          /* Transformed Viewport */
+          <div 
+            ref={contentRef}
+            className="absolute top-0 left-0 origin-top-left will-change-transform"
+            style={{ 
+                transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+                width: sourceDimensions?.w || canvasRef.current?.width,
+                height: sourceDimensions?.h || canvasRef.current?.height,
+            }}
+          >
+            {/* Hidden Canvas source */}
+            <canvas ref={canvasRef} className="hidden" />
+            
+            {/* Display Image */}
+            <img src={imageSrc} className="block w-full h-full object-contain pointer-events-none select-none" alt="Scan Target" draggable={false} />
+
+            {/* SVG Overlay */}
+            {!showPreview && points.length === 4 && (
+              <svg 
+                className="absolute inset-0 w-full h-full pointer-events-none" 
+                viewBox={`0 0 ${canvasRef.current?.width || 100} ${canvasRef.current?.height || 100}`}
+                style={{zIndex: 10}}
+              >
+                {/* 1. The Polygon itself */}
+                <polygon 
+                  points={polygonPoints}
+                  fill="rgba(6, 182, 212, 0.2)" 
+                  stroke="#22d3ee" 
+                  strokeWidth={2 / transform.scale} 
+                  vectorEffect="non-scaling-stroke"
+                />
+
+                {/* 2. Content-Aware Guide Lines */}
+                {activePointIdx !== null && activeAngles.length > 0 && (
+                    <>
+                        {activeAngles.map((angle, idx) => {
+                            const p = points[activePointIdx];
+                            const rad = angle * Math.PI / 180;
+                            const dx = Math.cos(rad) * 10000;
+                            const dy = Math.sin(rad) * 10000;
+                            
+                            return (
+                                <line 
+                                    key={`guide-${idx}`}
+                                    x1={p.x - dx}
+                                    y1={p.y - dy}
+                                    x2={p.x + dx}
+                                    y2={p.y + dy}
+                                    stroke={snapType === 'line' ? '#facc15' : '#34d399'} 
+                                    strokeWidth={2 / transform.scale}
+                                    strokeDasharray={snapType === 'line' ? '' : '8,8'}
+                                    opacity="0.8"
+                                    vectorEffect="non-scaling-stroke"
+                                />
+                            );
+                        })}
+                    </>
+                )}
+              </svg>
+            )}
+
+            {/* Geometric Ghost */}
+            {!showPreview && geometricGhost && (
+                <div 
+                    className="absolute w-6 h-6 -ml-3 -mt-3 z-10 pointer-events-none flex items-center justify-center opacity-70 animate-pulse"
+                    style={{ 
+                       left: geometricGhost.x, 
+                       top: geometricGhost.y,
+                       transform: `scale(${1/transform.scale})` 
+                    }}
+                >
+                    <div className="w-full h-full border-2 border-dashed border-sky-400 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 bg-sky-400 rounded-full absolute"></div>
+                </div>
+            )}
+
+            {/* Interactive Points */}
+            {!showPreview && points.map((p, i) => (
+              <div
+                key={i}
+                onMouseDown={(e) => handlePointerDown(e, i)}
+                onTouchStart={(e) => handlePointerDown(e, i)}
+                className="absolute w-12 h-12 -ml-6 -mt-6 z-20 cursor-move flex items-center justify-center group"
+                style={{ 
+                   left: p.x, 
+                   top: p.y,
+                   transform: `scale(${1/transform.scale})` // Keep touch target constant size on screen
+                }}
+              >
+                {/* Visual Dot */}
+                <div className={`w-5 h-5 rounded-full border-[3px] shadow-[0_0_2px_rgba(0,0,0,0.8)] transition-transform ${activePointIdx === i ? 'border-cyan-300 scale-125' : 'border-cyan-500'}`}></div>
+                
+                {/* Snapping Indicator */}
+                {activePointIdx === i && isSnapping && (
+                   <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur text-white text-[10px] px-2 py-1 rounded border border-slate-700 whitespace-nowrap pointer-events-none flex items-center gap-1 shadow-lg">
+                     {geometricGhost && Math.sqrt(Math.pow(p.x - geometricGhost.x, 2) + Math.pow(p.y - geometricGhost.y, 2)) < 40 ? (
+                         <><BoxSelect size={10} className="text-sky-400"/> 幾何吸附</>
+                     ) : snapType === 'line' ? (
+                         <><ScanLine size={10} className="text-yellow-400"/> 直線吸附</>
+                     ) : (
+                         <><Magnet size={10} className="text-slate-400"/> 自由移動</>
+                     )}
+                   </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Helper Tip */}
+      {imageSrc && (
+          <div className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/60 backdrop-blur text-white text-xs rounded-full pointer-events-none flex items-center gap-2 z-40 opacity-70">
+              <Move size={12} /> 單指平移 • 雙指縮放 • 拖曳四角
+          </div>
+      )}
+
+      {/* Magnifier Bubble */}
+      {magnifierPos && activePointIdx !== null && (
+          <div 
+            className={`fixed z-[100] w-[120px] h-[120px] rounded-full overflow-hidden shadow-2xl border-2 pointer-events-none transition-colors ${snapType === 'line' ? 'border-yellow-400' : 'border-white'}`}
+            style={{ 
+                top: magnifierPos.top, 
+                left: magnifierPos.left,
+                transform: 'translate(-50%, -50%)',
+                backgroundColor: '#000'
+            }}
+          >
+              <canvas ref={magnifierCanvasRef} width={120} height={120} className="w-full h-full object-cover" />
+          </div>
+      )}
+
+      {/* Toolbar */}
+      {imageSrc && (
+        <footer className="p-4 bg-slate-900 border-t border-slate-800 flex items-center justify-between flex-none z-50">
+            <div className="flex items-center gap-4">
+                <button onClick={() => setIsSnapping(!isSnapping)} className={`flex flex-col items-center gap-1 text-xs font-bold ${isSnapping ? 'text-emerald-400' : 'text-slate-500'}`}>
+                    <div className={`p-3 rounded-xl ${isSnapping ? 'bg-emerald-900/30' : 'bg-slate-800'}`}><ScanLine size={20} /></div>
+                    輔助{isSnapping ? '開啟' : '關閉'}
+                </button>
+                <button onClick={() => { fitImageToScreen(); hasFittedRef.current = true; }} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white">
+                    <div className="p-3 rounded-xl bg-slate-800"><ZoomIn size={20} /></div>
+                    重置視角
+                </button>
+                <button onClick={() => { setImageSrc(null); setPoints([]); setSourceDimensions(null); }} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white">
+                    <div className="p-3 rounded-xl bg-slate-800"><RotateCcw size={20} /></div>
+                    重拍
+                </button>
+                <button onClick={handleRotate} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white">
+                    <div className="p-3 rounded-xl bg-slate-800"><RotateCw size={20} /></div>
+                    旋轉
+                </button>
+            </div>
+            
+            <button onClick={handleRectify} disabled={!imageSrc || points.length < 4} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 disabled:bg-slate-700 disabled:text-slate-500">
+                校正預覽 <ArrowRight size={16} />
+            </button>
+        </footer>
+      )}
+    </div>
+  );
+};
+
+export default PhotoScanner;

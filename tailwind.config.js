@@ -9,6 +9,30 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Override Slate scale with CSS variables using RGB channels for opacity support
+        slate: {
+          50: 'rgb(var(--c-slate-50) / <alpha-value>)',
+          100: 'rgb(var(--c-slate-100) / <alpha-value>)',
+          200: 'rgb(var(--c-slate-200) / <alpha-value>)',
+          300: 'rgb(var(--c-slate-300) / <alpha-value>)',
+          400: 'rgb(var(--c-slate-400) / <alpha-value>)',
+          500: 'rgb(var(--c-slate-500) / <alpha-value>)',
+          600: 'rgb(var(--c-slate-600) / <alpha-value>)',
+          700: 'rgb(var(--c-slate-700) / <alpha-value>)',
+          800: 'rgb(var(--c-slate-800) / <alpha-value>)',
+          900: 'rgb(var(--c-slate-900) / <alpha-value>)',
+          950: 'rgb(var(--c-slate-950) / <alpha-value>)',
+        },
+        // Override basic White/Black to flip in light mode
+        white: 'rgb(var(--c-white) / <alpha-value>)',
+        black: 'rgb(var(--c-black) / <alpha-value>)',
+        
+        // Add static colors for things that should NOT change (e.g. text on colored buttons)
+        static: {
+          white: '#ffffff',
+          black: '#000000',
+        },
+        
         gray: {
           750: '#2d3748',
           850: '#1a202c',
@@ -16,10 +40,6 @@ export default {
         }
       },
       fontFamily: {
-        // 簡化版設定：
-        // 1. Inter: 保留這個是因為我們有內建它，它的數字顯示(Tabular nums)比系統字更適合計分板。
-        // 2. system-ui: 現代瀏覽器的「萬能鑰匙」，它會自動對應到裝置最原生的字體。
-        // 3. sans-serif: 萬一 system-ui 失效的最後一道保險。
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
     },

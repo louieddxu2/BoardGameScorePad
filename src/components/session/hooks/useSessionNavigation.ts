@@ -1,3 +1,4 @@
+
 import { GameSession, GameTemplate } from '../../../types';
 
 interface NavigationProps {
@@ -27,20 +28,39 @@ export const useSessionNavigation = ({
     if (playerIdx === -1 || colIdx === -1) return;
 
     if (advanceDirection === 'horizontal') {
+      // 1. Move to next player in same column (Auto column doesn't matter here as we are staying in the same column type)
       if (playerIdx < session.players.length - 1) {
         setEditingCell({ playerId: session.players[playerIdx + 1].id, colId: editingCell.colId });
-      } else if (colIdx < template.columns.length - 1) {
-        const nextCol = template.columns[colIdx + 1];
-        setEditingCell({ playerId: session.players[0].id, colId: nextCol.id });
-      } else {
-        setEditingCell(null); // End of grid
+      } 
+      // 2. End of row: Wrap to first player of the NEXT valid column
+      else {
+        let nextColIdx = colIdx + 1;
+        // Skip Auto columns
+        while (nextColIdx < template.columns.length && template.columns[nextColIdx].isAuto) {
+            nextColIdx++;
+        }
+
+        if (nextColIdx < template.columns.length) {
+          const nextCol = template.columns[nextColIdx];
+          setEditingCell({ playerId: session.players[0].id, colId: nextCol.id });
+        } else {
+          setEditingCell(null); // End of grid
+        }
       }
     } else { // vertical
-      if (colIdx < template.columns.length - 1) {
-        const nextCol = template.columns[colIdx + 1];
+      // 1. Find next valid column for same player
+      let nextColIdx = colIdx + 1;
+      // Skip Auto columns
+      while (nextColIdx < template.columns.length && template.columns[nextColIdx].isAuto) {
+          nextColIdx++;
+      }
+
+      if (nextColIdx < template.columns.length) {
+        const nextCol = template.columns[nextColIdx];
         setEditingCell({ playerId: editingCell.playerId, colId: nextCol.id });
-      } else if (playerIdx < session.players.length - 1) {
-        // Move to next player's NAME (Header)
+      } 
+      // 2. End of column: Move to NEXT player's NAME (Header)
+      else if (playerIdx < session.players.length - 1) {
         setEditingPlayerId(session.players[playerIdx + 1].id);
       } else {
         setEditingCell(null); // End of grid
@@ -52,17 +72,26 @@ export const useSessionNavigation = ({
     const idx = session.players.findIndex(p => p.id === currentPlayerId);
     if (idx === -1) return;
 
+    // Helper: Find first valid (non-auto) column index
+    let firstValidColIdx = 0;
+    while(firstValidColIdx < template.columns.length && template.columns[firstValidColIdx].isAuto) {
+        firstValidColIdx++;
+    }
+    const firstValidCol = template.columns[firstValidColIdx];
+
     if (advanceDirection === 'horizontal') {
       if (idx < session.players.length - 1) {
         setEditingPlayerId(session.players[idx + 1].id);
-      } else if (template.columns.length > 0) {
-        setEditingCell({ playerId: session.players[0].id, colId: template.columns[0].id });
+      } else if (firstValidCol) {
+        // Jump to first player, first valid column
+        setEditingCell({ playerId: session.players[0].id, colId: firstValidCol.id });
       } else {
         setEditingPlayerId(null);
       }
     } else { // vertical
-      if (template.columns.length > 0) {
-        setEditingCell({ playerId: currentPlayerId, colId: template.columns[0].id });
+      if (firstValidCol) {
+        // Jump to current player, first valid column
+        setEditingCell({ playerId: currentPlayerId, colId: firstValidCol.id });
       } else {
         setEditingPlayerId(null);
       }

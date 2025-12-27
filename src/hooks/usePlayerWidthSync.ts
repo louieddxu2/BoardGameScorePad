@@ -5,7 +5,7 @@ import { Player, ScoreColumn } from '../types';
  * 佈局同步 Hook
  * 解決 Flexbox "Auto-fill" 與 "Column Alignment" 的衝突。
  */
-export const usePlayerWidthSync = (players: Player[], columns: ScoreColumn[]) => {
+export const usePlayerWidthSync = (players: Player[], columns: ScoreColumn[], zoomLevel: number) => {
   const observerRef = useRef<ResizeObserver | null>(null);
   
   // 記錄上一次的視窗寬度，用來過濾掉「只改變高度」(如手機鍵盤彈出) 的 resize 事件
@@ -27,11 +27,17 @@ export const usePlayerWidthSync = (players: Player[], columns: ScoreColumn[]) =>
            el.style.minWidth = '';
            el.style.maxWidth = '';
         });
+        // Also reset headers which might not have the player-col class
+        const headerEl = document.getElementById(`header-${p.id}`);
+        if (headerEl) {
+           headerEl.style.width = '';
+           headerEl.style.minWidth = '';
+           headerEl.style.maxWidth = '';
+        }
       });
     };
 
-    // 1. 當佈局特徵改變 (改名/增減人/增減欄) 時，無條件立即重置
-    // 這是由依賴項觸發的
+    // 1. 當佈局特徵改變 (改名/增減人/增減欄) 或縮放等級改變時，無條件立即重置
     resetWidths();
 
     // 2. 處理視窗縮放 (Zoom/Resize)
@@ -85,5 +91,5 @@ export const usePlayerWidthSync = (players: Player[], columns: ScoreColumn[]) =>
         if (observerRef.current) observerRef.current.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layoutSignature, columnSignature]); 
+  }, [layoutSignature, columnSignature, zoomLevel]); 
 };

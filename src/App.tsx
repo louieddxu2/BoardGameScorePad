@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { AppView, GameTemplate } from './types';
 import { getTouchDistance } from './utils/ui';
@@ -214,7 +215,13 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     if (view === AppView.TEMPLATE_CREATOR) {
-      return <TemplateEditor onSave={handleTemplateSave} onCancel={() => setView(AppView.DASHBOARD)} />;
+      return (
+        <TemplateEditor 
+          onSave={handleTemplateSave} 
+          onCancel={() => setView(AppView.DASHBOARD)}
+          allTemplates={[...appData.systemTemplates, ...appData.templates]}
+        />
+      );
     }
 
     if (view === AppView.ACTIVE_SESSION && appData.currentSession && appData.activeTemplate) {
@@ -225,8 +232,10 @@ const App: React.FC = () => {
           template={appData.activeTemplate} 
           playerHistory={appData.playerHistory}
           zoomLevel={zoomLevel}
+          baseImage={appData.sessionImage} // Pass runtime image
           onUpdateSession={appData.updateSession}
           onUpdatePlayerHistory={appData.updatePlayerHistory}
+          onUpdateImage={appData.setSessionImage} // Allow upload
           onResetScores={appData.resetSessionScores}
           onUpdateTemplate={appData.updateActiveTemplate}
           onExit={handleExitSession}
@@ -237,7 +246,7 @@ const App: React.FC = () => {
     return (
       // 使用 h-full 配合 index.html 的 100dvh，而不是 min-h-screen
       // 這確保了應用程式在網址列隱藏時也能正確佔滿視窗，且捲動發生在內部 Dashboard 而不是 body
-      <div className="h-full bg-slate-900 text-slate-100 flex flex-col font-sans overflow-hidden">
+      <div className="h-full bg-slate-900 text-slate-100 flex flex-col font-sans overflow-hidden transition-colors duration-300">
         
         <Dashboard 
           userTemplates={appData.templates}
@@ -245,6 +254,8 @@ const App: React.FC = () => {
           systemTemplates={appData.systemTemplates}
           pinnedIds={appData.pinnedIds}
           knownSysIds={appData.knownSysIds}
+          themeMode={appData.themeMode} // New Prop
+          onToggleTheme={appData.toggleTheme} // New Prop
           onTemplateSelect={initSetup}
           onTemplateCreate={() => setView(AppView.TEMPLATE_CREATOR)}
           onTemplateDelete={appData.deleteTemplate}

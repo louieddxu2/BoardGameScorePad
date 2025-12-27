@@ -1,8 +1,9 @@
+
 /**
  * Calculates the Euclidean distance between two touch points.
  * Used for pinch-to-zoom logic.
  */
-export const getTouchDistance = (touches: TouchList): number => {
+export const getTouchDistance = (touches: { length: number; [index: number]: { clientX: number; clientY: number } }): number => {
   const [touch1, touch2] = [touches[0], touches[1]];
   return Math.sqrt(
     Math.pow(touch2.clientX - touch1.clientX, 2) +

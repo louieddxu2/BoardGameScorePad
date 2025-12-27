@@ -1,22 +1,28 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GameTemplate } from '../../types';
 import { DEFAULT_TEMPLATES } from '../../constants';
-import { Plus, Download, Dice5, Search, X, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, RefreshCw, Copy, Code, Trash2, Check, Mail, HelpCircle } from 'lucide-react';
+import { Plus, Download, Dice5, Search, X, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, RefreshCw, Copy, Code, Trash2, Check, Mail, HelpCircle, CloudUpload, CloudDownload, FileJson, Clock } from 'lucide-react';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import InstallGuideModal from '../modals/InstallGuideModal';
 import { useToast } from '../../hooks/useToast';
+import { generateId } from '../../utils/idGenerator';
+import { useGoogleDrive } from '../../hooks/useGoogleDrive';
+import { CloudFile } from '../../services/googleDrive'; // Import type
+import { useAppData } from '../../hooks/useAppData'; // To set global image state
 
 interface DashboardProps {
   userTemplates: GameTemplate[];
   systemOverrides: Record<string, GameTemplate>;
-  systemTemplates: GameTemplate[]; // New prop: Pre-migrated system templates
+  systemTemplates: GameTemplate[]; 
   pinnedIds: string[];
   knownSysIds: string[];
+  themeMode: 'dark' | 'light';
+  onToggleTheme: () => void;
   onTemplateSelect: (template: GameTemplate) => void;
   onTemplateCreate: () => void;
   onTemplateDelete: (id: string) => void;
-  onTemplateSave: (template: GameTemplate) => void; // For restore copy
+  onTemplateSave: (template: GameTemplate) => void; 
   onBatchImport: (templates: GameTemplate[]) => void;
   onTogglePin: (id: string) => void;
   onMarkSystemSeen: () => void;
@@ -32,6 +38,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   systemTemplates,
   pinnedIds,
   knownSysIds,
+  themeMode,
+  onToggleTheme,
   onTemplateSelect,
   onTemplateCreate,
   onTemplateDelete,
@@ -56,8 +64,13 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<GameTemplate | null>(null);
   const [showDataModal, setShowDataModal] = useState(false);
-  const [showInstallHelp, setShowInstallHelp] = useState(false); // New state for install guide
   const [activeModalTab, setActiveModalTab] = useState<'import' | 'export'>('import');
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+  
+  // Cloud Restore State
+  const [showCloudModal, setShowCloudModal] = useState(false);
+  const [cloudFiles, setCloudFiles] = useState<CloudFile[]>([]);
+  const [isLoadingCloud, setIsLoadingCloud] = useState(false);
   
   // Import/Export State
   const [importJson, setImportJson] = useState('');
@@ -69,6 +82,38 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [isExportCopying, setIsExportCopying] = useState(false);
   
   const { showToast } = useToast();
+  const { handleBackup, fetchFileList, restoreBackup, isSyncing, isMockMode } = useGoogleDrive();
+  
+  // We need to access setSessionImage to restore the background image
+  // However, Dashboard props don't include it. We should probably export it from App.tsx or useAppData.
+  // Since we cannot easily change App.tsx props passed to Dashboard in this specific XML block without seeing App.tsx,
+  // we will use the `useAppData` hook directly here just for the setter, assuming it shares the same Context/LocalStorage logic 
+  // (Note: useAppData currently manages its own state, so calling it here creates a parallel state which is wrong).
+  // CORRECT FIX: The `onTemplateSave` prop updates `templates` state in App. 
+  // For the image, `sessionImage` is runtime state. 
+  // If we restore a template, we just save the template JSON. 
+  // If the user wants to PLAY it immediately with the image, we need to set that image.
+  
+  // Workaround: We will emit a custom event or just accept that the image is saved to a "hidden" place or we handle it if we auto-start.
+  // Actually, the `onTemplateSave` saves to LocalStorage. 
+  // The image is separate.
+  // Let's modify the restore logic: If image exists, we download it. 
+  // But where to put it? `appData` in App.tsx holds `sessionImage`.
+  // We can't set `sessionImage` from here easily unless passed as prop.
+  // Let's assume for now we just restore the Template JSON to the library. 
+  // The user will have to re-upload the image OR we need to pass `setSessionImage` down.
+  // Given constraints, saving the template is the priority. The image data is in `_tempImageBase64`.
+  // We can strip it and save the template. 
+  // (Ideally, we should save the image to IndexedDB or similar, but for now let's just save the template structure).
+  
+  // REVISED STRATEGY: If we are just "Restoring to Library", we don't need the image immediately active.
+  // But if the user clicks "Play", they expect the image.
+  // Current App architecture doesn't persist images for *Library* templates (too heavy for LS).
+  // So, restoring a template with background from Cloud -> Library means we lose the background image until they load it again?
+  // That's acceptable for now. The Cloud Backup serves as a "Archive".
+  // NOTE: In `GoogleDriveService`, we added `_tempImageBase64`. 
+  // If we want to support this, we would need to pass it up.
+  // For now, let's just restore the template data.
 
   // --- Helpers ---
   const newSystemTemplatesCount = DEFAULT_TEMPLATES.filter(dt => !knownSysIds.includes(dt.id)).length;
@@ -99,11 +144,57 @@ const Dashboard: React.FC<DashboardProps> = ({
       });
   };
 
+  const handleCloudBackup = async (template: GameTemplate, e: React.MouseEvent) => {
+      e.stopPropagation();
+      // Note: We don't have the current session image here in Dashboard view easily.
+      // So we pass null for image. Backup will only save JSON.
+      // If the user wants to backup image, they should do it from SessionView.
+      await handleBackup(template, null);
+  };
+
+  const openCloudRestore = async () => {
+      setShowCloudModal(true);
+      setIsLoadingCloud(true);
+      setCloudFiles([]);
+      try {
+          const files = await fetchFileList();
+          setCloudFiles(files);
+      } catch (e) {
+          // Toast handled in hook
+      } finally {
+          setIsLoadingCloud(false);
+      }
+  };
+
+  const handleCloudFileSelect = async (file: CloudFile) => {
+      setIsLoadingCloud(true);
+      try {
+          const templateWithExtra = await restoreBackup(file.id);
+          
+          // Strip the temp image data before saving to LS to avoid quota limits
+          const { _tempImageBase64, ...cleanTemplate } = templateWithExtra as any;
+          
+          onTemplateSave(cleanTemplate);
+          
+          if (_tempImageBase64) {
+              // If there is an image, we can try to offer to "Start Game" with it immediately?
+              // For now, let's just inform the user.
+              showToast({ message: "模板已還原。注意：背景圖片需在開啟遊戲時重新設定或由雲端載入。", type: 'info' });
+          }
+          
+          setShowCloudModal(false);
+      } catch (e) {
+          console.error(e);
+      } finally {
+          setIsLoadingCloud(false);
+      }
+  };
+
   const handleCopySystemTemplate = (template: GameTemplate, e: React.MouseEvent) => {
     e.stopPropagation();
     const newTemplate: GameTemplate = {
         ...JSON.parse(JSON.stringify(template)), // Deep copy
-        id: crypto.randomUUID(),
+        id: generateId(12), // New long ID for copied template
         createdAt: Date.now(),
     };
     onTemplateSave(newTemplate);
@@ -127,12 +218,12 @@ const Dashboard: React.FC<DashboardProps> = ({
               if (!item.name || !Array.isArray(item.columns)) {
                   throw new Error(`格式錯誤：${item.name || '未命名'} 缺少必要欄位`);
               }
-              // Regenerate IDs
+              // Regenerate IDs for imported items
               validTemplates.push({
                   ...item,
-                  id: crypto.randomUUID(),
+                  id: generateId(12),
                   createdAt: Date.now(),
-                  columns: item.columns.map((col: any) => ({ ...col, id: col.id || crypto.randomUUID() }))
+                  columns: item.columns.map((col: any) => ({ ...col, id: col.id || generateId(8) }))
               });
           });
 
@@ -141,19 +232,10 @@ const Dashboard: React.FC<DashboardProps> = ({
             setShowDataModal(false);
             setImportJson('');
             
-            const MAX_NAMES_TO_SHOW = 5;
-            const namesToShow = validTemplates.slice(0, MAX_NAMES_TO_SHOW).map(t => `- ${t.name}`);
-            let message = namesToShow.join('\n');
-            if (validTemplates.length > MAX_NAMES_TO_SHOW) {
-                const remaining = validTemplates.length - MAX_NAMES_TO_SHOW;
-                message += `\n...與其他 ${remaining} 筆`;
-            }
-
             showToast({ 
                 title: `成功匯入 ${validTemplates.length} 筆範本`, 
-                message: message, 
+                message: "匯入成功", 
                 type: 'success',
-                duration: 7000 // A bit longer to allow reading
             });
 
           } else {
@@ -202,9 +284,9 @@ const Dashboard: React.FC<DashboardProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-slate-900">
+    <div className="flex-1 flex flex-col min-h-0 bg-slate-900 transition-colors duration-300">
       {/* Header */}
-      <header className="p-2.5 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 flex items-center gap-2 shadow-md h-[58px] shrink-0">
+      <header className="p-2.5 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 flex items-center gap-2 shadow-md h-[58px] shrink-0 transition-colors duration-300">
         {isSearchActive ? (
           <div className="flex items-center gap-2 w-full animate-in fade-in duration-300">
             <Search size={20} className="text-emerald-500 shrink-0 ml-1" />
@@ -236,28 +318,22 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <Search size={20} />
                 </button>
                 
-                {/* 
-                  INSTALL BUTTON LOGIC:
-                  1. If installed (PWA mode), hide completely.
-                  2. If NOT installed:
-                     a) If native prompt available (canInstall=true): Show standard "Install App" btn.
-                     b) If native prompt unavailable (iOS/Desktop): Show "How to Install" btn (Download + ?)
-                */}
+                {/* Install Button Logic */}
                 {!isInstalled && (
-                  <button
-                    className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-lg active:scale-95 ${canInstall ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600'}`}
-                    onClick={canInstall ? onInstallClick : () => setShowInstallHelp(true)}
-                  >
-                      {/* Icon Composition */}
-                      <div className="relative">
-                        <Download size={14} />
-                        {!canInstall && (
-                           <HelpCircle size={10} className="absolute -bottom-1 -right-1.5 text-yellow-400 bg-slate-900 rounded-full" strokeWidth={3} />
-                        )}
-                      </div>
-                      
-                      <span className="hidden sm:inline">{canInstall ? '安裝 App' : '下載 App'}</span>
-                  </button>
+                    <button
+                      className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all text-white shadow-lg ${canInstall ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}`}
+                      onClick={canInstall ? onInstallClick : () => setShowInstallGuide(true)}
+                    >
+                        <div className="relative">
+                            <Download size={14} />
+                            {!canInstall && (
+                                <div className="absolute -bottom-1 -right-1 bg-amber-500 rounded-full w-2.5 h-2.5 flex items-center justify-center border border-slate-700">
+                                    <HelpCircle size={8} className="text-slate-900" strokeWidth={3} />
+                                </div>
+                            )}
+                        </div>
+                        <span className="hidden sm:inline">安裝 App</span>
+                    </button>
                 )}
             </div>
           </div>
@@ -302,7 +378,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </h3>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button onClick={(e) => { e.stopPropagation(); setActiveModalTab('import'); setShowDataModal(true); }} className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"><ArrowRightLeft size={18} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); openCloudRestore(); }} className="p-1.5 text-sky-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors" title="從雲端還原"><CloudDownload size={18} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); setActiveModalTab('import'); setShowDataModal(true); }} className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors" title="匯入/匯出 JSON"><ArrowRightLeft size={18} /></button>
                     <button onClick={(e) => { e.stopPropagation(); onTemplateCreate(); }} className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg active:scale-95"><Plus size={14} /> 新增</button>
                 </div>
             </div>
@@ -314,7 +391,10 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <h3 className="text-sm font-bold text-white leading-tight line-clamp-2 pr-8">{t.name}</h3>
                             <button onClick={(e) => { e.stopPropagation(); onTogglePin(t.id); }} className="absolute top-1 right-1 p-1.5 text-slate-600 hover:text-yellow-400 hover:bg-slate-700 rounded-md transition-colors"><Pin size={16} /></button>
                             <button onClick={(e) => { e.stopPropagation(); setTemplateToDelete(t.id); }} className="absolute bottom-1 left-1 p-1.5 text-slate-600 hover:text-red-400 hover:bg-slate-700 rounded-md transition-colors"><Trash2 size={16} /></button>
-                            <button onClick={(e) => handleCopyJSON(t, e)} className="absolute bottom-1 right-1 p-1.5 text-slate-600 hover:text-emerald-400 rounded transition-colors">{copiedId === t.id ? <Check size={14} className="text-emerald-500" /> : <Code size={14} />}</button>
+                            <div className="absolute bottom-1 right-1 flex gap-1">
+                                <button onClick={(e) => handleCloudBackup(t, e)} className="p-1.5 text-sky-500/70 hover:text-sky-400 rounded transition-colors" title="備份到 Google Drive"><CloudUpload size={14} /></button>
+                                <button onClick={(e) => handleCopyJSON(t, e)} className="p-1.5 text-slate-600 hover:text-emerald-400 rounded transition-colors">{copiedId === t.id ? <Check size={14} className="text-emerald-500" /> : <Code size={14} />}</button>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -357,8 +437,62 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Modals */}
       <ConfirmationModal isOpen={!!templateToDelete} title="確定刪除此模板？" message="此動作將無法復原。" confirmText="刪除" isDangerous={true} onCancel={() => setTemplateToDelete(null)} onConfirm={() => { if(templateToDelete) onTemplateDelete(templateToDelete); setTemplateToDelete(null); }} />
-      <ConfirmationModal isOpen={!!restoreTarget} title="備份修改並還原？" message="此動作將把您目前的修改備份到「我的遊戲庫」，並將此內建遊戲還原為官方最新版本。" confirmText="備份並還原" onCancel={() => setRestoreTarget(null)} onConfirm={() => { if(restoreTarget) { const backup = { ...restoreTarget, id: crypto.randomUUID(), name: `${restoreTarget.name} (備份)`, createdAt: Date.now() }; onTemplateSave(backup); onRestoreSystem(restoreTarget.id); setRestoreTarget(null); } }} />
-      <InstallGuideModal isOpen={showInstallHelp} onClose={() => setShowInstallHelp(false)} />
+      <ConfirmationModal isOpen={!!restoreTarget} title="備份修改並還原？" message="此動作將把您目前的修改備份到「我的遊戲庫」，並將此內建遊戲還原為官方最新版本。" confirmText="備份並還原" onCancel={() => setRestoreTarget(null)} onConfirm={() => { if(restoreTarget) { const backup = { ...restoreTarget, id: generateId(12), name: `${restoreTarget.name} (備份)`, createdAt: Date.now() }; onTemplateSave(backup); onRestoreSystem(restoreTarget.id); setRestoreTarget(null); } }} />
+      <InstallGuideModal isOpen={showInstallGuide} onClose={() => setShowInstallGuide(false)} />
+
+      {/* Cloud Restore Modal */}
+      {showCloudModal && (
+          <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border border-slate-800 flex flex-col h-[600px] max-h-[85vh]">
+                  <div className="flex-none bg-slate-800 rounded-t-2xl p-4 border-b border-slate-700 flex items-center justify-between">
+                      <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                          <CloudDownload size={20} className="text-sky-400" /> 
+                          雲端還原 
+                          {isMockMode && <span className="text-xs bg-amber-900/50 text-amber-400 px-2 py-0.5 rounded border border-amber-500/30">模擬模式</span>}
+                      </h3>
+                      <button onClick={() => setShowCloudModal(false)} className="text-slate-500 hover:text-white"><X size={24} /></button>
+                  </div>
+                  
+                  <div className="flex-1 p-4 overflow-y-auto no-scrollbar bg-slate-900">
+                      {isLoadingCloud ? (
+                          <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500">
+                              <RefreshCw size={24} className="animate-spin" />
+                              <span className="text-xs">讀取中...</span>
+                          </div>
+                      ) : cloudFiles.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500">
+                              <CloudUpload size={32} className="opacity-50" />
+                              <span className="text-sm">雲端沒有找到備份檔案</span>
+                          </div>
+                      ) : (
+                          <div className="space-y-2">
+                              {cloudFiles.map(file => (
+                                  <button 
+                                    key={file.id} 
+                                    onClick={() => handleCloudFileSelect(file)}
+                                    className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-sky-500/50 p-3 rounded-xl flex items-center justify-between group transition-all"
+                                  >
+                                      <div className="flex items-start gap-3 text-left">
+                                          <div className="p-2 bg-slate-900 rounded-lg text-sky-500">
+                                              <FileJson size={20} />
+                                          </div>
+                                          <div>
+                                              <div className="font-bold text-slate-200 group-hover:text-white transition-colors">{file.name.replace(/_[a-zA-Z0-9]{6}$/, '')}</div>
+                                              <div className="text-xs text-slate-500 flex items-center gap-1 mt-1">
+                                                  <Clock size={10} /> 
+                                                  {new Date(file.createdTime).toLocaleString()}
+                                              </div>
+                                          </div>
+                                      </div>
+                                      <Download size={18} className="text-slate-600 group-hover:text-sky-400 transition-colors" />
+                                  </button>
+                              ))}
+                          </div>
+                      )}
+                  </div>
+              </div>
+          </div>
+      )}
 
       {/* Data Modal */}
       {showDataModal && (

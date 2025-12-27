@@ -4,6 +4,38 @@ export interface ScoreValue {
   parts: number[];
 }
 
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface ContentLayout {
+  x: number;      // 0-100 percentage
+  y: number;      // 0-100 percentage
+  width: number;  // 0-100 percentage
+  height: number; // 0-100 percentage
+}
+
+export interface ColumnVisuals {
+  headerRect?: Rect; // Crop coordinates for the header/label
+  cellRect?: Rect;   // Crop coordinates for the input cell
+}
+
+export interface GlobalVisuals {
+  playerLabelRect?: Rect;  // Crop coordinates for the top-left label (usually says "Player" or empty)
+  playerHeaderRect?: Rect; // Crop coordinates for the top row (Player Names)
+  totalRowRect?: Rect;     // Crop coordinates for the bottom row (Total Score)
+  totalLabelRect?: Rect;   // Crop coordinates for the "Total" label (bottom-left)
+  
+  // Mask Rects (Used for screenshot reconstruction)
+  topMaskRect?: Rect;
+  bottomMaskRect?: Rect;
+  leftMaskRect?: Rect;
+  rightMaskRect?: Rect;
+}
+
 export interface ScoreColumn {
   id: string;
   name: string;
@@ -18,8 +50,12 @@ export interface ScoreColumn {
   f1?: MappingRule[]; // Definition for the f1() function
   // f2, f3... for future use
   
+  // Automatic Calculation Config
+  isAuto?: boolean; // New flag to identify auto-calculated columns
+  variableMap?: Record<string, { id: string; name: string }>; // Maps "x1" -> { id: "uuid", name: "Column Name" }
+  
   // Input & UI Helpers
-  inputType: InputMethod; // 'keypad' | 'clicker' - NOW REQUIRED
+  inputType: InputMethod; // 'keypad' | 'clicker' | 'auto' - NOW REQUIRED
   quickActions?: QuickAction[];
   
   // Formatting & Display
@@ -29,13 +65,26 @@ export interface ScoreColumn {
   showPartsInGrid?: boolean; // For a1+next formula
   buttonGridColumns?: number; // For clicker/select UI
   
+  // Display Control
+  // New Property: Determines how the column is rendered
+  // 'row' (default): Standard table row
+  // 'overlay': Renders as a floating element on top of the PREVIOUS row
+  // 'hidden': Not displayed in the grid
+  displayMode?: 'row' | 'overlay' | 'hidden';
+  
+  // Visual Mapping (New)
+  visuals?: ColumnVisuals;
+  
+  // Layout Configuration (New)
+  contentLayout?: ContentLayout;
+
   // Meta
   isScoring: boolean;
 }
 
 // --- Shared types (mostly unchanged) ---
 export type RoundingMode = 'none' | 'round' | 'floor' | 'ceil';
-export type InputMethod = 'keypad' | 'clicker';
+export type InputMethod = 'keypad' | 'clicker' | 'auto';
 
 export interface MappingRule {
   min?: number; // Inclusive
@@ -71,6 +120,12 @@ export interface GameTemplate {
   columns: ScoreColumn[];
   createdAt: number;
   isPinned?: boolean; // For UI state, not persisted in template JSON
+  
+  // Visual Mapping (Modified)
+  // baseImage is REMOVED to keep JSON small.
+  // We use hasImage flag to prompt user to upload/scan image at runtime.
+  hasImage?: boolean; 
+  globalVisuals?: GlobalVisuals; // Textures for non-column areas (Player Header, Total Row)
 }
 
 export interface GameSession {

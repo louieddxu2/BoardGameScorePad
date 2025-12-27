@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Player } from '../../../types';
-import { Palette, History, Info, ArrowRight, ArrowDown } from 'lucide-react';
+import { Palette, History, Info, ArrowRight, ArrowDown, Ban } from 'lucide-react';
 import { COLORS } from '../../../colors';
 import { isColorDark } from '../../../utils/ui';
 
@@ -57,8 +57,25 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
               <div className="text-[10px] text-slate-500 font-bold uppercase mb-2 flex items-center justify-center gap-1"><Palette size={10} /> 顏色</div>
               <div className="grid grid-cols-1 gap-2 justify-items-center">
                 {COLORS.map(c => {
-                  const isDark = isColorDark(c);
-                  return <button key={c} onClick={() => onUpdatePlayerColor(c)} className={`w-8 h-8 rounded-full shadow-lg border-2 transition-transform active:scale-90 ${player.color === c ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'} ${isDark ? 'ring-1 ring-white/50' : ''}`} style={{ backgroundColor: c }} />;
+                  const isTransparent = c === 'transparent';
+                  const isDark = !isTransparent && isColorDark(c);
+                  
+                  return (
+                    <button 
+                        key={c} 
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => onUpdatePlayerColor(c)} 
+                        className={`w-8 h-8 rounded-full shadow-lg border-2 transition-transform active:scale-90 flex items-center justify-center relative ${player.color === c ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'} ${isDark ? 'ring-1 ring-white/50' : ''}`} 
+                        style={{ backgroundColor: isTransparent ? 'transparent' : c }}
+                        title={isTransparent ? "無色" : c}
+                    >
+                        {isTransparent && (
+                            <div className="w-full h-full rounded-full border border-slate-600 flex items-center justify-center bg-slate-800/50">
+                                <Ban size={14} className="text-slate-400" />
+                            </div>
+                        )}
+                    </button>
+                  );
                 })}
               </div>
             </div>
@@ -67,7 +84,14 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
               <div className="p-2 text-[10px] text-slate-500 font-bold uppercase bg-slate-800/80 text-center flex items-center justify-center gap-1"><History size={10} /> 歷史</div>
               <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-1">
                 {playerHistory.slice(0, 20).map((name, i) => (
-                  <button key={i} onClick={() => { setTempName(name); onNameSubmit(player.id, name, true); }} className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-emerald-900/30 hover:text-emerald-400 transition-colors truncate active:scale-95 bg-slate-800">{name}</button>
+                  <button 
+                    key={i} 
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => { setTempName(name); onNameSubmit(player.id, name, true); }} 
+                    className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-emerald-900/30 hover:text-emerald-400 transition-colors truncate active:scale-95 bg-slate-800"
+                  >
+                    {name}
+                  </button>
                 ))}
                 {playerHistory.length === 0 && <div className="text-center text-xs text-slate-600 py-4">無紀錄</div>}
               </div>
@@ -87,7 +111,7 @@ export const PlayerEditorInfo: React.FC = () => (
         </div>
         <div className="flex-1 overflow-y-auto no-scrollbar pt-2 pr-1 space-y-3 text-left">
             <p><strong>名稱：</strong> 點擊輸入框以編輯玩家名稱。您可以從右側的「歷史」清單中選擇常用名稱快速套用。</p>
-            <p><strong>顏色：</strong> 從左側的調色盤中選擇一個代表色，方便在計分板上快速識別。</p>
+            <p><strong>顏色：</strong> 從左側的調色盤中選擇一個代表色。選擇「無色」可讓畫面更貼近原始計分紙。</p>
             <p><strong>歷史紀錄：</strong> 系統會自動儲存您輸入過的玩家名稱，方便下次快速選用。</p>
             <p><strong>快速跳轉：</strong> 完成編輯後，點擊右下角的「下一項」按鈕 (<ArrowRight size={12} className="inline-block align-middle" /> / <ArrowDown size={12} className="inline-block align-middle" />) 可直接跳到下一位玩家進行編輯，或進入計分格。</p>
         </div>

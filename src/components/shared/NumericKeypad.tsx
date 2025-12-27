@@ -196,9 +196,10 @@ interface NumericKeypadInfoProps {
   setActiveFactorIdx?: (idx: 0 | 1) => void;
   localKeypadValue?: any;
   onDeleteLastPart?: () => void;
+  setOverwrite?: (v: boolean) => void; // Added Prop
 }
 
-export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, value, activeFactorIdx, setActiveFactorIdx, localKeypadValue, onDeleteLastPart }) => {
+export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, value, activeFactorIdx, setActiveFactorIdx, localKeypadValue, onDeleteLastPart, setOverwrite }) => {
     const activeRuleRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const rawValueForEffect = getRawValue(value);
@@ -239,14 +240,26 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
         <div className="flex flex-col h-full p-2">
           <div className="text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 flex items-center gap-1 shrink-0"><Calculator size={12} /> 乘積輸入</div>
           <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar py-2 space-y-1">
-              <div className="flex items-center gap-1.5 cursor-pointer group" onClick={() => setActiveFactorIdx?.(0)}>
+              <div 
+                className="flex items-center gap-1.5 cursor-pointer group" 
+                onClick={() => { 
+                    setActiveFactorIdx?.(0); 
+                    setOverwrite?.(true); // Trigger overwrite mode
+                }}
+              >
                   <div className={`flex-1 px-2 py-0.5 rounded-md border transition-all overflow-x-auto no-scrollbar flex items-center ${isFactorAActive ? 'bg-emerald-900/30 border-emerald-500' : 'bg-slate-900 border-slate-700 group-hover:border-slate-600'}`}>
                       <span className={`text-xl font-bold font-mono text-right w-full whitespace-nowrap leading-tight ${isFactorAActive ? 'text-white' : 'text-slate-400'}`}>{String(factors[0])}</span>
                   </div>
                   <span className={`shrink-0 text-xs uppercase text-right ${isFactorAActive ? 'text-emerald-400 font-bold' : 'text-slate-500'}`}>{unitA}</span>
               </div>
               <div className="flex items-center justify-center text-slate-600"><X size={12} /></div>
-              <div className="flex items-center gap-1.5 cursor-pointer group" onClick={() => setActiveFactorIdx?.(1)}>
+              <div 
+                className="flex items-center gap-1.5 cursor-pointer group" 
+                onClick={() => { 
+                    setActiveFactorIdx?.(1); 
+                    setOverwrite?.(true); // Trigger overwrite mode
+                }}
+              >
                   <div className={`flex-1 px-2 py-0.5 rounded-md border transition-all overflow-x-auto no-scrollbar flex items-center ${isFactorBActive ? 'bg-emerald-900/30 border-emerald-500' : 'bg-slate-900 border-slate-700 group-hover:border-slate-600'}`}>
                       <span className={`text-xl font-bold font-mono text-right w-full whitespace-nowrap leading-tight ${isFactorBActive ? 'text-white' : 'text-slate-400'}`}>{String(factors[1])}</span>
                   </div>
