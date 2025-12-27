@@ -4,7 +4,7 @@ import { Player, ScoreColumn, ScoreValue } from '../../../types';
 import { calculateColumnScore, getAutoColumnError } from '../../../utils/scoring';
 import { getSmartTextureUrl } from '../../../utils/imageProcessing';
 import SmartTextureLayer from './SmartTextureLayer';
-import { Link2Off, TriangleAlert } from 'lucide-react';
+import { Link2Off, AlertTriangle } from 'lucide-react';
 
 interface TexturedScoreCellProps {
   player: Player;
@@ -124,7 +124,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
             >
                 {column.isAuto && autoError && (
                     <div className="absolute -top-3 -right-3 text-rose-500 z-20 drop-shadow-md">
-                        {autoError === 'missing_dependency' ? <Link2Off size={16} /> : <TriangleAlert size={16} />}
+                        {autoError === 'missing_dependency' ? <Link2Off size={16} /> : <AlertTriangle size={16} />}
                     </div>
                 )}
                 <span className="text-xl font-bold tracking-tight leading-none" style={inkStyle}>
@@ -147,7 +147,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
               <div className="relative z-10 w-full h-full flex items-center justify-center">
                   {autoError && (
                       <div className="absolute top-1 right-1 text-rose-500 z-20 opacity-80" title={autoError === 'missing_dependency' ? "參照的欄位已遺失" : "計算錯誤"}>
-                          {autoError === 'missing_dependency' ? <Link2Off size={14} /> : <TriangleAlert size={14} />}
+                          {autoError === 'missing_dependency' ? <Link2Off size={14} /> : <AlertTriangle size={14} />}
                       </div>
                   )}
                   <span className="text-3xl font-bold tracking-tight" style={inkStyle}>

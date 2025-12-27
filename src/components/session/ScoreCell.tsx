@@ -3,7 +3,7 @@ import React from 'react';
 import { Player, ScoreColumn, ScoreValue } from '../../types';
 import { calculateColumnScore, getAutoColumnError } from '../../utils/scoring';
 import TexturedScoreCell from './parts/TexturedScoreCell';
-import { Link2Off, TriangleAlert } from 'lucide-react';
+import { Link2Off, AlertTriangle } from 'lucide-react';
 
 interface ScoreCellProps {
   player: Player;
@@ -31,6 +31,7 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, playerIndex, column, allC
   const scoreData: ScoreValue | undefined = player.scores[column.id];
   
   // --- Strategy Pattern: Switch to Textured Cell if data exists ---
+  // [CRITICAL CHANGE]: Only use textured cell if baseImage is present
   if (baseImage && column.visuals?.cellRect) {
       return (
           <TexturedScoreCell 
@@ -67,7 +68,10 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, playerIndex, column, allC
   // Determine if we should show input (Auto columns always show input if they have a result)
   const hasInput = column.isAuto ? true : parts.length > 0;
   
-  const hasLayout = !!column.contentLayout;
+  // [CRITICAL CHANGE]: Only use custom layout for the MAIN cell if baseImage is present.
+  // This ensures that when no image is loaded, the cell behaves like a standard list item
+  // (filling width, auto height) instead of a fixed-position floating box.
+  const hasLayout = !!column.contentLayout && !!baseImage;
 
   // Visual Styling
   const minHeightClass = screenshotMode ? '' : (baseImage ? 'min-h-[3rem]' : 'min-h-[4rem]');
@@ -127,7 +131,7 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, playerIndex, column, allC
             <>
                 {autoError && (
                     <div className="absolute top-1 left-1 text-rose-500 z-20" title={autoError === 'missing_dependency' ? "參照的欄位已遺失" : "計算錯誤 (如除以0)"}>
-                        {autoError === 'missing_dependency' ? <Link2Off size={14} /> : <TriangleAlert size={14} />}
+                        {autoError === 'missing_dependency' ? <Link2Off size={14} /> : <AlertTriangle size={14} />}
                     </div>
                 )}
                 <span className={`text-xl font-bold w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
@@ -229,7 +233,8 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, playerIndex, column, allC
       );
   };
 
-  const finalContent = column.contentLayout ? (
+  // Only use layout if baseImage is present
+  const finalContent = hasLayout ? (
       <div 
         onClick={(e) => { e.stopPropagation(); onClick(e); }}
         className={`
@@ -241,15 +246,15 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, playerIndex, column, allC
             }
         `}
         style={{
-            left: `${column.contentLayout.x}%`,
-            top: `${column.contentLayout.y}%`,
-            width: `${column.contentLayout.width}%`,
-            height: `${column.contentLayout.height}%`,
+            left: `${column.contentLayout!.x}%`,
+            top: `${column.contentLayout!.y}%`,
+            width: `${column.contentLayout!.width}%`,
+            height: `${column.contentLayout!.height}%`,
         }}
       >
           {column.isAuto && autoError && (
               <div className="absolute top-0 right-0 text-rose-500 z-20 translate-x-1/3 -translate-y-1/3 drop-shadow-md">
-                  {autoError === 'missing_dependency' ? <Link2Off size={16} /> : <TriangleAlert size={16} />}
+                  {autoError === 'missing_dependency' ? <Link2Off size={16} /> : <AlertTriangle size={16} />}
               </div>
           )}
           <span className={`text-xl font-bold tracking-tight w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
