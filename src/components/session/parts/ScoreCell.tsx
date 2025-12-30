@@ -10,6 +10,7 @@ interface ScoreCellProps {
   playerIndex: number; 
   column: ScoreColumn;
   allColumns?: ScoreColumn[]; // Added prop
+  allPlayers?: Player[]; // Added for ranking context
   isActive: boolean;
   onClick: (e: React.MouseEvent) => void;
   forceHeight?: string;
@@ -27,7 +28,7 @@ const formatDisplayNumber = (num: number | undefined | null): string => {
   return String(num);
 };
 
-const ScoreCell: React.FC<ScoreCellProps> = ({ player, playerIndex, column, allColumns, isActive, onClick, forceHeight, screenshotMode = false, simpleMode = false, baseImage, isEditMode = false, limitX }) => {
+const ScoreCell: React.FC<ScoreCellProps> = ({ player, playerIndex, column, allColumns, allPlayers, isActive, onClick, forceHeight, screenshotMode = false, simpleMode = false, baseImage, isEditMode = false, limitX }) => {
   const scoreData: ScoreValue | undefined = player.scores[column.id];
   
   // --- Strategy Pattern: Switch to Textured Cell if data exists ---
@@ -39,6 +40,7 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, playerIndex, column, allC
             playerIndex={playerIndex}
             column={column}
             allColumns={allColumns} // Pass context down
+            allPlayers={allPlayers} // Pass context down
             scoreValue={scoreData}
             baseImage={baseImage}
             rect={column.visuals.cellRect}
@@ -59,7 +61,8 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, playerIndex, column, allC
   // Context for Auto Calculation
   const scoringContext = allColumns ? {
       allColumns: allColumns,
-      playerScores: player.scores
+      playerScores: player.scores,
+      allPlayers: allPlayers
   } : undefined;
 
   const displayScore = calculateColumnScore(column, parts, scoringContext);

@@ -33,12 +33,59 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange })
         updatedRule.unitScore = undefined;
       }
     } else {
-      let newValue = val;
-      if (field === 'min' && typeof newValue === 'number') newValue = Math.max(newValue, getMinConstraint(idx, newRules));
-      if (field === 'max' && typeof newValue === 'number' && updatedRule.min !== undefined && newValue < updatedRule.min) newValue = updatedRule.min;
-      if (field === 'unit' && typeof newValue === 'number') newValue = Math.max(1, newValue);
-      updatedRule = { ...updatedRule, [field]: newValue };
+      // 移除輸入時的強制驗證，改在 onBlur 處理
+      updatedRule = { ...updatedRule, [field]: val };
     }
+    newRules[idx] = updatedRule;
+    onChange({ f1: newRules });
+  };
+
+  const handleBlur = (idx: number, field: keyof MappingRule) => {
+    const newRules = [...rules];
+    let updatedRule = { ...newRules[idx] };
+    
+    // 嘗試解析數值 (處理輸入過程中的字串狀態)
+    const rawVal = updatedRule[field];
+    let val: number | undefined = undefined;
+    
+    if (typeof rawVal === 'string') {
+        // 如果是空字串，視為 undefined
+        if (rawVal.trim() === '') val = undefined;
+        else {
+            const parsed = parseFloat(rawVal);
+            val = isNaN(parsed) ? undefined : parsed;
+        }
+    } else if (typeof rawVal === 'number') {
+        val = rawVal;
+    }
+
+    if (field === 'min') {
+        // min 必須有值，若無則預設為約束值
+        const constraint = getMinConstraint(idx, newRules);
+        const finalVal = val !== undefined ? val : constraint;
+        updatedRule.min = Math.max(finalVal, constraint);
+    } else if (field === 'max') {
+        // max 可以是 undefined (無限大)
+        if (val !== undefined) {
+            const minVal = (typeof updatedRule.min === 'number') ? updatedRule.min : -Infinity;
+            updatedRule.max = Math.max(val, minVal);
+        } else {
+            updatedRule.max = undefined;
+        }
+    } else if (field === 'unit') {
+        // unit 至少為 1
+        if (val !== undefined) {
+            updatedRule.unit = Math.max(1, val);
+        } else {
+            updatedRule.unit = 1;
+        }
+    } else {
+        // 其他欄位 (score, unitScore) 僅做型別正規化
+        if (val !== undefined) {
+            (updatedRule as any)[field] = val;
+        }
+    }
+
     newRules[idx] = updatedRule;
     onChange({ f1: newRules });
   };
@@ -99,6 +146,7 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange })
                     if (!isNaN(num)) updateMappingRule(idx, 'min', num);
                   }
                 }}
+                onBlur={() => handleBlur(idx, 'min')}
                 onFocus={e => e.target.select()}
                 className="w-14 bg-slate-900 border border-slate-600 rounded p-2 text-center text-white text-sm outline-none focus:border-emerald-500"
               />
@@ -123,6 +171,7 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange })
                         if (!isNaN(num)) updateMappingRule(idx, 'max', num);
                       }
                     }}
+                    onBlur={() => handleBlur(idx, 'max')}
                     onFocus={e => e.target.select()}
                     className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-center text-white placeholder-slate-600 text-sm outline-none focus:border-emerald-500"
                   />
@@ -169,6 +218,7 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange })
                             if (!isNaN(num)) updateMappingRule(idx, 'unit', num);
                           }
                         }}
+                        onBlur={() => handleBlur(idx, 'unit')}
                         onFocus={e => e.target.select()}
                         className="w-full h-full bg-transparent text-white text-center text-sm pl-4 pr-1 outline-none font-medium"
                       />
@@ -188,6 +238,7 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange })
                             if (!isNaN(num)) updateMappingRule(idx, 'unitScore', num);
                           }
                         }}
+                        onBlur={() => handleBlur(idx, 'unitScore')}
                         onFocus={e => e.target.select()}
                         className="w-full h-full bg-transparent text-emerald-400 font-bold text-center text-sm pl-4 pr-1 outline-none"
                       />
@@ -209,6 +260,7 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange })
                           if (!isNaN(num)) updateMappingRule(idx, 'score', num);
                         }
                       }}
+                      onBlur={() => handleBlur(idx, 'score')}
                       onFocus={e => e.target.select()}
                       className="w-full h-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-bold rounded-md p-2 text-center text-sm outline-none focus:border-emerald-500"
                     />

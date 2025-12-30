@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AppView, GameTemplate } from './types';
 import { getTouchDistance } from './utils/ui';
 import { useAppData } from './hooks/useAppData';
-import { ToastProvider } from './hooks/useToast';
 
 // Components
 import TemplateEditor from './components/editor/TemplateEditor';
@@ -296,9 +295,9 @@ const App: React.FC = () => {
   }
 
   return (
-    <ToastProvider>
+    <>
       {renderContent()}
-    </ToastProvider>
+    </>
   );
 };
 

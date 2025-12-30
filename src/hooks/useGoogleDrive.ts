@@ -13,7 +13,6 @@ export const useGoogleDrive = () => {
       
       const errMsg = error.message || '';
 
-      // Error handling specifically for Auth issues
       if (error.error === 'popup_closed_by_user') {
           showToast({ message: "已取消登入", type: 'info' });
       } else if (errMsg.includes('API has not been used') || errMsg.includes('is disabled')) {
@@ -46,9 +45,9 @@ export const useGoogleDrive = () => {
     }
   }, [showToast]);
 
-  const fetchFileList = useCallback(async (): Promise<CloudFile[]> => {
+  const fetchFileList = useCallback(async (mode: 'active' | 'trash' = 'active'): Promise<CloudFile[]> => {
       try {
-          return await googleDriveService.listFiles();
+          return await googleDriveService.listFiles(mode);
       } catch (error: any) {
           if (error.error !== 'popup_closed_by_user') {
              handleError(error, "讀取列表");
@@ -72,6 +71,21 @@ export const useGoogleDrive = () => {
       }
   }, [showToast]);
 
+  // New: Restore folder from Trash to Active
+  const restoreFromTrash = useCallback(async (folderId: string): Promise<boolean> => {
+      setIsSyncing(true);
+      try {
+          await googleDriveService.restoreFolder(folderId);
+          showToast({ message: "已還原至我的備份", type: 'success' });
+          return true;
+      } catch (error: any) {
+          handleError(error, "還原");
+          return false;
+      } finally {
+          setIsSyncing(false);
+      }
+  });
+
   const downloadCloudImage = useCallback(async (fileId: string): Promise<string | null> => {
       setIsSyncing(true);
       try {
@@ -87,11 +101,44 @@ export const useGoogleDrive = () => {
       }
   }, [showToast]);
 
+  const deleteCloudFile = useCallback(async (fileId: string): Promise<boolean> => {
+      setIsSyncing(true);
+      try {
+          showToast({ message: "正在永久刪除...", type: 'info' });
+          await googleDriveService.deleteFile(fileId);
+          showToast({ message: "刪除成功", type: 'success' });
+          return true;
+      } catch (error: any) {
+          handleError(error, "刪除");
+          return false;
+      } finally {
+          setIsSyncing(false);
+      }
+  }, [showToast]);
+
+  const emptyTrash = useCallback(async (): Promise<boolean> => {
+      setIsSyncing(true);
+      try {
+          showToast({ message: "正在清空垃圾桶...", type: 'info' });
+          await googleDriveService.emptyTrash();
+          showToast({ message: "垃圾桶已清空", type: 'success' });
+          return true;
+      } catch (error: any) {
+          handleError(error, "清空");
+          return false;
+      } finally {
+          setIsSyncing(false);
+      }
+  }, [showToast]);
+
   return {
     handleBackup,
     fetchFileList,
     restoreBackup,
+    restoreFromTrash,
     downloadCloudImage,
+    deleteCloudFile,
+    emptyTrash,
     isSyncing,
     isMockMode: false
   };

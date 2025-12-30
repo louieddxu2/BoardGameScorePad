@@ -338,6 +338,7 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
                                 playerIndex={index}
                                 column={col}
                                 allColumns={template.columns}
+                                allPlayers={session.players} // Pass session players
                                 isActive={false}
                                 onClick={() => {}}
                                 screenshotMode={true}
@@ -352,7 +353,11 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
                             {col.overlayColumns.map(overlayCol => {
                                 const scoreData = p.scores[overlayCol.id];
                                 const parts = scoreData?.parts || [];
-                                const overlayContext = { allColumns: template.columns, playerScores: p.scores };
+                                const overlayContext = { 
+                                    allColumns: template.columns, 
+                                    playerScores: p.scores,
+                                    allPlayers: session.players // Pass session players
+                                };
                                 const displayScore = calculateColumnScore(overlayCol, parts, overlayContext);
                                 
                                 const hasInput = overlayCol.isAuto ? true : parts.length > 0;

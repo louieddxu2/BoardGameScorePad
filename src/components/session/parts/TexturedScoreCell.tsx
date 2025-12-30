@@ -11,6 +11,7 @@ interface TexturedScoreCellProps {
   playerIndex: number;
   column: ScoreColumn;
   allColumns?: ScoreColumn[];
+  allPlayers?: Player[]; // Added for ranking context
   scoreValue: ScoreValue | undefined;
   baseImage: string;
   rect: { x: number, y: number, width: number, height: number };
@@ -34,6 +35,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
   playerIndex,
   column, 
   allColumns,
+  allPlayers,
   scoreValue, 
   baseImage, 
   rect, 
@@ -51,7 +53,8 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
   // Context for Auto Calculation
   const scoringContext = allColumns ? {
       allColumns: allColumns,
-      playerScores: player.scores
+      playerScores: player.scores,
+      allPlayers: allPlayers
   } : undefined;
 
   const displayScore = calculateColumnScore(column, parts, scoringContext);

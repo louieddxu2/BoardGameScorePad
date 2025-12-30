@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ScoreColumn } from '../../../types';
-import { Sparkles, ArrowRight, Lock, Unlock, Check, Calculator, AlertCircle, Plus, Delete } from 'lucide-react';
+import { ScoreColumn, MappingRule } from '../../../types';
+import { Sparkles, ArrowRight, Lock, Unlock, Check, Calculator, AlertCircle, Ruler, ChevronDown, ChevronUp, Delete, Trophy, Hash, Users } from 'lucide-react';
+import EditorTabMapping from './EditorTabMapping';
 
 interface EditorTabAutoProps {
   column: ScoreColumn;
@@ -9,392 +10,406 @@ interface EditorTabAutoProps {
   onChange: (updates: Partial<ScoreColumn>) => void;
 }
 
-// 常見數學函數關鍵字，解析變數時應排除
 const MATH_KEYWORDS = new Set([
   'min', 'max', 'floor', 'ceil', 'round', 'abs', 'sin', 'cos', 'tan', 'log', 'sqrt', 'pow', 'pi', 'e'
 ]);
 
-const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], onChange }) => {
-  // Local state for the formula input to prevent constant re-parsing/updating parent
-  const [localFormula, setLocalFormula] = useState(column.formula || '');
-  const [isLocked, setIsLocked] = useState(false);
-  const [parseError, setParseError] = useState<string | null>(null);
-  
-  // Ref for the input element to track cursor position
-  const inputRef = useRef<HTMLInputElement>(null);
+const PLAYER_COUNT_ID = '__PLAYER_COUNT__';
 
-  const availableColumns = allColumns.filter(c => c.id !== column.id);
-  
-  // Explicitly type variableMap to ensure Object.entries returns correct types
-  const variableMap: Record<string, { id: string; name: string }> = column.variableMap || {};
-  const variableList = Object.entries(variableMap);
+// 提取解析邏輯為獨立函數
+const extractIdentifiers = (formula: string) => {
+    // 移除所有字串常數
+    const cleanFormula = formula.replace(/×/g, '*');
+    
+    // 找出所有可能的識別字 (變數或函數)
+    const regex = /\b([a-zA-Z][a-zA-Z0-9]*)\b/g;
+    const matches = cleanFormula.match(regex) || [];
+    
+    const unique = Array.from(new Set(matches));
+    
+    const vars: string[] = [];
+    const funcs: string[] = [];
 
-  // 初始化：如果已有公式且有對應變數，預設為鎖定狀態
-  useEffect(() => {
-    if (column.formula && Object.keys(column.variableMap || {}).length > 0) {
-        setIsLocked(true);
-    }
-  }, []);
-
-  // 解析目前的變數 (用於顯示按鈕)
-  const existingXVars = useMemo(() => {
-      const regex = /x(\d+)/g;
-      const matches = localFormula.match(regex) || [];
-      // 去重並排序
-      const unique = Array.from(new Set(matches)).sort((a: string, b: string) => {
-          const numA = parseInt(a.substring(1));
-          const numB = parseInt(b.substring(1));
-          return numA - numB;
-      });
-      return unique;
-  }, [localFormula]);
-
-  const extractVariables = (formula: string): string[] => {
-    const regex = /[a-zA-Z][a-zA-Z0-9]*/g;
-    const matches = formula.match(regex) || [];
-    const uniqueVars = Array.from(new Set(matches));
-    return uniqueVars.filter(v => !MATH_KEYWORDS.has(v.toLowerCase()));
-  };
-
-  const handleLock = () => {
-    if (!localFormula.trim()) {
-        setParseError("請輸入公式");
-        return;
-    }
-
-    // --- 語法預檢查 (Dry Run) ---
-    try {
-        // 1. 將所有變數 (x1, x2...) 替換為數字 '1' 進行測試
-        let testFormula = localFormula.toLowerCase();
+    unique.forEach(token => {
+        const lower = token.toLowerCase();
+        if (MATH_KEYWORDS.has(lower)) return;
         
-        // 先檢查是否有非法字元 (只允許 變數, 數字, 運算符, 包括 ×)
-        // 這裡的 Regex 允許 a-z0-9 (變數) 以及 +-*/(). 空白 和 ×
-        if (!/^[a-z0-9+\-*/().\s×]+$/.test(testFormula)) {
-             throw new Error("包含不合法的符號");
-        }
-
-        // 將視覺符號 × 替換為運算符 *
-        testFormula = testFormula.replace(/×/g, '*');
-
-        // 將變數替換為 1
-        const vars = extractVariables(testFormula);
-        vars.forEach(v => {
-            testFormula = testFormula.split(v).join('1');
-        });
-
-        // 2. 嘗試執行
-        // eslint-disable-next-line no-new-func
-        const result = new Function(`"use strict"; return (${testFormula})`)();
-
-        // 3. 檢查結果是否為數字 (防止 1/0 或 undefined)
-        // 注意：這裡如果使用者故意寫 5/0，這裡會抓到 Infinity，我們會擋下來
-        // 但如果寫 x1/x2，因為我們代入 1/1，所以會通過。這是正確的，因為 runtime 除以 0 是允許的(回傳0)。
-        if (typeof result !== 'number' || isNaN(result) || !isFinite(result)) {
-            throw new Error("公式計算結果無效");
-        }
-
-    } catch (e) {
-        // 捕捉 SyntaxError (例如 "1++" 或 "x1 +")
-        setParseError("公式語法錯誤，請檢查運算符號");
-        return;
-    }
-    // --- 檢查通過 ---
-
-    // 注意：變數提取不包含 ×，所以這裡直接提取即可
-    const extractedVars = extractVariables(localFormula.replace(/×/g, '*'));
-    
-    // 建構新的 Variable Map
-    const newMap: Record<string, { id: string; name: string }> = {};
-    
-    extractedVars.forEach(v => {
-        if (variableMap[v]) {
-            // 如果原本就有對應，保留原值 (需確保格式正確)
-            newMap[v] = variableMap[v];
+        // 判斷是函數還是變數：f 開頭 + 數字 = 函數，其他 = 變數
+        if (/^f\d+$/.test(lower)) {
+            funcs.push(lower);
         } else {
-            // 嘗試預設一個還沒被用過的欄位，或是第一個欄位
-            const defaultCol = availableColumns[0];
-            if (defaultCol) {
-                newMap[v] = { id: defaultCol.id, name: defaultCol.name };
-            }
+            vars.push(token);
         }
     });
 
-    // 更新父層，同時寫入 isAuto 屬性
+    return { vars, funcs };
+};
+
+const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], onChange }) => {
+  const [localFormula, setLocalFormula] = useState(column.formula || '');
+  const [isLocked, setIsLocked] = useState(false);
+  const [parseError, setParseError] = useState<string | null>(null);
+  const [expandedFunc, setExpandedFunc] = useState<string | null>(null);
+  
+  const inputRef = useRef<HTMLInputElement>(null);
+  const availableColumns = allColumns.filter(c => c.id !== column.id);
+  
+  // Explicitly type variableMap to fix TS errors on mapObj access
+  const variableMap = (column.variableMap || {}) as Record<string, { 
+    id: string; 
+    name: string; 
+    mode?: 'value' | 'rank_score' | 'rank_player' | 'tie_count';
+  }>;
+  const variableList = Object.entries(variableMap);
+  
+  const functions: Record<string, MappingRule[]> = useMemo(() => {
+      return column.functions || (column.f1 ? { f1: column.f1 } : {});
+  }, [column.functions, column.f1]);
+
+  // 初始化檢查：自動解析公式並同步資料
+  useEffect(() => {
+    if (localFormula && localFormula.trim()) {
+        try {
+            const { vars, funcs } = extractIdentifiers(localFormula);
+            
+            // 只有當公式包含有效的變數或函數時才進行處理
+            if (vars.length > 0 || funcs.length > 0) {
+                // 1. 重建 Variable Map (保留既有設定)
+                const newVariableMap: typeof variableMap = {};
+                let mapChanged = false;
+                
+                vars.forEach(v => {
+                    if (variableMap[v]) {
+                        newVariableMap[v] = variableMap[v];
+                    } else {
+                        // 新增預設：如果沒有可用欄位，至少預設為空 (或可以是玩家人數)
+                        newVariableMap[v] = availableColumns[0] 
+                            ? { id: availableColumns[0].id, name: availableColumns[0].name, mode: 'value' } 
+                            : { id: PLAYER_COUNT_ID, name: '玩家人數', mode: 'value' };
+                        mapChanged = true;
+                    }
+                });
+                
+                // 檢查是否移除了舊變數
+                if (Object.keys(variableMap).length !== vars.length) mapChanged = true;
+
+                // 2. 重建 Functions (保留既有規則)
+                const newFunctions: Record<string, MappingRule[]> = {};
+                let funcChanged = false;
+
+                funcs.forEach(fKey => {
+                    if (functions[fKey]) {
+                        newFunctions[fKey] = functions[fKey];
+                    } else {
+                        // 新增預設
+                        newFunctions[fKey] = [{ min: 0, score: 0 }];
+                        funcChanged = true;
+                    }
+                });
+
+                if (Object.keys(functions).length !== funcs.length) funcChanged = true;
+
+                // 3. 如果有變更，觸發 onChange 同步回父組件
+                if (mapChanged || funcChanged) {
+                    const updates: Partial<ScoreColumn> = {};
+                    if (mapChanged) updates.variableMap = newVariableMap;
+                    if (funcChanged) {
+                        updates.functions = newFunctions;
+                        // 同步 legacy f1
+                        if (newFunctions['f1']) updates.f1 = newFunctions['f1'];
+                    }
+                    onChange(updates);
+                }
+
+                // 4. 自動鎖定以展示設定面板
+                setIsLocked(true);
+            }
+        } catch (e) {
+            // 初始化時的解析錯誤可忽略，等待使用者手動修正
+        }
+    }
+  }, []); // 僅在 mount 時執行一次
+
+  const existingXVars = useMemo(() => {
+      const regex = /x(\d+)/g;
+      const matches = localFormula.match(regex) || [];
+      return Array.from(new Set(matches)).sort((a: string, b: string) => parseInt(a.substring(1)) - parseInt(b.substring(1)));
+  }, [localFormula]);
+
+  const existingFuncs = useMemo(() => {
+      const regex = /f(\d+)/g;
+      const matches = localFormula.match(regex) || [];
+      return Array.from(new Set(matches)).sort((a: string, b: string) => parseInt(a.substring(1)) - parseInt(b.substring(1)));
+  }, [localFormula]);
+
+  const handleLock = () => {
+    if (!localFormula.trim()) { setParseError("請輸入公式"); return; }
+    
+    const { vars: extractedVars, funcs: extractedFuncs } = extractIdentifiers(localFormula);
+
+    try {
+        let testFormula = localFormula.toLowerCase().replace(/×/g, '*');
+        if (!/^[a-z0-9+\-*/().\s×,]+$/.test(testFormula)) throw new Error("非法符號");
+        
+        // 1. Dry Run - 替換變數為 1
+        let dryRunFormula = testFormula;
+        extractedVars.forEach(v => dryRunFormula = dryRunFormula.replace(new RegExp(`\\b${v}\\b`, 'g'), '1'));
+        
+        // 2. Dry Run - 準備函數 Mock
+        const fnNames: string[] = [];
+        const fnValues: any[] = [];
+        extractedFuncs.forEach(f => {
+            fnNames.push(f);
+            fnValues.push((v: any) => v); // Mock identity function
+        });
+
+        // 3. 執行測試
+        // eslint-disable-next-line no-new-func
+        const evalFn = new Function(...fnNames, `"use strict"; return (${dryRunFormula})`);
+        const result = evalFn(...fnValues);
+        
+        if (typeof result !== 'number' && typeof result !== 'function') throw new Error("無效結果");
+    } catch (e) {
+        setParseError("公式語法錯誤，請檢查符號與括號");
+        return;
+    }
+
+    // --- 同步變數設定 ---
+    const newVariableMap: typeof variableMap = {};
+    extractedVars.forEach(v => {
+        // 保留舊設定，或是預設第一個可用欄位
+        newVariableMap[v] = variableMap[v] || (availableColumns[0] 
+            ? { id: availableColumns[0].id, name: availableColumns[0].name, mode: 'value' } 
+            : { id: PLAYER_COUNT_ID, name: '玩家人數', mode: 'value' });
+    });
+
+    // --- 同步函數設定 ---
+    const newFunctions: Record<string, MappingRule[]> = {};
+    extractedFuncs.forEach(fKey => {
+        // 保留舊規則，或是建立新規則
+        newFunctions[fKey] = functions[fKey] || [{ min: 0, score: 0 }];
+    });
+
+    // 更新所有狀態
     onChange({ 
         formula: localFormula,
-        variableMap: newMap,
+        variableMap: newVariableMap,
         isAuto: true,
-        inputType: 'auto'
+        inputType: 'auto',
+        functions: newFunctions,
+        // 如果有 f1，同步更新 legacy f1 欄位以保持向後相容
+        f1: newFunctions['f1'] || undefined
     });
 
     setParseError(null);
     setIsLocked(true);
+    
+    // 如果只有一個新函數，自動展開它
+    const newFuncKeys = Object.keys(newFunctions);
+    if (newFuncKeys.length > 0 && !expandedFunc) {
+        setExpandedFunc(newFuncKeys[0]);
+    }
   };
 
-  const handleUnlock = () => {
-    setIsLocked(false);
-  };
-
-  const handleUpdateMapping = (key: string, targetColId: string) => {
-      const targetCol = availableColumns.find(c => c.id === targetColId);
-      if (targetCol) {
-          const newMap = { 
-              ...variableMap, 
-              [key]: { id: targetCol.id, name: targetCol.name } 
-          };
-          onChange({ variableMap: newMap });
-      }
+  const updateFunctionRules = (fKey: string, newRules: MappingRule[]) => {
+      const newFuncs = { ...functions, [fKey]: newRules };
+      const updates: Partial<ScoreColumn> = { functions: newFuncs };
+      if (fKey === 'f1') updates.f1 = newRules;
+      onChange(updates);
   };
 
   const insertToken = (token: string) => {
       if (isLocked) return;
-      
       const input = inputRef.current;
-      if (!input) {
-          // Fallback if ref is missing
-          setLocalFormula(prev => prev + token);
-          return;
-      }
-
+      if (!input) return;
       const start = input.selectionStart ?? localFormula.length;
       const end = input.selectionEnd ?? localFormula.length;
-
-      // 插入文字：保留選取範圍之前 + token + 選取範圍之後
       const newVal = localFormula.substring(0, start) + token + localFormula.substring(end);
       setLocalFormula(newVal);
-
-      // 還原焦點並移動游標到插入文字之後
-      // 使用 setTimeout 確保在 React 重新渲染後執行
-      // 雖然 preventDefault 保留了焦點，但我們仍需更新 cursor 位置
       setTimeout(() => {
-          // 確保焦點還在 (以防萬一)
-          if (document.activeElement !== input) input.focus();
-          const newCursorPos = start + token.length;
-          input.setSelectionRange(newCursorPos, newCursorPos);
+          input.focus();
+          const newPos = start + token.length;
+          input.setSelectionRange(newPos, newPos);
       }, 0);
-  };
-
-  const handleDelete = () => {
-      if (isLocked) return;
-
-      const input = inputRef.current;
-      if (!input) {
-          setLocalFormula(prev => prev.slice(0, -1));
-          return;
-      }
-
-      const start = input.selectionStart ?? 0;
-      const end = input.selectionEnd ?? 0;
-      let newVal = localFormula;
-      let newCursorPos = start;
-
-      if (start !== end) {
-          // 有選取範圍：刪除選取內容
-          newVal = localFormula.substring(0, start) + localFormula.substring(end);
-          newCursorPos = start;
-      } else if (start > 0) {
-          // 無選取範圍：刪除游標前一個字元 (Backspace)
-          newVal = localFormula.substring(0, start - 1) + localFormula.substring(end);
-          newCursorPos = start - 1;
-      }
-
-      setLocalFormula(newVal);
-
-      setTimeout(() => {
-          if (document.activeElement !== input) input.focus();
-          input.setSelectionRange(newCursorPos, newCursorPos);
-      }, 0);
-  };
-
-  const handleAddNextVar = () => {
-      if (isLocked) return;
-      // 找出目前最大的 xN
-      let maxIndex = 0;
-      existingXVars.forEach(v => {
-          const num = parseInt(v.substring(1));
-          if (!isNaN(num) && num > maxIndex) maxIndex = num;
-      });
-      const nextVar = `x${maxIndex + 1}`;
-      insertToken(nextVar);
-  };
-
-  // 關鍵 helper：阻止按鈕點擊時搶走 input 焦點
-  const preventFocusLoss = (e: React.MouseEvent) => {
-      e.preventDefault();
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      
-      {/* Header Info */}
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300 pb-12">
       <div className="flex items-start gap-3 bg-indigo-900/20 p-3 rounded-xl border border-indigo-500/30">
-          <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400 shrink-0">
-              <Sparkles size={24} />
-          </div>
+          <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400 shrink-0"><Sparkles size={24} /></div>
           <div>
-              <h3 className="font-bold text-indigo-200 text-sm">自動計算模式</h3>
+              <h3 className="font-bold text-indigo-200 text-sm">高級自動計算</h3>
               <p className="text-xs text-indigo-300/70 mt-1 leading-relaxed">
-                  使用下方按鈕輸入公式 (如 <code>x1 × 2 + 5</code>)，確認後設定 x1 對應的欄位。
+                  使用 <b>x1, x2...</b> 代表來源欄位，<b>f1(...), f2(...)</b> 代表查表規則。<br/>
+                  例如：<code>f1(x1) + f2(x2) * 5</code>
               </p>
           </div>
       </div>
 
-      {/* Formula Input Section */}
       <div className="space-y-2">
         <div className="flex justify-between items-center">
             <label className="text-xs font-bold text-slate-500 uppercase">計算公式</label>
-            {parseError && !isLocked && (
-                <span className="text-[10px] text-amber-400 flex items-center gap-1 animate-pulse">
-                    <AlertCircle size={10} /> {parseError}
-                </span>
-            )}
+            {parseError && !isLocked && <span className="text-[10px] text-amber-400 flex items-center gap-1 animate-pulse"><AlertCircle size={10} /> {parseError}</span>}
         </div>
-        
-        <div className="relative group">
-            <div className={`absolute inset-0 bg-indigo-500/5 rounded-xl pointer-events-none transition-opacity ${isLocked ? 'opacity-100' : 'opacity-0'}`} />
-            
-            <input
-                ref={inputRef}
-                type="text"
-                inputMode="decimal" 
-                value={localFormula}
-                onChange={e => { setLocalFormula(e.target.value); setParseError(null); }}
-                placeholder="(x1 + x2) × 2"
-                disabled={isLocked}
-                className={`w-full border rounded-xl p-4 font-mono text-lg font-bold tracking-wide outline-none transition-all shadow-inner
-                    ${isLocked 
-                        ? 'bg-slate-900/50 border-slate-700 text-slate-400 cursor-not-allowed' 
-                        : parseError 
-                            ? 'bg-slate-900 border-red-500/50 text-white focus:border-red-500 focus:ring-1 focus:ring-red-500'
-                            : 'bg-slate-900 border-indigo-500/50 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
-                    }
-                `}
-            />
-            
-            {/* Lock/Unlock Action Button */}
+        <div className="relative">
+            <input ref={inputRef} type="text" inputMode="decimal" value={localFormula} onChange={e => { setLocalFormula(e.target.value); setParseError(null); }} placeholder="f1(x1) + f2(x2)" disabled={isLocked} className={`w-full border rounded-xl p-4 font-mono text-lg font-bold tracking-wide outline-none transition-all shadow-inner ${isLocked ? 'bg-slate-900/50 border-slate-700 text-slate-400' : 'bg-slate-900 border-indigo-500/50 text-white focus:ring-1 focus:ring-indigo-500'}`}/>
             <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                {isLocked ? (
-                    <button 
-                        onClick={handleUnlock}
-                        className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg border border-slate-600 transition-all flex items-center gap-2 text-xs font-bold shadow-sm"
-                    >
-                        <Unlock size={14} /> 解鎖編輯
-                    </button>
-                ) : (
-                    <button 
-                        onClick={handleLock}
-                        className="p-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-lg shadow-emerald-900/50 transition-all flex items-center gap-2 text-xs font-bold active:scale-95"
-                    >
-                        <Check size={14} strokeWidth={3} /> 確認公式
-                    </button>
-                )}
+                {isLocked ? <button onClick={() => setIsLocked(false)} className="p-2 bg-slate-800 text-slate-400 rounded-lg border border-slate-600 text-xs font-bold"><Unlock size={14} /> 解鎖</button> : <button onClick={handleLock} className="p-2 bg-emerald-600 text-white rounded-lg shadow-lg text-xs font-bold"><Check size={14} /> 確認公式</button>}
             </div>
         </div>
 
-        {/* Toolbar - Only visible when editing */}
         {!isLocked && (
-            <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
-                {/* Row 1: Operators */}
-                <div className="grid grid-cols-7 gap-2">
-                    {['+', '-', '×', '/', '(', ')'].map(op => (
-                        <button 
-                            key={op} 
-                            onMouseDown={preventFocusLoss}
-                            onClick={() => insertToken(op)} 
-                            className="bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 text-slate-300 font-mono text-lg font-bold py-3 shadow-sm active:scale-95 transition-all touch-manipulation"
-                        >
-                            {op}
-                        </button>
-                    ))}
-                    <button 
-                        onMouseDown={preventFocusLoss}
-                        onClick={handleDelete}
-                        className="bg-slate-800 hover:bg-red-900/30 rounded-lg border border-slate-700 text-red-400 py-3 shadow-sm active:scale-95 transition-all flex items-center justify-center touch-manipulation"
-                    >
-                        <Delete size={20} />
-                    </button>
+            <div className="space-y-2">
+                {/* 運算符號 */}
+                <div className="grid grid-cols-8 gap-1">
+                    {['+', '-', '×', '/', '(', ')', ','].map(op => <button key={op} onMouseDown={e => e.preventDefault()} onClick={() => insertToken(op)} className="bg-slate-800 rounded-lg border border-slate-700 text-slate-300 font-mono py-2 text-sm hover:bg-slate-700 active:bg-slate-600">{op}</button>)}
+                    <button onMouseDown={e => e.preventDefault()} onClick={() => setLocalFormula(localFormula.slice(0, -1))} className="bg-slate-800 text-red-400 rounded-lg border border-slate-700 py-2 flex items-center justify-center hover:bg-red-900/20"><Delete size={16} /></button>
                 </div>
-
-                {/* Row 2: Variables */}
-                <div className="flex gap-2 overflow-x-auto no-scrollbar pt-1">
-                    {/* Existing Variables */}
-                    {existingXVars.map(v => (
-                        <button 
-                            key={v} 
-                            onMouseDown={preventFocusLoss}
-                            onClick={() => insertToken(v)} 
-                            className="px-4 py-3 bg-indigo-900/30 hover:bg-indigo-900/50 border border-indigo-500/30 text-indigo-300 font-mono font-bold rounded-lg text-sm active:scale-95 transition-all min-w-[3rem] touch-manipulation"
-                        >
-                            {v}
+                
+                {/* 變數與函數快捷鍵 */}
+                <div className="flex gap-1 overflow-x-auto no-scrollbar py-1">
+                    {/* 已存在的變數 */}
+                    {existingXVars.map(v => <button key={v} onMouseDown={e => e.preventDefault()} onClick={() => insertToken(v)} className="px-3 py-2 bg-indigo-900/30 border border-indigo-500/30 text-indigo-300 font-mono rounded-lg text-xs">{v}</button>)}
+                    
+                    {/* 新增變數 */}
+                    <button onMouseDown={e => e.preventDefault()} onClick={() => {
+                        const nextId = existingXVars.length > 0 ? Math.max(...existingXVars.map(v => parseInt(v.substring(1)))) + 1 : 1;
+                        insertToken(`x${nextId}`);
+                    }} className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-md border border-indigo-400/50">xi</button>
+                    
+                    <div className="w-px h-6 bg-slate-700 mx-2" />
+                    
+                    {/* 已存在的函數 */}
+                    {existingFuncs.map(f => (
+                        <button key={f} onMouseDown={e => e.preventDefault()} onClick={() => insertToken(`${f}(`)} className="px-3 py-2 bg-purple-900/30 border border-purple-500/30 text-purple-300 font-mono rounded-lg text-xs">
+                            {f}(
                         </button>
                     ))}
-                    
-                    {/* Add Next Variable Button */}
-                    <button 
-                        onMouseDown={preventFocusLoss}
-                        onClick={handleAddNextVar} 
-                        className="px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-sm active:scale-95 transition-all shadow-lg shadow-indigo-900/50 flex items-center gap-1 min-w-[4rem] whitespace-nowrap touch-manipulation"
-                    >
-                        <Plus size={14} /> xi
-                    </button>
+
+                    {/* 新增函數 */}
+                    <button onMouseDown={e => e.preventDefault()} onClick={() => {
+                        const nextId = existingFuncs.length > 0 ? Math.max(...existingFuncs.map(f => parseInt(f.substring(1)))) + 1 : 1;
+                        insertToken(`f${nextId}(`);
+                    }} className="px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-md border border-purple-500/50">fi(</button>
                 </div>
             </div>
         )}
       </div>
 
-      {/* Variable Mapping Section - Only visible when LOCKED */}
       {isLocked && (
-          <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
-              <div className="flex justify-between items-center border-t border-slate-800 pt-4">
-                <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
-                    <Calculator size={12} /> 變數對應
-                </label>
-                <span className="text-[10px] text-slate-600 bg-slate-800 px-2 py-0.5 rounded-full">{variableList.length} 個變數</span>
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+              {/* 1. 變數設定區塊 */}
+              <div className="space-y-3">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><Calculator size={12} /> 變數對應</label>
+                  </div>
+                  <div className="space-y-2">
+                      {variableList.length === 0 && <div className="text-center py-4 text-xs text-slate-500 italic bg-slate-900/30 rounded-lg">公式中沒有變數</div>}
+                      {variableList.map(([key, mapObj]) => {
+                          const currentMode = mapObj.mode || 'value';
+                          return (
+                            <div key={key} className="flex flex-col gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-10 h-10 flex items-center justify-center bg-indigo-900/30 text-indigo-300 font-mono font-bold rounded-md border border-indigo-500/30 shrink-0">{key}</div>
+                                    <ArrowRight size={14} className="text-slate-600 shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <select 
+                                            value={mapObj.id} 
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val === PLAYER_COUNT_ID) {
+                                                    onChange({ variableMap: { ...variableMap, [key]: { ...mapObj, id: PLAYER_COUNT_ID, name: '玩家人數' } } });
+                                                } else {
+                                                    const targetCol = availableColumns.find(c => c.id === val);
+                                                    if (targetCol) onChange({ variableMap: { ...variableMap, [key]: { ...mapObj, id: targetCol.id, name: targetCol.name } } });
+                                                }
+                                            }} 
+                                            className="w-full bg-slate-900 text-slate-200 text-sm border border-slate-600 rounded p-2 outline-none"
+                                        >
+                                            <option value={PLAYER_COUNT_ID} className="text-indigo-400 font-bold">
+                                                👥 玩家人數 (本局設定)
+                                            </option>
+                                            <optgroup label="計分項目">
+                                                {availableColumns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                {/* Mode Selection */}
+                                <div className="flex items-center gap-2 pl-12">
+                                    <span className="text-[10px] text-slate-500 shrink-0 uppercase">取值模式:</span>
+                                    <select 
+                                        value={currentMode} 
+                                        onChange={(e) => {
+                                            const newMode = e.target.value as any;
+                                            onChange({ variableMap: { ...variableMap, [key]: { ...mapObj, mode: newMode } } });
+                                        }}
+                                        className={`flex-1 text-xs border rounded p-1.5 outline-none font-bold ${
+                                            // 修正顏色：降低亮度，避免刺眼，同時確保在選單中可讀
+                                            currentMode === 'value' 
+                                                ? 'bg-slate-900 text-slate-400 border-slate-700' 
+                                                : 'bg-slate-900 text-amber-500 border-amber-900'
+                                        }`}
+                                    >
+                                        <option value="value">數值 (預設)</option>
+                                        <option value="rank_score">分數排名 (1, 1, 2...)</option>
+                                        <option value="rank_player">玩家排名 (1, 1, 3...)</option>
+                                        <option value="tie_count">平手人數</option>
+                                    </select>
+                                </div>
+                                {currentMode !== 'value' && (
+                                    <div className="pl-12 text-[10px] text-amber-600/80 flex items-center gap-1">
+                                        {currentMode === 'tie_count' ? <Hash size={10}/> : <Trophy size={10} />}
+                                        {currentMode === 'rank_score' && "分數相同者並列，名次連續 (Dense Rank)"}
+                                        {currentMode === 'rank_player' && "分數相同者並列，下一名次跳號 (Standard Rank)"}
+                                        {currentMode === 'tie_count' && "計算與自己同分的人數"}
+                                    </div>
+                                )}
+                            </div>
+                          );
+                      })}
+                  </div>
               </div>
-              
-              <div className="space-y-2 bg-slate-900/50 rounded-xl p-2 border border-slate-800">
-                  {variableList.length === 0 && (
-                      <div className="text-center py-8 text-xs text-slate-500 italic flex flex-col items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-600">
-                              <Sparkles size={14} />
-                          </div>
-                          公式中沒有偵測到變數<br/>將直接輸出計算結果
-                      </div>
-                  )}
+
+              {/* 2. 函數設定區塊 */}
+              <div className="space-y-3">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                      <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><Ruler size={12} /> 函數規則定義</label>
+                  </div>
                   
-                  {variableList.map(([key, mapObj]) => (
-                      <div key={key} className="flex items-center gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700 group transition-colors hover:border-slate-600">
-                          <div className="w-10 h-10 flex items-center justify-center bg-indigo-900/30 text-indigo-300 font-mono font-bold rounded-md border border-indigo-500/30 shrink-0">
-                              {key}
+                  <div className="space-y-2">
+                      {Object.keys(functions).length === 0 && <div className="text-center py-4 text-xs text-slate-500 italic bg-slate-900/30 rounded-lg">公式中沒有使用函數 (如 f1, f2)</div>}
+                      
+                      {Object.keys(functions).sort().map(fKey => (
+                          <div key={fKey} className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden transition-all">
+                              <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-800" onClick={() => setExpandedFunc(expandedFunc === fKey ? null : fKey)}>
+                                  <div className="flex items-center gap-2">
+                                      <div className="w-8 h-8 bg-purple-900/30 text-purple-400 font-mono font-bold rounded flex items-center justify-center border border-purple-500/30">{fKey}</div>
+                                      <span className="text-sm font-bold text-slate-300">
+                                          {functions[fKey].length} 條規則
+                                      </span>
+                                  </div>
+                                  {expandedFunc === fKey ? <ChevronUp size={20} className="text-slate-500"/> : <ChevronDown size={20} className="text-slate-500"/>}
+                              </div>
+                              {expandedFunc === fKey && (
+                                  <div className="p-3 bg-slate-900/30 border-t border-slate-700 animate-in slide-in-from-top-2">
+                                      <EditorTabMapping 
+                                        column={{ ...column, f1: functions[fKey] } as any} 
+                                        onChange={(updates) => {
+                                            if (updates.f1) {
+                                                updateFunctionRules(fKey, updates.f1);
+                                            }
+                                        }} 
+                                      />
+                                  </div>
+                              )}
                           </div>
-                          <ArrowRight size={14} className="text-slate-600 shrink-0" />
-                          <div className="flex-1 min-w-0">
-                              <select 
-                                value={mapObj.id} 
-                                onChange={(e) => handleUpdateMapping(key, e.target.value)}
-                                className="w-full bg-slate-900 text-slate-200 text-sm border border-slate-600 rounded p-2 outline-none focus:border-indigo-500 cursor-pointer"
-                              >
-                                  {availableColumns.length === 0 ? (
-                                      <option disabled>無其他欄位</option>
-                                  ) : (
-                                      availableColumns.map(c => (
-                                          <option key={c.id} value={c.id}>{c.name}</option>
-                                      ))
-                                  )}
-                              </select>
-                          </div>
-                      </div>
-                  ))}
+                      ))}
+                  </div>
               </div>
-              
-              {availableColumns.length === 0 && variableList.length > 0 && (
-                  <p className="text-[10px] text-red-400 mt-2 text-center bg-red-900/10 p-2 rounded border border-red-900/30">
-                      警告：沒有其他欄位可供參照，請先建立其他計分項目。
-                  </p>
-              )}
           </div>
       )}
-
     </div>
   );
 };

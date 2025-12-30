@@ -241,6 +241,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                         column={activeColumn} 
                         player={activePlayer} 
                         allColumns={template.columns} 
+                        allPlayers={session.players} // <--- Pass session.players here
                     />
                 </div>
             );

@@ -84,7 +84,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
     }
 
     const template: GameTemplate = {
-      id: initialTemplate ? initialTemplate.id : generateId(12), // Long ID for Template
+      id: initialTemplate ? initialTemplate.id : generateId(), // Default 36 chars (UUID)
       name: name.trim(),
       description: initialTemplate?.description || `${columnCount} 個計分項目`,
       columns: newColumns,

@@ -45,55 +45,55 @@ export interface ScoreColumn {
   formula: string; // e.g., "a1", "a1×c1", "a1+next", "f1(a1)", "a1×a2"
   constants?: {
     c1?: number;
-    // c2, c3... for future use
   };
-  f1?: MappingRule[]; // Definition for the f1() function
-  // f2, f3... for future use
+  
+  // 函數定義：支援 f1, f2... 多個函數
+  f1?: MappingRule[]; // 保留舊欄位以相容舊資料
+  functions?: Record<string, MappingRule[]>; // 新格式：{"f1": rules, "f2": rules}
   
   // Automatic Calculation Config
-  isAuto?: boolean; // New flag to identify auto-calculated columns
-  variableMap?: Record<string, { id: string; name: string }>; // Maps "x1" -> { id: "uuid", name: "Column Name" }
+  isAuto?: boolean; 
+  variableMap?: Record<string, { 
+    id: string; 
+    name: string;
+    mode?: 'value' | 'rank_score' | 'rank_player' | 'tie_count';
+  }>; // Maps "x1" -> { id: "uuid", name: "Column Name", mode: "..." }
   
   // Input & UI Helpers
-  inputType: InputMethod; // 'keypad' | 'clicker' | 'auto' - NOW REQUIRED
+  inputType: InputMethod; 
   quickActions?: QuickAction[];
   
   // Formatting & Display
   unit?: string;
-  subUnits?: [string, string]; // For product formula
+  subUnits?: [string, string]; 
   rounding?: RoundingMode;
-  showPartsInGrid?: boolean; // For a1+next formula
-  buttonGridColumns?: number; // For clicker/select UI
+  showPartsInGrid?: boolean; 
+  buttonGridColumns?: number; 
   
   // Display Control
-  // New Property: Determines how the column is rendered
-  // 'row' (default): Standard table row
-  // 'overlay': Renders as a floating element on top of the PREVIOUS row
-  // 'hidden': Not displayed in the grid
   displayMode?: 'row' | 'overlay' | 'hidden';
   
-  // Visual Mapping (New)
+  // Visual Mapping
   visuals?: ColumnVisuals;
   
-  // Layout Configuration (New)
+  // Layout Configuration
   contentLayout?: ContentLayout;
 
   // Meta
   isScoring: boolean;
 }
 
-// --- Shared types (mostly unchanged) ---
 export type RoundingMode = 'none' | 'round' | 'floor' | 'ceil';
 export type InputMethod = 'keypad' | 'clicker' | 'auto';
 
 export interface MappingRule {
-  min?: number; // Inclusive
-  max?: number | 'next'; // Inclusive. 'next' means (nextRule.min - 1)
-  score: number; // Used for fixed score
+  min?: number; 
+  max?: number | 'next'; 
+  score: number; 
   
   isLinear?: boolean; 
-  unitScore?: number; // Explicit field for the slope (score per unit) in linear mode
-  unit?: number; // Denominator for linear calc (Every X units)
+  unitScore?: number; 
+  unit?: number; 
 }
 
 export interface QuickAction {
@@ -101,10 +101,9 @@ export interface QuickAction {
   label: string;
   value: number;
   color?: string;
-  isModifier?: boolean; // If true, adds to the last history item instead of creating a new one
+  isModifier?: boolean; 
 }
 
-// Player, GameTemplate, GameSession will now use the new ScoreColumn
 export interface Player {
   id:string;
   name: string;
@@ -119,14 +118,12 @@ export interface GameTemplate {
   description?: string;
   columns: ScoreColumn[];
   createdAt: number;
-  isPinned?: boolean; // For UI state, not persisted in template JSON
-  
-  // Visual Mapping (Modified)
-  // baseImage is REMOVED to keep JSON small.
-  // We use hasImage flag to prompt user to upload/scan image at runtime.
+  updatedAt?: number;    
+  lastSyncedAt?: number; 
+  isPinned?: boolean; 
   hasImage?: boolean;
-  cloudImageId?: string; // ID of the background image in Google Drive
-  globalVisuals?: GlobalVisuals; // Textures for non-column areas (Player Header, Total Row)
+  cloudImageId?: string; 
+  globalVisuals?: GlobalVisuals; 
 }
 
 export interface GameSession {

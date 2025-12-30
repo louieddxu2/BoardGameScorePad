@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ScoreColumn, InputMethod } from '../../types';
+import { ScoreColumn, InputMethod, MappingRule } from '../../types';
 import { X, Ruler, Calculator, ListPlus, Settings, Save, Trash2, Crop, LayoutList, Layers, Sigma, Sparkles } from 'lucide-react';
 import { COLORS } from '../../colors';
 import { isColorDark } from '../../utils/ui';
@@ -14,12 +14,12 @@ import EditorTabAuto from './column-editor/EditorTabAuto';
 
 interface ColumnConfigEditorProps {
   column: ScoreColumn;
-  allColumns?: ScoreColumn[]; // New optional prop for context
+  allColumns?: ScoreColumn[];
   onSave: (updates: Partial<ScoreColumn>) => void;
   onDelete: () => void;
-  onDeleteAll?: () => void; // Unused for now
+  onDeleteAll?: () => void;
   onClose: () => void;
-  baseImage?: string; // New Prop
+  baseImage?: string;
 }
 
 type EditorTab = 'basic' | 'mapping' | 'select' | 'auto';
@@ -28,23 +28,36 @@ type CalculationMode = 'standard' | 'sum-parts' | 'product';
 const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColumns = [], onSave, onDelete, onClose, baseImage }) => {
   
   const getInitialState = (): ScoreColumn => {
-    let rules = column.f1 ? [...column.f1] : [];
-    // Ensure that if it's linear, we have unitScore initialized
-    rules = rules.map(r => r.isLinear && r.unitScore === undefined ? { ...r, unitScore: r.score } : r);
+    // 關鍵修改：初始化時整合 functions 結構
+    const functions: Record<string, MappingRule[]> = column.functions ? { ...column.functions } : {};
     
-    // Ensure displayMode is set
-    let displayMode = column.displayMode || 'row';
+    // 如果有舊版的 f1 但 functions 裡沒定義 f1，則進行遷移
+    if (column.f1 && column.f1.length > 0 && !functions.f1) {
+        functions.f1 = [...column.f1];
+    }
 
-    // Ensure isScoring is set (default true for backward compatibility)
+    // 確保所有規則的 unitScore 有初始化
+    Object.keys(functions).forEach(fKey => {
+        functions[fKey] = functions[fKey].map(r => 
+            r.isLinear && r.unitScore === undefined ? { ...r, unitScore: r.score } : r
+        );
+    });
+    
+    let displayMode = column.displayMode || 'row';
     let isScoring = column.isScoring ?? true;
 
-    return { ...column, f1: rules, displayMode, isScoring };
+    return { 
+        ...column, 
+        functions, 
+        f1: functions.f1, // 同步保留 f1 以相容舊版計算邏輯
+        displayMode, 
+        isScoring 
+    };
   };
 
   const [editedCol, setEditedCol] = useState<ScoreColumn>(getInitialState);
   const initialStringifiedRef = useRef(JSON.stringify(getInitialState()));
   
-  // Cache for sum-parts input type preference to persist across tab switches
   const sumPartsInputTypeCache = useRef<InputMethod>(
       (editedCol.formula || '').includes('+next') ? (editedCol.inputType || 'keypad') : 'keypad'
   );
@@ -57,7 +70,6 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
   };
 
   const [activeTab, setActiveTab] = useState<EditorTab>(() => getInitialTab(editedCol));
-  
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [showLayoutEditor, setShowLayoutEditor] = useState(false);
   
@@ -82,15 +94,6 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
 
   const isKeyboardOpen = visualViewportOffset > 0 || isResizedByKeyboard;
 
-  useEffect(() => {
-      if (isKeyboardOpen) {
-          const timer = setTimeout(() => {
-              document.activeElement?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-          }, 300);
-          return () => clearTimeout(timer);
-      }
-  }, [isKeyboardOpen]);
-
   const hasUnsavedChanges = () => JSON.stringify(editedCol) !== initialStringifiedRef.current;
 
   const handleAttemptClose = () => {
@@ -111,7 +114,6 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
       return () => window.removeEventListener('app-back-press', handleBackPress, { capture: true });
   }, [editedCol, showLayoutEditor]);
 
-  // Pure helper to identify mode for sanitization (kept in parent for save logic)
   const getCalculationMode = (formula: string): CalculationMode => {
       if (formula === 'a1×a2') return 'product';
       if ((formula || '').includes('+next')) return 'sum-parts';
@@ -122,43 +124,49 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
       let finalUpdates: Partial<ScoreColumn> = { ...editedCol };
       
       if (activeTab === 'auto') {
-          // Auto Mode
-          // Formula is edited directly in the tab
           finalUpdates.inputType = 'auto';
+          finalUpdates.isAuto = true;
           delete finalUpdates.constants;
-          delete finalUpdates.f1;
+          // 注意：在自動模式，我們保留 functions 物件，這是計算引擎的核心
+          // 如果 functions 裡有 f1，我們也同步更新外層的 f1 屬性以相容舊邏輯
+          if (finalUpdates.functions?.f1) {
+              finalUpdates.f1 = finalUpdates.functions.f1;
+          }
       } else if (activeTab === 'mapping') {
           finalUpdates.formula = 'f1(a1)';
+          finalUpdates.isAuto = false;
           if (!finalUpdates.f1 || finalUpdates.f1.length === 0) finalUpdates.f1 = [{ min: 0, score: 0 }];
           finalUpdates.inputType = 'keypad';
+          // 同步 functions 物件以保持結構一致
+          finalUpdates.functions = { f1: finalUpdates.f1 };
           delete finalUpdates.constants;
       } else if (activeTab === 'select') {
           finalUpdates.formula = 'a1';
+          finalUpdates.isAuto = false;
           finalUpdates.inputType = 'clicker';
           delete finalUpdates.f1;
+          delete finalUpdates.functions;
           delete finalUpdates.constants;
       } else { 
-          // Basic Tab Sanitization
           const currentMode = getCalculationMode(editedCol.formula);
+          finalUpdates.isAuto = false;
           if (currentMode === 'product') {
               finalUpdates.formula = 'a1×a2';
               finalUpdates.inputType = 'keypad';
           } else if (currentMode === 'sum-parts') {
               finalUpdates.formula = 'a1+next';
-              // Ensure we use the cached preference if it's set, or fallback to current
               finalUpdates.inputType = editedCol.inputType || sumPartsInputTypeCache.current || 'keypad';
           } else { 
               const weight = finalUpdates.constants?.c1 ?? 1;
               finalUpdates.formula = weight !== 1 ? 'a1×c1' : 'a1';
               finalUpdates.inputType = 'keypad';
           }
-          // Cleanup rules that belong to other tabs
           delete finalUpdates.f1;
+          delete finalUpdates.functions;
       }
       onSave(finalUpdates);
   };
   
-  // Generic handler for sub-components
   const handleColumnUpdate = (updates: Partial<ScoreColumn>) => {
       setEditedCol(prev => ({ ...prev, ...updates }));
   };
@@ -188,7 +196,6 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
       </button>
   );
 
-  // --- Dynamic Aspect Ratio ---
   const cellRect = editedCol.visuals?.cellRect;
   const aspectRatio = (cellRect && cellRect.height > 0) ? cellRect.width / cellRect.height : undefined;
 
@@ -196,14 +203,13 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
     <div className="fixed inset-0 z-50 bg-slate-950/95 flex flex-col animate-in slide-in-from-bottom-5" style={{ paddingBottom: visualViewportOffset }}>
       <ConfirmationModal isOpen={showDiscardConfirm} title="放棄變更？" message="您有未儲存的變更，離開後將會遺失。" confirmText="放棄並離開" cancelText="繼續編輯" isDangerous={true} onConfirm={onClose} onCancel={() => setShowDiscardConfirm(false)} />
       
-      {/* Layout Editor Modal */}
       {showLayoutEditor && (
           <LayoutEditor 
             initialLayout={editedCol.contentLayout}
             color={editedCol.color || COLORS[0]}
             aspectRatio={aspectRatio}
-            baseImage={baseImage} // Pass baseImage
-            cellRect={cellRect}   // Pass cellRect for cropping
+            baseImage={baseImage} 
+            cellRect={cellRect}   
             onSave={(layout) => {
                 setEditedCol(prev => ({ ...prev, contentLayout: layout }));
                 setShowLayoutEditor(false);
@@ -222,9 +228,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                 title={editedCol.isScoring ? "計分中 (點擊排除)" : "不計分 (僅作紀錄)"}
             >
                 <div className="relative flex items-center justify-center">
-                    {/* 將 Sigma 淡化，使其退為背景 */}
                     <Sigma size={20} className={!editedCol.isScoring ? "opacity-30" : ""} />
-                    {/* X 標記放在右下角，作為狀態 Badge */}
                     {!editedCol.isScoring && (
                         <X 
                             size={14} 

@@ -1,11 +1,16 @@
 
 /**
- * 安全地評估數學公式
- * @param formula 公式字串，例如 "x1 * 2 + x2"
+ * 安全地評估數學公式，支援變數與自定義函數
+ * @param formula 公式字串，例如 "f1(x1) * 2 + x2"
  * @param variables 變數對照表，例如 { x1: 10, x2: 5 }
+ * @param functions 函數對照表，例如 { f1: (v) => v*10 }
  * @returns 計算結果 (number)
  */
-export const evaluateFormula = (formula: string, variables: Record<string, number>): number => {
+export const evaluateFormula = (
+  formula: string, 
+  variables: Record<string, number>, 
+  functions: Record<string, Function> = {}
+): number => {
   if (!formula || !formula.trim()) return 0;
 
   try {
@@ -13,30 +18,43 @@ export const evaluateFormula = (formula: string, variables: Record<string, numbe
     let processedFormula = formula.toLowerCase().replace(/×/g, '*');
 
     // 1. 準備變數替換
-    // 必須依照變數名稱長度由長到短排序，避免部分取代 (例如 x11 被 x1 取代剩 1)
     const sortedVars = Object.keys(variables).sort((a, b) => b.length - a.length);
     
     // 2. 替換變數為數值
     sortedVars.forEach(key => {
       const val = variables[key];
-      // 使用 Regex 全域替換，並確保變數邊界 (避免 ax1 被取代) - 雖然目前我們的變數都是 x 開頭數字結尾，簡單替換即可
-      processedFormula = processedFormula.split(key.toLowerCase()).join(`(${val})`);
+      // 確保變數替換不會破壞函數名 (例如 x11 替換掉 f11 的 11)
+      // 使用更精確的邊界判斷
+      const regex = new RegExp(`\\b${key.toLowerCase()}\\b`, 'g');
+      processedFormula = processedFormula.replace(regex, `(${val})`);
     });
 
     // 3. 安全性檢查 (Sanitization)
-    // 只允許：數字、小數點、運算符 (+ - * / % ( ))、空格
-    // 嚴格禁止字母 (除了 e 用於科學記號，但在這裡我們主要處理簡單數學，暫不考慮複雜科學記號以免漏洞)
-    const allowedChars = /^[0-9+\-*/().\s]*$/;
+    // 允許：數字、小數點、運算符、括號、空格
+    // [關鍵修改] 允許 f1, f2, f3... 這種模式的函數呼叫
+    const allowedChars = /^[0-9+\-*/().\s,f]*$/;
     
-    if (!allowedChars.test(processedFormula)) {
-      console.warn("Formula contains invalid characters:", processedFormula);
+    // 檢查公式中是否包含未經授權的英文字母
+    // 我們移除所有合法函數名(f1, f2...)後，不應該剩下任何英文字母
+    let checkStr = processedFormula;
+    Object.keys(functions).forEach(fnName => {
+        checkStr = checkStr.split(fnName.toLowerCase()).join('');
+    });
+
+    // 檢查剩下的是否只有安全字元
+    if (!allowedChars.test(checkStr)) {
+      console.warn("Formula contains invalid characters or unauthorized letters:", processedFormula);
       return 0;
     }
 
     // 4. 執行計算
-    // 使用 new Function 比 eval 稍微安全一點點，且在嚴格模式下運行
+    // 將 functions 中的 key 解構放入執行環境
+    const fnNames = Object.keys(functions);
+    const fnValues = fnNames.map(name => functions[name]);
+    
     // eslint-disable-next-line no-new-func
-    const result = new Function(`"use strict"; return (${processedFormula})`)();
+    const evalFn = new Function(...fnNames, `"use strict"; return (${processedFormula})`);
+    const result = evalFn(...fnValues);
 
     // 5. 處理結果
     if (!isFinite(result) || isNaN(result)) {

@@ -399,6 +399,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         playerIndex={pIdx}
                         column={col}
                         allColumns={template.columns} // Pass all columns context
+                        allPlayers={session.players} // Pass all players for ranking
                         baseImage={baseImage}
                         isActive={editingCell?.playerId === p.id && editingCell?.colId === col.id}
                         onClick={(e) => onCellClick(p.id, col.id, e)}
@@ -413,7 +414,11 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         const parts = scoreData?.parts || [];
                         
                         // Also provide context for overlay columns
-                        const overlayContext = { allColumns: template.columns, playerScores: p.scores };
+                        const overlayContext = { 
+                            allColumns: template.columns, 
+                            playerScores: p.scores,
+                            allPlayers: session.players
+                        };
                         const displayScore = calculateColumnScore(overlayCol, parts, overlayContext);
                         
                         const hasInput = overlayCol.isAuto ? true : parts.length > 0;

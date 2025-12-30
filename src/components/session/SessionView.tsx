@@ -4,9 +4,9 @@ import { GameSession, GameTemplate } from '../../types';
 import { useSessionState, ScreenshotLayout } from './hooks/useSessionState';
 import { useSessionEvents } from './hooks/useSessionEvents';
 import { useToast } from '../../hooks/useToast';
-import { useGoogleDrive } from '../../hooks/useGoogleDrive'; // Import hook
-import { googleDriveService } from '../../services/googleDrive'; // Import service for auth check
-import { Upload, X, Image as ImageIcon, UploadCloud, DownloadCloud } from 'lucide-react';
+import { useGoogleDrive } from '../../hooks/useGoogleDrive';
+import { googleDriveService } from '../../services/googleDrive';
+import { Upload, X, Image as ImageIcon, DownloadCloud } from 'lucide-react';
 
 // Parts
 import SessionHeader from './parts/SessionHeader';
@@ -24,11 +24,11 @@ interface SessionViewProps {
   template: GameTemplate;
   playerHistory: string[];
   zoomLevel: number;
-  baseImage: string | null; // New Prop for Runtime Image
+  baseImage: string | null; 
   onUpdateSession: (session: GameSession) => void;
   onUpdateTemplate: (template: GameTemplate) => void;
   onUpdatePlayerHistory: (name: string) => void;
-  onUpdateImage: (img: string) => void; // New Callback
+  onUpdateImage: (img: string) => void; 
   onExit: () => void;
   onResetScores: () => void;
 }
@@ -39,14 +39,12 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const sessionState = useSessionState(props);
   const eventHandlers = useSessionEvents(props, sessionState);
   const { showToast } = useToast();
-  const { handleBackup, downloadCloudImage, isSyncing } = useGoogleDrive(); // Use Drive Hook
+  const { handleBackup, downloadCloudImage, isSyncing } = useGoogleDrive();
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Modal State
   const [showImageUploadModal, setShowImageUploadModal] = useState(false);
-  const [showDrivePrompt, setShowDrivePrompt] = useState(false); // New: Drive Prompt
-  const [pendingImage, setPendingImage] = useState<string | null>(null); // Temp store for image
 
   const hasPromptedRef = useRef(false);
 
@@ -61,37 +59,22 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       return false;
   }, [template.cloudImageId, downloadCloudImage, onUpdateImage]);
 
-  // Check if we need to prompt for an image automatically
   useEffect(() => {
-      // 1. If image exists, do nothing
       if (baseImage) return;
-      
-      // 2. If template doesn't support/need image, do nothing
       const hasBackgroundDesign = !!template.globalVisuals || !!template.hasImage;
       if (!hasBackgroundDesign) return;
-
-      // 3. Avoid repeated prompts
       if (hasPromptedRef.current) return;
-      hasPromptedRef.current = true; // Mark as processed
+      hasPromptedRef.current = true;
 
-      // 4. Check Cloud Image status
       if (template.cloudImageId) {
           if (googleDriveService.isAuthorized) {
-              // 4a. Authorized: Auto Load
-              // We call the download function directly. 
-              // Note: We don't block UI, just start download. 
-              // If it fails, we might want to show the modal then, but for simplicity/UX, 
-              // if auto-load fails (e.g. 404), user can click the cloud button in header or we let them be.
-              // Here we try to show modal if it fails.
               handleCloudDownload().then(success => {
                   if (!success) setShowImageUploadModal(true);
               });
           } else {
-              // 4b. Not Authorized: Prompt with Cloud option
               setShowImageUploadModal(true);
           }
       } else {
-          // 5. No Cloud Image: Prompt Upload only
           setShowImageUploadModal(true);
       }
   }, [baseImage, template.globalVisuals, template.hasImage, template.cloudImageId, handleCloudDownload]);
@@ -108,7 +91,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     showShareMenu,
     screenshotModal,
     isInputFocused,
-    isEditMode, // New State
+    isEditMode, 
   } = sessionState.uiState;
 
   const { setUiState } = sessionState;
@@ -119,7 +102,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     .filter(p => p.totalScore === Math.max(...session.players.map(pl => pl.totalScore)))
     .map(p => p.id);
   
-  // --- Image Upload Handler ---
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -127,37 +109,22 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       reader.onload = (ev) => {
           if (ev.target?.result) {
               const imgData = ev.target.result as string;
-              onUpdateImage(imgData); // Update app state immediately
+              onUpdateImage(imgData); 
               setShowImageUploadModal(false);
               
-              // Trigger Drive Backup Prompt
-              setPendingImage(imgData);
-              setShowDrivePrompt(true);
+              // Silent Background Cloud Backup if logged in
+              if (googleDriveService.isAuthorized) {
+                  handleBackup(template, imgData).then(updated => {
+                      if (updated) onUpdateTemplate(updated);
+                  }).catch(console.error);
+              }
           }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleConfirmBackup = async () => {
-      if (pendingImage) {
-          // IMPORTANT: handleBackup now returns the updated template with the Image ID
-          const updatedTemplate = await handleBackup(template, pendingImage);
-          if (updatedTemplate) {
-              onUpdateTemplate(updatedTemplate);
-          }
-      }
-      setShowDrivePrompt(false);
-      setPendingImage(null);
-  };
-
-  const handleSkipBackup = () => {
-      setShowDrivePrompt(false);
-      setPendingImage(null);
-  };
-
   const handleSkipImage = () => {
-      // Just close the modal locally. 
       setShowImageUploadModal(false);
   };
   
@@ -173,9 +140,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       }
   };
 
-  // --- Screenshot Handler (Stage 1: Measure & Open Modal) ---
   const handleScreenshotRequest = useCallback((mode: 'full' | 'simple') => {
-    // Step 1: Measure the live grid layout
     const playerHeaderRowEl = document.querySelector('#live-player-header-row') as HTMLElement;
     const itemHeaderEl = playerHeaderRowEl?.querySelector('div:first-child') as HTMLElement;
     const playerHeaderEls = playerHeaderRowEl?.querySelectorAll('[data-player-header-id]');
@@ -199,7 +164,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         }
     });
     
-    // Measure row heights
     template.columns.forEach(col => {
       const rowEl = document.getElementById(`row-${col.id}`) as HTMLElement;
       if (rowEl) {
@@ -207,7 +171,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       }
     });
 
-    // Step 2: Open Modal with Layout Data
     setUiState(p => ({ 
         ...p, 
         showShareMenu: false, 
@@ -220,33 +183,25 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   }, [setUiState, showToast, template.columns]);
 
-
-  // --- Scroll Synchronization ---
   useEffect(() => {
     const grid = sessionState.tableContainerRef.current;
     const bar = sessionState.totalBarScrollRef.current;
-
     if (!grid || !bar) return;
-
     const handleScroll = () => {
       if (bar.scrollLeft !== grid.scrollLeft) {
           bar.scrollLeft = grid.scrollLeft;
       }
     };
-
     grid.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
       grid.removeEventListener('scroll', handleScroll);
     };
   }, [sessionState.tableContainerRef, sessionState.totalBarScrollRef]);
 
-  // --- Width Synchronization ---
   useEffect(() => {
     const gridContent = sessionState.gridContentRef.current;
     const totalContent = sessionState.totalContentRef.current;
-
     if (!gridContent || !totalContent) return;
-
     const observer = new ResizeObserver((entries) => {
       window.requestAnimationFrame(() => {
         for (const entry of entries) {
@@ -255,7 +210,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
              const stickyHeader = document.querySelector('#live-player-header-row > div:first-child') as HTMLElement;
              const headerOffset = stickyHeader ? stickyHeader.offsetWidth : 70;
              const newTotalWidth = `${Math.max(0, gridWidth - headerOffset)}px`;
-             
              if (totalContent.style.width !== newTotalWidth) {
                  totalContent.style.width = newTotalWidth;
              }
@@ -263,7 +217,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         }
       });
     });
-
     observer.observe(gridContent);
     return () => observer.disconnect();
   }, [sessionState.gridContentRef, sessionState.totalContentRef]);
@@ -273,52 +226,18 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     <div className="flex flex-col h-full bg-slate-900 text-slate-100 overflow-hidden relative">
       {/* --- Modals --- */}
       <ConfirmationModal isOpen={showResetConfirm} title="確定重置？" message="此動作將清空所有已輸入的分數，且無法復原。" confirmText="確定重置" isDangerous={true} onCancel={() => setUiState(prev => ({ ...prev, showResetConfirm: false }))} onConfirm={eventHandlers.handleConfirmReset} />
-      <ConfirmationModal isOpen={showExitConfirm} title="確定要返回目錄嗎？" message="你會失去目前的計分內容(計分板架構會自動儲存)。" confirmText="離開" cancelText="取消" isDangerous={false} onCancel={() => setUiState(prev => ({ ...prev, showExitConfirm: false }))} onConfirm={props.onExit} />
+      <ConfirmationModal isOpen={showExitConfirm} title="確定要返回目錄嗎？" message="你會失去目前的計分內容(計分板架構與圖片將同步到雲端)。" confirmText="離開" cancelText="取消" isDangerous={false} onCancel={() => setUiState(prev => ({ ...prev, showExitConfirm: false }))} onConfirm={props.onExit} />
       <ConfirmationModal isOpen={!!columnToDelete} title="確定刪除此項目？" message="刪除後，所有玩家在該項目的分數將會遺失。" confirmText="確定刪除" isDangerous={true} onCancel={() => setUiState(prev => ({ ...prev, columnToDelete: null }))} onConfirm={eventHandlers.handleConfirmDeleteColumn} />
-
-      {/* Drive Backup Prompt */}
-      {showDrivePrompt && (
-          <div className="fixed inset-0 z-[70] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
-              <div className="bg-slate-900 rounded-2xl border border-slate-700 shadow-2xl p-6 w-full max-w-sm flex flex-col items-center gap-4">
-                  <div className="w-16 h-16 bg-sky-900/30 rounded-full flex items-center justify-center text-sky-400 mb-2 border border-sky-500/20">
-                      <UploadCloud size={32} />
-                  </div>
-                  <h3 className="text-xl font-bold text-white text-center">備份到雲端？</h3>
-                  <p className="text-slate-400 text-sm text-center">
-                      為了避免手機容量不足，建議將此背景圖備份到 Google Drive。
-                  </p>
-                  
-                  <div className="flex gap-3 w-full mt-2">
-                      <button
-                          onClick={handleSkipBackup}
-                          className="flex-1 py-3 rounded-xl bg-slate-800 text-slate-400 font-medium hover:bg-slate-700 transition-colors border border-slate-700"
-                      >
-                          暫時不要
-                      </button>
-                      <button
-                          onClick={handleConfirmBackup}
-                          disabled={isSyncing}
-                          className="flex-1 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold shadow-lg shadow-sky-900/50 transition-colors flex items-center justify-center gap-2"
-                      >
-                          {isSyncing ? '上傳中...' : '確認備份'}
-                      </button>
-                  </div>
-                  <p className="text-[10px] text-slate-500">
-                      這將在您的 Drive 建立 BoardGameScorePad 資料夾。
-                  </p>
-              </div>
-          </div>
-      )}
 
       {/* Missing Image Modal */}
       {showImageUploadModal && (
           <div 
             className="fixed inset-0 z-[60] bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center"
-            onClick={handleSkipImage} // Click outside to skip
+            onClick={handleSkipImage} 
           >
               <div 
                 className="max-w-xs w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-4 relative"
-                onClick={(e) => e.stopPropagation()} // Prevent closing when clicking content
+                onClick={(e) => e.stopPropagation()} 
               >
                   <button 
                     onClick={handleSkipImage}
@@ -360,13 +279,13 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       {editingColumn && (
         <ColumnConfigEditor 
           column={editingColumn} 
-          allColumns={template.columns} // Pass all columns for variable mapping
+          allColumns={template.columns} 
           onSave={eventHandlers.handleSaveColumn} 
           onDelete={() => {
               setUiState(prev => ({ ...prev, columnToDelete: editingColumn.id }));
           }} 
           onClose={() => setUiState(prev => ({...prev, editingColumn: null}))}
-          baseImage={baseImage || undefined} // Pass baseImage
+          baseImage={baseImage || undefined} 
         />
       )}
 
@@ -384,10 +303,10 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         templateName={template.name}
         isEditingTitle={isEditingTitle}
         showShareMenu={showShareMenu}
-        screenshotActive={screenshotModal.isOpen} // Renamed prop usage
+        screenshotActive={screenshotModal.isOpen} 
         isEditMode={isEditMode}
-        hasVisuals={!!template.globalVisuals} // Pass visuals presence
-        hasCloudImage={!!template.cloudImageId && !baseImage} // Only show if we know ID but haven't loaded it
+        hasVisuals={!!template.globalVisuals} 
+        hasCloudImage={!!template.cloudImageId && !baseImage} 
         onEditTitleToggle={(editing) => setUiState(prev => ({ ...prev, isEditingTitle: editing }))}
         onTitleSubmit={eventHandlers.handleTitleSubmit}
         onAddColumn={() => setUiState(prev => ({ ...prev, isAddColumnModalOpen: true }))}
@@ -396,8 +315,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onShareMenuToggle={(show) => setUiState(prev => ({...prev, showShareMenu: show}))}
         onScreenshotRequest={handleScreenshotRequest}
         onToggleEditMode={() => setUiState(prev => ({ ...prev, isEditMode: !prev.isEditMode }))}
-        onUploadImage={handleManualUploadClick} // Pass manual upload handler
-        onCloudDownload={handleCloudDownload} // Pass cloud download handler
+        onUploadImage={handleManualUploadClick} 
+        onCloudDownload={handleCloudDownload} 
       />
       
       <div 
@@ -425,7 +344,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           onUpdateTemplate={onUpdateTemplate}
           scrollContainerRef={sessionState.tableContainerRef}
           contentRef={sessionState.gridContentRef}
-          baseImage={baseImage || undefined} // Pass runtime image down
+          baseImage={baseImage || undefined} 
           isEditMode={isEditMode}
           zoomLevel={zoomLevel}
         />
@@ -440,7 +359,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         contentRef={sessionState.totalContentRef}
         isHidden={isInputFocused}
         template={template}
-        baseImage={baseImage || undefined} // Pass runtime image down
+        baseImage={baseImage || undefined} 
       />
 
       <InputPanel
@@ -453,7 +372,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onUpdatePlayerHistory={props.onUpdatePlayerHistory}
       />
 
-      {/* NEW: Screenshot Modal */}
       <ScreenshotModal 
         isOpen={screenshotModal.isOpen}
         onClose={() => setUiState(p => ({ ...p, screenshotModal: { ...p.screenshotModal, isOpen: false } }))}

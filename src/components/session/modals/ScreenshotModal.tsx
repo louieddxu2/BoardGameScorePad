@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Copy, Download, Share, Loader2, Image as ImageIcon, LayoutPanelLeft, ZoomIn, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { X, Copy, Download, Share, Loader2, Image as ImageIcon, LayoutPanelLeft } from 'lucide-react';
 import { toBlob } from 'html-to-image';
 import { GameSession, GameTemplate } from '../../../types';
 import { ScreenshotLayout } from '../hooks/useSessionState';
@@ -36,7 +36,6 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 }) => {
   const [activeMode, setActiveMode] = useState<'full' | 'simple'>(initialMode);
   
-  // Cache state for both modes
   const [snapshots, setSnapshots] = useState<{
     full: SnapshotCache;
     simple: SnapshotCache;
@@ -48,9 +47,10 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const { showToast } = useToast();
 
-  // --- Pan & Zoom State ---
+  // --- Preview State ---
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   
   // Interaction Refs
   const isDragging = useRef(false);
@@ -58,17 +58,56 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   const startPinchDist = useRef(0);
   const startPinchScale = useRef(1);
 
-  // Reset View Helper
-  const resetView = () => setTransform({ x: 0, y: 0, scale: 1 });
-  
-  // State Synchronization and Cleanup
+  // --- Reset / Fit Logic ---
+  const fitToScreen = useCallback(() => {
+      const container = containerRef.current;
+      const img = imgRef.current;
+      if (!container || !img) return;
+
+      // [CRITICAL FIX] Use clientWidth/Height for exact inner content size (excluding borders)
+      const containerW = container.clientWidth;
+      const containerH = container.clientHeight;
+
+      const imgW = img.naturalWidth || img.width;
+      const imgH = img.naturalHeight || img.height;
+
+      if (imgW === 0 || imgH === 0 || containerW === 0 || containerH === 0) return;
+
+      // [CRITICAL FIX] Zero padding for maximum usage
+      const scale = Math.min(containerW / imgW, containerH / imgH);
+
+      // Center the image
+      const x = (containerW - imgW * scale) / 2;
+      const y = (containerH - imgH * scale) / 2;
+
+      setTransform({ x, y, scale });
+  }, []);
+
+  const handleImageLoad = () => {
+      // Ensure layout is stable before fitting
+      requestAnimationFrame(() => fitToScreen());
+  };
+
+  // [CRITICAL FIX] Monitor container resize (e.g., when modal finishes animating)
+  useEffect(() => {
+      const container = containerRef.current;
+      if (!container || !isOpen) return;
+
+      const observer = new ResizeObserver(() => {
+          // Only re-fit if we have an image loaded
+          if (snapshots[activeMode].url) {
+              requestAnimationFrame(() => fitToScreen());
+          }
+      });
+      observer.observe(container);
+      return () => observer.disconnect();
+  }, [isOpen, activeMode, snapshots, fitToScreen]);
+
   useEffect(() => {
     if (isOpen) {
-        // Force sync state with prop when opening
         setActiveMode(initialMode);
-        resetView();
+        setTransform({ x: 0, y: 0, scale: 1 });
     } else {
-        // Cleanup when closing
         if (snapshots.full.url) URL.revokeObjectURL(snapshots.full.url);
         if (snapshots.simple.url) URL.revokeObjectURL(snapshots.simple.url);
         
@@ -80,7 +119,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialMode]);
 
-  // Effect: Generate image for active mode if missing
+  // --- Generation Logic ---
   useEffect(() => {
     if (!isOpen) return;
 
@@ -88,31 +127,31 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
         if (snapshots[activeMode].url) return;
 
         setIsGenerating(true);
-        resetView(); // Reset zoom when switching modes or regenerating
         
-        // Wait for DOM to render. 
-        const renderDelay = baseImage ? 1000 : 300;
+        // Wait for render
+        const renderDelay = baseImage ? 800 : 300;
         await new Promise(r => setTimeout(r, renderDelay));
 
         const targetId = `screenshot-target-${activeMode}`;
-        const target = document.getElementById(targetId);
+        const targetWrapper = document.getElementById(targetId);
 
-        if (!target || target.offsetWidth === 0) {
+        if (!targetWrapper) {
              setIsGenerating(false);
              return;
         }
 
         try {
-            const fontStyles = `normal ${16 * zoomLevel}px Inter`;
-            await document.fonts.load(fontStyles);
+            const width = targetWrapper.offsetWidth;
+            const height = targetWrapper.offsetHeight;
 
-            const blob = await toBlob(target, {
+            const blob = await toBlob(targetWrapper, {
                 backgroundColor: baseImage ? '#ffffff' : '#0f172a', 
-                pixelRatio: 2,
-                width: target.offsetWidth,
-                height: target.offsetHeight,
+                pixelRatio: 1, 
+                width: width,
+                height: height,
                 style: { 
                     transform: 'none',
+                    margin: '0',
                     fontFamily: 'Inter, sans-serif'
                 }
             });
@@ -139,20 +178,17 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   // --- Interaction Handlers ---
 
   const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
-    // Only allow drag if we have an image
     if (!snapshots[activeMode].url) return;
-    
     e.stopPropagation(); 
-    isDragging.current = true;
+    e.preventDefault(); 
 
     const isTouch = 'touches' in e;
     if (isTouch && (e as React.TouchEvent).touches.length === 2) {
-        // Pinch Start
         startPinchDist.current = getTouchDistance((e as React.TouchEvent).touches);
         startPinchScale.current = transform.scale;
-        isDragging.current = false; // Switch to zoom mode, disable pan
+        isDragging.current = false;
     } else {
-        // Pan Start
+        isDragging.current = true;
         const clientX = isTouch ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
         const clientY = isTouch ? (e as React.TouchEvent).touches[0].clientY : (e as React.MouseEvent).clientY;
         lastPos.current = { x: clientX, y: clientY };
@@ -160,39 +196,50 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   };
 
   const handleWheel = (e: React.WheelEvent) => {
-    if (!snapshots[activeMode].url) return;
+    if (!snapshots[activeMode].url || !containerRef.current) return;
     e.stopPropagation();
+    
     const scaleChange = -e.deltaY * 0.001;
     const newScale = Math.max(0.1, Math.min(5, transform.scale * (1 + scaleChange)));
-    setTransform(prev => ({ ...prev, scale: newScale }));
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const newX = mouseX - (mouseX - transform.x) * (newScale / transform.scale);
+    const newY = mouseY - (mouseY - transform.y) * (newScale / transform.scale);
+
+    setTransform({ x: newX, y: newY, scale: newScale });
   };
 
-  // Attach global move/up listeners to window to handle dragging outside container
   useEffect(() => {
     if (!isOpen) return;
 
     const onMove = (e: MouseEvent | TouchEvent) => {
         if (!isDragging.current && !('touches' in e && e.touches.length === 2)) return;
-        
-        // CRITICAL: Prevent browser zoom/scroll
         if (e.cancelable) e.preventDefault();
 
         if ('touches' in e && e.touches.length === 2) {
-            // Pinch Zoom
             const dist = getTouchDistance(e.touches);
             if (startPinchDist.current > 0) {
                 const scaleFactor = dist / startPinchDist.current;
                 const newScale = Math.max(0.1, Math.min(5, startPinchScale.current * scaleFactor));
-                setTransform(prev => ({ ...prev, scale: newScale }));
+                
+                if (containerRef.current) {
+                    const rect = containerRef.current.getBoundingClientRect();
+                    const cx = rect.width / 2;
+                    const cy = rect.height / 2;
+                    const newX = cx - (cx - transform.x) * (newScale / transform.scale);
+                    const newY = cy - (cy - transform.y) * (newScale / transform.scale);
+                    setTransform({ x: newX, y: newY, scale: newScale });
+                }
             }
         } else if (isDragging.current) {
-            // Pan
             const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
             const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
             
             const dx = clientX - lastPos.current.x;
             const dy = clientY - lastPos.current.y;
-            
             setTransform(prev => ({ ...prev, x: prev.x + dx, y: prev.y + dy }));
             lastPos.current = { x: clientX, y: clientY };
         }
@@ -203,7 +250,6 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
         startPinchDist.current = 0;
     };
 
-    // Use { passive: false } to allow preventDefault inside touchmove
     window.addEventListener('mousemove', onMove);
     window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('mouseup', onUp);
@@ -215,7 +261,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
         window.removeEventListener('mouseup', onUp);
         window.removeEventListener('touchend', onUp);
     };
-  }, [isOpen]);
+  }, [isOpen, transform]);
 
 
   const handleCopy = async () => {
@@ -266,7 +312,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   if (!isOpen) return null;
 
   const currentPreviewUrl = snapshots[activeMode].url;
-  const showLoading = isGenerating && !currentPreviewUrl; 
+  const showLoading = isGenerating && !currentPreviewUrl;
 
   return (
     <div 
@@ -274,28 +320,33 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
         onClick={onClose}
     >
       
-      {/* Hidden Render Targets */}
-      <div style={{ position: 'fixed', left: '-200vw', top: 0, opacity: 0, pointerEvents: 'none' }}>
-         <ScreenshotView 
-            id="screenshot-target-full"
-            className="absolute top-0 left-0"
-            session={session}
-            template={template}
-            zoomLevel={zoomLevel}
-            mode="full"
-            layout={layout}
-            baseImage={baseImage}
-         />
-         <ScreenshotView 
-            id="screenshot-target-simple"
-            className="absolute top-0 left-0"
-            session={session}
-            template={template}
-            zoomLevel={zoomLevel}
-            mode="simple"
-            layout={layout}
-            baseImage={baseImage}
-         />
+      {/* 
+        Hidden Render Targets 
+        - Position: Fixed off-screen (-10000px).
+        - Width: max-content to wrap content tightly without extra whitespace.
+        - Zoom: Pass zoomLevel=1 to ensure standard 100% scale capture regardless of UI zoom.
+      */}
+      <div style={{ position: 'fixed', left: '-10000px', top: 0 }}>
+         <div id="screenshot-target-full" style={{ display: 'inline-block', width: 'max-content' }}>
+            <ScreenshotView 
+                session={session}
+                template={template}
+                zoomLevel={1} 
+                mode="full"
+                layout={layout}
+                baseImage={baseImage}
+            />
+         </div>
+         <div id="screenshot-target-simple" style={{ display: 'inline-block', width: 'max-content' }}>
+            <ScreenshotView 
+                session={session}
+                template={template}
+                zoomLevel={1} 
+                mode="simple"
+                layout={layout}
+                baseImage={baseImage}
+            />
+         </div>
       </div>
 
       {/* Main Modal Container */}
@@ -334,14 +385,14 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
         <div className="flex-1 min-h-0 bg-slate-950 relative flex flex-col z-0 overflow-hidden">
             <div 
                 ref={containerRef}
-                className="flex-1 w-full h-full relative overflow-hidden flex items-center justify-center bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] touch-none"
+                className="flex-1 w-full h-full relative overflow-hidden bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] touch-none cursor-grab active:cursor-grabbing"
                 onMouseDown={handlePointerDown}
                 onTouchStart={handlePointerDown}
                 onWheel={handleWheel}
-                onDoubleClick={resetView}
+                onDoubleClick={fitToScreen}
             >
                 {showLoading ? (
-                    <div className="flex flex-col items-center gap-4 text-emerald-500 animate-in fade-in zoom-in duration-300">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-emerald-500 animate-in fade-in zoom-in duration-300 pointer-events-none">
                         <div className="relative">
                             <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full animate-pulse"></div>
                             <Loader2 size={48} className="animate-spin relative z-10" />
@@ -349,43 +400,24 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                         <span className="text-sm font-bold animate-pulse tracking-wider">正在繪製圖片...</span>
                     </div>
                 ) : currentPreviewUrl ? (
-                    <div
+                    <img 
+                        ref={imgRef}
+                        src={currentPreviewUrl} 
+                        alt="Preview" 
+                        onLoad={handleImageLoad}
                         style={{
                             transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-                            transition: isDragging.current ? 'none' : 'transform 0.1s ease-out',
+                            transformOrigin: 'top left',
+                            transition: isDragging.current ? 'none' : 'transform 0.2s ease-out',
                             willChange: 'transform',
-                            cursor: isDragging.current ? 'grabbing' : 'grab'
                         }}
-                        className="max-w-full max-h-full flex items-center justify-center"
-                    >
-                        <img 
-                            src={currentPreviewUrl} 
-                            alt="Preview" 
-                            className="max-w-[90%] max-h-[90%] w-auto h-auto object-contain rounded-lg shadow-2xl border border-slate-800 pointer-events-none select-none" 
-                            draggable={false}
-                        />
-                    </div>
+                        className="absolute top-0 left-0 block pointer-events-none select-none shadow-2xl origin-top-left"
+                        draggable={false}
+                    />
                 ) : (
-                    <div className="flex flex-col items-center gap-2">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none">
                         <span className="text-red-400 text-sm border border-red-900/50 bg-red-900/10 px-4 py-2 rounded-lg">預覽載入失敗</span>
-                        <button onClick={() => { setSnapshots(p => ({...p, [activeMode]: {url:null, blob:null}})); setActiveMode(m => m); }} className="text-xs text-slate-500 underline">重試</button>
-                    </div>
-                )}
-
-                {/* Reset View Button Overlay */}
-                {currentPreviewUrl && !showLoading && (transform.scale !== 1 || transform.x !== 0 || transform.y !== 0) && (
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); resetView(); }}
-                        className="absolute bottom-4 left-4 bg-slate-800/80 backdrop-blur text-white p-2 rounded-lg border border-slate-700 shadow-lg hover:bg-slate-700 transition-all active:scale-95"
-                        title="重置視角"
-                    >
-                        <RotateCcw size={16} />
-                    </button>
-                )}
-                {/* View Hint */}
-                {currentPreviewUrl && !showLoading && transform.scale === 1 && (
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur text-white/70 px-3 py-1 rounded-full text-xs pointer-events-none opacity-50">
-                        可縮放移動 • 雙擊還原
+                        <button onClick={() => { setSnapshots(p => ({...p, [activeMode]: {url:null, blob:null}})); setActiveMode(m => m); }} className="text-xs text-slate-500 underline pointer-events-auto">重試</button>
                     </div>
                 )}
             </div>
