@@ -97,11 +97,23 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
   const [localKeypadValue, setLocalKeypadValue] = useState<any>(0);
   const [activeFactorIdx, setActiveFactorIdx] = useState<0 | 1>(0);
 
+  // Effect to reset local state when cell changes
   useEffect(() => {
     setActiveFactorIdx(0);
-    setLocalKeypadValue(0);
     setUiState((p: any) => ({ ...p, overwriteMode: true }));
-  }, [editingCell, setUiState]);
+    
+    // Check if new column is Product Sum Parts and init correctly
+    if (editingCell) {
+        const col = template.columns.find((c: any) => c.id === editingCell.colId);
+        if (col && (col.formula || '').includes('+next') && col.formula.includes('×a2')) {
+            setLocalKeypadValue({ factors: [0, 1] });
+        } else {
+            setLocalKeypadValue(0);
+        }
+    } else {
+        setLocalKeypadValue(0);
+    }
+  }, [editingCell, setUiState, template.columns]);
 
   const isPanelOpen = editingCell !== null || editingPlayerId !== null;
 
@@ -151,7 +163,12 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
       // Auto columns should not be cleared by the clear button
       if (player && col && col.inputType !== 'auto') {
         if ((col.formula || '').includes('+next')) {
-            setLocalKeypadValue(0);
+            if (col.formula.includes('×a2')) {
+                setLocalKeypadValue({ factors: [0, 1] });
+                setActiveFactorIdx(0);
+            } else {
+                setLocalKeypadValue(0);
+            }
         }
         updateScore(player.id, col.id, undefined);
         setUiState((p: any) => ({ ...p, overwriteMode: true }));
@@ -195,6 +212,12 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     if (activeColumn && activePlayer) {
         const isProductMode = activeColumn.formula === 'a1×a2';
         const isSumPartsMode = (activeColumn.formula || '').includes('+next');
+        const isProductSumPartsMode = isSumPartsMode && activeColumn.formula.includes('×a2');
+        
+        // Universal Logic: If there is a constant in sum-parts mode, we apply it at input time.
+        const constant = activeColumn.constants?.c1 ?? 1;
+        const hasMultiplier = constant !== 1;
+
         const cellScoreObject = activePlayer.scores[activeColumn.id];
 
         // Default next action
@@ -218,10 +241,13 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
              if (isSumPartsMode) {
                   const currentHistory = getScoreHistory(cellScoreObject);
                   let newHistory = [...currentHistory];
+                  // Apply multiplier immediately for sum parts
+                  const valToAdd = hasMultiplier ? action.value * constant : action.value;
+
                   if (action.isModifier && newHistory.length > 0) {
-                       newHistory[newHistory.length - 1] = String(parseFloat(newHistory[newHistory.length - 1]) + action.value);
+                       newHistory[newHistory.length - 1] = String(parseFloat(newHistory[newHistory.length - 1]) + valToAdd);
                   } else {
-                       newHistory.push(String(action.value));
+                       newHistory.push(String(valToAdd));
                   }
                   const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
                   updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
@@ -267,22 +293,65 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
         } else { // 'keypad'
             // Keypad Logic
             if (isSumPartsMode) {
-                const newPart = parseFloat(String(getRawValue(localKeypadValue))) || 0;
-                if (newPart !== 0) nextButtonContent = <ArrowUpToLine size={28} />;
-                
-                onNextAction = () => {
-                    const part = parseFloat(String(getRawValue(localKeypadValue))) || 0;
-                    if (part !== 0) {
-                        const currentHistory = getScoreHistory(cellScoreObject);
-                        const newHistory = [...currentHistory, String(part)];
-                        const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
-                        updateScore(activePlayer!.id, activeColumn!.id, { value: newSum, history: newHistory });
-                        setLocalKeypadValue(0);
-                        setUiState((p: any) => ({ ...p, overwriteMode: true }));
-                    } else {
-                        eventHandlers.moveToNext();
+                if (isProductSumPartsMode) {
+                    // Product Sum Parts Logic (A x B then add)
+                    let currentFactors = [0, 1];
+                    if (localKeypadValue && typeof localKeypadValue === 'object' && localKeypadValue.factors) {
+                        currentFactors = localKeypadValue.factors;
                     }
-                };
+                    const n1 = parseFloat(String(currentFactors[0])) || 0;
+                    
+                    if (n1 !== 0) {
+                        if (activeFactorIdx === 0) {
+                            // If user is editing Factor A and it's non-zero, next button moves to Factor B
+                            nextButtonContent = (<div className="flex flex-col items-center leading-none"><span className="text-xs">輸入 {activeColumn.subUnits?.[1] || 'B'}</span><ArrowDown size={16} /></div>);
+                            onNextAction = () => {
+                                setActiveFactorIdx(1);
+                                setUiState((p: any) => ({ ...p, overwriteMode: true }));
+                            };
+                        } else {
+                            // If editing Factor B (or finished A), show Add button
+                            nextButtonContent = <ArrowUpToLine size={28} />;
+                            onNextAction = () => {
+                                const product = (parseFloat(String(currentFactors[0])) || 0) * (parseFloat(String(currentFactors[1])) || 0);
+                                if (product !== 0 || n1 !== 0) { 
+                                    const currentHistory = getScoreHistory(cellScoreObject);
+                                    const newHistory = [...currentHistory, String(product)];
+                                    const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
+                                    updateScore(activePlayer!.id, activeColumn!.id, { value: newSum, history: newHistory });
+                                    
+                                    // Reset local state
+                                    setLocalKeypadValue({ factors: [0, 1] });
+                                    setActiveFactorIdx(0);
+                                    setUiState((p: any) => ({ ...p, overwriteMode: true }));
+                                } else {
+                                    eventHandlers.moveToNext();
+                                }
+                            };
+                        }
+                    }
+                } else {
+                    // Standard Sum Parts Logic
+                    const inputPart = parseFloat(String(getRawValue(localKeypadValue))) || 0;
+                    if (inputPart !== 0) nextButtonContent = <ArrowUpToLine size={28} />;
+                    
+                    onNextAction = () => {
+                        const input = parseFloat(String(getRawValue(localKeypadValue))) || 0;
+                        if (input !== 0) {
+                            // Apply constant multiplier if exists
+                            const valToAdd = hasMultiplier ? input * constant : input;
+                            
+                            const currentHistory = getScoreHistory(cellScoreObject);
+                            const newHistory = [...currentHistory, String(valToAdd)];
+                            const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
+                            updateScore(activePlayer!.id, activeColumn!.id, { value: newSum, history: newHistory });
+                            setLocalKeypadValue(0);
+                            setUiState((p: any) => ({ ...p, overwriteMode: true }));
+                        } else {
+                            eventHandlers.moveToNext();
+                        }
+                    };
+                }
             } else if (isProductMode) {
                  const n1 = parseFloat(String(cellScoreObject?.parts?.[0] ?? 0)) || 0;
                  if (n1 !== 0 && activeFactorIdx === 0) {

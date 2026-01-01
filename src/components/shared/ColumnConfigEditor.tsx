@@ -23,7 +23,7 @@ interface ColumnConfigEditorProps {
 }
 
 type EditorTab = 'basic' | 'mapping' | 'select' | 'auto';
-type CalculationMode = 'standard' | 'sum-parts' | 'product';
+type CalculationMode = 'standard' | 'product';
 
 const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColumns = [], onSave, onDelete, onClose, baseImage }) => {
   
@@ -115,8 +115,8 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
   }, [editedCol, showLayoutEditor]);
 
   const getCalculationMode = (formula: string): CalculationMode => {
-      if (formula === 'a1×a2') return 'product';
-      if ((formula || '').includes('+next')) return 'sum-parts';
+      if (formula.includes('×a2')) return 'product';
+      // Now sum-parts is considered part of standard
       return 'standard';
   };
 
@@ -127,8 +127,6 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
           finalUpdates.inputType = 'auto';
           finalUpdates.isAuto = true;
           delete finalUpdates.constants;
-          // 注意：在自動模式，我們保留 functions 物件，這是計算引擎的核心
-          // 如果 functions 裡有 f1，我們也同步更新外層的 f1 屬性以相容舊邏輯
           if (finalUpdates.functions?.f1) {
               finalUpdates.f1 = finalUpdates.functions.f1;
           }
@@ -137,7 +135,6 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
           finalUpdates.isAuto = false;
           if (!finalUpdates.f1 || finalUpdates.f1.length === 0) finalUpdates.f1 = [{ min: 0, score: 0 }];
           finalUpdates.inputType = 'keypad';
-          // 同步 functions 物件以保持結構一致
           finalUpdates.functions = { f1: finalUpdates.f1 };
           delete finalUpdates.constants;
       } else if (activeTab === 'select') {
@@ -148,18 +145,41 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
           delete finalUpdates.functions;
           delete finalUpdates.constants;
       } else { 
+          // Standard / Product / Sum Parts
           const currentMode = getCalculationMode(editedCol.formula);
           finalUpdates.isAuto = false;
+          
           if (currentMode === 'product') {
-              finalUpdates.formula = 'a1×a2';
-              finalUpdates.inputType = 'keypad';
-          } else if (currentMode === 'sum-parts') {
-              finalUpdates.formula = 'a1+next';
-              finalUpdates.inputType = editedCol.inputType || sumPartsInputTypeCache.current || 'keypad';
+              // Check if sum-parts is enabled in the edited column
+              const isSumParts = (editedCol.formula || '').includes('+next');
+              if (isSumParts) {
+                  finalUpdates.formula = '(a1×a2)+next';
+                  // Preserve current input settings (allows clicker/keypad)
+                  finalUpdates.inputType = editedCol.inputType || 'keypad';
+              } else {
+                  finalUpdates.formula = 'a1×a2';
+                  finalUpdates.inputType = 'keypad';
+              }
           } else { 
+              // Handle Standard (which now includes Sum Parts)
+              // We construct formula based on whether +next was enabled and c1
+              const isSumParts = (editedCol.formula || '').includes('+next');
               const weight = finalUpdates.constants?.c1 ?? 1;
-              finalUpdates.formula = weight !== 1 ? 'a1×c1' : 'a1';
-              finalUpdates.inputType = 'keypad';
+              
+              let f = 'a1';
+              if (isSumParts) {
+                  // If Sum Parts is enabled:
+                  // 1x weight: a1+next
+                  // >1x weight: (a1+next)×c1  <-- Parenthesis format
+                  f = weight !== 1 ? '(a1+next)×c1' : 'a1+next';
+                  finalUpdates.inputType = editedCol.inputType || sumPartsInputTypeCache.current || 'keypad';
+              } else {
+                  // Standard: a1 or a1×c1
+                  f = weight !== 1 ? 'a1×c1' : 'a1';
+                  finalUpdates.inputType = 'keypad';
+              }
+              
+              finalUpdates.formula = f;
           }
           delete finalUpdates.f1;
           delete finalUpdates.functions;

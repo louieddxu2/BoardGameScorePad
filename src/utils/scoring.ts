@@ -195,16 +195,20 @@ export const calculateColumnScore = (
   if (!parts || parts.length === 0) return 0;
   let calculated = 0;
 
+  // includes check covers 'a1+next', '(a1+next)×c1', etc.
   if ((col.formula || '').includes('+next')) {
     calculated = parts.reduce((sum, part) => sum + part, 0);
+    // REMOVED: Post-summation multiplication logic.
+    // We now assume that for sum-parts, the values in `parts` are already fully processed (multiplied) at input time.
   } else if (col.formula === 'a1×a2') {
     const a = parts[0] ?? 0;
     const b = parts[1] ?? 1;
     calculated = a * b;
-  } else if (col.formula.startsWith('f1')) {
+  } else if (col.formula && col.formula.startsWith('f1')) {
     const rules = col.f1 || [];
     calculated = createLookupFunction(rules)(parts[0] ?? 0);
   } else {
+    // Standard a1 or a1×c1
     const valNum = parts[0] ?? 0;
     calculated = col.formula === 'a1×c1' ? valNum * (col.constants?.c1 ?? 1) : valNum;
   }

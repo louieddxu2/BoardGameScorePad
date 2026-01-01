@@ -243,9 +243,9 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   const renderSyncIcon = (template: GameTemplate) => {
       if (!googleDriveService.isAuthorized) return null;
-      if (!template.lastSyncedAt) return <CloudOff size={14} className="text-slate-500" title="未上傳雲端" />;
+      if (!template.lastSyncedAt) return <div title="未上傳雲端"><CloudOff size={14} className="text-slate-500" /></div>;
       const isSynced = template.lastSyncedAt >= (template.updatedAt || 0);
-      if (isSynced) return <Cloud size={14} className="text-emerald-500" title="已同步" />;
+      if (isSynced) return <div title="已同步"><Cloud size={14} className="text-emerald-500" /></div>;
       return (
           <div className="relative" title="待同步">
               <Cloud size={14} className="text-slate-400" />

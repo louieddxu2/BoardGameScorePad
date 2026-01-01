@@ -55,7 +55,8 @@ export const NumericKeypadContent: React.FC<NumericKeypadContentProps> = (props)
     return [s1, s2];
   };
 
-  const isProductMode = column.formula === 'a1×a2';
+  // Support both normal product (a1×a2) and sum-product ((a1×a2)+next)
+  const isProductMode = column.formula.includes('×a2');
 
   const isToggleMode = (() => {
     if (overwrite) return false;
@@ -199,6 +200,12 @@ interface NumericKeypadInfoProps {
   setOverwrite?: (v: boolean) => void; // Added Prop
 }
 
+// Helper formatting function
+const formatNum = (n: number) => {
+    if (Object.is(n, -0)) return '-0';
+    return String(n);
+}
+
 export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, value, activeFactorIdx, setActiveFactorIdx, localKeypadValue, onDeleteLastPart, setOverwrite }) => {
     const activeRuleRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -218,6 +225,7 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
         }
     }, [historyParts.length, column.formula]);
 
+    // Regular Product Mode (a1×a2)
     if (column.formula === 'a1×a2') {
       const factors = getFactors(value);
       const unitA = column.subUnits?.[0] || '數量';
@@ -244,7 +252,7 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
                 className="flex items-center gap-1.5 cursor-pointer group" 
                 onClick={() => { 
                     setActiveFactorIdx?.(0); 
-                    setOverwrite?.(true); // Trigger overwrite mode
+                    setOverwrite?.(true); 
                 }}
               >
                   <div className={`flex-1 px-2 py-0.5 rounded-md border transition-all overflow-x-auto no-scrollbar flex items-center ${isFactorAActive ? 'bg-emerald-900/30 border-emerald-500' : 'bg-slate-900 border-slate-700 group-hover:border-slate-600'}`}>
@@ -257,7 +265,7 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
                 className="flex items-center gap-1.5 cursor-pointer group" 
                 onClick={() => { 
                     setActiveFactorIdx?.(1); 
-                    setOverwrite?.(true); // Trigger overwrite mode
+                    setOverwrite?.(true);
                 }}
               >
                   <div className={`flex-1 px-2 py-0.5 rounded-md border transition-all overflow-x-auto no-scrollbar flex items-center ${isFactorBActive ? 'bg-emerald-900/30 border-emerald-500' : 'bg-slate-900 border-slate-700 group-hover:border-slate-600'}`}>
@@ -274,20 +282,45 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
       );
     }
     
+    // Sum Parts (including Product Sum Parts & Constant Sum Parts)
     if ((column.formula || '').includes('+next')) {
       const parts = historyParts;
-      const currentInputRaw = (typeof localKeypadValue === 'object') ? localKeypadValue.value : localKeypadValue;
-      const currentInputStr = String(currentInputRaw || '0');
+      const isProductSumParts = column.formula.includes('×a2');
+      // Universal Logic: If c1 exists and is not 1, treat it as weighted sum parts
+      const constant = column.constants?.c1 ?? 1;
+      const hasMultiplier = constant !== 1;
       const hasMappingRules = column.f1 && column.f1.length > 0;
       const showInputPreview = !(column.inputType === 'clicker' && !hasMappingRules);
 
+      // Get local factors for preview
+      let currentFactors = [0, 1];
+      let currentInputStr = "0";
+      
+      if (isProductSumParts) {
+          if (localKeypadValue && typeof localKeypadValue === 'object' && localKeypadValue.factors) {
+              currentFactors = localKeypadValue.factors;
+          }
+      } else {
+          const currentInputRaw = (typeof localKeypadValue === 'object') ? localKeypadValue.value : localKeypadValue;
+          currentInputStr = String(currentInputRaw || '0');
+      }
+
+      const isFactorAActive = activeFactorIdx === 0;
+      const isFactorBActive = activeFactorIdx === 1;
+
       return (
         <div className="flex flex-col h-full">
-            <div className="text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 flex items-center gap-1 shrink-0 px-2 pt-2"><PlusSquare size={12} /> 分項累加</div>
+            <div className="text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 flex items-center gap-1 shrink-0 px-2 pt-2"><PlusSquare size={12} /> 分項累加 {isProductSumParts ? '(乘積)' : ''}</div>
+            
+            {/* History List */}
             <div className="flex-1 overflow-y-auto no-scrollbar px-2 py-1" ref={scrollContainerRef}>
                 <div className="min-h-full flex flex-col justify-end">
                     {parts.length === 0 && <div className="flex-1 flex items-center justify-center text-xs text-slate-600 italic">尚無分項</div>}
                     {parts.map((part, idx) => {
+                        const rawPartVal = parseFloat(part);
+                        // Stored value is already calculated, show directly
+                        const displayVal = formatNum(rawPartVal);
+                        
                         const isLast = idx === parts.length - 1;
                         if (isLast) {
                             return (
@@ -297,22 +330,61 @@ export const NumericKeypadInfo: React.FC<NumericKeypadInfoProps> = ({ column, va
                                     )}
                                     <div className="flex-1 text-right">
                                         <div className="inline-block bg-white/5 px-2 py-0.5 rounded border border-white/10">
-                                            <span className="text-lg font-bold text-white font-mono leading-none tracking-tight">{part}</span>
+                                            <span className="text-lg font-bold text-white font-mono leading-none tracking-tight">{displayVal}</span>
                                         </div>
                                     </div>
                                 </div>
                             );
                         }
-                        return <div key={idx} className="text-sm text-slate-500 font-mono leading-tight text-right pr-1 pb-1">{part}</div>;
+                        return <div key={idx} className="text-sm text-slate-500 font-mono leading-tight text-right pr-1 pb-1">{displayVal}</div>;
                     })}
                 </div>
             </div>
+
+            {/* Input Area (Split or Single) */}
             {showInputPreview && (
                 <div className="shrink-0 px-2 pb-1 relative">
                     <div className="border-t border-white/20 mb-1"></div>
-                    <div className="bg-emerald-900/30 border border-emerald-500 rounded-md px-2 py-0.5 text-right shadow-[0_0_10px_rgba(16,185,129,0.1)]">
-                        <span className="text-2xl font-bold text-white font-mono leading-tight">{currentInputStr}</span>
-                    </div>
+                    
+                    {isProductSumParts ? (
+                        // Split Input: [ A ] x [ B ]
+                        <div className="flex items-center gap-2">
+                            <div 
+                                onClick={() => { setActiveFactorIdx?.(0); setOverwrite?.(true); }}
+                                className={`flex-1 bg-emerald-900/30 border rounded-md px-1 py-0.5 text-center shadow-[0_0_10px_rgba(16,185,129,0.1)] transition-colors cursor-pointer ${isFactorAActive ? 'border-emerald-500 ring-1 ring-emerald-500/50' : 'border-slate-700 opacity-70 hover:opacity-100'}`}
+                            >
+                                <span className={`text-xl font-bold font-mono leading-tight ${isFactorAActive ? 'text-white' : 'text-slate-400'}`}>
+                                    {String(currentFactors[0])}
+                                </span>
+                            </div>
+                            
+                            <span className="text-slate-500 text-xs font-bold">×</span>
+                            
+                            <div 
+                                onClick={() => { setActiveFactorIdx?.(1); setOverwrite?.(true); }}
+                                className={`flex-1 bg-emerald-900/30 border rounded-md px-1 py-0.5 text-center shadow-[0_0_10px_rgba(16,185,129,0.1)] transition-colors cursor-pointer ${isFactorBActive ? 'border-emerald-500 ring-1 ring-emerald-500/50' : 'border-slate-700 opacity-70 hover:opacity-100'}`}
+                            >
+                                <span className={`text-xl font-bold font-mono leading-tight ${isFactorBActive ? 'text-white' : 'text-slate-400'}`}>
+                                    {String(currentFactors[1])}
+                                </span>
+                            </div>
+                        </div>
+                    ) : hasMultiplier ? (
+                        // Constant Multiplier Input: [ Input ] x Constant
+                        <div className="flex items-center gap-2">
+                            <div className="flex-1 bg-emerald-900/30 border border-emerald-500 rounded-md px-2 py-0.5 text-right shadow-[0_0_10px_rgba(16,185,129,0.1)]">
+                                <span className="text-2xl font-bold text-white font-mono leading-tight">{currentInputStr}</span>
+                            </div>
+                            <span className="text-slate-500 text-xs font-bold flex items-center whitespace-nowrap gap-0.5">
+                                <X size={10} /> {constant}
+                            </span>
+                        </div>
+                    ) : (
+                        // Single Input
+                        <div className="bg-emerald-900/30 border border-emerald-500 rounded-md px-2 py-0.5 text-right shadow-[0_0_10px_rgba(16,185,129,0.1)]">
+                            <span className="text-2xl font-bold text-white font-mono leading-tight">{currentInputStr}</span>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

@@ -233,6 +233,12 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
       }, 0);
   };
 
+  const isRoundingEnabled = column.rounding && column.rounding !== 'none';
+  
+  const toggleRounding = () => {
+      onChange({ rounding: isRoundingEnabled ? 'none' : 'round' });
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300 pb-12">
       <div className="flex items-start gap-3 bg-indigo-900/20 p-3 rounded-xl border border-indigo-500/30">
@@ -407,6 +413,30 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                           </div>
                       ))}
                   </div>
+              </div>
+
+              {/* 3. Rounding Section */}
+              <div className="space-y-2 pt-6 border-t border-slate-800">
+                <div 
+                    onClick={toggleRounding} 
+                    className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all duration-300 ${isRoundingEnabled ? 'bg-indigo-900/30 border-indigo-500' : 'bg-slate-800 border-slate-700 hover:bg-slate-750'}`}
+                >
+                    <span className={`text-sm font-bold transition-colors ${isRoundingEnabled ? 'text-indigo-100' : 'text-slate-300'}`}>啟用小數點進位/捨去</span>
+                    <div className={`w-12 h-6 rounded-full relative transition-colors ${isRoundingEnabled ? 'bg-indigo-500' : 'bg-slate-600'}`}>
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow transition-transform duration-300 ${isRoundingEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+                    </div>
+                </div>
+                {isRoundingEnabled && (
+                    <div className="animate-in fade-in slide-in-from-top-2 pt-4 pl-4 border-l-2 border-indigo-500 ml-4">
+                        <div className="grid grid-cols-3 gap-2">
+                            {(['floor', 'ceil', 'round'] as const).map(mode => (
+                                <button key={mode} onClick={() => onChange({ rounding: mode })} className={`py-2 px-1 rounded-lg border text-xs font-bold ${column.rounding === mode ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
+                                    {mode === 'floor' ? '無條件捨去' : mode === 'ceil' ? '無條件進位' : '四捨五入'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
               </div>
           </div>
       )}

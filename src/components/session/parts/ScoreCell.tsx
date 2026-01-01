@@ -191,8 +191,27 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, playerIndex, column, allC
 
       // Sum Parts Render
       if ((column.formula || '').includes('+next')) {
-        const showParts = column.showPartsInGrid ?? true;
-        if (showParts && parts.length > 0) {
+        const showPartsSetting = column.showPartsInGrid ?? true;
+        
+        // 1. New "Parts Only" Mode
+        if (showPartsSetting === 'parts_only') {
+            if (hasInput && parts.length > 0) {
+                return (
+                    <div className="w-full h-full flex flex-col justify-center items-center overflow-hidden py-1">
+                        {parts.map((part, i) => (
+                            <div key={i} className="text-base font-bold font-mono leading-tight">
+                                <span style={textStyle}>{formatDisplayNumber(part)}</span>
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
+            // Empty state for parts_only
+            return null; 
+        }
+
+        // 2. Standard Mode (Total Center + Parts Bottom-Right)
+        if (showPartsSetting === true && parts.length > 0) {
             return (
                 <div className="w-full h-full flex flex-row items-stretch overflow-hidden">
                     <div className="flex-1 flex justify-center items-center min-w-0">
@@ -218,7 +237,10 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, playerIndex, column, allC
       }
 
       // Standard Render
-      const rawVal = (column.formula || '').includes('+next') ? displayScore : parts[0];
+      // For standard a1 or a1xc1, rawVal is parts[0]. The displayScore handles multiplier for center text.
+      // But for the corner hint, we usually show the "Input value" or "Unit".
+      // If formula is a1xc1, parts[0] IS the input value.
+      const rawVal = parts[0];
       
       return (
         <>
@@ -226,9 +248,13 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, playerIndex, column, allC
             {hasInput ? formatDisplayNumber(displayScore) : ''}
           </span>
       
-          {!simpleMode && hasInput && (
+          {!simpleMode && hasInput && (column.formula !== 'a1' || column.unit) && (
               <span className="absolute bottom-1 right-1 text-sm font-mono flex items-baseline max-w-full px-1">
-                  <span className="text-emerald-400 font-bold truncate">{formatDisplayNumber(rawVal)}</span>
+                  {/* If standard multiplier, displayScore is calculated. rawVal is input. */}
+                  {/* We can show rawVal if it differs from displayScore to hint at the input */}
+                  {column.formula === 'a1×c1' && (
+                      <span className="text-emerald-400 font-bold truncate">{formatDisplayNumber(rawVal)}</span>
+                  )}
                   {column.unit && <span className="text-emerald-400/80 text-xs ml-0.5 truncate">{column.unit}</span>}
               </span>
           )}

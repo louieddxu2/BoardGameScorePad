@@ -381,9 +381,12 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 {col.isScoring && (
                     <div className="text-xs text-slate-500 mt-1 flex flex-col items-center justify-center w-full leading-none">
                         {(() => {
-                            if (col.formula === 'a1×a2' && col.subUnits) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span>{col.subUnits[0]}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span>{col.subUnits[1]}</span></div>;
+                            if (col.formula.includes('a1×a2') && col.subUnits) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span>{col.subUnits[0]}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span>{col.subUnits[1]}</span></div>;
                             if (col.inputType === 'clicker' && !col.formula.includes('+next')) return <div className="flex items-center justify-center gap-1 flex-wrap w-full"><Settings size={10} />{col.unit && <span className="text-xs break-words text-center">{col.unit}</span>}</div>;
-                            if (col.formula === 'a1×c1') return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="text-emerald-500 font-bold font-mono">{col.constants?.c1 ?? 1}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="break-words text-center">{col.unit}</span></div>;
+                            
+                            // Check for any formula involving multiplication by c1 (e.g. a1xc1, (a1+next)xc1)
+                            if (col.formula?.includes('×c1')) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="break-words text-center">{col.unit}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="text-emerald-500 font-bold font-mono">{col.constants?.c1 ?? 1}</span></div>;
+                            
                             if (col.unit) return <span className="text-xs break-words w-full text-center">{col.unit}</span>;
                             return null;
                         })()}

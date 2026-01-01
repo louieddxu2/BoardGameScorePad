@@ -163,7 +163,28 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
           );
       }
 
-      // Full view for Sum Parts
+      // NEW: Parts Only Mode for Textured Cell
+      if (isSumParts && column.showPartsInGrid === 'parts_only' && hasInput) {
+          return (
+              <div className="relative z-10 w-full h-full flex flex-col items-center justify-center py-1 gap-0.5">
+                  {parts.map((p, i) => (
+                      <span 
+                        key={i} 
+                        className="text-lg font-bold tracking-tight leading-none block truncate max-w-full"
+                        style={{
+                            ...inkStyle,
+                            // Slightly rotate each line based on index to look like handwritten list
+                            transform: `rotate(${((player.id.charCodeAt(0) + i) % 5) - 2}deg)`, 
+                        }}
+                      >
+                          {formatDisplayNumber(p)}
+                      </span>
+                  ))}
+              </div>
+          );
+      }
+
+      // Full view for Sum Parts (Standard)
       if (isSumParts && hasInput && !simpleMode) {
           return (
               <div className="relative z-10 w-full h-full flex flex-row items-stretch">
@@ -174,7 +195,9 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                   </div>
                   <div className="w-1/2 flex flex-col justify-center items-end pl-1 pr-0.5 leading-none opacity-90 gap-0.5" style={noteStyle}>
                       {parts.map((p, i) => (
-                          <span key={i} className="text-sm font-bold block truncate max-w-full">{formatDisplayNumber(p)}</span>
+                          <span key={i} className="text-sm font-bold block truncate max-w-full">
+                              {formatDisplayNumber(p)}
+                          </span>
                       ))}
                   </div>
               </div>

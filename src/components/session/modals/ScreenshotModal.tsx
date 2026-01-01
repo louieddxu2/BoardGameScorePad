@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Copy, Download, Share, Loader2, Image as ImageIcon, LayoutPanelLeft } from 'lucide-react';
 import { toBlob } from 'html-to-image';
@@ -23,6 +22,8 @@ interface SnapshotCache {
   blob: Blob | null;
   url: string | null;
 }
+
+const PIXEL_RATIO = 2; // Generate image at 2x resolution for sharpness
 
 const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   isOpen,
@@ -64,37 +65,33 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
       const img = imgRef.current;
       if (!container || !img) return;
 
-      // [CRITICAL FIX] Use clientWidth/Height for exact inner content size (excluding borders)
       const containerW = container.clientWidth;
       const containerH = container.clientHeight;
 
-      const imgW = img.naturalWidth || img.width;
-      const imgH = img.naturalHeight || img.height;
+      // Adjust for pixel ratio to get logical dimensions
+      const logicalImgW = (img.naturalWidth || img.width) / PIXEL_RATIO;
+      const logicalImgH = (img.naturalHeight || img.height) / PIXEL_RATIO;
 
-      if (imgW === 0 || imgH === 0 || containerW === 0 || containerH === 0) return;
+      if (logicalImgW === 0 || logicalImgH === 0 || containerW === 0 || containerH === 0) return;
 
-      // [CRITICAL FIX] Zero padding for maximum usage
-      const scale = Math.min(containerW / imgW, containerH / imgH);
+      const scale = Math.min(containerW / logicalImgW, containerH / logicalImgH);
 
       // Center the image
-      const x = (containerW - imgW * scale) / 2;
-      const y = (containerH - imgH * scale) / 2;
+      const x = (containerW - logicalImgW * scale) / 2;
+      const y = (containerH - logicalImgH * scale) / 2;
 
       setTransform({ x, y, scale });
   }, []);
 
   const handleImageLoad = () => {
-      // Ensure layout is stable before fitting
       requestAnimationFrame(() => fitToScreen());
   };
 
-  // [CRITICAL FIX] Monitor container resize (e.g., when modal finishes animating)
   useEffect(() => {
       const container = containerRef.current;
       if (!container || !isOpen) return;
 
       const observer = new ResizeObserver(() => {
-          // Only re-fit if we have an image loaded
           if (snapshots[activeMode].url) {
               requestAnimationFrame(() => fitToScreen());
           }
@@ -128,7 +125,6 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
         setIsGenerating(true);
         
-        // Wait for render
         const renderDelay = baseImage ? 800 : 300;
         await new Promise(r => setTimeout(r, renderDelay));
 
@@ -146,7 +142,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
             const blob = await toBlob(targetWrapper, {
                 backgroundColor: baseImage ? '#ffffff' : '#0f172a', 
-                pixelRatio: 1, 
+                pixelRatio: PIXEL_RATIO, 
                 width: width,
                 height: height,
                 style: { 
@@ -410,6 +406,8 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                             transformOrigin: 'top left',
                             transition: isDragging.current ? 'none' : 'transform 0.2s ease-out',
                             willChange: 'transform',
+                            width: `${(imgRef.current?.naturalWidth || 0) / PIXEL_RATIO}px`,
+                            height: `${(imgRef.current?.naturalHeight || 0) / PIXEL_RATIO}px`,
                         }}
                         className="absolute top-0 left-0 block pointer-events-none select-none shadow-2xl origin-top-left"
                         draggable={false}

@@ -84,7 +84,7 @@ export const useGoogleDrive = () => {
       } finally {
           setIsSyncing(false);
       }
-  });
+  }, [showToast]);
 
   const downloadCloudImage = useCallback(async (fileId: string): Promise<string | null> => {
       setIsSyncing(true);

@@ -49,9 +49,12 @@ const ScreenshotHeaderCell: React.FC<{ col: any; baseImage?: string; children?: 
                 {props.col.isScoring && (
                     <div className="text-xs text-slate-500 mt-1 flex flex-col items-center justify-center w-full leading-none">
                         {(() => {
-                            if (props.col.formula === 'a1×a2' && props.col.subUnits) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="">{props.col.subUnits[0]}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="">{props.col.subUnits[1]}</span></div>;
+                            if (props.col.formula.includes('a1×a2') && props.col.subUnits) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="">{props.col.subUnits[0]}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="">{props.col.subUnits[1]}</span></div>;
                             if (props.col.inputType === 'clicker' && !props.col.formula.includes('+next')) return <div className="flex items-center gap-1">{props.col.unit && <span className="text-xs">{props.col.unit}</span>}</div>;
-                            if (props.col.formula === 'a1×c1') return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="text-emerald-500 font-bold font-mono">{props.col.constants?.c1 ?? 1}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="">{props.col.unit}</span></div>;
+                            
+                            // Check for any formula involving multiplication by c1 (e.g. a1xc1, (a1+next)xc1)
+                            if (props.col.formula?.includes('×c1')) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="">{props.col.unit}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="text-emerald-500 font-bold font-mono">{props.col.constants?.c1 ?? 1}</span></div>;
+                            
                             if (props.col.unit) return <span className="text-xs">{props.col.unit}</span>;
                             return null;
                         })()}

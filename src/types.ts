@@ -67,7 +67,7 @@ export interface ScoreColumn {
   unit?: string;
   subUnits?: [string, string]; 
   rounding?: RoundingMode;
-  showPartsInGrid?: boolean; 
+  showPartsInGrid?: boolean | 'parts_only'; 
   buttonGridColumns?: number; 
   
   // Display Control
