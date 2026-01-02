@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { QuickAction, ScoreColumn } from '../../types';
-import { isColorDark } from '../../utils/ui';
+import { isColorTooLight } from '../../utils/ui';
 
 interface QuickButtonPadProps {
   column: ScoreColumn;
@@ -25,14 +24,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction }) => 
   }
 
   const cols = column.buttonGridColumns || 1;
-  
-  // Layout Logic:
-  // If 1 or 2 columns, use Row layout (Label left, Value right).
-  // If > 2 columns (Grid view), use Col layout (Label top, Value bottom).
   const isListMode = cols <= 2;
-
-  // Minimum height per button to ensure usability.
-  // Grid mode needs slightly more height for stacked text+number.
   const minRowHeight = isListMode ? '3.5rem' : '4.5rem';
 
   return (
@@ -44,21 +36,34 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction }) => 
                 gridAutoRows: `minmax(${minRowHeight}, auto)`
             }}
         >
-        {/* Brightness reduction mask */}
         <div className="absolute inset-0 bg-black/15 pointer-events-none z-10"></div>
 
         {actions.map(action => {
             const bg = action.color || column.color || '#ffffff';
-            const isDark = isColorDark(bg);
-            // FIX: Only show modifier style if it's actually in sum-parts mode
-            const isModifier = column.formula.includes('+next') && action.isModifier;
-            const textColor = isDark ? 'white' : '#0f172a';
+            const isLightBg = isColorTooLight(bg);
+            const isStandardSumParts = column.formula.includes('+next') && !column.formula.includes('×a2');
+            const isModifier = isStandardSumParts && action.isModifier;
+
+            // --- New Dynamic Style Logic ---
+            
+            // 1. Text Color (for both label and badge number)
+            const textColor = isLightBg ? '#0f172a' : 'white';
+
+            // 2. Modifier Border Style
+            const borderClass = isModifier
+              ? `border-dashed border-2 ${isLightBg ? 'border-black/40' : 'border-white/50'}`
+              : 'border border-black/10';
+            
+            // 3. Badge Background Style
+            const badgeBgClass = isModifier 
+              ? (isLightBg ? 'bg-black/30' : 'bg-white/30')
+              : 'bg-black/20';
 
             return (
             <button
                 key={action.id}
                 onClick={() => handleAction(action)}
-                className={`rounded-xl flex items-center p-2 shadow-sm active:scale-95 transition-all relative h-full ${isListMode ? 'flex-row justify-between px-4' : 'flex-col justify-center'} ${isModifier ? 'border-dashed border-2 border-white/40' : 'border border-black/10'}`}
+                className={`rounded-xl flex items-center p-2 shadow-sm active:scale-95 transition-all relative h-full ${isListMode ? 'flex-row justify-between px-4' : 'flex-col justify-center'} ${borderClass}`}
                 style={{ backgroundColor: bg }}
             >
                 <span 
@@ -68,9 +73,10 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction }) => 
                     {action.label}
                 </span>
                 <span 
-                    className={`font-mono font-bold rounded-full text-white flex items-center justify-center shrink-0 pointer-events-none ${isListMode ? 'text-[16px] px-3 py-1 ml-2' : 'text-[14px] px-2 py-0.5'} ${isModifier ? 'bg-white/30' : 'bg-black/20'}`}
+                    className={`font-mono font-bold rounded-full flex items-center justify-center shrink-0 pointer-events-none ${isListMode ? 'text-[16px] px-3 py-1 ml-2' : 'text-[14px] px-2 py-0.5'} ${badgeBgClass}`}
+                    style={{ color: textColor }}
                 >
-                    {action.value > 0 ? '+' : ''}{action.value}
+                    {isStandardSumParts && action.value > 0 ? '+' : ''}{action.value}
                 </span>
             </button>
             );

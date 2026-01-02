@@ -257,11 +257,26 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
             <label className="text-xs font-bold text-slate-500 uppercase">計算公式</label>
             {parseError && !isLocked && <span className="text-[10px] text-amber-400 flex items-center gap-1 animate-pulse"><AlertCircle size={10} /> {parseError}</span>}
         </div>
-        <div className="relative">
-            <input ref={inputRef} type="text" inputMode="decimal" value={localFormula} onChange={e => { setLocalFormula(e.target.value); setParseError(null); }} placeholder="f1(x1) + f2(x2)" disabled={isLocked} className={`w-full border rounded-xl p-4 font-mono text-lg font-bold tracking-wide outline-none transition-all shadow-inner ${isLocked ? 'bg-slate-900/50 border-slate-700 text-slate-400' : 'bg-slate-900 border-indigo-500/50 text-white focus:ring-1 focus:ring-indigo-500'}`}/>
-            <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                {isLocked ? <button onClick={() => setIsLocked(false)} className="p-2 bg-slate-800 text-slate-400 rounded-lg border border-slate-600 text-xs font-bold"><Unlock size={14} /> 解鎖</button> : <button onClick={handleLock} className="p-2 bg-emerald-600 text-white rounded-lg shadow-lg text-xs font-bold"><Check size={14} /> 確認公式</button>}
-            </div>
+        <div className="flex items-stretch gap-2">
+            <input 
+                ref={inputRef} 
+                type="text" 
+                inputMode="decimal" 
+                value={localFormula} 
+                onChange={e => { setLocalFormula(e.target.value); setParseError(null); }} 
+                placeholder="f1(x1) + f2(x2)" 
+                disabled={isLocked} 
+                className={`flex-1 min-w-0 border rounded-xl p-4 font-mono text-lg font-bold tracking-wide outline-none transition-all shadow-inner ${isLocked ? 'bg-slate-900/50 border-slate-700 text-slate-400' : 'bg-slate-900 border-indigo-500/50 text-white focus:ring-1 focus:ring-indigo-500'}`}
+            />
+            {isLocked ? 
+                <button onClick={() => setIsLocked(false)} className="px-4 bg-slate-800 text-slate-400 rounded-xl border border-slate-600 flex items-center justify-center">
+                    <Unlock size={24} />
+                </button> 
+                : 
+                <button onClick={handleLock} className="px-4 bg-emerald-600 text-white rounded-xl shadow-lg flex items-center justify-center">
+                    <Check size={24} />
+                </button>
+            }
         </div>
 
         {!isLocked && (
@@ -313,6 +328,8 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                       {variableList.length === 0 && <div className="text-center py-4 text-xs text-slate-500 italic bg-slate-900/30 rounded-lg">公式中沒有變數</div>}
                       {variableList.map(([key, mapObj]) => {
                           const currentMode = mapObj.mode || 'value';
+                          const isPlayerCount = mapObj.id === PLAYER_COUNT_ID;
+                          
                           return (
                             <div key={key} className="flex flex-col gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
                                 <div className="flex items-center gap-2">
@@ -342,29 +359,30 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                                     </div>
                                 </div>
                                 
-                                {/* Mode Selection */}
-                                <div className="flex items-center gap-2 pl-12">
-                                    <span className="text-[10px] text-slate-500 shrink-0 uppercase">取值模式:</span>
-                                    <select 
-                                        value={currentMode} 
-                                        onChange={(e) => {
-                                            const newMode = e.target.value as any;
-                                            onChange({ variableMap: { ...variableMap, [key]: { ...mapObj, mode: newMode } } });
-                                        }}
-                                        className={`flex-1 text-xs border rounded p-1.5 outline-none font-bold ${
-                                            // 修正顏色：降低亮度，避免刺眼，同時確保在選單中可讀
-                                            currentMode === 'value' 
-                                                ? 'bg-slate-900 text-slate-400 border-slate-700' 
-                                                : 'bg-slate-900 text-amber-500 border-amber-900'
-                                        }`}
-                                    >
-                                        <option value="value">數值 (預設)</option>
-                                        <option value="rank_score">分數排名 (1, 1, 2...)</option>
-                                        <option value="rank_player">玩家排名 (1, 1, 3...)</option>
-                                        <option value="tie_count">平手人數</option>
-                                    </select>
-                                </div>
-                                {currentMode !== 'value' && (
+                                {/* Mode Selection - 隱藏當變數為玩家人數時 */}
+                                {!isPlayerCount && (
+                                    <div className="flex items-center gap-2 pl-12">
+                                        <span className="text-[10px] text-slate-500 shrink-0 uppercase">取值模式:</span>
+                                        <select 
+                                            value={currentMode} 
+                                            onChange={(e) => {
+                                                const newMode = e.target.value as any;
+                                                onChange({ variableMap: { ...variableMap, [key]: { ...mapObj, mode: newMode } } });
+                                            }}
+                                            className={`flex-1 text-xs border rounded p-1.5 outline-none font-bold ${
+                                                currentMode === 'value' 
+                                                    ? 'bg-slate-900 text-slate-400 border-slate-700' 
+                                                    : 'bg-slate-900 text-amber-500 border-amber-900'
+                                            }`}
+                                        >
+                                            <option value="value">數值 (預設)</option>
+                                            <option value="rank_score">分數排名 (1, 1, 2...)</option>
+                                            <option value="rank_player">玩家排名 (1, 1, 3...)</option>
+                                            <option value="tie_count">平手人數</option>
+                                        </select>
+                                    </div>
+                                )}
+                                {!isPlayerCount && currentMode !== 'value' && (
                                     <div className="pl-12 text-[10px] text-amber-600/80 flex items-center gap-1">
                                         {currentMode === 'tie_count' ? <Hash size={10}/> : <Trophy size={10} />}
                                         {currentMode === 'rank_score' && "分數相同者並列，名次連續 (Dense Rank)"}
@@ -406,7 +424,8 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                                             if (updates.f1) {
                                                 updateFunctionRules(fKey, updates.f1);
                                             }
-                                        }} 
+                                        }}
+                                        hideUnitInput={true}
                                       />
                                   </div>
                               )}

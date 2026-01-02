@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GameSession, GameTemplate, Player, ScoreColumn, QuickAction, ScoreValue } from '../../../types';
 import { useSessionState } from '../hooks/useSessionState';
 import { useSessionEvents } from '../hooks/useSessionEvents';
-import { NumericKeypadContent, NumericKeypadInfo } from '../../shared/NumericKeypad';
+import NumericKeypad from '../../shared/NumericKeypad';
+import ScoreInfoPanel from './ScoreInfoPanel';
 import QuickButtonPad from '../../shared/QuickButtonPad';
 import PlayerEditor, { PlayerEditorInfo } from './PlayerEditor';
 import AutoScorePanel from './AutoScorePanel';
@@ -210,9 +211,9 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     activePlayer = session.players.find((p: any) => p.id === editingCell.playerId);
 
     if (activeColumn && activePlayer) {
-        const isProductMode = activeColumn.formula === 'a1×a2';
+        const isProductMode = activeColumn.formula.includes('×a2');
         const isSumPartsMode = (activeColumn.formula || '').includes('+next');
-        const isProductSumPartsMode = isSumPartsMode && activeColumn.formula.includes('×a2');
+        const isProductSumPartsMode = isSumPartsMode && isProductMode;
         
         // Universal Logic: If there is a constant in sum-parts mode, we apply it at input time.
         const constant = activeColumn.constants?.c1 ?? 1;
@@ -237,8 +238,34 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
         const handleQuickButtonAction = (action: QuickAction) => {
              if (!activePlayer || !activeColumn) return;
-             
-             if (isSumPartsMode) {
+
+             if (isProductSumPartsMode) {
+                let currentFactors = [0, 1];
+                if (localKeypadValue && typeof localKeypadValue === 'object' && localKeypadValue.factors) {
+                    currentFactors = localKeypadValue.factors.slice();
+                }
+
+                if (activeFactorIdx === 0) { // Editing Factor A
+                    currentFactors[0] = action.value;
+                    setLocalKeypadValue({ factors: currentFactors });
+                    setActiveFactorIdx(1);
+                    setUiState((p: any) => ({ ...p, overwriteMode: true }));
+                } else { // Editing Factor B
+                    const n1 = parseFloat(String(currentFactors[0])) || 0;
+                    const n2 = action.value;
+                    const product = n1 * n2;
+                    
+                    const currentHistory = getScoreHistory(cellScoreObject);
+                    const newHistory = [...currentHistory, String(product)];
+                    const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
+                    updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
+
+                    // Reset for next entry
+                    setLocalKeypadValue({ factors: [0, 1] });
+                    setActiveFactorIdx(0);
+                    setUiState((p: any) => ({ ...p, overwriteMode: true }));
+                }
+             } else if (isSumPartsMode) {
                   const currentHistory = getScoreHistory(cellScoreObject);
                   let newHistory = [...currentHistory];
                   // Apply multiplier immediately for sum parts
@@ -285,8 +312,19 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
         } else if (activeColumn.inputType === 'clicker') {
              // Clicker / Quick Actions
              mainContentNode = ( <QuickButtonPad column={activeColumn} onAction={handleQuickButtonAction} /> );
-             if (isSumPartsMode) {
-                sidebarContentNode = <NumericKeypadInfo column={activeColumn} value={cellScoreObject} onDeleteLastPart={handleDeleteLastPart} />;
+             
+             if (isProductSumPartsMode) {
+                 sidebarContentNode = <ScoreInfoPanel 
+                    column={activeColumn} 
+                    value={cellScoreObject} 
+                    activeFactorIdx={activeFactorIdx} 
+                    setActiveFactorIdx={setActiveFactorIdx}
+                    localKeypadValue={localKeypadValue} // Pass local state for preview
+                    onDeleteLastPart={handleDeleteLastPart}
+                    setOverwrite={(v) => setUiState((p: any) => ({ ...p, overwriteMode: v }))}
+                 />;
+             } else if (isSumPartsMode) {
+                sidebarContentNode = <ScoreInfoPanel column={activeColumn} value={cellScoreObject} onDeleteLastPart={handleDeleteLastPart} />;
              } else {
                 sidebarContentNode = ( <div className="flex flex-col h-full p-2 text-slate-400 text-xs"><div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0"><ListPlus size={12} /> 列表選單</div><div className="flex-1"></div></div> );
              }
@@ -368,13 +406,13 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             else if (isProductMode) { keypadValue = { factors: cellScoreObject?.parts ?? [0, 1] }; } 
             else { keypadValue = { value: cellScoreObject?.parts?.[0] ?? 0 }; }
             
-            mainContentNode = <NumericKeypadContent 
+            mainContentNode = <NumericKeypad 
                 value={keypadValue}
                 onChange={(val: any) => isSumPartsMode ? setLocalKeypadValue(val) : updateScore(activePlayer!.id, activeColumn!.id, val)}
                 column={activeColumn} overwrite={overwriteMode} setOverwrite={(v: boolean) => setUiState((p: any) => ({ ...p, overwriteMode: v }))}
                 onNext={onNextAction} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={setActiveFactorIdx} playerId={activePlayer.id}
             />;
-            sidebarContentNode = <NumericKeypadInfo 
+            sidebarContentNode = <ScoreInfoPanel 
               column={activeColumn} value={cellScoreObject} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={setActiveFactorIdx}
               localKeypadValue={isSumPartsMode ? localKeypadValue : undefined}
               onDeleteLastPart={isSumPartsMode ? handleDeleteLastPart : undefined}

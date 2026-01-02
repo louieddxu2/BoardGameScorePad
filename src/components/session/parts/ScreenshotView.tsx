@@ -2,7 +2,7 @@
 import React, { useMemo } from 'react';
 import { GameSession, GameTemplate, ScoreColumn } from '../../../types';
 import { Trophy } from 'lucide-react';
-import ScoreCell from '../ScoreCell';
+import ScoreCell from './ScoreCell';
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
 import TexturedPlayerHeader from './TexturedPlayerHeader';
 import TexturedTotalCell from './TexturedTotalCell';
@@ -254,79 +254,84 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
           ))}
         </div>
 
-        {processedColumns.map(col => (
-            <div 
-                key={col.id} 
-                id={`ss-row-${mode}-${col.id}`} 
-                className="flex"
-                style={{ height: layout?.rowHeights[col.id] ? `${layout.rowHeights[col.id]}px` : undefined }}
-            >
-                <ScreenshotHeaderCell
-                    col={col}
-                    className={`${borderRight2Class} ${borderBottomClass} ${rowBorderClass} p-2 text-center flex flex-col justify-center bg-slate-800`}
-                    style={{ ...itemColStyle, borderRightColor: getColumnBorderRight(col.color) }}
+        {processedColumns.map((col, index) => {
+            const isAlt = index % 2 !== 0;
+            const headerBgClass = isAlt ? 'bg-[#2e3b4e]' : 'bg-slate-800';
+
+            return (
+                <div 
+                    key={col.id} 
+                    id={`ss-row-${mode}-${col.id}`} 
+                    className="flex"
+                    style={{ height: layout?.rowHeights[col.id] ? `${layout.rowHeights[col.id]}px` : undefined }}
                 >
-                </ScreenshotHeaderCell>
-                
-                {session.players.map((p, index) => (
-                <div key={p.id} style={getPlayerColStyle(p.id)} className="relative">
-                    <ScoreCell
-                        player={p}
-                        playerIndex={index}
-                        column={col}
-                        allColumns={template.columns}
-                        allPlayers={session.players} // Pass session players
-                        isActive={false}
-                        onClick={() => {}}
-                        screenshotMode={true}
-                        simpleMode={mode === 'simple'}
-                        baseImage={undefined}
-                        forceHeight={"h-full"}
-                    />
+                    <ScreenshotHeaderCell
+                        col={col}
+                        className={`${borderRight2Class} ${borderBottomClass} ${rowBorderClass} p-2 text-center flex flex-col justify-center ${headerBgClass}`}
+                        style={{ ...itemColStyle, borderRightColor: getColumnBorderRight(col.color) }}
+                    >
+                    </ScreenshotHeaderCell>
                     
-                    {/* Render Overlays */}
-                    {col.overlayColumns.map(overlayCol => {
-                        const scoreData = p.scores[overlayCol.id];
-                        const parts = scoreData?.parts || [];
-                        const overlayContext = { 
-                            allColumns: template.columns, 
-                            playerScores: p.scores,
-                            allPlayers: session.players // Pass session players
-                        };
-                        const displayScore = calculateColumnScore(overlayCol, parts, overlayContext);
+                    {session.players.map((p, index) => (
+                    <div key={p.id} style={getPlayerColStyle(p.id)} className="relative">
+                        <ScoreCell
+                            player={p}
+                            playerIndex={index}
+                            column={col}
+                            allColumns={template.columns}
+                            allPlayers={session.players} // Pass session players
+                            isActive={false}
+                            onClick={() => {}}
+                            screenshotMode={true}
+                            simpleMode={mode === 'simple'}
+                            baseImage={undefined}
+                            forceHeight={"h-full"}
+                            isAlt={isAlt}
+                        />
                         
-                        const hasInput = overlayCol.isAuto ? true : parts.length > 0;
-                        const defaultTextColor = '#ffffff';
+                        {/* Render Overlays */}
+                        {col.overlayColumns.map(overlayCol => {
+                            const scoreData = p.scores[overlayCol.id];
+                            const parts = scoreData?.parts || [];
+                            const overlayContext = { 
+                                allColumns: template.columns, 
+                                playerScores: p.scores,
+                                allPlayers: session.players // Pass session players
+                            };
+                            const displayScore = calculateColumnScore(overlayCol, parts, overlayContext);
+                            
+                            const hasInput = overlayCol.isAuto ? true : parts.length > 0;
+                            const defaultTextColor = '#ffffff';
 
-                        const textStyle: React.CSSProperties = {
-                            color: hasInput ? (displayScore < 0 ? '#f87171' : (overlayCol.color || defaultTextColor)) : '#475569',
-                            ...(overlayCol.color && isColorDark(overlayCol.color) && { textShadow: ENHANCED_TEXT_SHADOW }),
-                        };
+                            const textStyle: React.CSSProperties = {
+                                color: hasInput ? (displayScore < 0 ? '#f87171' : (overlayCol.color || defaultTextColor)) : '#475569',
+                                ...(overlayCol.color && isColorDark(overlayCol.color) && { textShadow: ENHANCED_TEXT_SHADOW }),
+                            };
 
-                        if (!overlayCol.contentLayout) return null;
+                            if (!overlayCol.contentLayout) return null;
 
-                        return (
-                            <div
-                                key={overlayCol.id}
-                                className="absolute flex items-center justify-center pointer-events-none"
-                                style={{
-                                    left: `${overlayCol.contentLayout.x}%`,
-                                    top: `${overlayCol.contentLayout.y}%`,
-                                    width: `${overlayCol.contentLayout.width}%`,
-                                    height: `${overlayCol.contentLayout.height}%`,
-                                }}
-                            >
-                                <span className="text-xl font-bold tracking-tight w-full text-center truncate px-1" style={textStyle}>
-                                    {hasInput ? formatDisplayNumber(displayScore) : ''}
-                                </span>
-                            </div>
-                        );
-                    })}
+                            return (
+                                <div
+                                    key={overlayCol.id}
+                                    className="absolute flex items-center justify-center pointer-events-none"
+                                    style={{
+                                        left: `${overlayCol.contentLayout.x}%`,
+                                        top: `${overlayCol.contentLayout.y}%`,
+                                        width: `${overlayCol.contentLayout.width}%`,
+                                        height: `${overlayCol.contentLayout.height}%`,
+                                    }}
+                                >
+                                    <span className="text-xl font-bold tracking-tight w-full text-center truncate px-1" style={textStyle}>
+                                        {hasInput ? formatDisplayNumber(displayScore) : ''}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    ))}
                 </div>
-                ))}
-            </div>
-          )
-        )}
+            );
+        })}
 
         <div id={`ss-totals-row-${mode}`} className={`flex items-stretch min-h-[2.5rem] border-t ${rowBorderClass} bg-slate-900`}>
             <ScreenshotTotalLabel 

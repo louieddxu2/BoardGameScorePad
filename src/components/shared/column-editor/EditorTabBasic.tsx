@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { ScoreColumn, InputMethod } from '../../../types';
-import { Calculator, BoxSelect, Eye, EyeOff, Hash, Plus, X as Multiply, List } from 'lucide-react';
+import { Calculator, BoxSelect, Hash, Plus, X as Multiply } from 'lucide-react';
 import QuickActionsEditor from './QuickActionsEditor';
 
 interface EditorTabBasicProps {
@@ -17,8 +17,9 @@ type CalculationMode = 'standard' | 'product';
 const SumPartsSubSettings: React.FC<{ 
     column: ScoreColumn, 
     onChange: (updates: Partial<ScoreColumn>) => void,
-    themeColor?: 'emerald' | 'indigo'
-}> = ({ column, onChange, themeColor = 'emerald' }) => {
+    themeColor?: 'emerald' | 'indigo',
+    isProductMode?: boolean
+}> = ({ column, onChange, themeColor = 'emerald', isProductMode = false }) => {
     const activeSwitchClass = themeColor === 'emerald' ? 'bg-emerald-500' : 'bg-indigo-500';
     
     // Normalize logic for undefined (default is true)
@@ -28,24 +29,16 @@ const SumPartsSubSettings: React.FC<{
         <>
             <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-2">格內顯示方式</label>
-                <div className="grid grid-cols-3 gap-2 bg-slate-800 p-1 rounded-xl border border-slate-700">
-                    <button onClick={() => onChange({ showPartsInGrid: true })} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold transition-all ${currentMode === true ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
-                        <Eye size={16} /> 
-                        <span>標準</span>
+                <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+                    <button onClick={() => onChange({ showPartsInGrid: true })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentMode === true ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
+                        標準
                     </button>
-                    <button onClick={() => onChange({ showPartsInGrid: false })} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold transition-all ${currentMode === false ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
-                        <EyeOff size={16} /> 
-                        <span>簡潔</span>
+                    <button onClick={() => onChange({ showPartsInGrid: false })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentMode === false ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
+                        僅顯示總和
                     </button>
-                    <button onClick={() => onChange({ showPartsInGrid: 'parts_only' })} className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-bold transition-all ${currentMode === 'parts_only' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
-                        <List size={16} /> 
-                        <span>列表</span>
+                    <button onClick={() => onChange({ showPartsInGrid: 'parts_only' })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentMode === 'parts_only' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
+                        僅顯示分項
                     </button>
-                </div>
-                <div className="text-[10px] text-slate-500 px-1">
-                    {currentMode === true && "同時顯示總和與小分項。"}
-                    {currentMode === false && "僅顯示加總後的結果。"}
-                    {currentMode === 'parts_only' && "隱藏總和，僅顯示輸入的數字列表(大字體)。"}
                 </div>
             </div>
             
@@ -63,7 +56,7 @@ const SumPartsSubSettings: React.FC<{
                             quickActions={column.quickActions || []}
                             buttonGridColumns={column.buttonGridColumns}
                             defaultColor={column.color}
-                            showModifierToggle={true}
+                            showModifierToggle={!isProductMode}
                             onChange={onChange}
                         />
                     </div>
@@ -109,7 +102,9 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
         
         // CRITICAL: Do NOT reset inputType if Sum Parts is enabled. 
         // If Sum Parts is disabled, Product mode defaults to Keypad.
-        if (!willEnableSumParts) {
+        if (willEnableSumParts) {
+            updates.inputType = column.inputType || cachedSumPartsInputType;
+        } else {
             updates.inputType = 'keypad';
         }
         
@@ -330,6 +325,7 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                         column={column} 
                         onChange={handleSubSettingsChange} 
                         themeColor={currentCalcMode === 'product' ? 'indigo' : 'emerald'}
+                        isProductMode={currentCalcMode === 'product'}
                     />
                 </div>
             )}

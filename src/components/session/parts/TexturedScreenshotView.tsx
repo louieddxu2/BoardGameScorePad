@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { GameSession, GameTemplate, ScoreColumn, Rect } from '../../../types';
 import { Trophy } from 'lucide-react';
-import ScoreCell from '../ScoreCell';
+import ScoreCell from './ScoreCell';
 import TexturedPlayerHeader from './TexturedPlayerHeader';
 import TexturedTotalCell from './TexturedTotalCell';
 import { cropImageToDataUrl } from '../../../utils/imageProcessing';

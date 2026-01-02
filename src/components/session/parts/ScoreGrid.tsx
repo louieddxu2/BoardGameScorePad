@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { GameSession, GameTemplate, Player, ScoreColumn } from '../../../types';
 import { GripVertical, EyeOff, Layers, Sparkles, Settings, Sigma, X } from 'lucide-react';
-import ScoreCell from '../ScoreCell';
+import ScoreCell from './ScoreCell';
 import TexturedPlayerHeader from './TexturedPlayerHeader';
 import { useColumnDragAndDrop } from '../hooks/useColumnDragAndDrop';
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
@@ -330,6 +330,9 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           const isDropTarget = dnd.dropTargetId === col.id;
           const displayMode = col.resolvedDisplayMode as 'row' | 'overlay' | 'hidden';
           
+          // Zebra Striping Logic
+          const isAlt = index % 2 !== 0; // Odd rows are alt
+          
           let indicator = null;
           
           if (isEditMode && dnd.draggingId && isDropTarget) {
@@ -350,6 +353,15 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
 
           const headerDragHandlers = getDragHandlers(col.id);
           const rowHiddenClass = (isEditMode && displayMode === 'hidden') ? 'opacity-70 bg-slate-900/50' : '';
+          
+          // Header Background Color Logic (Standard vs Alt)
+          // Even: bg-slate-800 (#1e293b)
+          // Odd: bg-[#2e3b4e] (Slightly lighter than 800, to match data zebra)
+          // When dragging in Edit Mode, force slate-700.
+          // Note: If baseImage is present, these colors are covered by the texture unless dragging.
+          const headerBgClass = isEditMode && isDragging 
+            ? 'bg-slate-700' 
+            : (isAlt && !baseImage ? 'bg-[#2e3b4e]' : 'bg-slate-800');
 
           return (
             <div
@@ -369,7 +381,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 isEditMode={isEditMode}
                 displayMode={displayMode}
                 {...headerDragHandlers}
-                className={`sticky left-0 w-[70px] bg-slate-800 border-r-2 border-b border-slate-700 p-2 flex flex-col justify-center transition-colors z-20 group select-none shrink-0 ${isEditMode ? (isDragging ? 'cursor-grabbing bg-slate-700' : 'cursor-grab hover:bg-slate-700') : 'cursor-default'}`}
+                className={`sticky left-0 w-[70px] ${headerBgClass} border-r-2 border-b border-slate-700 p-2 flex flex-col justify-center transition-colors z-20 group select-none shrink-0 ${isEditMode ? (isDragging ? 'cursor-grabbing' : 'cursor-grab hover:bg-slate-700') : 'cursor-default'}`}
                 style={{
                   ...(baseImage ? itemColStyle : {}),
                   borderRightColor: col.color || 'var(--border-slate-700)'
@@ -409,6 +421,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         isEditMode={isEditMode}
                         // Pass right mask boundary for limit calculation
                         limitX={template.globalVisuals?.rightMaskRect?.x}
+                        // Pass Zebra Striping flag
+                        isAlt={isAlt}
                     />
                      {/* OVERLAY RENDERING */}
                      {col.overlayColumns.map(overlayCol => {

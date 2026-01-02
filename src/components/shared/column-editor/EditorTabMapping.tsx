@@ -6,9 +6,10 @@ import { Infinity as InfinityIcon, ArrowRight as ArrowRightIcon, Lock, TrendingU
 interface EditorTabMappingProps {
   column: ScoreColumn;
   onChange: (updates: Partial<ScoreColumn>) => void;
+  hideUnitInput?: boolean;
 }
 
-const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange }) => {
+const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, hideUnitInput }) => {
   const rules = column.f1 || [];
 
   const getMinConstraint = (idx: number, currentRules: MappingRule[]): number => {
@@ -116,17 +117,19 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange })
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
       <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 space-y-4">
         <p className="text-sm text-slate-400">設定數值區間與對應分數，或是在區間內每a加b。</p>
-        <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">單位</label>
-          <input
-            type="text"
-            value={column.unit || ''}
-            onChange={e => onChange({ unit: e.target.value })}
-            onFocus={e => e.target.select()}
-            placeholder="如：分、個、元"
-            className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-emerald-500 outline-none"
-          />
-        </div>
+        {!hideUnitInput && (
+            <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">單位</label>
+            <input
+                type="text"
+                value={column.unit || ''}
+                onChange={e => onChange({ unit: e.target.value })}
+                onFocus={e => e.target.select()}
+                placeholder="如：分、個、元"
+                className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-emerald-500 outline-none"
+            />
+            </div>
+        )}
       </div>
       <div className="space-y-2">
         {rules.map((rule, idx) => (
@@ -249,7 +252,7 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange })
                     <input
                       type="text"
                       inputMode="decimal"
-                      placeholder="分"
+                      placeholder="數值"
                       value={rule.score}
                       onChange={e => {
                         const val = e.target.value;
@@ -264,7 +267,6 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange })
                       onFocus={e => e.target.select()}
                       className="w-full h-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-bold rounded-md p-2 text-center text-sm outline-none focus:border-emerald-500"
                     />
-                    <span className="absolute right-2 top-2.5 text-xs text-emerald-500/50">分</span>
                   </div>
                 )}
               </div>

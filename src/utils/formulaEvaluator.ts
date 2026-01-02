@@ -56,11 +56,8 @@ export const evaluateFormula = (
     const evalFn = new Function(...fnNames, `"use strict"; return (${processedFormula})`);
     const result = evalFn(...fnValues);
 
-    // 5. 處理結果
-    if (!isFinite(result) || isNaN(result)) {
-      return 0;
-    }
-
+    // 5. 回傳結果
+    // 修改：不再強制歸零，允許回傳 Infinity/NaN 以便上層偵測錯誤 (如除以0)
     return result;
 
   } catch (error) {

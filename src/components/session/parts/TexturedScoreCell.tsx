@@ -163,29 +163,36 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
           );
       }
 
-      // NEW: Parts Only Mode for Textured Cell
-      if (isSumParts && column.showPartsInGrid === 'parts_only' && hasInput) {
-          return (
-              <div className="relative z-10 w-full h-full flex flex-col items-center justify-center py-1 gap-0.5">
-                  {parts.map((p, i) => (
-                      <span 
-                        key={i} 
-                        className="text-lg font-bold tracking-tight leading-none block truncate max-w-full"
-                        style={{
-                            ...inkStyle,
-                            // Slightly rotate each line based on index to look like handwritten list
-                            transform: `rotate(${((player.id.charCodeAt(0) + i) % 5) - 2}deg)`, 
-                        }}
-                      >
-                          {formatDisplayNumber(p)}
-                      </span>
-                  ))}
-              </div>
-          );
+      // Priority 1: Simple/Total Mode
+      // Triggered if prop simpleMode=true OR config showPartsInGrid=false
+      if (simpleMode || column.showPartsInGrid === false) {
+          // This block falls through to the Default/Simple rendering at the bottom
+          // which renders just the centered total.
       }
-
-      // Full view for Sum Parts (Standard)
-      if (isSumParts && hasInput && !simpleMode) {
+      else if (isSumParts && hasInput) {
+          // Priority 2: Parts Only Mode (List)
+          if (column.showPartsInGrid === 'parts_only') {
+              return (
+                  <div className="relative z-10 w-full h-full flex flex-col items-center justify-center py-1 gap-0.5">
+                      {parts.map((p, i) => (
+                          <span 
+                            key={i} 
+                            className="text-lg font-bold tracking-tight leading-none block truncate max-w-full"
+                            style={{
+                                ...inkStyle,
+                                transform: `rotate(${((player.id.charCodeAt(0) + i) % 5) - 2}deg)`, 
+                            }}
+                          >
+                              {formatDisplayNumber(p)}
+                          </span>
+                      ))}
+                  </div>
+              );
+          }
+          
+          // Priority 3: Standard Mode (Split View)
+          // Since we already filtered out 'false' (Simple) and 'parts_only' (List) and simpleMode prop, 
+          // this is the default Standard view.
           return (
               <div className="relative z-10 w-full h-full flex flex-row items-stretch">
                   <div className="w-1/2 flex justify-center items-center min-w-0 border-r border-slate-500/10 pr-0.5">
@@ -204,13 +211,21 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
           );
       }
 
-      // Default/Simple mode rendering
+      // Default/Simple mode rendering (Center Total)
+      const rawVal = parts[0];
+      const showRawValHint = displayScore !== rawVal;
+      const hasUnit = !!column.unit;
+      
+      // Determine if we should show the bottom-right hint (Standard mode only)
+      // Only show hint if NOT in simpleMode AND column setting is NOT simple
+      const showBottomRight = !simpleMode && column.showPartsInGrid !== false && hasInput && !isProduct && !isSumParts && !isSelectList && (showRawValHint || hasUnit);
+
       return (
           <div className="relative z-10 w-full h-full flex items-center justify-center">
               {isProduct && hasInput ? (
                   <div className="flex flex-col items-center justify-center leading-none" style={inkStyle}>
                       <span className="text-2xl font-bold">{formatDisplayNumber(displayScore)}</span>
-                      {!simpleMode && (
+                      {!simpleMode && column.showPartsInGrid !== false && (
                         <span className="text-xs opacity-70 font-sans tracking-tighter" style={{ mixBlendMode: 'normal' }}>
                             {parts[0]}×{parts[1] ?? 1}
                         </span>
@@ -222,7 +237,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                   </span>
               )}
 
-              {!simpleMode && (
+              {!simpleMode && column.showPartsInGrid !== false && (
                 <div className="absolute bottom-2 right-2 z-10 flex flex-col items-end pointer-events-none max-w-[80%]">
                     {isSelectList && hasInput && (() => {
                         const rawVal = parts[0];
@@ -232,7 +247,9 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                         }
                         return null;
                     })()}
-                    {column.formula === 'a1×c1' && hasInput && (
+                    
+                    {/* Bug Fix: Standard Weighted Column with Unit */}
+                    {showBottomRight && (
                          <div className="flex items-center gap-0.5 leading-none" style={noteStyle}>
                              <span className="text-lg font-bold">{formatDisplayNumber(parts[0])}</span>
                              {column.unit && <span className="text-xs opacity-70">{column.unit}</span>}

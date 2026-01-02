@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ScoreColumn, Player } from '../../../types';
 import { calculateColumnScore } from '../../../utils/scoring';
@@ -26,34 +25,42 @@ const AutoScorePanel: React.FC<AutoScorePanelProps> = ({ column, player, allColu
   const finalScore = calculateColumnScore(column, [], context);
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 text-slate-300 select-text p-2">
-      {/* Header Info */}
-      <div className="flex items-center gap-2 pb-2 border-b border-slate-800 mb-2 shrink-0">
-        <div className="p-2 bg-indigo-900/30 text-indigo-400 rounded-lg">
-          <Calculator size={18} />
+    <div className="flex flex-col h-full w-full bg-slate-900 text-slate-300 select-text p-[6px]">
+      {/* Header Info - Use a more robust grid layout: auto for ends, 1fr for the flexible middle */}
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-[8px] pb-[6px] border-b border-slate-800 mb-[6px] shrink-0">
+        
+        {/* Icon - Sizes to its content */}
+        <div className="p-[8px] bg-indigo-900/30 text-indigo-400 rounded-[8px] shrink-0 flex items-center justify-center">
+          <Calculator size="1.125em" />
         </div>
-        <div className="flex-1 min-w-0">
+        
+        {/* Formula - Fills remaining space */}
+        <div className="min-w-0">
           <div className="text-[10px] uppercase font-bold text-slate-500">自動計算公式</div>
-          <div className="text-sm font-mono text-white font-bold truncate tracking-wide">
-            {column.formula}
+          <div className="overflow-x-auto no-scrollbar bg-black/20 rounded-[4px] py-[4px] border border-slate-700">
+            <div className="text-sm font-mono text-white font-bold whitespace-nowrap tracking-wide px-[8px]">
+              {column.formula}
+            </div>
           </div>
         </div>
-        <div className="text-right">
+        
+        {/* Result - Sizes to its content */}
+        <div className="text-right shrink-0">
             <div className="text-[10px] uppercase font-bold text-slate-500">結果</div>
             <div className="text-xl font-bold text-emerald-400">{finalScore}</div>
         </div>
       </div>
 
       {/* Variables List */}
-      <div className="flex-1 overflow-y-auto no-scrollbar space-y-2">
+      <div className="flex-1 overflow-y-auto no-scrollbar space-y-[6px]">
         {variables.length === 0 ? (
-            <div className="text-center py-8 text-slate-500 text-xs italic">
+            <div className="text-center py-[32px] text-slate-500 text-xs italic">
                 此公式沒有使用任何變數
             </div>
         ) : (
-            <div className="space-y-1">
-                <div className="text-[10px] uppercase font-bold text-slate-500 pl-1 mb-1 flex items-center gap-1">
-                    <Variable size={10} /> 變數詳情
+            <div className="space-y-[4px]">
+                <div className="text-[10px] uppercase font-bold text-slate-500 pl-[4px] mb-[4px] flex items-center gap-[4px]">
+                    <Variable size="1em" /> 變數詳情
                 </div>
                 {variables.map(([varName, targetRef]) => {
                     let value = 0;
@@ -105,8 +112,8 @@ const AutoScorePanel: React.FC<AutoScorePanelProps> = ({ column, player, allColu
                     }
 
                     return (
-                        <div key={varName} className="flex items-center gap-3 bg-slate-800/50 p-2 rounded-lg border border-slate-700/50">
-                            <div className="w-8 h-8 flex items-center justify-center bg-slate-800 rounded font-mono font-bold text-indigo-300 text-sm border border-slate-700">
+                        <div key={varName} className="flex items-center gap-[12px] bg-slate-800/50 p-[8px] rounded-[8px] border border-slate-700/50">
+                            <div className="w-[32px] h-[32px] flex items-center justify-center bg-slate-800 rounded-[4px] font-mono font-bold text-indigo-300 text-sm border border-slate-700">
                                 {varName}
                             </div>
                             <div className="flex-1 min-w-0 flex flex-col justify-center">
@@ -120,8 +127,8 @@ const AutoScorePanel: React.FC<AutoScorePanelProps> = ({ column, player, allColu
                                     </span>
                                 )}
                             </div>
-                            <ArrowRight size={14} className="text-slate-600 shrink-0" />
-                            <div className="bg-slate-900 px-3 py-1 rounded text-white font-mono font-bold text-sm min-w-[3rem] text-center border border-slate-700">
+                            <ArrowRight size="0.875em" className="text-slate-600 shrink-0" />
+                            <div className="bg-slate-900 px-[12px] py-[4px] rounded-[4px] text-white font-mono font-bold text-sm w-[48px] text-center border border-slate-700">
                                 {value}
                             </div>
                         </div>
@@ -132,8 +139,8 @@ const AutoScorePanel: React.FC<AutoScorePanelProps> = ({ column, player, allColu
       </div>
       
       {/* Footer Hint */}
-      <div className="shrink-0 pt-2 border-t border-slate-800 text-[10px] text-slate-500 text-center flex items-center justify-center gap-1">
-          <Sigma size={10} />
+      <div className="shrink-0 pt-[6px] border-t border-slate-800 text-[10px] text-slate-500 text-center flex items-center justify-center gap-[4px]">
+          <Sigma size="1em" />
           數值將自動隨其他欄位更新而變化
       </div>
     </div>

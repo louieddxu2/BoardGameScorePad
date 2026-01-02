@@ -61,6 +61,23 @@ export const migrateColumn = (oldCol: any): ScoreColumn => {
     });
   }
 
+  // 確保 functions 內部的規則也經過標準化檢查 (例如補上 unitScore)
+  let functions = oldCol.functions;
+  if (functions) {
+      const sanitizedFunctions: Record<string, MappingRule[]> = {};
+      Object.keys(functions).forEach(key => {
+          if (Array.isArray(functions[key])) {
+              sanitizedFunctions[key] = functions[key].map((rule: any) => {
+                  if (rule.isLinear && rule.unitScore === undefined) {
+                      return { ...rule, unitScore: rule.score };
+                  }
+                  return rule;
+              });
+          }
+      });
+      functions = sanitizedFunctions;
+  }
+
   let displayMode: 'row' | 'overlay' | 'hidden' = oldCol.displayMode || 'row';
 
   const newCol: ScoreColumn = {
@@ -71,6 +88,7 @@ export const migrateColumn = (oldCol: any): ScoreColumn => {
     formula,
     constants,
     f1,
+    functions, // CRITICAL FIX: Preserve the functions object (f2, f3...)
     inputType,
     quickActions,
     unit: oldCol.unit,

@@ -127,14 +127,26 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
           finalUpdates.inputType = 'auto';
           finalUpdates.isAuto = true;
           delete finalUpdates.constants;
-          if (finalUpdates.functions?.f1) {
-              finalUpdates.f1 = finalUpdates.functions.f1;
+          
+          // [BUG FIX] Ensure functions is preserved and f1 is synced
+          if (finalUpdates.functions) {
+            // Also explicitly delete top-level f1 if it's not in functions, to avoid ambiguity
+            if (finalUpdates.functions.f1) {
+                finalUpdates.f1 = finalUpdates.functions.f1;
+            } else {
+                finalUpdates.f1 = undefined;
+            }
+          } else {
+            // Should theoretically not happen in auto tab if setup correctly, but as fallback
+            finalUpdates.f1 = undefined; 
           }
+
       } else if (activeTab === 'mapping') {
           finalUpdates.formula = 'f1(a1)';
           finalUpdates.isAuto = false;
           if (!finalUpdates.f1 || finalUpdates.f1.length === 0) finalUpdates.f1 = [{ min: 0, score: 0 }];
           finalUpdates.inputType = 'keypad';
+          // Ensure f1 is also in functions for consistency
           finalUpdates.functions = { f1: finalUpdates.f1 };
           delete finalUpdates.constants;
       } else if (activeTab === 'select') {

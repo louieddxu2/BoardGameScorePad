@@ -2,15 +2,15 @@
 import React from 'react';
 import { Player, ScoreColumn, ScoreValue } from '../../../types';
 import { calculateColumnScore, getAutoColumnError } from '../../../utils/scoring';
-import TexturedScoreCell from './parts/TexturedScoreCell';
+import TexturedScoreCell from './TexturedScoreCell';
 import { Link2Off, AlertTriangle } from 'lucide-react';
 
 interface ScoreCellProps {
   player: Player;
   playerIndex: number; 
   column: ScoreColumn;
-  allColumns?: ScoreColumn[]; // Added prop
-  allPlayers?: Player[]; // Added for ranking context
+  allColumns?: ScoreColumn[];
+  allPlayers?: Player[];
   isActive: boolean;
   onClick: (e: React.MouseEvent) => void;
   forceHeight?: string;
@@ -18,104 +18,216 @@ interface ScoreCellProps {
   simpleMode?: boolean; 
   baseImage?: string; 
   isEditMode?: boolean; 
-  limitX?: number; // New Prop for Right Bound limit
+  limitX?: number;
+  isAlt?: boolean; // New prop for Zebra Striping
 }
 
-// Helper to correctly format numbers
+interface CellContentProps {
+    parts: number[];
+    displayScore: number;
+    hasInput: boolean;
+    column: ScoreColumn;
+    simpleMode: boolean;
+    textStyle: React.CSSProperties;
+    forceHeight?: string;
+    screenshotMode?: boolean;
+    autoError?: 'missing_dependency' | 'math_error' | null;
+}
+
+// --- Helpers ---
 const formatDisplayNumber = (num: number | undefined | null): string => {
   if (num === undefined || num === null) return '';
   if (Object.is(num, -0)) return '-0';
   return String(num);
 };
 
-const ScoreCell: React.FC<ScoreCellProps> = ({ player, playerIndex, column, allColumns, allPlayers, isActive, onClick, forceHeight, screenshotMode = false, simpleMode = false, baseImage, isEditMode = false, limitX }) => {
+// --- Sub-Components (Renderers) ---
+
+const CellContentAuto: React.FC<CellContentProps> = ({ displayScore, forceHeight, autoError, textStyle }) => (
+    <>
+        {autoError && (
+            <div className="absolute top-1 left-1 text-rose-500 z-20" title={autoError === 'missing_dependency' ? "參照的欄位已遺失" : "計算錯誤 (如除以0)"}>
+                {autoError === 'missing_dependency' ? <Link2Off size={14} /> : <AlertTriangle size={14} />}
+            </div>
+        )}
+        <span className={`text-xl font-bold w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
+            {autoError ? 'ERR' : formatDisplayNumber(displayScore)}
+        </span>
+    </>
+);
+
+const CellContentSelect: React.FC<CellContentProps> = ({ parts, displayScore, hasInput, column, simpleMode, forceHeight, screenshotMode, textStyle }) => {
+    const rawVal = parts[0];
+    const option = column.quickActions?.find(opt => opt.value === rawVal);
+    
+    return (
+        <>
+            <span className={`text-xl font-bold w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
+            {hasInput ? formatDisplayNumber(displayScore) : ''}
+            </span>
+            {!simpleMode && option && (
+                <span className={`absolute bottom-1 right-1 text-xs font-medium px-1 rounded truncate max-w-[90%] ${screenshotMode ? 'text-emerald-400/80' : 'text-emerald-400 bg-slate-900/80 border border-slate-700'}`}>
+                    {option.label}
+                </span>
+            )}
+        </>
+    );
+};
+
+const CellContentProduct: React.FC<CellContentProps> = ({ parts, displayScore, hasInput, column, simpleMode, forceHeight, screenshotMode, textStyle }) => {
+    const [a, b] = parts;
+    const ua = column.subUnits?.[0] || '';
+    const ub = column.subUnits?.[1] || '';
+    
+    const productUI = hasInput ? (
+      <span className={`absolute bottom-1 right-1 flex items-baseline px-1 rounded max-w-full overflow-hidden ${screenshotMode ? '' : 'bg-slate-900/80 border border-slate-800/50'}`}>
+           <span className="text-sm font-bold font-mono text-emerald-400 leading-none truncate">{formatDisplayNumber(a)}</span>
+           <span className="text-xs text-emerald-400/80 ml-[1px] leading-none">{ua}</span>
+           <span className="text-sm text-slate-600 mx-[2px] leading-none">×</span>
+           <span className="text-sm font-bold font-mono text-emerald-400 leading-none truncate">{formatDisplayNumber(b ?? 1)}</span>
+           <span className="text-xs text-emerald-400/80 ml-[1px] leading-none">{ub}</span>
+      </span>
+    ) : null;
+    
+    return (
+      <>
+        <span className={`text-xl font-bold tracking-tight w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
+          {hasInput ? formatDisplayNumber(displayScore) : ''}
+        </span>
+        {!simpleMode && productUI}
+      </>
+    );
+};
+
+const CellContentSum: React.FC<CellContentProps> = ({ parts, displayScore, hasInput, column, simpleMode, forceHeight, textStyle }) => {
+    const showPartsSetting = column.showPartsInGrid ?? true;
+    
+    // Priority 1: Force Simple Mode (Total Only)
+    // Triggered if: 
+    // - View is in Simple Mode (simpleMode prop)
+    // - OR Column is configured as Simple (showPartsInGrid === false)
+    // - OR No parts to show
+    if (simpleMode || showPartsSetting === false || parts.length === 0) {
+        return (
+            <span className={`text-xl font-bold tracking-tight w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
+                {hasInput ? formatDisplayNumber(displayScore) : ''}
+            </span>
+        );
+    }
+
+    // Priority 2: "Parts Only" Mode (List Only)
+    if (showPartsSetting === 'parts_only') {
+        if (hasInput && parts.length > 0) {
+            const fontSizeClass = parts.length > 3 ? 'text-sm' : 'text-xl';
+            return (
+                <div className="w-full h-full flex flex-col justify-center items-center overflow-hidden py-0.5">
+                    {parts.map((part, i) => (
+                        <div key={i} className={`${fontSizeClass} font-bold font-mono leading-tight truncate w-full text-center`}>
+                            <span style={textStyle}>{formatDisplayNumber(part)}</span>
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+        return <span className={`text-xl font-bold tracking-tight w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}></span>;
+    }
+
+    // Priority 3: Standard Mode (Split View: Total + List)
+    return (
+        <div className="w-full h-full flex flex-row items-stretch overflow-hidden">
+            <div className="flex-1 flex justify-center items-center min-w-0">
+                <span className={`text-xl font-bold tracking-tight w-full text-center truncate px-0.5 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
+                    {hasInput ? formatDisplayNumber(displayScore) : ''}
+                </span>
+            </div>
+            <div className="flex flex-col justify-end pb-1 pr-1 max-w-[50%]">
+                <div className="flex flex-col items-end font-mono leading-tight">
+                    {parts.map((part, i) => (
+                    <div key={i} className="flex items-baseline text-sm max-w-full">
+                        <span className="text-emerald-400 font-bold truncate">{formatDisplayNumber(part)}</span>
+                        {column.unit && <span className="text-emerald-400/80 text-xs ml-0.5 truncate">{column.unit}</span>}
+                    </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const CellContentStandard: React.FC<CellContentProps> = ({ parts, displayScore, hasInput, column, simpleMode, forceHeight, textStyle }) => {
+    const rawVal = parts[0];
+    
+    const showRawValHint = displayScore !== rawVal;
+    const hasUnit = !!column.unit;
+    const shouldShowBottomRight = !simpleMode && hasInput && (showRawValHint || hasUnit);
+
+    return (
+      <>
+        <span className={`text-xl font-bold tracking-tight w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
+          {hasInput ? formatDisplayNumber(displayScore) : ''}
+        </span>
+    
+        {shouldShowBottomRight && (
+            <span className="absolute bottom-1 right-1 text-sm font-mono flex items-baseline max-w-full px-1">
+                <span className="text-emerald-400 font-bold truncate">{formatDisplayNumber(rawVal)}</span>
+                {hasUnit && <span className="text-emerald-400/80 text-xs ml-0.5 truncate">{column.unit}</span>}
+            </span>
+        )}
+      </>
+    );
+};
+
+// --- Main Component ---
+
+const ScoreCell: React.FC<ScoreCellProps> = (props) => {
+  const { player, playerIndex, column, allColumns, allPlayers, isActive, onClick, forceHeight, screenshotMode = false, baseImage, isEditMode, limitX, isAlt } = props;
   const scoreData: ScoreValue | undefined = player.scores[column.id];
   
-  // --- Strategy Pattern: Switch to Textured Cell if data exists ---
-  // [CRITICAL CHANGE]: Only use textured cell if baseImage is present
+  // Strategy: Switch to Textured Cell if baseImage exists
   if (baseImage && column.visuals?.cellRect) {
-      return (
-          <TexturedScoreCell 
-            player={player}
-            playerIndex={playerIndex}
-            column={column}
-            allColumns={allColumns} // Pass context down
-            allPlayers={allPlayers} // Pass context down
-            scoreValue={scoreData}
-            baseImage={baseImage}
-            rect={column.visuals.cellRect}
-            onClick={onClick}
-            isActive={isActive}
-            minHeight={screenshotMode ? '100%' : '3rem'}
-            simpleMode={simpleMode}
-            isEditMode={isEditMode}
-            limitX={limitX}
-          />
-      );
+      return <TexturedScoreCell {...props} scoreValue={scoreData} baseImage={baseImage} rect={column.visuals.cellRect} minHeight={screenshotMode ? '100%' : '3rem'} />;
   }
 
-  // --- Default Rendering Logic ---
-  
+  // --- Data Preparation ---
   const parts = scoreData?.parts || [];
-  
-  // Context for Auto Calculation
-  const scoringContext = allColumns ? {
-      allColumns: allColumns,
-      playerScores: player.scores,
-      allPlayers: allPlayers
-  } : undefined;
-
+  const scoringContext = allColumns ? { allColumns, playerScores: player.scores, allPlayers } : undefined;
   const displayScore = calculateColumnScore(column, parts, scoringContext);
   const autoError = getAutoColumnError(column, scoringContext);
-  
-  // Determine if we should show input (Auto columns always show input if they have a result)
   const hasInput = column.isAuto ? true : parts.length > 0;
-  
-  // [CRITICAL CHANGE]: Only use custom layout for the MAIN cell if baseImage is present.
-  // This ensures that when no image is loaded, the cell behaves like a standard list item
-  // (filling width, auto height) instead of a fixed-position floating box.
   const hasLayout = !!column.contentLayout && !!baseImage;
 
-  // Visual Styling
+  // --- Visuals ---
   const minHeightClass = screenshotMode ? '' : (baseImage ? 'min-h-[3rem]' : 'min-h-[4rem]');
   const borderStructureClasses = baseImage ? '' : 'border-r border-b';
   const cursorClass = hasLayout ? 'cursor-default' : 'cursor-pointer';
-  // If hasLayout is true, we set pointer-events-none to the wrapper to let clicks pass through the "empty" areas
   const pointerEventsClass = hasLayout ? 'pointer-events-none' : '';
   const baseContainerClasses = `player-col-${player.id} w-full h-full ${forceHeight || ''} ${borderStructureClasses} relative ${cursorClass} ${pointerEventsClass} transition-colors select-none flex flex-col justify-center items-center overflow-hidden`;
   
-  // 判斷是否為「標準模式下的自動計算格」
   const isStandardAuto = !baseImage && column.isAuto;
-  
   let visualClasses = '';
 
   if (screenshotMode) {
-      if (baseImage) {
-          // Texture Mode: Keep transparent to show image
-          visualClasses = `bg-transparent h-full`;
-      } else {
-          // Standard Grid Screenshot Mode
-          if (isStandardAuto) {
-              // WYSIWYG: Auto cells keep their tint and border in screenshot
-              visualClasses = `bg-indigo-900/20 border-indigo-500/30 h-full`;
-          } else {
-              // Normal cells are transparent with slate border
-              visualClasses = `bg-transparent border-slate-700 h-full`;
-          }
+      if (baseImage) visualClasses = `bg-transparent h-full`;
+      else if (isStandardAuto) visualClasses = `bg-indigo-900/20 border-indigo-500/30 h-full`;
+      else {
+          // Standard Screenshot Cell: Apply zebra striping if needed
+          const bg = isAlt ? 'bg-slate-800/50' : 'bg-transparent';
+          visualClasses = `${bg} border-slate-700 h-full`;
       }
   } else {
-      // Interactive Mode
       let bgClass = 'bg-slate-900 hover:bg-slate-800';
-      let borderClass = baseImage ? 'border-transparent' : 'border-slate-800';
       
+      // Zebra Striping Logic (Slightly Lighter Black)
+      // INCREASED VISIBILITY: Changed opacity from /20 to /50 to make it more obvious
+      if (!baseImage && !isStandardAuto && isAlt) {
+          bgClass = 'bg-slate-800/50 hover:bg-slate-700'; 
+      }
+
+      let borderClass = baseImage ? 'border-transparent' : 'border-slate-800';
       if (isStandardAuto) {
-          // Auto cells have distinct background and border
           bgClass = 'bg-indigo-900/20 hover:bg-indigo-900/30';
           borderClass = 'border-indigo-500/30';
       }
-
-      // ONLY apply ring to the container if there is NO layout.
-      // If there IS a layout, the ring goes on the inner box (finalContent).
       if (isActive && !hasLayout) {
           visualClasses = `${minHeightClass} ring-2 ring-inset ring-emerald-500 z-10 ${bgClass}`;
       } else {
@@ -127,142 +239,18 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, playerIndex, column, allC
       color: autoError ? '#f43f5e' : (hasInput ? (displayScore < 0 ? '#f87171' : '#ffffff') : '#475569'),
   };
 
+  // --- Render Selection ---
   const renderContent = () => {
-      // Auto Column (Special Display)
-      if (column.isAuto) {
-          return (
-            <>
-                {autoError && (
-                    <div className="absolute top-1 left-1 text-rose-500 z-20" title={autoError === 'missing_dependency' ? "參照的欄位已遺失" : "計算錯誤 (如除以0)"}>
-                        {autoError === 'missing_dependency' ? <Link2Off size={14} /> : <AlertTriangle size={14} />}
-                    </div>
-                )}
-                <span className={`text-xl font-bold w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
-                    {autoError ? 'ERR' : formatDisplayNumber(displayScore)}
-                </span>
-            </>
-          );
-      }
+      const commonProps = { parts, displayScore, hasInput, column, simpleMode: props.simpleMode || false, forceHeight, screenshotMode, textStyle, autoError };
 
-      // Select/Options Render
-      const isSelectList = column.inputType === 'clicker' && !column.formula.includes('+next');
-      if (isSelectList) {
-        const rawVal = parts[0];
-        const option = column.quickActions?.find(opt => opt.value === rawVal);
-        return (
-          <>
-             <span className={`text-xl font-bold w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
-                {hasInput ? formatDisplayNumber(displayScore) : ''}
-             </span>
-             {!simpleMode && option && (
-                 <span className={`absolute bottom-1 right-1 text-xs font-medium px-1 rounded truncate max-w-[90%] ${screenshotMode ? 'text-emerald-400/80' : 'text-emerald-400 bg-slate-900/80 border border-slate-700'}`}>
-                     {option.label}
-                 </span>
-             )}
-          </>
-        );
-      }
-
-      // Product Render
-      if (column.formula === 'a1×a2') {
-          const [a, b] = parts;
-          const ua = column.subUnits?.[0] || '';
-          const ub = column.subUnits?.[1] || '';
-          
-          const productUI = hasInput ? (
-            <span className={`absolute bottom-1 right-1 flex items-baseline px-1 rounded max-w-full overflow-hidden ${screenshotMode ? '' : 'bg-slate-900/80 border border-slate-800/50'}`}>
-                 <span className="text-sm font-bold font-mono text-emerald-400 leading-none truncate">{formatDisplayNumber(a)}</span>
-                 <span className="text-xs text-emerald-400/80 ml-[1px] leading-none">{ua}</span>
-                 <span className="text-sm text-slate-600 mx-[2px] leading-none">×</span>
-                 <span className="text-sm font-bold font-mono text-emerald-400 leading-none truncate">{formatDisplayNumber(b ?? 1)}</span>
-                 <span className="text-xs text-emerald-400/80 ml-[1px] leading-none">{ub}</span>
-            </span>
-          ) : null;
-          
-          return (
-            <>
-              <span className={`text-xl font-bold tracking-tight w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
-                {hasInput ? formatDisplayNumber(displayScore) : ''}
-              </span>
-              {!simpleMode && productUI}
-            </>
-          );
-      }
-
-      // Sum Parts Render
-      if ((column.formula || '').includes('+next')) {
-        const showPartsSetting = column.showPartsInGrid ?? true;
-        
-        // 1. New "Parts Only" Mode
-        if (showPartsSetting === 'parts_only') {
-            if (hasInput && parts.length > 0) {
-                return (
-                    <div className="w-full h-full flex flex-col justify-center items-center overflow-hidden py-1">
-                        {parts.map((part, i) => (
-                            <div key={i} className="text-base font-bold font-mono leading-tight">
-                                <span style={textStyle}>{formatDisplayNumber(part)}</span>
-                            </div>
-                        ))}
-                    </div>
-                );
-            }
-            // Empty state for parts_only
-            return null; 
-        }
-
-        // 2. Standard Mode (Total Center + Parts Bottom-Right)
-        if (showPartsSetting === true && parts.length > 0) {
-            return (
-                <div className="w-full h-full flex flex-row items-stretch overflow-hidden">
-                    <div className="flex-1 flex justify-center items-center min-w-0">
-                        <span className={`text-xl font-bold tracking-tight w-full text-center truncate px-0.5 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
-                            {hasInput ? formatDisplayNumber(displayScore) : ''}
-                        </span>
-                    </div>
-                    {!simpleMode && (
-                      <div className="flex flex-col justify-end pb-1 pr-1 max-w-[50%]">
-                          <div className="flex flex-col items-end font-mono leading-tight">
-                              {parts.map((part, i) => (
-                              <div key={i} className="flex items-baseline text-sm max-w-full">
-                                  <span className="text-emerald-400 font-bold truncate">{formatDisplayNumber(part)}</span>
-                                  {column.unit && <span className="text-emerald-400/80 text-xs ml-0.5 truncate">{column.unit}</span>}
-                              </div>
-                              ))}
-                          </div>
-                      </div>
-                    )}
-                </div>
-            );
-        }
-      }
-
-      // Standard Render
-      // For standard a1 or a1xc1, rawVal is parts[0]. The displayScore handles multiplier for center text.
-      // But for the corner hint, we usually show the "Input value" or "Unit".
-      // If formula is a1xc1, parts[0] IS the input value.
-      const rawVal = parts[0];
+      if (column.isAuto) return <CellContentAuto {...commonProps} />;
+      if (column.inputType === 'clicker' && !column.formula.includes('+next')) return <CellContentSelect {...commonProps} />;
+      if (column.formula === 'a1×a2') return <CellContentProduct {...commonProps} />;
+      if ((column.formula || '').includes('+next')) return <CellContentSum {...commonProps} />;
       
-      return (
-        <>
-          <span className={`text-xl font-bold tracking-tight w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
-            {hasInput ? formatDisplayNumber(displayScore) : ''}
-          </span>
-      
-          {!simpleMode && hasInput && (column.formula !== 'a1' || column.unit) && (
-              <span className="absolute bottom-1 right-1 text-sm font-mono flex items-baseline max-w-full px-1">
-                  {/* If standard multiplier, displayScore is calculated. rawVal is input. */}
-                  {/* We can show rawVal if it differs from displayScore to hint at the input */}
-                  {column.formula === 'a1×c1' && (
-                      <span className="text-emerald-400 font-bold truncate">{formatDisplayNumber(rawVal)}</span>
-                  )}
-                  {column.unit && <span className="text-emerald-400/80 text-xs ml-0.5 truncate">{column.unit}</span>}
-              </span>
-          )}
-        </>
-      );
+      return <CellContentStandard {...commonProps} />;
   };
 
-  // Only use layout if baseImage is present
   const finalContent = hasLayout ? (
       <div 
         onClick={(e) => { e.stopPropagation(); onClick(e); }}
@@ -293,10 +281,7 @@ const ScoreCell: React.FC<ScoreCellProps> = ({ player, playerIndex, column, allC
   ) : renderContent();
 
   return (
-    <div 
-        onClick={hasLayout ? undefined : onClick} 
-        className={`${baseContainerClasses} ${visualClasses}`}
-    >
+    <div onClick={hasLayout ? undefined : onClick} className={`${baseContainerClasses} ${visualClasses}`}>
         {finalContent}
     </div>
   );
