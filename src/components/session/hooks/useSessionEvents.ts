@@ -28,8 +28,9 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
     editingCell: uiState.editingCell,
     editingPlayerId: uiState.editingPlayerId,
     advanceDirection: uiState.advanceDirection,
-    setEditingCell: (cell) => setUiState(prev => ({ ...prev, editingCell: cell, editingPlayerId: null })),
-    setEditingPlayerId: (id) => setUiState(prev => ({ ...prev, editingPlayerId: id, editingCell: null })),
+    // Fix: Reset previewValue to 0 immediately when navigating via Next button
+    setEditingCell: (cell) => setUiState(prev => ({ ...prev, editingCell: cell, editingPlayerId: null, previewValue: 0 })),
+    setEditingPlayerId: (id) => setUiState(prev => ({ ...prev, editingPlayerId: id, editingCell: null, previewValue: 0 })),
   });
 
   // --- Back Button Logic ---
@@ -46,7 +47,7 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
       if (uiState.isAddColumnModalOpen) { setUiState(p => ({ ...p, isAddColumnModalOpen: false })); return; }
       if (uiState.screenshotModal.isOpen) { setUiState(p => ({ ...p, screenshotModal: { ...p.screenshotModal, isOpen: false } })); return; }
       if (uiState.editingCell || uiState.editingPlayerId) {
-        setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null }));
+        setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null, previewValue: 0 }));
         return;
       }
       setUiState(p => ({ ...p, showExitConfirm: true }));
@@ -60,7 +61,7 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
 
   const handleGlobalClick = () => {
     // 遮罩層現在會處理阻擋邏輯，這裡只需要專注於「點擊空白處關閉面板」
-    setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null }));
+    setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null, previewValue: 0 }));
   };
   
   const handleCellClick = (playerId: string, colId: string, e: React.MouseEvent) => {
@@ -69,9 +70,10 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
     // 不需要再檢查 isInputFocused，因為遮罩層會擋住所有點擊
     
     if (uiState.editingCell?.playerId === playerId && uiState.editingCell?.colId === colId) {
-      setUiState(p => ({ ...p, editingCell: null }));
+      setUiState(p => ({ ...p, editingCell: null, previewValue: 0 }));
     } else {
-      setUiState(p => ({ ...p, editingCell: { playerId, colId }, editingPlayerId: null }));
+      // Fix: Reset previewValue to 0 immediately when clicking a new cell
+      setUiState(p => ({ ...p, editingCell: { playerId, colId }, editingPlayerId: null, previewValue: 0 }));
     }
   };
   
@@ -81,9 +83,9 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
     // 不需要再檢查 isInputFocused
 
     if (uiState.editingPlayerId === playerId) {
-      setUiState(p => ({ ...p, editingPlayerId: null }));
+      setUiState(p => ({ ...p, editingPlayerId: null, previewValue: 0 }));
     } else {
-      setUiState(p => ({ ...p, editingPlayerId: playerId, editingCell: null }));
+      setUiState(p => ({ ...p, editingPlayerId: playerId, editingCell: null, previewValue: 0 }));
     }
   };
   
@@ -92,7 +94,7 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
     // 限制：只有在編輯模式下才能開啟欄位編輯器
     if (!uiState.isEditMode) return;
 
-    setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null, editingColumn: col }));
+    setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null, editingColumn: col, previewValue: 0 }));
   };
 
   const handleTitleSubmit = (newTitle: string) => {
@@ -124,7 +126,7 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
 
   const handleConfirmReset = () => {
     onResetScores();
-    setUiState(p => ({ ...p, showResetConfirm: false, editingCell: null, editingPlayerId: null }));
+    setUiState(p => ({ ...p, showResetConfirm: false, editingCell: null, editingPlayerId: null, previewValue: 0 }));
   };
 
   const handleSaveColumn = (updates: Partial<ScoreColumn>) => {

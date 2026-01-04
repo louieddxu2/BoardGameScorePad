@@ -92,33 +92,33 @@ const PanelHeader: React.FC<{
 const InputPanel: React.FC<InputPanelProps> = (props) => {
   const { sessionState, eventHandlers, session, template, playerHistory, onUpdateSession, onUpdatePlayerHistory } = props;
   const { uiState, setUiState, panelHeight } = sessionState;
-  const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused } = uiState;
+  const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue } = uiState;
 
   const visualViewportOffset = useVisualViewportOffset();
-  const [localKeypadValue, setLocalKeypadValue] = useState<any>(0);
   const [activeFactorIdx, setActiveFactorIdx] = useState<0 | 1>(0);
 
-  // Effect to reset local state when cell changes
+  // Initialize preview value based on column type when cell changes
   useEffect(() => {
     setActiveFactorIdx(0);
-    setUiState((p: any) => ({ ...p, overwriteMode: true }));
+    // Overwrite mode and reset logic is handled in useSessionState when editingCell changes
     
-    // Check if new column is Product Sum Parts and init correctly
+    // BUT we need to handle specific init logic for Product Sum Parts to have structure
     if (editingCell) {
         const col = template.columns.find((c: any) => c.id === editingCell.colId);
         if (col && (col.formula || '').includes('+next') && col.formula.includes('×a2')) {
-            setLocalKeypadValue({ factors: [0, 1] });
-        } else {
-            setLocalKeypadValue(0);
+            // Only update if it's currently 0 (reset state)
+            setUiState((p: any) => {
+                if (p.previewValue === 0) return { ...p, previewValue: { factors: [0, 1] } };
+                return p;
+            });
         }
-    } else {
-        setLocalKeypadValue(0);
     }
-  }, [editingCell, setUiState, template.columns]);
+  }, [editingCell, template.columns, setUiState]);
 
   const isPanelOpen = editingCell !== null || editingPlayerId !== null;
 
   const updateScore = (playerId: string, colId: string, value: any) => {
+    // Need to use the LATEST session data from props when calling this
     const players = session.players.map((p: any) => {
         if (p.id !== playerId) return p;
         const newScores = { ...p.scores };
@@ -144,6 +144,10 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     onUpdateSession({ ...session, players: players });
   };
 
+  const setPreview = (val: any) => {
+      setUiState((p: any) => ({ ...p, previewValue: val }));
+  };
+
   const handleDirectionToggle = () => {
     setUiState((p: any) => ({ ...p, advanceDirection: p.advanceDirection === 'horizontal' ? 'vertical' : 'horizontal' }));
   };
@@ -165,10 +169,10 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
       if (player && col && col.inputType !== 'auto') {
         if ((col.formula || '').includes('+next')) {
             if (col.formula.includes('×a2')) {
-                setLocalKeypadValue({ factors: [0, 1] });
+                setPreview({ factors: [0, 1] });
                 setActiveFactorIdx(0);
             } else {
-                setLocalKeypadValue(0);
+                setPreview(0);
             }
         }
         updateScore(player.id, col.id, undefined);
@@ -241,13 +245,13 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
              if (isProductSumPartsMode) {
                 let currentFactors = [0, 1];
-                if (localKeypadValue && typeof localKeypadValue === 'object' && localKeypadValue.factors) {
-                    currentFactors = localKeypadValue.factors.slice();
+                if (previewValue && typeof previewValue === 'object' && previewValue.factors) {
+                    currentFactors = previewValue.factors.slice();
                 }
 
                 if (activeFactorIdx === 0) { // Editing Factor A
                     currentFactors[0] = action.value;
-                    setLocalKeypadValue({ factors: currentFactors });
+                    setPreview({ factors: currentFactors });
                     setActiveFactorIdx(1);
                     setUiState((p: any) => ({ ...p, overwriteMode: true }));
                 } else { // Editing Factor B
@@ -261,7 +265,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
 
                     // Reset for next entry
-                    setLocalKeypadValue({ factors: [0, 1] });
+                    setPreview({ factors: [0, 1] });
                     setActiveFactorIdx(0);
                     setUiState((p: any) => ({ ...p, overwriteMode: true }));
                 }
@@ -294,7 +298,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                         column={activeColumn} 
                         player={activePlayer} 
                         allColumns={template.columns} 
-                        allPlayers={session.players} // <--- Pass session.players here
+                        allPlayers={session.players} 
                     />
                 </div>
             );
@@ -319,7 +323,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     value={cellScoreObject} 
                     activeFactorIdx={activeFactorIdx} 
                     setActiveFactorIdx={setActiveFactorIdx}
-                    localKeypadValue={localKeypadValue} // Pass local state for preview
+                    localKeypadValue={previewValue} // Pass global preview
                     onDeleteLastPart={handleDeleteLastPart}
                     setOverwrite={(v) => setUiState((p: any) => ({ ...p, overwriteMode: v }))}
                  />;
@@ -334,8 +338,8 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                 if (isProductSumPartsMode) {
                     // Product Sum Parts Logic (A x B then add)
                     let currentFactors = [0, 1];
-                    if (localKeypadValue && typeof localKeypadValue === 'object' && localKeypadValue.factors) {
-                        currentFactors = localKeypadValue.factors;
+                    if (previewValue && typeof previewValue === 'object' && previewValue.factors) {
+                        currentFactors = previewValue.factors;
                     }
                     const n1 = parseFloat(String(currentFactors[0])) || 0;
                     
@@ -359,7 +363,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                                     updateScore(activePlayer!.id, activeColumn!.id, { value: newSum, history: newHistory });
                                     
                                     // Reset local state
-                                    setLocalKeypadValue({ factors: [0, 1] });
+                                    setPreview({ factors: [0, 1] });
                                     setActiveFactorIdx(0);
                                     setUiState((p: any) => ({ ...p, overwriteMode: true }));
                                 } else {
@@ -370,11 +374,11 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     }
                 } else {
                     // Standard Sum Parts Logic
-                    const inputPart = parseFloat(String(getRawValue(localKeypadValue))) || 0;
+                    const inputPart = parseFloat(String(getRawValue(previewValue))) || 0;
                     if (inputPart !== 0) nextButtonContent = <ArrowUpToLine size={28} />;
                     
                     onNextAction = () => {
-                        const input = parseFloat(String(getRawValue(localKeypadValue))) || 0;
+                        const input = parseFloat(String(getRawValue(previewValue))) || 0;
                         if (input !== 0) {
                             // Apply constant multiplier if exists
                             const valToAdd = hasMultiplier ? input * constant : input;
@@ -383,7 +387,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                             const newHistory = [...currentHistory, String(valToAdd)];
                             const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
                             updateScore(activePlayer!.id, activeColumn!.id, { value: newSum, history: newHistory });
-                            setLocalKeypadValue(0);
+                            setPreview(0);
                             setUiState((p: any) => ({ ...p, overwriteMode: true }));
                         } else {
                             eventHandlers.moveToNext();
@@ -402,25 +406,75 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             }
 
             let keypadValue;
-            if (isSumPartsMode) { keypadValue = localKeypadValue; } 
+            if (isSumPartsMode) { keypadValue = previewValue; } 
             else if (isProductMode) { keypadValue = { factors: cellScoreObject?.parts ?? [0, 1] }; } 
             else { keypadValue = { value: cellScoreObject?.parts?.[0] ?? 0 }; }
             
             mainContentNode = <NumericKeypad 
                 value={keypadValue}
-                onChange={(val: any) => isSumPartsMode ? setLocalKeypadValue(val) : updateScore(activePlayer!.id, activeColumn!.id, val)}
+                onChange={(val: any) => isSumPartsMode ? setPreview(val) : updateScore(activePlayer!.id, activeColumn!.id, val)}
                 column={activeColumn} overwrite={overwriteMode} setOverwrite={(v: boolean) => setUiState((p: any) => ({ ...p, overwriteMode: v }))}
                 onNext={onNextAction} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={setActiveFactorIdx} playerId={activePlayer.id}
             />;
             sidebarContentNode = <ScoreInfoPanel 
               column={activeColumn} value={cellScoreObject} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={setActiveFactorIdx}
-              localKeypadValue={isSumPartsMode ? localKeypadValue : undefined}
+              localKeypadValue={isSumPartsMode ? previewValue : undefined} // Use global preview
               onDeleteLastPart={isSumPartsMode ? handleDeleteLastPart : undefined}
-              setOverwrite={(v) => setUiState((p: any) => ({ ...p, overwriteMode: v }))} // Pass setOverwrite
+              setOverwrite={(v) => setUiState((p: any) => ({ ...p, overwriteMode: v }))}
             />;
         }
     }
   }
+
+  // --- Auto-Commit on Blur Logic ---
+  const commitRef = useRef({ previewValue, activePlayer, activeColumn, session, template, updateScore });
+  useEffect(() => {
+      commitRef.current = { previewValue, activePlayer, activeColumn, session, template, updateScore };
+  });
+
+  useEffect(() => {
+      return () => {
+          const { previewValue, activePlayer, activeColumn, session, template, updateScore } = commitRef.current;
+          
+          if (!activePlayer || !activeColumn) return;
+          
+          const isSumPartsMode = (activeColumn.formula || '').includes('+next');
+          const isProductMode = activeColumn.formula.includes('×a2');
+          
+          // Auto-commit only for Sum Parts mode where user might leave uncommitted data
+          if (isSumPartsMode) {
+              const cellScoreObject = activePlayer.scores[activeColumn.id];
+              const constant = activeColumn.constants?.c1 ?? 1;
+              const hasMultiplier = constant !== 1;
+
+              if (isProductMode) { // Product Sum Parts
+                  let currentFactors = [0, 1];
+                  if (previewValue && typeof previewValue === 'object' && previewValue.factors) {
+                      currentFactors = previewValue.factors;
+                  }
+                  const n1 = parseFloat(String(currentFactors[0])) || 0;
+                  const n2 = parseFloat(String(currentFactors[1])) || 0;
+                  // Only commit if we have meaningful input (e.g. A!=0)
+                  if (n1 !== 0) {
+                      const product = n1 * n2;
+                      const currentHistory = getScoreHistory(cellScoreObject);
+                      const newHistory = [...currentHistory, String(product)];
+                      const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
+                      updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
+                  }
+              } else { // Standard Sum Parts
+                  const input = parseFloat(String(getRawValue(previewValue))) || 0;
+                  if (input !== 0) {
+                      const valToAdd = hasMultiplier ? input * constant : input;
+                      const currentHistory = getScoreHistory(cellScoreObject);
+                      const newHistory = [...currentHistory, String(valToAdd)];
+                      const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
+                      updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
+                  }
+              }
+          }
+      };
+  }, [editingCell?.playerId, editingCell?.colId]);
 
   return (
     <div

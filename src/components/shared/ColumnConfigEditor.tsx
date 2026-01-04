@@ -25,6 +25,10 @@ interface ColumnConfigEditorProps {
 type EditorTab = 'basic' | 'mapping' | 'select' | 'auto';
 type CalculationMode = 'standard' | 'product';
 
+const PREF_KEY_STD_UNIT = 'sm_pref_standard_unit';
+const PREF_KEY_PROD_UNIT_A = 'sm_pref_product_unit_a';
+const PREF_KEY_PROD_UNIT_B = 'sm_pref_product_unit_b';
+
 const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColumns = [], onSave, onDelete, onClose, baseImage }) => {
   
   const getInitialState = (): ScoreColumn => {
@@ -196,6 +200,21 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
           delete finalUpdates.f1;
           delete finalUpdates.functions;
       }
+
+      // --- Save Preferences ---
+      if (activeTab === 'basic') {
+          if (getCalculationMode(finalUpdates.formula || '') === 'product') {
+              if (finalUpdates.subUnits && finalUpdates.subUnits.length === 2) {
+                  if (finalUpdates.subUnits[0]) localStorage.setItem(PREF_KEY_PROD_UNIT_A, finalUpdates.subUnits[0]);
+                  if (finalUpdates.subUnits[1]) localStorage.setItem(PREF_KEY_PROD_UNIT_B, finalUpdates.subUnits[1]);
+              }
+          } else {
+              if (finalUpdates.unit) localStorage.setItem(PREF_KEY_STD_UNIT, finalUpdates.unit);
+          }
+      } else if (activeTab === 'mapping') {
+          if (finalUpdates.unit) localStorage.setItem(PREF_KEY_STD_UNIT, finalUpdates.unit);
+      }
+
       onSave(finalUpdates);
   };
   

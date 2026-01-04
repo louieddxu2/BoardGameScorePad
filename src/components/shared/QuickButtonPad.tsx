@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { QuickAction, ScoreColumn } from '../../types';
 import { isColorTooLight } from '../../utils/ui';
@@ -67,7 +68,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction }) => 
                 style={{ backgroundColor: bg }}
             >
                 <span 
-                    className={`font-bold leading-tight break-words pointer-events-none ${isListMode ? 'text-[20px] text-left flex-1 min-w-0' : 'text-[16px] text-center w-full mb-1'}`} 
+                    className={`font-bold leading-tight break-words whitespace-pre-wrap pointer-events-none ${isListMode ? 'text-[20px] text-left flex-1 min-w-0' : 'text-[16px] text-center w-full mb-1'}`} 
                     style={{ color: textColor }}
                 >
                     {action.label}

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
 import { QuickAction } from '../../../types';
 import { COLORS } from '../../../colors';
 import { isColorDark } from '../../../utils/ui';
@@ -13,6 +13,65 @@ interface QuickActionsEditorProps {
   showModifierToggle: boolean;
   onChange: (updates: { quickActions?: QuickAction[]; buttonGridColumns?: number }) => void;
 }
+
+// Internal component to handle auto-resize logic safely without layout thrashing during animations
+const AutoResizingTextarea = ({ 
+    value, 
+    onChange, 
+    placeholder, 
+    className,
+    style
+}: { 
+    value: string, 
+    onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void, 
+    placeholder?: string,
+    className?: string,
+    style?: React.CSSProperties
+}) => {
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const adjustHeight = useCallback(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = `${el.scrollHeight}px`;
+    }, []);
+
+    // Adjust on value change
+    useLayoutEffect(() => {
+        adjustHeight();
+    }, [value, adjustHeight]);
+
+    // Adjust on resize (e.g. animation end, window resize)
+    useEffect(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        
+        // Initial adjustment
+        adjustHeight();
+
+        const observer = new ResizeObserver(() => {
+            window.requestAnimationFrame(() => {
+                adjustHeight();
+            });
+        });
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [adjustHeight]);
+
+    return (
+        <textarea
+            ref={textareaRef}
+            placeholder={placeholder}
+            value={value}
+            onChange={onChange}
+            onFocus={(e) => e.target.select()}
+            rows={1}
+            style={style}
+            className={className}
+        />
+    );
+};
 
 const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
   quickActions = [],
@@ -84,7 +143,7 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
             key={action.id}
             className="bg-slate-800 p-2 rounded-lg border border-slate-700 transition-colors"
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-start gap-2">
               {showModifierToggle && (
                 <button
                   onClick={() => handleUpdate(idx, 'isModifier', !action.isModifier)}
@@ -112,13 +171,12 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
                 />
               </button>
               <div className="flex-1 flex gap-2 min-w-0">
-                <input
-                  type="text"
-                  placeholder="標籤"
+                <AutoResizingTextarea
+                  placeholder="標籤 (可換行)"
                   value={action.label}
                   onChange={(e) => handleUpdate(idx, 'label', e.target.value)}
-                  onFocus={(e) => e.target.select()}
-                  className="flex-1 min-w-[40px] bg-slate-900 border border-slate-600 rounded p-2 text-white placeholder-slate-600 text-sm outline-none focus:border-emerald-500"
+                  style={{ minHeight: '38px', resize: 'none', overflow: 'hidden' }}
+                  className="flex-1 min-w-[40px] bg-slate-900 border border-slate-600 rounded p-2 text-white placeholder-slate-600 text-sm outline-none focus:border-emerald-500 leading-tight"
                 />
                 <div className="relative w-14 shrink-0">
                   <input
@@ -143,13 +201,13 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
                       }
                     }}
                     onFocus={(e) => e.target.select()}
-                    className="w-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-mono font-bold rounded p-2 pl-2 text-right text-sm outline-none focus:border-emerald-500"
+                    className="w-full h-[38px] bg-slate-900 border border-emerald-500/50 text-emerald-400 font-mono font-bold rounded p-2 pl-2 text-right text-sm outline-none focus:border-emerald-500"
                   />
                 </div>
               </div>
               <button
                 onClick={() => handleRemove(idx)}
-                className="p-2 text-slate-500 hover:text-red-400 shrink-0"
+                className="p-2 text-slate-500 hover:text-red-400 shrink-0 h-[38px] flex items-center justify-center"
               >
                 <Trash2 size={18} />
               </button>

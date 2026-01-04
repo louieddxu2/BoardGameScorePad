@@ -47,9 +47,17 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
   useEffect(() => {
     // We assume the scrollRef for the totals bar will reflect the overall container width.
     if (!scrollRef.current) return;
-    const measureContainer = () => setContainerWidth(scrollRef.current!.parentElement!.clientWidth);
+    const measureContainer = () => {
+        if (!scrollRef.current) return;
+        const width = scrollRef.current.parentElement!.clientWidth;
+        window.requestAnimationFrame(() => {
+            setContainerWidth(width);
+        });
+    };
     measureContainer();
-    const observer = new ResizeObserver(measureContainer);
+    const observer = new ResizeObserver(() => {
+        measureContainer();
+    });
     observer.observe(scrollRef.current.parentElement!);
     return () => observer.disconnect();
   }, [scrollRef]);

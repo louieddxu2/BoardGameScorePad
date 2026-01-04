@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { ScoreColumn, InputMethod } from '../../../types';
-import { Calculator, BoxSelect, Hash, Plus, X as Multiply } from 'lucide-react';
+import { Calculator, Hash, Plus, X as Multiply, Square } from 'lucide-react';
 import QuickActionsEditor from './QuickActionsEditor';
 
 interface EditorTabBasicProps {
@@ -12,6 +12,11 @@ interface EditorTabBasicProps {
 }
 
 type CalculationMode = 'standard' | 'product';
+
+// 更清晰的 Key 名稱
+const PREF_KEY_STD_UNIT = 'sm_pref_standard_unit';
+const PREF_KEY_PROD_UNIT_A = 'sm_pref_product_unit_a';
+const PREF_KEY_PROD_UNIT_B = 'sm_pref_product_unit_b';
 
 // Extracted Sub-Settings Component for reusability
 const SumPartsSubSettings: React.FC<{ 
@@ -84,6 +89,27 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
       }
   }, [isSumPartsEnabled, column.inputType, onUpdateCachedSumPartsInputType]);
 
+  // Load preferences on mount or mode switch (only if current values are empty)
+  useEffect(() => {
+      if (currentCalcMode === 'standard') {
+          if (!column.unit) {
+              const lastUnit = localStorage.getItem(PREF_KEY_STD_UNIT);
+              if (lastUnit) onChange({ unit: lastUnit });
+          }
+      } else if (currentCalcMode === 'product') {
+          const currentA = column.subUnits?.[0];
+          const currentB = column.subUnits?.[1];
+          // Only load if both are empty (fresh state)
+          if (!currentA && !currentB) {
+              const lastA = localStorage.getItem(PREF_KEY_PROD_UNIT_A);
+              const lastB = localStorage.getItem(PREF_KEY_PROD_UNIT_B);
+              if (lastA || lastB) {
+                  onChange({ subUnits: [lastA || '', lastB || ''] });
+              }
+          }
+      }
+  }, [currentCalcMode]);
+
   const setCalculationMode = (mode: CalculationMode) => {
     // Determine the state of Sum Parts BEFORE switch to preserve it
     const willEnableSumParts = isSumPartsEnabled;
@@ -97,7 +123,10 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
         
         // Initialize subUnits if missing
         if (!column.subUnits || column.subUnits.length !== 2) {
-            updates.subUnits = ['分', '個'];
+            // Priority: LocalStorage Pref -> Default '分', '個'
+            const prefA = localStorage.getItem(PREF_KEY_PROD_UNIT_A) || '分';
+            const prefB = localStorage.getItem(PREF_KEY_PROD_UNIT_B) || '個';
+            updates.subUnits = [prefA, prefB];
         }
         
         // CRITICAL: Do NOT reset inputType if Sum Parts is enabled. 
@@ -242,8 +271,24 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
         <div>
             <label className="block text-xs font-bold text-slate-500 uppercase mb-2">計分模式</label>
             <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => setCalculationMode('standard')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${currentCalcMode === 'standard' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}><Calculator size={24} /><div className="leading-tight text-center"><div className="text-xs font-bold uppercase">標準加權</div><div className="text-[10px] opacity-70">單位 × 常數</div></div></button>
-                <button onClick={() => setCalculationMode('product')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${currentCalcMode === 'product' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}><BoxSelect size={24} /><div className="leading-tight text-center"><div className="text-xs font-bold uppercase">乘積運算</div><div className="text-[10px] opacity-70"> A × B</div></div></button>
+                <button onClick={() => setCalculationMode('standard')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${currentCalcMode === 'standard' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}>
+                    <Calculator size={24} />
+                    <div className="leading-tight text-center">
+                        <div className="text-xs font-bold uppercase">數字 / 固定倍率</div>
+                        <div className="text-[10px] opacity-70">單位 × 常數</div>
+                    </div>
+                </button>
+                <button onClick={() => setCalculationMode('product')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${currentCalcMode === 'product' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}>
+                    <div className="flex items-center gap-0.5 h-[24px]">
+                        <Square size={16} strokeWidth={2.5} />
+                        <Multiply size={10} strokeWidth={3} />
+                        <Square size={16} strokeWidth={2.5} />
+                    </div>
+                    <div className="leading-tight text-center">
+                        <div className="text-xs font-bold uppercase">輸入兩數相乘</div>
+                        <div className="text-[10px] opacity-70"> A × B</div>
+                    </div>
+                </button>
             </div>
         </div>
 
@@ -252,12 +297,20 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
             <div className="p-4 rounded-xl border bg-emerald-900/10 border-emerald-500/20 space-y-4">
                 <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">單位</label>
-                    <input type="text" value={column.unit || ''} onChange={e => onChange({ unit: e.target.value })} onFocus={e => e.target.select()} placeholder="如：分、個、元" className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white focus:border-emerald-500 outline-none"/>
+                    <input 
+                        type="text" 
+                        value={column.unit || ''} 
+                        onChange={e => {
+                            onChange({ unit: e.target.value });
+                        }} 
+                        onFocus={e => e.target.select()} 
+                        placeholder="如：分、個、元" 
+                        className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white focus:border-emerald-500 outline-none"
+                    />
                 </div>
                 <div className="bg-slate-900 border border-slate-700 p-4 rounded-xl flex items-center justify-center gap-3">
                     <span className="text-slate-400 text-sm">輸入值</span>
                     <span className="text-slate-600">×</span>
-                    {/* SWAPPED ORDER */}
                     <input 
                         type="text" 
                         inputMode="decimal" 
@@ -285,11 +338,27 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-[10px] text-slate-400 mb-1"> A 的單位</label>
-                            <input type="text" value={column.subUnits?.[0] || ''} onChange={e => onChange({ subUnits: [e.target.value, column.subUnits?.[1] || ''] })} onFocus={e => e.target.select()} className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white text-center focus:border-indigo-500 outline-none"/>
+                            <input 
+                                type="text" 
+                                value={column.subUnits?.[0] || ''} 
+                                onChange={e => {
+                                    onChange({ subUnits: [e.target.value, column.subUnits?.[1] || ''] });
+                                }} 
+                                onFocus={e => e.target.select()} 
+                                className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white text-center focus:border-indigo-500 outline-none"
+                            />
                         </div>
                         <div>
                             <label className="block text-[10px] text-slate-400 mb-1"> B 的單位</label>
-                            <input type="text" value={column.subUnits?.[1] || ''} onChange={e => onChange({ subUnits: [column.subUnits?.[0] || '', e.target.value] })} onFocus={e => e.target.select()} className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white text-center focus:border-indigo-500 outline-none"/>
+                            <input 
+                                type="text" 
+                                value={column.subUnits?.[1] || ''} 
+                                onChange={e => {
+                                    onChange({ subUnits: [column.subUnits?.[0] || '', e.target.value] });
+                                }} 
+                                onFocus={e => e.target.select()} 
+                                className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white text-center focus:border-indigo-500 outline-none"
+                            />
                         </div>
                     </div>
                 </div>

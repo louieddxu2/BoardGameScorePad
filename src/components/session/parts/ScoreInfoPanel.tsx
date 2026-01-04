@@ -113,7 +113,7 @@ const InfoSumParts: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypa
             currentFactors = localKeypadValue.factors;
         }
     } else {
-        const currentInputRaw = (typeof localKeypadValue === 'object') ? localKeypadValue.value : localKeypadValue;
+        const currentInputRaw = getRawValue(localKeypadValue);
         currentInputStr = String(currentInputRaw || '0');
     }
 

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ScoreColumn, MappingRule } from '../../../types';
 import { Infinity as InfinityIcon, ArrowRight as ArrowRightIcon, Lock, TrendingUp, Trash2, Plus } from 'lucide-react';
 
@@ -9,8 +9,18 @@ interface EditorTabMappingProps {
   hideUnitInput?: boolean;
 }
 
+const PREF_KEY_STD_UNIT = 'sm_pref_standard_unit';
+
 const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, hideUnitInput }) => {
   const rules = column.f1 || [];
+
+  // Load last unit if this is a standalone column mapping (not inside auto) and unit is empty
+  useEffect(() => {
+      if (!hideUnitInput && !column.unit) {
+          const lastUnit = localStorage.getItem(PREF_KEY_STD_UNIT);
+          if (lastUnit) onChange({ unit: lastUnit });
+      }
+  }, [hideUnitInput]);
 
   const getMinConstraint = (idx: number, currentRules: MappingRule[]): number => {
     if (idx === 0) return -999999;
@@ -123,7 +133,9 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
             <input
                 type="text"
                 value={column.unit || ''}
-                onChange={e => onChange({ unit: e.target.value })}
+                onChange={e => {
+                    onChange({ unit: e.target.value });
+                }}
                 onFocus={e => e.target.select()}
                 placeholder="如：分、個、元"
                 className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-emerald-500 outline-none"

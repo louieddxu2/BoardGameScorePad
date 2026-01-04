@@ -92,15 +92,25 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     screenshotModal,
     isInputFocused,
     isEditMode, 
+    previewValue, // Destructure previewValue
   } = sessionState.uiState;
 
   const { setUiState } = sessionState;
 
   const isPanelOpen = editingCell !== null || editingPlayerId !== null;
   
-  const winners = session.players
-    .filter(p => p.totalScore === Math.max(...session.players.map(pl => pl.totalScore)))
-    .map(p => p.id);
+  // Winner Calculation Logic based on ScoringRule
+  const rule = session.scoringRule || 'HIGHEST_WINS';
+  let winners: string[] = [];
+
+  if (rule === 'HIGHEST_WINS') {
+      const maxScore = Math.max(...session.players.map(pl => pl.totalScore));
+      winners = session.players.filter(p => p.totalScore === maxScore).map(p => p.id);
+  } else if (rule === 'LOWEST_WINS') {
+      const minScore = Math.min(...session.players.map(pl => pl.totalScore));
+      winners = session.players.filter(p => p.totalScore === minScore).map(p => p.id);
+  }
+  // For COOP and NO_SCORE modes, winners remains empty (no crown displayed)
   
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -174,6 +184,10 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     setUiState(p => ({ 
         ...p, 
         showShareMenu: false, 
+        // Force commit of any pending inputs by clearing selection
+        editingCell: null,
+        editingPlayerId: null,
+        previewValue: 0,
         screenshotModal: { 
             isOpen: true, 
             mode, 
@@ -226,7 +240,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     <div className="flex flex-col h-full bg-slate-900 text-slate-100 overflow-hidden relative">
       {/* --- Modals --- */}
       <ConfirmationModal isOpen={showResetConfirm} title="確定重置？" message="此動作將清空所有已輸入的分數，且無法復原。" confirmText="確定重置" isDangerous={true} onCancel={() => setUiState(prev => ({ ...prev, showResetConfirm: false }))} onConfirm={eventHandlers.handleConfirmReset} />
-      <ConfirmationModal isOpen={showExitConfirm} title="確定要返回目錄嗎？" message="你會失去目前的計分內容(計分板架構與圖片將同步到雲端)。" confirmText="離開" cancelText="取消" isDangerous={false} onCancel={() => setUiState(prev => ({ ...prev, showExitConfirm: false }))} onConfirm={props.onExit} />
+      <ConfirmationModal isOpen={showExitConfirm} title="確認返回目錄嗎？" message="" confirmText="離開" cancelText="取消" isDangerous={false} onCancel={() => setUiState(prev => ({ ...prev, showExitConfirm: false }))} onConfirm={props.onExit} />
       <ConfirmationModal isOpen={!!columnToDelete} title="確定刪除此項目？" message="刪除後，所有玩家在該項目的分數將會遺失。" confirmText="確定刪除" isDangerous={true} onCancel={() => setUiState(prev => ({ ...prev, columnToDelete: null }))} onConfirm={eventHandlers.handleConfirmDeleteColumn} />
 
       {/* Missing Image Modal */}
@@ -311,7 +325,14 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onTitleSubmit={eventHandlers.handleTitleSubmit}
         onAddColumn={() => setUiState(prev => ({ ...prev, isAddColumnModalOpen: true }))}
         onReset={() => setUiState(prev => ({ ...prev, showResetConfirm: true }))}
-        onExit={() => setUiState(prev => ({ ...prev, showExitConfirm: true }))}
+        onExit={() => setUiState(prev => ({ 
+            ...prev, 
+            showExitConfirm: true,
+            // Force commit of any pending inputs by clearing selection
+            editingCell: null,
+            editingPlayerId: null,
+            previewValue: 0
+        }))}
         onShareMenuToggle={(show) => setUiState(prev => ({...prev, showShareMenu: show}))}
         onScreenshotRequest={handleScreenshotRequest}
         onToggleEditMode={() => setUiState(prev => ({ ...prev, isEditMode: !prev.isEditMode }))}
@@ -347,6 +368,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           baseImage={baseImage || undefined} 
           isEditMode={isEditMode}
           zoomLevel={zoomLevel}
+          previewValue={previewValue} // Pass the global preview value
         />
       </div>
 

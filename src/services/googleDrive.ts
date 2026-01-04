@@ -82,7 +82,8 @@ class GoogleDriveService {
     return !!this.accessToken && Date.now() < this.tokenExpiration;
   }
 
-  public async signIn(): Promise<string> {
+  // 支援傳入 options，例如 { prompt: 'none' } 用於靜默登入
+  public async signIn(options: { prompt?: string } = {}): Promise<string> {
     return new Promise((resolve, reject) => {
       // 確保 client 已初始化
       if (!this.tokenClient) {
@@ -93,7 +94,12 @@ class GoogleDriveService {
       // 覆寫 callback 以捕捉這次請求的結果
       this.tokenClient.callback = (resp: any) => {
         if (resp.error) {
-            reject(resp);
+            // 處理靜默登入失敗 (需要互動)
+            if (resp.error === 'interaction_required' || resp.error === 'popup_closed_by_user') {
+                reject(resp);
+            } else {
+                reject(resp);
+            }
         } else {
           this.accessToken = resp.access_token;
           this.tokenExpiration = Date.now() + (resp.expires_in * 1000);
@@ -101,14 +107,29 @@ class GoogleDriveService {
         }
       };
 
-      // 觸發登入彈窗
-      this.tokenClient.requestAccessToken({ prompt: '' });
+      // 觸發登入彈窗或靜默請求
+      // prompt: '' (default) or 'none' (silent) or 'select_account'
+      this.tokenClient.requestAccessToken({ prompt: options.prompt ?? '' });
     });
+  }
+
+  public async signOut(): Promise<void> {
+      if (this.accessToken && window.google && window.google.accounts) {
+          try {
+              window.google.accounts.oauth2.revoke(this.accessToken, () => {
+                  console.log('Access token revoked');
+              });
+          } catch (e) {
+              console.warn('Revoke failed', e);
+          }
+      }
+      this.accessToken = null;
+      this.tokenExpiration = 0;
   }
 
   private async fetchDrive(url: string, options: RequestInit = {}) {
     if (!this.isAuthorized) {
-        throw new Error('Unauthorized');
+        throw new Error('Unauthorized'); // Can catch this to trigger re-auth
     }
     
     const headers = { 
@@ -120,7 +141,10 @@ class GoogleDriveService {
     
     if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        throw new Error(err.error?.message || `Drive API Error: ${response.status}`);
+        // 拋出包含 status 的錯誤，方便上層判斷是否為 401/403
+        const error: any = new Error(err.error?.message || `Drive API Error: ${response.status}`);
+        error.status = response.status;
+        throw error;
     }
     return response.json();
   }
@@ -213,6 +237,8 @@ class GoogleDriveService {
   // --- Public Methods ---
 
   public async backupTemplate(template: GameTemplate, imageBase64?: string | null): Promise<GameTemplate> {
+    // Note: Caller is responsible for ensuring authorization or handling the error
+    // We try to sign in if not authorized, but this might prompt a popup
     if (!this.isAuthorized) await this.signIn();
 
     const rootId = await this.getAppRoot();

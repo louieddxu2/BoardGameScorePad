@@ -68,6 +68,7 @@ export interface ScoreColumn {
   subUnits?: [string, string]; 
   rounding?: RoundingMode;
   showPartsInGrid?: boolean | 'parts_only'; 
+  renderMode?: 'standard' | 'value_only' | 'label_only'; // For select/clicker columns
   buttonGridColumns?: number; 
   
   // Display Control
@@ -112,6 +113,8 @@ export interface Player {
   totalScore: number;
 }
 
+export type ScoringRule = 'HIGHEST_WINS' | 'LOWEST_WINS' | 'COOP' | 'COMPETITIVE_NO_SCORE' | 'COOP_NO_SCORE';
+
 export interface GameTemplate {
   id: string;
   name: string;
@@ -123,7 +126,9 @@ export interface GameTemplate {
   isPinned?: boolean; 
   hasImage?: boolean;
   cloudImageId?: string; 
-  globalVisuals?: GlobalVisuals; 
+  globalVisuals?: GlobalVisuals;
+  lastPlayerCount?: number; // 記錄上次使用的玩家人數
+  defaultScoringRule?: ScoringRule; // 記錄該遊戲偏好的勝利條件
 }
 
 export interface GameSession {
@@ -132,6 +137,7 @@ export interface GameSession {
   startTime: number;
   players: Player[];
   status: 'active' | 'completed';
+  scoringRule?: ScoringRule; // 當次遊戲的勝利條件
 }
 
 export enum AppView {

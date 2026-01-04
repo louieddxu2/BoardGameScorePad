@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { AppView, GameTemplate } from './types';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { AppView, GameTemplate, ScoringRule } from './types';
 import { getTouchDistance } from './utils/ui';
 import { useAppData } from './hooks/useAppData';
 
@@ -8,8 +8,7 @@ import { useAppData } from './hooks/useAppData';
 import TemplateEditor from './components/editor/TemplateEditor';
 import SessionView from './components/session/SessionView';
 import Dashboard from './components/dashboard/Dashboard';
-
-import { Play, Minus, Plus, X } from 'lucide-react';
+import GameSetupModal from './components/dashboard/modals/GameSetupModal';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.DASHBOARD);
@@ -19,7 +18,6 @@ const App: React.FC = () => {
 
   // Local UI State
   const [pendingTemplate, setPendingTemplate] = useState<GameTemplate | null>(null);
-  const [setupPlayerCount, setSetupPlayerCount] = useState(4);
   
   // PWA Install
   const [installPromptEvent, setInstallPromptEvent] = useState<any | null>(null);
@@ -27,11 +25,17 @@ const App: React.FC = () => {
 
   // Mobile Zoom
   const [zoomLevel, setZoomLevel] = useState(1.0);
-  const zoomLevelRef = useRef(1.0); // Keep track of zoom level for event listeners
+  const zoomLevelRef = useRef(1.0); 
   const touchStartDist = useRef(0);
   const initialZoomRef = useRef(1.0);
   const isZooming = useRef(false);
   const isExitingSession = useRef(false);
+
+  // --- Session Preview Logic (for Modal) ---
+  const pendingSessionPreview = useMemo(() => {
+      if (!pendingTemplate || !appData.activeSessionIds.includes(pendingTemplate.id)) return null;
+      return appData.getSessionPreview(pendingTemplate.id);
+  }, [pendingTemplate, appData.activeSessionIds]);
 
   // --- Zoom Logic ---
   useEffect(() => {
@@ -49,17 +53,11 @@ const App: React.FC = () => {
     zoomLevelRef.current = zoomLevel;
   }, [zoomLevel]);
 
-  // Fix: Empty dependency array ensures listeners are bound only once.
-  // This prevents missing 'touchend' events during React re-renders which caused the "stuck" zoom state.
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
-      // 邏輯修正：嚴格的「會話式判斷」
-      // 只有當動作開始的那一瞬間是 2 指，才將 isZooming 設為 true，並進入縮放模式。
-      // 如果是一指按下去，isZooming 為 false，後續就算誤觸出現第 2 點也會被忽略。
       if (e.touches.length === 2) {
         isZooming.current = true;
-        e.preventDefault(); // 立即阻止瀏覽器預設行為 (捲動/縮放)，搶奪控制權
-        
+        e.preventDefault(); 
         touchStartDist.current = getTouchDistance(e.touches);
         initialZoomRef.current = zoomLevelRef.current;
       } else {
@@ -68,10 +66,8 @@ const App: React.FC = () => {
     };
     
     const handleTouchMove = (e: TouchEvent) => {
-      // 只在合法的縮放會話 (isZooming === true) 中執行縮放
       if (isZooming.current && e.touches.length === 2) {
-        e.preventDefault(); // 縮放過程中持續阻止瀏覽器干擾
-        
+        e.preventDefault(); 
         if (touchStartDist.current > 0) {
             const currentDist = getTouchDistance(e.touches);
             const scale = currentDist / touchStartDist.current;
@@ -81,7 +77,6 @@ const App: React.FC = () => {
     };
     
     const handleTouchEnd = () => { 
-        // 無條件結束縮放會話
         isZooming.current = false;
         touchStartDist.current = 0; 
     };
@@ -97,7 +92,7 @@ const App: React.FC = () => {
       window.removeEventListener('touchend', handleTouchEnd);
       window.removeEventListener('touchcancel', handleTouchEnd);
     };
-  }, []); // Dependencies must remain empty
+  }, []); 
 
   // --- PWA Logic ---
   useEffect(() => {
@@ -165,8 +160,6 @@ const App: React.FC = () => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (view === AppView.ACTIVE_SESSION) {
         e.preventDefault();
-        // Modern browsers show a generic message for security reasons,
-        // but setting returnValue is required to trigger the prompt.
         e.returnValue = '您確定要離開嗎？目前的計分進度將會遺失。';
         return e.returnValue;
       }
@@ -183,12 +176,29 @@ const App: React.FC = () => {
 
   const initSetup = (template: GameTemplate) => {
     setPendingTemplate(template);
-    setSetupPlayerCount(4);
   };
 
-  const handleConfirmSetup = () => {
+  const handleResumeGame = () => {
       if (pendingTemplate) {
-          appData.startSession(pendingTemplate, setupPlayerCount);
+          const success = appData.resumeSession(pendingTemplate.id);
+          if (success) {
+              setPendingTemplate(null);
+              setView(AppView.ACTIVE_SESSION);
+          }
+      }
+  };
+
+  const handleDirectResume = (templateId: string) => {
+      const success = appData.resumeSession(templateId);
+      if (success) {
+          setPendingTemplate(null);
+          setView(AppView.ACTIVE_SESSION);
+      }
+  };
+
+  const handleStartNewGame = (count: number, options: { startTimeStr: string, scoringRule: ScoringRule }) => {
+      if (pendingTemplate) {
+          appData.startSession(pendingTemplate, count, options);
           setPendingTemplate(null);
           setView(AppView.ACTIVE_SESSION);
       }
@@ -231,10 +241,10 @@ const App: React.FC = () => {
           template={appData.activeTemplate} 
           playerHistory={appData.playerHistory}
           zoomLevel={zoomLevel}
-          baseImage={appData.sessionImage} // Pass runtime image
+          baseImage={appData.sessionImage} 
           onUpdateSession={appData.updateSession}
           onUpdatePlayerHistory={appData.updatePlayerHistory}
-          onUpdateImage={appData.setSessionImage} // Allow upload
+          onUpdateImage={appData.setSessionImage} 
           onResetScores={appData.resetSessionScores}
           onUpdateTemplate={appData.updateActiveTemplate}
           onExit={handleExitSession}
@@ -243,8 +253,6 @@ const App: React.FC = () => {
     }
 
     return (
-      // 使用 h-full 配合 index.html 的 100dvh，而不是 min-h-screen
-      // 這確保了應用程式在網址列隱藏時也能正確佔滿視窗，且捲動發生在內部 Dashboard 而不是 body
       <div className="h-full bg-slate-900 text-slate-100 flex flex-col font-sans overflow-hidden transition-colors duration-300">
         
         <Dashboard 
@@ -252,43 +260,36 @@ const App: React.FC = () => {
           systemOverrides={appData.systemOverrides}
           systemTemplates={appData.systemTemplates}
           pinnedIds={appData.pinnedIds}
-          knownSysIds={appData.knownSysIds}
-          themeMode={appData.themeMode} // New Prop
-          onToggleTheme={appData.toggleTheme} // New Prop
+          newBadgeIds={appData.newBadgeIds} // Pass new badge IDs
+          activeSessionIds={appData.activeSessionIds}
+          themeMode={appData.themeMode} 
+          onToggleTheme={appData.toggleTheme} 
           onTemplateSelect={initSetup}
+          onDirectResume={handleDirectResume}
+          onDiscardSession={appData.discardSession}
+          onClearAllActiveSessions={appData.clearAllActiveSessions}
+          getSessionPreview={appData.getSessionPreview}
           onTemplateCreate={() => setView(AppView.TEMPLATE_CREATOR)}
           onTemplateDelete={appData.deleteTemplate}
           onTemplateSave={appData.saveTemplate}
           onBatchImport={handleBatchImport}
           onTogglePin={appData.togglePin}
-          onMarkSystemSeen={appData.markSystemTemplatesSeen}
+          onClearNewBadges={appData.clearNewBadges} // Pass clear action
           onRestoreSystem={appData.restoreSystemTemplate}
           isInstalled={isInstalled}
           canInstall={!!installPromptEvent}
           onInstallClick={handleInstallClick}
         />
 
-        {/* Setup Game Modal */}
         {pendingTemplate && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm" onClick={() => setPendingTemplate(null)}>
-                <div className="bg-slate-900 w-2/3 max-w-xs rounded-2xl shadow-2xl border border-slate-800" onClick={(e) => e.stopPropagation()}>
-                    <div className="p-4 border-b border-slate-800 flex justify-between items-center">
-                        <h3 className="text-base font-bold text-white truncate pr-2">{pendingTemplate.name}</h3>
-                        <button onClick={() => setPendingTemplate(null)} className="text-slate-500 hover:text-white shrink-0"><X size={20} /></button>
-                    </div>
-                    <div className="p-6 flex flex-col items-center">
-                        <label className="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">設定玩家人數</label>
-                        <div className="flex items-center gap-4 bg-slate-800 p-2 rounded-xl border border-slate-700 w-full max-w-[200px] justify-between">
-                            <button onClick={() => setSetupPlayerCount(c => Math.max(1, c - 1))} className="w-10 h-10 rounded-lg bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-white transition-colors active:scale-95"><Minus size={20} /></button>
-                            <span className="text-2xl font-bold font-mono text-emerald-400">{setupPlayerCount}</span>
-                            <button onClick={() => setSetupPlayerCount(c => Math.min(12, c + 1))} className="w-10 h-10 rounded-lg bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-white transition-colors active:scale-95"><Plus size={20} /></button>
-                        </div>
-                    </div>
-                    <div className="p-4 border-t border-slate-800 bg-slate-900/50 rounded-b-2xl">
-                        <button onClick={handleConfirmSetup} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 active:scale-95 transition-all"><Play size={18} fill="currentColor" /> 開始計分</button>
-                    </div>
-                </div>
-            </div>
+            <GameSetupModal 
+                template={pendingTemplate}
+                previewSession={pendingSessionPreview}
+                sessionPlayerCount={appData.sessionPlayerCount}
+                onClose={() => setPendingTemplate(null)}
+                onStart={handleStartNewGame}
+                onResume={handleResumeGame}
+            />
         )}
       </div>
     );

@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { GameSession, GameTemplate } from '../../../types';
 
@@ -39,12 +40,12 @@ export interface UIState {
   isInputFocused: boolean;
   tempPlayerName: string;
   isEditMode: boolean; // New state for Edit vs Play mode
+  previewValue: any; // New state for buffered input preview
 }
 
 export const useSessionState = (props: SessionViewProps) => {
   const [uiState, setUiState] = useState<UIState>(() => {
     // Read initial edit mode from local storage.
-    // NEW: Default to true (Edit Mode) for new users. It only becomes false if explicitly saved as such.
     const initialEditMode = typeof window !== 'undefined' ? localStorage.getItem('app_edit_mode') !== 'false' : true;
     
     return {
@@ -63,6 +64,7 @@ export const useSessionState = (props: SessionViewProps) => {
       isInputFocused: false,
       tempPlayerName: '',
       isEditMode: initialEditMode,
+      previewValue: 0,
     };
   });
 
@@ -70,7 +72,6 @@ export const useSessionState = (props: SessionViewProps) => {
   const totalBarScrollRef = useRef<HTMLDivElement>(null);
   
   // New refs for Width Synchronization
-  // These point to the inner content div that determines the full scrollable width
   const gridContentRef = useRef<HTMLDivElement>(null);
   const totalContentRef = useRef<HTMLDivElement>(null);
   
@@ -81,10 +82,10 @@ export const useSessionState = (props: SessionViewProps) => {
     localStorage.setItem('app_edit_mode', String(uiState.isEditMode));
   }, [uiState.isEditMode]);
 
-  // When active cell changes, enable overwrite mode
+  // When active cell changes, enable overwrite mode and reset preview
   useEffect(() => {
     if (uiState.editingCell) {
-      setUiState(prev => ({ ...prev, overwriteMode: true }));
+      setUiState(prev => ({ ...prev, overwriteMode: true, previewValue: 0 }));
     }
   }, [uiState.editingCell?.playerId, uiState.editingCell?.colId]);
   
@@ -146,12 +147,6 @@ export const useSessionState = (props: SessionViewProps) => {
   // --- Derived State ---
   const isPanelOpen = uiState.editingCell !== null || uiState.editingPlayerId !== null;
   
-  // Dynamic Panel Height Logic:
-  // - If closed: 0px
-  // - If focused (keyboard open): '112px' (Header 40px + Input Layout 72px)
-  //   Using a fixed pixel value is CRITICAL for CSS transitions to work correctly.
-  //   'auto' does not support transitions and causes flickering.
-  // - If normal editing: '40vh' (standard height for keypad/history)
   const panelHeight = isPanelOpen 
     ? (uiState.isInputFocused ? '112px' : '40vh')
     : '0px';

@@ -23,7 +23,8 @@ interface ScoreGridProps {
   contentRef: React.RefObject<HTMLDivElement>;
   baseImage?: string; 
   isEditMode: boolean; 
-  zoomLevel: number; 
+  zoomLevel: number;
+  previewValue?: any; // New prop
 }
 
 // Helper to correctly format numbers, moved from ScoreCell for reuse
@@ -190,6 +191,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   baseImage,
   isEditMode,
   zoomLevel,
+  previewValue,
 }) => {
   const dnd = useColumnDragAndDrop({ template, onUpdateTemplate, scrollRef: scrollContainerRef });
   const [imageDims, setImageDims] = useState<{width: number, height: number} | null>(null);
@@ -209,7 +211,10 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
     if (!scrollContainerRef.current) return;
     const observer = new ResizeObserver(entries => {
         if (entries[0]) {
-            setContainerWidth(entries[0].contentRect.width);
+            const width = entries[0].contentRect.width;
+            window.requestAnimationFrame(() => {
+                setContainerWidth(width);
+            });
         }
     });
     observer.observe(scrollContainerRef.current);
@@ -355,10 +360,6 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           const rowHiddenClass = (isEditMode && displayMode === 'hidden') ? 'opacity-70 bg-slate-900/50' : '';
           
           // Header Background Color Logic (Standard vs Alt)
-          // Even: bg-slate-800 (#1e293b)
-          // Odd: bg-[#2e3b4e] (Slightly lighter than 800, to match data zebra)
-          // When dragging in Edit Mode, force slate-700.
-          // Note: If baseImage is present, these colors are covered by the texture unless dragging.
           const headerBgClass = isEditMode && isDragging 
             ? 'bg-slate-700' 
             : (isAlt && !baseImage ? 'bg-[#2e3b4e]' : 'bg-slate-800');
@@ -407,7 +408,10 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 {isEditMode && <div className="absolute top-1/2 left-0.5 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded p-0.5 text-white/70"><GripVertical size={10} /></div>}
               </HeaderCell>
               
-              {session.players.map((p, pIdx) => (
+              {session.players.map((p, pIdx) => {
+                const isActive = editingCell?.playerId === p.id && editingCell?.colId === col.id;
+                
+                return (
                 <div key={p.id} className={`${rowHiddenClass} w-full relative`}>
                     <ScoreCell
                         player={p}
@@ -416,17 +420,19 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         allColumns={template.columns} // Pass all columns context
                         allPlayers={session.players} // Pass all players for ranking
                         baseImage={baseImage}
-                        isActive={editingCell?.playerId === p.id && editingCell?.colId === col.id}
+                        isActive={isActive}
                         onClick={(e) => onCellClick(p.id, col.id, e)}
                         isEditMode={isEditMode}
                         // Pass right mask boundary for limit calculation
                         limitX={template.globalVisuals?.rightMaskRect?.x}
                         // Pass Zebra Striping flag
                         isAlt={isAlt}
+                        // Pass preview value only to active cell
+                        previewValue={isActive ? previewValue : undefined}
                     />
                      {/* OVERLAY RENDERING */}
                      {col.overlayColumns.map(overlayCol => {
-                        const isActive = editingCell?.playerId === p.id && editingCell?.colId === overlayCol.id;
+                        const isOverlayActive = editingCell?.playerId === p.id && editingCell?.colId === overlayCol.id;
                         const scoreData = p.scores[overlayCol.id];
                         const parts = scoreData?.parts || [];
                         
@@ -469,7 +475,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                                     className={`
                                         absolute flex items-center justify-center 
                                         border-2 rounded-md cursor-pointer transition-all pointer-events-auto
-                                        ${isActive 
+                                        ${isOverlayActive 
                                             ? 'border-emerald-500 bg-emerald-500/20 ring-1 ring-emerald-500' // Active Style
                                             : (isEditMode 
                                                 ? 'border-dashed border-white/40 hover:border-white/60 hover:bg-white/5' // Edit Mode
@@ -484,7 +490,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                                         top: `${overlayCol.contentLayout.y}%`,
                                         width: `${overlayCol.contentLayout.width}%`,
                                         height: `${overlayCol.contentLayout.height}%`,
-                                        borderColor: (!isActive && isEditMode && overlayCol.color) 
+                                        borderColor: (!isOverlayActive && isEditMode && overlayCol.color) 
                                             ? `${overlayCol.color}60` 
                                             : undefined,
                                     }}
@@ -497,7 +503,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         );
                     })}
                 </div>
-              ))}
+              );})}
             </div>
           );
         })}

@@ -95,6 +95,7 @@ export const migrateColumn = (oldCol: any): ScoreColumn => {
     subUnits: oldCol.subUnits,
     rounding: oldCol.rounding || 'none',
     showPartsInGrid: oldCol.showPartsInGrid,
+    renderMode: oldCol.renderMode, // Added to persistence list
     buttonGridColumns: oldCol.buttonGridColumns,
     displayMode: displayMode, 
     visuals: oldCol.visuals,
