@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ScoreColumn, Player } from '../../../types';
 import { calculateColumnScore } from '../../../utils/scoring';
@@ -10,6 +11,13 @@ interface AutoScorePanelProps {
   allColumns: ScoreColumn[];
   allPlayers?: Player[]; // Added to support ranking calculation
 }
+
+const formatScore = (num: number): string | number => {
+    if (Number.isNaN(num)) return 'NaN';
+    if (num === Infinity) return '∞';
+    if (num === -Infinity) return '-∞';
+    return num;
+};
 
 const AutoScorePanel: React.FC<AutoScorePanelProps> = ({ column, player, allColumns, allPlayers }) => {
   // Explicitly type variableMap to fix TS errors
@@ -47,7 +55,7 @@ const AutoScorePanel: React.FC<AutoScorePanelProps> = ({ column, player, allColu
         {/* Result - Sizes to its content */}
         <div className="text-right shrink-0">
             <div className="text-[10px] uppercase font-bold text-slate-500">結果</div>
-            <div className="text-xl font-bold text-emerald-400">{finalScore}</div>
+            <div className="text-xl font-bold text-emerald-400">{formatScore(finalScore)}</div>
         </div>
       </div>
 
@@ -129,7 +137,7 @@ const AutoScorePanel: React.FC<AutoScorePanelProps> = ({ column, player, allColu
                             </div>
                             <ArrowRight size="0.875em" className="text-slate-600 shrink-0" />
                             <div className="bg-slate-900 px-[12px] py-[4px] rounded-[4px] text-white font-mono font-bold text-sm w-[48px] text-center border border-slate-700">
-                                {value}
+                                {formatScore(value)}
                             </div>
                         </div>
                     );

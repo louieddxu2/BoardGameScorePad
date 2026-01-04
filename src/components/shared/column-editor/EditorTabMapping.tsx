@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { ScoreColumn, MappingRule } from '../../../types';
-import { Infinity as InfinityIcon, ArrowRight as ArrowRightIcon, Lock, TrendingUp, Trash2, Plus } from 'lucide-react';
+import { ArrowRight as ArrowRightIcon, Lock, TrendingUp, Trash2, Plus } from 'lucide-react';
 
 interface EditorTabMappingProps {
   column: ScoreColumn;
@@ -192,8 +192,8 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
                   />
                 )}
                 {rule.max === undefined && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-500">
-                    <InfinityIcon size={14} />
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-500 text-lg leading-none pb-1 font-bold">
+                    ∞
                   </div>
                 )}
               </div>

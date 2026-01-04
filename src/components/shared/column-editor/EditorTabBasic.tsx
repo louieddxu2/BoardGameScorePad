@@ -123,9 +123,9 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
         
         // Initialize subUnits if missing
         if (!column.subUnits || column.subUnits.length !== 2) {
-            // Priority: LocalStorage Pref -> Default '分', '個'
-            const prefA = localStorage.getItem(PREF_KEY_PROD_UNIT_A) || '分';
-            const prefB = localStorage.getItem(PREF_KEY_PROD_UNIT_B) || '個';
+            // Priority: LocalStorage Pref -> Default '個', '分'
+            const prefA = localStorage.getItem(PREF_KEY_PROD_UNIT_A) || '個';
+            const prefB = localStorage.getItem(PREF_KEY_PROD_UNIT_B) || '分';
             updates.subUnits = [prefA, prefB];
         }
         

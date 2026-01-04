@@ -26,6 +26,9 @@ interface TexturedScoreCellProps {
 // Helper for number formatting
 const formatDisplayNumber = (num: number | undefined | null): string => {
   if (num === undefined || num === null) return '';
+  if (Number.isNaN(num)) return 'NaN';
+  if (num === Infinity) return '∞';
+  if (num === -Infinity) return '-∞';
   if (Object.is(num, -0)) return '-0';
   return String(num);
 };
