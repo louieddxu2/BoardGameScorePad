@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { GameTemplate, GameSession } from '../../types';
-import { Plus, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, CloudCog, Loader2, CloudAlert, Activity, CloudOff } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, CloudCog, Loader2, Activity, CloudOff } from 'lucide-react';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import InstallGuideModal from '../modals/InstallGuideModal';
 import { useToast } from '../../hooks/useToast';
@@ -167,7 +167,8 @@ const Dashboard: React.FC<DashboardProps> = ({
       if (isSyncing) return { icon: <Loader2 size={18} className="animate-spin" />, colorClass: 'text-sky-400 bg-slate-700 cursor-wait', title: "同步中" };
       if (isAutoConnectEnabled) {
           if (isConnected) return { icon: <CloudCog size={18} />, colorClass: 'text-sky-400 hover:text-white hover:bg-slate-700', title: "雲端管理 (已連線)" };
-          return { icon: <CloudAlert size={18} />, colorClass: 'text-amber-400 hover:text-amber-200 hover:bg-slate-700', title: "連線失敗 (點擊重試)" };
+          // 使用 CloudOff 但改為 Amber 色來表示連線失敗 (Intent=ON, Connected=OFF)
+          return { icon: <CloudOff size={18} />, colorClass: 'text-amber-400 hover:text-amber-200 hover:bg-slate-700', title: "連線失敗 (點擊重試)" };
       }
       return { icon: <CloudOff size={18} />, colorClass: 'text-slate-500 hover:text-white hover:bg-slate-700', title: "開啟雲端同步" };
   };
