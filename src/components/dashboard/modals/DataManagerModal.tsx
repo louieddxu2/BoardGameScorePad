@@ -10,11 +10,12 @@ import { useLiveQuery } from 'dexie-react-hooks';
 interface DataManagerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  userTemplates: GameTemplate[];
+  userTemplates: GameTemplate[]; // Now shallow
   onImport: (templates: GameTemplate[]) => void;
+  onGetFullTemplate: (id: string) => Promise<GameTemplate | null>;
 }
 
-const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, userTemplates, onImport }) => {
+const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, userTemplates, onImport, onGetFullTemplate }) => {
   const [activeTab, setActiveTab] = useState<'import' | 'export'>('import');
   const [importJson, setImportJson] = useState('');
   const [importError, setImportError] = useState<string | null>(null);
@@ -22,8 +23,15 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
   const [isExportCopying, setIsExportCopying] = useState(false);
   const { showToast } = useToast();
 
-  // 讀取系統覆寫資料，讓使用者也能匯出他們的修改
-  const systemOverrides = useLiveQuery(() => db.systemOverrides.toArray(), [], []);
+  // 讀取系統覆寫資料 (Shallow)
+  const systemOverrides = useLiveQuery(async () => {
+      // Manual shallow mapping for overrides to match userTemplates structure
+      return await db.systemOverrides.toArray(list => list.map(t => ({
+         id: t.id, name: t.name, updatedAt: t.updatedAt, createdAt: t.createdAt,
+         isPinned: t.isPinned, hasImage: t.hasImage, cloudImageId: t.cloudImageId,
+         columns: [], globalVisuals: undefined
+      } as GameTemplate)));
+  }, [], []);
 
   const allExportableTemplates = useMemo(() => {
       const overrides = systemOverrides || [];
@@ -46,12 +54,11 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
       itemsToImport.forEach(item => {
         if (!item.name || !Array.isArray(item.columns)) throw new Error(`格式錯誤：${item.name || '未命名'} 缺少必要欄位`);
         
-        // 移除 _source 標記 (如果有的話)
         const { _source, ...cleanItem } = item;
 
         validTemplates.push({
           ...cleanItem,
-          id: generateId(), // Refresh ID to avoid conflicts
+          id: generateId(), // Refresh ID
           createdAt: Date.now(),
           updatedAt: Date.now(),
           columns: item.columns.map((col: any) => ({ ...col, id: col.id || generateId(8) }))
@@ -71,42 +78,58 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
     }
   };
 
-  const handleExportCopy = () => {
-    const selectedTemplates = allExportableTemplates.filter(t => exportSelectedIds.includes(t.id));
-    if (selectedTemplates.length === 0) return;
-    
-    // 移除內部使用的 _source 標記後再匯出
-    const cleanTemplates = selectedTemplates.map(({ _source, ...t }: any) => t);
-    
-    const templateStrings = cleanTemplates.map((t: any) => `  ${JSON.stringify(t)}`);
-    const json = `[\n${templateStrings.join(',\n')}\n]`;
-    
-    navigator.clipboard.writeText(json).then(() => {
-      setIsExportCopying(true);
-      setTimeout(() => setIsExportCopying(false), 2000);
-      showToast({ message: "已複製到剪貼簿", type: 'success' });
-    });
+  const prepareExportData = async () => {
+      const promises = exportSelectedIds.map(async (id) => {
+          const t = await onGetFullTemplate(id);
+          if (!t) return null;
+          // Clean _source if it existed in the meta object (getTemplate returns raw template so it's clean)
+          return t;
+      });
+      
+      const results = await Promise.all(promises);
+      const cleanTemplates = results.filter((t): t is GameTemplate => t !== null);
+      
+      if (cleanTemplates.length === 0) return null;
+      
+      const templateStrings = cleanTemplates.map((t: any) => `  ${JSON.stringify(t)}`);
+      return `[\n${templateStrings.join(',\n')}\n]`;
   };
 
-  const handleShareToDev = () => {
-    const selectedTemplates = allExportableTemplates.filter(t => exportSelectedIds.includes(t.id));
-    if (selectedTemplates.length === 0) return;
+  const handleExportCopy = async () => {
+    if (exportSelectedIds.length === 0) return;
     
-    const cleanTemplates = selectedTemplates.map(({ _source, ...t }: any) => t);
-    const templateStrings = cleanTemplates.map((t: any) => `  ${JSON.stringify(t)}`);
-    const json = `[\n${templateStrings.join(',\n')}\n]`;
+    try {
+        const json = await prepareExportData();
+        if (!json) throw new Error("無資料");
+
+        navigator.clipboard.writeText(json).then(() => {
+            setIsExportCopying(true);
+            setTimeout(() => setIsExportCopying(false), 2000);
+            showToast({ message: "已複製到剪貼簿", type: 'success' });
+        });
+    } catch (e) {
+        showToast({ message: "匯出失敗，請重試", type: 'error' });
+    }
+  };
+
+  const handleShareToDev = async () => {
+    if (exportSelectedIds.length === 0) return;
     
-    navigator.clipboard.writeText(json).then(() => {
-      setIsExportCopying(true);
-      setTimeout(() => setIsExportCopying(false), 2000);
-      const email = "louieddxu2@gmail.com";
-      const subject = `【萬用桌遊計分板】分享遊戲模板 (${new Date().toLocaleDateString()})`;
-      const body = `開發者你好！這是我製作的計分板\n↓↓↓ 資料已複製，請在下方貼上(Ctrl+V)↓↓↓\n--------------------------------------------------\n\n--------------------------------------------------`;
-      window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    }).catch(err => {
-      console.error("Failed to copy:", err);
-      showToast({ title: "自動複製失敗", message: "請手動複製後再寄信。", type: 'error' });
-    });
+    try {
+        const json = await prepareExportData();
+        if (!json) throw new Error("無資料");
+
+        navigator.clipboard.writeText(json).then(() => {
+            setIsExportCopying(true);
+            setTimeout(() => setIsExportCopying(false), 2000);
+            const email = "louieddxu2@gmail.com";
+            const subject = `【萬用桌遊計分板】分享遊戲模板 (${new Date().toLocaleDateString()})`;
+            const body = `開發者你好！這是我製作的計分板\n↓↓↓ 資料已複製，請在下方貼上(Ctrl+V)↓↓↓\n--------------------------------------------------\n\n--------------------------------------------------`;
+            window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        });
+    } catch (e) {
+        showToast({ message: "準備資料失敗", type: 'error' });
+    }
   };
 
   const toggleExportSelection = (id: string) => {

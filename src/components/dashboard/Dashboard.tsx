@@ -19,7 +19,7 @@ interface DashboardProps {
   systemOverrides: Record<string, GameTemplate>;
   systemTemplates: GameTemplate[]; 
   pinnedIds: string[];
-  newBadgeIds: string[]; // [Changed] knownSysIds -> newBadgeIds
+  newBadgeIds: string[]; 
   activeSessionIds: string[];
   themeMode: 'dark' | 'light';
   onToggleTheme: () => void;
@@ -33,8 +33,9 @@ interface DashboardProps {
   onTemplateSave: (template: GameTemplate, options?: { skipCloud?: boolean }) => void; 
   onBatchImport: (templates: GameTemplate[]) => void;
   onTogglePin: (id: string) => void;
-  onClearNewBadges: () => void; // [Changed] onMarkSystemSeen -> onClearNewBadges
+  onClearNewBadges: () => void; 
   onRestoreSystem: (id: string) => void;
+  onGetFullTemplate: (id: string) => Promise<GameTemplate | null>; // New prop
   isInstalled: boolean;
   canInstall: boolean;
   onInstallClick: () => void;
@@ -59,6 +60,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   onTogglePin,
   onClearNewBadges,
   onRestoreSystem,
+  onGetFullTemplate,
   isInstalled,
   canInstall,
   onInstallClick
@@ -88,7 +90,6 @@ const Dashboard: React.FC<DashboardProps> = ({
       toggleCloudConnection, isSyncing, isConnected, isAutoConnectEnabled, isMockMode 
   } = useGoogleDrive();
   
-  // New games count is simply the length of the badge list
   const newSystemTemplatesCount = newBadgeIds.length;
   const allTemplates = [...userTemplates, ...systemTemplates];
 
@@ -122,23 +123,43 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   // --- Handlers ---
 
-  const handleCopyJSON = (template: GameTemplate, e: React.MouseEvent) => {
+  const handleCopyJSON = async (partialTemplate: GameTemplate, e: React.MouseEvent) => {
       e.stopPropagation();
-      const json = JSON.stringify(template, null, 2);
+      let templateToCopy = partialTemplate;
+      
+      // If columns are missing (shallow fetch), fetch full
+      if (!partialTemplate.columns || partialTemplate.columns.length === 0) {
+          const full = await onGetFullTemplate(partialTemplate.id);
+          if (full) templateToCopy = full;
+      }
+
+      const json = JSON.stringify(templateToCopy, null, 2);
       navigator.clipboard.writeText(json).then(() => {
-          setCopiedId(template.id);
+          setCopiedId(partialTemplate.id);
           setTimeout(() => setCopiedId(null), 2000);
           showToast({ message: "JSON 已複製", type: 'success' });
       });
   };
 
-  const handleCloudBackup = async (template: GameTemplate, e: React.MouseEvent) => {
+  const handleCloudBackup = async (partialTemplate: GameTemplate, e: React.MouseEvent) => {
       e.stopPropagation();
       if (!isAutoConnectEnabled) {
           showToast({ message: "請先點擊上方雲端按鈕啟用連線", type: 'warning' });
           return;
       }
-      const updated = await handleBackup(template, null);
+      
+      // Ensure we have full template
+      let templateToBackup = partialTemplate;
+      if (!partialTemplate.columns || partialTemplate.columns.length === 0) {
+          const full = await onGetFullTemplate(partialTemplate.id);
+          if (full) templateToBackup = full;
+          else {
+              showToast({ message: "讀取模板失敗", type: 'error' });
+              return;
+          }
+      }
+
+      const updated = await handleBackup(templateToBackup, null);
       if (updated) {
           onTemplateSave({ ...updated, lastSyncedAt: Date.now() }, { skipCloud: true });
       }
@@ -151,10 +172,18 @@ const Dashboard: React.FC<DashboardProps> = ({
       else toggleCloudConnection();
   };
 
-  const handleCopySystemTemplate = (template: GameTemplate, e: React.MouseEvent) => {
+  const handleCopySystemTemplate = async (partialTemplate: GameTemplate, e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // Ensure full fetch
+    let sourceTemplate = partialTemplate;
+    if (!sourceTemplate.columns || sourceTemplate.columns.length === 0) {
+        const full = await onGetFullTemplate(partialTemplate.id);
+        if (full) sourceTemplate = full;
+    }
+
     const newTemplate: GameTemplate = {
-        ...JSON.parse(JSON.stringify(template)),
+        ...JSON.parse(JSON.stringify(sourceTemplate)),
         id: generateId(),
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -167,7 +196,6 @@ const Dashboard: React.FC<DashboardProps> = ({
       if (isSyncing) return { icon: <Loader2 size={18} className="animate-spin" />, colorClass: 'text-sky-400 bg-slate-700 cursor-wait', title: "同步中" };
       if (isAutoConnectEnabled) {
           if (isConnected) return { icon: <CloudCog size={18} />, colorClass: 'text-sky-400 hover:text-white hover:bg-slate-700', title: "雲端管理 (已連線)" };
-          // 使用 CloudOff 但改為 Amber 色來表示連線失敗 (Intent=ON, Connected=OFF)
           return { icon: <CloudOff size={18} />, colorClass: 'text-amber-400 hover:text-amber-200 hover:bg-slate-700', title: "連線失敗 (點擊重試)" };
       }
       return { icon: <CloudOff size={18} />, colorClass: 'text-slate-500 hover:text-white hover:bg-slate-700', title: "開啟雲端同步" };
@@ -328,8 +356,9 @@ const Dashboard: React.FC<DashboardProps> = ({
       <DataManagerModal 
         isOpen={showDataModal} 
         onClose={() => setShowDataModal(false)}
-        userTemplates={userTemplates}
+        userTemplates={userTemplates} // Note: These are shallow, DataManager will fetch full on export
         onImport={onBatchImport}
+        onGetFullTemplate={onGetFullTemplate}
       />
 
       <CloudManagerModal 

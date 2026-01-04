@@ -178,29 +178,35 @@ const App: React.FC = () => {
     setPendingTemplate(template);
   };
 
-  const handleResumeGame = () => {
+  const handleResumeGame = async () => {
       if (pendingTemplate) {
-          const success = appData.resumeSession(pendingTemplate.id);
+          const success = await appData.resumeSession(pendingTemplate.id);
           if (success) {
-              setPendingTemplate(null);
               setView(AppView.ACTIVE_SESSION);
+              setPendingTemplate(null);
           }
       }
   };
 
-  const handleDirectResume = (templateId: string) => {
-      const success = appData.resumeSession(templateId);
+  const handleDirectResume = async (templateId: string) => {
+      const success = await appData.resumeSession(templateId);
       if (success) {
           setPendingTemplate(null);
           setView(AppView.ACTIVE_SESSION);
       }
   };
 
-  const handleStartNewGame = (count: number, options: { startTimeStr: string, scoringRule: ScoringRule }) => {
+  const handleStartNewGame = async (count: number, options: { startTimeStr: string, scoringRule: ScoringRule }) => {
       if (pendingTemplate) {
-          appData.startSession(pendingTemplate, count, options);
-          setPendingTemplate(null);
+          // 1. Prepare data (this might involve fetching full template if shallow)
+          await appData.startSession(pendingTemplate, count, options);
+          
+          // 2. Switch View FIRST (This mounts SessionView on top of Dashboard)
           setView(AppView.ACTIVE_SESSION);
+          
+          // 3. Close Modal (This unmounts the modal)
+          // The delay ensures the SessionView is rendered before the modal disappears to avoid flashing the dashboard
+          setPendingTemplate(null);
       }
   };
 
@@ -220,47 +226,22 @@ const App: React.FC = () => {
       setView(AppView.DASHBOARD);
   };
 
-  // --- Render ---
-
-  const renderContent = () => {
-    if (view === AppView.TEMPLATE_CREATOR) {
-      return (
-        <TemplateEditor 
-          onSave={handleTemplateSave} 
-          onCancel={() => setView(AppView.DASHBOARD)}
-          allTemplates={[...appData.systemTemplates, ...appData.templates]}
-        />
-      );
-    }
-
-    if (view === AppView.ACTIVE_SESSION && appData.currentSession && appData.activeTemplate) {
-      return (
-        <SessionView 
-          key={appData.currentSession.id}
-          session={appData.currentSession} 
-          template={appData.activeTemplate} 
-          playerHistory={appData.playerHistory}
-          zoomLevel={zoomLevel}
-          baseImage={appData.sessionImage} 
-          onUpdateSession={appData.updateSession}
-          onUpdatePlayerHistory={appData.updatePlayerHistory}
-          onUpdateImage={appData.setSessionImage} 
-          onResetScores={appData.resetSessionScores}
-          onUpdateTemplate={appData.updateActiveTemplate}
-          onExit={handleExitSession}
-        />
-      );
-    }
-
-    return (
-      <div className="h-full bg-slate-900 text-slate-100 flex flex-col font-sans overflow-hidden transition-colors duration-300">
-        
+  return (
+    <div className="h-full bg-slate-900 text-slate-100 font-sans overflow-hidden transition-colors duration-300 relative">
+      
+      {/* 
+        STACK ARCHITECTURE:
+        Dashboard is always present in DOM to preserve state/scroll.
+        It is hidden via CSS when not active.
+        [FIX] Added z-0 to Dashboard to create a base stacking context.
+      */}
+      <div className={`absolute inset-0 z-0 flex flex-col ${view !== AppView.DASHBOARD ? 'invisible pointer-events-none' : ''}`}>
         <Dashboard 
           userTemplates={appData.templates}
           systemOverrides={appData.systemOverrides}
           systemTemplates={appData.systemTemplates}
           pinnedIds={appData.pinnedIds}
-          newBadgeIds={appData.newBadgeIds} // Pass new badge IDs
+          newBadgeIds={appData.newBadgeIds}
           activeSessionIds={appData.activeSessionIds}
           themeMode={appData.themeMode} 
           onToggleTheme={appData.toggleTheme} 
@@ -274,31 +255,56 @@ const App: React.FC = () => {
           onTemplateSave={appData.saveTemplate}
           onBatchImport={handleBatchImport}
           onTogglePin={appData.togglePin}
-          onClearNewBadges={appData.clearNewBadges} // Pass clear action
+          onClearNewBadges={appData.clearNewBadges}
           onRestoreSystem={appData.restoreSystemTemplate}
+          onGetFullTemplate={appData.getTemplate} // Pass fetcher
           isInstalled={isInstalled}
           canInstall={!!installPromptEvent}
           onInstallClick={handleInstallClick}
         />
-
-        {pendingTemplate && (
-            <GameSetupModal 
-                template={pendingTemplate}
-                previewSession={pendingSessionPreview}
-                sessionPlayerCount={appData.sessionPlayerCount}
-                onClose={() => setPendingTemplate(null)}
-                onStart={handleStartNewGame}
-                onResume={handleResumeGame}
-            />
-        )}
       </div>
-    );
-  }
 
-  return (
-    <>
-      {renderContent()}
-    </>
+      {view === AppView.TEMPLATE_CREATOR && (
+        <div className="absolute inset-0 z-50 bg-slate-900">
+            <TemplateEditor 
+              onSave={handleTemplateSave} 
+              onCancel={() => setView(AppView.DASHBOARD)}
+              allTemplates={[...appData.systemTemplates, ...appData.templates]}
+            />
+        </div>
+      )}
+
+      {/* [FIX] SessionView z-index increased to z-40 to be higher than DashboardHeader (z-30) */}
+      {view === AppView.ACTIVE_SESSION && appData.currentSession && appData.activeTemplate && (
+        <div className="absolute inset-0 z-40 bg-slate-900 animate-in fade-in duration-300">
+            <SessionView 
+              key={appData.currentSession.id}
+              session={appData.currentSession} 
+              template={appData.activeTemplate} 
+              playerHistory={appData.playerHistory}
+              zoomLevel={zoomLevel}
+              baseImage={appData.sessionImage} 
+              onUpdateSession={appData.updateSession}
+              onUpdatePlayerHistory={appData.updatePlayerHistory}
+              onUpdateImage={appData.setSessionImage} 
+              onResetScores={appData.resetSessionScores}
+              onUpdateTemplate={appData.updateActiveTemplate}
+              onExit={handleExitSession}
+            />
+        </div>
+      )}
+
+      {pendingTemplate && (
+          <GameSetupModal 
+              template={pendingTemplate}
+              previewSession={pendingSessionPreview}
+              sessionPlayerCount={appData.sessionPlayerCount}
+              onClose={() => setPendingTemplate(null)}
+              onStart={handleStartNewGame}
+              onResume={handleResumeGame}
+          />
+      )}
+    </div>
   );
 };
 

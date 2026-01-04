@@ -28,9 +28,14 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
   onStart, 
   onResume 
 }) => {
+  
   const getInitialCount = () => {
+    // 1. Priority: Current session memory (if user just went back)
     if (sessionPlayerCount) return sessionPlayerCount;
+    
+    // 2. Priority: Template Data (Now merged with DB preferences in useAppData)
     if (template.lastPlayerCount) return template.lastPlayerCount;
+    
     return 4;
   };
 
@@ -38,7 +43,11 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
   
   // Options State
   const [startTimeStr, setStartTimeStr] = useState('');
-  const [scoringRule, setScoringRule] = useState<ScoringRule>(template.defaultScoringRule || 'HIGHEST_WINS');
+  
+  const [scoringRule, setScoringRule] = useState<ScoringRule>(() => {
+      // Template object already contains the merged preference
+      return template.defaultScoringRule || 'HIGHEST_WINS';
+  });
 
   // Initialize time on mount
   useEffect(() => {

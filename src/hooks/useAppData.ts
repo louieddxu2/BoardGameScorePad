@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { migrateFromLocalStorage } from '../utils/dbMigration';
-import { GameTemplate, GameSession, Player, ScoringRule } from '../types';
+import { GameTemplate, GameSession, Player, ScoringRule, TemplatePreference } from '../types';
 import { COLORS } from '../colors';
 import { calculatePlayerTotal } from '../utils/scoring';
 import { generateId } from '../utils/idGenerator';
@@ -26,19 +26,72 @@ export const useAppData = () => {
 
   // --- 2. Reactive Data Source (Dexie) ---
   
-  // A. 使用者自訂模板
-  const userTemplates = useLiveQuery(async () => {
-      const templates = await db.templates.orderBy('updatedAt').toArray();
-      return templates.reverse();
-  }, [], []);
+  // Fetch Preferences separately
+  const allPrefs = useLiveQuery(() => db.templatePrefs.toArray(), [], []);
   
-  // B. 內建模板 (從 DB 讀取)
-  const builtinTemplates = useLiveQuery(async () => {
+  const prefsMap = useMemo(() => {
+      const map: Record<string, TemplatePreference> = {};
+      allPrefs?.forEach(p => { map[p.templateId] = p; });
+      return map;
+  }, [allPrefs]);
+
+  // Helper to merge prefs into templates (In-Memory)
+  const mergePrefs = useCallback((template: GameTemplate, prefsMap: Record<string, TemplatePreference>) => {
+      const pref = prefsMap[template.id];
+      if (!pref) return template;
+      return {
+          ...template,
+          lastPlayerCount: pref.lastPlayerCount ?? template.lastPlayerCount,
+          defaultScoringRule: pref.defaultScoringRule ?? template.defaultScoringRule
+      };
+  }, []);
+
+  // [Shallow Fetching]: Only fetch metadata for the list to save memory
+  const rawUserTemplates = useLiveQuery(async () => {
+      // Use toArray with a mapper to avoid loading full objects (especially images/columns)
+      return await db.templates.orderBy('updatedAt').toArray(list => list.map(t => ({
+         id: t.id, 
+         name: t.name, 
+         updatedAt: t.updatedAt, 
+         createdAt: t.createdAt,
+         isPinned: t.isPinned,
+         hasImage: t.hasImage, 
+         cloudImageId: t.cloudImageId,
+         lastSyncedAt: t.lastSyncedAt,
+         description: t.description,
+         // Metadata only: Empty complex fields
+         columns: [], 
+         globalVisuals: undefined,
+         lastPlayerCount: t.lastPlayerCount,
+         defaultScoringRule: t.defaultScoringRule
+      } as GameTemplate)));
+  }, [], []);
+
+  const userTemplates = useMemo(() => {
+      if (!rawUserTemplates) return [];
+      return rawUserTemplates.map(t => mergePrefs(t, prefsMap)).reverse(); // Reverse here to show newest first
+  }, [rawUserTemplates, prefsMap, mergePrefs]);
+  
+  // B. 內建模板 (從 DB 讀取 - 內建模板通常不大，但為了統一也做 shallow)
+  const rawBuiltinTemplates = useLiveQuery(async () => {
       return await db.builtins.toArray();
   }, [], []);
 
-  // C. 系統覆寫 (使用者修改過的內建模板)
-  const dbOverrides = useLiveQuery(() => db.systemOverrides.toArray(), [], []);
+  // C. 系統覆寫 (Shallow)
+  const rawDbOverrides = useLiveQuery(async () => {
+      return await db.systemOverrides.toArray(list => list.map(t => ({
+         id: t.id, 
+         name: t.name, 
+         updatedAt: t.updatedAt, 
+         createdAt: t.createdAt,
+         isPinned: t.isPinned,
+         hasImage: t.hasImage, 
+         cloudImageId: t.cloudImageId,
+         lastSyncedAt: t.lastSyncedAt,
+         columns: [], 
+         globalVisuals: undefined
+      } as GameTemplate)));
+  }, [], []);
   
   // D. 進行中的 Session
   const activeSessions = useLiveQuery(() => db.sessions.where('status').equals('active').toArray(), [], []);
@@ -47,18 +100,21 @@ export const useAppData = () => {
   // System Overrides Map
   const systemOverrides = useMemo(() => {
     const map: Record<string, GameTemplate> = {};
-    dbOverrides?.forEach(t => { map[t.id] = t; });
+    rawDbOverrides?.forEach(t => { map[t.id] = mergePrefs(t, prefsMap); });
     return map;
-  }, [dbOverrides]);
+  }, [rawDbOverrides, prefsMap, mergePrefs]);
 
   // Combined System Templates (Built-in Base + Overrides)
   const systemTemplates = useMemo(() => {
-    if (!builtinTemplates) return [];
-    return builtinTemplates.map(dt => {
+    if (!rawBuiltinTemplates) return [];
+    return rawBuiltinTemplates.map(dt => {
+      // If override exists, use it (prefs already merged in systemOverrides memo)
+      // Note: If override exists, it's shallow. We rely on startSession to fetch full.
       if (systemOverrides[dt.id]) return systemOverrides[dt.id];
-      return dt;
+      // Otherwise merge prefs into base builtin
+      return mergePrefs(dt, prefsMap);
     });
-  }, [builtinTemplates, systemOverrides]);
+  }, [rawBuiltinTemplates, systemOverrides, prefsMap, mergePrefs]);
 
   const templates = useMemo(() => userTemplates || [], [userTemplates]);
 
@@ -67,7 +123,6 @@ export const useAppData = () => {
       (localStorage.getItem('app_theme') as 'dark' | 'light') || 'dark'
   );
   
-  // [Modified] New Badge IDs: 僅儲存「未讀的新增項目 ID」
   const [newBadgeIds, setNewBadgeIds] = useState<string[]>(() => {
       try { return JSON.parse(localStorage.getItem('sm_new_badge_ids') || '[]'); } catch { return []; }
   });
@@ -97,7 +152,6 @@ export const useAppData = () => {
       setPlayerHistory(prev => [cleanName, ...prev.filter(n => n !== cleanName)].slice(0, 20));
   };
   
-  // [Modified] 清除未讀標記：直接清空 newBadgeIds 即可
   const clearNewBadges = () => {
       setNewBadgeIds([]);
   };
@@ -108,8 +162,6 @@ export const useAppData = () => {
   const [activeTemplate, setActiveTemplate] = useState<GameTemplate | null>(null);
   const [sessionImage, setSessionImage] = useState<string | null>(null);
   const isImageDirtyRef = useRef(false);
-  
-  // [New Feature] Session Player Count Memory (Valid only for current app session)
   const [sessionPlayerCount, setSessionPlayerCount] = useState<number | null>(null);
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -125,10 +177,26 @@ export const useAppData = () => {
 
   // --- Actions ---
 
+  // Helper: Fetch full template from DB (since lists are shallow)
+  const getTemplate = async (id: string): Promise<GameTemplate | null> => {
+      // 1. Try User Templates
+      let t = await db.templates.get(id);
+      if (t) return mergePrefs(t, prefsMap);
+
+      // 2. Try System Overrides
+      t = await db.systemOverrides.get(id);
+      if (t) return mergePrefs(t, prefsMap);
+
+      // 3. Try Builtins
+      t = await db.builtins.get(id);
+      if (t) return mergePrefs(t, prefsMap);
+
+      return null;
+  };
+
   const saveTemplate = async (template: GameTemplate, options: { skipCloud?: boolean } = {}) => {
     const migratedTemplate = migrateTemplate({ ...template, updatedAt: Date.now() });
     
-    // 檢查是否為內建遊戲
     const isSystem = !!(await db.builtins.get(migratedTemplate.id));
     
     if (isSystem) {
@@ -145,13 +213,15 @@ export const useAppData = () => {
   };
 
   const deleteTemplate = async (id: string) => {
-      const templateToDelete = userTemplates?.find(t => t.id === id);
+      const templateToDelete = await getTemplate(id); // Fetch full for backup name if needed
       await db.templates.delete(id);
       
       const relatedSessions = await db.sessions.where('templateId').equals(id).toArray();
       if (relatedSessions.length > 0) {
           await db.sessions.bulkDelete(relatedSessions.map(s => s.id));
       }
+      
+      await db.templatePrefs.delete(id);
 
       if (googleDriveService.isAuthorized && templateToDelete) {
           googleDriveService.softDeleteFolder(id, templateToDelete.name).then(() => {
@@ -162,43 +232,41 @@ export const useAppData = () => {
 
   const restoreSystemTemplate = async (templateId: string) => {
       await db.systemOverrides.delete(templateId);
+      await db.templatePrefs.delete(templateId);
   };
 
   const startSession = async (
-      template: GameTemplate, 
+      partialTemplate: GameTemplate, 
       playerCount: number, 
       options?: { startTimeStr?: string, scoringRule?: ScoringRule }
   ) => {
-    // 1. 更新當次 Session 的記憶
     setSessionPlayerCount(playerCount);
-
     const scoringRule = options?.scoringRule || 'HIGHEST_WINS';
 
-    // 2. 更新資料庫中的 Template 紀錄 (持久化偏好：人數與計分規則)
     try {
-        const updateData: Partial<GameTemplate> = { 
+        await db.templatePrefs.put({
+            templateId: partialTemplate.id,
             lastPlayerCount: playerCount,
-            defaultScoringRule: scoringRule
-        };
-
-        const isUserTemplate = await db.templates.get(template.id);
-        if (isUserTemplate) {
-            await db.templates.update(template.id, updateData);
-        } else {
-            // 是內建遊戲：檢查是否有覆寫，若無則建立覆寫以儲存偏好
-            const existingOverride = await db.systemOverrides.get(template.id);
-            if (existingOverride) {
-                await db.systemOverrides.update(template.id, updateData);
-            } else {
-                // 必須建立一個覆寫來儲存這個 meta data，否則下次就忘了
-                await db.systemOverrides.put({ ...template, ...updateData });
-            }
-        }
+            defaultScoringRule: scoringRule,
+            updatedAt: Date.now()
+        });
     } catch (e) {
         console.warn("Failed to save preferences", e);
     }
 
-    const migratedTemplate = migrateTemplate(template);
+    // [CRITICAL] Ensure we have the FULL template (with columns) before starting
+    const fullTemplate = await getTemplate(partialTemplate.id);
+    if (!fullTemplate) {
+        showToast({ message: "無法讀取模板資料", type: 'error' });
+        return;
+    }
+
+    const migratedTemplate = migrateTemplate(fullTemplate);
+    
+    // Explicitly update prefs again on the in-memory object to be safe
+    migratedTemplate.lastPlayerCount = playerCount;
+    migratedTemplate.defaultScoringRule = scoringRule;
+
     const hasTexture = !!migratedTemplate.globalVisuals || !!migratedTemplate.hasImage;
     const defaultColors = hasTexture 
         ? Array(playerCount).fill('transparent') 
@@ -212,7 +280,6 @@ export const useAppData = () => {
       color: defaultColors[i]
     }));
     
-    // Parse start time if provided (format HH:MM)
     let startTime = Date.now();
     if (options?.startTimeStr) {
         const [hours, minutes] = options.startTimeStr.split(':').map(Number);
@@ -220,8 +287,6 @@ export const useAppData = () => {
             const date = new Date();
             date.setHours(hours);
             date.setMinutes(minutes);
-            // If the time is in the future, assume it was yesterday (e.g. crossing midnight)
-            // But simplified logic: just use today's date with set time.
             startTime = date.getTime();
         }
     }
@@ -251,9 +316,8 @@ export const useAppData = () => {
 
           if (!session) return false;
 
-          let template = (await db.templates.get(templateId)) || 
-                         (await db.systemOverrides.get(templateId)) || 
-                         (await db.builtins.get(templateId));
+          // Fetch full template
+          let template = await getTemplate(templateId);
 
           if (template) {
               template = migrateTemplate(template);
@@ -309,7 +373,6 @@ export const useAppData = () => {
   const resetSessionScores = () => {
     if (!currentSession) return;
     const resetPlayers = currentSession.players.map(p => ({ ...p, scores: {}, totalScore: 0 }));
-    // Reset time to now as well? Maybe keep original start time. Let's update it to now.
     const resetSessionSameId = { ...currentSession, players: resetPlayers, startTime: Date.now() };
     setCurrentSession(resetSessionSameId);
   };
@@ -372,16 +435,17 @@ export const useAppData = () => {
 
   return { 
       templates, systemTemplates, systemOverrides,
-      activeSessionIds, newBadgeIds, pinnedIds, playerHistory, // Export newBadgeIds
+      activeSessionIds, newBadgeIds, pinnedIds, playerHistory,
       currentSession, activeTemplate, sessionImage, 
-      themeMode, sessionPlayerCount, // Export sessionPlayerCount
+      themeMode, sessionPlayerCount,
       
       setTemplates: () => {}, 
       setSessionImage: handleUpdateSessionImage, 
       toggleTheme, togglePin, updatePlayerHistory, 
-      clearNewBadges, // Export function
+      clearNewBadges,
       
       saveTemplate, deleteTemplate, restoreSystemTemplate,
+      getTemplate, // New Export
       
       startSession, updateSession, resetSessionScores, exitSession, 
       resumeSession, discardSession, clearAllActiveSessions, getSessionPreview,

@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'boardgame-scorepad-v20-stable';
+const CACHE_NAME = 'boardgame-scorepad-v21-stable';
 
 // 核心靜態資源
 const CORE_ASSETS = [
@@ -110,6 +110,7 @@ self.addEventListener('fetch', (event) => {
               return networkResponse;
             }
 
+            // 只有當資源真的存在時才快取 (避免快取到 404 頁面)
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(event.request, responseToCache);

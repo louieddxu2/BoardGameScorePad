@@ -115,6 +115,14 @@ export interface Player {
 
 export type ScoringRule = 'HIGHEST_WINS' | 'LOWEST_WINS' | 'COOP' | 'COMPETITIVE_NO_SCORE' | 'COOP_NO_SCORE';
 
+// [New Interface] Separate preferences from template definition
+export interface TemplatePreference {
+  templateId: string;
+  lastPlayerCount?: number;
+  defaultScoringRule?: ScoringRule;
+  updatedAt?: number;
+}
+
 export interface GameTemplate {
   id: string;
   name: string;
@@ -127,8 +135,8 @@ export interface GameTemplate {
   hasImage?: boolean;
   cloudImageId?: string; 
   globalVisuals?: GlobalVisuals;
-  lastPlayerCount?: number; // 記錄上次使用的玩家人數
-  defaultScoringRule?: ScoringRule; // 記錄該遊戲偏好的勝利條件
+  lastPlayerCount?: number; // 兼容舊資料，優先使用 TemplatePreference
+  defaultScoringRule?: ScoringRule; // 兼容舊資料，優先使用 TemplatePreference
 }
 
 export interface GameSession {
