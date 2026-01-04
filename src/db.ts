@@ -12,15 +12,18 @@ export class ScorePadDatabase extends Dexie {
   constructor() {
     super('BoardGameScorePadDB');
     
-    // 定義資料庫結構
-    // 注意：Dexie 的 version 升級是累加的，但為了簡化，若您還在開發階段，可以直接修改這裡
-    // 若已上線，應使用 .version(2).stores(...)
-    (this as any).version(1).stores({
+    // Version 1: 初始結構 (保留歷史紀錄)
+    this.version(1).stores({
       templates: 'id, name, updatedAt', 
       systemOverrides: 'id', 
       builtins: 'id, name', 
-      sessions: 'id, templateId, startTime, status',
-      templatePrefs: 'templateId' // 新表，以 templateId 為主鍵
+      sessions: 'id, templateId, startTime, status'
+    });
+
+    // Version 2: 新增 templatePrefs 表
+    // Dexie 的 version 是累加的，這裡只需要定義新增或修改的表
+    this.version(2).stores({
+      templatePrefs: 'templateId' 
     });
   }
 }
