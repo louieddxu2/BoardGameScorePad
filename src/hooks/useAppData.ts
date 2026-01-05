@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { migrateFromLocalStorage } from '../utils/dbMigration';
-import { GameTemplate, GameSession, Player, ScoringRule, TemplatePreference } from '../types';
+import { GameTemplate, GameSession, Player, ScoringRule, TemplatePreference, HistoryRecord } from '../types';
 import { COLORS } from '../colors';
 import { calculatePlayerTotal } from '../utils/scoring';
 import { generateId } from '../utils/idGenerator';
@@ -14,6 +14,9 @@ import { migrateTemplate, migrateScores } from '../utils/dataMigration';
 export const useAppData = () => {
   const { showToast } = useToast();
   const [isDbReady, setIsDbReady] = useState(false);
+  
+  // [Search State]
+  const [searchQuery, setSearchQuery] = useState('');
 
   // --- 1. Initialization & Migration ---
   useEffect(() => {
@@ -46,10 +49,17 @@ export const useAppData = () => {
       };
   }, []);
 
-  // [Shallow Fetching]: Only fetch metadata for the list to save memory
-  const rawUserTemplates = useLiveQuery(async () => {
-      // Use toArray with a mapper to avoid loading full objects (especially images/columns)
-      return await db.templates.orderBy('updatedAt').toArray(list => list.map(t => ({
+  // A. User Templates (DB Search + Count + Limit)
+  const userTemplatesData = useLiveQuery(async () => {
+      let collection = db.templates.orderBy('updatedAt').reverse();
+      
+      if (searchQuery.trim()) {
+          const lowerQ = searchQuery.toLowerCase();
+          collection = collection.filter(t => t.name.toLowerCase().includes(lowerQ));
+      }
+
+      const count = await collection.count();
+      const items = await collection.limit(100).toArray(list => list.map(t => ({
          id: t.id, 
          name: t.name, 
          updatedAt: t.updatedAt, 
@@ -59,25 +69,37 @@ export const useAppData = () => {
          cloudImageId: t.cloudImageId,
          lastSyncedAt: t.lastSyncedAt,
          description: t.description,
-         // Metadata only: Empty complex fields
          columns: [], 
          globalVisuals: undefined,
          lastPlayerCount: t.lastPlayerCount,
          defaultScoringRule: t.defaultScoringRule
       } as GameTemplate)));
-  }, [], []);
+
+      return { count, items };
+  }, [searchQuery], { count: 0, items: [] });
 
   const userTemplates = useMemo(() => {
-      if (!rawUserTemplates) return [];
-      return rawUserTemplates.map(t => mergePrefs(t, prefsMap)).reverse(); // Reverse here to show newest first
-  }, [rawUserTemplates, prefsMap, mergePrefs]);
+      return userTemplatesData.items.map(t => mergePrefs(t, prefsMap));
+  }, [userTemplatesData.items, prefsMap, mergePrefs]);
   
-  // B. 內建模板 (從 DB 讀取 - 內建模板通常不大，但為了統一也做 shallow)
-  const rawBuiltinTemplates = useLiveQuery(async () => {
-      return await db.builtins.toArray();
-  }, [], []);
+  // B. Built-in Templates (DB Search + Count + Limit)
+  // [Unified Logic] Apply DB filtering to builtins as requested
+  const builtinsData = useLiveQuery(async () => {
+      let collection = db.builtins.toCollection(); // Default order
+      
+      if (searchQuery.trim()) {
+          const lowerQ = searchQuery.toLowerCase();
+          collection = collection.filter(t => t.name.toLowerCase().includes(lowerQ));
+      }
+      
+      const count = await collection.count();
+      const items = await collection.limit(100).toArray();
+      
+      return { count, items };
+  }, [searchQuery], { count: 0, items: [] });
 
-  // C. 系統覆寫 (Shallow)
+  // C. System Overrides (Fetch All Shallow)
+  // We need overrides to merge into the displayed builtins
   const rawDbOverrides = useLiveQuery(async () => {
       return await db.systemOverrides.toArray(list => list.map(t => ({
          id: t.id, 
@@ -93,9 +115,34 @@ export const useAppData = () => {
       } as GameTemplate)));
   }, [], []);
   
-  // D. 進行中的 Session
+  // D. Active Sessions
   const activeSessions = useLiveQuery(() => db.sessions.where('status').equals('active').toArray(), [], []);
   const activeSessionIds = useMemo(() => activeSessions?.map(s => s.templateId) || [], [activeSessions]);
+
+  // E. History Records (DB Search + Count + Limit 100)
+  const historyData = useLiveQuery(async () => {
+      let collection = db.history.orderBy('endTime').reverse();
+
+      if (searchQuery.trim()) {
+          const lowerQ = searchQuery.toLowerCase();
+          collection = collection.filter(h => 
+              h.gameName.toLowerCase().includes(lowerQ) ||
+              h.players.some(p => p.name.toLowerCase().includes(lowerQ))
+          );
+      }
+
+      const count = await collection.count();
+      const items = await collection.limit(100).toArray();
+
+      return { count, items };
+  }, [searchQuery], { count: 0, items: [] });
+
+  // F. Saved Lists (Limit 50)
+  const savedPlayers = useLiveQuery(() => db.savedPlayers.orderBy('lastUsed').reverse().limit(50).toArray(), [], []);
+  const savedLocations = useLiveQuery(() => db.savedLocations.orderBy('lastUsed').reverse().limit(50).toArray(), [], []);
+
+  const playerHistory = useMemo(() => savedPlayers?.map(p => p.name) || [], [savedPlayers]);
+  const locationHistory = useMemo(() => savedLocations?.map(l => l.name) || [], [savedLocations]);
 
   // System Overrides Map
   const systemOverrides = useMemo(() => {
@@ -104,21 +151,17 @@ export const useAppData = () => {
     return map;
   }, [rawDbOverrides, prefsMap, mergePrefs]);
 
-  // Combined System Templates (Built-in Base + Overrides)
+  // Combined System Templates
   const systemTemplates = useMemo(() => {
-    if (!rawBuiltinTemplates) return [];
-    return rawBuiltinTemplates.map(dt => {
-      // If override exists, use it (prefs already merged in systemOverrides memo)
-      // Note: If override exists, it's shallow. We rely on startSession to fetch full.
+    return builtinsData.items.map(dt => {
       if (systemOverrides[dt.id]) return systemOverrides[dt.id];
-      // Otherwise merge prefs into base builtin
       return mergePrefs(dt, prefsMap);
     });
-  }, [rawBuiltinTemplates, systemOverrides, prefsMap, mergePrefs]);
+  }, [builtinsData.items, systemOverrides, prefsMap, mergePrefs]);
 
   const templates = useMemo(() => userTemplates || [], [userTemplates]);
 
-  // --- 3. LocalStorage Settings (Lightweight config) ---
+  // --- 3. LocalStorage Settings ---
   const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => 
       (localStorage.getItem('app_theme') as 'dark' | 'light') || 'dark'
   );
@@ -131,13 +174,8 @@ export const useAppData = () => {
       try { return JSON.parse(localStorage.getItem('sm_pinned_ids') || '[]'); } catch { return []; }
   });
 
-  const [playerHistory, setPlayerHistory] = useState<string[]>(() => {
-      try { return JSON.parse(localStorage.getItem('sm_player_history') || '[]'); } catch { return []; }
-  });
-
   useEffect(() => { localStorage.setItem('sm_new_badge_ids', JSON.stringify(newBadgeIds)); }, [newBadgeIds]);
   useEffect(() => { localStorage.setItem('sm_pinned_ids', JSON.stringify(pinnedIds)); }, [pinnedIds]);
-  useEffect(() => { localStorage.setItem('sm_player_history', JSON.stringify(playerHistory)); }, [playerHistory]);
   
   useEffect(() => { 
       localStorage.setItem('app_theme', themeMode);
@@ -146,24 +184,43 @@ export const useAppData = () => {
 
   const toggleTheme = () => setThemeMode(prev => prev === 'dark' ? 'light' : 'dark');
   const togglePin = (id: string) => setPinnedIds(prev => prev.includes(id) ? prev.filter(pid => pid !== id) : [id, ...prev]);
-  const updatePlayerHistory = (newName: string) => {
-      if (!newName.trim()) return;
-      const cleanName = newName.trim();
-      setPlayerHistory(prev => [cleanName, ...prev.filter(n => n !== cleanName)].slice(0, 20));
-  };
-  
-  const clearNewBadges = () => {
-      setNewBadgeIds([]);
-  };
+  const clearNewBadges = () => { setNewBadgeIds([]); };
+
+  // --- List Management Actions ---
+  const updatePlayerHistory = useCallback((name: string) => {
+      if (!name.trim()) return;
+      const cleanName = name.trim();
+      (db as any).transaction('rw', db.savedPlayers, async () => {
+          const existing = await db.savedPlayers.where('name').equals(cleanName).first();
+          if (existing) {
+              await db.savedPlayers.update(existing.id!, { lastUsed: Date.now(), usageCount: (existing.usageCount || 0) + 1 });
+          } else {
+              await db.savedPlayers.add({ name: cleanName, lastUsed: Date.now(), usageCount: 1 });
+          }
+      }).catch(console.error);
+  }, []);
+
+  const updateLocationHistory = useCallback((name: string) => {
+      if (!name.trim()) return;
+      const cleanName = name.trim();
+      (db as any).transaction('rw', db.savedLocations, async () => {
+          const existing = await db.savedLocations.where('name').equals(cleanName).first();
+          if (existing) {
+              await db.savedLocations.update(existing.id!, { lastUsed: Date.now(), usageCount: (existing.usageCount || 0) + 1 });
+          } else {
+              await db.savedLocations.add({ name: cleanName, lastUsed: Date.now(), usageCount: 1 });
+          }
+      }).catch(console.error);
+  }, []);
 
   // --- 4. Active Session Management ---
-  
   const [currentSession, setCurrentSession] = useState<GameSession | null>(null);
   const [activeTemplate, setActiveTemplate] = useState<GameTemplate | null>(null);
   const [sessionImage, setSessionImage] = useState<string | null>(null);
   const isImageDirtyRef = useRef(false);
   const [sessionPlayerCount, setSessionPlayerCount] = useState<number | null>(null);
-
+  
+  const [viewingHistoryRecord, setViewingHistoryRecord] = useState<HistoryRecord | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -176,35 +233,24 @@ export const useAppData = () => {
   }, [currentSession]);
 
   // --- Actions ---
-
-  // Helper: Fetch full template from DB (since lists are shallow)
   const getTemplate = async (id: string): Promise<GameTemplate | null> => {
-      // 1. Try User Templates
       let t = await db.templates.get(id);
       if (t) return mergePrefs(t, prefsMap);
-
-      // 2. Try System Overrides
       t = await db.systemOverrides.get(id);
       if (t) return mergePrefs(t, prefsMap);
-
-      // 3. Try Builtins
       t = await db.builtins.get(id);
       if (t) return mergePrefs(t, prefsMap);
-
       return null;
   };
 
   const saveTemplate = async (template: GameTemplate, options: { skipCloud?: boolean } = {}) => {
     const migratedTemplate = migrateTemplate({ ...template, updatedAt: Date.now() });
-    
     const isSystem = !!(await db.builtins.get(migratedTemplate.id));
-    
     if (isSystem) {
         await db.systemOverrides.put(migratedTemplate);
     } else {
         await db.templates.put(migratedTemplate);
     }
-
     if (!options.skipCloud && googleDriveService.isAuthorized && !isSystem) {
         googleDriveService.backupTemplate(migratedTemplate).then((updated) => {
             db.templates.update(updated.id, { lastSyncedAt: Date.now() });
@@ -213,16 +259,11 @@ export const useAppData = () => {
   };
 
   const deleteTemplate = async (id: string) => {
-      const templateToDelete = await getTemplate(id); // Fetch full for backup name if needed
+      const templateToDelete = await getTemplate(id); 
       await db.templates.delete(id);
-      
       const relatedSessions = await db.sessions.where('templateId').equals(id).toArray();
-      if (relatedSessions.length > 0) {
-          await db.sessions.bulkDelete(relatedSessions.map(s => s.id));
-      }
-      
+      if (relatedSessions.length > 0) { await db.sessions.bulkDelete(relatedSessions.map(s => s.id)); }
       await db.templatePrefs.delete(id);
-
       if (googleDriveService.isAuthorized && templateToDelete) {
           googleDriveService.softDeleteFolder(id, templateToDelete.name).then(() => {
               showToast({ message: "已同步移至雲端垃圾桶", type: 'info' });
@@ -242,7 +283,6 @@ export const useAppData = () => {
   ) => {
     setSessionPlayerCount(playerCount);
     const scoringRule = options?.scoringRule || 'HIGHEST_WINS';
-
     try {
         await db.templatePrefs.put({
             templateId: partialTemplate.id,
@@ -250,20 +290,14 @@ export const useAppData = () => {
             defaultScoringRule: scoringRule,
             updatedAt: Date.now()
         });
-    } catch (e) {
-        console.warn("Failed to save preferences", e);
-    }
+    } catch (e) { console.warn("Failed to save preferences", e); }
 
-    // [CRITICAL] Ensure we have the FULL template (with columns) before starting
     const fullTemplate = await getTemplate(partialTemplate.id);
     if (!fullTemplate) {
         showToast({ message: "無法讀取模板資料", type: 'error' });
         return;
     }
-
     const migratedTemplate = migrateTemplate(fullTemplate);
-    
-    // Explicitly update prefs again on the in-memory object to be safe
     migratedTemplate.lastPlayerCount = playerCount;
     migratedTemplate.defaultScoringRule = scoringRule;
 
@@ -300,8 +334,6 @@ export const useAppData = () => {
         scoringRule: scoringRule
     };
     
-    await db.sessions.put(newSession);
-
     isImageDirtyRef.current = false;
     setActiveTemplate(migratedTemplate);
     setCurrentSession(newSession);
@@ -309,30 +341,19 @@ export const useAppData = () => {
 
   const resumeSession = async (templateId: string): Promise<boolean> => {
       try {
-          const session = await db.sessions
-            .where('templateId').equals(templateId)
-            .and(s => s.status === 'active')
-            .first();
-
+          const session = await db.sessions.where('templateId').equals(templateId).and(s => s.status === 'active').first();
           if (!session) return false;
-
-          // Fetch full template
           let template = await getTemplate(templateId);
-
           if (template) {
               template = migrateTemplate(template);
               session.players = session.players.map((p: any) => ({ 
-                  ...p, 
-                  scores: migrateScores(p.scores, template!) 
+                  ...p, scores: migrateScores(p.scores, template!) 
               }));
-              
               setActiveTemplate(template);
               setCurrentSession(session);
               return true;
           }
-      } catch (e) {
-          console.error("Failed to resume session", e);
-      }
+      } catch (e) { console.error("Failed to resume session", e); }
       return false;
   };
 
@@ -342,27 +363,19 @@ export const useAppData = () => {
 
   const discardSession = async (templateId: string) => {
       const session = activeSessions?.find(s => s.templateId === templateId);
-      if (session) {
-          await db.sessions.delete(session.id);
-      }
-      if (currentSession?.templateId === templateId) {
-          setCurrentSession(null);
-          setActiveTemplate(null);
-      }
+      if (session) await db.sessions.delete(session.id);
+      if (currentSession?.templateId === templateId) { setCurrentSession(null); setActiveTemplate(null); }
   };
 
   const clearAllActiveSessions = async () => {
       const activeIds = activeSessions?.map(s => s.id) || [];
-      if (activeIds.length > 0) {
-          await db.sessions.bulkDelete(activeIds);
-      }
+      if (activeIds.length > 0) await db.sessions.bulkDelete(activeIds);
   };
 
   const updateSession = (updatedSession: GameSession) => {
       if (activeTemplate) {
         const playersWithTotal = updatedSession.players.map(p => ({ 
-            ...p, 
-            totalScore: calculatePlayerTotal(p, activeTemplate, updatedSession.players) 
+            ...p, totalScore: calculatePlayerTotal(p, activeTemplate, updatedSession.players) 
         }));
         setCurrentSession({ ...updatedSession, players: playersWithTotal });
       } else {
@@ -373,54 +386,82 @@ export const useAppData = () => {
   const resetSessionScores = () => {
     if (!currentSession) return;
     const resetPlayers = currentSession.players.map(p => ({ ...p, scores: {}, totalScore: 0 }));
-    const resetSessionSameId = { ...currentSession, players: resetPlayers, startTime: Date.now() };
-    setCurrentSession(resetSessionSameId);
+    setCurrentSession({ ...currentSession, players: resetPlayers, startTime: Date.now() });
   };
 
   const exitSession = async () => {
-      if (currentSession) {
-          await db.sessions.put(currentSession);
-      }
-
+      if (currentSession) await db.sessions.put(currentSession);
       const isSystem = activeTemplate && !!(await db.builtins.get(activeTemplate.id));
       const isAutoConnect = localStorage.getItem('google_drive_auto_connect') === 'true';
-
       if (activeTemplate && !isSystem && isAutoConnect && googleDriveService.isAuthorized) {
           const imageToUpload = isImageDirtyRef.current ? sessionImage : null;
           googleDriveService.backupTemplate(activeTemplate, imageToUpload).then((updated) => {
               db.templates.update(updated.id, { lastSyncedAt: Date.now() });
           }).catch(console.error);
       }
-
       if (currentSession) {
           const hasScores = currentSession.players.some(p => Object.keys(p.scores).length > 0);
-          if (!hasScores) {
-              await db.sessions.delete(currentSession.id);
-          }
+          if (!hasScores) await db.sessions.delete(currentSession.id);
       }
-
-      setCurrentSession(null);
-      setActiveTemplate(null);
-      setSessionImage(null);
-      isImageDirtyRef.current = false;
+      setCurrentSession(null); setActiveTemplate(null); setSessionImage(null); isImageDirtyRef.current = false;
   };
+
+  const saveToHistory = async () => {
+      if (!currentSession || !activeTemplate) return;
+      try {
+          const rule = currentSession.scoringRule || 'HIGHEST_WINS';
+          let winnerIds: string[] = [];
+          if (rule === 'HIGHEST_WINS') {
+              const maxScore = Math.max(...currentSession.players.map(p => p.totalScore));
+              winnerIds = currentSession.players.filter(p => p.totalScore === maxScore).map(p => p.id);
+          } else if (rule === 'LOWEST_WINS') {
+              const minScore = Math.min(...currentSession.players.map(p => p.totalScore));
+              winnerIds = currentSession.players.filter(p => p.totalScore === minScore).map(p => p.id);
+          }
+          const snapshotTemplate = JSON.parse(JSON.stringify(activeTemplate));
+          const record: HistoryRecord = {
+              templateId: activeTemplate.id,
+              gameName: activeTemplate.name,
+              startTime: currentSession.startTime,
+              endTime: Date.now(),
+              players: currentSession.players,
+              winnerIds: winnerIds,
+              snapshotTemplate: snapshotTemplate,
+              location: undefined,
+              note: ''
+          };
+          await db.history.add(record);
+          currentSession.players.forEach(p => { updatePlayerHistory(p.name); });
+          await db.sessions.delete(currentSession.id);
+          setCurrentSession(null); setActiveTemplate(null); setSessionImage(null); isImageDirtyRef.current = false;
+          showToast({ message: "遊戲紀錄已儲存！", type: 'success' });
+      } catch (error) {
+          console.error("Save to history failed:", error);
+          showToast({ message: "儲存失敗，請重試", type: 'error' });
+      }
+  };
+
+  const deleteHistoryRecord = async (id: number) => {
+      try {
+          await db.history.delete(id);
+          showToast({ message: "紀錄已刪除", type: 'info' });
+      } catch (error) {
+          console.error("Failed to delete history:", error);
+          showToast({ message: "刪除失敗", type: 'error' });
+      }
+  };
+  
+  const viewHistory = (record: HistoryRecord | null) => { setViewingHistoryRecord(record); };
 
   const updateActiveTemplate = async (updatedTemplate: GameTemplate) => {
       const migratedTemplate = migrateTemplate({ ...updatedTemplate, updatedAt: Date.now() });
       setActiveTemplate(migratedTemplate);
-      
       const isSystem = !!(await db.builtins.get(migratedTemplate.id));
-      
-      if (isSystem) {
-          await db.systemOverrides.put(migratedTemplate);
-      } else {
-          await db.templates.put(migratedTemplate);
-      }
-      
+      if (isSystem) await db.systemOverrides.put(migratedTemplate);
+      else await db.templates.put(migratedTemplate);
       if (currentSession) {
           const updatedPlayers = currentSession.players.map(player => ({ 
-              ...player, 
-              totalScore: calculatePlayerTotal(player, migratedTemplate, currentSession.players) 
+              ...player, totalScore: calculatePlayerTotal(player, migratedTemplate, currentSession.players) 
           }));
           setCurrentSession({ ...currentSession, players: updatedPlayers });
       }
@@ -428,28 +469,48 @@ export const useAppData = () => {
 
   const handleUpdateSessionImage = (img: string | null) => {
       setSessionImage(img);
-      if (img) {
-          isImageDirtyRef.current = true;
-      }
+      if (img) isImageDirtyRef.current = true;
   };
 
   return { 
-      templates, systemTemplates, systemOverrides,
-      activeSessionIds, newBadgeIds, pinnedIds, playerHistory,
-      currentSession, activeTemplate, sessionImage, 
+      // State
+      searchQuery,
+      
+      // Data
+      templates, 
+      userTemplatesCount: userTemplatesData.count, // Total count for UI
+      
+      systemTemplates, 
+      systemTemplatesCount: builtinsData.count, // Total count for UI
+      systemOverrides,
+      
+      activeSessionIds, 
+      newBadgeIds, 
+      pinnedIds, 
+      playerHistory, 
+      locationHistory,
+      
+      historyRecords: historyData.items,
+      historyCount: historyData.count, // Total count for UI
+      
+      currentSession, activeTemplate, sessionImage, viewingHistoryRecord,
       themeMode, sessionPlayerCount,
       
+      // Actions
+      setSearchQuery,
       setTemplates: () => {}, 
       setSessionImage: handleUpdateSessionImage, 
       toggleTheme, togglePin, updatePlayerHistory, 
+      updateLocationHistory, 
       clearNewBadges,
       
       saveTemplate, deleteTemplate, restoreSystemTemplate,
-      getTemplate, // New Export
+      getTemplate, 
       
       startSession, updateSession, resetSessionScores, exitSession, 
       resumeSession, discardSession, clearAllActiveSessions, getSessionPreview,
       
+      saveToHistory, deleteHistoryRecord, viewHistory,
       updateActiveTemplate,
       
       isDbReady 

@@ -23,6 +23,7 @@ interface ScreenshotViewProps {
   mode: 'full' | 'simple';
   layout: ScreenshotLayout | null;
   baseImage?: string;
+  customWinners?: string[]; // New Prop
 }
 
 // --- Local Components for Texture Logic ---
@@ -178,10 +179,21 @@ const formatDisplayNumber = (num: number | undefined | null): string => {
 
 // --- Main Component ---
 
-const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoomLevel, mode, layout, baseImage }) => {
-  const winners = session.players
-    .filter(p => p.totalScore === Math.max(...session.players.map(pl => pl.totalScore)))
-    .map(p => p.id);
+const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoomLevel, mode, layout, baseImage, customWinners }) => {
+  // Calculate Winners
+  let winners: string[] = [];
+  if (customWinners) {
+      winners = customWinners;
+  } else {
+      const rule = session.scoringRule || 'HIGHEST_WINS';
+      if (rule === 'HIGHEST_WINS') {
+          const maxScore = Math.max(...session.players.map(pl => pl.totalScore));
+          winners = session.players.filter(p => p.totalScore === maxScore).map(p => p.id);
+      } else if (rule === 'LOWEST_WINS') {
+          const minScore = Math.min(...session.players.map(pl => pl.totalScore));
+          winners = session.players.filter(p => p.totalScore === minScore).map(p => p.id);
+      }
+  }
 
   const containerClass = 'bg-transparent';
   const headerIconBoxClass = 'bg-emerald-500/10 border border-emerald-500/20';
@@ -421,7 +433,6 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
                                 ...getPlayerColStyle(p.id),
                                 border: 'none',
                             }}
-                            hideCrown={true}
                             // Pass right mask boundary for limit calculation
                             limitX={template.globalVisuals?.rightMaskRect?.x}
                         />

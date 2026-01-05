@@ -18,6 +18,7 @@ import ScreenshotModal from './modals/ScreenshotModal';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import ColumnConfigEditor from '../shared/ColumnConfigEditor';
 import AddColumnModal from './modals/AddColumnModal';
+import SessionExitModal from './modals/SessionExitModal'; // New Import
 
 interface SessionViewProps {
   session: GameSession;
@@ -31,6 +32,7 @@ interface SessionViewProps {
   onUpdateImage: (img: string) => void; 
   onExit: () => void;
   onResetScores: () => void;
+  onSaveToHistory: () => void; // New Prop
 }
 
 const SessionView: React.FC<SessionViewProps> = (props) => {
@@ -45,6 +47,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   
   // Modal State
   const [showImageUploadModal, setShowImageUploadModal] = useState(false);
+  // Replaced simple boolean with custom modal
+  const [showSessionExitModal, setShowSessionExitModal] = useState(false);
 
   const hasPromptedRef = useRef(false);
 
@@ -85,17 +89,33 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     editingColumn,
     isEditingTitle,
     showResetConfirm,
-    showExitConfirm,
+    showExitConfirm, // Kept for event handler compatibility, but we intercept it
     columnToDelete,
     isAddColumnModalOpen,
     showShareMenu,
     screenshotModal,
     isInputFocused,
     isEditMode, 
-    previewValue, // Destructure previewValue
+    previewValue,
   } = sessionState.uiState;
 
   const { setUiState } = sessionState;
+
+  // Intercept the showExitConfirm state from useSessionEvents/State
+  // If it becomes true, we decide whether to show the new modal or just exit
+  useEffect(() => {
+      if (showExitConfirm) {
+          // Reset the flag immediately so we handle it ourselves
+          setUiState(prev => ({ ...prev, showExitConfirm: false }));
+          
+          const hasScores = session.players.some(p => Object.keys(p.scores).length > 0);
+          if (hasScores) {
+              setShowSessionExitModal(true);
+          } else {
+              props.onExit();
+          }
+      }
+  }, [showExitConfirm, session.players, props.onExit, setUiState]);
 
   const isPanelOpen = editingCell !== null || editingPlayerId !== null;
   
@@ -110,7 +130,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       const minScore = Math.min(...session.players.map(pl => pl.totalScore));
       winners = session.players.filter(p => p.totalScore === minScore).map(p => p.id);
   }
-  // For COOP and NO_SCORE modes, winners remains empty (no crown displayed)
   
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -122,7 +141,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
               onUpdateImage(imgData); 
               setShowImageUploadModal(false);
               
-              // Silent Background Cloud Backup if logged in
               if (googleDriveService.isAuthorized) {
                   handleBackup(template, imgData).then(updated => {
                       if (updated) onUpdateTemplate(updated);
@@ -184,7 +202,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     setUiState(p => ({ 
         ...p, 
         showShareMenu: false, 
-        // Force commit of any pending inputs by clearing selection
         editingCell: null,
         editingPlayerId: null,
         previewValue: 0,
@@ -240,8 +257,15 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     <div className="flex flex-col h-full bg-slate-900 text-slate-100 overflow-hidden relative">
       {/* --- Modals --- */}
       <ConfirmationModal isOpen={showResetConfirm} title="確定重置？" message="此動作將清空所有已輸入的分數，且無法復原。" confirmText="確定重置" isDangerous={true} onCancel={() => setUiState(prev => ({ ...prev, showResetConfirm: false }))} onConfirm={eventHandlers.handleConfirmReset} />
-      <ConfirmationModal isOpen={showExitConfirm} title="確認返回目錄嗎？" message="" confirmText="離開" cancelText="取消" isDangerous={false} onCancel={() => setUiState(prev => ({ ...prev, showExitConfirm: false }))} onConfirm={props.onExit} />
       <ConfirmationModal isOpen={!!columnToDelete} title="確定刪除此項目？" message="刪除後，所有玩家在該項目的分數將會遺失。" confirmText="確定刪除" isDangerous={true} onCancel={() => setUiState(prev => ({ ...prev, columnToDelete: null }))} onConfirm={eventHandlers.handleConfirmDeleteColumn} />
+      
+      {/* New Exit Modal */}
+      <SessionExitModal 
+        isOpen={showSessionExitModal}
+        onClose={() => setShowSessionExitModal(false)}
+        onSaveActive={props.onExit}
+        onSaveHistory={props.onSaveToHistory}
+      />
 
       {/* Missing Image Modal */}
       {showImageUploadModal && (
@@ -325,14 +349,35 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onTitleSubmit={eventHandlers.handleTitleSubmit}
         onAddColumn={() => setUiState(prev => ({ ...prev, isAddColumnModalOpen: true }))}
         onReset={() => setUiState(prev => ({ ...prev, showResetConfirm: true }))}
-        onExit={() => setUiState(prev => ({ 
-            ...prev, 
-            showExitConfirm: true,
-            // Force commit of any pending inputs by clearing selection
-            editingCell: null,
-            editingPlayerId: null,
-            previewValue: 0
-        }))}
+        onExit={() => {
+            // [Bug Fix] Race condition when exiting while editing a ghost number.
+            // If we are editing, we must first close the panel (triggering auto-commit),
+            // and delay the exit confirmation slightly to allow the session state to update.
+            const { editingCell, editingPlayerId } = sessionState.uiState;
+            const needsCommit = editingCell !== null || editingPlayerId !== null;
+
+            if (needsCommit) {
+                // 1. Force close panel (triggers commit in InputPanel cleanup)
+                setUiState(prev => ({ 
+                    ...prev, 
+                    editingCell: null,
+                    editingPlayerId: null,
+                    previewValue: 0
+                }));
+                // 2. Wait for commit & state update to propagate before checking hasScores
+                setTimeout(() => {
+                    setUiState(prev => ({ ...prev, showExitConfirm: true }));
+                }, 50);
+            } else {
+                setUiState(prev => ({ 
+                    ...prev, 
+                    showExitConfirm: true,
+                    editingCell: null,
+                    editingPlayerId: null,
+                    previewValue: 0
+                }));
+            }
+        }}
         onShareMenuToggle={(show) => setUiState(prev => ({...prev, showShareMenu: show}))}
         onScreenshotRequest={handleScreenshotRequest}
         onToggleEditMode={() => setUiState(prev => ({ ...prev, isEditMode: !prev.isEditMode }))}
@@ -368,7 +413,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           baseImage={baseImage || undefined} 
           isEditMode={isEditMode}
           zoomLevel={zoomLevel}
-          previewValue={previewValue} // Pass the global preview value
+          previewValue={previewValue}
         />
       </div>
 
@@ -403,6 +448,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         zoomLevel={zoomLevel}
         layout={screenshotModal.layout}
         baseImage={baseImage || undefined}
+        customWinners={winners} // Pass the calculated winners
       />
     </div>
   );

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Dice5, Search, X, Download, HelpCircle } from 'lucide-react';
+import { Dice5, Search, X, Download, HelpCircle, Calculator, History } from 'lucide-react';
 
 interface DashboardHeaderProps {
   isSearchActive: boolean;
@@ -11,6 +11,8 @@ interface DashboardHeaderProps {
   canInstall: boolean;
   onInstallClick: () => void;
   onShowInstallGuide: () => void;
+  viewMode: 'library' | 'history';
+  setViewMode: (mode: 'library' | 'history') => void;
 }
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({
@@ -21,56 +23,113 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   isInstalled,
   canInstall,
   onInstallClick,
-  onShowInstallGuide
+  onShowInstallGuide,
+  viewMode,
+  setViewMode
 }) => {
+  
+  const toggleView = () => {
+      setViewMode(viewMode === 'library' ? 'history' : 'library');
+  };
+
   return (
-    <header className="p-2.5 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 flex items-center gap-2 shadow-md h-[58px] shrink-0 transition-colors duration-300">
-      {isSearchActive ? (
-        <div className="flex items-center gap-2 w-full animate-in fade-in duration-300">
-          <Search size={20} className="text-emerald-500 shrink-0 ml-1" />
-          <input 
-            type="text" 
-            placeholder="搜尋遊戲..." 
-            value={searchQuery} 
-            onChange={(e) => setSearchQuery(e.target.value)} 
-            autoFocus 
-            className="w-full bg-transparent text-white focus:outline-none placeholder-slate-500" 
-          />
-          <button onClick={() => { setIsSearchActive(false); setSearchQuery(''); }} className="text-slate-400 hover:text-white p-2">
-            <X size={20} />
-          </button>
-        </div>
-      ) : (
-        <div className="flex justify-between items-center w-full animate-in fade-in duration-300">
-          <div className="flex items-center gap-2 text-emerald-500">
-            <div className="bg-emerald-500/10 p-1.5 rounded-lg border border-emerald-500/20">
-              <Dice5 size={24} />
-            </div>
-            <h1 className="text-xl font-bold tracking-tight text-white">萬用桌遊計分板</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setIsSearchActive(true)} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors">
-              <Search size={20} />
+    <header className="flex flex-col bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 shadow-md transition-colors duration-300">
+      <div className="p-2.5 flex items-center gap-2 h-[58px]">
+        {isSearchActive ? (
+          <div className="flex items-center gap-2 w-full animate-in fade-in duration-300">
+            <Search size={20} className="text-emerald-500 shrink-0 ml-1" />
+            <input 
+              type="text" 
+              placeholder={viewMode === 'library' ? "搜尋遊戲..." : "搜尋歷史紀錄..."} 
+              value={searchQuery} 
+              onChange={(e) => setSearchQuery(e.target.value)} 
+              autoFocus 
+              className="w-full bg-transparent text-white focus:outline-none placeholder-slate-500" 
+            />
+            <button onClick={() => { setIsSearchActive(false); setSearchQuery(''); }} className="text-slate-400 hover:text-white p-2">
+              <X size={20} />
             </button>
-            {!isInstalled && (
-              <button 
-                className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all text-white shadow-lg ${canInstall ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}`} 
-                onClick={canInstall ? onInstallClick : onShowInstallGuide}
-              >
-                <div className="relative">
-                  <Download size={14} />
-                  {!canInstall && (
-                    <div className="absolute -bottom-1 -right-1 bg-amber-500 rounded-full w-2.5 h-2.5 flex items-center justify-center border border-slate-700">
-                      <HelpCircle size={8} className="text-slate-900" strokeWidth={3} />
-                    </div>
-                  )}
-                </div>
-                <span className="hidden sm:inline">安裝 App</span>
-              </button>
-            )}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="flex justify-between items-center w-full animate-in fade-in duration-300 gap-2">
+            {/* Left Side: Logo, Title, Toggle */}
+            <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
+              {/* Logo & Title Group - Set min-w-0 to allow title truncation */}
+              <div className="flex items-center gap-2 min-w-0 shrink">
+                <div className="bg-emerald-500/10 p-1.5 rounded-lg border border-emerald-500/20 shrink-0">
+                  <Dice5 size={24} className="text-emerald-500" />
+                </div>
+                {/* Title: truncate only if necessary */}
+                <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white truncate">
+                    萬用桌遊計分板
+                </h1>
+              </div>
+
+              {/* Unified Toggle Button - Width 56px, tight padding */}
+              <button 
+                onClick={toggleView}
+                className="relative h-9 w-[56px] bg-slate-800 border border-slate-700 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-750 transition-colors shrink-0 group active:scale-95 shadow-inner"
+                title={viewMode === 'library' ? "切換至歷史紀錄" : "切換至遊戲庫"}
+              >
+                  {/* Central Slash (Background) */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                      <span className="text-slate-700 font-bold text-sm -rotate-12 select-none">/</span>
+                  </div>
+
+                  {/* Icon Container - Library (Calculator) */}
+                  {/* Positioned at left-2.5 (10px). Icon width 20px. Ends at 30px. */}
+                  <div 
+                    className={`absolute transition-all duration-200 ease-out flex items-center justify-center left-2.5
+                        ${viewMode === 'library' 
+                            ? 'z-20 text-emerald-400 drop-shadow-[0_2px_3px_rgba(0,0,0,0.6)]' 
+                            : 'z-10 text-slate-600'
+                        }
+                    `}
+                  >
+                      <Calculator size={20} strokeWidth={viewMode === 'library' ? 2.5 : 2} />
+                  </div>
+
+                  {/* Icon Container - History (History Clock) */}
+                  {/* Positioned at right-2.5 (10px). Starts at (56-10-20) = 26px. Overlap = 4px. */}
+                  <div 
+                    className={`absolute transition-all duration-200 ease-out flex items-center justify-center right-2.5
+                        ${viewMode === 'history' 
+                            ? 'z-20 text-emerald-400 drop-shadow-[0_2px_3px_rgba(0,0,0,0.6)]' 
+                            : 'z-10 text-slate-600'
+                        }
+                    `}
+                  >
+                      <History size={20} strokeWidth={viewMode === 'history' ? 2.5 : 2} />
+                  </div>
+              </button>
+            </div>
+
+            {/* Right Side Actions */}
+            <div className="flex items-center gap-1 shrink-0 ml-1">
+              <button onClick={() => setIsSearchActive(true)} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors">
+                <Search size={20} />
+              </button>
+              
+              {!isInstalled && (
+                <button 
+                  className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all text-white shadow-lg ${canInstall ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}`} 
+                  onClick={canInstall ? onInstallClick : onShowInstallGuide}
+                >
+                  <div className="relative">
+                    <Download size={14} />
+                    {!canInstall && (
+                      <div className="absolute -bottom-1 -right-1 bg-amber-500 rounded-full w-2.5 h-2.5 flex items-center justify-center border border-slate-700">
+                        <HelpCircle size={8} className="text-slate-900" strokeWidth={3} />
+                      </div>
+                    )}
+                  </div>
+                  <span className="hidden sm:inline">安裝 App</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </header>
   );
 };

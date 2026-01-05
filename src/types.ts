@@ -148,8 +148,32 @@ export interface GameSession {
   scoringRule?: ScoringRule; // 當次遊戲的勝利條件
 }
 
+// [New Interface] History Record
+export interface HistoryRecord {
+  id?: number; // IndexedDB auto-increment ID
+  templateId: string; // 原始模板 ID (用於關聯)
+  gameName: string; // 當時的遊戲名稱 (快照)
+  startTime: number;
+  endTime: number;
+  players: Player[]; // 包含最終分數的玩家資料 (快照)
+  winnerIds: string[]; // 贏家 ID 列表
+  snapshotTemplate: GameTemplate; // [關鍵] 完整的模板快照 (含欄位、圖片ID等)
+  location?: string; // 地點
+  note?: string; // 筆記
+}
+
+// [New Interface] Generic Saved List Item (for Players, Locations, etc.)
+export interface SavedListItem {
+  id?: number;
+  name: string;
+  lastUsed: number;
+  usageCount: number;
+  meta?: any; // For future expansion (e.g. external links, coordinates)
+}
+
 export enum AppView {
   DASHBOARD = 'DASHBOARD',
   TEMPLATE_CREATOR = 'TEMPLATE_CREATOR',
   ACTIVE_SESSION = 'ACTIVE_SESSION',
+  HISTORY_REVIEW = 'HISTORY_REVIEW',
 }

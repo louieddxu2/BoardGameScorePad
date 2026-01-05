@@ -9,6 +9,7 @@ import TemplateEditor from './components/editor/TemplateEditor';
 import SessionView from './components/session/SessionView';
 import Dashboard from './components/dashboard/Dashboard';
 import GameSetupModal from './components/dashboard/modals/GameSetupModal';
+import HistoryReviewView from './components/history/HistoryReviewView'; // New Import
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.DASHBOARD);
@@ -140,6 +141,11 @@ const App: React.FC = () => {
 
       if (pendingTemplate) { setPendingTemplate(null); handled = true; }
       else if (view === AppView.TEMPLATE_CREATOR) { setView(AppView.DASHBOARD); handled = true; }
+      else if (view === AppView.HISTORY_REVIEW) { 
+          appData.viewHistory(null); 
+          setView(AppView.DASHBOARD); 
+          handled = true; 
+      }
       else if (view === AppView.ACTIVE_SESSION) {
          window.dispatchEvent(new CustomEvent('app-back-press'));
          handled = true;
@@ -215,6 +221,12 @@ const App: React.FC = () => {
       appData.exitSession();
       setView(AppView.DASHBOARD);
   };
+
+  const handleSaveToHistory = () => {
+      isExitingSession.current = true;
+      appData.saveToHistory();
+      setView(AppView.DASHBOARD);
+  };
   
   const handleTemplateSave = (template: GameTemplate) => {
       appData.saveTemplate(template);
@@ -226,6 +238,11 @@ const App: React.FC = () => {
       setView(AppView.DASHBOARD);
   };
 
+  const handleHistorySelect = (record: any) => {
+      appData.viewHistory(record);
+      setView(AppView.HISTORY_REVIEW);
+  };
+
   return (
     <div className="h-full bg-slate-900 text-slate-100 font-sans overflow-hidden transition-colors duration-300 relative">
       
@@ -233,16 +250,22 @@ const App: React.FC = () => {
         STACK ARCHITECTURE:
         Dashboard is always present in DOM to preserve state/scroll.
         It is hidden via CSS when not active.
-        [FIX] Added z-0 to Dashboard to create a base stacking context.
       */}
       <div className={`absolute inset-0 z-0 flex flex-col ${view !== AppView.DASHBOARD ? 'invisible pointer-events-none' : ''}`}>
         <Dashboard 
+          isVisible={view === AppView.DASHBOARD} // Pass visibility for optimization
           userTemplates={appData.templates}
+          userTemplatesCount={appData.userTemplatesCount} // Pass Count
           systemOverrides={appData.systemOverrides}
           systemTemplates={appData.systemTemplates}
+          systemTemplatesCount={appData.systemTemplatesCount} // Pass Count
           pinnedIds={appData.pinnedIds}
           newBadgeIds={appData.newBadgeIds}
           activeSessionIds={appData.activeSessionIds}
+          historyRecords={appData.historyRecords}
+          historyCount={appData.historyCount} // Pass Count
+          searchQuery={appData.searchQuery} // Pass search query
+          setSearchQuery={appData.setSearchQuery} // Pass search query setter
           themeMode={appData.themeMode} 
           onToggleTheme={appData.toggleTheme} 
           onTemplateSelect={initSetup}
@@ -257,7 +280,9 @@ const App: React.FC = () => {
           onTogglePin={appData.togglePin}
           onClearNewBadges={appData.clearNewBadges}
           onRestoreSystem={appData.restoreSystemTemplate}
-          onGetFullTemplate={appData.getTemplate} // Pass fetcher
+          onGetFullTemplate={appData.getTemplate}
+          onDeleteHistory={appData.deleteHistoryRecord}
+          onHistorySelect={handleHistorySelect} 
           isInstalled={isInstalled}
           canInstall={!!installPromptEvent}
           onInstallClick={handleInstallClick}
@@ -274,7 +299,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* [FIX] SessionView z-index increased to z-40 to be higher than DashboardHeader (z-30) */}
+      {/* SessionView z-index increased to z-40 to be higher than DashboardHeader (z-30) */}
       {view === AppView.ACTIVE_SESSION && appData.currentSession && appData.activeTemplate && (
         <div className="absolute inset-0 z-40 bg-slate-900 animate-in fade-in duration-300">
             <SessionView 
@@ -290,6 +315,17 @@ const App: React.FC = () => {
               onResetScores={appData.resetSessionScores}
               onUpdateTemplate={appData.updateActiveTemplate}
               onExit={handleExitSession}
+              onSaveToHistory={handleSaveToHistory}
+            />
+        </div>
+      )}
+
+      {view === AppView.HISTORY_REVIEW && appData.viewingHistoryRecord && (
+        <div className="absolute inset-0 z-40 bg-slate-900 animate-in fade-in duration-300">
+            <HistoryReviewView 
+                record={appData.viewingHistoryRecord}
+                onExit={() => { appData.viewHistory(null); setView(AppView.DASHBOARD); }}
+                zoomLevel={zoomLevel}
             />
         </div>
       )}

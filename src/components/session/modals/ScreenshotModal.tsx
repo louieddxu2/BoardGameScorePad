@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Copy, Download, Share, Loader2, Image as ImageIcon, LayoutPanelLeft } from 'lucide-react';
 import { toBlob } from 'html-to-image';
@@ -16,6 +17,7 @@ interface ScreenshotModalProps {
   zoomLevel: number;
   layout: ScreenshotLayout | null;
   baseImage?: string; 
+  customWinners?: string[]; // New Prop
 }
 
 interface SnapshotCache {
@@ -33,7 +35,8 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   template,
   zoomLevel,
   layout,
-  baseImage
+  baseImage,
+  customWinners
 }) => {
   const [activeMode, setActiveMode] = useState<'full' | 'simple'>(initialMode);
   
@@ -331,6 +334,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                 mode="full"
                 layout={layout}
                 baseImage={baseImage}
+                customWinners={customWinners}
             />
          </div>
          <div id="screenshot-target-simple" style={{ display: 'inline-block', width: 'max-content' }}>
@@ -341,6 +345,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                 mode="simple"
                 layout={layout}
                 baseImage={baseImage}
+                customWinners={customWinners}
             />
          </div>
       </div>

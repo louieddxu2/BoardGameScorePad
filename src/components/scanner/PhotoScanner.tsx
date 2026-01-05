@@ -1,8 +1,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Upload, X, Magnet, RotateCcw, BoxSelect, ScanLine, ZoomIn, Move, Download, Share2, ArrowRight, Check, RotateCw } from 'lucide-react';
+import { Camera, Upload, X, Magnet, RotateCcw, BoxSelect, ScanLine, ZoomIn, Move, Download, Share2, ArrowRight, Check, RotateCw, Aperture, SwitchCamera } from 'lucide-react';
 import { getPerspectiveTransform, findStrongestCorner, warpPerspective, calculateParallelogramPoint, getEdgeAngles, snapToEdge } from '../../utils/scanUtils';
 import { getTouchDistance } from '../../utils/ui';
+import { useToast } from '../../hooks/useToast';
 
 interface Point {
   x: number;
@@ -11,9 +12,7 @@ interface Point {
 
 interface PhotoScannerProps {
   onClose: () => void;
-  // Modified signature to return raw data for restoration
   onConfirm: (result: { processed: string; raw: string; points: Point[] }) => void;
-  // New props for state restoration
   initialImage?: string | null;
   initialPoints?: Point[];
 }
@@ -33,40 +32,29 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
   const [rectifiedImage, setRectifiedImage] = useState<string | null>(null);
   const [geometricGhost, setGeometricGhost] = useState<Point | null>(null);
   
-  // NEW: Explicitly track dimensions to force re-render when image loads
+  // Camera State
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+  
+  // Dimensions state
   const [sourceDimensions, setSourceDimensions] = useState<{w: number, h: number} | null>(null);
 
   // Snapping Feedback
   const [snapType, setSnapType] = useState<'none' | 'corner' | 'line'>('none');
-  
-  // Guide Lines
   const [activeAngles, setActiveAngles] = useState<number[]>([]);
-  
-  // Magnifier State
   const [magnifierPos, setMagnifierPos] = useState<{top: number, left: number} | null>(null);
 
-  // Velocity Tracking for "Slow Drag" Line Snapping
+  // Velocity Tracking
   const lastMoveTime = useRef<number>(0);
   const lastMovePos = useRef<{x: number, y: number} | null>(null);
 
-  // --- Pan & Zoom State ---
+  // Pan & Zoom
   const [transform, setTransform] = useState<ViewTransform>({ x: 0, y: 0, scale: 1 });
-  const hasFittedRef = useRef(false); // Track if we have performed initial fit
+  const hasFittedRef = useRef(false);
   
-  // 使用 Refs 來保存最新的狀態供 Event Listeners 使用，避免 useEffect 頻繁重新綁定
-  const stateRef = useRef({
-      activePointIdx,
-      points,
-      isSnapping,
-      transform,
-      imageSrc
-  });
-
-  // 同步 Ref
-  useEffect(() => {
-      stateRef.current = { activePointIdx, points, isSnapping, transform, imageSrc };
-  }, [activePointIdx, points, isSnapping, transform, imageSrc]);
-
+  // Refs
+  const stateRef = useRef({ activePointIdx, points, isSnapping, transform, imageSrc });
   const isDraggingView = useRef(false);
   const lastPanPoint = useRef<{x: number, y: number} | null>(null);
   const startPinchDist = useRef<number>(0);
@@ -77,8 +65,96 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  
+  const { showToast } = useToast();
 
-  // Helper to fit image to screen
+  useEffect(() => {
+      stateRef.current = { activePointIdx, points, isSnapping, transform, imageSrc };
+  }, [activePointIdx, points, isSnapping, transform, imageSrc]);
+
+  // --- Camera Logic ---
+
+  const stopCamera = () => {
+      if (cameraStream) {
+          cameraStream.getTracks().forEach(track => track.stop());
+          setCameraStream(null);
+      }
+      setIsCameraActive(false);
+  };
+
+  useEffect(() => {
+      return () => stopCamera();
+  }, []);
+
+  const startCamera = async () => {
+      try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+              video: { 
+                  facingMode: facingMode,
+                  width: { ideal: 1920 },
+                  height: { ideal: 1080 }
+              },
+              audio: false
+          });
+          setCameraStream(stream);
+          setIsCameraActive(true);
+      } catch (err: any) {
+          console.error("Camera Error:", err);
+          if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+              showToast({ message: "請允許相機權限以進行拍攝。", type: 'warning' });
+          } else {
+              showToast({ message: "無法啟動相機，請嘗試使用上傳功能。", type: 'error' });
+          }
+          setIsCameraActive(false);
+      }
+  };
+
+  // Bind stream to video element when active
+  useEffect(() => {
+      if (isCameraActive && videoRef.current && cameraStream) {
+          videoRef.current.srcObject = cameraStream;
+          videoRef.current.play().catch(e => console.error("Video play failed", e));
+      }
+  }, [isCameraActive, cameraStream]);
+
+  const switchCamera = () => {
+      stopCamera();
+      setFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
+      // Re-trigger start after state update
+      setTimeout(() => startCamera(), 100);
+  };
+
+  const capturePhoto = () => {
+      if (!videoRef.current || !videoRef.current.videoWidth) return;
+      
+      const video = videoRef.current;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      
+      if (ctx) {
+          if (facingMode === 'user') {
+              // Mirror effect for selfie camera
+              ctx.translate(canvas.width, 0);
+              ctx.scale(-1, 1);
+          }
+          ctx.drawImage(video, 0, 0);
+          
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+          setImageSrc(dataUrl);
+          stopCamera();
+          
+          // Reset editor state
+          setPoints([]);
+          hasFittedRef.current = false;
+          setSourceDimensions(null);
+      }
+  };
+
+  // --- Image Handling Logic ---
+
   const fitImageToScreen = () => {
       if (!canvasRef.current || !containerRef.current) return;
       
@@ -86,7 +162,6 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
       const h = canvasRef.current.height;
       const rect = containerRef.current.getBoundingClientRect();
       
-      // Prevent division by zero or negative sizing
       if (rect.width <= 0 || rect.height <= 0 || w === 0 || h === 0) return;
 
       const scale = Math.min(rect.width / w, rect.height / h) * 0.9;
@@ -97,11 +172,9 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
       hasFittedRef.current = true;
   };
 
-  // Watch for container resize to ensure we fit properly (fixes "Shrunk" issue on mount)
   useEffect(() => {
       if (!containerRef.current || !imageSrc) return;
       const resizeObserver = new ResizeObserver(() => {
-          // Only auto-fit if scale is suspiciously small (uninitialized)
           if (stateRef.current.transform.scale < 0.01) {
               fitImageToScreen();
           }
@@ -110,8 +183,6 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
       return () => resizeObserver.disconnect();
   }, [imageSrc]);
 
-  // 初始化圖片載入
-  // Dependency includes showPreview to ensure canvas is redrawn when returning from preview
   useEffect(() => {
     if (imageSrc && canvasRef.current && !showPreview) {
       const canvas = canvasRef.current;
@@ -123,7 +194,6 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
         let w = img.width;
         let h = img.height;
         
-        // Resize logic
         if (w > maxDim || h > maxDim) {
           const ratio = Math.min(maxDim / w, maxDim / h);
           w = Math.floor(w * ratio);
@@ -132,24 +202,19 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
 
         canvas.width = w;
         canvas.height = h;
-        
-        // IMPORTANT: Update state to force React to re-render the wrapper div with correct dimensions
         setSourceDimensions({ w, h });
         
         ctx?.drawImage(img, 0, 0, w, h);
 
-        // 初始化選取點 (若無初始點，則預設全選)
         if (stateRef.current.points.length === 0) {
             setPoints([
-                { x: 0, y: 0 }, // TL
-                { x: w, y: 0 }, // TR
-                { x: w, y: h }, // BR
-                { x: 0, y: h }  // BL
+                { x: 0, y: 0 },
+                { x: w, y: 0 },
+                { x: w, y: h },
+                { x: 0, y: h }
             ]);
         }
         
-        // Only fit if we haven't done it yet for this image context
-        // This prevents resetting the view when returning from preview
         if (!hasFittedRef.current) {
             fitImageToScreen();
         }
@@ -158,7 +223,6 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
     }
   }, [imageSrc, showPreview]);
 
-  // 更新放大鏡內容
   const updateMagnifier = (x: number, y: number, isLineSnapped: boolean) => {
       const srcCanvas = canvasRef.current;
       const magCanvas = magnifierCanvasRef.current;
@@ -168,14 +232,12 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
       if (!magCtx) return;
 
       const zoom = 2; 
-      const size = 120; // 放大鏡尺寸
+      const size = 120;
 
-      // 1. Clear & Background
       magCtx.clearRect(0, 0, size, size);
       magCtx.fillStyle = '#000';
       magCtx.fillRect(0, 0, size, size);
 
-      // 2. Draw Image Transformed
       magCtx.save();
       magCtx.translate(size / 2, size / 2);
       magCtx.scale(zoom, zoom);
@@ -183,7 +245,6 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
       magCtx.drawImage(srcCanvas, 0, 0);
       magCtx.restore();
 
-      // 3. Draw Crosshair
       magCtx.strokeStyle = isLineSnapped ? '#facc15' : '#06b6d4'; 
       magCtx.lineWidth = isLineSnapped ? 2 : 1;
       
@@ -194,51 +255,37 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
       magCtx.lineTo(size, size / 2);
       magCtx.stroke();
       
-      // 4. Border
       magCtx.strokeStyle = '#fff';
       magCtx.lineWidth = 4;
       magCtx.strokeRect(0, 0, size, size);
   };
 
-  // --- Interaction Logic ---
-
-  // Convert Screen Coordinates (clientX, clientY) to Image Coordinates (Pixel x, y)
-  // 這裡使用 stateRef 確保在 event handler 內讀取到最新的 transform
   const screenToImage = (clientX: number, clientY: number) => {
       const { transform } = stateRef.current;
       if (!containerRef.current) return { x: 0, y: 0 };
       const rect = containerRef.current.getBoundingClientRect();
-      
-      // 1. Relative to container
       const relX = clientX - rect.left;
       const relY = clientY - rect.top;
-      
-      // 2. Remove Pan & Scale
       const imgX = (relX - transform.x) / transform.scale;
       const imgY = (relY - transform.y) / transform.scale;
-      
       return { x: imgX, y: imgY };
   };
 
   const handlePointDrag = (clientX: number, clientY: number) => {
         if (!canvasRef.current) return;
         const { isSnapping, activePointIdx, points } = stateRef.current;
-
         const { x, y } = screenToImage(clientX, clientY);
 
-        // 計算速度 (px/ms)
         const now = Date.now();
         const dt = now - lastMoveTime.current;
         let speed = 100; 
         if (lastMovePos.current && dt > 0) {
-            // Speed in image space
             const dist = Math.sqrt(Math.pow(x - lastMovePos.current.x, 2) + Math.pow(y - lastMovePos.current.y, 2));
             speed = dist / dt;
         }
         lastMoveTime.current = now;
         lastMovePos.current = { x, y };
 
-        // Clamp to image bounds
         const width = canvasRef.current.width;
         const height = canvasRef.current.height;
         const clampedX = Math.max(0, Math.min(x, width));
@@ -251,7 +298,6 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
         const ctx = canvasRef.current.getContext('2d');
 
         if (isSnapping && ctx && activePointIdx !== null) {
-            // 1. Geometric
             const geoPoint = calculateParallelogramPoint(points, activePointIdx);
             setGeometricGhost(geoPoint);
 
@@ -267,15 +313,12 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
             }
 
             if (!geoSnapped) {
-                // 2. Corner
                 const cornerResult = findStrongestCorner(ctx, clampedX, clampedY, 30); 
                 if (cornerResult) {
                     snappedX = cornerResult.x;
                     snappedY = cornerResult.y;
                     currentSnapType = 'corner';
-                } 
-                // 3. Line (only when slow)
-                else if (speed < 0.8) { 
+                } else if (speed < 0.8) { 
                     const lineSnapResult = snapToEdge(ctx, clampedX, clampedY, 20);
                     if (lineSnapResult) {
                         snappedX = lineSnapResult.x;
@@ -294,10 +337,8 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
         }
 
         setSnapType(currentSnapType);
-        // 重要：這裡使用 functional update 確保基於最新 state 更新
         setPoints(prev => prev.map((p, i) => i === activePointIdx ? { x: snappedX, y: snappedY } : p));
         
-        // Update Magnifier visual position
         const magOffset = 100;
         let magTop = clientY - magOffset;
         if (magTop < 50) magTop = clientY + magOffset; 
@@ -314,7 +355,6 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
       }
   };
 
-  // --- Global Event Handlers (Attached to Window) ---
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
         const { activePointIdx } = stateRef.current;
@@ -329,8 +369,6 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
     
     const onTouchMove = (e: TouchEvent) => {
         const { activePointIdx, transform } = stateRef.current;
-        
-        // 關鍵：阻止預設行為 (如瀏覽器縮放、捲動)
         if (activePointIdx !== null || isDraggingView.current || e.touches.length === 2) {
             e.preventDefault();
         }
@@ -338,26 +376,18 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
         if (activePointIdx !== null) {
             handlePointDrag(e.touches[0].clientX, e.touches[0].clientY);
         } else if (e.touches.length === 2) {
-            // Pinch Zoom Logic
             const dist = getTouchDistance(e.touches);
             if (startPinchDist.current > 0) {
                 const scaleFactor = dist / startPinchDist.current;
                 const newScale = Math.max(0.1, Math.min(10, startPinchScale.current * scaleFactor));
-                
-                // Zoom towards center of screen (simpler and more stable than pointer-based for touch)
                 if (containerRef.current) {
                     const rect = containerRef.current.getBoundingClientRect();
                     const cx = rect.width / 2;
                     const cy = rect.height / 2;
-                    
-                    // Logic: The point under the center should remain under the center
-                    // Image coords of center:
                     const imgCx = (cx - transform.x) / transform.scale;
                     const imgCy = (cy - transform.y) / transform.scale;
-                    
                     const newTx = cx - (imgCx * newScale);
                     const newTy = cy - (imgCy * newScale);
-                    
                     setTransform({ x: newTx, y: newTy, scale: newScale });
                 }
             }
@@ -371,7 +401,6 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
         isDraggingView.current = false;
         lastPanPoint.current = null;
         startPinchDist.current = 0;
-        
         setGeometricGhost(null);
         setMagnifierPos(null);
         setActiveAngles([]);
@@ -379,7 +408,6 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
         lastMovePos.current = null;
     };
 
-    // 使用 { passive: false } 是關鍵，否則 preventDefault 會失效
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onEnd);
     window.addEventListener('touchmove', onTouchMove, { passive: false });
@@ -393,21 +421,15 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
         window.removeEventListener('touchend', onEnd);
         window.removeEventListener('touchcancel', onEnd);
     };
-  }, []); // 空依賴陣列：只綁定一次，依賴 stateRef 讀取最新狀態
-
-  // --- Local Event Starters ---
+  }, []);
 
   const handlePointerDown = (e: React.MouseEvent | React.TouchEvent, pointIdx: number | null) => {
-      // 停止事件冒泡
       e.stopPropagation(); 
-
       if (pointIdx !== null) {
-          // Start dragging point
           setActivePointIdx(pointIdx);
           lastMoveTime.current = Date.now();
           lastMovePos.current = null;
       } else {
-          // Start panning or zooming
           const isTouch = 'touches' in e;
           if (isTouch && (e as React.TouchEvent).touches.length === 2) {
               startPinchDist.current = getTouchDistance((e as React.TouchEvent).touches);
@@ -427,19 +449,14 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
       const { transform } = stateRef.current;
       const scaleChange = -e.deltaY * 0.001;
       const newScale = Math.max(0.1, Math.min(10, transform.scale * (1 + scaleChange)));
-      
-      // Zoom towards mouse pointer
       if (containerRef.current) {
           const rect = containerRef.current.getBoundingClientRect();
           const mouseX = e.clientX - rect.left;
           const mouseY = e.clientY - rect.top;
-          
           const imgX = (mouseX - transform.x) / transform.scale;
           const imgY = (mouseY - transform.y) / transform.scale;
-          
           const newTx = mouseX - (imgX * newScale);
           const newTy = mouseY - (imgY * newScale);
-          
           setTransform({ x: newTx, y: newTy, scale: newScale });
       }
   };
@@ -449,11 +466,10 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
     if (file) {
       const reader = new FileReader();
       reader.onload = (ev) => {
-          const newSrc = ev.target?.result as string;
-          setImageSrc(newSrc);
-          setPoints([]); // Reset points for new image
-          hasFittedRef.current = false; // Reset fit state for new image
-          setSourceDimensions(null); // Reset dimensions
+          setImageSrc(ev.target?.result as string);
+          setPoints([]);
+          hasFittedRef.current = false;
+          setSourceDimensions(null);
       };
       reader.readAsDataURL(file);
     }
@@ -461,11 +477,9 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
 
   const handleRotate = () => {
       if (!canvasRef.current || !imageSrc) return;
-      
       const img = new Image();
       img.onload = () => {
           const canvas = document.createElement('canvas');
-          // Swap dimensions
           canvas.width = img.height;
           canvas.height = img.width;
           const ctx = canvas.getContext('2d');
@@ -473,18 +487,13 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
               ctx.translate(canvas.width / 2, canvas.height / 2);
               ctx.rotate(90 * Math.PI / 180);
               ctx.drawImage(img, -img.width / 2, -img.height / 2);
-              
-              const newUrl = canvas.toDataURL();
-              setImageSrc(newUrl);
-              // Reset points to corners for the new orientation
+              setImageSrc(canvas.toDataURL());
               setPoints([
                   { x: 0, y: 0 },
                   { x: canvas.width, y: 0 },
                   { x: canvas.width, y: canvas.height },
                   { x: 0, y: canvas.height }
               ]);
-              
-              // Reset fit state so useEffect will re-fit to screen
               hasFittedRef.current = false;
           }
       };
@@ -492,14 +501,10 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
   };
 
   const dist = (p1: Point, p2: Point) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
-
-  const polygonPoints = points.length === 4 && canvasRef.current 
-    ? `${points[0].x},${points[0].y} ${points[1].x},${points[1].y} ${points[2].x},${points[2].y} ${points[3].x},${points[3].y}`
-    : "";
+  const polygonPoints = points.length === 4 && canvasRef.current ? `${points[0].x},${points[0].y} ${points[1].x},${points[1].y} ${points[2].x},${points[2].y} ${points[3].x},${points[3].y}` : "";
 
   const handleRectify = () => {
     if (!canvasRef.current || points.length !== 4) return;
-    
     const srcCanvas = canvasRef.current;
     const srcCtx = srcCanvas.getContext('2d');
     if (!srcCtx) return;
@@ -509,10 +514,8 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
     const widthBottom = dist(bl, br);
     const heightLeft = dist(tl, bl);
     const heightRight = dist(tr, br);
-
     const maxWidth = Math.max(widthTop, widthBottom);
     const maxHeight = Math.max(heightLeft, heightRight);
-
     const maxResolution = 1500;
     const scale = Math.min(1, maxResolution / Math.max(maxWidth, maxHeight));
     const finalWidth = Math.floor(maxWidth * scale);
@@ -524,13 +527,7 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
     const dstCtx = dstCanvas.getContext('2d');
     if (!dstCtx) return;
 
-    const dstPoints = [
-      { x: 0, y: 0 },
-      { x: finalWidth, y: 0 },
-      { x: finalWidth, y: finalHeight },
-      { x: 0, y: finalHeight }
-    ];
-    
+    const dstPoints = [{ x: 0, y: 0 }, { x: finalWidth, y: 0 }, { x: finalWidth, y: finalHeight }, { x: 0, y: finalHeight }];
     const h = getPerspectiveTransform(dstPoints, points);
     warpPerspective(srcCtx, dstCtx, srcCanvas.width, srcCanvas.height, finalWidth, finalHeight, h);
     setRectifiedImage(dstCanvas.toDataURL('image/jpeg', 0.9));
@@ -559,13 +556,8 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
   };
 
   const handleConfirm = () => {
-      // Return both processed and raw data for state persistence
       if (rectifiedImage && imageSrc) {
-          onConfirm({
-              processed: rectifiedImage,
-              raw: imageSrc,
-              points: points
-          });
+          onConfirm({ processed: rectifiedImage, raw: imageSrc, points: points });
       }
       onClose();
   };
@@ -573,17 +565,12 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
   if (showPreview) {
     return (
         <div className="fixed inset-0 z-[70] bg-slate-950 flex flex-col">
-            <header className="flex-none p-4 bg-slate-900 border-b border-slate-800 flex justify-center items-center relative">
+            <header className="flex-none p-4 bg-slate-900 border-b border-slate-800 flex justify-center items-center">
                 <h2 className="text-white font-bold">預覽與確認</h2>
             </header>
             <main className="flex-1 w-full h-full flex items-center justify-center overflow-hidden p-4 bg-black/50">
                {rectifiedImage ? (
-                   <img 
-                       src={rectifiedImage} 
-                       className="max-w-full max-h-full object-contain mx-auto shadow-2xl" 
-                       alt="校正結果" 
-                       style={{ display: 'block' }} 
-                   />
+                   <img src={rectifiedImage} className="max-w-full max-h-full object-contain mx-auto shadow-2xl" alt="校正結果" />
                ) : (
                    <div className="text-white">處理中...</div>
                )}
@@ -595,9 +582,7 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
                         {navigator.share ? <Share2 size={18} /> : <Download size={18} />}
                         <span className="hidden sm:inline">儲存圖片</span>
                     </button>
-                    <button onClick={handleConfirm} className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2">
-                        <Check size={18} /> 完成
-                    </button>
+                    <button onClick={handleConfirm} className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Check size={18} /> 完成</button>
                </div>
             </footer>
         </div>
@@ -606,14 +591,12 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
 
   return (
     <div className="fixed inset-0 z-[70] bg-slate-950 flex flex-col">
-      {/* Header */}
       <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 flex-none z-50">
         <button onClick={onClose} className="p-2 text-slate-400 hover:text-white"><X size={24} /></button>
         <h2 className="text-white font-bold">掃描計分表</h2>
         <div className="w-10"></div>
       </div>
 
-      {/* Main Area */}
       <div 
            className="flex-1 relative overflow-hidden bg-black/50 touch-none select-none" 
            ref={containerRef}
@@ -621,21 +604,43 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
            onTouchStart={(e) => handlePointerDown(e, null)}
            onWheel={handleWheel}
       >
-        {!imageSrc ? (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center space-y-4 p-8">
-                <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-500">
-                <Camera size={40} />
+        {/* --- Camera Overlay (Activated on demand) --- */}
+        {isCameraActive ? (
+            <div className="absolute inset-0 bg-black flex items-center justify-center z-[60]">
+                <video 
+                    ref={videoRef} 
+                    className="w-full h-full object-cover" 
+                    playsInline 
+                    autoPlay 
+                    muted 
+                />
+                <div className="absolute bottom-0 left-0 right-0 p-8 flex items-center justify-center gap-12 bg-gradient-to-t from-black/80 to-transparent">
+                    <button onClick={switchCamera} className="p-4 bg-slate-800/50 rounded-full text-white backdrop-blur-md border border-white/20 active:scale-95 transition-transform"><SwitchCamera size={24} /></button>
+                    <button onClick={capturePhoto} className="w-20 h-20 rounded-full border-4 border-white bg-transparent flex items-center justify-center active:scale-95 transition-transform"><div className="w-16 h-16 bg-white rounded-full"></div></button>
+                    <button onClick={stopCamera} className="p-4 bg-slate-800/50 rounded-full text-white backdrop-blur-md border border-white/20 active:scale-95 transition-transform"><X size={24} /></button>
                 </div>
-                <p className="text-slate-400">請拍攝或上傳計分表照片</p>
-                <button onClick={() => fileInputRef.current?.click()} className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl flex items-center gap-2 mx-auto">
-                <Upload size={20} /> 上傳照片
-                </button>
+            </div>
+        ) : !imageSrc ? (
+          /* --- Empty State: Choose Source --- */
+          <div className="absolute inset-0 flex items-center justify-center p-6">
+            <div className="text-center space-y-6 w-full max-w-sm">
+                <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-500 shadow-xl border border-slate-700"><Camera size={40} /></div>
+                <h3 className="text-xl font-bold text-white">請選擇圖片來源</h3>
+                <div className="flex flex-col gap-4">
+                    <button onClick={startCamera} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl flex items-center justify-center gap-3 shadow-lg shadow-emerald-900/50 active:scale-95 transition-all">
+                        <Aperture size={24} /> <span className="text-lg">拍攝照片</span>
+                    </button>
+                    <div className="relative"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-700"></div></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-slate-950 px-2 text-slate-500">或</span></div></div>
+                    <button onClick={() => fileInputRef.current?.click()} className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl flex items-center justify-center gap-3 border border-slate-600 active:scale-95 transition-all">
+                        <Upload size={24} /> <span className="text-lg">從相簿上傳</span>
+                    </button>
+                </div>
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+                <p className="text-xs text-slate-500 mt-4">提示：拍攝時請盡量保持光線充足，並垂直拍攝計分表。</p>
             </div>
           </div>
         ) : (
-          /* Transformed Viewport */
+          /* --- Editor View --- */
           <div 
             ref={contentRef}
             className="absolute top-0 left-0 origin-top-left will-change-transform"
@@ -645,98 +650,34 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
                 height: sourceDimensions?.h || canvasRef.current?.height,
             }}
           >
-            {/* Hidden Canvas source */}
             <canvas ref={canvasRef} className="hidden" />
-            
-            {/* Display Image */}
             <img src={imageSrc} className="block w-full h-full object-contain pointer-events-none select-none" alt="Scan Target" draggable={false} />
-
-            {/* SVG Overlay */}
+            
             {!showPreview && points.length === 4 && (
-              <svg 
-                className="absolute inset-0 w-full h-full pointer-events-none" 
-                viewBox={`0 0 ${canvasRef.current?.width || 100} ${canvasRef.current?.height || 100}`}
-                style={{zIndex: 10}}
-              >
-                {/* 1. The Polygon itself */}
-                <polygon 
-                  points={polygonPoints}
-                  fill="rgba(6, 182, 212, 0.2)" 
-                  stroke="#22d3ee" 
-                  strokeWidth={2 / transform.scale} 
-                  vectorEffect="non-scaling-stroke"
-                />
-
-                {/* 2. Content-Aware Guide Lines */}
-                {activePointIdx !== null && activeAngles.length > 0 && (
-                    <>
-                        {activeAngles.map((angle, idx) => {
-                            const p = points[activePointIdx];
-                            const rad = angle * Math.PI / 180;
-                            const dx = Math.cos(rad) * 10000;
-                            const dy = Math.sin(rad) * 10000;
-                            
-                            return (
-                                <line 
-                                    key={`guide-${idx}`}
-                                    x1={p.x - dx}
-                                    y1={p.y - dy}
-                                    x2={p.x + dx}
-                                    y2={p.y + dy}
-                                    stroke={snapType === 'line' ? '#facc15' : '#34d399'} 
-                                    strokeWidth={2 / transform.scale}
-                                    strokeDasharray={snapType === 'line' ? '' : '8,8'}
-                                    opacity="0.8"
-                                    vectorEffect="non-scaling-stroke"
-                                />
-                            );
-                        })}
-                    </>
-                )}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${canvasRef.current?.width || 100} ${canvasRef.current?.height || 100}`} style={{zIndex: 10}}>
+                <polygon points={polygonPoints} fill="rgba(6, 182, 212, 0.2)" stroke="#22d3ee" strokeWidth={2 / transform.scale} vectorEffect="non-scaling-stroke"/>
+                {activePointIdx !== null && activeAngles.length > 0 && activeAngles.map((angle, idx) => {
+                    const p = points[activePointIdx];
+                    const rad = angle * Math.PI / 180;
+                    const dx = Math.cos(rad) * 10000; const dy = Math.sin(rad) * 10000;
+                    return <line key={`guide-${idx}`} x1={p.x - dx} y1={p.y - dy} x2={p.x + dx} y2={p.y + dy} stroke={snapType === 'line' ? '#facc15' : '#34d399'} strokeWidth={2 / transform.scale} strokeDasharray={snapType === 'line' ? '' : '8,8'} opacity="0.8" vectorEffect="non-scaling-stroke" />;
+                })}
               </svg>
             )}
 
-            {/* Geometric Ghost */}
             {!showPreview && geometricGhost && (
-                <div 
-                    className="absolute w-6 h-6 -ml-3 -mt-3 z-10 pointer-events-none flex items-center justify-center opacity-70 animate-pulse"
-                    style={{ 
-                       left: geometricGhost.x, 
-                       top: geometricGhost.y,
-                       transform: `scale(${1/transform.scale})` 
-                    }}
-                >
+                <div className="absolute w-6 h-6 -ml-3 -mt-3 z-10 pointer-events-none flex items-center justify-center opacity-70 animate-pulse" style={{ left: geometricGhost.x, top: geometricGhost.y, transform: `scale(${1/transform.scale})` }}>
                     <div className="w-full h-full border-2 border-dashed border-sky-400 rounded-full"></div>
                     <div className="w-1.5 h-1.5 bg-sky-400 rounded-full absolute"></div>
                 </div>
             )}
 
-            {/* Interactive Points */}
             {!showPreview && points.map((p, i) => (
-              <div
-                key={i}
-                onMouseDown={(e) => handlePointerDown(e, i)}
-                onTouchStart={(e) => handlePointerDown(e, i)}
-                className="absolute w-12 h-12 -ml-6 -mt-6 z-20 cursor-move flex items-center justify-center group"
-                style={{ 
-                   left: p.x, 
-                   top: p.y,
-                   transform: `scale(${1/transform.scale})` // Keep touch target constant size on screen
-                }}
-              >
-                {/* Visual Dot */}
+              <div key={i} onMouseDown={(e) => handlePointerDown(e, i)} onTouchStart={(e) => handlePointerDown(e, i)} className="absolute w-12 h-12 -ml-6 -mt-6 z-20 cursor-move flex items-center justify-center group" style={{ left: p.x, top: p.y, transform: `scale(${1/transform.scale})` }}>
                 <div className={`w-5 h-5 rounded-full border-[3px] shadow-[0_0_2px_rgba(0,0,0,0.8)] transition-transform ${activePointIdx === i ? 'border-cyan-300 scale-125' : 'border-cyan-500'}`}></div>
-                
-                {/* Snapping Indicator */}
                 {activePointIdx === i && isSnapping && (
                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur text-white text-[10px] px-2 py-1 rounded border border-slate-700 whitespace-nowrap pointer-events-none flex items-center gap-1 shadow-lg">
-                     {geometricGhost && Math.sqrt(Math.pow(p.x - geometricGhost.x, 2) + Math.pow(p.y - geometricGhost.y, 2)) < 40 ? (
-                         <><BoxSelect size={10} className="text-sky-400"/> 幾何吸附</>
-                     ) : snapType === 'line' ? (
-                         <><ScanLine size={10} className="text-yellow-400"/> 直線吸附</>
-                     ) : (
-                         <><Magnet size={10} className="text-slate-400"/> 自由移動</>
-                     )}
+                     {geometricGhost && Math.sqrt(Math.pow(p.x - geometricGhost.x, 2) + Math.pow(p.y - geometricGhost.y, 2)) < 40 ? (<><BoxSelect size={10} className="text-sky-400"/> 幾何吸附</>) : snapType === 'line' ? (<><ScanLine size={10} className="text-yellow-400"/> 直線吸附</>) : (<><Magnet size={10} className="text-slate-400"/> 自由移動</>)}
                    </div>
                 )}
               </div>
@@ -745,53 +686,27 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
         )}
       </div>
 
-      {/* Helper Tip */}
-      {imageSrc && (
+      {imageSrc && !isCameraActive && (
           <div className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/60 backdrop-blur text-white text-xs rounded-full pointer-events-none flex items-center gap-2 z-40 opacity-70">
               <Move size={12} /> 單指平移 • 雙指縮放 • 拖曳四角
           </div>
       )}
 
-      {/* Magnifier Bubble */}
       {magnifierPos && activePointIdx !== null && (
-          <div 
-            className={`fixed z-[100] w-[120px] h-[120px] rounded-full overflow-hidden shadow-2xl border-2 pointer-events-none transition-colors ${snapType === 'line' ? 'border-yellow-400' : 'border-white'}`}
-            style={{ 
-                top: magnifierPos.top, 
-                left: magnifierPos.left,
-                transform: 'translate(-50%, -50%)',
-                backgroundColor: '#000'
-            }}
-          >
+          <div className={`fixed z-[100] w-[120px] h-[120px] rounded-full overflow-hidden shadow-2xl border-2 pointer-events-none transition-colors ${snapType === 'line' ? 'border-yellow-400' : 'border-white'}`} style={{ top: magnifierPos.top, left: magnifierPos.left, transform: 'translate(-50%, -50%)', backgroundColor: '#000' }}>
               <canvas ref={magnifierCanvasRef} width={120} height={120} className="w-full h-full object-cover" />
           </div>
       )}
 
-      {/* Toolbar */}
-      {imageSrc && (
+      {imageSrc && !isCameraActive && (
         <footer className="p-4 bg-slate-900 border-t border-slate-800 flex items-center justify-between flex-none z-50">
             <div className="flex items-center gap-4">
-                <button onClick={() => setIsSnapping(!isSnapping)} className={`flex flex-col items-center gap-1 text-xs font-bold ${isSnapping ? 'text-emerald-400' : 'text-slate-500'}`}>
-                    <div className={`p-3 rounded-xl ${isSnapping ? 'bg-emerald-900/30' : 'bg-slate-800'}`}><ScanLine size={20} /></div>
-                    輔助{isSnapping ? '開啟' : '關閉'}
-                </button>
-                <button onClick={() => { fitImageToScreen(); hasFittedRef.current = true; }} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white">
-                    <div className="p-3 rounded-xl bg-slate-800"><ZoomIn size={20} /></div>
-                    重置視角
-                </button>
-                <button onClick={() => { setImageSrc(null); setPoints([]); setSourceDimensions(null); }} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white">
-                    <div className="p-3 rounded-xl bg-slate-800"><RotateCcw size={20} /></div>
-                    重拍
-                </button>
-                <button onClick={handleRotate} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white">
-                    <div className="p-3 rounded-xl bg-slate-800"><RotateCw size={20} /></div>
-                    旋轉
-                </button>
+                <button onClick={() => setIsSnapping(!isSnapping)} className={`flex flex-col items-center gap-1 text-xs font-bold ${isSnapping ? 'text-emerald-400' : 'text-slate-500'}`}><div className={`p-3 rounded-xl ${isSnapping ? 'bg-emerald-900/30' : 'bg-slate-800'}`}><ScanLine size={20} /></div>輔助{isSnapping ? '開啟' : '關閉'}</button>
+                <button onClick={() => { fitImageToScreen(); hasFittedRef.current = true; }} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"><div className="p-3 rounded-xl bg-slate-800"><ZoomIn size={20} /></div>重置視角</button>
+                <button onClick={() => { setImageSrc(null); setPoints([]); setSourceDimensions(null); }} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"><div className="p-3 rounded-xl bg-slate-800"><RotateCcw size={20} /></div>重拍</button>
+                <button onClick={handleRotate} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"><div className="p-3 rounded-xl bg-slate-800"><RotateCw size={20} /></div>旋轉</button>
             </div>
-            
-            <button onClick={handleRectify} disabled={!imageSrc || points.length < 4} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 disabled:bg-slate-700 disabled:text-slate-500">
-                校正預覽 <ArrowRight size={16} />
-            </button>
+            <button onClick={handleRectify} disabled={!imageSrc || points.length < 4} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 disabled:bg-slate-700 disabled:text-slate-500">校正預覽 <ArrowRight size={16} /></button>
         </footer>
       )}
     </div>

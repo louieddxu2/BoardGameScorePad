@@ -11,6 +11,7 @@ export const migrateFromLocalStorage = async () => {
   const MIGRATION_KEY = 'sm_migration_v1_done';
   const VERSION_KEY = 'sm_builtin_data_version';
   const NEW_BADGES_KEY = 'sm_new_badge_ids'; // 新的 Key，只存「未讀的新增項目」
+  const LIST_MIGRATION_KEY = 'sm_list_migration_v4_done';
   
   try {
     // --- Phase 1: 內建資料庫同步 (Seeding & Diffing) ---
@@ -117,6 +118,66 @@ export const migrateFromLocalStorage = async () => {
         localStorage.removeItem('sm_known_sys_ids');
         
         localStorage.setItem(MIGRATION_KEY, 'true');
+    }
+
+    // --- Phase 3: List Migration (Players/Locations) to IndexedDB ---
+    if (!localStorage.getItem(LIST_MIGRATION_KEY)) {
+        console.log('Migrating Lists (Players/Locations) to IndexedDB...');
+        
+        // 1. Migrate Player History
+        const playerHistoryStr = localStorage.getItem('sm_player_history');
+        if (playerHistoryStr) {
+            try {
+                const players: string[] = JSON.parse(playerHistoryStr);
+                if (Array.isArray(players)) {
+                    // Reverse to keep order (first in array was most recent)
+                    // We assign timestamps backwards to preserve order in sort
+                    const now = Date.now();
+                    const bulkPlayers = players.map((name, idx) => ({
+                        name: name.trim(),
+                        lastUsed: now - idx * 1000,
+                        usageCount: 1
+                    })).filter(p => p.name);
+                    
+                    // Use bulkPut. If name exists (unlikely on fresh migration), it overwrites.
+                    // But to be safe against duplicates in source array, we dedupe first.
+                    const uniquePlayers = Array.from(new Map(bulkPlayers.map(item => [item.name, item])).values());
+                    await db.savedPlayers.bulkPut(uniquePlayers);
+                }
+            } catch (e) {
+                console.error("Failed to migrate player history", e);
+            }
+        }
+
+        // 2. Scan History for Locations
+        const allHistory = await db.history.toArray();
+        const locationsMap = new Map<string, { name: string, lastUsed: number, count: number }>();
+        
+        allHistory.forEach(record => {
+            if (record.location && record.location.trim()) {
+                const loc = record.location.trim();
+                const existing = locationsMap.get(loc);
+                if (existing) {
+                    existing.count++;
+                    existing.lastUsed = Math.max(existing.lastUsed, record.endTime);
+                } else {
+                    locationsMap.set(loc, { name: loc, lastUsed: record.endTime, count: 1 });
+                }
+            }
+        });
+
+        if (locationsMap.size > 0) {
+            const locationsToSave = Array.from(locationsMap.values()).map(l => ({
+                name: l.name,
+                lastUsed: l.lastUsed,
+                usageCount: l.count
+            }));
+            await db.savedLocations.bulkPut(locationsToSave);
+        }
+
+        // Clean up old localStorage key
+        localStorage.removeItem('sm_player_history');
+        localStorage.setItem(LIST_MIGRATION_KEY, 'true');
     }
 
   } catch (error) {

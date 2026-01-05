@@ -27,6 +27,7 @@ interface ScreenshotViewProps {
   mode: 'full' | 'simple';
   layout: ScreenshotLayout | null;
   baseImage?: string;
+  customWinners?: string[]; // New Prop
 }
 
 const ScreenshotHeaderCell: React.FC<{ col: any; baseImage?: string; children?: React.ReactNode; className?: string; style?: React.CSSProperties }> = (props) => {
@@ -141,7 +142,7 @@ const formatDisplayNumber = (num: number | undefined | null): string => {
 };
 
 const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
-  const { id, className, style, session, template, zoomLevel, mode, layout, baseImage } = props;
+  const { id, className, style, session, template, zoomLevel, mode, layout, baseImage, customWinners } = props;
 
   // Group columns logic (Same as ScoreGrid)
   const processedColumns = useMemo(() => {
@@ -189,9 +190,20 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
     );
   }
 
-  const winners = session.players
-    .filter(p => p.totalScore === Math.max(...session.players.map(pl => pl.totalScore)))
-    .map(p => p.id);
+  // Calculate Winners
+  let winners: string[] = [];
+  if (customWinners) {
+      winners = customWinners;
+  } else {
+      const rule = session.scoringRule || 'HIGHEST_WINS';
+      if (rule === 'HIGHEST_WINS') {
+          const maxScore = Math.max(...session.players.map(pl => pl.totalScore));
+          winners = session.players.filter(p => p.totalScore === maxScore).map(p => p.id);
+      } else if (rule === 'LOWEST_WINS') {
+          const minScore = Math.min(...session.players.map(pl => pl.totalScore));
+          winners = session.players.filter(p => p.totalScore === minScore).map(p => p.id);
+      }
+  }
 
   const containerClass = 'bg-slate-900';
   const headerIconBoxClass = 'bg-emerald-500/10 border border-emerald-500/20';
@@ -352,7 +364,6 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                     baseImage={''}
                     className={`${borderRightClass} ${rowBorderClass} flex items-center justify-center relative`}
                     style={getPlayerColStyle(p.id)}
-                    hideCrown={true}
                 />
             ))}
         </div>
