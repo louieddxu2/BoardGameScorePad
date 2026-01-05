@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ScoreColumn, InputMethod, MappingRule } from '../../types';
-import { X, Ruler, Calculator, ListPlus, Settings, Save, Trash2, Crop, LayoutList, Layers, Sigma, Sparkles } from 'lucide-react';
+import { X, Ruler, Calculator, ListPlus, Settings, Save, Trash2, Crop, LayoutList, Layers, Sigma, Sparkles, Settings2, Info } from 'lucide-react';
 import { COLORS } from '../../colors';
 import { isColorDark } from '../../utils/ui';
 import { useVisualViewportOffset } from '../../hooks/useVisualViewportOffset';
@@ -11,6 +11,7 @@ import EditorTabMapping from './column-editor/EditorTabMapping';
 import EditorTabSelection from './column-editor/EditorTabSelection';
 import EditorTabBasic from './column-editor/EditorTabBasic';
 import EditorTabAuto from './column-editor/EditorTabAuto';
+import { extractIdentifiers } from '../../utils/formulaEvaluator';
 
 interface ColumnConfigEditorProps {
   column: ScoreColumn;
@@ -28,6 +29,8 @@ type CalculationMode = 'standard' | 'product';
 const PREF_KEY_STD_UNIT = 'sm_pref_standard_unit';
 const PREF_KEY_PROD_UNIT_A = 'sm_pref_product_unit_a';
 const PREF_KEY_PROD_UNIT_B = 'sm_pref_product_unit_b';
+const PREF_KEY_ADV_OPEN = 'sm_pref_editor_adv';
+const PLAYER_COUNT_ID = '__PLAYER_COUNT__';
 
 const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColumns = [], onSave, onDelete, onClose, baseImage }) => {
   
@@ -77,6 +80,14 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [showLayoutEditor, setShowLayoutEditor] = useState(false);
   
+  // Advanced Settings State
+  const [showAdvanced, setShowAdvanced] = useState(() => localStorage.getItem(PREF_KEY_ADV_OPEN) === 'true');
+  const [helpText, setHelpText] = useState('點按上方按鈕可查看功能說明');
+
+  useEffect(() => {
+      localStorage.setItem(PREF_KEY_ADV_OPEN, String(showAdvanced));
+  }, [showAdvanced]);
+
   const nameTextareaRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
       const textarea = nameTextareaRef.current;
@@ -132,6 +143,41 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
           finalUpdates.isAuto = true;
           delete finalUpdates.constants;
           
+          // [AUTO COMPLETE LOGIC]
+          // If the user typed a formula but didn't lock/parse it manually, we do it here.
+          if (finalUpdates.formula && finalUpdates.formula.trim()) {
+              const { vars, funcs } = extractIdentifiers(finalUpdates.formula);
+              const availableColumns = allColumns.filter(c => c.id !== column.id);
+              
+              // 1. Fill missing variable maps
+              const currentVarMap = (finalUpdates.variableMap || {}) as Record<string, any>;
+              const newVariableMap: typeof currentVarMap = {};
+              
+              vars.forEach(v => {
+                  if (currentVarMap[v]) {
+                      newVariableMap[v] = currentVarMap[v];
+                  } else {
+                      newVariableMap[v] = availableColumns[0] 
+                          ? { id: availableColumns[0].id, name: availableColumns[0].name, mode: 'value' } 
+                          : { id: PLAYER_COUNT_ID, name: '玩家人數', mode: 'value' };
+                  }
+              });
+              finalUpdates.variableMap = newVariableMap;
+
+              // 2. Fill missing functions
+              const currentFunctions = finalUpdates.functions || {};
+              const newFunctions: Record<string, MappingRule[]> = {};
+              
+              funcs.forEach(fKey => {
+                  if (currentFunctions[fKey]) {
+                      newFunctions[fKey] = currentFunctions[fKey];
+                  } else {
+                      newFunctions[fKey] = [{ min: 0, score: 0 }];
+                  }
+              });
+              finalUpdates.functions = newFunctions;
+          }
+
           // [BUG FIX] Ensure functions is preserved and f1 is synced
           if (finalUpdates.functions) {
             // Also explicitly delete top-level f1 if it's not in functions, to avoid ambiguity
@@ -227,10 +273,12 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
           ...prev,
           displayMode: prev.displayMode === 'row' ? 'overlay' : 'row'
       }));
+      setHelpText("切換：獨立一列 / 疊加於上一列");
   };
 
   const toggleScoring = () => {
       setEditedCol(prev => ({ ...prev, isScoring: !prev.isScoring }));
+      setHelpText(editedCol.isScoring ? "關閉：僅作記錄，不加總" : "開啟：數值將計入總分");
   };
 
   const TabButton = ({ id, label, icon: Icon, isSpecial }: { id: EditorTab, label: string, icon: any, isSpecial?: boolean }) => (
@@ -269,48 +317,94 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
           />
       )}
 
+      {/* Header: Simplified */}
       <header className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 flex-none z-20">
-          <div className="flex items-center gap-2"><div className="bg-slate-800 p-2 rounded text-emerald-500"><Settings size={20}/></div><div><h2 className="text-white font-bold text-lg">編輯項目</h2><p className="text-xs text-slate-500">{editedCol.name}</p></div></div>
+          <div className="flex items-center gap-2">
+              <div className="bg-slate-800 p-2 rounded text-emerald-500"><Settings size={20}/></div>
+              <div><h2 className="text-white font-bold text-lg">編輯項目</h2><p className="text-xs text-slate-500">設定計分規則</p></div>
+          </div>
           <div className="flex items-center gap-2">
             <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-400 bg-slate-800 rounded-lg border border-slate-700 hover:border-red-900/50" title="刪除此項目"><Trash2 size={20}/></button>
-            <button 
-                onClick={toggleScoring} 
-                className={`p-2 rounded-lg border transition-colors ${!editedCol.isScoring ? 'text-amber-400 border-amber-500/50 bg-amber-900/20' : 'text-slate-400 border-slate-700 bg-slate-800 hover:text-white'}`}
-                title={editedCol.isScoring ? "計分中 (點擊排除)" : "不計分 (僅作紀錄)"}
-            >
-                <div className="relative flex items-center justify-center">
-                    <Sigma size={20} className={!editedCol.isScoring ? "opacity-30" : ""} />
-                    {!editedCol.isScoring && (
-                        <X 
-                            size={14} 
-                            className="absolute -bottom-1 -right-2 text-amber-500 filter drop-shadow-sm" 
-                            strokeWidth={3} 
-                        />
-                    )}
-                </div>
-            </button>
-            <button 
-                onClick={() => setShowLayoutEditor(true)} 
-                className={`p-2 rounded-lg border transition-colors ${editedCol.contentLayout ? 'text-sky-400 border-sky-500/50 bg-sky-900/20' : 'text-slate-400 border-slate-700 bg-slate-800 hover:text-white'}`}
-                title="框選顯示區域"
-            >
-                <Crop size={20} />
-            </button>
-            <button 
-                onClick={toggleDisplayMode} 
-                className={`p-2 rounded-lg border transition-colors ${editedCol.displayMode === 'overlay' ? 'text-sky-400 border-sky-500/50 bg-sky-900/20' : 'text-slate-400 border-slate-700 bg-slate-800 hover:text-white'}`}
-                title={editedCol.displayMode === 'overlay' ? "目前為疊加模式 (不佔用列表)" : "目前為列表模式"}
-            >
-                {editedCol.displayMode === 'overlay' ? <Layers size={20}/> : <LayoutList size={20}/>}
-            </button>
             <button onClick={handleAttemptClose} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-lg border border-slate-700"><X size={20}/></button>
           </div>
       </header>
+
       <main className="flex-1 overflow-y-auto no-scrollbar">
           <section className="p-4 bg-slate-900/50 space-y-4">
-              <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">欄位名稱</label><textarea ref={nameTextareaRef} rows={1} value={editedCol.name} onChange={e => setEditedCol({...editedCol, name: e.target.value})} onFocus={e => e.target.select()} className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white focus:border-emerald-500 outline-none resize-none overflow-hidden"/></div>
-              <div><label className="block text-xs font-bold text-slate-500 uppercase mb-2">代表色</label><div className="flex items-center gap-2 flex-wrap">{COLORS.map(c => (<button key={c} onClick={() => setEditedCol({ ...editedCol, color: c })} className={`w-8 h-8 rounded-full shadow-lg border-2 transition-transform active:scale-90 ${editedCol.color === c ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'} ${isColorDark(c) ? 'ring-1 ring-white/50' : ''}`} style={{backgroundColor: c}} />))}<button onClick={() => setEditedCol({ ...editedCol, color: undefined })} className={`w-8 h-8 rounded-full shadow-lg border-2 flex items-center justify-center bg-slate-700 text-slate-400 transition-transform active:scale-90 ${!editedCol.color ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'}`}><X size={16}/></button></div></div>
+              
+              {/* Name & Advanced Toggle */}
+              <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">欄位名稱</label>
+                  <div className="flex gap-2 items-start">
+                      <textarea 
+                        ref={nameTextareaRef} 
+                        rows={1} 
+                        value={editedCol.name} 
+                        onChange={e => setEditedCol({...editedCol, name: e.target.value})} 
+                        onFocus={e => e.target.select()} 
+                        className="flex-[2] bg-slate-800 border border-slate-700 rounded-xl p-3 text-white focus:border-emerald-500 outline-none resize-none overflow-hidden text-base font-bold min-h-[50px]"
+                      />
+                      <button 
+                        onClick={() => setShowAdvanced(!showAdvanced)} 
+                        className={`flex-1 min-h-[50px] flex flex-col items-center justify-center gap-1 rounded-xl border transition-all active:scale-95 ${showAdvanced ? 'bg-slate-700 border-slate-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-300'}`}
+                      >
+                          <Settings2 size={18} />
+                          <span className="text-[10px] font-bold">進階設定</span>
+                      </button>
+                  </div>
+
+                  {/* Advanced Settings Panel */}
+                  {showAdvanced && (
+                      <div className="mt-2 bg-slate-800 rounded-xl p-2 border border-slate-700 animate-in fade-in slide-in-from-top-1">
+                          <div className="grid grid-cols-3 gap-2 mb-2">
+                              {/* Scoring Toggle */}
+                              <button 
+                                onClick={toggleScoring} 
+                                className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${!editedCol.isScoring ? 'text-amber-400 border-amber-500/50 bg-amber-900/20' : 'text-slate-400 border-slate-700 bg-slate-900 hover:text-white'}`}
+                              >
+                                  <div className="relative">
+                                      <Sigma size={20} className={!editedCol.isScoring ? "opacity-30" : ""} />
+                                      {!editedCol.isScoring && <X size={12} className="absolute -bottom-1 -right-1 text-amber-500 stroke-[3]" />}
+                                  </div>
+                                  <span className="text-[10px]">{!editedCol.isScoring ? '不計分' : '計分中'}</span>
+                              </button>
+
+                              {/* Layout Crop */}
+                              <button 
+                                onClick={() => { setShowLayoutEditor(true); setHelpText("設定此欄位在背景圖上的顯示位置"); }} 
+                                className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${editedCol.contentLayout ? 'text-sky-400 border-sky-500/50 bg-sky-900/20' : 'text-slate-400 border-slate-700 bg-slate-900 hover:text-white'}`}
+                              >
+                                  <Crop size={20} />
+                                  <span className="text-[10px]">{editedCol.contentLayout ? '已框選' : '框選區域'}</span>
+                              </button>
+
+                              {/* Display Mode */}
+                              <button 
+                                onClick={toggleDisplayMode} 
+                                className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${editedCol.displayMode === 'overlay' ? 'text-indigo-400 border-indigo-500/50 bg-indigo-900/20' : 'text-slate-400 border-slate-700 bg-slate-900 hover:text-white'}`}
+                              >
+                                  {editedCol.displayMode === 'overlay' ? <Layers size={20}/> : <LayoutList size={20}/>}
+                                  <span className="text-[10px]">{editedCol.displayMode === 'overlay' ? '重疊' : '列表'}</span>
+                              </button>
+                          </div>
+                          <div className="bg-slate-900/50 rounded py-1 px-2 text-center text-[10px] text-slate-400 border border-slate-800/50 flex items-center justify-center gap-1">
+                              <Info size={10} /> {helpText}
+                          </div>
+                      </div>
+                  )}
+              </div>
+
+              <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">代表色</label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                      {COLORS.map(c => (
+                          <button key={c} onClick={() => setEditedCol({ ...editedCol, color: c })} className={`w-8 h-8 rounded-full shadow-lg border-2 transition-transform active:scale-90 ${editedCol.color === c ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'} ${isColorDark(c) ? 'ring-1 ring-white/50' : ''}`} style={{backgroundColor: c}} />
+                      ))}
+                      <button onClick={() => setEditedCol({ ...editedCol, color: undefined })} className={`w-8 h-8 rounded-full shadow-lg border-2 flex items-center justify-center bg-slate-700 text-slate-400 transition-transform active:scale-90 ${!editedCol.color ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'}`}><X size={16}/></button>
+                  </div>
+              </div>
           </section>
+
           <div className="sticky top-0 z-10 flex border-y border-slate-800 bg-slate-900 shadow-lg">
               <TabButton id="basic" label="數值運算" icon={Calculator} />
               <TabButton id="mapping" label="範圍查表" icon={Ruler} />

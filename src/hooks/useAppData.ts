@@ -232,6 +232,11 @@ export const useAppData = () => {
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [currentSession]);
 
+  // Helper: Check if cloud features are enabled
+  const isCloudEnabled = () => {
+      return localStorage.getItem('google_drive_auto_connect') === 'true' && googleDriveService.isAuthorized;
+  };
+
   // --- Actions ---
   const getTemplate = async (id: string): Promise<GameTemplate | null> => {
       let t = await db.templates.get(id);
@@ -251,7 +256,8 @@ export const useAppData = () => {
     } else {
         await db.templates.put(migratedTemplate);
     }
-    if (!options.skipCloud && googleDriveService.isAuthorized && !isSystem) {
+    // 注意：這裡保留對模板的單獨備份邏輯，因應使用者的「備份」按鈕需求
+    if (!options.skipCloud && isCloudEnabled() && !isSystem) {
         googleDriveService.backupTemplate(migratedTemplate).then((updated) => {
             db.templates.update(updated.id, { lastSyncedAt: Date.now() });
         }).catch(console.error);
@@ -264,7 +270,7 @@ export const useAppData = () => {
       const relatedSessions = await db.sessions.where('templateId').equals(id).toArray();
       if (relatedSessions.length > 0) { await db.sessions.bulkDelete(relatedSessions.map(s => s.id)); }
       await db.templatePrefs.delete(id);
-      if (googleDriveService.isAuthorized && templateToDelete) {
+      if (isCloudEnabled() && templateToDelete) {
           googleDriveService.softDeleteFolder(id, templateToDelete.name).then(() => {
               showToast({ message: "已同步移至雲端垃圾桶", type: 'info' });
           }).catch(console.error);
@@ -325,13 +331,26 @@ export const useAppData = () => {
         }
     }
 
+    const sessionId = generateId();
+    let cloudFolderId: string | undefined = undefined;
+
+    // [Cloud Trigger 1] Start Session -> Create Folder in _Active
+    if (isCloudEnabled()) {
+        try {
+            cloudFolderId = await googleDriveService.createActiveSessionFolder(migratedTemplate.name, sessionId);
+        } catch (e) {
+            console.error("Cloud folder creation failed:", e);
+        }
+    }
+
     const newSession: GameSession = { 
-        id: generateId(), 
+        id: sessionId, 
         templateId: migratedTemplate.id, 
         startTime: startTime, 
         players: players, 
         status: 'active',
-        scoringRule: scoringRule
+        scoringRule: scoringRule,
+        cloudFolderId // Store the ID
     };
     
     isImageDirtyRef.current = false;
@@ -390,15 +409,38 @@ export const useAppData = () => {
   };
 
   const exitSession = async () => {
+      // 1. Save locally
       if (currentSession) await db.sessions.put(currentSession);
+      
+      // [Cloud Trigger 3a] Exit Session (Pause) -> Upload Score JSON
+      if (currentSession && isCloudEnabled()) {
+          // If we have a folder ID, upload. If not, try to find/create it first.
+          let folderId = currentSession.cloudFolderId;
+          if (!folderId && activeTemplate) {
+              folderId = await googleDriveService.createActiveSessionFolder(activeTemplate.name, currentSession.id);
+              // Update session with new folder ID
+              await db.sessions.update(currentSession.id, { cloudFolderId: folderId });
+          }
+
+          if (folderId) {
+              const sessionData = JSON.stringify(currentSession, null, 2);
+              googleDriveService.uploadFileToFolder(folderId, 'session.json', 'application/json', sessionData)
+                  .catch(e => console.error("Failed to sync session json on exit", e));
+          }
+      }
+
+      // Legacy auto-connect logic for templates: Only sync if explicitly dirtied image or not system
+      // We keep this for template metadata syncing but it's separate from session logic.
       const isSystem = activeTemplate && !!(await db.builtins.get(activeTemplate.id));
-      const isAutoConnect = localStorage.getItem('google_drive_auto_connect') === 'true';
-      if (activeTemplate && !isSystem && isAutoConnect && googleDriveService.isAuthorized) {
-          const imageToUpload = isImageDirtyRef.current ? sessionImage : null;
+      if (activeTemplate && !isSystem && isCloudEnabled() && isImageDirtyRef.current) {
+          const imageToUpload = sessionImage; // Only if template image changed
+          // This handles TEMPLATE backup, not session
           googleDriveService.backupTemplate(activeTemplate, imageToUpload).then((updated) => {
               db.templates.update(updated.id, { lastSyncedAt: Date.now() });
           }).catch(console.error);
       }
+
+      // Cleanup if empty
       if (currentSession) {
           const hasScores = currentSession.players.some(p => Object.keys(p.scores).length > 0);
           if (!hasScores) await db.sessions.delete(currentSession.id);
@@ -420,6 +462,7 @@ export const useAppData = () => {
           }
           const snapshotTemplate = JSON.parse(JSON.stringify(activeTemplate));
           const record: HistoryRecord = {
+              id: currentSession.id, 
               templateId: activeTemplate.id,
               gameName: activeTemplate.name,
               startTime: currentSession.startTime,
@@ -428,11 +471,37 @@ export const useAppData = () => {
               winnerIds: winnerIds,
               snapshotTemplate: snapshotTemplate,
               location: undefined,
-              note: ''
+              note: '',
+              photos: currentSession.photos || [],
+              cloudFolderId: currentSession.cloudFolderId // Inherit Cloud Folder ID
           };
-          await db.history.add(record);
+          
+          await db.history.put(record); 
+          
           currentSession.players.forEach(p => { updatePlayerHistory(p.name); });
           await db.sessions.delete(currentSession.id);
+
+          // [Cloud Trigger 3b] Save History -> Move Folder to _History
+          if (isCloudEnabled()) {
+              let folderId = record.cloudFolderId;
+              if (!folderId) {
+                  // If playing offline before, try to find/create folder now
+                  folderId = await googleDriveService.createActiveSessionFolder(activeTemplate.name, currentSession.id);
+                  // Update record with folder ID
+                  await db.history.update(record.id, { cloudFolderId: folderId });
+              }
+              
+              if (folderId) {
+                  // First, save the FINAL session.json state into the folder before moving
+                  // This ensures the history folder contains the final score data
+                  const sessionData = JSON.stringify(record, null, 2);
+                  await googleDriveService.uploadFileToFolder(folderId, 'session.json', 'application/json', sessionData);
+                  
+                  // Then move
+                  await googleDriveService.moveSessionToHistory(folderId);
+              }
+          }
+          
           setCurrentSession(null); setActiveTemplate(null); setSessionImage(null); isImageDirtyRef.current = false;
           showToast({ message: "遊戲紀錄已儲存！", type: 'success' });
       } catch (error) {
@@ -441,10 +510,11 @@ export const useAppData = () => {
       }
   };
 
-  const deleteHistoryRecord = async (id: number) => {
+  const deleteHistoryRecord = async (id: string) => { 
       try {
           await db.history.delete(id);
           showToast({ message: "紀錄已刪除", type: 'info' });
+          // Note: We currently don't auto-delete from cloud on local delete, as per typical backup behavior
       } catch (error) {
           console.error("Failed to delete history:", error);
           showToast({ message: "刪除失敗", type: 'error' });
@@ -478,10 +548,10 @@ export const useAppData = () => {
       
       // Data
       templates, 
-      userTemplatesCount: userTemplatesData.count, // Total count for UI
+      userTemplatesCount: userTemplatesData.count,
       
       systemTemplates, 
-      systemTemplatesCount: builtinsData.count, // Total count for UI
+      systemTemplatesCount: builtinsData.count,
       systemOverrides,
       
       activeSessionIds, 
@@ -491,7 +561,7 @@ export const useAppData = () => {
       locationHistory,
       
       historyRecords: historyData.items,
-      historyCount: historyData.count, // Total count for UI
+      historyCount: historyData.count,
       
       currentSession, activeTemplate, sessionImage, viewingHistoryRecord,
       themeMode, sessionPlayerCount,

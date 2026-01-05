@@ -146,11 +146,13 @@ export interface GameSession {
   players: Player[];
   status: 'active' | 'completed';
   scoringRule?: ScoringRule; // 當次遊戲的勝利條件
+  photos?: string[]; // [Cloud] 關聯的照片檔案 ID 或檔名
+  cloudFolderId?: string; // [Cloud] 在 Google Drive 上的資料夾 ID (位於 _Active 或 _History)
 }
 
 // [New Interface] History Record
 export interface HistoryRecord {
-  id?: number; // IndexedDB auto-increment ID
+  id: string; // [Changed] 使用 UUID (與 Session ID 相同)，不再是 number
   templateId: string; // 原始模板 ID (用於關聯)
   gameName: string; // 當時的遊戲名稱 (快照)
   startTime: number;
@@ -160,6 +162,8 @@ export interface HistoryRecord {
   snapshotTemplate: GameTemplate; // [關鍵] 完整的模板快照 (含欄位、圖片ID等)
   location?: string; // 地點
   note?: string; // 筆記
+  photos?: string[]; // [Cloud] 關聯的照片檔案 ID 或檔名
+  cloudFolderId?: string; // [Cloud] 備份資料夾 ID
 }
 
 // [New Interface] Generic Saved List Item (for Players, Locations, etc.)
@@ -169,6 +173,25 @@ export interface SavedListItem {
   lastUsed: number;
   usageCount: number;
   meta?: any; // For future expansion (e.g. external links, coordinates)
+}
+
+export interface SystemPreferences {
+  updatedAt: number;
+  appSettings: {
+    theme: 'dark' | 'light';
+    zoomLevel: number;
+    isEditMode: boolean;
+  };
+  uiState: {
+    pinnedTemplateIds: string[];
+    newBadgeIds: string[];
+  };
+}
+
+export interface SystemLibrary {
+  updatedAt: number;
+  savedPlayers: SavedListItem[];
+  savedLocations: SavedListItem[];
 }
 
 export enum AppView {

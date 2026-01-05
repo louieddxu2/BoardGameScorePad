@@ -5,7 +5,7 @@ import { Crown, Calendar, Trash2 } from 'lucide-react';
 
 interface HistoryCardProps {
   record: HistoryRecord;
-  onDelete: (id: number) => void;
+  onDelete: (id: string) => void; // [Change] string ID
   onClick: () => void;
 }
 

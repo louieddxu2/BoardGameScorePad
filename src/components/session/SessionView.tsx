@@ -35,13 +35,24 @@ interface SessionViewProps {
   onSaveToHistory: () => void; // New Prop
 }
 
+// Convert Base64 to Blob for uploading
+const base64ToBlob = (base64: string, mimeType: string = 'image/jpeg'): Blob => {
+  const byteString = atob(base64.split(',')[1]);
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
+  return new Blob([ab], { type: mimeType });
+};
+
 const SessionView: React.FC<SessionViewProps> = (props) => {
   const { session, template, zoomLevel, baseImage, onUpdateImage, onUpdateTemplate } = props;
 
   const sessionState = useSessionState(props);
   const eventHandlers = useSessionEvents(props, sessionState);
   const { showToast } = useToast();
-  const { handleBackup, downloadCloudImage, isSyncing } = useGoogleDrive();
+  const { handleBackup, downloadCloudImage, isSyncing, isAutoConnectEnabled } = useGoogleDrive();
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -71,17 +82,20 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       hasPromptedRef.current = true;
 
       if (template.cloudImageId) {
-          if (googleDriveService.isAuthorized) {
+          // [修正] 只有在「已啟用自動連線」且「目前已授權(有Token)」時，才自動下載圖片。
+          // 這避免了在離線或未登入狀態下，進入計分板時跳出登入視窗或錯誤提示。
+          if (isAutoConnectEnabled && googleDriveService.isAuthorized) {
               handleCloudDownload().then(success => {
                   if (!success) setShowImageUploadModal(true);
               });
           } else {
+              // 若未連線，直接顯示上傳視窗 (使用者可在此視窗手動點擊「從雲端下載」來觸發登入)
               setShowImageUploadModal(true);
           }
       } else {
           setShowImageUploadModal(true);
       }
-  }, [baseImage, template.globalVisuals, template.hasImage, template.cloudImageId, handleCloudDownload]);
+  }, [baseImage, template.globalVisuals, template.hasImage, template.cloudImageId, handleCloudDownload, isAutoConnectEnabled]);
 
   const {
     editingCell,
@@ -135,16 +149,33 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (ev) => {
+      reader.onload = async (ev) => {
           if (ev.target?.result) {
               const imgData = ev.target.result as string;
               onUpdateImage(imgData); 
               setShowImageUploadModal(false);
               
-              if (googleDriveService.isAuthorized) {
-                  handleBackup(template, imgData).then(updated => {
-                      if (updated) onUpdateTemplate(updated);
-                  }).catch(console.error);
+              // [Cloud Trigger 2] Take Photo -> Upload to Session Folder
+              // Only upload if connected and auto-connect enabled
+              if (isAutoConnectEnabled && googleDriveService.isAuthorized) {
+                  try {
+                      // Ensure folder exists (Create if missing)
+                      let folderId = session.cloudFolderId;
+                      if (!folderId) {
+                          folderId = await googleDriveService.createActiveSessionFolder(template.name, session.id);
+                          // We should update the session via prop if possible, but props.onUpdateSession is full replace.
+                          // Ideally we update session.cloudFolderId locally too, but useAppData handles sync on next actions.
+                          // For now, we trust useAppData's exitSession to handle missing folderId, 
+                          // here we just use the one we got.
+                      }
+                      
+                      const blob = base64ToBlob(imgData);
+                      await googleDriveService.uploadFileToFolder(folderId, 'photo.jpg', 'image/jpeg', blob);
+                      showToast({ message: "照片已上傳至雲端", type: 'success' });
+                  } catch (e) {
+                      console.error("Failed to upload photo:", e);
+                      showToast({ message: "照片上傳失敗", type: 'warning' });
+                  }
               }
           }
       };

@@ -38,6 +38,12 @@ export class ScorePadDatabase extends Dexie {
       savedPlayers: '++id, &name, lastUsed, usageCount',
       savedLocations: '++id, &name, lastUsed, usageCount'
     });
+
+    // Version 5: History table PK change (Auto-inc -> UUID) to support Cloud Sync architecture
+    (this as any).version(5).stores({
+      history: 'id, templateId, startTime, endTime', // Removed ++, 'id' is now provided manually (UUID)
+      sessions: 'id, templateId, startTime, status' // Ensure consistency
+    });
   }
 }
 

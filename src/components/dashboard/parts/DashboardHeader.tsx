@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Dice5, Search, X, Download, HelpCircle, Calculator, History } from 'lucide-react';
+import { Dice5, Search, X, Download, HelpCircle, Calculator, History, Cloud, CloudOff, Loader2 } from 'lucide-react';
 
 interface DashboardHeaderProps {
   isSearchActive: boolean;
@@ -13,6 +13,10 @@ interface DashboardHeaderProps {
   onShowInstallGuide: () => void;
   viewMode: 'library' | 'history';
   setViewMode: (mode: 'library' | 'history') => void;
+  // Cloud Props
+  isConnected: boolean;
+  isSyncing: boolean;
+  onToggleCloud: () => void;
 }
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({
@@ -25,7 +29,10 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   onInstallClick,
   onShowInstallGuide,
   viewMode,
-  setViewMode
+  setViewMode,
+  isConnected,
+  isSyncing,
+  onToggleCloud
 }) => {
   
   const toggleView = () => {
@@ -77,7 +84,6 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                   </div>
 
                   {/* Icon Container - Library (Calculator) */}
-                  {/* Positioned at left-2.5 (10px). Icon width 20px. Ends at 30px. */}
                   <div 
                     className={`absolute transition-all duration-200 ease-out flex items-center justify-center left-2.5
                         ${viewMode === 'library' 
@@ -90,7 +96,6 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                   </div>
 
                   {/* Icon Container - History (History Clock) */}
-                  {/* Positioned at right-2.5 (10px). Starts at (56-10-20) = 26px. Overlap = 4px. */}
                   <div 
                     className={`absolute transition-all duration-200 ease-out flex items-center justify-center right-2.5
                         ${viewMode === 'history' 
@@ -101,6 +106,21 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                   >
                       <History size={20} strokeWidth={viewMode === 'history' ? 2.5 : 2} />
                   </div>
+              </button>
+
+              {/* Cloud Connect Toggle (New Position) */}
+              <button
+                onClick={onToggleCloud}
+                disabled={isSyncing}
+                className={`h-9 w-9 flex items-center justify-center rounded-xl border transition-all shrink-0 active:scale-95 ${
+                    isSyncing ? 'bg-slate-800 border-slate-700 cursor-wait' :
+                    isConnected ? 'bg-sky-900/30 border-sky-500/50 text-sky-400 shadow-[0_0_10px_rgba(14,165,233,0.2)]' :
+                    'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'
+                }`}
+                title={isConnected ? "已連線 (點擊斷開)" : "點擊連線 Google Drive"}
+              >
+                {isSyncing ? <Loader2 className="animate-spin" size={18} /> :
+                 isConnected ? <Cloud size={18} /> : <CloudOff size={18} />}
               </button>
             </div>
 

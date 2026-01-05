@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ScoreColumn, MappingRule } from '../../../types';
 import { Sparkles, ArrowRight, Lock, Unlock, Check, Calculator, AlertCircle, Ruler, ChevronDown, ChevronUp, Delete, Trophy, Hash, Users } from 'lucide-react';
 import EditorTabMapping from './EditorTabMapping';
+import { extractIdentifiers } from '../../../utils/formulaEvaluator';
 
 interface EditorTabAutoProps {
   column: ScoreColumn;
@@ -10,40 +11,7 @@ interface EditorTabAutoProps {
   onChange: (updates: Partial<ScoreColumn>) => void;
 }
 
-const MATH_KEYWORDS = new Set([
-  'min', 'max', 'floor', 'ceil', 'round', 'abs', 'sin', 'cos', 'tan', 'log', 'sqrt', 'pow', 'pi', 'e'
-]);
-
 const PLAYER_COUNT_ID = '__PLAYER_COUNT__';
-
-// 提取解析邏輯為獨立函數
-const extractIdentifiers = (formula: string) => {
-    // 移除所有字串常數
-    const cleanFormula = formula.replace(/×/g, '*');
-    
-    // 找出所有可能的識別字 (變數或函數)
-    const regex = /\b([a-zA-Z][a-zA-Z0-9]*)\b/g;
-    const matches = cleanFormula.match(regex) || [];
-    
-    const unique = Array.from(new Set(matches));
-    
-    const vars: string[] = [];
-    const funcs: string[] = [];
-
-    unique.forEach(token => {
-        const lower = token.toLowerCase();
-        if (MATH_KEYWORDS.has(lower)) return;
-        
-        // 判斷是函數還是變數：f 開頭 + 數字 = 函數，其他 = 變數
-        if (/^f\d+$/.test(lower)) {
-            funcs.push(lower);
-        } else {
-            vars.push(token);
-        }
-    });
-
-    return { vars, funcs };
-};
 
 const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], onChange }) => {
   const [localFormula, setLocalFormula] = useState(column.formula || '');
@@ -226,6 +194,8 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
       const end = input.selectionEnd ?? localFormula.length;
       const newVal = localFormula.substring(0, start) + token + localFormula.substring(end);
       setLocalFormula(newVal);
+      // Sync to parent immediately
+      onChange({ formula: newVal });
       setTimeout(() => {
           input.focus();
           const newPos = start + token.length;
@@ -263,7 +233,13 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                 type="text" 
                 inputMode="decimal" 
                 value={localFormula} 
-                onChange={e => { setLocalFormula(e.target.value); setParseError(null); }} 
+                onChange={e => { 
+                    const val = e.target.value;
+                    setLocalFormula(val); 
+                    setParseError(null); 
+                    // Sync to parent immediately so we don't lose typed formula if saving without locking
+                    onChange({ formula: val });
+                }} 
                 placeholder="f1(x1) + f2(x2)" 
                 disabled={isLocked} 
                 className={`flex-1 min-w-0 border rounded-xl p-4 font-mono text-lg font-bold tracking-wide outline-none transition-all shadow-inner ${isLocked ? 'bg-slate-900/50 border-slate-700 text-slate-400' : 'bg-slate-900 border-indigo-500/50 text-white focus:ring-1 focus:ring-indigo-500'}`}
@@ -284,7 +260,11 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                 {/* 運算符號 */}
                 <div className="grid grid-cols-8 gap-1">
                     {['+', '-', '×', '/', '(', ')', ','].map(op => <button key={op} onMouseDown={e => e.preventDefault()} onClick={() => insertToken(op)} className="bg-slate-800 rounded-lg border border-slate-700 text-slate-300 font-mono py-2 text-sm hover:bg-slate-700 active:bg-slate-600">{op}</button>)}
-                    <button onMouseDown={e => e.preventDefault()} onClick={() => setLocalFormula(localFormula.slice(0, -1))} className="bg-slate-800 text-red-400 rounded-lg border border-slate-700 py-2 flex items-center justify-center hover:bg-red-900/20"><Delete size={16} /></button>
+                    <button onMouseDown={e => e.preventDefault()} onClick={() => {
+                        const newVal = localFormula.slice(0, -1);
+                        setLocalFormula(newVal);
+                        onChange({ formula: newVal });
+                    }} className="bg-slate-800 text-red-400 rounded-lg border border-slate-700 py-2 flex items-center justify-center hover:bg-red-900/20"><Delete size={16} /></button>
                 </div>
                 
                 {/* 變數與函數快捷鍵 */}

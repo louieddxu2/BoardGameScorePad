@@ -67,7 +67,8 @@ export function getPerspectiveTransform(src: {x:number, y:number}[], dst: {x:num
 }
 
 /**
- * 應用透視變換 (Pure JS Backward Mapping)
+ * 應用透視變換 (Pure JS Backward Mapping with Bilinear Interpolation)
+ * 升級：使用雙線性插值取代最近鄰插值，消除鋸齒。
  */
 export function warpPerspective(
   srcCtx: CanvasRenderingContext2D,
@@ -84,6 +85,10 @@ export function warpPerspective(
   const srcPixels = srcImageData.data;
   const dstPixels = dstImageData.data;
 
+  // 優化：將常數提取到迴圈外
+  const sw = srcWidth;
+  const sh = srcHeight;
+
   for (let y = 0; y < dstHeight; y++) {
     for (let x = 0; x < dstWidth; x++) {
       const denominator = h[6] * x + h[7] * y + h[8];
@@ -92,16 +97,55 @@ export function warpPerspective(
 
       const dstIdx = (y * dstWidth + x) * 4;
 
-      if (srcX >= 0 && srcX < srcWidth && srcY >= 0 && srcY < srcHeight) {
-        const sx = Math.floor(srcX);
-        const sy = Math.floor(srcY);
-        const srcIdx = (sy * srcWidth + sx) * 4;
+      // 邊界檢查：保留 1px 的邊緣以進行插值運算 (需要 x+1, y+1)
+      if (srcX >= 0 && srcX < sw - 1 && srcY >= 0 && srcY < sh - 1) {
+        
+        // --- Bilinear Interpolation Start ---
+        
+        // 1. 取得整數座標 (左上角像素)
+        const x0 = Math.floor(srcX);
+        const y0 = Math.floor(srcY);
+        
+        // 2. 取得小數部分 (權重)
+        const dx = srcX - x0;
+        const dy = srcY - y0;
+        
+        const w00 = (1 - dx) * (1 - dy); // Top-Left weight
+        const w10 = dx * (1 - dy);       // Top-Right weight
+        const w01 = (1 - dx) * dy;       // Bottom-Left weight
+        const w11 = dx * dy;             // Bottom-Right weight
 
-        dstPixels[dstIdx] = srcPixels[srcIdx];     
-        dstPixels[dstIdx + 1] = srcPixels[srcIdx + 1]; 
-        dstPixels[dstIdx + 2] = srcPixels[srcIdx + 2]; 
-        dstPixels[dstIdx + 3] = 255;               
+        // 3. 取得四個鄰近像素的索引
+        const i00 = (y0 * sw + x0) * 4;         // Top-Left
+        const i10 = i00 + 4;                    // Top-Right
+        const i01 = ((y0 + 1) * sw + x0) * 4;   // Bottom-Left
+        const i11 = i01 + 4;                    // Bottom-Right
+
+        // 4. 計算每個通道的加權平均
+        // Red
+        dstPixels[dstIdx] = 
+            srcPixels[i00] * w00 + srcPixels[i10] * w10 + 
+            srcPixels[i01] * w01 + srcPixels[i11] * w11;
+        
+        // Green
+        dstPixels[dstIdx + 1] = 
+            srcPixels[i00 + 1] * w00 + srcPixels[i10 + 1] * w10 + 
+            srcPixels[i01 + 1] * w01 + srcPixels[i11 + 1] * w11;
+        
+        // Blue
+        dstPixels[dstIdx + 2] = 
+            srcPixels[i00 + 2] * w00 + srcPixels[i10 + 2] * w10 + 
+            srcPixels[i01 + 2] * w01 + srcPixels[i11 + 2] * w11;
+        
+        // Alpha (通常設為 255，但也進行插值以求精確)
+        dstPixels[dstIdx + 3] = 
+            srcPixels[i00 + 3] * w00 + srcPixels[i10 + 3] * w10 + 
+            srcPixels[i01 + 3] * w01 + srcPixels[i11 + 3] * w11;
+
+        // --- Bilinear Interpolation End ---
+
       } else {
+        // 超出邊界填為透明
         dstPixels[dstIdx + 3] = 0;
       }
     }

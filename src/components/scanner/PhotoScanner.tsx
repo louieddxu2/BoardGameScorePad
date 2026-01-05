@@ -34,7 +34,8 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
   
   // Camera State
   const [isCameraActive, setIsCameraActive] = useState(false);
-  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  // [CRITICAL FIX] Use Ref to store stream, ensuring cleanup access works even in stale closures
+  const streamRef = useRef<MediaStream | null>(null);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   
   // Dimensions state
@@ -76,18 +77,34 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
   // --- Camera Logic ---
 
   const stopCamera = () => {
-      if (cameraStream) {
-          cameraStream.getTracks().forEach(track => track.stop());
-          setCameraStream(null);
+      // 1. Stop all tracks in the MediaStream (Hardware level)
+      if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => {
+              track.stop();
+          });
+          streamRef.current = null;
       }
+      
+      // 2. Clear Video Source
+      if (videoRef.current) {
+          videoRef.current.srcObject = null;
+      }
+
+      // 3. Reset UI State
       setIsCameraActive(false);
   };
 
+  // Cleanup on mount/unmount is simpler now because streamRef persists
   useEffect(() => {
-      return () => stopCamera();
+      return () => {
+          stopCamera();
+      };
   }, []);
 
   const startCamera = async () => {
+      // Ensure previous stream is closed before starting new one
+      stopCamera();
+
       try {
           const stream = await navigator.mediaDevices.getUserMedia({
               video: { 
@@ -97,13 +114,22 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
               },
               audio: false
           });
-          setCameraStream(stream);
+          
+          // Store in ref for reliable cleanup
+          streamRef.current = stream;
           setIsCameraActive(true);
       } catch (err: any) {
-          console.error("Camera Error:", err);
-          if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-              showToast({ message: "請允許相機權限以進行拍攝。", type: 'warning' });
+          const errMsg = err.message || '';
+          const isPermission = err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || errMsg.includes('Permission dismissed');
+          
+          if (isPermission) {
+              console.warn("Camera Permission:", err);
+              showToast({ message: "相機存取被拒或取消。", type: 'info' });
+          } else if (err.name === 'NotFoundError') {
+              console.warn("Camera Not Found:", err);
+              showToast({ message: "找不到相機裝置。", type: 'warning' });
           } else {
+              console.error("Camera Error:", err);
               showToast({ message: "無法啟動相機，請嘗試使用上傳功能。", type: 'error' });
           }
           setIsCameraActive(false);
@@ -112,11 +138,11 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
 
   // Bind stream to video element when active
   useEffect(() => {
-      if (isCameraActive && videoRef.current && cameraStream) {
-          videoRef.current.srcObject = cameraStream;
+      if (isCameraActive && videoRef.current && streamRef.current) {
+          videoRef.current.srcObject = streamRef.current;
           videoRef.current.play().catch(e => console.error("Video play failed", e));
       }
-  }, [isCameraActive, cameraStream]);
+  }, [isCameraActive]);
 
   const switchCamera = () => {
       stopCamera();
@@ -144,6 +170,8 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
           
           const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
           setImageSrc(dataUrl);
+          
+          // Important: Stop camera immediately after capture to save battery/privacy
           stopCamera();
           
           // Reset editor state
@@ -273,7 +301,7 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
 
   const handlePointDrag = (clientX: number, clientY: number) => {
         if (!canvasRef.current) return;
-        const { isSnapping, activePointIdx, points } = stateRef.current;
+        const { isSnapping, activePointIdx, points, transform } = stateRef.current;
         const { x, y } = screenToImage(clientX, clientY);
 
         const now = Date.now();
@@ -297,6 +325,11 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
         
         const ctx = canvasRef.current.getContext('2d');
 
+        // Dynamic Snap Radius Logic
+        const currentScale = transform.scale;
+        const dynamicRadius = Math.max(5, Math.min(30, 25 / currentScale));
+        const geoSnapThreshold = Math.max(10, Math.min(50, 40 / currentScale));
+
         if (isSnapping && ctx && activePointIdx !== null) {
             const geoPoint = calculateParallelogramPoint(points, activePointIdx);
             setGeometricGhost(geoPoint);
@@ -304,7 +337,7 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
             let geoSnapped = false;
             if (geoPoint) {
                 const dist = Math.sqrt(Math.pow(clampedX - geoPoint.x, 2) + Math.pow(clampedY - geoPoint.y, 2));
-                if (dist < 40) { 
+                if (dist < geoSnapThreshold) { 
                     snappedX = geoPoint.x;
                     snappedY = geoPoint.y;
                     geoSnapped = true;
@@ -313,13 +346,14 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
             }
 
             if (!geoSnapped) {
-                const cornerResult = findStrongestCorner(ctx, clampedX, clampedY, 30); 
+                // Use dynamic radius for detection
+                const cornerResult = findStrongestCorner(ctx, clampedX, clampedY, dynamicRadius); 
                 if (cornerResult) {
                     snappedX = cornerResult.x;
                     snappedY = cornerResult.y;
                     currentSnapType = 'corner';
                 } else if (speed < 0.8) { 
-                    const lineSnapResult = snapToEdge(ctx, clampedX, clampedY, 20);
+                    const lineSnapResult = snapToEdge(ctx, clampedX, clampedY, dynamicRadius);
                     if (lineSnapResult) {
                         snappedX = lineSnapResult.x;
                         snappedY = lineSnapResult.y;
@@ -332,7 +366,7 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
         }
 
         if (ctx) {
-            const currentAngles = getEdgeAngles(ctx, snappedX, snappedY);
+            const currentAngles = getEdgeAngles(ctx, snappedX, snappedY, dynamicRadius); 
             setActiveAngles(currentAngles);
         }
 
@@ -556,9 +590,17 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
   };
 
   const handleConfirm = () => {
+      // Ensure camera is stopped before closing/confirming
+      stopCamera();
       if (rectifiedImage && imageSrc) {
           onConfirm({ processed: rectifiedImage, raw: imageSrc, points: points });
       }
+      onClose();
+  };
+
+  // Safe close handler
+  const handleClose = () => {
+      stopCamera();
       onClose();
   };
 
@@ -592,7 +634,7 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
   return (
     <div className="fixed inset-0 z-[70] bg-slate-950 flex flex-col">
       <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 flex-none z-50">
-        <button onClick={onClose} className="p-2 text-slate-400 hover:text-white"><X size={24} /></button>
+        <button onClick={handleClose} className="p-2 text-slate-400 hover:text-white"><X size={24} /></button>
         <h2 className="text-white font-bold">掃描計分表</h2>
         <div className="w-10"></div>
       </div>
@@ -677,7 +719,7 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
                 <div className={`w-5 h-5 rounded-full border-[3px] shadow-[0_0_2px_rgba(0,0,0,0.8)] transition-transform ${activePointIdx === i ? 'border-cyan-300 scale-125' : 'border-cyan-500'}`}></div>
                 {activePointIdx === i && isSnapping && (
                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur text-white text-[10px] px-2 py-1 rounded border border-slate-700 whitespace-nowrap pointer-events-none flex items-center gap-1 shadow-lg">
-                     {geometricGhost && Math.sqrt(Math.pow(p.x - geometricGhost.x, 2) + Math.pow(p.y - geometricGhost.y, 2)) < 40 ? (<><BoxSelect size={10} className="text-sky-400"/> 幾何吸附</>) : snapType === 'line' ? (<><ScanLine size={10} className="text-yellow-400"/> 直線吸附</>) : (<><Magnet size={10} className="text-slate-400"/> 自由移動</>)}
+                     {geometricGhost && Math.sqrt(Math.pow(p.x - geometricGhost.x, 2) + Math.pow(p.y - geometricGhost.y, 2)) < (40 / transform.scale) ? (<><BoxSelect size={10} className="text-sky-400"/> 幾何吸附</>) : snapType === 'line' ? (<><ScanLine size={10} className="text-yellow-400"/> 直線吸附</>) : (<><Magnet size={10} className="text-slate-400"/> 自由移動</>)}
                    </div>
                 )}
               </div>
@@ -703,7 +745,7 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
             <div className="flex items-center gap-4">
                 <button onClick={() => setIsSnapping(!isSnapping)} className={`flex flex-col items-center gap-1 text-xs font-bold ${isSnapping ? 'text-emerald-400' : 'text-slate-500'}`}><div className={`p-3 rounded-xl ${isSnapping ? 'bg-emerald-900/30' : 'bg-slate-800'}`}><ScanLine size={20} /></div>輔助{isSnapping ? '開啟' : '關閉'}</button>
                 <button onClick={() => { fitImageToScreen(); hasFittedRef.current = true; }} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"><div className="p-3 rounded-xl bg-slate-800"><ZoomIn size={20} /></div>重置視角</button>
-                <button onClick={() => { setImageSrc(null); setPoints([]); setSourceDimensions(null); }} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"><div className="p-3 rounded-xl bg-slate-800"><RotateCcw size={20} /></div>重拍</button>
+                <button onClick={() => { stopCamera(); setImageSrc(null); setPoints([]); setSourceDimensions(null); }} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"><div className="p-3 rounded-xl bg-slate-800"><RotateCcw size={20} /></div>重拍</button>
                 <button onClick={handleRotate} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"><div className="p-3 rounded-xl bg-slate-800"><RotateCw size={20} /></div>旋轉</button>
             </div>
             <button onClick={handleRectify} disabled={!imageSrc || points.length < 4} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 disabled:bg-slate-700 disabled:text-slate-500">校正預覽 <ArrowRight size={16} /></button>

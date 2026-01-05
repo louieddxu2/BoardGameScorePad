@@ -65,3 +65,36 @@ export const evaluateFormula = (
     return 0;
   }
 };
+
+const MATH_KEYWORDS = new Set([
+  'min', 'max', 'floor', 'ceil', 'round', 'abs', 'sin', 'cos', 'tan', 'log', 'sqrt', 'pow', 'pi', 'e'
+]);
+
+// 提取解析邏輯為獨立函數
+export const extractIdentifiers = (formula: string) => {
+    // 移除所有字串常數
+    const cleanFormula = formula.replace(/×/g, '*');
+    
+    // 找出所有可能的識別字 (變數或函數)
+    const regex = /\b([a-zA-Z][a-zA-Z0-9]*)\b/g;
+    const matches = cleanFormula.match(regex) || [];
+    
+    const unique = Array.from(new Set(matches));
+    
+    const vars: string[] = [];
+    const funcs: string[] = [];
+
+    unique.forEach(token => {
+        const lower = token.toLowerCase();
+        if (MATH_KEYWORDS.has(lower)) return;
+        
+        // 判斷是函數還是變數：f 開頭 + 數字 = 函數，其他 = 變數
+        if (/^f\d+$/.test(lower)) {
+            funcs.push(lower);
+        } else {
+            vars.push(token);
+        }
+    });
+
+    return { vars, funcs };
+};

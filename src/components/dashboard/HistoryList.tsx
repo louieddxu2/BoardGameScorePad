@@ -6,7 +6,7 @@ import { History as HistoryIcon } from 'lucide-react';
 
 interface HistoryListProps {
   records: HistoryRecord[] | undefined;
-  onDelete: (id: number) => void;
+  onDelete: (id: string) => void; // [Change] string ID
   onSelect: (record: HistoryRecord) => void; 
 }
 

@@ -44,7 +44,7 @@ interface DashboardProps {
   onClearNewBadges: () => void; 
   onRestoreSystem: (id: string) => void;
   onGetFullTemplate: (id: string) => Promise<GameTemplate | null>;
-  onDeleteHistory: (id: number) => void;
+  onDeleteHistory: (id: string) => void; // [Change] string ID
   onHistorySelect: (record: HistoryRecord) => void; 
   isInstalled: boolean;
   canInstall: boolean;
@@ -104,7 +104,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   // Modal Control States
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null); 
-  const [historyToDelete, setHistoryToDelete] = useState<number | null>(null);
+  const [historyToDelete, setHistoryToDelete] = useState<string | null>(null); // [Change] string ID
   const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
   const [restoreTarget, setRestoreTarget] = useState<GameTemplate | null>(null);
   const [showDataModal, setShowDataModal] = useState(false);
@@ -189,13 +189,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
       }
   };
 
-  const handleCloudButtonClick = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (isSyncing) return;
-      if (isConnected && isAutoConnectEnabled) setShowCloudModal(true);
-      else toggleCloudConnection();
-  };
-
   const handleCopySystemTemplate = async (partialTemplate: GameTemplate, e: React.MouseEvent) => {
     e.stopPropagation();
     
@@ -216,17 +209,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
     showToast({ message: "已建立副本", type: 'success' });
   };
 
-  const getCloudButtonContent = () => {
-      if (isSyncing) return { icon: <Loader2 size={18} className="animate-spin" />, colorClass: 'text-sky-400 bg-slate-700 cursor-wait', title: "同步中" };
-      if (isAutoConnectEnabled) {
-          if (isConnected) return { icon: <CloudCog size={18} />, colorClass: 'text-sky-400 hover:text-white hover:bg-slate-700', title: "雲端管理 (已連線)" };
-          return { icon: <CloudOff size={18} />, colorClass: 'text-amber-400 hover:text-amber-200 hover:bg-slate-700', title: "連線失敗 (點擊重試)" };
-      }
-      return { icon: <CloudOff size={18} />, colorClass: 'text-slate-500 hover:text-white hover:bg-slate-700', title: "開啟雲端同步" };
-  };
-
-  const cloudBtn = getCloudButtonContent();
-
   // Animation class: Applied initially, then removed to prevent re-triggering
   const animClass = hasMounted ? "" : "animate-in fade-in slide-in-from-top-2 duration-300";
 
@@ -244,6 +226,10 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         onShowInstallGuide={() => setShowInstallGuide(true)}
         viewMode={viewMode}
         setViewMode={setViewMode}
+        // Cloud Props
+        isConnected={isConnected}
+        isSyncing={isSyncing}
+        onToggleCloud={toggleCloudConnection}
       />
 
       <main className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
@@ -312,13 +298,16 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
                     <div onClick={() => setIsUserLibOpen(!isUserLibOpen)} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-700/50 cursor-pointer hover:bg-slate-800 transition-colors">
                         <div className="flex items-center gap-2">{isUserLibOpen ? <ChevronDown size={20} className="text-emerald-500"/> : <ChevronRight size={20} className="text-slate-500"/>}<h3 className="text-base font-bold text-white flex items-center gap-2"><LayoutGrid size={18} className="text-emerald-500" /> 我的遊戲庫 <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{userTemplatesCount}</span></h3></div>
                         <div className="flex items-center gap-2">
-                            <button 
-                                onClick={handleCloudButtonClick} 
-                                className={`p-1.5 rounded-lg transition-colors ${cloudBtn.colorClass}`} 
-                                title={cloudBtn.title}
-                            >
-                                {cloudBtn.icon}
-                            </button>
+                            {/* Cloud Manager: Only show if connected */}
+                            {isConnected && (
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setShowCloudModal(true); }} 
+                                    className="p-1.5 rounded-lg transition-colors text-sky-400 hover:text-white hover:bg-slate-700" 
+                                    title="開啟雲端資料夾"
+                                >
+                                    <CloudCog size={18} />
+                                </button>
+                            )}
                             <button onClick={(e) => { e.stopPropagation(); setShowDataModal(true); }} className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors" title="匯入/匯出 JSON"><ArrowRightLeft size={18} /></button>
                             <button onClick={(e) => { e.stopPropagation(); onTemplateCreate(); }} className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg active:scale-95"><Plus size={14} /> 新增</button>
                         </div>

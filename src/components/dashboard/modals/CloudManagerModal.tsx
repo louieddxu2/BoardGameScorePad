@@ -34,7 +34,9 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
 
   const refreshList = async () => {
     setIsLoading(true);
-    setCloudFiles([]);
+    // Note: cloudFiles might already be cleared by handleSwitchMode, but we ensure it here too for initial loads
+    if (cloudFiles.length > 0) setCloudFiles([]); 
+    
     try {
       const files = await fetchFileList(viewMode);
       setCloudFiles(files);
@@ -48,6 +50,14 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
   useEffect(() => {
     if (isOpen) refreshList();
   }, [isOpen, viewMode]);
+
+  // [Fix] Handle mode switching: Clear list IMMEDIATELY to prevent "Flash of Wrong UI"
+  // Prevents active files from being rendered with Trash buttons for a split second.
+  const handleSwitchMode = (mode: 'active' | 'trash') => {
+      if (mode === viewMode) return;
+      setCloudFiles([]); // Clear content immediately
+      setViewMode(mode); // Trigger useEffect
+  };
 
   const handleFileSelect = async (file: CloudFile) => {
     if (viewMode === 'trash') return;
@@ -102,8 +112,8 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
             <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={24} /></button>
           </div>
           <div className="flex gap-2 bg-slate-900 p-1 rounded-lg">
-            <button onClick={() => setViewMode('active')} className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center justify-center gap-1 ${viewMode === 'active' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}><FolderOpen size={14} /> 我的備份</button>
-            <button onClick={() => setViewMode('trash')} className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center justify-center gap-1 ${viewMode === 'trash' ? 'bg-red-900/50 text-red-200 shadow-sm border border-red-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}><Trash2 size={14} /> 垃圾桶</button>
+            <button onClick={() => handleSwitchMode('active')} className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center justify-center gap-1 ${viewMode === 'active' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}><FolderOpen size={14} /> 我的備份</button>
+            <button onClick={() => handleSwitchMode('trash')} className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center justify-center gap-1 ${viewMode === 'trash' ? 'bg-red-900/50 text-red-200 shadow-sm border border-red-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}><Trash2 size={14} /> 垃圾桶</button>
           </div>
         </div>
         
