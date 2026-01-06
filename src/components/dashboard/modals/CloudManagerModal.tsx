@@ -27,6 +27,7 @@ interface CloudManagerModalProps {
   onHistoryRestoreSuccess?: (record: HistoryRecord) => void;
   onSystemBackup?: (onProgress: (count: number, total: number) => void, onError: (failedItems: string[]) => void) => Promise<{ success: number, skipped: number, failed: number }>;
   onSystemRestore?: (onProgress: (count: number, total: number) => void, onError: (failedItems: string[]) => void) => Promise<{ success: number, skipped: number, failed: number }>;
+  onGetLocalData?: () => Promise<any>; // [New] Prop to fetch local data for comparison
 }
 
 const CloudManagerModal: React.FC<CloudManagerModalProps> = ({ 
@@ -34,7 +35,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
   isConnected, isMockMode, 
   fetchFileList, restoreBackup, restoreSessionBackup, restoreHistoryBackup, restoreFromTrash, deleteCloudFile, emptyTrash,
   connectToCloud, disconnectFromCloud,
-  onRestoreSuccess, onSessionRestoreSuccess, onHistoryRestoreSuccess, onSystemBackup, onSystemRestore
+  onRestoreSuccess, onSessionRestoreSuccess, onHistoryRestoreSuccess, onSystemBackup, onSystemRestore, onGetLocalData
 }) => {
   const [category, setCategory] = useState<'templates' | 'sessions' | 'history'>(initialCategory);
   const [viewMode, setViewMode] = useState<'active' | 'trash'>('active');
@@ -48,12 +49,21 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
 
   // Sync Dashboard State
   const [showSyncDashboard, setShowSyncDashboard] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'processing' | 'done'>('idle');
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'scanning' | 'processing' | 'done'>('idle');
   const [syncResult, setSyncResult] = useState<{
       success: number; skipped: number; failed: string[]; errors: string[]; 
       total: number; current: number; currentItem?: string; type: 'upload' | 'download' | null;
   }>({
       success: 0, skipped: 0, failed: [], errors: [], total: 0, current: 0, type: null
+  });
+  
+  // [New] Scan Stats for Sync Dashboard
+  const [scanStats, setScanStats] = useState<{
+      upload: { templates: number; sessions: number; history: number };
+      download: { templates: number; sessions: number; history: number };
+  }>({
+      upload: { templates: 0, sessions: 0, history: 0 },
+      download: { templates: 0, sessions: 0, history: 0 }
   });
 
   // Helper to clean folder name (Parse by last underscore)
@@ -64,6 +74,15 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
           return name.substring(0, lastUnderscoreIndex);
       }
       return name;
+  };
+
+  // Helper to extract ID (Parse by last underscore)
+  const extractId = (name: string) => {
+      const lastUnderscoreIndex = name.lastIndexOf('_');
+      if (lastUnderscoreIndex !== -1) {
+          return name.substring(lastUnderscoreIndex + 1);
+      }
+      return null;
   };
 
   // Sync category with prop when modal opens
@@ -89,6 +108,107 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
       };
     }
   }, [isOpen, onClose]);
+
+  // Automatic Scan on Sync Dashboard Open
+  useEffect(() => {
+      if (showSyncDashboard && isConnected && onGetLocalData) {
+          const runScan = async () => {
+              setSyncStatus('scanning');
+              try {
+                  const [localData, cTemplates, cSessions, cHistory] = await Promise.all([
+                      onGetLocalData(),
+                      fetchFileList('active', 'templates'),
+                      fetchFileList('active', 'sessions'),
+                      fetchFileList('active', 'history')
+                  ]);
+
+                  const stats = {
+                      upload: { templates: 0, sessions: 0, history: 0 },
+                      download: { templates: 0, sessions: 0, history: 0 }
+                  };
+
+                  // --- Helper to build Cloud Map ---
+                  const buildCloudMap = (files: CloudFile[]) => {
+                      const map = new Map<string, CloudFile>();
+                      files.forEach(f => {
+                          const id = extractId(f.name);
+                          if (id) map.set(id, f);
+                      });
+                      return map;
+                  };
+
+                  const mapT = buildCloudMap(cTemplates);
+                  const mapS = buildCloudMap(cSessions);
+                  const mapH = buildCloudMap(cHistory);
+
+                  // --- 1. Compare Templates ---
+                  const localTemplates = [...(localData.data.templates || []), ...(localData.data.overrides || [])];
+                  
+                  // Check Upload (Local exists, Cloud missing or old)
+                  localTemplates.forEach((t: GameTemplate) => {
+                      const cFile = mapT.get(t.id);
+                      if (!cFile) {
+                          stats.upload.templates++;
+                      } else {
+                          const cTime = Number(cFile.appProperties?.originalUpdatedAt || 0);
+                          // If local is newer than cloud
+                          if ((t.updatedAt || 0) > cTime) stats.upload.templates++;
+                      }
+                  });
+
+                  // Check Download (Cloud exists, Local missing or old)
+                  cTemplates.forEach(f => {
+                      const id = extractId(f.name);
+                      if (id) {
+                          const lTemp = localTemplates.find((t: any) => t.id === id);
+                          const cTime = Number(f.appProperties?.originalUpdatedAt || 0);
+                          if (!lTemp) {
+                              stats.download.templates++;
+                          } else {
+                              // If cloud is newer than local
+                              if (cTime > (lTemp.updatedAt || 0)) stats.download.templates++;
+                          }
+                      }
+                  });
+
+                  // --- 2. Compare Sessions ---
+                  const localSessions = localData.data.sessions || [];
+                  localSessions.forEach((s: GameSession) => {
+                      if (!mapS.has(s.id)) stats.upload.sessions++;
+                  });
+                  cSessions.forEach(f => {
+                      const id = extractId(f.name);
+                      if (id && !localSessions.find((s: any) => s.id === id)) stats.download.sessions++;
+                  });
+
+                  // --- 3. Compare History ---
+                  const localHistory = localData.data.history || [];
+                  // History logic: usually immutable, but we check existence
+                  localHistory.forEach((h: HistoryRecord) => {
+                      const cFile = mapH.get(h.id);
+                      if (!cFile) {
+                          stats.upload.history++;
+                      } else {
+                          // Optional: Check if modified (e.g. notes updated)
+                          const cTime = Number(cFile.appProperties?.originalUpdatedAt || 0);
+                          if (h.endTime > cTime) stats.upload.history++;
+                      }
+                  });
+                  cHistory.forEach(f => {
+                      const id = extractId(f.name);
+                      if (id && !localHistory.find((h: any) => h.id === id)) stats.download.history++;
+                  });
+
+                  setScanStats(stats);
+              } catch (e) {
+                  console.error("Scan failed", e);
+              } finally {
+                  setSyncStatus('idle'); // Ready for action
+              }
+          };
+          runScan();
+      }
+  }, [showSyncDashboard, isConnected]);
 
   const refreshList = async () => {
     if (!isConnected) return;
@@ -230,7 +350,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
     <div 
         className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4"
         onClick={(e) => {
-            if (e.target === e.currentTarget && syncStatus === 'idle') onClose();
+            if (e.target === e.currentTarget && (syncStatus === 'idle' || syncStatus === 'scanning')) onClose();
         }}
     >
       <ConfirmationModal 
@@ -254,8 +374,10 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                 onUpload={handleSyncUpload}
                 onDownload={handleSyncDownload}
                 isSyncing={syncStatus === 'processing'}
+                isScanning={syncStatus === 'scanning'} // Pass scanning state
                 syncStatus={syncStatus}
                 syncResult={syncResult}
+                scanStats={scanStats} // Pass calculated stats
             />
         )}
 

@@ -7,7 +7,8 @@ interface SyncDashboardProps {
   onUpload: () => void;
   onDownload: () => void;
   isSyncing: boolean;
-  syncStatus: 'idle' | 'processing' | 'done';
+  isScanning?: boolean; // New Prop
+  syncStatus: 'idle' | 'scanning' | 'processing' | 'done';
   syncResult: {
     success: number;
     skipped: number;
@@ -18,6 +19,10 @@ interface SyncDashboardProps {
     currentItem?: string;
     type: 'upload' | 'download' | null;
   };
+  scanStats?: {
+      upload: { templates: number; sessions: number; history: number };
+      download: { templates: number; sessions: number; history: number };
+  };
 }
 
 const SyncDashboard: React.FC<SyncDashboardProps> = ({ 
@@ -25,8 +30,10 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
   onUpload, 
   onDownload, 
   isSyncing, 
+  isScanning,
   syncStatus, 
-  syncResult 
+  syncResult,
+  scanStats
 }) => {
   const [confirmMode, setConfirmMode] = useState<'upload' | 'download' | null>(null);
 
@@ -104,6 +111,32 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
     );
   }
 
+  // --- Stats Block Helper ---
+  const renderStats = (type: 'upload' | 'download') => {
+      if (!scanStats || isScanning) return <div className="h-10 flex items-center justify-center text-slate-500 text-xs gap-2"><Loader2 size={12} className="animate-spin" /> 分析中...</div>;
+      
+      const data = type === 'upload' ? scanStats.upload : scanStats.download;
+      const total = data.templates + data.sessions + data.history;
+      const hasData = total > 0;
+      
+      return (
+          <div className="grid grid-cols-3 gap-2 mt-3 text-center">
+              <div className={`p-2 rounded-lg border ${hasData ? 'bg-slate-800 border-slate-700' : 'bg-slate-900 border-slate-800 opacity-50'}`}>
+                  <div className={`text-sm font-bold ${hasData ? 'text-white' : 'text-slate-500'}`}>{data.templates}</div>
+                  <div className="text-[9px] text-slate-500 uppercase flex justify-center items-center gap-1"><LayoutGrid size={8} /> 遊戲</div>
+              </div>
+              <div className={`p-2 rounded-lg border ${hasData ? 'bg-slate-800 border-slate-700' : 'bg-slate-900 border-slate-800 opacity-50'}`}>
+                  <div className={`text-sm font-bold ${hasData ? 'text-white' : 'text-slate-500'}`}>{data.sessions}</div>
+                  <div className="text-[9px] text-slate-500 uppercase flex justify-center items-center gap-1"><Activity size={8} /> 進行中</div>
+              </div>
+              <div className={`p-2 rounded-lg border ${hasData ? 'bg-slate-800 border-slate-700' : 'bg-slate-900 border-slate-800 opacity-50'}`}>
+                  <div className={`text-sm font-bold ${hasData ? 'text-white' : 'text-slate-500'}`}>{data.history}</div>
+                  <div className="text-[9px] text-slate-500 uppercase flex justify-center items-center gap-1"><History size={8} /> 歷史</div>
+              </div>
+          </div>
+      );
+  };
+
   // --- Main Action Selection UI ---
 
   return (
@@ -133,6 +166,7 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
                     <div className="flex-1">
                         <h3 className="text-base font-bold text-white">備份至雲端 (Upload)</h3>
                         <p className="text-xs text-slate-400 mt-1">將本機的資料上傳至 Google Drive。</p>
+                        {renderStats('upload')}
                     </div>
                 </div>
                 
@@ -164,6 +198,7 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
                     <div className="flex-1">
                         <h3 className="text-base font-bold text-white">從雲端還原 (Download)</h3>
                         <p className="text-xs text-slate-400 mt-1">將 Google Drive 的資料下載至本機。</p>
+                        {renderStats('download')}
                     </div>
                 </div>
                 
@@ -182,24 +217,6 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
                         </button>
                     </div>
                 )}
-            </div>
-
-            {/* Info Footer */}
-            <div className="flex gap-2 justify-center py-4 opacity-50">
-                <div className="flex flex-col items-center gap-1">
-                    <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center border border-slate-700"><LayoutGrid size={14} className="text-slate-400"/></div>
-                    <span className="text-[10px] text-slate-500">遊戲庫</span>
-                </div>
-                <div className="w-8 h-px bg-slate-800 self-center"></div>
-                <div className="flex flex-col items-center gap-1">
-                    <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center border border-slate-700"><Activity size={14} className="text-slate-400"/></div>
-                    <span className="text-[10px] text-slate-500">進行中</span>
-                </div>
-                <div className="w-8 h-px bg-slate-800 self-center"></div>
-                <div className="flex flex-col items-center gap-1">
-                    <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center border border-slate-700"><History size={14} className="text-slate-400"/></div>
-                    <span className="text-[10px] text-slate-500">歷史紀錄</span>
-                </div>
             </div>
 
         </div>

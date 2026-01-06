@@ -512,6 +512,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         onHistoryRestoreSuccess={onImportHistory} // Pass new prop
         onSystemBackup={handleSystemBackupAction} // New prop
         onSystemRestore={handleSystemRestoreAction} // New prop
+        onGetLocalData={getSystemExportData} // [New] Allow modal to fetch full local data for comparison
       />
     </div>
   );
