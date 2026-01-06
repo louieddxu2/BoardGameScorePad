@@ -1,12 +1,13 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { GameTemplate, GameSession, HistoryRecord } from '../../types';
-import { Plus, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, CloudCog, Loader2, Activity, CloudOff } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, CloudCog, Loader2, Activity, CloudOff, History } from 'lucide-react';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import InstallGuideModal from '../modals/InstallGuideModal';
 import { useToast } from '../../hooks/useToast';
 import { generateId } from '../../utils/idGenerator';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
+import { useAppData } from '../../hooks/useAppData'; // Import full hook only if needed, but here we just need props. Wait, Dashboard receives props.
 
 // Sub Components
 import DashboardHeader from './parts/DashboardHeader';
@@ -49,6 +50,9 @@ interface DashboardProps {
   isInstalled: boolean;
   canInstall: boolean;
   onInstallClick: () => void;
+  // [New]
+  onImportSession: (session: GameSession) => void;
+  onImportHistory: (record: HistoryRecord) => void; // New prop
 }
 
 const Dashboard: React.FC<DashboardProps> = React.memo(({
@@ -82,7 +86,9 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   onHistorySelect,
   isInstalled,
   canInstall,
-  onInstallClick
+  onInstallClick,
+  onImportSession,
+  onImportHistory
 }) => {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [viewMode, setViewMode] = useState<'library' | 'history'>('library');
@@ -109,14 +115,18 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   const [restoreTarget, setRestoreTarget] = useState<GameTemplate | null>(null);
   const [showDataModal, setShowDataModal] = useState(false);
   const [showCloudModal, setShowCloudModal] = useState(false);
+  const [cloudModalCategory, setCloudModalCategory] = useState<'templates' | 'sessions' | 'history'>('templates');
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
   const { showToast } = useToast();
   const { 
-      handleBackup, fetchFileList, restoreBackup, restoreFromTrash, deleteCloudFile, emptyTrash, 
-      toggleCloudConnection, isSyncing, isConnected, isAutoConnectEnabled, isMockMode 
+      handleBackup, fetchFileList, restoreBackup, restoreSessionBackup, restoreHistoryBackup, restoreFromTrash, deleteCloudFile, emptyTrash, 
+      connectToCloud, disconnectFromCloud, isSyncing, isConnected, isAutoConnectEnabled, isMockMode,
+      performFullBackup // New
   } = useGoogleDrive();
+  
+  const { getSystemExportData } = useAppData();
   
   const newSystemTemplatesCount = newBadgeIds.length;
   // NOTE: allTemplates here might already be filtered by useAppData if a search query is active
@@ -205,8 +215,52 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         createdAt: Date.now(),
         updatedAt: Date.now(),
     };
+    // [Change] Skip cloud sync for system copy
     onTemplateSave(newTemplate, { skipCloud: true });
     showToast({ message: "已建立副本", type: 'success' });
+  };
+
+  const handleHeaderCloudClick = async () => {
+      // Context-aware opening based on current view
+      if (viewMode === 'history') {
+          setCloudModalCategory('history');
+      } else {
+          setCloudModalCategory('templates');
+      }
+      
+      setShowCloudModal(true);
+      if (!isConnected && !isSyncing) {
+          await connectToCloud();
+      }
+  };
+
+  // Handle Full Batch Backup
+  const handleSystemBackupAction = async (onProgress: (count: number, total: number) => void, onError: (failedItems: string[]) => void) => {
+      // 1. Fetch full data (since dashboard props might be shallow or filtered)
+      const data = await getSystemExportData();
+      
+      // 2. Extract arrays
+      const templates = data.data.templates || [];
+      const overrides = data.data.overrides || []; // Include Overrides (they are essentially templates)
+      const history = data.data.history || [];
+      const sessions = data.data.sessions || []; // Include Sessions
+      
+      // 3. Trigger Batch Backup with all 4 categories AND sync callback
+      await performFullBackup(
+          templates, 
+          history, 
+          sessions, 
+          overrides, 
+          onProgress, 
+          onError, 
+          // onItemSuccess: Sync DB timestamp after successful backup
+          (type, item) => {
+              if (type === 'template' && item) {
+                  // Save template with updated lastSyncedAt, but skip trigger to avoid infinite loop
+                  onTemplateSave(item, { skipCloud: true });
+              }
+          }
+      );
   };
 
   // Animation class: Applied initially, then removed to prevent re-triggering
@@ -229,19 +283,29 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         // Cloud Props
         isConnected={isConnected}
         isSyncing={isSyncing}
-        onToggleCloud={toggleCloudConnection}
+        onCloudClick={handleHeaderCloudClick}
       />
 
       <main className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
         
         {/* Conditional Rendering based on View Mode */}
         {viewMode === 'history' ? (
-            <HistoryList 
-                records={historyRecords} 
-                onDelete={(id) => setHistoryToDelete(id)}
-                onSelect={onHistorySelect}
-                // No need to pass searchQuery for filtering, records are already filtered
-            />
+            <>
+                {/* History Toolbar */}
+                <div className="flex justify-end items-center bg-slate-800/50 p-2 rounded-xl border border-slate-700/50">
+                    <div className="flex items-center gap-2 px-2">
+                        <History size={18} className="text-slate-400" />
+                        <span className="text-sm font-bold text-slate-300">共 {historyCount} 筆紀錄</span>
+                    </div>
+                </div>
+
+                <HistoryList 
+                    records={historyRecords} 
+                    onDelete={(id) => setHistoryToDelete(id)}
+                    onSelect={onHistorySelect}
+                    // No need to pass searchQuery for filtering, records are already filtered
+                />
+            </>
         ) : (
             <>
                 {/* Active Games */}
@@ -298,16 +362,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
                     <div onClick={() => setIsUserLibOpen(!isUserLibOpen)} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-700/50 cursor-pointer hover:bg-slate-800 transition-colors">
                         <div className="flex items-center gap-2">{isUserLibOpen ? <ChevronDown size={20} className="text-emerald-500"/> : <ChevronRight size={20} className="text-slate-500"/>}<h3 className="text-base font-bold text-white flex items-center gap-2"><LayoutGrid size={18} className="text-emerald-500" /> 我的遊戲庫 <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{userTemplatesCount}</span></h3></div>
                         <div className="flex items-center gap-2">
-                            {/* Cloud Manager: Only show if connected */}
-                            {isConnected && (
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); setShowCloudModal(true); }} 
-                                    className="p-1.5 rounded-lg transition-colors text-sky-400 hover:text-white hover:bg-slate-700" 
-                                    title="開啟雲端資料夾"
-                                >
-                                    <CloudCog size={18} />
-                                </button>
-                            )}
                             <button onClick={(e) => { e.stopPropagation(); setShowDataModal(true); }} className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors" title="匯入/匯出 JSON"><ArrowRightLeft size={18} /></button>
                             <button onClick={(e) => { e.stopPropagation(); onTemplateCreate(); }} className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg active:scale-95"><Plus size={14} /> 新增</button>
                         </div>
@@ -396,14 +450,23 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
 
       <CloudManagerModal 
         isOpen={showCloudModal}
+        initialCategory={cloudModalCategory} // Set initial category
+        isConnected={isConnected} // [New] Pass connection status
         onClose={() => setShowCloudModal(false)}
         isMockMode={isMockMode}
         fetchFileList={fetchFileList}
         restoreBackup={restoreBackup}
+        restoreSessionBackup={restoreSessionBackup}
+        restoreHistoryBackup={restoreHistoryBackup} // Pass new prop
         restoreFromTrash={restoreFromTrash}
         deleteCloudFile={deleteCloudFile}
         emptyTrash={emptyTrash}
+        connectToCloud={connectToCloud}
+        disconnectFromCloud={disconnectFromCloud}
         onRestoreSuccess={(t) => onTemplateSave(t, { skipCloud: true })}
+        onSessionRestoreSuccess={onImportSession}
+        onHistoryRestoreSuccess={onImportHistory} // Pass new prop
+        onSystemBackup={handleSystemBackupAction} // New prop
       />
     </div>
   );

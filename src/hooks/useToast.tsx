@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useCallback, useContext, ReactNode } from 'react';
 import ToastContainer from '../components/shared/ToastContainer';
 
@@ -21,8 +22,10 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const showToast = useCallback((options: Omit<ToastMessage, 'id'>) => {
     const id = crypto.randomUUID();
     const newToast: ToastMessage = { id, type: 'info', ...options };
+    
     // 將新 toast 放在陣列最前面，使其顯示在最上方
-    setToasts(prevToasts => [newToast, ...prevToasts]);
+    // 並且限制最大數量為 5，超過則截斷舊的
+    setToasts(prevToasts => [newToast, ...prevToasts].slice(0, 5));
   }, []);
 
   const removeToast = useCallback((id: string) => {

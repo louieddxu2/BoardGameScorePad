@@ -16,7 +16,7 @@ interface DashboardHeaderProps {
   // Cloud Props
   isConnected: boolean;
   isSyncing: boolean;
-  onToggleCloud: () => void;
+  onCloudClick: () => void; // Changed from onToggleCloud
 }
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({
@@ -32,7 +32,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   setViewMode,
   isConnected,
   isSyncing,
-  onToggleCloud
+  onCloudClick
 }) => {
   
   const toggleView = () => {
@@ -110,14 +110,14 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
               {/* Cloud Connect Toggle (New Position) */}
               <button
-                onClick={onToggleCloud}
+                onClick={onCloudClick}
                 disabled={isSyncing}
                 className={`h-9 w-9 flex items-center justify-center rounded-xl border transition-all shrink-0 active:scale-95 ${
                     isSyncing ? 'bg-slate-800 border-slate-700 cursor-wait' :
                     isConnected ? 'bg-sky-900/30 border-sky-500/50 text-sky-400 shadow-[0_0_10px_rgba(14,165,233,0.2)]' :
                     'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'
                 }`}
-                title={isConnected ? "已連線 (點擊斷開)" : "點擊連線 Google Drive"}
+                title="雲端備份管理"
               >
                 {isSyncing ? <Loader2 className="animate-spin" size={18} /> :
                  isConnected ? <Cloud size={18} /> : <CloudOff size={18} />}

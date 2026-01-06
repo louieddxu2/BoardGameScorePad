@@ -162,11 +162,14 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
                       // Ensure folder exists (Create if missing)
                       let folderId = session.cloudFolderId;
                       if (!folderId) {
+                          // Lazy Creation: Create folder now
                           folderId = await googleDriveService.createActiveSessionFolder(template.name, session.id);
-                          // We should update the session via prop if possible, but props.onUpdateSession is full replace.
-                          // Ideally we update session.cloudFolderId locally too, but useAppData handles sync on next actions.
-                          // For now, we trust useAppData's exitSession to handle missing folderId, 
-                          // here we just use the one we got.
+                          
+                          // [CRITICAL FIX]
+                          // Must update local session state immediately so parent useAppData knows the ID exists.
+                          // Otherwise subsequent saves (like exitSession) might create a duplicate folder.
+                          const updatedSession = { ...session, cloudFolderId: folderId };
+                          props.onUpdateSession(updatedSession);
                       }
                       
                       const blob = base64ToBlob(imgData);

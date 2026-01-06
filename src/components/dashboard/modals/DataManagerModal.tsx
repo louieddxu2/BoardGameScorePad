@@ -1,7 +1,7 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { GameTemplate } from '../../../types';
-import { X, Library, ArrowRightLeft, Check, Copy, Mail, AlertCircle } from 'lucide-react';
+import { X, Library, ArrowRightLeft, Check, Copy, Mail, AlertCircle, Square, CheckSquare } from 'lucide-react';
 import { useToast } from '../../../hooks/useToast';
 import { generateId } from '../../../utils/idGenerator';
 import { db } from '../../../db'; // 直接存取 DB 以讀取 override
@@ -22,6 +22,21 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
   const [exportSelectedIds, setExportSelectedIds] = useState<string[]>([]);
   const [isExportCopying, setIsExportCopying] = useState(false);
   const { showToast } = useToast();
+
+  // Handle Back Button
+  useEffect(() => {
+    if (isOpen) {
+      window.history.pushState({ modal: 'data' }, '');
+      const handlePopState = (e: PopStateEvent) => {
+        e.preventDefault();
+        onClose();
+      };
+      window.addEventListener('popstate', handlePopState);
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+      };
+    }
+  }, [isOpen, onClose]);
 
   // 讀取系統覆寫資料 (Shallow)
   const systemOverrides = useLiveQuery(async () => {
@@ -136,8 +151,23 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
     setExportSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
+  // Logic for unified select/deselect all button
+  const isAllSelected = allExportableTemplates.length > 0 && exportSelectedIds.length === allExportableTemplates.length;
+  const handleToggleSelectAll = () => {
+      if (isAllSelected) {
+          setExportSelectedIds([]);
+      } else {
+          setExportSelectedIds(allExportableTemplates.map(t => t.id));
+      }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4">
+    <div 
+        className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4"
+        onClick={(e) => {
+            if (e.target === e.currentTarget) onClose();
+        }}
+    >
       <div className="bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border border-slate-800 flex flex-col h-[600px] max-h-[85vh]">
         <div className="flex-none bg-slate-800 rounded-t-2xl">
           <div className="flex items-center justify-between p-4 border-b border-slate-700">
@@ -152,34 +182,32 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
           </div>
         </div>
         
-        <div className="flex-1 p-4 overflow-y-auto no-scrollbar">
+        <div className="flex-1 p-4 overflow-hidden flex flex-col h-full min-h-0">
           {activeTab === 'import' ? (
-            <div className="space-y-4">
-              <p className="text-sm text-slate-400">請貼上其他裝置分享的 JSON 資料：</p>
+            <div className="flex flex-col h-full gap-4">
+              <p className="text-sm text-slate-400 flex-none">請貼上其他裝置分享的 JSON 資料：</p>
               <textarea 
                 value={importJson} 
                 onChange={e => setImportJson(e.target.value)} 
                 placeholder='[{"name":"Catan", ...}]' 
-                className="w-full h-64 bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-300 focus:border-emerald-500 outline-none resize-none"
+                className="flex-1 w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-300 focus:border-emerald-500 outline-none resize-none"
               />
-              {importError && <p className="text-red-400 text-xs flex items-center gap-1"><X size={12}/> {importError}</p>}
-              <button onClick={handleImportJSON} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/50">匯入至我的遊戲庫</button>
-              
-              <div className="bg-amber-900/20 p-3 rounded-lg border border-amber-500/20 text-[11px] text-amber-500/80 flex gap-2">
-                  <AlertCircle size={14} className="shrink-0 mt-0.5" />
-                  <p>匯入的遊戲將會儲存為「自訂遊戲」，不會覆蓋您現有的內建遊戲設定。</p>
+              <div className="flex-none space-y-4">
+                {importError && <p className="text-red-400 text-xs flex items-center gap-1"><AlertCircle size={12}/> {importError}</p>}
+                <button onClick={handleImportJSON} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/50">匯入至我的遊戲庫</button>
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              <p className="text-sm text-slate-400">選擇要匯出的遊戲：</p>
-              <div className="bg-slate-800 rounded-xl border border-slate-700 max-h-64 overflow-y-auto no-scrollbar p-2 space-y-1">
-                {allExportableTemplates.length === 0 && <p className="text-center text-xs text-slate-500 py-4">沒有可匯出的自訂遊戲或修改紀錄</p>}
+            <div className="flex flex-col h-full gap-2">
+              <p className="text-sm text-slate-400 flex-none">選擇要匯出的遊戲：</p>
+              
+              <div className="flex-1 bg-slate-950/30 rounded-xl border border-slate-800 overflow-y-auto no-scrollbar p-2 space-y-1 min-h-0">
+                {allExportableTemplates.length === 0 && <p className="text-center text-xs text-slate-500 py-8">沒有可匯出的自訂遊戲或修改紀錄</p>}
                 
                 {allExportableTemplates.map((t: any) => {
                   const isSystemOverride = t._source === 'system';
                   return (
-                    <div key={t.id} onClick={() => toggleExportSelection(t.id)} className={`flex items-center justify-between p-2 rounded-lg cursor-pointer border ${exportSelectedIds.includes(t.id) ? 'bg-indigo-900/30 border-indigo-500/50' : 'bg-transparent border-transparent hover:bg-slate-700'}`}>
+                    <div key={t.id} onClick={() => toggleExportSelection(t.id)} className={`flex items-center justify-between p-2 rounded-lg cursor-pointer border ${exportSelectedIds.includes(t.id) ? 'bg-indigo-900/20 border-indigo-500/50' : 'bg-slate-800 border-slate-700 hover:bg-slate-750'}`}>
                       <div className="flex items-center gap-2 overflow-hidden">
                           <span className={`text-sm truncate ${exportSelectedIds.includes(t.id) ? 'text-indigo-200 font-bold' : 'text-slate-300'}`}>{t.name}</span>
                           {isSystemOverride && <span className="text-[10px] bg-amber-900/40 text-amber-500 px-1.5 py-0.5 rounded border border-amber-500/30 shrink-0">內建修改</span>}
@@ -189,11 +217,16 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
                   );
                 })}
               </div>
-              <div className="flex gap-2">
-                <button onClick={() => setExportSelectedIds(allExportableTemplates.map(t => t.id))} className="text-xs text-indigo-400 hover:text-indigo-300 font-bold px-2">全選</button>
-                <button onClick={() => setExportSelectedIds([])} className="text-xs text-slate-500 hover:text-slate-400 px-2">取消全選</button>
+              
+              {/* Select All Button (Bottom Right of List) */}
+              <div className="flex justify-between items-center flex-none">
+                 <span className="text-xs text-slate-500">已選 {exportSelectedIds.length} 個</span>
+                 <button onClick={handleToggleSelectAll} className="text-xs text-indigo-400 hover:text-indigo-300 font-bold px-2 py-1 rounded hover:bg-slate-800 transition-colors">
+                    {isAllSelected ? '取消全選' : '全選'}
+                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-3 pt-2">
+
+              <div className="flex-none grid grid-cols-2 gap-3 pt-1 border-t border-slate-800">
                 <button onClick={handleExportCopy} disabled={exportSelectedIds.length === 0} className={`py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${exportSelectedIds.length > 0 ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/50' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>
                   {isExportCopying ? <Check size={18} /> : <Copy size={18} />} 複製 JSON
                 </button>
@@ -201,7 +234,7 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
                   <Mail size={18} /> 投稿給開發者
                 </button>
               </div>
-              <p className="text-[10px] text-slate-500 text-center">選取的遊戲將轉為 JSON 文字，可分享給朋友匯入。</p>
+              <p className="text-[10px] text-slate-500 text-center flex-none">選取的遊戲將轉為 JSON 文字，可分享給朋友匯入。</p>
             </div>
           )}
         </div>

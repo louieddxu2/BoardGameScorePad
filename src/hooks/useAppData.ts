@@ -18,6 +18,10 @@ export const useAppData = () => {
   // [Search State]
   const [searchQuery, setSearchQuery] = useState('');
 
+  // [System Dirty Tracking] - Timestamp of last modification to system data
+  const [systemDirtyTime, setSystemDirtyTime] = useState<number>(0);
+  const markSystemDirty = () => setSystemDirtyTime(Date.now());
+
   // --- 1. Initialization & Migration ---
   useEffect(() => {
     const init = async () => {
@@ -175,16 +179,31 @@ export const useAppData = () => {
   });
 
   useEffect(() => { localStorage.setItem('sm_new_badge_ids', JSON.stringify(newBadgeIds)); }, [newBadgeIds]);
-  useEffect(() => { localStorage.setItem('sm_pinned_ids', JSON.stringify(pinnedIds)); }, [pinnedIds]);
+  useEffect(() => { 
+      localStorage.setItem('sm_pinned_ids', JSON.stringify(pinnedIds));
+      // Pins are system config, mark dirty
+      // Note: We check if pinnedIds actually changed in togglePin to avoid loop on mount
+  }, [pinnedIds]);
   
   useEffect(() => { 
       localStorage.setItem('app_theme', themeMode);
       document.documentElement.setAttribute('data-theme', themeMode);
   }, [themeMode]);
 
-  const toggleTheme = () => setThemeMode(prev => prev === 'dark' ? 'light' : 'dark');
-  const togglePin = (id: string) => setPinnedIds(prev => prev.includes(id) ? prev.filter(pid => pid !== id) : [id, ...prev]);
-  const clearNewBadges = () => { setNewBadgeIds([]); };
+  const toggleTheme = () => {
+      setThemeMode(prev => prev === 'dark' ? 'light' : 'dark');
+      markSystemDirty();
+  };
+
+  const togglePin = (id: string) => {
+      setPinnedIds(prev => prev.includes(id) ? prev.filter(pid => pid !== id) : [id, ...prev]);
+      markSystemDirty();
+  };
+
+  const clearNewBadges = () => { 
+      setNewBadgeIds([]); 
+      markSystemDirty(); // [Bug Fix] Mark dirty to sync read status
+  };
 
   // --- List Management Actions ---
   const updatePlayerHistory = useCallback((name: string) => {
@@ -197,6 +216,8 @@ export const useAppData = () => {
           } else {
               await db.savedPlayers.add({ name: cleanName, lastUsed: Date.now(), usageCount: 1 });
           }
+      }).then(() => {
+          markSystemDirty();
       }).catch(console.error);
   }, []);
 
@@ -210,6 +231,8 @@ export const useAppData = () => {
           } else {
               await db.savedLocations.add({ name: cleanName, lastUsed: Date.now(), usageCount: 1 });
           }
+      }).then(() => {
+          markSystemDirty();
       }).catch(console.error);
   }, []);
 
@@ -271,15 +294,24 @@ export const useAppData = () => {
       if (relatedSessions.length > 0) { await db.sessions.bulkDelete(relatedSessions.map(s => s.id)); }
       await db.templatePrefs.delete(id);
       if (isCloudEnabled() && templateToDelete) {
-          googleDriveService.softDeleteFolder(id, templateToDelete.name).then(() => {
+          // [Changed] Use strict type 'template'
+          googleDriveService.softDeleteFolder(id, 'template').then(() => {
               showToast({ message: "已同步移至雲端垃圾桶", type: 'info' });
           }).catch(console.error);
       }
   };
 
   const restoreSystemTemplate = async (templateId: string) => {
+      // [Bug Fix] Clean up cloud backup of the override if exists
+      const overrideToDelete = await db.systemOverrides.get(templateId);
+      
       await db.systemOverrides.delete(templateId);
       await db.templatePrefs.delete(templateId);
+      
+      if (isCloudEnabled() && overrideToDelete) {
+          // [Changed] Use strict type 'template'
+          googleDriveService.softDeleteFolder(overrideToDelete.id, 'template').catch(console.error);
+      }
   };
 
   const startSession = async (
@@ -332,16 +364,8 @@ export const useAppData = () => {
     }
 
     const sessionId = generateId();
-    let cloudFolderId: string | undefined = undefined;
-
-    // [Cloud Trigger 1] Start Session -> Create Folder in _Active
-    if (isCloudEnabled()) {
-        try {
-            cloudFolderId = await googleDriveService.createActiveSessionFolder(migratedTemplate.name, sessionId);
-        } catch (e) {
-            console.error("Cloud folder creation failed:", e);
-        }
-    }
+    // [Optimization] Lazy Creation: We do NOT create the cloud folder here to prevent UI freeze.
+    // The folder will be created on-demand when the user exits session, uploads a photo, or finishes the game.
 
     const newSession: GameSession = { 
         id: sessionId, 
@@ -350,7 +374,7 @@ export const useAppData = () => {
         players: players, 
         status: 'active',
         scoringRule: scoringRule,
-        cloudFolderId // Store the ID
+        cloudFolderId: undefined // Intentionally undefined
     };
     
     isImageDirtyRef.current = false;
@@ -382,13 +406,35 @@ export const useAppData = () => {
 
   const discardSession = async (templateId: string) => {
       const session = activeSessions?.find(s => s.templateId === templateId);
-      if (session) await db.sessions.delete(session.id);
+      if (session) {
+          // [Bug Fix] Scenario 5: Sync delete from cloud when discarding active session
+          // [Correction] Move to Trash instead of hard delete
+          if (session.cloudFolderId && isCloudEnabled()) {
+              // [Changed] Use strict type 'active'
+              googleDriveService.softDeleteFolder(session.cloudFolderId, 'active').catch(console.error);
+          }
+          await db.sessions.delete(session.id);
+      }
       if (currentSession?.templateId === templateId) { setCurrentSession(null); setActiveTemplate(null); }
   };
 
   const clearAllActiveSessions = async () => {
       const activeIds = activeSessions?.map(s => s.id) || [];
-      if (activeIds.length > 0) await db.sessions.bulkDelete(activeIds);
+      if (activeIds.length > 0) {
+          // [Feature] Cloud Sync: Move all existing cloud folders to trash
+          // This runs in background to avoid blocking UI
+          if (isCloudEnabled() && activeSessions) {
+              const cloudRemovals = activeSessions
+                  .filter(s => s.cloudFolderId)
+                  // [Changed] Use strict type 'active'
+                  .map(s => googleDriveService.softDeleteFolder(s.cloudFolderId!, 'active'));
+              
+              if (cloudRemovals.length > 0) {
+                  Promise.all(cloudRemovals).catch(e => console.error("Cloud batch trash failed", e));
+              }
+          }
+          await db.sessions.bulkDelete(activeIds);
+      }
   };
 
   const updateSession = (updatedSession: GameSession) => {
@@ -409,28 +455,44 @@ export const useAppData = () => {
   };
 
   const exitSession = async () => {
-      // 1. Save locally
-      if (currentSession) await db.sessions.put(currentSession);
-      
-      // [Cloud Trigger 3a] Exit Session (Pause) -> Upload Score JSON
-      if (currentSession && isCloudEnabled()) {
-          // If we have a folder ID, upload. If not, try to find/create it first.
-          let folderId = currentSession.cloudFolderId;
-          if (!folderId && activeTemplate) {
-              folderId = await googleDriveService.createActiveSessionFolder(activeTemplate.name, currentSession.id);
-              // Update session with new folder ID
-              await db.sessions.update(currentSession.id, { cloudFolderId: folderId });
-          }
+      if (!currentSession) return;
 
-          if (folderId) {
-              const sessionData = JSON.stringify(currentSession, null, 2);
-              googleDriveService.uploadFileToFolder(folderId, 'session.json', 'application/json', sessionData)
-                  .catch(e => console.error("Failed to sync session json on exit", e));
+      const hasScores = currentSession.players.some(p => Object.keys(p.scores).length > 0);
+
+      // [Bug Fix] "Empty Exit" Logic
+      // Check if session is empty BEFORE attempting any cloud creation.
+      if (!hasScores) {
+          // If the session is empty, we discard it.
+          // If it happened to have a cloud folder (e.g. user took a photo then deleted all scores), clean it up.
+          // [Correction] Move to Trash instead of hard delete
+          if (currentSession.cloudFolderId && isCloudEnabled()) {
+              // [Changed] Use strict type 'active'
+              googleDriveService.softDeleteFolder(currentSession.cloudFolderId, 'active').catch(console.error);
+          }
+          await db.sessions.delete(currentSession.id);
+      } else {
+          // Session has data, save normally.
+          await db.sessions.put(currentSession);
+          
+          // [Cloud Trigger 3a] Exit Session (Pause) -> Upload Score JSON
+          if (isCloudEnabled()) {
+              // If we have a folder ID, upload. If not, try to find/create it first.
+              let folderId = currentSession.cloudFolderId;
+              if (!folderId && activeTemplate) {
+                  folderId = await googleDriveService.createActiveSessionFolder(activeTemplate.name, currentSession.id);
+                  // Update session with new folder ID
+                  await db.sessions.update(currentSession.id, { cloudFolderId: folderId });
+              }
+
+              if (folderId) {
+                  const sessionData = JSON.stringify(currentSession, null, 2);
+                  googleDriveService.uploadFileToFolder(folderId, 'session.json', 'application/json', sessionData)
+                      .catch(e => console.error("Failed to sync session json on exit", e));
+              }
           }
       }
 
       // Legacy auto-connect logic for templates: Only sync if explicitly dirtied image or not system
-      // We keep this for template metadata syncing but it's separate from session logic.
       const isSystem = activeTemplate && !!(await db.builtins.get(activeTemplate.id));
       if (activeTemplate && !isSystem && isCloudEnabled() && isImageDirtyRef.current) {
           const imageToUpload = sessionImage; // Only if template image changed
@@ -440,11 +502,6 @@ export const useAppData = () => {
           }).catch(console.error);
       }
 
-      // Cleanup if empty
-      if (currentSession) {
-          const hasScores = currentSession.players.some(p => Object.keys(p.scores).length > 0);
-          if (!hasScores) await db.sessions.delete(currentSession.id);
-      }
       setCurrentSession(null); setActiveTemplate(null); setSessionImage(null); isImageDirtyRef.current = false;
   };
 
@@ -485,7 +542,7 @@ export const useAppData = () => {
           if (isCloudEnabled()) {
               let folderId = record.cloudFolderId;
               if (!folderId) {
-                  // If playing offline before, try to find/create folder now
+                  // If playing offline or lazy creation was pending, create folder now
                   folderId = await googleDriveService.createActiveSessionFolder(activeTemplate.name, currentSession.id);
                   // Update record with folder ID
                   await db.history.update(record.id, { cloudFolderId: folderId });
@@ -512,9 +569,16 @@ export const useAppData = () => {
 
   const deleteHistoryRecord = async (id: string) => { 
       try {
+          // Fetch record to check for cloud link
+          const record = await db.history.get(id);
           await db.history.delete(id);
+          
+          // [Changed] Use strict type 'history'
+          if (isCloudEnabled() && record?.cloudFolderId) {
+              googleDriveService.softDeleteFolder(record.cloudFolderId, 'history').catch(console.error);
+          }
+
           showToast({ message: "紀錄已刪除", type: 'info' });
-          // Note: We currently don't auto-delete from cloud on local delete, as per typical backup behavior
       } catch (error) {
           console.error("Failed to delete history:", error);
           showToast({ message: "刪除失敗", type: 'error' });
@@ -540,6 +604,62 @@ export const useAppData = () => {
   const handleUpdateSessionImage = (img: string | null) => {
       setSessionImage(img);
       if (img) isImageDirtyRef.current = true;
+  };
+
+  // --- Export System Data for Backup (Including Templates, Overrides, History, Sessions) ---
+  const getSystemExportData = async () => {
+      const players = await db.savedPlayers.toArray();
+      const locations = await db.savedLocations.toArray();
+      const customTemplates = await db.templates.toArray();
+      const overrides = await db.systemOverrides.toArray();
+      const history = await db.history.toArray();
+      const activeSessions = await db.sessions.toArray(); // [New] Fetch Active Sessions
+      
+      return {
+          preferences: {
+              theme: themeMode,
+              pinnedIds,
+              newBadgeIds, 
+              zoomLevel: parseFloat(localStorage.getItem('app_zoom_level') || '1.0'),
+              isEditMode: localStorage.getItem('app_edit_mode') !== 'false'
+          },
+          library: {
+              players,
+              locations
+          },
+          // Include data for Full Backup
+          data: {
+              templates: customTemplates,
+              overrides: overrides,
+              history: history,
+              sessions: activeSessions // [New]
+          },
+          timestamp: Date.now()
+      };
+  };
+
+  // [New] Import Session from Cloud
+  const importSession = async (session: GameSession) => {
+      try {
+          // Put the session directly into DB.
+          await db.sessions.put(session);
+          showToast({ message: "遊戲進度已匯入", type: 'success' });
+      } catch (e) {
+          console.error("Failed to import session", e);
+          showToast({ message: "匯入失敗", type: 'error' });
+      }
+  };
+
+  // [New] Import History Record from Cloud
+  const importHistoryRecord = async (record: HistoryRecord) => {
+      try {
+          // Put the record directly into DB.
+          await db.history.put(record);
+          showToast({ message: "歷史紀錄已還原", type: 'success' });
+      } catch (e) {
+          console.error("Failed to import history", e);
+          showToast({ message: "還原失敗", type: 'error' });
+      }
   };
 
   return { 
@@ -582,6 +702,12 @@ export const useAppData = () => {
       
       saveToHistory, deleteHistoryRecord, viewHistory,
       updateActiveTemplate,
+      
+      // System Backup Helpers
+      systemDirtyTime,
+      getSystemExportData,
+      importSession,
+      importHistoryRecord, 
       
       isDbReady 
   };

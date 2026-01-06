@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { AppView, GameTemplate, ScoringRule } from './types';
 import { getTouchDistance } from './utils/ui';
 import { useAppData } from './hooks/useAppData';
+import { useGoogleDrive } from './hooks/useGoogleDrive';
 
 // Components
 import TemplateEditor from './components/editor/TemplateEditor';
@@ -16,6 +17,7 @@ const App: React.FC = () => {
   
   // Custom Hook for all data logic
   const appData = useAppData();
+  const { silentSystemBackup } = useGoogleDrive();
 
   // Local UI State
   const [pendingTemplate, setPendingTemplate] = useState<GameTemplate | null>(null);
@@ -31,6 +33,30 @@ const App: React.FC = () => {
   const initialZoomRef = useRef(1.0);
   const isZooming = useRef(false);
   const isExitingSession = useRef(false);
+
+  // System Backup Logic
+  const lastBackedUpTime = useRef<number>(0);
+
+  // Check for system backup whenever returning to Dashboard
+  // [Logic Update] Only backup when VIEW switches to Dashboard, no debounce.
+  useEffect(() => {
+      // Only trigger if we are on Dashboard
+      if (view === AppView.DASHBOARD) {
+          // If local data is newer than last backup time
+          if (appData.systemDirtyTime > lastBackedUpTime.current) {
+              const backupRoutine = async () => {
+                  const data = await appData.getSystemExportData();
+                  await silentSystemBackup(data);
+                  lastBackedUpTime.current = Date.now();
+              };
+              backupRoutine();
+          }
+      }
+      // Intentionally omit appData.systemDirtyTime from dependency array
+      // to avoid triggering backup on every interaction while already on dashboard.
+      // We ONLY want to backup when returning to dashboard (view change).
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, silentSystemBackup, appData.getSystemExportData]);
 
   // --- Session Preview Logic (for Modal) ---
   const pendingSessionPreview = useMemo(() => {
@@ -286,6 +312,8 @@ const App: React.FC = () => {
           isInstalled={isInstalled}
           canInstall={!!installPromptEvent}
           onInstallClick={handleInstallClick}
+          onImportSession={appData.importSession}
+          onImportHistory={appData.importHistoryRecord} // [New] Prop
         />
       </div>
 

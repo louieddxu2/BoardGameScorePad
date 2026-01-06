@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ToastMessage } from '../../hooks/useToast';
 import { CheckCircle, AlertTriangle, XCircle, Info, X } from 'lucide-react';
@@ -20,7 +21,8 @@ const BORDER_COLORS = {
   info: 'border-sky-500/50',
 };
 
-const Toast: React.FC<ToastProps> = ({ id, title, message, type = 'info', duration = 5000, onDismiss }) => {
+// Updated default duration to 3000ms
+const Toast: React.FC<ToastProps> = ({ id, title, message, type = 'info', duration = 3000, onDismiss }) => {
   const [isExiting, setIsExiting] = useState(false);
 
   useEffect(() => {
