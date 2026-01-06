@@ -235,20 +235,36 @@ class GoogleDriveService {
 
   // --- Core File Operations ---
 
-  // [Updated] Include appProperties in the fields
+  // [Helper] Generic fetch all items with pagination
+  private async fetchAllItems(query: string, fields: string): Promise<CloudFile[]> {
+      let allFiles: CloudFile[] = [];
+      let pageToken: string | null = null;
+      
+      do {
+          const url: string = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&pageSize=1000&fields=nextPageToken,${fields}${pageToken ? `&pageToken=${pageToken}` : ''}`;
+          const data: any = await this.fetchDrive(url);
+          
+          if (data.files) {
+              allFiles = allFiles.concat(data.files);
+          }
+          pageToken = data.nextPageToken || null;
+      } while (pageToken);
+
+      return allFiles;
+  }
+
+  // [Updated] Include appProperties in the fields AND handle pagination
   public async listFoldersInParent(parentId: string): Promise<CloudFile[]> {
-      let query = `'${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+      const query = `'${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
       // Fetch 'appProperties' to check sync status
-      const data = await this.fetchDrive(
-          `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&pageSize=1000&fields=files(id, name, createdTime, appProperties)`
-      );
-      return data.files || [];
+      return this.fetchAllItems(query, 'files(id, name, createdTime, appProperties)');
   }
 
   private async findFile(name: string, parentId: string = 'root', mimeType?: string): Promise<DriveFile | null> {
     let query = `name = '${name}' and '${parentId}' in parents and trashed = false`;
     if (mimeType) query += ` and mimeType = '${mimeType}'`;
     
+    // findFile usually expects 1 result, pagination typically not needed unless user has dupes
     const data = await this.fetchDrive(
       `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id, name, mimeType, parents)`
     );
@@ -467,7 +483,7 @@ class GoogleDriveService {
       return folderId;
   }
 
-  // [Update] List files based on source
+  // [Update] List files based on source with Pagination Support
   public async listFiles(mode: 'active' | 'trash' = 'active', source: 'templates' | 'sessions' | 'history' = 'templates'): Promise<CloudFile[]> {
     if (!this.isAuthorized) await this.signIn();
     
@@ -500,11 +516,8 @@ class GoogleDriveService {
         query += ` and name != '_Trash_Templates' and name != '_Trash_Active' and name != '_Trash_History' and name != '_Trash' and name != '_System' and name != '_Active' and name != '_History' and name != '_Templates'`; 
     }
 
-    const data = await this.fetchDrive(
-        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&orderBy=createdTime desc&fields=files(id, name, createdTime, appProperties)`
-    );
-    
-    return data.files || [];
+    // Use common fetcher with pagination
+    return this.fetchAllItems(query, 'files(id, name, createdTime, appProperties)');
   }
 
   // [Changed] Soft Delete with Strict Type
@@ -549,11 +562,12 @@ class GoogleDriveService {
   private async cleanupTrashLimit(trashFolderId: string) {
       try {
           const query = `'${trashFolderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
-          const data = await this.fetchDrive(
-              `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&orderBy=createdTime desc&fields=files(id, createdTime)`
-          );
+          const files = await this.fetchAllItems(query, 'files(id, createdTime)'); // Use paginated fetch
           
-          const files = data.files || [];
+          // Sort explicitly if needed, though Drive usually returns sorted by createdTime desc if requested
+          // Re-sort just in case pagination messed up order slightly
+          files.sort((a: any, b: any) => new Date(b.createdTime).getTime() - new Date(a.createdTime).getTime());
+
           if (files.length > 100) {
               const toDelete = files.slice(100); 
               const promises = toDelete.map((f: any) => this.deleteFile(f.id));
@@ -578,10 +592,7 @@ class GoogleDriveService {
 
       const promises = idsToCheck.map(async (trashId) => {
           const query = `'${trashId}' in parents and trashed = false`;
-          const data = await this.fetchDrive(
-              `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id)`
-          );
-          const files = data.files || [];
+          const files = await this.fetchAllItems(query, 'files(id)'); // Use paginated fetch
           return Promise.all(files.map((f: any) => this.deleteFile(f.id)));
       });
 
