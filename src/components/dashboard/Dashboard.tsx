@@ -123,7 +123,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   const { 
       handleBackup, fetchFileList, restoreBackup, restoreSessionBackup, restoreHistoryBackup, restoreFromTrash, deleteCloudFile, emptyTrash, 
       connectToCloud, disconnectFromCloud, isSyncing, isConnected, isAutoConnectEnabled, isMockMode,
-      performFullBackup // New
+      performFullBackup, performFullRestore // New
   } = useGoogleDrive();
   
   const { getSystemExportData } = useAppData();
@@ -258,6 +258,35 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
               if (type === 'template' && item) {
                   // Save template with updated lastSyncedAt, but skip trigger to avoid infinite loop
                   onTemplateSave(item, { skipCloud: true });
+              }
+          }
+      );
+  };
+
+  // Handle Full Restore
+  const handleSystemRestoreAction = async (onProgress: (count: number, total: number) => void, onError: (failedItems: string[]) => void) => {
+      const data = await getSystemExportData();
+      
+      // Build metadata map for local state check
+      const templatesMap = new Map<string, number>();
+      const historyMap = new Map<string, number>();
+      
+      (data.data.templates || []).forEach((t: GameTemplate) => templatesMap.set(t.id, t.updatedAt || 0));
+      (data.data.overrides || []).forEach((t: GameTemplate) => templatesMap.set(t.id, t.updatedAt || 0));
+      (data.data.history || []).forEach((h: HistoryRecord) => historyMap.set(h.id, h.endTime || 0));
+
+      await performFullRestore(
+          { templates: templatesMap, history: historyMap },
+          onProgress,
+          onError,
+          // onItemRestored: Save to DB
+          async (type, item) => {
+              if (type === 'template') {
+                  onTemplateSave(item, { skipCloud: true });
+              } else if (type === 'history') {
+                  onImportHistory(item);
+              } else if (type === 'session') {
+                  onImportSession(item);
               }
           }
       );
@@ -467,6 +496,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         onSessionRestoreSuccess={onImportSession}
         onHistoryRestoreSuccess={onImportHistory} // Pass new prop
         onSystemBackup={handleSystemBackupAction} // New prop
+        onSystemRestore={handleSystemRestoreAction} // New prop
       />
     </div>
   );

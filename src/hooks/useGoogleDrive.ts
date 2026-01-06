@@ -40,21 +40,24 @@ export const useGoogleDrive = () => {
 
   // [Modified] Explicit Connect Function
   const connectToCloud = useCallback(async () => {
-      setIsAutoConnectEnabled(true);
       try {
           await googleDriveService.signIn(); 
           setIsConnected(true);
+          // Only enable auto-connect preference AFTER successful sign-in
+          setIsAutoConnectEnabled(true); 
           showToast({ message: "Google Drive 連線成功", type: 'success' });
           return true;
       } catch (e: any) {
           console.error("Manual connection failed:", e);
+          
+          setIsAutoConnectEnabled(false); 
+          setIsConnected(false);
+
           if (e.error === 'popup_closed_by_user') {
-              setIsAutoConnectEnabled(false); 
               showToast({ message: "已取消登入", type: 'info' });
           } else {
               showToast({ message: "連線失敗，請檢查網路或稍後再試", type: 'error' });
           }
-          setIsConnected(false);
           return false;
       }
   }, [showToast]);
@@ -163,7 +166,6 @@ export const useGoogleDrive = () => {
       try {
           await ensureConnection();
           showToast({ message: "正在下載歷史紀錄...", type: 'info' });
-          // History records are also stored as session.json in their respective folder
           const record = await googleDriveService.getFileContent(fileId, 'session.json');
           setIsConnected(true);
           showToast({ message: "下載成功！", type: 'success' });
@@ -255,7 +257,7 @@ export const useGoogleDrive = () => {
       }
   }, [isAutoConnectEnabled]);
 
-  // [Enhanced & Optimized] Manual Full Batch Backup with Name Sync and Smart Skip Logic
+  // [Full Backup] Smart Skip Logic: Cloud.ts >= Local.ts -> Skip
   const performFullBackup = useCallback(async (
       templates: GameTemplate[], 
       history: HistoryRecord[],
@@ -273,7 +275,6 @@ export const useGoogleDrive = () => {
       try {
           await ensureConnection();
           
-          // Phase 1: Pre-fetch existing folders
           await googleDriveService.ensureAppStructure();
           
           const [cloudTemplates, cloudHistory, cloudActive] = await Promise.all([
@@ -282,12 +283,14 @@ export const useGoogleDrive = () => {
               googleDriveService.listFoldersInParent(googleDriveService.activeFolderId!)
           ]);
 
-          // Helper: Create lookup map with metadata support
           const createMap = (files: CloudFile[]) => {
               const map = new Map<string, CloudFile>();
               files.forEach(f => {
-                  const uuid = f.name.split('_').pop(); 
-                  if (uuid) map.set(uuid, f);
+                  // Use 36-char ID detection
+                  if (f.name.length > 37) {
+                      const uuid = f.name.slice(-36);
+                      map.set(uuid, f);
+                  }
               });
               return map;
           };
@@ -296,7 +299,6 @@ export const useGoogleDrive = () => {
           const historyMap = createMap(cloudHistory);
           const activeMap = createMap(cloudActive);
 
-          // Phase 2: Concurrent Processing
           const allTemplates = [...templates, ...overrides];
           
           const total = allTemplates.length + history.length + sessions.length;
@@ -320,7 +322,6 @@ export const useGoogleDrive = () => {
               }
           };
 
-          // Helper for chunking
           const chunkArray = <T>(arr: T[], size: number) => {
               const res = [];
               for (let i = 0; i < arr.length; i += size) {
@@ -329,20 +330,19 @@ export const useGoogleDrive = () => {
               return res;
           };
 
-          const CHUNK_SIZE = 5;
+          const CHUNK_SIZE = 3; // Reduced concurrency for safety
 
-          // 2a. Process Templates (Custom + Overrides)
+          // 2a. Process Templates
           const templateChunks = chunkArray(allTemplates, CHUNK_SIZE);
           for (const chunk of templateChunks) {
               await Promise.all(chunk.map(t => {
                   const cloudInfo = templateMap.get(t.id);
                   
-                  // Smart Skip Logic: Check cloud metadata
-                  // If cloud has 'originalUpdatedAt', compare with local 'updatedAt'
+                  // Skip Logic: If cloud exists AND cloud ts >= local ts
                   let isUpToDate = false;
                   if (cloudInfo && t.updatedAt) {
-                      const cloudTime = cloudInfo.appProperties?.originalUpdatedAt;
-                      if (cloudTime && Number(cloudTime) === t.updatedAt) {
+                      const cloudTime = Number(cloudInfo.appProperties?.originalUpdatedAt || 0);
+                      if (cloudTime >= t.updatedAt) {
                           isUpToDate = true;
                       }
                   }
@@ -360,11 +360,10 @@ export const useGoogleDrive = () => {
               await Promise.all(chunk.map(h => {
                   const cloudInfo = historyMap.get(h.id);
                   
-                  // History typically immutable, but we check endTime as version
                   let isUpToDate = false;
                   if (cloudInfo && h.endTime) {
-                      const cloudTime = cloudInfo.appProperties?.originalUpdatedAt;
-                      if (cloudTime && Number(cloudTime) === h.endTime) {
+                      const cloudTime = Number(cloudInfo.appProperties?.originalUpdatedAt || 0);
+                      if (cloudTime >= h.endTime) {
                           isUpToDate = true;
                       }
                   }
@@ -388,25 +387,140 @@ export const useGoogleDrive = () => {
               }));
           }
 
-          // 3. Backup Settings
           try {
               await googleDriveService.saveSystemData('settings_backup.json', { timestamp: Date.now() });
           } catch (e) {
               console.warn("Settings backup failed", e);
           }
 
-          // Phase 3: Reporting
           if (failedItems.length > 0) {
               onError(failedItems);
-          } else {
-              const msg = skippedCount > 0 
-                ? `備份完成！上傳 ${successCount} 個，略過 ${skippedCount} 個最新項目`
-                : `全域備份完成！共 ${successCount} 個項目`;
-              showToast({ message: msg, type: 'success' });
           }
 
       } catch (e: any) {
           handleError(e, "全域備份初始化");
+      } finally {
+          setIsSyncing(false);
+      }
+  }, [isAutoConnectEnabled, showToast]);
+
+  // [Full Restore] Smart Skip Logic: Local.ts >= Cloud.ts -> Skip
+  const performFullRestore = useCallback(async (
+      localMeta: { templates: Map<string, number>, history: Map<string, number> },
+      onProgress: (count: number, total: number) => void,
+      onError: (failedItems: string[]) => void,
+      onItemRestored: (type: 'template' | 'history' | 'session', item: any) => Promise<void>
+  ): Promise<void> => {
+      setIsSyncing(true);
+      let successCount = 0;
+      let skippedCount = 0;
+      const failedItems: string[] = [];
+
+      try {
+          await ensureConnection();
+          await googleDriveService.ensureAppStructure();
+
+          const [cloudTemplates, cloudHistory, cloudActive] = await Promise.all([
+              googleDriveService.listFoldersInParent(googleDriveService.templatesFolderId!),
+              googleDriveService.listFoldersInParent(googleDriveService.historyFolderId!),
+              googleDriveService.listFoldersInParent(googleDriveService.activeFolderId!)
+          ]);
+
+          const total = cloudTemplates.length + cloudHistory.length + cloudActive.length;
+          let processed = 0;
+          onProgress(0, total);
+
+          // Helper to extract ID
+          const getId = (name: string) => {
+              if (name.length > 37 && name[name.length - 37] === '_') {
+                  return name.slice(-36);
+              }
+              return null;
+          };
+
+          const processItem = async (file: CloudFile, type: 'template' | 'history' | 'active') => {
+              const id = getId(file.name);
+              const cloudTime = Number(file.appProperties?.originalUpdatedAt || 0);
+              let shouldDownload = true;
+
+              // Check vs Local
+              if (id) {
+                  let localTime = 0;
+                  if (type === 'template' && localMeta.templates.has(id)) {
+                      localTime = localMeta.templates.get(id) || 0;
+                  } else if (type === 'history' && localMeta.history.has(id)) {
+                      localTime = localMeta.history.get(id) || 0;
+                  }
+                  
+                  // Skip if local is newer or same
+                  if (localTime >= cloudTime && localTime > 0) {
+                      shouldDownload = false;
+                  }
+              }
+
+              try {
+                  if (shouldDownload) {
+                      if (type === 'template') {
+                          const data = await googleDriveService.getFileContent(file.id, 'data.json');
+                          await onItemRestored('template', data);
+                      } else if (type === 'history') {
+                          const data = await googleDriveService.getFileContent(file.id, 'session.json');
+                          await onItemRestored('history', data);
+                      } else if (type === 'active') {
+                          const data = await googleDriveService.getFileContent(file.id, 'session.json');
+                          await onItemRestored('session', data);
+                      }
+                      successCount++;
+                  } else {
+                      skippedCount++;
+                  }
+              } catch (e: any) {
+                  // Only report real errors, not "file not found" which might happen for empty folders
+                  if (!e.message?.includes('找不到')) {
+                      console.error(`Restore failed for ${file.name}:`, e);
+                      failedItems.push(file.name);
+                  }
+              } finally {
+                  processed++;
+                  onProgress(processed, total);
+              }
+          };
+
+          const CHUNK_SIZE = 3;
+          
+          // Process Templates
+          const templateChunks = [];
+          for (let i = 0; i < cloudTemplates.length; i += CHUNK_SIZE) {
+              templateChunks.push(cloudTemplates.slice(i, i + CHUNK_SIZE));
+          }
+          for (const chunk of templateChunks) {
+              await Promise.all(chunk.map(f => processItem(f, 'template')));
+          }
+
+          // Process History
+          const historyChunks = [];
+          for (let i = 0; i < cloudHistory.length; i += CHUNK_SIZE) {
+              historyChunks.push(cloudHistory.slice(i, i + CHUNK_SIZE));
+          }
+          for (const chunk of historyChunks) {
+              await Promise.all(chunk.map(f => processItem(f, 'history')));
+          }
+
+          // Process Active
+          const activeChunks = [];
+          for (let i = 0; i < cloudActive.length; i += CHUNK_SIZE) {
+              activeChunks.push(cloudActive.slice(i, i + CHUNK_SIZE));
+          }
+          for (const chunk of activeChunks) {
+              await Promise.all(chunk.map(f => processItem(f, 'active')));
+          }
+
+          if (failedItems.length > 0) {
+              onError(failedItems);
+          }
+
+      } catch (e: any) {
+          handleError(e, "全域還原初始化");
       } finally {
           setIsSyncing(false);
       }
@@ -429,6 +543,7 @@ export const useGoogleDrive = () => {
     isAutoConnectEnabled, 
     silentSystemBackup, 
     performFullBackup, 
+    performFullRestore, // [New]
     isMockMode: false
   };
 };
