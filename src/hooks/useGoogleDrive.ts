@@ -266,7 +266,7 @@ export const useGoogleDrive = () => {
       onProgress: (count: number, total: number) => void,
       onError: (failedItems: string[]) => void,
       onItemSuccess?: (type: 'template' | 'history' | 'session', item: any) => void
-  ): Promise<void> => {
+  ): Promise<{ success: number, skipped: number, failed: number }> => {
       setIsSyncing(true);
       let successCount = 0;
       let skippedCount = 0;
@@ -286,9 +286,10 @@ export const useGoogleDrive = () => {
           const createMap = (files: CloudFile[]) => {
               const map = new Map<string, CloudFile>();
               files.forEach(f => {
-                  // Use 36-char ID detection
-                  if (f.name.length > 37) {
-                      const uuid = f.name.slice(-36);
+                  const lastSep = f.name.lastIndexOf('_');
+                  // Ensure underscore exists and is not the first character
+                  if (lastSep > 0) {
+                      const uuid = f.name.substring(lastSep + 1);
                       map.set(uuid, f);
                   }
               });
@@ -387,6 +388,7 @@ export const useGoogleDrive = () => {
               }));
           }
 
+          // 2d. Always backup Settings (very small)
           try {
               await googleDriveService.saveSystemData('settings_backup.json', { timestamp: Date.now() });
           } catch (e) {
@@ -402,6 +404,7 @@ export const useGoogleDrive = () => {
       } finally {
           setIsSyncing(false);
       }
+      return { success: successCount, skipped: skippedCount, failed: failedItems.length };
   }, [isAutoConnectEnabled, showToast]);
 
   // [Full Restore] Smart Skip Logic: Local.ts >= Cloud.ts -> Skip
@@ -409,8 +412,9 @@ export const useGoogleDrive = () => {
       localMeta: { templates: Map<string, number>, history: Map<string, number> },
       onProgress: (count: number, total: number) => void,
       onError: (failedItems: string[]) => void,
-      onItemRestored: (type: 'template' | 'history' | 'session', item: any) => Promise<void>
-  ): Promise<void> => {
+      onItemRestored: (type: 'template' | 'history' | 'session', item: any) => Promise<void>,
+      onSettingsRestored?: (settings: any) => void // New Callback
+  ): Promise<{ success: number, skipped: number, failed: number }> => {
       setIsSyncing(true);
       let successCount = 0;
       let skippedCount = 0;
@@ -426,14 +430,30 @@ export const useGoogleDrive = () => {
               googleDriveService.listFoldersInParent(googleDriveService.activeFolderId!)
           ]);
 
-          const total = cloudTemplates.length + cloudHistory.length + cloudActive.length;
+          const total = cloudTemplates.length + cloudHistory.length + cloudActive.length + 1; // +1 for settings
           let processed = 0;
           onProgress(0, total);
 
-          // Helper to extract ID
+          // 1. Restore Settings First (if callback provided)
+          if (onSettingsRestored && googleDriveService.systemFolderId) {
+              try {
+                  const settings = await googleDriveService.getFileContent(googleDriveService.systemFolderId, 'settings_backup.json');
+                  onSettingsRestored(settings);
+                  successCount++;
+              } catch (e) {
+                  console.log("No settings backup found or failed to restore", e);
+                  // Not critical, don't add to failed count to avoid scaring user
+              } finally {
+                  processed++;
+                  onProgress(processed, total);
+              }
+          }
+
+          // Helper to extract ID using lastUnderscore logic
           const getId = (name: string) => {
-              if (name.length > 37 && name[name.length - 37] === '_') {
-                  return name.slice(-36);
+              const lastSep = name.lastIndexOf('_');
+              if (lastSep !== -1) {
+                  return name.substring(lastSep + 1);
               }
               return null;
           };
@@ -524,6 +544,7 @@ export const useGoogleDrive = () => {
       } finally {
           setIsSyncing(false);
       }
+      return { success: successCount, skipped: skippedCount, failed: failedItems.length };
   }, [isAutoConnectEnabled, showToast]);
 
   return {

@@ -39,7 +39,7 @@ interface DashboardProps {
   getSessionPreview: (templateId: string) => GameSession | null;
   onTemplateCreate: () => void;
   onTemplateDelete: (id: string) => void;
-  onTemplateSave: (template: GameTemplate, options?: { skipCloud?: boolean }) => void; 
+  onTemplateSave: (template: GameTemplate, options?: { skipCloud?: boolean, preserveTimestamps?: boolean }) => void; // Updated interface
   onBatchImport: (templates: GameTemplate[]) => void;
   onTogglePin: (id: string) => void;
   onClearNewBadges: () => void; 
@@ -53,6 +53,7 @@ interface DashboardProps {
   // [New]
   onImportSession: (session: GameSession) => void;
   onImportHistory: (record: HistoryRecord) => void; // New prop
+  onImportSettings?: (settings: any) => void; // New prop for restoring settings
 }
 
 const Dashboard: React.FC<DashboardProps> = React.memo(({
@@ -88,7 +89,8 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   canInstall,
   onInstallClick,
   onImportSession,
-  onImportHistory
+  onImportHistory,
+  onImportSettings
 }) => {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [viewMode, setViewMode] = useState<'library' | 'history'>('library');
@@ -195,7 +197,8 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
 
       const updated = await handleBackup(templateToBackup, null);
       if (updated) {
-          onTemplateSave({ ...updated, lastSyncedAt: Date.now() }, { skipCloud: true });
+          // [Fix]: When updating lastSyncedAt, MUST preserve original timestamps to avoid sync loop
+          onTemplateSave({ ...updated, lastSyncedAt: Date.now() }, { skipCloud: true, preserveTimestamps: true });
       }
   };
 
@@ -246,7 +249,8 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
       const sessions = data.data.sessions || []; // Include Sessions
       
       // 3. Trigger Batch Backup with all 4 categories AND sync callback
-      await performFullBackup(
+      // Now returns stats object
+      return await performFullBackup(
           templates, 
           history, 
           sessions, 
@@ -256,8 +260,9 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           // onItemSuccess: Sync DB timestamp after successful backup
           (type, item) => {
               if (type === 'template' && item) {
-                  // Save template with updated lastSyncedAt, but skip trigger to avoid infinite loop
-                  onTemplateSave(item, { skipCloud: true });
+                  // [Fix]: Save template with updated lastSyncedAt, skip cloud trigger AND PRESERVE TIMESTAMPS
+                  // This is crucial to prevent the "Local Updated > Cloud Updated" loop
+                  onTemplateSave(item, { skipCloud: true, preserveTimestamps: true });
               }
           }
       );
@@ -275,7 +280,8 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
       (data.data.overrides || []).forEach((t: GameTemplate) => templatesMap.set(t.id, t.updatedAt || 0));
       (data.data.history || []).forEach((h: HistoryRecord) => historyMap.set(h.id, h.endTime || 0));
 
-      await performFullRestore(
+      // Now returns stats object
+      return await performFullRestore(
           { templates: templatesMap, history: historyMap },
           onProgress,
           onError,
@@ -283,12 +289,19 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           async (type, item) => {
               if (type === 'template') {
                   // [Critical Fix] Set lastSyncedAt to updatedAt to mark as "synced"
+                  // AND pass preserveTimestamps: true to prevent saveTemplate from setting updatedAt to Now()
                   const syncedItem = { ...item, lastSyncedAt: item.updatedAt || Date.now() };
-                  onTemplateSave(syncedItem, { skipCloud: true });
+                  onTemplateSave(syncedItem, { skipCloud: true, preserveTimestamps: true });
               } else if (type === 'history') {
                   onImportHistory(item);
               } else if (type === 'session') {
                   onImportSession(item);
+              }
+          },
+          // onSettingsRestored: Save preferences
+          (settings) => {
+              if (onImportSettings) {
+                  onImportSettings(settings);
               }
           }
       );
@@ -494,7 +507,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         emptyTrash={emptyTrash}
         connectToCloud={connectToCloud}
         disconnectFromCloud={disconnectFromCloud}
-        onRestoreSuccess={(t) => onTemplateSave({ ...t, lastSyncedAt: t.updatedAt || Date.now() }, { skipCloud: true })} // [Critical Fix] Set lastSyncedAt for single restore
+        onRestoreSuccess={(t) => onTemplateSave({ ...t, lastSyncedAt: t.updatedAt || Date.now() }, { skipCloud: true, preserveTimestamps: true })} // [Critical Fix] Set preserveTimestamps
         onSessionRestoreSuccess={onImportSession}
         onHistoryRestoreSuccess={onImportHistory} // Pass new prop
         onSystemBackup={handleSystemBackupAction} // New prop

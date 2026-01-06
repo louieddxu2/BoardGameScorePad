@@ -230,6 +230,12 @@ const App: React.FC = () => {
 
   const handleStartNewGame = async (count: number, options: { startTimeStr: string, scoringRule: ScoringRule }) => {
       if (pendingTemplate) {
+          // [Logic Added] If there is an existing active session for this template, discard it first
+          // This ensures the "Reset Record" promise in the UI is fulfilled.
+          if (appData.activeSessionIds.includes(pendingTemplate.id)) {
+              await appData.discardSession(pendingTemplate.id);
+          }
+
           // 1. Prepare data (this might involve fetching full template if shallow)
           await appData.startSession(pendingTemplate, count, options);
           
@@ -314,6 +320,7 @@ const App: React.FC = () => {
           onInstallClick={handleInstallClick}
           onImportSession={appData.importSession}
           onImportHistory={appData.importHistoryRecord} // [New] Prop
+          onImportSettings={appData.importSystemSettings} // [New] Prop
         />
       </div>
 

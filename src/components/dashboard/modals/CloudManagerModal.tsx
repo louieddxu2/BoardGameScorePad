@@ -25,8 +25,8 @@ interface CloudManagerModalProps {
   onRestoreSuccess: (template: GameTemplate) => void;
   onSessionRestoreSuccess: (session: GameSession) => void;
   onHistoryRestoreSuccess?: (record: HistoryRecord) => void;
-  onSystemBackup?: (onProgress: (count: number, total: number) => void, onError: (failedItems: string[]) => void) => Promise<void>;
-  onSystemRestore?: (onProgress: (count: number, total: number) => void, onError: (failedItems: string[]) => void) => Promise<void>; // [New]
+  onSystemBackup?: (onProgress: (count: number, total: number) => void, onError: (failedItems: string[]) => void) => Promise<{ success: number, skipped: number, failed: number }>;
+  onSystemRestore?: (onProgress: (count: number, total: number) => void, onError: (failedItems: string[]) => void) => Promise<{ success: number, skipped: number, failed: number }>;
 }
 
 const CloudManagerModal: React.FC<CloudManagerModalProps> = ({ 
@@ -56,11 +56,12 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
       success: 0, skipped: 0, failed: [], errors: [], total: 0, current: 0, type: null
   });
 
-  // Helper to clean folder name (Strict UUID length check)
+  // Helper to clean folder name (Parse by last underscore)
   const cleanName = (name: string) => {
-      // UUID is 36 chars. +1 for separator '_' = 37 chars.
-      if (name.length > 37 && name[name.length - 37] === '_') {
-          return name.slice(0, name.length - 37);
+      const lastUnderscoreIndex = name.lastIndexOf('_');
+      if (lastUnderscoreIndex !== -1) {
+          // Return everything before the last underscore
+          return name.substring(0, lastUnderscoreIndex);
       }
       return name;
   };
@@ -191,13 +192,12 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
       setSyncResult({ success: 0, skipped: 0, failed: [], errors: [], total: 0, current: 0, type: 'upload' });
       
       try {
-          await onSystemBackup(
+          // Use the returned stats instead of calculating locally
+          const stats = await onSystemBackup(
               (count, total) => setSyncResult(prev => ({ ...prev, current: count, total })),
               (failed) => setSyncResult(prev => ({ ...prev, failed: [...prev.failed, ...failed] }))
           );
-          // Calculate success/skipped roughly (Need real stats from hook ideally, but simplified for now)
-          // The hook will update us via another call or we infer from total
-          setSyncResult(prev => ({ ...prev, success: prev.total - prev.failed.length })); 
+          setSyncResult(prev => ({ ...prev, success: stats.success, skipped: stats.skipped })); 
       } catch (e: any) {
           setSyncResult(prev => ({ ...prev, errors: [e.message || "Unknown error"] }));
       } finally {
@@ -211,11 +211,12 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
       setSyncResult({ success: 0, skipped: 0, failed: [], errors: [], total: 0, current: 0, type: 'download' });
 
       try {
-          await onSystemRestore(
+          // Use the returned stats instead of calculating locally
+          const stats = await onSystemRestore(
               (count, total) => setSyncResult(prev => ({ ...prev, current: count, total })),
               (failed) => setSyncResult(prev => ({ ...prev, failed: [...prev.failed, ...failed] }))
           );
-          setSyncResult(prev => ({ ...prev, success: prev.total - prev.failed.length }));
+          setSyncResult(prev => ({ ...prev, success: stats.success, skipped: stats.skipped }));
       } catch (e: any) {
           setSyncResult(prev => ({ ...prev, errors: [e.message || "Unknown error"] }));
       } finally {

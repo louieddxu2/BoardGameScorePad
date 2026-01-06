@@ -271,8 +271,11 @@ export const useAppData = () => {
       return null;
   };
 
-  const saveTemplate = async (template: GameTemplate, options: { skipCloud?: boolean } = {}) => {
-    const migratedTemplate = migrateTemplate({ ...template, updatedAt: Date.now() });
+  const saveTemplate = async (template: GameTemplate, options: { skipCloud?: boolean, preserveTimestamps?: boolean } = {}) => {
+    // If preserveTimestamps is true (e.g. cloud restore), use existing updatedAt. Otherwise, use current time.
+    const finalUpdatedAt = options.preserveTimestamps ? (template.updatedAt || Date.now()) : Date.now();
+    const migratedTemplate = migrateTemplate({ ...template, updatedAt: finalUpdatedAt });
+    
     const isSystem = !!(await db.builtins.get(migratedTemplate.id));
     if (isSystem) {
         await db.systemOverrides.put(migratedTemplate);
@@ -638,6 +641,43 @@ export const useAppData = () => {
       };
   };
 
+  // [New] Import System Settings (Preferences & Libraries)
+  const importSystemSettings = async (settings: any) => {
+      try {
+          if (settings.preferences) {
+              const { theme, pinnedIds, newBadgeIds, zoomLevel, isEditMode } = settings.preferences;
+              if (theme) {
+                  setThemeMode(theme);
+                  localStorage.setItem('app_theme', theme);
+              }
+              if (pinnedIds) {
+                  setPinnedIds(pinnedIds);
+                  localStorage.setItem('sm_pinned_ids', JSON.stringify(pinnedIds));
+              }
+              if (newBadgeIds) {
+                  setNewBadgeIds(newBadgeIds);
+                  localStorage.setItem('sm_new_badge_ids', JSON.stringify(newBadgeIds));
+              }
+              if (zoomLevel) localStorage.setItem('app_zoom_level', String(zoomLevel));
+              if (isEditMode !== undefined) localStorage.setItem('app_edit_mode', String(isEditMode));
+          }
+
+          if (settings.library) {
+              if (Array.isArray(settings.library.players)) {
+                  // Merge players, preferring existing ones if IDs conflict, or just overwriting based on name?
+                  // Using bulkPut to overwrite/merge
+                  await db.savedPlayers.bulkPut(settings.library.players);
+              }
+              if (Array.isArray(settings.library.locations)) {
+                  await db.savedLocations.bulkPut(settings.library.locations);
+              }
+          }
+          console.log("System settings restored successfully");
+      } catch (e) {
+          console.error("Failed to restore settings", e);
+      }
+  };
+
   // [New] Import Session from Cloud
   const importSession = async (session: GameSession) => {
       try {
@@ -706,6 +746,7 @@ export const useAppData = () => {
       // System Backup Helpers
       systemDirtyTime,
       getSystemExportData,
+      importSystemSettings, // [New]
       importSession,
       importHistoryRecord, 
       
