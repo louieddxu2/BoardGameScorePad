@@ -282,7 +282,9 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           // onItemRestored: Save to DB
           async (type, item) => {
               if (type === 'template') {
-                  onTemplateSave(item, { skipCloud: true });
+                  // [Critical Fix] Set lastSyncedAt to updatedAt to mark as "synced"
+                  const syncedItem = { ...item, lastSyncedAt: item.updatedAt || Date.now() };
+                  onTemplateSave(syncedItem, { skipCloud: true });
               } else if (type === 'history') {
                   onImportHistory(item);
               } else if (type === 'session') {
@@ -492,7 +494,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         emptyTrash={emptyTrash}
         connectToCloud={connectToCloud}
         disconnectFromCloud={disconnectFromCloud}
-        onRestoreSuccess={(t) => onTemplateSave(t, { skipCloud: true })}
+        onRestoreSuccess={(t) => onTemplateSave({ ...t, lastSyncedAt: t.updatedAt || Date.now() }, { skipCloud: true })} // [Critical Fix] Set lastSyncedAt for single restore
         onSessionRestoreSuccess={onImportSession}
         onHistoryRestoreSuccess={onImportHistory} // Pass new prop
         onSystemBackup={handleSystemBackupAction} // New prop
