@@ -239,6 +239,12 @@ export const calculatePlayerTotal = (player: Player, template: GameTemplate, all
       total += calculateColumnScore(col, parts, context);
     }
   });
+  
+  // Add manual bonus/adjustment
+  if (player.bonusScore) {
+      total += player.bonusScore;
+  }
+  
   return total;
 };
 

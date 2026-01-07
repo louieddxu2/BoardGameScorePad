@@ -194,15 +194,16 @@ export const useGoogleDrive = () => {
       }
   }, [isAutoConnectEnabled, showToast]);
 
-  const downloadCloudImage = useCallback(async (fileId: string): Promise<string | null> => {
+  // [UPDATED] Return Blob instead of string
+  const downloadCloudImage = useCallback(async (fileId: string): Promise<Blob | null> => {
       setIsSyncing(true);
       try {
           await ensureConnection();
           showToast({ message: "正在下載圖片...", type: 'info' });
-          const base64 = await googleDriveService.downloadImage(fileId);
+          const blob = await googleDriveService.downloadImage(fileId);
           setIsConnected(true);
           showToast({ message: "圖片載入完成", type: 'success' });
-          return base64;
+          return blob;
       } catch (error: any) {
           handleError(error, "圖片下載");
           return null;

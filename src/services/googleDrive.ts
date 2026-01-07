@@ -623,7 +623,8 @@ class GoogleDriveService {
       return data;
   }
 
-  public async downloadImage(fileId: string): Promise<string> {
+  // [UPDATED] Return Blob instead of Base64 string for memory efficiency
+  public async downloadImage(fileId: string): Promise<Blob> {
       if (!this.isAuthorized) await this.signIn();
 
       const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
@@ -631,15 +632,7 @@ class GoogleDriveService {
       });
 
       if (!response.ok) throw new Error("圖片下載失敗");
-      const blob = await response.blob();
-      
-      return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-              resolve(reader.result as string);
-          };
-          reader.readAsDataURL(blob);
-      });
+      return await response.blob();
   }
 }
 

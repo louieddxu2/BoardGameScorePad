@@ -4,6 +4,7 @@ import { Camera, Upload, X, Magnet, RotateCcw, BoxSelect, ScanLine, ZoomIn, Move
 import { getPerspectiveTransform, findStrongestCorner, warpPerspective, calculateParallelogramPoint, getEdgeAngles, snapToEdge } from '../../utils/scanUtils';
 import { getTouchDistance } from '../../utils/ui';
 import { useToast } from '../../hooks/useToast';
+import { compressAndResizeImage } from '../../utils/imageProcessing'; 
 
 interface Point {
   x: number;
@@ -12,7 +13,8 @@ interface Point {
 
 interface PhotoScannerProps {
   onClose: () => void;
-  onConfirm: (result: { processed: string; raw: string; points: Point[] }) => void;
+  // Updated signature to include Blob
+  onConfirm: (result: { processed: string; raw: string; points: Point[]; blob?: Blob }) => void;
   initialImage?: string | null;
   initialPoints?: Point[];
 }
@@ -29,12 +31,16 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
   const [activePointIdx, setActivePointIdx] = useState<number | null>(null);
   const [isSnapping, setIsSnapping] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
+  
+  // This holds the Preview URL (blob:...)
   const [rectifiedImage, setRectifiedImage] = useState<string | null>(null);
+  // This holds the actual Blob data to save
+  const [rectifiedBlob, setRectifiedBlob] = useState<Blob | null>(null);
+
   const [geometricGhost, setGeometricGhost] = useState<Point | null>(null);
   
   // Camera State
   const [isCameraActive, setIsCameraActive] = useState(false);
-  // [CRITICAL FIX] Use Ref to store stream, ensuring cleanup access works even in stale closures
   const streamRef = useRef<MediaStream | null>(null);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   
@@ -74,27 +80,30 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
       stateRef.current = { activePointIdx, points, isSnapping, transform, imageSrc };
   }, [activePointIdx, points, isSnapping, transform, imageSrc]);
 
+  // Clean up blob URLs to prevent memory leaks
+  useEffect(() => {
+      return () => {
+          if (rectifiedImage && rectifiedImage.startsWith('blob:')) {
+              URL.revokeObjectURL(rectifiedImage);
+          }
+      };
+  }, [rectifiedImage]);
+
   // --- Camera Logic ---
 
   const stopCamera = () => {
-      // 1. Stop all tracks in the MediaStream (Hardware level)
       if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => {
               track.stop();
           });
           streamRef.current = null;
       }
-      
-      // 2. Clear Video Source
       if (videoRef.current) {
           videoRef.current.srcObject = null;
       }
-
-      // 3. Reset UI State
       setIsCameraActive(false);
   };
 
-  // Cleanup on mount/unmount is simpler now because streamRef persists
   useEffect(() => {
       return () => {
           stopCamera();
@@ -102,9 +111,7 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
   }, []);
 
   const startCamera = async () => {
-      // Ensure previous stream is closed before starting new one
       stopCamera();
-
       try {
           const stream = await navigator.mediaDevices.getUserMedia({
               video: { 
@@ -114,8 +121,6 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
               },
               audio: false
           });
-          
-          // Store in ref for reliable cleanup
           streamRef.current = stream;
           setIsCameraActive(true);
       } catch (err: any) {
@@ -136,7 +141,6 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
       }
   };
 
-  // Bind stream to video element when active
   useEffect(() => {
       if (isCameraActive && videoRef.current && streamRef.current) {
           videoRef.current.srcObject = streamRef.current;
@@ -147,7 +151,6 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
   const switchCamera = () => {
       stopCamera();
       setFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
-      // Re-trigger start after state update
       setTimeout(() => startCamera(), 100);
   };
 
@@ -162,7 +165,6 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
       
       if (ctx) {
           if (facingMode === 'user') {
-              // Mirror effect for selfie camera
               ctx.translate(canvas.width, 0);
               ctx.scale(-1, 1);
           }
@@ -171,10 +173,7 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
           const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
           setImageSrc(dataUrl);
           
-          // Important: Stop camera immediately after capture to save battery/privacy
           stopCamera();
-          
-          // Reset editor state
           setPoints([]);
           hasFittedRef.current = false;
           setSourceDimensions(null);
@@ -218,7 +217,8 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
       const img = new Image();
       
       img.onload = () => {
-        const maxDim = 1500; 
+        // [Optimized] Use 1920 for editor working canvas as well
+        const maxDim = 1920; 
         let w = img.width;
         let h = img.height;
         
@@ -537,7 +537,7 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
   const dist = (p1: Point, p2: Point) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
   const polygonPoints = points.length === 4 && canvasRef.current ? `${points[0].x},${points[0].y} ${points[1].x},${points[1].y} ${points[2].x},${points[2].y} ${points[3].x},${points[3].y}` : "";
 
-  const handleRectify = () => {
+  const handleRectify = async () => {
     if (!canvasRef.current || points.length !== 4) return;
     const srcCanvas = canvasRef.current;
     const srcCtx = srcCanvas.getContext('2d');
@@ -550,7 +550,9 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
     const heightRight = dist(tr, br);
     const maxWidth = Math.max(widthTop, widthBottom);
     const maxHeight = Math.max(heightLeft, heightRight);
-    const maxResolution = 1500;
+    
+    // [Resolution Bump] 1500 -> 1920 (1080p width)
+    const maxResolution = 1920;
     const scale = Math.min(1, maxResolution / Math.max(maxWidth, maxHeight));
     const finalWidth = Math.floor(maxWidth * scale);
     const finalHeight = Math.floor(maxHeight * scale);
@@ -563,8 +565,21 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
 
     const dstPoints = [{ x: 0, y: 0 }, { x: finalWidth, y: 0 }, { x: finalWidth, y: finalHeight }, { x: 0, y: finalHeight }];
     const h = getPerspectiveTransform(dstPoints, points);
+    
+    // Warp logic remains the same (High Res)
     warpPerspective(srcCtx, dstCtx, srcCanvas.width, srcCanvas.height, finalWidth, finalHeight, h);
-    setRectifiedImage(dstCanvas.toDataURL('image/jpeg', 0.9));
+    
+    // [Compression] Get the base64 from the High-Res canvas
+    const highResBase64 = dstCanvas.toDataURL('image/jpeg', 0.95);
+    
+    // [Compression] Optimized one-shot compression to Blob
+    const optimizedBlob = await compressAndResizeImage(highResBase64, 1, 1920);
+    
+    // Convert Blob to URL for preview
+    const optimizedUrl = URL.createObjectURL(optimizedBlob);
+    
+    setRectifiedBlob(optimizedBlob);
+    setRectifiedImage(optimizedUrl);
     setShowPreview(true);
   };
 
@@ -590,15 +605,18 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
   };
 
   const handleConfirm = () => {
-      // Ensure camera is stopped before closing/confirming
       stopCamera();
       if (rectifiedImage && imageSrc) {
-          onConfirm({ processed: rectifiedImage, raw: imageSrc, points: points });
+          onConfirm({ 
+              processed: rectifiedImage, 
+              raw: imageSrc, 
+              points: points,
+              blob: rectifiedBlob || undefined
+          });
       }
       onClose();
   };
 
-  // Safe close handler
   const handleClose = () => {
       stopCamera();
       onClose();
@@ -646,7 +664,6 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
            onTouchStart={(e) => handlePointerDown(e, null)}
            onWheel={handleWheel}
       >
-        {/* --- Camera Overlay (Activated on demand) --- */}
         {isCameraActive ? (
             <div className="absolute inset-0 bg-black flex items-center justify-center z-[60]">
                 <video 
@@ -663,7 +680,6 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
                 </div>
             </div>
         ) : !imageSrc ? (
-          /* --- Empty State: Choose Source --- */
           <div className="absolute inset-0 flex items-center justify-center p-6">
             <div className="text-center space-y-6 w-full max-w-sm">
                 <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-500 shadow-xl border border-slate-700"><Camera size={40} /></div>
@@ -682,7 +698,6 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
             </div>
           </div>
         ) : (
-          /* --- Editor View --- */
           <div 
             ref={contentRef}
             className="absolute top-0 left-0 origin-top-left will-change-transform"

@@ -82,10 +82,12 @@ export const useSessionState = (props: SessionViewProps) => {
     localStorage.setItem('app_edit_mode', String(uiState.isEditMode));
   }, [uiState.isEditMode]);
 
-  // When active cell changes, enable overwrite mode and reset preview
+  // When active cell changes, enable overwrite mode.
+  // CRITICAL FIX: Do NOT reset previewValue to 0 here. 
+  // Let InputPanel handle initialization to support loading existing values (like bonus scores).
   useEffect(() => {
     if (uiState.editingCell) {
-      setUiState(prev => ({ ...prev, overwriteMode: true, previewValue: 0 }));
+      setUiState(prev => ({ ...prev, overwriteMode: true }));
     }
   }, [uiState.editingCell?.playerId, uiState.editingCell?.colId]);
   
@@ -113,6 +115,11 @@ export const useSessionState = (props: SessionViewProps) => {
 
       // Case 2: Editing Cell
       if (uiState.editingCell) {
+        // Special case for Total Cell: Don't scroll grid, it's in the footer
+        if (uiState.editingCell.colId === '__TOTAL__') {
+            return;
+        }
+
         const colIndex = props.template.columns.findIndex(c => c.id === uiState.editingCell!.colId);
 
         // Case 2a: First Data Row -> Scroll to absolute Top

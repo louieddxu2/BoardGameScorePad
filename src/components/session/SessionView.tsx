@@ -6,7 +6,9 @@ import { useSessionEvents } from './hooks/useSessionEvents';
 import { useToast } from '../../hooks/useToast';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 import { googleDriveService } from '../../services/googleDrive';
-import { Upload, X, Image as ImageIcon, DownloadCloud } from 'lucide-react';
+import { imageService } from '../../services/imageService'; 
+import { compressAndResizeImage } from '../../utils/imageProcessing'; 
+import { Upload, X, Image as ImageIcon, DownloadCloud, Camera, Check, Loader2, UploadCloud, Save } from 'lucide-react';
 
 // Parts
 import SessionHeader from './parts/SessionHeader';
@@ -18,7 +20,8 @@ import ScreenshotModal from './modals/ScreenshotModal';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import ColumnConfigEditor from '../shared/ColumnConfigEditor';
 import AddColumnModal from './modals/AddColumnModal';
-import SessionExitModal from './modals/SessionExitModal'; // New Import
+import SessionExitModal from './modals/SessionExitModal';
+import PhotoGalleryModal from './modals/PhotoGalleryModal';
 
 interface SessionViewProps {
   session: GameSession;
@@ -29,22 +32,11 @@ interface SessionViewProps {
   onUpdateSession: (session: GameSession) => void;
   onUpdateTemplate: (template: GameTemplate) => void;
   onUpdatePlayerHistory: (name: string) => void;
-  onUpdateImage: (img: string) => void; 
+  onUpdateImage: (img: string | Blob) => void; 
   onExit: () => void;
   onResetScores: () => void;
-  onSaveToHistory: () => void; // New Prop
+  onSaveToHistory: () => void;
 }
-
-// Convert Base64 to Blob for uploading
-const base64ToBlob = (base64: string, mimeType: string = 'image/jpeg'): Blob => {
-  const byteString = atob(base64.split(',')[1]);
-  const ab = new ArrayBuffer(byteString.length);
-  const ia = new Uint8Array(ab);
-  for (let i = 0; i < byteString.length; i++) {
-    ia[i] = byteString.charCodeAt(i);
-  }
-  return new Blob([ab], { type: mimeType });
-};
 
 const SessionView: React.FC<SessionViewProps> = (props) => {
   const { session, template, zoomLevel, baseImage, onUpdateImage, onUpdateTemplate } = props;
@@ -52,50 +44,65 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const sessionState = useSessionState(props);
   const eventHandlers = useSessionEvents(props, sessionState);
   const { showToast } = useToast();
-  const { handleBackup, downloadCloudImage, isSyncing, isAutoConnectEnabled } = useGoogleDrive();
+  const { downloadCloudImage, isAutoConnectEnabled, isConnected, connectToCloud } = useGoogleDrive();
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null); // For background image
+  const photoInputRef = useRef<HTMLInputElement>(null); // For Camera (capture=environment)
+  const galleryInputRef = useRef<HTMLInputElement>(null); // For Upload (no capture)
   
   // Modal State
   const [showImageUploadModal, setShowImageUploadModal] = useState(false);
-  // Replaced simple boolean with custom modal
   const [showSessionExitModal, setShowSessionExitModal] = useState(false);
+  const [showPhotoGallery, setShowPhotoGallery] = useState(false);
+  
+  // Photo Upload State - Now stores Blob URL for preview
+  const [previewPhotoBlob, setPreviewPhotoBlob] = useState<Blob | null>(null);
+  const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
+  const [isSavingPhoto, setIsSavingPhoto] = useState(false); 
 
   const hasPromptedRef = useRef(false);
 
-  const handleCloudDownload = useCallback(async () => {
-      if (template.cloudImageId) {
-          const imgBase64 = await downloadCloudImage(template.cloudImageId);
-          if (imgBase64) {
-              onUpdateImage(imgBase64);
-              return true;
-          }
-      }
-      return false;
-  }, [template.cloudImageId, downloadCloudImage, onUpdateImage]);
-
+  // Clean up preview URL when modal closes or changes
   useEffect(() => {
+      return () => {
+          if (previewPhotoUrl) URL.revokeObjectURL(previewPhotoUrl);
+      };
+  }, [previewPhotoUrl]);
+
+  // [Offline-First Logic] Background Image Loader
+  useEffect(() => {
+      // 1. If we already have a baseImage (loaded from Local DB by useAppData), we are good.
       if (baseImage) return;
+
       const hasBackgroundDesign = !!template.globalVisuals || !!template.hasImage;
       if (!hasBackgroundDesign) return;
+      
+      // Prevent double prompting
       if (hasPromptedRef.current) return;
       hasPromptedRef.current = true;
 
-      if (template.cloudImageId) {
-          // [修正] 只有在「已啟用自動連線」且「目前已授權(有Token)」時，才自動下載圖片。
-          // 這避免了在離線或未登入狀態下，進入計分板時跳出登入視窗或錯誤提示。
-          if (isAutoConnectEnabled && googleDriveService.isAuthorized) {
-              handleCloudDownload().then(success => {
-                  if (!success) setShowImageUploadModal(true);
-              });
+      // 2. If no local image, check Cloud Link
+      const checkCloud = async () => {
+          if (template.cloudImageId) {
+              // 2a. If Auto-Connect is ON and Authorized -> Try silent download
+              if (isAutoConnectEnabled && googleDriveService.isAuthorized) {
+                  // downloadCloudImage now returns Blob (or null)
+                  const imgBlob = await downloadCloudImage(template.cloudImageId);
+                  if (imgBlob) {
+                      onUpdateImage(imgBlob); // This will save to Local DB automatically via useAppData
+                      return;
+                  }
+              }
+              // 2b. If not connected OR download failed -> Prompt User
+              setShowImageUploadModal(true);
           } else {
-              // 若未連線，直接顯示上傳視窗 (使用者可在此視窗手動點擊「從雲端下載」來觸發登入)
+              // 3. No Cloud Link -> Prompt User (Upload / Photo)
               setShowImageUploadModal(true);
           }
-      } else {
-          setShowImageUploadModal(true);
-      }
-  }, [baseImage, template.globalVisuals, template.hasImage, template.cloudImageId, handleCloudDownload, isAutoConnectEnabled]);
+      };
+      
+      checkCloud();
+  }, [baseImage, template.globalVisuals, template.hasImage, template.cloudImageId, downloadCloudImage, isAutoConnectEnabled, onUpdateImage]);
 
   const {
     editingCell,
@@ -103,7 +110,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     editingColumn,
     isEditingTitle,
     showResetConfirm,
-    showExitConfirm, // Kept for event handler compatibility, but we intercept it
+    showExitConfirm, 
     columnToDelete,
     isAddColumnModalOpen,
     showShareMenu,
@@ -115,11 +122,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   const { setUiState } = sessionState;
 
-  // Intercept the showExitConfirm state from useSessionEvents/State
-  // If it becomes true, we decide whether to show the new modal or just exit
+  // Intercept exit logic
   useEffect(() => {
       if (showExitConfirm) {
-          // Reset the flag immediately so we handle it ourselves
           setUiState(prev => ({ ...prev, showExitConfirm: false }));
           
           const hasScores = session.players.some(p => Object.keys(p.scores).length > 0);
@@ -133,57 +138,129 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   const isPanelOpen = editingCell !== null || editingPlayerId !== null;
   
-  // Winner Calculation Logic based on ScoringRule
+  // Winners Logic - Updated for Force Loss and Tie Breaker
   const rule = session.scoringRule || 'HIGHEST_WINS';
   let winners: string[] = [];
+  
+  const validPlayers = session.players.filter(p => !p.isForceLost);
+  
+  if (validPlayers.length > 0) {
+      let targetScore: number;
+      if (rule === 'HIGHEST_WINS') {
+          targetScore = Math.max(...validPlayers.map(pl => pl.totalScore));
+      } else if (rule === 'LOWEST_WINS') {
+          targetScore = Math.min(...validPlayers.map(pl => pl.totalScore));
+      } else {
+          // COOP or NO_SCORE modes typically don't have single winners, 
+          // but if we treat them as highest wins for now:
+          targetScore = Math.max(...validPlayers.map(pl => pl.totalScore));
+      }
 
-  if (rule === 'HIGHEST_WINS') {
-      const maxScore = Math.max(...session.players.map(pl => pl.totalScore));
-      winners = session.players.filter(p => p.totalScore === maxScore).map(p => p.id);
-  } else if (rule === 'LOWEST_WINS') {
-      const minScore = Math.min(...session.players.map(pl => pl.totalScore));
-      winners = session.players.filter(p => p.totalScore === minScore).map(p => p.id);
+      // 1. Find all players with the target score
+      const candidates = validPlayers.filter(p => p.totalScore === targetScore);
+      
+      // 2. Check for Tie Breaker
+      const hasTieBreaker = candidates.some(p => p.tieBreaker);
+      
+      if (hasTieBreaker) {
+          // Only players with tieBreaker flag win
+          winners = candidates.filter(p => p.tieBreaker).map(p => p.id);
+      } else {
+          // All candidates win (Shared Victory)
+          winners = candidates.map(p => p.id);
+      }
   }
   
+  // Handle Background Image Upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-          if (ev.target?.result) {
-              const imgData = ev.target.result as string;
-              onUpdateImage(imgData); 
-              setShowImageUploadModal(false);
-              
-              // [Cloud Trigger 2] Take Photo -> Upload to Session Folder
-              // Only upload if connected and auto-connect enabled
-              if (isAutoConnectEnabled && googleDriveService.isAuthorized) {
-                  try {
-                      // Ensure folder exists (Create if missing)
-                      let folderId = session.cloudFolderId;
-                      if (!folderId) {
-                          // Lazy Creation: Create folder now
-                          folderId = await googleDriveService.createActiveSessionFolder(template.name, session.id);
-                          
-                          // [CRITICAL FIX]
-                          // Must update local session state immediately so parent useAppData knows the ID exists.
-                          // Otherwise subsequent saves (like exitSession) might create a duplicate folder.
-                          const updatedSession = { ...session, cloudFolderId: folderId };
-                          props.onUpdateSession(updatedSession);
-                      }
-                      
-                      const blob = base64ToBlob(imgData);
-                      await googleDriveService.uploadFileToFolder(folderId, 'photo.jpg', 'image/jpeg', blob);
-                      showToast({ message: "照片已上傳至雲端", type: 'success' });
-                  } catch (e) {
-                      console.error("Failed to upload photo:", e);
-                      showToast({ message: "照片上傳失敗", type: 'warning' });
-                  }
-              }
-          }
-      };
-      reader.readAsDataURL(file);
+      // Use Blob flow directly
+      const objectUrl = URL.createObjectURL(file);
+      
+      compressAndResizeImage(objectUrl, 1, 1920)
+        .then(compressedBlob => {
+            // Pass Blob to hook -> saves to DB
+            onUpdateImage(compressedBlob); 
+            setShowImageUploadModal(false);
+            URL.revokeObjectURL(objectUrl);
+        })
+        .catch(err => {
+            console.error("Compression failed", err);
+            showToast({ message: "圖片處理失敗", type: 'error' });
+            URL.revokeObjectURL(objectUrl);
+        });
     }
+  };
+
+  // Handle Photo Taking OR Gallery Selection (Session Documentation)
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          const objectUrl = URL.createObjectURL(file);
+          
+          compressAndResizeImage(objectUrl, 1, 1920)
+            .then(compressedBlob => {
+                setPreviewPhotoBlob(compressedBlob);
+                setPreviewPhotoUrl(URL.createObjectURL(compressedBlob));
+                setUiState(prev => ({ ...prev, showShareMenu: false }));
+                // Temporarily hide gallery if open, so user sees confirm modal clearly
+                if (showPhotoGallery) setShowPhotoGallery(false);
+                URL.revokeObjectURL(objectUrl);
+            })
+            .catch(err => {
+                console.error("Compression failed", err);
+                showToast({ message: "圖片處理失敗", type: 'error' });
+                URL.revokeObjectURL(objectUrl);
+            });
+      }
+      e.target.value = '';
+  };
+
+  const handleConfirmSavePhoto = async () => {
+      if (!previewPhotoBlob) return;
+      
+      setIsSavingPhoto(true);
+      try {
+          // Save to Local DB directly using Blob
+          const savedImg = await imageService.saveImage(previewPhotoBlob, session.id, 'session');
+          
+          // Update Session State with Local Image ID
+          const currentPhotos = session.photos || [];
+          const updatedSession = { 
+              ...session, 
+              photos: [...currentPhotos, savedImg.id] 
+          };
+          props.onUpdateSession(updatedSession);
+
+          showToast({ message: "照片已儲存至本機", type: 'success' });
+          setPreviewPhotoBlob(null);
+          setPreviewPhotoUrl(null);
+          
+          // Re-open gallery to show new photo
+          setShowPhotoGallery(true);
+      } catch (e) {
+          console.error("Photo save failed:", e);
+          showToast({ message: "儲存失敗，請重試", type: 'error' });
+      } finally {
+          setIsSavingPhoto(false);
+      }
+  };
+
+  const handleDeletePhoto = async (id: string) => {
+      try {
+          await imageService.deleteImage(id);
+          const currentPhotos = session.photos || [];
+          const updatedSession = { 
+              ...session, 
+              photos: currentPhotos.filter(pid => pid !== id) 
+          };
+          props.onUpdateSession(updatedSession);
+          showToast({ message: "照片已刪除", type: 'info' });
+      } catch (e) {
+          console.error("Delete failed", e);
+          showToast({ message: "刪除失敗", type: 'error' });
+      }
   };
 
   const handleSkipImage = () => {
@@ -195,9 +272,25 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       setUiState(prev => ({ ...prev, showShareMenu: false }));
   };
 
+  const handleOpenGallery = () => {
+      setShowPhotoGallery(true);
+      setUiState(prev => ({ ...prev, showShareMenu: false }));
+  };
+
+  // [Interactive] Manual Cloud Download Trigger
   const handleModalCloudDownload = async () => {
-      const success = await handleCloudDownload();
-      if (success) {
+      if (!template.cloudImageId) return;
+
+      // 1. Ensure Connection
+      if (!isConnected) {
+          const success = await connectToCloud();
+          if (!success) return; 
+      }
+
+      // 2. Download
+      const imgBlob = await downloadCloudImage(template.cloudImageId);
+      if (imgBlob) {
+          onUpdateImage(imgBlob); // Saves to local DB
           setShowImageUploadModal(false);
       }
   };
@@ -301,6 +394,48 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onSaveHistory={props.onSaveToHistory}
       />
 
+      {/* Photo Preview & Confirm Modal */}
+      {previewPhotoUrl && (
+          <div className="fixed inset-0 z-[90] bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-200">
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 w-full max-w-sm shadow-2xl flex flex-col gap-4">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                      <h3 className="text-lg font-bold text-white flex items-center gap-2"><Camera size={20} className="text-emerald-500"/> 照片預覽</h3>
+                      <button onClick={() => { setPreviewPhotoBlob(null); setPreviewPhotoUrl(null); setShowPhotoGallery(true); }} className="text-slate-500 hover:text-white"><X size={20}/></button>
+                  </div>
+                  <div className="relative aspect-[4/3] bg-black rounded-lg overflow-hidden border border-slate-700">
+                      <img src={previewPhotoUrl} alt="Preview" className="w-full h-full object-contain" />
+                  </div>
+                  <div className="flex gap-2">
+                      <button 
+                        onClick={() => { setPreviewPhotoBlob(null); setPreviewPhotoUrl(null); setShowPhotoGallery(true); }} 
+                        className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition-colors"
+                        disabled={isSavingPhoto}
+                      >
+                          取消
+                      </button>
+                      <button 
+                        onClick={handleConfirmSavePhoto} 
+                        className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-wait"
+                        disabled={isSavingPhoto}
+                      >
+                          {isSavingPhoto ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                          {isSavingPhoto ? '儲存中...' : '確認儲存'}
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Photo Gallery Modal */}
+      <PhotoGalleryModal 
+        isOpen={showPhotoGallery}
+        onClose={() => setShowPhotoGallery(false)}
+        photoIds={session.photos || []}
+        onUploadPhoto={() => galleryInputRef.current?.click()}
+        onTakePhoto={() => photoInputRef.current?.click()}
+        onDeletePhoto={handleDeletePhoto}
+      />
+
       {/* Missing Image Modal */}
       {showImageUploadModal && (
           <div 
@@ -332,7 +467,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
                         onClick={handleModalCloudDownload} 
                         className="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 mt-2"
                       >
-                          <DownloadCloud size={20} /> 從雲端下載
+                          <DownloadCloud size={20} /> 
+                          {isConnected ? "從雲端下載" : "連線並下載"}
                       </button>
                   )}
 
@@ -370,6 +506,12 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         />
       )}
 
+      {/* Hidden inputs for photos */}
+      {/* 1. Camera Input (capture=environment) */}
+      <input ref={photoInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoSelect} />
+      {/* 2. Gallery Upload Input (no capture) */}
+      <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoSelect} />
+
       {/* --- Main UI --- */}
       <SessionHeader
         templateName={template.name}
@@ -384,21 +526,16 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onAddColumn={() => setUiState(prev => ({ ...prev, isAddColumnModalOpen: true }))}
         onReset={() => setUiState(prev => ({ ...prev, showResetConfirm: true }))}
         onExit={() => {
-            // [Bug Fix] Race condition when exiting while editing a ghost number.
-            // If we are editing, we must first close the panel (triggering auto-commit),
-            // and delay the exit confirmation slightly to allow the session state to update.
             const { editingCell, editingPlayerId } = sessionState.uiState;
             const needsCommit = editingCell !== null || editingPlayerId !== null;
 
             if (needsCommit) {
-                // 1. Force close panel (triggers commit in InputPanel cleanup)
                 setUiState(prev => ({ 
                     ...prev, 
                     editingCell: null,
                     editingPlayerId: null,
                     previewValue: 0
                 }));
-                // 2. Wait for commit & state update to propagate before checking hasScores
                 setTimeout(() => {
                     setUiState(prev => ({ ...prev, showExitConfirm: true }));
                 }, 50);
@@ -416,7 +553,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onScreenshotRequest={handleScreenshotRequest}
         onToggleEditMode={() => setUiState(prev => ({ ...prev, isEditMode: !prev.isEditMode }))}
         onUploadImage={handleManualUploadClick} 
-        onCloudDownload={handleCloudDownload} 
+        onCloudDownload={handleModalCloudDownload} 
+        onOpenGallery={handleOpenGallery}
+        photoCount={session.photos?.length || 0}
       />
       
       <div 
@@ -461,6 +600,12 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         isHidden={isInputFocused}
         template={template}
         baseImage={baseImage || undefined} 
+        // Pass editingCell to check if user is editing a Total cell
+        editingCell={editingCell}
+        // Pass previewValue for total cell live preview
+        previewValue={previewValue}
+        // Handler for Total Click
+        onTotalClick={(playerId) => eventHandlers.handleCellClick(playerId, '__TOTAL__', { stopPropagation: () => {} } as any)}
       />
 
       <InputPanel
@@ -482,7 +627,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         zoomLevel={zoomLevel}
         layout={screenshotModal.layout}
         baseImage={baseImage || undefined}
-        customWinners={winners} // Pass the calculated winners
+        customWinners={winners} 
       />
     </div>
   );

@@ -21,6 +21,9 @@ interface SessionHeaderProps {
   onToggleEditMode: () => void; // New callback
   onUploadImage?: () => void; // New callback
   onCloudDownload?: () => void; // New callback
+  onOpenGallery?: () => void; // New callback for gallery
+  photoCount?: number;
+  isCloudConnected?: boolean;
 }
 
 const SessionHeader: React.FC<SessionHeaderProps> = ({
@@ -40,7 +43,10 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   onScreenshotRequest,
   onToggleEditMode,
   onUploadImage,
-  onCloudDownload
+  onCloudDownload,
+  onOpenGallery,
+  photoCount,
+  isCloudConnected
 }) => {
   const [tempTitle, setTempTitle] = useState('');
 
@@ -122,6 +128,8 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
                 onScreenshotRequest={onScreenshotRequest} 
                 hasVisuals={hasVisuals}
                 onUploadImage={onUploadImage}
+                onOpenGallery={onOpenGallery}
+                photoCount={photoCount}
             />
         )}
         {showShareMenu && <div className="fixed inset-0 z-40" onClick={() => onShareMenuToggle(false)}></div>}

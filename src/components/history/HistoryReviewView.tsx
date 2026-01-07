@@ -49,15 +49,24 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
 
   // Load cloud image if available in the snapshot
   useEffect(() => {
+      let active = true;
+      let objectUrl: string | null = null;
+
       const loadBackground = async () => {
           if (template.cloudImageId) {
-              const imgData = await downloadCloudImage(template.cloudImageId);
-              if (imgData) {
-                  setBaseImage(imgData);
+              const imgBlob = await downloadCloudImage(template.cloudImageId);
+              if (active && imgBlob) {
+                  objectUrl = URL.createObjectURL(imgBlob);
+                  setBaseImage(objectUrl);
               }
           }
       };
       loadBackground();
+
+      return () => {
+          active = false;
+          if (objectUrl) URL.revokeObjectURL(objectUrl);
+      };
   }, [template.cloudImageId, downloadCloudImage]);
 
   // Layout refs required by ScoreGrid/TotalsBar for syncing

@@ -3,10 +3,14 @@ import { Rect } from '../types';
 
 /**
  * Creates a CSS background-image string (url(...)) from a source image and crop rect.
+ * Note: For small crops (headers/cells), DataURL is acceptable as they are small and many.
  */
 export const cropImageToDataUrl = async (sourceImageSrc: string, rect: Rect): Promise<string> => {
     return new Promise((resolve, reject) => {
         const img = new Image();
+        // [Optimization] Decode in background to avoid UI freeze
+        img.decoding = 'async'; 
+        
         img.onload = () => {
             const canvas = document.createElement('canvas');
             canvas.width = rect.width;
@@ -32,42 +36,24 @@ export const cropImageToDataUrl = async (sourceImageSrc: string, rect: Rect): Pr
 
 /**
  * Smart Texture Cropper
- * Calculates the correct X offset for a specific player index.
- * If the calculated position exceeds the image bounds (with <50% overlap),
- * it wraps around to the beginning using modulo arithmetic.
- * 
- * limitX: Optional right boundary (in pixels) to enforce wrapping before image edge.
  */
 export const getSmartTextureUrl = async (sourceImageSrc: string, baseRect: Rect, playerIndex: number, limitX?: number): Promise<string> => {
     return new Promise((resolve, reject) => {
         const img = new Image();
+        // [Optimization] Decode in background to avoid UI freeze
+        img.decoding = 'async';
+
         img.onload = () => {
             const imgW = img.width;
             const colW = baseRect.width;
             const baseX = baseRect.x;
 
-            // 1. Determine effective width boundary.
-            // If limitX is provided (e.g., from Right Bound), use it. Otherwise use full image width.
             const effectiveW = limitX ? Math.min(imgW, limitX) : imgW;
-
-            // 2. Determine how many valid columns fit within the effective width.
-            // A column is valid if at least 50% of it is within the boundary.
-            // Formula: (Start X of column 'i') + (50% of width) <= Effective Width
-            // (baseX + i * colW) + (colW * 0.5) <= effectiveW
             const maxCols = Math.floor((effectiveW - baseX - (colW * 0.5)) / colW);
-            
-            // Ensure we have at least 1 column (the original one), even if image/limit is weirdly small
-            const validCount = Math.max(1, maxCols + 1); // +1 because index is 0-based
-
-            // 3. Calculate effective index (Wrap around logic)
+            const validCount = Math.max(1, maxCols + 1); 
             const effectiveIndex = playerIndex % validCount;
-            
-            // 4. Calculate target X position
             const targetX = baseX + (effectiveIndex * colW);
 
-            // 5. Handle edge clipping (relative to real image width, not limitX)
-            // Even if valid (>=50% inside limit), the right edge might still be cut off by image edge.
-            // We clamp the width to not exceed image bounds.
             const availableWidth = imgW - targetX;
             const finalWidth = Math.min(colW, availableWidth);
 
@@ -77,22 +63,99 @@ export const getSmartTextureUrl = async (sourceImageSrc: string, baseRect: Rect,
             }
 
             const canvas = document.createElement('canvas');
-            // We maintain the original requested width for the canvas to ensure consistent CSS sizing.
             canvas.width = colW; 
             canvas.height = baseRect.height;
             const ctx = canvas.getContext('2d');
             if (!ctx) { reject(new Error("No context")); return; }
 
-            // Draw the slice, stretching it horizontally if the source is narrower than the target.
             ctx.drawImage(
                 img,
-                targetX, baseRect.y, finalWidth, baseRect.height, // Source: cropped to what's available
-                0, 0, colW, baseRect.height // Destination: always stretch to full column width
+                targetX, baseRect.y, finalWidth, baseRect.height, 
+                0, 0, colW, baseRect.height 
             );
             
             resolve(canvas.toDataURL('image/jpeg', 0.9));
         };
         img.onerror = reject;
         img.src = sourceImageSrc;
+    });
+};
+
+/**
+ * Optimized Smart Compress & Resize (Blob Version)
+ * 
+ * Returns a Blob directly instead of a Base64 string.
+ * This saves ~33% storage space and avoids main-thread freezing during string conversion.
+ */
+export const compressAndResizeImage = async (
+    source: string | Blob, 
+    targetMB: number = 1, 
+    maxWidth: number = 1920
+): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        // [Optimization] Critical for large photos: Perform decoding off the main thread.
+        img.decoding = 'async'; 
+        
+        const srcUrl = typeof source === 'string' ? source : URL.createObjectURL(source);
+
+        img.onload = () => {
+            // Clean up object URL if we created one
+            if (typeof source !== 'string') URL.revokeObjectURL(srcUrl);
+
+            let w = img.width;
+            let h = img.height;
+
+            // 1. Resize Logic (Maintain Aspect Ratio)
+            if (w > maxWidth || h > maxWidth) {
+                const ratio = Math.min(maxWidth / w, maxWidth / h);
+                w = Math.floor(w * ratio);
+                h = Math.floor(h * ratio);
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            
+            if (!ctx) {
+                reject(new Error("Canvas context failed"));
+                return;
+            }
+
+            // This drawImage performs the resizing. 
+            // Since we set canvas dimensions to 'w'/'h' (the smaller target size), 
+            // the memory footprint of the canvas is small.
+            ctx.drawImage(img, 0, 0, w, h);
+
+            // 2. Compress directly to Blob
+            // canvas.toBlob is async and efficient
+            const attemptCompression = (quality: number) => {
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        reject(new Error("Compression failed"));
+                        return;
+                    }
+
+                    // Check size
+                    if (blob.size > targetMB * 1024 * 1024 && quality > 0.5) {
+                        // If still too big, try drastic reduction
+                        attemptCompression(0.5);
+                    } else {
+                        resolve(blob);
+                    }
+                }, 'image/jpeg', quality);
+            };
+
+            // Start with 0.8 quality (sweet spot)
+            attemptCompression(0.8);
+        };
+        
+        img.onerror = (e) => {
+            if (typeof source !== 'string') URL.revokeObjectURL(srcUrl);
+            reject(e);
+        };
+
+        img.src = srcUrl;
     });
 };

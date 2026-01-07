@@ -8,6 +8,7 @@ import { COLORS } from '../colors';
 import { calculatePlayerTotal } from '../utils/scoring';
 import { generateId } from '../utils/idGenerator';
 import { googleDriveService } from '../services/googleDrive';
+import { imageService } from '../services/imageService';
 import { useToast } from './useToast';
 import { migrateTemplate, migrateScores } from '../utils/dataMigration';
 
@@ -70,6 +71,7 @@ export const useAppData = () => {
          createdAt: t.createdAt,
          isPinned: t.isPinned,
          hasImage: t.hasImage, 
+         imageId: t.imageId, // [New] Include Local Image ID
          cloudImageId: t.cloudImageId,
          lastSyncedAt: t.lastSyncedAt,
          description: t.description,
@@ -87,7 +89,6 @@ export const useAppData = () => {
   }, [userTemplatesData.items, prefsMap, mergePrefs]);
   
   // B. Built-in Templates (DB Search + Count + Limit)
-  // [Unified Logic] Apply DB filtering to builtins as requested
   const builtinsData = useLiveQuery(async () => {
       let collection = db.builtins.toCollection(); // Default order
       
@@ -103,7 +104,6 @@ export const useAppData = () => {
   }, [searchQuery], { count: 0, items: [] });
 
   // C. System Overrides (Fetch All Shallow)
-  // We need overrides to merge into the displayed builtins
   const rawDbOverrides = useLiveQuery(async () => {
       return await db.systemOverrides.toArray(list => list.map(t => ({
          id: t.id, 
@@ -112,6 +112,7 @@ export const useAppData = () => {
          createdAt: t.createdAt,
          isPinned: t.isPinned,
          hasImage: t.hasImage, 
+         imageId: t.imageId, // [New]
          cloudImageId: t.cloudImageId,
          lastSyncedAt: t.lastSyncedAt,
          columns: [], 
@@ -129,10 +130,17 @@ export const useAppData = () => {
 
       if (searchQuery.trim()) {
           const lowerQ = searchQuery.toLowerCase();
-          collection = collection.filter(h => 
-              h.gameName.toLowerCase().includes(lowerQ) ||
-              h.players.some(p => p.name.toLowerCase().includes(lowerQ))
-          );
+          collection = collection.filter(h => {
+              if (h.gameName.toLowerCase().includes(lowerQ)) return true;
+              if (h.players.some(p => p.name.toLowerCase().includes(lowerQ))) return true;
+              if (h.location && h.location.toLowerCase().includes(lowerQ)) return true;
+              const d = new Date(h.endTime);
+              const yyyy = d.getFullYear();
+              const mm = String(d.getMonth() + 1).padStart(2, '0');
+              const dd = String(d.getDate()).padStart(2, '0');
+              const dateKeywords = [`${yyyy}`, `${yyyy}-${mm}`, `${yyyy}/${mm}`, `${yyyy}.${mm}`, `${yyyy}${mm}${dd}`, `${mm}-${dd}`, `${mm}/${dd}`];
+              return dateKeywords.some(k => k.includes(lowerQ));
+          });
       }
 
       const count = await collection.count();
@@ -181,8 +189,6 @@ export const useAppData = () => {
   useEffect(() => { localStorage.setItem('sm_new_badge_ids', JSON.stringify(newBadgeIds)); }, [newBadgeIds]);
   useEffect(() => { 
       localStorage.setItem('sm_pinned_ids', JSON.stringify(pinnedIds));
-      // Pins are system config, mark dirty
-      // Note: We check if pinnedIds actually changed in togglePin to avoid loop on mount
   }, [pinnedIds]);
   
   useEffect(() => { 
@@ -202,7 +208,7 @@ export const useAppData = () => {
 
   const clearNewBadges = () => { 
       setNewBadgeIds([]); 
-      markSystemDirty(); // [Bug Fix] Mark dirty to sync read status
+      markSystemDirty();
   };
 
   // --- List Management Actions ---
@@ -239,12 +245,24 @@ export const useAppData = () => {
   // --- 4. Active Session Management ---
   const [currentSession, setCurrentSession] = useState<GameSession | null>(null);
   const [activeTemplate, setActiveTemplate] = useState<GameTemplate | null>(null);
+  
+  // Use a string URL for the UI (created via URL.createObjectURL)
   const [sessionImage, setSessionImage] = useState<string | null>(null);
+  
   const isImageDirtyRef = useRef(false);
   const [sessionPlayerCount, setSessionPlayerCount] = useState<number | null>(null);
   
   const [viewingHistoryRecord, setViewingHistoryRecord] = useState<HistoryRecord | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-revoke Object URL to prevent memory leaks
+  useEffect(() => {
+      return () => {
+          if (sessionImage && sessionImage.startsWith('blob:')) {
+              URL.revokeObjectURL(sessionImage);
+          }
+      };
+  }, [sessionImage]);
 
   useEffect(() => {
     if (!currentSession) return;
@@ -255,7 +273,6 @@ export const useAppData = () => {
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [currentSession]);
 
-  // Helper: Check if cloud features are enabled
   const isCloudEnabled = () => {
       return localStorage.getItem('google_drive_auto_connect') === 'true' && googleDriveService.isAuthorized;
   };
@@ -272,7 +289,6 @@ export const useAppData = () => {
   };
 
   const saveTemplate = async (template: GameTemplate, options: { skipCloud?: boolean, preserveTimestamps?: boolean } = {}) => {
-    // If preserveTimestamps is true (e.g. cloud restore), use existing updatedAt. Otherwise, use current time.
     const finalUpdatedAt = options.preserveTimestamps ? (template.updatedAt || Date.now()) : Date.now();
     const migratedTemplate = migrateTemplate({ ...template, updatedAt: finalUpdatedAt });
     
@@ -282,7 +298,6 @@ export const useAppData = () => {
     } else {
         await db.templates.put(migratedTemplate);
     }
-    // 注意：這裡保留對模板的單獨備份邏輯，因應使用者的「備份」按鈕需求
     if (!options.skipCloud && isCloudEnabled() && !isSystem) {
         googleDriveService.backupTemplate(migratedTemplate).then((updated) => {
             db.templates.update(updated.id, { lastSyncedAt: Date.now() });
@@ -296,8 +311,9 @@ export const useAppData = () => {
       const relatedSessions = await db.sessions.where('templateId').equals(id).toArray();
       if (relatedSessions.length > 0) { await db.sessions.bulkDelete(relatedSessions.map(s => s.id)); }
       await db.templatePrefs.delete(id);
+      await imageService.deleteImagesByRelatedId(id);
+
       if (isCloudEnabled() && templateToDelete) {
-          // [Changed] Use strict type 'template'
           googleDriveService.softDeleteFolder(id, 'template').then(() => {
               showToast({ message: "已同步移至雲端垃圾桶", type: 'info' });
           }).catch(console.error);
@@ -305,14 +321,12 @@ export const useAppData = () => {
   };
 
   const restoreSystemTemplate = async (templateId: string) => {
-      // [Bug Fix] Clean up cloud backup of the override if exists
       const overrideToDelete = await db.systemOverrides.get(templateId);
-      
       await db.systemOverrides.delete(templateId);
       await db.templatePrefs.delete(templateId);
-      
+      await imageService.deleteImagesByRelatedId(templateId);
+
       if (isCloudEnabled() && overrideToDelete) {
-          // [Changed] Use strict type 'template'
           googleDriveService.softDeleteFolder(overrideToDelete.id, 'template').catch(console.error);
       }
   };
@@ -367,9 +381,6 @@ export const useAppData = () => {
     }
 
     const sessionId = generateId();
-    // [Optimization] Lazy Creation: We do NOT create the cloud folder here to prevent UI freeze.
-    // The folder will be created on-demand when the user exits session, uploads a photo, or finishes the game.
-
     const newSession: GameSession = { 
         id: sessionId, 
         templateId: migratedTemplate.id, 
@@ -377,10 +388,23 @@ export const useAppData = () => {
         players: players, 
         status: 'active',
         scoringRule: scoringRule,
-        cloudFolderId: undefined // Intentionally undefined
+        cloudFolderId: undefined, 
+        photos: [] 
     };
     
     isImageDirtyRef.current = false;
+    
+    // [Optimization] Load Image: Fetch Blob directly from DB
+    let loadedImageUrl: string | null = null;
+    if (migratedTemplate.imageId) {
+        const localImg = await imageService.getImage(migratedTemplate.imageId);
+        if (localImg) {
+            // Create a temporary URL for the Blob
+            loadedImageUrl = URL.createObjectURL(localImg.blob);
+        }
+    }
+    
+    setSessionImage(loadedImageUrl);
     setActiveTemplate(migratedTemplate);
     setCurrentSession(newSession);
   };
@@ -395,6 +419,17 @@ export const useAppData = () => {
               session.players = session.players.map((p: any) => ({ 
                   ...p, scores: migrateScores(p.scores, template!) 
               }));
+              
+              // Load Image
+              let loadedImageUrl: string | null = null;
+              if (template.imageId) {
+                  const localImg = await imageService.getImage(template.imageId);
+                  if (localImg) {
+                      loadedImageUrl = URL.createObjectURL(localImg.blob);
+                  }
+              }
+
+              setSessionImage(loadedImageUrl);
               setActiveTemplate(template);
               setCurrentSession(session);
               return true;
@@ -410,13 +445,11 @@ export const useAppData = () => {
   const discardSession = async (templateId: string) => {
       const session = activeSessions?.find(s => s.templateId === templateId);
       if (session) {
-          // [Bug Fix] Scenario 5: Sync delete from cloud when discarding active session
-          // [Correction] Move to Trash instead of hard delete
           if (session.cloudFolderId && isCloudEnabled()) {
-              // [Changed] Use strict type 'active'
               googleDriveService.softDeleteFolder(session.cloudFolderId, 'active').catch(console.error);
           }
           await db.sessions.delete(session.id);
+          await imageService.deleteImagesByRelatedId(session.id);
       }
       if (currentSession?.templateId === templateId) { setCurrentSession(null); setActiveTemplate(null); }
   };
@@ -424,12 +457,9 @@ export const useAppData = () => {
   const clearAllActiveSessions = async () => {
       const activeIds = activeSessions?.map(s => s.id) || [];
       if (activeIds.length > 0) {
-          // [Feature] Cloud Sync: Move all existing cloud folders to trash
-          // This runs in background to avoid blocking UI
           if (isCloudEnabled() && activeSessions) {
               const cloudRemovals = activeSessions
                   .filter(s => s.cloudFolderId)
-                  // [Changed] Use strict type 'active'
                   .map(s => googleDriveService.softDeleteFolder(s.cloudFolderId!, 'active'));
               
               if (cloudRemovals.length > 0) {
@@ -437,6 +467,9 @@ export const useAppData = () => {
               }
           }
           await db.sessions.bulkDelete(activeIds);
+          for (const sId of activeIds) {
+              await imageService.deleteImagesByRelatedId(sId);
+          }
       }
   };
 
@@ -462,28 +495,18 @@ export const useAppData = () => {
 
       const hasScores = currentSession.players.some(p => Object.keys(p.scores).length > 0);
 
-      // [Bug Fix] "Empty Exit" Logic
-      // Check if session is empty BEFORE attempting any cloud creation.
       if (!hasScores) {
-          // If the session is empty, we discard it.
-          // If it happened to have a cloud folder (e.g. user took a photo then deleted all scores), clean it up.
-          // [Correction] Move to Trash instead of hard delete
           if (currentSession.cloudFolderId && isCloudEnabled()) {
-              // [Changed] Use strict type 'active'
               googleDriveService.softDeleteFolder(currentSession.cloudFolderId, 'active').catch(console.error);
           }
           await db.sessions.delete(currentSession.id);
+          await imageService.deleteImagesByRelatedId(currentSession.id);
       } else {
-          // Session has data, save normally.
           await db.sessions.put(currentSession);
-          
-          // [Cloud Trigger 3a] Exit Session (Pause) -> Upload Score JSON
           if (isCloudEnabled()) {
-              // If we have a folder ID, upload. If not, try to find/create it first.
               let folderId = currentSession.cloudFolderId;
               if (!folderId && activeTemplate) {
                   folderId = await googleDriveService.createActiveSessionFolder(activeTemplate.name, currentSession.id);
-                  // Update session with new folder ID
                   await db.sessions.update(currentSession.id, { cloudFolderId: folderId });
               }
 
@@ -495,12 +518,11 @@ export const useAppData = () => {
           }
       }
 
-      // Legacy auto-connect logic for templates: Only sync if explicitly dirtied image or not system
       const isSystem = activeTemplate && !!(await db.builtins.get(activeTemplate.id));
       if (activeTemplate && !isSystem && isCloudEnabled() && isImageDirtyRef.current) {
-          const imageToUpload = sessionImage; // Only if template image changed
-          // This handles TEMPLATE backup, not session
-          googleDriveService.backupTemplate(activeTemplate, imageToUpload).then((updated) => {
+          // If template image was updated (Blob exists in DB), trigger backup
+          // The imageService holds the blob, we just sync metadata
+          googleDriveService.backupTemplate(activeTemplate).then((updated) => {
               db.templates.update(updated.id, { lastSyncedAt: Date.now() });
           }).catch(console.error);
       }
@@ -533,7 +555,7 @@ export const useAppData = () => {
               location: undefined,
               note: '',
               photos: currentSession.photos || [],
-              cloudFolderId: currentSession.cloudFolderId // Inherit Cloud Folder ID
+              cloudFolderId: currentSession.cloudFolderId 
           };
           
           await db.history.put(record); 
@@ -541,23 +563,16 @@ export const useAppData = () => {
           currentSession.players.forEach(p => { updatePlayerHistory(p.name); });
           await db.sessions.delete(currentSession.id);
 
-          // [Cloud Trigger 3b] Save History -> Move Folder to _History
           if (isCloudEnabled()) {
               let folderId = record.cloudFolderId;
               if (!folderId) {
-                  // If playing offline or lazy creation was pending, create folder now
                   folderId = await googleDriveService.createActiveSessionFolder(activeTemplate.name, currentSession.id);
-                  // Update record with folder ID
                   await db.history.update(record.id, { cloudFolderId: folderId });
               }
               
               if (folderId) {
-                  // First, save the FINAL session.json state into the folder before moving
-                  // This ensures the history folder contains the final score data
                   const sessionData = JSON.stringify(record, null, 2);
                   await googleDriveService.uploadFileToFolder(folderId, 'session.json', 'application/json', sessionData);
-                  
-                  // Then move
                   await googleDriveService.moveSessionToHistory(folderId);
               }
           }
@@ -572,11 +587,10 @@ export const useAppData = () => {
 
   const deleteHistoryRecord = async (id: string) => { 
       try {
-          // Fetch record to check for cloud link
           const record = await db.history.get(id);
           await db.history.delete(id);
-          
-          // [Changed] Use strict type 'history'
+          await imageService.deleteImagesByRelatedId(id);
+
           if (isCloudEnabled() && record?.cloudFolderId) {
               googleDriveService.softDeleteFolder(record.cloudFolderId, 'history').catch(console.error);
           }
@@ -604,19 +618,45 @@ export const useAppData = () => {
       }
   };
 
-  const handleUpdateSessionImage = (img: string | null) => {
-      setSessionImage(img);
-      if (img) isImageDirtyRef.current = true;
+  // Modified: Save image directly as Blob from the updated `compressAndResizeImage` logic
+  const handleUpdateSessionImage = async (imgBlobOrUrl: string | Blob | null) => {
+      if (!activeTemplate || !imgBlobOrUrl) {
+          setSessionImage(null);
+          return;
+      }
+      
+      let blob: Blob;
+      
+      // Handle different input types (though with new logic, it should mostly be Blob)
+      if (typeof imgBlobOrUrl === 'string') {
+          // Fallback if still passing DataURL (unlikely with new code)
+          blob = imageService.base64ToBlob(imgBlobOrUrl);
+      } else {
+          blob = imgBlobOrUrl;
+      }
+
+      isImageDirtyRef.current = true;
+      
+      // Save directly
+      const savedImg = await imageService.saveImage(blob, activeTemplate.id, 'template');
+      
+      // Update UI with an Object URL
+      if (sessionImage) URL.revokeObjectURL(sessionImage);
+      setSessionImage(URL.createObjectURL(blob));
+
+      // Update Template with ID
+      const updatedT = { ...activeTemplate, imageId: savedImg.id, hasImage: true };
+      updateActiveTemplate(updatedT); 
   };
 
-  // --- Export System Data for Backup (Including Templates, Overrides, History, Sessions) ---
+  // --- Export System Data ---
   const getSystemExportData = async () => {
       const players = await db.savedPlayers.toArray();
       const locations = await db.savedLocations.toArray();
       const customTemplates = await db.templates.toArray();
       const overrides = await db.systemOverrides.toArray();
       const history = await db.history.toArray();
-      const activeSessions = await db.sessions.toArray(); // [New] Fetch Active Sessions
+      const activeSessions = await db.sessions.toArray(); 
       
       return {
           preferences: {
@@ -630,18 +670,16 @@ export const useAppData = () => {
               players,
               locations
           },
-          // Include data for Full Backup
           data: {
               templates: customTemplates,
               overrides: overrides,
               history: history,
-              sessions: activeSessions // [New]
+              sessions: activeSessions
           },
           timestamp: Date.now()
       };
   };
 
-  // [New] Import System Settings (Preferences & Libraries)
   const importSystemSettings = async (settings: any) => {
       try {
           if (settings.preferences) {
@@ -664,8 +702,6 @@ export const useAppData = () => {
 
           if (settings.library) {
               if (Array.isArray(settings.library.players)) {
-                  // Merge players, preferring existing ones if IDs conflict, or just overwriting based on name?
-                  // Using bulkPut to overwrite/merge
                   await db.savedPlayers.bulkPut(settings.library.players);
               }
               if (Array.isArray(settings.library.locations)) {
@@ -678,10 +714,8 @@ export const useAppData = () => {
       }
   };
 
-  // [New] Import Session from Cloud
   const importSession = async (session: GameSession) => {
       try {
-          // Put the session directly into DB.
           await db.sessions.put(session);
           showToast({ message: "遊戲進度已匯入", type: 'success' });
       } catch (e) {
@@ -690,10 +724,8 @@ export const useAppData = () => {
       }
   };
 
-  // [New] Import History Record from Cloud
   const importHistoryRecord = async (record: HistoryRecord) => {
       try {
-          // Put the record directly into DB.
           await db.history.put(record);
           showToast({ message: "歷史紀錄已還原", type: 'success' });
       } catch (e) {
@@ -701,55 +733,49 @@ export const useAppData = () => {
           showToast({ message: "還原失敗", type: 'error' });
       }
   };
+  
+  const saveImage = async (blob: Blob, relatedId: string, type: 'template' | 'session') => {
+      return await imageService.saveImage(blob, relatedId, type);
+  };
+  
+  const loadImage = async (id: string) => {
+      return await imageService.getImage(id);
+  };
 
   return { 
-      // State
       searchQuery,
-      
-      // Data
       templates, 
       userTemplatesCount: userTemplatesData.count,
-      
       systemTemplates, 
       systemTemplatesCount: builtinsData.count,
       systemOverrides,
-      
       activeSessionIds, 
       newBadgeIds, 
       pinnedIds, 
       playerHistory, 
       locationHistory,
-      
       historyRecords: historyData.items,
       historyCount: historyData.count,
-      
       currentSession, activeTemplate, sessionImage, viewingHistoryRecord,
       themeMode, sessionPlayerCount,
-      
-      // Actions
       setSearchQuery,
       setTemplates: () => {}, 
-      setSessionImage: handleUpdateSessionImage, 
+      setSessionImage: handleUpdateSessionImage, // Use new handler
       toggleTheme, togglePin, updatePlayerHistory, 
       updateLocationHistory, 
       clearNewBadges,
-      
       saveTemplate, deleteTemplate, restoreSystemTemplate,
       getTemplate, 
-      
       startSession, updateSession, resetSessionScores, exitSession, 
       resumeSession, discardSession, clearAllActiveSessions, getSessionPreview,
-      
       saveToHistory, deleteHistoryRecord, viewHistory,
       updateActiveTemplate,
-      
-      // System Backup Helpers
+      saveImage, loadImage,
       systemDirtyTime,
       getSystemExportData,
-      importSystemSettings, // [New]
+      importSystemSettings, 
       importSession,
       importHistoryRecord, 
-      
       isDbReady 
   };
 };

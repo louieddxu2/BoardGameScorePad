@@ -7,6 +7,7 @@ import { useToast } from '../../hooks/useToast';
 import PhotoScanner from '../scanner/PhotoScanner';
 import TextureMapper from './TextureMapper';
 import { generateId } from '../../utils/idGenerator';
+import { imageService } from '../../services/imageService';
 
 interface TemplateEditorProps {
   onSave: (template: GameTemplate) => void;
@@ -32,7 +33,8 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
   
   // Data State
   const [scannerState, setScannerState] = useState<ScannerState | null>(null); // Stores raw image & points
-  const [rectifiedImage, setRectifiedImage] = useState<string | null>(null); // Stores final cropped image for Mapper
+  const [rectifiedImage, setRectifiedImage] = useState<string | null>(null); // Stores final cropped image URL for Mapper
+  const [rectifiedBlob, setRectifiedBlob] = useState<Blob | null>(null); // Stores the actual Blob to save
 
   const { showToast } = useToast();
 
@@ -103,7 +105,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
     setShowScanner(true);
   };
 
-  const handleScannerConfirm = (result: { processed: string, raw: string, points: {x:number, y:number}[] }) => {
+  const handleScannerConfirm = (result: { processed: string, raw: string, points: {x:number, y:number}[], blob?: Blob }) => {
       if (!name.trim()) {
           showToast({ message: "請先輸入計分板名稱", type: 'warning' });
           return;
@@ -111,6 +113,9 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
       // Save state for potential restoration
       setScannerState({ raw: result.raw, points: result.points });
       setRectifiedImage(result.processed);
+      if (result.blob) {
+          setRectifiedBlob(result.blob);
+      }
       setShowScanner(false);
   };
 
@@ -120,11 +125,22 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
       setShowScanner(true);
   };
 
-  const handleTextureSave = (newTemplate: GameTemplate) => {
-      onSave(newTemplate);
-      // Clear all temp states
-      setRectifiedImage(null);
-      setScannerState(null);
+  const handleTextureSave = async (newTemplate: GameTemplate) => {
+      try {
+          if (rectifiedBlob) {
+              const savedImg = await imageService.saveImage(rectifiedBlob, newTemplate.id, 'template');
+              newTemplate.imageId = savedImg.id;
+              newTemplate.hasImage = true;
+          }
+          onSave(newTemplate);
+          // Clear all temp states
+          setRectifiedImage(null);
+          setRectifiedBlob(null);
+          setScannerState(null);
+      } catch (e) {
+          console.error("Failed to save texture image", e);
+          showToast({ message: "圖片儲存失敗，請重試", type: 'error' });
+      }
   };
   
   // --- Conditional Renders ---

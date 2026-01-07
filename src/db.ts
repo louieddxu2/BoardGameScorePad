@@ -1,6 +1,6 @@
 
 import Dexie, { Table } from 'dexie';
-import { GameTemplate, GameSession, TemplatePreference, HistoryRecord, SavedListItem } from './types';
+import { GameTemplate, GameSession, TemplatePreference, HistoryRecord, SavedListItem, LocalImage } from './types';
 import { generateId } from './utils/idGenerator';
 
 export class ScorePadDatabase extends Dexie {
@@ -12,6 +12,7 @@ export class ScorePadDatabase extends Dexie {
   history!: Table<HistoryRecord>; // 歷史紀錄表
   savedPlayers!: Table<SavedListItem>; // [v4] 儲存的玩家清單
   savedLocations!: Table<SavedListItem>; // [v4] 儲存的地點清單
+  images!: Table<LocalImage>; // [v7] 離線圖片儲存
 
   constructor() {
     super('BoardGameScorePadDB');
@@ -69,6 +70,11 @@ export class ScorePadDatabase extends Dexie {
         if (migratedRecords.length > 0) {
             await trans.table('history').bulkAdd(migratedRecords);
         }
+    });
+
+    // Version 7: 新增 images 表
+    (this as any).version(7).stores({
+        images: 'id, relatedId, relatedType, createdAt' // 索引：ID, 關聯ID (查詢用), 類型, 時間
     });
   }
 }

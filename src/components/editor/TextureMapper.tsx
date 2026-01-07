@@ -189,21 +189,37 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
   };
 
   const addLine = (type: 'h') => {
-    // Add lines relative to the visible area (within gridBounds)
     if (type === 'h') setHLines(prev => { 
-        const visibleRange = gridBounds.bottom - gridBounds.top;
-        const offset = gridBounds.top;
-        // Default position logic
-        const sorted = [...prev].sort((a, b) => a - b); 
-        let newPos = offset + (visibleRange / 2); // Fallback center
+        // 1. 取得所有參考線 (頂部邊界 + 內部線條)，排除底部邊界
+        const refLines = [gridBounds.top, ...prev].sort((a, b) => a - b);
         
-        if (sorted.length > 0) {
-             const lastLine = sorted[sorted.length - 1];
-             if (lastLine < gridBounds.bottom - 5) {
-                 newPos = lastLine + 5;
-             }
+        let nextPos;
+
+        if (refLines.length >= 2) {
+            // 2. 抓取最後兩條線的間距
+            const last = refLines[refLines.length - 1];
+            const secondLast = refLines[refLines.length - 2];
+            const gap = last - secondLast;
+            
+            // 3. 預測下一條線的位置
+            nextPos = last + gap;
+        } else {
+            // 初始狀態 fallback
+            nextPos = gridBounds.top + (gridBounds.bottom - gridBounds.top) / (initialColumnCount + 1);
         }
-        return [...prev, newPos].sort((a, b) => a - b); 
+
+        // 4. 邊界檢查：若超出底部邊界，則改為取剩餘空間的一半
+        if (nextPos >= gridBounds.bottom - 0.5) {
+            const lastLine = refLines[refLines.length - 1];
+            nextPos = lastLine + (gridBounds.bottom - lastLine) / 2;
+        }
+
+        // 確保數值有效
+        if (Number.isNaN(nextPos) || nextPos <= gridBounds.top) {
+             nextPos = (gridBounds.top + gridBounds.bottom) / 2;
+        }
+
+        return [...prev, nextPos].sort((a, b) => a - b); 
     });
   };
   const deleteLine = (type: 'h', index: number) => { 

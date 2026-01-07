@@ -111,6 +111,12 @@ export interface Player {
   color: string;
   scores: Record<string, ScoreValue>; 
   totalScore: number;
+  isStarter?: boolean; // New: Starting player marker
+  
+  // New: Total Score Adjustment Logic
+  bonusScore?: number; // Manually added bonus/penalty to total
+  tieBreaker?: boolean; // Wins ties
+  isForceLost?: boolean; // Cannot win regardless of score
 }
 
 export type ScoringRule = 'HIGHEST_WINS' | 'LOWEST_WINS' | 'COOP' | 'COMPETITIVE_NO_SCORE' | 'COOP_NO_SCORE';
@@ -123,6 +129,18 @@ export interface TemplatePreference {
   updatedAt?: number;
 }
 
+// [New Interface] Local Image Storage
+export interface LocalImage {
+  id: string;          // UUID
+  relatedId: string;   // Template ID or Session ID
+  relatedType: 'template' | 'session';
+  blob: Blob;          // Binary data
+  mimeType: string;
+  createdAt: number;
+  cloudId?: string;    // Google Drive File ID (for sync mapping)
+  isSynced?: boolean;  // Whether it has been uploaded
+}
+
 export interface GameTemplate {
   id: string;
   name: string;
@@ -133,7 +151,8 @@ export interface GameTemplate {
   lastSyncedAt?: number; 
   isPinned?: boolean; 
   hasImage?: boolean;
-  cloudImageId?: string; 
+  imageId?: string;       // [Offline] ID pointing to LocalImage table
+  cloudImageId?: string;  // [Cloud] ID pointing to Google Drive
   globalVisuals?: GlobalVisuals;
   lastPlayerCount?: number; // 兼容舊資料，優先使用 TemplatePreference
   defaultScoringRule?: ScoringRule; // 兼容舊資料，優先使用 TemplatePreference
@@ -146,7 +165,7 @@ export interface GameSession {
   players: Player[];
   status: 'active' | 'completed';
   scoringRule?: ScoringRule; // 當次遊戲的勝利條件
-  photos?: string[]; // [Cloud] 關聯的照片檔案 ID 或檔名
+  photos?: string[]; // List of LocalImage IDs (Session Photos)
   cloudFolderId?: string; // [Cloud] 在 Google Drive 上的資料夾 ID (位於 _Active 或 _History)
 }
 
@@ -162,7 +181,7 @@ export interface HistoryRecord {
   snapshotTemplate: GameTemplate; // [關鍵] 完整的模板快照 (含欄位、圖片ID等)
   location?: string; // 地點
   note?: string; // 筆記
-  photos?: string[]; // [Cloud] 關聯的照片檔案 ID 或檔名
+  photos?: string[]; // List of LocalImage IDs
   cloudFolderId?: string; // [Cloud] 備份資料夾 ID
 }
 

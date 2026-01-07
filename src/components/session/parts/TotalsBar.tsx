@@ -16,7 +16,11 @@ interface TotalsBarProps {
   isHidden?: boolean;
   // Needs template to access global visuals
   template?: GameTemplate; 
-  baseImage?: string; // New Prop
+  baseImage?: string; 
+  // New Props for interactivity
+  editingCell?: { playerId: string, colId: string } | null;
+  previewValue?: any;
+  onTotalClick?: (playerId: string) => void;
 }
 
 const TotalsBar: React.FC<TotalsBarProps> = ({
@@ -28,7 +32,10 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
   contentRef,
   isHidden = false,
   template,
-  baseImage
+  baseImage,
+  editingCell,
+  previewValue,
+  onTotalClick
 }) => {
   const [labelBgUrl, setLabelBgUrl] = useState<string | null>(null);
   const [imageDims, setImageDims] = useState<{width: number, height: number} | null>(null);
@@ -132,6 +139,10 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
                 rect={template?.globalVisuals?.totalRowRect}
                 // Pass right mask boundary for limit calculation
                 limitX={template?.globalVisuals?.rightMaskRect?.x}
+                // Interactive Props
+                isActive={editingCell?.colId === '__TOTAL__' && editingCell?.playerId === p.id}
+                previewValue={editingCell?.colId === '__TOTAL__' && editingCell?.playerId === p.id ? previewValue : undefined}
+                onClick={() => onTotalClick && onTotalClick(p.id)}
             />
           ))}
         </div>
