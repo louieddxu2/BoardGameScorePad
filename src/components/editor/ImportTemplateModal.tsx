@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { GameTemplate } from '../../types';
 import { Search, X } from 'lucide-react';
@@ -32,7 +33,10 @@ const ImportTemplateModal: React.FC<ImportTemplateModalProps> = ({ allTemplates,
                     {filtered.map(t => (
                         <button key={t.id} onClick={() => onSelect(t)} className="w-full text-left p-3 rounded-lg hover:bg-slate-800 transition-colors">
                             <h4 className="font-bold text-white">{t.name}</h4>
-                            <p className="text-xs text-slate-400">{t.columns.length}個項目</p>
+                            <p className="text-xs text-slate-400">
+                                {/* Use injected property if available, fallback to length if full object */}
+                                {(t as any).columnCount ?? t.columns.length}個項目
+                            </p>
                         </button>
                     ))}
                 </div>

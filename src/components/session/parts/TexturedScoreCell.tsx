@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Player, ScoreColumn, ScoreValue } from '../../../types';
-import { calculateColumnScore, getAutoColumnError } from '../../../utils/scoring';
+import { calculateColumnScore, getAutoColumnError, resolveSelectOption } from '../../../utils/scoring';
 import { getSmartTextureUrl } from '../../../utils/imageProcessing';
 import SmartTextureLayer from './SmartTextureLayer';
 import { Link2Off, AlertTriangle } from 'lucide-react';
@@ -66,6 +66,12 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
   // Auto columns always show value if they are calculated
   const hasInput = column.isAuto ? true : parts.length > 0;
   
+  // [Internal Logic] If we have a valid texture configuration, we override the default minHeight.
+  // This allows the row height to be governed solely by the Header Block's aspect ratio,
+  // preventing the "3rem" default from stretching the row unnecessarily.
+  const hasTexture = !!(baseImage && rect);
+  const effectiveMinHeight = hasTexture ? '0px' : minHeight;
+
   useEffect(() => {
     let isMounted = true;
     getSmartTextureUrl(baseImage, rect, playerIndex, limitX).then((url) => {
@@ -97,13 +103,63 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
   
   // Custom Layout Wrapper
   if (column.contentLayout) {
+      // Determine what content to show based on column settings
+      let layoutContent: React.ReactNode = null;
+      
+      const isSumParts = (column.formula || '').includes('+next');
+      const isPartsOnly = isSumParts && column.showPartsInGrid === 'parts_only';
+      const isSelectList = column.inputType === 'clicker' && !isSumParts;
+      const isLabelOnly = isSelectList && column.renderMode === 'label_only';
+
+      if (hasInput) {
+          if (autoError) {
+              layoutContent = 'ERR';
+          } else if (isPartsOnly) {
+              // Parts Only Mode (List)
+              // Logic: Font size calculates based on container height (cqh)
+              // Formula: 100cqh / items_count * 0.9 (safety margin)
+              // Clamped: Max 1.3rem (normal size), Min calculated dynamically
+              const count = Math.max(1, parts.length);
+              const dynamicFontSize = `min(1.3rem, calc((100cqh / ${count}) * 0.9))`;
+              
+              layoutContent = (
+                  <div className="flex flex-col items-center justify-center w-full h-full leading-none overflow-hidden">
+                      {parts.map((p, i) => (
+                          <span key={i} className="font-bold tracking-tight truncate w-full text-center" style={{ ...inkStyle, fontSize: dynamicFontSize }}>
+                              {formatDisplayNumber(p)}
+                          </span>
+                      ))}
+                  </div>
+              );
+          } else if (isLabelOnly) {
+              // Label Only Mode
+              const option = resolveSelectOption(column, scoreValue);
+              const labelColor = option?.color || column.color || 'rgba(28, 35, 51, 0.90)';
+              layoutContent = (
+                   <span 
+                      className="text-lg font-bold text-center leading-tight whitespace-pre-wrap break-words w-full" 
+                      style={{ ...inkStyle, color: labelColor }}
+                   >
+                      {option ? option.label : ''}
+                   </span>
+              );
+          } else {
+              // Default: Numeric Score
+              layoutContent = (
+                  <span className="text-xl font-bold tracking-tight leading-none" style={inkStyle}>
+                      {formatDisplayNumber(displayScore)}
+                  </span>
+              );
+          }
+      }
+
       return (
         <div 
             onClick={undefined} 
-            className={`player-col-${player.id} w-full self-stretch relative cursor-default select-none overflow-hidden transition-all pointer-events-none`}
+            className={`player-col-${player.id} w-full h-full relative cursor-default select-none overflow-hidden transition-all pointer-events-none`}
             style={{
                 backgroundColor: '#e2e8f0', 
-                minHeight: minHeight, 
+                minHeight: effectiveMinHeight, 
             }}
         >
             <SmartTextureLayer bgUrl={bgUrl} rect={rect} />
@@ -124,16 +180,16 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                     top: `${column.contentLayout.y}%`,
                     width: `${column.contentLayout.width}%`,
                     height: `${column.contentLayout.height}%`,
-                }}
+                    containerType: 'size', // [Key Feature] Enable Container Queries
+                } as React.CSSProperties}
             >
                 {column.isAuto && autoError && (
                     <div className="absolute -top-3 -right-3 text-rose-500 z-20 drop-shadow-md">
                         {autoError === 'missing_dependency' ? <Link2Off size={16} /> : <AlertTriangle size={16} />}
                     </div>
                 )}
-                <span className="text-xl font-bold tracking-tight leading-none" style={inkStyle}>
-                    {hasInput ? (autoError ? 'ERR' : formatDisplayNumber(displayScore)) : ''}
-                </span>
+                {/* Render the determined content directly */}
+                {layoutContent}
             </div>
             <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(0,0,0,0.05)] pointer-events-none z-10" />
         </div>
@@ -142,10 +198,10 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
 
   const isSumParts = (column.formula || '').includes('+next');
   const isSelectList = column.inputType === 'clicker' && !isSumParts;
-  const isProduct = column.formula === 'a1×a2';
+  const isLookup = (column.formula || '').startsWith('f1') || !!column.functions;
 
   const renderContent = () => {
-      // Auto Mode
+      // 1. Auto Mode
       if (column.isAuto) {
           return (
               <div className="relative z-10 w-full h-full flex items-center justify-center">
@@ -166,11 +222,59 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
           );
       }
 
-      // Priority 1: Simple/Total Mode
-      // Triggered if prop simpleMode=true OR config showPartsInGrid=false
+      // 2. Select List (Clicker) with Render Modes
+      if (isSelectList) {
+          // Use centralized resolver
+          const option = resolveSelectOption(column, scoreValue);
+          const renderMode = column.renderMode || 'standard';
+          
+          if (renderMode === 'label_only' && option) {
+             const labelColor = option.color || column.color || 'rgba(28, 35, 51, 0.90)';
+             return (
+                 <div className="relative z-10 w-full h-full flex items-center justify-center p-1">
+                     <span 
+                        className="text-lg font-bold text-center leading-tight whitespace-pre-wrap break-words w-full"
+                        style={{
+                            ...inkStyle,
+                            color: labelColor,
+                            mixBlendMode: 'multiply',
+                        }}
+                     >
+                        {option.label}
+                     </span>
+                 </div>
+             );
+          }
+          
+          return (
+              <div className="relative z-10 w-full h-full flex items-center justify-center">
+                  <span className="text-3xl font-bold tracking-tight" style={inkStyle}>
+                      {hasInput ? formatDisplayNumber(displayScore) : ''}
+                  </span>
+                  
+                  {/* Standard Mode -> Render Label at Bottom Right */}
+                  {renderMode === 'standard' && !simpleMode && column.showPartsInGrid !== false && option && (
+                      <div className="absolute bottom-1 right-1 z-10 max-w-[90%] flex justify-end pointer-events-none">
+                          <span 
+                            className="text-xs font-bold leading-tight text-right whitespace-pre-wrap"
+                            style={{
+                                fontFamily: '"Kalam", cursive',
+                                color: option.color || column.color || 'rgba(71, 85, 105, 0.9)',
+                                mixBlendMode: 'multiply',
+                                transform: 'rotate(-2deg)',
+                            }}
+                          >
+                              {option.label}
+                          </span>
+                      </div>
+                  )}
+              </div>
+          );
+      }
+
+      // 3. Sum Parts Logic (Priority 1: Simple/Total Mode)
       if (simpleMode || column.showPartsInGrid === false) {
-          // This block falls through to the Default/Simple rendering at the bottom
-          // which renders just the centered total.
+          // Fallthrough to generic total rendering below
       }
       else if (isSumParts && hasInput) {
           // Priority 2: Parts Only Mode (List)
@@ -194,8 +298,6 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
           }
           
           // Priority 3: Standard Mode (Split View)
-          // Since we already filtered out 'false' (Simple) and 'parts_only' (List) and simpleMode prop, 
-          // this is the default Standard view.
           return (
               <div className="relative z-10 w-full h-full flex flex-row items-stretch">
                   <div className="w-1/2 flex justify-center items-center min-w-0 border-r border-slate-500/10 pr-0.5">
@@ -214,50 +316,24 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
           );
       }
 
-      // Default/Simple mode rendering (Center Total)
-      const rawVal = parts[0];
-      const showRawValHint = displayScore !== rawVal;
-      const hasUnit = !!column.unit;
-      
-      // Determine if we should show the bottom-right hint (Standard mode only)
-      // Only show hint if NOT in simpleMode AND column setting is NOT simple
-      const showBottomRight = !simpleMode && column.showPartsInGrid !== false && hasInput && !isProduct && !isSumParts && !isSelectList && (showRawValHint || hasUnit);
+      // 4. Default / Generic Rendering (Product, Standard, Lookup)
+      // Lookup columns show raw input at bottom right
+      const showBottomRightRaw = !simpleMode && hasInput && isLookup;
 
       return (
           <div className="relative z-10 w-full h-full flex items-center justify-center">
-              {isProduct && hasInput ? (
-                  <div className="flex flex-col items-center justify-center leading-none" style={inkStyle}>
-                      <span className="text-2xl font-bold">{formatDisplayNumber(displayScore)}</span>
-                      {!simpleMode && column.showPartsInGrid !== false && (
-                        <span className="text-xs opacity-70 font-sans tracking-tighter" style={{ mixBlendMode: 'normal' }}>
-                            {parts[0]}×{parts[1] ?? 1}
-                        </span>
-                      )}
-                  </div>
-              ) : (
-                  <span className="text-3xl font-bold tracking-tight" style={inkStyle}>
-                      {hasInput ? formatDisplayNumber(displayScore) : ''}
-                  </span>
-              )}
+              {/* Main Score - Always Centered */}
+              <span className="text-3xl font-bold tracking-tight" style={inkStyle}>
+                  {hasInput ? formatDisplayNumber(displayScore) : ''}
+              </span>
 
-              {!simpleMode && column.showPartsInGrid !== false && (
-                <div className="absolute bottom-2 right-2 z-10 flex flex-col items-end pointer-events-none max-w-[80%]">
-                    {isSelectList && hasInput && (() => {
-                        const rawVal = parts[0];
-                        const option = column.quickActions?.find(opt => opt.value === rawVal);
-                        if (option) {
-                            return <span className="text-base font-bold leading-tight text-right rotate-[-1deg]" style={noteStyle}>{option.label}</span>;
-                        }
-                        return null;
-                    })()}
-                    
-                    {/* Bug Fix: Standard Weighted Column with Unit */}
-                    {showBottomRight && (
-                         <div className="flex items-center gap-0.5 leading-none" style={noteStyle}>
-                             <span className="text-lg font-bold">{formatDisplayNumber(parts[0])}</span>
-                             {column.unit && <span className="text-xs opacity-70">{column.unit}</span>}
-                         </div>
-                    )}
+              {/* Bottom Right Hint (Raw Value for Lookup) */}
+              {showBottomRightRaw && (
+                <div className="absolute bottom-2 right-2 z-10 flex flex-col items-end pointer-events-none opacity-80">
+                    <span className="text-sm font-bold leading-none" style={noteStyle}>
+                        {formatDisplayNumber(parts[0])}
+                        {column.unit && <span className="text-[10px] ml-0.5">{column.unit}</span>}
+                    </span>
                 </div>
               )}
           </div>
@@ -267,10 +343,10 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
   return (
     <div 
         onClick={onClick}
-        className={`player-col-${player.id} w-full self-stretch relative cursor-pointer select-none overflow-hidden transition-all ${isActive ? '' : 'hover:brightness-95'}`}
+        className={`player-col-${player.id} w-full h-full relative cursor-pointer select-none overflow-hidden transition-all ${isActive ? '' : 'hover:brightness-95'}`}
         style={{
             backgroundColor: '#e2e8f0', 
-            minHeight: minHeight, 
+            minHeight: effectiveMinHeight, 
         }}
     >
         {isActive && <div className="absolute inset-0 ring-2 ring-inset ring-emerald-500 z-30 pointer-events-none"></div>}

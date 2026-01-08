@@ -53,6 +53,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
   // --- Preview State ---
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+  const [imgLogicalSize, setImgLogicalSize] = useState({ width: 0, height: 0 }); // Store dimensions
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   
@@ -63,31 +64,49 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   const startPinchScale = useRef(1);
 
   // --- Reset / Fit Logic ---
-  const fitToScreen = useCallback(() => {
+  const fitToScreen = useCallback((w?: number, h?: number) => {
       const container = containerRef.current;
-      const img = imgRef.current;
-      if (!container || !img) return;
+      
+      // Determine logical dimensions
+      // Prioritize passed arguments (from onLoad), fallback to state or ref
+      let logicalImgW = w;
+      let logicalImgH = h;
+
+      if (!logicalImgW || !logicalImgH) {
+          if (imgLogicalSize.width > 0 && imgLogicalSize.height > 0) {
+              logicalImgW = imgLogicalSize.width;
+              logicalImgH = imgLogicalSize.height;
+          } else {
+              const img = imgRef.current;
+              if (img && img.naturalWidth) {
+                  logicalImgW = img.naturalWidth / PIXEL_RATIO;
+                  logicalImgH = img.naturalHeight / PIXEL_RATIO;
+              }
+          }
+      }
+
+      if (!container || !logicalImgW || !logicalImgH) return;
 
       const containerW = container.clientWidth;
       const containerH = container.clientHeight;
 
-      // Adjust for pixel ratio to get logical dimensions
-      const logicalImgW = (img.naturalWidth || img.width) / PIXEL_RATIO;
-      const logicalImgH = (img.naturalHeight || img.height) / PIXEL_RATIO;
+      if (containerW === 0 || containerH === 0) return;
 
-      if (logicalImgW === 0 || logicalImgH === 0 || containerW === 0 || containerH === 0) return;
-
-      const scale = Math.min(containerW / logicalImgW, containerH / logicalImgH);
+      const scale = Math.min(containerW / logicalImgW, containerH / logicalImgH) * 0.95; // 95% fit
 
       // Center the image
       const x = (containerW - logicalImgW * scale) / 2;
       const y = (containerH - logicalImgH * scale) / 2;
 
       setTransform({ x, y, scale });
-  }, []);
+  }, [imgLogicalSize]);
 
-  const handleImageLoad = () => {
-      requestAnimationFrame(() => fitToScreen());
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+      const img = e.currentTarget;
+      const w = img.naturalWidth / PIXEL_RATIO;
+      const h = img.naturalHeight / PIXEL_RATIO;
+      setImgLogicalSize({ width: w, height: h });
+      requestAnimationFrame(() => fitToScreen(w, h));
   };
 
   useEffect(() => {
@@ -107,6 +126,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
     if (isOpen) {
         setActiveMode(initialMode);
         setTransform({ x: 0, y: 0, scale: 1 });
+        setImgLogicalSize({ width: 0, height: 0 }); // Reset size on open
     } else {
         if (snapshots.full.url) URL.revokeObjectURL(snapshots.full.url);
         if (snapshots.simple.url) URL.revokeObjectURL(snapshots.simple.url);
@@ -118,6 +138,11 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialMode]);
+
+  // Reset logical size when switching modes to force re-calc
+  useEffect(() => {
+      setImgLogicalSize({ width: 0, height: 0 });
+  }, [activeMode]);
 
   // --- Generation Logic ---
   useEffect(() => {
@@ -390,7 +415,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                 onMouseDown={handlePointerDown}
                 onTouchStart={handlePointerDown}
                 onWheel={handleWheel}
-                onDoubleClick={fitToScreen}
+                onDoubleClick={() => fitToScreen()}
             >
                 {showLoading ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-emerald-500 animate-in fade-in zoom-in duration-300 pointer-events-none">
@@ -411,8 +436,8 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                             transformOrigin: 'top left',
                             transition: isDragging.current ? 'none' : 'transform 0.2s ease-out',
                             willChange: 'transform',
-                            width: `${(imgRef.current?.naturalWidth || 0) / PIXEL_RATIO}px`,
-                            height: `${(imgRef.current?.naturalHeight || 0) / PIXEL_RATIO}px`,
+                            width: imgLogicalSize.width ? `${imgLogicalSize.width}px` : 'auto',
+                            height: imgLogicalSize.height ? `${imgLogicalSize.height}px` : 'auto',
                         }}
                         className="absolute top-0 left-0 block pointer-events-none select-none shadow-2xl origin-top-left"
                         draggable={false}

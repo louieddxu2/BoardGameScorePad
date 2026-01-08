@@ -8,7 +8,6 @@ import TexturedPlayerHeader from './TexturedPlayerHeader';
 import TexturedTotalCell from './TexturedTotalCell';
 import { cropImageToDataUrl } from '../../../utils/imageProcessing';
 import TexturedScreenshotView from './TexturedScreenshotView';
-import { calculateColumnScore } from '../../../utils/scoring';
 
 interface ScreenshotLayout {
   itemWidth: number;
@@ -131,15 +130,6 @@ const ScreenshotPlayerLabelCorner: React.FC<{ template: GameTemplate, baseImage?
         </div>
     );
 }
-
-const formatDisplayNumber = (num: number | undefined | null): string => {
-    if (num === undefined || num === null) return '';
-    if (Number.isNaN(num)) return 'NaN';
-    if (num === Infinity) return '∞';
-    if (num === -Infinity) return '-∞';
-    if (Object.is(num, -0)) return '-0';
-    return String(num);
-};
 
 const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
   const { id, className, style, session, template, zoomLevel, mode, layout, baseImage, customWinners } = props;
@@ -304,31 +294,14 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                             isAlt={isAlt}
                         />
                         
-                        {/* Render Overlays */}
+                        {/* Render Overlays using ScoreCell directly */}
                         {col.overlayColumns.map(overlayCol => {
-                            const scoreData = p.scores[overlayCol.id];
-                            const parts = scoreData?.parts || [];
-                            const overlayContext = { 
-                                allColumns: template.columns, 
-                                playerScores: p.scores,
-                                allPlayers: session.players // Pass session players
-                            };
-                            const displayScore = calculateColumnScore(overlayCol, parts, overlayContext);
-                            
-                            const hasInput = overlayCol.isAuto ? true : parts.length > 0;
-                            const defaultTextColor = '#ffffff';
-
-                            const textStyle: React.CSSProperties = {
-                                color: hasInput ? (displayScore < 0 ? '#f87171' : (overlayCol.color || defaultTextColor)) : '#475569',
-                                ...(overlayCol.color && isColorDark(overlayCol.color) && { textShadow: ENHANCED_TEXT_SHADOW }),
-                            };
-
                             if (!overlayCol.contentLayout) return null;
-
+                            
                             return (
                                 <div
                                     key={overlayCol.id}
-                                    className="absolute flex items-center justify-center pointer-events-none"
+                                    className="absolute inset-0 z-10 pointer-events-none"
                                     style={{
                                         left: `${overlayCol.contentLayout.x}%`,
                                         top: `${overlayCol.contentLayout.y}%`,
@@ -336,9 +309,22 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                                         height: `${overlayCol.contentLayout.height}%`,
                                     }}
                                 >
-                                    <span className="text-xl font-bold tracking-tight w-full text-center truncate px-1" style={textStyle}>
-                                        {hasInput ? formatDisplayNumber(displayScore) : ''}
-                                    </span>
+                                    {/* Use wrapper to ensure height fill */}
+                                    <div className="w-full h-full">
+                                        <ScoreCell
+                                            player={p}
+                                            playerIndex={index}
+                                            column={overlayCol}
+                                            allColumns={template.columns}
+                                            allPlayers={session.players} // Pass session players
+                                            isActive={false}
+                                            onClick={() => {}}
+                                            screenshotMode={true}
+                                            simpleMode={mode === 'simple'}
+                                            baseImage={undefined}
+                                            forceHeight={"h-full"}
+                                        />
+                                    </div>
                                 </div>
                             );
                         })}

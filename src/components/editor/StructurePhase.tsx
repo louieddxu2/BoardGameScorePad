@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useTextureMapper } from './TextureMapperContext';
 import { Trash2, X } from 'lucide-react';
@@ -9,10 +10,11 @@ const StructurePhase: React.FC = () => {
     rowCount,
     rowMapping,
     sortedHLines,
+    sortedVLines, // Use sortedVLines to respect bounds
+    gridBounds,
     headerSepIdx,
     totalSepIdx,
     inverseScaleStyle,
-    vLines,
     handleClearRow,
     handleRemoveItemFromRow,
     dropTargetRow,
@@ -20,8 +22,52 @@ const StructurePhase: React.FC = () => {
     transform,
   } = useTextureMapper();
 
+  const leftBound = gridBounds.left;
+  const rightBound = gridBounds.right;
+  const widthPercent = rightBound - leftBound;
+
+  // sortedVLines: [BoundLeft, Separator1, ..., BoundRight]
+  // Name Column: sortedVLines[0] -> sortedVLines[1]
+  // Data Column Start: sortedVLines[1]
+  const nameColStart = sortedVLines[0];
+  const dataColStart = sortedVLines[1];
+
+  const maskClass = "absolute bg-black/50 pointer-events-none z-0";
+
   return (
     <>
+      {/* Masks Layer - Consistent with GridPhase */}
+      {/* Top Mask */}
+      <div 
+        className={maskClass} 
+        style={{ top: 0, left: 0, right: 0, height: `${gridBounds.top}%` }} 
+      />
+      {/* Bottom Mask */}
+      <div 
+        className={maskClass} 
+        style={{ bottom: 0, left: 0, right: 0, height: `${100 - gridBounds.bottom}%` }} 
+      />
+      {/* Left Mask */}
+      <div 
+        className={maskClass} 
+        style={{ 
+            left: 0, 
+            top: `${gridBounds.top}%`, 
+            height: `${gridBounds.bottom - gridBounds.top}%`,
+            width: `${gridBounds.left}%` 
+        }} 
+      />
+      {/* Right Mask */}
+      <div 
+        className={maskClass} 
+        style={{ 
+            right: 0, 
+            top: `${gridBounds.top}%`, 
+            height: `${gridBounds.bottom - gridBounds.top}%`,
+            width: `${100 - gridBounds.right}%` 
+        }} 
+      />
+
       {/* Horizontal Grid Lines */}
       <div className="absolute inset-0 pointer-events-none">
         {sortedHLines.map((y, i) => {
@@ -30,8 +76,13 @@ const StructurePhase: React.FC = () => {
           return (
             <div
               key={`h-line-struct-${i}`}
-              className="absolute left-0 right-0 h-[2px] bg-sky-400/80 z-10"
-              style={{ top: `${y}%`, ...inverseScaleYStyle }}
+              className="absolute h-[2px] bg-sky-400/80 z-10"
+              style={{ 
+                  top: `${y}%`, 
+                  left: `${leftBound}%`,
+                  width: `${widthPercent}%`,
+                  ...inverseScaleYStyle 
+              }}
             />
           );
         })}
@@ -39,11 +90,25 @@ const StructurePhase: React.FC = () => {
 
       {/* Structure Overlays */}
       <div className="absolute inset-0 pointer-events-none">
-        {/* Player & Total areas */}
-        <div className="absolute left-0 right-0 top-0 bg-black/60 flex items-center justify-center" style={{ height: `${sortedHLines[headerSepIdx]}%` }}>
+        {/* Player & Total areas - Constrained to bounds */}
+        <div 
+            className="absolute top-0 bg-black/60 flex items-center justify-center" 
+            style={{ 
+                height: `${sortedHLines[headerSepIdx]}%`,
+                left: `${leftBound}%`,
+                width: `${widthPercent}%`
+            }}
+        >
           <span className="text-white/70 font-bold tracking-widest uppercase origin-center bg-black/50 px-2 rounded" style={inverseScaleStyle}>玩家名稱</span>
         </div>
-        <div className="absolute left-0 right-0 bottom-0 bg-yellow-900/50 flex items-center justify-center" style={{ top: `${sortedHLines[totalSepIdx]}%` }}>
+        <div 
+            className="absolute bottom-0 bg-yellow-900/50 flex items-center justify-center" 
+            style={{ 
+                top: `${sortedHLines[totalSepIdx]}%`,
+                left: `${leftBound}%`,
+                width: `${widthPercent}%`
+            }}
+        >
           <span className="text-yellow-400 font-bold tracking-widest uppercase origin-center bg-black/50 px-2 rounded" style={inverseScaleStyle}>總分合計</span>
         </div>
       </div>
@@ -62,10 +127,12 @@ const StructurePhase: React.FC = () => {
             return (
               <div 
                 key={`drop-zone-${i}`}
-                className="absolute left-0 right-0 group"
+                className="absolute group"
                 style={{
                     top: `${top}%`,
                     height: `${height}%`,
+                    left: `${leftBound}%`, // Constrained to grid
+                    width: `${widthPercent}%`
                 }}
               >
                 {/* Drop Highlight Indicator */}
@@ -75,8 +142,18 @@ const StructurePhase: React.FC = () => {
                 
                 {/* CONDITIONAL RENDER: Items vs Empty state */}
                 {hasItems ? (
-                  // Item Preview Container - full width with scrolling
-                  <div className="absolute left-0 right-0 top-0 bottom-0 pointer-events-auto overflow-x-auto no-scrollbar">
+                  // Item Preview Container - Starts after Name Column
+                  // left is relative to parent (which starts at leftBound)
+                  // Parent width = rightBound - leftBound
+                  // Data Start = dataColStart. 
+                  // Relative Left = (dataColStart - leftBound) / (rightBound - leftBound) * 100%
+                  <div 
+                    className="absolute top-0 bottom-0 pointer-events-auto overflow-x-auto no-scrollbar"
+                    style={{
+                        left: `${(dataColStart - leftBound) / widthPercent * 100}%`,
+                        right: 0
+                    }}
+                  >
                     <div className="inline-flex h-full items-center gap-1 p-1">
                       {colIds.map(colId => {
                         const sourceCol = importedTemplate.columns.find(c => c.id === colId);
@@ -100,10 +177,13 @@ const StructurePhase: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  // Empty State Container - constrained to first column
+                  // Empty State Container - constrained to Name Column (sortedVLines[0] to [1])
+                  // Relative Width = (dataColStart - nameColStart) / (rightBound - leftBound) * 100%
                   <div 
                     className="absolute left-0 top-0 bottom-0 pointer-events-none"
-                    style={{ width: `${vLines[0]}%` }}
+                    style={{ 
+                        width: `${(dataColStart - nameColStart) / widthPercent * 100}%` 
+                    }}
                   >
                     <div className="w-full h-full flex items-center justify-center">
                         <div 

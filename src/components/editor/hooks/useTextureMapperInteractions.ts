@@ -36,6 +36,10 @@ interface UseTextureMapperInteractionsProps {
     // New: Bounds support
     gridBounds: GridBounds;
     setGridBounds: React.Dispatch<React.SetStateAction<GridBounds>>;
+    
+    // Raw lines for constraints
+    hLines: number[];
+    vLines: number[];
 }
 
 export const useTextureMapperInteractions = ({
@@ -50,13 +54,14 @@ export const useTextureMapperInteractions = ({
     // DOM Refs
     containerRef, contentRef,
     // New
-    gridBounds, setGridBounds
+    gridBounds, setGridBounds,
+    hLines, vLines
 }: UseTextureMapperInteractionsProps) => {
     
-    const stateRef = useRef({ activeLine, transform, draggedItem, gridBounds });
+    const stateRef = useRef({ activeLine, transform, draggedItem, gridBounds, hLines, vLines });
     useEffect(() => {
-        stateRef.current = { activeLine, transform, draggedItem, gridBounds };
-    }, [activeLine, transform, draggedItem, gridBounds]);
+        stateRef.current = { activeLine, transform, draggedItem, gridBounds, hLines, vLines };
+    }, [activeLine, transform, draggedItem, gridBounds, hLines, vLines]);
     
     useEffect(() => {
         const handleMove = (clientX: number, clientY: number) => {
@@ -66,27 +71,44 @@ export const useTextureMapperInteractions = ({
                 const relativeY = (clientY - rect.top) / rect.height * 100;
                 const line = stateRef.current.activeLine;
                 const bounds = stateRef.current.gridBounds;
+                const currentHLines = stateRef.current.hLines;
+                const currentVLines = stateRef.current.vLines;
 
                 if (line.type === 'bound') {
-                    // Handling Bounds Dragging
+                    // Handling Bounds Dragging with Safety Constraints
+                    // Bounds cannot cross internal lines (must leave space)
+                    const SAFETY_GAP = 2; // %
+
                     if (line.boundType === 'top') {
                         // Top bound: 0 to Bottom - 5
-                        setGridBounds(prev => ({ ...prev, top: Math.max(0, Math.min(prev.bottom - 5, relativeY)) }));
+                        // Constraint: Must be above first Horizontal Line
+                        const firstHLine = currentHLines.length > 0 ? Math.min(...currentHLines) : 100;
+                        const maxVal = Math.min(bounds.bottom - 5, firstHLine - SAFETY_GAP);
+                        setGridBounds(prev => ({ ...prev, top: Math.max(0, Math.min(maxVal, relativeY)) }));
                     } else if (line.boundType === 'bottom') {
                         // Bottom bound: Top + 5 to 100
-                        setGridBounds(prev => ({ ...prev, bottom: Math.max(prev.top + 5, Math.min(100, relativeY)) }));
+                        // Constraint: Must be below last Horizontal Line
+                        const lastHLine = currentHLines.length > 0 ? Math.max(...currentHLines) : 0;
+                        const minVal = Math.max(bounds.top + 5, lastHLine + SAFETY_GAP);
+                        setGridBounds(prev => ({ ...prev, bottom: Math.max(minVal, Math.min(100, relativeY)) }));
                     } else if (line.boundType === 'left') {
                         // Left bound: 0 to Right - 5
-                        setGridBounds(prev => ({ ...prev, left: Math.max(0, Math.min(prev.right - 5, relativeX)) }));
+                        // Constraint: Must be left of first Vertical Line
+                        const firstVLine = currentVLines.length > 0 ? Math.min(...currentVLines) : 100;
+                        const maxVal = Math.min(bounds.right - 5, firstVLine - SAFETY_GAP);
+                        setGridBounds(prev => ({ ...prev, left: Math.max(0, Math.min(maxVal, relativeX)) }));
                     } else if (line.boundType === 'right') {
                         // Right bound: Left + 5 to 100
-                        setGridBounds(prev => ({ ...prev, right: Math.max(prev.left + 5, Math.min(100, relativeX)) }));
+                        // Constraint: Must be right of last Vertical Line
+                        const lastVLine = currentVLines.length > 0 ? Math.max(...currentVLines) : 0;
+                        const minVal = Math.max(bounds.left + 5, lastVLine + SAFETY_GAP);
+                        setGridBounds(prev => ({ ...prev, right: Math.max(minVal, Math.min(100, relativeX)) }));
                     }
                 } else if (line.type === 'h') {
                     // Horizontal lines must stay within bounds
                     setHLines(prev => prev.map((val, i) => {
                         if (i === line.index) {
-                            return Math.max(bounds.top, Math.min(bounds.bottom, relativeY));
+                            return Math.max(bounds.top + 0.5, Math.min(bounds.bottom - 0.5, relativeY));
                         }
                         return val;
                     }));
@@ -94,14 +116,14 @@ export const useTextureMapperInteractions = ({
                     // Vertical lines (Data Column Separators) must stay between Left and Right bounds
                     setVLines(prev => {
                         const newV = [...prev];
-                        let val = Math.max(bounds.left, Math.min(bounds.right, relativeX));
+                        let val = Math.max(bounds.left + 0.5, Math.min(bounds.right - 0.5, relativeX));
                         
                         // Maintain order of V lines
                         if (line.index === 0) val = Math.min(val, newV[1] - 2);
                         else val = Math.max(val, newV[0] + 2);
                         
                         // Ensure it respects bounds
-                        val = Math.max(bounds.left, Math.min(bounds.right, val));
+                        val = Math.max(bounds.left + 0.5, Math.min(bounds.right - 0.5, val));
                         
                         newV[line.index] = val;
                         return newV;

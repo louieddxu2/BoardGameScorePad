@@ -173,6 +173,9 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
       backgroundColor: hasTexture ? 'transparent' : (isTransparent ? 'transparent' : `${effectiveColor}20`),
       borderTopColor: isTransparent ? 'transparent' : effectiveColor,
       borderTopWidth: isTransparent || hasTexture ? '0px' : '2px',
+      // [Fix]: Set minHeight to 0px if texture is present to respect Aspect Ratio and avoid stretching. 
+      // Otherwise default to 2.5rem to match TotalsBar.
+      minHeight: hasTexture ? '0px' : '2.5rem', 
       ...style,
   };
 

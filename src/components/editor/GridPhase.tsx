@@ -18,8 +18,9 @@ const GridPhase: React.FC = () => {
     transform
   } = useTextureMapper();
 
-  // Masks
-  const maskStyle: React.CSSProperties = { backgroundColor: 'rgba(0,0,0,0.5)', pointerEvents: 'none' };
+  // Masks - Using robust CSS positioning
+  // bg-black/50 corresponds to rgba(0,0,0,0.5)
+  const maskClass = "absolute bg-black/50 pointer-events-none z-0";
 
   // Calculate inverse scale factor
   const s = transform.scale;
@@ -54,14 +55,39 @@ const GridPhase: React.FC = () => {
   return (
     <div className="absolute inset-0 pointer-events-auto">
       {/* --- Masks (Cropped Areas) --- */}
-      {/* Top Mask */}
-      <div className="absolute left-0 right-0 top-0" style={{ ...maskStyle, height: `${gridBounds.top}%` }} />
-      {/* Bottom Mask */}
-      <div className="absolute left-0 right-0 bottom-0" style={{ ...maskStyle, top: `${gridBounds.bottom}%` }} />
-      {/* Left Mask (within valid Y range) */}
-      <div className="absolute left-0 top-0 bottom-0" style={{ ...maskStyle, width: `${gridBounds.left}%`, top: `${gridBounds.top}%`, height: `${gridBounds.bottom - gridBounds.top}%` }} />
-      {/* Right Mask (within valid Y range) */}
-      <div className="absolute right-0 top-0 bottom-0" style={{ ...maskStyle, left: `${gridBounds.right}%`, top: `${gridBounds.top}%`, height: `${gridBounds.bottom - gridBounds.top}%` }} />
+      {/* Top Mask: Full Width */}
+      <div 
+        className={maskClass} 
+        style={{ top: 0, left: 0, right: 0, height: `${gridBounds.top}%` }} 
+      />
+      
+      {/* Bottom Mask: Full Width */}
+      <div 
+        className={maskClass} 
+        style={{ bottom: 0, left: 0, right: 0, height: `${100 - gridBounds.bottom}%` }} 
+      />
+      
+      {/* Left Mask: Constrained Vertical */}
+      <div 
+        className={maskClass} 
+        style={{ 
+            left: 0, 
+            top: `${gridBounds.top}%`, 
+            height: `${gridBounds.bottom - gridBounds.top}%`,
+            width: `${gridBounds.left}%` 
+        }} 
+      />
+      
+      {/* Right Mask: Constrained Vertical */}
+      <div 
+        className={maskClass} 
+        style={{ 
+            right: 0, 
+            top: `${gridBounds.top}%`, 
+            height: `${gridBounds.bottom - gridBounds.top}%`,
+            width: `${100 - gridBounds.right}%` 
+        }} 
+      />
 
       {/* --- Boundary Lines (Draggable) --- */}
       
@@ -148,8 +174,13 @@ const GridPhase: React.FC = () => {
         return (
           <div
             key={`h-${i}`}
-            className="absolute left-0 right-0 h-[2px] group bg-sky-400/80 hover:bg-yellow-400 cursor-row-resize"
-            style={{ top: `${y}%`, ...inverseScaleYStyle }}
+            className="absolute h-[2px] group bg-sky-400/80 hover:bg-yellow-400 cursor-row-resize"
+            style={{ 
+                top: `${y}%`, 
+                left: `${gridBounds.left}%`,
+                width: `${gridBounds.right - gridBounds.left}%`,
+                ...inverseScaleYStyle 
+            }}
             onMouseDown={(e) => handlePointerDown(e, 'line', { type: 'h', index: originalIndex })}
             onTouchStart={(e) => handlePointerDown(e, 'line', { type: 'h', index: originalIndex })}
           >

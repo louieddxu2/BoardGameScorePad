@@ -11,6 +11,7 @@ import ImportTemplateModal from './ImportTemplateModal';
 import MappingDrawer from './MappingDrawer';
 import { useTextureMapperInteractions } from './hooks/useTextureMapperInteractions';
 import { buildTemplateFromTextureMap } from './utils/templateBuilder';
+import { db } from '../../db'; // Import DB for full fetching
 
 interface TextureMapperProps {
   imageSrc: string;
@@ -56,10 +57,16 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
   const imgRef = useRef<HTMLImageElement>(null);
   const { showToast } = useToast();
 
-  // Combine Bounds with internal lines for the logic
-  const sortedHLines = useMemo(() => Array.from(new Set([gridBounds.top, ...hLines, gridBounds.bottom])).sort((a, b) => a - b), [hLines, gridBounds.top, gridBounds.bottom]);
-  // vLines now constrained between left and right bounds
-  const sortedVLines = useMemo(() => Array.from(new Set([gridBounds.left, ...vLines, gridBounds.right])).sort((a, b) => a - b), [vLines, gridBounds.left, gridBounds.right]);
+  // [Fix]: Filter out lines that are outside the bounds to prevent calculation errors
+  const sortedHLines = useMemo(() => {
+      const valid = hLines.filter(y => y > gridBounds.top + 0.5 && y < gridBounds.bottom - 0.5);
+      return Array.from(new Set([gridBounds.top, ...valid, gridBounds.bottom])).sort((a, b) => a - b);
+  }, [hLines, gridBounds.top, gridBounds.bottom]);
+
+  const sortedVLines = useMemo(() => {
+      const valid = vLines.filter(x => x > gridBounds.left + 0.5 && x < gridBounds.right - 0.5);
+      return Array.from(new Set([gridBounds.left, ...valid, gridBounds.right])).sort((a, b) => a - b);
+  }, [vLines, gridBounds.left, gridBounds.right]);
   
   // --- Logic Effects ---
   useEffect(() => {
@@ -82,13 +89,41 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
     }
   }, [sortedHLines.length, phase, headerSepIdx]);
 
+  // [Critical Fix]: Only reset mapping if the IMPORTED TEMPLATE ID changes or Grid size changes
+  // Using importedTemplate?.id instead of importedTemplate object reference prevents unnecessary resets
   useEffect(() => {
     if (importedTemplate) {
       setRowMapping(new Array(rowCount).fill(null).map(() => []));
     } else {
       setRowMapping([]);
     }
-  }, [importedTemplate, rowCount]);
+  }, [importedTemplate?.id, rowCount]);
+
+  // [Critical Fix]: Handler to fetch FULL template data
+  const handleTemplateSelect = async (selectedShallow: GameTemplate) => {
+      // If columns are missing (shallow copy), fetch full from DB
+      if (!selectedShallow.columns || selectedShallow.columns.length === 0) {
+          try {
+              let full = await db.templates.get(selectedShallow.id);
+              if (!full) full = await db.systemOverrides.get(selectedShallow.id);
+              if (!full) full = await db.builtins.get(selectedShallow.id);
+              
+              if (full) {
+                  setImportedTemplate(full);
+              } else {
+                  // Fallback: use shallow if DB fetch fails (unlikely)
+                  setImportedTemplate(selectedShallow);
+                  showToast({ message: "警告：無法讀取完整模板資料", type: 'warning' });
+              }
+          } catch (e) {
+              console.error("Fetch template failed", e);
+              setImportedTemplate(selectedShallow);
+          }
+      } else {
+          setImportedTemplate(selectedShallow);
+      }
+      setShowImportModal(false);
+  };
 
   const handleDropOnRow = (rowIndex: number, draggedColId: string) => {
     setRowMapping(currentMapping => {
@@ -153,7 +188,9 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
     isDraggingCanvas, lastPanPoint, startPinchDist, startPinchScale,
     containerRef, contentRef,
     // New props for bounds
-    gridBounds, setGridBounds
+    gridBounds, setGridBounds,
+    // Pass raw lines for constraint checking
+    hLines, vLines
   });
 
   const handlePointerDown = (e: React.MouseEvent | React.TouchEvent, type: 'bg' | 'line', payload?: any) => {
@@ -191,7 +228,8 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
   const addLine = (type: 'h') => {
     if (type === 'h') setHLines(prev => { 
         // 1. 取得所有參考線 (頂部邊界 + 內部線條)，排除底部邊界
-        const refLines = [gridBounds.top, ...prev].sort((a, b) => a - b);
+        // Important: Filter only lines within current bounds to calculate next position correctly
+        const refLines = [gridBounds.top, ...prev.filter(y => y > gridBounds.top && y < gridBounds.bottom)].sort((a, b) => a - b);
         
         let nextPos;
 
@@ -291,7 +329,7 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
             </div>
         )}
 
-        {showImportModal && <ImportTemplateModal allTemplates={allTemplates} onSelect={(t) => { setImportedTemplate(t); setShowImportModal(false); }} onClose={() => setShowImportModal(false)} />}
+        {showImportModal && <ImportTemplateModal allTemplates={allTemplates} onSelect={handleTemplateSelect} onClose={() => setShowImportModal(false)} />}
         <header className="flex-none bg-slate-900 border-b border-slate-800 p-2 flex items-center justify-between z-50 shadow-md">
           <button onClick={onCancel} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors shrink-0"><ArrowLeft size={20}/></button>
           <div className="flex-1 px-3 flex flex-col items-center justify-center overflow-hidden">

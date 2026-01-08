@@ -1,84 +1,113 @@
 
 import { Rect } from '../types';
 
+// --- Image Cache System ---
+const globalImageCache: Map<string, HTMLImageElement> = new Map();
+const globalPendingLoads: Map<string, Promise<HTMLImageElement>> = new Map();
+
+/**
+ * Helper to load image with caching.
+ * Prevents multiple decodes of the same large background image.
+ */
+const loadCachedImage = (src: string): Promise<HTMLImageElement> => {
+    if (globalImageCache.has(src)) {
+        return Promise.resolve(globalImageCache.get(src)!);
+    }
+    
+    if (globalPendingLoads.has(src)) {
+        return globalPendingLoads.get(src)!;
+    }
+
+    const promise = new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.decoding = 'async'; // Important for performance
+        img.crossOrigin = 'anonymous'; // Good practice for export
+        
+        img.onload = () => {
+            globalImageCache.set(src, img);
+            globalPendingLoads.delete(src);
+            resolve(img);
+        };
+        img.onerror = (e) => {
+            globalPendingLoads.delete(src);
+            reject(e);
+        };
+        img.src = src;
+    });
+
+    globalPendingLoads.set(src, promise);
+    return promise;
+};
+
 /**
  * Creates a CSS background-image string (url(...)) from a source image and crop rect.
  * Note: For small crops (headers/cells), DataURL is acceptable as they are small and many.
  */
 export const cropImageToDataUrl = async (sourceImageSrc: string, rect: Rect): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        // [Optimization] Decode in background to avoid UI freeze
-        img.decoding = 'async'; 
+    try {
+        const img = await loadCachedImage(sourceImageSrc);
         
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = rect.width;
-            canvas.height = rect.height;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) {
-                reject(new Error("No context"));
-                return;
-            }
-            
-            ctx.drawImage(
-                img,
-                rect.x, rect.y, rect.width, rect.height, // Source
-                0, 0, rect.width, rect.height // Dest
-            );
-            
-            resolve(canvas.toDataURL('image/jpeg', 0.9));
-        };
-        img.onerror = reject;
-        img.src = sourceImageSrc;
-    });
+        const canvas = document.createElement('canvas');
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error("No context");
+        
+        ctx.drawImage(
+            img,
+            rect.x, rect.y, rect.width, rect.height, // Source
+            0, 0, rect.width, rect.height // Dest
+        );
+        
+        return canvas.toDataURL('image/jpeg', 0.9);
+    } catch (e) {
+        console.warn("Crop failed", e);
+        return '';
+    }
 };
 
 /**
  * Smart Texture Cropper
  */
 export const getSmartTextureUrl = async (sourceImageSrc: string, baseRect: Rect, playerIndex: number, limitX?: number): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        // [Optimization] Decode in background to avoid UI freeze
-        img.decoding = 'async';
+    try {
+        const img = await loadCachedImage(sourceImageSrc);
 
-        img.onload = () => {
-            const imgW = img.width;
-            const colW = baseRect.width;
-            const baseX = baseRect.x;
+        const imgW = img.width;
+        const colW = baseRect.width;
+        const baseX = baseRect.x;
 
-            const effectiveW = limitX ? Math.min(imgW, limitX) : imgW;
-            const maxCols = Math.floor((effectiveW - baseX - (colW * 0.5)) / colW);
-            const validCount = Math.max(1, maxCols + 1); 
-            const effectiveIndex = playerIndex % validCount;
-            const targetX = baseX + (effectiveIndex * colW);
+        const effectiveW = limitX ? Math.min(imgW, limitX) : imgW;
+        // Prevent division by zero
+        if (colW <= 0) return '';
 
-            const availableWidth = imgW - targetX;
-            const finalWidth = Math.min(colW, availableWidth);
+        const maxCols = Math.floor((effectiveW - baseX - (colW * 0.5)) / colW);
+        const validCount = Math.max(1, maxCols + 1); 
+        const effectiveIndex = playerIndex % validCount;
+        const targetX = baseX + (effectiveIndex * colW);
 
-            if (finalWidth <= 0) {
-                resolve(''); 
-                return;
-            }
+        const availableWidth = imgW - targetX;
+        const finalWidth = Math.min(colW, availableWidth);
 
-            const canvas = document.createElement('canvas');
-            canvas.width = colW; 
-            canvas.height = baseRect.height;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) { reject(new Error("No context")); return; }
+        if (finalWidth <= 0) return '';
 
-            ctx.drawImage(
-                img,
-                targetX, baseRect.y, finalWidth, baseRect.height, 
-                0, 0, colW, baseRect.height 
-            );
-            
-            resolve(canvas.toDataURL('image/jpeg', 0.9));
-        };
-        img.onerror = reject;
-        img.src = sourceImageSrc;
-    });
+        const canvas = document.createElement('canvas');
+        canvas.width = colW; 
+        canvas.height = baseRect.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error("No context");
+
+        ctx.drawImage(
+            img,
+            targetX, baseRect.y, finalWidth, baseRect.height, 
+            0, 0, colW, baseRect.height 
+        );
+        
+        return canvas.toDataURL('image/jpeg', 0.9);
+    } catch (e) {
+        console.warn("Smart texture crop failed", e);
+        return '';
+    }
 };
 
 /**

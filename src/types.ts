@@ -2,6 +2,7 @@
 // --- Formula-based structure ---
 export interface ScoreValue {
   parts: number[];
+  optionId?: string; // [New] 記錄列表選單中具體選中的選項 ID，解決數值相同導致顯示錯誤的問題
 }
 
 export interface Rect {

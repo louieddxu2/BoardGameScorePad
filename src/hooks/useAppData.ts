@@ -64,6 +64,7 @@ export const useAppData = () => {
       }
 
       const count = await collection.count();
+      // [Optimization] We strip the heavy 'columns' array but calculate length for UI display
       const items = await collection.limit(100).toArray(list => list.map(t => ({
          id: t.id, 
          name: t.name, 
@@ -71,15 +72,16 @@ export const useAppData = () => {
          createdAt: t.createdAt,
          isPinned: t.isPinned,
          hasImage: t.hasImage, 
-         imageId: t.imageId, // [New] Include Local Image ID
+         imageId: t.imageId, 
          cloudImageId: t.cloudImageId,
          lastSyncedAt: t.lastSyncedAt,
          description: t.description,
-         columns: [], 
+         columns: [], // Clear heavy data
          globalVisuals: undefined,
          lastPlayerCount: t.lastPlayerCount,
-         defaultScoringRule: t.defaultScoringRule
-      } as GameTemplate)));
+         defaultScoringRule: t.defaultScoringRule,
+         columnCount: t.columns?.length || 0 // Inject metadata for list display
+      } as any as GameTemplate)));
 
       return { count, items };
   }, [searchQuery], { count: 0, items: [] });
@@ -103,7 +105,7 @@ export const useAppData = () => {
       return { count, items };
   }, [searchQuery], { count: 0, items: [] });
 
-  // C. System Overrides (Fetch All Shallow)
+  // C. System Overrides (Fetch All)
   const rawDbOverrides = useLiveQuery(async () => {
       return await db.systemOverrides.toArray(list => list.map(t => ({
          id: t.id, 
@@ -112,12 +114,13 @@ export const useAppData = () => {
          createdAt: t.createdAt,
          isPinned: t.isPinned,
          hasImage: t.hasImage, 
-         imageId: t.imageId, // [New]
+         imageId: t.imageId,
          cloudImageId: t.cloudImageId,
          lastSyncedAt: t.lastSyncedAt,
-         columns: [], 
-         globalVisuals: undefined
-      } as GameTemplate)));
+         columns: [], // Clear heavy data
+         globalVisuals: undefined,
+         columnCount: t.columns?.length || 0 // Inject metadata
+      } as any as GameTemplate)));
   }, [], []);
   
   // D. Active Sessions

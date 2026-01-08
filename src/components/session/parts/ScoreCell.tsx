@@ -1,7 +1,7 @@
 
 import React, { useRef, useEffect } from 'react';
 import { Player, ScoreColumn, ScoreValue } from '../../../types';
-import { calculateColumnScore, getAutoColumnError, getRawValue } from '../../../utils/scoring';
+import { calculateColumnScore, getAutoColumnError, getRawValue, resolveSelectOption } from '../../../utils/scoring';
 import TexturedScoreCell from './TexturedScoreCell';
 import { Link2Off, AlertTriangle } from 'lucide-react';
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
@@ -26,6 +26,7 @@ interface ScoreCellProps {
 
 interface CellContentProps {
     parts: number[];
+    scoreValue?: ScoreValue; // [New] Pass full object to check optionId
     displayScore: number;
     hasInput: boolean;
     column: ScoreColumn;
@@ -116,9 +117,10 @@ const CellContentAuto: React.FC<CellContentProps> = ({ displayScore, forceHeight
     </>
 );
 
-const CellContentSelect: React.FC<CellContentProps> = ({ parts, displayScore, hasInput, column, simpleMode, forceHeight, screenshotMode, textStyle }) => {
-    const rawVal = parts[0];
-    const option = column.quickActions?.find(opt => opt.value === rawVal);
+const CellContentSelect: React.FC<CellContentProps> = ({ parts, scoreValue, displayScore, hasInput, column, simpleMode, forceHeight, screenshotMode, textStyle }) => {
+    // Use centralized resolver
+    const option = resolveSelectOption(column, scoreValue);
+    
     const renderMode = column.renderMode || 'standard';
     
     const labelColor = option?.color || column.color || (screenshotMode ? '#10b981' : '#34d399');
@@ -337,7 +339,9 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
   const displayScore = calculateColumnScore(column, parts, scoringContext);
   const autoError = getAutoColumnError(column, scoringContext);
   const hasInput = column.isAuto ? true : parts.length > 0;
-  const hasLayout = !!column.contentLayout && !!baseImage;
+  
+  // [Fix]: Allow layout mode without baseImage (standard cell cropping)
+  const hasLayout = !!column.contentLayout;
 
   // --- Visuals ---
   const minHeightClass = screenshotMode ? '' : (baseImage ? 'min-h-[3rem]' : 'min-h-[4rem]');
@@ -383,7 +387,7 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
 
   // --- Render Selection ---
   const renderContent = () => {
-      const commonProps = { parts, displayScore, hasInput, column, simpleMode: props.simpleMode || false, forceHeight, screenshotMode, textStyle, autoError, previewValue };
+      const commonProps = { parts, scoreValue: scoreData, displayScore, hasInput, column, simpleMode: props.simpleMode || false, forceHeight, screenshotMode, textStyle, autoError, previewValue };
 
       if (column.isAuto) return <CellContentAuto {...commonProps} />;
       if (column.inputType === 'clicker' && !column.formula.includes('+next')) return <CellContentSelect {...commonProps} />;
@@ -393,6 +397,8 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
       return <CellContentStandard {...commonProps} />;
   };
 
+  // Determine what to render if in Layout Mode (Content Box)
+  // We want to mimic the logic of "centered content" but allow parts-only and label-only overrides
   const finalContent = hasLayout ? (
       <div 
         onClick={(e) => { e.stopPropagation(); onClick(e); }}
@@ -409,16 +415,54 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
             top: `${column.contentLayout!.y}%`,
             width: `${column.contentLayout!.width}%`,
             height: `${column.contentLayout!.height}%`,
-        }}
+            containerType: 'size', // [Key Feature] Enable Container Queries
+        } as React.CSSProperties}
       >
           {column.isAuto && autoError && (
               <div className="absolute top-0 right-0 text-rose-500 z-20 translate-x-1/3 -translate-y-1/3 drop-shadow-md">
                   {autoError === 'missing_dependency' ? <Link2Off size={16} /> : <AlertTriangle size={16} />}
               </div>
           )}
-          <span className={`text-xl font-bold tracking-tight w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
-            {hasInput ? (autoError ? 'ERR' : formatDisplayNumber(displayScore)) : ''}
-          </span>
+          
+          {(() => {
+              // 1. Logic for Sum Parts + Parts Only
+              const isSumParts = (column.formula || '').includes('+next');
+              if (hasInput && isSumParts && column.showPartsInGrid === 'parts_only') {
+                  const count = Math.max(1, parts.length);
+                  // Use CSS Container Query to auto-scale font
+                  // Max: 1.3rem, Min: calculated based on height
+                  const dynamicFontSize = `min(1.3rem, calc((100cqh / ${count}) * 0.9))`;
+                  
+                  return (
+                      <div className="flex flex-col items-center justify-center w-full h-full leading-none overflow-hidden" style={textStyle}>
+                          {parts.map((p, i) => (
+                              <span key={i} className="font-bold font-mono truncate w-full text-center" style={{ fontSize: dynamicFontSize }}>
+                                  {formatDisplayNumber(p)}
+                              </span>
+                          ))}
+                      </div>
+                  );
+              }
+
+              // 2. Logic for Select + Label Only
+              const isSelectList = column.inputType === 'clicker' && !isSumParts;
+              if (hasInput && isSelectList && column.renderMode === 'label_only') {
+                  const option = resolveSelectOption(column, scoreData);
+                  const labelColor = option?.color || column.color || (screenshotMode ? '#10b981' : '#34d399');
+                  return (
+                      <span className="text-lg font-bold text-center leading-tight whitespace-pre-wrap break-words w-full px-0.5" style={{ color: labelColor, textShadow: isColorDark(labelColor) ? ENHANCED_TEXT_SHADOW : undefined }}>
+                          {option ? option.label : ''}
+                      </span>
+                  );
+              }
+
+              // 3. Default (Total Score)
+              return (
+                  <span className={`text-xl font-bold tracking-tight w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
+                    {hasInput ? (autoError ? 'ERR' : formatDisplayNumber(displayScore)) : ''}
+                  </span>
+              );
+          })()}
       </div>
   ) : renderContent();
 

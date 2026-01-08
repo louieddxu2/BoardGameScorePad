@@ -4,11 +4,11 @@ import { GameSession, GameTemplate, Player, ScoreColumn } from '../../../types';
 import { GripVertical, EyeOff, Layers, Sparkles, Settings, Sigma, X } from 'lucide-react';
 import ScoreCell from './ScoreCell';
 import TexturedPlayerHeader from './TexturedPlayerHeader';
+import TexturedBlock from './TexturedBlock'; // Import the new component
 import { useColumnDragAndDrop } from '../hooks/useColumnDragAndDrop';
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
 import { usePlayerWidthSync } from '../../../hooks/usePlayerWidthSync';
-import { cropImageToDataUrl } from '../../../utils/imageProcessing';
-import { calculateColumnScore } from '../../../utils/scoring';
+import { calculateColumnScore, resolveSelectOption } from '../../../utils/scoring';
 
 interface ScoreGridProps {
   session: GameSession;
@@ -24,157 +24,14 @@ interface ScoreGridProps {
   baseImage?: string; 
   isEditMode: boolean; 
   zoomLevel: number;
-  previewValue?: any; // New prop
+  previewValue?: any; 
 }
 
-// Helper to correctly format numbers, moved from ScoreCell for reuse
+// Helper to correctly format numbers
 const formatDisplayNumber = (num: number | undefined | null): string => {
   if (num === undefined || num === null) return '';
   if (Object.is(num, -0)) return '-0';
   return String(num);
-};
-
-
-// Inner component for Header to handle async crop
-const HeaderCell: React.FC<{ 
-    col: ScoreColumn; 
-    baseImage?: string; 
-    children: React.ReactNode; 
-    className?: string; 
-    style?: React.CSSProperties; 
-    onClick?: any; 
-    draggable?: boolean; 
-    onDragStart?: any; 
-    onDragEnd?: any; 
-    onTouchStart?: any; 
-    onTouchMove?: any; 
-    onTouchEnd?: any;
-    isEditMode: boolean; 
-    displayMode: 'row' | 'overlay' | 'hidden'; 
-}> = (props) => {
-    const [bgUrl, setBgUrl] = React.useState<string | null>(null);
-    React.useEffect(() => {
-        if (props.baseImage && props.col.visuals?.headerRect) {
-            cropImageToDataUrl(props.baseImage, props.col.visuals.headerRect).then(setBgUrl);
-        } else {
-            setBgUrl(null);
-        }
-    }, [props.baseImage, props.col.visuals?.headerRect]);
-
-    const style = { ...props.style };
-    
-    if (props.col.visuals?.headerRect) {
-        const { width, height } = props.col.visuals.headerRect;
-        if (width > 0 && height > 0) {
-            (style as any).aspectRatio = `${width} / ${height}`;
-        }
-    }
-
-    if (bgUrl) {
-        style.backgroundImage = `url(${bgUrl})`;
-        style.backgroundSize = '100% 100%';
-        style.border = 'none'; 
-    }
-
-    const isHidden = props.displayMode === 'hidden';
-    const isOverlay = props.displayMode === 'overlay';
-    const hiddenStyleClass = (props.isEditMode && isHidden) 
-        ? 'ring-2 ring-amber-500/50 ring-inset bg-amber-900/20' 
-        : '';
-
-    // --- Indicator Logic ---
-    const renderIndicators = () => {
-        if (!props.isEditMode) return null;
-
-        return (
-            <>
-                {/* Top Right: Layout State (Hidden/Overlay) */}
-                <div className="absolute top-0.5 right-0.5 flex gap-0.5 z-20">
-                    {isHidden && (
-                        <div className="bg-black/60 rounded p-0.5 text-amber-400 backdrop-blur-sm border border-amber-500/30" title="隱藏中">
-                            <EyeOff size={10} />
-                        </div>
-                    )}
-                    {isOverlay && (
-                        <div className="bg-black/60 rounded p-0.5 text-sky-400 backdrop-blur-sm border border-sky-500/30" title="疊加模式">
-                            <Layers size={10} />
-                        </div>
-                    )}
-                </div>
-
-                {/* Bottom Left: Scoring State */}
-                {!props.col.isScoring && (
-                    <div className="absolute bottom-0.5 left-0.5 z-20 bg-black/60 rounded p-0.5 backdrop-blur-sm border border-amber-500/30" title="不計入總分">
-                        <div className="relative w-2.5 h-2.5 flex items-center justify-center">
-                             <Sigma size={10} className="text-slate-400 opacity-50" />
-                             <X size={8} className="absolute -bottom-0.5 -right-0.5 text-amber-500" strokeWidth={3} />
-                        </div>
-                    </div>
-                )}
-
-                {/* Bottom Right: Logic Type (Only Auto) */}
-                <div className="absolute bottom-0.5 right-0.5 z-20 flex gap-0.5">
-                    {props.col.isAuto && (
-                        <div className="bg-black/60 rounded p-0.5 text-indigo-400 backdrop-blur-sm border border-indigo-500/30" title="自動計算">
-                            <Sparkles size={10} />
-                        </div>
-                    )}
-                </div>
-            </>
-        );
-    };
-
-    return (
-        <div {...props} className={`${props.className} ${hiddenStyleClass}`} style={style}>
-            {bgUrl ? (
-                <>
-                    {renderIndicators()}
-                    {props.isEditMode && <div className="absolute top-1/2 left-0.5 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded p-0.5 text-white/70"><GripVertical size={10} /></div>}
-                </>
-            ) : (
-                <>
-                    {renderIndicators()}
-                    {props.children}
-                </>
-            )}
-        </div>
-    );
-};
-
-// New Component: Top Left Corner
-const PlayerLabelCorner: React.FC<{ template: GameTemplate; baseImage?: string; style?: React.CSSProperties }> = ({ template, baseImage, style }) => {
-    const [bgUrl, setBgUrl] = React.useState<string | null>(null);
-    React.useEffect(() => {
-        if (baseImage && template.globalVisuals?.playerLabelRect) {
-            cropImageToDataUrl(baseImage, template.globalVisuals.playerLabelRect).then(setBgUrl);
-        } else {
-            setBgUrl(null);
-        }
-    }, [baseImage, template.globalVisuals?.playerLabelRect]);
-
-    const finalStyle: React.CSSProperties = { ...style };
-    if (bgUrl) {
-        finalStyle.backgroundImage = `url(${bgUrl})`;
-        finalStyle.backgroundSize = '100% 100%';
-        finalStyle.backgroundRepeat = 'no-repeat';
-        finalStyle.border = 'none';
-    }
-
-    if (baseImage && template.globalVisuals?.playerLabelRect) {
-        const { width, height } = template.globalVisuals.playerLabelRect;
-        if (width > 0 && height > 0) {
-            (finalStyle as any).aspectRatio = `${width} / ${height}`;
-        }
-    }
-
-    return (
-        <div 
-            className="sticky left-0 w-[70px] bg-slate-800 border-r border-b border-slate-700 p-2 flex items-center justify-center z-30 shadow-sm shrink-0"
-            style={finalStyle}
-        >
-            {!bgUrl && <span className="font-bold text-sm text-slate-400">玩家</span>}
-        </div>
-    );
 };
 
 const ScoreGrid: React.FC<ScoreGridProps> = ({
@@ -226,8 +83,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           return {};
       }
       const { playerLabelRect } = template.globalVisuals;
-      if (!playerLabelRect) return {};
-
+      
       const itemColProportion = playerLabelRect.width / imageDims.width;
       
       return { 
@@ -300,6 +156,20 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
       };
   };
 
+  const renderIndicators = (col: ScoreColumn, isHidden: boolean, isOverlay: boolean) => {
+    if (!isEditMode) return null;
+    return (
+        <>
+            <div className="absolute top-0.5 right-0.5 flex gap-0.5 z-20">
+                {isHidden && <div className="bg-black/60 rounded p-0.5 text-amber-400 backdrop-blur-sm border border-amber-500/30" title="隱藏中"><EyeOff size={10} /></div>}
+                {isOverlay && <div className="bg-black/60 rounded p-0.5 text-sky-400 backdrop-blur-sm border border-sky-500/30" title="疊加模式"><Layers size={10} /></div>}
+            </div>
+            {!col.isScoring && <div className="absolute bottom-0.5 left-0.5 z-20 bg-black/60 rounded p-0.5 backdrop-blur-sm border border-amber-500/30" title="不計入總分"><div className="relative w-2.5 h-2.5 flex items-center justify-center"><Sigma size={10} className="text-slate-400 opacity-50" /><X size={8} className="absolute -bottom-0.5 -right-0.5 text-amber-500" strokeWidth={3} /></div></div>}
+            <div className="absolute bottom-0.5 right-0.5 z-20 flex gap-0.5">{col.isAuto && <div className="bg-black/60 rounded p-0.5 text-indigo-400 backdrop-blur-sm border border-indigo-500/30" title="自動計算"><Sparkles size={10} /></div>}</div>
+        </>
+    );
+  };
+
   return (
     <div className="absolute inset-0 z-0 overflow-auto bg-slate-900 no-scrollbar pb-32" ref={scrollContainerRef}>
       <div 
@@ -309,9 +179,12 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
       >
         {/* Player Headers */}
         <div id="live-player-header-row" className="flex sticky top-0 z-20 bg-slate-800 shadow-sm">
-          <PlayerLabelCorner 
-            template={template} 
-            baseImage={baseImage} 
+          <TexturedBlock 
+            baseImage={baseImage}
+            rect={template.globalVisuals?.playerLabelRect}
+            fallbackContent={<span className="font-bold text-sm text-slate-400">玩家</span>}
+            // [Change]: Use w-auto if baseImage exists to rely purely on itemColStyle width
+            className={`sticky left-0 ${baseImage ? 'w-auto' : 'w-[70px]'} bg-slate-800 border-r border-b border-slate-700 flex items-center justify-center z-30 shadow-sm shrink-0 overflow-hidden ${baseImage ? 'p-0' : 'p-2'}`}
             style={baseImage ? itemColStyle : {}} 
           />
           {session.players.map((p, index) => (
@@ -336,7 +209,9 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           const displayMode = col.resolvedDisplayMode as 'row' | 'overlay' | 'hidden';
           
           // Zebra Striping Logic
-          const isAlt = index % 2 !== 0; // Odd rows are alt
+          const isAlt = index % 2 !== 0; 
+          const isHidden = displayMode === 'hidden';
+          const isOverlay = displayMode === 'overlay';
           
           let indicator = null;
           
@@ -356,10 +231,10 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
               }
           }
 
-          const headerDragHandlers = getDragHandlers(col.id);
           const rowHiddenClass = (isEditMode && displayMode === 'hidden') ? 'opacity-70 bg-slate-900/50' : '';
+          const hiddenStyleClass = (isEditMode && isHidden) ? 'ring-2 ring-amber-500/50 ring-inset bg-amber-900/20' : '';
           
-          // Header Background Color Logic (Standard vs Alt)
+          // Header Background Color Logic
           const headerBgClass = isEditMode && isDragging 
             ? 'bg-slate-700' 
             : (isAlt && !baseImage ? 'bg-[#2e3b4e]' : 'bg-slate-800');
@@ -375,38 +250,40 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
             >
               {indicator}
 
-              <HeaderCell
-                col={col}
+              <TexturedBlock
                 baseImage={baseImage}
+                rect={col.visuals?.headerRect}
                 onClick={(e: any) => onColumnHeaderClick(e, col)}
-                isEditMode={isEditMode}
-                displayMode={displayMode}
-                {...headerDragHandlers}
-                className={`sticky left-0 w-[70px] ${headerBgClass} border-r-2 border-b border-slate-700 p-2 flex flex-col justify-center transition-colors z-20 group select-none shrink-0 ${isEditMode ? (isDragging ? 'cursor-grabbing' : 'cursor-grab hover:bg-slate-700') : 'cursor-default'}`}
+                {...getDragHandlers(col.id)}
+                // [Change]: Use w-auto if baseImage exists
+                className={`sticky left-0 ${baseImage ? 'w-auto' : 'w-[70px]'} ${headerBgClass} ${hiddenStyleClass} border-r-2 border-b border-slate-700 flex flex-col justify-center transition-colors z-20 group select-none shrink-0 overflow-hidden ${isEditMode ? (isDragging ? 'cursor-grabbing' : 'cursor-grab hover:bg-slate-700') : 'cursor-default'} ${baseImage ? 'p-0' : 'p-2'}`}
                 style={{
                   ...(baseImage ? itemColStyle : {}),
                   borderRightColor: col.color || 'var(--border-slate-700)'
                 }}
+                fallbackContent={
+                    <>
+                        <span className="text-sm font-bold text-slate-300 w-full text-center break-words whitespace-pre-wrap leading-tight" style={{ ...(col.color && { color: col.color, ...(isColorDark(col.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }) }}>
+                        {col.name}
+                        </span>
+                        {col.isScoring && (
+                            <div className="text-xs text-slate-500 mt-1 flex flex-col items-center justify-center w-full leading-none">
+                                {(() => {
+                                    if (col.formula.includes('a1×a2') && col.subUnits) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span>{col.subUnits[0]}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span>{col.subUnits[1]}</span></div>;
+                                    if (col.inputType === 'clicker' && !col.formula.includes('+next')) return <div className="flex items-center justify-center gap-1 flex-wrap w-full"><Settings size={10} />{col.unit && <span className="text-xs break-words text-center">{col.unit}</span>}</div>;
+                                    if (col.formula?.includes('×c1')) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="break-words text-center">{col.unit}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="text-emerald-500 font-bold font-mono">{col.constants?.c1 ?? 1}</span></div>;
+                                    if (col.unit) return <span className="text-xs break-words w-full text-center">{col.unit}</span>;
+                                    return null;
+                                })()}
+                            </div>
+                        )}
+                    </>
+                }
               >
-                <span className="text-sm font-bold text-slate-300 w-full text-center break-words whitespace-pre-wrap leading-tight" style={{ ...(col.color && { color: col.color, ...(isColorDark(col.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }) }}>
-                  {col.name}
-                </span>
-                {col.isScoring && (
-                    <div className="text-xs text-slate-500 mt-1 flex flex-col items-center justify-center w-full leading-none">
-                        {(() => {
-                            if (col.formula.includes('a1×a2') && col.subUnits) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span>{col.subUnits[0]}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span>{col.subUnits[1]}</span></div>;
-                            if (col.inputType === 'clicker' && !col.formula.includes('+next')) return <div className="flex items-center justify-center gap-1 flex-wrap w-full"><Settings size={10} />{col.unit && <span className="text-xs break-words text-center">{col.unit}</span>}</div>;
-                            
-                            // Check for any formula involving multiplication by c1 (e.g. a1xc1, (a1+next)xc1)
-                            if (col.formula?.includes('×c1')) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="break-words text-center">{col.unit}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="text-emerald-500 font-bold font-mono">{col.constants?.c1 ?? 1}</span></div>;
-                            
-                            if (col.unit) return <span className="text-xs break-words w-full text-center">{col.unit}</span>;
-                            return null;
-                        })()}
-                    </div>
-                )}
-                {isEditMode && <div className="absolute top-1/2 left-0.5 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded p-0.5 text-white/70"><GripVertical size={10} /></div>}
-              </HeaderCell>
+                {/* Children: Always visible overlays */}
+                {renderIndicators(col, isHidden, isOverlay)}
+                {isEditMode && baseImage && <div className="absolute top-1/2 left-0.5 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded p-0.5 text-white/70"><GripVertical size={10} /></div>}
+              </TexturedBlock>
               
               {session.players.map((p, pIdx) => {
                 const isActive = editingCell?.playerId === p.id && editingCell?.colId === col.id;
@@ -423,11 +300,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         isActive={isActive}
                         onClick={(e) => onCellClick(p.id, col.id, e)}
                         isEditMode={isEditMode}
-                        // Pass right mask boundary for limit calculation
                         limitX={template.globalVisuals?.rightMaskRect?.x}
-                        // Pass Zebra Striping flag
                         isAlt={isAlt}
-                        // Pass preview value only to active cell
                         previewValue={isActive ? previewValue : undefined}
                     />
                      {/* OVERLAY RENDERING */}
@@ -436,7 +310,6 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         const scoreData = p.scores[overlayCol.id];
                         const parts = scoreData?.parts || [];
                         
-                        // Also provide context for overlay columns
                         const overlayContext = { 
                             allColumns: template.columns, 
                             playerScores: p.scores,
@@ -444,15 +317,29 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         };
                         const displayScore = calculateColumnScore(overlayCol, parts, overlayContext);
                         
+                        let displayText = '';
                         const hasInput = overlayCol.isAuto ? true : parts.length > 0;
+                        const isSelectList = overlayCol.inputType === 'clicker' && !(overlayCol.formula || '').includes('+next');
+
+                        if (hasInput) {
+                            if (isSelectList && parts.length > 0) {
+                                const option = resolveSelectOption(overlayCol, scoreData);
+                                const renderMode = overlayCol.renderMode || 'standard';
+                                if (option && (renderMode === 'label_only' || renderMode === 'standard')) {
+                                    displayText = option.label;
+                                } else {
+                                    displayText = formatDisplayNumber(displayScore);
+                                }
+                            } else {
+                                displayText = formatDisplayNumber(displayScore);
+                            }
+                        }
+
                         const defaultTextColor = baseImage ? 'rgba(28, 35, 51, 0.90)' : '#ffffff';
-                        
-                        // FIX: Only use column color in Edit Mode. In Play Mode, use default (black/white) to look like ink.
                         const displayColor = (isEditMode && overlayCol.color) ? overlayCol.color : defaultTextColor;
 
                         const textStyle: React.CSSProperties = {
                             color: hasInput ? (displayScore < 0 ? '#f87171' : displayColor) : '#475569',
-                            // Only add shadow if using column color and it's dark
                             ...(isEditMode && overlayCol.color && isColorDark(overlayCol.color) && { textShadow: ENHANCED_TEXT_SHADOW }),
                             ...(baseImage && {
                                 fontFamily: '"Kalam", "Caveat", cursive',
@@ -461,15 +348,11 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                                 textShadow: 'none',
                             })
                         };
-                        const forceHeight = "h-16";
-
+                        
                         if (!overlayCol.contentLayout) return null;
 
                         return (
-                            <div
-                                key={overlayCol.id}
-                                className="absolute inset-0 pointer-events-none"
-                            >
+                            <div key={overlayCol.id} className="absolute inset-0 pointer-events-none">
                                 <div 
                                     onClick={(e) => { e.stopPropagation(); onCellClick(p.id, overlayCol.id, e); }}
                                     className={`
@@ -490,13 +373,11 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                                         top: `${overlayCol.contentLayout.y}%`,
                                         width: `${overlayCol.contentLayout.width}%`,
                                         height: `${overlayCol.contentLayout.height}%`,
-                                        borderColor: (!isOverlayActive && isEditMode && overlayCol.color) 
-                                            ? `${overlayCol.color}60` 
-                                            : undefined,
+                                        borderColor: (!isOverlayActive && isEditMode && overlayCol.color) ? `${overlayCol.color}60` : undefined,
                                     }}
                                 >
-                                    <span className={`text-xl font-bold tracking-tight w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
-                                        {hasInput ? formatDisplayNumber(displayScore) : ''}
+                                    <span className="text-xl font-bold tracking-tight w-full text-center truncate px-1" style={textStyle}>
+                                        {displayText}
                                     </span>
                                 </div>
                             </div>

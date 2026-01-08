@@ -1,5 +1,5 @@
 
-import { Player, ScoreColumn, GameTemplate, ScoreValue, MappingRule } from '../types';
+import { Player, ScoreColumn, GameTemplate, ScoreValue, MappingRule, QuickAction } from '../types';
 import { evaluateFormula } from './formulaEvaluator';
 import { getScoreRank, getPlayerRank, getTieCount } from './ranking';
 
@@ -261,4 +261,15 @@ export const getScoreHistory = (value: any): string[] => {
     if (value.parts) return value.parts.map(String);
     if (typeof value === 'object' && Array.isArray(value.history)) return value.history;
     return [];
+};
+
+/**
+ * 根據分數資料與欄位設定，解析出對應的列表選項 (QuickAction)
+ * 解決多處重複的比對邏輯
+ */
+export const resolveSelectOption = (column: ScoreColumn, scoreValue?: ScoreValue): QuickAction | undefined => {
+    if (!column.quickActions || !scoreValue) return undefined;
+    
+    // Strict Match: Only use optionId
+    return column.quickActions.find(opt => scoreValue.optionId === opt.id);
 };

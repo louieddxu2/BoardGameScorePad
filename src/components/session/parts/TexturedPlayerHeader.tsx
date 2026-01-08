@@ -62,18 +62,21 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
       : player.color;
 
   const isTransparent = effectiveColor === 'transparent';
+  const hasTexture = !!(baseImage && rect);
 
   const containerStyle: React.CSSProperties = {
       backgroundColor: bgUrl ? 'transparent' : (isTransparent ? 'transparent' : `${effectiveColor}20`),
       borderBottomColor: isTransparent ? 'transparent' : effectiveColor,
       borderBottomWidth: isTransparent ? '0px' : '2px',
+      // [Fix]: When texture is present, remove min-height constraint to let aspect-ratio drive the height
+      minHeight: hasTexture ? '0px' : undefined,
       ...style,
   };
   
-  // If a texture rect is defined, maintain its aspect ratio.
-  if (rect && rect.width > 0 && rect.height > 0) {
-      (containerStyle as any).aspectRatio = `${rect.width} / ${rect.height}`;
-  }
+  // [Change]: Removed aspect-ratio constraint.
+  // This allows the player header to stretch horizontally (filling flex space)
+  // without forcing a huge vertical height. The height will be determined by the 
+  // sibling "Top Left Block" (TexturedBlock) which DOES maintain aspect ratio.
 
   const inkStyle: React.CSSProperties = bgUrl ? {
       fontFamily: '"Kalam", "Caveat", cursive',
@@ -91,7 +94,8 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
       id={`header-${player.id}`}
       data-player-header-id={player.id}
       onClick={onClick}
-      className={`relative flex-auto w-auto min-w-[3.375rem] p-2 flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${isEditing ? 'z-20 ring-2 ring-inset ring-white/50' : ''} ${!bgUrl ? 'border-r border-b border-slate-700' : ''} ${className}`}
+      // Relax min-width when using baseImage to prevent stretching
+      className={`relative flex-auto w-auto ${baseImage ? 'min-w-0' : 'min-w-[3.375rem]'} flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${isEditing ? 'z-20 ring-2 ring-inset ring-white/50' : ''} ${!bgUrl ? 'border-r border-b border-slate-700' : ''} ${baseImage ? 'p-0' : 'p-2'} ${className}`}
       style={containerStyle}
     >
       <SmartTextureLayer bgUrl={bgUrl} rect={rect} />

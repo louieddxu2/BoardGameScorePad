@@ -208,7 +208,13 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                 const num = parseFloat(String(rawVal));
                 if (!isNaN(num)) parts = [num];
             }
-            newScores[colId] = { parts };
+            
+            const newScoreObj: ScoreValue = { parts };
+            // Save optionId if provided (for Select List rendering)
+            if (typeof value === 'object' && value.optionId) {
+                newScoreObj.optionId = value.optionId;
+            }
+            newScores[colId] = newScoreObj;
         }
         return { ...p, scores: newScores };
     });
@@ -418,7 +424,8 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
                     updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
                 } else { // It's a select list, so it replaces the value and moves next
-                    updateScore(activePlayer.id, activeColumn.id, { value: action.value });
+                    // Pass ID as well as value
+                    updateScore(activePlayer.id, activeColumn.id, { value: action.value, optionId: action.id });
                     eventHandlers.moveToNext();
                 }
             };
