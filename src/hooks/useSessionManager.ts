@@ -109,6 +109,7 @@ export const useSessionManager = ({
         id: sessionId, 
         templateId: migratedTemplate.id, 
         startTime: startTime, 
+        updatedAt: Date.now(), // [Updated] Initialize
         players: players, 
         status: 'active',
         scoringRule: scoringRule,
@@ -187,20 +188,24 @@ export const useSessionManager = ({
   };
 
   const updateSession = (updatedSession: GameSession) => {
+      // [Updated] Update timestamp whenever session data is mutated
+      const sessionWithTimestamp = { ...updatedSession, updatedAt: Date.now() };
+      
       if (activeTemplate) {
-        const playersWithTotal = updatedSession.players.map(p => ({ 
-            ...p, totalScore: calculatePlayerTotal(p, activeTemplate, updatedSession.players) 
+        const playersWithTotal = sessionWithTimestamp.players.map(p => ({ 
+            ...p, totalScore: calculatePlayerTotal(p, activeTemplate, sessionWithTimestamp.players) 
         }));
-        setCurrentSession({ ...updatedSession, players: playersWithTotal });
+        setCurrentSession({ ...sessionWithTimestamp, players: playersWithTotal });
       } else {
-        setCurrentSession(updatedSession);
+        setCurrentSession(sessionWithTimestamp);
       }
   };
   
   const resetSessionScores = () => {
     if (!currentSession) return;
     const resetPlayers = currentSession.players.map(p => ({ ...p, scores: {}, totalScore: 0, bonusScore: 0 }));
-    setCurrentSession({ ...currentSession, players: resetPlayers, startTime: Date.now() });
+    // [Updated] Reset also updates timestamp
+    setCurrentSession({ ...currentSession, players: resetPlayers, startTime: Date.now(), updatedAt: Date.now() });
   };
 
   const exitSession = async () => {

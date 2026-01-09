@@ -129,6 +129,10 @@ class GoogleDriveClient {
       if (!response.ok) throw new Error("下載失敗");
       return await response.blob();
   }
+
+  public async emptyTrash(): Promise<void> {
+      await this.fetchDrive('https://www.googleapis.com/drive/v3/files/trash', { method: 'DELETE' });
+  }
 }
 
 export const googleDriveClient = new GoogleDriveClient();
