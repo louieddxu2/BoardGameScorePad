@@ -377,8 +377,11 @@ class GoogleDriveService {
       const jsonContent = JSON.stringify(recordToSave, null, 2);
       await googleDriveClient.uploadFileToFolder(folderId, 'session.json', 'application/json', jsonContent);
       
+      // Prioritize updatedAt if available (handling post-game modifications)
+      const timestamp = record.updatedAt || record.endTime;
+      
       await googleDriveClient.updateFileMetadata(folderId, {
-          appProperties: { originalUpdatedAt: String(record.endTime) }
+          appProperties: { originalUpdatedAt: String(timestamp) }
       });
 
       return folderId;

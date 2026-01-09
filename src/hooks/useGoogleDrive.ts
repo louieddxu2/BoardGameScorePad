@@ -365,9 +365,11 @@ export const useGoogleDrive = () => {
                   const cloudInfo = historyMap.get(h.id);
                   
                   let isUpToDate = false;
-                  if (cloudInfo && h.endTime) {
+                  if (cloudInfo) {
                       const cloudTime = Number(cloudInfo.appProperties?.originalUpdatedAt || 0);
-                      if (cloudTime >= h.endTime) {
+                      // Use updatedAt if available (post-game edits), otherwise endTime
+                      const localTime = h.updatedAt || h.endTime;
+                      if (cloudTime >= localTime) {
                           isUpToDate = true;
                       }
                   }

@@ -184,11 +184,14 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
   const handleUpdateRecord = async (updatedRecord: HistoryRecord) => {
       try {
           if (updatedRecord.id) {
+              // Mark as updated
+              const recordToSave = { ...updatedRecord, updatedAt: Date.now() };
+              
               // Use put for full object update to avoid Dexie UpdateSpec typing issues
-              await db.history.put(updatedRecord);
-              setRecord(updatedRecord);
-              if (updatedRecord.location) {
-                  updateLocationHistory(updatedRecord.location);
+              await db.history.put(recordToSave);
+              setRecord(recordToSave);
+              if (recordToSave.location) {
+                  updateLocationHistory(recordToSave.location);
               }
               showToast({ message: "紀錄已更新", type: 'success' });
           }
@@ -209,10 +212,11 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                 const currentPhotos = record.photos || [];
                 const updatedRecord = { 
                     ...record, 
-                    photos: [...currentPhotos, savedImg.id] 
+                    photos: [...currentPhotos, savedImg.id],
+                    updatedAt: Date.now() // Mark as updated
                 };
                 
-                await db.history.update(record.id, { photos: updatedRecord.photos });
+                await db.history.put(updatedRecord);
                 setRecord(updatedRecord);
 
                 showToast({ message: "照片已儲存", type: 'success' });
@@ -237,8 +241,10 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
           const currentPhotos = record.photos || [];
           const updatedPhotos = currentPhotos.filter(pid => pid !== id);
           
-          await db.history.update(record.id, { photos: updatedPhotos });
-          setRecord({ ...record, photos: updatedPhotos });
+          // Use put to ensure full object consistency including updatedAt
+          const updatedRecord = { ...record, photos: updatedPhotos, updatedAt: Date.now() };
+          await db.history.put(updatedRecord);
+          setRecord(updatedRecord);
           
           showToast({ message: "照片已刪除", type: 'info' });
       } catch (e) {
