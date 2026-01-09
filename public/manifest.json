@@ -4,6 +4,7 @@
   "description": "萬能桌遊計分助手。自定義計分模板。",
   "start_url": "./",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
   "icons": [
