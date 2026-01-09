@@ -4,6 +4,7 @@ import { AppView, GameTemplate, ScoringRule } from './types';
 import { getTouchDistance } from './utils/ui';
 import { useAppData } from './hooks/useAppData';
 import { useGoogleDrive } from './hooks/useGoogleDrive';
+import { Smartphone } from 'lucide-react';
 
 // Components
 import TemplateEditor from './components/editor/TemplateEditor';
@@ -33,6 +34,9 @@ const App: React.FC = () => {
   const initialZoomRef = useRef(1.0);
   const isZooming = useRef(false);
   const isExitingSession = useRef(false);
+
+  // Landscape Detection State (JS Control)
+  const [showLandscapeOverlay, setShowLandscapeOverlay] = useState(false);
 
   // System Backup Logic
   const lastBackedUpTime = useRef<number>(0);
@@ -121,6 +125,73 @@ const App: React.FC = () => {
     };
   }, []); 
 
+  // --- Landscape Detection Logic (JS) ---
+  useEffect(() => {
+    const checkOrientation = () => {
+      // 1. Only enforce on Touch Devices (Mobile/Tablet)
+      const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+      
+      // 2. Allow large screens (Tablets/Desktops) to rotate freely
+      // We check the smallest dimension. If min(w,h) >= 600px, it's likely a tablet.
+      // Most large phones have a width < 500px in portrait.
+      const smallestDimension = Math.min(window.innerWidth, window.innerHeight);
+      const isTabletOrDesktop = smallestDimension >= 600;
+
+      if (!isTouchDevice || isTabletOrDesktop) {
+        setShowLandscapeOverlay(false);
+        return;
+      }
+
+      // 3. Use Modern API if available (Screen Orientation)
+      // This is the key fix: screen.orientation reports DEVICE PHYSICAL orientation, not viewport aspect ratio.
+      // So keyboard popping up (shrinking viewport) does NOT change screen.orientation.
+      if (window.screen && window.screen.orientation && window.screen.orientation.type) {
+        const type = window.screen.orientation.type;
+        const isLandscape = type.includes('landscape');
+        setShowLandscapeOverlay(isLandscape);
+        return;
+      }
+
+      // 4. Fallback for iOS (older versions) which relies on window.orientation
+      // 0 = Portrait, 90/-90 = Landscape
+      if (typeof (window as any).orientation === 'number') {
+        const orientation = (window as any).orientation;
+        setShowLandscapeOverlay(Math.abs(orientation) === 90);
+        return;
+      }
+
+      // 5. Last Resort: Aspect Ratio Check
+      // Only check this if NO input is focused, to avoid keyboard trigger.
+      const activeTag = document.activeElement?.tagName;
+      const isKeyboardLikelyOpen = activeTag === 'INPUT' || activeTag === 'TEXTAREA';
+      
+      if (isKeyboardLikelyOpen) {
+          // If typing, assume we are fine (don't show overlay)
+          setShowLandscapeOverlay(false);
+      } else {
+          // Normal logic for phones without modern API
+          setShowLandscapeOverlay(window.innerWidth > window.innerHeight);
+      }
+    };
+
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation); // For iOS
+    if (window.screen?.orientation) {
+        window.screen.orientation.addEventListener('change', checkOrientation);
+    }
+    
+    // Initial Check
+    checkOrientation();
+
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+      if (window.screen?.orientation) {
+          window.screen.orientation.removeEventListener('change', checkOrientation);
+      }
+    };
+  }, []);
+
   // --- PWA Logic ---
   useEffect(() => {
     const pwaInstalled = localStorage.getItem('pwa_installed') === 'true';
@@ -165,14 +236,16 @@ const App: React.FC = () => {
       isExitingSession.current = false;
       let handled = false;
 
-      if (pendingTemplate) { setPendingTemplate(null); handled = true; }
-      else if (view === AppView.TEMPLATE_CREATOR) { setView(AppView.DASHBOARD); handled = true; }
-      else if (view === AppView.HISTORY_REVIEW) { 
-          appData.viewHistory(null); 
+      if (pendingTemplate) { 
+          setPendingTemplate(null); 
+          handled = true; 
+      }
+      else if (view === AppView.TEMPLATE_CREATOR) { 
           setView(AppView.DASHBOARD); 
           handled = true; 
       }
-      else if (view === AppView.ACTIVE_SESSION) {
+      // [Modified] Both ACTIVE_SESSION and HISTORY_REVIEW now use event dispatch
+      else if (view === AppView.ACTIVE_SESSION || view === AppView.HISTORY_REVIEW) {
          window.dispatchEvent(new CustomEvent('app-back-press'));
          handled = true;
       }
@@ -275,9 +348,28 @@ const App: React.FC = () => {
       setView(AppView.HISTORY_REVIEW);
   };
 
+  // Helper for history view exit (triggered by internal back button, not browser back)
+  const handleHistoryExit = () => {
+      isExitingSession.current = true;
+      appData.viewHistory(null); 
+      setView(AppView.DASHBOARD);
+  };
+
   return (
     <div className="h-full bg-slate-900 text-slate-100 font-sans overflow-hidden transition-colors duration-300 relative">
       
+      {/* Landscape Lock Overlay (Controlled by JS State) */}
+      <div 
+        id="landscape-overlay" 
+        className={`fixed inset-0 z-[9999] bg-slate-950 flex-col items-center justify-center text-center p-10 ${showLandscapeOverlay ? 'flex' : 'hidden'}`}
+      >
+          <div className="animate-rotate-phone mb-4 text-emerald-500">
+              <Smartphone size={64} strokeWidth={1.5} className="rotate-90" />
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">請旋轉您的裝置</h2>
+          <p className="text-slate-400 text-sm">此應用程式在手機上僅支援直式操作，以獲得最佳體驗。</p>
+      </div>
+
       {/* 
         STACK ARCHITECTURE:
         Dashboard is always present in DOM to preserve state/scroll.
@@ -359,7 +451,7 @@ const App: React.FC = () => {
         <div className="absolute inset-0 z-40 bg-slate-900 animate-in fade-in duration-300">
             <HistoryReviewView 
                 record={appData.viewingHistoryRecord}
-                onExit={() => { appData.viewHistory(null); setView(AppView.DASHBOARD); }}
+                onExit={handleHistoryExit}
                 zoomLevel={zoomLevel}
             />
         </div>

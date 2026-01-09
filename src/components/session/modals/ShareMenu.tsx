@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Image, LayoutPanelLeft, Upload, Camera, CloudOff, Images } from 'lucide-react';
+import { Image, Upload, Images } from 'lucide-react';
 
 interface ShareMenuProps {
   isCopying: boolean;
@@ -27,15 +27,7 @@ const ShareMenu: React.FC<ShareMenuProps> = ({
         className="flex items-center gap-3 px-3 py-3 hover:bg-slate-700 rounded-lg text-sm text-white transition-colors text-left"
       >
         <Image size={16} className="text-emerald-400" />
-        {isCopying ? '處理中...' : '預覽截圖 (完整)'}
-      </button>
-      <button
-        onClick={() => onScreenshotRequest('simple')}
-        disabled={isCopying}
-        className="flex items-center gap-3 px-3 py-3 hover:bg-slate-700 rounded-lg text-sm text-white transition-colors text-left"
-      >
-        <LayoutPanelLeft size={16} className="text-sky-400" />
-        {isCopying ? '處理中...' : '預覽截圖 (簡潔)'}
+        {isCopying ? '處理中...' : '預覽截圖'}
       </button>
       
       {/* Photo Gallery Section */}

@@ -78,21 +78,24 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
     return () => observer.disconnect();
   }, [scrollContainerRef]);
 
-  const itemColStyle = useMemo(() => {
+  // Calculate the width of the Left Sticky Column (Label)
+  const leftColWidth = useMemo(() => {
       if (!baseImage || !imageDims || !template.globalVisuals?.playerLabelRect || containerWidth === 0) {
-          return {};
+          return 70; // Default fallback width
       }
       const { playerLabelRect } = template.globalVisuals;
-      
       const itemColProportion = playerLabelRect.width / imageDims.width;
-      
+      // Scale width by zoomLevel to allow row height to expand via aspect-ratio
+      return containerWidth * itemColProportion * zoomLevel;
+  }, [baseImage, imageDims, template.globalVisuals, containerWidth, zoomLevel]);
+
+  const itemColStyle = useMemo(() => {
       return { 
-          width: `${containerWidth * itemColProportion}px`, 
-          minWidth: `${containerWidth * itemColProportion}px`,
+          width: `${leftColWidth}px`, 
+          minWidth: `${leftColWidth}px`,
           flexShrink: 0 
       };
-
-  }, [baseImage, imageDims, template.globalVisuals, containerWidth]);
+  }, [leftColWidth]);
   
   const processedColumns = useMemo(() => {
     const getMode = (col: ScoreColumn) => col.displayMode || 'row';
@@ -170,15 +173,31 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
     );
   };
 
+  // [Calculation] Determine the minimum required width for the header row.
+  const minPlayerWidth = 54 * zoomLevel;
+  const requiredRowWidth = leftColWidth + (session.players.length * minPlayerWidth);
+  
+  // The header row width should be AT LEAST containerWidth (to fill screen when zoomed out),
+  // but MUST grow larger if the content (players) requires it (to allow scrolling).
+  // This solves the conflict between "Fit to Screen" and "Minimum Width".
+  const headerRowWidth = containerWidth ? Math.max(containerWidth, requiredRowWidth) : '100%';
+
   return (
     <div className="absolute inset-0 z-0 overflow-auto bg-slate-900 no-scrollbar pb-32" ref={scrollContainerRef}>
       <div 
         id="live-grid-container" 
         className="min-w-full w-fit relative"
         ref={contentRef}
+        // Force minimum width to respect zoom, but let it grow if content pushes it
+        style={{ minWidth: `${100 * zoomLevel}%` }}
       >
         {/* Player Headers */}
-        <div id="live-player-header-row" className="flex sticky top-0 z-20 bg-slate-800 shadow-sm">
+        <div 
+            id="live-player-header-row" 
+            className="flex sticky top-0 z-20 bg-slate-800 shadow-sm"
+            // Apply the calculated width logic.
+            style={{ width: typeof headerRowWidth === 'number' ? `${headerRowWidth}px` : headerRowWidth }}
+        >
           <TexturedBlock 
             baseImage={baseImage}
             rect={template.globalVisuals?.playerLabelRect}
@@ -289,7 +308,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 const isActive = editingCell?.playerId === p.id && editingCell?.colId === col.id;
                 
                 return (
-                <div key={p.id} className={`${rowHiddenClass} w-full relative`}>
+                <div key={p.id} className={`${rowHiddenClass} w-full relative player-col-${p.id}`}>
                     <ScoreCell
                         player={p}
                         playerIndex={pIdx}

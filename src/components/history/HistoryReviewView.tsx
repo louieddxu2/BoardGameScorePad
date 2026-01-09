@@ -9,8 +9,12 @@ import ScreenshotModal from '../session/modals/ScreenshotModal';
 import HistorySettingsModal from './modals/HistorySettingsModal';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 import { ScreenshotLayout } from '../session/hooks/useSessionState';
-import { db } from '../../db'; // Import DB to save changes
+import { db } from '../../db'; 
 import { useAppData } from '../../hooks/useAppData';
+import ShareMenu from '../session/modals/ShareMenu'; 
+import PhotoGalleryModal from '../session/modals/PhotoGalleryModal'; 
+import { imageService } from '../../services/imageService';
+import { compressAndResizeImage } from '../../utils/imageProcessing';
 
 interface HistoryReviewViewProps {
   record: HistoryRecord;
@@ -19,35 +23,59 @@ interface HistoryReviewViewProps {
 }
 
 const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRecord, onExit, zoomLevel }) => {
-  // Use local state to reflect updates immediately without waiting for parent re-render
   const [record, setRecord] = useState<HistoryRecord>(initialRecord);
-  
-  // Access location history data and updater
   const { locationHistory, updateLocationHistory } = useAppData();
 
   useEffect(() => {
       setRecord(initialRecord);
   }, [initialRecord]);
 
-  // 1. Adapter: Convert HistoryRecord to GameSession for ScoreGrid compatibility
   const fakeSession: GameSession = useMemo(() => ({
     id: 'history-review',
     templateId: record.templateId,
     startTime: record.startTime,
-    players: record.players, // History records store players with full score data
+    players: record.players, 
     status: 'completed',
-    scoringRule: record.snapshotTemplate.defaultScoringRule // Use the rule from snapshot
+    scoringRule: record.snapshotTemplate.defaultScoringRule
   }), [record]);
 
   const template = record.snapshotTemplate;
   const { downloadCloudImage } = useGoogleDrive();
   const [baseImage, setBaseImage] = useState<string | null>(null);
+  
+  // Modal States
   const [showScreenshotModal, setShowScreenshotModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false); 
+  const [showPhotoGallery, setShowPhotoGallery] = useState(false); 
+  
   const [screenshotLayout, setScreenshotLayout] = useState<ScreenshotLayout | null>(null);
   const { showToast } = useToast();
 
-  // Load cloud image if available in the snapshot
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+
+  // --- Back Button Handler (Local Priority) ---
+  useEffect(() => {
+      const handleHistoryBackPress = () => {
+          // Priority 1: Photo Gallery
+          if (showPhotoGallery) { setShowPhotoGallery(false); return; }
+          // Priority 2: Settings Modal
+          if (showSettingsModal) { setShowSettingsModal(false); return; }
+          // Priority 3: Screenshot Modal
+          if (showScreenshotModal) { setShowScreenshotModal(false); return; }
+          // Priority 4: Share Menu
+          if (showShareMenu) { setShowShareMenu(false); return; }
+          
+          // Default: Exit View
+          onExit();
+      };
+
+      window.addEventListener('app-back-press', handleHistoryBackPress);
+      return () => window.removeEventListener('app-back-press', handleHistoryBackPress);
+  }, [showPhotoGallery, showSettingsModal, showScreenshotModal, showShareMenu, onExit]);
+
+  // Load cloud image
   useEffect(() => {
       let active = true;
       let objectUrl: string | null = null;
@@ -69,13 +97,11 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
       };
   }, [template.cloudImageId, downloadCloudImage]);
 
-  // Layout refs required by ScoreGrid/TotalsBar for syncing
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const totalBarScrollRef = useRef<HTMLDivElement>(null);
   const gridContentRef = useRef<HTMLDivElement>(null);
   const totalContentRef = useRef<HTMLDivElement>(null);
 
-  // Sync scroll logic (reused from SessionView)
   useEffect(() => {
     const grid = tableContainerRef.current;
     const bar = totalBarScrollRef.current;
@@ -91,7 +117,6 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
     };
   }, []);
 
-  // Sync content width logic (reused from SessionView)
   useEffect(() => {
     const gridContent = gridContentRef.current;
     const totalContent = totalContentRef.current;
@@ -103,7 +128,6 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
              const gridWidth = gridContent.offsetWidth;
              const stickyHeader = document.querySelector('#live-player-header-row > div:first-child') as HTMLElement;
              const headerOffset = stickyHeader ? stickyHeader.offsetWidth : 70;
-             
              const newTotalWidth = `${Math.max(0, gridWidth - headerOffset)}px`;
              if (totalContent.style.width !== newTotalWidth) {
                  totalContent.style.width = newTotalWidth;
@@ -116,19 +140,17 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
     return () => observer.disconnect();
   }, []);
 
-  // Winners calculation for TotalsBar
-  // Note: HistoryRecord already has winnerIds, so we can use that directly or re-calculate
   const winners = record.winnerIds || [];
 
   const handleScreenshotRequest = (mode: 'full' | 'simple') => {
-      // 1. Measure current DOM layout
+      setShowShareMenu(false); 
+
       const playerHeaderRowEl = document.querySelector('#live-player-header-row') as HTMLElement;
       const itemHeaderEl = playerHeaderRowEl?.querySelector('div:first-child') as HTMLElement;
       const playerHeaderEls = playerHeaderRowEl?.querySelectorAll('[data-player-header-id]');
       
       if (!playerHeaderRowEl || !itemHeaderEl || !playerHeaderEls || playerHeaderEls.length === 0) {
           showToast({ message: "無法測量佈局，截圖可能不準確。", type: 'warning' });
-          // Fallback: Open without layout (default sizing)
           setScreenshotLayout(null);
           setShowScreenshotModal(true);
           return;
@@ -155,7 +177,6 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
         }
       });
 
-      // 2. Set layout and open modal
       setScreenshotLayout(measuredLayout);
       setShowScreenshotModal(true);
   };
@@ -163,14 +184,12 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
   const handleUpdateRecord = async (updatedRecord: HistoryRecord) => {
       try {
           if (updatedRecord.id) {
-              await db.history.update(updatedRecord.id, updatedRecord);
-              setRecord(updatedRecord); // Update local view state immediately
-              
-              // If location changed, update the location history
+              // Use put for full object update to avoid Dexie UpdateSpec typing issues
+              await db.history.put(updatedRecord);
+              setRecord(updatedRecord);
               if (updatedRecord.location) {
                   updateLocationHistory(updatedRecord.location);
               }
-
               showToast({ message: "紀錄已更新", type: 'success' });
           }
       } catch (e) {
@@ -179,12 +198,73 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
       }
   };
 
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          const objectUrl = URL.createObjectURL(file);
+          
+          compressAndResizeImage(objectUrl, 1, 1920)
+            .then(async (compressedBlob) => {
+                const savedImg = await imageService.saveImage(compressedBlob, record.id, 'session');
+                const currentPhotos = record.photos || [];
+                const updatedRecord = { 
+                    ...record, 
+                    photos: [...currentPhotos, savedImg.id] 
+                };
+                
+                await db.history.update(record.id, { photos: updatedRecord.photos });
+                setRecord(updatedRecord);
+
+                showToast({ message: "照片已儲存", type: 'success' });
+                
+                setShowShareMenu(false);
+                setShowPhotoGallery(true);
+                
+                URL.revokeObjectURL(objectUrl);
+            })
+            .catch(err => {
+                console.error("Photo save failed", err);
+                showToast({ message: "照片處理失敗", type: 'error' });
+                URL.revokeObjectURL(objectUrl);
+            });
+      }
+      e.target.value = '';
+  };
+
+  const handleDeletePhoto = async (id: string) => {
+      try {
+          await imageService.deleteImage(id);
+          const currentPhotos = record.photos || [];
+          const updatedPhotos = currentPhotos.filter(pid => pid !== id);
+          
+          await db.history.update(record.id, { photos: updatedPhotos });
+          setRecord({ ...record, photos: updatedPhotos });
+          
+          showToast({ message: "照片已刪除", type: 'info' });
+      } catch (e) {
+          console.error("Delete failed", e);
+          showToast({ message: "刪除失敗", type: 'error' });
+      }
+  };
+
+  const handleOpenGallery = () => {
+      setShowShareMenu(false);
+      setShowPhotoGallery(true);
+  };
+
   return (
     <div className="flex flex-col h-full bg-slate-900 text-slate-100 overflow-hidden relative animate-in fade-in duration-300">
+        
+        <input ref={photoInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoSelect} />
+        <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoSelect} />
+
         {/* --- Header --- */}
         <div className="flex-none bg-slate-800 p-2 flex items-center justify-between border-b border-slate-700 shadow-md z-20">
             <div className="flex items-center gap-2">
-                <button onClick={onExit} className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 shrink-0">
+                <button 
+                    onClick={() => window.dispatchEvent(new CustomEvent('app-back-press'))} 
+                    className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 shrink-0"
+                >
                     <ArrowLeft size={20} />
                 </button>
                 <div className="font-bold text-lg px-2 py-1 text-white truncate max-w-[200px]">
@@ -192,7 +272,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                 </div>
             </div>
             
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 relative">
                 <button 
                     onClick={() => setShowSettingsModal(true)} 
                     className="p-2 hover:bg-slate-700 hover:text-sky-400 rounded-lg text-slate-400"
@@ -201,12 +281,24 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                     <Settings size={20} />
                 </button>
                 <button 
-                    onClick={() => handleScreenshotRequest('full')} 
+                    onClick={() => setShowShareMenu(!showShareMenu)} 
                     className="p-2 hover:bg-slate-700 hover:text-indigo-400 rounded-lg text-slate-400"
-                    title="分享截圖"
+                    title="分享/照片"
                 >
                     <Share2 size={20} />
                 </button>
+
+                {showShareMenu && (
+                    <ShareMenu 
+                        isCopying={false}
+                        onScreenshotRequest={handleScreenshotRequest}
+                        hasVisuals={!!template.globalVisuals}
+                        onUploadImage={undefined} 
+                        onOpenGallery={handleOpenGallery}
+                        photoCount={record.photos?.length || 0}
+                    />
+                )}
+                {showShareMenu && <div className="fixed inset-0 z-40" onClick={() => setShowShareMenu(false)}></div>}
             </div>
         </div>
 
@@ -217,10 +309,10 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                 template={template}
                 editingCell={null}
                 editingPlayerId={null}
-                onCellClick={() => {}} // Read-only: No-op
-                onPlayerHeaderClick={() => {}} // Read-only
-                onColumnHeaderClick={() => {}} // Read-only
-                onUpdateTemplate={() => {}} // Read-only
+                onCellClick={() => {}} 
+                onPlayerHeaderClick={() => {}} 
+                onColumnHeaderClick={() => {}} 
+                onUpdateTemplate={() => {}} 
                 scrollContainerRef={tableContainerRef}
                 contentRef={gridContentRef}
                 baseImage={baseImage || undefined}
@@ -234,15 +326,16 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
         <TotalsBar
             players={fakeSession.players}
             winners={winners}
-            isPanelOpen={false} // Always collapsed (no input panel)
+            isPanelOpen={false} 
             panelHeight="0px"
             scrollRef={totalBarScrollRef}
             contentRef={totalContentRef}
             template={template}
             baseImage={baseImage || undefined}
+            zoomLevel={zoomLevel} 
         />
 
-        {/* --- Screenshot Modal --- */}
+        {/* --- Modals --- */}
         <ScreenshotModal
             isOpen={showScreenshotModal}
             onClose={() => setShowScreenshotModal(false)}
@@ -250,12 +343,20 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
             session={fakeSession}
             template={template}
             zoomLevel={zoomLevel}
-            layout={screenshotLayout} // Pass the measured layout
+            layout={screenshotLayout}
             baseImage={baseImage || undefined}
-            customWinners={winners} // Pass the known winners
+            customWinners={winners}
         />
 
-        {/* --- Settings Modal --- */}
+        <PhotoGalleryModal 
+            isOpen={showPhotoGallery}
+            onClose={() => setShowPhotoGallery(false)}
+            photoIds={record.photos || []}
+            onUploadPhoto={() => galleryInputRef.current?.click()}
+            onTakePhoto={() => photoInputRef.current?.click()}
+            onDeletePhoto={handleDeletePhoto}
+        />
+
         <HistorySettingsModal 
             isOpen={showSettingsModal}
             onClose={() => setShowSettingsModal(false)}

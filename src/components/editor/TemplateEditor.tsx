@@ -46,7 +46,9 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
   }, [initialTemplate]);
 
   const adjustCount = (delta: number) => {
-    setColumnCount(prev => Math.max(1, Math.min(20, prev + delta)));
+    // Allow 0 columns for "Simple Counter" mode
+    // Increased max limit to 50 for power users
+    setColumnCount(prev => Math.max(0, Math.min(50, prev + delta)));
   };
 
   const handleSave = () => {
@@ -88,7 +90,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
     const template: GameTemplate = {
       id: initialTemplate ? initialTemplate.id : generateId(), // Default 36 chars (UUID)
       name: name.trim(),
-      description: initialTemplate?.description || `${columnCount} 個計分項目`,
+      description: initialTemplate?.description || (columnCount === 0 ? "簡易計數器" : `${columnCount} 個計分項目`),
       columns: newColumns,
       createdAt: initialTemplate ? initialTemplate.createdAt : Date.now(),
     };
@@ -230,6 +232,11 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
                             <Plus size={24} />
                         </button>
                     </div>
+                    {columnCount === 0 && (
+                        <p className="text-center text-xs text-emerald-400 mt-1">
+                            簡易模式：僅顯示玩家與總分，適合單純記錄勝負。
+                        </p>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-800">

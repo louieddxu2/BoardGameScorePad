@@ -50,11 +50,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const photoInputRef = useRef<HTMLInputElement>(null); // For Camera (capture=environment)
   const galleryInputRef = useRef<HTMLInputElement>(null); // For Upload (no capture)
   
-  // Modal State
-  const [showImageUploadModal, setShowImageUploadModal] = useState(false);
-  const [showSessionExitModal, setShowSessionExitModal] = useState(false);
-  const [showPhotoGallery, setShowPhotoGallery] = useState(false);
-  
   // Photo Upload State - Now stores Blob URL for preview
   const [previewPhotoBlob, setPreviewPhotoBlob] = useState<Blob | null>(null);
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
@@ -69,48 +64,13 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       };
   }, [previewPhotoUrl]);
 
-  // [Offline-First Logic] Background Image Loader
-  useEffect(() => {
-      // 1. If we already have a baseImage (loaded from Local DB by useAppData), we are good.
-      if (baseImage) return;
-
-      const hasBackgroundDesign = !!template.globalVisuals || !!template.hasImage;
-      if (!hasBackgroundDesign) return;
-      
-      // Prevent double prompting
-      if (hasPromptedRef.current) return;
-      hasPromptedRef.current = true;
-
-      // 2. If no local image, check Cloud Link
-      const checkCloud = async () => {
-          if (template.cloudImageId) {
-              // 2a. If Auto-Connect is ON and Authorized -> Try silent download
-              if (isAutoConnectEnabled && googleDriveService.isAuthorized) {
-                  // downloadCloudImage now returns Blob (or null)
-                  const imgBlob = await downloadCloudImage(template.cloudImageId);
-                  if (imgBlob) {
-                      onUpdateImage(imgBlob); // This will save to Local DB automatically via useAppData
-                      return;
-                  }
-              }
-              // 2b. If not connected OR download failed -> Prompt User
-              setShowImageUploadModal(true);
-          } else {
-              // 3. No Cloud Link -> Prompt User (Upload / Photo)
-              setShowImageUploadModal(true);
-          }
-      };
-      
-      checkCloud();
-  }, [baseImage, template.globalVisuals, template.hasImage, template.cloudImageId, downloadCloudImage, isAutoConnectEnabled, onUpdateImage]);
-
   const {
     editingCell,
     editingPlayerId,
     editingColumn,
     isEditingTitle,
     showResetConfirm,
-    showExitConfirm, 
+    isSessionExitModalOpen,
     columnToDelete,
     isAddColumnModalOpen,
     showShareMenu,
@@ -118,30 +78,46 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     isInputFocused,
     isEditMode, 
     previewValue,
+    isPhotoGalleryOpen,
+    isImageUploadModalOpen
   } = sessionState.uiState;
 
   const { setUiState } = sessionState;
 
-  // Intercept exit logic
+  // [Offline-First Logic] Background Image Loader
   useEffect(() => {
-      if (showExitConfirm) {
-          setUiState(prev => ({ ...prev, showExitConfirm: false }));
-          
-          const hasScores = session.players.some(p => Object.keys(p.scores).length > 0);
-          if (hasScores) {
-              setShowSessionExitModal(true);
+      if (baseImage) return;
+
+      const hasBackgroundDesign = !!template.globalVisuals || !!template.hasImage;
+      if (!hasBackgroundDesign) return;
+      
+      if (hasPromptedRef.current) return;
+      hasPromptedRef.current = true;
+
+      const checkCloud = async () => {
+          if (template.cloudImageId) {
+              if (isAutoConnectEnabled && googleDriveService.isAuthorized) {
+                  const imgBlob = await downloadCloudImage(template.cloudImageId);
+                  if (imgBlob) {
+                      onUpdateImage(imgBlob); 
+                      return;
+                  }
+              }
+              // Prompt user via global state
+              setUiState(p => ({ ...p, isImageUploadModalOpen: true }));
           } else {
-              props.onExit();
+              setUiState(p => ({ ...p, isImageUploadModalOpen: true }));
           }
-      }
-  }, [showExitConfirm, session.players, props.onExit, setUiState]);
+      };
+      
+      checkCloud();
+  }, [baseImage, template.globalVisuals, template.hasImage, template.cloudImageId, downloadCloudImage, isAutoConnectEnabled, onUpdateImage, setUiState]);
 
   const isPanelOpen = editingCell !== null || editingPlayerId !== null;
   
-  // Winners Logic - Updated for Force Loss and Tie Breaker
+  // Winners Logic
   const rule = session.scoringRule || 'HIGHEST_WINS';
   let winners: string[] = [];
-  
   const validPlayers = session.players.filter(p => !p.isForceLost);
   
   if (validPlayers.length > 0) {
@@ -151,22 +127,13 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       } else if (rule === 'LOWEST_WINS') {
           targetScore = Math.min(...validPlayers.map(pl => pl.totalScore));
       } else {
-          // COOP or NO_SCORE modes typically don't have single winners, 
-          // but if we treat them as highest wins for now:
           targetScore = Math.max(...validPlayers.map(pl => pl.totalScore));
       }
-
-      // 1. Find all players with the target score
       const candidates = validPlayers.filter(p => p.totalScore === targetScore);
-      
-      // 2. Check for Tie Breaker
       const hasTieBreaker = candidates.some(p => p.tieBreaker);
-      
       if (hasTieBreaker) {
-          // Only players with tieBreaker flag win
           winners = candidates.filter(p => p.tieBreaker).map(p => p.id);
       } else {
-          // All candidates win (Shared Victory)
           winners = candidates.map(p => p.id);
       }
   }
@@ -175,14 +142,11 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Use Blob flow directly
       const objectUrl = URL.createObjectURL(file);
-      
       compressAndResizeImage(objectUrl, 1, 1920)
         .then(compressedBlob => {
-            // Pass Blob to hook -> saves to DB
             onUpdateImage(compressedBlob); 
-            setShowImageUploadModal(false);
+            setUiState(p => ({ ...p, isImageUploadModalOpen: false }));
             URL.revokeObjectURL(objectUrl);
         })
         .catch(err => {
@@ -193,7 +157,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     }
   };
 
-  // Handle Photo Taking OR Gallery Selection (Session Documentation)
+  // Handle Photo Taking OR Gallery Selection
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
@@ -203,9 +167,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
             .then(compressedBlob => {
                 setPreviewPhotoBlob(compressedBlob);
                 setPreviewPhotoUrl(URL.createObjectURL(compressedBlob));
-                setUiState(prev => ({ ...prev, showShareMenu: false }));
-                // Temporarily hide gallery if open, so user sees confirm modal clearly
-                if (showPhotoGallery) setShowPhotoGallery(false);
+                setUiState(prev => ({ ...prev, showShareMenu: false, isPhotoGalleryOpen: false }));
                 URL.revokeObjectURL(objectUrl);
             })
             .catch(err => {
@@ -219,26 +181,18 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   const handleConfirmSavePhoto = async () => {
       if (!previewPhotoBlob) return;
-      
       setIsSavingPhoto(true);
       try {
-          // Save to Local DB directly using Blob
           const savedImg = await imageService.saveImage(previewPhotoBlob, session.id, 'session');
-          
-          // Update Session State with Local Image ID
           const currentPhotos = session.photos || [];
-          const updatedSession = { 
-              ...session, 
-              photos: [...currentPhotos, savedImg.id] 
-          };
+          const updatedSession = { ...session, photos: [...currentPhotos, savedImg.id] };
           props.onUpdateSession(updatedSession);
 
           showToast({ message: "照片已儲存至本機", type: 'success' });
           setPreviewPhotoBlob(null);
           setPreviewPhotoUrl(null);
           
-          // Re-open gallery to show new photo
-          setShowPhotoGallery(true);
+          setUiState(p => ({ ...p, isPhotoGalleryOpen: true }));
       } catch (e) {
           console.error("Photo save failed:", e);
           showToast({ message: "儲存失敗，請重試", type: 'error' });
@@ -251,10 +205,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       try {
           await imageService.deleteImage(id);
           const currentPhotos = session.photos || [];
-          const updatedSession = { 
-              ...session, 
-              photos: currentPhotos.filter(pid => pid !== id) 
-          };
+          const updatedSession = { ...session, photos: currentPhotos.filter(pid => pid !== id) };
           props.onUpdateSession(updatedSession);
           showToast({ message: "照片已刪除", type: 'info' });
       } catch (e) {
@@ -263,35 +214,17 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       }
   };
 
-  const handleSkipImage = () => {
-      setShowImageUploadModal(false);
-  };
-  
-  const handleManualUploadClick = () => {
-      setShowImageUploadModal(true);
-      setUiState(prev => ({ ...prev, showShareMenu: false }));
-  };
-
-  const handleOpenGallery = () => {
-      setShowPhotoGallery(true);
-      setUiState(prev => ({ ...prev, showShareMenu: false }));
-  };
-
   // [Interactive] Manual Cloud Download Trigger
   const handleModalCloudDownload = async () => {
       if (!template.cloudImageId) return;
-
-      // 1. Ensure Connection
       if (!isConnected) {
           const success = await connectToCloud();
           if (!success) return; 
       }
-
-      // 2. Download
       const imgBlob = await downloadCloudImage(template.cloudImageId);
       if (imgBlob) {
-          onUpdateImage(imgBlob); // Saves to local DB
-          setShowImageUploadModal(false);
+          onUpdateImage(imgBlob); 
+          setUiState(p => ({ ...p, isImageUploadModalOpen: false }));
       }
   };
 
@@ -299,6 +232,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     const playerHeaderRowEl = document.querySelector('#live-player-header-row') as HTMLElement;
     const itemHeaderEl = playerHeaderRowEl?.querySelector('div:first-child') as HTMLElement;
     const playerHeaderEls = playerHeaderRowEl?.querySelectorAll('[data-player-header-id]');
+    const totalsRowEl = document.querySelector('#live-totals-bar') as HTMLElement;
     
     if (!playerHeaderRowEl || !itemHeaderEl || !playerHeaderEls || playerHeaderEls.length === 0) {
         showToast({ message: "無法測量佈局，截圖失敗。", type: 'error' });
@@ -310,20 +244,17 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         playerWidths: {},
         playerHeaderHeight: playerHeaderRowEl.offsetHeight,
         rowHeights: {},
+        totalRowHeight: totalsRowEl ? totalsRowEl.offsetHeight : undefined
     };
 
     playerHeaderEls.forEach(el => {
         const playerId = el.getAttribute('data-player-header-id');
-        if (playerId) {
-            measuredLayout.playerWidths[playerId] = (el as HTMLElement).offsetWidth;
-        }
+        if (playerId) measuredLayout.playerWidths[playerId] = (el as HTMLElement).offsetWidth;
     });
     
     template.columns.forEach(col => {
       const rowEl = document.getElementById(`row-${col.id}`) as HTMLElement;
-      if (rowEl) {
-        measuredLayout.rowHeights[col.id] = rowEl.offsetHeight;
-      }
+      if (rowEl) measuredLayout.rowHeights[col.id] = rowEl.offsetHeight;
     });
 
     setUiState(p => ({ 
@@ -332,28 +263,19 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         editingCell: null,
         editingPlayerId: null,
         previewValue: 0,
-        screenshotModal: { 
-            isOpen: true, 
-            mode, 
-            layout: measuredLayout 
-        } 
+        screenshotModal: { isOpen: true, mode, layout: measuredLayout } 
     }));
 
   }, [setUiState, showToast, template.columns]);
 
+  // Sync Scroll & Width Observers (same as before)
   useEffect(() => {
     const grid = sessionState.tableContainerRef.current;
     const bar = sessionState.totalBarScrollRef.current;
     if (!grid || !bar) return;
-    const handleScroll = () => {
-      if (bar.scrollLeft !== grid.scrollLeft) {
-          bar.scrollLeft = grid.scrollLeft;
-      }
-    };
+    const handleScroll = () => { if (bar.scrollLeft !== grid.scrollLeft) bar.scrollLeft = grid.scrollLeft; };
     grid.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      grid.removeEventListener('scroll', handleScroll);
-    };
+    return () => grid.removeEventListener('scroll', handleScroll);
   }, [sessionState.tableContainerRef, sessionState.totalBarScrollRef]);
 
   useEffect(() => {
@@ -368,9 +290,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
              const stickyHeader = document.querySelector('#live-player-header-row > div:first-child') as HTMLElement;
              const headerOffset = stickyHeader ? stickyHeader.offsetWidth : 70;
              const newTotalWidth = `${Math.max(0, gridWidth - headerOffset)}px`;
-             if (totalContent.style.width !== newTotalWidth) {
-                 totalContent.style.width = newTotalWidth;
-             }
+             if (totalContent.style.width !== newTotalWidth) totalContent.style.width = newTotalWidth;
           }
         }
       });
@@ -386,10 +306,10 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       <ConfirmationModal isOpen={showResetConfirm} title="確定重置？" message="此動作將清空所有已輸入的分數，且無法復原。" confirmText="確定重置" isDangerous={true} onCancel={() => setUiState(prev => ({ ...prev, showResetConfirm: false }))} onConfirm={eventHandlers.handleConfirmReset} />
       <ConfirmationModal isOpen={!!columnToDelete} title="確定刪除此項目？" message="刪除後，所有玩家在該項目的分數將會遺失。" confirmText="確定刪除" isDangerous={true} onCancel={() => setUiState(prev => ({ ...prev, columnToDelete: null }))} onConfirm={eventHandlers.handleConfirmDeleteColumn} />
       
-      {/* New Exit Modal */}
+      {/* Exit Modal (Now Controlled by uiState) */}
       <SessionExitModal 
-        isOpen={showSessionExitModal}
-        onClose={() => setShowSessionExitModal(false)}
+        isOpen={isSessionExitModalOpen}
+        onClose={() => setUiState(p => ({ ...p, isSessionExitModalOpen: false }))}
         onSaveActive={props.onExit}
         onSaveHistory={props.onSaveToHistory}
       />
@@ -400,14 +320,14 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 w-full max-w-sm shadow-2xl flex flex-col gap-4">
                   <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                       <h3 className="text-lg font-bold text-white flex items-center gap-2"><Camera size={20} className="text-emerald-500"/> 照片預覽</h3>
-                      <button onClick={() => { setPreviewPhotoBlob(null); setPreviewPhotoUrl(null); setShowPhotoGallery(true); }} className="text-slate-500 hover:text-white"><X size={20}/></button>
+                      <button onClick={() => { setPreviewPhotoBlob(null); setPreviewPhotoUrl(null); setUiState(p => ({ ...p, isPhotoGalleryOpen: true })); }} className="text-slate-500 hover:text-white"><X size={20}/></button>
                   </div>
                   <div className="relative aspect-[4/3] bg-black rounded-lg overflow-hidden border border-slate-700">
                       <img src={previewPhotoUrl} alt="Preview" className="w-full h-full object-contain" />
                   </div>
                   <div className="flex gap-2">
                       <button 
-                        onClick={() => { setPreviewPhotoBlob(null); setPreviewPhotoUrl(null); setShowPhotoGallery(true); }} 
+                        onClick={() => { setPreviewPhotoBlob(null); setPreviewPhotoUrl(null); setUiState(p => ({ ...p, isPhotoGalleryOpen: true })); }} 
                         className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition-colors"
                         disabled={isSavingPhoto}
                       >
@@ -426,28 +346,28 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           </div>
       )}
 
-      {/* Photo Gallery Modal */}
+      {/* Photo Gallery Modal (Controlled by uiState) */}
       <PhotoGalleryModal 
-        isOpen={showPhotoGallery}
-        onClose={() => setShowPhotoGallery(false)}
+        isOpen={isPhotoGalleryOpen}
+        onClose={() => setUiState(p => ({ ...p, isPhotoGalleryOpen: false }))}
         photoIds={session.photos || []}
         onUploadPhoto={() => galleryInputRef.current?.click()}
         onTakePhoto={() => photoInputRef.current?.click()}
         onDeletePhoto={handleDeletePhoto}
       />
 
-      {/* Missing Image Modal */}
-      {showImageUploadModal && (
+      {/* Missing Image Modal (Controlled by uiState) */}
+      {isImageUploadModalOpen && (
           <div 
             className="fixed inset-0 z-[60] bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center"
-            onClick={handleSkipImage} 
+            onClick={() => setUiState(p => ({ ...p, isImageUploadModalOpen: false }))}
           >
               <div 
                 className="max-w-xs w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-4 relative"
                 onClick={(e) => e.stopPropagation()} 
               >
                   <button 
-                    onClick={handleSkipImage}
+                    onClick={() => setUiState(p => ({ ...p, isImageUploadModalOpen: false }))}
                     className="absolute top-2 right-2 text-slate-500 hover:text-white p-2 rounded-full hover:bg-slate-800 transition-colors"
                   >
                     <X size={20} />
@@ -477,7 +397,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
                   </button>
                   <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
                   
-                  <button onClick={handleSkipImage} className="text-slate-500 text-xs hover:text-slate-300 underline mt-4">
+                  <button onClick={() => setUiState(p => ({ ...p, isImageUploadModalOpen: false }))} className="text-slate-500 text-xs hover:text-slate-300 underline mt-4">
                       暫時跳過 (使用標準介面)
                   </button>
               </div>
@@ -507,9 +427,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       )}
 
       {/* Hidden inputs for photos */}
-      {/* 1. Camera Input (capture=environment) */}
       <input ref={photoInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoSelect} />
-      {/* 2. Gallery Upload Input (no capture) */}
       <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoSelect} />
 
       {/* --- Main UI --- */}
@@ -526,35 +444,22 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onAddColumn={() => setUiState(prev => ({ ...prev, isAddColumnModalOpen: true }))}
         onReset={() => setUiState(prev => ({ ...prev, showResetConfirm: true }))}
         onExit={() => {
-            const { editingCell, editingPlayerId } = sessionState.uiState;
             const needsCommit = editingCell !== null || editingPlayerId !== null;
-
             if (needsCommit) {
-                setUiState(prev => ({ 
-                    ...prev, 
-                    editingCell: null,
-                    editingPlayerId: null,
-                    previewValue: 0
-                }));
-                setTimeout(() => {
-                    setUiState(prev => ({ ...prev, showExitConfirm: true }));
-                }, 50);
+                setUiState(prev => ({ ...prev, editingCell: null, editingPlayerId: null, previewValue: 0 }));
+                // Wait for commit to process, then open exit modal
+                setTimeout(() => setUiState(prev => ({ ...prev, isSessionExitModalOpen: true })), 50);
             } else {
-                setUiState(prev => ({ 
-                    ...prev, 
-                    showExitConfirm: true,
-                    editingCell: null,
-                    editingPlayerId: null,
-                    previewValue: 0
-                }));
+                // If no input active, trigger back press logic directly to check for other modals
+                window.dispatchEvent(new CustomEvent('app-back-press'));
             }
         }}
         onShareMenuToggle={(show) => setUiState(prev => ({...prev, showShareMenu: show}))}
         onScreenshotRequest={handleScreenshotRequest}
         onToggleEditMode={() => setUiState(prev => ({ ...prev, isEditMode: !prev.isEditMode }))}
-        onUploadImage={handleManualUploadClick} 
+        onUploadImage={() => setUiState(p => ({ ...p, isImageUploadModalOpen: true, showShareMenu: false }))} 
         onCloudDownload={handleModalCloudDownload} 
-        onOpenGallery={handleOpenGallery}
+        onOpenGallery={() => setUiState(p => ({ ...p, isPhotoGalleryOpen: true, showShareMenu: false }))}
         photoCount={session.photos?.length || 0}
       />
       
@@ -600,12 +505,10 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         isHidden={isInputFocused}
         template={template}
         baseImage={baseImage || undefined} 
-        // Pass editingCell to check if user is editing a Total cell
         editingCell={editingCell}
-        // Pass previewValue for total cell live preview
         previewValue={previewValue}
-        // Handler for Total Click
         onTotalClick={(playerId) => eventHandlers.handleCellClick(playerId, '__TOTAL__', { stopPropagation: () => {} } as any)}
+        zoomLevel={zoomLevel} 
       />
 
       <InputPanel

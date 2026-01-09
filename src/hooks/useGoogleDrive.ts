@@ -95,13 +95,14 @@ export const useGoogleDrive = () => {
       }
   };
 
-  const handleBackup = useCallback(async (template: GameTemplate, imageBase64?: string | null): Promise<GameTemplate | null> => {
+  const handleBackup = useCallback(async (template: GameTemplate): Promise<GameTemplate | null> => {
     if (!isAutoConnectEnabled) return null;
     setIsSyncing(true);
     try {
       await ensureConnection();
       showToast({ message: "正在上傳備份...", type: 'info' });
-      const updatedTemplate = await googleDriveService.backupTemplate(template, imageBase64);
+      // Remove deprecated imageBase64 arg
+      const updatedTemplate = await googleDriveService.backupTemplate(template);
       setIsConnected(true); 
       showToast({ message: "備份成功！", type: 'success' });
       return updatedTemplate;
@@ -131,8 +132,9 @@ export const useGoogleDrive = () => {
       setIsSyncing(true);
       try {
           await ensureConnection();
-          showToast({ message: "正在下載...", type: 'info' });
-          const template = await googleDriveService.getFileContent(fileId, 'data.json');
+          showToast({ message: "正在還原...", type: 'info' });
+          // [Updated] Use new Smart Hydration method
+          const template = await googleDriveService.restoreTemplate(fileId);
           setIsConnected(true);
           showToast({ message: "還原成功！", type: 'success' });
           return template;
@@ -482,7 +484,8 @@ export const useGoogleDrive = () => {
               try {
                   if (shouldDownload) {
                       if (type === 'template') {
-                          const data = await googleDriveService.getFileContent(file.id, 'data.json');
+                          // [Updated] Use new Smart Hydration method
+                          const data = await googleDriveService.restoreTemplate(file.id);
                           await onItemRestored('template', data);
                       } else if (type === 'history') {
                           const data = await googleDriveService.getFileContent(file.id, 'session.json');

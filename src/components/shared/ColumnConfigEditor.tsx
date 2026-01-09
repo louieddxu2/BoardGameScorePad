@@ -407,8 +407,8 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
 
           <div className="sticky top-0 z-10 flex border-y border-slate-800 bg-slate-900 shadow-lg">
               <TabButton id="basic" label="數值運算" icon={Calculator} />
-              <TabButton id="mapping" label="範圍查表" icon={Ruler} />
               <TabButton id="select" label="列表選單" icon={ListPlus} />
+              <TabButton id="mapping" label="範圍查表" icon={Ruler} />
               <TabButton id="auto" label="自動" icon={Sparkles} isSpecial />
           </div>
           <div className="p-4 pb-24">{renderTabContent()}</div>

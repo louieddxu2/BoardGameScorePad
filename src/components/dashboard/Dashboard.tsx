@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { GameTemplate, GameSession, HistoryRecord } from '../../types';
-import { Plus, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, CloudCog, Loader2, Activity, CloudOff, History } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, CloudCog, Loader2, Activity, CloudOff, History, Search } from 'lucide-react';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import InstallGuideModal from '../modals/InstallGuideModal';
 import { useToast } from '../../hooks/useToast';
@@ -195,7 +195,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           }
       }
 
-      const updated = await handleBackup(templateToBackup, null);
+      const updated = await handleBackup(templateToBackup);
       if (updated) {
           // [Fix]: When updating lastSyncedAt, MUST preserve original timestamps to avoid sync loop
           onTemplateSave({ ...updated, lastSyncedAt: Date.now() }, { skipCloud: true, preserveTimestamps: true });
@@ -335,13 +335,23 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         {/* Conditional Rendering based on View Mode */}
         {viewMode === 'history' ? (
             <>
-                {/* History Toolbar */}
-                <div className="flex justify-end items-center bg-slate-800/50 p-2 rounded-xl border border-slate-700/50">
-                    <div className="flex items-center gap-2 px-2">
-                        <History size={18} className="text-slate-400" />
-                        <span className="text-sm font-bold text-slate-300">共 {historyCount} 筆紀錄</span>
+                {/* History Toolbar - Only visible when searching */}
+                {searchQuery.trim().length > 0 && (
+                    <div className="flex justify-end items-center bg-slate-800/50 p-2 rounded-xl border border-slate-700/50 animate-in fade-in slide-in-from-top-1">
+                        <div className="flex items-center gap-2 px-2">
+                            <Search size={14} className="text-emerald-500" />
+                            <span className="text-sm font-bold text-slate-300">
+                                搜尋結果：{historyCount} 筆
+                            </span>
+                            {/* Warning if truncated */}
+                            {historyCount && historyCount > 100 && (
+                                <span className="text-xs text-slate-500 border-l border-slate-600 pl-2 ml-1">
+                                    顯示最近 100 筆
+                                </span>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 <HistoryList 
                     records={historyRecords} 
@@ -480,7 +490,33 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
       <ConfirmationModal isOpen={!!sessionToDelete} title="確定刪除此進行中的遊戲嗎？" message="您將遺失目前的計分進度。" confirmText="刪除" isDangerous={true} onCancel={() => setSessionToDelete(null)} onConfirm={() => { if(sessionToDelete) onDiscardSession(sessionToDelete); setSessionToDelete(null); }} />
       <ConfirmationModal isOpen={!!historyToDelete} title="確定刪除此紀錄？" message="此動作將無法復原。" confirmText="刪除" isDangerous={true} onCancel={() => setHistoryToDelete(null)} onConfirm={() => { if(historyToDelete) onDeleteHistory(historyToDelete); setHistoryToDelete(null); }} />
       <ConfirmationModal isOpen={showClearAllConfirm} title="清空所有進行中遊戲？" message="此動作將刪除所有暫存進度，無法復原。" confirmText="全部清空" isDangerous={true} onCancel={() => setShowClearAllConfirm(false)} onConfirm={() => { onClearAllActiveSessions(); setShowClearAllConfirm(false); }} />
-      <ConfirmationModal isOpen={!!restoreTarget} title="備份修改並還原？" message="此動作將把您目前的修改備份到「我的遊戲庫」，並將此內建遊戲還原為官方最新版本。" confirmText="備份並還原" onCancel={() => setRestoreTarget(null)} onConfirm={() => { if(restoreTarget) { const backup = { ...restoreTarget, id: generateId(), name: `${restoreTarget.name} (備份)`, createdAt: Date.now(), updatedAt: Date.now() }; onTemplateSave(backup); onRestoreSystem(restoreTarget.id); setRestoreTarget(null); } }} />
+      <ConfirmationModal 
+        isOpen={!!restoreTarget} 
+        title="備份修改並還原？" 
+        message="此動作將把您目前的修改備份到「我的遊戲庫」，並將此內建遊戲還原為官方最新版本。" 
+        confirmText="備份並還原" 
+        onCancel={() => setRestoreTarget(null)} 
+        onConfirm={async () => { 
+            if(restoreTarget) { 
+                // Fix: Fetch full template before backing up because dashboard uses shallow objects
+                const fullTemplate = await onGetFullTemplate(restoreTarget.id);
+                if (fullTemplate) {
+                    const backup = { 
+                        ...fullTemplate, 
+                        id: generateId(), 
+                        name: `${fullTemplate.name} (備份)`, 
+                        createdAt: Date.now(), 
+                        updatedAt: Date.now() 
+                    }; 
+                    onTemplateSave(backup); 
+                    onRestoreSystem(restoreTarget.id); 
+                } else {
+                    showToast({ message: "備份失敗：無法讀取完整資料", type: 'error' });
+                }
+                setRestoreTarget(null); 
+            } 
+        }} 
+      />
       
       <InstallGuideModal isOpen={showInstallGuide} onClose={() => setShowInstallGuide(false)} />
 

@@ -13,6 +13,7 @@ interface ScreenshotLayout {
   playerWidths: Record<string, number>;
   playerHeaderHeight: number;
   rowHeights: Record<string, number>;
+  totalRowHeight?: number;
 }
 
 interface ScreenshotViewProps {
@@ -54,6 +55,7 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
   };
 
   const playerHeaderRowStyle = layout?.playerHeaderHeight ? { height: `${layout.playerHeaderHeight}px` } : {};
+  const totalRowStyle = layout?.totalRowHeight ? { height: `${layout.totalRowHeight}px` } : {};
 
   // Group columns logic (Same as ScoreGrid)
   const processedColumns = useMemo(() => {
@@ -94,24 +96,31 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
   }, [template.columns]);
 
   // --- 9-Slice Grid Calculation ---
-  const visuals = template.globalVisuals;
+  const visuals = template.globalVisuals || {};
   
-  // Safe defaults if visuals are missing
-  const hasValidVisuals = visuals && visuals.leftMaskRect && visuals.rightMaskRect && visuals.topMaskRect && visuals.bottomMaskRect;
+  // Robustly extract dimensions even if some masks are missing
+  const leftRect = visuals.leftMaskRect;
+  const topRect = visuals.topMaskRect;
+  const rightRect = visuals.rightMaskRect;
+  const bottomRect = visuals.bottomMaskRect;
 
-  // 1. Coordinates Extraction
-  // We derive the 9-patch structure from the 4 Mask Rects.
-  // Assumption: Masks cover the area OUTSIDE the grid.
-  const X1 = hasValidVisuals ? visuals!.leftMaskRect!.width : 0;
-  const Y1 = hasValidVisuals ? visuals!.topMaskRect!.height : 0;
-  const X2 = hasValidVisuals ? visuals!.rightMaskRect!.x : 0;
-  const Y2 = hasValidVisuals ? visuals!.bottomMaskRect!.y : 0;
-  const W  = hasValidVisuals ? visuals!.topMaskRect!.width : 0;
-  const H  = hasValidVisuals ? Y2 + visuals!.bottomMaskRect!.height : 0;
+  // 1. Dimensions Inference
+  const X1 = leftRect?.width || 0;
+  const Y1 = topRect?.height || 0;
+  
+  // W (Full Image Width): Try top, then bottom, then right end, fallback 0
+  const W = topRect?.width || bottomRect?.width || (rightRect ? rightRect.x + rightRect.width : 0);
+  
+  // H (Full Image Height): Try bottom end (y+h), then left end (y+h), fallback 0
+  const H = (bottomRect ? bottomRect.y + bottomRect.height : 0) || (leftRect ? leftRect.y + leftRect.height : 0);
+
+  // X2 (Right Mask Start X): If rightRect exists use x, else if W known use W, else 0
+  const X2 = rightRect ? rightRect.x : W;
+  
+  // Y2 (Bottom Mask Start Y): If bottomRect exists use y, else if H known use H, else 0
+  const Y2 = bottomRect ? bottomRect.y : H;
 
   // 2. Scale Ratio Calculation
-  // We scale the masks to match the rendered HTML width of the "Player Label" column (usually 70px)
-  // This ensures the resolution/density of the masks matches the content.
   const refW = template.globalVisuals?.playerLabelRect?.width || 1;
   const scale = refW > 0 ? itemColWidth / refW : 1;
 
@@ -121,17 +130,25 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
   const scaledTopH = Y1 * scale;
   const scaledBottomH = (H - Y2) * scale;
 
-  // 4. Rect Definitions for 9-Patch (Corners & Edges)
+  // 4. Rect Definitions for 9-Patch
+  // Note: We construct these even if width/height is 0. TexturedBlock handles empty rects gracefully (renders nothing).
   const rectTL = { x: 0, y: 0, width: X1, height: Y1 };
   const rectTC = { x: X1, y: 0, width: X2 - X1, height: Y1 };
   const rectTR = { x: X2, y: 0, width: W - X2, height: Y1 };
 
-  const rectCL = visuals?.leftMaskRect;
-  const rectCR = visuals?.rightMaskRect;
+  const rectCL = leftRect; // Can be undefined
+  const rectCR = rightRect; // Can be undefined
 
   const rectBL = { x: 0, y: Y2, width: X1, height: H - Y2 };
   const rectBC = { x: X1, y: Y2, width: X2 - X1, height: H - Y2 };
   const rectBR = { x: X2, y: Y2, width: W - X2, height: H - Y2 };
+
+  // Only render outer frame if we have at least one dimension to work with
+  const hasTextureFrame = W > 0 || H > 0;
+
+  // [FEATURE] Hide App Header in Simple Mode + Textured (Pure Paper look)
+  // Logic: if mode is simple AND baseImage is present, hide it.
+  const showAppHeader = !(mode === 'simple' && baseImage);
 
   return (
     <div
@@ -146,21 +163,23 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
         boxSizing: 'border-box'
       }}
     >
-      <div id={`ss-header-${mode}`} className="p-4 flex items-center gap-2 bg-slate-900 rounded-none border-b border-slate-800 shadow-sm w-full box-border">
-        <div className={`p-2 rounded ${headerIconBoxClass}`}>
-          <Trophy className="text-emerald-500" />
+      {showAppHeader && (
+        <div id={`ss-header-${mode}`} className="p-4 flex items-center gap-2 bg-slate-900 rounded-none border-b border-slate-800 shadow-sm w-full box-border">
+            <div className={`p-2 rounded ${headerIconBoxClass}`}>
+            <Trophy className="text-emerald-500" />
+            </div>
+            <div>
+            <h2 className="text-2xl font-bold">{template.name}</h2>
+            <p className="text-slate-500 text-xs">萬用桌遊計分板 • {new Date().toLocaleDateString()}</p>
+            </div>
         </div>
-        <div>
-          <h2 className="text-2xl font-bold">{template.name}</h2>
-          <p className="text-slate-500 text-xs">萬用桌遊計分板 • {new Date().toLocaleDateString()}</p>
-        </div>
-      </div>
+      )}
       
       {/* 9-Grid Layout Container */}
       <div id={`screenshot-content-${mode}`} className="flex flex-col">
         
         {/* ROW 1: TOP (Left Corner, Center, Right Corner) */}
-        {hasValidVisuals && (
+        {hasTextureFrame && scaledTopH > 0 && (
             <div style={{ display: 'flex', height: scaledTopH }}>
                 <TexturedBlock baseImage={baseImage} rect={rectTL} style={{ width: scaledLeftW, flexShrink: 0 }} />
                 <TexturedBlock baseImage={baseImage} rect={rectTC} style={{ flex: 1 }} />
@@ -171,7 +190,7 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
         {/* ROW 2: CENTER (Left, CONTENT, Right) */}
         <div className="flex">
             {/* Left Edge */}
-            {hasValidVisuals && (
+            {hasTextureFrame && scaledLeftW > 0 && (
                 <div style={{ flexShrink: 0, width: `${scaledLeftW}px`, position: 'relative' }}>
                     <TexturedBlock baseImage={baseImage} rect={rectCL} style={{ width: '100%', height: '100%' }} />
                 </div>
@@ -181,12 +200,12 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
             <div className="flex-1 flex flex-col">
                 <div id={`ss-player-header-row-${mode}`} className="flex items-stretch" style={playerHeaderRowStyle}>
                 
-                {/* Player Corner Label */}
+                {/* Player Corner Label - [Fix] Removed p-2 */}
                 <TexturedBlock
                     baseImage={baseImage}
                     rect={template.globalVisuals?.playerLabelRect}
                     fallbackContent={<span className="font-bold text-sm text-slate-400">玩家</span>}
-                    className="p-2 flex items-center justify-center" 
+                    className="flex items-center justify-center" 
                     style={itemColStyle}
                 />
 
@@ -199,21 +218,21 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
                         rect={template.globalVisuals?.playerHeaderRect}
                         onClick={() => {}}
                         isEditing={false}
-                        className="p-2 flex flex-col items-center justify-center"
+                        // [Fix] Removed p-2 to prevent image shrinking
+                        className="flex flex-col items-center justify-center"
                         style={{ 
                             ...getPlayerColStyle(p.id),
                             border: 'none',
                         }}
-                        limitX={template.globalVisuals?.rightMaskRect?.x}
+                        limitX={X2} // Use robustly calculated X2
                     />
                 ))}
                 </div>
 
                 {processedColumns.map((col, index) => {
-                    const isAlt = index % 2 !== 0;
-                    const headerBgClass = isAlt ? 'bg-[#2e3b4e]' : 'bg-slate-800';
-                    const getColumnBorderRight = (c: string | undefined) => (c || 'var(--border-slate-700)');
-
+                    // [Fix] Removed headerBgClass (zebra striping) for textured mode
+                    // Zebra striping is usually part of the physical score sheet image.
+                    
                     return (
                         <div 
                             key={col.id} 
@@ -225,10 +244,11 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
                             <TexturedBlock
                                 baseImage={baseImage}
                                 rect={col.visuals?.headerRect}
-                                className={`p-2 text-center flex flex-col justify-center border-r border-b border-slate-700 ${headerBgClass}`}
-                                style={{ ...itemColStyle, borderRightColor: getColumnBorderRight(col.color) }}
+                                // [Fix] Removed padding (p-2) and border classes
+                                className={`text-center flex flex-col justify-center`}
+                                style={{ ...itemColStyle }}
                                 fallbackContent={
-                                    <div className="flex flex-col items-center justify-center w-full h-full">
+                                    <div className="flex flex-col items-center justify-center w-full h-full p-2 border-r border-b border-slate-700 bg-slate-800">
                                         <span 
                                             className="text-sm font-bold text-slate-300 w-full leading-tight block break-words whitespace-pre-wrap"
                                             style={{ ...(col.color && { color: col.color, ...(isColorDark(col.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }) }}
@@ -264,8 +284,8 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
                                     simpleMode={mode === 'simple'}
                                     baseImage={baseImage}
                                     forceHeight={"h-full"}
-                                    limitX={template.globalVisuals?.rightMaskRect?.x}
-                                    isAlt={isAlt}
+                                    limitX={X2} // Use robustly calculated X2
+                                    isAlt={false} // [Fix] Disable zebra striping logic for cells too
                                 />
                                 
                                 {col.overlayColumns.map(overlayCol => {
@@ -274,12 +294,7 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
                                         <div
                                             key={overlayCol.id}
                                             className="absolute inset-0 z-10 pointer-events-none"
-                                            style={{
-                                                left: `${overlayCol.contentLayout.x}%`,
-                                                top: `${overlayCol.contentLayout.y}%`,
-                                                width: `${overlayCol.contentLayout.width}%`,
-                                                height: `${overlayCol.contentLayout.height}%`,
-                                            }}
+                                            // [Fix] Removed styles here. ScoreCell handles layout positioning internally if column.contentLayout is present.
                                         >
                                             <div className="w-full h-full">
                                                 <ScoreCell
@@ -294,6 +309,9 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
                                                     simpleMode={mode === 'simple'}
                                                     baseImage={baseImage}
                                                     forceHeight={"h-full"}
+                                                    // [Change]: Skip rendering the texture background for overlay columns
+                                                    // This prevents double-rendering the background image (host + overlay)
+                                                    skipTextureRendering={true}
                                                 />
                                             </div>
                                         </div>
@@ -305,12 +323,13 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
                     );
                 })}
 
-                <div id={`ss-totals-row-${mode}`} className="flex items-stretch min-h-[2.5rem] bg-slate-900 border-t border-slate-700">
+                {/* Totals Row - [Fix] Removed bg-slate-900 and default borders */}
+                <div id={`ss-totals-row-${mode}`} className="flex items-stretch min-h-[2.5rem]" style={totalRowStyle}>
                     <TexturedBlock 
                         baseImage={baseImage}
                         rect={template.globalVisuals?.totalLabelRect}
                         fallbackContent={<span className="font-black text-emerald-400 text-sm">總分</span>}
-                        className="p-2 flex items-center justify-center bg-slate-800 border-r border-slate-700"
+                        className="flex items-center justify-center" // [Fix] Removed p-2
                         style={itemColStyle}
                     />
                     {session.players.map((p, index) => (
@@ -322,20 +341,19 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
                             hasMultiplePlayers={session.players.length > 1}
                             baseImage={baseImage || ''}
                             rect={template.globalVisuals?.totalRowRect}
-                            className="flex items-center justify-center relative border-r border-slate-700"
+                            className="flex items-center justify-center relative"
                             style={{ 
                                 ...getPlayerColStyle(p.id),
-                                borderRight: '1px solid rgb(51 65 85)', // explicit border needed for screenshot
                                 borderTop: 'none',
                             }}
-                            limitX={template.globalVisuals?.rightMaskRect?.x}
+                            limitX={X2} // Use robustly calculated X2
                         />
                     ))}
                 </div>
             </div>
 
             {/* Right Edge */}
-            {hasValidVisuals && (
+            {hasTextureFrame && scaledRightW > 0 && (
                 <div style={{ flexShrink: 0, width: `${scaledRightW}px`, position: 'relative' }}>
                     <TexturedBlock baseImage={baseImage} rect={rectCR} style={{ width: '100%', height: '100%' }} />
                 </div>
@@ -343,7 +361,7 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
         </div>
 
         {/* ROW 3: BOTTOM (Left Corner, Center, Right Corner) */}
-        {hasValidVisuals && (
+        {hasTextureFrame && scaledBottomH > 0 && (
             <div style={{ display: 'flex', height: scaledBottomH }}>
                 <TexturedBlock baseImage={baseImage} rect={rectBL} style={{ width: scaledLeftW, flexShrink: 0 }} />
                 <TexturedBlock baseImage={baseImage} rect={rectBC} style={{ flex: 1 }} />

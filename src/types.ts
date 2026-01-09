@@ -1,4 +1,5 @@
 
+
 // --- Formula-based structure ---
 export interface ScoreValue {
   parts: number[];
@@ -167,6 +168,7 @@ export interface GameSession {
   status: 'active' | 'completed';
   scoringRule?: ScoringRule; // 當次遊戲的勝利條件
   photos?: string[]; // List of LocalImage IDs (Session Photos)
+  photoCloudIds?: Record<string, string>; // [New] Map<LocalUUID, CloudFileID> for direct access
   cloudFolderId?: string; // [Cloud] 在 Google Drive 上的資料夾 ID (位於 _Active 或 _History)
 }
 
@@ -183,6 +185,7 @@ export interface HistoryRecord {
   location?: string; // 地點
   note?: string; // 筆記
   photos?: string[]; // List of LocalImage IDs
+  photoCloudIds?: Record<string, string>; // [New] Map<LocalUUID, CloudFileID>
   cloudFolderId?: string; // [Cloud] 備份資料夾 ID
 }
 

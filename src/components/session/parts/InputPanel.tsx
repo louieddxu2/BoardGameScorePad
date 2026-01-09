@@ -75,7 +75,7 @@ const PanelHeader: React.FC<{
                 onClick={onClear} 
                 className="bg-red-900/30 text-red-400 px-3 py-1 rounded text-xs border border-red-500/30 hover:bg-red-900/50 flex items-center gap-1 shrink-0"
             >
-                <Eraser size={12} /> {isTotalMode ? '歸零' : '清除'}
+                <Eraser size={12} /> {isTotalMode ? '重置' : '清除'}
             </button>
         )}
         {!isTotalMode && (
@@ -146,7 +146,6 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
   const [activeFactorIdx, setActiveFactorIdx] = useState<0 | 1>(0);
   
   // Guard Ref to prevent re-initialization of preview value on every render
-  // This is the key fix for the input reset bug
   const currentEditingIdRef = useRef<string | null>(null);
 
   // Initialize preview value based on column type when cell changes
@@ -165,9 +164,9 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             if (editingCell.colId === '__TOTAL__') {
                 const player = session.players.find(p => p.id === editingCell.playerId);
                 if (player) {
-                    // Initialize preview with current bonus score (defaulting to 0)
-                    // This ensures when you open the bubble, it shows "+5" instead of "0"
-                    setPreview(player.bonusScore || 0);
+                    // [UPDATED] Initialize preview with TOTAL Score instead of bonus
+                    // Allows user to edit the final result directly
+                    setPreview(player.totalScore);
                 }
                 return;
             }
@@ -254,8 +253,10 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
       
       if (editingCell.colId === '__TOTAL__') {
           if (player) {
+              // [UPDATED] Clear now resets bonus to 0, and updates input to Base Score
+              const baseScore = player.totalScore - (player.bonusScore || 0);
               updatePlayerMeta(player.id, { bonusScore: 0 });
-              setPreview(0);
+              setPreview(baseScore);
               setUiState((p: any) => ({ ...p, overwriteMode: true }));
           }
           return;
@@ -325,17 +326,23 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                 rounding: 'none' 
             };
             
-            // Keypad updates bonusScore directly
+            // Calculate Base Score (Total without bonus)
+            const currentTotal = activePlayer.totalScore;
+            const currentBonus = activePlayer.bonusScore || 0;
+            const baseScore = currentTotal - currentBonus;
+
+            // Keypad updates bonusScore via Absolute Total Input
             mainContentNode = <NumericKeypad 
                 value={{ value: previewValue }}
                 onChange={(val: any) => {
-                    // 1. Update raw preview string first to maintain UI state (e.g. "-0", "5.")
+                    // 1. Update raw preview string first to maintain UI state (e.g. "5.")
                     setPreview(val.value);
                     
                     // 2. Then parse and update actual session data if valid
-                    const num = parseFloat(String(val.value));
-                    if (!isNaN(num)) {
-                        updatePlayerMeta(activePlayer!.id, { bonusScore: num });
+                    // [UPDATED] Input = Target Total. Bonus = Target - Base.
+                    const targetTotal = parseFloat(String(val.value));
+                    if (!isNaN(targetTotal)) {
+                        updatePlayerMeta(activePlayer!.id, { bonusScore: targetTotal - baseScore });
                     }
                 }}
                 column={dummyCol} 

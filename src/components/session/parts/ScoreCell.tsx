@@ -22,6 +22,7 @@ interface ScoreCellProps {
   limitX?: number;
   isAlt?: boolean; 
   previewValue?: any; // New prop for ghost input
+  skipTextureRendering?: boolean; // New prop
 }
 
 interface CellContentProps {
@@ -325,12 +326,21 @@ const CellContentStandard: React.FC<CellContentProps> = ({ parts, displayScore, 
 // --- Main Component ---
 
 const ScoreCell: React.FC<ScoreCellProps> = (props) => {
-  const { player, playerIndex, column, allColumns, allPlayers, isActive, onClick, forceHeight, screenshotMode = false, baseImage, isEditMode, limitX, isAlt, previewValue } = props;
+  const { player, playerIndex, column, allColumns, allPlayers, isActive, onClick, forceHeight, screenshotMode = false, baseImage, isEditMode, limitX, isAlt, previewValue, skipTextureRendering } = props;
   const scoreData: ScoreValue | undefined = player.scores[column.id];
   
   // Strategy: Switch to Textured Cell if baseImage exists
   if (baseImage && column.visuals?.cellRect) {
-      return <TexturedScoreCell {...props} scoreValue={scoreData} baseImage={baseImage} rect={column.visuals.cellRect} minHeight={screenshotMode ? '100%' : '3rem'} />;
+      return (
+        <TexturedScoreCell 
+            {...props} 
+            scoreValue={scoreData} 
+            baseImage={baseImage} 
+            rect={column.visuals.cellRect} 
+            minHeight={screenshotMode ? '100%' : '3rem'} 
+            skipTextureRendering={skipTextureRendering} 
+        />
+      );
   }
 
   // --- Data Preparation ---
@@ -348,7 +358,7 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
   const borderStructureClasses = baseImage ? '' : 'border-r border-b';
   const cursorClass = hasLayout ? 'cursor-default' : 'cursor-pointer';
   const pointerEventsClass = hasLayout ? 'pointer-events-none' : '';
-  const baseContainerClasses = `player-col-${player.id} w-full h-full ${forceHeight || ''} ${borderStructureClasses} relative ${cursorClass} ${pointerEventsClass} transition-colors select-none flex flex-col justify-center items-center overflow-hidden`;
+  const baseContainerClasses = `w-full h-full ${forceHeight || ''} ${borderStructureClasses} relative ${cursorClass} ${pointerEventsClass} transition-colors select-none flex flex-col justify-center items-center overflow-hidden`;
   
   const isStandardAuto = !baseImage && column.isAuto;
   let visualClasses = '';

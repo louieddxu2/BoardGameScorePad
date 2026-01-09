@@ -202,25 +202,12 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
   if (isActive) {
       // If it's a string (e.g. "-0" or "5."), use it directly to preserve formatting
       if (typeof previewValue === 'string') {
-          const raw = previewValue;
-          const num = parseFloat(raw);
-          // If valid number AND not just "0", "0.", "-0", "-" etc.
-          // Rule: "The number should be the extra score number... add + in front"
-          // If it is a positive number string without sign, add +
-          if (!isNaN(num) && num > 0 && !raw.includes('+')) {
-              bubbleDisplay = `+${raw}`;
-          } else if (raw === '0' || raw === '') {
-              // Special handling for 0 to look nice
-              bubbleDisplay = '+0';
-          } else {
-              // Negative numbers or weird states (e.g. "-"), just show raw
-              bubbleDisplay = raw;
-          }
+          bubbleDisplay = previewValue;
       } else {
           // It's a number (from initialization or reset)
           const num = getRawValue(previewValue);
-          // Show sign for positive numbers to indicate adjustment
-          bubbleDisplay = (num > 0 || (num === 0 && Object.is(num, 0))) ? `+${num}` : String(num);
+          // [UPDATED] Just display the raw number (Absolute Score)
+          bubbleDisplay = String(num);
           
           // Corner case: if it is explicitly -0 number
           if (Object.is(num, -0)) bubbleDisplay = '-0';

@@ -1,227 +1,83 @@
 
-import { GOOGLE_CLIENT_ID, GOOGLE_SCOPES } from '../config';
 import { GameTemplate, GameSession, HistoryRecord } from '../types';
+import { googleAuth } from './cloud/googleAuth';
+import { googleDriveClient } from './cloud/googleDriveClient';
+import { CloudFile, CloudResourceType } from './cloud/types';
+import { imageService } from './imageService';
 
-// Types for Google API
-declare global {
-  interface Window {
-    google: any;
-  }
-}
-
-export interface CloudFile {
-  id: string;
-  name: string;
-  createdTime: string; // ISO string
-  appProperties?: { [key: string]: string }; // [New] Custom metadata
-}
-
-interface DriveFile {
-  id: string;
-  name: string;
-  mimeType: string;
-  parents?: string[];
-  appProperties?: { [key: string]: string };
-}
-
-// Convert Base64 to Blob for uploading
-const base64ToBlob = (base64: string, mimeType: string = 'image/jpeg'): Blob => {
-  const byteString = atob(base64.split(',')[1]);
-  const ab = new ArrayBuffer(byteString.length);
-  const ia = new Uint8Array(ab);
-  for (let i = 0; i < byteString.length; i++) {
-    ia[i] = byteString.charCodeAt(i);
-  }
-  return new Blob([ab], { type: mimeType });
-};
-
-// Define explicit types for resource management
-export type CloudResourceType = 'template' | 'active' | 'history';
+export type { CloudFile, CloudResourceType };
 
 class GoogleDriveService {
-  private tokenClient: any;
-  private accessToken: string | null = null;
-  private tokenExpiration: number = 0;
   
   // Folder ID Cache
   private appRootId: string | null = null;
+  private trashIds: Record<CloudResourceType, string | null> = {
+      template: null,
+      active: null,
+      history: null
+  };
   
-  // [Changed] Dedicated Trash Folders
-  private trashTemplatesId: string | null = null;
-  private trashActiveId: string | null = null;
-  private trashHistoryId: string | null = null;
-  
-  public systemFolderId: string | null = null; // Made public for bulk ops
-  public activeFolderId: string | null = null; // Made public for bulk ops
-  public historyFolderId: string | null = null; // Made public for bulk ops
-  public templatesFolderId: string | null = null; // Made public for bulk ops
-
-  constructor() {
-    this.loadScripts();
-  }
-
-  private loadScripts() {
-    // 避免重複載入
-    if (document.getElementById('gsi-script')) {
-        this.initTokenClient();
-        return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.id = 'gsi-script';
-    script.async = true;
-    script.defer = true;
-    script.onload = () => { this.initTokenClient(); };
-    document.body.appendChild(script);
-  }
-
-  private initTokenClient() {
-    if (window.google && window.google.accounts && !this.tokenClient) {
-      try {
-        this.tokenClient = window.google.accounts.oauth2.initTokenClient({
-            client_id: GOOGLE_CLIENT_ID.trim(),
-            scope: GOOGLE_SCOPES,
-            callback: (tokenResponse: any) => {
-            if (tokenResponse && tokenResponse.access_token) {
-                this.accessToken = tokenResponse.access_token;
-                this.tokenExpiration = Date.now() + (tokenResponse.expires_in * 1000);
-            }
-            },
-        });
-      } catch (e) {
-          console.error("GSI Init Error:", e);
-      }
-    }
-  }
+  public systemFolderId: string | null = null;
+  public activeFolderId: string | null = null;
+  public historyFolderId: string | null = null;
+  public templatesFolderId: string | null = null;
 
   public get isAuthorized(): boolean {
-    return !!this.accessToken && Date.now() < this.tokenExpiration;
+    return googleAuth.isAuthorized;
   }
 
-  // 支援傳入 options，例如 { prompt: 'none' } 用於靜默登入
   public async signIn(options: { prompt?: string } = {}): Promise<string> {
-    return new Promise((resolve, reject) => {
-      // 確保 client 已初始化
-      if (!this.tokenClient) {
-        this.initTokenClient();
-        if(!this.tokenClient) return reject(new Error('Google Identity Services script not loaded yet. Please try again.'));
-      }
-
-      // 覆寫 callback 以捕捉這次請求的結果
-      this.tokenClient.callback = (resp: any) => {
-        if (resp.error) {
-            // 處理靜默登入失敗 (需要互動)
-            if (resp.error === 'interaction_required' || resp.error === 'popup_closed_by_user') {
-                reject(resp);
-            } else {
-                reject(resp);
-            }
-        } else {
-          this.accessToken = resp.access_token;
-          this.tokenExpiration = Date.now() + (resp.expires_in * 1000);
-          resolve(this.accessToken!);
-        }
-      };
-
-      // 觸發登入彈窗或靜默請求
-      // prompt: '' (default) or 'none' (silent) or 'select_account'
-      this.tokenClient.requestAccessToken({ prompt: options.prompt ?? '' });
-    });
+      return googleAuth.signIn(options);
   }
 
   public async signOut(): Promise<void> {
-      if (this.accessToken && window.google && window.google.accounts) {
-          try {
-              window.google.accounts.oauth2.revoke(this.accessToken, () => {
-                  console.log('Access token revoked');
-              });
-          } catch (e) {
-              console.warn('Revoke failed', e);
-          }
-      }
-      this.accessToken = null;
-      this.tokenExpiration = 0;
+      await googleAuth.signOut();
       // Clear Cache
       this.appRootId = null;
-      this.trashTemplatesId = null;
-      this.trashActiveId = null;
-      this.trashHistoryId = null;
+      this.trashIds = { template: null, active: null, history: null };
       this.systemFolderId = null;
       this.activeFolderId = null;
       this.historyFolderId = null;
       this.templatesFolderId = null;
   }
 
-  private async fetchDrive(url: string, options: RequestInit = {}) {
-    if (!this.isAuthorized) {
-        throw new Error('Unauthorized'); // Can catch this to trigger re-auth
-    }
-    
-    const headers = { 
-        'Authorization': `Bearer ${this.accessToken}`, 
-        ...options.headers 
-    };
-    
-    const response = await fetch(url, { ...options, headers });
-    
-    if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        // 拋出包含 status 的錯誤，方便上層判斷是否為 401/403
-        const error: any = new Error(err.error?.message || `Drive API Error: ${response.status}`);
-        error.status = response.status;
-        throw error;
-    }
-    return response.json();
-  }
-
-  // --- Folder Structure Helpers ---
+  // --- Folder Management ---
 
   private async getAppRoot(): Promise<string> {
       if (this.appRootId) return this.appRootId;
-      let root = await this.findFile('BoardGameScorePad', 'root', 'application/vnd.google-apps.folder');
-      if (!root) root = await this.createFolder('BoardGameScorePad');
+      let root = await googleDriveClient.findFile('BoardGameScorePad', 'root', 'application/vnd.google-apps.folder');
+      if (!root) root = await googleDriveClient.createFolder('BoardGameScorePad');
       this.appRootId = root.id;
       return root.id;
   }
 
-  // [Changed] Dedicated Trash Folders for strict separation
   private async getTrashFolder(type: CloudResourceType): Promise<string> {
-      if (type === 'template' && this.trashTemplatesId) return this.trashTemplatesId;
-      if (type === 'active' && this.trashActiveId) return this.trashActiveId;
-      if (type === 'history' && this.trashHistoryId) return this.trashHistoryId;
+      if (this.trashIds[type]) return this.trashIds[type]!;
 
       const rootId = await this.getAppRoot();
       
-      let folderName = '_Trash'; // Fallback
+      let folderName = '_Trash'; 
       if (type === 'template') folderName = '_Trash_Templates';
       if (type === 'active') folderName = '_Trash_Active';
       if (type === 'history') folderName = '_Trash_History';
       
-      let trash = await this.findFile(folderName, rootId, 'application/vnd.google-apps.folder');
-      if (!trash) trash = await this.createFolder(folderName, rootId);
+      let trash = await googleDriveClient.findFile(folderName, rootId, 'application/vnd.google-apps.folder');
+      if (!trash) trash = await googleDriveClient.createFolder(folderName, rootId);
       
-      if (type === 'template') this.trashTemplatesId = trash.id;
-      if (type === 'active') this.trashActiveId = trash.id;
-      if (type === 'history') this.trashHistoryId = trash.id;
-      
+      this.trashIds[type] = trash.id;
       return trash.id;
   }
 
-  /**
-   * Initializes and caches the core subfolders
-   */
   public async ensureAppStructure(): Promise<void> {
       if (this.systemFolderId && this.activeFolderId && this.historyFolderId && this.templatesFolderId) return;
       if (!this.isAuthorized) await this.signIn();
 
       const rootId = await this.getAppRoot();
       
-      // We don't init trash here, do it on demand
       const folders = ['_System', '_Active', '_History', '_Templates'];
-      
       const results = await Promise.all(folders.map(async name => {
-          let folder = await this.findFile(name, rootId, 'application/vnd.google-apps.folder');
-          if (!folder) folder = await this.createFolder(name, rootId);
+          let folder = await googleDriveClient.findFile(name, rootId, 'application/vnd.google-apps.folder');
+          if (!folder) folder = await googleDriveClient.createFolder(name, rootId);
           return { name, id: folder.id };
       }));
 
@@ -233,180 +89,258 @@ class GoogleDriveService {
       });
   }
 
-  // --- Core File Operations ---
+  // --- App Business Logic ---
 
-  // [Helper] Generic fetch all items with pagination
-  private async fetchAllItems(query: string, fields: string): Promise<CloudFile[]> {
-      let allFiles: CloudFile[] = [];
-      let pageToken: string | null = null;
-      
-      do {
-          const url: string = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&pageSize=1000&fields=nextPageToken,${fields}${pageToken ? `&pageToken=${pageToken}` : ''}`;
-          const data: any = await this.fetchDrive(url);
-          
-          if (data.files) {
-              allFiles = allFiles.concat(data.files);
-          }
-          pageToken = data.nextPageToken || null;
-      } while (pageToken);
+  public async listFiles(mode: 'active' | 'trash' = 'active', source: 'templates' | 'sessions' | 'history' = 'templates'): Promise<CloudFile[]> {
+    if (!this.isAuthorized) await this.signIn();
+    await this.ensureAppStructure();
+    
+    let targetType: CloudResourceType = 'template';
+    if (source === 'sessions') targetType = 'active';
+    if (source === 'history') targetType = 'history';
 
-      return allFiles;
+    let parentId;
+    if (mode === 'trash') {
+        parentId = await this.getTrashFolder(targetType);
+    } else {
+        if (targetType === 'active') parentId = this.activeFolderId;
+        else if (targetType === 'history') parentId = this.historyFolderId;
+        else parentId = this.templatesFolderId || await this.getAppRoot();
+    }
+
+    if (!parentId) return [];
+
+    let query = `'${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+    if (mode === 'active' && targetType === 'template') {
+        query += ` and name != '_Trash_Templates' and name != '_Trash_Active' and name != '_Trash_History' and name != '_Trash' and name != '_System' and name != '_Active' and name != '_History' and name != '_Templates'`; 
+    }
+
+    return googleDriveClient.fetchAllItems(query, 'files(id, name, createdTime, appProperties)');
   }
 
-  // [Updated] Include appProperties in the fields AND handle pagination
   public async listFoldersInParent(parentId: string): Promise<CloudFile[]> {
       const query = `'${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
-      // Fetch 'appProperties' to check sync status
-      return this.fetchAllItems(query, 'files(id, name, createdTime, appProperties)');
+      return googleDriveClient.fetchAllItems(query, 'files(id, name, createdTime, appProperties)');
   }
 
-  private async findFile(name: string, parentId: string = 'root', mimeType?: string): Promise<DriveFile | null> {
-    let query = `name = '${name}' and '${parentId}' in parents and trashed = false`;
-    if (mimeType) query += ` and mimeType = '${mimeType}'`;
-    
-    // findFile usually expects 1 result, pagination typically not needed unless user has dupes
-    const data = await this.fetchDrive(
-      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id, name, mimeType, parents)`
-    );
-    return data.files && data.files.length > 0 ? data.files[0] : null;
-  }
+  /**
+   * Helper: Backup Photos for Session/History
+   * 1. Uploads missing photos and collects their Cloud IDs.
+   * 2. Cleans up stale photos (files in cloud that are not in the current list).
+   * Returns the updated photoCloudIds map.
+   */
+  private async backupPhotos(
+      folderId: string, 
+      photoIds: string[] | undefined, 
+      existingCloudIds: Record<string, string> | undefined
+  ): Promise<Record<string, string>> {
+      const resultCloudIds: Record<string, string> = { ...(existingCloudIds || {}) };
+      const validPhotoIds = new Set(photoIds || []);
 
-  private async createFolder(name: string, parentId: string = 'root'): Promise<DriveFile> {
-    const metadata = { name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] };
-    return this.fetchDrive('https://www.googleapis.com/drive/v3/files', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(metadata),
-    });
-  }
-
-  // [New] Update file/folder metadata (e.g. appProperties)
-  public async updateFileMetadata(fileId: string, metadata: any): Promise<void> {
-      await this.fetchDrive(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(metadata)
-      });
-  }
-
-  // [New] Rename Folder/File
-  public async renameFile(fileId: string, newName: string): Promise<void> {
-      await this.updateFileMetadata(fileId, { name: newName });
-  }
-
-  public async uploadFileToFolder(folderId: string, name: string, mimeType: string, body: Blob | string): Promise<DriveFile> {
-    const existing = await this.findFile(name, folderId, mimeType);
-    
-    const metadata = { 
-        name, 
-        mimeType, 
-        parents: existing ? undefined : [folderId] 
-    };
-
-    const form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-    const contentBlob = typeof body === 'string' ? new Blob([body], { type: mimeType }) : body;
-    form.append('file', contentBlob);
-
-    const method = existing ? 'PATCH' : 'POST';
-    const endpoint = existing 
-        ? `https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=multipart`
-        : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
-
-    const response = await fetch(endpoint, {
-      method,
-      headers: { 'Authorization': `Bearer ${this.accessToken}` },
-      body: form,
-    });
-    
-    if (!response.ok) throw new Error('File upload failed');
-    return response.json();
-  }
-
-  private async moveFile(fileId: string, previousParentId: string, newParentId: string): Promise<void> {
-      await this.fetchDrive(`https://www.googleapis.com/drive/v3/files/${fileId}?addParents=${newParentId}&removeParents=${previousParentId}`, {
-          method: 'PATCH'
-      });
-  }
-
-  public async deleteFile(fileId: string): Promise<void> {
-    if (!this.isAuthorized) await this.signIn();
-    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${this.accessToken}` }
-    });
-    if (!response.ok && response.status !== 204) {
-        throw new Error("刪除失敗");
-    }
-  }
-
-  // --- Specialized Public Methods ---
-
-  public async saveSystemData(filename: string, data: any): Promise<void> {
-      await this.ensureAppStructure();
-      if (!this.systemFolderId) throw new Error("System folder not found");
-      
-      const jsonContent = JSON.stringify(data, null, 2);
-      await this.uploadFileToFolder(this.systemFolderId, filename, 'application/json', jsonContent);
-  }
-
-  public async createActiveSessionFolder(sessionName: string, sessionId: string): Promise<string> {
-      await this.ensureAppStructure();
-      if (!this.activeFolderId) throw new Error("Active folder not found");
-
-      const folderName = `${sessionName.trim()}_${sessionId}`;
-      
-      let folder = await this.findFile(folderName, this.activeFolderId, 'application/vnd.google-apps.folder');
-      if (!folder) {
-          folder = await this.createFolder(folderName, this.activeFolderId);
+      if (!photoIds || photoIds.length === 0) {
+          // If no photos, we should still perform cleanup if there are any existing ones
+          // But we need to list files first.
       }
-      return folder.id;
+
+      // 1. Upload Missing Photos & Capture IDs
+      for (const photoId of photoIds || []) {
+          // If we already have a Cloud ID for this photo, assume it's good (optimization)
+          if (resultCloudIds[photoId]) continue;
+
+          try {
+              const localImg = await imageService.getImage(photoId);
+              if (localImg && localImg.blob) {
+                  const mimeType = localImg.mimeType || 'image/jpeg';
+                  const filename = `${photoId}.jpg`;
+                  
+                  // Note: uploadFileToFolder performs a find-or-create logic
+                  const uploadedFile = await googleDriveClient.uploadFileToFolder(folderId, filename, mimeType, localImg.blob);
+                  
+                  if (uploadedFile && uploadedFile.id) {
+                      resultCloudIds[photoId] = uploadedFile.id;
+                  }
+              }
+          } catch (e) {
+              console.warn(`Failed to upload photo ${photoId}`, e);
+          }
+      }
+
+      // 2. Cleanup Stale Photos (Hygiene)
+      // We list ALL files in the folder to ensure we don't leave orphans.
+      // This listing is acceptable during backup (write op) to save storage.
+      try {
+          const cloudFiles = await googleDriveClient.fetchAllItems(
+              `'${folderId}' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false`, 
+              'files(id, name)'
+          );
+
+          // Protected files that shouldn't be deleted
+          const protectedFiles = new Set(['data.json', 'session.json', 'background.jpg']);
+
+          for (const file of cloudFiles) {
+              if (protectedFiles.has(file.name)) continue;
+
+              // Check if it's an image associated with this session
+              if (file.name.endsWith('.jpg')) {
+                  const uuid = file.name.replace('.jpg', '');
+                  
+                  // If this UUID is NOT in our valid list, delete it
+                  if (!validPhotoIds.has(uuid)) {
+                      await googleDriveClient.deleteFile(file.id);
+                      // Also remove from result map if present
+                      delete resultCloudIds[uuid];
+                  } else {
+                      // If it IS valid, ensure it's in our map (healing self-repair)
+                      if (!resultCloudIds[uuid]) {
+                          resultCloudIds[uuid] = file.id;
+                      }
+                  }
+              }
+          }
+      } catch (e) {
+          console.warn("Failed to cleanup stale session photos", e);
+      }
+
+      return resultCloudIds;
   }
 
-  public async moveSessionToHistory(sessionFolderId: string): Promise<void> {
-      await this.ensureAppStructure();
-      if (!this.activeFolderId || !this.historyFolderId) throw new Error("Directories not initialized");
-      await this.moveFile(sessionFolderId, this.activeFolderId, this.historyFolderId);
+  /**
+   * Helper: Restore Photos for Session/History
+   * Uses `photoCloudIds` map for direct access (O(1)) instead of searching.
+   */
+  private async restorePhotos(
+      photoIds: string[] | undefined, 
+      photoCloudIds: Record<string, string> | undefined,
+      relatedId: string
+  ) {
+      if (!photoIds || photoIds.length === 0) return;
+      if (!photoCloudIds) return; // Cannot restore efficiently without map
+
+      for (const photoId of photoIds) {
+          // 1. Check if exists locally
+          const exists = await imageService.getImage(photoId);
+          if (exists) continue;
+
+          // 2. Direct download using ID from map
+          const fileId = photoCloudIds[photoId];
+          if (fileId) {
+              try {
+                  const blob = await googleDriveClient.downloadBlob(fileId);
+                  // Save with forced ID to match the JSON record
+                  await imageService.saveImage(blob, relatedId, 'session', photoId);
+              } catch (e) {
+                  console.warn(`Failed to restore photo ${photoId} using ID ${fileId}`, e);
+              }
+          } else {
+              console.warn(`No cloud ID found for photo ${photoId}`);
+          }
+      }
   }
 
-  // Updated: Handle metadata tagging on the Folder
-  public async backupTemplate(template: GameTemplate, imageBase64?: string | null, knownFolderId?: string, existingFolderName?: string): Promise<GameTemplate> {
+  /**
+   * Smart Restore for Game Template
+   */
+  public async restoreTemplate(folderId: string): Promise<GameTemplate> {
+      if (!this.isAuthorized) await this.signIn();
+      
+      const template = await this.getFileContent(folderId, 'data.json');
+      
+      if (template.imageId) {
+          const localImage = await imageService.getImage(template.imageId);
+          
+          if (localImage) {
+              template.hasImage = true;
+          } else {
+              const imageFileId = template.cloudImageId;
+              if (imageFileId) {
+                  try {
+                      const blob = await googleDriveClient.downloadBlob(imageFileId);
+                      await imageService.saveImage(blob, template.id, 'template', template.imageId);
+                      template.hasImage = true;
+                  } catch (e) {
+                      console.warn(`[Smart Hydration] Failed to download image ${imageFileId}`, e);
+                  }
+              }
+          }
+      }
+      return template;
+  }
+
+  public async backupTemplate(template: GameTemplate, _unused?: any, knownFolderId?: string, existingFolderName?: string): Promise<GameTemplate> {
     if (!this.isAuthorized) await this.signIn();
-
     await this.ensureAppStructure();
     const parentId = this.templatesFolderId || await this.getAppRoot();
 
     const targetFolderName = `${template.name.trim()}_${template.id}`;
     let gameFolderId = knownFolderId;
 
-    // If ID not provided, search for it (fallback)
     if (!gameFolderId) {
-        let gameFolder = await this.findFile(targetFolderName, parentId, 'application/vnd.google-apps.folder');
+        let gameFolder = await googleDriveClient.findFile(targetFolderName, parentId, 'application/vnd.google-apps.folder');
         if (!gameFolder) {
-            gameFolder = await this.createFolder(targetFolderName, parentId);
+            gameFolder = await googleDriveClient.createFolder(targetFolderName, parentId);
         }
         gameFolderId = gameFolder.id;
     } else {
-        // We have an ID. Check if name matches.
         if (existingFolderName && existingFolderName !== targetFolderName) {
-            await this.renameFile(gameFolderId, targetFolderName);
+            await googleDriveClient.updateFileMetadata(gameFolderId, { name: targetFolderName });
         }
     }
 
     let uploadedImageId = template.cloudImageId;
-    if (imageBase64) {
-        const blob = base64ToBlob(imageBase64);
-        const uploadedFile = await this.uploadFileToFolder(gameFolderId, 'background.jpg', 'image/jpeg', blob);
-        uploadedImageId = uploadedFile.id;
+    
+    // [CLEANUP & UPLOAD] Handle Background Image
+    if (template.imageId) {
+        try {
+            const currentFilename = `${template.imageId}.jpg`;
+            
+            // 1. List all JPGs in the folder to identify orphans
+            const existingFiles = await googleDriveClient.fetchAllItems(`'${gameFolderId}' in parents and mimeType contains 'image/' and trashed = false`, 'files(id, name)');
+            
+            let alreadyExists = false;
+
+            // 2. Delete old images that don't match current ID
+            // Also clean up legacy 'background.jpg' if a new UUID image is taking over
+            for (const file of existingFiles) {
+                if (file.name !== currentFilename) {
+                    // It's an old uuid.jpg or legacy background.jpg, delete it
+                    await googleDriveClient.deleteFile(file.id);
+                } else {
+                    alreadyExists = true;
+                    uploadedImageId = file.id;
+                }
+            }
+
+            // 3. Upload new image if missing
+            if (!alreadyExists) {
+                const localImg = await imageService.getImage(template.imageId);
+                if (localImg && localImg.blob) {
+                     const mimeType = localImg.mimeType || 'image/jpeg';
+                     const uploadedFile = await googleDriveClient.uploadFileToFolder(gameFolderId, currentFilename, mimeType, localImg.blob);
+                     uploadedImageId = uploadedFile.id;
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to manage template background image", e);
+        }
+    } else {
+        // If template has NO image, but folder has images, clean them up
+        try {
+            const existingFiles = await googleDriveClient.fetchAllItems(`'${gameFolderId}' in parents and mimeType contains 'image/' and trashed = false`, 'files(id, name)');
+            for (const file of existingFiles) {
+                await googleDriveClient.deleteFile(file.id);
+            }
+            uploadedImageId = undefined;
+        } catch (e) {
+            console.warn("Failed to cleanup old images", e);
+        }
     }
 
     const updatedTemplate = { ...template, cloudImageId: uploadedImageId };
     const jsonContent = JSON.stringify(updatedTemplate, null, 2);
-    await this.uploadFileToFolder(gameFolderId, 'data.json', 'application/json', jsonContent);
+    await googleDriveClient.uploadFileToFolder(gameFolderId, 'data.json', 'application/json', jsonContent);
 
-    // [New] Update Folder Metadata with updatedAt timestamp
     if (template.updatedAt) {
-        await this.updateFileMetadata(gameFolderId, {
+        await googleDriveClient.updateFileMetadata(gameFolderId, {
             appProperties: { originalUpdatedAt: String(template.updatedAt) }
         });
     }
@@ -414,7 +348,6 @@ class GoogleDriveService {
     return updatedTemplate;
   }
 
-  // Updated: Handle metadata tagging
   public async backupHistoryRecord(record: HistoryRecord, knownFolderId?: string, existingFolderName?: string): Promise<string> {
       if (!this.isAuthorized) await this.signIn();
       await this.ensureAppStructure();
@@ -424,31 +357,33 @@ class GoogleDriveService {
       let folderId = knownFolderId;
 
       if (!folderId) {
-          let folder = await this.findFile(targetFolderName, this.historyFolderId, 'application/vnd.google-apps.folder');
+          let folder = await googleDriveClient.findFile(targetFolderName, this.historyFolderId, 'application/vnd.google-apps.folder');
           if (!folder) {
-              folder = await this.createFolder(targetFolderName, this.historyFolderId);
+              folder = await googleDriveClient.createFolder(targetFolderName, this.historyFolderId);
           }
           folderId = folder.id;
       } else {
-          // Check for rename
           if (existingFolderName && existingFolderName !== targetFolderName) {
-              await this.renameFile(folderId, targetFolderName);
+              await googleDriveClient.updateFileMetadata(folderId, { name: targetFolderName });
           }
       }
 
-      const jsonContent = JSON.stringify(record, null, 2);
-      await this.uploadFileToFolder(folderId, 'session.json', 'application/json', jsonContent);
+      // [NEW] Backup Photos and Get Updated Map
+      const updatedCloudMap = await this.backupPhotos(folderId, record.photos, record.photoCloudIds);
       
-      // [New] History usually doesn't update, but if we edit notes/location, endTime is the "version"
-      // Use endTime as the version stamp
-      await this.updateFileMetadata(folderId, {
+      // Update record with the new map before saving JSON
+      const recordToSave = { ...record, photoCloudIds: updatedCloudMap };
+
+      const jsonContent = JSON.stringify(recordToSave, null, 2);
+      await googleDriveClient.uploadFileToFolder(folderId, 'session.json', 'application/json', jsonContent);
+      
+      await googleDriveClient.updateFileMetadata(folderId, {
           appProperties: { originalUpdatedAt: String(record.endTime) }
       });
 
       return folderId;
   }
 
-  // [New] Backup Active Session
   public async backupActiveSession(session: GameSession, templateName: string, knownFolderId?: string, existingFolderName?: string): Promise<string> {
       if (!this.isAuthorized) await this.signIn();
       await this.ensureAppStructure();
@@ -458,181 +393,167 @@ class GoogleDriveService {
       let folderId = knownFolderId;
 
       if (!folderId) {
-          let folder = await this.findFile(targetFolderName, this.activeFolderId, 'application/vnd.google-apps.folder');
+          let folder = await googleDriveClient.findFile(targetFolderName, this.activeFolderId, 'application/vnd.google-apps.folder');
           if (!folder) {
-              folder = await this.createFolder(targetFolderName, this.activeFolderId);
+              folder = await googleDriveClient.createFolder(targetFolderName, this.activeFolderId);
           }
           folderId = folder.id;
       } else {
           if (existingFolderName && existingFolderName !== targetFolderName) {
-              await this.renameFile(folderId, targetFolderName);
+              await googleDriveClient.updateFileMetadata(folderId, { name: targetFolderName });
           }
       }
 
-      const jsonContent = JSON.stringify(session, null, 2);
-      await this.uploadFileToFolder(folderId, 'session.json', 'application/json', jsonContent);
+      // [NEW] Backup Photos and Get Updated Map
+      const updatedCloudMap = await this.backupPhotos(folderId, session.photos, session.photoCloudIds);
       
-      // [New] Use startTime as a proxy for ID, but active sessions change constantly.
-      // We can use a generated timestamp or just current time since active sessions are always "latest".
-      // But better to use something deterministic if available.
-      // Let's use Date.now() since active session state is volatile.
-      await this.updateFileMetadata(folderId, {
+      // Update session with the new map before saving JSON
+      const sessionToSave = { ...session, photoCloudIds: updatedCloudMap };
+
+      const jsonContent = JSON.stringify(sessionToSave, null, 2);
+      await googleDriveClient.uploadFileToFolder(folderId, 'session.json', 'application/json', jsonContent);
+      
+      await googleDriveClient.updateFileMetadata(folderId, {
           appProperties: { originalUpdatedAt: String(Date.now()) }
       });
       
       return folderId;
   }
 
-  // [Update] List files based on source with Pagination Support
-  public async listFiles(mode: 'active' | 'trash' = 'active', source: 'templates' | 'sessions' | 'history' = 'templates'): Promise<CloudFile[]> {
-    if (!this.isAuthorized) await this.signIn();
-    
-    await this.ensureAppStructure();
-    
-    // Determine target resource type logic
-    let targetType: CloudResourceType = 'template';
-    if (source === 'sessions') targetType = 'active';
-    if (source === 'history') targetType = 'history';
+  // --- Utility Methods ---
 
-    // Determine Parent Folder
-    let parentId;
-    if (mode === 'trash') {
-        parentId = await this.getTrashFolder(targetType);
-    } else {
-        if (targetType === 'active') {
-            parentId = this.activeFolderId;
-        } else if (targetType === 'history') {
-            parentId = this.historyFolderId;
-        } else {
-            parentId = this.templatesFolderId || await this.getAppRoot();
-        }
-    }
-
-    if (!parentId) return [];
-
-    let query = `'${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
-    
-    if (mode === 'active' && targetType === 'template') {
-        query += ` and name != '_Trash_Templates' and name != '_Trash_Active' and name != '_Trash_History' and name != '_Trash' and name != '_System' and name != '_Active' and name != '_History' and name != '_Templates'`; 
-    }
-
-    // Use common fetcher with pagination
-    return this.fetchAllItems(query, 'files(id, name, createdTime, appProperties)');
+  public async saveSystemData(filename: string, data: any): Promise<void> {
+      await this.ensureAppStructure();
+      if (!this.systemFolderId) throw new Error("System folder not found");
+      const jsonContent = JSON.stringify(data, null, 2);
+      await googleDriveClient.uploadFileToFolder(this.systemFolderId, filename, 'application/json', jsonContent);
   }
 
-  // [Changed] Soft Delete with Strict Type
+  public async createActiveSessionFolder(sessionName: string, sessionId: string): Promise<string> {
+      await this.ensureAppStructure();
+      if (!this.activeFolderId) throw new Error("Active folder not found");
+      const folderName = `${sessionName.trim()}_${sessionId}`;
+      let folder = await googleDriveClient.findFile(folderName, this.activeFolderId, 'application/vnd.google-apps.folder');
+      if (!folder) folder = await googleDriveClient.createFolder(folderName, this.activeFolderId);
+      return folder.id;
+  }
+
+  public async uploadFileToFolder(folderId: string, name: string, mimeType: string, body: string): Promise<void> {
+      await googleDriveClient.uploadFileToFolder(folderId, name, mimeType, body);
+  }
+
+  public async moveSessionToHistory(sessionFolderId: string): Promise<void> {
+      await this.ensureAppStructure();
+      if (!this.activeFolderId || !this.historyFolderId) throw new Error("Directories not initialized");
+      await googleDriveClient.moveFile(sessionFolderId, this.activeFolderId, this.historyFolderId);
+  }
+
   public async softDeleteFolder(folderId: string, type: CloudResourceType): Promise<void> {
       if (!this.isAuthorized) return; 
-
       await this.ensureAppStructure();
       
-      const file = await this.fetchDrive(`https://www.googleapis.com/drive/v3/files/${folderId}?fields=parents`);
-      if (!file.parents || file.parents.length === 0) return;
-      const currentParentId = file.parents[0];
+      let sourceParentId;
+      if (type === 'active') sourceParentId = this.activeFolderId;
+      else if (type === 'history') sourceParentId = this.historyFolderId;
+      else sourceParentId = this.templatesFolderId || this.appRootId;
 
       const trashId = await this.getTrashFolder(type);
 
-      await this.moveFile(folderId, currentParentId, trashId);
-      this.cleanupTrashLimit(trashId);
+      if (sourceParentId) {
+          await googleDriveClient.moveFile(folderId, sourceParentId, trashId);
+          this.cleanupTrashLimit(trashId);
+      }
   }
 
-  // [Changed] Restore with Strict Type
   public async restoreFolder(folderId: string, type: CloudResourceType): Promise<void> {
       if (!this.isAuthorized) await this.signIn();
-      
       await this.ensureAppStructure();
       
       let targetParentId;
-      if (type === 'active') {
-          targetParentId = this.activeFolderId;
-      } else if (type === 'history') {
-          targetParentId = this.historyFolderId;
-      } else {
-          targetParentId = this.templatesFolderId || await this.getAppRoot();
-      }
+      if (type === 'active') targetParentId = this.activeFolderId;
+      else if (type === 'history') targetParentId = this.historyFolderId;
+      else targetParentId = this.templatesFolderId || await this.getAppRoot();
       
       const trashId = await this.getTrashFolder(type);
       
       if (targetParentId) {
-          await this.moveFile(folderId, trashId, targetParentId);
+          await googleDriveClient.moveFile(folderId, trashId, targetParentId);
       }
   }
 
-  // 100 Items Limit Logic per Trash Bin
+  public async deleteFile(fileId: string): Promise<boolean> {
+      await googleDriveClient.deleteFile(fileId);
+      return true;
+  }
+
+  public async emptyTrash(): Promise<void> {
+      if (!this.isAuthorized) await this.signIn();
+      const trashTempId = await this.getTrashFolder('template');
+      const trashActiveId = await this.getTrashFolder('active');
+      const trashHistoryId = await this.getTrashFolder('history');
+      
+      const idsToCheck = Array.from(new Set([trashTempId, trashActiveId, trashHistoryId]));
+
+      const promises = idsToCheck.map(async (trashId) => {
+          const query = `'${trashId}' in parents and trashed = false`;
+          const files = await googleDriveClient.fetchAllItems(query, 'files(id)');
+          return Promise.all(files.map((f: any) => googleDriveClient.deleteFile(f.id)));
+      });
+
+      await Promise.all(promises);
+  }
+
   private async cleanupTrashLimit(trashFolderId: string) {
       try {
           const query = `'${trashFolderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
-          const files = await this.fetchAllItems(query, 'files(id, createdTime)'); // Use paginated fetch
-          
-          // Sort explicitly if needed, though Drive usually returns sorted by createdTime desc if requested
-          // Re-sort just in case pagination messed up order slightly
+          const files = await googleDriveClient.fetchAllItems(query, 'files(id, createdTime)');
           files.sort((a: any, b: any) => new Date(b.createdTime).getTime() - new Date(a.createdTime).getTime());
 
           if (files.length > 100) {
               const toDelete = files.slice(100); 
-              const promises = toDelete.map((f: any) => this.deleteFile(f.id));
+              const promises = toDelete.map((f: any) => googleDriveClient.deleteFile(f.id));
               await Promise.all(promises);
-              console.log(`Auto-cleaned ${toDelete.length} old backups from Trash.`);
           }
       } catch (e) {
           console.warn("Trash cleanup failed", e);
       }
   }
 
-  // Empty Trash: Delete ALL from ALL trash folders
-  public async emptyTrash(): Promise<void> {
-      if (!this.isAuthorized) await this.signIn();
-      
-      const trashTempId = await this.getTrashFolder('template');
-      const trashActiveId = await this.getTrashFolder('active');
-      const trashHistoryId = await this.getTrashFolder('history');
-      
-      // Use set to ensure uniqueness if logic returns same (rare but safe)
-      const idsToCheck = Array.from(new Set([trashTempId, trashActiveId, trashHistoryId]));
-
-      const promises = idsToCheck.map(async (trashId) => {
-          const query = `'${trashId}' in parents and trashed = false`;
-          const files = await this.fetchAllItems(query, 'files(id)'); // Use paginated fetch
-          return Promise.all(files.map((f: any) => this.deleteFile(f.id)));
-      });
-
-      await Promise.all(promises);
-  }
-
   public async getFileContent(folderId: string, filename: string = 'data.json'): Promise<any> {
       if (!this.isAuthorized) await this.signIn();
-      
-      const file = await this.findFile(filename, folderId, 'application/json');
+      const file = await googleDriveClient.findFile(filename, folderId, 'application/json');
       if (!file) throw new Error(`此備份中找不到 ${filename}`);
 
-      const response = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
-          headers: { 'Authorization': `Bearer ${this.accessToken}` }
-      });
-      
-      if (!response.ok) throw new Error("下載失敗");
-      const data = await response.json();
+      const data = await googleDriveClient.downloadFile(file.id);
+
+      // --- Enhanced Restore Logic for Session/History Photos ---
+      // We check for `photos` array AND `photoCloudIds` in the JSON and restore them if needed
+      if (data.id && (filename === 'session.json')) {
+          await this.restorePhotos(data.photos, data.photoCloudIds, data.id);
+      }
 
       if (filename === 'data.json') {
           if (!data.cloudImageId) {
-              const bgFile = await this.findFile('background.jpg', folderId);
-              if (bgFile) {
-                  data.cloudImageId = bgFile.id;
+              if (data.imageId) {
+                  const uuidFile = await googleDriveClient.findFile(`${data.imageId}.jpg`, folderId);
+                  if (uuidFile) {
+                      data.cloudImageId = uuidFile.id;
+                  }
+              }
+              if (!data.cloudImageId) {
+                  const bgFile = await googleDriveClient.findFile('background.jpg', folderId);
+                  if (bgFile) {
+                      data.cloudImageId = bgFile.id;
+                  }
               }
           }
       }
       return data;
   }
 
-  // [UPDATED] Return Blob instead of Base64 string for memory efficiency
   public async downloadImage(fileId: string): Promise<Blob> {
       if (!this.isAuthorized) await this.signIn();
-
-      const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-          headers: { 'Authorization': `Bearer ${this.accessToken}` }
-      });
-
-      if (!response.ok) throw new Error("圖片下載失敗");
-      return await response.blob();
+      return await googleDriveClient.downloadBlob(fileId);
   }
 }
 

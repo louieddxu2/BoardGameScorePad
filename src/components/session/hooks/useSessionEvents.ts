@@ -4,6 +4,7 @@ import { GameSession, GameTemplate, ScoreColumn } from '../../../types';
 import { useSessionState } from './useSessionState';
 import { useSessionNavigation } from './useSessionNavigation';
 import { generateId } from '../../../utils/idGenerator';
+import { calculatePlayerTotal } from '../../../utils/scoring';
 
 interface SessionViewProps {
   session: GameSession;
@@ -28,60 +29,111 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
     editingCell: uiState.editingCell,
     editingPlayerId: uiState.editingPlayerId,
     advanceDirection: uiState.advanceDirection,
-    // Fix: Reset previewValue to 0 immediately when navigating via Next button
     setEditingCell: (cell) => setUiState(prev => ({ ...prev, editingCell: cell, editingPlayerId: null, previewValue: 0 })),
     setEditingPlayerId: (id) => setUiState(prev => ({ ...prev, editingPlayerId: id, editingCell: null, previewValue: 0 })),
   });
 
-  // --- Back Button Logic ---
+  // --- Back Button Logic (Stack Priority) ---
   useEffect(() => {
     const handleSessionBackPress = () => {
-      // Priority of closing UI layers
-
-      // SOLUTION: Add a guard clause. If the column editor is open,
-      // let it handle the back press event itself and do nothing here.
+      // 1. Column Editor (Let it handle itself if implemented, but strictly we can guard here)
       if (uiState.editingColumn) { return; }
 
-      if (uiState.showExitConfirm) { setUiState(p => ({ ...p, showExitConfirm: false })); return; }
-      if (uiState.showShareMenu) { setUiState(p => ({ ...p, showShareMenu: false })); return; }
-      if (uiState.isAddColumnModalOpen) { setUiState(p => ({ ...p, isAddColumnModalOpen: false })); return; }
-      if (uiState.screenshotModal.isOpen) { setUiState(p => ({ ...p, screenshotModal: { ...p.screenshotModal, isOpen: false } })); return; }
+      // 2. Image Upload Modal (Missing Image / Manual Upload)
+      if (uiState.isImageUploadModalOpen) {
+          setUiState(p => ({ ...p, isImageUploadModalOpen: false }));
+          return;
+      }
+
+      // 3. Photo Gallery
+      if (uiState.isPhotoGalleryOpen) {
+          setUiState(p => ({ ...p, isPhotoGalleryOpen: false }));
+          return;
+      }
+
+      // 4. Session Exit Confirmation Modal
+      if (uiState.isSessionExitModalOpen) {
+          setUiState(p => ({ ...p, isSessionExitModalOpen: false }));
+          return;
+      }
+
+      // 5. Share Menu
+      if (uiState.showShareMenu) { 
+          setUiState(p => ({ ...p, showShareMenu: false })); 
+          return; 
+      }
+
+      // 6. Add Column Modal
+      if (uiState.isAddColumnModalOpen) { 
+          setUiState(p => ({ ...p, isAddColumnModalOpen: false })); 
+          return; 
+      }
+
+      // 7. Screenshot Modal
+      if (uiState.screenshotModal.isOpen) { 
+          setUiState(p => ({ ...p, screenshotModal: { ...p.screenshotModal, isOpen: false } })); 
+          return; 
+      }
+
+      // 8. Input Panel (Editing Cell/Player)
       if (uiState.editingCell || uiState.editingPlayerId) {
         setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null, previewValue: 0 }));
         return;
       }
-      setUiState(p => ({ ...p, showExitConfirm: true }));
+
+      // 9. Reset Confirmation
+      if (uiState.showResetConfirm) {
+          setUiState(p => ({ ...p, showResetConfirm: false }));
+          return;
+      }
+
+      // 10. Default: Open Exit Confirmation
+      // Check if we need to confirm or just exit
+      const hasScores = session.players.some(p => Object.keys(p.scores).length > 0 || (p.bonusScore || 0) !== 0);
+      const hasPhotos = (session.photos && session.photos.length > 0);
+
+      if (hasScores || hasPhotos) {
+          setUiState(p => ({ ...p, isSessionExitModalOpen: true }));
+      } else {
+          onExit();
+      }
     };
     window.addEventListener('app-back-press', handleSessionBackPress);
     return () => window.removeEventListener('app-back-press', handleSessionBackPress);
-  }, [uiState, onExit, setUiState]);
+  }, [uiState, onExit, setUiState, session.players, session.photos]);
 
 
   // --- Event Handlers ---
 
   const handleGlobalClick = () => {
-    // 遮罩層現在會處理阻擋邏輯，這裡只需要專注於「點擊空白處關閉面板」
     setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null, previewValue: 0 }));
   };
   
   const handleCellClick = (playerId: string, colId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    // 不需要再檢查 isInputFocused，因為遮罩層會擋住所有點擊
-    
     if (uiState.editingCell?.playerId === playerId && uiState.editingCell?.colId === colId) {
       setUiState(p => ({ ...p, editingCell: null, previewValue: 0 }));
     } else {
-      // Fix: Reset previewValue to 0 immediately when clicking a new cell
-      setUiState(p => ({ ...p, editingCell: { playerId, colId }, editingPlayerId: null, previewValue: 0 }));
+      let initialValue: any = 0;
+      if (colId === '__TOTAL__') {
+          const player = session.players.find(p => p.id === playerId);
+          if (player) {
+              initialValue = calculatePlayerTotal(player, template, session.players);
+          }
+      }
+
+      setUiState(p => ({ 
+          ...p, 
+          editingCell: { playerId, colId }, 
+          editingPlayerId: null, 
+          previewValue: initialValue 
+      }));
     }
   };
   
   const handlePlayerHeaderClick = (playerId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    
-    // 不需要再檢查 isInputFocused
-
     if (uiState.editingPlayerId === playerId) {
       setUiState(p => ({ ...p, editingPlayerId: null, previewValue: 0 }));
     } else {
@@ -91,9 +143,7 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
   
   const handleColumnHeaderClick = (e: React.MouseEvent, col: ScoreColumn) => {
     e.stopPropagation();
-    // 限制：只有在編輯模式下才能開啟欄位編輯器
     if (!uiState.isEditMode) return;
-
     setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null, editingColumn: col, previewValue: 0 }));
   };
 
@@ -107,15 +157,13 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
   const handlePlayerNameSubmit = (playerId: string, newName: string, moveNext: boolean = false) => {
       const finalName = newName?.trim() ?? '';
       const currentPlayer = session.players.find(p => p.id === playerId);
-      
-      // Only update if the name actually changed
       if (currentPlayer && currentPlayer.name !== finalName) {
-          // Only add non-empty names to history
-          if (finalName) {
-              onUpdatePlayerHistory(finalName);
-          }
           const players = session.players.map(p => p.id === playerId ? { ...p, name: finalName } : p);
           onUpdateSession({ ...session, players });
+      }
+      // Fixed: onUpdatePlayerHistory is passed in props to this hook
+      if (finalName && currentPlayer?.name !== finalName) {
+          onUpdatePlayerHistory(finalName);
       }
       
       setUiState(p => ({ ...p, isInputFocused: false }));
@@ -145,7 +193,7 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
 
   const handleAddBlankColumn = () => {
     const newCol: ScoreColumn = { 
-        id: generateId(8), // Short ID for new columns
+        id: generateId(8), 
         name: `項目 ${template.columns.length + 1}`, 
         isScoring: true, 
         formula: 'a1', 
@@ -161,7 +209,7 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
       const original = template.columns.find(c => c.id === idToCopy);
       if (!original) return null;
       const newColumn = JSON.parse(JSON.stringify(original));
-      newColumn.id = generateId(8); // Short ID for copied columns
+      newColumn.id = generateId(8); 
       newColumn.name = `${original.name} (複製)`;
       return newColumn;
     }).filter((c): c is ScoreColumn => c !== null);
@@ -173,8 +221,6 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
   };
   
   const handleScreenshotRequest = useCallback((mode: 'full' | 'simple') => {
-    // Note: The actual measurement logic is in SessionView to access DOM
-    // This handler primarily signals the UI state change for menu closing
     setUiState(p => ({ ...p, showShareMenu: false }));
   }, [setUiState]);
 

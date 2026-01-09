@@ -18,6 +18,7 @@ export interface ScreenshotLayout {
   playerWidths: Record<string, number>;
   playerHeaderHeight: number;
   rowHeights: Record<string, number>;
+  totalRowHeight?: number; // New field
 }
 
 export interface UIState {
@@ -26,7 +27,8 @@ export interface UIState {
   editingColumn: GameTemplate['columns'][0] | null;
   isEditingTitle: boolean;
   showResetConfirm: boolean;
-  showExitConfirm: boolean;
+  // [Changed] Renamed for clarity, logic moved inside state machine
+  isSessionExitModalOpen: boolean; 
   columnToDelete: string | null;
   isAddColumnModalOpen: boolean;
   showShareMenu: boolean;
@@ -35,6 +37,10 @@ export interface UIState {
     mode: 'full' | 'simple';
     layout: ScreenshotLayout | null;
   };
+  // [New] Centralized Modal States
+  isPhotoGalleryOpen: boolean;
+  isImageUploadModalOpen: boolean;
+  
   advanceDirection: 'horizontal' | 'vertical';
   overwriteMode: boolean;
   isInputFocused: boolean;
@@ -54,11 +60,13 @@ export const useSessionState = (props: SessionViewProps) => {
       editingColumn: null,
       isEditingTitle: false,
       showResetConfirm: false,
-      showExitConfirm: false,
+      isSessionExitModalOpen: false,
       columnToDelete: null,
       isAddColumnModalOpen: false,
       showShareMenu: false,
       screenshotModal: { isOpen: false, mode: 'full', layout: null },
+      isPhotoGalleryOpen: false,
+      isImageUploadModalOpen: false,
       advanceDirection: 'horizontal',
       overwriteMode: true,
       isInputFocused: false,
@@ -83,8 +91,6 @@ export const useSessionState = (props: SessionViewProps) => {
   }, [uiState.isEditMode]);
 
   // When active cell changes, enable overwrite mode.
-  // CRITICAL FIX: Do NOT reset previewValue to 0 here. 
-  // Let InputPanel handle initialization to support loading existing values (like bonus scores).
   useEffect(() => {
     if (uiState.editingCell) {
       setUiState(prev => ({ ...prev, overwriteMode: true }));
@@ -120,7 +126,23 @@ export const useSessionState = (props: SessionViewProps) => {
             return;
         }
 
-        const colIndex = props.template.columns.findIndex(c => c.id === uiState.editingCell!.colId);
+        let effectiveColId = uiState.editingCell.colId;
+
+        // [Fix] Handle Overlay Columns in Play Mode:
+        if (!document.getElementById(`row-${effectiveColId}`)) {
+            const allCols = props.template.columns;
+            const currentIndex = allCols.findIndex(c => c.id === effectiveColId);
+            
+            for (let i = currentIndex - 1; i >= 0; i--) {
+                const mode = allCols[i].displayMode || 'row';
+                if (mode === 'row') {
+                    effectiveColId = allCols[i].id;
+                    break;
+                }
+            }
+        }
+
+        const colIndex = props.template.columns.findIndex(c => c.id === effectiveColId);
 
         // Case 2a: First Data Row -> Scroll to absolute Top
         if (colIndex === 0) {
@@ -132,7 +154,7 @@ export const useSessionState = (props: SessionViewProps) => {
         const headerEl = document.getElementById('live-player-header-row');
         const headerHeight = headerEl ? headerEl.offsetHeight : 48;
         
-        const targetRowElement = document.getElementById(`row-${uiState.editingCell.colId}`);
+        const targetRowElement = document.getElementById(`row-${effectiveColId}`);
         if (targetRowElement) {
           const previousRowElement = targetRowElement.previousElementSibling as HTMLElement | null;
           

@@ -17,7 +17,7 @@ interface ScreenshotModalProps {
   zoomLevel: number;
   layout: ScreenshotLayout | null;
   baseImage?: string; 
-  customWinners?: string[]; // New Prop
+  customWinners?: string[]; 
 }
 
 interface SnapshotCache {
@@ -25,7 +25,7 @@ interface SnapshotCache {
   url: string | null;
 }
 
-const PIXEL_RATIO = 2; // Generate image at 2x resolution for sharpness
+const PIXEL_RATIO = 2; // Generate image at 2x resolution
 
 const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   isOpen,
@@ -53,7 +53,11 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
   // --- Preview State ---
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
-  const [imgLogicalSize, setImgLogicalSize] = useState({ width: 0, height: 0 }); // Store dimensions
+  
+  // We still keep this state to apply explicit width/height styles to the img tag to prevent layout thrashing,
+  // but we won't rely on it for the math calculation anymore.
+  const [imgLogicalSize, setImgLogicalSize] = useState({ width: 0, height: 0 }); 
+  
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   
@@ -64,49 +68,51 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   const startPinchScale = useRef(1);
 
   // --- Reset / Fit Logic ---
-  const fitToScreen = useCallback((w?: number, h?: number) => {
+  // [Fix] This function now reads directly from refs to ensure 100% sync with the DOM
+  const fitToScreen = useCallback(() => {
       const container = containerRef.current;
+      const img = imgRef.current;
+
+      if (!container || !img) return;
       
-      // Determine logical dimensions
-      // Prioritize passed arguments (from onLoad), fallback to state or ref
-      let logicalImgW = w;
-      let logicalImgH = h;
+      // Use natural dimensions directly (source of truth)
+      // This solves the issue where dynamic content (names, scores) changes the image size
+      // rendering React state updates too slow to catch the first frame.
+      const naturalW = img.naturalWidth;
+      const naturalH = img.naturalHeight;
 
-      if (!logicalImgW || !logicalImgH) {
-          if (imgLogicalSize.width > 0 && imgLogicalSize.height > 0) {
-              logicalImgW = imgLogicalSize.width;
-              logicalImgH = imgLogicalSize.height;
-          } else {
-              const img = imgRef.current;
-              if (img && img.naturalWidth) {
-                  logicalImgW = img.naturalWidth / PIXEL_RATIO;
-                  logicalImgH = img.naturalHeight / PIXEL_RATIO;
-              }
-          }
-      }
+      if (!naturalW || !naturalH) return; // Not loaded yet
 
-      if (!container || !logicalImgW || !logicalImgH) return;
+      // Convert to logical pixels (since we generated at 2x)
+      const logicalImgW = naturalW / PIXEL_RATIO;
+      const logicalImgH = naturalH / PIXEL_RATIO;
 
       const containerW = container.clientWidth;
       const containerH = container.clientHeight;
 
       if (containerW === 0 || containerH === 0) return;
 
-      const scale = Math.min(containerW / logicalImgW, containerH / logicalImgH) * 0.95; // 95% fit
+      // Calculate scale to fit (contain)
+      // [Modified] Removed * 0.95 to allow full fit
+      const scale = Math.min(containerW / logicalImgW, containerH / logicalImgH);
 
-      // Center the image
+      // Center the image based on the calculated scale
       const x = (containerW - logicalImgW * scale) / 2;
       const y = (containerH - logicalImgH * scale) / 2;
 
       setTransform({ x, y, scale });
-  }, [imgLogicalSize]);
+  }, []);
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
       const img = e.currentTarget;
-      const w = img.naturalWidth / PIXEL_RATIO;
-      const h = img.naturalHeight / PIXEL_RATIO;
-      setImgLogicalSize({ width: w, height: h });
-      requestAnimationFrame(() => fitToScreen(w, h));
+      // Update state for DOM styling (width/height attributes)
+      setImgLogicalSize({ 
+          width: img.naturalWidth / PIXEL_RATIO, 
+          height: img.naturalHeight / PIXEL_RATIO 
+      });
+      
+      // Trigger calculation IMMEDIATELY, bypassing state update cycle
+      requestAnimationFrame(() => fitToScreen());
   };
 
   useEffect(() => {
@@ -126,7 +132,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
     if (isOpen) {
         setActiveMode(initialMode);
         setTransform({ x: 0, y: 0, scale: 1 });
-        setImgLogicalSize({ width: 0, height: 0 }); // Reset size on open
+        setImgLogicalSize({ width: 0, height: 0 }); 
     } else {
         if (snapshots.full.url) URL.revokeObjectURL(snapshots.full.url);
         if (snapshots.simple.url) URL.revokeObjectURL(snapshots.simple.url);
@@ -139,7 +145,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialMode]);
 
-  // Reset logical size when switching modes to force re-calc
+  // Reset logical size when switching modes
   useEffect(() => {
       setImgLogicalSize({ width: 0, height: 0 });
   }, [activeMode]);
@@ -153,7 +159,8 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
         setIsGenerating(true);
         
-        const renderDelay = baseImage ? 800 : 300;
+        // Slightly longer delay for textured images to ensure background loads
+        const renderDelay = baseImage ? 500 : 200;
         await new Promise(r => setTimeout(r, renderDelay));
 
         const targetId = `screenshot-target-${activeMode}`;
@@ -230,8 +237,12 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    const newX = mouseX - (mouseX - transform.x) * (newScale / transform.scale);
-    const newY = mouseY - (mouseY - transform.y) * (newScale / transform.scale);
+    // Zoom towards mouse pointer
+    const imgX = (mouseX - transform.x) / transform.scale;
+    const imgY = (mouseY - transform.y) / transform.scale;
+    
+    const newX = mouseX - (imgX * newScale);
+    const newY = mouseY - (imgY * newScale);
 
     setTransform({ x: newX, y: newY, scale: newScale });
   };
@@ -253,9 +264,11 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                     const rect = containerRef.current.getBoundingClientRect();
                     const cx = rect.width / 2;
                     const cy = rect.height / 2;
-                    const newX = cx - (cx - transform.x) * (newScale / transform.scale);
-                    const newY = cy - (cy - transform.y) * (newScale / transform.scale);
-                    setTransform({ x: newX, y: newY, scale: newScale });
+                    const imgCx = (cx - transform.x) / transform.scale;
+                    const imgCy = (cy - transform.y) / transform.scale;
+                    const newTx = cx - (imgCx * newScale);
+                    const newTy = cy - (imgCy * newScale);
+                    setTransform({ x: newTx, y: newTy, scale: newScale });
                 }
             }
         } else if (isDragging.current) {
@@ -343,13 +356,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
         className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
         onClick={onClose}
     >
-      
-      {/* 
-        Hidden Render Targets 
-        - Position: Fixed off-screen (-10000px).
-        - Width: max-content to wrap content tightly without extra whitespace.
-        - Zoom: Pass zoomLevel=1 to ensure standard 100% scale capture regardless of UI zoom.
-      */}
+      {/* Hidden Render Targets */}
       <div style={{ position: 'fixed', left: '-10000px', top: 0 }}>
          <div id="screenshot-target-full" style={{ display: 'inline-block', width: 'max-content' }}>
             <ScreenshotView 
@@ -380,7 +387,6 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
         className="bg-slate-900 w-[95vw] h-[90vh] max-w-6xl rounded-2xl shadow-2xl border border-slate-800 flex flex-col relative"
         onClick={e => e.stopPropagation()} 
       >
-        
         {/* Header */}
         <div className="flex-none bg-slate-800 px-4 py-3 rounded-t-2xl border-b border-slate-700 flex items-center justify-between z-10">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -407,7 +413,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
             <button onClick={onClose} className="p-2 text-slate-400 hover:text-white bg-slate-700/50 hover:bg-slate-600 rounded-full transition-colors"><X size={20} /></button>
         </div>
 
-        {/* Preview Area (Zoomable) */}
+        {/* Preview Area */}
         <div className="flex-1 min-h-0 bg-slate-950 relative flex flex-col z-0 overflow-hidden">
             <div 
                 ref={containerRef}

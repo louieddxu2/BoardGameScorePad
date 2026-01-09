@@ -21,6 +21,7 @@ interface TexturedScoreCellProps {
   simpleMode?: boolean;
   isEditMode?: boolean; 
   limitX?: number;
+  skipTextureRendering?: boolean; // New Prop
 }
 
 // Helper for number formatting
@@ -47,7 +48,8 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
   minHeight = '3rem',
   simpleMode = false,
   isEditMode = false,
-  limitX
+  limitX,
+  skipTextureRendering = false
 }) => {
   const [bgUrl, setBgUrl] = useState<string | null>(null);
   
@@ -73,12 +75,14 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
   const effectiveMinHeight = hasTexture ? '0px' : minHeight;
 
   useEffect(() => {
+    if (skipTextureRendering) return; // Optimization: Don't load texture if skipped
+    
     let isMounted = true;
     getSmartTextureUrl(baseImage, rect, playerIndex, limitX).then((url) => {
         if (isMounted) setBgUrl(url);
     });
     return () => { isMounted = false; };
-  }, [baseImage, rect, playerIndex, limitX]);
+  }, [baseImage, rect, playerIndex, limitX, skipTextureRendering]);
 
   // Ink Styles
   const inkStyle: React.CSSProperties = {
@@ -156,13 +160,13 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
       return (
         <div 
             onClick={undefined} 
-            className={`player-col-${player.id} w-full h-full relative cursor-default select-none overflow-hidden transition-all pointer-events-none`}
+            className={`w-full h-full relative cursor-default select-none overflow-hidden transition-all pointer-events-none`}
             style={{
-                backgroundColor: '#e2e8f0', 
+                backgroundColor: skipTextureRendering ? 'transparent' : '#e2e8f0', 
                 minHeight: effectiveMinHeight, 
             }}
         >
-            <SmartTextureLayer bgUrl={bgUrl} rect={rect} />
+            {!skipTextureRendering && <SmartTextureLayer bgUrl={bgUrl} rect={rect} />}
             
             <div 
                 onClick={(e) => { e.stopPropagation(); onClick(e); }}
@@ -191,7 +195,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                 {/* Render the determined content directly */}
                 {layoutContent}
             </div>
-            <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(0,0,0,0.05)] pointer-events-none z-10" />
+            {!skipTextureRendering && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(0,0,0,0.05)] pointer-events-none z-10" />}
         </div>
       );
   }
@@ -210,7 +214,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                           {autoError === 'missing_dependency' ? <Link2Off size={14} /> : <AlertTriangle size={14} />}
                       </div>
                   )}
-                  <span className="text-3xl font-bold tracking-tight" style={inkStyle}>
+                  <span className="text-3xl font-bold tracking-tight leading-none" style={inkStyle}>
                       {autoError ? 'ERR' : formatDisplayNumber(displayScore)}
                   </span>
                   {!simpleMode && !autoError && (
@@ -248,7 +252,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
           
           return (
               <div className="relative z-10 w-full h-full flex items-center justify-center">
-                  <span className="text-3xl font-bold tracking-tight" style={inkStyle}>
+                  <span className="text-3xl font-bold tracking-tight leading-none" style={inkStyle}>
                       {hasInput ? formatDisplayNumber(displayScore) : ''}
                   </span>
                   
@@ -323,7 +327,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
       return (
           <div className="relative z-10 w-full h-full flex items-center justify-center">
               {/* Main Score - Always Centered */}
-              <span className="text-3xl font-bold tracking-tight" style={inkStyle}>
+              <span className="text-3xl font-bold tracking-tight leading-none" style={inkStyle}>
                   {hasInput ? formatDisplayNumber(displayScore) : ''}
               </span>
 
@@ -343,16 +347,16 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
   return (
     <div 
         onClick={onClick}
-        className={`player-col-${player.id} w-full h-full relative cursor-pointer select-none overflow-hidden transition-all ${isActive ? '' : 'hover:brightness-95'}`}
+        className={`w-full h-full relative cursor-pointer select-none overflow-hidden transition-all ${isActive ? '' : 'hover:brightness-95'}`}
         style={{
-            backgroundColor: '#e2e8f0', 
+            backgroundColor: skipTextureRendering ? 'transparent' : '#e2e8f0', 
             minHeight: effectiveMinHeight, 
         }}
     >
         {isActive && <div className="absolute inset-0 ring-2 ring-inset ring-emerald-500 z-30 pointer-events-none"></div>}
-        <SmartTextureLayer bgUrl={bgUrl} rect={rect} />
+        {!skipTextureRendering && <SmartTextureLayer bgUrl={bgUrl} rect={rect} />}
         {renderContent()}
-        <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(0,0,0,0.05)] pointer-events-none z-10" />
+        {!skipTextureRendering && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(0,0,0,0.05)] pointer-events-none z-10" />}
     </div>
   );
 };

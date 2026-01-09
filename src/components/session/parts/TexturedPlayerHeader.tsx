@@ -94,8 +94,9 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
       id={`header-${player.id}`}
       data-player-header-id={player.id}
       onClick={onClick}
-      // Relax min-width when using baseImage to prevent stretching
-      className={`relative flex-auto w-auto ${baseImage ? 'min-w-0' : 'min-w-[3.375rem]'} flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${isEditing ? 'z-20 ring-2 ring-inset ring-white/50' : ''} ${!bgUrl ? 'border-r border-b border-slate-700' : ''} ${baseImage ? 'p-0' : 'p-2'} ${className}`}
+      // [CRITICAL CHANGE] Always enforce min-width 3.375rem (approx 54px).
+      // Even in textured mode, if columns get too thin, we want scrolling, not illegible text.
+      className={`relative flex-auto w-auto min-w-[3.375rem] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${isEditing ? 'z-20 ring-2 ring-inset ring-white/50' : ''} ${!bgUrl ? 'border-r border-b border-slate-700' : ''} ${baseImage ? 'p-0' : 'p-2'} ${className}`}
       style={containerStyle}
     >
       <SmartTextureLayer bgUrl={bgUrl} rect={rect} />

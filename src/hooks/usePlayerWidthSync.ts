@@ -1,3 +1,4 @@
+
 import { useLayoutEffect, useRef } from 'react';
 import { Player, ScoreColumn } from '../types';
 
@@ -20,6 +21,13 @@ export const usePlayerWidthSync = (players: Player[], columns: ScoreColumn[], zo
     // 定義重置邏輯：清除所有由 JS 設定的強制寬度
     const resetWidths = () => {
       players.forEach(p => {
+        // [關鍵修正]
+        // 我們不再重置 .player-col-{id} (內容格) 的寬度。
+        // 只重置 Header (領頭羊)，讓 Header 根據 Flexbox/Zoom 自然伸縮。
+        // Observer 偵測到 Header 變化後，會直接把新寬度覆蓋到內容格上。
+        // 這樣可以避免內容格在「重置->重算」的瞬間發生寬度塌陷 (Flicker)。
+        
+        /* 
         const cells = document.querySelectorAll(`.player-col-${p.id}`);
         cells.forEach((c) => {
            const el = c as HTMLElement;
@@ -27,7 +35,9 @@ export const usePlayerWidthSync = (players: Player[], columns: ScoreColumn[], zo
            el.style.minWidth = '';
            el.style.maxWidth = '';
         });
-        // Also reset headers which might not have the player-col class
+        */
+
+        // 只重置 Header，這是佈局的 Source of Truth
         const headerEl = document.getElementById(`header-${p.id}`);
         if (headerEl) {
            headerEl.style.width = '';
@@ -68,6 +78,7 @@ export const usePlayerWidthSync = (players: Player[], columns: ScoreColumn[], zo
             const cells = document.querySelectorAll(`.player-col-${playerId}`);
             cells.forEach((cell) => {
                const el = cell as HTMLElement;
+               // 直接應用新寬度，不經過 auto 狀態
                if (el.style.width !== pixelWidth) {
                    el.style.width = pixelWidth;
                    el.style.minWidth = pixelWidth;

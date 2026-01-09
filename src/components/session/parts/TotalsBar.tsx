@@ -17,6 +17,7 @@ interface TotalsBarProps {
   editingCell?: { playerId: string, colId: string } | null;
   previewValue?: any;
   onTotalClick?: (playerId: string) => void;
+  zoomLevel?: number; // Added prop
 }
 
 const TotalsBar: React.FC<TotalsBarProps> = ({
@@ -31,7 +32,8 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
   baseImage,
   editingCell,
   previewValue,
-  onTotalClick
+  onTotalClick,
+  zoomLevel = 1, // Default to 1
 }) => {
   const [imageDims, setImageDims] = useState<{width: number, height: number} | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -71,13 +73,16 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
       
       const itemColProportion = totalLabelRect.width / imageDims.width;
       
+      // [Modified] Scale width by zoomLevel to align with ScoreGrid
+      const scaledWidth = containerWidth * itemColProportion * zoomLevel;
+
       return { 
-          width: `${containerWidth * itemColProportion}px`, 
-          minWidth: `${containerWidth * itemColProportion}px`,
+          width: `${scaledWidth}px`, 
+          minWidth: `${scaledWidth}px`,
           flexShrink: 0 
       };
 
-  }, [baseImage, imageDims, template?.globalVisuals, containerWidth]);
+  }, [baseImage, imageDims, template?.globalVisuals, containerWidth, zoomLevel]);
 
   return (
     <div
@@ -96,6 +101,8 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
         <div 
             className="flex min-w-fit h-full"
             ref={contentRef}
+            // [Fix]: Force container to expand based on zoomLevel to prevent collapse during sync reset
+            style={{ minWidth: `${100 * zoomLevel}%` }}
         >
           {players.map((p, index) => (
             <TexturedTotalCell
