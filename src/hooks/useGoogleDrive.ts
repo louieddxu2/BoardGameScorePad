@@ -1,240 +1,324 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { googleDriveService, CloudFile, CloudResourceType } from '../services/googleDrive';
-import { googleAuth } from '../services/cloud/googleAuth';
-import { googleDriveClient } from '../services/cloud/googleDriveClient';
 import { useToast } from './useToast';
 import { GameTemplate, GameSession, HistoryRecord } from '../types';
-import { imageService } from '../services/imageService';
-
-const CHUNK_SIZE = 3;
-
-const chunkArray = <T>(array: T[], size: number): T[][] => {
-    const result: T[][] = [];
-    for (let i = 0; i < array.length; i += size) {
-        result.push(array.slice(i, i + size));
-    }
-    return result;
-};
 
 export const useGoogleDrive = () => {
-  const { showToast } = useToast();
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isAutoConnectEnabled, setIsAutoConnectEnabled] = useState(() => localStorage.getItem('google_drive_auto_connect') === 'true');
-  const [isMockMode] = useState(false);
+  const [isConnected, setIsConnected] = useState(googleDriveService.isAuthorized);
+  
+  const [isAutoConnectEnabled, setIsAutoConnectEnabled] = useState(() => {
+      return localStorage.getItem('google_drive_auto_connect') === 'true';
+  });
 
-  // Check auth status on mount
+  const { showToast } = useToast();
+
   useEffect(() => {
-      const checkAuth = async () => {
-          if (isAutoConnectEnabled && googleAuth.isAuthorized) {
-              setIsConnected(true);
-          }
-      };
-      checkAuth();
+      setIsConnected(googleDriveService.isAuthorized);
+  }, []);
+
+  useEffect(() => {
+      localStorage.setItem('google_drive_auto_connect', String(isAutoConnectEnabled));
   }, [isAutoConnectEnabled]);
 
+  useEffect(() => {
+      if (isAutoConnectEnabled && !googleDriveService.isAuthorized) {
+          const trySilentConnect = async () => {
+              try {
+                  await googleDriveService.signIn({ prompt: 'none' });
+                  setIsConnected(true);
+                  console.log("Auto-connected to Google Drive");
+              } catch (e: any) {
+                  console.log("Silent auto-connect failed (interaction required):", e);
+                  setIsConnected(false); 
+              }
+          };
+          trySilentConnect();
+      }
+  }, []); 
+
+  // [Modified] Explicit Connect Function
   const connectToCloud = useCallback(async () => {
       try {
-          await googleDriveService.signIn();
-          await googleDriveService.ensureAppStructure();
-          localStorage.setItem('google_drive_auto_connect', 'true');
-          setIsAutoConnectEnabled(true);
+          await googleDriveService.signIn(); 
           setIsConnected(true);
-          showToast({ message: "已連線至 Google Drive", type: 'success' });
+          // Only enable auto-connect preference AFTER successful sign-in
+          setIsAutoConnectEnabled(true); 
+          showToast({ message: "Google Drive 連線成功", type: 'success' });
           return true;
-      } catch (e) {
-          console.error("Connection failed", e);
-          showToast({ message: "連線失敗", type: 'error' });
+      } catch (e: any) {
+          console.error("Manual connection failed:", e);
+          
+          setIsAutoConnectEnabled(false); 
+          setIsConnected(false);
+
+          if (e.error === 'popup_closed_by_user') {
+              showToast({ message: "已取消登入", type: 'info' });
+          } else {
+              showToast({ message: "連線失敗，請檢查網路或稍後再試", type: 'error' });
+          }
           return false;
       }
   }, [showToast]);
 
+  // [Modified] Explicit Disconnect Function
   const disconnectFromCloud = useCallback(async () => {
-      await googleDriveService.signOut();
-      localStorage.removeItem('google_drive_auto_connect');
       setIsAutoConnectEnabled(false);
+      await googleDriveService.signOut();
       setIsConnected(false);
-      showToast({ message: "已登出 Google Drive", type: 'info' });
+      showToast({ message: "已斷開 Google Drive 連線", type: 'info' });
   }, [showToast]);
 
-  const fetchFileList = useCallback(async (mode: 'active' | 'trash', source: 'templates' | 'sessions' | 'history'): Promise<CloudFile[]> => {
-      let type: CloudResourceType = 'template';
-      if (source === 'sessions') type = 'active';
-      if (source === 'history') type = 'history';
-      return await googleDriveService.getFileList(mode, type);
-  }, []);
-
-  const restoreBackup = useCallback(async (id: string): Promise<GameTemplate> => {
-      const files = await googleDriveClient.fetchAllItems(`'${id}' in parents and name = 'template.json'`, 'files(id)');
-      if (files.length === 0) throw new Error("Template file not found");
-      const jsonFileId = files[0].id;
-      const content = await googleDriveClient.downloadFile(jsonFileId);
-      
-      const imgFiles = await googleDriveClient.fetchAllItems(`'${id}' in parents and name = 'background.jpg'`, 'files(id)');
-      if (imgFiles.length > 0) {
-          content.cloudImageId = imgFiles[0].id;
+  const ensureConnection = async () => {
+      if (!isAutoConnectEnabled) {
+          throw new Error("雲端功能未開啟");
       }
-      return content;
-  }, []);
-
-  const restoreSessionBackup = useCallback(async (id: string): Promise<GameSession> => {
-      const files = await googleDriveClient.fetchAllItems(`'${id}' in parents and name = 'session.json'`, 'files(id)');
-      if (files.length === 0) throw new Error("Session file not found");
-      const session = await googleDriveClient.downloadFile(files[0].id);
-      
-      if (session.photoCloudIds) {
-          for (const [localId, cloudId] of Object.entries(session.photoCloudIds as Record<string, string>)) {
-              const existing = await imageService.getImage(localId);
-              if (!existing) {
-                  try {
-                      const blob = await googleDriveClient.downloadBlob(cloudId);
-                      await imageService.saveImage(blob, session.id, 'session', localId);
-                  } catch (e) { console.warn("Failed to restore photo", localId); }
-              }
-          }
+      if (!googleDriveService.isAuthorized) {
+          await googleDriveService.signIn(); 
+          setIsConnected(true);
       }
-      
-      session.cloudFolderId = id; 
-      return session;
-  }, []);
+  };
 
-  const restoreHistoryBackup = useCallback(async (id: string): Promise<HistoryRecord> => {
-      const files = await googleDriveClient.fetchAllItems(`'${id}' in parents and name = 'record.json'`, 'files(id)');
-      if (files.length === 0) throw new Error("Record file not found");
-      const record = await googleDriveClient.downloadFile(files[0].id);
-      
-      if (record.photoCloudIds) {
-          for (const [localId, cloudId] of Object.entries(record.photoCloudIds as Record<string, string>)) {
-              const existing = await imageService.getImage(localId);
-              if (!existing) {
-                  try {
-                      const blob = await googleDriveClient.downloadBlob(cloudId);
-                      await imageService.saveImage(blob, record.id, 'session', localId);
-                  } catch (e) { console.warn("Failed to restore history photo", localId); }
-              }
-          }
+  const handleError = (error: any, action: string) => {
+      console.error(`${action} Error:`, error);
+      const errMsg = error.message || '';
+      if (error.error === 'popup_closed_by_user') {
+          showToast({ message: "已取消登入", type: 'info' });
+      } else if (errMsg.includes('API has not been used') || errMsg.includes('is disabled')) {
+          showToast({ message: "設定錯誤：API 未啟用", type: 'error' });
+      } else if (error.status === 403 || error.status === 401) {
+          setIsConnected(false); 
+          showToast({ message: "權限不足或憑證過期，請重新連結。", type: 'error' });
+      } else {
+          showToast({ message: `${action}失敗: ${errMsg || '網路錯誤'}`, type: 'error' });
       }
-      record.cloudFolderId = id;
-      return record;
-  }, []);
-
-  const downloadCloudImage = useCallback(async (fileId: string): Promise<Blob | null> => {
-      try {
-          return await googleDriveClient.downloadBlob(fileId);
-      } catch (e) {
-          console.error("Download image failed", e);
-          return null;
-      }
-  }, []);
+  };
 
   const handleBackup = useCallback(async (template: GameTemplate): Promise<GameTemplate | null> => {
+    if (!isAutoConnectEnabled) return null;
+    setIsSyncing(true);
+    try {
+      await ensureConnection();
+      showToast({ message: "正在上傳備份...", type: 'info' });
+      // Remove deprecated imageBase64 arg
+      const updatedTemplate = await googleDriveService.backupTemplate(template);
+      setIsConnected(true); 
+      showToast({ message: "備份成功！", type: 'success' });
+      return updatedTemplate;
+    } catch (error: any) {
+      handleError(error, "備份");
+      return null;
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [isAutoConnectEnabled, showToast]);
+
+  const fetchFileList = useCallback(async (mode: 'active' | 'trash' = 'active', source: 'templates' | 'sessions' | 'history' = 'templates'): Promise<CloudFile[]> => {
+      try {
+          await ensureConnection();
+          const files = await googleDriveService.listFiles(mode, source);
+          setIsConnected(true);
+          return files;
+      } catch (error: any) {
+          if (error.error !== 'popup_closed_by_user') {
+             handleError(error, "讀取列表");
+          }
+          throw error;
+      }
+  }, [isAutoConnectEnabled, showToast]);
+
+  const restoreBackup = useCallback(async (fileId: string): Promise<GameTemplate> => {
       setIsSyncing(true);
       try {
-          const updated = await googleDriveService.backupTemplate(template);
-          showToast({ message: "備份成功", type: 'success' });
-          return updated;
-      } catch (e) {
-          console.error(e);
-          showToast({ message: "備份失敗", type: 'error' });
+          await ensureConnection();
+          showToast({ message: "正在還原...", type: 'info' });
+          // [Updated] Use new Smart Hydration method
+          const template = await googleDriveService.restoreTemplate(fileId);
+          setIsConnected(true);
+          showToast({ message: "還原成功！", type: 'success' });
+          return template;
+      } catch (error: any) {
+          handleError(error, "還原");
+          throw error;
+      } finally {
+          setIsSyncing(false);
+      }
+  }, [isAutoConnectEnabled, showToast]);
+
+  const restoreSessionBackup = useCallback(async (fileId: string): Promise<GameSession> => {
+      setIsSyncing(true);
+      try {
+          await ensureConnection();
+          showToast({ message: "正在下載...", type: 'info' });
+          const session = await googleDriveService.getFileContent(fileId, 'session.json');
+          setIsConnected(true);
+          showToast({ message: "下載成功！", type: 'success' });
+          return session;
+      } catch (error: any) {
+          handleError(error, "下載");
+          throw error;
+      } finally {
+          setIsSyncing(false);
+      }
+  }, [isAutoConnectEnabled, showToast]);
+
+  const restoreHistoryBackup = useCallback(async (fileId: string): Promise<HistoryRecord> => {
+      setIsSyncing(true);
+      try {
+          await ensureConnection();
+          showToast({ message: "正在下載歷史紀錄...", type: 'info' });
+          const record = await googleDriveService.getFileContent(fileId, 'session.json');
+          setIsConnected(true);
+          showToast({ message: "下載成功！", type: 'success' });
+          return record;
+      } catch (error: any) {
+          handleError(error, "下載");
+          throw error;
+      } finally {
+          setIsSyncing(false);
+      }
+  }, [isAutoConnectEnabled, showToast]);
+
+  const restoreFromTrash = useCallback(async (folderId: string, type: CloudResourceType): Promise<boolean> => {
+      setIsSyncing(true);
+      try {
+          await ensureConnection();
+          await googleDriveService.restoreFolder(folderId, type);
+          setIsConnected(true);
+          showToast({ message: "已還原至對應資料夾", type: 'success' });
+          return true;
+      } catch (error: any) {
+          handleError(error, "還原");
+          return false;
+      } finally {
+          setIsSyncing(false);
+      }
+  }, [isAutoConnectEnabled, showToast]);
+
+  // [UPDATED] Return Blob instead of string
+  const downloadCloudImage = useCallback(async (fileId: string): Promise<Blob | null> => {
+      setIsSyncing(true);
+      try {
+          await ensureConnection();
+          showToast({ message: "正在下載圖片...", type: 'info' });
+          const blob = await googleDriveService.downloadImage(fileId);
+          setIsConnected(true);
+          showToast({ message: "圖片載入完成", type: 'success' });
+          return blob;
+      } catch (error: any) {
+          handleError(error, "圖片下載");
           return null;
       } finally {
           setIsSyncing(false);
       }
-  }, [showToast]);
+  }, [isAutoConnectEnabled, showToast]);
 
-  const silentSystemBackup = useCallback(async (data: any) => {
-      if (!isAutoConnectEnabled || !googleAuth.isAuthorized) return;
-      // Silent backup implementation
-  }, [isAutoConnectEnabled]);
-
-  const deleteCloudFile = useCallback(async (id: string) => {
+  const deleteCloudFile = useCallback(async (fileId: string): Promise<boolean> => {
+      setIsSyncing(true);
       try {
-          await googleDriveClient.deleteFile(id);
-          showToast({ message: "檔案已刪除", type: 'success' });
+          await ensureConnection();
+          showToast({ message: "正在永久刪除...", type: 'info' });
+          await googleDriveService.deleteFile(fileId);
+          setIsConnected(true);
+          showToast({ message: "刪除成功", type: 'success' });
           return true;
-      } catch (e) {
-          showToast({ message: "刪除失敗", type: 'error' });
+      } catch (error: any) {
+          handleError(error, "刪除");
           return false;
+      } finally {
+          setIsSyncing(false);
       }
-  }, [showToast]);
+  }, [isAutoConnectEnabled, showToast]);
 
-  const restoreFromTrash = useCallback(async (id: string, type: CloudResourceType) => {
+  const emptyTrash = useCallback(async (): Promise<boolean> => {
+      setIsSyncing(true);
       try {
-          await googleDriveClient.updateFileMetadata(id, { trashed: false });
-          showToast({ message: "已還原", type: 'success' });
-          return true;
-      } catch (e) {
-          showToast({ message: "還原失敗", type: 'error' });
-          return false;
-      }
-  }, [showToast]);
-
-  const emptyTrash = useCallback(async () => {
-      try {
-          await googleDriveClient.emptyTrash();
+          await ensureConnection();
+          showToast({ message: "正在清空所有垃圾桶...", type: 'info' });
+          await googleDriveService.emptyTrash();
+          setIsConnected(true);
           showToast({ message: "垃圾桶已清空", type: 'success' });
           return true;
-      } catch (e) {
-          showToast({ message: "清空失敗", type: 'error' });
+      } catch (error: any) {
+          handleError(error, "清空");
           return false;
+      } finally {
+          setIsSyncing(false);
       }
-  }, [showToast]);
+  }, [isAutoConnectEnabled, showToast]);
 
+  const silentSystemBackup = useCallback(async (data: any): Promise<void> => {
+      if (!isAutoConnectEnabled) return;
+      if (!googleDriveService.isAuthorized) return;
+      try {
+          // Keep the preferences/settings backup for "Settings Restore"
+          const { data: rawData, ...settingsOnly } = data; // Only save preferences
+          await googleDriveService.saveSystemData('settings_backup.json', settingsOnly);
+      } catch (e) {
+          console.warn("Silent settings backup failed:", e);
+      }
+  }, [isAutoConnectEnabled]);
+
+  // [Full Backup] Smart Skip Logic: Cloud.ts >= Local.ts -> Skip
   const performFullBackup = useCallback(async (
       templates: GameTemplate[], 
-      history: HistoryRecord[], 
+      history: HistoryRecord[],
       sessions: GameSession[],
       overrides: GameTemplate[],
       onProgress: (count: number, total: number) => void,
       onError: (failedItems: string[]) => void,
       onItemSuccess?: (type: 'template' | 'history' | 'session', item: any) => void
-  ) => {
-      if (!isConnected) return { success: 0, skipped: 0, failed: 0 };
-      
-      const allTemplates = [...templates, ...overrides];
-      const total = allTemplates.length + history.length + sessions.length;
-      let processed = 0;
+  ): Promise<{ success: number, skipped: number, failed: number }> => {
+      setIsSyncing(true);
       let successCount = 0;
       let skippedCount = 0;
       const failedItems: string[] = [];
-
+      
       try {
-          const [cTemplates, cSessions, cHistory] = await Promise.all([
-              fetchFileList('active', 'templates'),
-              fetchFileList('active', 'sessions'),
-              fetchFileList('active', 'history')
+          await ensureConnection();
+          
+          await googleDriveService.ensureAppStructure();
+          
+          const [cloudTemplates, cloudHistory, cloudActive] = await Promise.all([
+              googleDriveService.listFoldersInParent(googleDriveService.templatesFolderId!),
+              googleDriveService.listFoldersInParent(googleDriveService.historyFolderId!),
+              googleDriveService.listFoldersInParent(googleDriveService.activeFolderId!)
           ]);
 
-          const extractId = (name: string) => {
-              const lastUnderscore = name.lastIndexOf('_');
-              return lastUnderscore !== -1 ? name.substring(lastUnderscore + 1) : null;
-          };
-
-          const buildMap = (files: CloudFile[]) => {
+          const createMap = (files: CloudFile[]) => {
               const map = new Map<string, CloudFile>();
               files.forEach(f => {
-                  const id = extractId(f.name);
-                  if (id) map.set(id, f);
+                  const lastSep = f.name.lastIndexOf('_');
+                  // Ensure underscore exists and is not the first character
+                  if (lastSep > 0) {
+                      const uuid = f.name.substring(lastSep + 1);
+                      map.set(uuid, f);
+                  }
               });
               return map;
           };
 
-          const templateMap = buildMap(cTemplates);
-          const sessionMap = buildMap(cSessions);
-          const historyMap = buildMap(cHistory);
+          const templateMap = createMap(cloudTemplates);
+          const historyMap = createMap(cloudHistory);
+          const activeMap = createMap(cloudActive);
 
-          const processItem = async (fn: () => Promise<any>, name: string, isUpToDate: boolean, type: 'template' | 'history' | 'session', item: any) => {
+          const allTemplates = [...templates, ...overrides];
+          
+          const total = allTemplates.length + history.length + sessions.length;
+          let processed = 0;
+          onProgress(0, total);
+
+          const processItem = async (task: () => Promise<void>, name: string, isSkipped: boolean = false) => {
               try {
-                  if (isUpToDate) {
+                  if (isSkipped) {
                       skippedCount++;
                   } else {
-                      await fn();
+                      await task();
                       successCount++;
-                      if (onItemSuccess) onItemSuccess(type, item);
                   }
               } catch (e) {
-                  console.error(`Failed to backup ${name}`, e);
+                  console.error(`Backup failed for ${name}:`, e);
                   failedItems.push(name);
               } finally {
                   processed++;
@@ -242,126 +326,182 @@ export const useGoogleDrive = () => {
               }
           };
 
-          const tChunks = chunkArray(allTemplates, CHUNK_SIZE);
-          for (const chunk of tChunks) {
+          const chunkArray = <T>(arr: T[], size: number) => {
+              const res = [];
+              for (let i = 0; i < arr.length; i += size) {
+                  res.push(arr.slice(i, i + size));
+              }
+              return res;
+          };
+
+          const CHUNK_SIZE = 3; // Reduced concurrency for safety
+
+          // 2a. Process Templates
+          const templateChunks = chunkArray(allTemplates, CHUNK_SIZE);
+          for (const chunk of templateChunks) {
               await Promise.all(chunk.map(t => {
                   const cloudInfo = templateMap.get(t.id);
-                  let isUpToDate = false;
-                  if (cloudInfo) {
-                      const cloudTime = Number(cloudInfo.appProperties?.originalUpdatedAt || 0);
-                      if ((t.updatedAt || 0) <= cloudTime) isUpToDate = true;
-                  }
                   
+                  // Skip Logic: If cloud exists AND cloud ts >= local ts
+                  let isUpToDate = false;
+                  if (cloudInfo && t.updatedAt) {
+                      const cloudTime = Number(cloudInfo.appProperties?.originalUpdatedAt || 0);
+                      if (cloudTime >= t.updatedAt) {
+                          isUpToDate = true;
+                      }
+                  }
+
                   return processItem(async () => {
-                      await googleDriveService.backupTemplate(t);
-                  }, t.name, isUpToDate, 'template', t);
+                      const updatedT = await googleDriveService.backupTemplate(t, null, cloudInfo?.id, cloudInfo?.name);
+                      if (onItemSuccess) onItemSuccess('template', updatedT);
+                  }, t.name, isUpToDate);
               }));
           }
 
-          const hChunks = chunkArray(history, CHUNK_SIZE);
-          for (const chunk of hChunks) {
+          // 2b. Process History
+          const historyChunks = chunkArray(history, CHUNK_SIZE);
+          for (const chunk of historyChunks) {
               await Promise.all(chunk.map(h => {
                   const cloudInfo = historyMap.get(h.id);
-                  let isUpToDate = false;
-                  if (cloudInfo) {
-                      const cloudTime = Number(cloudInfo.appProperties?.originalUpdatedAt || 0);
-                      if (h.endTime <= cloudTime) isUpToDate = true;
-                  }
-
-                  return processItem(async () => {
-                      await googleDriveService.backupHistoryRecord(h, cloudInfo?.id);
-                  }, `歷史: ${h.gameName}`, isUpToDate, 'history', h);
-              }));
-          }
-
-          const sChunks = chunkArray(sessions, CHUNK_SIZE);
-          for (const chunk of sChunks) {
-              await Promise.all(chunk.map(s => {
-                  const cloudInfo = sessionMap.get(s.id);
-                  const templateName = allTemplates.find(t => t.id === s.templateId)?.name || '未命名遊戲';
                   
                   let isUpToDate = false;
-                  if (cloudInfo && s.updatedAt) {
+                  if (cloudInfo && h.endTime) {
                       const cloudTime = Number(cloudInfo.appProperties?.originalUpdatedAt || 0);
-                      if (cloudTime >= s.updatedAt) isUpToDate = true;
+                      if (cloudTime >= h.endTime) {
+                          isUpToDate = true;
+                      }
                   }
 
                   return processItem(async () => {
-                      await googleDriveService.backupActiveSession(s, templateName, cloudInfo?.id, cloudInfo?.name);
-                  }, `進行中: ${s.id.slice(0,8)}`, isUpToDate, 'session', s);
+                      await googleDriveService.backupHistoryRecord(h, cloudInfo?.id, cloudInfo?.name);
+                  }, `${h.gameName} (${new Date(h.endTime).toLocaleDateString()})`, isUpToDate);
               }));
           }
 
-          if (failedItems.length > 0) onError(failedItems);
+          // 2c. Process Active Sessions
+          const sessionChunks = chunkArray(sessions, CHUNK_SIZE);
+          for (const chunk of sessionChunks) {
+              await Promise.all(chunk.map(s => {
+                  const cloudInfo = activeMap.get(s.id);
+                  const templateName = allTemplates.find(t => t.id === s.templateId)?.name || '未命名遊戲';
+                  
+                  return processItem(async () => {
+                      await googleDriveService.backupActiveSession(s, templateName, cloudInfo?.id, cloudInfo?.name);
+                  }, `進行中: ${s.id.slice(0,8)}`, false);
+              }));
+          }
 
-          return { success: successCount, skipped: skippedCount, failed: failedItems.length };
+          // 2d. Always backup Settings (very small)
+          try {
+              await googleDriveService.saveSystemData('settings_backup.json', { timestamp: Date.now() });
+          } catch (e) {
+              console.warn("Settings backup failed", e);
+          }
+
+          if (failedItems.length > 0) {
+              onError(failedItems);
+          }
 
       } catch (e: any) {
-          console.error("Batch backup error", e);
-          throw e;
+          handleError(e, "全域備份初始化");
+      } finally {
+          setIsSyncing(false);
       }
-  }, [isConnected, fetchFileList]);
+      return { success: successCount, skipped: skippedCount, failed: failedItems.length };
+  }, [isAutoConnectEnabled, showToast]);
 
+  // [Full Restore] Smart Skip Logic: Local.ts >= Cloud.ts -> Skip
   const performFullRestore = useCallback(async (
-      localDataMap: { templates: Map<string, number>, history: Map<string, number>, sessions: Map<string, number> },
+      localMeta: { templates: Map<string, number>, history: Map<string, number> },
       onProgress: (count: number, total: number) => void,
       onError: (failedItems: string[]) => void,
       onItemRestored: (type: 'template' | 'history' | 'session', item: any) => Promise<void>,
-      onSettingsRestored?: (settings: any) => void
-  ) => {
+      onSettingsRestored?: (settings: any) => void // New Callback
+  ): Promise<{ success: number, skipped: number, failed: number }> => {
       setIsSyncing(true);
       let successCount = 0;
       let skippedCount = 0;
       const failedItems: string[] = [];
 
       try {
-          if (!googleDriveService.isAuthorized) await googleDriveService.signIn();
+          await ensureConnection();
           await googleDriveService.ensureAppStructure();
 
-          const [cloudTemplates, cloudSessions, cloudHistory] = await Promise.all([
-              fetchFileList('active', 'templates'),
-              fetchFileList('active', 'sessions'),
-              fetchFileList('active', 'history')
+          const [cloudTemplates, cloudHistory, cloudActive] = await Promise.all([
+              googleDriveService.listFoldersInParent(googleDriveService.templatesFolderId!),
+              googleDriveService.listFoldersInParent(googleDriveService.historyFolderId!),
+              googleDriveService.listFoldersInParent(googleDriveService.activeFolderId!)
           ]);
 
-          const total = cloudTemplates.length + cloudSessions.length + cloudHistory.length;
+          const total = cloudTemplates.length + cloudHistory.length + cloudActive.length + 1; // +1 for settings
           let processed = 0;
           onProgress(0, total);
 
-          const extractId = (name: string) => {
-              const lastUnderscore = name.lastIndexOf('_');
-              return lastUnderscore !== -1 ? name.substring(lastUnderscore + 1) : null;
+          // 1. Restore Settings First (if callback provided)
+          if (onSettingsRestored && googleDriveService.systemFolderId) {
+              try {
+                  const settings = await googleDriveService.getFileContent(googleDriveService.systemFolderId, 'settings_backup.json');
+                  onSettingsRestored(settings);
+                  successCount++;
+              } catch (e) {
+                  console.log("No settings backup found or failed to restore", e);
+                  // Not critical, don't add to failed count to avoid scaring user
+              } finally {
+                  processed++;
+                  onProgress(processed, total);
+              }
+          }
+
+          // Helper to extract ID using lastUnderscore logic
+          const getId = (name: string) => {
+              const lastSep = name.lastIndexOf('_');
+              if (lastSep !== -1) {
+                  return name.substring(lastSep + 1);
+              }
+              return null;
           };
 
-          const processItem = async (file: CloudFile, type: 'template' | 'session' | 'history') => {
-              try {
-                  const cloudTime = Number(file.appProperties?.originalUpdatedAt || 0);
-                  const id = extractId(file.name);
-                  
-                  let localTime = 0;
-                  if (id) {
-                      if (type === 'template') localTime = localDataMap.templates.get(id) || 0;
-                      else if (type === 'session') localTime = localDataMap.sessions.get(id) || 0;
-                      else if (type === 'history') localTime = localDataMap.history.get(id) || 0;
-                  }
+          const processItem = async (file: CloudFile, type: 'template' | 'history' | 'active') => {
+              const id = getId(file.name);
+              const cloudTime = Number(file.appProperties?.originalUpdatedAt || 0);
+              let shouldDownload = true;
 
+              // Check vs Local
+              if (id) {
+                  let localTime = 0;
+                  if (type === 'template' && localMeta.templates.has(id)) {
+                      localTime = localMeta.templates.get(id) || 0;
+                  } else if (type === 'history' && localMeta.history.has(id)) {
+                      localTime = localMeta.history.get(id) || 0;
+                  }
+                  
                   // Skip if local is newer or same
-                  // For sessions, this is critical to prevent overwriting active progress
-                  if (localTime > 0 && localTime >= cloudTime) {
-                      skippedCount++;
-                  } else {
-                      let data;
-                      if (type === 'template') data = await restoreBackup(file.id);
-                      else if (type === 'session') data = await restoreSessionBackup(file.id);
-                      else if (type === 'history') data = await restoreHistoryBackup(file.id);
-                      
-                      if (data) await onItemRestored(type, data);
+                  if (localTime >= cloudTime && localTime > 0) {
+                      shouldDownload = false;
+                  }
+              }
+
+              try {
+                  if (shouldDownload) {
+                      if (type === 'template') {
+                          // [Updated] Use new Smart Hydration method
+                          const data = await googleDriveService.restoreTemplate(file.id);
+                          await onItemRestored('template', data);
+                      } else if (type === 'history') {
+                          const data = await googleDriveService.getFileContent(file.id, 'session.json');
+                          await onItemRestored('history', data);
+                      } else if (type === 'active') {
+                          const data = await googleDriveService.getFileContent(file.id, 'session.json');
+                          await onItemRestored('session', data);
+                      }
                       successCount++;
+                  } else {
+                      skippedCount++;
                   }
               } catch (e: any) {
-                  // Ignore "File not found" errors which can happen if a folder is empty or deleted concurrently
-                  if (!e.message?.includes('not found') && !e.message?.includes('找不到')) {
-                      console.error(`Restore failed for ${file.name}`, e);
+                  // Only report real errors, not "file not found" which might happen for empty folders
+                  if (!e.message?.includes('找不到')) {
+                      console.error(`Restore failed for ${file.name}:`, e);
                       failedItems.push(file.name);
                   }
               } finally {
@@ -370,48 +510,65 @@ export const useGoogleDrive = () => {
               }
           };
 
-          const chunk = 3;
+          const CHUNK_SIZE = 3;
           
-          for(let i=0; i<cloudTemplates.length; i+=chunk) {
-              await Promise.all(cloudTemplates.slice(i, i+chunk).map(f => processItem(f, 'template')));
+          // Process Templates
+          const templateChunks = [];
+          for (let i = 0; i < cloudTemplates.length; i += CHUNK_SIZE) {
+              templateChunks.push(cloudTemplates.slice(i, i + CHUNK_SIZE));
           }
-          for(let i=0; i<cloudSessions.length; i+=chunk) {
-              await Promise.all(cloudSessions.slice(i, i+chunk).map(f => processItem(f, 'session')));
-          }
-          for(let i=0; i<cloudHistory.length; i+=chunk) {
-              await Promise.all(cloudHistory.slice(i, i+chunk).map(f => processItem(f, 'history')));
+          for (const chunk of templateChunks) {
+              await Promise.all(chunk.map(f => processItem(f, 'template')));
           }
 
-          if (failedItems.length > 0) onError(failedItems);
+          // Process History
+          const historyChunks = [];
+          for (let i = 0; i < cloudHistory.length; i += CHUNK_SIZE) {
+              historyChunks.push(cloudHistory.slice(i, i + CHUNK_SIZE));
+          }
+          for (const chunk of historyChunks) {
+              await Promise.all(chunk.map(f => processItem(f, 'history')));
+          }
 
-      } catch (e) {
-          console.error("Full restore failed", e);
-          onError(["System Error"]);
+          // Process Active
+          const activeChunks = [];
+          for (let i = 0; i < cloudActive.length; i += CHUNK_SIZE) {
+              activeChunks.push(cloudActive.slice(i, i + CHUNK_SIZE));
+          }
+          for (const chunk of activeChunks) {
+              await Promise.all(chunk.map(f => processItem(f, 'active')));
+          }
+
+          if (failedItems.length > 0) {
+              onError(failedItems);
+          }
+
+      } catch (e: any) {
+          handleError(e, "全域還原初始化");
       } finally {
           setIsSyncing(false);
       }
-
       return { success: successCount, skipped: skippedCount, failed: failedItems.length };
-  }, [isConnected, fetchFileList, restoreBackup, restoreSessionBackup, restoreHistoryBackup]);
+  }, [isAutoConnectEnabled, showToast]);
 
   return {
-      isSyncing,
-      isConnected,
-      isAutoConnectEnabled,
-      isMockMode,
-      connectToCloud,
-      disconnectFromCloud,
-      fetchFileList,
-      handleBackup,
-      silentSystemBackup,
-      performFullBackup,
-      performFullRestore,
-      restoreBackup,
-      restoreSessionBackup,
-      restoreHistoryBackup,
-      restoreFromTrash,
-      deleteCloudFile,
-      emptyTrash,
-      downloadCloudImage
+    handleBackup,
+    fetchFileList,
+    restoreBackup,
+    restoreSessionBackup,
+    restoreHistoryBackup, 
+    restoreFromTrash,
+    downloadCloudImage,
+    deleteCloudFile,
+    emptyTrash,
+    connectToCloud,      // Exposed
+    disconnectFromCloud, // Exposed
+    isSyncing,
+    isConnected,
+    isAutoConnectEnabled, 
+    silentSystemBackup, 
+    performFullBackup, 
+    performFullRestore, // [New]
+    isMockMode: false
   };
 };

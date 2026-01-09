@@ -1,4 +1,5 @@
 
+
 // --- Formula-based structure ---
 export interface ScoreValue {
   parts: number[];
@@ -178,7 +179,6 @@ export interface HistoryRecord {
   gameName: string; // 當時的遊戲名稱 (快照)
   startTime: number;
   endTime: number;
-  updatedAt?: number; // [New] Record last modification time (e.g. photos added later)
   players: Player[]; // 包含最終分數的玩家資料 (快照)
   winnerIds: string[]; // 贏家 ID 列表
   snapshotTemplate: GameTemplate; // [關鍵] 完整的模板快照 (含欄位、圖片ID等)
