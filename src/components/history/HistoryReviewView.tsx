@@ -1,5 +1,4 @@
 
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { HistoryRecord, GameSession, ScoreColumn } from '../../types';
 import { ArrowLeft, Share2, Download, Check, Settings } from 'lucide-react';
@@ -9,6 +8,7 @@ import TotalsBar from '../session/parts/TotalsBar';
 import ScreenshotModal from '../session/modals/ScreenshotModal';
 import HistorySettingsModal from './modals/HistorySettingsModal';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
+import { googleDriveService } from '../../services/googleDrive'; // Import service directly for actions
 import { ScreenshotLayout } from '../session/hooks/useSessionState';
 import { db } from '../../db'; 
 import { useAppData } from '../../hooks/useAppData';
@@ -26,9 +26,13 @@ interface HistoryReviewViewProps {
 const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRecord, onExit, zoomLevel }) => {
   const [record, setRecord] = useState<HistoryRecord>(initialRecord);
   const { locationHistory, updateLocationHistory } = useAppData();
+  
+  // Track if data has been modified to trigger cloud sync on exit
+  const isDirtyRef = useRef(false);
 
   useEffect(() => {
       setRecord(initialRecord);
+      isDirtyRef.current = false; // Reset dirty state on new record load
   }, [initialRecord]);
 
   const fakeSession: GameSession = useMemo(() => ({
@@ -41,7 +45,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
   }), [record]);
 
   const template = record.snapshotTemplate;
-  const { downloadCloudImage } = useGoogleDrive();
+  const { downloadCloudImage, isAutoConnectEnabled, isConnected } = useGoogleDrive();
   const [baseImage, setBaseImage] = useState<string | null>(null);
   
   // Modal States
@@ -56,6 +60,36 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
   const photoInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
+  // --- Exit Logic with Cloud Sync ---
+  const handleExitAndSync = async () => {
+      // Logic mirrored from useSessionManager.ts exitSession
+      if (isDirtyRef.current && isAutoConnectEnabled && isConnected) {
+          try {
+              let folderId = record.cloudFolderId;
+              
+              // If legacy record without folder ID, create one
+              if (!folderId) {
+                  folderId = await googleDriveService.createActiveSessionFolder(record.gameName, record.id);
+                  // Update local DB immediately
+                  await db.history.update(record.id, { cloudFolderId: folderId });
+              }
+
+              if (folderId) {
+                  // Fire backup asynchronously (don't block UI exit)
+                  googleDriveService.backupHistoryRecord(record, folderId)
+                      .then(() => {
+                          console.log("History auto-backup successful");
+                          // Optional: showToast({ message: "變更已同步至雲端", type: 'info' });
+                      })
+                      .catch(e => console.error("History auto-backup failed", e));
+              }
+          } catch (e) {
+              console.error("Failed to initiate history backup", e);
+          }
+      }
+      onExit();
+  };
+
   // --- Back Button Handler (Local Priority) ---
   useEffect(() => {
       const handleHistoryBackPress = () => {
@@ -68,13 +102,14 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
           // Priority 4: Share Menu
           if (showShareMenu) { setShowShareMenu(false); return; }
           
-          // Default: Exit View
-          onExit();
+          // Default: Exit View with Sync Check
+          handleExitAndSync();
       };
 
       window.addEventListener('app-back-press', handleHistoryBackPress);
       return () => window.removeEventListener('app-back-press', handleHistoryBackPress);
-  }, [showPhotoGallery, showSettingsModal, showScreenshotModal, showShareMenu, onExit]);
+  }, [showPhotoGallery, showSettingsModal, showScreenshotModal, showShareMenu, onExit, record, isAutoConnectEnabled, isConnected]); 
+  // Added dependencies for closure safety inside handleExitAndSync
 
   // Load cloud image
   useEffect(() => {
@@ -189,6 +224,8 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
               const recordToSave = { ...updatedRecord, updatedAt: Date.now() };
               await db.history.put(recordToSave);
               setRecord(recordToSave);
+              isDirtyRef.current = true; // Mark as dirty
+              
               if (recordToSave.location) {
                   updateLocationHistory(recordToSave.location);
               }
@@ -218,6 +255,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                 // Update DB explicitly
                 await db.history.put(updatedRecord);
                 setRecord(updatedRecord);
+                isDirtyRef.current = true; // Mark as dirty
 
                 showToast({ message: "照片已儲存", type: 'success' });
                 
@@ -244,6 +282,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
           const updatedRecord = { ...record, photos: updatedPhotos, updatedAt: Date.now() };
           await db.history.put(updatedRecord);
           setRecord(updatedRecord);
+          isDirtyRef.current = true; // Mark as dirty
           
           showToast({ message: "照片已刪除", type: 'info' });
       } catch (e) {

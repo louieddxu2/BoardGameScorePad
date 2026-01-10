@@ -109,10 +109,7 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
 // Replaced PlayerEditorInfo with PlayerSettingsPanel
 const PlayerSettingsPanel: React.FC<{ player: Player, onToggleStarter: (id: string) => void }> = ({ player, onToggleStarter }) => (
     <div className="flex flex-col h-full text-slate-400 text-xs">
-        <div className="flex items-center justify-center gap-1 text-[10px] text-slate-500 font-bold uppercase p-2 border-b border-slate-700/50 shrink-0 bg-slate-800/80">
-            {/* Empty content as requested */}
-        </div>
-        <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-2 text-center">
+        <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-2 text-center flex flex-col justify-center">
             
             {/* Starter Button - Compact size */}
             <button 
