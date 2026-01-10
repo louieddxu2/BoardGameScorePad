@@ -79,7 +79,7 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
   const handleDeleteConfirm = () => {
       if (photoToDelete) {
           onDeletePhoto(photoToDelete);
-          setSelectedPhoto(null); // Close lightbox if open
+          setSelectedPhoto(null); // Close lightbox if open. Best UX: Return to gallery after delete.
           setPhotoToDelete(null);
       }
   };
@@ -96,6 +96,7 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
         isDangerous={true}
         onCancel={() => setPhotoToDelete(null)}
         onConfirm={handleDeleteConfirm}
+        zIndexClass="z-[120]" // Explicitly higher than PhotoLightbox (z-[100])
       />
 
       {selectedPhoto && (

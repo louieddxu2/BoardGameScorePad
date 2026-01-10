@@ -11,6 +11,7 @@ interface ConfirmationModalProps {
   onConfirm: () => void;
   onCancel: () => void;
   isDangerous?: boolean;
+  zIndexClass?: string; // New prop for custom z-index
 }
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -22,11 +23,12 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   onConfirm,
   onCancel,
   isDangerous = false,
+  zIndexClass = "z-[60]", // Default value
 }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
+    <div className={`fixed inset-0 ${zIndexClass} bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200`}>
       <div className="bg-slate-800 rounded-2xl border border-slate-700 shadow-2xl p-6 w-full max-w-sm">
         <div className="flex flex-col items-center text-center gap-3 mb-6">
           {isDangerous && (
