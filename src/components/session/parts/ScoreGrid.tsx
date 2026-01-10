@@ -80,14 +80,21 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
 
   // Calculate the width of the Left Sticky Column (Label)
   const leftColWidth = useMemo(() => {
-      if (!baseImage || !imageDims || !template.globalVisuals?.playerLabelRect || containerWidth === 0) {
-          return 70; // Default fallback width
+      // 1. Texture Mode: Keep strictly to original logic
+      if (baseImage && imageDims && template.globalVisuals?.playerLabelRect) {
+          const { playerLabelRect } = template.globalVisuals;
+          const itemColProportion = playerLabelRect.width / imageDims.width;
+          return containerWidth * itemColProportion * zoomLevel;
       }
-      const { playerLabelRect } = template.globalVisuals;
-      const itemColProportion = playerLabelRect.width / imageDims.width;
-      // Scale width by zoomLevel to allow row height to expand via aspect-ratio
-      return containerWidth * itemColProportion * zoomLevel;
-  }, [baseImage, imageDims, template.globalVisuals, containerWidth, zoomLevel]);
+      
+      // 2. Standard Mode: Dynamic calculation
+      // Formula: Max(70, DeviceWidth / (PlayerCount + 2))
+      if (containerWidth > 0) {
+          return Math.max(70, containerWidth / (session.players.length + 2));
+      }
+      
+      return 70; // Fallback
+  }, [baseImage, imageDims, template.globalVisuals, containerWidth, zoomLevel, session.players.length]);
 
   const itemColStyle = useMemo(() => {
       return { 
@@ -202,9 +209,9 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
             baseImage={baseImage}
             rect={template.globalVisuals?.playerLabelRect}
             fallbackContent={<span className="font-bold text-sm text-slate-400">玩家</span>}
-            // [Change]: Use w-auto if baseImage exists to rely purely on itemColStyle width
-            className={`sticky left-0 ${baseImage ? 'w-auto' : 'w-[70px]'} bg-slate-800 border-r border-b border-slate-700 flex items-center justify-center z-30 shadow-sm shrink-0 overflow-hidden ${baseImage ? 'p-0' : 'p-2'}`}
-            style={baseImage ? itemColStyle : {}} 
+            // [Modified] Removed w-[70px], relying entirely on itemColStyle
+            className={`sticky left-0 bg-slate-800 border-r border-b border-slate-700 flex items-center justify-center z-30 shadow-sm shrink-0 overflow-hidden ${baseImage ? 'p-0' : 'p-2'}`}
+            style={itemColStyle} 
           />
           {session.players.map((p, index) => (
             <TexturedPlayerHeader
@@ -274,10 +281,10 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 rect={col.visuals?.headerRect}
                 onClick={(e: any) => onColumnHeaderClick(e, col)}
                 {...getDragHandlers(col.id)}
-                // [Change]: Use w-auto if baseImage exists
-                className={`sticky left-0 ${baseImage ? 'w-auto' : 'w-[70px]'} ${headerBgClass} ${hiddenStyleClass} border-r-2 border-b border-slate-700 flex flex-col justify-center transition-colors z-20 group select-none shrink-0 overflow-hidden ${isEditMode ? (isDragging ? 'cursor-grabbing' : 'cursor-grab hover:bg-slate-700') : 'cursor-default'} ${baseImage ? 'p-0' : 'p-2'}`}
+                // [Modified] Removed w-[70px], relying entirely on itemColStyle
+                className={`sticky left-0 ${headerBgClass} ${hiddenStyleClass} border-r-2 border-b border-slate-700 flex flex-col justify-center transition-colors z-20 group select-none shrink-0 overflow-hidden ${isEditMode ? (isDragging ? 'cursor-grabbing' : 'cursor-grab hover:bg-slate-700') : 'cursor-default'} ${baseImage ? 'p-0' : 'p-2'}`}
                 style={{
-                  ...(baseImage ? itemColStyle : {}),
+                  ...itemColStyle, // [Modified] Always apply style, not just when baseImage is present
                   borderRightColor: col.color || 'var(--border-slate-700)'
                 }}
                 fallbackContent={

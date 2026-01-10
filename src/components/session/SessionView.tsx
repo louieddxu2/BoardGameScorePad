@@ -42,7 +42,25 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const { session, template, zoomLevel, baseImage, onUpdateImage, onUpdateTemplate } = props;
 
   const sessionState = useSessionState(props);
-  const eventHandlers = useSessionEvents(props, sessionState);
+  const { setUiState } = sessionState;
+
+  // Photo Upload State - Hoisted to allow passing to useSessionEvents
+  const [previewPhotoBlob, setPreviewPhotoBlob] = useState<Blob | null>(null);
+  const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
+  const [isSavingPhoto, setIsSavingPhoto] = useState(false); 
+
+  // Handler for cancelling photo preview (used by Back Button and UI)
+  const handleCancelPhotoSave = useCallback(() => {
+      setPreviewPhotoBlob(null);
+      setPreviewPhotoUrl(null);
+      setUiState(p => ({ ...p, isPhotoGalleryOpen: true }));
+  }, [setUiState]);
+
+  const eventHandlers = useSessionEvents(props, sessionState, {
+      isPhotoPreviewOpen: !!previewPhotoUrl,
+      onClosePhotoPreview: handleCancelPhotoSave
+  });
+
   const { showToast } = useToast();
   const { downloadCloudImage, isAutoConnectEnabled, isConnected, connectToCloud } = useGoogleDrive();
   
@@ -50,11 +68,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const photoInputRef = useRef<HTMLInputElement>(null); // For Camera (capture=environment)
   const galleryInputRef = useRef<HTMLInputElement>(null); // For Upload (no capture)
   
-  // Photo Upload State - Now stores Blob URL for preview
-  const [previewPhotoBlob, setPreviewPhotoBlob] = useState<Blob | null>(null);
-  const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
-  const [isSavingPhoto, setIsSavingPhoto] = useState(false); 
-
   const hasPromptedRef = useRef(false);
 
   // Clean up preview URL when modal closes or changes
@@ -81,8 +94,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     isPhotoGalleryOpen,
     isImageUploadModalOpen
   } = sessionState.uiState;
-
-  const { setUiState } = sessionState;
 
   // [Offline-First Logic] Background Image Loader
   useEffect(() => {
@@ -320,14 +331,14 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 w-full max-w-sm shadow-2xl flex flex-col gap-4">
                   <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                       <h3 className="text-lg font-bold text-white flex items-center gap-2"><Camera size={20} className="text-emerald-500"/> 照片預覽</h3>
-                      <button onClick={() => { setPreviewPhotoBlob(null); setPreviewPhotoUrl(null); setUiState(p => ({ ...p, isPhotoGalleryOpen: true })); }} className="text-slate-500 hover:text-white"><X size={20}/></button>
+                      <button onClick={handleCancelPhotoSave} className="text-slate-500 hover:text-white"><X size={20}/></button>
                   </div>
                   <div className="relative aspect-[4/3] bg-black rounded-lg overflow-hidden border border-slate-700">
                       <img src={previewPhotoUrl} alt="Preview" className="w-full h-full object-contain" />
                   </div>
                   <div className="flex gap-2">
                       <button 
-                        onClick={() => { setPreviewPhotoBlob(null); setPreviewPhotoUrl(null); setUiState(p => ({ ...p, isPhotoGalleryOpen: true })); }} 
+                        onClick={handleCancelPhotoSave} 
                         className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition-colors"
                         disabled={isSavingPhoto}
                       >
@@ -439,7 +450,19 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         isEditMode={isEditMode}
         hasVisuals={!!template.globalVisuals} 
         hasCloudImage={!!template.cloudImageId && !baseImage} 
-        onEditTitleToggle={(editing) => setUiState(prev => ({ ...prev, isEditingTitle: editing }))}
+        onEditTitleToggle={(editing) => {
+            setUiState(prev => {
+                const newState = { ...prev, isEditingTitle: editing };
+                // If starting to edit title, close any open input panel to prevent
+                // double-keyboard (virtual + app custom) UI crushing.
+                if (editing) {
+                    newState.editingCell = null;
+                    newState.editingPlayerId = null;
+                    newState.previewValue = 0;
+                }
+                return newState;
+            });
+        }}
         onTitleSubmit={eventHandlers.handleTitleSubmit}
         onAddColumn={() => setUiState(prev => ({ ...prev, isAddColumnModalOpen: true }))}
         onReset={() => setUiState(prev => ({ ...prev, showResetConfirm: true }))}

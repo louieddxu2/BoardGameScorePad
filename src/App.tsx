@@ -251,7 +251,13 @@ const App: React.FC = () => {
       }
 
       if (handled && !isExitingSession.current) {
-        history.pushState(null, '');
+        // [Fix]: Using Promise.resolve().then(...) puts the pushState in the microtask queue.
+        // This executes AFTER the current synchronous code (and popstate event) finishes,
+        // but BEFORE the browser renders the next frame or handles the next UI event (like a second tap).
+        // This eliminates the 50ms gap while still allowing the browser to stabilize its history pointer.
+        Promise.resolve().then(() => {
+            history.pushState(null, '');
+        });
       }
     };
 
@@ -333,9 +339,20 @@ const App: React.FC = () => {
       setView(AppView.DASHBOARD);
   };
   
-  const handleTemplateSave = (template: GameTemplate) => {
-      appData.saveTemplate(template);
-      setView(AppView.DASHBOARD);
+  // [Modified] Create & Auto-Start
+  const handleTemplateSave = async (template: GameTemplate) => {
+      await appData.saveTemplate(template);
+      
+      // Auto-start session with intelligent defaults
+      // Priority: 1. Previous session count (if valid) 2. Template preference 3. Default 4
+      const defaultCount = appData.sessionPlayerCount || template.lastPlayerCount || 4;
+      
+      await appData.startSession(template, defaultCount, {
+          startTimeStr: undefined, // Will default to now
+          scoringRule: template.defaultScoringRule || 'HIGHEST_WINS'
+      });
+      
+      setView(AppView.ACTIVE_SESSION);
   };
   
   const handleBatchImport = (templates: GameTemplate[]) => {

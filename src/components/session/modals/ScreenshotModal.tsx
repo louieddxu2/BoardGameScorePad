@@ -49,13 +49,18 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   });
 
   const [isGenerating, setIsGenerating] = useState(false);
+  // [New] Explicit error state to prevent premature error message
+  const [generationError, setGenerationError] = useState(false);
+  
+  // [New] State to defer heavy DOM mounting
+  const [isTargetsMounted, setIsTargetsMounted] = useState(false);
+  
   const { showToast } = useToast();
 
   // --- Preview State ---
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   
-  // We still keep this state to apply explicit width/height styles to the img tag to prevent layout thrashing,
-  // but we won't rely on it for the math calculation anymore.
+  // We still keep this state to apply explicit width/height styles to the img tag to prevent layout thrashing
   const [imgLogicalSize, setImgLogicalSize] = useState({ width: 0, height: 0 }); 
   
   const containerRef = useRef<HTMLDivElement>(null);
@@ -68,22 +73,17 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   const startPinchScale = useRef(1);
 
   // --- Reset / Fit Logic ---
-  // [Fix] This function now reads directly from refs to ensure 100% sync with the DOM
   const fitToScreen = useCallback(() => {
       const container = containerRef.current;
       const img = imgRef.current;
 
       if (!container || !img) return;
       
-      // Use natural dimensions directly (source of truth)
-      // This solves the issue where dynamic content (names, scores) changes the image size
-      // rendering React state updates too slow to catch the first frame.
       const naturalW = img.naturalWidth;
       const naturalH = img.naturalHeight;
 
-      if (!naturalW || !naturalH) return; // Not loaded yet
+      if (!naturalW || !naturalH) return; 
 
-      // Convert to logical pixels (since we generated at 2x)
       const logicalImgW = naturalW / PIXEL_RATIO;
       const logicalImgH = naturalH / PIXEL_RATIO;
 
@@ -92,11 +92,8 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
       if (containerW === 0 || containerH === 0) return;
 
-      // Calculate scale to fit (contain)
-      // [Modified] Removed * 0.95 to allow full fit
       const scale = Math.min(containerW / logicalImgW, containerH / logicalImgH);
 
-      // Center the image based on the calculated scale
       const x = (containerW - logicalImgW * scale) / 2;
       const y = (containerH - logicalImgH * scale) / 2;
 
@@ -105,13 +102,10 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
       const img = e.currentTarget;
-      // Update state for DOM styling (width/height attributes)
       setImgLogicalSize({ 
           width: img.naturalWidth / PIXEL_RATIO, 
           height: img.naturalHeight / PIXEL_RATIO 
       });
-      
-      // Trigger calculation IMMEDIATELY, bypassing state update cycle
       requestAnimationFrame(() => fitToScreen());
   };
 
@@ -133,6 +127,15 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
         setActiveMode(initialMode);
         setTransform({ x: 0, y: 0, scale: 1 });
         setImgLogicalSize({ width: 0, height: 0 }); 
+        setGenerationError(false);
+        
+        // [Key Fix] Defer the mounting of heavy DOM targets.
+        // Initialize to false so the Modal opens instantly with Spinner.
+        setIsTargetsMounted(false);
+        const timer = setTimeout(() => {
+            setIsTargetsMounted(true);
+        }, 100); // 100ms allows the browser to paint the modal first
+        return () => clearTimeout(timer);
     } else {
         if (snapshots.full.url) URL.revokeObjectURL(snapshots.full.url);
         if (snapshots.simple.url) URL.revokeObjectURL(snapshots.simple.url);
@@ -141,26 +144,31 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
             full: { blob: null, url: null },
             simple: { blob: null, url: null }
         });
+        setIsTargetsMounted(false);
+        setGenerationError(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialMode]);
 
-  // Reset logical size when switching modes
   useEffect(() => {
       setImgLogicalSize({ width: 0, height: 0 });
-  }, [activeMode]);
+      // Reset error when switching modes
+      if (isOpen) setGenerationError(false);
+  }, [activeMode, isOpen]);
 
   // --- Generation Logic ---
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !isTargetsMounted) return; // Wait until targets are mounted
 
     const generateCurrentMode = async () => {
         if (snapshots[activeMode].url) return;
 
+        // Reset error and start loading
+        setGenerationError(false);
         setIsGenerating(true);
         
-        // Slightly longer delay for textured images to ensure background loads
-        const renderDelay = baseImage ? 500 : 200;
+        // Wait for TexturedBlock images to load/crop
+        const renderDelay = baseImage ? 800 : 300; 
         await new Promise(r => setTimeout(r, renderDelay));
 
         const targetId = `screenshot-target-${activeMode}`;
@@ -168,6 +176,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
         if (!targetWrapper) {
              setIsGenerating(false);
+             // Don't set error here, it might just be unmounted/closed
              return;
         }
 
@@ -193,9 +202,12 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                     ...prev,
                     [activeMode]: { blob, url }
                 }));
+            } else {
+                throw new Error("Blob creation returned null");
             }
         } catch (err) {
             console.error("Screenshot generation failed", err);
+            setGenerationError(true);
             showToast({ message: "圖片產生失敗，請重試", type: 'error' });
         } finally {
             setIsGenerating(false);
@@ -204,7 +216,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
     generateCurrentMode();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, activeMode]);
+  }, [isOpen, activeMode, isTargetsMounted]); 
 
   // --- Interaction Handlers ---
 
@@ -237,7 +249,6 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    // Zoom towards mouse pointer
     const imgX = (mouseX - transform.x) / transform.scale;
     const imgY = (mouseY - transform.y) / transform.scale;
     
@@ -349,37 +360,36 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   if (!isOpen) return null;
 
   const currentPreviewUrl = snapshots[activeMode].url;
-  const showLoading = isGenerating && !currentPreviewUrl;
+  
+  // Render Logic:
+  // 1. If we have a URL, show the image (Success state)
+  // 2. If we have an explicit error, show error (Error state)
+  // 3. Otherwise, show loading (Waiting/Generating state)
+  
+  const showImage = !!currentPreviewUrl;
+  const showError = !showImage && generationError;
+  const showLoading = !showImage && !showError;
 
   return (
     <div 
         className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
         onClick={onClose}
     >
-      {/* Hidden Render Targets */}
+      {/* Hidden Render Targets - Only mount when needed to prevent UI freeze on open */}
       <div style={{ position: 'fixed', left: '-10000px', top: 0 }}>
-         <div id="screenshot-target-full" style={{ display: 'inline-block', width: 'max-content' }}>
-            <ScreenshotView 
-                session={session}
-                template={template}
-                zoomLevel={1} 
-                mode="full"
-                layout={layout}
-                baseImage={baseImage}
-                customWinners={customWinners}
-            />
-         </div>
-         <div id="screenshot-target-simple" style={{ display: 'inline-block', width: 'max-content' }}>
-            <ScreenshotView 
-                session={session}
-                template={template}
-                zoomLevel={1} 
-                mode="simple"
-                layout={layout}
-                baseImage={baseImage}
-                customWinners={customWinners}
-            />
-         </div>
+         {isTargetsMounted && (
+             <div id={`screenshot-target-${activeMode}`} style={{ display: 'inline-block', width: 'max-content' }}>
+                <ScreenshotView 
+                    session={session}
+                    template={template}
+                    zoomLevel={1} 
+                    mode={activeMode}
+                    layout={layout}
+                    baseImage={baseImage}
+                    customWinners={customWinners}
+                />
+             </div>
+         )}
       </div>
 
       {/* Main Modal Container */}
@@ -423,7 +433,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                 onWheel={handleWheel}
                 onDoubleClick={() => fitToScreen()}
             >
-                {showLoading ? (
+                {showLoading && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-emerald-500 animate-in fade-in zoom-in duration-300 pointer-events-none">
                         <div className="relative">
                             <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full animate-pulse"></div>
@@ -431,10 +441,12 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                         </div>
                         <span className="text-sm font-bold animate-pulse tracking-wider">正在繪製圖片...</span>
                     </div>
-                ) : currentPreviewUrl ? (
+                )}
+                
+                {showImage && (
                     <img 
                         ref={imgRef}
-                        src={currentPreviewUrl} 
+                        src={currentPreviewUrl!} 
                         alt="Preview" 
                         onLoad={handleImageLoad}
                         style={{
@@ -448,7 +460,9 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                         className="absolute top-0 left-0 block pointer-events-none select-none shadow-2xl origin-top-left"
                         draggable={false}
                     />
-                ) : (
+                )}
+                
+                {showError && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none">
                         <span className="text-red-400 text-sm border border-red-900/50 bg-red-900/10 px-4 py-2 rounded-lg">預覽載入失敗</span>
                         <button onClick={() => { setSnapshots(p => ({...p, [activeMode]: {url:null, blob:null}})); setActiveMode(m => m); }} className="text-xs text-slate-500 underline pointer-events-auto">重試</button>

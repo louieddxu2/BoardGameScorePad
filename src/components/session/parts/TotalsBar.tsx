@@ -66,23 +66,27 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
   }, [scrollRef]);
 
   const itemColStyle = useMemo(() => {
-      if (!baseImage || !imageDims || !template?.globalVisuals?.totalLabelRect || containerWidth === 0) {
-          return {};
+      // 1. Texture Mode: Strictly follow aspect ratio logic
+      if (baseImage && imageDims && template?.globalVisuals?.totalLabelRect) {
+          const { totalLabelRect } = template.globalVisuals;
+          const itemColProportion = totalLabelRect.width / imageDims.width;
+          const scaledWidth = containerWidth * itemColProportion * zoomLevel;
+          return { 
+              width: `${scaledWidth}px`, 
+              minWidth: `${scaledWidth}px`,
+              flexShrink: 0 
+          };
       }
-      const { totalLabelRect } = template.globalVisuals;
       
-      const itemColProportion = totalLabelRect.width / imageDims.width;
-      
-      // [Modified] Scale width by zoomLevel to align with ScoreGrid
-      const scaledWidth = containerWidth * itemColProportion * zoomLevel;
+      // 2. Standard Mode: Dynamic calculation
+      if (containerWidth > 0) {
+          const width = Math.max(70, containerWidth / (players.length + 2));
+          return { width: `${width}px`, minWidth: `${width}px`, flexShrink: 0 };
+      }
 
-      return { 
-          width: `${scaledWidth}px`, 
-          minWidth: `${scaledWidth}px`,
-          flexShrink: 0 
-      };
+      return { width: '70px', minWidth: '70px', flexShrink: 0 }; // Fallback
 
-  }, [baseImage, imageDims, template?.globalVisuals, containerWidth, zoomLevel]);
+  }, [baseImage, imageDims, template?.globalVisuals, containerWidth, zoomLevel, players.length]);
 
   return (
     <div
@@ -94,7 +98,8 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
         baseImage={baseImage}
         rect={template?.globalVisuals?.totalLabelRect}
         fallbackContent={<span className="font-black text-emerald-400 text-sm">總分</span>}
-        className={`w-[70px] bg-slate-800 border-r border-slate-700 flex items-center justify-center shrink-0 z-40 relative border-t-2 border-transparent ${baseImage ? 'p-0' : 'p-2'}`}
+        // [Modified] Removed w-[70px], relying entirely on itemColStyle to support dynamic width
+        className={`bg-slate-800 border-r border-slate-700 flex items-center justify-center shrink-0 z-40 relative border-t-2 border-transparent ${baseImage ? 'p-0' : 'p-2'}`}
         style={itemColStyle}
       />
       <div className="flex-1 overflow-hidden" ref={scrollRef}>

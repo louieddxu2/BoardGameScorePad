@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { GameTemplate, GameSession, HistoryRecord } from '../../types';
 import { Plus, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, CloudCog, Loader2, Activity, CloudOff, History, Search } from 'lucide-react';
@@ -137,13 +138,15 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
 
   // --- Data Logic ---
   
-  // Calculate active games
+  // Calculate active games - [Updated] Sort by lastUpdatedAt
   const activeGameItems = useMemo(() => {
       return activeSessionIds.map(id => {
           const t = allTemplates.find(template => template.id === id);
           if (!t) return null;
           const session = getSessionPreview(id);
-          return { template: t, timestamp: session ? session.startTime : 0 };
+          // Use lastUpdatedAt if available, otherwise fallback to startTime
+          const sortTime = session ? (session.lastUpdatedAt || session.startTime) : 0;
+          return { template: t, timestamp: sortTime };
       })
       .filter((item): item is { template: GameTemplate, timestamp: number } => item !== null)
       .sort((a, b) => b.timestamp - a.timestamp);

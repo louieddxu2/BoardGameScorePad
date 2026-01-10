@@ -26,7 +26,7 @@ interface CloudManagerModalProps {
   onSessionRestoreSuccess: (session: GameSession) => void;
   onHistoryRestoreSuccess?: (record: HistoryRecord) => void;
   onSystemBackup?: (onProgress: (count: number, total: number) => void, onError: (failedItems: string[]) => void) => Promise<{ success: number, skipped: number, failed: number }>;
-  onSystemRestore?: (onProgress: (count: number, total: number) => void, onError: (failedItems: string[]) => void) => Promise<{ success: number, skipped: number, failed: number }>;
+  onSystemRestore?: (localMeta: any, onProgress: (count: number, total: number) => void, onError: (failedItems: string[]) => void, onItemRestored: any, onSettingsRestored: any) => Promise<{ success: number, skipped: number, failed: number }>;
   onGetLocalData?: () => Promise<any>; // [New] Prop to fetch local data for comparison
 }
 
@@ -173,12 +173,32 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
 
                   // --- 2. Compare Sessions ---
                   const localSessions = localData.data.sessions || [];
+                  // [Update] Added timestamp check for sessions upload
                   localSessions.forEach((s: GameSession) => {
-                      if (!mapS.has(s.id)) stats.upload.sessions++;
+                      const cFile = mapS.get(s.id);
+                      if (!cFile) {
+                          stats.upload.sessions++;
+                      } else {
+                          const cTime = Number(cFile.appProperties?.originalUpdatedAt || 0);
+                          // Use lastUpdatedAt or fallback to startTime
+                          const lTime = s.lastUpdatedAt || s.startTime || 0;
+                          if (lTime > cTime) stats.upload.sessions++;
+                      }
                   });
+                  
+                  // [Update] Added timestamp check for sessions download
                   cSessions.forEach(f => {
                       const id = extractId(f.name);
-                      if (id && !localSessions.find((s: any) => s.id === id)) stats.download.sessions++;
+                      if (id) {
+                          const lSession = localSessions.find((s: any) => s.id === id);
+                          const cTime = Number(f.appProperties?.originalUpdatedAt || 0);
+                          if (!lSession) {
+                              stats.download.sessions++;
+                          } else {
+                              const lTime = lSession.lastUpdatedAt || lSession.startTime || 0;
+                              if (cTime > lTime) stats.download.sessions++;
+                          }
+                      }
                   });
 
                   // --- 3. Compare History ---
@@ -191,12 +211,22 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                       } else {
                           // Optional: Check if modified (e.g. notes updated)
                           const cTime = Number(cFile.appProperties?.originalUpdatedAt || 0);
-                          if (h.endTime > cTime) stats.upload.history++;
+                          const localTime = h.updatedAt || h.endTime;
+                          if (localTime > cTime) stats.upload.history++;
                       }
                   });
                   cHistory.forEach(f => {
                       const id = extractId(f.name);
-                      if (id && !localHistory.find((h: any) => h.id === id)) stats.download.history++;
+                      if (id) {
+                          const lHistory = localHistory.find((h: any) => h.id === id);
+                          const cTime = Number(f.appProperties?.originalUpdatedAt || 0);
+                          if (!lHistory) {
+                              stats.download.history++;
+                          } else {
+                              const lTime = lHistory.updatedAt || lHistory.endTime;
+                              if (cTime > lTime) stats.download.history++;
+                          }
+                      }
                   });
 
                   setScanStats(stats);
@@ -326,15 +356,32 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
   };
 
   const handleSyncDownload = async () => {
-      if (!onSystemRestore) return;
+      if (!onSystemRestore || !onGetLocalData) return;
       setSyncStatus('processing');
       setSyncResult({ success: 0, skipped: 0, failed: [], errors: [], total: 0, current: 0, type: 'download' });
 
       try {
+          // [New] Fetch local data to build map for restore logic
+          const localData = await onGetLocalData();
+          
+          const templatesMap = new Map<string, number>();
+          const historyMap = new Map<string, number>();
+          const sessionsMap = new Map<string, number>(); // Add active sessions map
+          
+          (localData.data.templates || []).forEach((t: any) => templatesMap.set(t.id, t.updatedAt || 0));
+          (localData.data.overrides || []).forEach((t: any) => templatesMap.set(t.id, t.updatedAt || 0));
+          (localData.data.history || []).forEach((h: any) => historyMap.set(h.id, h.updatedAt || h.endTime || 0));
+          (localData.data.sessions || []).forEach((s: any) => sessionsMap.set(s.id, s.lastUpdatedAt || s.startTime || 0));
+
+          const localMeta = { templates: templatesMap, history: historyMap, sessions: sessionsMap };
+
           // Use the returned stats instead of calculating locally
           const stats = await onSystemRestore(
+              localMeta,
               (count, total) => setSyncResult(prev => ({ ...prev, current: count, total })),
-              (failed) => setSyncResult(prev => ({ ...prev, failed: [...prev.failed, ...failed] }))
+              (failed) => setSyncResult(prev => ({ ...prev, failed: [...prev.failed, ...failed] })),
+              undefined, // onItemRestored passed by parent
+              undefined  // onSettingsRestored passed by parent
           );
           setSyncResult(prev => ({ ...prev, success: stats.success, skipped: stats.skipped }));
       } catch (e: any) {

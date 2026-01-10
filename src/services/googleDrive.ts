@@ -1,4 +1,3 @@
-
 import { GameTemplate, GameSession, HistoryRecord } from '../types';
 import { googleAuth } from './cloud/googleAuth';
 import { googleDriveClient } from './cloud/googleDriveClient';
@@ -377,8 +376,10 @@ class GoogleDriveService {
       const jsonContent = JSON.stringify(recordToSave, null, 2);
       await googleDriveClient.uploadFileToFolder(folderId, 'session.json', 'application/json', jsonContent);
       
+      // [Update] Use updatedAt if available, fallback to endTime
+      const timestamp = record.updatedAt || record.endTime;
       await googleDriveClient.updateFileMetadata(folderId, {
-          appProperties: { originalUpdatedAt: String(record.endTime) }
+          appProperties: { originalUpdatedAt: String(timestamp) }
       });
 
       return folderId;
@@ -413,8 +414,11 @@ class GoogleDriveService {
       const jsonContent = JSON.stringify(sessionToSave, null, 2);
       await googleDriveClient.uploadFileToFolder(folderId, 'session.json', 'application/json', jsonContent);
       
+      // [Update] Use lastUpdatedAt for metadata to allow correct syncing comparison
+      // Fallback to startTime if lastUpdatedAt is missing (legacy data)
+      const timestamp = session.lastUpdatedAt || session.startTime || Date.now();
       await googleDriveClient.updateFileMetadata(folderId, {
-          appProperties: { originalUpdatedAt: String(Date.now()) }
+          appProperties: { originalUpdatedAt: String(timestamp) }
       });
       
       return folderId;

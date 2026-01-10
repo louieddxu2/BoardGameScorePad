@@ -17,9 +17,18 @@ interface SessionViewProps {
   onResetScores: () => void;
 }
 
+interface LocalUiState {
+  isPhotoPreviewOpen: boolean;
+  onClosePhotoPreview: () => void;
+}
+
 type SessionStateHook = ReturnType<typeof useSessionState>;
 
-export const useSessionEvents = (props: SessionViewProps, sessionState: SessionStateHook) => {
+export const useSessionEvents = (
+  props: SessionViewProps, 
+  sessionState: SessionStateHook,
+  localUiState?: LocalUiState
+) => {
   const { session, template, onUpdateSession, onUpdateTemplate, onUpdatePlayerHistory, onExit, onResetScores } = props;
   const { uiState, setUiState } = sessionState;
 
@@ -36,6 +45,12 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
   // --- Back Button Logic (Stack Priority) ---
   useEffect(() => {
     const handleSessionBackPress = () => {
+      // 0. Photo Preview (Highest Priority - Local State)
+      if (localUiState?.isPhotoPreviewOpen) {
+          localUiState.onClosePhotoPreview();
+          return;
+      }
+
       // 1. Column Editor (Let it handle itself if implemented, but strictly we can guard here)
       if (uiState.editingColumn) { return; }
 
@@ -89,7 +104,12 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
 
       // 10. Default: Open Exit Confirmation
       // Check if we need to confirm or just exit
-      const hasScores = session.players.some(p => Object.keys(p.scores).length > 0 || (p.bonusScore || 0) !== 0);
+      const hasScores = session.players.some(p => 
+          Object.keys(p.scores).length > 0 || 
+          (p.bonusScore || 0) !== 0 ||
+          p.tieBreaker ||
+          p.isForceLost
+      );
       const hasPhotos = (session.photos && session.photos.length > 0);
 
       if (hasScores || hasPhotos) {
@@ -100,7 +120,7 @@ export const useSessionEvents = (props: SessionViewProps, sessionState: SessionS
     };
     window.addEventListener('app-back-press', handleSessionBackPress);
     return () => window.removeEventListener('app-back-press', handleSessionBackPress);
-  }, [uiState, onExit, setUiState, session.players, session.photos]);
+  }, [uiState, onExit, setUiState, session.players, session.photos, localUiState]);
 
 
   // --- Event Handlers ---

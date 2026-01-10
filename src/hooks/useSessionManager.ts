@@ -109,6 +109,7 @@ export const useSessionManager = ({
         id: sessionId, 
         templateId: migratedTemplate.id, 
         startTime: startTime, 
+        lastUpdatedAt: Date.now(), // Initialize lastUpdatedAt
         players: players, 
         status: 'active',
         scoringRule: scoringRule,
@@ -143,6 +144,13 @@ export const useSessionManager = ({
                   ...p, scores: migrateScores(p.scores, template!) 
               }));
               
+              // Ensure lastUpdatedAt exists for old sessions being resumed
+              if (!session.lastUpdatedAt) {
+                  session.lastUpdatedAt = Date.now();
+                  // No need to save immediately, autosave will catch updates, 
+                  // or user interaction will trigger updateSession
+              }
+
               // Load Image
               let loadedImageUrl: string | null = null;
               if (template.imageId) {
@@ -187,26 +195,35 @@ export const useSessionManager = ({
   };
 
   const updateSession = (updatedSession: GameSession) => {
+      const sessionWithTimestamp = { ...updatedSession, lastUpdatedAt: Date.now() }; // Update timestamp on any change
+      
       if (activeTemplate) {
-        const playersWithTotal = updatedSession.players.map(p => ({ 
-            ...p, totalScore: calculatePlayerTotal(p, activeTemplate, updatedSession.players) 
+        const playersWithTotal = sessionWithTimestamp.players.map(p => ({ 
+            ...p, totalScore: calculatePlayerTotal(p, activeTemplate, sessionWithTimestamp.players) 
         }));
-        setCurrentSession({ ...updatedSession, players: playersWithTotal });
+        setCurrentSession({ ...sessionWithTimestamp, players: playersWithTotal });
       } else {
-        setCurrentSession(updatedSession);
+        setCurrentSession(sessionWithTimestamp);
       }
   };
   
   const resetSessionScores = () => {
     if (!currentSession) return;
     const resetPlayers = currentSession.players.map(p => ({ ...p, scores: {}, totalScore: 0, bonusScore: 0 }));
-    setCurrentSession({ ...currentSession, players: resetPlayers, startTime: Date.now() });
+    // Update lastUpdatedAt on reset
+    setCurrentSession({ ...currentSession, players: resetPlayers, startTime: Date.now(), lastUpdatedAt: Date.now() });
   };
 
   const exitSession = async () => {
       if (!currentSession) return;
 
-      const hasScores = currentSession.players.some(p => Object.keys(p.scores).length > 0 || (p.bonusScore || 0) !== 0);
+      // [Modified] Check for tieBreaker and isForceLost as meaningful data
+      const hasScores = currentSession.players.some(p => 
+          Object.keys(p.scores).length > 0 || 
+          (p.bonusScore || 0) !== 0 ||
+          p.tieBreaker ||
+          p.isForceLost
+      );
       const hasPhotos = (currentSession.photos && currentSession.photos.length > 0);
       const hasDataToSave = hasScores || hasPhotos;
 
@@ -215,18 +232,20 @@ export const useSessionManager = ({
           await cleanupService.cleanSessionArtifacts(currentSession.id, currentSession.cloudFolderId);
           await db.sessions.delete(currentSession.id);
       } else {
-          // Save
-          await db.sessions.put(currentSession);
+          // Save - ensure timestamp is fresh
+          const finalSession = { ...currentSession, lastUpdatedAt: Date.now() };
+          await db.sessions.put(finalSession);
+          
           if (isCloudEnabled()) {
-              let folderId = currentSession.cloudFolderId;
+              let folderId = finalSession.cloudFolderId;
               if (!folderId && activeTemplate) {
-                  folderId = await googleDriveService.createActiveSessionFolder(activeTemplate.name, currentSession.id);
-                  await db.sessions.update(currentSession.id, { cloudFolderId: folderId });
+                  folderId = await googleDriveService.createActiveSessionFolder(activeTemplate.name, finalSession.id);
+                  await db.sessions.update(finalSession.id, { cloudFolderId: folderId });
               }
 
               if (folderId) {
                   // Backup session JSON with photo sync
-                  await googleDriveService.backupActiveSession(currentSession, activeTemplate.name, folderId);
+                  await googleDriveService.backupActiveSession(finalSession, activeTemplate.name, folderId);
               }
           }
       }
@@ -258,12 +277,14 @@ export const useSessionManager = ({
               winnerIds = currentSession.players.filter(p => p.totalScore === minScore).map(p => p.id);
           }
           const snapshotTemplate = JSON.parse(JSON.stringify(activeTemplate));
+          const now = Date.now();
           const record: HistoryRecord = {
               id: currentSession.id, 
               templateId: activeTemplate.id,
               gameName: activeTemplate.name,
               startTime: currentSession.startTime,
-              endTime: Date.now(),
+              endTime: now,
+              updatedAt: now, // [New] Initialize updated time
               players: currentSession.players,
               winnerIds: winnerIds,
               snapshotTemplate: snapshotTemplate,
@@ -310,7 +331,8 @@ export const useSessionManager = ({
           const updatedPlayers = currentSession.players.map(player => ({ 
               ...player, totalScore: calculatePlayerTotal(player, migratedTemplate, currentSession.players) 
           }));
-          setCurrentSession({ ...currentSession, players: updatedPlayers });
+          // updateSession logic essentially, but explicitly handling template update context
+          setCurrentSession({ ...currentSession, players: updatedPlayers, lastUpdatedAt: Date.now() });
       }
   };
 

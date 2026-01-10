@@ -1,4 +1,5 @@
 
+
 import Dexie, { Table } from 'dexie';
 import { GameTemplate, GameSession, TemplatePreference, HistoryRecord, SavedListItem, LocalImage } from './types';
 import { generateId } from './utils/idGenerator';
@@ -75,6 +76,30 @@ export class ScorePadDatabase extends Dexie {
     // Version 7: 新增 images 表
     (this as any).version(7).stores({
         images: 'id, relatedId, relatedType, createdAt' // 索引：ID, 關聯ID (查詢用), 類型, 時間
+    });
+
+    // Version 8: 新增 lastUpdatedAt 至 sessions 表
+    (this as any).version(8).stores({
+        sessions: 'id, templateId, startTime, lastUpdatedAt, status' // 新增 lastUpdatedAt 索引
+    }).upgrade(async (trans: any) => {
+        // 為現有 session 補上 lastUpdatedAt (預設等於 startTime)
+        await trans.table('sessions').toCollection().modify((session: GameSession) => {
+            if (!session.lastUpdatedAt) {
+                session.lastUpdatedAt = session.startTime;
+            }
+        });
+    });
+
+    // Version 9: 新增 updatedAt 至 history 表
+    (this as any).version(9).stores({
+        history: 'id, templateId, startTime, endTime, updatedAt'
+    }).upgrade(async (trans: any) => {
+        // 為現有 history 補上 updatedAt (預設等於 endTime)
+        await trans.table('history').toCollection().modify((record: HistoryRecord) => {
+            if (!record.updatedAt) {
+                record.updatedAt = record.endTime;
+            }
+        });
     });
   }
 }

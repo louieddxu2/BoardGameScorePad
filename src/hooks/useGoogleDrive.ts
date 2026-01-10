@@ -8,9 +8,9 @@ export const useGoogleDrive = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isConnected, setIsConnected] = useState(googleDriveService.isAuthorized);
   
-  const [isAutoConnectEnabled, setIsAutoConnectEnabled] = useState(() => {
-      return localStorage.getItem('google_drive_auto_connect') === 'true';
-  });
+  // [Change] 預設為 false，不再從 localStorage 讀取。
+  // 這樣每次 App 啟動時，雲端功能都會預設為關閉，直到使用者主動點擊。
+  const [isAutoConnectEnabled, setIsAutoConnectEnabled] = useState(false);
 
   const { showToast } = useToast();
 
@@ -18,25 +18,8 @@ export const useGoogleDrive = () => {
       setIsConnected(googleDriveService.isAuthorized);
   }, []);
 
-  useEffect(() => {
-      localStorage.setItem('google_drive_auto_connect', String(isAutoConnectEnabled));
-  }, [isAutoConnectEnabled]);
-
-  useEffect(() => {
-      if (isAutoConnectEnabled && !googleDriveService.isAuthorized) {
-          const trySilentConnect = async () => {
-              try {
-                  await googleDriveService.signIn({ prompt: 'none' });
-                  setIsConnected(true);
-                  console.log("Auto-connected to Google Drive");
-              } catch (e: any) {
-                  console.log("Silent auto-connect failed (interaction required):", e);
-                  setIsConnected(false); 
-              }
-          };
-          trySilentConnect();
-      }
-  }, []); 
+  // [Change] 移除了將狀態寫入 localStorage 的 useEffect
+  // [Change] 移除了嘗試自動靜默登入 (silent connect) 的 useEffect
 
   // [Modified] Explicit Connect Function
   const connectToCloud = useCallback(async () => {
@@ -364,10 +347,12 @@ export const useGoogleDrive = () => {
               await Promise.all(chunk.map(h => {
                   const cloudInfo = historyMap.get(h.id);
                   
+                  // [Change] Use updatedAt for history comparison
                   let isUpToDate = false;
-                  if (cloudInfo && h.endTime) {
+                  const localTime = h.updatedAt || h.endTime;
+                  if (cloudInfo && localTime) {
                       const cloudTime = Number(cloudInfo.appProperties?.originalUpdatedAt || 0);
-                      if (cloudTime >= h.endTime) {
+                      if (cloudTime >= localTime) {
                           isUpToDate = true;
                       }
                   }
@@ -385,9 +370,19 @@ export const useGoogleDrive = () => {
                   const cloudInfo = activeMap.get(s.id);
                   const templateName = allTemplates.find(t => t.id === s.templateId)?.name || '未命名遊戲';
                   
+                  // [Comparison Logic Added] Check lastUpdatedAt
+                  let isUpToDate = false;
+                  const localTime = s.lastUpdatedAt || s.startTime;
+                  if (cloudInfo && localTime) {
+                      const cloudTime = Number(cloudInfo.appProperties?.originalUpdatedAt || 0);
+                      if (cloudTime >= localTime) {
+                          isUpToDate = true;
+                      }
+                  }
+
                   return processItem(async () => {
                       await googleDriveService.backupActiveSession(s, templateName, cloudInfo?.id, cloudInfo?.name);
-                  }, `進行中: ${s.id.slice(0,8)}`, false);
+                  }, `進行中: ${s.id.slice(0,8)}`, isUpToDate);
               }));
           }
 
@@ -412,11 +407,12 @@ export const useGoogleDrive = () => {
 
   // [Full Restore] Smart Skip Logic: Local.ts >= Cloud.ts -> Skip
   const performFullRestore = useCallback(async (
-      localMeta: { templates: Map<string, number>, history: Map<string, number> },
+      // [Update] Added sessions map to input signature
+      localMeta: { templates: Map<string, number>, history: Map<string, number>, sessions: Map<string, number> },
       onProgress: (count: number, total: number) => void,
       onError: (failedItems: string[]) => void,
       onItemRestored: (type: 'template' | 'history' | 'session', item: any) => Promise<void>,
-      onSettingsRestored?: (settings: any) => void // New Callback
+      onSettingsRestored?: (settings: any) => void 
   ): Promise<{ success: number, skipped: number, failed: number }> => {
       setIsSyncing(true);
       let successCount = 0;
@@ -473,6 +469,9 @@ export const useGoogleDrive = () => {
                       localTime = localMeta.templates.get(id) || 0;
                   } else if (type === 'history' && localMeta.history.has(id)) {
                       localTime = localMeta.history.get(id) || 0;
+                  } else if (type === 'active' && localMeta.sessions.has(id)) {
+                      // [New] Check active sessions
+                      localTime = localMeta.sessions.get(id) || 0;
                   }
                   
                   // Skip if local is newer or same

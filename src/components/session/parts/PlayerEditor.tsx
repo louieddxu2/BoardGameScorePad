@@ -90,7 +90,7 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
                   <button 
                     key={i} 
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => { setTempName(name); onNameSubmit(player.id, name, true); }} 
+                    onClick={() => { setTempName(name); onNameSubmit(player.id, name, false); }} 
                     className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-emerald-900/30 hover:text-emerald-400 transition-colors truncate active:scale-95 bg-slate-800 border border-slate-700/50"
                   >
                     {name}
