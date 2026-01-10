@@ -272,20 +272,17 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   };
 
   // Handle Full Restore
-  const handleSystemRestoreAction = async (onProgress: (count: number, total: number) => void, onError: (failedItems: string[]) => void) => {
-      const data = await getSystemExportData();
-      
-      // Build metadata map for local state check
-      const templatesMap = new Map<string, number>();
-      const historyMap = new Map<string, number>();
-      
-      (data.data.templates || []).forEach((t: GameTemplate) => templatesMap.set(t.id, t.updatedAt || 0));
-      (data.data.overrides || []).forEach((t: GameTemplate) => templatesMap.set(t.id, t.updatedAt || 0));
-      (data.data.history || []).forEach((h: HistoryRecord) => historyMap.set(h.id, h.endTime || 0));
+  const handleSystemRestoreAction = async (
+      localMeta: { templates: Map<string, number>, history: Map<string, number>, sessions: Map<string, number> },
+      onProgress: (count: number, total: number) => void, 
+      onError: (failedItems: string[]) => void
+  ) => {
+      // NOTE: localMeta is now passed in from CloudManagerModal (via onGetLocalData)
+      // This avoids redundant data fetching and ensures CloudManagerModal drives the process.
 
       // Now returns stats object
       return await performFullRestore(
-          { templates: templatesMap, history: historyMap },
+          localMeta,
           onProgress,
           onError,
           // onItemRestored: Save to DB

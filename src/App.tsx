@@ -230,7 +230,7 @@ const App: React.FC = () => {
       }
   }, [appData.currentSession, appData.activeTemplate]);
 
-  // --- Back Button Handling ---
+  // --- Back Button Handling (Double Buffer Strategy) ---
   useEffect(() => {
     const handlePopState = () => {
       isExitingSession.current = false;
@@ -251,18 +251,24 @@ const App: React.FC = () => {
       }
 
       if (handled && !isExitingSession.current) {
-        // [Fix]: Using Promise.resolve().then(...) puts the pushState in the microtask queue.
-        // This executes AFTER the current synchronous code (and popstate event) finishes,
-        // but BEFORE the browser renders the next frame or handles the next UI event (like a second tap).
-        // This eliminates the 50ms gap while still allowing the browser to stabilize its history pointer.
+        // [Fix: Double Buffer Strategy]
+        // Instead of pushing 1 dummy state, we maintain a deeper buffer.
+        // This ensures that even if the user double-taps back quickly, 
+        // they only consume the buffer and don't exit the app.
+        // We use Microtask to execute this immediately after the current event loop.
         Promise.resolve().then(() => {
             history.pushState(null, '');
+            history.pushState(null, ''); // Double wall
         });
       }
     };
 
     window.addEventListener('popstate', handlePopState);
+    
+    // Initial Setup: Create the Double Buffer immediately on mount/view change
     history.pushState(null, '');
+    history.pushState(null, '');
+
     return () => window.removeEventListener('popstate', handlePopState);
   }, [view, pendingTemplate]);
 
