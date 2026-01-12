@@ -38,7 +38,11 @@ export const useAppData = () => {
   
   // Check cloud availability helper
   const isCloudEnabled = () => {
-      return localStorage.getItem('google_drive_auto_connect') === 'true' && googleDriveService.isAuthorized;
+      // [Fix] Removed the strict check for `googleDriveService.isAuthorized`.
+      // We only check if the user *wants* cloud enabled.
+      // The backup function itself (in useGoogleDrive) handles the authorization check 
+      // and prompts for login if the token is missing/expired.
+      return localStorage.getItem('google_drive_auto_connect') === 'true';
   };
 
   const sessionManager = useSessionManager({

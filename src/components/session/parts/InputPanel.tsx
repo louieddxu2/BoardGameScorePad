@@ -53,13 +53,21 @@ const PanelHeader: React.FC<{
             <Edit size={12} className="shrink-0" style={{ color: displayColor }} />
             <span className="text-xs shrink-0 font-bold opacity-70" style={{ color: displayColor }}>編輯玩家</span>
             <div className="w-px h-4 bg-white/10 mx-1" />
-            <span className="text-sm font-bold truncate" style={{ color: displayColor, ...(isColorDark(displayColor) && { textShadow: ENHANCED_TEXT_SHADOW }) }}>
+            <span 
+                key={player.id} 
+                className="text-sm font-bold truncate animate-slide-in-right-shallow" 
+                style={{ color: displayColor, ...(isColorDark(displayColor) && { textShadow: ENHANCED_TEXT_SHADOW }) }}
+            >
               {player.name}
             </span>
           </>
         ) : (
           <>
-            <span className="text-sm font-bold truncate" style={{ color: displayColor, ...(isColorDark(displayColor) && { textShadow: ENHANCED_TEXT_SHADOW }) }}>
+            <span 
+                key={player.id} 
+                className="text-sm font-bold truncate animate-slide-in-right-shallow" 
+                style={{ color: displayColor, ...(isColorDark(displayColor) && { textShadow: ENHANCED_TEXT_SHADOW }) }}
+            >
               {player.name}
             </span>
             <div className="w-px h-4 bg-white/10 mx-1" />
@@ -164,21 +172,17 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             if (editingCell.colId === '__TOTAL__') {
                 const player = session.players.find(p => p.id === editingCell.playerId);
                 if (player) {
-                    // [UPDATED] Initialize preview with TOTAL Score instead of bonus
-                    // Allows user to edit the final result directly
                     setPreview(player.totalScore);
                 }
                 return;
             }
 
             const col = template.columns.find((c: any) => c.id === editingCell.colId);
-            // Product + Next logic initialization
             if (col && (col.formula || '').includes('+next') && col.formula.includes('×a2')) {
                 setUiState((p: any) => {
                     return { ...p, previewValue: { factors: [0, 1] } };
                 });
             } else {
-                // For standard cells, we typically start with 0 (or empty)
                 setPreview(0); 
             }
         }
@@ -188,7 +192,6 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
   const isPanelOpen = editingCell !== null || editingPlayerId !== null;
 
   const updateScore = (playerId: string, colId: string, value: any) => {
-    // Need to use the LATEST session data from props when calling this
     const players = session.players.map((p: any) => {
         if (p.id !== playerId) return p;
         const newScores = { ...p.scores };
@@ -209,7 +212,6 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             }
             
             const newScoreObj: ScoreValue = { parts };
-            // Save optionId if provided (for Select List rendering)
             if (typeof value === 'object' && value.optionId) {
                 newScoreObj.optionId = value.optionId;
             }
@@ -253,7 +255,6 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
       
       if (editingCell.colId === '__TOTAL__') {
           if (player) {
-              // [UPDATED] Clear now resets bonus to 0, and updates input to Base Score
               const baseScore = player.totalScore - (player.bonusScore || 0);
               updatePlayerMeta(player.id, { bonusScore: 0 });
               setPreview(baseScore);
@@ -276,6 +277,57 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
         setUiState((p: any) => ({ ...p, overwriteMode: true }));
       }
     }
+  };
+
+  // --- Joystick Logic (Swipe to Switch Players) ---
+  const touchStartRef = useRef<{x: number, y: number} | null>(null);
+  const hasTriggeredRef = useRef(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      hasTriggeredRef.current = false;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+      // 1. Basic Guards
+      if (!touchStartRef.current || hasTriggeredRef.current || !isPanelOpen) return;
+      
+      const touch = e.touches[0];
+      const dx = touch.clientX - touchStartRef.current.x;
+      const dy = touch.clientY - touchStartRef.current.y;
+
+      // 2. Axis Locking: Ignore if scrolling vertically (history list, buttons)
+      // Allow some diagonal tolerance but prioritize horizontal
+      if (Math.abs(dy) > Math.abs(dx)) return;
+
+      // 3. Threshold Trigger (30px)
+      if (Math.abs(dx) > 30) {
+          hasTriggeredRef.current = true; // Lock
+          
+          // Trigger Haptic
+          if (navigator.vibrate) navigator.vibrate(15);
+
+          // Determine current focused player ID
+          const currentPlayerId = editingCell?.playerId || editingPlayerId;
+          
+          if (currentPlayerId) {
+              // 4. Action: Switch Player
+              // Right Swipe (+X) -> Next Player
+              // Left Swipe (-X) -> Previous Player
+              if (dx > 0) {
+                  // [Note] Auto-commit is handled by useEffect cleanup in InputPanel when editingCell changes
+                  eventHandlers.moveToNextPlayer(currentPlayerId);
+              } else {
+                  eventHandlers.moveToPrevPlayer(currentPlayerId);
+              }
+          }
+      }
+  };
+
+  const handleTouchEnd = () => {
+      touchStartRef.current = null;
+      hasTriggeredRef.current = false;
   };
   
   let mainContentNode = null;
@@ -316,7 +368,6 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     if (editingCell.colId === '__TOTAL__') {
         isTotalMode = true;
         if (activePlayer) {
-            // Re-use Dummy Column logic for Keypad
             const dummyCol: ScoreColumn = { 
                 id: '__TOTAL__', 
                 name: '總分修正', 
@@ -326,20 +377,14 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                 rounding: 'none' 
             };
             
-            // Calculate Base Score (Total without bonus)
             const currentTotal = activePlayer.totalScore;
             const currentBonus = activePlayer.bonusScore || 0;
             const baseScore = currentTotal - currentBonus;
 
-            // Keypad updates bonusScore via Absolute Total Input
             mainContentNode = <NumericKeypad 
                 value={{ value: previewValue }}
                 onChange={(val: any) => {
-                    // 1. Update raw preview string first to maintain UI state (e.g. "5.")
                     setPreview(val.value);
-                    
-                    // 2. Then parse and update actual session data if valid
-                    // [UPDATED] Input = Target Total. Bonus = Target - Base.
                     const targetTotal = parseFloat(String(val.value));
                     if (!isNaN(targetTotal)) {
                         updatePlayerMeta(activePlayer!.id, { bonusScore: targetTotal - baseScore });
@@ -348,7 +393,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                 column={dummyCol} 
                 overwrite={overwriteMode} 
                 setOverwrite={(v: boolean) => setUiState((p: any) => ({ ...p, overwriteMode: v }))}
-                onNext={() => setUiState((p: any) => ({ ...p, editingCell: null }))} // Close on next
+                onNext={() => setUiState((p: any) => ({ ...p, editingCell: null }))}
                 activeFactorIdx={0} 
                 setActiveFactorIdx={() => {}} 
                 playerId={activePlayer.id}
@@ -373,7 +418,6 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
             const cellScoreObject = activePlayer.scores[activeColumn.id];
 
-            // Default next action
             onNextAction = () => {
                 eventHandlers.moveToNext();
             };
@@ -397,12 +441,12 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                         currentFactors = previewValue.factors.slice();
                     }
 
-                    if (activeFactorIdx === 0) { // Editing Factor A
+                    if (activeFactorIdx === 0) { 
                         currentFactors[0] = action.value;
                         setPreview({ factors: currentFactors });
                         setActiveFactorIdx(1);
                         setUiState((p: any) => ({ ...p, overwriteMode: true }));
-                    } else { // Editing Factor B
+                    } else { 
                         const n1 = parseFloat(String(currentFactors[0])) || 0;
                         const n2 = action.value;
                         const product = n1 * n2;
@@ -412,7 +456,6 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                         const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
                         updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
 
-                        // Reset for next entry
                         setPreview({ factors: [0, 1] });
                         setActiveFactorIdx(0);
                         setUiState((p: any) => ({ ...p, overwriteMode: true }));
@@ -420,7 +463,6 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                 } else if (isSumPartsMode) {
                     const currentHistory = getScoreHistory(cellScoreObject);
                     let newHistory = [...currentHistory];
-                    // Apply multiplier immediately for sum parts
                     const valToAdd = hasMultiplier ? action.value * constant : action.value;
 
                     if (action.isModifier && newHistory.length > 0) {
@@ -430,15 +472,13 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     }
                     const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
                     updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
-                } else { // It's a select list, so it replaces the value and moves next
-                    // Pass ID as well as value
+                } else { 
                     updateScore(activePlayer.id, activeColumn.id, { value: action.value, optionId: action.id });
                     eventHandlers.moveToNext();
                 }
             };
 
             if (activeColumn.inputType === 'auto') {
-                // Auto Calculation View
                 mainContentNode = (
                     <div className="h-full flex items-center justify-center bg-slate-900/50 rounded-xl border border-slate-700 p-4">
                         <AutoScorePanel 
@@ -461,7 +501,6 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     </div>
                 );
             } else if (activeColumn.inputType === 'clicker') {
-                // Clicker / Quick Actions
                 mainContentNode = ( <QuickButtonPad column={activeColumn} onAction={handleQuickButtonAction} /> );
                 
                 if (isProductSumPartsMode) {
@@ -470,7 +509,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                         value={cellScoreObject} 
                         activeFactorIdx={activeFactorIdx} 
                         setActiveFactorIdx={setActiveFactorIdx}
-                        localKeypadValue={previewValue} // Pass global preview
+                        localKeypadValue={previewValue} 
                         onDeleteLastPart={handleDeleteLastPart}
                         setOverwrite={(v) => setUiState((p: any) => ({ ...p, overwriteMode: v }))}
                     />;
@@ -479,11 +518,9 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                 } else {
                     sidebarContentNode = ( <div className="flex flex-col h-full p-2 text-slate-400 text-xs"><div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0"><ListPlus size={12} /> 列表選單</div><div className="flex-1"></div></div> );
                 }
-            } else { // 'keypad'
-                // Keypad Logic
+            } else { 
                 if (isSumPartsMode) {
                     if (isProductSumPartsMode) {
-                        // Product Sum Parts Logic (A x B then add)
                         let currentFactors = [0, 1];
                         if (previewValue && typeof previewValue === 'object' && previewValue.factors) {
                             currentFactors = previewValue.factors;
@@ -492,14 +529,12 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                         
                         if (n1 !== 0) {
                             if (activeFactorIdx === 0) {
-                                // If user is editing Factor A and it's non-zero, next button moves to Factor B
                                 nextButtonContent = (<div className="flex flex-col items-center leading-none"><span className="text-xs">輸入 {activeColumn.subUnits?.[1] || 'B'}</span><ArrowDown size={16} /></div>);
                                 onNextAction = () => {
                                     setActiveFactorIdx(1);
                                     setUiState((p: any) => ({ ...p, overwriteMode: true }));
                                 };
                             } else {
-                                // If editing Factor B (or finished A), show Add button
                                 nextButtonContent = <ArrowUpToLine size={28} />;
                                 onNextAction = () => {
                                     const product = (parseFloat(String(currentFactors[0])) || 0) * (parseFloat(String(currentFactors[1])) || 0);
@@ -509,7 +544,6 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                                         const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
                                         updateScore(activePlayer!.id, activeColumn!.id, { value: newSum, history: newHistory });
                                         
-                                        // Reset local state
                                         setPreview({ factors: [0, 1] });
                                         setActiveFactorIdx(0);
                                         setUiState((p: any) => ({ ...p, overwriteMode: true }));
@@ -520,16 +554,13 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                             }
                         }
                     } else {
-                        // Standard Sum Parts Logic
                         const inputPart = parseFloat(String(getRawValue(previewValue))) || 0;
                         if (inputPart !== 0) nextButtonContent = <ArrowUpToLine size={28} />;
                         
                         onNextAction = () => {
                             const input = parseFloat(String(getRawValue(previewValue))) || 0;
                             if (input !== 0) {
-                                // Apply constant multiplier if exists
                                 const valToAdd = hasMultiplier ? input * constant : input;
-                                
                                 const currentHistory = getScoreHistory(cellScoreObject);
                                 const newHistory = [...currentHistory, String(valToAdd)];
                                 const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
@@ -565,7 +596,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                 />;
                 sidebarContentNode = <ScoreInfoPanel 
                 column={activeColumn} value={cellScoreObject} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={setActiveFactorIdx}
-                localKeypadValue={isSumPartsMode ? previewValue : undefined} // Use global preview
+                localKeypadValue={isSumPartsMode ? previewValue : undefined}
                 onDeleteLastPart={isSumPartsMode ? handleDeleteLastPart : undefined}
                 setOverwrite={(v) => setUiState((p: any) => ({ ...p, overwriteMode: v }))}
                 />;
@@ -587,8 +618,6 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
           if (!activePlayer) return;
           
           if (isTotalMode) {
-              // Total Mode updates player meta instantly via keypad onChange
-              // No commit on blur needed to prevent overwriting with old state
               return;
           }
 
@@ -597,20 +626,19 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
           const isSumPartsMode = (activeColumn.formula || '').includes('+next');
           const isProductMode = activeColumn.formula.includes('×a2');
           
-          // Auto-commit only for Sum Parts mode where user might leave uncommitted data
           if (isSumPartsMode) {
               const cellScoreObject = activePlayer.scores[activeColumn.id];
               const constant = activeColumn.constants?.c1 ?? 1;
               const hasMultiplier = constant !== 1;
 
-              if (isProductMode) { // Product Sum Parts
+              if (isProductMode) { 
                   let currentFactors = [0, 1];
                   if (previewValue && typeof previewValue === 'object' && previewValue.factors) {
                       currentFactors = previewValue.factors;
                   }
                   const n1 = parseFloat(String(currentFactors[0])) || 0;
                   const n2 = parseFloat(String(currentFactors[1])) || 0;
-                  // Only commit if we have meaningful input (e.g. A!=0)
+                  
                   if (n1 !== 0) {
                       const product = n1 * n2;
                       const currentHistory = getScoreHistory(cellScoreObject);
@@ -618,7 +646,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                       const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
                       updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
                   }
-              } else { // Standard Sum Parts
+              } else { 
                   const input = parseFloat(String(getRawValue(previewValue))) || 0;
                   if (input !== 0) {
                       const valToAdd = hasMultiplier ? input * constant : input;
@@ -636,6 +664,10 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     <div
       className={`fixed left-0 right-0 z-50 bg-slate-950/50 backdrop-blur-sm border-t border-slate-700/50 shadow-[0_-8px_30px_rgba(0,0,0,0.5)] transition-all ease-in-out flex flex-col overflow-hidden ${isPanelOpen ? 'translate-y-0' : 'translate-y-full'} ${isInputFocused ? 'duration-0' : 'duration-300'}`}
       style={{ height: panelHeight, bottom: visualViewportOffset }}
+      // [Added] Joystick Touch Handlers
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       {activePlayer && (
         <PanelHeader 

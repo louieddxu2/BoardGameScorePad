@@ -279,7 +279,9 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           onError, 
           (type, item) => {
               if (type === 'template' && item) {
-                  onTemplateSave(item, { skipCloud: true, preserveTimestamps: true });
+                  // [Fix] Explicitly set lastSyncedAt to now, so the UI indicator turns green immediately.
+                  // 'item' is the updated template returned from backup service (with cloudImageId).
+                  onTemplateSave({ ...item, lastSyncedAt: Date.now() }, { skipCloud: true, preserveTimestamps: true });
               }
           }
       );

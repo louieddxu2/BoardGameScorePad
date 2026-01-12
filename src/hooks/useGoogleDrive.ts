@@ -8,9 +8,12 @@ export const useGoogleDrive = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isConnected, setIsConnected] = useState(googleDriveService.isAuthorized);
   
-  // [Change] 預設為 false，不再從 localStorage 讀取。
-  // 這樣每次 App 啟動時，雲端功能都會預設為關閉，直到使用者主動點擊。
-  const [isAutoConnectEnabled, setIsAutoConnectEnabled] = useState(false);
+  // [Fix] Initialize from localStorage. 
+  // This ensures that when navigating between pages (which unmounts/remounts hooks),
+  // we remember the user's preference.
+  const [isAutoConnectEnabled, setIsAutoConnectEnabled] = useState(() => {
+      return localStorage.getItem('google_drive_auto_connect') === 'true';
+  });
 
   const { showToast } = useToast();
 
@@ -18,27 +21,33 @@ export const useGoogleDrive = () => {
       setIsConnected(googleDriveService.isAuthorized);
   }, []);
 
-  // [Change] 移除了將狀態寫入 localStorage 的 useEffect
-  // [Change] 移除了嘗試自動靜默登入 (silent connect) 的 useEffect
-
   // [Modified] Explicit Connect Function
   const connectToCloud = useCallback(async () => {
       try {
           await googleDriveService.signIn(); 
           setIsConnected(true);
-          // Only enable auto-connect preference AFTER successful sign-in
+          
+          // [Fix] Persist preference
           setIsAutoConnectEnabled(true); 
+          localStorage.setItem('google_drive_auto_connect', 'true');
+          
           showToast({ message: "Google Drive 連線成功", type: 'success' });
           return true;
       } catch (e: any) {
           console.error("Manual connection failed:", e);
           
-          setIsAutoConnectEnabled(false); 
-          setIsConnected(false);
-
-          if (e.error === 'popup_closed_by_user') {
+          // Only disable if explicitly failed (user cancelled or error)
+          if (e.error === 'popup_closed_by_user' || e.error === 'access_denied') {
+              setIsAutoConnectEnabled(false); 
+              localStorage.setItem('google_drive_auto_connect', 'false');
+              setIsConnected(false);
               showToast({ message: "已取消登入", type: 'info' });
           } else {
+              // For network errors, we keep the flag true (optional choice), 
+              // but to be safe and avoid loops, we turn it off here for manual attempts.
+              setIsAutoConnectEnabled(false);
+              localStorage.setItem('google_drive_auto_connect', 'false');
+              setIsConnected(false);
               showToast({ message: "連線失敗，請檢查網路或稍後再試", type: 'error' });
           }
           return false;
@@ -47,8 +56,12 @@ export const useGoogleDrive = () => {
 
   // [Modified] Explicit Disconnect Function
   const disconnectFromCloud = useCallback(async () => {
-      setIsAutoConnectEnabled(false);
       await googleDriveService.signOut();
+      
+      // [Fix] Persist preference
+      setIsAutoConnectEnabled(false);
+      localStorage.setItem('google_drive_auto_connect', 'false');
+      
       setIsConnected(false);
       showToast({ message: "已斷開 Google Drive 連線", type: 'info' });
   }, [showToast]);
@@ -57,6 +70,10 @@ export const useGoogleDrive = () => {
       if (!isAutoConnectEnabled) {
           throw new Error("雲端功能未開啟");
       }
+      // Lazy Connection Logic:
+      // If enabled but not authorized (e.g. token expired or page refreshed),
+      // try to sign in NOW. This works because ensureConnection is usually called
+      // inside a user-triggered event handler (like 'End Game' click).
       if (!googleDriveService.isAuthorized) {
           await googleDriveService.signIn(); 
           setIsConnected(true);
@@ -84,7 +101,6 @@ export const useGoogleDrive = () => {
     try {
       await ensureConnection();
       showToast({ message: "正在上傳備份...", type: 'info' });
-      // Remove deprecated imageBase64 arg
       const updatedTemplate = await googleDriveService.backupTemplate(template);
       setIsConnected(true); 
       showToast({ message: "備份成功！", type: 'success' });
@@ -116,7 +132,6 @@ export const useGoogleDrive = () => {
       try {
           await ensureConnection();
           showToast({ message: "正在還原...", type: 'info' });
-          // [Updated] Use new Smart Hydration method
           const template = await googleDriveService.restoreTemplate(fileId);
           setIsConnected(true);
           showToast({ message: "還原成功！", type: 'success' });
@@ -179,7 +194,6 @@ export const useGoogleDrive = () => {
       }
   }, [isAutoConnectEnabled, showToast]);
 
-  // [UPDATED] Return Blob instead of string
   const downloadCloudImage = useCallback(async (fileId: string): Promise<Blob | null> => {
       setIsSyncing(true);
       try {
@@ -233,17 +247,16 @@ export const useGoogleDrive = () => {
 
   const silentSystemBackup = useCallback(async (data: any): Promise<void> => {
       if (!isAutoConnectEnabled) return;
-      if (!googleDriveService.isAuthorized) return;
+      // Note: Silent backup shouldn't prompt login, so we check isAuthorized directly
+      if (!googleDriveService.isAuthorized) return; 
       try {
-          // Keep the preferences/settings backup for "Settings Restore"
-          const { data: rawData, ...settingsOnly } = data; // Only save preferences
+          const { data: rawData, ...settingsOnly } = data; 
           await googleDriveService.saveSystemData('settings_backup.json', settingsOnly);
       } catch (e) {
           console.warn("Silent settings backup failed:", e);
       }
   }, [isAutoConnectEnabled]);
 
-  // [Full Backup] Smart Skip Logic: Cloud.ts >= Local.ts -> Skip
   const performFullBackup = useCallback(async (
       templates: GameTemplate[], 
       history: HistoryRecord[],
@@ -273,7 +286,6 @@ export const useGoogleDrive = () => {
               const map = new Map<string, CloudFile>();
               files.forEach(f => {
                   const lastSep = f.name.lastIndexOf('_');
-                  // Ensure underscore exists and is not the first character
                   if (lastSep > 0) {
                       const uuid = f.name.substring(lastSep + 1);
                       map.set(uuid, f);
@@ -317,15 +329,13 @@ export const useGoogleDrive = () => {
               return res;
           };
 
-          const CHUNK_SIZE = 3; // Reduced concurrency for safety
+          const CHUNK_SIZE = 3;
 
           // 2a. Process Templates
           const templateChunks = chunkArray(allTemplates, CHUNK_SIZE);
           for (const chunk of templateChunks) {
               await Promise.all(chunk.map(t => {
                   const cloudInfo = templateMap.get(t.id);
-                  
-                  // Skip Logic: If cloud exists AND cloud ts >= local ts
                   let isUpToDate = false;
                   if (cloudInfo && t.updatedAt) {
                       const cloudTime = Number(cloudInfo.appProperties?.originalUpdatedAt || 0);
@@ -333,7 +343,6 @@ export const useGoogleDrive = () => {
                           isUpToDate = true;
                       }
                   }
-
                   return processItem(async () => {
                       const updatedT = await googleDriveService.backupTemplate(t, null, cloudInfo?.id, cloudInfo?.name);
                       if (onItemSuccess) onItemSuccess('template', updatedT);
@@ -346,8 +355,6 @@ export const useGoogleDrive = () => {
           for (const chunk of historyChunks) {
               await Promise.all(chunk.map(h => {
                   const cloudInfo = historyMap.get(h.id);
-                  
-                  // [Change] Use updatedAt for history comparison
                   let isUpToDate = false;
                   const localTime = h.updatedAt || h.endTime;
                   if (cloudInfo && localTime) {
@@ -356,7 +363,6 @@ export const useGoogleDrive = () => {
                           isUpToDate = true;
                       }
                   }
-
                   return processItem(async () => {
                       await googleDriveService.backupHistoryRecord(h, cloudInfo?.id, cloudInfo?.name);
                   }, `${h.gameName} (${new Date(h.endTime).toLocaleDateString()})`, isUpToDate);
@@ -369,8 +375,6 @@ export const useGoogleDrive = () => {
               await Promise.all(chunk.map(s => {
                   const cloudInfo = activeMap.get(s.id);
                   const templateName = allTemplates.find(t => t.id === s.templateId)?.name || '未命名遊戲';
-                  
-                  // [Comparison Logic Added] Check lastUpdatedAt
                   let isUpToDate = false;
                   const localTime = s.lastUpdatedAt || s.startTime;
                   if (cloudInfo && localTime) {
@@ -379,14 +383,13 @@ export const useGoogleDrive = () => {
                           isUpToDate = true;
                       }
                   }
-
                   return processItem(async () => {
                       await googleDriveService.backupActiveSession(s, templateName, cloudInfo?.id, cloudInfo?.name);
                   }, `進行中: ${s.id.slice(0,8)}`, isUpToDate);
               }));
           }
 
-          // 2d. Always backup Settings (very small)
+          // 2d. Always backup Settings
           try {
               await googleDriveService.saveSystemData('settings_backup.json', { timestamp: Date.now() });
           } catch (e) {
@@ -405,9 +408,7 @@ export const useGoogleDrive = () => {
       return { success: successCount, skipped: skippedCount, failed: failedItems.length };
   }, [isAutoConnectEnabled, showToast]);
 
-  // [Full Restore] Smart Skip Logic: Local.ts >= Cloud.ts -> Skip
   const performFullRestore = useCallback(async (
-      // [Update] Added sessions map to input signature
       localMeta: { templates: Map<string, number>, history: Map<string, number>, sessions: Map<string, number> },
       onProgress: (count: number, total: number) => void,
       onError: (failedItems: string[]) => void,
@@ -429,11 +430,11 @@ export const useGoogleDrive = () => {
               googleDriveService.listFoldersInParent(googleDriveService.activeFolderId!)
           ]);
 
-          const total = cloudTemplates.length + cloudHistory.length + cloudActive.length + 1; // +1 for settings
+          const total = cloudTemplates.length + cloudHistory.length + cloudActive.length + 1;
           let processed = 0;
           onProgress(0, total);
 
-          // 1. Restore Settings First (if callback provided)
+          // 1. Restore Settings
           if (onSettingsRestored && googleDriveService.systemFolderId) {
               try {
                   const settings = await googleDriveService.getFileContent(googleDriveService.systemFolderId, 'settings_backup.json');
@@ -441,14 +442,12 @@ export const useGoogleDrive = () => {
                   successCount++;
               } catch (e) {
                   console.log("No settings backup found or failed to restore", e);
-                  // Not critical, don't add to failed count to avoid scaring user
               } finally {
                   processed++;
                   onProgress(processed, total);
               }
           }
 
-          // Helper to extract ID using lastUnderscore logic
           const getId = (name: string) => {
               const lastSep = name.lastIndexOf('_');
               if (lastSep !== -1) {
@@ -462,7 +461,6 @@ export const useGoogleDrive = () => {
               const cloudTime = Number(file.appProperties?.originalUpdatedAt || 0);
               let shouldDownload = true;
 
-              // Check vs Local
               if (id) {
                   let localTime = 0;
                   if (type === 'template' && localMeta.templates.has(id)) {
@@ -470,11 +468,9 @@ export const useGoogleDrive = () => {
                   } else if (type === 'history' && localMeta.history.has(id)) {
                       localTime = localMeta.history.get(id) || 0;
                   } else if (type === 'active' && localMeta.sessions.has(id)) {
-                      // [New] Check active sessions
                       localTime = localMeta.sessions.get(id) || 0;
                   }
                   
-                  // Skip if local is newer or same
                   if (localTime >= cloudTime && localTime > 0) {
                       shouldDownload = false;
                   }
@@ -483,7 +479,6 @@ export const useGoogleDrive = () => {
               try {
                   if (shouldDownload) {
                       if (type === 'template') {
-                          // [Updated] Use new Smart Hydration method
                           const data = await googleDriveService.restoreTemplate(file.id);
                           await onItemRestored('template', data);
                       } else if (type === 'history') {
@@ -498,7 +493,6 @@ export const useGoogleDrive = () => {
                       skippedCount++;
                   }
               } catch (e: any) {
-                  // Only report real errors, not "file not found" which might happen for empty folders
                   if (!e.message?.includes('找不到')) {
                       console.error(`Restore failed for ${file.name}:`, e);
                       failedItems.push(file.name);
@@ -511,7 +505,6 @@ export const useGoogleDrive = () => {
 
           const CHUNK_SIZE = 3;
           
-          // Process Templates
           const templateChunks = [];
           for (let i = 0; i < cloudTemplates.length; i += CHUNK_SIZE) {
               templateChunks.push(cloudTemplates.slice(i, i + CHUNK_SIZE));
@@ -520,7 +513,6 @@ export const useGoogleDrive = () => {
               await Promise.all(chunk.map(f => processItem(f, 'template')));
           }
 
-          // Process History
           const historyChunks = [];
           for (let i = 0; i < cloudHistory.length; i += CHUNK_SIZE) {
               historyChunks.push(cloudHistory.slice(i, i + CHUNK_SIZE));
@@ -529,7 +521,6 @@ export const useGoogleDrive = () => {
               await Promise.all(chunk.map(f => processItem(f, 'history')));
           }
 
-          // Process Active
           const activeChunks = [];
           for (let i = 0; i < cloudActive.length; i += CHUNK_SIZE) {
               activeChunks.push(cloudActive.slice(i, i + CHUNK_SIZE));
@@ -560,14 +551,14 @@ export const useGoogleDrive = () => {
     downloadCloudImage,
     deleteCloudFile,
     emptyTrash,
-    connectToCloud,      // Exposed
-    disconnectFromCloud, // Exposed
+    connectToCloud,      
+    disconnectFromCloud, 
     isSyncing,
     isConnected,
     isAutoConnectEnabled, 
     silentSystemBackup, 
     performFullBackup, 
-    performFullRestore, // [New]
+    performFullRestore, 
     isMockMode: false
   };
 };

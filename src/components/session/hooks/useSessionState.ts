@@ -27,7 +27,6 @@ export interface UIState {
   editingColumn: GameTemplate['columns'][0] | null;
   isEditingTitle: boolean;
   showResetConfirm: boolean;
-  // [Changed] Renamed for clarity, logic moved inside state machine
   isSessionExitModalOpen: boolean; 
   columnToDelete: string | null;
   isAddColumnModalOpen: boolean;
@@ -37,26 +36,23 @@ export interface UIState {
     mode: 'full' | 'simple';
     layout: ScreenshotLayout | null;
   };
-  // [New] Centralized Modal States
   isPhotoGalleryOpen: boolean;
   isImageUploadModalOpen: boolean;
   
-  // [New] Scanner State
   isScannerOpen: boolean;
   scannerInitialImage: string | null;
-  scannerFixedRatio?: number; // [New]
+  scannerFixedRatio?: number;
 
   advanceDirection: 'horizontal' | 'vertical';
   overwriteMode: boolean;
   isInputFocused: boolean;
   tempPlayerName: string;
-  isEditMode: boolean; // New state for Edit vs Play mode
-  previewValue: any; // New state for buffered input preview
+  isEditMode: boolean; 
+  previewValue: any; 
 }
 
 export const useSessionState = (props: SessionViewProps) => {
   const [uiState, setUiState] = useState<UIState>(() => {
-    // Read initial edit mode from local storage.
     const initialEditMode = typeof window !== 'undefined' ? localStorage.getItem('app_edit_mode') !== 'false' : true;
     
     return {
@@ -86,25 +82,21 @@ export const useSessionState = (props: SessionViewProps) => {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const totalBarScrollRef = useRef<HTMLDivElement>(null);
   
-  // New refs for Width Synchronization
   const gridContentRef = useRef<HTMLDivElement>(null);
   const totalContentRef = useRef<HTMLDivElement>(null);
   
   // --- Effects for state transitions ---
 
-  // Persist Edit Mode whenever it changes
   useEffect(() => {
     localStorage.setItem('app_edit_mode', String(uiState.isEditMode));
   }, [uiState.isEditMode]);
 
-  // When active cell changes, enable overwrite mode.
   useEffect(() => {
     if (uiState.editingCell) {
       setUiState(prev => ({ ...prev, overwriteMode: true }));
     }
   }, [uiState.editingCell?.playerId, uiState.editingCell?.colId]);
   
-  // When editing a player, load their name into temp state
   useEffect(() => {
     if (uiState.editingPlayerId) {
         const p = props.session.players.find(pl => pl.id === uiState.editingPlayerId);
@@ -114,68 +106,87 @@ export const useSessionState = (props: SessionViewProps) => {
     }
   }, [uiState.editingPlayerId, props.session.players]);
 
-  // Scroll active cell (or player header) into view
+  // [Fix] Scroll active cell (or player header) into view
+  // Strategy: Calculate target X and Y separately, then issue ONE scrollTo command.
   useEffect(() => {
     const scrollToActive = () => {
       if (!tableContainerRef.current) return;
       const container = tableContainerRef.current;
 
-      // Case 1: Editing Player Name (Header) -> Scroll to absolute Top
-      if (uiState.editingPlayerId) {
-        container.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
+      // Initialize targets with current position (default = don't move)
+      let nextLeft = container.scrollLeft;
+      let nextTop = container.scrollTop;
+
+      // --- 1. Horizontal Calculation (X) ---
+      const activePlayerId = uiState.editingPlayerId || uiState.editingCell?.playerId;
+      const targetPlayerHeaderEl = activePlayerId ? document.getElementById(`header-${activePlayerId}`) : null;
+
+      if (targetPlayerHeaderEl) {
+          const headerRow = targetPlayerHeaderEl.parentElement;
+          const stickyLabel = headerRow?.children[0] as HTMLElement;
+          const stickyWidth = stickyLabel ? stickyLabel.offsetWidth : 70;
+
+          // Align the PREVIOUS player to the sticky edge to provide context
+          const previousPlayerEl = targetPlayerHeaderEl.previousElementSibling as HTMLElement | null;
+          
+          // If previous is the sticky label itself (index 0), we stick to current
+          const alignTarget = (previousPlayerEl && previousPlayerEl !== stickyLabel) ? previousPlayerEl : targetPlayerHeaderEl;
+          
+          // Simple logic: scroll position = element's left position - sticky column width
+          nextLeft = Math.max(0, alignTarget.offsetLeft - stickyWidth);
       }
 
-      // Case 2: Editing Cell
-      if (uiState.editingCell) {
-        // Special case for Total Cell: Don't scroll grid, it's in the footer
-        if (uiState.editingCell.colId === '__TOTAL__') {
-            return;
-        }
+      // --- 2. Vertical Calculation (Y) ---
+      let targetRowEl: HTMLElement | null = null;
 
-        let effectiveColId = uiState.editingCell.colId;
-
-        // [Fix] Handle Overlay Columns in Play Mode:
-        if (!document.getElementById(`row-${effectiveColId}`)) {
-            const allCols = props.template.columns;
-            const currentIndex = allCols.findIndex(c => c.id === effectiveColId);
-            
-            for (let i = currentIndex - 1; i >= 0; i--) {
-                const mode = allCols[i].displayMode || 'row';
-                if (mode === 'row') {
-                    effectiveColId = allCols[i].id;
-                    break;
-                }
-            }
-        }
-
-        const colIndex = props.template.columns.findIndex(c => c.id === effectiveColId);
-
-        // Case 2a: First Data Row -> Scroll to absolute Top
-        if (colIndex === 0) {
-          container.scrollTo({ top: 0, behavior: 'smooth' });
-          return;
-        }
-
-        // Case 2b: Middle/Bottom Rows -> Scroll Previous Row to Top (Context)
-        const headerEl = document.getElementById('live-player-header-row');
-        const headerHeight = headerEl ? headerEl.offsetHeight : 48;
-        
-        const targetRowElement = document.getElementById(`row-${effectiveColId}`);
-        if (targetRowElement) {
-          const previousRowElement = targetRowElement.previousElementSibling as HTMLElement | null;
-          
-          if (previousRowElement) {
-            const previousRowTop = previousRowElement.offsetTop;
-            container.scrollTo({ top: previousRowTop - headerHeight, behavior: 'smooth' });
-          } else {
-            container.scrollTo({ top: targetRowElement.offsetTop - headerHeight, behavior: 'smooth' });
+      if (uiState.editingPlayerId) {
+          // Editing Header -> Force Top
+          nextTop = 0;
+      } else if (uiState.editingCell) {
+          if (uiState.editingCell.colId !== '__TOTAL__') {
+              let effectiveColId = uiState.editingCell.colId;
+              
+              // Handle Overlays: Find the host row if the column is an overlay
+              if (!document.getElementById(`row-${effectiveColId}`)) {
+                  const allCols = props.template.columns;
+                  const currentIndex = allCols.findIndex(c => c.id === effectiveColId);
+                  for (let i = currentIndex - 1; i >= 0; i--) {
+                      if ((allCols[i].displayMode || 'row') === 'row') {
+                          effectiveColId = allCols[i].id;
+                          break;
+                      }
+                  }
+              }
+              targetRowEl = document.getElementById(`row-${effectiveColId}`);
           }
-        }
+
+          if (targetRowEl) {
+              const headerEl = document.getElementById('live-player-header-row');
+              const headerHeight = headerEl ? headerEl.offsetHeight : 48;
+              
+              // Align the PREVIOUS row to the bottom of the header
+              const previousRowElement = targetRowEl.previousElementSibling as HTMLElement | null;
+              if (previousRowElement) {
+                  nextTop = previousRowElement.offsetTop - headerHeight;
+              } else {
+                  nextTop = targetRowEl.offsetTop - headerHeight;
+              }
+          }
+      }
+
+      // --- 3. Execute Scroll (Single Command) ---
+      // Only scroll if there is a meaningful difference to avoid jitter
+      if (Math.abs(nextLeft - container.scrollLeft) > 2 || Math.abs(nextTop - container.scrollTop) > 2) {
+          container.scrollTo({
+              left: nextLeft,
+              top: nextTop,
+              behavior: 'smooth'
+          });
       }
     };
 
-    const timer = setTimeout(scrollToActive, 50);
+    // Use a small timeout to allow layout to stabilize
+    const timer = setTimeout(scrollToActive, 100);
     return () => clearTimeout(timer);
 
   }, [uiState.editingCell, uiState.editingPlayerId, props.template.columns]);

@@ -2,6 +2,7 @@
 import React from 'react';
 import { HistoryRecord } from '../../../types';
 import { Crown, Calendar, Trash2, MapPin } from 'lucide-react';
+import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
 
 interface HistoryCardProps {
   record: HistoryRecord;
@@ -52,7 +53,14 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ record, onDelete, onClick }) 
         {record.players.map(p => {
             const isWinner = record.winnerIds.includes(p.id);
             const isTransparent = p.color === 'transparent';
-            const colorStyle = isTransparent ? {} : { color: p.color };
+            const isDark = !isTransparent && isColorDark(p.color);
+            
+            const colorStyle: React.CSSProperties = isTransparent 
+                ? {} 
+                : { 
+                    color: p.color,
+                    textShadow: isDark ? ENHANCED_TEXT_SHADOW : undefined
+                  };
             
             return (
                 <div key={p.id} className={`flex items-center justify-between text-sm ${isWinner ? 'bg-amber-900/20 -mx-2 px-2 py-1 rounded-lg border border-amber-500/20' : ''}`}>

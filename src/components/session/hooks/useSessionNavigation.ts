@@ -80,13 +80,12 @@ export const useSessionNavigation = ({
     const firstValidCol = template.columns[firstValidColIdx];
 
     if (advanceDirection === 'horizontal') {
-      if (idx < session.players.length - 1) {
-        setEditingPlayerId(session.players[idx + 1].id);
-      } else if (firstValidCol) {
-        // Jump to first player, first valid column
-        setEditingCell({ playerId: session.players[0].id, colId: firstValidCol.id });
-      } else {
-        setEditingPlayerId(null);
+      // Circular Logic: Go to next player, loop to start
+      const nextIdx = (idx + 1) % session.players.length;
+      if (editingCell) {
+          setEditingCell({ playerId: session.players[nextIdx].id, colId: editingCell.colId });
+      } else if (editingPlayerId) {
+          setEditingPlayerId(session.players[nextIdx].id);
       }
     } else { // vertical
       if (firstValidCol) {
@@ -98,5 +97,24 @@ export const useSessionNavigation = ({
     }
   };
 
-  return { moveToNextCell, moveToNextPlayerOrCell };
+  // [New] Move to Previous Player (Joystick Left)
+  const moveToPreviousPlayerOrCell = (currentPlayerId: string) => {
+    const idx = session.players.findIndex(p => p.id === currentPlayerId);
+    if (idx === -1) return;
+
+    if (advanceDirection === 'horizontal') {
+      // Circular Logic: Go to prev player, loop to end
+      const prevIdx = (idx - 1 + session.players.length) % session.players.length;
+      if (editingCell) {
+          setEditingCell({ playerId: session.players[prevIdx].id, colId: editingCell.colId });
+      } else if (editingPlayerId) {
+          setEditingPlayerId(session.players[prevIdx].id);
+      }
+    } 
+    // Vertical logic for "Previous" is less defined in this context, 
+    // but for consistency we can make it jump to header or prev column.
+    // For now, Joystick is primarily horizontal switching.
+  };
+
+  return { moveToNextCell, moveToNextPlayerOrCell, moveToPreviousPlayerOrCell };
 };

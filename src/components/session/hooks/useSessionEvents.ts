@@ -181,9 +181,6 @@ export const useSessionEvents = (
       const currentPlayer = session.players.find(p => p.id === playerId);
       
       if (currentPlayer && currentPlayer.name !== finalName) {
-          // [Logic Update] 
-          // 1. If ID starts with 'sys_player_', convert to UUID to track history.
-          // 2. Preserve scores using spread operator.
           const isSystemId = currentPlayer.id.startsWith('sys_player_');
           const newId = isSystemId ? generateId() : currentPlayer.id;
 
@@ -199,7 +196,6 @@ export const useSessionEvents = (
           });
           onUpdateSession({ ...session, players });
 
-          // Only update history if it is (or became) a custom player ID
           if (finalName && !newId.startsWith('sys_player_')) {
               onUpdatePlayerHistory(finalName);
           }
@@ -207,11 +203,6 @@ export const useSessionEvents = (
       
       setUiState(p => ({ ...p, isInputFocused: false }));
       if (moveNext) {
-          // Note: If ID changed, moveToNext might need the old ID or rely on index.
-          // useSessionNavigation uses findIndex, but since we updated the session in parent (async),
-          // the 'session' prop inside navigation might be stale for one render cycle.
-          // However, since we are moving *from* the current player *to* the next, 
-          // passing the old playerId works because we find index by old ID (which is still in the stale prop).
           navigation.moveToNextPlayerOrCell(playerId);
       }
   };
@@ -282,5 +273,8 @@ export const useSessionEvents = (
     handleCopyColumns,
     handleScreenshotRequest,
     moveToNext: navigation.moveToNextCell,
+    // [New] Expose Joystick Actions
+    moveToNextPlayer: navigation.moveToNextPlayerOrCell,
+    moveToPrevPlayer: navigation.moveToPreviousPlayerOrCell,
   };
 };

@@ -65,6 +65,9 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
       // Logic mirrored from useSessionManager.ts exitSession
       if (isDirtyRef.current && isAutoConnectEnabled && isConnected) {
           try {
+              // [Fix] Add toast to inform user and prevent premature interaction
+              showToast({ message: "正在同步修改至雲端...", type: 'info', duration: 1500 });
+
               let folderId = record.cloudFolderId;
               
               // If legacy record without folder ID, create one
@@ -75,16 +78,13 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
               }
 
               if (folderId) {
-                  // Fire backup asynchronously (don't block UI exit)
-                  googleDriveService.backupHistoryRecord(record, folderId)
-                      .then(() => {
-                          console.log("History auto-backup successful");
-                          // Optional: showToast({ message: "變更已同步至雲端", type: 'info' });
-                      })
-                      .catch(e => console.error("History auto-backup failed", e));
+                  // [Fix] Await the backup to ensure it completes before unmounting
+                  await googleDriveService.backupHistoryRecord(record, folderId);
+                  console.log("History auto-backup successful");
               }
           } catch (e) {
               console.error("Failed to initiate history backup", e);
+              showToast({ message: "雲端同步失敗", type: 'error' });
           }
       }
       onExit();
@@ -266,7 +266,8 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                 setRecord(updatedRecord);
                 isDirtyRef.current = true; // Mark as dirty
 
-                showToast({ message: "照片已儲存", type: 'success' });
+                // [Fix] Remove toast to match SessionView behavior
+                // showToast({ message: "照片已儲存", type: 'success' });
                 
                 setShowShareMenu(false);
                 setShowPhotoGallery(true);
