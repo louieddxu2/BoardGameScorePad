@@ -106,8 +106,6 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
         <div 
             className="flex min-w-fit h-full"
             ref={contentRef}
-            // [Fix]: Force container to expand based on zoomLevel to prevent collapse during sync reset
-            style={{ minWidth: `${100 * zoomLevel}%` }}
         >
           {players.map((p, index) => (
             <TexturedTotalCell

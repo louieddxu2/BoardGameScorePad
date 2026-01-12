@@ -5,6 +5,9 @@ import { GridBounds } from '../TextureMapperContext';
 // Helper to round to 3 decimal places
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
 
+// Helper to round to 6 decimal places
+const round6 = (n: number) => Math.round(n * 1000000) / 1000000;
+
 export const buildTemplateFromTextureMap = (
   initialName: string,
   isMappingMode: boolean,
@@ -18,7 +21,8 @@ export const buildTemplateFromTextureMap = (
   sortedVLines: number[],
   naturalWidth: number,
   naturalHeight: number,
-  gridBounds: GridBounds // New parameter
+  gridBounds: GridBounds, // New parameter
+  aspectRatio: number // [New]
 ): GameTemplate => {
   const getRect = (rIdx: number, cIdx: number): Rect | undefined => {
     if (rIdx < 0 || cIdx < 0 || rIdx >= sortedHLines.length - 1 || cIdx >= sortedVLines.length - 1) return undefined;
@@ -141,6 +145,7 @@ export const buildTemplateFromTextureMap = (
     createdAt: Date.now(),
     hasImage: true,
     globalVisuals: {
+      aspectRatio: round6(aspectRatio), // [Modified] Apply rounding
       playerLabelRect: getRect(Math.max(0, headerSepIdx - 1), 0),
       playerHeaderRect: getRect(Math.max(0, headerSepIdx - 1), dataColIdx),
       totalRowRect: getRect(totalSepIdx, dataColIdx),

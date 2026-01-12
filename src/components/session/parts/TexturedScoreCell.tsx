@@ -276,13 +276,12 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
           );
       }
 
-      // 3. Sum Parts Logic (Priority 1: Simple/Total Mode)
-      if (simpleMode || column.showPartsInGrid === false) {
-          // Fallthrough to generic total rendering below
-      }
-      else if (isSumParts && hasInput) {
-          // Priority 2: Parts Only Mode (List)
-          if (column.showPartsInGrid === 'parts_only') {
+      // 3. Sum Parts Logic
+      // In Textured Mode, we treat "Standard" (Total + Parts) the same as "Total Only"
+      // to avoid visual clutter on the background image.
+      if (isSumParts && hasInput) {
+          // Exception: "Parts Only" Mode (List)
+          if (column.showPartsInGrid === 'parts_only' && !simpleMode) {
               return (
                   <div className="relative z-10 w-full h-full flex flex-col items-center justify-center py-1 gap-0.5">
                       {parts.map((p, i) => (
@@ -300,24 +299,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                   </div>
               );
           }
-          
-          // Priority 3: Standard Mode (Split View)
-          return (
-              <div className="relative z-10 w-full h-full flex flex-row items-stretch">
-                  <div className="w-1/2 flex justify-center items-center min-w-0 border-r border-slate-500/10 pr-0.5">
-                      <span className="text-xl font-bold tracking-tight leading-none" style={inkStyle}>
-                          {formatDisplayNumber(displayScore)}
-                      </span>
-                  </div>
-                  <div className="w-1/2 flex flex-col justify-center items-end pl-1 pr-0.5 leading-none opacity-90 gap-0.5" style={noteStyle}>
-                      {parts.map((p, i) => (
-                          <span key={i} className="text-sm font-bold block truncate max-w-full">
-                              {formatDisplayNumber(p)}
-                          </span>
-                      ))}
-                  </div>
-              </div>
-          );
+          // Fallthrough: If standard or total-only, proceed to Default Rendering (Big Centered Total)
       }
 
       // 4. Default / Generic Rendering (Product, Standard, Lookup)

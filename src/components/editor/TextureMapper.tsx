@@ -11,7 +11,7 @@ import ImportTemplateModal from './ImportTemplateModal';
 import MappingDrawer from './MappingDrawer';
 import { useTextureMapperInteractions } from './hooks/useTextureMapperInteractions';
 import { buildTemplateFromTextureMap } from './utils/templateBuilder';
-import { db } from '../../db'; // Import DB for full fetching
+import { db } from '../../db'; 
 
 interface TextureMapperProps {
   imageSrc: string;
@@ -20,11 +20,12 @@ interface TextureMapperProps {
   onSave: (template: GameTemplate) => void;
   onCancel: () => void;
   allTemplates: GameTemplate[];
+  aspectRatio: number; // [New] Aspect ratio of the rectified image
 }
 
 const DRAWER_BOUNDARY_X = 128; // w-28 (7rem=112px) + left-4 (1rem=16px)
 
-const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, initialColumnCount, onSave, onCancel, allTemplates }) => {
+const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, initialColumnCount, onSave, onCancel, allTemplates, aspectRatio }) => {
   // --- Core State ---
   // Default bounds: Top 0%, Bottom 100%, Left 0%, Right 100%
   const [gridBounds, setGridBounds] = useState<GridBounds>({ top: 0, bottom: 100, left: 0, right: 100 });
@@ -274,7 +275,8 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
           initialName, isMappingMode, importedTemplate, rowCount, rowMapping,
           headerSepIdx, totalSepIdx, dataColIdx, sortedHLines, sortedVLines,
           imgRef.current.naturalWidth, imgRef.current.naturalHeight,
-          gridBounds // Pass bounds to builder
+          gridBounds,
+          aspectRatio // Pass ratio to builder
       );
 
       onSave(newTemplate);

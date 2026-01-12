@@ -104,6 +104,16 @@ class GoogleDriveClient {
       });
   }
 
+  // Soft delete (Move to Trash)
+  public async trashFile(fileId: string): Promise<void> {
+      await this.fetchDrive(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trashed: true })
+      });
+  }
+
+  // Permanent delete
   public async deleteFile(fileId: string): Promise<void> {
     const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
       method: 'DELETE',

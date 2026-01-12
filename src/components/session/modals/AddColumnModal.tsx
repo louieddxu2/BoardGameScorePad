@@ -36,7 +36,7 @@ const AddColumnModal: React.FC<AddColumnModalProps> = ({ columns, onClose, onAdd
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={onClose}>
-      <div className="bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border border-slate-800 flex flex-col h-[600px] max-h-[85vh]" onClick={e => e.stopPropagation()}>
+      <div className="bg-slate-900 w-3/4 max-w-md rounded-2xl shadow-2xl border border-slate-800 flex flex-col h-[600px] max-h-[85vh]" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex-none bg-slate-800 p-4 border-b border-slate-700 flex items-center justify-between">
           <h3 className="text-lg font-bold text-white flex items-center gap-2"><ListPlus size={20} className="text-emerald-500" /> 新增計分項目</h3>

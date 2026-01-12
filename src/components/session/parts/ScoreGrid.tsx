@@ -195,8 +195,6 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
         id="live-grid-container" 
         className="min-w-full w-fit relative"
         ref={contentRef}
-        // Force minimum width to respect zoom, but let it grow if content pushes it
-        style={{ minWidth: `${100 * zoomLevel}%` }}
       >
         {/* Player Headers */}
         <div 

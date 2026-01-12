@@ -1,3 +1,4 @@
+
 import { GameTemplate, GameSession, HistoryRecord } from '../types';
 import { googleAuth } from './cloud/googleAuth';
 import { googleDriveClient } from './cloud/googleDriveClient';
@@ -183,9 +184,9 @@ class GoogleDriveService {
               if (file.name.endsWith('.jpg')) {
                   const uuid = file.name.replace('.jpg', '');
                   
-                  // If this UUID is NOT in our valid list, delete it
+                  // If this UUID is NOT in our valid list, delete it (softly trash it)
                   if (!validPhotoIds.has(uuid)) {
-                      await googleDriveClient.deleteFile(file.id);
+                      await googleDriveClient.trashFile(file.id);
                       // Also remove from result map if present
                       delete resultCloudIds[uuid];
                   } else {
@@ -297,12 +298,11 @@ class GoogleDriveService {
             
             let alreadyExists = false;
 
-            // 2. Delete old images that don't match current ID
+            // 2. Trash old images that don't match current ID
             // Also clean up legacy 'background.jpg' if a new UUID image is taking over
             for (const file of existingFiles) {
                 if (file.name !== currentFilename) {
-                    // It's an old uuid.jpg or legacy background.jpg, delete it
-                    await googleDriveClient.deleteFile(file.id);
+                    await googleDriveClient.trashFile(file.id);
                 } else {
                     alreadyExists = true;
                     uploadedImageId = file.id;
@@ -322,11 +322,11 @@ class GoogleDriveService {
             console.warn("Failed to manage template background image", e);
         }
     } else {
-        // If template has NO image, but folder has images, clean them up
+        // If template has NO image, but folder has images, trash them
         try {
             const existingFiles = await googleDriveClient.fetchAllItems(`'${gameFolderId}' in parents and mimeType contains 'image/' and trashed = false`, 'files(id, name)');
             for (const file of existingFiles) {
-                await googleDriveClient.deleteFile(file.id);
+                await googleDriveClient.trashFile(file.id);
             }
             uploadedImageId = undefined;
         } catch (e) {

@@ -1,34 +1,35 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Camera, Image as ImageIcon, Loader2, Upload } from 'lucide-react';
+import { X, Camera, Image as ImageIcon, Loader2, Upload, Trash2 } from 'lucide-react';
 import { imageService } from '../../../services/imageService';
 import PhotoLightbox from '../parts/PhotoLightbox';
 import ConfirmationModal from '../../shared/ConfirmationModal';
+import { OverlayData } from '../parts/ScoreOverlayGenerator';
 
 interface PhotoGalleryModalProps {
   isOpen: boolean;
   onClose: () => void;
   photoIds: string[];
-  onUploadPhoto: () => void; // New
-  onTakePhoto: () => void;   // New
+  onUploadPhoto: () => void; 
+  onTakePhoto: () => void;
   onDeletePhoto: (id: string) => void;
+  overlayData?: OverlayData; // [New] Data context for lightbox overlay
 }
 
-interface LoadedImage {
+export interface LoadedImage {
     id: string;
     url: string;
 }
 
-const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, photoIds, onUploadPhoto, onTakePhoto, onDeletePhoto }) => {
+const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, photoIds, onUploadPhoto, onTakePhoto, onDeletePhoto, overlayData }) => {
   const [images, setImages] = useState<LoadedImage[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedPhoto, setSelectedPhoto] = useState<LoadedImage | null>(null);
+  const [initialIndex, setInitialIndex] = useState<number | null>(null); // Changed: Store index instead of object
   const [photoToDelete, setPhotoToDelete] = useState<string | null>(null);
 
   // Load images when IDs change or modal opens
   useEffect(() => {
       if (!isOpen) {
-          // Cleanup URLs when closed
           images.forEach(img => URL.revokeObjectURL(img.url));
           setImages([]);
           return;
@@ -41,7 +42,12 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
           setLoading(true);
           const loaded: LoadedImage[] = [];
           
-          for (const id of photoIds) {
+          // Photo IDs are typically chronological (oldest first) or whatever order they are saved
+          // We usually want newest first for gallery view? 
+          // The previous code did `[...photoIds].reverse()`. Let's keep that consistency.
+          const reversedIds = [...photoIds].reverse();
+
+          for (const id of reversedIds) {
               if (!active) break;
               try {
                   const localImg = await imageService.getImage(id);
@@ -62,24 +68,44 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
               setImages(loaded);
               setLoading(false);
           } else {
-              // If cancelled/unmounted, revoke what we just created
               generatedUrls.forEach(url => URL.revokeObjectURL(url));
           }
       };
 
       loadImages();
 
-      // Cleanup function for when deps change or unmount
       return () => {
           active = false;
           generatedUrls.forEach(url => URL.revokeObjectURL(url));
       };
-  }, [isOpen, photoIds]); // Re-run when photoIds changes (add/delete)
+  }, [isOpen, photoIds]); 
+
+  // Back button interception
+  useEffect(() => {
+    const isSubStateActive = initialIndex !== null || !!photoToDelete;
+
+    if (isOpen && isSubStateActive) {
+      const handleBack = (e: Event) => {
+        e.stopImmediatePropagation(); 
+        
+        if (photoToDelete) {
+            setPhotoToDelete(null);
+        } else if (initialIndex !== null) {
+            setInitialIndex(null);
+        }
+      };
+      
+      window.addEventListener('app-back-press', handleBack, { capture: true });
+      return () => window.removeEventListener('app-back-press', handleBack, { capture: true });
+    }
+  }, [isOpen, initialIndex, photoToDelete]);
 
   const handleDeleteConfirm = () => {
       if (photoToDelete) {
           onDeletePhoto(photoToDelete);
-          setSelectedPhoto(null); // Close lightbox if open. Best UX: Return to gallery after delete.
+          // If we are in lightbox view, we need to adjust logic or close it
+          // Simpler approach: Close lightbox when deleting
+          setInitialIndex(null); 
           setPhotoToDelete(null);
       }
   };
@@ -96,14 +122,16 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
         isDangerous={true}
         onCancel={() => setPhotoToDelete(null)}
         onConfirm={handleDeleteConfirm}
-        zIndexClass="z-[120]" // Explicitly higher than PhotoLightbox (z-[100])
+        zIndexClass="z-[120]" 
       />
 
-      {selectedPhoto && (
+      {initialIndex !== null && images.length > 0 && (
           <PhotoLightbox 
-            imageSrc={selectedPhoto.url} 
-            onClose={() => setSelectedPhoto(null)} 
-            onDelete={() => setPhotoToDelete(selectedPhoto.id)}
+            images={images}
+            initialIndex={initialIndex}
+            onClose={() => setInitialIndex(null)} 
+            onDelete={(id) => setPhotoToDelete(id)}
+            overlayData={overlayData} // Pass the context
           />
       )}
 
@@ -148,10 +176,10 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
           ) : (
               <div className="grid grid-cols-3 gap-1 auto-rows-fr">
                   {/* Image Tiles */}
-                  {images.map(img => (
+                  {images.map((img, idx) => (
                       <div 
                         key={img.id} 
-                        onClick={() => setSelectedPhoto(img)}
+                        onClick={() => setInitialIndex(idx)}
                         className="aspect-square bg-black rounded-lg overflow-hidden relative cursor-pointer group active:scale-95 transition-transform border border-slate-800"
                       >
                           <img src={img.url} className="w-full h-full object-cover" alt="Session Photo" loading="lazy" />

@@ -35,6 +35,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
   const [scannerState, setScannerState] = useState<ScannerState | null>(null); // Stores raw image & points
   const [rectifiedImage, setRectifiedImage] = useState<string | null>(null); // Stores final cropped image URL for Mapper
   const [rectifiedBlob, setRectifiedBlob] = useState<Blob | null>(null); // Stores the actual Blob to save
+  const [rectifiedAspectRatio, setRectifiedAspectRatio] = useState<number>(1); // [New] Store aspect ratio
 
   const { showToast } = useToast();
 
@@ -107,7 +108,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
     setShowScanner(true);
   };
 
-  const handleScannerConfirm = (result: { processed: string, raw: string, points: {x:number, y:number}[], blob?: Blob }) => {
+  const handleScannerConfirm = (result: { processed: string, raw: string, points: {x:number, y:number}[], blob?: Blob, aspectRatio: number }) => {
       if (!name.trim()) {
           showToast({ message: "請先輸入計分板名稱", type: 'warning' });
           return;
@@ -115,6 +116,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
       // Save state for potential restoration
       setScannerState({ raw: result.raw, points: result.points });
       setRectifiedImage(result.processed);
+      setRectifiedAspectRatio(result.aspectRatio); // Save ratio
       if (result.blob) {
           setRectifiedBlob(result.blob);
       }
@@ -156,6 +158,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
             allTemplates={allTemplates}
             onSave={handleTextureSave}
             onCancel={handleMapperCancel}
+            aspectRatio={rectifiedAspectRatio} // Pass ratio to mapper
           />
       );
   }

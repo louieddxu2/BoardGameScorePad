@@ -41,6 +41,11 @@ export interface UIState {
   isPhotoGalleryOpen: boolean;
   isImageUploadModalOpen: boolean;
   
+  // [New] Scanner State
+  isScannerOpen: boolean;
+  scannerInitialImage: string | null;
+  scannerFixedRatio?: number; // [New]
+
   advanceDirection: 'horizontal' | 'vertical';
   overwriteMode: boolean;
   isInputFocused: boolean;
@@ -67,6 +72,8 @@ export const useSessionState = (props: SessionViewProps) => {
       screenshotModal: { isOpen: false, mode: 'full', layout: null },
       isPhotoGalleryOpen: false,
       isImageUploadModalOpen: false,
+      isScannerOpen: false,
+      scannerInitialImage: null,
       advanceDirection: 'horizontal',
       overwriteMode: true,
       isInputFocused: false,

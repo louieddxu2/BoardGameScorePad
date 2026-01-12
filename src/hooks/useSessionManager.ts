@@ -85,13 +85,16 @@ export const useSessionManager = ({
         ? Array(playerCount).fill('transparent') 
         : Array.from({ length: playerCount }, (_, i) => COLORS[i % COLORS.length]);
 
-    const players: Player[] = Array.from({ length: playerCount }, (_, i) => ({
-      id: generateId(8),
-      name: `玩家 ${i + 1}`,
-      scores: {},
-      totalScore: 0,
-      color: defaultColors[i]
-    }));
+    // Dynamic ID Generation: sys_player_1, sys_player_2...
+    const players: Player[] = Array.from({ length: playerCount }, (_, i) => {
+      return {
+        id: `sys_player_${i + 1}`, // Deterministic ID
+        name: `玩家 ${i + 1}`,
+        scores: {},
+        totalScore: 0,
+        color: defaultColors[i]
+      };
+    });
     
     let startTime = Date.now();
     if (options?.startTimeStr) {
@@ -109,7 +112,7 @@ export const useSessionManager = ({
         id: sessionId, 
         templateId: migratedTemplate.id, 
         startTime: startTime, 
-        lastUpdatedAt: Date.now(), // Initialize lastUpdatedAt
+        lastUpdatedAt: Date.now(),
         players: players, 
         status: 'active',
         scoringRule: scoringRule,
@@ -119,7 +122,7 @@ export const useSessionManager = ({
     
     isImageDirtyRef.current = false;
     
-    // [Optimization] Load Image: Fetch Blob directly from DB
+    // Load Image
     let loadedImageUrl: string | null = null;
     if (migratedTemplate.imageId) {
         const localImg = await imageService.getImage(migratedTemplate.imageId);
@@ -144,14 +147,10 @@ export const useSessionManager = ({
                   ...p, scores: migrateScores(p.scores, template!) 
               }));
               
-              // Ensure lastUpdatedAt exists for old sessions being resumed
               if (!session.lastUpdatedAt) {
                   session.lastUpdatedAt = Date.now();
-                  // No need to save immediately, autosave will catch updates, 
-                  // or user interaction will trigger updateSession
               }
 
-              // Load Image
               let loadedImageUrl: string | null = null;
               if (template.imageId) {
                   const localImg = await imageService.getImage(template.imageId);
@@ -172,7 +171,6 @@ export const useSessionManager = ({
   const discardSession = async (templateId: string) => {
       const session = activeSessions?.find(s => s.templateId === templateId);
       if (session) {
-          // Use cleanup service for artifacts
           await cleanupService.cleanSessionArtifacts(session.id, session.cloudFolderId);
           await db.sessions.delete(session.id);
       }
@@ -183,8 +181,6 @@ export const useSessionManager = ({
   };
 
   const clearAllActiveSessions = async () => {
-      // Use cleanup service batch logic implicitly by iterating
-      // Or explicit logic here
       const activeIds = activeSessions?.map(s => s.id) || [];
       if (activeIds.length > 0 && activeSessions) {
           for (const session of activeSessions) {
@@ -195,7 +191,7 @@ export const useSessionManager = ({
   };
 
   const updateSession = (updatedSession: GameSession) => {
-      const sessionWithTimestamp = { ...updatedSession, lastUpdatedAt: Date.now() }; // Update timestamp on any change
+      const sessionWithTimestamp = { ...updatedSession, lastUpdatedAt: Date.now() }; 
       
       if (activeTemplate) {
         const playersWithTotal = sessionWithTimestamp.players.map(p => ({ 
@@ -210,29 +206,31 @@ export const useSessionManager = ({
   const resetSessionScores = () => {
     if (!currentSession) return;
     const resetPlayers = currentSession.players.map(p => ({ ...p, scores: {}, totalScore: 0, bonusScore: 0 }));
-    // Update lastUpdatedAt on reset
     setCurrentSession({ ...currentSession, players: resetPlayers, startTime: Date.now(), lastUpdatedAt: Date.now() });
   };
 
   const exitSession = async () => {
       if (!currentSession) return;
 
-      // [Modified] Check for tieBreaker and isForceLost as meaningful data
       const hasScores = currentSession.players.some(p => 
           Object.keys(p.scores).length > 0 || 
           (p.bonusScore || 0) !== 0 ||
           p.tieBreaker ||
           p.isForceLost
       );
+
+      // [Updated] Check for custom players based on ID structure (non 'sys_player_')
+      const hasCustomPlayers = currentSession.players.some(p => 
+          !p.id.startsWith('sys_player_')
+      );
+
       const hasPhotos = (currentSession.photos && currentSession.photos.length > 0);
-      const hasDataToSave = hasScores || hasPhotos;
+      const hasDataToSave = hasScores || hasPhotos || hasCustomPlayers;
 
       if (!hasDataToSave) {
-          // Empty -> Discard
           await cleanupService.cleanSessionArtifacts(currentSession.id, currentSession.cloudFolderId);
           await db.sessions.delete(currentSession.id);
       } else {
-          // Save - ensure timestamp is fresh
           const finalSession = { ...currentSession, lastUpdatedAt: Date.now() };
           await db.sessions.put(finalSession);
           
@@ -244,13 +242,11 @@ export const useSessionManager = ({
               }
 
               if (folderId) {
-                  // Backup session JSON with photo sync
                   await googleDriveService.backupActiveSession(finalSession, activeTemplate.name, folderId);
               }
           }
       }
 
-      // Sync template image if modified
       const isSystem = activeTemplate && !!(await db.builtins.get(activeTemplate.id));
       if (activeTemplate && !isSystem && isCloudEnabled() && isImageDirtyRef.current) {
           googleDriveService.backupTemplate(activeTemplate).then((updated) => {
@@ -284,7 +280,7 @@ export const useSessionManager = ({
               gameName: activeTemplate.name,
               startTime: currentSession.startTime,
               endTime: now,
-              updatedAt: now, // [New] Initialize updated time
+              updatedAt: now, 
               players: currentSession.players,
               winnerIds: winnerIds,
               snapshotTemplate: snapshotTemplate,
@@ -296,7 +292,12 @@ export const useSessionManager = ({
           
           await db.history.put(record); 
           
-          currentSession.players.forEach(p => { updatePlayerHistory(p.name); });
+          currentSession.players.forEach(p => { 
+              // [Updated] Only save to history if it is NOT a system ID
+              if (!p.id.startsWith('sys_player_')) {
+                  updatePlayerHistory(p.name); 
+              }
+          });
           await db.sessions.delete(currentSession.id);
 
           if (isCloudEnabled()) {
@@ -307,7 +308,6 @@ export const useSessionManager = ({
               }
               
               if (folderId) {
-                  // Backup history JSON with photo sync
                   await googleDriveService.backupHistoryRecord(record, folderId);
                   await googleDriveService.moveSessionToHistory(folderId);
               }
@@ -331,14 +331,12 @@ export const useSessionManager = ({
           const updatedPlayers = currentSession.players.map(player => ({ 
               ...player, totalScore: calculatePlayerTotal(player, migratedTemplate, currentSession.players) 
           }));
-          // updateSession logic essentially, but explicitly handling template update context
           setCurrentSession({ ...currentSession, players: updatedPlayers, lastUpdatedAt: Date.now() });
       }
   };
 
   const handleUpdateSessionImage = async (imgBlobOrUrl: string | Blob | null) => {
       if (!activeTemplate || !imgBlobOrUrl) {
-          // If clearing image, we should probably delete the old one too
           if (activeTemplate?.imageId) {
               await imageService.deleteImage(activeTemplate.imageId);
               const updatedT = { ...activeTemplate, imageId: undefined, hasImage: false, cloudImageId: undefined };
@@ -355,7 +353,6 @@ export const useSessionManager = ({
           blob = imgBlobOrUrl;
       }
 
-      // [Clean up Old Image] Before saving new one
       if (activeTemplate.imageId) {
           try {
               await imageService.deleteImage(activeTemplate.imageId);
@@ -370,7 +367,6 @@ export const useSessionManager = ({
       if (sessionImage) URL.revokeObjectURL(sessionImage);
       setSessionImage(URL.createObjectURL(blob));
 
-      // Reset cloudImageId to force re-upload
       const updatedT = { ...activeTemplate, imageId: savedImg.id, hasImage: true, cloudImageId: undefined };
       updateActiveTemplate(updatedT); 
   };

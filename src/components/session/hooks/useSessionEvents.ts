@@ -5,6 +5,7 @@ import { useSessionState } from './useSessionState';
 import { useSessionNavigation } from './useSessionNavigation';
 import { generateId } from '../../../utils/idGenerator';
 import { calculatePlayerTotal } from '../../../utils/scoring';
+import { useToast } from '../../../hooks/useToast';
 
 interface SessionViewProps {
   session: GameSession;
@@ -31,6 +32,7 @@ export const useSessionEvents = (
 ) => {
   const { session, template, onUpdateSession, onUpdateTemplate, onUpdatePlayerHistory, onExit, onResetScores } = props;
   const { uiState, setUiState } = sessionState;
+  const { showToast } = useToast();
 
   const navigation = useSessionNavigation({
     session,
@@ -177,17 +179,39 @@ export const useSessionEvents = (
   const handlePlayerNameSubmit = (playerId: string, newName: string, moveNext: boolean = false) => {
       const finalName = newName?.trim() ?? '';
       const currentPlayer = session.players.find(p => p.id === playerId);
+      
       if (currentPlayer && currentPlayer.name !== finalName) {
-          const players = session.players.map(p => p.id === playerId ? { ...p, name: finalName } : p);
+          // [Logic Update] 
+          // 1. If ID starts with 'sys_player_', convert to UUID to track history.
+          // 2. Preserve scores using spread operator.
+          const isSystemId = currentPlayer.id.startsWith('sys_player_');
+          const newId = isSystemId ? generateId() : currentPlayer.id;
+
+          const players = session.players.map(p => {
+              if (p.id === playerId) {
+                  return { 
+                      ...p, 
+                      name: finalName,
+                      id: newId // Update ID if needed
+                  };
+              }
+              return p;
+          });
           onUpdateSession({ ...session, players });
-      }
-      // Fixed: onUpdatePlayerHistory is passed in props to this hook
-      if (finalName && currentPlayer?.name !== finalName) {
-          onUpdatePlayerHistory(finalName);
+
+          // Only update history if it is (or became) a custom player ID
+          if (finalName && !newId.startsWith('sys_player_')) {
+              onUpdatePlayerHistory(finalName);
+          }
       }
       
       setUiState(p => ({ ...p, isInputFocused: false }));
       if (moveNext) {
+          // Note: If ID changed, moveToNext might need the old ID or rely on index.
+          // useSessionNavigation uses findIndex, but since we updated the session in parent (async),
+          // the 'session' prop inside navigation might be stale for one render cycle.
+          // However, since we are moving *from* the current player *to* the next, 
+          // passing the old playerId works because we find index by old ID (which is still in the stale prop).
           navigation.moveToNextPlayerOrCell(playerId);
       }
   };
@@ -221,7 +245,7 @@ export const useSessionEvents = (
         rounding: 'none' 
     };
     onUpdateTemplate({ ...template, columns: [...template.columns, newCol] });
-    setUiState(p => ({ ...p, isAddColumnModalOpen: false }));
+    showToast({ message: "已新增空白項目", type: 'success' });
   };
   
   const handleCopyColumns = (selectedIds: string[]) => {
@@ -236,8 +260,8 @@ export const useSessionEvents = (
   
     if (newColumns.length > 0) {
       onUpdateTemplate({ ...template, columns: [...template.columns, ...newColumns] });
+      showToast({ message: `已複製 ${newColumns.length} 個項目`, type: 'success' });
     }
-    setUiState(p => ({ ...p, isAddColumnModalOpen: false }));
   };
   
   const handleScreenshotRequest = useCallback((mode: 'full' | 'simple') => {

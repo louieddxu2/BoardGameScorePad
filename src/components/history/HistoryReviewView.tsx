@@ -178,6 +178,15 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
 
   const winners = record.winnerIds || [];
 
+  // Prepare Overlay Data for Photo Gallery
+  const overlayData = useMemo(() => ({
+      gameName: record.gameName,
+      date: record.startTime,
+      endTime: record.endTime, // Pass endTime for accurate history timestamp
+      players: record.players,
+      winners: winners
+  }), [record.gameName, record.startTime, record.endTime, record.players, winners]);
+
   const handleScreenshotRequest = (mode: 'full' | 'simple') => {
       setShowShareMenu(false); 
 
@@ -399,6 +408,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
             onUploadPhoto={() => galleryInputRef.current?.click()}
             onTakePhoto={() => photoInputRef.current?.click()}
             onDeletePhoto={handleDeletePhoto}
+            overlayData={overlayData} // Pass context
         />
 
         <HistorySettingsModal 

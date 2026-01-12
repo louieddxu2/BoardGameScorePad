@@ -13,10 +13,11 @@ interface Point {
 
 interface PhotoScannerProps {
   onClose: () => void;
-  // Updated signature to include Blob
-  onConfirm: (result: { processed: string; raw: string; points: Point[]; blob?: Blob }) => void;
+  // Updated signature to include aspectRatio
+  onConfirm: (result: { processed: string; raw: string; points: Point[]; blob?: Blob; aspectRatio: number }) => void;
   initialImage?: string | null;
   initialPoints?: Point[];
+  fixedAspectRatio?: number; // [New] Force output ratio (width / height)
 }
 
 interface ViewTransform {
@@ -25,7 +26,7 @@ interface ViewTransform {
   scale: number;
 }
 
-const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initialImage, initialPoints }) => {
+const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initialImage, initialPoints, fixedAspectRatio }) => {
   const [imageSrc, setImageSrc] = useState<string | null>(initialImage || null);
   const [points, setPoints] = useState<Point[]>(initialPoints || []); 
   const [activePointIdx, setActivePointIdx] = useState<number | null>(null);
@@ -36,6 +37,8 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
   const [rectifiedImage, setRectifiedImage] = useState<string | null>(null);
   // This holds the actual Blob data to save
   const [rectifiedBlob, setRectifiedBlob] = useState<Blob | null>(null);
+  // This holds the calculated or enforced aspect ratio
+  const [resultAspectRatio, setResultAspectRatio] = useState<number>(1);
 
   const [geometricGhost, setGeometricGhost] = useState<Point | null>(null);
   
@@ -554,8 +557,15 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
     // [Resolution Bump] 1500 -> 1920 (1080p width)
     const maxResolution = 1920;
     const scale = Math.min(1, maxResolution / Math.max(maxWidth, maxHeight));
-    const finalWidth = Math.floor(maxWidth * scale);
-    const finalHeight = Math.floor(maxHeight * scale);
+    
+    let finalWidth = Math.floor(maxWidth * scale);
+    let finalHeight = Math.floor(maxHeight * scale);
+
+    // [New] Enforce Locked Aspect Ratio if provided
+    if (fixedAspectRatio) {
+        // We trust the width from the photo but enforce the height to match the ratio
+        finalHeight = Math.floor(finalWidth / fixedAspectRatio);
+    }
 
     const dstCanvas = document.createElement('canvas');
     dstCanvas.width = finalWidth;
@@ -580,6 +590,7 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
     
     setRectifiedBlob(optimizedBlob);
     setRectifiedImage(optimizedUrl);
+    setResultAspectRatio(finalWidth / finalHeight); // Save ratio for template
     setShowPreview(true);
   };
 
@@ -611,7 +622,8 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
               processed: rectifiedImage, 
               raw: imageSrc, 
               points: points,
-              blob: rectifiedBlob || undefined
+              blob: rectifiedBlob || undefined,
+              aspectRatio: resultAspectRatio // Return the ratio
           });
       }
       onClose();

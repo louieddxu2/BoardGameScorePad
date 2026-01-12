@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Dice5, Search, X, Download, HelpCircle, Calculator, History, Cloud, CloudOff, Loader2 } from 'lucide-react';
 
 interface DashboardHeaderProps {
@@ -35,6 +35,27 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   onCloudClick
 }) => {
   
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // [New] Handle click outside to close search
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (isSearchActive && searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setIsSearchActive(false);
+      }
+    };
+
+    if (isSearchActive) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isSearchActive, setIsSearchActive]);
+
   const toggleView = () => {
       setViewMode(viewMode === 'library' ? 'history' : 'library');
   };
@@ -43,7 +64,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     <header className="flex flex-col bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 shadow-md transition-colors duration-300">
       <div className="p-2.5 flex items-center gap-2 h-[58px]">
         {isSearchActive ? (
-          <div className="flex items-center gap-2 w-full animate-in fade-in duration-300">
+          <div ref={searchRef} className="flex items-center gap-2 w-full animate-in fade-in duration-300">
             <Search size={20} className="text-emerald-500 shrink-0 ml-1" />
             <input 
               type="text" 

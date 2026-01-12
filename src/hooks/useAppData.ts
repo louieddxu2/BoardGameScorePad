@@ -91,6 +91,11 @@ export const useAppData = () => {
   const updatePlayerHistory = useCallback((name: string) => {
       if (!name.trim()) return;
       const cleanName = name.trim();
+      
+      // [Modified] 移除Regex檢查。
+      // 邏輯移交給 useSessionManager 透過 ID 判斷。
+      // 只要 ID 是正式 UUID (非 sys_player_)，就會呼叫此函式，因此這裡無條件儲存。
+
       (db as any).transaction('rw', db.savedPlayers, async () => {
           const existing = await db.savedPlayers.where('name').equals(cleanName).first();
           if (existing) {
