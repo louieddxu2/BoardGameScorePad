@@ -1,5 +1,6 @@
 
 
+
 // --- Formula-based structure ---
 export interface ScoreValue {
   parts: number[];
@@ -26,6 +27,7 @@ export interface ColumnVisuals {
 }
 
 export interface GlobalVisuals {
+  aspectRatio?: number;    // [New] Width / Height ratio of the original rectified image. Used to enforce consistent geometry for other users.
   playerLabelRect?: Rect;  // Crop coordinates for the top-left label (usually says "Player" or empty)
   playerHeaderRect?: Rect; // Crop coordinates for the top row (Player Names)
   totalRowRect?: Rect;     // Crop coordinates for the bottom row (Total Score)
