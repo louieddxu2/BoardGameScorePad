@@ -183,3 +183,12 @@ body {
 .animate-rotate-phone {
   animation: rotate-phone 2s ease-in-out infinite;
 }
+
+/* Panel Header Slide Animation */
+@keyframes slide-in-right-shallow {
+  0% { opacity: 0; transform: translateX(10px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in-right-shallow {
+  animation: slide-in-right-shallow 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
