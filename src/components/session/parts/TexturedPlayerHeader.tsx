@@ -50,6 +50,8 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
         getSmartTextureUrl(baseImage, rect, playerIndex, limitX).then((url) => {
             if (isMounted) setBgUrl(url);
         });
+    } else {
+        setBgUrl(null);
     }
     return () => { isMounted = false; };
   }, [baseImage, rect, playerIndex, limitX]);

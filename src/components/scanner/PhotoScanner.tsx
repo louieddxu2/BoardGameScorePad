@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Upload, X, Magnet, RotateCcw, BoxSelect, ScanLine, ZoomIn, Move, Download, Share2, ArrowRight, Check, RotateCw, Aperture, SwitchCamera } from 'lucide-react';
+import { Camera, Upload, X, Magnet, RotateCcw, BoxSelect, ScanLine, ZoomIn, Move, Download, Share2, ArrowRight, Check, RotateCw, Aperture, SwitchCamera, Focus } from 'lucide-react';
 import { getPerspectiveTransform, findStrongestCorner, warpPerspective, calculateParallelogramPoint, getEdgeAngles, snapToEdge } from '../../utils/scanUtils';
 import { getTouchDistance } from '../../utils/ui';
 import { useToast } from '../../hooks/useToast';
@@ -654,7 +654,7 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
                         {navigator.share ? <Share2 size={18} /> : <Download size={18} />}
                         <span className="hidden sm:inline">儲存圖片</span>
                     </button>
-                    <button onClick={handleConfirm} className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Check size={18} /> 完成</button>
+                    <button onClick={handleConfirm} className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Check size={24} /></button>
                </div>
             </footer>
         </div>
@@ -665,7 +665,7 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
     <div className="fixed inset-0 z-[70] bg-slate-950 flex flex-col">
       <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 flex-none z-50">
         <button onClick={handleClose} className="p-2 text-slate-400 hover:text-white"><X size={24} /></button>
-        <h2 className="text-white font-bold">掃描計分表</h2>
+        <h2 className="text-white font-bold">矩形校正</h2>
         <div className="w-10"></div>
       </div>
 
@@ -756,8 +756,8 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
       </div>
 
       {imageSrc && !isCameraActive && (
-          <div className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/60 backdrop-blur text-white text-xs rounded-full pointer-events-none flex items-center gap-2 z-40 opacity-70">
-              <Move size={12} /> 單指平移 • 雙指縮放 • 拖曳四角
+          <div className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/60 backdrop-blur text-white text-xs rounded-full pointer-events-none flex items-center gap-2 z-40 opacity-70 whitespace-nowrap">
+              <Move size={12} /> 拖曳4個點到計分紙角落
           </div>
       )}
 
@@ -770,12 +770,14 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
       {imageSrc && !isCameraActive && (
         <footer className="p-4 bg-slate-900 border-t border-slate-800 flex items-center justify-between flex-none z-50">
             <div className="flex items-center gap-4">
-                <button onClick={() => setIsSnapping(!isSnapping)} className={`flex flex-col items-center gap-1 text-xs font-bold ${isSnapping ? 'text-emerald-400' : 'text-slate-500'}`}><div className={`p-3 rounded-xl ${isSnapping ? 'bg-emerald-900/30' : 'bg-slate-800'}`}><ScanLine size={20} /></div>輔助{isSnapping ? '開啟' : '關閉'}</button>
-                <button onClick={() => { fitImageToScreen(); hasFittedRef.current = true; }} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"><div className="p-3 rounded-xl bg-slate-800"><ZoomIn size={20} /></div>重置視角</button>
-                <button onClick={() => { stopCamera(); setImageSrc(null); setPoints([]); setSourceDimensions(null); }} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"><div className="p-3 rounded-xl bg-slate-800"><RotateCcw size={20} /></div>重拍</button>
+                <button onClick={() => setIsSnapping(!isSnapping)} className={`flex flex-col items-center gap-1 text-xs font-bold ${isSnapping ? 'text-emerald-400' : 'text-slate-500'}`}><div className={`p-3 rounded-xl ${isSnapping ? 'bg-emerald-900/30' : 'bg-slate-800'}`}><Magnet size={20} /></div>吸附</button>
+                <button onClick={() => { fitImageToScreen(); hasFittedRef.current = true; }} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"><div className="p-3 rounded-xl bg-slate-800"><Focus size={20} /></div>置中</button>
+                <button onClick={() => { stopCamera(); setImageSrc(null); setPoints([]); setSourceDimensions(null); }} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"><div className="p-3 rounded-xl bg-slate-800"><Camera size={20} /></div>重拍</button>
                 <button onClick={handleRotate} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"><div className="p-3 rounded-xl bg-slate-800"><RotateCw size={20} /></div>旋轉</button>
             </div>
-            <button onClick={handleRectify} disabled={!imageSrc || points.length < 4} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 disabled:bg-slate-700 disabled:text-slate-500">校正預覽 <ArrowRight size={16} /></button>
+            <button onClick={handleRectify} disabled={!imageSrc || points.length < 4} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 disabled:bg-slate-700 disabled:text-slate-500">
+                <ArrowRight size={24} />
+            </button>
         </footer>
       )}
     </div>

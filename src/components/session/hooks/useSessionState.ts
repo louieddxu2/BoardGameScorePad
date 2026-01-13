@@ -54,6 +54,7 @@ export interface UIState {
 export const useSessionState = (props: SessionViewProps) => {
   const [uiState, setUiState] = useState<UIState>(() => {
     const initialEditMode = typeof window !== 'undefined' ? localStorage.getItem('app_edit_mode') !== 'false' : true;
+    const savedDirection = (typeof window !== 'undefined' ? localStorage.getItem('sm_pref_advance_direction') : null) as 'horizontal' | 'vertical';
     
     return {
       editingCell: null,
@@ -70,7 +71,7 @@ export const useSessionState = (props: SessionViewProps) => {
       isImageUploadModalOpen: false,
       isScannerOpen: false,
       scannerInitialImage: null,
-      advanceDirection: 'horizontal',
+      advanceDirection: savedDirection || 'vertical', // Default to vertical if no preference saved
       overwriteMode: true,
       isInputFocused: false,
       tempPlayerName: '',

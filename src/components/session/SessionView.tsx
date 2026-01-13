@@ -5,7 +5,7 @@ import { useSessionState, ScreenshotLayout } from './hooks/useSessionState';
 import { useSessionEvents } from './hooks/useSessionEvents';
 import { useSessionMedia } from './hooks/useSessionMedia';
 import { useToast } from '../../hooks/useToast';
-import { Upload, X, Image as ImageIcon, DownloadCloud, Camera, Save, ScanLine, Aperture } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, DownloadCloud, Camera, Save, ScanLine, Aperture, Trash2 } from 'lucide-react';
 
 // Parts
 import SessionHeader from './parts/SessionHeader';
@@ -30,7 +30,7 @@ interface SessionViewProps {
   onUpdateSession: (session: GameSession) => void;
   onUpdateTemplate: (template: GameTemplate) => void;
   onUpdatePlayerHistory: (name: string) => void;
-  onUpdateImage: (img: string | Blob) => void; 
+  onUpdateImage: (img: string | Blob | null) => void; 
   onExit: () => void;
   onResetScores: () => void;
   onSaveToHistory: () => void;
@@ -51,6 +51,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       template,
       baseImage,
       onUpdateSession: props.onUpdateSession,
+      onUpdateTemplate: props.onUpdateTemplate,
       onUpdateImage: props.onUpdateImage,
       setUiState
   });
@@ -263,8 +264,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
                   </button>
                   <input ref={media.fileInputRef} type="file" accept="image/*" className="hidden" onChange={media.handleFileUpload} />
                   
-                  <button onClick={() => setUiState(p => ({ ...p, isImageUploadModalOpen: false }))} className="text-slate-500 text-xs hover:text-slate-300 underline mt-4">
-                      暫時跳過 (使用標準介面)
+                  <button onClick={media.handleRemoveBackground} className="flex items-center gap-2 text-slate-500 text-xs hover:text-red-400 mt-4 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors">
+                      <Trash2 size={14} /> 移除計分紙返回標準介面
                   </button>
               </div>
           </div>

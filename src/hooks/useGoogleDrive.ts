@@ -8,9 +8,10 @@ export const useGoogleDrive = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isConnected, setIsConnected] = useState(googleDriveService.isAuthorized);
   
-  // [Fix] Initialize from localStorage. 
-  // This ensures that when navigating between pages (which unmounts/remounts hooks),
-  // we remember the user's preference.
+  // [Modified] Initialize state from localStorage.
+  // Since index.tsx resets this to 'false' on boot, this will start as false.
+  // If the user connects during the session, localStorage becomes 'true', 
+  // and this hook will correctly preserve that state when navigating between views.
   const [isAutoConnectEnabled, setIsAutoConnectEnabled] = useState(() => {
       return localStorage.getItem('google_drive_auto_connect') === 'true';
   });
@@ -21,14 +22,14 @@ export const useGoogleDrive = () => {
       setIsConnected(googleDriveService.isAuthorized);
   }, []);
 
-  // [Modified] Explicit Connect Function
+  // [Modified] Connect Function
   const connectToCloud = useCallback(async () => {
       try {
           await googleDriveService.signIn(); 
           setIsConnected(true);
           
-          // [Fix] Persist preference
           setIsAutoConnectEnabled(true); 
+          // Update local storage so other components/hooks know we are connected
           localStorage.setItem('google_drive_auto_connect', 'true');
           
           showToast({ message: "Google Drive 連線成功", type: 'success' });
@@ -36,15 +37,12 @@ export const useGoogleDrive = () => {
       } catch (e: any) {
           console.error("Manual connection failed:", e);
           
-          // Only disable if explicitly failed (user cancelled or error)
           if (e.error === 'popup_closed_by_user' || e.error === 'access_denied') {
               setIsAutoConnectEnabled(false); 
               localStorage.setItem('google_drive_auto_connect', 'false');
               setIsConnected(false);
               showToast({ message: "已取消登入", type: 'info' });
           } else {
-              // For network errors, we keep the flag true (optional choice), 
-              // but to be safe and avoid loops, we turn it off here for manual attempts.
               setIsAutoConnectEnabled(false);
               localStorage.setItem('google_drive_auto_connect', 'false');
               setIsConnected(false);
@@ -54,11 +52,10 @@ export const useGoogleDrive = () => {
       }
   }, [showToast]);
 
-  // [Modified] Explicit Disconnect Function
+  // [Modified] Disconnect Function
   const disconnectFromCloud = useCallback(async () => {
       await googleDriveService.signOut();
       
-      // [Fix] Persist preference
       setIsAutoConnectEnabled(false);
       localStorage.setItem('google_drive_auto_connect', 'false');
       
@@ -71,9 +68,6 @@ export const useGoogleDrive = () => {
           throw new Error("雲端功能未開啟");
       }
       // Lazy Connection Logic:
-      // If enabled but not authorized (e.g. token expired or page refreshed),
-      // try to sign in NOW. This works because ensureConnection is usually called
-      // inside a user-triggered event handler (like 'End Game' click).
       if (!googleDriveService.isAuthorized) {
           await googleDriveService.signIn(); 
           setIsConnected(true);

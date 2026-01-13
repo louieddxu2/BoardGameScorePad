@@ -8,6 +8,7 @@ import { imageService } from '../services/imageService';
 import { cleanupService } from '../services/cleanupService';
 import { useToast } from './useToast';
 import { migrateTemplate } from '../utils/dataMigration';
+import { generateId } from '../utils/idGenerator';
 
 // Sub-hooks
 import { useAppQueries } from './useAppQueries';
@@ -38,10 +39,6 @@ export const useAppData = () => {
   
   // Check cloud availability helper
   const isCloudEnabled = () => {
-      // [Fix] Removed the strict check for `googleDriveService.isAuthorized`.
-      // We only check if the user *wants* cloud enabled.
-      // The backup function itself (in useGoogleDrive) handles the authorization check 
-      // and prompts for login if the token is missing/expired.
       return localStorage.getItem('google_drive_auto_connect') === 'true';
   };
 
@@ -96,10 +93,6 @@ export const useAppData = () => {
       if (!name.trim()) return;
       const cleanName = name.trim();
       
-      // [Modified] 移除Regex檢查。
-      // 邏輯移交給 useSessionManager 透過 ID 判斷。
-      // 只要 ID 是正式 UUID (非 sys_player_)，就會呼叫此函式，因此這裡無條件儲存。
-
       (db as any).transaction('rw', db.savedPlayers, async () => {
           const existing = await db.savedPlayers.where('name').equals(cleanName).first();
           if (existing) {
@@ -147,35 +140,101 @@ export const useAppData = () => {
   };
 
   const deleteTemplate = async (id: string) => {
-      const templateToDelete = await queries.getTemplate(id); 
-      await db.templates.delete(id);
-      
-      const relatedSessions = await db.sessions.where('templateId').equals(id).toArray();
-      if (relatedSessions.length > 0) { 
-          for (const s of relatedSessions) {
-              await cleanupService.cleanSessionArtifacts(s.id, s.cloudFolderId);
+      try {
+          const templateToDelete = await queries.getTemplate(id); 
+          
+          // 1. Delete associated active sessions first to avoid orphaned data
+          const relatedSessions = await db.sessions.where('templateId').equals(id).toArray();
+          if (relatedSessions.length > 0) {
+              for (const s of relatedSessions) {
+                  await cleanupService.cleanSessionArtifacts(s.id, s.cloudFolderId);
+              }
+              await db.sessions.bulkDelete(relatedSessions.map(s => s.id));
           }
-          await db.sessions.bulkDelete(relatedSessions.map(s => s.id)); 
-      }
-      
-      await db.templatePrefs.delete(id);
-      await imageService.deleteImagesByRelatedId(id);
 
-      if (isCloudEnabled() && templateToDelete) {
-          googleDriveService.softDeleteFolder(id, 'template').then(() => {
-              showToast({ message: "已同步移至雲端垃圾桶", type: 'info' });
-          }).catch(console.error);
+          // 2. Delete the template itself
+          await db.templates.delete(id);
+          
+          // 3. Cleanup template-related data
+          await db.templatePrefs.delete(id);
+          await imageService.deleteImagesByRelatedId(id);
+
+          // 4. Cloud cleanup
+          if (isCloudEnabled() && templateToDelete) {
+              googleDriveService.softDeleteFolder(id, 'template').then(() => {
+                  showToast({ message: "已同步移至雲端垃圾桶", type: 'info' });
+              }).catch(console.error);
+          }
+      } catch (error) {
+          console.error("Delete failed", error);
+          showToast({ message: "刪除失敗，請重試", type: 'error' });
       }
   };
 
+  /**
+   * Restore System Template Logic:
+   * 1. Copies the current override to a new Custom Template (Backup).
+   * 2. Migrates all active sessions from the System ID to the new Custom ID.
+   * 3. Migrates background images and preferences.
+   * 4. Deletes the System Override (reverting to built-in default).
+   */
   const restoreSystemTemplate = async (templateId: string) => {
-      const overrideToDelete = await db.systemOverrides.get(templateId);
-      await db.systemOverrides.delete(templateId);
-      await db.templatePrefs.delete(templateId);
-      await imageService.deleteImagesByRelatedId(templateId);
+      try {
+          const overrideData = await db.systemOverrides.get(templateId);
+          if (!overrideData) return;
 
-      if (isCloudEnabled() && overrideToDelete) {
-          googleDriveService.softDeleteFolder(overrideToDelete.id, 'template').catch(console.error);
+          const backupId = generateId();
+          // Backup as a new custom template
+          const backupTemplate: GameTemplate = {
+              ...overrideData,
+              id: backupId,
+              name: overrideData.name, // Keep original name
+              updatedAt: Date.now(),
+              cloudImageId: undefined, // Reset cloud ID to allow fresh backup
+              lastSyncedAt: undefined
+          };
+          
+          // Find related items
+          const relatedSessions = await db.sessions.where('templateId').equals(templateId).toArray();
+          const relatedImages = await db.images.where('relatedId').equals(templateId).toArray(); // Images associated with the template (backgrounds)
+
+          // Execute as atomic transaction
+          // Use (db as any) to workaround TS definition issues with Dexie transactions if needed
+          await (db as any).transaction('rw', db.templates, db.systemOverrides, db.sessions, db.images, db.templatePrefs, async () => {
+              // 1. Add Backup
+              await db.templates.add(backupTemplate);
+
+              // 2. Migrate Active Sessions to Backup
+              for (const session of relatedSessions) {
+                  await db.sessions.update(session.id, { templateId: backupId });
+              }
+
+              // 3. Migrate Template Images to Backup
+              for (const img of relatedImages) {
+                  await db.images.update(img.id, { relatedId: backupId });
+              }
+
+              // 4. Migrate Preferences
+              const prefs = await db.templatePrefs.get(templateId);
+              if (prefs) {
+                  await db.templatePrefs.put({ ...prefs, templateId: backupId });
+                  await db.templatePrefs.delete(templateId);
+              }
+
+              // 5. Delete the System Override
+              await db.systemOverrides.delete(templateId);
+          });
+
+          // Cloud Cleanup (Async)
+          if (isCloudEnabled()) {
+              googleDriveService.softDeleteFolder(overrideData.id, 'template').catch(console.error);
+          }
+          
+          showToast({ message: "已還原預設值 (設定已備份)", type: 'success' });
+
+      } catch (error) {
+          console.error("Restore failed", error);
+          showToast({ message: "還原失敗", type: 'error' });
       }
   };
 

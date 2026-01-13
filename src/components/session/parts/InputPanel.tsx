@@ -86,17 +86,16 @@ const PanelHeader: React.FC<{
                 <Eraser size={12} /> {isTotalMode ? '重置' : '清除'}
             </button>
         )}
-        {!isTotalMode && (
-            <button
+        {/* [Modified] Show direction toggle even in Total Mode */}
+        <button
             onMouseDown={(e) => e.preventDefault()} // Keep focus on input
             onClick={onDirectionToggle}
             className="bg-slate-700/50 hover:bg-slate-700 text-slate-300 px-3 h-8 rounded-lg flex items-center justify-center gap-1 text-xs font-bold transition-colors shrink-0 border border-slate-600"
-            >
+        >
             <span className="text-emerald-400">下一項</span>
             <span className={`font-mono transition-colors ${direction === 'vertical' ? 'text-emerald-400' : 'text-slate-600'}`}>↓</span>
             <span className={`font-mono transition-colors ${direction === 'horizontal' ? 'text-emerald-400' : 'text-slate-600'}`}>→</span>
-            </button>
-        )}
+        </button>
       </div>
   );
 };
@@ -158,14 +157,15 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
   // Initialize preview value based on column type when cell changes
   useEffect(() => {
-    setActiveFactorIdx(0);
-    
     // Construct a unique key for the current cell
     const targetId = editingCell ? `${editingCell.playerId}-${editingCell.colId}` : null;
     
     // Only update preview if we actually switched to a DIFFERENT cell
     if (targetId !== currentEditingIdRef.current) {
         currentEditingIdRef.current = targetId;
+        
+        // [Fix] Reset active factor ONLY when switching cells, not on every render
+        setActiveFactorIdx(0);
 
         if (editingCell) {
             // Special init for Total Mode
@@ -243,7 +243,12 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
   };
 
   const handleDirectionToggle = () => {
-    setUiState((p: any) => ({ ...p, advanceDirection: p.advanceDirection === 'horizontal' ? 'vertical' : 'horizontal' }));
+    setUiState((p: any) => {
+        const newDir = p.advanceDirection === 'horizontal' ? 'vertical' : 'horizontal';
+        // Persist preference
+        localStorage.setItem('sm_pref_advance_direction', newDir);
+        return { ...p, advanceDirection: newDir };
+    });
   };
 
   const handleClear = () => {
@@ -393,7 +398,10 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                 column={dummyCol} 
                 overwrite={overwriteMode} 
                 setOverwrite={(v: boolean) => setUiState((p: any) => ({ ...p, overwriteMode: v }))}
-                onNext={() => setUiState((p: any) => ({ ...p, editingCell: null }))}
+                onNext={() => {
+                    // Use regular navigation logic instead of closing
+                    eventHandlers.moveToNext();
+                }}
                 activeFactorIdx={0} 
                 setActiveFactorIdx={() => {}} 
                 playerId={activePlayer.id}
@@ -401,8 +409,13 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
             sidebarContentNode = <TotalAdjustmentSidebar player={activePlayer} onUpdatePlayer={(u) => updatePlayerMeta(activePlayer!.id, u)} />;
             
-            nextButtonContent = <Check size={24} />;
-            onNextAction = () => setUiState((p: any) => ({ ...p, editingCell: null }));
+            // Check if last player to show confirm checkmark
+            const playerIdx = session.players.findIndex(p => p.id === activePlayer!.id);
+            if (playerIdx === session.players.length - 1) {
+                nextButtonContent = <Check size={24} />;
+            }
+
+            onNextAction = () => eventHandlers.moveToNext();
         }
     } 
     // --- STANDARD COLUMN MODE ---

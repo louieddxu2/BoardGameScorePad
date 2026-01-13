@@ -219,7 +219,6 @@ export const useSessionManager = ({
           p.isForceLost
       );
 
-      // [Updated] Check for custom players based on ID structure (non 'sys_player_')
       const hasCustomPlayers = currentSession.players.some(p => 
           !p.id.startsWith('sys_player_')
       );
@@ -228,22 +227,31 @@ export const useSessionManager = ({
       const hasDataToSave = hasScores || hasPhotos || hasCustomPlayers;
 
       if (!hasDataToSave) {
-          await cleanupService.cleanSessionArtifacts(currentSession.id, currentSession.cloudFolderId);
-          await db.sessions.delete(currentSession.id);
+          // Cleanup empty sessions
+          // Run in background, don't await
+          cleanupService.cleanSessionArtifacts(currentSession.id, currentSession.cloudFolderId).catch(console.error);
+          db.sessions.delete(currentSession.id).catch(console.error);
       } else {
+          // Save valid session
           const finalSession = { ...currentSession, lastUpdatedAt: Date.now() };
+          // We must await local DB save to ensure data consistency
           await db.sessions.put(finalSession);
           
           if (isCloudEnabled()) {
-              let folderId = finalSession.cloudFolderId;
-              if (!folderId && activeTemplate) {
-                  folderId = await googleDriveService.createActiveSessionFolder(activeTemplate.name, finalSession.id);
-                  await db.sessions.update(finalSession.id, { cloudFolderId: folderId });
-              }
+              // [Optimization] Fire and forget cloud backup
+              // We create a promise chain to handle logic in background
+              const backgroundCloudBackup = async () => {
+                  let folderId = finalSession.cloudFolderId;
+                  if (!folderId && activeTemplate) {
+                      folderId = await googleDriveService.createActiveSessionFolder(activeTemplate.name, finalSession.id);
+                      await db.sessions.update(finalSession.id, { cloudFolderId: folderId });
+                  }
 
-              if (folderId) {
-                  await googleDriveService.backupActiveSession(finalSession, activeTemplate.name, folderId);
-              }
+                  if (folderId && activeTemplate) {
+                      await googleDriveService.backupActiveSession(finalSession, activeTemplate.name, folderId);
+                  }
+              };
+              backgroundCloudBackup().catch(e => console.warn("Background session backup failed", e));
           }
       }
 
@@ -293,7 +301,6 @@ export const useSessionManager = ({
           await db.history.put(record); 
           
           currentSession.players.forEach(p => { 
-              // [Updated] Only save to history if it is NOT a system ID
               if (!p.id.startsWith('sys_player_')) {
                   updatePlayerHistory(p.name); 
               }
@@ -301,16 +308,20 @@ export const useSessionManager = ({
           await db.sessions.delete(currentSession.id);
 
           if (isCloudEnabled()) {
-              let folderId = record.cloudFolderId;
-              if (!folderId) {
-                  folderId = await googleDriveService.createActiveSessionFolder(activeTemplate.name, currentSession.id);
-                  await db.history.update(record.id, { cloudFolderId: folderId });
-              }
-              
-              if (folderId) {
-                  await googleDriveService.backupHistoryRecord(record, folderId);
-                  await googleDriveService.moveSessionToHistory(folderId);
-              }
+              // [Optimization] Fire and forget cloud history backup
+              const backgroundHistoryBackup = async () => {
+                  let folderId = record.cloudFolderId;
+                  if (!folderId) {
+                      folderId = await googleDriveService.createActiveSessionFolder(activeTemplate.name, currentSession.id);
+                      await db.history.update(record.id, { cloudFolderId: folderId });
+                  }
+                  
+                  if (folderId) {
+                      await googleDriveService.backupHistoryRecord(record, folderId);
+                      await googleDriveService.moveSessionToHistory(folderId);
+                  }
+              };
+              backgroundHistoryBackup().catch(e => console.warn("Background history backup failed", e));
           }
           
           setCurrentSession(null); setActiveTemplate(null); setSessionImage(null); isImageDirtyRef.current = false;

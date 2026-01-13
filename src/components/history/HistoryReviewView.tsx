@@ -64,28 +64,27 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
   const handleExitAndSync = async () => {
       // Logic mirrored from useSessionManager.ts exitSession
       if (isDirtyRef.current && isAutoConnectEnabled && isConnected) {
-          try {
-              // [Fix] Add toast to inform user and prevent premature interaction
-              showToast({ message: "正在同步修改至雲端...", type: 'info', duration: 1500 });
+          // [Optimization] Run backup in background
+          const backgroundBackup = async () => {
+              try {
+                  let folderId = record.cloudFolderId;
+                  
+                  // If legacy record without folder ID, create one
+                  if (!folderId) {
+                      folderId = await googleDriveService.createActiveSessionFolder(record.gameName, record.id);
+                      // Update local DB immediately
+                      await db.history.update(record.id, { cloudFolderId: folderId });
+                  }
 
-              let folderId = record.cloudFolderId;
-              
-              // If legacy record without folder ID, create one
-              if (!folderId) {
-                  folderId = await googleDriveService.createActiveSessionFolder(record.gameName, record.id);
-                  // Update local DB immediately
-                  await db.history.update(record.id, { cloudFolderId: folderId });
+                  if (folderId) {
+                      await googleDriveService.backupHistoryRecord(record, folderId);
+                      console.log("History auto-backup successful (background)");
+                  }
+              } catch (e) {
+                  console.error("Failed to initiate history backup", e);
               }
-
-              if (folderId) {
-                  // [Fix] Await the backup to ensure it completes before unmounting
-                  await googleDriveService.backupHistoryRecord(record, folderId);
-                  console.log("History auto-backup successful");
-              }
-          } catch (e) {
-              console.error("Failed to initiate history backup", e);
-              showToast({ message: "雲端同步失敗", type: 'error' });
-          }
+          };
+          backgroundBackup();
       }
       onExit();
   };

@@ -41,7 +41,11 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       if (isSearchActive && searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setIsSearchActive(false);
+        // [Modified] Only close if the search query is empty.
+        // If there is text, keep it open so the user knows the list is filtered.
+        if (!searchQuery || searchQuery.trim() === '') {
+            setIsSearchActive(false);
+        }
       }
     };
 
@@ -54,7 +58,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [isSearchActive, setIsSearchActive]);
+  }, [isSearchActive, setIsSearchActive, searchQuery]);
 
   const toggleView = () => {
       setViewMode(viewMode === 'library' ? 'history' : 'library');

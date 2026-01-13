@@ -9,7 +9,7 @@ import { generateId } from '../../utils/idGenerator';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 import { useAppData } from '../../hooks/useAppData'; 
 import { useSwipe } from '../../hooks/useSwipe'; 
-import { usePullAction } from '../../hooks/usePullAction'; // [New] Import hook
+import { usePullAction } from '../../hooks/usePullAction'; 
 
 // Sub Components
 import DashboardHeader from './parts/DashboardHeader';
@@ -17,7 +17,7 @@ import GameCard from './parts/GameCard';
 import HistoryList from './HistoryList'; 
 import CloudManagerModal from './modals/CloudManagerModal';
 import DataManagerModal from './modals/DataManagerModal';
-import PullActionIsland from './parts/PullActionIsland'; // [New] Import component
+import PullActionIsland from './parts/PullActionIsland'; 
 
 interface DashboardProps {
   isVisible: boolean; 
@@ -103,6 +103,36 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
       const timer = setTimeout(() => setHasMounted(true), 1000);
       return () => clearTimeout(timer);
   }, []);
+
+  // [New] Back Button Handling for Search
+  const isSearchPoppedRef = useRef(false);
+
+  useEffect(() => {
+    if (isSearchActive) {
+      // Push history state when search opens
+      window.history.pushState({ modal: 'search' }, '');
+      isSearchPoppedRef.current = false;
+    } else {
+      // If closed manually (not by popstate) and we are currently in the search state
+      if (!isSearchPoppedRef.current && window.history.state?.modal === 'search') {
+         window.history.back();
+      }
+      isSearchPoppedRef.current = false;
+    }
+  }, [isSearchActive]);
+
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (isSearchActive) {
+        // Handle back button when search is active
+        isSearchPoppedRef.current = true;
+        setIsSearchActive(false);
+        setSearchQuery(''); // [Requirement] Clear query and exit search state
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [isSearchActive, setSearchQuery]);
 
   // Section Toggles
   const [isActiveLibOpen, setIsActiveLibOpen] = useState(true);
@@ -515,26 +545,13 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
       <ConfirmationModal isOpen={showClearAllConfirm} title="清空所有進行中遊戲？" message="此動作將刪除所有暫存進度，無法復原。" confirmText="全部清空" isDangerous={true} onCancel={() => setShowClearAllConfirm(false)} onConfirm={() => { onClearAllActiveSessions(); setShowClearAllConfirm(false); }} />
       <ConfirmationModal 
         isOpen={!!restoreTarget} 
-        title="備份修改並還原？" 
-        message="此動作將把您目前的修改備份到「我的遊戲庫」，並將此內建遊戲還原為官方最新版本。" 
-        confirmText="備份並還原" 
+        title="還原預設值？" 
+        message="目前的修改將會自動備份到「我的遊戲庫」，並還原至初始設定。" 
+        confirmText="還原" 
         onCancel={() => setRestoreTarget(null)} 
         onConfirm={async () => { 
             if(restoreTarget) { 
-                const fullTemplate = await onGetFullTemplate(restoreTarget.id);
-                if (fullTemplate) {
-                    const backup = { 
-                        ...fullTemplate, 
-                        id: generateId(), 
-                        name: `${fullTemplate.name} (備份)`, 
-                        createdAt: Date.now(), 
-                        updatedAt: Date.now() 
-                    }; 
-                    onTemplateSave(backup); 
-                    onRestoreSystem(restoreTarget.id); 
-                } else {
-                    showToast({ message: "備份失敗：無法讀取完整資料", type: 'error' });
-                }
+                onRestoreSystem(restoreTarget.id);
                 setRestoreTarget(null); 
             } 
         }} 

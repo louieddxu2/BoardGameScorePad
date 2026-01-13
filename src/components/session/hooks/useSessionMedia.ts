@@ -13,7 +13,8 @@ interface UseSessionMediaProps {
   template: GameTemplate;
   baseImage: string | null;
   onUpdateSession: (session: GameSession) => void;
-  onUpdateImage: (img: string | Blob) => void;
+  onUpdateTemplate: (template: GameTemplate) => void; // Added for removing image ref
+  onUpdateImage: (img: string | Blob | null) => void; // Allow null to clear
   setUiState: React.Dispatch<React.SetStateAction<UIState>>;
 }
 
@@ -22,6 +23,7 @@ export const useSessionMedia = ({
   template,
   baseImage,
   onUpdateSession,
+  onUpdateTemplate,
   onUpdateImage,
   setUiState
 }: UseSessionMediaProps) => {
@@ -54,11 +56,8 @@ export const useSessionMedia = ({
                       return;
                   }
               }
-              // Prompt user via global state if auto-download failed or not enabled
-              setUiState(p => ({ ...p, isImageUploadModalOpen: true }));
-          } else {
-              // No cloud ID, but template expects image -> prompt user
-              setUiState(p => ({ ...p, isImageUploadModalOpen: true }));
+              // [Modified] Removed forced modal trigger on failure or missing image.
+              // Users can manually trigger upload/download via the header menu.
           }
       };
       
@@ -164,6 +163,38 @@ export const useSessionMedia = ({
       }
   };
 
+  // [Handler] Completely Remove Background
+  const handleRemoveBackground = async () => {
+      try {
+          // 1. Delete local image from IndexedDB
+          if (template.imageId) {
+              await imageService.deleteImage(template.imageId);
+          }
+
+          // 2. Update Template: Clear image references
+          // We keep globalVisuals so coordinates are not lost if user re-uploads later,
+          // but we set hasImage to false so UI knows to switch to standard view.
+          const updatedTemplate = {
+              ...template,
+              hasImage: false,
+              imageId: undefined,
+              cloudImageId: undefined
+          };
+          onUpdateTemplate(updatedTemplate);
+
+          // 3. Clear Session View State
+          onUpdateImage(null);
+
+          // 4. Close Modal
+          setUiState(p => ({ ...p, isImageUploadModalOpen: false }));
+          
+          showToast({ message: "背景計分紙已移除", type: 'info' });
+      } catch (e) {
+          console.error("Remove background failed", e);
+          showToast({ message: "移除失敗", type: 'error' });
+      }
+  };
+
   // Triggers
   const openBackgroundUpload = () => fileInputRef.current?.click();
   const openScannerCamera = () => {
@@ -187,6 +218,7 @@ export const useSessionMedia = ({
       handlePhotoSelect,
       handleDeletePhoto,
       handleCloudDownload,
+      handleRemoveBackground, // Export this
       openBackgroundUpload,
       openScannerCamera, // Export this
       openCamera,

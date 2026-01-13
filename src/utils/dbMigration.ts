@@ -5,7 +5,8 @@ import { GameTemplate, GameSession } from '../types';
 import { DEFAULT_TEMPLATES } from '../constants';
 
 // 定義當前內建資料庫的版本
-const CURRENT_BUILTIN_VERSION = 2; 
+// [UPDATE] Increment this version whenever DEFAULT_TEMPLATES is modified
+const CURRENT_BUILTIN_VERSION = 3; 
 
 export const migrateFromLocalStorage = async () => {
   const MIGRATION_KEY = 'sm_migration_v1_done';

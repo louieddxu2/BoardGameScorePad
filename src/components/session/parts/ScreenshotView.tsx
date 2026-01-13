@@ -302,12 +302,6 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                                 <div
                                     key={overlayCol.id}
                                     className="absolute inset-0 z-10 pointer-events-none"
-                                    style={{
-                                        left: `${overlayCol.contentLayout.x}%`,
-                                        top: `${overlayCol.contentLayout.y}%`,
-                                        width: `${overlayCol.contentLayout.width}%`,
-                                        height: `${overlayCol.contentLayout.height}%`,
-                                    }}
                                 >
                                     {/* Use wrapper to ensure height fill */}
                                     <div className="w-full h-full">

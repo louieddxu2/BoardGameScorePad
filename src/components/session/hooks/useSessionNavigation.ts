@@ -23,6 +23,33 @@ export const useSessionNavigation = ({
 
   const moveToNextCell = () => {
     if (!editingCell) return;
+
+    // [Modified] Special handling for Total Column Navigation
+    if (editingCell.colId === '__TOTAL__') {
+        const playerIdx = session.players.findIndex(p => p.id === editingCell.playerId);
+        if (playerIdx === -1) return;
+
+        // If this is the LAST player, close the panel (End of flow)
+        if (playerIdx === session.players.length - 1) {
+            setEditingCell(null);
+            setEditingPlayerId(null);
+            return;
+        }
+
+        // If not the last player, move to the next player
+        const nextIdx = playerIdx + 1;
+
+        if (advanceDirection === 'horizontal') {
+            // Horizontal: Move to next player's TOTAL column
+            setEditingCell({ playerId: session.players[nextIdx].id, colId: '__TOTAL__' });
+        } else {
+            // Vertical: Move to next player's HEADER (Name editing)
+            setEditingPlayerId(session.players[nextIdx].id);
+        }
+        return;
+    }
+
+    // --- Standard Column Logic ---
     const playerIdx = session.players.findIndex(p => p.id === editingCell.playerId);
     const colIdx = template.columns.findIndex(c => c.id === editingCell.colId);
     if (playerIdx === -1 || colIdx === -1) return;
@@ -68,52 +95,35 @@ export const useSessionNavigation = ({
     }
   };
 
+  // [Fix] Joystick Action: Always switch to NEXT player (Circular)
+  // Decoupled from 'advanceDirection' because a physical right swipe always implies lateral movement.
   const moveToNextPlayerOrCell = (currentPlayerId: string) => {
     const idx = session.players.findIndex(p => p.id === currentPlayerId);
     if (idx === -1) return;
 
-    // Helper: Find first valid (non-auto) column index
-    let firstValidColIdx = 0;
-    while(firstValidColIdx < template.columns.length && template.columns[firstValidColIdx].isAuto) {
-        firstValidColIdx++;
-    }
-    const firstValidCol = template.columns[firstValidColIdx];
-
-    if (advanceDirection === 'horizontal') {
-      // Circular Logic: Go to next player, loop to start
-      const nextIdx = (idx + 1) % session.players.length;
-      if (editingCell) {
-          setEditingCell({ playerId: session.players[nextIdx].id, colId: editingCell.colId });
-      } else if (editingPlayerId) {
-          setEditingPlayerId(session.players[nextIdx].id);
-      }
-    } else { // vertical
-      if (firstValidCol) {
-        // Jump to current player, first valid column
-        setEditingCell({ playerId: currentPlayerId, colId: firstValidCol.id });
-      } else {
-        setEditingPlayerId(null);
-      }
+    // Circular Logic: Go to next player, loop to start
+    const nextIdx = (idx + 1) % session.players.length;
+    
+    if (editingCell) {
+        setEditingCell({ playerId: session.players[nextIdx].id, colId: editingCell.colId });
+    } else if (editingPlayerId) {
+        setEditingPlayerId(session.players[nextIdx].id);
     }
   };
 
-  // [New] Move to Previous Player (Joystick Left)
+  // [Fix] Joystick Action: Always switch to PREVIOUS player (Circular)
   const moveToPreviousPlayerOrCell = (currentPlayerId: string) => {
     const idx = session.players.findIndex(p => p.id === currentPlayerId);
     if (idx === -1) return;
 
-    if (advanceDirection === 'horizontal') {
-      // Circular Logic: Go to prev player, loop to end
-      const prevIdx = (idx - 1 + session.players.length) % session.players.length;
-      if (editingCell) {
-          setEditingCell({ playerId: session.players[prevIdx].id, colId: editingCell.colId });
-      } else if (editingPlayerId) {
-          setEditingPlayerId(session.players[prevIdx].id);
-      }
-    } 
-    // Vertical logic for "Previous" is less defined in this context, 
-    // but for consistency we can make it jump to header or prev column.
-    // For now, Joystick is primarily horizontal switching.
+    // Circular Logic: Go to prev player, loop to end
+    const prevIdx = (idx - 1 + session.players.length) % session.players.length;
+    
+    if (editingCell) {
+        setEditingCell({ playerId: session.players[prevIdx].id, colId: editingCell.colId });
+    } else if (editingPlayerId) {
+        setEditingPlayerId(session.players[prevIdx].id);
+    }
   };
 
   return { moveToNextCell, moveToNextPlayerOrCell, moveToPreviousPlayerOrCell };
