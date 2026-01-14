@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect } from 'react';
 import { GameTemplate, GameSession, HistoryRecord } from '../../../types';
 import { DownloadCloud, X, FolderOpen, Trash2, RefreshCw, UploadCloud, Download, FileJson, Clock, RefreshCcw, Activity, LayoutGrid, History, HardDriveUpload, Loader2, AlertTriangle, CloudOff, Cloud, ArrowRightLeft } from 'lucide-react';
@@ -576,24 +574,48 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                 ) : (
                     <div className="space-y-2">
                     {cloudFiles.map(file => (
-                        <div key={file.id} onClick={() => viewMode === 'active' ? handleFileSelect(file) : null} className={`w-full bg-slate-800 border border-slate-700 p-3 rounded-xl flex items-center justify-between group transition-all ${viewMode === 'active' ? 'cursor-pointer hover:bg-slate-700 hover:border-sky-500/50' : 'cursor-default opacity-80 hover:opacity-100'}`}>
-                        <div className="flex items-start gap-3 text-left flex-1 min-w-0">
-                            <div className={`p-2 bg-slate-900 rounded-lg shrink-0 ${viewMode === 'active' ? 'text-sky-500' : 'text-red-400'}`}><FileJson size={20} /></div>
-                            <div className="min-w-0"><div className="font-bold text-slate-200 group-hover:text-white transition-colors truncate">{cleanName(file.name)}</div><div className="text-xs text-slate-500 flex items-center gap-1 mt-1"><Clock size={10} /> {new Date(file.createdTime).toLocaleString()}</div></div>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                            {viewMode === 'active' ? (
-                                <>
-                                    <Download size={18} className="text-slate-600 group-hover:text-sky-400 transition-colors mr-2" />
-                                    <button onClick={(e) => { e.stopPropagation(); setFileToDelete(file); }} className="p-2 -m-2 text-slate-600 hover:text-red-400 hover:bg-slate-900/50 rounded-lg transition-colors z-10" title="移至垃圾桶"><Trash2 size={18} /></button>
-                                </>
-                            ) : (
-                                <div className="flex gap-2">
-                                    <button onClick={(e) => { e.stopPropagation(); handleRestoreFromTrash(file); }} className="p-1.5 text-slate-400 hover:text-emerald-400 bg-slate-900 hover:bg-emerald-900/30 border border-slate-700 rounded-lg transition-colors" title="還原"><RefreshCcw size={16} /></button>
-                                    <button onClick={(e) => { e.stopPropagation(); setFileToDelete(file); }} className="p-1.5 text-slate-400 hover:text-red-400 bg-slate-900 hover:bg-red-900/30 border border-slate-700 rounded-lg transition-colors" title="永久刪除"><Trash2 size={16} /></button>
+                        <div key={file.id} className={`w-full bg-slate-800 border border-slate-700 p-3 rounded-xl flex items-center justify-between group transition-all`}>
+                            
+                            {/* LEFT: Delete Actions */}
+                            <div className="shrink-0 mr-3">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setFileToDelete(file); }} 
+                                    className="p-2 text-slate-600 hover:text-red-400 hover:bg-slate-900/50 rounded-lg transition-colors"
+                                    title={viewMode === 'active' ? "移至垃圾桶" : "永久刪除"}
+                                >
+                                    <Trash2 size={20} />
+                                </button>
+                            </div>
+
+                            {/* MIDDLE: Info */}
+                            <div className="flex flex-col text-left flex-1 min-w-0">
+                                <div className="font-bold text-slate-200 truncate">{cleanName(file.name)}</div>
+                                <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                                    <Clock size={10} /> {new Date(file.createdTime).toLocaleString()}
                                 </div>
-                            )}
-                        </div>
+                            </div>
+
+                            {/* RIGHT: Main Actions */}
+                            <div className="flex items-center gap-2 shrink-0 ml-2">
+                                {viewMode === 'active' ? (
+                                    <button 
+                                        onClick={() => handleFileSelect(file)} 
+                                        className="p-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg shadow-md transition-all active:scale-95 flex items-center gap-1.5"
+                                        title="下載並還原"
+                                    >
+                                        <Download size={18} />
+                                        <span className="text-xs font-bold hidden sm:inline">下載</span>
+                                    </button>
+                                ) : (
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); handleRestoreFromTrash(file); }} 
+                                        className="p-2 text-emerald-400 hover:text-white bg-slate-900 hover:bg-emerald-600 border border-slate-600 hover:border-emerald-500 rounded-lg transition-colors" 
+                                        title="還原"
+                                    >
+                                        <RefreshCcw size={18} />
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     ))}
                     </div>

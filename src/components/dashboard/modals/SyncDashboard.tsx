@@ -1,6 +1,4 @@
 
-
-
 import React, { useState } from 'react';
 import { UploadCloud, DownloadCloud, AlertTriangle, CheckCircle, XCircle, ArrowRight, Loader2, Database, LayoutGrid, History, Activity } from 'lucide-react';
 
@@ -115,38 +113,41 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
 
   // --- Stats Block Helper ---
   const renderStats = (type: 'upload' | 'download') => {
-      if (!scanStats || isScanning) return <div className="h-10 flex items-center justify-center text-slate-500 text-xs gap-2"><Loader2 size={12} className="animate-spin" /> 分析中...</div>;
+      if (!scanStats || isScanning) return <div className="h-24 flex items-center justify-center text-slate-500 text-xs gap-2 bg-slate-950/30 rounded-xl border border-slate-800/50 mt-4"><Loader2 size={16} className="animate-spin" /> 分析資料中...</div>;
       
       const data = type === 'upload' ? scanStats.upload : scanStats.download;
-      // [Change] For download, we don't count sessions
       const includeSessions = type === 'upload';
       const total = data.templates + (includeSessions ? data.sessions : 0) + data.history;
       const hasData = total > 0;
       
+      const boxClass = `p-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-colors ${hasData ? 'bg-slate-800 border-slate-700' : 'bg-slate-900 border-slate-800 opacity-60'}`;
+      const numberClass = `text-2xl font-black ${hasData ? 'text-white' : 'text-slate-600'}`;
+      const labelClass = "text-xs text-slate-500 uppercase flex justify-center items-center gap-1.5 font-bold";
+
       return (
-          <div className="grid grid-cols-3 gap-2 mt-3 text-center">
-              <div className={`p-2 rounded-lg border ${hasData ? 'bg-slate-800 border-slate-700' : 'bg-slate-900 border-slate-800 opacity-50'}`}>
-                  <div className={`text-sm font-bold ${hasData ? 'text-white' : 'text-slate-500'}`}>{data.templates}</div>
-                  <div className="text-[9px] text-slate-500 uppercase flex justify-center items-center gap-1"><LayoutGrid size={8} /> 遊戲</div>
+          <div className="grid grid-cols-3 gap-3 mt-4">
+              <div className={boxClass}>
+                  <div className={numberClass}>{data.templates}</div>
+                  <div className={labelClass}><LayoutGrid size={12} /> 遊戲</div>
               </div>
               
               {/* Only show session count for Upload */}
               {includeSessions ? (
-                  <div className={`p-2 rounded-lg border ${hasData ? 'bg-slate-800 border-slate-700' : 'bg-slate-900 border-slate-800 opacity-50'}`}>
-                      <div className={`text-sm font-bold ${hasData ? 'text-white' : 'text-slate-500'}`}>{data.sessions}</div>
-                      <div className="text-[9px] text-slate-500 uppercase flex justify-center items-center gap-1"><Activity size={8} /> 進行中</div>
+                  <div className={boxClass}>
+                      <div className={numberClass}>{data.sessions}</div>
+                      <div className={labelClass}><Activity size={12} /> 進行中</div>
                   </div>
               ) : (
                   // For Download, show a placeholder or empty
-                  <div className={`p-2 rounded-lg border bg-slate-900 border-slate-800 opacity-30`}>
-                      <div className={`text-sm font-bold text-slate-600`}>-</div>
-                      <div className="text-[9px] text-slate-600 uppercase flex justify-center items-center gap-1"><Activity size={8} /> 進行中</div>
+                  <div className="p-3 rounded-xl border bg-slate-900 border-slate-800 opacity-40 flex flex-col items-center justify-center gap-1">
+                      <div className="text-2xl font-black text-slate-700">-</div>
+                      <div className="text-xs text-slate-600 uppercase flex justify-center items-center gap-1.5 font-bold"><Activity size={12} /> 進行中</div>
                   </div>
               )}
 
-              <div className={`p-2 rounded-lg border ${hasData ? 'bg-slate-800 border-slate-700' : 'bg-slate-900 border-slate-800 opacity-50'}`}>
-                  <div className={`text-sm font-bold ${hasData ? 'text-white' : 'text-slate-500'}`}>{data.history}</div>
-                  <div className="text-[9px] text-slate-500 uppercase flex justify-center items-center gap-1"><History size={8} /> 歷史</div>
+              <div className={boxClass}>
+                  <div className={numberClass}>{data.history}</div>
+                  <div className={labelClass}><History size={12} /> 歷史</div>
               </div>
           </div>
       );
@@ -170,26 +171,37 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
             
             {/* Upload Section */}
-            <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${confirmMode === 'upload' ? 'bg-slate-800 border-indigo-500 ring-2 ring-indigo-500/20' : 'bg-slate-900 border-slate-700 hover:border-slate-600'}`}>
+            <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${confirmMode === 'upload' ? 'bg-slate-800/50 border-indigo-500 ring-1 ring-indigo-500/20' : 'bg-slate-900 border-slate-700 hover:border-slate-600'}`}>
                 <div 
-                    className="p-5 flex items-center gap-4 cursor-pointer"
+                    className="p-5 cursor-pointer flex flex-col"
                     onClick={() => setConfirmMode(confirmMode === 'upload' ? null : 'upload')}
                 >
-                    <div className="w-12 h-12 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 shrink-0">
-                        <UploadCloud size={24} />
+                    {/* Header Row */}
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 shrink-0 border border-indigo-500/20">
+                            <UploadCloud size={24} />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-white">備份至雲端</h3>
+                            <p className="text-xs text-slate-400">將本機的資料上傳至 Google Drive</p>
+                        </div>
                     </div>
-                    <div className="flex-1">
-                        <h3 className="text-base font-bold text-white">備份至雲端 (Upload)</h3>
-                        <p className="text-xs text-slate-400 mt-1">將本機的資料上傳至 Google Drive。</p>
-                        {renderStats('upload')}
-                    </div>
+
+                    {/* Stats Row (Full Width) */}
+                    {renderStats('upload')}
                 </div>
                 
                 {confirmMode === 'upload' && (
-                    <div className="px-5 pb-5 animate-in slide-in-from-top-2 duration-200">
+                    <div className="px-5 pb-5 animate-in slide-in-from-top-2 duration-200 border-t border-slate-700/50 pt-4 mt-2">
                         <div className="bg-slate-950/50 rounded-xl p-3 text-xs text-slate-400 mb-4 space-y-2 border border-slate-800">
-                            <p className="flex items-center gap-2"><span className="text-emerald-400">●</span> 雲端僅保留最新的 <strong className="text-white">20</strong> 筆進行中遊戲，舊檔將自動刪除。</p>
-                            <p className="flex items-center gap-2"><span className="text-emerald-400">●</span> 若雲端已有較新版本，將自動略過。</p>
+                            <div className="flex items-start gap-2">
+                                <span className="text-emerald-400 shrink-0 mt-0.5">●</span>
+                                <span>雲端僅保留最新的 <strong className="text-white">20</strong> 筆進行中遊戲，舊檔將自動刪除。</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="text-emerald-400 shrink-0 mt-0.5">●</span>
+                                <span>若雲端已有較新版本，將自動略過。</span>
+                            </div>
                         </div>
                         <button 
                             onClick={onUpload}
@@ -202,23 +214,28 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
             </div>
 
             {/* Download Section */}
-            <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${confirmMode === 'download' ? 'bg-slate-800 border-sky-500 ring-2 ring-sky-500/20' : 'bg-slate-900 border-slate-700 hover:border-slate-600'}`}>
+            <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${confirmMode === 'download' ? 'bg-slate-800/50 border-sky-500 ring-1 ring-sky-500/20' : 'bg-slate-900 border-slate-700 hover:border-slate-600'}`}>
                 <div 
-                    className="p-5 flex items-center gap-4 cursor-pointer"
+                    className="p-5 cursor-pointer flex flex-col"
                     onClick={() => setConfirmMode(confirmMode === 'download' ? null : 'download')}
                 >
-                    <div className="w-12 h-12 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-400 shrink-0">
-                        <DownloadCloud size={24} />
+                    {/* Header Row */}
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-sky-500/10 text-sky-400 shrink-0 border border-sky-500/20">
+                            <DownloadCloud size={24} />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-white">從雲端還原</h3>
+                            <p className="text-xs text-slate-400">將 Google Drive 的資料下載至本機</p>
+                        </div>
                     </div>
-                    <div className="flex-1">
-                        <h3 className="text-base font-bold text-white">從雲端還原 (Download)</h3>
-                        <p className="text-xs text-slate-400 mt-1">將 Google Drive 的資料下載至本機。</p>
-                        {renderStats('download')}
-                    </div>
+
+                    {/* Stats Row (Full Width) */}
+                    {renderStats('download')}
                 </div>
                 
                 {confirmMode === 'download' && (
-                    <div className="px-5 pb-5 animate-in slide-in-from-top-2 duration-200">
+                    <div className="px-5 pb-5 animate-in slide-in-from-top-2 duration-200 border-t border-slate-700/50 pt-4 mt-2">
                         <div className="bg-amber-900/10 rounded-xl p-3 text-xs text-amber-200/80 mb-4 space-y-2 border border-amber-500/20">
                             <p className="font-bold flex items-center gap-2"><AlertTriangle size={12}/> 注意事項</p>
                             <p>此動作將會把雲端資料寫入本機。</p>
