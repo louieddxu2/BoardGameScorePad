@@ -1,4 +1,6 @@
 
+
+
 import { useState, useRef, useEffect } from 'react';
 import { db } from '../db';
 import { GameTemplate, GameSession, Player, ScoringRule, HistoryRecord } from '../types';
@@ -46,12 +48,15 @@ export const useSessionManager = ({
   }, [sessionImage]);
 
   // Auto-save session debounce
+  // [Modified] Increased to 1000ms. 
+  // This allows the user more time (1s) to back out of a accidentally created session/fork 
+  // without writing to DB, effectively solving the "ghost session" issue.
   useEffect(() => {
     if (!currentSession) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
         db.sessions.put(currentSession).catch(err => console.error("Failed to autosave:", err));
-    }, 500);
+    }, 1000);
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [currentSession]);
 
@@ -228,18 +233,13 @@ export const useSessionManager = ({
 
       if (!hasDataToSave) {
           // Cleanup empty sessions
-          // Run in background, don't await
           cleanupService.cleanSessionArtifacts(currentSession.id, currentSession.cloudFolderId).catch(console.error);
           db.sessions.delete(currentSession.id).catch(console.error);
       } else {
-          // Save valid session
           const finalSession = { ...currentSession, lastUpdatedAt: Date.now() };
-          // We must await local DB save to ensure data consistency
           await db.sessions.put(finalSession);
           
           if (isCloudEnabled()) {
-              // [Optimization] Fire and forget cloud backup
-              // We create a promise chain to handle logic in background
               const backgroundCloudBackup = async () => {
                   let folderId = finalSession.cloudFolderId;
                   if (!folderId && activeTemplate) {
@@ -255,8 +255,12 @@ export const useSessionManager = ({
           }
       }
 
-      const isSystem = activeTemplate && !!(await db.builtins.get(activeTemplate.id));
-      if (activeTemplate && !isSystem && isCloudEnabled() && isImageDirtyRef.current) {
+      // [Updated] Fork Awareness: Only backup if it's NOT a pure builtin
+      // We check if it has a source ID (meaning it is a fork) OR it is a custom template
+      const isPureBuiltin = !!(await db.builtins.get(activeTemplate!.id)) && !activeTemplate!.sourceTemplateId;
+      
+      // Also backup template if image changed
+      if (activeTemplate && !isPureBuiltin && isCloudEnabled() && isImageDirtyRef.current) {
           googleDriveService.backupTemplate(activeTemplate).then((updated) => {
               db.templates.update(updated.id, { lastSyncedAt: Date.now() });
           }).catch(console.error);
@@ -308,7 +312,6 @@ export const useSessionManager = ({
           await db.sessions.delete(currentSession.id);
 
           if (isCloudEnabled()) {
-              // [Optimization] Fire and forget cloud history backup
               const backgroundHistoryBackup = async () => {
                   let folderId = record.cloudFolderId;
                   if (!folderId) {
@@ -332,17 +335,64 @@ export const useSessionManager = ({
       }
   };
 
+  // [Phase 1 Update] Fork Awareness
   const updateActiveTemplate = async (updatedTemplate: GameTemplate) => {
       const migratedTemplate = migrateTemplate({ ...updatedTemplate, updatedAt: Date.now() });
-      setActiveTemplate(migratedTemplate);
-      const isSystem = !!(await db.builtins.get(migratedTemplate.id));
-      if (isSystem) await db.systemOverrides.put(migratedTemplate);
-      else await db.templates.put(migratedTemplate);
-      if (currentSession) {
-          const updatedPlayers = currentSession.players.map(player => ({ 
-              ...player, totalScore: calculatePlayerTotal(player, migratedTemplate, currentSession.players) 
-          }));
-          setCurrentSession({ ...currentSession, players: updatedPlayers, lastUpdatedAt: Date.now() });
+      
+      // Check if this is a Built-in ID (Direct Override Attempt)
+      const isBuiltin = !!(await db.builtins.get(migratedTemplate.id));
+      
+      let finalTemplate = migratedTemplate;
+
+      if (isBuiltin) {
+          // If editing a builtin directly, we MUST fork it now
+          // This happens if a user starts a builtin game and THEN decides to "Edit Template" during the session
+          const oldId = migratedTemplate.id;
+          const newId = generateId();
+          
+          // 1. Mutate to Fork
+          finalTemplate = {
+              ...migratedTemplate,
+              id: newId,
+              sourceTemplateId: oldId
+          };
+          
+          // 2. Save Fork
+          await db.templates.put(finalTemplate);
+          
+          // 3. Update Current Session to point to new Fork
+          if (currentSession) {
+              const newSession = { ...currentSession, templateId: newId, lastUpdatedAt: Date.now() };
+              
+              // Re-calculate scores with new template logic
+              const updatedPlayers = newSession.players.map(player => ({ 
+                  ...player, totalScore: calculatePlayerTotal(player, finalTemplate, newSession.players) 
+              }));
+              
+              setCurrentSession({ ...newSession, players: updatedPlayers });
+          }
+          
+      } else {
+          // Normal update for Custom or already-Forked templates
+          await db.templates.put(migratedTemplate);
+          
+          if (currentSession) {
+              const updatedPlayers = currentSession.players.map(player => ({ 
+                  ...player, totalScore: calculatePlayerTotal(player, migratedTemplate, currentSession.players) 
+              }));
+              setCurrentSession({ ...currentSession, players: updatedPlayers, lastUpdatedAt: Date.now() });
+          }
+      }
+
+      setActiveTemplate(finalTemplate);
+
+      // [CRITICAL FIX] Backup new template to cloud immediately if connected
+      // This ensures that if the user syncs the session to another device, 
+      // the new template ID will be available there too.
+      if (isCloudEnabled()) {
+          googleDriveService.backupTemplate(finalTemplate).then((updated) => {
+              db.templates.update(updated.id, { lastSyncedAt: Date.now() });
+          }).catch(console.error);
       }
   };
 
@@ -373,6 +423,9 @@ export const useSessionManager = ({
       }
 
       isImageDirtyRef.current = true;
+      // Note: We save image with current ID. If updateActiveTemplate forks it, the image reference will need handling.
+      // But updateActiveTemplate logic above handles forks before image save usually.
+      // If we are here, we are saving an image to the *current* active template ID.
       const savedImg = await imageService.saveImage(blob, activeTemplate.id, 'template');
       
       if (sessionImage) URL.revokeObjectURL(sessionImage);

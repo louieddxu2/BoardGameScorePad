@@ -1,7 +1,9 @@
 
+
+
 import React from 'react';
 import { GameTemplate } from '../../../types';
-import { Trash2, Pin, Check, Code, PlayCircle, Copy, RefreshCw, UploadCloud, Cloud, CloudOff } from 'lucide-react';
+import { Trash2, Pin, Check, Code, PlayCircle, Copy, RefreshCw, UploadCloud, Image as ImageIcon } from 'lucide-react';
 
 interface GameCardProps {
   template: GameTemplate;
@@ -38,18 +40,33 @@ const GameCard: React.FC<GameCardProps> = ({
   isAutoConnectEnabled
 }) => {
 
-  const renderSyncIcon = () => {
-    if (mode !== 'pinned' && mode !== 'user') return null;
-    if (!isAutoConnectEnabled || !isConnected) return null;
-    if (!template.lastSyncedAt) return <div title="未上傳雲端"><CloudOff size={14} className="text-slate-500" /></div>;
-    const isSynced = template.lastSyncedAt >= (template.updatedAt || 0);
-    if (isSynced) return <div title="已同步"><Cloud size={14} className="text-emerald-500" /></div>;
-    return (
-      <div className="relative" title="待同步">
-        <Cloud size={14} className="text-slate-400" />
-        <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-amber-500 rounded-full border border-slate-800" />
-      </div>
-    );
+  // Logic: Compare lastSyncedAt with updatedAt
+  const isSynced = (template.lastSyncedAt || 0) >= (template.updatedAt || 0);
+  
+  // Logic: Image Status
+  // globalVisuals implies a grid structure is set up.
+  // _localImageAvailable (injected by hook) tells us if the file exists.
+  const hasGrid = !!template.globalVisuals;
+  const isLocalImageReady = (template as any)._localImageAvailable;
+
+  const renderImageStatus = () => {
+      if (!hasGrid) return null;
+
+      // Use p-1.5 to align perfectly with adjacent buttons (which have p-1.5)
+      // Size 16 matches the Trash icon size
+      if (isLocalImageReady) {
+          return (
+              <div title="背景圖已就緒" className="p-1.5 text-sky-400 opacity-90">
+                  <ImageIcon size={16} />
+              </div>
+          );
+      } else {
+          return (
+              <div title="需下載或設定背景圖" className="p-1.5 text-slate-600 opacity-60">
+                  <ImageIcon size={16} />
+              </div>
+          );
+      }
   };
 
   const baseClasses = "bg-slate-800 rounded-xl p-3 shadow-md hover:bg-slate-750 transition-all cursor-pointer relative flex flex-col h-20 group";
@@ -75,7 +92,6 @@ const GameCard: React.FC<GameCardProps> = ({
     <div onClick={onClick} className={`${baseClasses} border border-slate-700 ${mode === 'system' ? 'hover:border-indigo-500/50' : 'hover:border-emerald-500/50'}`}>
       <div className="flex items-start justify-between gap-1 pr-7">
         <h3 className={`text-sm font-bold leading-tight line-clamp-2 ${mode === 'system' ? 'text-indigo-100 pr-2' : 'text-white'}`}>{template.name}</h3>
-        <div className="shrink-0 mt-0.5">{renderSyncIcon()}</div>
       </div>
 
       {/* Pin Button */}
@@ -88,8 +104,8 @@ const GameCard: React.FC<GameCardProps> = ({
         </button>
       )}
 
-      {/* Bottom Actions */}
-      <div className="absolute bottom-1 left-1 flex gap-1">
+      {/* Bottom Actions (Left) */}
+      <div className="absolute bottom-1 left-1 flex gap-1 items-center">
         {onDelete && (
           <button onClick={onDelete} className="p-1.5 text-slate-600 hover:text-red-400 hover:bg-slate-700 rounded-md transition-colors">
             <Trash2 size={16} />
@@ -108,12 +124,16 @@ const GameCard: React.FC<GameCardProps> = ({
             </button>
           )
         )}
+
+        {/* Image Status Indicator - Placed here for better visibility and layout balance */}
+        {renderImageStatus()}
       </div>
 
-      {/* Bottom Right Actions */}
+      {/* Bottom Actions (Right) */}
       <div className="absolute bottom-1 right-1 flex gap-1">
-        {mode === 'user' && isAutoConnectEnabled && isConnected && (
-          <button onClick={onCloudBackup} className="p-1.5 text-sky-500/70 hover:text-sky-400 rounded transition-colors" title="備份到 Google Drive">
+        {/* Only show Upload button if NOT synced (Actionable) */}
+        {onCloudBackup && isAutoConnectEnabled && isConnected && !isSynced && (
+          <button onClick={onCloudBackup} className="p-1.5 text-amber-400/80 hover:text-amber-300 hover:bg-slate-700 rounded transition-colors" title="有變更！點擊備份到 Google Drive">
             <UploadCloud size={14} />
           </button>
         )}

@@ -53,7 +53,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       onUpdateSession: props.onUpdateSession,
       onUpdateTemplate: props.onUpdateTemplate,
       onUpdateImage: props.onUpdateImage,
-      setUiState
+      setUiState,
+      isEditMode: sessionState.uiState.isEditMode // Pass isEditMode state
   });
 
   const { showToast } = useToast();
@@ -321,10 +322,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onAddColumn={() => setUiState(prev => ({ ...prev, isAddColumnModalOpen: true }))}
         onReset={() => setUiState(prev => ({ ...prev, showResetConfirm: true }))}
         onExit={() => {
-            // [Fix] Simplified Back Button Logic
-            // Instead of manually checking editingCell state and forcing the Exit Modal,
-            // we dispatch the global back event. 'useSessionEvents' hook listens to this
-            // and correctly prioritizes closing the Input Panel BEFORE showing the Exit Modal.
             window.dispatchEvent(new CustomEvent('app-back-press'));
         }}
         onShareMenuToggle={(show) => setUiState(prev => ({...prev, showShareMenu: show}))}

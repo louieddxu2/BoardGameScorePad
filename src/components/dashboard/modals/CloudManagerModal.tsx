@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useEffect } from 'react';
 import { GameTemplate, GameSession, HistoryRecord } from '../../../types';
 import { DownloadCloud, X, FolderOpen, Trash2, RefreshCw, UploadCloud, Download, FileJson, Clock, RefreshCcw, Activity, LayoutGrid, History, HardDriveUpload, Loader2, AlertTriangle, CloudOff, Cloud, ArrowRightLeft } from 'lucide-react';
@@ -6,6 +8,7 @@ import { CloudFile, CloudResourceType } from '../../../services/googleDrive';
 import ConfirmationModal from '../../shared/ConfirmationModal';
 import { useToast } from '../../../hooks/useToast';
 import SyncDashboard from './SyncDashboard';
+import { db } from '../../../db';
 
 interface CloudManagerModalProps {
   isOpen: boolean;
@@ -286,8 +289,52 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
             showToast({ message: "模板已還原。注意：背景圖片需在開啟遊戲時重新設定或由雲端載入。", type: 'info' });
           }
       } else if (category === 'sessions') {
+          // [Pre-check] Conflict with History
+          const uuid = extractId(file.name);
+          if (uuid) {
+              const historyRecord = await db.history.get(uuid);
+              if (historyRecord) {
+                  const dateStr = new Date(historyRecord.endTime).toLocaleString();
+                  window.alert(`此進行中遊戲已結束並存放於歷史紀錄中，要下載請先手動刪除該歷史紀錄（時間：${dateStr}）`);
+                  setIsLoading(false);
+                  return;
+              }
+          }
+
+          // 1. Download Session (JSON Only, do not save yet)
           const session = await restoreSessionBackup(file.id);
-          onSessionRestoreSuccess(session);
+
+          // 2. Check if Template exists Locally (in User Templates OR Builtins)
+          const localTemplate = await db.templates.get(session.templateId) || await db.builtins.get(session.templateId);
+
+          if (localTemplate) {
+              onSessionRestoreSuccess(session);
+          } else {
+              // 3. Template missing, search in Cloud
+              showToast({ message: "本機找不到對應計分板，正在搜尋雲端備份...", type: 'info' });
+              
+              // Fetch template list from cloud
+              const templatesList = await fetchFileList('active', 'templates');
+              const targetFile = templatesList.find(t => extractId(t.name) === session.templateId);
+
+              if (targetFile) {
+                  // 4. Found in cloud, download and restore Template first
+                  const templateWithExtra = await restoreBackup(targetFile.id);
+                  const { _tempImageBase64, ...cleanTemplate } = templateWithExtra as any;
+                  
+                  onRestoreSuccess(cleanTemplate); // Save Template
+                  
+                  // Now save Session
+                  onSessionRestoreSuccess(session);
+                  
+                  showToast({ message: "已自動還原關聯的計分板與紀錄", type: 'success' });
+              } else {
+                  // 5. Not found anywhere
+                  window.alert("對應計分板已遺失，無法還原此紀錄");
+                  // Abort: Do not call onSessionRestoreSuccess
+              }
+          }
+
       } else if (category === 'history' && restoreHistoryBackup && onHistoryRestoreSuccess) {
           const record = await restoreHistoryBackup(file.id);
           onHistoryRestoreSuccess(record);

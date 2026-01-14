@@ -16,6 +16,7 @@ interface UseSessionMediaProps {
   onUpdateTemplate: (template: GameTemplate) => void; // Added for removing image ref
   onUpdateImage: (img: string | Blob | null) => void; // Allow null to clear
   setUiState: React.Dispatch<React.SetStateAction<UIState>>;
+  isEditMode: boolean; // New Prop
 }
 
 export const useSessionMedia = ({
@@ -25,7 +26,8 @@ export const useSessionMedia = ({
   onUpdateSession,
   onUpdateTemplate,
   onUpdateImage,
-  setUiState
+  setUiState,
+  isEditMode
 }: UseSessionMediaProps) => {
   const { showToast } = useToast();
   const { downloadCloudImage, isAutoConnectEnabled, isConnected, connectToCloud } = useGoogleDrive();
@@ -96,6 +98,13 @@ export const useSessionMedia = ({
       }
       setUiState(p => ({ ...p, isScannerOpen: false, scannerInitialImage: null }));
       showToast({ message: "背景圖片已更新", type: 'success' });
+      
+      // [Feature] Tip for Edit Mode
+      if (isEditMode) {
+          setTimeout(() => {
+              showToast({ message: "提醒：部分計分紙需點選上方鎖定至使用模式才能獲得完整體驗", type: 'info', duration: 5000 });
+          }, 800);
+      }
   };
 
   // [Handler] Session Photo (Camera or Gallery)
@@ -160,6 +169,13 @@ export const useSessionMedia = ({
       if (imgBlob) {
           onUpdateImage(imgBlob); 
           setUiState(p => ({ ...p, isImageUploadModalOpen: false }));
+          
+          // [Feature] Tip for Edit Mode
+          if (isEditMode) {
+              setTimeout(() => {
+                  showToast({ message: "提醒：部分計分紙需點選上方鎖定至使用模式才能獲得完整體驗", type: 'info', duration: 5000 });
+              }, 800);
+          }
       }
   };
 

@@ -1,4 +1,6 @@
 
+
+
 import React, { useState } from 'react';
 import { UploadCloud, DownloadCloud, AlertTriangle, CheckCircle, XCircle, ArrowRight, Loader2, Database, LayoutGrid, History, Activity } from 'lucide-react';
 
@@ -116,7 +118,9 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
       if (!scanStats || isScanning) return <div className="h-10 flex items-center justify-center text-slate-500 text-xs gap-2"><Loader2 size={12} className="animate-spin" /> 分析中...</div>;
       
       const data = type === 'upload' ? scanStats.upload : scanStats.download;
-      const total = data.templates + data.sessions + data.history;
+      // [Change] For download, we don't count sessions
+      const includeSessions = type === 'upload';
+      const total = data.templates + (includeSessions ? data.sessions : 0) + data.history;
       const hasData = total > 0;
       
       return (
@@ -125,10 +129,21 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
                   <div className={`text-sm font-bold ${hasData ? 'text-white' : 'text-slate-500'}`}>{data.templates}</div>
                   <div className="text-[9px] text-slate-500 uppercase flex justify-center items-center gap-1"><LayoutGrid size={8} /> 遊戲</div>
               </div>
-              <div className={`p-2 rounded-lg border ${hasData ? 'bg-slate-800 border-slate-700' : 'bg-slate-900 border-slate-800 opacity-50'}`}>
-                  <div className={`text-sm font-bold ${hasData ? 'text-white' : 'text-slate-500'}`}>{data.sessions}</div>
-                  <div className="text-[9px] text-slate-500 uppercase flex justify-center items-center gap-1"><Activity size={8} /> 進行中</div>
-              </div>
+              
+              {/* Only show session count for Upload */}
+              {includeSessions ? (
+                  <div className={`p-2 rounded-lg border ${hasData ? 'bg-slate-800 border-slate-700' : 'bg-slate-900 border-slate-800 opacity-50'}`}>
+                      <div className={`text-sm font-bold ${hasData ? 'text-white' : 'text-slate-500'}`}>{data.sessions}</div>
+                      <div className="text-[9px] text-slate-500 uppercase flex justify-center items-center gap-1"><Activity size={8} /> 進行中</div>
+                  </div>
+              ) : (
+                  // For Download, show a placeholder or empty
+                  <div className={`p-2 rounded-lg border bg-slate-900 border-slate-800 opacity-30`}>
+                      <div className={`text-sm font-bold text-slate-600`}>-</div>
+                      <div className="text-[9px] text-slate-600 uppercase flex justify-center items-center gap-1"><Activity size={8} /> 進行中</div>
+                  </div>
+              )}
+
               <div className={`p-2 rounded-lg border ${hasData ? 'bg-slate-800 border-slate-700' : 'bg-slate-900 border-slate-800 opacity-50'}`}>
                   <div className={`text-sm font-bold ${hasData ? 'text-white' : 'text-slate-500'}`}>{data.history}</div>
                   <div className="text-[9px] text-slate-500 uppercase flex justify-center items-center gap-1"><History size={8} /> 歷史</div>
@@ -173,8 +188,8 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
                 {confirmMode === 'upload' && (
                     <div className="px-5 pb-5 animate-in slide-in-from-top-2 duration-200">
                         <div className="bg-slate-950/50 rounded-xl p-3 text-xs text-slate-400 mb-4 space-y-2 border border-slate-800">
+                            <p className="flex items-center gap-2"><span className="text-emerald-400">●</span> 雲端僅保留最新的 <strong className="text-white">20</strong> 筆進行中遊戲，舊檔將自動刪除。</p>
                             <p className="flex items-center gap-2"><span className="text-emerald-400">●</span> 若雲端已有較新版本，將自動略過。</p>
-                            <p className="flex items-center gap-2"><span className="text-emerald-400">●</span> 包含遊戲庫、歷史紀錄與進行中遊戲。</p>
                         </div>
                         <button 
                             onClick={onUpload}
@@ -207,7 +222,7 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
                         <div className="bg-amber-900/10 rounded-xl p-3 text-xs text-amber-200/80 mb-4 space-y-2 border border-amber-500/20">
                             <p className="font-bold flex items-center gap-2"><AlertTriangle size={12}/> 注意事項</p>
                             <p>此動作將會把雲端資料寫入本機。</p>
-                            <p className="text-slate-400">系統將自動比對修改時間，若本機資料較新則會保留（略過下載），避免覆蓋您尚未備份的進度。</p>
+                            <p><strong className="text-white">不包含進行中遊戲</strong>（若需取回暫存檔，請至「雲端備份管理」手動下載）。</p>
                         </div>
                         <button 
                             onClick={onDownload}

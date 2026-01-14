@@ -1,4 +1,6 @@
 
+
+
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../db';
 import { migrateFromLocalStorage } from '../utils/dbMigration';
@@ -126,13 +128,24 @@ export const useAppData = () => {
     const finalUpdatedAt = options.preserveTimestamps ? (template.updatedAt || Date.now()) : Date.now();
     const migratedTemplate = migrateTemplate({ ...template, updatedAt: finalUpdatedAt });
     
-    const isSystem = !!(await db.builtins.get(migratedTemplate.id));
-    if (isSystem) {
-        await db.systemOverrides.put(migratedTemplate);
+    // Phase 1 Logic: Forking
+    // Check if this is a Built-in ID
+    const isBuiltin = !!(await db.builtins.get(migratedTemplate.id));
+    
+    if (isBuiltin) {
+        // First time overriding a built-in: Create a fork
+        // 1. Keep original ID as source
+        migratedTemplate.sourceTemplateId = migratedTemplate.id;
+        // 2. Generate new UUID for the fork
+        migratedTemplate.id = generateId();
+        // 3. Save to templates table
+        await db.templates.put(migratedTemplate);
     } else {
+        // It's either a pure custom template or an already-forked shadow template
         await db.templates.put(migratedTemplate);
     }
-    if (!options.skipCloud && isCloudEnabled() && !isSystem) {
+
+    if (!options.skipCloud && isCloudEnabled()) {
         googleDriveService.backupTemplate(migratedTemplate).then((updated) => {
             db.templates.update(updated.id, { lastSyncedAt: Date.now() });
         }).catch(console.error);
@@ -172,35 +185,44 @@ export const useAppData = () => {
   };
 
   /**
-   * Restore System Template Logic:
-   * 1. Copies the current override to a new Custom Template (Backup).
-   * 2. Migrates all active sessions from the System ID to the new Custom ID.
-   * 3. Migrates background images and preferences.
-   * 4. Deletes the System Override (reverting to built-in default).
+   * Restore System Template Logic (Phase 1 Update):
+   * Since we now use Forks (UUIDs) to mask Built-ins, "Restoring" means deleting the Fork.
+   * However, to be safe, we backup the Fork as a regular custom template first.
    */
   const restoreSystemTemplate = async (templateId: string) => {
       try {
-          const overrideData = await db.systemOverrides.get(templateId);
-          if (!overrideData) return;
+          // The ID passed here is the Shadow ID (UUID) if a fork exists.
+          // Or it could be the Built-in ID if the UI logic passed the original.
+          // We need to find the fork.
+          
+          let shadowTemplate = await db.templates.get(templateId);
+          
+          // If not found by ID, maybe we passed the source ID? Try to find a template referencing it.
+          if (!shadowTemplate) {
+              shadowTemplate = await db.templates.where('sourceTemplateId').equals(templateId).first();
+          }
+
+          if (!shadowTemplate || !shadowTemplate.sourceTemplateId) return;
 
           const backupId = generateId();
-          // Backup as a new custom template
+          // Backup as a detached custom template
           const backupTemplate: GameTemplate = {
-              ...overrideData,
+              ...shadowTemplate,
               id: backupId,
-              name: overrideData.name, // Keep original name
+              // [Fix 3] Remove (Backup) suffix for cleaner UX
+              name: shadowTemplate.name, 
+              sourceTemplateId: undefined, // Detach from system
               updatedAt: Date.now(),
-              cloudImageId: undefined, // Reset cloud ID to allow fresh backup
+              cloudImageId: undefined, 
               lastSyncedAt: undefined
           };
           
-          // Find related items
-          const relatedSessions = await db.sessions.where('templateId').equals(templateId).toArray();
-          const relatedImages = await db.images.where('relatedId').equals(templateId).toArray(); // Images associated with the template (backgrounds)
+          // Find related items using the Shadow ID
+          const relatedSessions = await db.sessions.where('templateId').equals(shadowTemplate.id).toArray();
+          const relatedImages = await db.images.where('relatedId').equals(shadowTemplate.id).toArray(); 
 
           // Execute as atomic transaction
-          // Use (db as any) to workaround TS definition issues with Dexie transactions if needed
-          await (db as any).transaction('rw', db.templates, db.systemOverrides, db.sessions, db.images, db.templatePrefs, async () => {
+          await (db as any).transaction('rw', db.templates, db.sessions, db.images, db.templatePrefs, async () => {
               // 1. Add Backup
               await db.templates.add(backupTemplate);
 
@@ -215,22 +237,22 @@ export const useAppData = () => {
               }
 
               // 4. Migrate Preferences
-              const prefs = await db.templatePrefs.get(templateId);
+              const prefs = await db.templatePrefs.get(shadowTemplate!.id);
               if (prefs) {
                   await db.templatePrefs.put({ ...prefs, templateId: backupId });
-                  await db.templatePrefs.delete(templateId);
+                  await db.templatePrefs.delete(shadowTemplate!.id);
               }
 
-              // 5. Delete the System Override
-              await db.systemOverrides.delete(templateId);
+              // 5. Delete the Shadow Fork -> UI will fall back to Built-in
+              await db.templates.delete(shadowTemplate!.id);
           });
 
-          // Cloud Cleanup (Async)
+          // Cloud Cleanup
           if (isCloudEnabled()) {
-              googleDriveService.softDeleteFolder(overrideData.id, 'template').catch(console.error);
+              googleDriveService.softDeleteFolder(shadowTemplate.id, 'template').catch(console.error);
           }
           
-          showToast({ message: "已還原預設值 (設定已備份)", type: 'success' });
+          showToast({ message: "已還原預設值 (修改已另存為備份)", type: 'success' });
 
       } catch (error) {
           console.error("Restore failed", error);
@@ -262,7 +284,8 @@ export const useAppData = () => {
       const players = await db.savedPlayers.toArray();
       const locations = await db.savedLocations.toArray();
       const customTemplates = await db.templates.toArray();
-      const overrides = await db.systemOverrides.toArray();
+      // overrides is now empty, but keeping structure for compat
+      const overrides: GameTemplate[] = []; 
       const history = await db.history.toArray();
       const activeSessions = await db.sessions.toArray(); 
       

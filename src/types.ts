@@ -160,6 +160,11 @@ export interface GameTemplate {
   globalVisuals?: GlobalVisuals;
   lastPlayerCount?: number; // 兼容舊資料，優先使用 TemplatePreference
   defaultScoringRule?: ScoringRule; // 兼容舊資料，優先使用 TemplatePreference
+  
+  // [New Phase 1] Fork Mechanism
+  // 如果此欄位存在，代表此模板是針對某個內建模板 (或未來其他模板) 的修改版 (Fork/Override)
+  // 原本的 id 會是一個新的 UUID，而 sourceTemplateId 則指向原始內建 ID (例如 "Built-in-Agricola")
+  sourceTemplateId?: string; 
 }
 
 export interface GameSession {

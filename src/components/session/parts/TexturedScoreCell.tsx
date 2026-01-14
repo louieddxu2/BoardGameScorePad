@@ -1,10 +1,13 @@
 
+
+
 import React, { useEffect, useState } from 'react';
 import { Player, ScoreColumn, ScoreValue } from '../../../types';
 import { calculateColumnScore, getAutoColumnError, resolveSelectOption } from '../../../utils/scoring';
 import { getSmartTextureUrl } from '../../../utils/imageProcessing';
 import SmartTextureLayer from './SmartTextureLayer';
 import { Link2Off, AlertTriangle } from 'lucide-react';
+import { calculateDynamicFontSize } from '../../../utils/dynamicLayout';
 
 interface TexturedScoreCellProps {
   player: Player;
@@ -115,17 +118,29 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
       const isSelectList = column.inputType === 'clicker' && !isSumParts;
       const isLabelOnly = isSelectList && column.renderMode === 'label_only';
 
+      // [Dynamic Layout] Prepare content for calculation
+      let contentForCalc: string[] = [];
       if (hasInput) {
           if (autoError) {
-              layoutContent = 'ERR';
+              contentForCalc = ['ERR'];
+          } else if (isPartsOnly) {
+              contentForCalc = parts.map(formatDisplayNumber);
+          } else if (isLabelOnly) {
+              const option = resolveSelectOption(column, scoreValue);
+              if (option) contentForCalc = option.label.split(/\r\n|\r|\n/);
+          } else {
+              contentForCalc = [formatDisplayNumber(displayScore)];
+          }
+      }
+
+      // [Dynamic Layout] Calculate Font Size
+      const dynamicFontSize = calculateDynamicFontSize(contentForCalc);
+
+      if (hasInput) {
+          if (autoError) {
+              layoutContent = <span className="font-bold text-rose-500" style={{ fontSize: dynamicFontSize }}>ERR</span>;
           } else if (isPartsOnly) {
               // Parts Only Mode (List)
-              // Logic: Font size calculates based on container height (cqh)
-              // Formula: 100cqh / items_count * 0.9 (safety margin)
-              // Clamped: Max 1.3rem (normal size), Min calculated dynamically
-              const count = Math.max(1, parts.length);
-              const dynamicFontSize = `min(1.3rem, calc((100cqh / ${count}) * 0.9))`;
-              
               layoutContent = (
                   <div className="flex flex-col items-center justify-center w-full h-full leading-none overflow-hidden">
                       {parts.map((p, i) => (
@@ -140,17 +155,23 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
               const option = resolveSelectOption(column, scoreValue);
               const labelColor = option?.color || column.color || 'rgba(28, 35, 51, 0.90)';
               layoutContent = (
-                   <span 
-                      className="text-lg font-bold text-center leading-tight whitespace-pre-wrap break-words w-full" 
-                      style={{ ...inkStyle, color: labelColor }}
-                   >
-                      {option ? option.label : ''}
-                   </span>
+                   <div className="flex flex-col items-center justify-center w-full h-full leading-tight overflow-hidden">
+                        {/* Split label lines manually to ensure they stack correctly with flex */}
+                        {(option?.label || '').split(/\r\n|\r|\n/).map((line, i) => (
+                            <span 
+                                key={i}
+                                className="font-bold text-center break-words w-full" 
+                                style={{ ...inkStyle, color: labelColor, fontSize: dynamicFontSize }}
+                            >
+                                {line}
+                            </span>
+                        ))}
+                   </div>
               );
           } else {
               // Default: Numeric Score
               layoutContent = (
-                  <span className="text-xl font-bold tracking-tight leading-none" style={inkStyle}>
+                  <span className="font-bold tracking-tight leading-none" style={{ ...inkStyle, fontSize: dynamicFontSize }}>
                       {formatDisplayNumber(displayScore)}
                   </span>
               );

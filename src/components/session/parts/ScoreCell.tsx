@@ -1,10 +1,13 @@
 
+
+
 import React, { useRef, useEffect } from 'react';
 import { Player, ScoreColumn, ScoreValue } from '../../../types';
 import { calculateColumnScore, getAutoColumnError, getRawValue, resolveSelectOption } from '../../../utils/scoring';
 import TexturedScoreCell from './TexturedScoreCell';
 import { Link2Off, AlertTriangle } from 'lucide-react';
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
+import { calculateDynamicFontSize } from '../../../utils/dynamicLayout';
 
 interface ScoreCellProps {
   player: Player;
@@ -435,14 +438,31 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
           )}
           
           {(() => {
-              // 1. Logic for Sum Parts + Parts Only
+              // Prepare Content for Dynamic Calculation
+              let contentForCalc: string[] = [];
               const isSumParts = (column.formula || '').includes('+next');
-              if (hasInput && isSumParts && column.showPartsInGrid === 'parts_only') {
-                  const count = Math.max(1, parts.length);
-                  // Use CSS Container Query to auto-scale font
-                  // Max: 1.3rem, Min: calculated based on height
-                  const dynamicFontSize = `min(1.3rem, calc((100cqh / ${count}) * 0.9))`;
-                  
+              const isSelectList = column.inputType === 'clicker' && !isSumParts;
+              const isPartsOnly = isSumParts && column.showPartsInGrid === 'parts_only';
+              const isLabelOnly = isSelectList && column.renderMode === 'label_only';
+
+              if (hasInput) {
+                  if (autoError) {
+                      contentForCalc = ['ERR'];
+                  } else if (isPartsOnly) {
+                      contentForCalc = parts.map(formatDisplayNumber);
+                  } else if (isLabelOnly) {
+                      const option = resolveSelectOption(column, scoreData);
+                      if (option) contentForCalc = option.label.split(/\r\n|\r|\n/);
+                  } else {
+                      contentForCalc = [formatDisplayNumber(displayScore)];
+                  }
+              }
+
+              // Calculate Font Size
+              const dynamicFontSize = calculateDynamicFontSize(contentForCalc);
+
+              // 1. Logic for Sum Parts + Parts Only
+              if (hasInput && isPartsOnly) {
                   return (
                       <div className="flex flex-col items-center justify-center w-full h-full leading-none overflow-hidden" style={textStyle}>
                           {parts.map((p, i) => (
@@ -455,20 +475,27 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
               }
 
               // 2. Logic for Select + Label Only
-              const isSelectList = column.inputType === 'clicker' && !isSumParts;
-              if (hasInput && isSelectList && column.renderMode === 'label_only') {
+              if (hasInput && isLabelOnly) {
                   const option = resolveSelectOption(column, scoreData);
                   const labelColor = option?.color || column.color || (screenshotMode ? '#10b981' : '#34d399');
                   return (
-                      <span className="text-lg font-bold text-center leading-tight whitespace-pre-wrap break-words w-full px-0.5" style={{ color: labelColor, textShadow: isColorDark(labelColor) ? ENHANCED_TEXT_SHADOW : undefined }}>
-                          {option ? option.label : ''}
-                      </span>
+                      <div className="flex flex-col items-center justify-center w-full h-full leading-tight overflow-hidden">
+                        {(option?.label || '').split(/\r\n|\r|\n/).map((line, i) => (
+                            <span 
+                                key={i}
+                                className="font-bold text-center break-words w-full" 
+                                style={{ color: labelColor, fontSize: dynamicFontSize, textShadow: isColorDark(labelColor) ? ENHANCED_TEXT_SHADOW : undefined }}
+                            >
+                                {line}
+                            </span>
+                        ))}
+                      </div>
                   );
               }
 
               // 3. Default (Total Score)
               return (
-                  <span className={`text-xl font-bold tracking-tight w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
+                  <span className={`font-bold tracking-tight w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={{ ...textStyle, fontSize: dynamicFontSize }}>
                     {hasInput ? (autoError ? 'ERR' : formatDisplayNumber(displayScore)) : ''}
                   </span>
               );

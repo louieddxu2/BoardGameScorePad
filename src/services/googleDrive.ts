@@ -1,4 +1,6 @@
 
+
+
 import { GameTemplate, GameSession, HistoryRecord } from '../types';
 import { googleAuth } from './cloud/googleAuth';
 import { googleDriveClient } from './cloud/googleDriveClient';
@@ -115,7 +117,7 @@ class GoogleDriveService {
         query += ` and name != '_Trash_Templates' and name != '_Trash_Active' and name != '_Trash_History' and name != '_Trash' and name != '_System' and name != '_Active' and name != '_History' and name != '_Templates'`; 
     }
 
-    return googleDriveClient.fetchAllItems(query, 'files(id, name, createdTime, appProperties)');
+    return googleDriveClient.fetchAllItems(query, 'files(id, name, createdTime, modifiedTime, appProperties)');
   }
 
   public async listFoldersInParent(parentId: string): Promise<CloudFile[]> {
@@ -382,7 +384,30 @@ class GoogleDriveService {
           appProperties: { originalUpdatedAt: String(timestamp) }
       });
 
+      // [NEW] Logic: Cleanup any stale Active Session folders in the cloud
+      // Since this record is now in History, any "Active" version in the cloud is obsolete.
+      // We pass the current folderId to exclude it from deletion (in case it was just moved/copied)
+      this.cleanupStaleActiveSessions(record.id, folderId).catch(e => console.warn("Stale active cleanup failed", e));
+
       return folderId;
+  }
+
+  private async cleanupStaleActiveSessions(recordId: string, excludeFolderId?: string) {
+      if (!this.activeFolderId) return;
+      try {
+          // Look for folders in _Active that contain the UUID
+          const query = `'${this.activeFolderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and name contains '_${recordId}' and trashed = false`;
+          const files = await googleDriveClient.fetchAllItems(query, 'files(id, name)');
+          
+          for (const file of files) {
+              if (file.id !== excludeFolderId) {
+                  await googleDriveClient.trashFile(file.id);
+                  console.log(`[Consistency] Trashed stale active cloud folder: ${file.name}`);
+              }
+          }
+      } catch (e) {
+          console.warn("Error cleaning stale active sessions:", e);
+      }
   }
 
   public async backupActiveSession(session: GameSession, templateName: string, knownFolderId?: string, existingFolderName?: string): Promise<string> {
@@ -421,7 +446,44 @@ class GoogleDriveService {
           appProperties: { originalUpdatedAt: String(timestamp) }
       });
       
+      // [Retention Policy] Enforce 20-file limit on Active Sessions
+      this.cleanupActiveSessionLimit().catch(e => console.warn("Active session cleanup failed", e));
+
       return folderId;
+  }
+
+  // Enforce a limit of 20 active sessions in the cloud folder
+  private async cleanupActiveSessionLimit() {
+      if (!this.activeFolderId) return;
+      
+      try {
+          const files = await googleDriveClient.fetchAllItems(
+              `'${this.activeFolderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`, 
+              'files(id, name, modifiedTime, appProperties)'
+          );
+
+          if (files.length <= 20) return;
+
+          // Sort by last updated timestamp (Newest first)
+          files.sort((a: any, b: any) => {
+              const timeA = Number(a.appProperties?.originalUpdatedAt) || new Date(a.modifiedTime).getTime();
+              const timeB = Number(b.appProperties?.originalUpdatedAt) || new Date(b.modifiedTime).getTime();
+              return timeB - timeA;
+          });
+
+          // Identify files to delete (skip first 20)
+          const filesToDelete = files.slice(20);
+          
+          for (const file of filesToDelete) {
+              // [Update] Move to App Trash (_Trash_Active) as requested
+              // This maintains the safety net.
+              await this.softDeleteFolder(file.id, 'active');
+          }
+          console.log(`[Retention] Moved ${filesToDelete.length} old active sessions to App Trash.`);
+
+      } catch (e) {
+          console.warn("Retention cleanup failed", e);
+      }
   }
 
   // --- Utility Methods ---
@@ -515,6 +577,7 @@ class GoogleDriveService {
 
           if (files.length > 100) {
               const toDelete = files.slice(100); 
+              // [Update] Use deleteFile (Permanent) to save cloud space as requested
               const promises = toDelete.map((f: any) => googleDriveClient.deleteFile(f.id));
               await Promise.all(promises);
           }

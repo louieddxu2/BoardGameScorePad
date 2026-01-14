@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { HistoryRecord, GameSession, ScoreColumn } from '../../types';
 import { ArrowLeft, Share2, Download, Check, Settings } from 'lucide-react';
@@ -61,30 +63,32 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
   // --- Exit Logic with Cloud Sync ---
-  const handleExitAndSync = async () => {
+  const handleExitAndSync = () => {
       // Logic mirrored from useSessionManager.ts exitSession
+      // [Fix] Use setTimeout to force this logic to the next tick, ensuring UI navigation happens immediately without blocking.
       if (isDirtyRef.current && isAutoConnectEnabled && isConnected) {
-          // [Optimization] Run backup in background
-          const backgroundBackup = async () => {
-              try {
-                  let folderId = record.cloudFolderId;
-                  
-                  // If legacy record without folder ID, create one
-                  if (!folderId) {
-                      folderId = await googleDriveService.createActiveSessionFolder(record.gameName, record.id);
-                      // Update local DB immediately
-                      await db.history.update(record.id, { cloudFolderId: folderId });
-                  }
+          setTimeout(() => {
+              const backgroundBackup = async () => {
+                  try {
+                      let folderId = record.cloudFolderId;
+                      
+                      // If legacy record without folder ID, create one
+                      if (!folderId) {
+                          folderId = await googleDriveService.createActiveSessionFolder(record.gameName, record.id);
+                          // Update local DB immediately
+                          await db.history.update(record.id, { cloudFolderId: folderId });
+                      }
 
-                  if (folderId) {
-                      await googleDriveService.backupHistoryRecord(record, folderId);
-                      console.log("History auto-backup successful (background)");
+                      if (folderId) {
+                          await googleDriveService.backupHistoryRecord(record, folderId);
+                          console.log("History auto-backup successful (background)");
+                      }
+                  } catch (e) {
+                      console.error("Failed to initiate history backup", e);
                   }
-              } catch (e) {
-                  console.error("Failed to initiate history backup", e);
-              }
-          };
-          backgroundBackup();
+              };
+              backgroundBackup();
+          }, 0);
       }
       onExit();
   };
@@ -105,6 +109,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
           handleExitAndSync();
       };
 
+      window.dispatchEvent(new CustomEvent('app-back-press-register')); // Optional: inform system if needed
       window.addEventListener('app-back-press', handleHistoryBackPress);
       return () => window.removeEventListener('app-back-press', handleHistoryBackPress);
   }, [showPhotoGallery, showSettingsModal, showScreenshotModal, showShareMenu, onExit, record, isAutoConnectEnabled, isConnected]); 

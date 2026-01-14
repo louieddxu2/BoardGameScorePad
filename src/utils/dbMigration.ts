@@ -1,8 +1,11 @@
 
+
+
 import { db } from '../db';
 import { migrateTemplate, migrateScores } from './dataMigration';
 import { GameTemplate, GameSession } from '../types';
 import { DEFAULT_TEMPLATES } from '../constants';
+import { generateId } from './idGenerator';
 
 // 定義當前內建資料庫的版本
 // [UPDATE] Increment this version whenever DEFAULT_TEMPLATES is modified
@@ -11,8 +14,9 @@ const CURRENT_BUILTIN_VERSION = 3;
 export const migrateFromLocalStorage = async () => {
   const MIGRATION_KEY = 'sm_migration_v1_done';
   const VERSION_KEY = 'sm_builtin_data_version';
-  const NEW_BADGES_KEY = 'sm_new_badge_ids'; // 新的 Key，只存「未讀的新增項目」
+  const NEW_BADGES_KEY = 'sm_new_badge_ids'; 
   const LIST_MIGRATION_KEY = 'sm_list_migration_v4_done';
+  const OVERRIDE_MIGRATION_KEY = 'sm_override_fork_migration_v5_done';
   
   try {
     // --- Phase 1: 內建資料庫同步 (Seeding & Diffing) ---
@@ -25,8 +29,6 @@ export const migrateFromLocalStorage = async () => {
     if (savedVersion !== CURRENT_BUILTIN_VERSION || isFreshInstall) {
         console.log(`Updating built-in templates from v${savedVersion} to v${CURRENT_BUILTIN_VERSION}...`);
         
-        // [核心修改] 在清空前，計算差異 (Diff)
-        // 只有在「不是全新安裝」且「有版本更新」時才計算
         if (!isFreshInstall) {
             const existingIds = new Set(existingBuiltins.map(t => t.id));
             const newArrivals = DEFAULT_TEMPLATES
@@ -35,29 +37,22 @@ export const migrateFromLocalStorage = async () => {
 
             if (newArrivals.length > 0) {
                 console.log('Found new templates:', newArrivals);
-                // 讀取現有的未讀列表 (可能還有上次沒點掉的)
                 const currentBadges = JSON.parse(localStorage.getItem(NEW_BADGES_KEY) || '[]');
-                // 合併並去重
                 const mergedBadges = Array.from(new Set([...currentBadges, ...newArrivals]));
                 localStorage.setItem(NEW_BADGES_KEY, JSON.stringify(mergedBadges));
             }
         }
         
-        // 1. 清空舊的內建資料
         await db.builtins.clear();
-        
-        // 2. 寫入新的內建資料
         const normalizedDefaults = DEFAULT_TEMPLATES.map(t => migrateTemplate(t));
         await db.builtins.bulkPut(normalizedDefaults);
         
-        // 3. 更新版號
         localStorage.setItem(VERSION_KEY, String(CURRENT_BUILTIN_VERSION));
         console.log('Built-in templates updated successfully.');
     }
 
     // --- Phase 2: 舊版 LocalStorage 遷移 (只執行一次) ---
     if (!localStorage.getItem(MIGRATION_KEY)) {
-        // ... (Migration logic remains unchanged)
         console.log('Starting migration from LocalStorage to IndexedDB...');
 
         // 1. 遷移自訂模板
@@ -115,9 +110,7 @@ export const migrateFromLocalStorage = async () => {
             await db.sessions.bulkPut(sessionsToMigrate);
         }
 
-        // 移除舊的 Known IDs (因為我們換了新機制，舊的龐大資料可以刪了)
         localStorage.removeItem('sm_known_sys_ids');
-        
         localStorage.setItem(MIGRATION_KEY, 'true');
     }
 
@@ -125,14 +118,11 @@ export const migrateFromLocalStorage = async () => {
     if (!localStorage.getItem(LIST_MIGRATION_KEY)) {
         console.log('Migrating Lists (Players/Locations) to IndexedDB...');
         
-        // 1. Migrate Player History
         const playerHistoryStr = localStorage.getItem('sm_player_history');
         if (playerHistoryStr) {
             try {
                 const players: string[] = JSON.parse(playerHistoryStr);
                 if (Array.isArray(players)) {
-                    // Reverse to keep order (first in array was most recent)
-                    // We assign timestamps backwards to preserve order in sort
                     const now = Date.now();
                     const bulkPlayers = players.map((name, idx) => ({
                         name: name.trim(),
@@ -140,8 +130,6 @@ export const migrateFromLocalStorage = async () => {
                         usageCount: 1
                     })).filter(p => p.name);
                     
-                    // Use bulkPut. If name exists (unlikely on fresh migration), it overwrites.
-                    // But to be safe against duplicates in source array, we dedupe first.
                     const uniquePlayers = Array.from(new Map(bulkPlayers.map(item => [item.name, item])).values());
                     await db.savedPlayers.bulkPut(uniquePlayers);
                 }
@@ -150,7 +138,6 @@ export const migrateFromLocalStorage = async () => {
             }
         }
 
-        // 2. Scan History for Locations
         const allHistory = await db.history.toArray();
         const locationsMap = new Map<string, { name: string, lastUsed: number, count: number }>();
         
@@ -176,9 +163,52 @@ export const migrateFromLocalStorage = async () => {
             await db.savedLocations.bulkPut(locationsToSave);
         }
 
-        // Clean up old localStorage key
         localStorage.removeItem('sm_player_history');
         localStorage.setItem(LIST_MIGRATION_KEY, 'true');
+    }
+
+    // --- Phase 4: Overrides Fork Migration (SystemOverrides -> Templates with UUID) ---
+    if (!localStorage.getItem(OVERRIDE_MIGRATION_KEY)) {
+        console.log('Migrating System Overrides to Forked Templates...');
+        
+        const overrides = await db.systemOverrides.toArray();
+        
+        if (overrides.length > 0) {
+            await (db as any).transaction('rw', db.templates, db.systemOverrides, db.sessions, db.history, db.images, async () => {
+                for (const override of overrides) {
+                    const oldId = override.id;
+                    const newId = generateId(); // Create new UUID
+                    
+                    // 1. Convert to Forked Template
+                    const forkedTemplate: GameTemplate = {
+                        ...override,
+                        id: newId,
+                        sourceTemplateId: oldId, // Link back to original
+                        // Ensure timestamps exist
+                        updatedAt: override.updatedAt || Date.now(),
+                        createdAt: override.createdAt || Date.now(),
+                    };
+                    
+                    // 2. Save to templates table
+                    await db.templates.add(forkedTemplate);
+                    
+                    // 3. Migrate related Sessions
+                    await db.sessions.where('templateId').equals(oldId).modify({ templateId: newId });
+                    
+                    // 4. Migrate related History
+                    await db.history.where('templateId').equals(oldId).modify({ templateId: newId });
+                    
+                    // 5. Migrate related Images (Backgrounds)
+                    await db.images.where('relatedId').equals(oldId).modify({ relatedId: newId });
+                }
+                
+                // 6. Clear systemOverrides table (It is now deprecated but kept in schema for safety)
+                await db.systemOverrides.clear();
+            });
+        }
+        
+        localStorage.setItem(OVERRIDE_MIGRATION_KEY, 'true');
+        console.log('Overrides migration completed.');
     }
 
   } catch (error) {

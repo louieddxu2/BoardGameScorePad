@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { GameTemplate, GameSession, HistoryRecord } from '../../types';
 import { Plus, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, CloudCog, Loader2, Activity, CloudOff, History, Search, ChevronLeft } from 'lucide-react';
@@ -525,7 +527,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
                                                 onSystemCopy={(e) => handleCopySystemTemplate(t, e)}
                                                 onSystemRestore={(e) => { e.stopPropagation(); setRestoreTarget(t); }}
                                                 isCopied={copiedId === t.id}
-                                                systemOverride={!!systemOverrides[t.id]}
+                                                systemOverride={!!t.sourceTemplateId}
                                             />
                                         </div>
                                     );

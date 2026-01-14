@@ -1,4 +1,6 @@
 
+
+
 import { useState, useMemo, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
@@ -17,11 +19,16 @@ export const useAppQueries = (searchQuery: string) => {
   // Helper to merge prefs into templates (In-Memory)
   const mergePrefs = useCallback((template: GameTemplate, prefsMap: Record<string, TemplatePreference>) => {
       const pref = prefsMap[template.id];
-      if (!pref) return template;
+      // Also check if there are preferences for the source template (fallback)
+      // This is useful if preferences were set on the built-in before forking
+      const sourcePref = template.sourceTemplateId ? prefsMap[template.sourceTemplateId] : undefined;
+      
+      if (!pref && !sourcePref) return template;
+      
       return {
           ...template,
-          lastPlayerCount: pref.lastPlayerCount ?? template.lastPlayerCount,
-          defaultScoringRule: pref.defaultScoringRule ?? template.defaultScoringRule
+          lastPlayerCount: pref?.lastPlayerCount ?? sourcePref?.lastPlayerCount ?? template.lastPlayerCount,
+          defaultScoringRule: pref?.defaultScoringRule ?? sourcePref?.defaultScoringRule ?? template.defaultScoringRule
       };
   }, []);
 
@@ -29,15 +36,17 @@ export const useAppQueries = (searchQuery: string) => {
   const getTemplate = async (id: string): Promise<GameTemplate | null> => {
       let t = await db.templates.get(id);
       if (t) return mergePrefs(t, prefsMap);
-      t = await db.systemOverrides.get(id);
-      if (t) return mergePrefs(t, prefsMap);
+      
+      // Fallback to builtins if not found in user templates
+      // Note: We don't check systemOverrides anymore as it should be empty after migration
       t = await db.builtins.get(id);
       if (t) return mergePrefs(t, prefsMap);
+      
       return null;
   };
 
-  // A. User Templates (DB Search + Count + Limit)
-  const userTemplatesData = useLiveQuery(async () => {
+  // A. Fetch All Templates from DB (User + Forked System)
+  const allUserTemplatesData = useLiveQuery(async () => {
       let collection = db.templates.orderBy('updatedAt').reverse();
       
       if (searchQuery.trim()) {
@@ -45,9 +54,13 @@ export const useAppQueries = (searchQuery: string) => {
           collection = collection.filter(t => t.name.toLowerCase().includes(lowerQ));
       }
 
-      const count = await collection.count();
-      // [Optimization] We strip the heavy 'columns' array but calculate length for UI display
-      const items = await collection.limit(100).toArray(list => list.map(t => ({
+      // [Optimization] Fetch all available image IDs to check existence without loading blobs
+      const existingImageIds = await db.images.toCollection().primaryKeys();
+      const imageSet = new Set(existingImageIds);
+
+      // We fetch all to perform separation logic in memory
+      // Since Dexie doesn't support complex OR queries easily on non-indexed fields
+      const items = await collection.limit(200).toArray(list => list.map(t => ({
          id: t.id, 
          name: t.name, 
          updatedAt: t.updatedAt, 
@@ -59,22 +72,39 @@ export const useAppQueries = (searchQuery: string) => {
          lastSyncedAt: t.lastSyncedAt,
          description: t.description,
          columns: [], // Clear heavy data
-         globalVisuals: undefined,
+         globalVisuals: t.globalVisuals, // Keep visuals for icon detection
          lastPlayerCount: t.lastPlayerCount,
          defaultScoringRule: t.defaultScoringRule,
-         columnCount: t.columns?.length || 0 // Inject metadata for list display
+         columnCount: t.columns?.length || 0, // Inject metadata for list display
+         sourceTemplateId: t.sourceTemplateId, // Critical for separation
+         // [New] Inject local image status
+         _localImageAvailable: t.imageId ? imageSet.has(t.imageId) : false
       } as any as GameTemplate)));
 
-      return { count, items };
-  }, [searchQuery], { count: 0, items: [] });
+      return items;
+  }, [searchQuery], []);
 
-  const userTemplates = useMemo(() => {
-      return userTemplatesData.items.map(t => mergePrefs(t, prefsMap));
-  }, [userTemplatesData.items, prefsMap, mergePrefs]);
+  // Separate "Pure User Templates" and "Shadow Templates (Forks)"
+  const { userTemplates, shadowTemplatesMap } = useMemo(() => {
+      const user: GameTemplate[] = [];
+      const shadowMap: Record<string, GameTemplate> = {};
+      
+      allUserTemplatesData.forEach(t => {
+          if (t.sourceTemplateId) {
+              // It's a fork of a built-in
+              shadowMap[t.sourceTemplateId] = mergePrefs(t, prefsMap);
+          } else {
+              // It's a pure custom template
+              user.push(mergePrefs(t, prefsMap));
+          }
+      });
+      
+      return { userTemplates: user, shadowTemplatesMap: shadowMap };
+  }, [allUserTemplatesData, prefsMap, mergePrefs]);
   
-  // B. Built-in Templates (DB Search + Count + Limit)
+  // B. Built-in Templates
   const builtinsData = useLiveQuery(async () => {
-      let collection = db.builtins.toCollection(); // Default order
+      let collection = db.builtins.toCollection(); 
       
       if (searchQuery.trim()) {
           const lowerQ = searchQuery.toLowerCase();
@@ -87,29 +117,11 @@ export const useAppQueries = (searchQuery: string) => {
       return { count, items };
   }, [searchQuery], { count: 0, items: [] });
 
-  // C. System Overrides (Fetch All)
-  const rawDbOverrides = useLiveQuery(async () => {
-      return await db.systemOverrides.toArray(list => list.map(t => ({
-         id: t.id, 
-         name: t.name, 
-         updatedAt: t.updatedAt, 
-         createdAt: t.createdAt,
-         isPinned: t.isPinned,
-         hasImage: t.hasImage, 
-         imageId: t.imageId, 
-         cloudImageId: t.cloudImageId,
-         lastSyncedAt: t.lastSyncedAt,
-         columns: [], // Clear heavy data
-         globalVisuals: undefined,
-         columnCount: t.columns?.length || 0 // Inject metadata
-      } as any as GameTemplate)));
-  }, [], []);
-  
   // D. Active Sessions
   const activeSessions = useLiveQuery(() => db.sessions.where('status').equals('active').toArray(), [], []);
   const activeSessionIds = useMemo(() => activeSessions?.map(s => s.templateId) || [], [activeSessions]);
 
-  // E. History Records (DB Search + Count + Limit 100)
+  // E. History Records
   const historyData = useLiveQuery(async () => {
       let collection = db.history.orderBy('endTime').reverse();
 
@@ -134,41 +146,35 @@ export const useAppQueries = (searchQuery: string) => {
       return { count, items };
   }, [searchQuery], { count: 0, items: [] });
 
-  // F. Saved Lists (Limit 50)
+  // F. Saved Lists
   const savedPlayers = useLiveQuery(() => db.savedPlayers.orderBy('lastUsed').reverse().limit(50).toArray(), [], []);
   const savedLocations = useLiveQuery(() => db.savedLocations.orderBy('lastUsed').reverse().limit(50).toArray(), [], []);
 
   const playerHistory = useMemo(() => savedPlayers?.map(p => p.name) || [], [savedPlayers]);
   const locationHistory = useMemo(() => savedLocations?.map(l => l.name) || [], [savedLocations]);
 
-  // System Overrides Map
-  const systemOverrides = useMemo(() => {
-    const map: Record<string, GameTemplate> = {};
-    rawDbOverrides?.forEach(t => { map[t.id] = mergePrefs(t, prefsMap); });
-    return map;
-  }, [rawDbOverrides, prefsMap, mergePrefs]);
-
-  // Combined System Templates
+  // Combined System Templates (Masking Logic)
   const systemTemplates = useMemo(() => {
     return builtinsData.items.map(dt => {
-      if (systemOverrides[dt.id]) return systemOverrides[dt.id];
-      return mergePrefs(dt, prefsMap);
+      // Check if this built-in has a shadow fork
+      if (shadowTemplatesMap[dt.id]) {
+          return shadowTemplatesMap[dt.id]; // Return the fork (User modified version)
+      }
+      return mergePrefs(dt, prefsMap); // Return original
     });
-  }, [builtinsData.items, systemOverrides, prefsMap, mergePrefs]);
-
-  const templates = useMemo(() => userTemplates || [], [userTemplates]);
+  }, [builtinsData.items, shadowTemplatesMap, prefsMap, mergePrefs]);
 
   const getSessionPreview = (templateId: string): GameSession | null => {
       return activeSessions?.find(s => s.templateId === templateId) || null;
   };
 
   return {
-      templates,
-      userTemplatesCount: userTemplatesData.count,
+      templates: userTemplates,
+      userTemplatesCount: userTemplates.length,
       systemTemplates,
       systemTemplatesCount: builtinsData.count,
-      systemOverrides,
-      activeSessions, // Export raw array for Manager
+      systemOverrides: shadowTemplatesMap, // Expose map for UI to show "Modified" badges if needed
+      activeSessions,
       activeSessionIds,
       historyRecords: historyData.items,
       historyCount: historyData.count,

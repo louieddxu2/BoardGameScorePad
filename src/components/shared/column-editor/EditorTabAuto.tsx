@@ -186,7 +186,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
       onChange(updates);
   };
 
-  const insertToken = (token: string) => {
+  const insertToken = (token: string, cursorOffset: number = 0) => {
       if (isLocked) return;
       const input = inputRef.current;
       if (!input) return;
@@ -198,7 +198,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
       onChange({ formula: newVal });
       setTimeout(() => {
           input.focus();
-          const newPos = start + token.length;
+          const newPos = start + token.length + cursorOffset;
           input.setSelectionRange(newPos, newPos);
       }, 0);
   };
@@ -282,16 +282,16 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                     
                     {/* 已存在的函數 */}
                     {existingFuncs.map(f => (
-                        <button key={f} onMouseDown={e => e.preventDefault()} onClick={() => insertToken(`${f}(`)} className="px-3 py-2 bg-purple-900/30 border border-purple-500/30 text-purple-300 font-mono rounded-lg text-xs">
-                            {f}(
+                        <button key={f} onMouseDown={e => e.preventDefault()} onClick={() => insertToken(`${f}()`, -1)} className="px-3 py-2 bg-purple-900/30 border border-purple-500/30 text-purple-300 font-mono rounded-lg text-xs">
+                            {f}()
                         </button>
                     ))}
 
                     {/* 新增函數 */}
                     <button onMouseDown={e => e.preventDefault()} onClick={() => {
                         const nextId = existingFuncs.length > 0 ? Math.max(...existingFuncs.map(f => parseInt(f.substring(1)))) + 1 : 1;
-                        insertToken(`f${nextId}(`);
-                    }} className="px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-md border border-purple-500/50">fi(</button>
+                        insertToken(`f${nextId}()`, -1);
+                    }} className="px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-md border border-purple-500/50">fi()</button>
                 </div>
             </div>
         )}

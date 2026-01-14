@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { ContentLayout, Rect } from '../../types';
 import { X, RotateCcw, MousePointerClick } from 'lucide-react';
 import { cropImageToDataUrl } from '../../utils/imageProcessing';
+import { calculateDynamicFontSize } from '../../utils/dynamicLayout';
 
 interface LayoutEditorProps {
   initialLayout?: ContentLayout;
@@ -138,6 +139,10 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
       return aspectRatio || 3; 
   }, [cellRect, aspectRatio]);
 
+  // [Dynamic Layout] Calculate font size for the preview text "123"
+  const previewText = "123";
+  const dynamicFontSize = calculateDynamicFontSize([previewText]);
+
   return (
     <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
       {/* Fixed Height Modal */}
@@ -221,10 +226,19 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
                                 left: `${rect.x}%`,
                                 top: `${rect.y}%`,
                                 width: `${rect.width}%`,
-                                height: `${rect.height}%`
-                            }}
+                                height: `${rect.height}%`,
+                                containerType: 'size', // [Dynamic Layout] Enable Container Queries
+                            } as React.CSSProperties}
                         >
-                            <span className="text-emerald-500 font-bold text-xl select-none drop-shadow-md" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>123</span>
+                            <span 
+                                className="text-emerald-500 font-bold select-none drop-shadow-md" 
+                                style={{ 
+                                    fontSize: dynamicFontSize, // [Dynamic Layout] Apply calculated size
+                                    textShadow: '0 1px 2px rgba(0,0,0,0.8)' 
+                                }}
+                            >
+                                {previewText}
+                            </span>
                             <div className="absolute -bottom-6 left-0 bg-slate-800 text-white text-[10px] px-1 rounded whitespace-nowrap z-10 pointer-events-none">
                                 {Math.round(rect.width)}% x {Math.round(rect.height)}%
                             </div>

@@ -1,8 +1,11 @@
 
+
+
 import { useState, useCallback, useEffect } from 'react';
 import { googleDriveService, CloudFile, CloudResourceType } from '../services/googleDrive';
 import { useToast } from './useToast';
 import { GameTemplate, GameSession, HistoryRecord } from '../types';
+import { db } from '../db';
 
 export const useGoogleDrive = () => {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -161,6 +164,15 @@ export const useGoogleDrive = () => {
           await ensureConnection();
           showToast({ message: "正在下載歷史紀錄...", type: 'info' });
           const record = await googleDriveService.getFileContent(fileId, 'session.json');
+          
+          // [Logic] Conflict Resolution: History Trumps Active
+          // If we are restoring a history record, any local active session with this ID is obsolete.
+          const existingSession = await db.sessions.get(record.id);
+          if (existingSession) {
+              await db.sessions.delete(record.id);
+              console.log(`[Restore] Conflict resolution: Deleted local active session ${record.id} in favor of history record.`);
+          }
+
           setIsConnected(true);
           showToast({ message: "下載成功！", type: 'success' });
           return record;
@@ -418,13 +430,14 @@ export const useGoogleDrive = () => {
           await ensureConnection();
           await googleDriveService.ensureAppStructure();
 
-          const [cloudTemplates, cloudHistory, cloudActive] = await Promise.all([
+          // [Change] Removed fetching of Active Folder files for restore.
+          // We only fetch Templates and History.
+          const [cloudTemplates, cloudHistory] = await Promise.all([
               googleDriveService.listFoldersInParent(googleDriveService.templatesFolderId!),
               googleDriveService.listFoldersInParent(googleDriveService.historyFolderId!),
-              googleDriveService.listFoldersInParent(googleDriveService.activeFolderId!)
           ]);
 
-          const total = cloudTemplates.length + cloudHistory.length + cloudActive.length + 1;
+          const total = cloudTemplates.length + cloudHistory.length + 1;
           let processed = 0;
           onProgress(0, total);
 
@@ -450,7 +463,7 @@ export const useGoogleDrive = () => {
               return null;
           };
 
-          const processItem = async (file: CloudFile, type: 'template' | 'history' | 'active') => {
+          const processItem = async (file: CloudFile, type: 'template' | 'history') => {
               const id = getId(file.name);
               const cloudTime = Number(file.appProperties?.originalUpdatedAt || 0);
               let shouldDownload = true;
@@ -461,8 +474,6 @@ export const useGoogleDrive = () => {
                       localTime = localMeta.templates.get(id) || 0;
                   } else if (type === 'history' && localMeta.history.has(id)) {
                       localTime = localMeta.history.get(id) || 0;
-                  } else if (type === 'active' && localMeta.sessions.has(id)) {
-                      localTime = localMeta.sessions.get(id) || 0;
                   }
                   
                   if (localTime >= cloudTime && localTime > 0) {
@@ -478,9 +489,6 @@ export const useGoogleDrive = () => {
                       } else if (type === 'history') {
                           const data = await googleDriveService.getFileContent(file.id, 'session.json');
                           await onItemRestored('history', data);
-                      } else if (type === 'active') {
-                          const data = await googleDriveService.getFileContent(file.id, 'session.json');
-                          await onItemRestored('session', data);
                       }
                       successCount++;
                   } else {
@@ -515,13 +523,7 @@ export const useGoogleDrive = () => {
               await Promise.all(chunk.map(f => processItem(f, 'history')));
           }
 
-          const activeChunks = [];
-          for (let i = 0; i < cloudActive.length; i += CHUNK_SIZE) {
-              activeChunks.push(cloudActive.slice(i, i + CHUNK_SIZE));
-          }
-          for (const chunk of activeChunks) {
-              await Promise.all(chunk.map(f => processItem(f, 'active')));
-          }
+          // [Change] Removed Active Session Restore Chunks
 
           if (failedItems.length > 0) {
               onError(failedItems);
