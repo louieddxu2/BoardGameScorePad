@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import ErrorBoundary from './src/components/shared/ErrorBoundary';
 import { ToastProvider } from './src/hooks/useToast';
+import { LanguageProvider } from './src/i18n'; // Import i18n provider
 import './src/index.css';
 
 // [Requirement] Force reset the cloud connection preference on App boot / Refresh.
@@ -19,9 +20,11 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <ErrorBoundary>
-      <ToastProvider>
-        <App />
-      </ToastProvider>
+      <LanguageProvider>
+        <ToastProvider>
+          <App />
+        </ToastProvider>
+      </LanguageProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );
