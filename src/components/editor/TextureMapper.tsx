@@ -20,19 +20,29 @@ interface TextureMapperProps {
   onSave: (template: GameTemplate) => void;
   onCancel: () => void;
   allTemplates: GameTemplate[];
-  aspectRatio: number; // [New] Aspect ratio of the rectified image
+  aspectRatio: number; 
 }
 
-const DRAWER_BOUNDARY_X = 128; // w-28 (7rem=112px) + left-4 (1rem=16px)
+const DRAWER_BOUNDARY_X = 128; 
 
 const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, initialColumnCount, onSave, onCancel, allTemplates, aspectRatio }) => {
   // --- Core State ---
   // Default bounds: Top 0%, Bottom 100%, Left 0%, Right 100%
   const [gridBounds, setGridBounds] = useState<GridBounds>({ top: 0, bottom: 100, left: 0, right: 100 });
-  const [hLines, setHLines] = useState<number[]>([]);
+  
+  // [Fix] Initialize hLines synchronously to avoid race condition causing 0 rows
+  const [hLines, setHLines] = useState<number[]>(() => {
+    const totalRows = initialColumnCount + 2; 
+    const rowHeight = 100 / totalRows;
+    return Array.from({ length: initialColumnCount + 1 }, (_, i) => (i + 1) * rowHeight);
+  });
+
   const [vLines, setVLines] = useState<number[]>([25, 50]);
   const [headerSepIdx, setHeaderSepIdx] = useState<number>(1);
-  const [totalSepIdx, setTotalSepIdx] = useState<number>(2);
+  
+  // [Fix] Initialize totalSepIdx synchronously to match hLines
+  const [totalSepIdx, setTotalSepIdx] = useState<number>(initialColumnCount + 1);
+
   const [phase, setPhase] = useState<'grid' | 'structure'>('grid');
   const [activeLine, setActiveLine] = useState<{ type: 'h' | 'v' | 'bound', index: number, boundType?: 'top'|'bottom'|'left'|'right' } | null>(null);
   const [transform, setTransform] = useState<ViewTransform>({ x: 0, y: 0, scale: 1 });
@@ -58,7 +68,6 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
   const imgRef = useRef<HTMLImageElement>(null);
   const { showToast } = useToast();
 
-  // [Fix]: Filter out lines that are outside the bounds to prevent calculation errors
   const sortedHLines = useMemo(() => {
       const valid = hLines.filter(y => y > gridBounds.top + 0.5 && y < gridBounds.bottom - 0.5);
       return Array.from(new Set([gridBounds.top, ...valid, gridBounds.bottom])).sort((a, b) => a - b);
@@ -70,28 +79,27 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
   }, [vLines, gridBounds.left, gridBounds.right]);
   
   // --- Logic Effects ---
-  useEffect(() => {
-    // Initialize horizontal lines distributed within the default bounds (0-100)
-    // When re-initializing, we distribute them evenly
-    const totalRows = initialColumnCount + 2; 
-    const rowHeight = 100 / totalRows;
-    const initialHLines = Array.from({ length: initialColumnCount + 1 }, (_, i) => (i + 1) * rowHeight);
-    setHLines(initialHLines);
-    setTotalSepIdx(initialColumnCount + 1); 
-  }, [initialColumnCount]);
+  
+  // [Fix] Removed useEffect for hLines initialization since it's now done in useState lazy initializer.
+  // This prevents the "flash of empty lines" that caused rowCount to drop to 0.
 
   useEffect(() => {
     if (phase === 'grid') {
+      // Auto-adjust Total Separator to be the last line if user deletes/adds lines
+      // We assume the last line is always the Total Row separator
       const lastUserLineIdx = Math.max(1, sortedHLines.length - 2);
-      setTotalSepIdx(lastUserLineIdx);
+      
+      // Only auto-update if it looks like we are in a valid state (more than just bounds)
+      if (sortedHLines.length > 2) {
+          setTotalSepIdx(lastUserLineIdx);
+      }
+      
       if (headerSepIdx > lastUserLineIdx) {
         setHeaderSepIdx(1);
       }
     }
   }, [sortedHLines.length, phase, headerSepIdx]);
 
-  // [Critical Fix]: Only reset mapping if the IMPORTED TEMPLATE ID changes or Grid size changes
-  // Using importedTemplate?.id instead of importedTemplate object reference prevents unnecessary resets
   useEffect(() => {
     if (importedTemplate) {
       setRowMapping(new Array(rowCount).fill(null).map(() => []));
@@ -100,9 +108,7 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
     }
   }, [importedTemplate?.id, rowCount]);
 
-  // [Critical Fix]: Handler to fetch FULL template data
   const handleTemplateSelect = async (selectedShallow: GameTemplate) => {
-      // If columns are missing (shallow copy), fetch full from DB
       if (!selectedShallow.columns || selectedShallow.columns.length === 0) {
           try {
               let full = await db.templates.get(selectedShallow.id);
@@ -112,7 +118,6 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
               if (full) {
                   setImportedTemplate(full);
               } else {
-                  // Fallback: use shallow if DB fetch fails (unlikely)
                   setImportedTemplate(selectedShallow);
                   showToast({ message: "警告：無法讀取完整模板資料", type: 'warning' });
               }
@@ -188,9 +193,7 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
     handleDropOnRow,
     isDraggingCanvas, lastPanPoint, startPinchDist, startPinchScale,
     containerRef, contentRef,
-    // New props for bounds
     gridBounds, setGridBounds,
-    // Pass raw lines for constraint checking
     hLines, vLines
   });
 
@@ -228,32 +231,25 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
 
   const addLine = (type: 'h') => {
     if (type === 'h') setHLines(prev => { 
-        // 1. 取得所有參考線 (頂部邊界 + 內部線條)，排除底部邊界
         // Important: Filter only lines within current bounds to calculate next position correctly
         const refLines = [gridBounds.top, ...prev.filter(y => y > gridBounds.top && y < gridBounds.bottom)].sort((a, b) => a - b);
         
         let nextPos;
 
         if (refLines.length >= 2) {
-            // 2. 抓取最後兩條線的間距
             const last = refLines[refLines.length - 1];
             const secondLast = refLines[refLines.length - 2];
             const gap = last - secondLast;
-            
-            // 3. 預測下一條線的位置
             nextPos = last + gap;
         } else {
-            // 初始狀態 fallback
             nextPos = gridBounds.top + (gridBounds.bottom - gridBounds.top) / (initialColumnCount + 1);
         }
 
-        // 4. 邊界檢查：若超出底部邊界，則改為取剩餘空間的一半
         if (nextPos >= gridBounds.bottom - 0.5) {
             const lastLine = refLines[refLines.length - 1];
             nextPos = lastLine + (gridBounds.bottom - lastLine) / 2;
         }
 
-        // 確保數值有效
         if (Number.isNaN(nextPos) || nextPos <= gridBounds.top) {
              nextPos = (gridBounds.top + gridBounds.bottom) / 2;
         }
@@ -276,7 +272,7 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
           headerSepIdx, totalSepIdx, dataColIdx, sortedHLines, sortedVLines,
           imgRef.current.naturalWidth, imgRef.current.naturalHeight,
           gridBounds,
-          aspectRatio // Pass ratio to builder
+          aspectRatio 
       );
 
       onSave(newTemplate);
@@ -285,7 +281,7 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
 
   const contextValue = {
       hLines, setHLines, vLines, setVLines, sortedHLines, sortedVLines,
-      gridBounds, setGridBounds, // Exposed
+      gridBounds, setGridBounds,
       headerSepIdx, setHeaderSepIdx, totalSepIdx, setTotalSepIdx,
       phase, setPhase,
       importedTemplate, setImportedTemplate, rowMapping, setRowMapping,

@@ -1,6 +1,4 @@
 
-
-
 import React, { useEffect, useState } from 'react';
 import { Player, ScoreColumn, ScoreValue } from '../../../types';
 import { calculateColumnScore, getAutoColumnError, resolveSelectOption } from '../../../utils/scoring';
@@ -71,18 +69,16 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
   // Auto columns always show value if they are calculated
   const hasInput = column.isAuto ? true : parts.length > 0;
   
-  // [Internal Logic] If we have a valid texture configuration, we override the default minHeight.
-  // This allows the row height to be governed solely by the Header Block's aspect ratio,
-  // preventing the "3rem" default from stretching the row unnecessarily.
-  const hasTexture = !!(baseImage && rect);
-  const effectiveMinHeight = hasTexture ? '0px' : minHeight;
+  // [Robustness Fix] Determine if texture is successfully loaded or intentionally skipped (overlay)
+  const hasValidTexture = !!(bgUrl || skipTextureRendering);
+  const effectiveMinHeight = hasValidTexture ? '0px' : minHeight;
 
   useEffect(() => {
     if (skipTextureRendering) return; // Optimization: Don't load texture if skipped
     
     let isMounted = true;
     getSmartTextureUrl(baseImage, rect, playerIndex, limitX).then((url) => {
-        if (isMounted) setBgUrl(url);
+        if (isMounted) setBgUrl(url || null);
     });
     return () => { isMounted = false; };
   }, [baseImage, rect, playerIndex, limitX, skipTextureRendering]);

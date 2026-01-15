@@ -42,6 +42,8 @@ export interface UIState {
   isScannerOpen: boolean;
   scannerInitialImage: string | null;
   scannerFixedRatio?: number;
+  
+  isTextureMapperOpen: boolean; // [New] Grid Editor State
 
   advanceDirection: 'horizontal' | 'vertical';
   overwriteMode: boolean;
@@ -71,6 +73,7 @@ export const useSessionState = (props: SessionViewProps) => {
       isImageUploadModalOpen: false,
       isScannerOpen: false,
       scannerInitialImage: null,
+      isTextureMapperOpen: false, // Default closed
       advanceDirection: savedDirection || 'vertical', // Default to vertical if no preference saved
       overwriteMode: true,
       isInputFocused: false,

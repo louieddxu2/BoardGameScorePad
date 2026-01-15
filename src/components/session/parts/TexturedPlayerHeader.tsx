@@ -48,7 +48,7 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
     let isMounted = true;
     if (baseImage && rect) {
         getSmartTextureUrl(baseImage, rect, playerIndex, limitX).then((url) => {
-            if (isMounted) setBgUrl(url);
+            if (isMounted) setBgUrl(url || null);
         });
     } else {
         setBgUrl(null);
@@ -70,16 +70,12 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
       backgroundColor: bgUrl ? 'transparent' : (isTransparent ? 'transparent' : `${effectiveColor}20`),
       borderBottomColor: isTransparent ? 'transparent' : effectiveColor,
       borderBottomWidth: isTransparent ? '0px' : '2px',
-      // [Fix]: When texture is present, remove min-height constraint to let aspect-ratio drive the height
-      minHeight: hasTexture ? '0px' : undefined,
+      // [Fix]: When texture is present (bgUrl loaded), remove min-height constraint to let aspect-ratio drive the height.
+      // Otherwise, let the flex container dictate height or fallback to default.
+      minHeight: bgUrl ? '0px' : undefined,
       ...style,
   };
   
-  // [Change]: Removed aspect-ratio constraint.
-  // This allows the player header to stretch horizontally (filling flex space)
-  // without forcing a huge vertical height. The height will be determined by the 
-  // sibling "Top Left Block" (TexturedBlock) which DOES maintain aspect ratio.
-
   const inkStyle: React.CSSProperties = bgUrl ? {
       fontFamily: '"Kalam", "Caveat", cursive',
       color: 'rgba(28, 35, 51, 0.95)',

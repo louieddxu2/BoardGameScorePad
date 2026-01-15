@@ -88,7 +88,7 @@ export const useSessionMedia = ({
   };
 
   // [Handler] Handle Scanner Result
-  const handleScannerConfirm = async (result: { processed: string, raw: string, blob?: Blob }) => {
+  const handleScannerConfirm = async (result: { processed: string, raw: string, blob?: Blob, intent?: 'save' | 'edit_grid' }) => {
       if (result.blob) {
           onUpdateImage(result.blob);
       } else {
@@ -96,14 +96,20 @@ export const useSessionMedia = ({
           const blob = await (await fetch(result.processed)).blob();
           onUpdateImage(blob);
       }
-      setUiState(p => ({ ...p, isScannerOpen: false, scannerInitialImage: null }));
-      showToast({ message: "背景圖片已更新", type: 'success' });
       
-      // [Feature] Tip for Edit Mode
-      if (isEditMode) {
-          setTimeout(() => {
-              showToast({ message: "提醒：部分計分紙需點選上方鎖定至使用模式才能獲得完整體驗", type: 'info', duration: 5000 });
-          }, 800);
+      if (result.intent === 'edit_grid') {
+          // Keep scanner closed, but open Texture Mapper
+          setUiState(p => ({ ...p, isScannerOpen: false, scannerInitialImage: null, isTextureMapperOpen: true }));
+      } else {
+          setUiState(p => ({ ...p, isScannerOpen: false, scannerInitialImage: null }));
+          showToast({ message: "背景圖片已更新", type: 'success' });
+          
+          // [Feature] Tip for Edit Mode
+          if (isEditMode) {
+              setTimeout(() => {
+                  showToast({ message: "提醒：部分計分紙需點選上方鎖定至使用模式才能獲得完整體驗", type: 'info', duration: 5000 });
+              }, 800);
+          }
       }
   };
 

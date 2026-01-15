@@ -106,15 +106,17 @@ export const useSessionEvents = (
 
       // 10. Default: Open Exit Confirmation
       // Check if we need to confirm or just exit
-      const hasScores = session.players.some(p => 
+      const hasData = session.players.some(p => 
           Object.keys(p.scores).length > 0 || 
           (p.bonusScore || 0) !== 0 ||
           p.tieBreaker ||
-          p.isForceLost
+          p.isForceLost ||
+          !p.id.startsWith('sys_player_') || // Name changed (Custom Player)
+          p.isStarter // Starter set
       );
       const hasPhotos = (session.photos && session.photos.length > 0);
 
-      if (hasScores || hasPhotos) {
+      if (hasData || hasPhotos) {
           setUiState(p => ({ ...p, isSessionExitModalOpen: true }));
       } else {
           onExit();

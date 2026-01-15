@@ -156,7 +156,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
     let isMounted = true;
     if (baseImage && rect) {
         getSmartTextureUrl(baseImage, rect, playerIndex, limitX).then((url) => {
-            if (isMounted) setBgUrl(url);
+            if (isMounted) setBgUrl(url || null);
         });
     } else {
         setBgUrl(null);
@@ -167,17 +167,23 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
   // --- Logic ---
   const hasTexture = !!(baseImage && rect);
   
-  const effectiveColor = player.color;
+  // [Fix] Fallback color logic for standard mode (copied from TexturedPlayerHeader)
+  // If no baseImage is loaded, force a fallback color even if player is transparent
+  const isFallbackMode = !baseImage;
+  const effectiveColor = (isFallbackMode && player.color === 'transparent') 
+      ? COLORS[playerIndex % COLORS.length] 
+      : player.color;
+
   const isTransparent = effectiveColor === 'transparent';
   const uiColor = isTransparent ? COLORS[playerIndex % COLORS.length] : effectiveColor;
 
   const containerStyle: React.CSSProperties = {
-      backgroundColor: hasTexture ? 'transparent' : (isTransparent ? 'transparent' : `${effectiveColor}20`),
+      backgroundColor: bgUrl ? 'transparent' : (isTransparent ? 'transparent' : `${effectiveColor}20`),
       borderTopColor: isTransparent ? 'transparent' : effectiveColor,
       borderTopWidth: isTransparent || hasTexture ? '0px' : '2px',
-      // [Fix]: Set minHeight to 0px if texture is present to respect Aspect Ratio and avoid stretching. 
-      // Otherwise default to 2.5rem to match TotalsBar.
-      minHeight: hasTexture ? '0px' : '2.5rem', 
+      // [Fix]: Set minHeight to 0px if texture is successfully loaded.
+      // Otherwise default to 2.5rem to match TotalsBar standard height.
+      minHeight: bgUrl ? '0px' : '2.5rem', 
       ...style,
   };
 
@@ -187,7 +193,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
   const hasBonus = !!player.bonusScore;
   const isForceLost = !!player.isForceLost;
 
-  const inkStyle: React.CSSProperties = hasTexture ? {
+  const inkStyle: React.CSSProperties = bgUrl ? {
       fontFamily: '"Kalam", "Caveat", cursive',
       color: isForceLost ? 'rgba(100, 116, 139, 0.5)' : 'rgba(28, 35, 51, 0.95)',
       transform: `rotate(${((player.id.charCodeAt(0)) % 5) - 2}deg)`,
@@ -221,7 +227,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
       key={player.id}
       ref={cellRef}
       className={`player-col-${player.id} flex-none min-w-[3.375rem] flex flex-col items-center justify-center relative overflow-visible group 
-        ${!hasTexture ? 'border-r border-slate-800' : ''} 
+        ${!bgUrl ? 'border-r border-slate-800' : ''} 
         ${onClick ? 'cursor-pointer hover:bg-white/5' : ''} 
         ${className}`}
       style={containerStyle}
@@ -266,7 +272,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
           />
       )}
 
-      {hasTexture && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(0,0,0,0.05)] pointer-events-none z-0" />}
+      {bgUrl && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(0,0,0,0.05)] pointer-events-none z-0" />}
     </div>
   );
 };

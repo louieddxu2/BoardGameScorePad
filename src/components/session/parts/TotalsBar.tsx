@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { GameTemplate, Player } from '../../../types';
 import TexturedTotalCell from './TexturedTotalCell';
-import TexturedBlock from './TexturedBlock'; // Import the new component
+import TexturedBlock from './TexturedBlock';
 
 interface TotalsBarProps {
   players: Player[];
@@ -38,6 +38,10 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
   const [imageDims, setImageDims] = useState<{width: number, height: number} | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
+  // [Simplified Logic] Mode depends strictly on baseImage presence.
+  const isTextureMode = !!baseImage;
+
+  // Load dims if image exists (for width calculation)
   useEffect(() => {
       if (baseImage) {
           const img = new Image();
@@ -66,10 +70,12 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
   }, [scrollRef]);
 
   const itemColStyle = useMemo(() => {
-      // 1. Texture Mode: Strictly follow aspect ratio logic
-      if (baseImage && imageDims && template?.globalVisuals?.totalLabelRect) {
+      // 1. Texture Mode: Use loaded dimensions
+      // [FIX] totalLabelRect.width is now normalized (0-1). Do not divide by imageDims.width.
+      if (isTextureMode && imageDims && template?.globalVisuals?.totalLabelRect) {
           const { totalLabelRect } = template.globalVisuals;
-          const itemColProportion = totalLabelRect.width / imageDims.width;
+          // Direct proportion (0-1)
+          const itemColProportion = totalLabelRect.width;
           const scaledWidth = containerWidth * itemColProportion * zoomLevel;
           return { 
               width: `${scaledWidth}px`, 
@@ -78,7 +84,7 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
           };
       }
       
-      // 2. Standard Mode: Dynamic calculation
+      // 2. Standard Mode or Texture Mode (loading): Dynamic calculation
       if (containerWidth > 0) {
           const width = Math.max(70, containerWidth / (players.length + 2));
           return { width: `${width}px`, minWidth: `${width}px`, flexShrink: 0 };
@@ -86,20 +92,19 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
 
       return { width: '70px', minWidth: '70px', flexShrink: 0 }; // Fallback
 
-  }, [baseImage, imageDims, template?.globalVisuals, containerWidth, zoomLevel, players.length]);
+  }, [isTextureMode, imageDims, template?.globalVisuals, containerWidth, zoomLevel, players.length]);
 
   return (
     <div
       id="live-totals-bar"
-      className={`absolute left-0 right-0 border-t border-slate-700 flex z-30 overflow-hidden shadow-[0_-4px_10px_rgba(0,0,0,0.5)] transition-all duration-300 ease-in-out ${isPanelOpen ? 'bg-slate-900/75 backdrop-blur' : 'bg-slate-900'} ${isHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'} ${baseImage ? 'min-h-0' : 'min-h-[2.5rem]'}`}
+      className={`absolute left-0 right-0 border-t border-slate-700 flex z-30 overflow-hidden shadow-[0_-4px_10px_rgba(0,0,0,0.5)] transition-all duration-300 ease-in-out ${isPanelOpen ? 'bg-slate-900/75 backdrop-blur' : 'bg-slate-900'} ${isHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'} ${isTextureMode ? 'min-h-0' : 'min-h-[2.5rem]'}`}
       style={{ bottom: panelHeight }}
     >
       <TexturedBlock 
         baseImage={baseImage}
         rect={template?.globalVisuals?.totalLabelRect}
         fallbackContent={<span className="font-black text-emerald-400 text-sm">總分</span>}
-        // [Modified] Removed w-[70px], relying entirely on itemColStyle to support dynamic width
-        className={`bg-slate-800 border-r border-slate-700 flex items-center justify-center shrink-0 z-40 relative border-t-2 border-transparent ${baseImage ? 'p-0' : 'p-2'}`}
+        className={`bg-slate-800 border-r border-slate-700 flex items-center justify-center shrink-0 z-40 relative border-t-2 ${isTextureMode ? 'p-0 border-transparent' : 'p-2 border-slate-700'}`}
         style={itemColStyle}
       />
       <div className="flex-1 overflow-hidden" ref={scrollRef}>

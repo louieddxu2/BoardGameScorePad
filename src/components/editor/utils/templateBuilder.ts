@@ -1,11 +1,12 @@
 
 import { GameTemplate, ScoreColumn, Rect } from '../../../types';
 import { GridBounds } from '../TextureMapperContext';
+import { generateId } from '../../../utils/idGenerator';
 
 // Helper to round to 3 decimal places
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
 
-// Helper to round to 6 decimal places
+// Helper to round to 6 decimal places (for 0-1 percentages)
 const round6 = (n: number) => Math.round(n * 1000000) / 1000000;
 
 export const buildTemplateFromTextureMap = (
@@ -24,6 +25,8 @@ export const buildTemplateFromTextureMap = (
   gridBounds: GridBounds, // New parameter
   aspectRatio: number // [New]
 ): GameTemplate => {
+  
+  // [Refactor] Now returns Normalized Coordinates (0.0 to 1.0) instead of Pixels
   const getRect = (rIdx: number, cIdx: number): Rect | undefined => {
     if (rIdx < 0 || cIdx < 0 || rIdx >= sortedHLines.length - 1 || cIdx >= sortedVLines.length - 1) return undefined;
     const y1 = sortedHLines[rIdx];
@@ -31,52 +34,62 @@ export const buildTemplateFromTextureMap = (
     const x1 = sortedVLines[cIdx];
     const x2 = sortedVLines[cIdx + 1];
     
-    // Calculate raw pixel values
-    const rawX = (x1 / 100) * naturalWidth;
-    const rawY = (y1 / 100) * naturalHeight;
-    const rawW = ((x2 - x1) / 100) * naturalWidth;
-    const rawH = ((y2 - y1) / 100) * naturalHeight;
+    // Inputs (lines) are 0-100 percentages.
+    // Convert to 0-1 normalized values directly.
+    const normX = x1 / 100;
+    const normY = y1 / 100;
+    const normW = (x2 - x1) / 100;
+    const normH = (y2 - y1) / 100;
 
-    // Apply rounding
+    // Apply high precision rounding
     return {
-      x: round3(rawX),
-      y: round3(rawY),
-      width: round3(rawW),
-      height: round3(rawH),
+      x: round6(normX),
+      y: round6(normY),
+      width: round6(normW),
+      height: round6(normH),
     };
   };
 
-  // Helper to generate Mask Rects
+  // Helper to generate Mask Rects (Normalized 0-1)
   const getMaskRect = (type: 'top' | 'bottom' | 'left' | 'right'): Rect | undefined => {
+      // gridBounds are 0-100
+      
       if (type === 'top' && gridBounds.top > 0) {
-          return { x: 0, y: 0, width: naturalWidth, height: round3((gridBounds.top / 100) * naturalHeight) };
+          return { 
+              x: 0, 
+              y: 0, 
+              width: 1, // Full width 
+              height: round6(gridBounds.top / 100) 
+          };
       }
       if (type === 'bottom' && gridBounds.bottom < 100) {
-          const topY = round3((gridBounds.bottom / 100) * naturalHeight);
-          return { x: 0, y: topY, width: naturalWidth, height: naturalHeight - topY };
-      }
-      if (type === 'left' && gridBounds.left > 0) {
-          // Left mask is strictly the area to the left of the grid, 
-          // bounded vertically by the grid's top/bottom to avoid overlap with top/bottom masks.
-          const topY = round3((gridBounds.top / 100) * naturalHeight);
-          const bottomY = round3((gridBounds.bottom / 100) * naturalHeight);
+          const topY = round6(gridBounds.bottom / 100);
           return { 
               x: 0, 
               y: topY, 
-              width: round3((gridBounds.left / 100) * naturalWidth), 
-              height: bottomY - topY 
+              width: 1, 
+              height: round6(1 - topY) 
+          };
+      }
+      if (type === 'left' && gridBounds.left > 0) {
+          const topY = round6(gridBounds.top / 100);
+          const bottomY = round6(gridBounds.bottom / 100);
+          return { 
+              x: 0, 
+              y: topY, 
+              width: round6(gridBounds.left / 100), 
+              height: round6(bottomY - topY) 
           };
       }
       if (type === 'right' && gridBounds.right < 100) {
-          // Right mask
-          const topY = round3((gridBounds.top / 100) * naturalHeight);
-          const bottomY = round3((gridBounds.bottom / 100) * naturalHeight);
-          const leftX = round3((gridBounds.right / 100) * naturalWidth);
+          const topY = round6(gridBounds.top / 100);
+          const bottomY = round6(gridBounds.bottom / 100);
+          const leftX = round6(gridBounds.right / 100);
           return {
               x: leftX,
               y: topY,
-              width: naturalWidth - leftX,
-              height: bottomY - topY
+              width: round6(1 - leftX),
+              height: round6(bottomY - topY)
           };
       }
       return undefined;
@@ -95,7 +108,8 @@ export const buildTemplateFromTextureMap = (
         const sourceCol = importedTemplate!.columns.find(c => c.id === sourceColId);
         if (sourceCol) {
           const newCol: ScoreColumn = JSON.parse(JSON.stringify(sourceCol));
-          newCol.id = crypto.randomUUID();
+          // [Fix] Keep original ID when mapping existing template to support "Edit Grid" flow
+          newCol.id = sourceCol.id;
           // All columns from the same row share the same visual rects
           newCol.visuals = { headerRect: getRect(targetRowIdx, 0), cellRect: getRect(targetRowIdx, dataColIdx) };
           finalColumns.push(newCol);
@@ -139,13 +153,15 @@ export const buildTemplateFromTextureMap = (
   }
   
   const newTemplate: GameTemplate = {
-    id: crypto.randomUUID(),
+    // [Fix] Always generate a new ID to prevent linking to imported template's images.
+    // If this is an update to an existing template, the parent component will override this ID.
+    id: generateId(),
     name: initialName,
     columns: finalColumns,
     createdAt: Date.now(),
     hasImage: true,
     globalVisuals: {
-      aspectRatio: round6(aspectRatio), // [Modified] Apply rounding
+      aspectRatio: round6(aspectRatio), 
       playerLabelRect: getRect(Math.max(0, headerSepIdx - 1), 0),
       playerHeaderRect: getRect(Math.max(0, headerSepIdx - 1), dataColIdx),
       totalRowRect: getRect(totalSepIdx, dataColIdx),

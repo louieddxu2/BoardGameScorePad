@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { GameTemplate, GameSession, HistoryRecord } from '../../../types';
-import { DownloadCloud, X, FolderOpen, Trash2, RefreshCw, UploadCloud, Download, FileJson, Clock, RefreshCcw, Activity, LayoutGrid, History, HardDriveUpload, Loader2, AlertTriangle, CloudOff, Cloud, ArrowRightLeft } from 'lucide-react';
+import { DownloadCloud, X, FolderOpen, Trash2, RefreshCw, UploadCloud, Download, FileJson, Clock, RefreshCcw, Activity, LayoutGrid, History, HardDriveUpload, Loader2, AlertTriangle, CloudOff, Cloud, ArrowRightLeft, Smartphone, ShieldCheck, Save } from 'lucide-react';
 import { CloudFile, CloudResourceType } from '../../../services/googleDrive';
 import ConfirmationModal from '../../shared/ConfirmationModal';
 import { useToast } from '../../../hooks/useToast';
@@ -543,7 +543,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
           
           {/* Main Content Area */}
           {!isConnected ? (
-              // Offline State
+              // Offline State with Benefit-Driven Copy
               <div className="flex flex-col items-center justify-center h-full gap-6 animate-in fade-in zoom-in-95 duration-300">
                   <div className="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center border-4 border-slate-700 relative">
                       <DownloadCloud size={48} className="text-slate-500 opacity-50" />
@@ -552,9 +552,54 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                       </div>
                   </div>
                   <div className="text-center space-y-2">
-                      <h4 className="text-lg font-bold text-white">尚未連線</h4>
-                      <p className="text-sm text-slate-400 max-w-[200px]">請登入 Google Drive 以存取您的雲端備份。</p>
+                      <h4 className="text-lg font-bold text-white">
+                          {/* [EDIT HERE] 標題文字 */}
+                          啟用完整功能
+                      </h4>
+                      <p className="text-sm text-slate-400 max-w-[200px]">
+                          {/* [EDIT HERE] 副標題/說明文字 */}
+                          連線 Google Drive 以解鎖雲端同步與自動備份。
+                      </p>
                   </div>
+
+                  {/* Feature Benefit List - 您可以在此處自定義內容 */}
+                  <div className="w-full max-w-[260px] bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 text-xs space-y-3 text-left">
+                      
+                      {/* 項目 1 */}
+                      <div className="flex items-start gap-2">
+                          <div className="p-1 bg-emerald-500/20 rounded text-emerald-400 shrink-0"><Save size={12}/></div>
+                          <div>
+                              {/* [EDIT HERE] 項目標題 */}
+                              <strong className="text-slate-200 block mb-0.5">自動雲端備份</strong>
+                              {/* [EDIT HERE] 項目說明 */}
+                              <span className="text-slate-400 leading-tight">確保您的計分紀錄與自訂模板永不遺失。</span>
+                          </div>
+                      </div>
+
+                      {/* 項目 2 */}
+                      <div className="flex items-start gap-2">
+                          <div className="p-1 bg-sky-500/20 rounded text-sky-400 shrink-0"><Smartphone size={12}/></div>
+                          <div>
+                              {/* [EDIT HERE] 項目標題 */}
+                              <strong className="text-slate-200 block mb-0.5">跨裝置同步</strong>
+                              {/* [EDIT HERE] 項目說明 */}
+                              <span className="text-slate-400 leading-tight">在手機、平板或電腦間無縫切換進度。</span>
+                          </div>
+                      </div>
+
+                      {/* 項目 3 */}
+                      <div className="flex items-start gap-2">
+                          <div className="p-1 bg-indigo-500/20 rounded text-indigo-400 shrink-0"><FolderOpen size={12}/></div>
+                          <div>
+                              {/* [EDIT HERE] 項目標題 */}
+                              <strong className="text-slate-200 block mb-0.5">專屬檔案空間</strong>
+                              {/* [EDIT HERE] 項目說明 */}
+                              <span className="text-slate-400 leading-tight">僅存取本 App 建立的備份檔，保障隱私。</span>
+                          </div>
+                      </div>
+
+                  </div>
+
                   <button 
                       onClick={handleConnect} 
                       disabled={isLoading}

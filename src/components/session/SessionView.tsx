@@ -5,7 +5,6 @@ import { useSessionState, ScreenshotLayout } from './hooks/useSessionState';
 import { useSessionEvents } from './hooks/useSessionEvents';
 import { useSessionMedia } from './hooks/useSessionMedia';
 import { useToast } from '../../hooks/useToast';
-import { Upload, X, Image as ImageIcon, DownloadCloud, Camera, Save, ScanLine, Aperture, Trash2 } from 'lucide-react';
 
 // Parts
 import SessionHeader from './parts/SessionHeader';
@@ -19,7 +18,8 @@ import ColumnConfigEditor from '../shared/ColumnConfigEditor';
 import AddColumnModal from './modals/AddColumnModal';
 import SessionExitModal from './modals/SessionExitModal';
 import PhotoGalleryModal from './modals/PhotoGalleryModal';
-import PhotoScanner from '../scanner/PhotoScanner';
+import SessionBackgroundModal from './modals/SessionBackgroundModal';
+import SessionImageFlow from './SessionImageFlow'; // [New Import]
 
 interface SessionViewProps {
   session: GameSession;
@@ -45,7 +45,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   // No special local state needed for photo preview anymore
   const eventHandlers = useSessionEvents(props, sessionState);
   
-  // [Refactor] Media Logic extracted to Hook
+  // Media Logic
   const media = useSessionMedia({
       session,
       template,
@@ -54,7 +54,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       onUpdateTemplate: props.onUpdateTemplate,
       onUpdateImage: props.onUpdateImage,
       setUiState,
-      isEditMode: sessionState.uiState.isEditMode // Pass isEditMode state
+      isEditMode: sessionState.uiState.isEditMode
   });
 
   const { showToast } = useToast();
@@ -76,8 +76,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     isPhotoGalleryOpen,
     isImageUploadModalOpen,
     isScannerOpen,
-    scannerInitialImage,
-    scannerFixedRatio // [New]
+    isTextureMapperOpen
   } = sessionState.uiState;
 
   const isPanelOpen = editingCell !== null || editingPlayerId !== null;
@@ -210,67 +209,29 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         overlayData={overlayData} // Pass context for score overlay
       />
 
-      {/* Scanner Overlay */}
-      {isScannerOpen && (
-          <PhotoScanner 
-              onClose={() => setUiState(p => ({ ...p, isScannerOpen: false, scannerInitialImage: null }))} 
-              onConfirm={media.handleScannerConfirm}
-              initialImage={scannerInitialImage || undefined}
-              fixedAspectRatio={scannerFixedRatio} // [New] Pass ratio constraint
-          />
-      )}
+      {/* Image Processing Flow (Scanner & Texture Mapper) */}
+      <SessionImageFlow 
+          uiState={sessionState.uiState}
+          setUiState={setUiState}
+          template={template}
+          baseImage={baseImage}
+          onScannerConfirm={media.handleScannerConfirm}
+          onUpdateTemplate={onUpdateTemplate}
+      />
 
-      {/* Missing Image Modal */}
-      {isImageUploadModalOpen && !isScannerOpen && (
-          <div 
-            className="fixed inset-0 z-[60] bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center"
-            onClick={() => setUiState(p => ({ ...p, isImageUploadModalOpen: false }))}
-          >
-              <div 
-                className="max-w-xs w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-4 relative"
-                onClick={(e) => e.stopPropagation()} 
-              >
-                  <button 
-                    onClick={() => setUiState(p => ({ ...p, isImageUploadModalOpen: false }))}
-                    className="absolute top-2 right-2 text-slate-500 hover:text-white p-2 rounded-full hover:bg-slate-800 transition-colors"
-                  >
-                    <X size={20} />
-                  </button>
-
-                  <div className="w-16 h-16 bg-emerald-900/20 rounded-full flex items-center justify-center text-emerald-500 mb-2">
-                      <ScanLine size={32} />
-                  </div>
-                  <h3 className="text-xl font-bold text-white">設定計分紙背景</h3>
-                  <p className="text-sm text-slate-400">
-                      此模板已包含框線設定。
-                      {template.cloudImageId ? "您可以從雲端還原背景，或重新拍攝。" : "請拍攝或上傳計分紙照片。"}
-                  </p>
-                  
-                  {template.cloudImageId && (
-                      <button 
-                        onClick={media.handleCloudDownload} 
-                        className="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 mt-2"
-                      >
-                          <DownloadCloud size={20} /> 
-                          {media.isConnected ? "從雲端下載" : "連線並下載"}
-                      </button>
-                  )}
-
-                  <button onClick={media.openScannerCamera} className={`w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 ${template.cloudImageId ? 'mt-1' : 'mt-2'}`}>
-                      <Aperture size={20} /> 拍攝新照片
-                  </button>
-
-                  <button onClick={media.openBackgroundUpload} className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 flex items-center justify-center gap-2">
-                      <Upload size={20} /> 從相簿上傳
-                  </button>
-                  <input ref={media.fileInputRef} type="file" accept="image/*" className="hidden" onChange={media.handleFileUpload} />
-                  
-                  <button onClick={media.handleRemoveBackground} className="flex items-center gap-2 text-slate-500 text-xs hover:text-red-400 mt-4 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors">
-                      <Trash2 size={14} /> 移除計分紙返回標準介面
-                  </button>
-              </div>
-          </div>
-      )}
+      {/* Background Settings Modal */}
+      <SessionBackgroundModal 
+          isOpen={isImageUploadModalOpen && !isScannerOpen && !isTextureMapperOpen}
+          onClose={() => setUiState(p => ({ ...p, isImageUploadModalOpen: false }))}
+          hasCloudImage={!!template.cloudImageId}
+          isConnected={media.isConnected}
+          onCloudDownload={media.handleCloudDownload}
+          onScannerCamera={media.openScannerCamera}
+          onUploadClick={media.openBackgroundUpload}
+          onRemoveBackground={media.handleRemoveBackground}
+          fileInputRef={media.fileInputRef}
+          onFileChange={media.handleFileUpload}
+      />
 
       {editingColumn && (
         <ColumnConfigEditor 

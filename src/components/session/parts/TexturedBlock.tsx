@@ -27,7 +27,7 @@ const TexturedBlock: React.FC<TexturedBlockProps> = ({
     let isMounted = true;
     if (baseImage && rect && rect.width > 0 && rect.height > 0) {
         cropImageToDataUrl(baseImage, rect).then(url => {
-            if (isMounted) setBgUrl(url);
+            if (isMounted) setBgUrl(url || null);
         });
     } else {
         setBgUrl(null);
@@ -44,11 +44,11 @@ const TexturedBlock: React.FC<TexturedBlockProps> = ({
       finalStyle.border = 'none'; 
   }
 
-  // Apply aspect ratio ONLY if we are in texture mode (baseImage is present)
-  // This ensures that in standard mode (no image), the block sizes naturally based on content/padding
-  if (baseImage && rect && rect.width > 0 && rect.height > 0) {
+  // [Robustness Fix] Only apply 0 minHeight if we ACTUALLY have a loaded background URL.
+  // If cropping failed (bgUrl is null), we default to standard behavior (content dictates height),
+  // preventing the row from collapsing to 0 height.
+  if (bgUrl && rect && rect.width > 0 && rect.height > 0) {
       (finalStyle as any).aspectRatio = `${rect.width} / ${rect.height}`;
-      // [Fix] When using aspect ratio, force minHeight to 0px to prevent default element height from stretching it vertically
       finalStyle.minHeight = '0px';
   }
 

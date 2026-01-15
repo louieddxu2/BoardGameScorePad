@@ -1,6 +1,7 @@
 
 import React, { useRef, useEffect } from 'react';
 import { Dice5, Search, X, Download, HelpCircle, Calculator, History, Cloud, CloudOff, Loader2 } from 'lucide-react';
+import { useTranslation } from '../../../i18n'; // Import hook
 
 interface DashboardHeaderProps {
   isSearchActive: boolean;
@@ -36,6 +37,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 }) => {
   
   const searchRef = useRef<HTMLDivElement>(null);
+  const { t, language, setLanguage } = useTranslation(); // Use hook
 
   // [New] Handle click outside to close search
   useEffect(() => {
@@ -64,6 +66,10 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       setViewMode(viewMode === 'library' ? 'history' : 'library');
   };
 
+  const toggleLanguage = () => {
+      setLanguage(language === 'zh-TW' ? 'en' : 'zh-TW');
+  };
+
   return (
     <header className="flex flex-col bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 shadow-md transition-colors duration-300">
       <div className="p-2.5 flex items-center gap-2 h-[58px]">
@@ -72,7 +78,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             <Search size={20} className="text-emerald-500 shrink-0 ml-1" />
             <input 
               type="text" 
-              placeholder={viewMode === 'library' ? "搜尋遊戲..." : "搜尋歷史紀錄..."} 
+              placeholder={viewMode === 'library' ? t('dash_search_placeholder') : t('dash_history_search_placeholder')} 
               value={searchQuery} 
               onChange={(e) => setSearchQuery(e.target.value)} 
               autoFocus 
@@ -86,14 +92,17 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           <div className="flex justify-between items-center w-full animate-in fade-in duration-300 gap-2">
             {/* Left Side: Logo, Title, Toggle */}
             <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
-              {/* Logo & Title Group - Set min-w-0 to allow title truncation */}
-              <div className="flex items-center gap-2 min-w-0 shrink">
+              {/* Logo & Title Group - Hidden Language Toggle on Click */}
+              <div 
+                className="flex items-center gap-2 min-w-0 shrink cursor-default active:opacity-50 transition-opacity"
+                onClick={toggleLanguage}
+              >
                 <div className="bg-emerald-500/10 p-1.5 rounded-lg border border-emerald-500/20 shrink-0">
                   <Dice5 size={24} className="text-emerald-500" />
                 </div>
                 {/* Title: truncate only if necessary */}
-                <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white truncate">
-                    萬用桌遊計分板
+                <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white truncate select-none">
+                    {t('app_name')}
                 </h1>
               </div>
 
@@ -101,7 +110,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               <button 
                 onClick={toggleView}
                 className="relative h-9 w-[56px] bg-slate-800 border border-slate-700 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-750 transition-colors shrink-0 group active:scale-95 shadow-inner"
-                title={viewMode === 'library' ? "切換至歷史紀錄" : "切換至遊戲庫"}
+                title={viewMode === 'library' ? "Switch to History" : "Switch to Library"}
               >
                   {/* Central Slash (Background) */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
@@ -142,7 +151,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                     isConnected ? 'bg-sky-900/30 border-sky-500/50 text-sky-400 shadow-[0_0_10px_rgba(14,165,233,0.2)]' :
                     'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'
                 }`}
-                title="雲端備份管理"
+                title={t('dash_cloud_sync')}
               >
                 {isSyncing ? <Loader2 className="animate-spin" size={18} /> :
                  isConnected ? <Cloud size={18} /> : <CloudOff size={18} />}
@@ -154,6 +163,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               <button onClick={() => setIsSearchActive(true)} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors">
                 <Search size={20} />
               </button>
+
+              {/* Language Toggle Removed from here */}
               
               {!isInstalled && (
                 <button 
@@ -168,7 +179,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                       </div>
                     )}
                   </div>
-                  <span className="hidden sm:inline">安裝 App</span>
+                  <span className="hidden sm:inline">{t('dash_install_app')}</span>
                 </button>
               )}
             </div>

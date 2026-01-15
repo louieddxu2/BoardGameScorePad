@@ -4,11 +4,12 @@ import { GameSession, GameTemplate, Player, ScoreColumn } from '../../../types';
 import { GripVertical, EyeOff, Layers, Sparkles, Settings, Sigma, X } from 'lucide-react';
 import ScoreCell from './ScoreCell';
 import TexturedPlayerHeader from './TexturedPlayerHeader';
-import TexturedBlock from './TexturedBlock'; // Import the new component
+import TexturedBlock from './TexturedBlock';
 import { useColumnDragAndDrop } from '../hooks/useColumnDragAndDrop';
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
 import { usePlayerWidthSync } from '../../../hooks/usePlayerWidthSync';
 import { calculateColumnScore, resolveSelectOption } from '../../../utils/scoring';
+import { calculateDynamicFontSize } from '../../../utils/dynamicLayout';
 
 interface ScoreGridProps {
   session: GameSession;
@@ -27,7 +28,6 @@ interface ScoreGridProps {
   previewValue?: any; 
 }
 
-// Helper to correctly format numbers
 const formatDisplayNumber = (num: number | undefined | null): string => {
   if (num === undefined || num === null) return '';
   if (Object.is(num, -0)) return '-0';
@@ -54,6 +54,12 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   const [imageDims, setImageDims] = useState<{width: number, height: number} | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
+  // [Simplified Logic] 
+  // Determine mode strictly by existence of baseImage.
+  // We do NOT wait for dimensions to load to switch modes, preventing style flickering.
+  const isTextureMode = !!baseImage;
+
+  // Load image dimensions for ratio calculation (only if in texture mode)
   useEffect(() => {
       if (baseImage) {
           const img = new Image();
@@ -63,7 +69,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           setImageDims(null);
       }
   }, [baseImage]);
-  
+
   useEffect(() => {
     if (!scrollContainerRef.current) return;
     const observer = new ResizeObserver(entries => {
@@ -80,21 +86,23 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
 
   // Calculate the width of the Left Sticky Column (Label)
   const leftColWidth = useMemo(() => {
-      // 1. Texture Mode: Keep strictly to original logic
-      if (baseImage && imageDims && template.globalVisuals?.playerLabelRect) {
+      // 1. Texture Mode: Use loaded dimensions if available
+      // [FIX] playerLabelRect.width is now a normalized percentage (0.0 - 1.0).
+      // We should NOT divide by imageDims.width anymore.
+      if (isTextureMode && imageDims && template.globalVisuals?.playerLabelRect) {
           const { playerLabelRect } = template.globalVisuals;
-          const itemColProportion = playerLabelRect.width / imageDims.width;
+          // Direct proportion (0-1)
+          const itemColProportion = playerLabelRect.width; 
           return containerWidth * itemColProportion * zoomLevel;
       }
       
-      // 2. Standard Mode: Dynamic calculation
-      // Formula: Max(70, DeviceWidth / (PlayerCount + 2))
+      // 2. Standard Mode or Texture Mode (loading): Dynamic calculation / Fallback
       if (containerWidth > 0) {
           return Math.max(70, containerWidth / (session.players.length + 2));
       }
       
-      return 70; // Fallback
-  }, [baseImage, imageDims, template.globalVisuals, containerWidth, zoomLevel, session.players.length]);
+      return 70; // Absolute fallback
+  }, [isTextureMode, imageDims, template.globalVisuals, containerWidth, zoomLevel, session.players.length]);
 
   const itemColStyle = useMemo(() => {
       return { 
@@ -180,13 +188,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
     );
   };
 
-  // [Calculation] Determine the minimum required width for the header row.
   const minPlayerWidth = 54 * zoomLevel;
   const requiredRowWidth = leftColWidth + (session.players.length * minPlayerWidth);
-  
-  // The header row width should be AT LEAST containerWidth (to fill screen when zoomed out),
-  // but MUST grow larger if the content (players) requires it (to allow scrolling).
-  // This solves the conflict between "Fit to Screen" and "Minimum Width".
   const headerRowWidth = containerWidth ? Math.max(containerWidth, requiredRowWidth) : '100%';
 
   return (
@@ -200,15 +203,13 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
         <div 
             id="live-player-header-row" 
             className="flex sticky top-0 z-20 bg-slate-800 shadow-sm"
-            // Apply the calculated width logic.
             style={{ width: typeof headerRowWidth === 'number' ? `${headerRowWidth}px` : headerRowWidth }}
         >
           <TexturedBlock 
-            baseImage={baseImage}
+            baseImage={baseImage} // Pass directly, TextureBlock handles null
             rect={template.globalVisuals?.playerLabelRect}
             fallbackContent={<span className="font-bold text-sm text-slate-400">玩家</span>}
-            // [Modified] Removed w-[70px], relying entirely on itemColStyle
-            className={`sticky left-0 bg-slate-800 border-r border-b border-slate-700 flex items-center justify-center z-30 shadow-sm shrink-0 overflow-hidden ${baseImage ? 'p-0' : 'p-2'}`}
+            className={`sticky left-0 bg-slate-800 border-r border-b border-slate-700 flex items-center justify-center z-30 shadow-sm shrink-0 overflow-hidden ${isTextureMode ? 'p-0' : 'p-2'}`}
             style={itemColStyle} 
           />
           {session.players.map((p, index) => (
@@ -220,7 +221,6 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 rect={template.globalVisuals?.playerHeaderRect}
                 onClick={(e) => onPlayerHeaderClick(p.id, e)}
                 isEditing={editingPlayerId === p.id}
-                // Pass right mask boundary for limit calculation
                 limitX={template.globalVisuals?.rightMaskRect?.x}
             />
           ))}
@@ -258,10 +258,10 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           const rowHiddenClass = (isEditMode && displayMode === 'hidden') ? 'opacity-70 bg-slate-900/50' : '';
           const hiddenStyleClass = (isEditMode && isHidden) ? 'ring-2 ring-amber-500/50 ring-inset bg-amber-900/20' : '';
           
-          // Header Background Color Logic
+          // Header Background Color Logic - Dependent on isTextureMode
           const headerBgClass = isEditMode && isDragging 
             ? 'bg-slate-700' 
-            : (isAlt && !baseImage ? 'bg-[#2e3b4e]' : 'bg-slate-800');
+            : (isAlt && !isTextureMode ? 'bg-[#2e3b4e]' : 'bg-slate-800');
 
           return (
             <div
@@ -279,10 +279,9 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 rect={col.visuals?.headerRect}
                 onClick={(e: any) => onColumnHeaderClick(e, col)}
                 {...getDragHandlers(col.id)}
-                // [Modified] Removed w-[70px], relying entirely on itemColStyle
-                className={`sticky left-0 ${headerBgClass} ${hiddenStyleClass} border-r-2 border-b border-slate-700 flex flex-col justify-center transition-colors z-20 group select-none shrink-0 overflow-hidden ${isEditMode ? (isDragging ? 'cursor-grabbing' : 'cursor-grab hover:bg-slate-700') : 'cursor-default'} ${baseImage ? 'p-0' : 'p-2'}`}
+                className={`sticky left-0 ${headerBgClass} ${hiddenStyleClass} border-r-2 border-b border-slate-700 flex flex-col justify-center transition-colors z-20 group select-none shrink-0 overflow-hidden ${isEditMode ? (isDragging ? 'cursor-grabbing' : 'cursor-grab hover:bg-slate-700') : 'cursor-default'} ${isTextureMode ? 'p-0' : 'p-2'}`}
                 style={{
-                  ...itemColStyle, // [Modified] Always apply style, not just when baseImage is present
+                  ...itemColStyle,
                   borderRightColor: col.color || 'var(--border-slate-700)'
                 }}
                 fallbackContent={
@@ -304,9 +303,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                     </>
                 }
               >
-                {/* Children: Always visible overlays */}
                 {renderIndicators(col, isHidden, isOverlay)}
-                {isEditMode && baseImage && <div className="absolute top-1/2 left-0.5 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded p-0.5 text-white/70"><GripVertical size={10} /></div>}
+                {isEditMode && isTextureMode && <div className="absolute top-1/2 left-0.5 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded p-0.5 text-white/70"><GripVertical size={10} /></div>}
               </TexturedBlock>
               
               {session.players.map((p, pIdx) => {
@@ -318,8 +316,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         player={p}
                         playerIndex={pIdx}
                         column={col}
-                        allColumns={template.columns} // Pass all columns context
-                        allPlayers={session.players} // Pass all players for ranking
+                        allColumns={template.columns}
+                        allPlayers={session.players}
                         baseImage={baseImage}
                         isActive={isActive}
                         onClick={(e) => onCellClick(p.id, col.id, e)}
@@ -328,7 +326,6 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         isAlt={isAlt}
                         previewValue={isActive ? previewValue : undefined}
                     />
-                     {/* OVERLAY RENDERING */}
                      {col.overlayColumns.map(overlayCol => {
                         const isOverlayActive = editingCell?.playerId === p.id && editingCell?.colId === overlayCol.id;
                         const scoreData = p.scores[overlayCol.id];
@@ -359,13 +356,17 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                             }
                         }
 
-                        const defaultTextColor = baseImage ? 'rgba(28, 35, 51, 0.90)' : '#ffffff';
+                        // [Fix] Dynamic Font Sizing for Overlay Items
+                        const dynamicFontSize = calculateDynamicFontSize([displayText]);
+
+                        const defaultTextColor = isTextureMode ? 'rgba(28, 35, 51, 0.90)' : '#ffffff';
                         const displayColor = (isEditMode && overlayCol.color) ? overlayCol.color : defaultTextColor;
 
                         const textStyle: React.CSSProperties = {
                             color: hasInput ? (displayScore < 0 ? '#f87171' : displayColor) : '#475569',
+                            fontSize: dynamicFontSize, // Apply dynamic font size
                             ...(isEditMode && overlayCol.color && isColorDark(overlayCol.color) && { textShadow: ENHANCED_TEXT_SHADOW }),
-                            ...(baseImage && {
+                            ...(isTextureMode && {
                                 fontFamily: '"Kalam", "Caveat", cursive',
                                 transform: `rotate(${((p.id.charCodeAt(0) + overlayCol.id.charCodeAt(0)) % 5) - 2}deg)`,
                                 mixBlendMode: 'multiply',
@@ -386,7 +387,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                                             ? 'border-emerald-500 bg-emerald-500/20 ring-1 ring-emerald-500' // Active Style
                                             : (isEditMode 
                                                 ? 'border-dashed border-white/40 hover:border-white/60 hover:bg-white/5' // Edit Mode
-                                                : (!baseImage 
+                                                : (!isTextureMode 
                                                     ? 'border-dashed border-white/20 hover:border-white/40 hover:bg-white/5' // Play Mode (No BG)
                                                     : 'border-transparent hover:border-black/10 hover:bg-black/5') // Play Mode (With BG)
                                               )
@@ -398,9 +399,10 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                                         width: `${overlayCol.contentLayout.width}%`,
                                         height: `${overlayCol.contentLayout.height}%`,
                                         borderColor: (!isOverlayActive && isEditMode && overlayCol.color) ? `${overlayCol.color}60` : undefined,
-                                    }}
+                                        containerType: 'size', // [Fix] Enable Container Queries for dynamic sizing
+                                    } as React.CSSProperties}
                                 >
-                                    <span className="text-xl font-bold tracking-tight w-full text-center truncate px-1" style={textStyle}>
+                                    <span className="font-bold tracking-tight w-full text-center truncate px-1" style={textStyle}>
                                         {displayText}
                                     </span>
                                 </div>
