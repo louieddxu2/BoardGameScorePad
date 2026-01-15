@@ -41,22 +41,50 @@ const loadCachedImage = (src: string): Promise<HTMLImageElement> => {
 
 /**
  * Creates a CSS background-image string (url(...)) from a source image and crop rect.
- * Note: For small crops (headers/cells), DataURL is acceptable as they are small and many.
+ * [Fix] Correctly converts normalized coordinates (0-1) to integer pixels for canvas dimensions.
  */
 export const cropImageToDataUrl = async (sourceImageSrc: string, rect: Rect): Promise<string> => {
     try {
         const img = await loadCachedImage(sourceImageSrc);
-        
+        const imgW = img.naturalWidth;
+        const imgH = img.naturalHeight;
+
+        // 1. Determine if input is Percentage (0-1) or Legacy Pixels (>1)
+        // New templates use 0-1.
+        const isPercentage = rect.x <= 1.0 && rect.y <= 1.0 && rect.width <= 1.0 && rect.height <= 1.0;
+
+        let pixelX, pixelY, pixelW, pixelH;
+
+        if (isPercentage) {
+            pixelX = Math.floor(rect.x * imgW);
+            pixelY = Math.floor(rect.y * imgH);
+            pixelW = Math.floor(rect.width * imgW);
+            pixelH = Math.floor(rect.height * imgH);
+        } else {
+            // Legacy fallback
+            pixelX = rect.x;
+            pixelY = rect.y;
+            pixelW = rect.width;
+            pixelH = rect.height;
+        }
+
+        // Safety check for invalid dimensions to prevent canvas error
+        // Ensure at least 1x1 pixel
+        if (pixelW <= 0) pixelW = 1;
+        if (pixelH <= 0) pixelH = 1;
+
         const canvas = document.createElement('canvas');
-        canvas.width = rect.width;
-        canvas.height = rect.height;
+        // [CRITICAL FIX] Set canvas size to calculated PIXELS, not percentage floats
+        canvas.width = pixelW;
+        canvas.height = pixelH;
+        
         const ctx = canvas.getContext('2d');
         if (!ctx) throw new Error("No context");
         
         ctx.drawImage(
             img,
-            rect.x, rect.y, rect.width, rect.height, // Source
-            0, 0, rect.width, rect.height // Dest
+            pixelX, pixelY, pixelW, pixelH, // Source (Pixels)
+            0, 0, pixelW, pixelH // Dest (Pixels)
         );
         
         return canvas.toDataURL('image/jpeg', 0.9);
@@ -67,40 +95,69 @@ export const cropImageToDataUrl = async (sourceImageSrc: string, rect: Rect): Pr
 };
 
 /**
- * Smart Texture Cropper
+ * Smart Texture Cropper for Repeated Columns
+ * [Fix] Correctly calculates offset and converts to pixels.
  */
 export const getSmartTextureUrl = async (sourceImageSrc: string, baseRect: Rect, playerIndex: number, limitX?: number): Promise<string> => {
     try {
         const img = await loadCachedImage(sourceImageSrc);
+        const imgW = img.naturalWidth;
+        const imgH = img.naturalHeight;
 
-        const imgW = img.width;
-        const colW = baseRect.width;
-        const baseX = baseRect.x;
+        // 1. Determine Coordinate System
+        const isPercentage = baseRect.x <= 1.0 && baseRect.width <= 1.0;
 
-        const effectiveW = limitX ? Math.min(imgW, limitX) : imgW;
-        // Prevent division by zero
-        if (colW <= 0) return '';
+        let baseX, colW, pixelY, pixelH;
+        let effectiveLimitW = imgW;
 
-        const maxCols = Math.floor((effectiveW - baseX - (colW * 0.5)) / colW);
+        if (isPercentage) {
+            baseX = baseRect.x * imgW;
+            colW = baseRect.width * imgW;
+            pixelY = baseRect.y * imgH;
+            pixelH = baseRect.height * imgH;
+            if (limitX !== undefined && limitX <= 1.0) {
+                effectiveLimitW = limitX * imgW;
+            }
+        } else {
+            baseX = baseRect.x;
+            colW = baseRect.width;
+            pixelY = baseRect.y;
+            pixelH = baseRect.height;
+            if (limitX !== undefined) {
+                effectiveLimitW = limitX;
+            }
+        }
+
+        // Prevent division by zero logic
+        if (colW < 1) colW = 1;
+
+        // Calculate repetition
+        // Logic: How many columns fit before the limit?
+        // Start X of current player = BaseX + (Index * Width)
+        const maxCols = Math.floor((effectiveLimitW - baseX - (colW * 0.5)) / colW);
         const validCount = Math.max(1, maxCols + 1); 
+        
+        // Cycle index if it exceeds available space
         const effectiveIndex = playerIndex % validCount;
-        const targetX = baseX + (effectiveIndex * colW);
+        
+        const targetX = Math.floor(baseX + (effectiveIndex * colW));
+        const finalWidth = Math.floor(colW);
+        const finalHeight = Math.floor(pixelH);
 
-        const availableWidth = imgW - targetX;
-        const finalWidth = Math.min(colW, availableWidth);
-
-        if (finalWidth <= 0) return '';
+        if (finalWidth <= 0 || finalHeight <= 0) return '';
 
         const canvas = document.createElement('canvas');
-        canvas.width = colW; 
-        canvas.height = baseRect.height;
+        // [CRITICAL FIX] Set canvas dimensions to calculated pixels
+        canvas.width = finalWidth;
+        canvas.height = finalHeight;
+        
         const ctx = canvas.getContext('2d');
         if (!ctx) throw new Error("No context");
 
         ctx.drawImage(
             img,
-            targetX, baseRect.y, finalWidth, baseRect.height, 
-            0, 0, colW, baseRect.height 
+            targetX, pixelY, finalWidth, finalHeight, 
+            0, 0, finalWidth, finalHeight 
         );
         
         return canvas.toDataURL('image/jpeg', 0.9);
@@ -112,9 +169,6 @@ export const getSmartTextureUrl = async (sourceImageSrc: string, baseRect: Rect,
 
 /**
  * Optimized Smart Compress & Resize (Blob Version)
- * 
- * Returns a Blob directly instead of a Base64 string.
- * This saves ~33% storage space and avoids main-thread freezing during string conversion.
  */
 export const compressAndResizeImage = async (
     source: string | Blob, 
@@ -123,19 +177,16 @@ export const compressAndResizeImage = async (
 ): Promise<Blob> => {
     return new Promise((resolve, reject) => {
         const img = new Image();
-        // [Optimization] Critical for large photos: Perform decoding off the main thread.
         img.decoding = 'async'; 
         
         const srcUrl = typeof source === 'string' ? source : URL.createObjectURL(source);
 
         img.onload = () => {
-            // Clean up object URL if we created one
             if (typeof source !== 'string') URL.revokeObjectURL(srcUrl);
 
             let w = img.width;
             let h = img.height;
 
-            // 1. Resize Logic (Maintain Aspect Ratio)
             if (w > maxWidth || h > maxWidth) {
                 const ratio = Math.min(maxWidth / w, maxWidth / h);
                 w = Math.floor(w * ratio);
@@ -152,23 +203,15 @@ export const compressAndResizeImage = async (
                 return;
             }
 
-            // This drawImage performs the resizing. 
-            // Since we set canvas dimensions to 'w'/'h' (the smaller target size), 
-            // the memory footprint of the canvas is small.
             ctx.drawImage(img, 0, 0, w, h);
 
-            // 2. Compress directly to Blob
-            // canvas.toBlob is async and efficient
             const attemptCompression = (quality: number) => {
                 canvas.toBlob((blob) => {
                     if (!blob) {
                         reject(new Error("Compression failed"));
                         return;
                     }
-
-                    // Check size
                     if (blob.size > targetMB * 1024 * 1024 && quality > 0.5) {
-                        // If still too big, try drastic reduction
                         attemptCompression(0.5);
                     } else {
                         resolve(blob);
@@ -176,7 +219,6 @@ export const compressAndResizeImage = async (
                 }, 'image/jpeg', quality);
             };
 
-            // Start with 0.8 quality (sweet spot)
             attemptCompression(0.8);
         };
         

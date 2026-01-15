@@ -12,16 +12,15 @@ export const cleanupService = {
    */
   async cleanSessionArtifacts(sessionId: string, cloudFolderId?: string) {
     try {
-      // 1. 刪除關聯的本地圖片
+      // 1. 刪除關聯的本地圖片 (保留 await 確保本地狀態乾淨)
       await imageService.deleteImagesByRelatedId(sessionId);
 
-      // 2. 將雲端資料夾移至垃圾桶 (若有)
+      // 2. 將雲端資料夾移至垃圾桶 (若有) - [Fix] 改為 Fire-and-forget，不等待網路回應
       if (cloudFolderId) {
         // 檢查 Google Drive 服務是否已授權，避免報錯
         if (googleDriveService.isAuthorized) {
-          await googleDriveService.softDeleteFolder(cloudFolderId, 'active').catch(e => 
-            console.warn(`[Cleanup] Failed to trash cloud folder for session ${sessionId}`, e)
-          );
+          googleDriveService.softDeleteFolder(cloudFolderId, 'active')
+            .catch(e => console.warn(`[Cleanup] Background cloud deletion failed for session ${sessionId}`, e));
         }
       }
     } catch (error) {

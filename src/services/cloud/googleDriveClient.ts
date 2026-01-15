@@ -52,6 +52,13 @@ class GoogleDriveClient {
     return data.files && data.files.length > 0 ? data.files[0] : null;
   }
 
+  public async getFile(fileId: string, fields: string = 'id, name, mimeType'): Promise<DriveFile> {
+      const data = await this.fetchDrive(
+          `https://www.googleapis.com/drive/v3/files/${fileId}?fields=${fields}`
+      );
+      return data;
+  }
+
   public async createFolder(name: string, parentId: string = 'root'): Promise<DriveFile> {
     const metadata = { name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] };
     return this.fetchDrive('https://www.googleapis.com/drive/v3/files', {

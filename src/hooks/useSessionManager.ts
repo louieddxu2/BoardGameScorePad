@@ -1,6 +1,4 @@
 
-
-
 import { useState, useRef, useEffect } from 'react';
 import { db } from '../db';
 import { GameTemplate, GameSession, Player, ScoringRule, HistoryRecord } from '../types';
@@ -221,7 +219,8 @@ export const useSessionManager = ({
           Object.keys(p.scores).length > 0 || 
           (p.bonusScore || 0) !== 0 ||
           p.tieBreaker ||
-          p.isForceLost
+          p.isForceLost ||
+          p.isStarter // Added: Treat starter flag as meaningful data
       );
 
       const hasCustomPlayers = currentSession.players.some(p => 
@@ -262,7 +261,12 @@ export const useSessionManager = ({
       // Also backup template if image changed
       if (activeTemplate && !isPureBuiltin && isCloudEnabled() && isImageDirtyRef.current) {
           googleDriveService.backupTemplate(activeTemplate).then((updated) => {
-              db.templates.update(updated.id, { lastSyncedAt: Date.now() });
+              if (updated) {
+                  // [FIX] Use updated.updatedAt instead of Date.now() to avoid race conditions
+                  // If the user modified the template again while backup was running, 
+                  // local updatedAt will be > updated.updatedAt, correctly keeping the 'unsynced' state.
+                  db.templates.update(updated.id, { lastSyncedAt: updated.updatedAt || Date.now() });
+              }
           }).catch(console.error);
       }
 
@@ -389,9 +393,13 @@ export const useSessionManager = ({
       // [CRITICAL FIX] Backup new template to cloud immediately if connected
       // This ensures that if the user syncs the session to another device, 
       // the new template ID will be available there too.
+      // [FIX] Added validation for backup result and used proper timestamp
       if (isCloudEnabled()) {
           googleDriveService.backupTemplate(finalTemplate).then((updated) => {
-              db.templates.update(updated.id, { lastSyncedAt: Date.now() });
+              if (updated) {
+                  // [FIX] Use updated.updatedAt instead of Date.now() to avoid race conditions
+                  db.templates.update(updated.id, { lastSyncedAt: updated.updatedAt || Date.now() });
+              }
           }).catch(console.error);
       }
   };

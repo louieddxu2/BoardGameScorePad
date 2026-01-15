@@ -1,6 +1,4 @@
 
-
-
 import { GameTemplate, GameSession, HistoryRecord } from '../types';
 import { googleAuth } from './cloud/googleAuth';
 import { googleDriveClient } from './cloud/googleDriveClient';
@@ -268,7 +266,7 @@ class GoogleDriveService {
       return template;
   }
 
-  public async backupTemplate(template: GameTemplate, _unused?: any, knownFolderId?: string, existingFolderName?: string): Promise<GameTemplate> {
+  public async backupTemplate(template: GameTemplate, _unused?: any, knownFolderId?: string, existingFolderName?: string): Promise<GameTemplate | null> {
     if (!this.isAuthorized) await this.signIn();
     await this.ensureAppStructure();
     const parentId = this.templatesFolderId || await this.getAppRoot();
@@ -285,6 +283,25 @@ class GoogleDriveService {
     } else {
         if (existingFolderName && existingFolderName !== targetFolderName) {
             await googleDriveClient.updateFileMetadata(gameFolderId, { name: targetFolderName });
+        }
+    }
+
+    // [New] Conflict Check
+    // If the cloud folder already exists, check its timestamp metadata before overwriting.
+    if (gameFolderId) {
+        try {
+            const meta = await googleDriveClient.getFile(gameFolderId, 'appProperties');
+            const cloudTime = Number(meta.appProperties?.originalUpdatedAt || 0);
+            const localTime = template.updatedAt || 0;
+            
+            // If Cloud is strictly newer than local, reject the backup to prevent data loss.
+            // Note: If times are equal or local is newer, we proceed (Last Write Wins for same device/user intent).
+            if (cloudTime > localTime) {
+                console.warn(`[Backup] Cloud version is newer (${cloudTime} > ${localTime}). Backup skipped to prevent overwrite.`);
+                return null;
+            }
+        } catch (e) {
+            // Ignore error (e.g. folder just created, no meta yet), proceed to upload.
         }
     }
 

@@ -1,6 +1,4 @@
 
-
-
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../db';
 import { migrateFromLocalStorage } from '../utils/dbMigration';
@@ -147,7 +145,10 @@ export const useAppData = () => {
 
     if (!options.skipCloud && isCloudEnabled()) {
         googleDriveService.backupTemplate(migratedTemplate).then((updated) => {
-            db.templates.update(updated.id, { lastSyncedAt: Date.now() });
+            if (updated) { // ADDED CHECK
+                // [FIX] Use updated.updatedAt instead of Date.now()
+                db.templates.update(updated.id, { lastSyncedAt: updated.updatedAt || Date.now() });
+            }
         }).catch(console.error);
     }
   };

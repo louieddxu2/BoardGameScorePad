@@ -1,6 +1,4 @@
 
-
-
 import { useState, useCallback, useEffect } from 'react';
 import { googleDriveService, CloudFile, CloudResourceType } from '../services/googleDrive';
 import { useToast } from './useToast';
@@ -99,9 +97,16 @@ export const useGoogleDrive = () => {
       await ensureConnection();
       showToast({ message: "正在上傳備份...", type: 'info' });
       const updatedTemplate = await googleDriveService.backupTemplate(template);
-      setIsConnected(true); 
-      showToast({ message: "備份成功！", type: 'success' });
-      return updatedTemplate;
+      
+      if (updatedTemplate) {
+          setIsConnected(true); 
+          showToast({ message: "備份成功！", type: 'success' });
+          return updatedTemplate;
+      } else {
+          // Cloud was newer
+          showToast({ message: "雲端版本較新，已略過備份", type: 'warning' });
+          return null;
+      }
     } catch (error: any) {
       handleError(error, "備份");
       return null;
@@ -351,7 +356,7 @@ export const useGoogleDrive = () => {
                   }
                   return processItem(async () => {
                       const updatedT = await googleDriveService.backupTemplate(t, null, cloudInfo?.id, cloudInfo?.name);
-                      if (onItemSuccess) onItemSuccess('template', updatedT);
+                      if (updatedT && onItemSuccess) onItemSuccess('template', updatedT);
                   }, t.name, isUpToDate);
               }));
           }
