@@ -8,18 +8,17 @@ export const useGoogleDrive = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isConnected, setIsConnected] = useState(googleDriveService.isAuthorized);
   
-  // [Change] 預設為 false，不再從 localStorage 讀取。
-  // 這樣每次 App 啟動時，雲端功能都會預設為關閉，直到使用者主動點擊。
-  const [isAutoConnectEnabled, setIsAutoConnectEnabled] = useState(false);
+  // [Change] Initialize from localStorage to maintain state across views (e.g. Dashboard -> HistoryReview).
+  // The "Reset on Boot" logic is handled in index.tsx, so this is safe for SPA navigation.
+  const [isAutoConnectEnabled, setIsAutoConnectEnabled] = useState(() => {
+      return localStorage.getItem('google_drive_auto_connect') === 'true';
+  });
 
   const { showToast } = useToast();
 
   useEffect(() => {
       setIsConnected(googleDriveService.isAuthorized);
   }, []);
-
-  // [Change] 移除了將狀態寫入 localStorage 的 useEffect
-  // [Change] 移除了嘗試自動靜默登入 (silent connect) 的 useEffect
 
   // [Modified] Explicit Connect Function
   const connectToCloud = useCallback(async () => {
