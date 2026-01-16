@@ -28,12 +28,16 @@ export const useGoogleDrive = () => {
           setIsConnected(true);
           // Only enable auto-connect preference AFTER successful sign-in
           setIsAutoConnectEnabled(true); 
+          // [Fix] Sync state to localStorage so other hooks (like useAppData) can read it
+          localStorage.setItem('google_drive_auto_connect', 'true');
+          
           showToast({ message: "Google Drive 連線成功", type: 'success' });
           return true;
       } catch (e: any) {
           console.error("Manual connection failed:", e);
           
           setIsAutoConnectEnabled(false); 
+          localStorage.setItem('google_drive_auto_connect', 'false');
           setIsConnected(false);
 
           if (e.error === 'popup_closed_by_user') {
@@ -48,6 +52,7 @@ export const useGoogleDrive = () => {
   // [Modified] Explicit Disconnect Function
   const disconnectFromCloud = useCallback(async () => {
       setIsAutoConnectEnabled(false);
+      localStorage.setItem('google_drive_auto_connect', 'false');
       await googleDriveService.signOut();
       setIsConnected(false);
       showToast({ message: "已斷開 Google Drive 連線", type: 'info' });
