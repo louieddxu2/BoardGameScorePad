@@ -4,6 +4,7 @@ import { ScoreColumn, MappingRule } from '../../../types';
 import { Sparkles, ArrowRight, Lock, Unlock, Check, Calculator, AlertCircle, Ruler, ChevronDown, ChevronUp, Delete, Trophy, Hash, Users } from 'lucide-react';
 import EditorTabMapping from './EditorTabMapping';
 import { extractIdentifiers } from '../../../utils/formulaEvaluator';
+import { useTranslation } from '../../../i18n';
 
 interface EditorTabAutoProps {
   column: ScoreColumn;
@@ -14,6 +15,7 @@ interface EditorTabAutoProps {
 const PLAYER_COUNT_ID = '__PLAYER_COUNT__';
 
 const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], onChange }) => {
+  const { t } = useTranslation();
   const [localFormula, setLocalFormula] = useState(column.formula || '');
   const [isLocked, setIsLocked] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -53,7 +55,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                         // 新增預設：如果沒有可用欄位，至少預設為空 (或可以是玩家人數)
                         newVariableMap[v] = availableColumns[0] 
                             ? { id: availableColumns[0].id, name: availableColumns[0].name, mode: 'value' } 
-                            : { id: PLAYER_COUNT_ID, name: '玩家人數', mode: 'value' };
+                            : { id: PLAYER_COUNT_ID, name: t('col_auto_player_count'), mode: 'value' }; // i18n
                         mapChanged = true;
                     }
                 });
@@ -111,13 +113,13 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
   }, [localFormula]);
 
   const handleLock = () => {
-    if (!localFormula.trim()) { setParseError("請輸入公式"); return; }
+    if (!localFormula.trim()) { setParseError(t('col_auto_err_empty')); return; }
     
     const { vars: extractedVars, funcs: extractedFuncs } = extractIdentifiers(localFormula);
 
     try {
         let testFormula = localFormula.toLowerCase().replace(/×/g, '*');
-        if (!/^[a-z0-9+\-*/().\s×,]+$/.test(testFormula)) throw new Error("非法符號");
+        if (!/^[a-z0-9+\-*/().\s×,]+$/.test(testFormula)) throw new Error(t('col_auto_err_invalid_char'));
         
         // 1. Dry Run - 替換變數為 1
         let dryRunFormula = testFormula;
@@ -136,9 +138,9 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
         const evalFn = new Function(...fnNames, `"use strict"; return (${dryRunFormula})`);
         const result = evalFn(...fnValues);
         
-        if (typeof result !== 'number' && typeof result !== 'function') throw new Error("無效結果");
+        if (typeof result !== 'number' && typeof result !== 'function') throw new Error(t('col_auto_err_invalid_result'));
     } catch (e) {
-        setParseError("公式語法錯誤，請檢查符號與括號");
+        setParseError(t('col_auto_err_syntax'));
         return;
     }
 
@@ -148,7 +150,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
         // 保留舊設定，或是預設第一個可用欄位
         newVariableMap[v] = variableMap[v] || (availableColumns[0] 
             ? { id: availableColumns[0].id, name: availableColumns[0].name, mode: 'value' } 
-            : { id: PLAYER_COUNT_ID, name: '玩家人數', mode: 'value' });
+            : { id: PLAYER_COUNT_ID, name: t('col_auto_player_count'), mode: 'value' });
     });
 
     // --- 同步函數設定 ---
@@ -214,9 +216,10 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
       <div className="flex items-start gap-3 bg-indigo-900/20 p-3 rounded-xl border border-indigo-500/30">
           <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400 shrink-0"><Sparkles size={24} /></div>
           <div>
-              <h3 className="font-bold text-indigo-200 text-sm">高級自動計算</h3>
+              <h3 className="font-bold text-indigo-200 text-sm">{t('col_auto_title')}</h3>
               <p className="text-xs text-indigo-300/70 mt-1 leading-relaxed">
-                  使用 <b>x1, x2...</b> 代表來源欄位，<b>f1(...), f2(...)</b> 代表查表規則。<br/>
+                  {t('col_auto_desc')}
+                  <br/>
                   例如：<code>f1(x1) + f2(x2) * 5</code>
               </p>
           </div>
@@ -224,7 +227,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
 
       <div className="space-y-2">
         <div className="flex justify-between items-center">
-            <label className="text-xs font-bold text-slate-500 uppercase">計算公式</label>
+            <label className="text-xs font-bold text-slate-500 uppercase">{t('col_auto_formula')}</label>
             {parseError && !isLocked && <span className="text-[10px] text-amber-400 flex items-center gap-1 animate-pulse"><AlertCircle size={10} /> {parseError}</span>}
         </div>
         <div className="flex items-stretch gap-2">
@@ -302,10 +305,10 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
               {/* 1. 變數設定區塊 */}
               <div className="space-y-3">
                   <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><Calculator size={12} /> 變數對應</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><Calculator size={12} /> {t('col_auto_vars')}</label>
                   </div>
                   <div className="space-y-2">
-                      {variableList.length === 0 && <div className="text-center py-4 text-xs text-slate-500 italic bg-slate-900/30 rounded-lg">公式中沒有變數</div>}
+                      {variableList.length === 0 && <div className="text-center py-4 text-xs text-slate-500 italic bg-slate-900/30 rounded-lg">{t('col_auto_no_vars')}</div>}
                       {variableList.map(([key, mapObj]) => {
                           const currentMode = mapObj.mode || 'value';
                           const isPlayerCount = mapObj.id === PLAYER_COUNT_ID;
@@ -321,7 +324,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                                             onChange={(e) => {
                                                 const val = e.target.value;
                                                 if (val === PLAYER_COUNT_ID) {
-                                                    onChange({ variableMap: { ...variableMap, [key]: { ...mapObj, id: PLAYER_COUNT_ID, name: '玩家人數' } } });
+                                                    onChange({ variableMap: { ...variableMap, [key]: { ...mapObj, id: PLAYER_COUNT_ID, name: t('col_auto_player_count') } } });
                                                 } else {
                                                     const targetCol = availableColumns.find(c => c.id === val);
                                                     if (targetCol) onChange({ variableMap: { ...variableMap, [key]: { ...mapObj, id: targetCol.id, name: targetCol.name } } });
@@ -330,9 +333,9 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                                             className="w-full bg-slate-900 text-slate-200 text-sm border border-slate-600 rounded p-2 outline-none"
                                         >
                                             <option value={PLAYER_COUNT_ID} className="text-indigo-400 font-bold">
-                                                👥 玩家人數 (本局設定)
+                                                {t('col_auto_player_count')}
                                             </option>
-                                            <optgroup label="計分項目">
+                                            <optgroup label={t('col_auto_score_items')}>
                                                 {availableColumns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                             </optgroup>
                                         </select>
@@ -342,7 +345,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                                 {/* Mode Selection - 隱藏當變數為玩家人數時 */}
                                 {!isPlayerCount && (
                                     <div className="flex items-center gap-2 pl-12">
-                                        <span className="text-[10px] text-slate-500 shrink-0 uppercase">取值模式:</span>
+                                        <span className="text-[10px] text-slate-500 shrink-0 uppercase">{t('col_auto_mode')}:</span>
                                         <select 
                                             value={currentMode} 
                                             onChange={(e) => {
@@ -355,19 +358,19 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                                                     : 'bg-slate-900 text-amber-500 border-amber-900'
                                             }`}
                                         >
-                                            <option value="value">數值 (預設)</option>
-                                            <option value="rank_score">分數排名 (1, 1, 2...)</option>
-                                            <option value="rank_player">玩家排名 (1, 1, 3...)</option>
-                                            <option value="tie_count">平手人數</option>
+                                            <option value="value">{t('col_auto_mode_val')}</option>
+                                            <option value="rank_score">{t('col_auto_mode_rank_score')} (1, 1, 2...)</option>
+                                            <option value="rank_player">{t('col_auto_mode_rank_player')} (1, 1, 3...)</option>
+                                            <option value="tie_count">{t('col_auto_mode_tie')}</option>
                                         </select>
                                     </div>
                                 )}
                                 {!isPlayerCount && currentMode !== 'value' && (
                                     <div className="pl-12 text-[10px] text-amber-600/80 flex items-center gap-1">
                                         {currentMode === 'tie_count' ? <Hash size={10}/> : <Trophy size={10} />}
-                                        {currentMode === 'rank_score' && "分數相同者並列，名次連續 (Dense Rank)"}
-                                        {currentMode === 'rank_player' && "分數相同者並列，下一名次跳號 (Standard Rank)"}
-                                        {currentMode === 'tie_count' && "計算與自己同分的人數"}
+                                        {currentMode === 'rank_score' && t('col_auto_rank_score_desc')}
+                                        {currentMode === 'rank_player' && t('col_auto_rank_player_desc')}
+                                        {currentMode === 'tie_count' && t('col_auto_tie_desc')}
                                     </div>
                                 )}
                             </div>
@@ -379,11 +382,11 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
               {/* 2. 函數設定區塊 */}
               <div className="space-y-3">
                   <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                      <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><Ruler size={12} /> 函數規則定義</label>
+                      <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><Ruler size={12} /> {t('col_auto_funcs')}</label>
                   </div>
                   
                   <div className="space-y-2">
-                      {Object.keys(functions).length === 0 && <div className="text-center py-4 text-xs text-slate-500 italic bg-slate-900/30 rounded-lg">公式中沒有使用函數 (如 f1, f2)</div>}
+                      {Object.keys(functions).length === 0 && <div className="text-center py-4 text-xs text-slate-500 italic bg-slate-900/30 rounded-lg">{t('col_auto_no_funcs')}</div>}
                       
                       {Object.keys(functions).sort().map(fKey => (
                           <div key={fKey} className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden transition-all">
@@ -391,7 +394,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                                   <div className="flex items-center gap-2">
                                       <div className="w-8 h-8 bg-purple-900/30 text-purple-400 font-mono font-bold rounded flex items-center justify-center border border-purple-500/30">{fKey}</div>
                                       <span className="text-sm font-bold text-slate-300">
-                                          {functions[fKey].length} 條規則
+                                          {functions[fKey].length} {t('col_auto_rules_count')}
                                       </span>
                                   </div>
                                   {expandedFunc === fKey ? <ChevronUp size={20} className="text-slate-500"/> : <ChevronDown size={20} className="text-slate-500"/>}
@@ -420,7 +423,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                     onClick={toggleRounding} 
                     className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all duration-300 ${isRoundingEnabled ? 'bg-indigo-900/30 border-indigo-500' : 'bg-slate-800 border-slate-700 hover:bg-slate-750'}`}
                 >
-                    <span className={`text-sm font-bold transition-colors ${isRoundingEnabled ? 'text-indigo-100' : 'text-slate-300'}`}>啟用小數點進位/捨去</span>
+                    <span className={`text-sm font-bold transition-colors ${isRoundingEnabled ? 'text-indigo-100' : 'text-slate-300'}`}>{t('col_rounding_enable')}</span>
                     <div className={`w-12 h-6 rounded-full relative transition-colors ${isRoundingEnabled ? 'bg-indigo-500' : 'bg-slate-600'}`}>
                         <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow transition-transform duration-300 ${isRoundingEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
                     </div>
@@ -430,7 +433,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                         <div className="grid grid-cols-3 gap-2">
                             {(['floor', 'ceil', 'round'] as const).map(mode => (
                                 <button key={mode} onClick={() => onChange({ rounding: mode })} className={`py-2 px-1 rounded-lg border text-xs font-bold ${column.rounding === mode ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
-                                    {mode === 'floor' ? '無條件捨去' : mode === 'ceil' ? '無條件進位' : '四捨五入'}
+                                    {mode === 'floor' ? t('col_round_floor') : mode === 'ceil' ? t('col_round_ceil') : t('col_round_round')}
                                 </button>
                             ))}
                         </div>

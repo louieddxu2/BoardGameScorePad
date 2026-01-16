@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { ScoreColumn, InputMethod } from '../../../types';
 import { Calculator, Hash, Plus, X as Multiply, Square } from 'lucide-react';
 import QuickActionsEditor from './QuickActionsEditor';
+import { useTranslation } from '../../../i18n';
 
 interface EditorTabBasicProps {
   column: ScoreColumn;
@@ -25,6 +26,7 @@ const SumPartsSubSettings: React.FC<{
     themeColor?: 'emerald' | 'indigo',
     isProductMode?: boolean
 }> = ({ column, onChange, themeColor = 'emerald', isProductMode = false }) => {
+    const { t } = useTranslation();
     const activeSwitchClass = themeColor === 'emerald' ? 'bg-emerald-500' : 'bg-indigo-500';
     
     // Normalize logic for undefined (default is true)
@@ -33,24 +35,24 @@ const SumPartsSubSettings: React.FC<{
     return (
         <>
             <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">格內顯示方式</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('col_display_in_grid')}</label>
                 <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
                     <button onClick={() => onChange({ showPartsInGrid: true })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentMode === true ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
-                        標準
+                        {t('col_display_std')}
                     </button>
                     <button onClick={() => onChange({ showPartsInGrid: false })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentMode === false ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
-                        僅顯示總和
+                        {t('col_display_total')}
                     </button>
                     <button onClick={() => onChange({ showPartsInGrid: 'parts_only' })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentMode === 'parts_only' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
-                        僅顯示分項
+                        {t('col_display_parts')}
                     </button>
                 </div>
             </div>
             
             <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">輸入方式</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('col_input_method')}</label>
                 <div className={`flex items-center justify-between bg-slate-800 p-3 rounded-xl border border-slate-700 cursor-pointer hover:bg-slate-750 transition-colors`} onClick={() => onChange({ inputType: column.inputType === 'clicker' ? 'keypad' : 'clicker' })}>
-                    <span className="text-sm font-bold text-slate-300">使用按鈕輸入面板</span>
+                    <span className="text-sm font-bold text-slate-300">{t('col_use_pad')}</span>
                     <div className={`w-12 h-6 rounded-full relative transition-colors ${column.inputType === 'clicker' ? activeSwitchClass : 'bg-slate-600'}`}>
                         <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow transition-transform ${column.inputType === 'clicker' ? 'translate-x-6' : 'translate-x-0'}`} />
                     </div>
@@ -72,6 +74,7 @@ const SumPartsSubSettings: React.FC<{
 };
 
 const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cachedSumPartsInputType, onUpdateCachedSumPartsInputType }) => {
+  const { t } = useTranslation();
   
   // Logic to determine current mode from formula
   const getCalculationMode = (formula: string): CalculationMode => {
@@ -269,13 +272,13 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
         {/* Mode Switcher */}
         <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase mb-2">計分模式</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('input_calc_mode')}</label>
             <div className="grid grid-cols-2 gap-3">
                 <button onClick={() => setCalculationMode('standard')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${currentCalcMode === 'standard' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}>
                     <Calculator size={24} />
                     <div className="leading-tight text-center">
-                        <div className="text-xs font-bold uppercase">數字 / 固定倍率</div>
-                        <div className="text-[10px] opacity-70">單位 × 常數</div>
+                        <div className="text-xs font-bold uppercase">{t('col_mode_std')}</div>
+                        <div className="text-[10px] opacity-70">{t('col_mode_std_desc')}</div>
                     </div>
                 </button>
                 <button onClick={() => setCalculationMode('product')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${currentCalcMode === 'product' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}>
@@ -285,8 +288,8 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                         <Square size={16} strokeWidth={2.5} />
                     </div>
                     <div className="leading-tight text-center">
-                        <div className="text-xs font-bold uppercase">輸入兩數相乘</div>
-                        <div className="text-[10px] opacity-70"> A × B</div>
+                        <div className="text-xs font-bold uppercase">{t('col_mode_prod')}</div>
+                        <div className="text-[10px] opacity-70"> {t('col_mode_prod_desc')}</div>
                     </div>
                 </button>
             </div>
@@ -296,7 +299,7 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
         {currentCalcMode === 'standard' && (
             <div className="p-4 rounded-xl border bg-emerald-900/10 border-emerald-500/20 space-y-4">
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">單位</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('col_unit')}</label>
                     <input 
                         type="text" 
                         value={column.unit || ''} 
@@ -304,12 +307,12 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                             onChange({ unit: e.target.value });
                         }} 
                         onFocus={e => e.target.select()} 
-                        placeholder="如：分、個、元" 
+                        placeholder={t('col_unit')} 
                         className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white focus:border-emerald-500 outline-none"
                     />
                 </div>
                 <div className="bg-slate-900 border border-slate-700 p-4 rounded-xl flex items-center justify-center gap-3">
-                    <span className="text-slate-400 text-sm">輸入值</span>
+                    <span className="text-slate-400 text-sm">{t('col_input_val')}</span>
                     <span className="text-slate-600">×</span>
                     <input 
                         type="text" 
@@ -326,7 +329,7 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                         </>
                     ) : null}
                     <span className="text-slate-600">=</span>
-                    <span className="text-white font-bold">得分</span>
+                    <span className="text-white font-bold">{t('col_score')}</span>
                 </div>
             </div>
         )}
@@ -334,10 +337,10 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
         {currentCalcMode === 'product' && (
             <div className="p-4 rounded-xl border bg-indigo-900/10 border-indigo-500/20 space-y-4">
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">乘積單位</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('col_prod_unit_title')}</label>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-[10px] text-slate-400 mb-1"> A 的單位</label>
+                            <label className="block text-[10px] text-slate-400 mb-1"> {t('col_prod_unit_a')}</label>
                             <input 
                                 type="text" 
                                 value={column.subUnits?.[0] || ''} 
@@ -349,7 +352,7 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                             />
                         </div>
                         <div>
-                            <label className="block text-[10px] text-slate-400 mb-1"> B 的單位</label>
+                            <label className="block text-[10px] text-slate-400 mb-1"> {t('col_prod_unit_b')}</label>
                             <input 
                                 type="text" 
                                 value={column.subUnits?.[1] || ''} 
@@ -374,7 +377,7 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                         </>
                     )}
                     <span className="text-slate-600">=</span>
-                    <span className="text-white font-bold">得分</span>
+                    <span className="text-white font-bold">{t('col_score')}</span>
                 </div>
             </div>
         )}
@@ -384,7 +387,7 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
             <ToggleSwitch 
                 checked={isSumPartsEnabled} 
                 onChange={toggleSumParts} 
-                label="啟用分項累加" 
+                label={t('col_sum_parts')}
                 themeColor={currentCalcMode === 'product' ? 'indigo' : 'emerald'}
             />
 
@@ -405,7 +408,7 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
             <ToggleSwitch 
                 checked={isRoundingEnabled} 
                 onChange={toggleRounding} 
-                label="啟用小數點進位/捨去" 
+                label={t('col_rounding_enable')} 
                 themeColor="indigo"
             />
             {isRoundingEnabled && (
@@ -413,7 +416,7 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                     <div className="grid grid-cols-3 gap-2">
                         {(['floor', 'ceil', 'round'] as const).map(mode => (
                             <button key={mode} onClick={() => onChange({ rounding: mode })} className={`py-2 px-1 rounded-lg border text-xs font-bold ${column.rounding === mode ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
-                                {mode === 'floor' ? '無條件捨去' : mode === 'ceil' ? '無條件進位' : '四捨五入'}
+                                {mode === 'floor' ? t('col_round_floor') : mode === 'ceil' ? t('col_round_ceil') : t('col_round_round')}
                             </button>
                         ))}
                     </div>

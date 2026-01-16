@@ -14,7 +14,7 @@ interface CloudManagerModalProps {
   initialCategory?: 'templates' | 'sessions' | 'history'; 
   isConnected: boolean; 
   isMockMode: boolean;
-  fetchFileList: (mode: 'active' | 'trash', source: CloudResourceType) => Promise<CloudFile[]>;
+  fetchFileList: (mode: 'active' | 'trash', source: 'templates' | 'sessions' | 'history') => Promise<CloudFile[]>;
   restoreBackup: (id: string) => Promise<GameTemplate>;
   restoreSessionBackup: (id: string) => Promise<GameSession>; 
   restoreHistoryBackup?: (id: string) => Promise<HistoryRecord>;
@@ -126,8 +126,8 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
               try {
                   const [localData, cTemplates, cSessions, cHistory] = await Promise.all([
                       onGetLocalData(),
-                      fetchFileList('active', 'template'),
-                      fetchFileList('active', 'active'),
+                      fetchFileList('active', 'templates'),
+                      fetchFileList('active', 'sessions'),
                       fetchFileList('active', 'history')
                   ]);
 
@@ -256,7 +256,8 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
     if (cloudFiles.length > 0) setCloudFiles([]); 
     
     try {
-      const files = await fetchFileList(viewMode, getResourceType(category));
+      // Use category directly as it matches the API expectations ('templates' | 'sessions' | 'history')
+      const files = await fetchFileList(viewMode, category);
       setCloudFiles(files);
     } catch (e) {
         // Error handling done in hook
@@ -320,7 +321,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
               showToast({ message: "本機找不到對應計分板，正在搜尋雲端備份...", type: 'info' });
               
               // Fetch template list from cloud
-              const templatesList = await fetchFileList('active', 'template');
+              const templatesList = await fetchFileList('active', 'templates');
               const targetFile = templatesList.find(t => extractId(t.name) === session.templateId);
 
               if (targetFile) {

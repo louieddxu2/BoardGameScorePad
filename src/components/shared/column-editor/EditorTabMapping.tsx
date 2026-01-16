@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import { ScoreColumn, MappingRule } from '../../../types';
 import { ArrowRight as ArrowRightIcon, Lock, TrendingUp, Trash2, Plus } from 'lucide-react';
+import { useTranslation } from '../../../i18n';
 
 interface EditorTabMappingProps {
   column: ScoreColumn;
@@ -12,6 +13,7 @@ interface EditorTabMappingProps {
 const PREF_KEY_STD_UNIT = 'sm_pref_standard_unit';
 
 const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, hideUnitInput }) => {
+  const { t } = useTranslation();
   const rules = column.f1 || [];
 
   // Load last unit if this is a standalone column mapping (not inside auto) and unit is empty
@@ -126,10 +128,10 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
       <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 space-y-4">
-        <p className="text-sm text-slate-400">設定數值區間與對應分數，或是在區間內每a加b。</p>
+        <p className="text-sm text-slate-400">{t('col_mapping_desc')}</p>
         {!hideUnitInput && (
             <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">單位</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('col_unit')}</label>
             <input
                 type="text"
                 value={column.unit || ''}
@@ -137,7 +139,7 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
                     onChange({ unit: e.target.value });
                 }}
                 onFocus={e => e.target.select()}
-                placeholder="如：分、個、元"
+                placeholder={t('col_unit')}
                 className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-emerald-500 outline-none"
             />
             </div>
@@ -150,7 +152,7 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
               <input
                 type="text"
                 inputMode="decimal"
-                placeholder="最小"
+                placeholder={t('col_mapping_min')}
                 value={rule.min ?? ''}
                 onChange={e => {
                   const val = e.target.value;
@@ -168,12 +170,12 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
               <span className="text-slate-500">~</span>
               <div className="relative w-14">
                 {rule.max === 'next' ? (
-                  <div className="w-full h-full bg-slate-800 border border-slate-700/50 rounded p-2 text-center flex items-center justify-center text-indigo-400 text-xs font-bold">NEXT</div>
+                  <div className="w-full h-full bg-slate-800 border border-slate-700/50 rounded p-2 text-center flex items-center justify-center text-indigo-400 text-xs font-bold">{t('col_mapping_next')}</div>
                 ) : (
                   <input
                     type="text"
                     inputMode="decimal"
-                    placeholder="最大"
+                    placeholder={t('col_mapping_max')}
                     value={rule.max ?? ''}
                     onChange={e => {
                       const val = e.target.value;
@@ -201,7 +203,7 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
                 onClick={() => idx !== 0 && updateMappingRule(idx, 'isLinear', !rule.isLinear)}
                 disabled={idx === 0}
                 className={`w-8 h-[38px] flex flex-col items-center justify-center gap-0.5 rounded-md shrink-0 transition-colors ${idx === 0 ? 'bg-slate-900 border border-slate-700/50 cursor-not-allowed border-dashed' : 'bg-slate-800 border border-slate-600 active:bg-slate-700'}`}
-                title={idx === 0 ? "首項必須為固定分數（基準）" : (rule.isLinear ? "模式：每a加b" : "模式：固定分數")}
+                title={idx === 0 ? t('col_mapping_lock_hint') : (rule.isLinear ? t('col_mapping_mode_linear') : t('col_mapping_mode_fixed'))}
               >
                 {idx === 0 ? (
                   <div className="flex flex-col items-center gap-0.5">
@@ -219,7 +221,7 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
                 {rule.isLinear ? (
                   <div className="grid grid-cols-2 gap-1 h-[38px]">
                     <div className="relative bg-slate-900 border border-slate-600 rounded-md flex items-center overflow-hidden">
-                      <span className="absolute left-2 text-[10px] text-slate-500 font-bold z-10 pointer-events-none">每</span>
+                      <span className="absolute left-2 text-[10px] text-slate-500 font-bold z-10 pointer-events-none">{t('col_mapping_per')}</span>
                       <input
                         type="text"
                         inputMode="decimal"
@@ -239,7 +241,7 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
                       />
                     </div>
                     <div className="relative bg-slate-900 border border-emerald-500/30 rounded-md flex items-center overflow-hidden">
-                      <span className="absolute left-2 text-[10px] text-emerald-500 font-bold z-10 pointer-events-none">加</span>
+                      <span className="absolute left-2 text-[10px] text-emerald-500 font-bold z-10 pointer-events-none">{t('col_mapping_add')}</span>
                       <input
                         type="text"
                         inputMode="decimal"
@@ -264,7 +266,7 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
                     <input
                       type="text"
                       inputMode="decimal"
-                      placeholder="數值"
+                      placeholder={t('col_mapping_val')}
                       value={rule.score}
                       onChange={e => {
                         const val = e.target.value;
@@ -293,7 +295,7 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
         onClick={addMappingRule}
         className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-dashed border-slate-600 flex items-center justify-center gap-2"
       >
-        <Plus size={18} /> 新增區間
+        <Plus size={18} /> {t('col_add_interval')}
       </button>
     </div>
   );

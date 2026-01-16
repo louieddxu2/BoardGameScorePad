@@ -12,6 +12,7 @@ import EditorTabSelection from './column-editor/EditorTabSelection';
 import EditorTabBasic from './column-editor/EditorTabBasic';
 import EditorTabAuto from './column-editor/EditorTabAuto';
 import { extractIdentifiers } from '../../utils/formulaEvaluator';
+import { useTranslation } from '../../i18n';
 
 interface ColumnConfigEditorProps {
   column: ScoreColumn;
@@ -33,6 +34,7 @@ const PREF_KEY_ADV_OPEN = 'sm_pref_editor_adv';
 const PLAYER_COUNT_ID = '__PLAYER_COUNT__';
 
 const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColumns = [], onSave, onDelete, onClose, baseImage }) => {
+  const { t } = useTranslation();
   
   const getInitialState = (): ScoreColumn => {
     // 關鍵修改：初始化時整合 functions 結構
@@ -82,7 +84,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
   
   // Advanced Settings State
   const [showAdvanced, setShowAdvanced] = useState(() => localStorage.getItem(PREF_KEY_ADV_OPEN) === 'true');
-  const [helpText, setHelpText] = useState('點按上方按鈕可查看功能說明');
+  const [helpText, setHelpText] = useState('col_help_default');
 
   useEffect(() => {
       localStorage.setItem(PREF_KEY_ADV_OPEN, String(showAdvanced));
@@ -273,12 +275,12 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
           ...prev,
           displayMode: prev.displayMode === 'row' ? 'overlay' : 'row'
       }));
-      setHelpText("切換：獨立一列 / 疊加於上一列");
+      setHelpText('col_help_display');
   };
 
   const toggleScoring = () => {
       setEditedCol(prev => ({ ...prev, isScoring: !prev.isScoring }));
-      setHelpText(editedCol.isScoring ? "關閉：僅作記錄，不加總" : "開啟：數值將計入總分");
+      setHelpText(editedCol.isScoring ? 'col_help_scoring_off' : 'col_help_scoring_on');
   };
 
   const TabButton = ({ id, label, icon: Icon, isSpecial }: { id: EditorTab, label: string, icon: any, isSpecial?: boolean }) => (
@@ -321,10 +323,10 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
       <header className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 flex-none z-20">
           <div className="flex items-center gap-2">
               <div className="bg-slate-800 p-2 rounded text-emerald-500"><Settings size={20}/></div>
-              <div><h2 className="text-white font-bold text-lg">編輯項目</h2><p className="text-xs text-slate-500">設定計分規則</p></div>
+              <div><h2 className="text-white font-bold text-lg">{t('col_edit_title')}</h2><p className="text-xs text-slate-500">{t('col_edit_subtitle')}</p></div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-400 bg-slate-800 rounded-lg border border-slate-700 hover:border-red-900/50" title="刪除此項目"><Trash2 size={20}/></button>
+            <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-400 bg-slate-800 rounded-lg border border-slate-700 hover:border-red-900/50" title={t('delete')}><Trash2 size={20}/></button>
             <button onClick={handleAttemptClose} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-lg border border-slate-700"><X size={20}/></button>
           </div>
       </header>
@@ -334,7 +336,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
               
               {/* Name & Advanced Toggle */}
               <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">欄位名稱</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('col_name')}</label>
                   <div className="flex gap-2 items-start">
                       <textarea 
                         ref={nameTextareaRef} 
@@ -349,7 +351,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                         className={`flex-1 min-h-[50px] flex flex-col items-center justify-center gap-1 rounded-xl border transition-all active:scale-95 ${showAdvanced ? 'bg-slate-700 border-slate-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-300'}`}
                       >
                           <Settings2 size={18} />
-                          <span className="text-[10px] font-bold">進階設定</span>
+                          <span className="text-[10px] font-bold">{t('col_advanced')}</span>
                       </button>
                   </div>
 
@@ -366,16 +368,16 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                                       <Sigma size={20} className={!editedCol.isScoring ? "opacity-30" : ""} />
                                       {!editedCol.isScoring && <X size={12} className="absolute -bottom-1 -right-1 text-amber-500 stroke-[3]" />}
                                   </div>
-                                  <span className="text-[10px]">{!editedCol.isScoring ? '不計分' : '計分中'}</span>
+                                  <span className="text-[10px]">{!editedCol.isScoring ? t('col_scoring_off') : t('col_scoring_on')}</span>
                               </button>
 
                               {/* Layout Crop */}
                               <button 
-                                onClick={() => { setShowLayoutEditor(true); setHelpText("設定此欄位在背景圖上的顯示位置"); }} 
+                                onClick={() => { setShowLayoutEditor(true); setHelpText('col_help_crop'); }} 
                                 className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${editedCol.contentLayout ? 'text-sky-400 border-sky-500/50 bg-sky-900/20' : 'text-slate-400 border-slate-700 bg-slate-900 hover:text-white'}`}
                               >
                                   <Crop size={20} />
-                                  <span className="text-[10px]">{editedCol.contentLayout ? '已框選' : '框選區域'}</span>
+                                  <span className="text-[10px]">{editedCol.contentLayout ? t('col_cropped') : t('col_crop')}</span>
                               </button>
 
                               {/* Display Mode */}
@@ -384,18 +386,18 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                                 className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${editedCol.displayMode === 'overlay' ? 'text-indigo-400 border-indigo-500/50 bg-indigo-900/20' : 'text-slate-400 border-slate-700 bg-slate-900 hover:text-white'}`}
                               >
                                   {editedCol.displayMode === 'overlay' ? <Layers size={20}/> : <LayoutList size={20}/>}
-                                  <span className="text-[10px]">{editedCol.displayMode === 'overlay' ? '重疊' : '列表'}</span>
+                                  <span className="text-[10px]">{editedCol.displayMode === 'overlay' ? t('col_display_overlay') : t('col_display_row')}</span>
                               </button>
                           </div>
                           <div className="bg-slate-900/50 rounded py-1 px-2 text-center text-[10px] text-slate-400 border border-slate-800/50 flex items-center justify-center gap-1">
-                              <Info size={10} /> {helpText}
+                              <Info size={10} /> {t(helpText as any)}
                           </div>
                       </div>
                   )}
               </div>
 
               <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">代表色</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('col_color')}</label>
                   <div className="flex items-center gap-2 flex-wrap">
                       {COLORS.map(c => (
                           <button key={c} onClick={() => setEditedCol({ ...editedCol, color: c })} className={`w-8 h-8 rounded-full shadow-lg border-2 transition-transform active:scale-90 ${editedCol.color === c ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'} ${isColorDark(c) ? 'ring-1 ring-white/50' : ''}`} style={{backgroundColor: c}} />
@@ -406,16 +408,16 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
           </section>
 
           <div className="sticky top-0 z-10 flex border-y border-slate-800 bg-slate-900 shadow-lg">
-              <TabButton id="basic" label="數值運算" icon={Calculator} />
-              <TabButton id="select" label="列表選單" icon={ListPlus} />
-              <TabButton id="mapping" label="範圍查表" icon={Ruler} />
-              <TabButton id="auto" label="自動" icon={Sparkles} isSpecial />
+              <TabButton id="basic" label={t('col_tab_basic')} icon={Calculator} />
+              <TabButton id="select" label={t('col_tab_select')} icon={ListPlus} />
+              <TabButton id="mapping" label={t('col_tab_mapping')} icon={Ruler} />
+              <TabButton id="auto" label={t('col_tab_auto')} icon={Sparkles} isSpecial />
           </div>
           <div className="p-4 pb-24">{renderTabContent()}</div>
       </main>
       {!isKeyboardOpen && (
           <footer className="fixed bottom-0 left-0 right-0 p-4 bg-slate-900/80 backdrop-blur-sm border-t border-slate-800 z-20" style={{ paddingBottom: `calc(1rem + ${visualViewportOffset}px)` }}>
-              <button onClick={handleSave} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2"><Save size={20} /> 儲存設定</button>
+              <button onClick={handleSave} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2"><Save size={20} /> {t('col_btn_save')}</button>
           </footer>
       )}
     </div>

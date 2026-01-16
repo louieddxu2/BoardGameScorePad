@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { HistoryRecord, GameSession, ScoreColumn } from '../../types';
 import { ArrowLeft, Share2, Download, Check, Settings } from 'lucide-react';
@@ -71,16 +69,25 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
               const backgroundBackup = async () => {
                   try {
                       let folderId = record.cloudFolderId;
+                      let isNewFolder = false;
                       
                       // If legacy record without folder ID, create one
                       if (!folderId) {
+                          // This creates the folder in _ActiveSessions initially
                           folderId = await googleDriveService.createActiveSessionFolder(record.gameName, record.id);
                           // Update local DB immediately
                           await db.history.update(record.id, { cloudFolderId: folderId });
+                          isNewFolder = true;
                       }
 
                       if (folderId) {
                           await googleDriveService.backupHistoryRecord(record, folderId);
+                          
+                          // If we just created this folder, it is currently in _ActiveSessions.
+                          // We must move it to _History.
+                          if (isNewFolder) {
+                              await googleDriveService.moveSessionToHistory(folderId);
+                          }
                           console.log("History auto-backup successful (background)");
                       }
                   } catch (e) {

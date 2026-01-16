@@ -5,6 +5,7 @@ import { COLORS } from '../../../colors';
 import { isColorDark } from '../../../utils/ui';
 import { Plus, Trash2, Palette, X } from 'lucide-react';
 import { generateId } from '../../../utils/idGenerator';
+import { useTranslation } from '../../../i18n';
 
 interface QuickActionsEditorProps {
   quickActions: QuickAction[];
@@ -80,6 +81,7 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
   showModifierToggle,
   onChange,
 }) => {
+  const { t } = useTranslation();
   const [colorPickerIdx, setColorPickerIdx] = useState<number | null>(null);
 
   const handleAdd = () => {
@@ -114,7 +116,7 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
     <>
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-slate-400 uppercase">按鈕欄數</label>
+          <label className="text-xs font-bold text-slate-400 uppercase">{t('col_btn_cols')}</label>
           <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
             {[1, 2, 3, 4].map((cols) => (
               <button
@@ -131,13 +133,13 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
         </div>
         <div className="text-[10px] text-slate-500">
           {buttonGridColumns === 1
-            ? '目前為「清單模式」：按鈕將橫向排列，最適合閱讀。'
-            : '目前為「網格模式」：按鈕將縱向堆疊，節省空間。'}
+            ? t('col_btn_mode_list_hint')
+            : t('col_btn_mode_grid_hint')}
         </div>
       </div>
 
       <div className="border-t border-slate-700/50 pt-4 space-y-2">
-        <label className="text-xs font-bold text-slate-400 uppercase">按鈕列表</label>
+        <label className="text-xs font-bold text-slate-400 uppercase">{t('col_buttons')}</label>
         {quickActions.map((action, idx) => (
           <div
             key={action.id}
@@ -152,7 +154,7 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
                       ? 'border-2 border-dashed border-indigo-400 bg-indigo-500/10 text-indigo-400'
                       : 'border border-slate-600 bg-slate-900 text-slate-500 hover:border-slate-500 hover:text-slate-400'
                   }`}
-                  title="切換為額外添加鍵"
+                  title={t('col_btn_modifier_hint')}
                 >
                   <Plus size={18} strokeWidth={action.isModifier ? 3 : 2} />
                 </button>
@@ -161,7 +163,7 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
                 onClick={() => setColorPickerIdx(colorPickerIdx === idx ? null : idx)}
                 className="w-9 h-9 shrink-0 rounded-lg border border-slate-600 flex items-center justify-center shadow-sm relative overflow-hidden"
                 style={{ backgroundColor: action.color || defaultColor }}
-                title="設定按鈕顏色"
+                title={t('col_btn_color_hint')}
               >
                 <Palette
                   size={14}
@@ -172,7 +174,7 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
               </button>
               <div className="flex-1 flex gap-2 min-w-0">
                 <AutoResizingTextarea
-                  placeholder="標籤 (可換行)"
+                  placeholder={t('col_btn_label_ph')}
                   value={action.label}
                   onChange={(e) => handleUpdate(idx, 'label', e.target.value)}
                   style={{ minHeight: '38px', resize: 'none', overflow: 'hidden' }}
@@ -238,7 +240,7 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
                     className={`w-6 h-6 rounded-full shadow-sm border flex items-center justify-center bg-slate-800 ${
                       !action.color ? 'border-white scale-110' : 'border-slate-600 text-slate-500'
                     }`}
-                    title="重置為預設"
+                    title={t('col_btn_reset_color')}
                   >
                     <X size={12} />
                   </button>
@@ -252,7 +254,7 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
         onClick={handleAdd}
         className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-dashed border-slate-600 flex items-center justify-center gap-2 text-sm"
       >
-        <Plus size={16} /> 新增按鈕
+        <Plus size={16} /> {t('col_btn_add')}
       </button>
     </>
   );
