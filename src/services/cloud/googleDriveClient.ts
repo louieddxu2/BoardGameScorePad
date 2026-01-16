@@ -43,7 +43,9 @@ class GoogleDriveClient {
   }
 
   public async findFile(name: string, parentId: string = 'root', mimeType?: string): Promise<DriveFile | null> {
-    let query = `name = '${name}' and '${parentId}' in parents and trashed = false`;
+    // Escape single quotes in name to prevent query injection / breakage
+    const safeName = name.replace(/'/g, "\\'");
+    let query = `name = '${safeName}' and '${parentId}' in parents and trashed = false`;
     if (mimeType) query += ` and mimeType = '${mimeType}'`;
     
     const data = await this.fetchDrive(
@@ -79,16 +81,39 @@ class GoogleDriveClient {
   public async uploadFileToFolder(folderId: string, name: string, mimeType: string, body: Blob | string): Promise<DriveFile> {
     const existing = await this.findFile(name, folderId, mimeType);
     
+    // Construct proper multipart/related body
     const metadata = { 
         name, 
         mimeType, 
         parents: existing ? undefined : [folderId] 
     };
 
-    const form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-    const contentBlob = typeof body === 'string' ? new Blob([body], { type: mimeType }) : body;
-    form.append('file', contentBlob);
+    const boundary = '-------314159265358979323846';
+    const delimiter = `\r\n--${boundary}\r\n`;
+    const closeDelimiter = `\r\n--${boundary}--`;
+
+    let contentBuffer: Uint8Array;
+    if (typeof body === 'string') {
+        contentBuffer = new TextEncoder().encode(body);
+    } else {
+        contentBuffer = new Uint8Array(await body.arrayBuffer());
+    }
+
+    const metadataStr = JSON.stringify(metadata);
+    const part1 = `Content-Type: application/json\r\n\r\n${metadataStr}`;
+    const part2 = `Content-Type: ${mimeType}\r\n\r\n`;
+
+    // Construct the full body as Uint8Array
+    const encoder = new TextEncoder();
+    const p1 = encoder.encode(delimiter + part1 + delimiter + part2);
+    const p3 = encoder.encode(closeDelimiter);
+    
+    const totalLength = p1.length + contentBuffer.length + p3.length;
+    const requestBody = new Uint8Array(totalLength);
+    
+    requestBody.set(p1, 0);
+    requestBody.set(contentBuffer, p1.length);
+    requestBody.set(p3, p1.length + contentBuffer.length);
 
     const method = existing ? 'PATCH' : 'POST';
     const endpoint = existing 
@@ -97,8 +122,11 @@ class GoogleDriveClient {
 
     const response = await fetch(endpoint, {
       method,
-      headers: { 'Authorization': `Bearer ${googleAuth.token}` },
-      body: form,
+      headers: { 
+          'Authorization': `Bearer ${googleAuth.token}`,
+          'Content-Type': `multipart/related; boundary=${boundary}`
+      },
+      body: requestBody,
     });
     
     if (!response.ok) throw new Error('File upload failed');
