@@ -1,5 +1,5 @@
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { getTouchDistance } from '../utils/ui';
 
 export interface ViewTransform {
