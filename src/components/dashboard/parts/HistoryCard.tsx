@@ -3,6 +3,7 @@ import React from 'react';
 import { HistoryRecord } from '../../../types';
 import { Crown, Calendar, Trash2, MapPin } from 'lucide-react';
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
+import { useTranslation } from '../../../i18n';
 
 interface HistoryCardProps {
   record: HistoryRecord;
@@ -11,9 +12,10 @@ interface HistoryCardProps {
 }
 
 const HistoryCard: React.FC<HistoryCardProps> = ({ record, onDelete, onClick }) => {
+  const { language } = useTranslation();
   const date = new Date(record.endTime);
-  const dateStr = date.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
-  const timeStr = date.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const dateStr = date.toLocaleDateString(language, { year: 'numeric', month: '2-digit', day: '2-digit' });
+  const timeStr = date.toLocaleTimeString(language, { hour: '2-digit', minute: '2-digit', hour12: false });
 
   return (
     <div 

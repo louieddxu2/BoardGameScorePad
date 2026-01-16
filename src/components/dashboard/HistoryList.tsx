@@ -3,6 +3,7 @@ import React from 'react';
 import { HistoryRecord } from '../../types';
 import HistoryCard from './parts/HistoryCard';
 import { History as HistoryIcon } from 'lucide-react';
+import { useTranslation } from '../../i18n';
 
 interface HistoryListProps {
   records: HistoryRecord[] | undefined;
@@ -11,6 +12,7 @@ interface HistoryListProps {
 }
 
 const HistoryList: React.FC<HistoryListProps> = ({ records, onDelete, onSelect }) => {
+  const { t } = useTranslation();
   // Logic updated: records passed here are already filtered by the DB hook based on search query.
   // We render whatever we get.
 
@@ -20,8 +22,8 @@ const HistoryList: React.FC<HistoryListProps> = ({ records, onDelete, onSelect }
               <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center border-4 border-slate-700">
                   <HistoryIcon size={40} className="opacity-50" />
               </div>
-              <p className="text-sm font-bold">沒有紀錄</p>
-              <p className="text-xs max-w-[200px] text-center opacity-70">如果是搜尋結果為空，請嘗試其他關鍵字。</p>
+              <p className="text-sm font-bold">{t('dash_no_records')}</p>
+              <p className="text-xs max-w-[200px] text-center opacity-70">{t('dash_no_records_hint')}</p>
           </div>
       );
   }

@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { useTranslation } from '../../i18n';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -18,14 +19,20 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   isOpen,
   title,
   message,
-  confirmText = "確定",
-  cancelText = "取消",
+  confirmText,
+  cancelText,
   onConfirm,
   onCancel,
   isDangerous = false,
   zIndexClass = "z-[60]", // Default value
 }) => {
+  const { t } = useTranslation();
+
   if (!isOpen) return null;
+
+  // Use translation defaults if props are not provided
+  const effectiveConfirmText = confirmText || t('confirm');
+  const effectiveCancelText = cancelText || t('cancel');
 
   return (
     <div className={`fixed inset-0 ${zIndexClass} bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200`}>
@@ -44,7 +51,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             onClick={onCancel}
             className="flex-1 py-3 rounded-xl bg-slate-700 text-white font-medium hover:bg-slate-600 transition-colors"
           >
-            {cancelText}
+            {effectiveCancelText}
           </button>
           <button
             onClick={onConfirm}
@@ -54,7 +61,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                 : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/50'
             }`}
           >
-            {confirmText}
+            {effectiveConfirmText}
           </button>
         </div>
       </div>

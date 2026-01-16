@@ -1,5 +1,5 @@
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { calculateParallelogramPoint, findStrongestCorner, snapToEdge, getEdgeAngles } from '../../../utils/scanUtils';
 import { ViewTransform } from '../../../hooks/usePanZoom';
 

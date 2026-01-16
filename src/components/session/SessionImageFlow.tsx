@@ -117,6 +117,8 @@ const SessionImageFlow: React.FC<SessionImageFlowProps> = ({
               onSave={handleTextureSave}
               onCancel={handleTextureCancel}
               aspectRatio={template.globalVisuals?.aspectRatio || 1}
+              initialVisuals={template.globalVisuals}
+              initialColumns={template.columns}
           />
       );
   }

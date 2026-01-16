@@ -110,7 +110,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               <button 
                 onClick={toggleView}
                 className="relative h-9 w-[56px] bg-slate-800 border border-slate-700 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-750 transition-colors shrink-0 group active:scale-95 shadow-inner"
-                title={viewMode === 'library' ? "Switch to History" : "Switch to Library"}
+                title={viewMode === 'library' ? t('cloud_tab_history') : t('cloud_tab_templates')}
               >
                   {/* Central Slash (Background) */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">

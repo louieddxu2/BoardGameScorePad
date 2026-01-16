@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { GameTemplate, GameSession, HistoryRecord } from '../../types';
 import { Plus, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, CloudCog, Loader2, Activity, CloudOff, History, Search, ChevronLeft } from 'lucide-react';
@@ -12,6 +10,7 @@ import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 import { useAppData } from '../../hooks/useAppData'; 
 import { useSwipe } from '../../hooks/useSwipe'; 
 import { usePullAction } from '../../hooks/usePullAction'; 
+import { useTranslation } from '../../i18n'; // Import translation hook
 
 // Sub Components
 import DashboardHeader from './parts/DashboardHeader';
@@ -98,6 +97,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
 }) => {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [viewMode, setViewMode] = useState<'library' | 'history'>('library');
+  const { t } = useTranslation();
   
   // Animation Control: Only show entry animations on first mount
   const [hasMounted, setHasMounted] = useState(false);
@@ -253,14 +253,14 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
       navigator.clipboard.writeText(json).then(() => {
           setCopiedId(partialTemplate.id);
           setTimeout(() => setCopiedId(null), 2000);
-          showToast({ message: "JSON 已複製", type: 'success' });
+          showToast({ message: t('msg_json_copied'), type: 'success' });
       });
   };
 
   const handleCloudBackup = async (partialTemplate: GameTemplate, e: React.MouseEvent) => {
       e.stopPropagation();
       if (!isAutoConnectEnabled) {
-          showToast({ message: "請先點擊上方雲端按鈕啟用連線", type: 'warning' });
+          showToast({ message: t('msg_cloud_connect_first'), type: 'warning' });
           return;
       }
       let templateToBackup = partialTemplate;
@@ -268,7 +268,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           const full = await onGetFullTemplate(partialTemplate.id);
           if (full) templateToBackup = full;
           else {
-              showToast({ message: "讀取模板失敗", type: 'error' });
+              showToast({ message: t('msg_read_template_failed'), type: 'error' });
               return;
           }
       }
@@ -292,7 +292,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         updatedAt: Date.now(),
     };
     onTemplateSave(newTemplate, { skipCloud: true });
-    showToast({ message: "已建立副本", type: 'success' });
+    showToast({ message: t('msg_copy_created'), type: 'success' });
   };
 
   const handleSystemBackupAction = async (onProgress: (count: number, total: number) => void, onError: (failedItems: string[]) => void) => {
@@ -398,11 +398,11 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
                             <div className="flex items-center gap-2 px-2">
                                 <Search size={14} className="text-emerald-500" />
                                 <span className="text-sm font-bold text-slate-300">
-                                    搜尋結果：{historyCount} 筆
+                                    {t('dash_search_result_count', { count: historyCount || 0 })}
                                 </span>
                                 {historyCount && historyCount > 100 && (
                                     <span className="text-xs text-slate-500 border-l border-slate-600 pl-2 ml-1">
-                                        顯示最近 100 筆
+                                        {t('dash_search_result_limit')}
                                     </span>
                                 )}
                             </div>
@@ -421,8 +421,8 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
                     {activeGameItems.length > 0 && (
                         <div className="space-y-2">
                             <div onClick={() => setIsActiveLibOpen(!isActiveLibOpen)} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-700/50 cursor-pointer hover:bg-slate-800 transition-colors">
-                                <div className="flex items-center gap-2">{isActiveLibOpen ? <ChevronDown size={20} className="text-emerald-400"/> : <ChevronRight size={20} className="text-slate-500"/>}<h3 className="text-base font-bold text-white flex items-center gap-2"><Activity size={18} className="text-emerald-400" /> 進行中遊戲 <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{activeGameItems.length}</span></h3></div>
-                                <button onClick={(e) => { e.stopPropagation(); setShowClearAllConfirm(true); }} className="text-xs text-slate-500 hover:text-red-400 px-2 py-1">全部清空</button>
+                                <div className="flex items-center gap-2">{isActiveLibOpen ? <ChevronDown size={20} className="text-emerald-400"/> : <ChevronRight size={20} className="text-slate-500"/>}<h3 className="text-base font-bold text-white flex items-center gap-2"><Activity size={18} className="text-emerald-400" /> {t('dash_active_sessions')} <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{activeGameItems.length}</span></h3></div>
+                                <button onClick={(e) => { e.stopPropagation(); setShowClearAllConfirm(true); }} className="text-xs text-slate-500 hover:text-red-400 px-2 py-1">{t('dash_clear_all')}</button>
                             </div>
                             {isActiveLibOpen && (
                                 <div className={`grid grid-cols-2 gap-3 ${animClass}`}>
@@ -444,7 +444,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
                     {pinnedTemplates.length > 0 && (
                         <div className="space-y-2">
                             <div onClick={() => setIsPinnedLibOpen(!isPinnedLibOpen)} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-700/50 cursor-pointer hover:bg-slate-800 transition-colors">
-                                <div className="flex items-center gap-2">{isPinnedLibOpen ? <ChevronDown size={20} className="text-yellow-400"/> : <ChevronRight size={20} className="text-slate-500"/>}<h3 className="text-base font-bold text-white flex items-center gap-2"><Pin size={18} className="text-yellow-400" /> 已釘選 <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{pinnedTemplates.length}</span></h3></div>
+                                <div className="flex items-center gap-2">{isPinnedLibOpen ? <ChevronDown size={20} className="text-yellow-400"/> : <ChevronRight size={20} className="text-slate-500"/>}<h3 className="text-base font-bold text-white flex items-center gap-2"><Pin size={18} className="text-yellow-400" /> {t('dash_pinned')} <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{pinnedTemplates.length}</span></h3></div>
                             </div>
                             {isPinnedLibOpen && (
                                 <div className={`grid grid-cols-2 gap-3 ${animClass}`}>
@@ -469,16 +469,16 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
                     {/* User Library */}
                     <div className="space-y-2">
                         <div onClick={() => setIsUserLibOpen(!isUserLibOpen)} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-700/50 cursor-pointer hover:bg-slate-800 transition-colors">
-                            <div className="flex items-center gap-2">{isUserLibOpen ? <ChevronDown size={20} className="text-emerald-500"/> : <ChevronRight size={20} className="text-slate-500"/>}<h3 className="text-base font-bold text-white flex items-center gap-2"><LayoutGrid size={18} className="text-emerald-500" /> 我的遊戲庫 <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{userTemplatesCount}</span></h3></div>
+                            <div className="flex items-center gap-2">{isUserLibOpen ? <ChevronDown size={20} className="text-emerald-500"/> : <ChevronRight size={20} className="text-slate-500"/>}<h3 className="text-base font-bold text-white flex items-center gap-2"><LayoutGrid size={18} className="text-emerald-500" /> {t('dash_my_library')} <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{userTemplatesCount}</span></h3></div>
                             <div className="flex items-center gap-2">
-                                <button onClick={(e) => { e.stopPropagation(); setShowDataModal(true); }} className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors" title="匯入/匯出 JSON"><ArrowRightLeft size={18} /></button>
-                                <button onClick={(e) => { e.stopPropagation(); onTemplateCreate(); }} className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg active:scale-95"><Plus size={14} /> 新增</button>
+                                <button onClick={(e) => { e.stopPropagation(); setShowDataModal(true); }} className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors" title={t('dash_import_export')}><ArrowRightLeft size={18} /></button>
+                                <button onClick={(e) => { e.stopPropagation(); onTemplateCreate(); }} className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg active:scale-95"><Plus size={14} /> {t('dash_add_new')}</button>
                             </div>
                         </div>
                         {isUserLibOpen && (
                             <div className={`grid grid-cols-2 gap-3 ${animClass}`}>
                                 {userTemplatesCount === 0 && <div className="col-span-2 text-center py-8 text-slate-500 text-sm italic border-2 border-dashed border-slate-800 rounded-xl">
-                                    {searchQuery ? '沒有符合搜尋的遊戲' : '還沒有建立遊戲模板'}
+                                    {searchQuery ? t('dash_no_search_results') : t('dash_no_templates')}
                                 </div>}
                                 {userTemplatesToShow.map(t => (
                                     <GameCard 
@@ -502,10 +502,10 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
                     {/* System Library */}
                     <div className="space-y-2">
                         <div onClick={() => setIsSystemLibOpen(!isSystemLibOpen)} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-700/50 cursor-pointer hover:bg-slate-800 transition-colors">
-                            <div className="flex items-center gap-2">{isSystemLibOpen ? <ChevronDown size={20} className="text-indigo-400"/> : <ChevronRight size={20} className="text-slate-500"/>}<h3 className="text-base font-bold text-white flex items-center gap-2"><Library size={18} className="text-indigo-400" /> 內建遊戲庫 <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{systemTemplatesCount}</span></h3></div>
+                            <div className="flex items-center gap-2">{isSystemLibOpen ? <ChevronDown size={20} className="text-indigo-400"/> : <ChevronRight size={20} className="text-slate-500"/>}<h3 className="text-base font-bold text-white flex items-center gap-2"><Library size={18} className="text-indigo-400" /> {t('dash_builtin_library')} <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{systemTemplatesCount}</span></h3></div>
                             {newSystemTemplatesCount > 0 && !searchQuery && (
                                 <button onClick={(e) => { e.stopPropagation(); onClearNewBadges(); setIsSystemLibOpen(true); }} className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg animate-pulse">
-                                    <Sparkles size={14} /> 發現 {newSystemTemplatesCount} 個新遊戲
+                                    <Sparkles size={14} /> {t('dash_new_games_found', { count: newSystemTemplatesCount })}
                                 </button>
                             )}
                         </div>
@@ -541,15 +541,15 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
       </div>
 
       {/* --- Modals --- */}
-      <ConfirmationModal isOpen={!!templateToDelete} title="確定刪除此模板？" message="此動作將無法復原。" confirmText="刪除" isDangerous={true} onCancel={() => setTemplateToDelete(null)} onConfirm={() => { if(templateToDelete) onTemplateDelete(templateToDelete); setTemplateToDelete(null); }} />
-      <ConfirmationModal isOpen={!!sessionToDelete} title="確定刪除此進行中的遊戲嗎？" message="您將遺失目前的計分進度。" confirmText="刪除" isDangerous={true} onCancel={() => setSessionToDelete(null)} onConfirm={() => { if(sessionToDelete) onDiscardSession(sessionToDelete); setSessionToDelete(null); }} />
-      <ConfirmationModal isOpen={!!historyToDelete} title="確定刪除此紀錄？" message="此動作將無法復原。" confirmText="刪除" isDangerous={true} onCancel={() => setHistoryToDelete(null)} onConfirm={() => { if(historyToDelete) onDeleteHistory(historyToDelete); setHistoryToDelete(null); }} />
-      <ConfirmationModal isOpen={showClearAllConfirm} title="清空所有進行中遊戲？" message="此動作將刪除所有暫存進度，無法復原。" confirmText="全部清空" isDangerous={true} onCancel={() => setShowClearAllConfirm(false)} onConfirm={() => { onClearAllActiveSessions(); setShowClearAllConfirm(false); }} />
+      <ConfirmationModal isOpen={!!templateToDelete} title={t('confirm_delete_template_title')} message={t('confirm_delete_template_msg')} confirmText={t('delete')} isDangerous={true} onCancel={() => setTemplateToDelete(null)} onConfirm={() => { if(templateToDelete) onTemplateDelete(templateToDelete); setTemplateToDelete(null); }} />
+      <ConfirmationModal isOpen={!!sessionToDelete} title={t('confirm_delete_session_title')} message={t('confirm_delete_session_msg')} confirmText={t('delete')} isDangerous={true} onCancel={() => setSessionToDelete(null)} onConfirm={() => { if(sessionToDelete) onDiscardSession(sessionToDelete); setSessionToDelete(null); }} />
+      <ConfirmationModal isOpen={!!historyToDelete} title={t('confirm_delete_history_title')} message={t('confirm_delete_template_msg')} confirmText={t('delete')} isDangerous={true} onCancel={() => setHistoryToDelete(null)} onConfirm={() => { if(historyToDelete) onDeleteHistory(historyToDelete); setHistoryToDelete(null); }} />
+      <ConfirmationModal isOpen={showClearAllConfirm} title={t('confirm_clear_all_sessions_title')} message={t('confirm_clear_all_sessions_msg')} confirmText={t('confirm_clear_all')} isDangerous={true} onCancel={() => setShowClearAllConfirm(false)} onConfirm={() => { onClearAllActiveSessions(); setShowClearAllConfirm(false); }} />
       <ConfirmationModal 
         isOpen={!!restoreTarget} 
-        title="還原預設值？" 
-        message="目前的修改將會自動備份到「我的遊戲庫」，並還原至初始設定。" 
-        confirmText="還原" 
+        title={t('confirm_restore_title')} 
+        message={t('confirm_restore_msg')} 
+        confirmText={t('restore')} 
         onCancel={() => setRestoreTarget(null)} 
         onConfirm={async () => { 
             if(restoreTarget) { 

@@ -1,7 +1,8 @@
 
-import React from 'react';
-import { Share2, Download, Edit3, Check } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Download, Edit3, Check } from 'lucide-react';
 import { GameTemplate } from '../../types';
+import { usePanZoom } from '../../hooks/usePanZoom';
 
 interface ScanPreviewProps {
   imageSrc: string;
@@ -12,6 +13,10 @@ interface ScanPreviewProps {
 
 const ScanPreview: React.FC<ScanPreviewProps> = ({ imageSrc, template, onBack, onConfirm }) => {
   
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { transform, panZoomHandlers, fitToScreen } = usePanZoom({ containerRef });
+  const [imgSize, setImgSize] = useState<{w: number, h: number} | null>(null);
+
   const handleSaveToDevice = async () => {
     try {
         const response = await fetch(imageSrc);
@@ -30,6 +35,14 @@ const ScanPreview: React.FC<ScanPreviewProps> = ({ imageSrc, template, onBack, o
     } catch (e: any) {
         if (e.name !== 'AbortError') console.error("Save/Share failed", e);
     }
+  };
+
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+      const img = e.currentTarget;
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      setImgSize({ w, h });
+      fitToScreen(w, h);
   };
 
   const renderGridOverlay = () => {
@@ -66,7 +79,6 @@ const ScanPreview: React.FC<ScanPreviewProps> = ({ imageSrc, template, onBack, o
       };
 
       // Determine the width of one player column (the stride)
-      // We use playerHeaderRect width as the standard unit.
       const playerColWidth = visuals.playerHeaderRect?.width || 0;
       
       // How many ghost players to show? Let's show up to 4 or until edge.
@@ -119,35 +131,51 @@ const ScanPreview: React.FC<ScanPreviewProps> = ({ imageSrc, template, onBack, o
 
   return (
     <div className="fixed inset-0 z-[70] bg-slate-950 flex flex-col">
-        <header className="flex-none p-4 bg-slate-900 border-b border-slate-800 flex justify-center items-center">
+        <header className="flex-none p-4 bg-slate-900 border-b border-slate-800 flex justify-center items-center z-50">
             <h2 className="text-white font-bold">預覽與確認</h2>
         </header>
-        <main className="flex-1 w-full h-full flex items-center justify-center overflow-hidden p-4 bg-black/50 relative">
-           <div className="relative max-w-full max-h-full shadow-2xl">
-               <img src={imageSrc} className="max-w-full max-h-full object-contain" alt="校正結果" />
+        
+        <main 
+            className="flex-1 w-full h-full relative overflow-hidden bg-black/50 touch-none select-none"
+            ref={containerRef}
+            onMouseDown={panZoomHandlers.onMouseDown}
+            onTouchStart={panZoomHandlers.onTouchStart}
+            onWheel={panZoomHandlers.onWheel}
+        >
+           <div 
+                className="absolute top-0 left-0 origin-top-left will-change-transform shadow-2xl"
+                style={{ 
+                    transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+                    width: imgSize ? imgSize.w : 'auto',
+                    height: imgSize ? imgSize.h : 'auto'
+                }}
+           >
+               <img 
+                    src={imageSrc} 
+                    className="block pointer-events-none select-none w-full h-full object-contain" 
+                    alt="校正結果" 
+                    draggable={false}
+                    onLoad={handleImageLoad}
+                />
                {renderGridOverlay()}
            </div>
         </main>
-        <footer className="flex-none w-full p-4 bg-slate-900 border-t border-slate-800 flex flex-col gap-3">
-           <div className="flex justify-between items-center w-full">
-               <button onClick={onBack} className="px-4 py-3 bg-slate-800 text-white rounded-xl border border-slate-700 font-bold text-sm">返回調整</button>
-               
-               <div className="flex items-center gap-2">
-                    {template && (
-                        <button onClick={() => onConfirm('edit_grid')} className="px-4 py-3 bg-sky-700 hover:bg-sky-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 text-sm border border-sky-600">
-                            <Edit3 size={18} /> 修改網格
-                        </button>
-                    )}
-                    <button onClick={() => onConfirm('save')} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg flex items-center gap-2">
-                        <Check size={24} /> 確認
-                    </button>
-               </div>
-           </div>
+
+        <footer className="flex-none w-full p-4 bg-slate-900 border-t border-slate-800 flex items-center justify-between z-50">
+           <button onClick={onBack} className="px-4 py-3 bg-slate-800 text-white rounded-xl border border-slate-700 font-bold text-sm">返回調整</button>
            
-           <div className="flex justify-center w-full pt-1">
-                <button onClick={handleSaveToDevice} className="text-xs text-slate-500 hover:text-white flex items-center gap-1 py-1 px-2 rounded hover:bg-slate-800">
-                    {navigator.share ? <Share2 size={12} /> : <Download size={12} />}
-                    <span>儲存圖片到裝置</span>
+           <div className="flex items-center gap-2">
+                <button onClick={handleSaveToDevice} className="px-3 py-3 bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-slate-700 font-bold text-sm" title="儲存圖片到裝置">
+                    <Download size={20} />
+                </button>
+
+                {template && (
+                    <button onClick={() => onConfirm('edit_grid')} className="px-4 py-3 bg-sky-700 hover:bg-sky-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 text-sm border border-sky-600">
+                        <Edit3 size={18} /> 修改網格
+                    </button>
+                )}
+                <button onClick={() => onConfirm('save')} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg flex items-center gap-2">
+                    <Check size={24} />
                 </button>
            </div>
         </footer>

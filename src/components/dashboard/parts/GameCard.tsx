@@ -1,9 +1,8 @@
 
-
-
 import React from 'react';
 import { GameTemplate } from '../../../types';
 import { Trash2, Pin, Check, Code, PlayCircle, Copy, RefreshCw, UploadCloud, Image as ImageIcon } from 'lucide-react';
+import { useTranslation } from '../../../i18n';
 
 interface GameCardProps {
   template: GameTemplate;
@@ -39,6 +38,7 @@ const GameCard: React.FC<GameCardProps> = ({
   isConnected,
   isAutoConnectEnabled
 }) => {
+  const { t } = useTranslation();
 
   // Logic: Compare lastSyncedAt with updatedAt
   const isSynced = (template.lastSyncedAt || 0) >= (template.updatedAt || 0);
@@ -56,13 +56,13 @@ const GameCard: React.FC<GameCardProps> = ({
       // Size 16 matches the Trash icon size
       if (isLocalImageReady) {
           return (
-              <div title="背景圖已就緒" className="p-1.5 text-sky-400 opacity-90">
+              <div title={t('card_img_ready')} className="p-1.5 text-sky-400 opacity-90">
                   <ImageIcon size={16} />
               </div>
           );
       } else {
           return (
-              <div title="需下載或設定背景圖" className="p-1.5 text-slate-600 opacity-60">
+              <div title={t('card_img_missing')} className="p-1.5 text-slate-600 opacity-60">
                   <ImageIcon size={16} />
               </div>
           );
@@ -116,11 +116,11 @@ const GameCard: React.FC<GameCardProps> = ({
         {mode === 'system' && (
           systemOverride ? (
             <button onClick={onSystemRestore} className="flex items-center gap-1 text-[9px] text-yellow-500 font-normal border border-yellow-500/30 px-1.5 py-0.5 rounded hover:bg-yellow-900/20">
-              <RefreshCw size={8} /> 備份並還原
+              <RefreshCw size={8} /> {t('card_restore_builtin')}
             </button>
           ) : (
             <button onClick={onSystemCopy} className="flex items-center gap-1 text-[10px] text-slate-300 font-bold bg-slate-700/50 hover:bg-slate-700 px-1.5 py-1 rounded-md">
-              <Copy size={11} /> 建立副本
+              <Copy size={11} /> {t('card_create_copy')}
             </button>
           )
         )}
@@ -133,7 +133,7 @@ const GameCard: React.FC<GameCardProps> = ({
       <div className="absolute bottom-1 right-1 flex gap-1">
         {/* Only show Upload button if NOT synced (Actionable) */}
         {onCloudBackup && isAutoConnectEnabled && isConnected && !isSynced && (
-          <button onClick={onCloudBackup} className="p-1.5 text-amber-400/80 hover:text-amber-300 hover:bg-slate-700 rounded transition-colors" title="有變更！點擊備份到 Google Drive">
+          <button onClick={onCloudBackup} className="p-1.5 text-amber-400/80 hover:text-amber-300 hover:bg-slate-700 rounded transition-colors" title={t('card_backup_hint')}>
             <UploadCloud size={14} />
           </button>
         )}

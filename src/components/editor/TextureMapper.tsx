@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { GameTemplate } from '../../types';
+import { GameTemplate, GlobalVisuals, ScoreColumn } from '../../types';
 import { ArrowLeft, Check, Settings2, Move, ZoomIn, ArrowRight, Plus, CopyPlus, GripVertical } from 'lucide-react';
 import { useToast } from '../../hooks/useToast';
 import { getTouchDistance } from '../../utils/ui';
@@ -21,27 +21,105 @@ interface TextureMapperProps {
   onCancel: () => void;
   allTemplates: GameTemplate[];
   aspectRatio: number; 
+  initialVisuals?: GlobalVisuals;
+  initialColumns?: ScoreColumn[];
 }
 
 const DRAWER_BOUNDARY_X = 128; 
 
-const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, initialColumnCount, onSave, onCancel, allTemplates, aspectRatio }) => {
-  // --- Core State ---
-  // Default bounds: Top 0%, Bottom 100%, Left 0%, Right 100%
-  const [gridBounds, setGridBounds] = useState<GridBounds>({ top: 0, bottom: 100, left: 0, right: 100 });
+const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, initialColumnCount, onSave, onCancel, allTemplates, aspectRatio, initialVisuals, initialColumns }) => {
   
-  // [Fix] Initialize hLines synchronously to avoid race condition causing 0 rows
+  // --- Core State ---
+  
+  // Initialize Bounds
+  const [gridBounds, setGridBounds] = useState<GridBounds>(() => {
+    if (initialVisuals && initialVisuals.topMaskRect) {
+       return {
+         top: (initialVisuals.topMaskRect.height || 0) * 100,
+         bottom: initialVisuals.bottomMaskRect ? initialVisuals.bottomMaskRect.y * 100 : 100,
+         left: (initialVisuals.leftMaskRect?.width || 0) * 100,
+         right: initialVisuals.rightMaskRect ? initialVisuals.rightMaskRect.x * 100 : 100
+       };
+    }
+    return { top: 0, bottom: 100, left: 0, right: 100 };
+  });
+  
+  // Initialize Horizontal Lines
   const [hLines, setHLines] = useState<number[]>(() => {
+    if (initialVisuals && initialColumns && initialColumns.length > 0) {
+        const lines = new Set<number>();
+        
+        // Add Header Line
+        if (initialVisuals.playerHeaderRect) {
+             const y = (initialVisuals.playerHeaderRect.y + initialVisuals.playerHeaderRect.height) * 100;
+             lines.add(Math.round(y * 1000) / 1000);
+        }
+
+        // Add Column Bottoms
+        initialColumns.forEach(col => {
+            // Only add if visible (row mode)
+            if (col.visuals?.cellRect && col.displayMode !== 'hidden' && col.displayMode !== 'overlay') {
+                const y = (col.visuals.cellRect.y + col.visuals.cellRect.height) * 100;
+                lines.add(Math.round(y * 1000) / 1000);
+            }
+        });
+        
+        // Add Total Row Top (if distinct)
+        if (initialVisuals.totalRowRect) {
+            const y = initialVisuals.totalRowRect.y * 100;
+            lines.add(Math.round(y * 1000) / 1000);
+        }
+
+        const sorted = Array.from(lines).sort((a, b) => a - b);
+        
+        // Filter out lines that are too close to bounds to avoid duplication/glitches
+        const topBound = (initialVisuals.topMaskRect?.height || 0) * 100;
+        const bottomBound = (initialVisuals.bottomMaskRect?.y || 1) * 100;
+        
+        return sorted.filter(y => y > topBound + 0.1 && y < bottomBound - 0.1);
+    }
+
     const totalRows = initialColumnCount + 2; 
     const rowHeight = 100 / totalRows;
     return Array.from({ length: initialColumnCount + 1 }, (_, i) => (i + 1) * rowHeight);
   });
 
-  const [vLines, setVLines] = useState<number[]>([25, 50]);
+  // Initialize Vertical Lines
+  const [vLines, setVLines] = useState<number[]>(() => {
+    if (initialVisuals && initialVisuals.playerLabelRect && initialVisuals.playerHeaderRect) {
+        const v0 = (initialVisuals.playerLabelRect.width) * 100;
+        const v1 = (initialVisuals.playerHeaderRect.x + initialVisuals.playerHeaderRect.width) * 100;
+        return [Math.round(v0 * 1000) / 1000, Math.round(v1 * 1000) / 1000];
+    }
+    return [25, 50];
+  });
+
   const [headerSepIdx, setHeaderSepIdx] = useState<number>(1);
   
-  // [Fix] Initialize totalSepIdx synchronously to match hLines
-  const [totalSepIdx, setTotalSepIdx] = useState<number>(initialColumnCount + 1);
+  // Initialize totalSepIdx
+  const [totalSepIdx, setTotalSepIdx] = useState<number>(() => {
+      // If hydrating, totalSepIdx is effectively the last line + 1 (representing the Total Row area)
+      // Because hLines stores separators. 
+      // If we have N hLines, we have N+1 rows inside the bounds.
+      // If Header uses 1 row (index 0), then we have N rows left.
+      // Usually totalSepIdx matches hLines.length.
+      if (initialVisuals) {
+          // We can't know exactly which was total without analyzing logic, 
+          // but typically the last separator defines the start of Total Row.
+          // So the index of the line starting the total row in 'sortedHLines' would be hLines.length + 1 (accounting for top bound).
+          // But hLines state only has internal lines.
+          // Let's assume it's at the end.
+          
+          // Re-calculate how many lines we initialized
+          let linesCount = 0;
+          if (initialColumns) {
+             const visibleCols = initialColumns.filter(c => c.displayMode !== 'hidden' && c.displayMode !== 'overlay');
+             linesCount = visibleCols.length + 1; // +1 for header
+          }
+          return linesCount > 0 ? linesCount : initialColumnCount + 1;
+      }
+      return initialColumnCount + 1;
+  });
 
   const [phase, setPhase] = useState<'grid' | 'structure'>('grid');
   const [activeLine, setActiveLine] = useState<{ type: 'h' | 'v' | 'bound', index: number, boundType?: 'top'|'bottom'|'left'|'right' } | null>(null);
@@ -49,8 +127,45 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
   
   // --- Mapping & Custom Drag State ---
   const [showImportModal, setShowImportModal] = useState(false);
-  const [importedTemplate, setImportedTemplate] = useState<GameTemplate | null>(null);
-  const [rowMapping, setRowMapping] = useState<string[][]>([]);
+  
+  // [Feature] If editing existing grid, prepopulate rowMapping with existing columns
+  const [importedTemplate, setImportedTemplate] = useState<GameTemplate | null>(() => {
+      if (initialColumns && initialColumns.length > 0) {
+          // Mock a template containing these columns for the drawer/mapping logic
+          return {
+              id: 'current',
+              name: initialName,
+              columns: initialColumns,
+              createdAt: Date.now()
+          } as GameTemplate;
+      }
+      return null;
+  });
+
+  const [rowMapping, setRowMapping] = useState<string[][]>(() => {
+      if (initialColumns && initialColumns.length > 0) {
+          // Map existing columns to rows
+          // Assumption: initialColumns are ordered by row
+          const mapping: string[][] = [];
+          
+          // Row 0 is header (skipped).
+          // Rows 1..N are items.
+          
+          let currentRowIdx = 0;
+          
+          initialColumns.forEach(col => {
+              if (col.displayMode === 'hidden' || col.displayMode === 'overlay') return;
+              
+              if (!mapping[currentRowIdx]) mapping[currentRowIdx] = [];
+              mapping[currentRowIdx].push(col.id);
+              currentRowIdx++;
+          });
+          
+          return mapping;
+      }
+      return [];
+  });
+
   const [draggedItem, setDraggedItem] = useState<DraggedItemInfo | null>(null);
   const [dropTargetRow, setDropTargetRow] = useState<number | null>(null);
 
@@ -79,17 +194,12 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
   }, [vLines, gridBounds.left, gridBounds.right]);
   
   // --- Logic Effects ---
-  
-  // [Fix] Removed useEffect for hLines initialization since it's now done in useState lazy initializer.
-  // This prevents the "flash of empty lines" that caused rowCount to drop to 0.
 
   useEffect(() => {
     if (phase === 'grid') {
       // Auto-adjust Total Separator to be the last line if user deletes/adds lines
-      // We assume the last line is always the Total Row separator
       const lastUserLineIdx = Math.max(1, sortedHLines.length - 2);
       
-      // Only auto-update if it looks like we are in a valid state (more than just bounds)
       if (sortedHLines.length > 2) {
           setTotalSepIdx(lastUserLineIdx);
       }
@@ -100,13 +210,8 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
     }
   }, [sortedHLines.length, phase, headerSepIdx]);
 
-  useEffect(() => {
-    if (importedTemplate) {
-      setRowMapping(new Array(rowCount).fill(null).map(() => []));
-    } else {
-      setRowMapping([]);
-    }
-  }, [importedTemplate?.id, rowCount]);
+  // [Fix] Removed the useEffect that resets rowMapping on importedTemplate change
+  // We handle initialization in useState now to support "Edit Grid" flow
 
   const handleTemplateSelect = async (selectedShallow: GameTemplate) => {
       if (!selectedShallow.columns || selectedShallow.columns.length === 0) {
@@ -128,21 +233,29 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
       } else {
           setImportedTemplate(selectedShallow);
       }
+      // Reset mapping when selecting a new template from modal
+      setRowMapping(new Array(rowCount).fill(null).map(() => []));
       setShowImportModal(false);
   };
 
   const handleDropOnRow = (rowIndex: number, draggedColId: string) => {
     setRowMapping(currentMapping => {
       const newMapping = JSON.parse(JSON.stringify(currentMapping));
+      
+      // Ensure array size
+      while (newMapping.length <= rowIndex) newMapping.push([]);
+
       for (let i = 0; i < newMapping.length; i++) {
+        if (!newMapping[i]) newMapping[i] = [];
         const indexInRow = newMapping[i].indexOf(draggedColId);
         if (indexInRow > -1) {
           newMapping[i].splice(indexInRow, 1);
           break; 
         }
       }
-      if (rowIndex >= 0 && rowIndex < newMapping.length) {
-        if (!Array.isArray(newMapping[rowIndex])) newMapping[rowIndex] = [];
+      
+      if (rowIndex >= 0) {
+        if (!newMapping[rowIndex]) newMapping[rowIndex] = [];
         newMapping[rowIndex].push(draggedColId);
       }
       return newMapping;
@@ -372,7 +485,10 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
                 ) : (
                   <button onClick={() => setImportedTemplate(null)} className="bg-slate-800 text-slate-300 px-4 py-3 rounded-lg text-sm font-bold shadow flex items-center gap-2 border border-slate-700"><CopyPlus size={16} /> 取消匯入</button>
                 )}
-                <button onClick={() => setShowImportModal(true)} className="bg-sky-800 text-sky-300 px-4 py-3 rounded-lg text-sm font-bold shadow flex items-center gap-2 border border-sky-700"><CopyPlus size={16} /> 匯入設定</button>
+                {/* Hide import button if already pre-populated from initialColumns (edit mode) */}
+                {(!initialColumns || initialColumns.length === 0) && (
+                    <button onClick={() => setShowImportModal(true)} className="bg-sky-800 text-sky-300 px-4 py-3 rounded-lg text-sm font-bold shadow flex items-center gap-2 border border-sky-700"><CopyPlus size={16} /> 匯入設定</button>
+                )}
               </div>
               <button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2"><Check size={18} /> 完成</button>
             </>

@@ -14,13 +14,13 @@ interface CloudManagerModalProps {
   initialCategory?: 'templates' | 'sessions' | 'history'; 
   isConnected: boolean; 
   isMockMode: boolean;
-  fetchFileList: (mode: 'active' | 'trash', source: 'templates' | 'sessions' | 'history') => Promise<CloudFile[]>;
+  fetchFileList: (mode: 'active' | 'trash', source: CloudResourceType) => Promise<CloudFile[]>;
   restoreBackup: (id: string) => Promise<GameTemplate>;
   restoreSessionBackup: (id: string) => Promise<GameSession>; 
   restoreHistoryBackup?: (id: string) => Promise<HistoryRecord>;
   restoreFromTrash: (id: string, type: CloudResourceType) => Promise<boolean>;
   deleteCloudFile: (id: string) => Promise<boolean>;
-  emptyTrash: () => Promise<boolean>;
+  emptyTrash: (type?: CloudResourceType) => Promise<boolean>;
   connectToCloud: () => Promise<boolean>; 
   disconnectFromCloud: () => Promise<void>; 
   onRestoreSuccess: (template: GameTemplate) => void;
@@ -86,6 +86,14 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
       return null;
   };
 
+  const getResourceType = (cat: typeof category): CloudResourceType => {
+      switch (cat) {
+          case 'templates': return 'template';
+          case 'sessions': return 'active';
+          case 'history': return 'history';
+      }
+  };
+
   // Sync category with prop when modal opens
   useEffect(() => {
       if (isOpen) {
@@ -118,8 +126,8 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
               try {
                   const [localData, cTemplates, cSessions, cHistory] = await Promise.all([
                       onGetLocalData(),
-                      fetchFileList('active', 'templates'),
-                      fetchFileList('active', 'sessions'),
+                      fetchFileList('active', 'template'),
+                      fetchFileList('active', 'active'),
                       fetchFileList('active', 'history')
                   ]);
 
@@ -248,7 +256,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
     if (cloudFiles.length > 0) setCloudFiles([]); 
     
     try {
-      const files = await fetchFileList(viewMode, category);
+      const files = await fetchFileList(viewMode, getResourceType(category));
       setCloudFiles(files);
     } catch (e) {
         // Error handling done in hook
@@ -312,7 +320,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
               showToast({ message: "本機找不到對應計分板，正在搜尋雲端備份...", type: 'info' });
               
               // Fetch template list from cloud
-              const templatesList = await fetchFileList('active', 'templates');
+              const templatesList = await fetchFileList('active', 'template');
               const targetFile = templatesList.find(t => extractId(t.name) === session.templateId);
 
               if (targetFile) {
@@ -353,16 +361,13 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
   };
 
   const handleRestoreFromTrash = async (file: CloudFile) => {
-    let type: CloudResourceType = 'template';
-    if (category === 'sessions') type = 'active';
-    if (category === 'history') type = 'history';
-
-    const success = await restoreFromTrash(file.id, type);
+    const success = await restoreFromTrash(file.id, getResourceType(category));
     if (success) await refreshList();
   };
 
   const handleEmptyTrash = async () => {
-    const success = await emptyTrash();
+    // Map current category UI state to CloudResourceType
+    const success = await emptyTrash(getResourceType(category));
     if (success) await refreshList();
     setShowEmptyTrashConfirm(false);
   };
@@ -438,6 +443,14 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
 
   if (!isOpen) return null;
 
+  const getTrashTitle = () => {
+      switch(category) {
+          case 'sessions': return '進行中';
+          case 'history': return '歷史紀錄';
+          default: return '遊戲庫';
+      }
+  };
+
   return (
     <div 
         className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4"
@@ -454,7 +467,15 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
         onCancel={() => setFileToDelete(null)} 
         onConfirm={handleFileDelete} 
       />
-      <ConfirmationModal isOpen={showEmptyTrashConfirm} title="清空垃圾桶？" message="確定要永久刪除所有垃圾桶中的檔案嗎？此動作無法復原。" confirmText="確認清空" isDangerous={true} onCancel={() => setShowEmptyTrashConfirm(false)} onConfirm={handleEmptyTrash} />
+      <ConfirmationModal 
+        isOpen={showEmptyTrashConfirm} 
+        title={`清空${getTrashTitle()}垃圾桶？`} 
+        message={`確定要永久刪除「${getTrashTitle()}」分類下垃圾桶中的檔案嗎？其他分類的垃圾桶不會受到影響。`} 
+        confirmText="確認清空" 
+        isDangerous={true} 
+        onCancel={() => setShowEmptyTrashConfirm(false)} 
+        onConfirm={handleEmptyTrash} 
+      />
       <ConfirmationModal isOpen={showDisconnectConfirm} title="登出 Google Drive？" message="登出後將無法自動備份。您的檔案仍會保留在雲端。" confirmText="確認登出" onCancel={() => setShowDisconnectConfirm(false)} onConfirm={handleDisconnect} />
 
       <div className="bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border border-slate-800 flex flex-col h-[600px] max-h-[85vh] relative overflow-hidden">
@@ -553,25 +574,21 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                   </div>
                   <div className="text-center space-y-2">
                       <h4 className="text-lg font-bold text-white">
-                          {/* [EDIT HERE] 標題文字 */}
                           啟用完整功能
                       </h4>
                       <p className="text-sm text-slate-400 max-w-[200px]">
-                          {/* [EDIT HERE] 副標題/說明文字 */}
                           連線 Google Drive 以解鎖雲端同步與自動備份。
                       </p>
                   </div>
 
-                  {/* Feature Benefit List - 您可以在此處自定義內容 */}
+                  {/* Feature Benefit List */}
                   <div className="w-full max-w-[260px] bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 text-xs space-y-3 text-left">
                       
                       {/* 項目 1 */}
                       <div className="flex items-start gap-2">
                           <div className="p-1 bg-emerald-500/20 rounded text-emerald-400 shrink-0"><Save size={12}/></div>
                           <div>
-                              {/* [EDIT HERE] 項目標題 */}
                               <strong className="text-slate-200 block mb-0.5">自動雲端備份</strong>
-                              {/* [EDIT HERE] 項目說明 */}
                               <span className="text-slate-400 leading-tight">確保您的計分紀錄與自訂模板永不遺失。</span>
                           </div>
                       </div>
@@ -580,9 +597,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                       <div className="flex items-start gap-2">
                           <div className="p-1 bg-sky-500/20 rounded text-sky-400 shrink-0"><Smartphone size={12}/></div>
                           <div>
-                              {/* [EDIT HERE] 項目標題 */}
                               <strong className="text-slate-200 block mb-0.5">跨裝置同步</strong>
-                              {/* [EDIT HERE] 項目說明 */}
                               <span className="text-slate-400 leading-tight">在手機、平板或電腦間無縫切換進度。</span>
                           </div>
                       </div>
@@ -591,9 +606,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                       <div className="flex items-start gap-2">
                           <div className="p-1 bg-indigo-500/20 rounded text-indigo-400 shrink-0"><FolderOpen size={12}/></div>
                           <div>
-                              {/* [EDIT HERE] 項目標題 */}
                               <strong className="text-slate-200 block mb-0.5">專屬檔案空間</strong>
-                              {/* [EDIT HERE] 項目說明 */}
                               <span className="text-slate-400 leading-tight">僅存取本 App 建立的備份檔，保障隱私。</span>
                           </div>
                       </div>
@@ -668,7 +681,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
               </>
           )}
         </div>
-        {viewMode === 'trash' && cloudFiles.length > 0 && isConnected && (<div className="flex-none p-3 bg-slate-800 border-t border-slate-700"><button onClick={() => setShowEmptyTrashConfirm(true)} className="w-full py-2 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 text-red-200 text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2"><Trash2 size={16} /> 清空垃圾桶</button></div>)}
+        {viewMode === 'trash' && cloudFiles.length > 0 && isConnected && (<div className="flex-none p-3 bg-slate-800 border-t border-slate-700"><button onClick={() => setShowEmptyTrashConfirm(true)} className="w-full py-2 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 text-red-200 text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2"><Trash2 size={16} /> 清空{getTrashTitle()}垃圾桶</button></div>)}
       </div>
     </div>
   );

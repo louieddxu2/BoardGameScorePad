@@ -66,13 +66,6 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
       imageSrc
   });
 
-  // Initialize Points
-  useEffect(() => {
-      if (initialPoints && initialPoints.length === 4) {
-          setPoints(initialPoints);
-      }
-  }, [initialPoints, setPoints]);
-
   // Clean up blob URLs
   useEffect(() => {
       return () => {
@@ -142,14 +135,21 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
         
         ctx?.drawImage(img, 0, 0, w, h);
 
-        // Initialize points if empty
+        // [Fix] Point Initialization Logic
+        // Check if we need to initialize points (if empty)
         if (points.length === 0) {
-            setPoints([
-                { x: 0, y: 0 },
-                { x: w, y: 0 },
-                { x: w, y: h },
-                { x: 0, y: h }
-            ]);
+            // Priority: Use restored points (initialPoints) if available
+            if (initialPoints && initialPoints.length === 4) {
+                setPoints(initialPoints);
+            } else {
+                // Fallback: Default Corners
+                setPoints([
+                    { x: 0, y: 0 },
+                    { x: w, y: 0 },
+                    { x: w, y: h },
+                    { x: 0, y: h }
+                ]);
+            }
         }
         
         if (!hasFittedRef.current) {
@@ -159,7 +159,7 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
       };
       img.src = imageSrc;
     }
-  }, [imageSrc, showPreview, fitToScreen, points.length, setPoints]);
+  }, [imageSrc, showPreview, fitToScreen, points.length, setPoints, initialPoints]);
 
   const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
       // Delegate pan/zoom to the hook, but point start is handled by Overlay
