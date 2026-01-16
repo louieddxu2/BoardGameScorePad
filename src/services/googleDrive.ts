@@ -4,7 +4,7 @@ import { CloudFile, CloudResourceType } from './cloud/types';
 import { GameTemplate, GameSession, HistoryRecord } from '../types';
 
 const FOLDER_NAMES = {
-    ROOT: 'BoardGameScorePad_Data',
+    ROOT: 'BoardGameScorePad',
     TEMPLATES: '_Templates',
     ACTIVE: '_ActiveSessions',
     HISTORY: '_History',
