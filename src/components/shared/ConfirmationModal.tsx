@@ -35,8 +35,17 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   const effectiveCancelText = cancelText || t('cancel');
 
   return (
-    <div className={`fixed inset-0 ${zIndexClass} bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200`}>
-      <div className="bg-slate-800 rounded-2xl border border-slate-700 shadow-2xl p-6 w-full max-w-sm">
+    <div 
+      className={`fixed inset-0 ${zIndexClass} bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200`}
+      onClick={(e) => {
+        // Allow clicking backdrop to cancel
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <div 
+        className="bg-slate-800 rounded-2xl border border-slate-700 shadow-2xl p-6 w-full max-w-sm"
+        onClick={(e) => e.stopPropagation()} // Prevent click propagation from content
+      >
         <div className="flex flex-col items-center text-center gap-3 mb-6">
           {isDangerous && (
             <div className="bg-red-900/20 p-3 rounded-full text-red-500">
@@ -44,7 +53,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             </div>
           )}
           <h3 className="text-xl font-bold text-white">{title}</h3>
-          <p className="text-slate-400 text-sm">{message}</p>
+          <p className="text-slate-400 text-sm whitespace-pre-wrap">{message}</p>
         </div>
         <div className="flex gap-3">
           <button

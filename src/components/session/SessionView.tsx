@@ -5,6 +5,7 @@ import { useSessionState, ScreenshotLayout } from './hooks/useSessionState';
 import { useSessionEvents } from './hooks/useSessionEvents';
 import { useSessionMedia } from './hooks/useSessionMedia';
 import { useToast } from '../../hooks/useToast';
+import { useTranslation } from '../../i18n';
 
 // Parts
 import SessionHeader from './parts/SessionHeader';
@@ -34,10 +35,12 @@ interface SessionViewProps {
   onExit: () => void;
   onResetScores: () => void;
   onSaveToHistory: () => void;
+  onDiscard: () => void; // New prop
 }
 
 const SessionView: React.FC<SessionViewProps> = (props) => {
   const { session, template, zoomLevel, baseImage, onUpdateTemplate } = props;
+  const { t } = useTranslation();
 
   const sessionState = useSessionState(props);
   const { setUiState } = sessionState;
@@ -187,8 +190,24 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   return (
     <div className="flex flex-col h-full bg-slate-900 text-slate-100 overflow-hidden relative">
       {/* --- Modals --- */}
-      <ConfirmationModal isOpen={showResetConfirm} title="確定重置？" message="此動作將清空所有已輸入的分數，且無法復原。" confirmText="確定重置" isDangerous={true} onCancel={() => setUiState(prev => ({ ...prev, showResetConfirm: false }))} onConfirm={eventHandlers.handleConfirmReset} />
-      <ConfirmationModal isOpen={!!columnToDelete} title="確定刪除此項目？" message="刪除後，所有玩家在該項目的分數將會遺失。" confirmText="確定刪除" isDangerous={true} onCancel={() => setUiState(prev => ({ ...prev, columnToDelete: null }))} onConfirm={eventHandlers.handleConfirmDeleteColumn} />
+      <ConfirmationModal 
+        isOpen={showResetConfirm} 
+        title={t('session_reset_confirm_title')} 
+        message={t('session_reset_confirm_msg')} 
+        confirmText={t('reset')} 
+        isDangerous={true} 
+        onCancel={() => setUiState(prev => ({ ...prev, showResetConfirm: false }))} 
+        onConfirm={eventHandlers.handleConfirmReset} 
+      />
+      <ConfirmationModal 
+        isOpen={!!columnToDelete} 
+        title={t('session_delete_col_title')} 
+        message={t('session_delete_col_msg')} 
+        confirmText={t('delete')} 
+        isDangerous={true} 
+        onCancel={() => setUiState(prev => ({ ...prev, columnToDelete: null }))} 
+        onConfirm={eventHandlers.handleConfirmDeleteColumn} 
+      />
       
       {/* Exit Modal */}
       <SessionExitModal 
@@ -196,6 +215,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onClose={() => setUiState(p => ({ ...p, isSessionExitModalOpen: false }))}
         onSaveActive={props.onExit}
         onSaveHistory={props.onSaveToHistory}
+        onDiscard={props.onDiscard} // New
       />
 
       {/* Photo Gallery Modal */}

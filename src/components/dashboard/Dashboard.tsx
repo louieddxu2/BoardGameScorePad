@@ -302,7 +302,9 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
       const history = data.data.history || [];
       const sessions = data.data.sessions || []; 
       
+      // [Update] Pass the full data object to enable system settings sync
       return await performFullBackup(
+          data, 
           templates, 
           history, 
           sessions, 

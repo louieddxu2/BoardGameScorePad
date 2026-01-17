@@ -14,8 +14,17 @@ const ImportTemplateModal: React.FC<ImportTemplateModalProps> = ({ allTemplates,
     const filtered = allTemplates.filter(t => t.name.toLowerCase().includes(query.toLowerCase()));
     
     return (
-        <div className="fixed inset-0 z-[90] bg-slate-950/80 backdrop-blur-sm flex flex-col p-4">
-            <div className="bg-slate-900 w-full max-w-md mx-auto rounded-2xl shadow-2xl border border-slate-700 flex flex-col h-full max-h-[90vh]">
+        <div 
+            className="fixed inset-0 z-[90] bg-slate-950/80 backdrop-blur-sm flex flex-col p-4"
+            onClick={(e) => {
+                // Allow clicking backdrop to close
+                if (e.target === e.currentTarget) onClose();
+            }}
+        >
+            <div 
+                className="bg-slate-900 w-full max-w-md mx-auto rounded-2xl shadow-2xl border border-slate-700 flex flex-col h-full max-h-[90vh]"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <div className="p-4 border-b border-slate-800 shrink-0">
                     <div className="relative">
                         <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />

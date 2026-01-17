@@ -338,9 +338,9 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
             <div className="p-4 rounded-xl border bg-indigo-900/10 border-indigo-500/20 space-y-4">
                 <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('col_prod_unit_title')}</label>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-[10px] text-slate-400 mb-1"> {t('col_prod_unit_a')}</label>
+                    <div className="flex items-end gap-2">
+                        <div className="flex-1 min-w-0">
+                            <label className="block text-[10px] text-slate-400 mb-1 truncate" title={t('col_prod_unit_a')}> {t('col_prod_unit_a')}</label>
                             <input 
                                 type="text" 
                                 value={column.subUnits?.[0] || ''} 
@@ -351,8 +351,13 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                                 className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white text-center focus:border-indigo-500 outline-none"
                             />
                         </div>
-                        <div>
-                            <label className="block text-[10px] text-slate-400 mb-1"> {t('col_prod_unit_b')}</label>
+                        
+                        {isSumPartsEnabled && (
+                            <div className="pb-2 text-slate-500 font-bold">×</div>
+                        )}
+
+                        <div className="flex-1 min-w-0">
+                            <label className="block text-[10px] text-slate-400 mb-1 truncate" title={t('col_prod_unit_b')}> {t('col_prod_unit_b')}</label>
                             <input 
                                 type="text" 
                                 value={column.subUnits?.[1] || ''} 
@@ -363,6 +368,22 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                                 className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white text-center focus:border-indigo-500 outline-none"
                             />
                         </div>
+
+                        {isSumPartsEnabled && (
+                            <>
+                                <div className="pb-2 text-slate-500 font-bold">=</div>
+                                <div className="flex-1 min-w-0">
+                                    <label className="block text-[10px] text-slate-400 mb-1 truncate" title={t('col_unit')}> {t('col_unit')}</label>
+                                    <input 
+                                        type="text" 
+                                        value={column.unit || ''} 
+                                        onChange={e => onChange({ unit: e.target.value })} 
+                                        onFocus={e => e.target.select()} 
+                                        className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white text-center focus:border-indigo-500 outline-none"
+                                    />
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
                 

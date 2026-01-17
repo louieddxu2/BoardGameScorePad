@@ -7,6 +7,7 @@ import ConfirmationModal from '../../shared/ConfirmationModal';
 import { useToast } from '../../../hooks/useToast';
 import SyncDashboard from './SyncDashboard';
 import { db } from '../../../db';
+import { useTranslation } from '../../../i18n';
 
 interface CloudManagerModalProps {
   isOpen: boolean;
@@ -47,6 +48,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
   const [showEmptyTrashConfirm, setShowEmptyTrashConfirm] = useState(false);
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false); // [New]
   const { showToast } = useToast();
+  const { t } = useTranslation();
 
   // Sync Dashboard State
   const [showSyncDashboard, setShowSyncDashboard] = useState(false);
@@ -84,6 +86,17 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
           return name.substring(lastUnderscoreIndex + 1);
       }
       return null;
+  };
+
+  // Helper to format date preference (Original Updated > Created)
+  const getDisplayDate = (file: CloudFile) => {
+      if (file.appProperties && file.appProperties.originalUpdatedAt) {
+          const ts = parseInt(file.appProperties.originalUpdatedAt, 10);
+          if (!isNaN(ts)) {
+              return new Date(ts).toLocaleString();
+          }
+      }
+      return new Date(file.createdTime).toLocaleString();
   };
 
   const getResourceType = (cat: typeof category): CloudResourceType => {
@@ -461,23 +474,30 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
     >
       <ConfirmationModal 
         isOpen={!!fileToDelete} 
-        title="永久刪除備份？" 
-        message={`確定要永久刪除「${fileToDelete ? cleanName(fileToDelete.name) : ''}」嗎？此動作無法復原。`} 
-        confirmText="永久刪除" 
+        title={t('cloud_confirm_delete_title')}
+        message={t('cloud_confirm_delete_msg', { name: fileToDelete ? cleanName(fileToDelete.name) : '' })} 
+        confirmText={t('cloud_delete_perm')} 
         isDangerous={true} 
         onCancel={() => setFileToDelete(null)} 
         onConfirm={handleFileDelete} 
       />
       <ConfirmationModal 
         isOpen={showEmptyTrashConfirm} 
-        title={`清空${getTrashTitle()}垃圾桶？`} 
-        message={`確定要永久刪除「${getTrashTitle()}」分類下垃圾桶中的檔案嗎？其他分類的垃圾桶不會受到影響。`} 
-        confirmText="確認清空" 
+        title={t('cloud_confirm_empty_title')}
+        message={t('cloud_confirm_empty_msg')}
+        confirmText={t('confirm')} 
         isDangerous={true} 
         onCancel={() => setShowEmptyTrashConfirm(false)} 
         onConfirm={handleEmptyTrash} 
       />
-      <ConfirmationModal isOpen={showDisconnectConfirm} title="登出 Google Drive？" message="登出後將無法自動備份。您的檔案仍會保留在雲端。" confirmText="確認登出" onCancel={() => setShowDisconnectConfirm(false)} onConfirm={handleDisconnect} />
+      <ConfirmationModal 
+        isOpen={showDisconnectConfirm} 
+        title={t('cloud_confirm_logout_title')} 
+        message={t('cloud_confirm_logout_msg')} 
+        confirmText={t('confirm')} 
+        onCancel={() => setShowDisconnectConfirm(false)} 
+        onConfirm={handleDisconnect} 
+      />
 
       <div className="bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border border-slate-800 flex flex-col h-[600px] max-h-[85vh] relative overflow-hidden">
         
@@ -503,13 +523,13 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                     <button 
                         onClick={() => setShowDisconnectConfirm(true)}
                         className="p-1.5 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 rounded-lg text-red-400 transition-colors"
-                        title="登出 Google Drive"
+                        title={t('dash_disconnect')}
                     >
                         <CloudOff size={16} />
                     </button>
                 )}
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <DownloadCloud size={20} className="text-sky-400" /> 雲端備份
+                    <DownloadCloud size={20} className="text-sky-400" /> {t('cloud_title')}
                     {isMockMode && <span className="text-xs bg-amber-900/50 text-amber-400 px-2 py-0.5 rounded border border-amber-500/30">模擬</span>}
                 </h3>
             </div>
@@ -520,9 +540,9 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                     <button 
                         onClick={() => setShowSyncDashboard(true)}
                         className="bg-emerald-600 hover:bg-emerald-500 text-white p-1.5 px-3 rounded-lg transition-all flex items-center gap-2 shadow-sm font-bold text-xs"
-                        title="資料同步中心"
+                        title={t('sync_title')}
                     >
-                        <ArrowRightLeft size={16} /> 同步與備份
+                        <ArrowRightLeft size={16} /> {t('dash_cloud_sync')}
                     </button>
                 )}
                 <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={24} /></button>
@@ -536,28 +556,28 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                 disabled={!isConnected}
                 className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${category === 'templates' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                  <LayoutGrid size={14} /> 遊戲庫
+                  <LayoutGrid size={14} /> {t('cloud_tab_templates')}
               </button>
               <button 
                 onClick={() => handleSwitchCategory('sessions')}
                 disabled={!isConnected}
                 className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${category === 'sessions' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                  <Activity size={14} /> 進行中
+                  <Activity size={14} /> {t('cloud_tab_active')}
               </button>
               <button 
                 onClick={() => handleSwitchCategory('history')}
                 disabled={!isConnected}
                 className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${category === 'history' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                  <History size={14} /> 歷史
+                  <History size={14} /> {t('cloud_tab_history')}
               </button>
           </div>
 
           {/* View Mode Toggle */}
           <div className="flex gap-2 bg-slate-900 p-1 rounded-lg border border-slate-700/50">
-            <button onClick={() => handleSwitchMode('active')} disabled={!isConnected} className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center justify-center gap-1 ${viewMode === 'active' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}><FolderOpen size={14} /> 雲端檔案</button>
-            <button onClick={() => handleSwitchMode('trash')} disabled={!isConnected} className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center justify-center gap-1 ${viewMode === 'trash' ? 'bg-red-900/50 text-red-200 shadow-sm border border-red-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}><Trash2 size={14} /> 垃圾桶</button>
+            <button onClick={() => handleSwitchMode('active')} disabled={!isConnected} className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center justify-center gap-1 ${viewMode === 'active' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}><FolderOpen size={14} /> {t('cloud_tab_files')}</button>
+            <button onClick={() => handleSwitchMode('trash')} disabled={!isConnected} className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center justify-center gap-1 ${viewMode === 'trash' ? 'bg-red-900/50 text-red-200 shadow-sm border border-red-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}><Trash2 size={14} /> {t('cloud_tab_trash')}</button>
           </div>
         </div>
         
@@ -575,10 +595,10 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                   </div>
                   <div className="text-center space-y-2">
                       <h4 className="text-lg font-bold text-white">
-                          啟用完整功能
+                          {t('cloud_connect_title')}
                       </h4>
                       <p className="text-sm text-slate-400 max-w-[200px]">
-                          連線 Google Drive 以解鎖雲端同步與自動備份。
+                          {t('cloud_connect_desc')}
                       </p>
                   </div>
 
@@ -589,8 +609,8 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                       <div className="flex items-start gap-2">
                           <div className="p-1 bg-emerald-500/20 rounded text-emerald-400 shrink-0"><Save size={12}/></div>
                           <div>
-                              <strong className="text-slate-200 block mb-0.5">自動雲端備份</strong>
-                              <span className="text-slate-400 leading-tight">確保您的計分紀錄與自訂模板永不遺失。</span>
+                              <strong className="text-slate-200 block mb-0.5">{t('cloud_benefit_1_title')}</strong>
+                              <span className="text-slate-400 leading-tight">{t('cloud_benefit_1_desc')}</span>
                           </div>
                       </div>
 
@@ -598,8 +618,8 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                       <div className="flex items-start gap-2">
                           <div className="p-1 bg-sky-500/20 rounded text-sky-400 shrink-0"><Smartphone size={12}/></div>
                           <div>
-                              <strong className="text-slate-200 block mb-0.5">跨裝置同步</strong>
-                              <span className="text-slate-400 leading-tight">在手機、平板或電腦間無縫切換進度。</span>
+                              <strong className="text-slate-200 block mb-0.5">{t('cloud_benefit_2_title')}</strong>
+                              <span className="text-slate-400 leading-tight">{t('cloud_benefit_2_desc')}</span>
                           </div>
                       </div>
 
@@ -607,8 +627,8 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                       <div className="flex items-start gap-2">
                           <div className="p-1 bg-indigo-500/20 rounded text-indigo-400 shrink-0"><FolderOpen size={12}/></div>
                           <div>
-                              <strong className="text-slate-200 block mb-0.5">專屬檔案空間</strong>
-                              <span className="text-slate-400 leading-tight">僅存取本 App 建立的備份檔，保障隱私。</span>
+                              <strong className="text-slate-200 block mb-0.5">{t('cloud_benefit_3_title')}</strong>
+                              <span className="text-slate-400 leading-tight">{t('cloud_benefit_3_desc')}</span>
                           </div>
                       </div>
 
@@ -620,16 +640,16 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                       className="w-full max-w-[200px] py-3 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl shadow-lg shadow-sky-900/50 flex items-center justify-center gap-2 transition-transform active:scale-95"
                   >
                       {isLoading ? <Loader2 size={20} className="animate-spin" /> : <Cloud size={20} />}
-                      <span>立即連線</span>
+                      <span>{t('cloud_btn_connect')}</span>
                   </button>
               </div>
           ) : (
               // Connected State
               <>
                 {isLoading ? (
-                    <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500"><RefreshCw size={24} className="animate-spin" /><span className="text-xs">讀取中...</span></div>
+                    <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500"><RefreshCw size={24} className="animate-spin" /><span className="text-xs">{t('loading')}</span></div>
                 ) : cloudFiles.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500">{viewMode === 'trash' ? <Trash2 size={32} className="opacity-50" /> : <UploadCloud size={32} className="opacity-50" />}<span className="text-sm">{viewMode === 'trash' ? "垃圾桶是空的" : "雲端沒有找到備份檔案"}</span></div>
+                    <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500">{viewMode === 'trash' ? <Trash2 size={32} className="opacity-50" /> : <UploadCloud size={32} className="opacity-50" />}<span className="text-sm">{viewMode === 'trash' ? t('cloud_empty_trash_list') : t('cloud_empty_list')}</span></div>
                 ) : (
                     <div className="space-y-2">
                     {cloudFiles.map(file => (
@@ -640,7 +660,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); setFileToDelete(file); }} 
                                     className="p-2 text-slate-600 hover:text-red-400 hover:bg-slate-900/50 rounded-lg transition-colors"
-                                    title={viewMode === 'active' ? "移至垃圾桶" : "永久刪除"}
+                                    title={viewMode === 'active' ? "移至垃圾桶" : t('cloud_delete_perm')}
                                 >
                                     <Trash2 size={20} />
                                 </button>
@@ -650,7 +670,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                             <div className="flex flex-col text-left flex-1 min-w-0">
                                 <div className="font-bold text-slate-200 truncate">{cleanName(file.name)}</div>
                                 <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                                    <Clock size={10} /> {new Date(file.createdTime).toLocaleString()}
+                                    <Clock size={10} /> {getDisplayDate(file)}
                                 </div>
                             </div>
 
@@ -660,16 +680,16 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                                     <button 
                                         onClick={() => handleFileSelect(file)} 
                                         className="p-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg shadow-md transition-all active:scale-95 flex items-center gap-1.5"
-                                        title="下載並還原"
+                                        title={t('cloud_download_restore')}
                                     >
                                         <Download size={18} />
-                                        <span className="text-xs font-bold hidden sm:inline">下載</span>
+                                        <span className="text-xs font-bold hidden sm:inline">{t('download')}</span>
                                     </button>
                                 ) : (
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); handleRestoreFromTrash(file); }} 
                                         className="p-2 text-emerald-400 hover:text-white bg-slate-900 hover:bg-emerald-600 border border-slate-600 hover:border-emerald-500 rounded-lg transition-colors" 
-                                        title="還原"
+                                        title={t('cloud_restore')}
                                     >
                                         <RefreshCcw size={18} />
                                     </button>
@@ -682,7 +702,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
               </>
           )}
         </div>
-        {viewMode === 'trash' && cloudFiles.length > 0 && isConnected && (<div className="flex-none p-3 bg-slate-800 border-t border-slate-700"><button onClick={() => setShowEmptyTrashConfirm(true)} className="w-full py-2 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 text-red-200 text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2"><Trash2 size={16} /> 清空{getTrashTitle()}垃圾桶</button></div>)}
+        {viewMode === 'trash' && cloudFiles.length > 0 && isConnected && (<div className="flex-none p-3 bg-slate-800 border-t border-slate-700"><button onClick={() => setShowEmptyTrashConfirm(true)} className="w-full py-2 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 text-red-200 text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2"><Trash2 size={16} /> {t('cloud_empty_trash')}</button></div>)}
       </div>
     </div>
   );

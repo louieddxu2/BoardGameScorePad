@@ -144,9 +144,18 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
   const dynamicFontSize = calculateDynamicFontSize([previewText]);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div 
+      className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={(e) => {
+        // Allow clicking backdrop to cancel (like standard modal behavior)
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
       {/* Fixed Height Modal */}
-      <div className="bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl border border-slate-700 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 h-[85vh]">
+      <div 
+        className="bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl border border-slate-700 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 h-[85vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900 shrink-0">
             <h3 className="text-white font-bold flex items-center gap-2">

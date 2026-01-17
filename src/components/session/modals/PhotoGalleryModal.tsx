@@ -5,6 +5,7 @@ import { imageService } from '../../../services/imageService';
 import PhotoLightbox from '../parts/PhotoLightbox';
 import ConfirmationModal from '../../shared/ConfirmationModal';
 import { OverlayData } from '../parts/ScoreOverlayGenerator';
+import { useTranslation } from '../../../i18n';
 
 interface PhotoGalleryModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
   const [loading, setLoading] = useState(false);
   const [initialIndex, setInitialIndex] = useState<number | null>(null); // Changed: Store index instead of object
   const [photoToDelete, setPhotoToDelete] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   // Load images when IDs change or modal opens
   useEffect(() => {
@@ -116,9 +118,9 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
     <div className="fixed inset-0 z-[80] bg-slate-950/90 backdrop-blur-sm flex flex-col animate-in fade-in duration-200">
       <ConfirmationModal 
         isOpen={!!photoToDelete}
-        title="刪除照片？"
-        message="確定要刪除這張照片嗎？此動作無法復原。"
-        confirmText="刪除"
+        title={t('gallery_delete_confirm_title')}
+        message={t('gallery_delete_confirm_msg')}
+        confirmText={t('delete')}
         isDangerous={true}
         onCancel={() => setPhotoToDelete(null)}
         onConfirm={handleDeleteConfirm}
@@ -142,8 +144,8 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
                 <ImageIcon size={20} className="text-indigo-400" />
             </div>
             <div className="flex flex-col min-w-0">
-                <h3 className="text-base font-bold text-white truncate">遊戲照片庫</h3>
-                <span className="text-[10px] text-slate-500">{photoIds.length} 張照片</span>
+                <h3 className="text-base font-bold text-white truncate">{t('gallery_title')}</h3>
+                <span className="text-[10px] text-slate-500">{t('share_photo_count', { count: photoIds.length })}</span>
             </div>
         </div>
         
@@ -152,13 +154,13 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
                 onClick={onUploadPhoto} 
                 className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold border border-slate-700 transition-colors"
             >
-                <Upload size={14} /> <span className="hidden sm:inline">上傳</span>
+                <Upload size={14} /> <span className="hidden sm:inline">{t('gallery_upload')}</span>
             </button>
             <button 
                 onClick={onTakePhoto} 
                 className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-md transition-colors"
             >
-                <Camera size={14} /> <span className="hidden sm:inline">拍照</span>
+                <Camera size={14} /> <span className="hidden sm:inline">{t('gallery_camera')}</span>
             </button>
             <button onClick={onClose} className="p-2 text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-800 rounded-full transition-colors ml-1">
                 <X size={20} />
@@ -171,7 +173,7 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
           {loading && images.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-slate-500 gap-2">
                   <Loader2 size={32} className="animate-spin text-indigo-500" />
-                  <span className="text-sm">載入照片中...</span>
+                  <span className="text-sm">{t('gallery_loading')}</span>
               </div>
           ) : (
               <div className="grid grid-cols-3 gap-1 auto-rows-fr">
@@ -194,8 +196,8 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
                   <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center">
                       <ImageIcon size={32} className="opacity-50" />
                   </div>
-                  <p className="text-sm">尚無照片</p>
-                  <p className="text-xs max-w-[200px] text-center opacity-70">點擊右上角的按鈕來新增這場遊戲的精彩時刻！</p>
+                  <p className="text-sm">{t('gallery_empty')}</p>
+                  <p className="text-xs max-w-[200px] text-center opacity-70">{t('gallery_empty_hint')}</p>
               </div>
           )}
       </div>
