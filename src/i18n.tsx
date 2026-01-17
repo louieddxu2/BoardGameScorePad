@@ -65,6 +65,8 @@ const resources = {
     "confirm_clear_all": "確認清空",
     "confirm_restore_title": "還原預設值？",
     "confirm_restore_msg": "目前的修改將會自動備份到「我的遊戲庫」，並還原至初始設定。",
+    "confirm_discard_title": "確定捨棄本局？",
+    "confirm_discard_msg": "此動作將完全刪除本局遊戲的所有紀錄（包含照片），且無法復原。",
     
     // --- Messages (Dashboard) ---
     "msg_json_copied": "JSON 已複製",
@@ -168,6 +170,7 @@ const resources = {
     "session_exit_msg": "遊戲結束了嗎？",
     "session_btn_draft": "暫存遊戲 (稍後再玩)",
     "session_btn_finish": "結束遊戲 (儲存紀錄)",
+    "session_discard": "捨棄",
 
     // --- Input Panel ---
     "input_edit_player": "編輯玩家",
@@ -517,6 +520,8 @@ const resources = {
     "confirm_clear_all": "Confirm Clear",
     "confirm_restore_title": "Restore Defaults?",
     "confirm_restore_msg": "Current modifications will be backed up to 'My Library', and reset to original settings.",
+    "confirm_discard_title": "Discard Game?",
+    "confirm_discard_msg": "This will permanently delete this session and all photos. This cannot be undone.",
 
     // --- Messages (Dashboard) ---
     "msg_json_copied": "JSON Copied",
@@ -620,6 +625,7 @@ const resources = {
     "session_exit_msg": "Is the game finished?",
     "session_btn_draft": "Save Draft (Play Later)",
     "session_btn_finish": "Finish Game (Save History)",
+    "session_discard": "Discard",
 
     // --- Input Panel ---
     "input_edit_player": "Edit Player",

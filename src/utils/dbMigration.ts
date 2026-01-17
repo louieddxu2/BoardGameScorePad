@@ -1,10 +1,7 @@
 
-
-
 import { db } from '../db';
 import { migrateTemplate, migrateScores } from './dataMigration';
 import { GameTemplate, GameSession } from '../types';
-import { DEFAULT_TEMPLATES } from '../constants';
 import { generateId } from './idGenerator';
 
 // 定義當前內建資料庫的版本
@@ -29,6 +26,11 @@ export const migrateFromLocalStorage = async () => {
     if (savedVersion !== CURRENT_BUILTIN_VERSION || isFreshInstall) {
         console.log(`Updating built-in templates from v${savedVersion} to v${CURRENT_BUILTIN_VERSION}...`);
         
+        // [Optimization] 使用動態匯入 (Dynamic Import)
+        // 這樣 constants.ts 只有在真正需要更新資料庫時才會被下載並載入記憶體。
+        // 平常開啟 App 時，該檔案不會佔用任何資源。
+        const { DEFAULT_TEMPLATES } = await import('../constants');
+
         if (!isFreshInstall) {
             const existingIds = new Set(existingBuiltins.map(t => t.id));
             const newArrivals = DEFAULT_TEMPLATES

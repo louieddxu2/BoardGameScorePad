@@ -1,6 +1,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { googleDriveService, CloudFile, CloudResourceType } from '../services/googleDrive';
+import { systemSyncService } from '../services/systemSyncService';
 import { useToast } from './useToast';
 import { GameTemplate, GameSession, HistoryRecord } from '../types';
 
@@ -239,7 +240,8 @@ export const useGoogleDrive = () => {
       if (!isAutoConnectEnabled) return;
       if (!googleDriveService.isAuthorized) return;
       try {
-          // Keep the preferences/settings backup for "Settings Restore"
+          // [Note] 自動背景備份目前不執行合併邏輯，僅在上傳單一設定檔時使用。
+          // 真正的完整系統備份與合併現在由 performFullBackup 負責。
           const { data: rawData, ...settingsOnly } = data; // Only save preferences
           await googleDriveService.saveSystemData('settings_backup.json', settingsOnly);
       } catch (e) {
@@ -249,6 +251,7 @@ export const useGoogleDrive = () => {
 
   // [Full Backup] Smart Skip Logic: Cloud.ts >= Local.ts -> Skip
   const performFullBackup = useCallback(async (
+      systemData: any, // [New Argument] Full system data for merging
       templates: GameTemplate[], 
       history: HistoryRecord[],
       sessions: GameSession[],
@@ -292,7 +295,7 @@ export const useGoogleDrive = () => {
 
           const allTemplates = [...templates, ...overrides];
           
-          const total = allTemplates.length + history.length + sessions.length;
+          const total = allTemplates.length + history.length + sessions.length + 1; // +1 for settings
           let processed = 0;
           onProgress(0, total);
 
@@ -363,6 +366,18 @@ export const useGoogleDrive = () => {
 
                   return processItem(async () => {
                       await googleDriveService.backupHistoryRecord(h, cloudInfo?.id, cloudInfo?.name);
+                      
+                      // [Fix] Logic to cleanup stale Active Session in Cloud
+                      // If we are successfully backing up this history record,
+                      // and there is an 'Active' folder with the same ID in the cloud,
+                      // it means the game is finished and the cloud active record is zombie.
+                      if (activeMap.has(h.id)) {
+                          const staleActiveFile = activeMap.get(h.id);
+                          if (staleActiveFile) {
+                              googleDriveService.softDeleteFolder(staleActiveFile.id, 'active')
+                                  .catch(err => console.warn("Failed to cleanup stale active session", err));
+                          }
+                      }
                   }, `${h.gameName} (${new Date(h.endTime).toLocaleDateString()})`, isUpToDate);
               }));
           }
@@ -390,11 +405,16 @@ export const useGoogleDrive = () => {
               }));
           }
 
-          // 2d. Always backup Settings (very small)
+          // 2d. Process System Settings (Merge & Upload via Service)
           try {
-              await googleDriveService.saveSystemData('settings_backup.json', { timestamp: Date.now() });
+              await systemSyncService.mergeAndBackupSystemSettings(systemData);
+              successCount++;
           } catch (e) {
               console.warn("Settings backup failed", e);
+              failedItems.push("System Settings");
+          } finally {
+              processed++;
+              onProgress(processed, total);
           }
 
           if (failedItems.length > 0) {

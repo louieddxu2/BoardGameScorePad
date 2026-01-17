@@ -359,6 +359,15 @@ export const useAppData = () => {
   const importHistoryRecord = async (record: HistoryRecord) => {
       try {
           await db.history.put(record);
+          // [Fix] If active session with same ID exists (stale), remove it.
+          // This prevents "Zombie Session" issues where a finished game reappears as active.
+          // Note: We do NOT delete images because HistoryRecord shares the same image IDs.
+          const activeConflict = await db.sessions.get(record.id);
+          if (activeConflict) {
+              await db.sessions.delete(record.id);
+              console.log("Cleaned up conflicting active session during history restore");
+          }
+          
           showToast({ message: "歷史紀錄已還原", type: 'success' });
       } catch (e) {
           console.error("Failed to import history", e);
