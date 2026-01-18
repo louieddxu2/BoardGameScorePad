@@ -21,6 +21,9 @@ const App: React.FC = () => {
   // Local UI State
   const [pendingTemplate, setPendingTemplate] = useState<GameTemplate | null>(null);
   
+  // For "Create from Search" flow
+  const [editorInitialName, setEditorInitialName] = useState<string | undefined>(undefined);
+
   // PWA Install
   const [installPromptEvent, setInstallPromptEvent] = useState<any | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -216,6 +219,7 @@ const App: React.FC = () => {
       }
       else if (view === AppView.TEMPLATE_CREATOR) { 
           setView(AppView.DASHBOARD); 
+          setEditorInitialName(undefined); // Clear prefilled name
           handled = true; 
       }
       // [Modified] Both ACTIVE_SESSION and HISTORY_REVIEW now use event dispatch
@@ -333,6 +337,7 @@ const App: React.FC = () => {
       });
       
       setView(AppView.ACTIVE_SESSION);
+      setEditorInitialName(undefined); // Clear prefilled name after save
   };
   
   const handleBatchImport = (templates: GameTemplate[]) => {
@@ -394,7 +399,10 @@ const App: React.FC = () => {
           onDiscardSession={appData.discardSession}
           onClearAllActiveSessions={appData.clearAllActiveSessions}
           getSessionPreview={appData.getSessionPreview}
-          onTemplateCreate={() => setView(AppView.TEMPLATE_CREATOR)}
+          onTemplateCreate={(name) => {
+              setEditorInitialName(name); // Set prefilled name if provided
+              setView(AppView.TEMPLATE_CREATOR);
+          }}
           onTemplateDelete={appData.deleteTemplate}
           onTemplateSave={appData.saveTemplate}
           onBatchImport={handleBatchImport}
@@ -408,8 +416,8 @@ const App: React.FC = () => {
           canInstall={!!installPromptEvent}
           onInstallClick={handleInstallClick}
           onImportSession={appData.importSession}
-          onImportHistory={appData.importHistoryRecord} // [New] Prop
-          onImportSettings={appData.importSystemSettings} // [New] Prop
+          onImportHistory={appData.importHistoryRecord} 
+          onImportSettings={appData.importSystemSettings} 
         />
       </div>
 
@@ -417,8 +425,12 @@ const App: React.FC = () => {
         <div className="absolute inset-0 z-50 bg-slate-900">
             <TemplateEditor 
               onSave={handleTemplateSave} 
-              onCancel={() => setView(AppView.DASHBOARD)}
+              onCancel={() => {
+                  setView(AppView.DASHBOARD);
+                  setEditorInitialName(undefined);
+              }}
               allTemplates={[...appData.systemTemplates, ...appData.templates]}
+              initialName={editorInitialName} // Pass prefilled name
             />
         </div>
       )}

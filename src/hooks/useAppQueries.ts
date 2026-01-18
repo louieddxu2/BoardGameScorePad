@@ -1,6 +1,4 @@
 
-
-
 import { useState, useMemo, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
@@ -150,7 +148,8 @@ export const useAppQueries = (searchQuery: string) => {
   const savedPlayers = useLiveQuery(() => db.savedPlayers.orderBy('lastUsed').reverse().limit(50).toArray(), [], []);
   const savedLocations = useLiveQuery(() => db.savedLocations.orderBy('lastUsed').reverse().limit(50).toArray(), [], []);
 
-  const playerHistory = useMemo(() => savedPlayers?.map(p => p.name) || [], [savedPlayers]);
+  // [Update] Return full objects instead of just names to support UUID linking
+  const playerHistory = useMemo(() => savedPlayers || [], [savedPlayers]);
   const locationHistory = useMemo(() => savedLocations?.map(l => l.name) || [], [savedLocations]);
 
   // Combined System Templates (Masking Logic)

@@ -1,6 +1,4 @@
 
-
-
 // --- Formula-based structure ---
 export interface ScoreValue {
   parts: number[];
@@ -116,6 +114,7 @@ export interface Player {
   scores: Record<string, ScoreValue>; 
   totalScore: number;
   isStarter?: boolean; // New: Starting player marker
+  linkedPlayerId?: string; // [New] 指向歷史紀錄的 UUID，用於關聯分析
   
   // New: Total Score Adjustment Logic
   bonusScore?: number; // Manually added bonus/penalty to total
@@ -204,7 +203,7 @@ export interface SavedListItem {
   name: string;
   lastUsed: number;
   usageCount: number;
-  meta?: any; // For future expansion (e.g. external links, coordinates)
+  meta?: any; // For future expansion (e.g. external links, coordinates, uuid)
 }
 
 export interface SystemPreferences {

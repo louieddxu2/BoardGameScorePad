@@ -96,9 +96,20 @@ export const useAppData = () => {
       (db as any).transaction('rw', db.savedPlayers, async () => {
           const existing = await db.savedPlayers.where('name').equals(cleanName).first();
           if (existing) {
-              await db.savedPlayers.update(existing.id!, { lastUsed: Date.now(), usageCount: (existing.usageCount || 0) + 1 });
+              // [Lazy Migration] 若舊資料沒有 UUID，趁這次更新補上
+              const updates: any = { lastUsed: Date.now(), usageCount: (existing.usageCount || 0) + 1 };
+              if (!existing.meta?.uuid) {
+                  updates.meta = { ...existing.meta, uuid: generateId() };
+              }
+              await db.savedPlayers.update(existing.id!, updates);
           } else {
-              await db.savedPlayers.add({ name: cleanName, lastUsed: Date.now(), usageCount: 1 });
+              // 新增資料時直接賦予 UUID
+              await db.savedPlayers.add({ 
+                  name: cleanName, 
+                  lastUsed: Date.now(), 
+                  usageCount: 1,
+                  meta: { uuid: generateId() } // Store UUID in meta for forward compatibility
+              });
           }
       }).then(() => {
           markSystemDirty();
@@ -111,9 +122,19 @@ export const useAppData = () => {
       (db as any).transaction('rw', db.savedLocations, async () => {
           const existing = await db.savedLocations.where('name').equals(cleanName).first();
           if (existing) {
-              await db.savedLocations.update(existing.id!, { lastUsed: Date.now(), usageCount: (existing.usageCount || 0) + 1 });
+              // [Lazy Migration] 同樣為地點資料補上 UUID
+              const updates: any = { lastUsed: Date.now(), usageCount: (existing.usageCount || 0) + 1 };
+              if (!existing.meta?.uuid) {
+                  updates.meta = { ...existing.meta, uuid: generateId() };
+              }
+              await db.savedLocations.update(existing.id!, updates);
           } else {
-              await db.savedLocations.add({ name: cleanName, lastUsed: Date.now(), usageCount: 1 });
+              await db.savedLocations.add({ 
+                  name: cleanName, 
+                  lastUsed: Date.now(), 
+                  usageCount: 1,
+                  meta: { uuid: generateId() } // Store UUID
+              });
           }
       }).then(() => {
           markSystemDirty();
