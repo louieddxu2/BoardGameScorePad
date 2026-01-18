@@ -1,14 +1,15 @@
 
 import React from 'react';
-import { Image, Upload, Images } from 'lucide-react';
+import { Image, Upload, Images, Camera } from 'lucide-react';
 
 interface ShareMenuProps {
   isCopying: boolean;
   onScreenshotRequest: (mode: 'full' | 'simple') => void;
   hasVisuals?: boolean;
   onUploadImage?: () => void;
-  onOpenGallery?: () => void; // New Prop
-  photoCount?: number; // New Prop
+  onOpenGallery?: () => void;
+  onTakePhoto?: () => void; // New prop
+  photoCount?: number;
 }
 
 const ShareMenu: React.FC<ShareMenuProps> = ({ 
@@ -17,6 +18,7 @@ const ShareMenu: React.FC<ShareMenuProps> = ({
   hasVisuals, 
   onUploadImage,
   onOpenGallery,
+  onTakePhoto,
   photoCount = 0
 }) => {
   return (
@@ -30,19 +32,36 @@ const ShareMenu: React.FC<ShareMenuProps> = ({
         {isCopying ? '處理中...' : '預覽截圖'}
       </button>
       
-      {/* Photo Gallery Section */}
+      {/* Photo Gallery Section (Split Button) */}
       <div className="h-px bg-slate-700 my-1 mx-2"></div>
       
-      <button
-        onClick={onOpenGallery}
-        className="flex items-center gap-3 px-3 py-3 hover:bg-slate-700 rounded-lg text-sm text-white transition-colors text-left"
-      >
-        <Images size={16} className="text-indigo-400" />
-        <div className="flex flex-col">
-            <span>照片圖庫</span>
-            <span className="text-[10px] text-slate-500">目前 {photoCount} 張照片</span>
-        </div>
-      </button>
+      <div className="flex items-stretch gap-[1px]">
+          <button
+            onClick={onOpenGallery}
+            className="flex-1 flex items-center gap-3 px-3 py-3 hover:bg-slate-700 rounded-l-lg text-sm text-white transition-colors text-left group"
+          >
+            <Images size={16} className="text-indigo-400 group-hover:scale-110 transition-transform" />
+            <div className="flex flex-col min-w-0">
+                <span className="leading-tight">照片圖庫</span>
+                <span className="text-[10px] text-slate-500 truncate">目前 {photoCount} 張照片</span>
+            </div>
+          </button>
+          
+          {/* Divider */}
+          <div className="w-[1px] bg-slate-700 my-2"></div>
+
+          {/* Camera Direct Action */}
+          <button
+            onClick={(e) => {
+                e.stopPropagation();
+                if (onTakePhoto) onTakePhoto();
+            }}
+            className="w-12 flex items-center justify-center hover:bg-slate-700 rounded-r-lg text-slate-400 hover:text-emerald-400 transition-colors group"
+            title="拍照並儲存"
+          >
+            <Camera size={18} className="group-hover:scale-110 transition-transform" />
+          </button>
+      </div>
 
       {/* 
         Show Upload Image option if the template has coordinate data (visuals) but image might be missing or user wants to update it.

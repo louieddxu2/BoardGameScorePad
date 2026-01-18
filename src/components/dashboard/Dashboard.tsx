@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { GameTemplate, GameSession, HistoryRecord } from '../../types';
-import { Plus, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, CloudCog, Loader2, Activity, CloudOff, History, Search, ChevronLeft } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Pin, LayoutGrid, ArrowRightLeft, Library, Sparkles, Activity, Search } from 'lucide-react';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import InstallGuideModal from '../modals/InstallGuideModal';
 import { useToast } from '../../hooks/useToast';
@@ -19,6 +19,7 @@ import HistoryList from './HistoryList';
 import CloudManagerModal from './modals/CloudManagerModal';
 import DataManagerModal from './modals/DataManagerModal';
 import PullActionIsland from './parts/PullActionIsland'; 
+import SearchEmptyState from './parts/SearchEmptyState';
 
 interface DashboardProps {
   isVisible: boolean; 
@@ -41,7 +42,7 @@ interface DashboardProps {
   onDiscardSession: (templateId: string) => void;
   onClearAllActiveSessions: () => void;
   getSessionPreview: (templateId: string) => GameSession | null;
-  onTemplateCreate: () => void;
+  onTemplateCreate: (initialName?: string) => void;
   onTemplateDelete: (id: string) => void;
   onTemplateSave: (template: GameTemplate, options?: { skipCloud?: boolean, preserveTimestamps?: boolean }) => void; 
   onBatchImport: (templates: GameTemplate[]) => void;
@@ -479,9 +480,12 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
                         </div>
                         {isUserLibOpen && (
                             <div className={`grid grid-cols-2 gap-3 ${animClass}`}>
-                                {userTemplatesCount === 0 && <div className="col-span-2 text-center py-8 text-slate-500 text-sm italic border-2 border-dashed border-slate-800 rounded-xl">
-                                    {searchQuery ? t('dash_no_search_results') : t('dash_no_templates')}
-                                </div>}
+                                {userTemplatesCount === 0 && (
+                                    <SearchEmptyState 
+                                        searchQuery={searchQuery}
+                                        onCreate={onTemplateCreate}
+                                    />
+                                )}
                                 {userTemplatesToShow.map(t => (
                                     <GameCard 
                                         key={t.id}

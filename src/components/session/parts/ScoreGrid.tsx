@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { GameSession, GameTemplate, Player, ScoreColumn } from '../../../types';
-import { GripVertical, EyeOff, Layers, Sparkles, Settings, Sigma, X } from 'lucide-react';
+import { GripVertical, EyeOff, Layers, Sparkles, Settings, Sigma, X, Plus } from 'lucide-react';
 import ScoreCell from './ScoreCell';
 import TexturedPlayerHeader from './TexturedPlayerHeader';
 import TexturedBlock from './TexturedBlock';
@@ -20,6 +20,7 @@ interface ScoreGridProps {
   onPlayerHeaderClick: (playerId: string, e: React.MouseEvent) => void;
   onColumnHeaderClick: (e: React.MouseEvent, col: ScoreColumn) => void;
   onUpdateTemplate: (template: GameTemplate) => void;
+  onAddColumn: () => void; // New prop
   scrollContainerRef: React.RefObject<HTMLDivElement>;
   contentRef: React.RefObject<HTMLDivElement>;
   baseImage?: string; 
@@ -43,6 +44,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   onPlayerHeaderClick,
   onColumnHeaderClick,
   onUpdateTemplate,
+  onAddColumn,
   scrollContainerRef,
   contentRef,
   baseImage,
@@ -415,6 +417,28 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           );
         })}
         
+        {/* [New Feature] Add Blank Column Button in Edit Mode */}
+        {isEditMode && (
+            <div className="flex relative z-10 animate-in fade-in slide-in-from-left-4 duration-300">
+                {/* Left Sticky Add Button */}
+                <div 
+                    className="sticky left-0 bg-slate-900 border-r border-b border-slate-700 flex items-center justify-center p-2 z-20 shrink-0"
+                    style={itemColStyle} 
+                >
+                    <button 
+                        onClick={onAddColumn}
+                        className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-emerald-500 border border-slate-600 hover:border-emerald-500/50 flex items-center justify-center transition-all active:scale-95 shadow-sm group"
+                        title="新增空白項目"
+                    >
+                        <Plus size={20} className="group-hover:scale-110 transition-transform" />
+                    </button>
+                </div>
+                
+                {/* Right Empty Filler - Spans full width */}
+                <div className="flex-1 bg-slate-900 border-b border-slate-800/50 min-h-[3rem]" />
+            </div>
+        )}
+
         <div 
             data-row-id={lastColId} 
             onDragOver={(e) => { if (isEditMode && lastColId) dnd.handleDragOver(e, lastColId); }}

@@ -10,7 +10,7 @@ import { useToast } from '../../../hooks/useToast';
 interface SessionViewProps {
   session: GameSession;
   template: GameTemplate;
-  playerHistory: string[];
+  playerHistory: any[]; // [Update] Updated to accept any[] (SavedListItem[]) to match AppData
   onUpdateSession: (session: GameSession) => void;
   onUpdateTemplate: (template: GameTemplate) => void;
   onUpdatePlayerHistory: (name: string) => void;
@@ -178,34 +178,56 @@ export const useSessionEvents = (
     setUiState(p => ({ ...p, isEditingTitle: false }));
   };
   
-  const handlePlayerNameSubmit = (playerId: string, newName: string, moveNext: boolean = false) => {
+  // [Updated] Support linking to history UUID
+  const handlePlayerNameSubmit = (playerId: string, newName: string, moveNext: boolean = false, linkedId?: string) => {
       const finalName = newName?.trim() ?? '';
       const currentPlayer = session.players.find(p => p.id === playerId);
       
-      if (currentPlayer && currentPlayer.name !== finalName) {
-          const isSystemId = currentPlayer.id.startsWith('sys_player_');
-          const newId = isSystemId ? generateId() : currentPlayer.id;
+      // We need to keep track of the effective ID for navigation, 
+      // because if it changes (sys -> uuid), we must navigate using the NEW ID.
+      let effectiveId = playerId;
 
-          const players = session.players.map(p => {
-              if (p.id === playerId) {
-                  return { 
-                      ...p, 
-                      name: finalName,
-                      id: newId // Update ID if needed
-                  };
+      if (currentPlayer) {
+          // Check if name changed OR if we are linking a new ID (even if name is same)
+          const nameChanged = currentPlayer.name !== finalName;
+          const linkChanged = linkedId && currentPlayer.linkedPlayerId !== linkedId;
+
+          if (nameChanged || linkChanged) {
+              const isSystemId = currentPlayer.id.startsWith('sys_player_');
+              // Only generate new session ID if it was a system ID. 
+              // Otherwise keep the current session ID (which is already a UUID).
+              const newId = isSystemId ? generateId() : currentPlayer.id;
+              effectiveId = newId;
+
+              const players = session.players.map(p => {
+                  if (p.id === playerId) {
+                      return { 
+                          ...p, 
+                          name: finalName,
+                          id: newId, // Update ID if needed
+                          linkedPlayerId: linkedId || p.linkedPlayerId // Update linked ID if provided, else keep existing
+                      };
+                  }
+                  return p;
+              });
+              
+              // [CRITICAL FIX] Update UI State immediately if ID changed.
+              if (newId !== playerId && uiState.editingPlayerId === playerId) {
+                  setUiState(prev => ({ ...prev, editingPlayerId: newId }));
               }
-              return p;
-          });
-          onUpdateSession({ ...session, players });
 
-          if (finalName && !newId.startsWith('sys_player_')) {
-              onUpdatePlayerHistory(finalName);
+              onUpdateSession({ ...session, players });
+
+              // Only update history list if it's a manual entry (no linkedId provided)
+              if (finalName && !newId.startsWith('sys_player_') && !linkedId) {
+                  onUpdatePlayerHistory(finalName);
+              }
           }
       }
       
       setUiState(p => ({ ...p, isInputFocused: false }));
       if (moveNext) {
-          navigation.moveToNextPlayerOrCell(playerId);
+          navigation.moveNext(effectiveId);
       }
   };
 
@@ -274,9 +296,10 @@ export const useSessionEvents = (
     handleAddBlankColumn,
     handleCopyColumns,
     handleScreenshotRequest,
-    moveToNext: navigation.moveToNextCell,
+    // [Updated] Expose unified moveNext
+    moveToNext: () => navigation.moveNext(),
     // [New] Expose Joystick Actions
-    moveToNextPlayer: navigation.moveToNextPlayerOrCell,
-    moveToPrevPlayer: navigation.moveToPreviousPlayerOrCell,
+    moveToNextPlayer: navigation.moveToNextPlayer,
+    moveToPrevPlayer: navigation.moveToPrevPlayer,
   };
 };

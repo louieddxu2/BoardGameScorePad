@@ -22,6 +22,7 @@ interface SessionHeaderProps {
   onUploadImage?: () => void; // New callback
   onCloudDownload?: () => void; // New callback
   onOpenGallery?: () => void; // New callback for gallery
+  onTakePhoto?: () => void; // New callback for camera shortcut
   photoCount?: number;
   isCloudConnected?: boolean;
 }
@@ -45,6 +46,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   onUploadImage,
   onCloudDownload,
   onOpenGallery,
+  onTakePhoto,
   photoCount,
   isCloudConnected
 }) => {
@@ -175,6 +177,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
                 hasVisuals={hasVisuals}
                 onUploadImage={onUploadImage}
                 onOpenGallery={onOpenGallery}
+                onTakePhoto={onTakePhoto}
                 photoCount={photoCount}
             />
         )}

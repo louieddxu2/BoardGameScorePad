@@ -113,7 +113,44 @@ export const useSessionMedia = ({
       }
   };
 
-  // [Handler] Session Photo (Camera or Gallery)
+  // [Handler] Handle Camera Batch Capture (Custom CameraView)
+  const handleCameraBatchCapture = async (blobs: Blob[]) => {
+      if (blobs.length === 0) {
+          setUiState(p => ({ ...p, isGeneralCameraOpen: false }));
+          return;
+      }
+
+      showToast({ message: `正在儲存 ${blobs.length} 張照片...`, type: 'info' });
+      const newPhotoIds: string[] = [];
+
+      for (const blob of blobs) {
+          try {
+              // Convert to optimized blob if needed, though camera already returns jpeg 0.95
+              const optimizedBlob = await compressAndResizeImage(blob, 1, 1920);
+              const savedImg = await imageService.saveImage(optimizedBlob, session.id, 'session');
+              newPhotoIds.push(savedImg.id);
+          } catch (err) {
+              console.error("Failed to save camera capture", err);
+          }
+      }
+
+      if (newPhotoIds.length > 0) {
+          const currentPhotos = session.photos || [];
+          const updatedSession = { ...session, photos: [...currentPhotos, ...newPhotoIds] };
+          onUpdateSession(updatedSession);
+          showToast({ message: "照片已儲存", type: 'success' });
+      }
+
+      // Close camera and ensure gallery is open underneath
+      setUiState(p => ({ 
+          ...p, 
+          isGeneralCameraOpen: false,
+          showShareMenu: false, 
+          isPhotoGalleryOpen: true 
+      }));
+  };
+
+  // [Handler] Session Photo (Gallery Upload Input)
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
@@ -228,7 +265,18 @@ export const useSessionMedia = ({
           scannerFixedRatio: template.globalVisuals?.aspectRatio // Pass Ratio
       }));
   };
-  const openCamera = () => photoInputRef.current?.click();
+  
+  // [MODIFIED] Use custom camera overlay instead of file input
+  const openCamera = () => {
+      setUiState(p => ({ 
+          ...p, 
+          isGeneralCameraOpen: true,
+          // Ensure gallery is "ready" underneath
+          isPhotoGalleryOpen: true, 
+          showShareMenu: false 
+      }));
+  };
+  
   const openPhotoLibrary = () => galleryInputRef.current?.click();
 
   return {
@@ -236,15 +284,16 @@ export const useSessionMedia = ({
       photoInputRef,
       galleryInputRef,
       handleFileUpload,
-      handleScannerConfirm, // Export this
+      handleScannerConfirm, 
+      handleCameraBatchCapture, // Export this for SessionView
       handlePhotoSelect,
       handleDeletePhoto,
       handleCloudDownload,
-      handleRemoveBackground, // Export this
+      handleRemoveBackground, 
       openBackgroundUpload,
-      openScannerCamera, // Export this
+      openScannerCamera, 
       openCamera,
       openPhotoLibrary,
-      isConnected // Export for UI conditions
+      isConnected 
   };
 };

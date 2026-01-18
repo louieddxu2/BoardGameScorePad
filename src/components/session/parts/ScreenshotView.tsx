@@ -14,6 +14,7 @@ interface ScreenshotLayout {
   playerWidths: Record<string, number>;
   playerHeaderHeight: number;
   rowHeights: Record<string, number>;
+  totalRowHeight?: number;
 }
 
 interface ScreenshotViewProps {
@@ -263,12 +264,17 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
             const isAlt = index % 2 !== 0;
             const headerBgClass = isAlt ? 'bg-[#2e3b4e]' : 'bg-slate-800';
 
+            // [Fix] In simple mode without background, use standard min-height (4rem)
+            // This component block is only rendered if !baseImage.
+            const applyHeight = mode !== 'simple';
+            const rowClass = mode === 'simple' ? 'min-h-[4rem]' : '';
+
             return (
                 <div 
                     key={col.id} 
                     id={`ss-row-${mode}-${col.id}`} 
-                    className="flex"
-                    style={{ height: layout?.rowHeights[col.id] ? `${layout.rowHeights[col.id]}px` : undefined }}
+                    className={`flex ${rowClass}`}
+                    style={{ height: (applyHeight && layout?.rowHeights[col.id]) ? `${layout.rowHeights[col.id]}px` : undefined }}
                 >
                     <ScreenshotHeaderCell
                         col={col}

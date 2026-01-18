@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { GameSession, GameTemplate, Player, ScoreColumn, QuickAction, ScoreValue } from '../../../types';
+import { GameSession, GameTemplate, Player, ScoreColumn, QuickAction, ScoreValue, SavedListItem } from '../../../types';
 import { useSessionState } from '../hooks/useSessionState';
 import { useSessionEvents } from '../hooks/useSessionEvents';
 import NumericKeypad from '../../shared/NumericKeypad';
@@ -19,7 +19,7 @@ interface InputPanelProps {
   eventHandlers: ReturnType<typeof useSessionEvents>;
   session: GameSession;
   template: GameTemplate;
-  playerHistory: string[];
+  playerHistory: SavedListItem[]; // [Update] Type changed
   onUpdateSession: (session: GameSession) => void;
   onUpdatePlayerHistory: (name: string) => void;
 }
@@ -352,11 +352,14 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     if (activePlayer) {
         mainContentNode = (
             <PlayerEditor
-              player={activePlayer} playerHistory={playerHistory} tempName={uiState.tempPlayerName}
+              player={activePlayer} 
+              playerHistory={playerHistory} 
+              tempName={uiState.tempPlayerName}
               setTempName={(name) => setUiState((p: any) => ({ ...p, tempPlayerName: name }))}
               isInputFocused={uiState.isInputFocused} setIsInputFocused={(focused) => setUiState((p: any) => ({ ...p, isInputFocused: focused }))}
               onUpdatePlayerColor={(color) => onUpdateSession({ ...session, players: session.players.map((p: any) => p.id === editingPlayerId ? { ...p, color } : p) })}
-              onNameSubmit={eventHandlers.handlePlayerNameSubmit}
+              // [Update] Pass linkedId
+              onNameSubmit={(id, name, next, linkedId) => eventHandlers.handlePlayerNameSubmit(id, name, next, linkedId)}
               onToggleStarter={handleToggleStarter}
             />
         );

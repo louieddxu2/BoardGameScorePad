@@ -1,19 +1,20 @@
 
 import React from 'react';
-import { Player } from '../../../types';
+import { Player, SavedListItem } from '../../../types';
 import { Palette, History, Settings2, Ban, Flag } from 'lucide-react';
 import { COLORS } from '../../../colors';
 import { isColorDark } from '../../../utils/ui';
 
 interface PlayerEditorProps {
   player: Player;
-  playerHistory: string[];
+  playerHistory: SavedListItem[]; // [Update] Changed type
   tempName: string;
   setTempName: (name: string) => void;
   isInputFocused: boolean;
   setIsInputFocused: (focused: boolean) => void;
   onUpdatePlayerColor: (color: string) => void;
-  onNameSubmit: (playerId: string, newName: string, moveNext?: boolean) => void;
+  // [Update] Added linkedId optional param
+  onNameSubmit: (playerId: string, newName: string, moveNext?: boolean, linkedId?: string) => void;
   onToggleStarter: (playerId: string) => void; 
 }
 
@@ -86,14 +87,19 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
             <div className="flex-1 bg-slate-800/50 rounded-xl border border-slate-700/50 flex flex-col min-w-0">
               <div className="p-2 text-[10px] text-slate-500 font-bold uppercase bg-slate-800/80 text-center flex items-center justify-center gap-1 rounded-t-xl"><History size={10} /> 歷史紀錄</div>
               <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-1">
-                {playerHistory.slice(0, 20).map((name, i) => (
+                {playerHistory.slice(0, 20).map((item, i) => (
                   <button 
-                    key={i} 
+                    key={item.id || i} 
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => { setTempName(name); onNameSubmit(player.id, name, false); }} 
+                    onClick={() => { 
+                        setTempName(item.name); 
+                        // [New Logic] Pass linked UUID from meta if available
+                        const linkedId = item.meta?.uuid;
+                        onNameSubmit(player.id, item.name, false, linkedId); 
+                    }} 
                     className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-emerald-900/30 hover:text-emerald-400 transition-colors truncate active:scale-95 bg-slate-800 border border-slate-700/50"
                   >
-                    {name}
+                    {item.name}
                   </button>
                 ))}
                 {playerHistory.length === 0 && <div className="text-center text-xs text-slate-600 py-4">無紀錄</div>}

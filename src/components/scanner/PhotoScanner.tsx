@@ -77,7 +77,11 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
 
   // --- Image Loading ---
 
-  const handleCapture = (blob: Blob) => {
+  const handleCapture = (blobs: Blob[]) => {
+      // Scanner only uses the first image (Single Shot mode)
+      const blob = blobs[0];
+      if (!blob) return;
+
       const url = URL.createObjectURL(blob);
       setImageSrc(url);
       setPoints([]);
@@ -293,6 +297,7 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
             <CameraView 
                 onCapture={handleCapture}
                 onClose={() => setShowCamera(false)}
+                singleShot={true} // Strict mode for scanner
             />
         )}
 

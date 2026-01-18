@@ -14,6 +14,7 @@ interface TemplateEditorProps {
   onCancel: () => void;
   initialTemplate?: GameTemplate;
   allTemplates: GameTemplate[];
+  initialName?: string; // New Prop
 }
 
 // Helper interface for Scanner state restoration
@@ -22,7 +23,7 @@ interface ScannerState {
     points: { x: number; y: number }[];
 }
 
-const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initialTemplate, allTemplates }) => {
+const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initialTemplate, allTemplates, initialName }) => {
   const [name, setName] = useState('自訂計分板');
   const [columnCount, setColumnCount] = useState(5);
   
@@ -43,8 +44,11 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
       if (initialTemplate) {
           setName(initialTemplate.name);
           setColumnCount(initialTemplate.columns.length);
+      } else if (initialName) {
+          // If no template but we have an initial name (from search), use it
+          setName(initialName);
       }
-  }, [initialTemplate]);
+  }, [initialTemplate, initialName]);
 
   const adjustCount = (delta: number) => {
     // Allow 0 columns for "Simple Counter" mode

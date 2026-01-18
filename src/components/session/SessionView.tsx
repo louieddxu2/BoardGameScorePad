@@ -1,6 +1,6 @@
 
 import React, { useCallback, useRef, useMemo } from 'react';
-import { GameSession, GameTemplate } from '../../types';
+import { GameSession, GameTemplate, SavedListItem } from '../../types';
 import { useSessionState, ScreenshotLayout } from './hooks/useSessionState';
 import { useSessionEvents } from './hooks/useSessionEvents';
 import { useSessionMedia } from './hooks/useSessionMedia';
@@ -20,12 +20,13 @@ import AddColumnModal from './modals/AddColumnModal';
 import SessionExitModal from './modals/SessionExitModal';
 import PhotoGalleryModal from './modals/PhotoGalleryModal';
 import SessionBackgroundModal from './modals/SessionBackgroundModal';
-import SessionImageFlow from './SessionImageFlow'; // [New Import]
+import SessionImageFlow from './SessionImageFlow'; 
+import CameraView from '../scanner/CameraView'; // [New Import]
 
 interface SessionViewProps {
   session: GameSession;
   template: GameTemplate;
-  playerHistory: string[];
+  playerHistory: SavedListItem[]; // [Updated] Use full object type
   zoomLevel: number;
   baseImage: string | null; 
   onUpdateSession: (session: GameSession) => void;
@@ -35,7 +36,7 @@ interface SessionViewProps {
   onExit: () => void;
   onResetScores: () => void;
   onSaveToHistory: () => void;
-  onDiscard: () => void; // New prop
+  onDiscard: () => void; 
 }
 
 const SessionView: React.FC<SessionViewProps> = (props) => {
@@ -79,7 +80,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     isPhotoGalleryOpen,
     isImageUploadModalOpen,
     isScannerOpen,
-    isTextureMapperOpen
+    isTextureMapperOpen,
+    isGeneralCameraOpen // [New]
   } = sessionState.uiState;
 
   const isPanelOpen = editingCell !== null || editingPlayerId !== null;
@@ -224,10 +226,19 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onClose={() => setUiState(p => ({ ...p, isPhotoGalleryOpen: false }))}
         photoIds={session.photos || []}
         onUploadPhoto={media.openPhotoLibrary}
-        onTakePhoto={media.openCamera}
+        onTakePhoto={media.openCamera} // This now triggers custom camera overlay
         onDeletePhoto={media.handleDeletePhoto}
         overlayData={overlayData} // Pass context for score overlay
       />
+
+      {/* [New] General Camera Overlay */}
+      {isGeneralCameraOpen && (
+          <CameraView 
+              onCapture={media.handleCameraBatchCapture}
+              onClose={() => setUiState(p => ({ ...p, isGeneralCameraOpen: false }))}
+              singleShot={false} // Enable multi-shot mode
+          />
+      )}
 
       {/* Image Processing Flow (Scanner & Texture Mapper) */}
       <SessionImageFlow 
@@ -311,6 +322,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onUploadImage={() => setUiState(p => ({ ...p, isImageUploadModalOpen: true, showShareMenu: false }))} 
         onCloudDownload={media.handleCloudDownload} 
         onOpenGallery={() => setUiState(p => ({ ...p, isPhotoGalleryOpen: true, showShareMenu: false }))}
+        onTakePhoto={media.openCamera} // Direct call via media hook (sets both flags)
         photoCount={session.photos?.length || 0}
       />
       
@@ -337,6 +349,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           onPlayerHeaderClick={eventHandlers.handlePlayerHeaderClick}
           onColumnHeaderClick={eventHandlers.handleColumnHeaderClick}
           onUpdateTemplate={onUpdateTemplate}
+          onAddColumn={eventHandlers.handleAddBlankColumn} // Pass the handler
           scrollContainerRef={sessionState.tableContainerRef}
           contentRef={sessionState.gridContentRef}
           baseImage={baseImage || undefined} 

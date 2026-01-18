@@ -202,6 +202,12 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
           input.focus();
           const newPos = start + token.length + cursorOffset;
           input.setSelectionRange(newPos, newPos);
+          
+          // [UX] Auto-scroll to keep cursor visible (centering strategy)
+          // Estimate width for text-lg font-mono (approx 11px per char)
+          const APPROX_CHAR_WIDTH = 11; 
+          const scrollPos = (newPos * APPROX_CHAR_WIDTH);
+          input.scrollLeft = scrollPos - (input.clientWidth / 2);
       }, 0);
   };
 
