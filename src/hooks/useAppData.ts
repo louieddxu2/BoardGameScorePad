@@ -13,6 +13,7 @@ import { generateId } from '../utils/idGenerator';
 // Sub-hooks
 import { useAppQueries } from './useAppQueries';
 import { useSessionManager } from './useSessionManager';
+import { useLibrary } from './useLibrary'; 
 
 export const useAppData = () => {
   const { showToast } = useToast();
@@ -23,7 +24,7 @@ export const useAppData = () => {
 
   // [System Dirty Tracking] - Timestamp of last modification to system data
   const [systemDirtyTime, setSystemDirtyTime] = useState<number>(0);
-  const markSystemDirty = () => setSystemDirtyTime(Date.now());
+  const markSystemDirty = useCallback(() => setSystemDirtyTime(Date.now()), []);
 
   // --- 1. Initialization & Migration ---
   useEffect(() => {
@@ -34,9 +35,12 @@ export const useAppData = () => {
     init();
   }, []);
 
-  // --- 2. Queries & Session Management ---
+  // --- 2. Queries, Library & Session Management ---
   const queries = useAppQueries(searchQuery);
   
+  // Library Hook for Global Access (e.g., HistoryReview)
+  const { updatePlayer, updateLocation, commitPlayerStats, commitLocationStats } = useLibrary(markSystemDirty);
+
   // Check cloud availability helper
   const isCloudEnabled = () => {
       return localStorage.getItem('google_drive_auto_connect') === 'true';
@@ -45,7 +49,7 @@ export const useAppData = () => {
   const sessionManager = useSessionManager({
       getTemplate: queries.getTemplate,
       activeSessions: queries.activeSessions,
-      updatePlayerHistory: (name) => updatePlayerHistory(name),
+      // updatePlayerHistory prop removed - now handled internally in sessionManager
       isCloudEnabled
   });
 
@@ -88,58 +92,6 @@ export const useAppData = () => {
       setNewBadgeIds([]); 
       markSystemDirty();
   };
-
-  const updatePlayerHistory = useCallback((name: string) => {
-      if (!name.trim()) return;
-      const cleanName = name.trim();
-      
-      (db as any).transaction('rw', db.savedPlayers, async () => {
-          const existing = await db.savedPlayers.where('name').equals(cleanName).first();
-          if (existing) {
-              // [Lazy Migration] 若舊資料沒有 UUID，趁這次更新補上
-              const updates: any = { lastUsed: Date.now(), usageCount: (existing.usageCount || 0) + 1 };
-              if (!existing.meta?.uuid) {
-                  updates.meta = { ...existing.meta, uuid: generateId() };
-              }
-              await db.savedPlayers.update(existing.id!, updates);
-          } else {
-              // 新增資料時直接賦予 UUID
-              await db.savedPlayers.add({ 
-                  name: cleanName, 
-                  lastUsed: Date.now(), 
-                  usageCount: 1,
-                  meta: { uuid: generateId() } // Store UUID in meta for forward compatibility
-              });
-          }
-      }).then(() => {
-          markSystemDirty();
-      }).catch(console.error);
-  }, []);
-
-  const updateLocationHistory = useCallback((name: string) => {
-      if (!name.trim()) return;
-      const cleanName = name.trim();
-      (db as any).transaction('rw', db.savedLocations, async () => {
-          const existing = await db.savedLocations.where('name').equals(cleanName).first();
-          if (existing) {
-              // [Lazy Migration] 同樣為地點資料補上 UUID
-              const updates: any = { lastUsed: Date.now(), usageCount: (existing.usageCount || 0) + 1 };
-              if (!existing.meta?.uuid) {
-                  updates.meta = { ...existing.meta, uuid: generateId() };
-              }
-              await db.savedLocations.update(existing.id!, updates);
-          } else {
-              await db.savedLocations.add({ 
-                  name: cleanName, 
-                  lastUsed: Date.now(), 
-                  usageCount: 1,
-                  meta: { uuid: generateId() } // Store UUID
-              });
-          }
-      }).then(() => {
-          markSystemDirty();
-      }).catch(console.error);
-  }, []);
 
   // --- CRUD Actions ---
 
@@ -443,13 +395,15 @@ export const useAppData = () => {
       saveToHistory: sessionManager.saveToHistory, 
       updateActiveTemplate: sessionManager.updateActiveTemplate,
       setSessionImage: sessionManager.setSessionImage,
+      // [Changed] Use sessionManager's exposed wrapper for updates
+      updatePlayerHistory: sessionManager.updatePlayerHistory, 
       // Actions - Global
       setTemplates: () => {}, 
       toggleTheme, 
       togglePin, 
       clearNewBadges,
-      updatePlayerHistory, 
-      updateLocationHistory, 
+      updateLocationHistory: updateLocation, // Keep as direct library hook
+      commitLocationStats, // Keep as direct library hook
       saveTemplate, 
       deleteTemplate, 
       restoreSystemTemplate,

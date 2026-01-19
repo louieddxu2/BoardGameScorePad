@@ -191,19 +191,41 @@ export interface HistoryRecord {
   winnerIds: string[]; // 贏家 ID 列表
   snapshotTemplate: GameTemplate; // [關鍵] 完整的模板快照 (含欄位、圖片ID等)
   location?: string; // 地點
+  locationId?: string; // [New] 地點 ID (用於關聯分析)
   note?: string; // 筆記
   photos?: string[]; // List of LocalImage IDs
   photoCloudIds?: Record<string, string>; // [New] Map<LocalUUID, CloudFileID>
   cloudFolderId?: string; // [Cloud] 備份資料夾 ID
 }
 
+// [New Type] 資料處理狀態
+export type AnalyticsStatus = 'processed' | 'missing_location';
+
+// [New Interface] 統計處理記錄表 (Local Only)
+// 這張表紀錄每一筆 HistoryRecord 是否已經被納入 SavedLists (玩家、地點、遊戲) 的統計中
+export interface AnalyticsLog {
+  historyId: string; // PK
+  status: AnalyticsStatus;
+  lastProcessedAt: number;
+}
+
 // [New Interface] Generic Saved List Item (for Players, Locations, etc.)
 export interface SavedListItem {
-  id?: number;
+  id: string; // [Changed] UUID
   name: string;
   lastUsed: number;
   usageCount: number;
-  meta?: any; // For future expansion (e.g. external links, coordinates, uuid)
+  meta?: {
+      uuid?: string; // Legacy field (can be deprecated eventually as id is now uuid)
+      stats?: {
+          weekDays?: number[]; // 0-6 (Sun-Sat)
+          timeSlots?: number[]; // 0-11 (2-hour buckets)
+      };
+      // Generic container for relations
+      // key: 'players' | 'locations' | 'games' | 'colors' ...
+      relations?: Record<string, any>; 
+      [key: string]: any;
+  }; 
 }
 
 export interface SystemPreferences {

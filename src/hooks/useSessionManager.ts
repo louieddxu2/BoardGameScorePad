@@ -8,35 +8,35 @@ import { calculatePlayerTotal } from '../utils/scoring';
 import { imageService } from '../services/imageService';
 import { googleDriveService } from '../services/googleDrive';
 import { cleanupService } from '../services/cleanupService';
+import { relationshipService } from '../services/relationshipService'; 
 import { useToast } from './useToast';
 import { COLORS } from '../colors';
+import { useLibrary } from './useLibrary';
 
 interface UseSessionManagerProps {
     getTemplate: (id: string) => Promise<GameTemplate | null>;
     activeSessions: GameSession[] | undefined;
-    updatePlayerHistory: (name: string) => void;
     isCloudEnabled: () => boolean;
 }
 
 export const useSessionManager = ({ 
     getTemplate, 
     activeSessions, 
-    updatePlayerHistory, 
     isCloudEnabled 
 }: UseSessionManagerProps) => {
     
   const { showToast } = useToast();
   
+  const { updatePlayer } = useLibrary();
+
   const [currentSession, setCurrentSession] = useState<GameSession | null>(null);
   const [activeTemplate, setActiveTemplate] = useState<GameTemplate | null>(null);
   const [sessionImage, setSessionImage] = useState<string | null>(null);
   const [sessionPlayerCount, setSessionPlayerCount] = useState<number | null>(null);
   
-  // Track if image has changed to trigger cloud sync on exit
   const isImageDirtyRef = useRef(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-revoke Object URL to prevent memory leaks
   useEffect(() => {
       return () => {
           if (sessionImage && sessionImage.startsWith('blob:')) {
@@ -45,10 +45,6 @@ export const useSessionManager = ({
       };
   }, [sessionImage]);
 
-  // Auto-save session debounce
-  // [Modified] Increased to 1000ms. 
-  // This allows the user more time (1s) to back out of a accidentally created session/fork 
-  // without writing to DB, effectively solving the "ghost session" issue.
   useEffect(() => {
     if (!currentSession) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -88,10 +84,9 @@ export const useSessionManager = ({
         ? Array(playerCount).fill('transparent') 
         : Array.from({ length: playerCount }, (_, i) => COLORS[i % COLORS.length]);
 
-    // Dynamic ID Generation: sys_player_1, sys_player_2...
     const players: Player[] = Array.from({ length: playerCount }, (_, i) => {
       return {
-        id: `sys_player_${i + 1}`, // Deterministic ID
+        id: `sys_player_${i + 1}`, 
         name: `玩家 ${i + 1}`,
         scores: {},
         totalScore: 0,
@@ -125,7 +120,6 @@ export const useSessionManager = ({
     
     isImageDirtyRef.current = false;
     
-    // Load Image
     let loadedImageUrl: string | null = null;
     if (migratedTemplate.imageId) {
         const localImg = await imageService.getImage(migratedTemplate.imageId);
@@ -220,7 +214,7 @@ export const useSessionManager = ({
           (p.bonusScore || 0) !== 0 ||
           p.tieBreaker ||
           p.isForceLost ||
-          p.isStarter // Added: Treat starter flag as meaningful data
+          p.isStarter 
       );
 
       const hasCustomPlayers = currentSession.players.some(p => 
@@ -231,7 +225,6 @@ export const useSessionManager = ({
       const hasDataToSave = hasScores || hasPhotos || hasCustomPlayers;
 
       if (!hasDataToSave) {
-          // Cleanup empty sessions
           cleanupService.cleanSessionArtifacts(currentSession.id, currentSession.cloudFolderId).catch(console.error);
           db.sessions.delete(currentSession.id).catch(console.error);
       } else {
@@ -254,17 +247,11 @@ export const useSessionManager = ({
           }
       }
 
-      // [Updated] Fork Awareness: Only backup if it's NOT a pure builtin
-      // We check if it has a source ID (meaning it is a fork) OR it is a custom template
       const isPureBuiltin = !!(await db.builtins.get(activeTemplate!.id)) && !activeTemplate!.sourceTemplateId;
       
-      // Also backup template if image changed
       if (activeTemplate && !isPureBuiltin && isCloudEnabled() && isImageDirtyRef.current) {
           googleDriveService.backupTemplate(activeTemplate).then((updated) => {
               if (updated) {
-                  // [FIX] Use updated.updatedAt instead of Date.now() to avoid race conditions
-                  // If the user modified the template again while backup was running, 
-                  // local updatedAt will be > updated.updatedAt, correctly keeping the 'unsynced' state.
                   db.templates.update(updated.id, { lastSyncedAt: updated.updatedAt || Date.now() });
               }
           }).catch(console.error);
@@ -306,15 +293,21 @@ export const useSessionManager = ({
               cloudFolderId: currentSession.cloudFolderId 
           };
           
+          // 1. Critical: Save History Record First
           await db.history.put(record); 
           
-          currentSession.players.forEach(p => { 
-              if (!p.id.startsWith('sys_player_')) {
-                  updatePlayerHistory(p.name); 
-              }
-          });
+          // 2. Critical: Remove Active Session
           await db.sessions.delete(currentSession.id);
 
+          // 3. Best Effort: Process Relationships (Decoupled, failure ignored for UI)
+          try {
+              await relationshipService.processGameEnd(record);
+          } catch (relError) {
+              console.warn("[SessionManager] Relationship processing failed:", relError);
+              // Do NOT block UI exit.
+          }
+
+          // 4. Best Effort: Cloud Backup (Background)
           if (isCloudEnabled()) {
               const backgroundHistoryBackup = async () => {
                   let folderId = record.cloudFolderId;
@@ -331,55 +324,45 @@ export const useSessionManager = ({
               backgroundHistoryBackup().catch(e => console.warn("Background history backup failed", e));
           }
           
-          setCurrentSession(null); setActiveTemplate(null); setSessionImage(null); isImageDirtyRef.current = false;
+          // 5. Update UI State
+          setCurrentSession(null); 
+          setActiveTemplate(null); 
+          setSessionImage(null); 
+          isImageDirtyRef.current = false;
+          
           showToast({ message: "遊戲紀錄已儲存！", type: 'success' });
+
       } catch (error) {
+          // Errors here are CRITICAL (History save failed)
           console.error("Save to history failed:", error);
           showToast({ message: "儲存失敗，請重試", type: 'error' });
       }
   };
 
-  // [Phase 1 Update] Fork Awareness
   const updateActiveTemplate = async (updatedTemplate: GameTemplate) => {
       const migratedTemplate = migrateTemplate({ ...updatedTemplate, updatedAt: Date.now() });
-      
-      // Check if this is a Built-in ID (Direct Override Attempt)
       const isBuiltin = !!(await db.builtins.get(migratedTemplate.id));
-      
       let finalTemplate = migratedTemplate;
 
       if (isBuiltin) {
-          // If editing a builtin directly, we MUST fork it now
-          // This happens if a user starts a builtin game and THEN decides to "Edit Template" during the session
           const oldId = migratedTemplate.id;
           const newId = generateId();
-          
-          // 1. Mutate to Fork
           finalTemplate = {
               ...migratedTemplate,
               id: newId,
               sourceTemplateId: oldId
           };
-          
-          // 2. Save Fork
           await db.templates.put(finalTemplate);
           
-          // 3. Update Current Session to point to new Fork
           if (currentSession) {
               const newSession = { ...currentSession, templateId: newId, lastUpdatedAt: Date.now() };
-              
-              // Re-calculate scores with new template logic
               const updatedPlayers = newSession.players.map(player => ({ 
                   ...player, totalScore: calculatePlayerTotal(player, finalTemplate, newSession.players) 
               }));
-              
               setCurrentSession({ ...newSession, players: updatedPlayers });
           }
-          
       } else {
-          // Normal update for Custom or already-Forked templates
           await db.templates.put(migratedTemplate);
-          
           if (currentSession) {
               const updatedPlayers = currentSession.players.map(player => ({ 
                   ...player, totalScore: calculatePlayerTotal(player, migratedTemplate, currentSession.players) 
@@ -390,14 +373,9 @@ export const useSessionManager = ({
 
       setActiveTemplate(finalTemplate);
 
-      // [CRITICAL FIX] Backup new template to cloud immediately if connected
-      // This ensures that if the user syncs the session to another device, 
-      // the new template ID will be available there too.
-      // [FIX] Added validation for backup result and used proper timestamp
       if (isCloudEnabled()) {
           googleDriveService.backupTemplate(finalTemplate).then((updated) => {
               if (updated) {
-                  // [FIX] Use updated.updatedAt instead of Date.now() to avoid race conditions
                   db.templates.update(updated.id, { lastSyncedAt: updated.updatedAt || Date.now() });
               }
           }).catch(console.error);
@@ -431,9 +409,6 @@ export const useSessionManager = ({
       }
 
       isImageDirtyRef.current = true;
-      // Note: We save image with current ID. If updateActiveTemplate forks it, the image reference will need handling.
-      // But updateActiveTemplate logic above handles forks before image save usually.
-      // If we are here, we are saving an image to the *current* active template ID.
       const savedImg = await imageService.saveImage(blob, activeTemplate.id, 'template');
       
       if (sessionImage) URL.revokeObjectURL(sessionImage);
@@ -457,6 +432,7 @@ export const useSessionManager = ({
       exitSession,
       saveToHistory,
       updateActiveTemplate,
-      setSessionImage: handleUpdateSessionImage
+      setSessionImage: handleUpdateSessionImage,
+      updatePlayerHistory: updatePlayer 
   };
 };

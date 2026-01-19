@@ -150,7 +150,7 @@ export const useAppQueries = (searchQuery: string) => {
 
   // [Update] Return full objects instead of just names to support UUID linking
   const playerHistory = useMemo(() => savedPlayers || [], [savedPlayers]);
-  const locationHistory = useMemo(() => savedLocations?.map(l => l.name) || [], [savedLocations]);
+  const locationHistory = useMemo(() => savedLocations || [], [savedLocations]);
 
   // Combined System Templates (Masking Logic)
   const systemTemplates = useMemo(() => {
