@@ -1,14 +1,14 @@
 
 import { useState, useRef, useEffect } from 'react';
-import { GameSession, GameTemplate } from '../../../types';
+import { GameSession, GameTemplate, SavedListItem } from '../../../types';
 
 interface SessionViewProps {
   session: GameSession;
   template: GameTemplate;
-  playerHistory: string[];
+  playerHistory: SavedListItem[];
   onUpdateSession: (session: GameSession) => void;
   onUpdateTemplate: (template: GameTemplate) => void;
-  onUpdatePlayerHistory: (name: string) => void;
+  onUpdatePlayerHistory: (name: string, uuid?: string) => void;
   onExit: () => void;
   onResetScores: () => void;
 }

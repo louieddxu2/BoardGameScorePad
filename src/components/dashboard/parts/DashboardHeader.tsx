@@ -18,6 +18,7 @@ interface DashboardHeaderProps {
   isConnected: boolean;
   isSyncing: boolean;
   onCloudClick: () => void; // Changed from onToggleCloud
+  onTriggerInspector: () => void; // New prop for debug tool
 }
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({
@@ -33,7 +34,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   setViewMode,
   isConnected,
   isSyncing,
-  onCloudClick
+  onCloudClick,
+  onTriggerInspector
 }) => {
   
   const searchRef = useRef<HTMLDivElement>(null);
@@ -66,12 +68,51 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       setViewMode(viewMode === 'library' ? 'history' : 'library');
   };
 
-  const toggleLanguage = () => {
+  const toggleLanguage = (e: React.MouseEvent) => {
+      e.stopPropagation(); // [Fix] 阻止事件冒泡，避免觸發 Header 的除錯點擊偵測
       setLanguage(language === 'zh-TW' ? 'en' : 'zh-TW');
   };
 
+  // --- Debug Trigger Logic (3 Clicks on Empty Space) ---
+  const debugClickCountRef = useRef(0);
+  const debugTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleHeaderClick = (e: React.MouseEvent) => {
+      // Only active in History view to avoid conflicts
+      if (viewMode !== 'history') return;
+
+      const target = e.target as HTMLElement;
+      
+      // Ignore if clicking on interactive elements (buttons, inputs)
+      // We check recursively up to 2 levels to catch icons inside buttons
+      if (target.closest('button') || target.closest('input') || target.closest('[role="button"]')) {
+          return;
+      }
+
+      debugClickCountRef.current += 1;
+
+      if (debugTimerRef.current) {
+          clearTimeout(debugTimerRef.current);
+      }
+
+      if (debugClickCountRef.current >= 3) {
+          onTriggerInspector();
+          debugClickCountRef.current = 0;
+          // Feedback (if vibrate is supported)
+          if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+      } else {
+          // Reset count after 500ms if not reached 3 clicks
+          debugTimerRef.current = setTimeout(() => {
+              debugClickCountRef.current = 0;
+          }, 500);
+      }
+  };
+
   return (
-    <header className="flex flex-col bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 shadow-md transition-colors duration-300">
+    <header 
+        className="flex flex-col bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 shadow-md transition-colors duration-300"
+        onClick={handleHeaderClick}
+    >
       <div className="p-2.5 flex items-center gap-2 h-[58px]">
         {isSearchActive ? (
           <div ref={searchRef} className="flex items-center gap-2 w-full animate-in fade-in duration-300">
@@ -94,8 +135,10 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
               {/* Logo & Title Group - Hidden Language Toggle on Click */}
               <div 
-                className="flex items-center gap-2 min-w-0 shrink cursor-default active:opacity-50 transition-opacity"
+                className="flex items-center gap-2 min-w-0 shrink cursor-pointer active:opacity-50 transition-opacity"
                 onClick={toggleLanguage}
+                role="button"
+                title="Switch Language"
               >
                 <div className="bg-emerald-500/10 p-1.5 rounded-lg border border-emerald-500/20 shrink-0">
                   <Dice5 size={24} className="text-emerald-500" />

@@ -10,7 +10,7 @@ import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 import { useAppData } from '../../hooks/useAppData'; 
 import { useSwipe } from '../../hooks/useSwipe'; 
 import { usePullAction } from '../../hooks/usePullAction'; 
-import { useTranslation } from '../../i18n'; // Import translation hook
+import { useTranslation } from '../../i18n';
 
 // Sub Components
 import DashboardHeader from './parts/DashboardHeader';
@@ -20,6 +20,8 @@ import CloudManagerModal from './modals/CloudManagerModal';
 import DataManagerModal from './modals/DataManagerModal';
 import PullActionIsland from './parts/PullActionIsland'; 
 import SearchEmptyState from './parts/SearchEmptyState';
+// Debug Component
+import SystemDataInspector from '../analysis/SystemDataInspector';
 
 interface DashboardProps {
   isVisible: boolean; 
@@ -112,11 +114,9 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
 
   useEffect(() => {
     if (isSearchActive) {
-      // Push history state when search opens
       window.history.pushState({ modal: 'search' }, '');
       isSearchPoppedRef.current = false;
     } else {
-      // If closed manually (not by popstate) and we are currently in the search state
       if (!isSearchPoppedRef.current && window.history.state?.modal === 'search') {
          window.history.back();
       }
@@ -127,10 +127,9 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
       if (isSearchActive) {
-        // Handle back button when search is active
         isSearchPoppedRef.current = true;
         setIsSearchActive(false);
-        setSearchQuery(''); // [Requirement] Clear query and exit search state
+        setSearchQuery(''); 
       }
     };
     window.addEventListener('popstate', handlePopState);
@@ -155,7 +154,12 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
-  // [New] Ref for Pull-to-Action
+  // --- Secret Inspector State ---
+  const [showInspector, setShowInspector] = useState(false);
+  // Refs for gesture logic
+  const debugTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debugTouchStartRef = useRef<number>(0);
+  
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const { showToast } = useToast();
@@ -206,14 +210,12 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
       }
   };
 
-  // --- Pull-to-Action Hook ---
   const { pullY, pullX, activeState, isPulling } = usePullAction(scrollContainerRef, {
       onTriggerSearch: () => {
           setIsSearchActive(true);
-          // Auto focus will be handled by DashboardHeader effect
       },
       onTriggerCloud: handleHeaderCloudClick,
-      disabled: false // Optional: disable when modals are open if needed
+      disabled: false
   });
 
   // --- Swipe Logic ---
@@ -230,9 +232,57 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
     minFlickDistance: 10 
   });
 
-  // [Conflict Resolution] Block horizontal swipe effect if vertical pulling is active
+  // --- Secret Inspector Trigger Logic ---
+  const handleDebugTouchStart = (e: React.TouchEvent) => {
+      if (viewMode !== 'history') {
+          onTouchStart(e); 
+          return;
+      }
+      // Track start X for detecting left drag
+      debugTouchStartRef.current = e.touches[0].clientX;
+      onTouchStart(e); 
+  };
+
+  const handleDebugTouchMove = (e: React.TouchEvent) => {
+      if (viewMode !== 'history') {
+          onTouchMove(e);
+          return;
+      }
+
+      const currentX = e.touches[0].clientX;
+      const deltaX = currentX - debugTouchStartRef.current;
+
+      // Threshold: -100px (Dragging finger Left)
+      if (deltaX < -100) {
+          if (!debugTimerRef.current) {
+              // Start 3 second timer
+              debugTimerRef.current = setTimeout(() => {
+                  setShowInspector(true);
+                  if (navigator.vibrate) navigator.vibrate([50, 50]);
+                  debugTimerRef.current = null;
+              }, 3000);
+          }
+      } else {
+          // If moved back or not far enough, cancel timer
+          if (debugTimerRef.current) {
+              clearTimeout(debugTimerRef.current);
+              debugTimerRef.current = null;
+          }
+      }
+      
+      onTouchMove(e);
+  };
+
+  const handleDebugTouchEnd = () => {
+      if (debugTimerRef.current) {
+          clearTimeout(debugTimerRef.current);
+          debugTimerRef.current = null;
+      }
+      onTouchEnd();
+  };
+
   let validOffset = 0;
-  if (!isPulling) { // Only calculate offset if NOT pulling vertically
+  if (!isPulling) {
       if (viewMode === 'library') {
           validOffset = Math.min(0, swipeOffset); 
       } else if (viewMode === 'history') {
@@ -303,7 +353,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
       const history = data.data.history || [];
       const sessions = data.data.sessions || []; 
       
-      // [Update] Pass the full data object to enable system settings sync
       return await performFullBackup(
           data, 
           templates, 
@@ -314,8 +363,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           onError, 
           (type, item) => {
               if (type === 'template' && item) {
-                  // [Fix] Explicitly set lastSyncedAt to now, so the UI indicator turns green immediately.
-                  // 'item' is the updated template returned from backup service (with cloudImageId).
                   onTemplateSave({ ...item, lastSyncedAt: Date.now() }, { skipCloud: true, preserveTimestamps: true });
               }
           }
@@ -355,6 +402,9 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
     <div 
         className="flex-1 flex flex-col min-h-0 bg-slate-900 transition-colors duration-300 overflow-hidden"
     >
+      {/* Secret Inspector */}
+      {showInspector && <SystemDataInspector onClose={() => setShowInspector(false)} />}
+
       <DashboardHeader 
         isSearchActive={isSearchActive}
         setIsSearchActive={setIsSearchActive}
@@ -369,20 +419,16 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         isConnected={isConnected}
         isSyncing={isSyncing}
         onCloudClick={handleHeaderCloudClick}
+        onTriggerInspector={() => setShowInspector(true)} // [New] Pass trigger to header
       />
 
-      {/* 
-          Main Scroll Container with Ref 
-          PullActionIsland is absolute positioned inside relative wrapper
-      */}
       <div 
         className="flex-1 overflow-y-auto no-scrollbar relative"
         ref={scrollContainerRef}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
+        onTouchStart={handleDebugTouchStart}
+        onTouchMove={handleDebugTouchMove}
+        onTouchEnd={handleDebugTouchEnd}
       >
-        {/* Pull to Action Visual Feedback */}
         <PullActionIsland 
             pullY={pullY} 
             pullX={pullX} 
@@ -393,7 +439,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
             className="p-4 space-y-4 min-h-full transition-transform duration-75 ease-out"
             style={{ transform: `translateX(${dampedOffset}px)` }}
         >
-            {/* Conditional Rendering based on View Mode */}
             {viewMode === 'history' ? (
                 <>
                     {searchQuery.trim().length > 0 && (
@@ -420,7 +465,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
                 </>
             ) : (
                 <>
-                    {/* Active Games */}
                     {activeGameItems.length > 0 && (
                         <div className="space-y-2">
                             <div onClick={() => setIsActiveLibOpen(!isActiveLibOpen)} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-700/50 cursor-pointer hover:bg-slate-800 transition-colors">
@@ -443,7 +487,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
                         </div>
                     )}
 
-                    {/* Pinned */}
                     {pinnedTemplates.length > 0 && (
                         <div className="space-y-2">
                             <div onClick={() => setIsPinnedLibOpen(!isPinnedLibOpen)} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-700/50 cursor-pointer hover:bg-slate-800 transition-colors">
@@ -469,7 +512,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
                         </div>
                     )}
 
-                    {/* User Library */}
                     <div className="space-y-2">
                         <div onClick={() => setIsUserLibOpen(!isUserLibOpen)} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-700/50 cursor-pointer hover:bg-slate-800 transition-colors">
                             <div className="flex items-center gap-2">{isUserLibOpen ? <ChevronDown size={20} className="text-emerald-500"/> : <ChevronRight size={20} className="text-slate-500"/>}<h3 className="text-base font-bold text-white flex items-center gap-2"><LayoutGrid size={18} className="text-emerald-500" /> {t('dash_my_library')} <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{userTemplatesCount}</span></h3></div>
@@ -505,7 +547,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
                         )}
                     </div>
 
-                    {/* System Library */}
                     <div className="space-y-2">
                         <div onClick={() => setIsSystemLibOpen(!isSystemLibOpen)} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-700/50 cursor-pointer hover:bg-slate-800 transition-colors">
                             <div className="flex items-center gap-2">{isSystemLibOpen ? <ChevronDown size={20} className="text-indigo-400"/> : <ChevronRight size={20} className="text-slate-500"/>}<h3 className="text-base font-bold text-white flex items-center gap-2"><Library size={18} className="text-indigo-400" /> {t('dash_builtin_library')} <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{systemTemplatesCount}</span></h3></div>
@@ -546,7 +587,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         </main>
       </div>
 
-      {/* --- Modals --- */}
       <ConfirmationModal isOpen={!!templateToDelete} title={t('confirm_delete_template_title')} message={t('confirm_delete_template_msg')} confirmText={t('delete')} isDangerous={true} onCancel={() => setTemplateToDelete(null)} onConfirm={() => { if(templateToDelete) onTemplateDelete(templateToDelete); setTemplateToDelete(null); }} />
       <ConfirmationModal isOpen={!!sessionToDelete} title={t('confirm_delete_session_title')} message={t('confirm_delete_session_msg')} confirmText={t('delete')} isDangerous={true} onCancel={() => setSessionToDelete(null)} onConfirm={() => { if(sessionToDelete) onDiscardSession(sessionToDelete); setSessionToDelete(null); }} />
       <ConfirmationModal isOpen={!!historyToDelete} title={t('confirm_delete_history_title')} message={t('confirm_delete_template_msg')} confirmText={t('delete')} isDangerous={true} onCancel={() => setHistoryToDelete(null)} onConfirm={() => { if(historyToDelete) onDeleteHistory(historyToDelete); setHistoryToDelete(null); }} />
@@ -600,7 +640,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
     </div>
   );
 }, (prevProps, nextProps) => {
-    // Optimization: Freeze dashboard when hidden
     if (!prevProps.isVisible && !nextProps.isVisible) {
         return true; 
     }

@@ -1,14 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
-import { HistoryRecord, ScoringRule } from '../../../types';
+import { HistoryRecord, ScoringRule, SavedListItem } from '../../../types';
 import { X, Save, Calendar, MapPin, FileText, Settings, Database, Clock, Trophy } from 'lucide-react';
+import { generateId } from '../../../utils/idGenerator';
+import { relationshipService } from '../../../services/relationshipService'; // Import Service
 
 interface HistorySettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   record: HistoryRecord;
-  onSave: (updatedRecord: HistoryRecord) => void;
-  locationHistory?: string[]; // New Prop
+  onSave: (updatedRecord: HistoryRecord) => Promise<void>; // Make async
+  locationHistory?: SavedListItem[];
 }
 
 // Helper: Convert timestamp to HTML input datetime-local string (YYYY-MM-DDThh:mm)
@@ -65,10 +67,38 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
       });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (formData) {
-      onSave(formData);
-      onClose();
+        // [AUTO-LINK LOGIC] for Locations
+        // If user typed a location, try to match it with history to get UUID
+        let finalRecord = { ...formData };
+        
+        if (finalRecord.location) {
+            const trimmedLoc = finalRecord.location.trim();
+            // Check if name matches any existing record (case-insensitive)
+            const matched = locationHistory.find(l => l.name.toLowerCase() === trimmedLoc.toLowerCase());
+            
+            if (matched && matched.meta?.uuid) {
+                // Link ID found!
+                finalRecord.locationId = matched.meta.uuid;
+            } else {
+                // [New] No match in history -> Generate NEW UUID instantly
+                // This ensures the record has a linked ID even if it's the first time
+                finalRecord.locationId = generateId(8);
+            }
+        } else {
+            // Location cleared
+            finalRecord.locationId = undefined;
+        }
+
+        // 1. Save changes to DB
+        await onSave(finalRecord);
+        
+        // 2. Trigger Relationship Service (checking for location patch)
+        // Note: processGameEnd handles its own checks (log table) to avoid redundant processing
+        relationshipService.processGameEnd(finalRecord).catch(console.error);
+
+        onClose();
     }
   };
 
@@ -77,7 +107,7 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
   const renderDynamicFields = () => {
       // Define known priority fields that we want to show with specific UI
       const priorityKeys = ['gameName', 'location', 'startTime', 'endTime', 'note'];
-      const hiddenKeys = ['id', 'templateId', 'players', 'winnerIds', 'snapshotTemplate'];
+      const hiddenKeys = ['id', 'templateId', 'players', 'winnerIds', 'snapshotTemplate', 'locationId'];
       
       // 1. Render Priority Fields (Specific UI)
       return (
@@ -136,7 +166,7 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
                   />
                   <datalist id="location-list">
                       {locationHistory.map((loc, i) => (
-                          <option key={i} value={loc} />
+                          <option key={i} value={loc.name} />
                       ))}
                   </datalist>
               </div>

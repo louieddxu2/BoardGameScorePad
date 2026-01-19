@@ -1,6 +1,6 @@
 
 import React, { useCallback, useEffect } from 'react';
-import { GameSession, GameTemplate, ScoreColumn } from '../../../types';
+import { GameSession, GameTemplate, ScoreColumn, SavedListItem } from '../../../types';
 import { useSessionState } from './useSessionState';
 import { useSessionNavigation } from './useSessionNavigation';
 import { generateId } from '../../../utils/idGenerator';
@@ -10,10 +10,10 @@ import { useToast } from '../../../hooks/useToast';
 interface SessionViewProps {
   session: GameSession;
   template: GameTemplate;
-  playerHistory: any[]; // [Update] Updated to accept any[] (SavedListItem[]) to match AppData
+  playerHistory: SavedListItem[]; // [Update] Updated to accept SavedListItem[] to match AppData
   onUpdateSession: (session: GameSession) => void;
   onUpdateTemplate: (template: GameTemplate) => void;
-  onUpdatePlayerHistory: (name: string) => void;
+  onUpdatePlayerHistory: (name: string, uuid?: string) => void; // [Modified] Accepts optional UUID
   onExit: () => void;
   onResetScores: () => void;
 }
@@ -30,7 +30,7 @@ export const useSessionEvents = (
   sessionState: SessionStateHook,
   localUiState?: LocalUiState
 ) => {
-  const { session, template, onUpdateSession, onUpdateTemplate, onUpdatePlayerHistory, onExit, onResetScores } = props;
+  const { session, template, playerHistory, onUpdateSession, onUpdateTemplate, onUpdatePlayerHistory, onExit, onResetScores } = props;
   const { uiState, setUiState } = sessionState;
   const { showToast } = useToast();
 
@@ -178,7 +178,7 @@ export const useSessionEvents = (
     setUiState(p => ({ ...p, isEditingTitle: false }));
   };
   
-  // [Updated] Support linking to history UUID
+  // [Updated] Support linking to history UUID AND Auto-Link
   const handlePlayerNameSubmit = (playerId: string, newName: string, moveNext: boolean = false, linkedId?: string) => {
       const finalName = newName?.trim() ?? '';
       const currentPlayer = session.players.find(p => p.id === playerId);
@@ -188,9 +188,25 @@ export const useSessionEvents = (
       let effectiveId = playerId;
 
       if (currentPlayer) {
+          
+          // [AUTO-LINK LOGIC]
+          // If no explicit linkedId is provided (manual typing), scan history for a match.
+          let finalLinkedId = linkedId;
+          
+          if (!finalLinkedId && finalName) {
+              const matchedRecord = playerHistory.find(h => h.name.toLowerCase() === finalName.toLowerCase());
+              if (matchedRecord && matchedRecord.meta?.uuid) {
+                  finalLinkedId = matchedRecord.meta.uuid;
+              } else {
+                  // [New] If no history match, generate a new UUID immediately for this new player
+                  // This ensures the session has a linked ID ready, even before it is saved to system DB
+                  finalLinkedId = generateId(8);
+              }
+          }
+
           // Check if name changed OR if we are linking a new ID (even if name is same)
           const nameChanged = currentPlayer.name !== finalName;
-          const linkChanged = linkedId && currentPlayer.linkedPlayerId !== linkedId;
+          const linkChanged = finalLinkedId && currentPlayer.linkedPlayerId !== finalLinkedId;
 
           if (nameChanged || linkChanged) {
               const isSystemId = currentPlayer.id.startsWith('sys_player_');
@@ -205,7 +221,7 @@ export const useSessionEvents = (
                           ...p, 
                           name: finalName,
                           id: newId, // Update ID if needed
-                          linkedPlayerId: linkedId || p.linkedPlayerId // Update linked ID if provided, else keep existing
+                          linkedPlayerId: finalLinkedId || p.linkedPlayerId // Update linked ID if provided/found
                       };
                   }
                   return p;
@@ -218,9 +234,10 @@ export const useSessionEvents = (
 
               onUpdateSession({ ...session, players });
 
-              // Only update history list if it's a manual entry (no linkedId provided)
+              // Only update history list if it's a manual entry (no explicit linkedId provided during call)
+              // We pass the finalLinkedId (whether it's existing or newly generated) to ensure consistency.
               if (finalName && !newId.startsWith('sys_player_') && !linkedId) {
-                  onUpdatePlayerHistory(finalName);
+                  onUpdatePlayerHistory(finalName, finalLinkedId);
               }
           }
       }

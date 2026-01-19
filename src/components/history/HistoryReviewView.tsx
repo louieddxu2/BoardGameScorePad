@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { HistoryRecord, GameSession, ScoreColumn } from '../../types';
+import { HistoryRecord, GameSession, ScoreColumn, SavedListItem } from '../../types';
 import { ArrowLeft, Share2, Download, Check, Settings } from 'lucide-react';
 import { useToast } from '../../hooks/useToast';
 import ScoreGrid from '../session/parts/ScoreGrid';
@@ -247,7 +247,8 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
               isDirtyRef.current = true; // Mark as dirty
               
               if (recordToSave.location) {
-                  updateLocationHistory(recordToSave.location);
+                  // [Modified] Pass the generated locationId to ensure syncing
+                  updateLocationHistory(recordToSave.location, recordToSave.locationId);
               }
               showToast({ message: "紀錄已更新", type: 'success' });
           }
@@ -377,7 +378,8 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                 onCellClick={() => {}} 
                 onPlayerHeaderClick={() => {}} 
                 onColumnHeaderClick={() => {}} 
-                onUpdateTemplate={() => {}} 
+                onUpdateTemplate={() => {}}
+                onAddColumn={() => {}} // No-op for review mode
                 scrollContainerRef={tableContainerRef}
                 contentRef={gridContentRef}
                 baseImage={baseImage || undefined}
