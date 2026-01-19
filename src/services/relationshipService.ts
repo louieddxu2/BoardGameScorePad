@@ -72,7 +72,7 @@ class RelationshipService {
                     table: Table<SavedListItem>, 
                     name: string, 
                     type: ResolvedEntity['type'],
-                    isNewContext: boolean,
+                    forceNewContext: boolean, // If true, treat as new context even if it exists
                     preferredId?: string
                 ): Promise<void> => {
                     const cleanName = name?.trim();
@@ -98,12 +98,17 @@ class RelationshipService {
                             meta: { relations: {} } 
                         };
                     }
+                    
+                    // [Fix] If forceNewContext is true (e.g. Full Mode), we treat it as new context regardless of existence.
+                    // This fixes the issue where existing items were skipped during re-scan.
+                    const isNewContext = forceNewContext; 
+
                     resolvedEntities.push({ item, table, type, isNewContext });
                 };
 
                 // --- 2. 解析實體 (Load Entities) ---
                 // 無論是 Full 還是 LocationOnly，我們都需要載入所有相關角色以便建立連結
-                // 差別在於 isNewContext 的標記
+                // 差別在於 forceNewContext 的標記
 
                 const isFull = mode === 'full';
 
@@ -153,7 +158,8 @@ class RelationshipService {
                         // 3.1 基礎計數更新 (只針對 New Context)
                         if (source.isNewContext) {
                             source.item.usageCount = (source.item.usageCount || 0) + 1;
-                            source.item.lastUsed = record.endTime;
+                            // [Fix] Ensure lastUsed updates to the record time (for re-scan correctness)
+                            source.item.lastUsed = Math.max(source.item.lastUsed, record.endTime);
                             hasChanges = true;
                         }
 
