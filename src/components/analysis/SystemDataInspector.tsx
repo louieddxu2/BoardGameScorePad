@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Database, Users, MapPin, Clock, Hash, LayoutGrid, ChevronRight, ChevronDown, Palette, Calendar, Watch, RefreshCw, Loader2 } from 'lucide-react';
+import { X, Database, Users, MapPin, Clock, Hash, LayoutGrid, ChevronRight, ChevronDown, Palette, Calendar, Watch, RefreshCw, Loader2, Trash2, AlertTriangle } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { SavedListItem } from '../../types';
@@ -182,7 +182,7 @@ const InspectorDetailPanel = ({ selectedItem, icon: Icon }: { selectedItem: any,
                         </div>
                         <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
                             <span className="text-[10px] text-slate-500 uppercase font-bold block mb-1">{t('last_used')}</span>
-                            <span className="text-sm font-mono text-slate-300">{new Date(selectedItem.lastUsed).toLocaleString()}</span>
+                            <span className="text-sm font-mono text-slate-300">{selectedItem.lastUsed > 0 ? new Date(selectedItem.lastUsed).toLocaleString() : '-'}</span>
                         </div>
                     </div>
 
@@ -338,6 +338,48 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   const t = useInspectorTranslation();
   const { showToast } = useToast();
 
+  const handleResetStats = async () => {
+      if (isProcessing) return;
+      const confirm = window.confirm(
+          "【危險操作】確定要清除所有統計資料嗎？\n\n" +
+          "1. 所有玩家、地點、遊戲的「使用次數」將歸零。\n" +
+          "2. 所有「關聯性紀錄」將被徹底清除。\n" +
+          "3. 系統將會忘記誰常跟誰玩、誰常去哪裡。\n\n" +
+          "注意：這不會刪除已儲存的玩家或地點本身，僅重置統計數據。"
+      );
+      if (!confirm) return;
+
+      setIsProcessing(true);
+      try {
+          await (db as any).transaction('rw', db.savedPlayers, db.savedLocations, db.savedGames, db.savedWeekdays, db.savedTimeSlots, db.analyticsLogs, async () => {
+              // 1. Clear Logs (Allowing future re-scan)
+              await db.analyticsLogs.clear();
+
+              // 2. Reset Counts & Relations for all entities
+              // Deep clean logic
+              const resetLogic = (item: SavedListItem) => {
+                  item.usageCount = 0;
+                  item.lastUsed = 0; // Reset last used to 0
+                  if (!item.meta) item.meta = {};
+                  item.meta.relations = {}; // Completely wipe relations
+              };
+
+              await db.savedPlayers.toCollection().modify(resetLogic);
+              await db.savedLocations.toCollection().modify(resetLogic);
+              await db.savedGames.toCollection().modify(resetLogic);
+              await db.savedWeekdays.toCollection().modify(resetLogic);
+              await db.savedTimeSlots.toCollection().modify(resetLogic);
+          });
+          
+          showToast({ message: "統計資料已重置 (請點擊右方按鈕重新掃描)", type: 'success' });
+      } catch (error) {
+          console.error("Reset failed", error);
+          showToast({ message: "重置失敗", type: 'error' });
+      } finally {
+          setIsProcessing(false);
+      }
+  };
+
   const handleReprocessHistory = async () => {
       if (isProcessing) return;
       
@@ -383,6 +425,14 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
         
         <div className="flex items-center gap-2">
             <button 
+                onClick={handleResetStats} 
+                disabled={isProcessing}
+                className="p-2 hover:bg-slate-800 rounded-lg text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+                title="清除所有統計資料 (重置計數與關聯)"
+            >
+                <Trash2 size={20} />
+            </button>
+            <button 
                 onClick={handleReprocessHistory} 
                 disabled={isProcessing}
                 className="p-2 hover:bg-slate-800 rounded-lg text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-50"
@@ -390,6 +440,7 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             >
                 {isProcessing ? <Loader2 size={20} className="animate-spin" /> : <RefreshCw size={20} />}
             </button>
+            <div className="w-px h-6 bg-slate-800 mx-1"></div>
             <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">
                 <X size={20} />
             </button>
