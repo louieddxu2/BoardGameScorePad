@@ -24,7 +24,6 @@ const useInspectorTranslation = () => {
 };
 
 const CollapsibleSection = ({ icon, title, count, children }: { icon: React.ReactNode, title: string, count: number, children?: React.ReactNode }) => {
-    // [Requirement 1] Default to expanded (true)
     const [isOpen, setIsOpen] = useState(true);
     return (
         <div className="border border-slate-700/50 rounded-lg overflow-hidden bg-slate-900/30">
@@ -262,21 +261,18 @@ const DataList = ({ title, table, icon: Icon }: { title: string, table: any, ico
   );
 };
 
-// [Requirement 2] Specialized Time Inspector with Split Left Pane
+// Specialized Time Inspector with Split Left Pane
 const TimeInspector = () => {
     const weekdays = useLiveQuery(() => db.savedWeekdays.toArray()) || [];
     const timeSlots = useLiveQuery(() => db.savedTimeSlots.toArray()) || [];
     const t = useInspectorTranslation();
     
-    // Unified selection state
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
-    // Find the item object from either list
     const selectedItem = useMemo(() => {
         return weekdays.find(i => i.id === selectedId) || timeSlots.find(i => i.id === selectedId);
     }, [selectedId, weekdays, timeSlots]);
 
-    // Determine icon based on what is selected
     const SelectedIcon = selectedItem ? (selectedItem.id.startsWith('weekday') ? Calendar : Watch) : Clock;
 
     const renderListItem = (item: any, label: string, icon: any) => {
@@ -288,7 +284,6 @@ const TimeInspector = () => {
                 className={`w-full text-left p-2 rounded-lg text-xs transition-all flex justify-between items-center ${isSelected ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100'}`}
             >
                 <span className="truncate font-bold flex items-center gap-1.5">
-                    {/* Only show icon if selected to save space, or maybe not needed */}
                     {label}
                 </span>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded ${isSelected ? 'bg-indigo-500 text-indigo-100' : 'bg-slate-700 text-slate-500'}`}>{item.usageCount || 0}</span>
@@ -300,8 +295,6 @@ const TimeInspector = () => {
         <div className="flex flex-1 min-h-0">
             {/* Left Sidebar (Split Top/Bottom) */}
             <div className="w-1/3 border-r border-slate-700 flex flex-col bg-slate-900/50">
-                
-                {/* Top Half: Weekdays */}
                 <div className="flex-1 overflow-y-auto no-scrollbar border-b border-slate-700 flex flex-col min-h-0">
                     <div className="p-2 sticky top-0 bg-slate-900 border-b border-slate-700 z-10 flex justify-between items-center backdrop-blur-sm bg-opacity-90">
                         <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
@@ -312,8 +305,6 @@ const TimeInspector = () => {
                         {weekdays.map(w => renderListItem(w, WEEKDAY_MAP[parseInt(w.name)] || w.name, Calendar))}
                     </div>
                 </div>
-
-                {/* Bottom Half: Time Slots */}
                 <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col min-h-0">
                     <div className="p-2 sticky top-0 bg-slate-900 border-b border-slate-700 z-10 flex justify-between items-center backdrop-blur-sm bg-opacity-90">
                         <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
@@ -325,8 +316,6 @@ const TimeInspector = () => {
                     </div>
                 </div>
             </div>
-
-            {/* Right Panel: Unified Inspector */}
             <InspectorDetailPanel selectedItem={selectedItem} icon={SelectedIcon} />
         </div>
     );
@@ -341,37 +330,29 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   const handleResetStats = async () => {
       if (isProcessing) return;
       const confirm = window.confirm(
-          "【危險操作】確定要清除所有統計資料嗎？\n\n" +
-          "1. 所有玩家、地點、遊戲的「使用次數」將歸零。\n" +
-          "2. 所有「關聯性紀錄」將被徹底清除。\n" +
-          "3. 系統將會忘記誰常跟誰玩、誰常去哪裡。\n\n" +
-          "注意：這不會刪除已儲存的玩家或地點本身，僅重置統計數據。"
+          "【危險操作】確定要重置所有統計資料庫嗎？\n\n" +
+          "1. 將徹底清空「玩家列表」、「地點列表」、「遊戲列表」等所有自動儲存的資料。\n" +
+          "2. 系統將會忘記所有已知的人、事、時、地、物。\n" +
+          "3. 執行後，您可以點擊「重新掃描」從歷史紀錄中重建這些資料。\n\n" +
+          "注意：這不會刪除您的「歷史紀錄」或「遊戲模板」，僅清除從歷史紀錄衍生的統計資料庫。"
       );
       if (!confirm) return;
 
       setIsProcessing(true);
       try {
           await (db as any).transaction('rw', db.savedPlayers, db.savedLocations, db.savedGames, db.savedWeekdays, db.savedTimeSlots, db.analyticsLogs, async () => {
-              // 1. Clear Logs (Allowing future re-scan)
+              // 1. Clear Logs
               await db.analyticsLogs.clear();
 
-              // 2. Reset Counts & Relations for all entities
-              // Deep clean logic
-              const resetLogic = (item: SavedListItem) => {
-                  item.usageCount = 0;
-                  item.lastUsed = 0; // Reset last used to 0
-                  if (!item.meta) item.meta = {};
-                  item.meta.relations = {}; // Completely wipe relations
-              };
-
-              await db.savedPlayers.toCollection().modify(resetLogic);
-              await db.savedLocations.toCollection().modify(resetLogic);
-              await db.savedGames.toCollection().modify(resetLogic);
-              await db.savedWeekdays.toCollection().modify(resetLogic);
-              await db.savedTimeSlots.toCollection().modify(resetLogic);
+              // 2. Clear All Saved Lists (Wipe Everything)
+              await db.savedPlayers.clear();
+              await db.savedLocations.clear();
+              await db.savedGames.clear();
+              await db.savedWeekdays.clear();
+              await db.savedTimeSlots.clear();
           });
           
-          showToast({ message: "統計資料已重置 (請點擊右方按鈕重新掃描)", type: 'success' });
+          showToast({ message: "統計資料庫已清空 (請點擊右方按鈕重新掃描)", type: 'success' });
       } catch (error) {
           console.error("Reset failed", error);
           showToast({ message: "重置失敗", type: 'error' });
@@ -428,7 +409,7 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                 onClick={handleResetStats} 
                 disabled={isProcessing}
                 className="p-2 hover:bg-slate-800 rounded-lg text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
-                title="清除所有統計資料 (重置計數與關聯)"
+                title="清空資料庫 (刪除所有列表與關聯)"
             >
                 <Trash2 size={20} />
             </button>
@@ -436,7 +417,7 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                 onClick={handleReprocessHistory} 
                 disabled={isProcessing}
                 className="p-2 hover:bg-slate-800 rounded-lg text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-50"
-                title="重新掃描並匯入歷史紀錄 (補齊統計)"
+                title="重新掃描並匯入歷史紀錄"
             >
                 {isProcessing ? <Loader2 size={20} className="animate-spin" /> : <RefreshCw size={20} />}
             </button>
