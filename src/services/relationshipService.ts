@@ -281,16 +281,24 @@ class RelationshipService {
         }
     }
 
+    // [Refactor] Heuristic Ranking Update (Group Bubble Up + Insert)
+    // 依據使用者需求修正：
+    // 1. **絕對不重排順序 (No Sort)**：保留上次的順序作為基礎。
+    // 2. 泡沫上浮 (Bubble Up)：當前活躍的項目若遇到前一個是不活躍的，就交換位置。
+    //    這會讓一群活躍的項目像火車一樣推過不活躍的項目，但彼此之間保持相對順序。
+    // 3. 新增項目：插入在列表前 40% 的位置。
     private updateRankings(
         currentList: any, 
         activeIds: string[], 
         limit: number
     ): RelationItem[] {
+        // 1. 標準化輸入 (List)
         let list: RelationItem[] = [];
-
         if (Array.isArray(currentList)) {
+            // [CRITICAL FIX] 不要執行 sort()，直接使用原始陣列保留歷史順序
             list = [...currentList];
         } else if (currentList && typeof currentList === 'object') {
+            // 只有針對舊版資料 (Object) 才需要做一次性的初始排序 (Count DESC)
             list = Object.entries(currentList).map(([id, count]) => ({
                 id,
                 count: Number(count)
@@ -298,36 +306,53 @@ class RelationshipService {
         }
 
         const activeSet = new Set(activeIds);
-        const foundIndices = new Set<number>();
+        const existingActiveIds = new Set<string>();
 
-        for (let i = 0; i < list.length; i++) {
-            if (activeSet.has(list[i].id)) {
-                list[i].count = (list[i].count || 0) + 1;
-                foundIndices.add(i);
-                activeSet.delete(list[i].id); 
+        // 2. 更新現有項目的計數，並標記哪些是「列表內已存在且本次活躍」
+        list.forEach(item => {
+            if (activeSet.has(item.id)) {
+                item.count = (item.count || 0) + 1;
+                existingActiveIds.add(item.id);
             }
-        }
+        });
 
+        // 找出本次新增的項目 (不在原本列表內)
+        const newIds = activeIds.filter(id => !existingActiveIds.has(id));
+
+        // 3. 執行 Bubble Up (往前一格)
+        // [Logic Check] 我們必須「從前往後 (0 -> N)」掃描，確保活躍的群體可以像火車一樣依序跨過障礙物。
+        // 如果是 [Inactive, ActiveA, ActiveB]：
+        // i=1 (ActiveA): 跟 i=0 (Inactive) 交換 -> [ActiveA, Inactive, ActiveB]
+        // i=2 (ActiveB): 跟 i=1 (Inactive) 交換 -> [ActiveA, ActiveB, Inactive]
+        // 結果：活躍群體整體前移，且 A 仍在 B 前面。
         for (let i = 1; i < list.length; i++) {
-            if (foundIndices.has(i)) {
-                if (!foundIndices.has(i - 1)) {
-                    const temp = list[i];
-                    list[i] = list[i-1];
-                    list[i-1] = temp;
-                    foundIndices.delete(i);
-                    foundIndices.add(i - 1);
-                }
+            const current = list[i];
+            const prev = list[i-1];
+
+            const isCurrentActive = existingActiveIds.has(current.id);
+            const isPrevActive = existingActiveIds.has(prev.id);
+
+            // 只有當「我是活躍的」且「擋在我前面的人是不活躍的」時，才交換。
+            // 這能保證我不會跨越另一個活躍的人，從而保持活躍者之間的相對順序。
+            if (isCurrentActive && !isPrevActive) {
+                // Swap
+                list[i] = prev;
+                list[i-1] = current;
             }
         }
 
-        if (activeSet.size > 0) {
-            const newItems: RelationItem[] = Array.from(activeSet).map(id => ({ id, count: 1 }));
+        // 4. 插入新項目 (Insert New at 40%)
+        if (newIds.length > 0) {
+            const newItems: RelationItem[] = newIds.map(id => ({ id, count: 1 }));
+            // 計算插入點：列表長度的 40% 位置 (例如 10 個項目插在第 4 格)
+            // 這讓新朋友有機會曝光，但不會直接蓋過最常玩的前幾名
             const insertIndex = Math.floor(list.length * INSERTION_RATIO);
             list.splice(insertIndex, 0, ...newItems);
         }
 
+        // 5. 截斷長度
         if (list.length > limit) {
-            list = list.slice(0, limit);
+            return list.slice(0, limit);
         }
 
         return list;
