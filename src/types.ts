@@ -215,6 +215,7 @@ export interface SavedListItem {
   name: string;
   lastUsed: number;
   usageCount: number;
+  predictivePower?: number; // [New] 0.2 ~ 5.0, Default 1.0. 代表此項目作為預測來源時的可信度權重。
   meta?: {
       uuid?: string; // Legacy field (can be deprecated eventually as id is now uuid)
       stats?: {

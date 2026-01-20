@@ -2,6 +2,7 @@
 import Dexie, { Table } from 'dexie';
 import { GameTemplate, GameSession, TemplatePreference, HistoryRecord, SavedListItem, LocalImage, AnalyticsLog } from './types';
 import { generateId } from './utils/idGenerator';
+import { DATA_LIMITS } from './dataLimits';
 
 export class ScorePadDatabase extends Dexie {
   templates!: Table<GameTemplate>;
@@ -115,7 +116,7 @@ export class ScorePadDatabase extends Dexie {
             const newPlayers = oldPlayers.map((p: any) => ({
                 ...p,
                 // Use existing UUID in meta if available, otherwise generate new one
-                id: p.meta?.uuid || generateId(8), 
+                id: p.meta?.uuid || generateId(DATA_LIMITS.ID_LENGTH.DEFAULT), 
                 // Keep name at root
             }));
             await trans.table('savedPlayers_v2').bulkAdd(newPlayers);
@@ -126,7 +127,7 @@ export class ScorePadDatabase extends Dexie {
         if (oldLocations.length > 0) {
             const newLocations = oldLocations.map((l: any) => ({
                 ...l,
-                id: l.meta?.uuid || generateId(8),
+                id: l.meta?.uuid || generateId(DATA_LIMITS.ID_LENGTH.DEFAULT),
             }));
             await trans.table('savedLocations_v2').bulkAdd(newLocations);
         }

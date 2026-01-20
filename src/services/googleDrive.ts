@@ -4,6 +4,7 @@ import { googleAuth } from './cloud/googleAuth';
 import { googleDriveClient } from './cloud/googleDriveClient';
 import { CloudFile, CloudResourceType } from './cloud/types';
 import { imageService } from './imageService';
+import { DATA_LIMITS } from '../dataLimits';
 
 export type { CloudFile, CloudResourceType };
 
@@ -521,8 +522,8 @@ class GoogleDriveService {
           const files = await googleDriveClient.fetchAllItems(query, 'files(id, createdTime)');
           files.sort((a: any, b: any) => new Date(b.createdTime).getTime() - new Date(a.createdTime).getTime());
 
-          if (files.length > 100) {
-              const toDelete = files.slice(100); 
+          if (files.length > DATA_LIMITS.CLOUD.TRASH_RETENTION_COUNT) {
+              const toDelete = files.slice(DATA_LIMITS.CLOUD.TRASH_RETENTION_COUNT); 
               const promises = toDelete.map((f: any) => googleDriveClient.deleteFile(f.id));
               await Promise.all(promises);
           }

@@ -84,9 +84,11 @@ export const useSessionManager = ({
         ? Array(playerCount).fill('transparent') 
         : Array.from({ length: playerCount }, (_, i) => COLORS[i % COLORS.length]);
 
+    // [Changed] Use 'player_n' (1-based) as the default ID.
+    // This allows specific identification of un-named players in history (player_1 vs player_2).
     const players: Player[] = Array.from({ length: playerCount }, (_, i) => {
       return {
-        id: `sys_player_${i + 1}`, 
+        id: `player_${i + 1}`, 
         name: `玩家 ${i + 1}`,
         scores: {},
         totalScore: 0,
@@ -218,7 +220,7 @@ export const useSessionManager = ({
       );
 
       const hasCustomPlayers = currentSession.players.some(p => 
-          !p.id.startsWith('sys_player_')
+          !p.id.startsWith('slot_') && !p.id.startsWith('sys_') && !p.id.startsWith('player_')
       );
 
       const hasPhotos = (currentSession.photos && currentSession.photos.length > 0);
@@ -268,13 +270,23 @@ export const useSessionManager = ({
       try {
           const rule = currentSession.scoringRule || 'HIGHEST_WINS';
           let winnerIds: string[] = [];
+          
+          // [Correction] Winner IDs logic:
+          // Strictly use `p.id` (Slot ID, e.g. "player_1") to identify winners.
+          // Do NOT use `linkedPlayerId` here, because if multiple slots share the same identity (e.g. Alice vs Alice),
+          // using linkedPlayerId would make it impossible to distinguish which slot won.
           if (rule === 'HIGHEST_WINS') {
               const maxScore = Math.max(...currentSession.players.map(p => p.totalScore));
-              winnerIds = currentSession.players.filter(p => p.totalScore === maxScore).map(p => p.id);
+              winnerIds = currentSession.players
+                  .filter(p => p.totalScore === maxScore)
+                  .map(p => p.id); 
           } else if (rule === 'LOWEST_WINS') {
               const minScore = Math.min(...currentSession.players.map(p => p.totalScore));
-              winnerIds = currentSession.players.filter(p => p.totalScore === minScore).map(p => p.id);
+              winnerIds = currentSession.players
+                  .filter(p => p.totalScore === minScore)
+                  .map(p => p.id);
           }
+
           const snapshotTemplate = JSON.parse(JSON.stringify(activeTemplate));
           const now = Date.now();
           const record: HistoryRecord = {

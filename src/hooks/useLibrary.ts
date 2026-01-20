@@ -4,6 +4,7 @@ import { db } from '../db';
 import { generateId } from '../utils/idGenerator';
 import { SavedListItem } from '../types';
 import { Table } from 'dexie';
+import { DATA_LIMITS } from '../dataLimits';
 
 export const useLibrary = (onSystemDirty?: () => void) => {
   
@@ -11,8 +12,8 @@ export const useLibrary = (onSystemDirty?: () => void) => {
    * [編輯階段] - 輸入名稱時呼叫
    * 功能：確保資料庫有這個人/地點/遊戲。
    * 邏輯：
-   * - 若存在：只更新 lastUsed (方便下次排序)，絕對 **不增加** usageCount。
-   * - 若不存在：建立新項目，usageCount 設為 0 (等待結算時才 +1)。
+   * - 若存在：只回傳 ID，不更新 lastUsed (避免在編輯時不斷變動排序)。
+   * - 若不存在：建立新項目，usageCount 設為 0，lastUsed 設為 0 (避免新項目直接跳到列表頂端)。
    */
   const ensureLibraryItem = useCallback(async (table: Table<SavedListItem>, name: string, uuid?: string): Promise<string> => {
       if (!name.trim()) return '';
@@ -23,18 +24,20 @@ export const useLibrary = (onSystemDirty?: () => void) => {
               const existing = await table.where('name').equals(cleanName).first();
               
               if (existing) {
-                  // 只更新最後使用時間，不增加次數
-                  await table.update(existing.id, { lastUsed: Date.now() });
+                  // [Modified] 根據需求，在選擇/輸入階段不更新 lastUsed，統一在遊戲結束時處理。
+                  // await table.update(existing.id, { lastUsed: Date.now() }); 
                   return existing.id;
               } else {
                   // 建立新項目
-                  // [關鍵] usageCount 設為 0，避免在編輯階段虛增次數
-                  const newId = uuid || generateId(8);
+                  // [關鍵] usageCount 設為 0 (等待結算時才 +1)
+                  // [關鍵] lastUsed 設為 0 (確保新名字排在列表最後，直到遊戲結算更新時間)
+                  const newId = uuid || generateId(DATA_LIMITS.ID_LENGTH.DEFAULT);
                   await table.add({ 
                       id: newId,
                       name: cleanName, 
-                      lastUsed: Date.now(), 
+                      lastUsed: 0, 
                       usageCount: 0, 
+                      predictivePower: 1.0, // [New] 物件本身的預測權重 (預設 1.0)
                       meta: { 
                           // [Future] Prediction lists will be stored here
                           // relatedPlayers: {}, relatedLocations: {}, etc.

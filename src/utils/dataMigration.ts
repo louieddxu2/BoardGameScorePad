@@ -1,6 +1,7 @@
 
 import { GameTemplate, ScoreColumn, ScoreValue, MappingRule, QuickAction, InputMethod } from '../types';
 import { generateId } from './idGenerator';
+import { DATA_LIMITS } from '../dataLimits';
 
 export const migrateColumn = (oldCol: any): ScoreColumn => {
   let formula = oldCol.formula || 'a1';
@@ -19,7 +20,7 @@ export const migrateColumn = (oldCol: any): ScoreColumn => {
       ] : []);
       
       quickActions = oldOptions.map((opt: any) => ({
-          id: generateId(6),
+          id: generateId(DATA_LIMITS.ID_LENGTH.SHORT),
           label: opt.label,
           value: opt.value,
           color: opt.color,
@@ -44,7 +45,7 @@ export const migrateColumn = (oldCol: any): ScoreColumn => {
           inputType = 'clicker';
           formula = 'a1+next';
           quickActions = oldCol.quickButtons.map((v: number) => ({
-              id: generateId(6),
+              id: generateId(DATA_LIMITS.ID_LENGTH.SHORT),
               label: `${v > 0 ? '+' : ''}${v}`,
               value: v,
           }));

@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { GameTemplate, TemplatePreference, GameSession } from '../types';
+import { DATA_LIMITS } from '../dataLimits';
 
 export const useAppQueries = (searchQuery: string) => {
   // Fetch Preferences separately to merge later
@@ -58,7 +59,7 @@ export const useAppQueries = (searchQuery: string) => {
 
       // We fetch all to perform separation logic in memory
       // Since Dexie doesn't support complex OR queries easily on non-indexed fields
-      const items = await collection.limit(200).toArray(list => list.map(t => ({
+      const items = await collection.limit(DATA_LIMITS.QUERY.USER_TEMPLATES).toArray(list => list.map(t => ({
          id: t.id, 
          name: t.name, 
          updatedAt: t.updatedAt, 
@@ -110,7 +111,7 @@ export const useAppQueries = (searchQuery: string) => {
       }
       
       const count = await collection.count();
-      const items = await collection.limit(100).toArray();
+      const items = await collection.limit(DATA_LIMITS.QUERY.BUILTIN_TEMPLATES).toArray();
       
       return { count, items };
   }, [searchQuery], { count: 0, items: [] });
@@ -139,14 +140,14 @@ export const useAppQueries = (searchQuery: string) => {
       }
 
       const count = await collection.count();
-      const items = await collection.limit(100).toArray();
+      const items = await collection.limit(DATA_LIMITS.QUERY.HISTORY_RECORDS).toArray();
 
       return { count, items };
   }, [searchQuery], { count: 0, items: [] });
 
   // F. Saved Lists
-  const savedPlayers = useLiveQuery(() => db.savedPlayers.orderBy('lastUsed').reverse().limit(50).toArray(), [], []);
-  const savedLocations = useLiveQuery(() => db.savedLocations.orderBy('lastUsed').reverse().limit(50).toArray(), [], []);
+  const savedPlayers = useLiveQuery(() => db.savedPlayers.orderBy('lastUsed').reverse().limit(DATA_LIMITS.QUERY.SAVED_LIST_ITEMS).toArray(), [], []);
+  const savedLocations = useLiveQuery(() => db.savedLocations.orderBy('lastUsed').reverse().limit(DATA_LIMITS.QUERY.SAVED_LIST_ITEMS).toArray(), [], []);
 
   // [Update] Return full objects instead of just names to support UUID linking
   const playerHistory = useMemo(() => savedPlayers || [], [savedPlayers]);
