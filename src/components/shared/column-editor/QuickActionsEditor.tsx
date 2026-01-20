@@ -6,6 +6,7 @@ import { isColorDark } from '../../../utils/ui';
 import { Plus, Trash2, Palette, X } from 'lucide-react';
 import { generateId } from '../../../utils/idGenerator';
 import { useTranslation } from '../../../i18n';
+import { DATA_LIMITS } from '../../../dataLimits';
 
 interface QuickActionsEditorProps {
   quickActions: QuickAction[];
@@ -88,7 +89,7 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
     const newActions = [
       ...quickActions,
       {
-        id: generateId(6), // Short ID for actions
+        id: generateId(DATA_LIMITS.ID_LENGTH.SHORT), // Short ID for actions
         label: '',
         value: 1,
         isModifier: false,

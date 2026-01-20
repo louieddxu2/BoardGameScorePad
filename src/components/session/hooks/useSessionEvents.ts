@@ -6,6 +6,7 @@ import { useSessionNavigation } from './useSessionNavigation';
 import { generateId } from '../../../utils/idGenerator';
 import { calculatePlayerTotal } from '../../../utils/scoring';
 import { useToast } from '../../../hooks/useToast';
+import { DATA_LIMITS } from '../../../dataLimits';
 
 interface SessionViewProps {
   session: GameSession;
@@ -106,14 +107,27 @@ export const useSessionEvents = (
 
       // 10. Default: Open Exit Confirmation
       // Check if we need to confirm or just exit
-      const hasData = session.players.some(p => 
-          Object.keys(p.scores).length > 0 || 
-          (p.bonusScore || 0) !== 0 ||
-          p.tieBreaker ||
-          p.isForceLost ||
-          !p.id.startsWith('sys_player_') || // Name changed (Custom Player)
-          p.isStarter // Starter set
-      );
+      const hasData = session.players.some((p, index) => {
+          // A. Has Scores
+          if (Object.keys(p.scores).length > 0) return true;
+          
+          // B. Has Meta Data changes
+          if ((p.bonusScore || 0) !== 0) return true;
+          if (p.tieBreaker) return true;
+          if (p.isForceLost) return true;
+          if (p.isStarter) return true;
+
+          // C. Has Linked Identity
+          if (p.linkedPlayerId) return true;
+
+          // D. [Fix] Check for custom ID that is NOT a system default
+          // System defaults are 'slot_' (legacy) or 'player_' (new) or 'sys_' (legacy)
+          const isSystemId = p.id.startsWith('slot_') || p.id.startsWith('sys_') || p.id.startsWith('player_');
+          if (!isSystemId) return true;
+
+          return false;
+      });
+
       const hasPhotos = (session.photos && session.photos.length > 0);
 
       if (hasData || hasPhotos) {
@@ -178,65 +192,54 @@ export const useSessionEvents = (
     setUiState(p => ({ ...p, isEditingTitle: false }));
   };
   
-  // [Updated] Support linking to history UUID AND Auto-Link
+  // [Updated] Simplified Logic: Only update if name actually changed.
   const handlePlayerNameSubmit = (playerId: string, newName: string, moveNext: boolean = false, linkedId?: string) => {
       const finalName = newName?.trim() ?? '';
       const currentPlayer = session.players.find(p => p.id === playerId);
       
-      // We need to keep track of the effective ID for navigation, 
-      // because if it changes (sys -> uuid), we must navigate using the NEW ID.
-      let effectiveId = playerId;
-
       if (currentPlayer) {
-          
-          // [AUTO-LINK LOGIC]
-          // If no explicit linkedId is provided (manual typing), scan history for a match.
+          // Check if name changed physically
+          const nameChanged = currentPlayer.name !== finalName;
           let finalLinkedId = linkedId;
-          
-          if (!finalLinkedId && finalName) {
-              const matchedRecord = playerHistory.find(h => h.name.toLowerCase() === finalName.toLowerCase());
-              if (matchedRecord && matchedRecord.meta?.uuid) {
-                  finalLinkedId = matchedRecord.meta.uuid;
+
+          // Auto-Link Logic: Only runs if NO explicit linkedId provided AND name actually changed.
+          if (!finalLinkedId) {
+              if (nameChanged && finalName) {
+                  // If name changed, try to find a match or generate new
+                  const matchedRecord = playerHistory.find(h => h.name.toLowerCase() === finalName.toLowerCase());
+                  if (matchedRecord) {
+                      finalLinkedId = matchedRecord.id; 
+                  } else {
+                      // New player input -> Generate UUID
+                      // We removed the regex check. If user types "Player 1" (changing it from something else, or re-typing it), it becomes a custom entity.
+                      finalLinkedId = generateId(DATA_LIMITS.ID_LENGTH.DEFAULT);
+                  }
               } else {
-                  // [New] If no history match, generate a new UUID immediately for this new player
-                  // This ensures the session has a linked ID ready, even before it is saved to system DB
-                  finalLinkedId = generateId(8);
+                  // If name DID NOT change, keep the existing ID (don't generate a new one)
+                  // This prevents "Next" button from turning a default placeholder into a custom entity.
+                  finalLinkedId = currentPlayer.linkedPlayerId;
               }
           }
 
-          // Check if name changed OR if we are linking a new ID (even if name is same)
-          const nameChanged = currentPlayer.name !== finalName;
-          const linkChanged = finalLinkedId && currentPlayer.linkedPlayerId !== finalLinkedId;
+          // Check if link changed (e.g. from undefined to uuid)
+          const linkChanged = currentPlayer.linkedPlayerId !== finalLinkedId;
 
           if (nameChanged || linkChanged) {
-              const isSystemId = currentPlayer.id.startsWith('sys_player_');
-              // Only generate new session ID if it was a system ID. 
-              // Otherwise keep the current session ID (which is already a UUID).
-              const newId = isSystemId ? generateId() : currentPlayer.id;
-              effectiveId = newId;
-
               const players = session.players.map(p => {
                   if (p.id === playerId) {
                       return { 
                           ...p, 
                           name: finalName,
-                          id: newId, // Update ID if needed
-                          linkedPlayerId: finalLinkedId || p.linkedPlayerId // Update linked ID if provided/found
+                          linkedPlayerId: finalLinkedId
                       };
                   }
                   return p;
               });
               
-              // [CRITICAL FIX] Update UI State immediately if ID changed.
-              if (newId !== playerId && uiState.editingPlayerId === playerId) {
-                  setUiState(prev => ({ ...prev, editingPlayerId: newId }));
-              }
-
               onUpdateSession({ ...session, players });
 
-              // Only update history list if it's a manual entry (no explicit linkedId provided during call)
-              // We pass the finalLinkedId (whether it's existing or newly generated) to ensure consistency.
-              if (finalName && !newId.startsWith('sys_player_') && !linkedId) {
+              // Update history list if it's a manual entry AND has a valid linked ID
+              if (finalName && !linkedId && finalLinkedId) {
                   onUpdatePlayerHistory(finalName, finalLinkedId);
               }
           }
@@ -244,7 +247,7 @@ export const useSessionEvents = (
       
       setUiState(p => ({ ...p, isInputFocused: false }));
       if (moveNext) {
-          navigation.moveNext(effectiveId);
+          navigation.moveNext(playerId);
       }
   };
 
@@ -269,7 +272,7 @@ export const useSessionEvents = (
 
   const handleAddBlankColumn = () => {
     const newCol: ScoreColumn = { 
-        id: generateId(8), 
+        id: generateId(DATA_LIMITS.ID_LENGTH.DEFAULT), 
         name: `項目 ${template.columns.length + 1}`, 
         isScoring: true, 
         formula: 'a1', 
@@ -285,7 +288,7 @@ export const useSessionEvents = (
       const original = template.columns.find(c => c.id === idToCopy);
       if (!original) return null;
       const newColumn = JSON.parse(JSON.stringify(original));
-      newColumn.id = generateId(8); 
+      newColumn.id = generateId(DATA_LIMITS.ID_LENGTH.DEFAULT); 
       newColumn.name = `${original.name} (複製)`;
       return newColumn;
     }).filter((c): c is ScoreColumn => c !== null);

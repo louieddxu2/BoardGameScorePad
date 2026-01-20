@@ -8,6 +8,7 @@ import PhotoScanner from '../scanner/PhotoScanner';
 import TextureMapper from './TextureMapper';
 import { generateId } from '../../utils/idGenerator';
 import { imageService } from '../../services/imageService';
+import { DATA_LIMITS } from '../../dataLimits';
 
 interface TemplateEditorProps {
   onSave: (template: GameTemplate) => void;
@@ -52,8 +53,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
 
   const adjustCount = (delta: number) => {
     // Allow 0 columns for "Simple Counter" mode
-    // Increased max limit to 50 for power users
-    setColumnCount(prev => Math.max(0, Math.min(50, prev + delta)));
+    setColumnCount(prev => Math.max(0, Math.min(DATA_LIMITS.EDITOR.MAX_COLUMNS, prev + delta)));
   };
 
   const handleSave = () => {
@@ -71,7 +71,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
         } else {
             const addedCount = columnCount - existing.length;
             const added = Array.from({ length: addedCount }).map((_, i) => ({
-                id: generateId(8), // Short ID for new columns
+                id: generateId(DATA_LIMITS.ID_LENGTH.DEFAULT), // Short ID for new columns
                 name: `項目 ${existing.length + i + 1}`,
                 isScoring: true,
                 formula: 'a1',
@@ -82,7 +82,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
         }
     } else {
         newColumns = Array.from({ length: columnCount }).map((_, i) => ({
-            id: generateId(8), // Short ID for columns
+            id: generateId(DATA_LIMITS.ID_LENGTH.DEFAULT), // Short ID for columns
             name: `項目 ${i + 1}`,
             isScoring: true,
             formula: 'a1',

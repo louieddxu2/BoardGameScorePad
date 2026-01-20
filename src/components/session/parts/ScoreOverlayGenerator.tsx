@@ -27,6 +27,20 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
   const dateStr = new Date(displayTime).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
   const timeStr = new Date(displayTime).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
 
+  // [Auto-Balance Logic]
+  // 計算每列應該顯示幾個玩家，以避免孤兒 (例如 5 人變成 4+1)。
+  // 規則：最多 4 欄。
+  // 範例 5人: 2列 -> ceil(5/2) = 3欄寬 -> 第一列3個, 第二列2個(置中)
+  // 範例 6人: 2列 -> ceil(6/2) = 3欄寬 -> 3/3
+  // 範例 9人: 3列 -> ceil(9/3) = 3欄寬 -> 3/3/3
+  const totalPlayers = data.players.length;
+  const MAX_COLS = 4;
+  const numRows = Math.ceil(totalPlayers / MAX_COLS);
+  const targetCols = Math.ceil(totalPlayers / numRows);
+  
+  // gap-6 等於 1.5rem (24px)
+  const GAP_PX = 24; 
+
   return (
     <div 
         ref={ref}
@@ -73,7 +87,13 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                 return (
                     <div 
                         key={p.id} 
-                        className="relative flex flex-col items-center justify-center bg-slate-800 rounded-2xl min-w-[200px] shadow-xl border border-slate-700 overflow-hidden"
+                        className="relative flex flex-col items-center justify-center bg-slate-800 rounded-2xl shadow-xl border border-slate-700 overflow-hidden"
+                        style={{
+                            // 動態計算寬度，強制 Flexbox 換行以達成平衡佈局
+                            // 公式：(100% - 總縫隙寬度) / 欄數
+                            width: `calc((100% - ${(targetCols - 1) * GAP_PX}px) / ${targetCols})`,
+                            minWidth: '200px' // 保持最小寬度以防計算過小
+                        }}
                     >
                         {/* Winner Crown (Floating Badge) - Adjusted position for new layout */}
                         {isWinner && (

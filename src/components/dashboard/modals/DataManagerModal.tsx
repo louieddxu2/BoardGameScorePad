@@ -7,6 +7,7 @@ import { generateId } from '../../../utils/idGenerator';
 import { db } from '../../../db'; // 直接存取 DB 以讀取 override
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useTranslation } from '../../../i18n';
+import { DATA_LIMITS } from '../../../dataLimits';
 
 interface DataManagerModalProps {
   isOpen: boolean;
@@ -78,7 +79,7 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
           id: generateId(), // Refresh ID
           createdAt: Date.now(),
           updatedAt: Date.now(),
-          columns: item.columns.map((col: any) => ({ ...col, id: col.id || generateId(8) }))
+          columns: item.columns.map((col: any) => ({ ...col, id: col.id || generateId(DATA_LIMITS.ID_LENGTH.DEFAULT) }))
         });
       });
 

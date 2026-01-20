@@ -187,7 +187,14 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
     return () => observer.disconnect();
   }, []);
 
-  const winners = record.winnerIds || [];
+  // [Update] Calculate winners for display
+  // Need to map potentially UUID winnerIds back to current session player IDs (which might be slot_X)
+  const winners = useMemo(() => {
+      const storedWinnerIds = record.winnerIds || [];
+      return record.players
+          .filter(p => (p.linkedPlayerId && storedWinnerIds.includes(p.linkedPlayerId)) || storedWinnerIds.includes(p.id))
+          .map(p => p.id);
+  }, [record.winnerIds, record.players]);
 
   // Prepare Overlay Data for Photo Gallery
   const overlayData = useMemo(() => ({

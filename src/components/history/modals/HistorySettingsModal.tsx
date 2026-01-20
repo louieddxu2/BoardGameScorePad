@@ -4,6 +4,7 @@ import { HistoryRecord, ScoringRule, SavedListItem } from '../../../types';
 import { X, Save, Calendar, MapPin, FileText, Settings, Database, Clock, Trophy } from 'lucide-react';
 import { generateId } from '../../../utils/idGenerator';
 import { relationshipService } from '../../../services/relationshipService'; // Import Service
+import { DATA_LIMITS } from '../../../dataLimits';
 
 interface HistorySettingsModalProps {
   isOpen: boolean;
@@ -84,7 +85,7 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
             } else {
                 // [New] No match in history -> Generate NEW UUID instantly
                 // This ensures the record has a linked ID even if it's the first time
-                finalRecord.locationId = generateId(8);
+                finalRecord.locationId = generateId(DATA_LIMITS.ID_LENGTH.DEFAULT);
             }
         } else {
             // Location cleared

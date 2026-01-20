@@ -317,6 +317,25 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
           const currentPlayerId = editingCell?.playerId || editingPlayerId;
           
           if (currentPlayerId) {
+              
+              // [Fix] Handle Auto-Commit for Player Name editing
+              if (editingPlayerId) {
+                  // Explicitly prevent defaults to avoid side effects (scrolling/selection)
+                  if (e.cancelable) e.preventDefault();
+
+                  // 1. Force blur immediately to close keyboard
+                  if (document.activeElement instanceof HTMLElement) {
+                      document.activeElement.blur();
+                  }
+                  
+                  // 2. Commit current name
+                  eventHandlers.handlePlayerNameSubmit(editingPlayerId, uiState.tempPlayerName, false);
+                  
+                  // 3. Explicitly force input focused state to false
+                  // This is critical to exit the "compact" layout mode
+                  setUiState((p: any) => ({ ...p, isInputFocused: false }));
+              }
+
               // 4. Action: Switch Player
               // Right Swipe (+X) -> Next Player
               // Left Swipe (-X) -> Previous Player
@@ -330,7 +349,14 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
       }
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e: React.TouchEvent) => {
+      // [Fix] Ghost Click Prevention
+      // If a swipe action was triggered, we must prevent the subsequent 'click' event
+      // that the browser fires after touchend. If we don't, the click will re-focus the input
+      // because the finger is lifted while still over the input element.
+      if (hasTriggeredRef.current) {
+          if (e.cancelable) e.preventDefault();
+      }
       touchStartRef.current = null;
       hasTriggeredRef.current = false;
   };
@@ -352,6 +378,9 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     if (activePlayer) {
         mainContentNode = (
             <PlayerEditor
+              // [Fix] Add key prop to force remount when switching players.
+              // This is the most reliable way to clear focus state and ensure a fresh input render.
+              key={activePlayer.id}
               player={activePlayer} 
               playerHistory={playerHistory} 
               tempName={uiState.tempPlayerName}

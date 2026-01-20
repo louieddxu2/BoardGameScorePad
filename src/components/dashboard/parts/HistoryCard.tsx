@@ -53,7 +53,9 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ record, onDelete, onClick }) 
       {/* Players Grid */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-2">
         {record.players.map(p => {
-            const isWinner = record.winnerIds.includes(p.id);
+            // [Update] Check if player is winner using linkedPlayerId (New Data) or ID (Old Data/Fallback)
+            const isWinner = (p.linkedPlayerId && record.winnerIds.includes(p.linkedPlayerId)) || record.winnerIds.includes(p.id);
+            
             const isTransparent = p.color === 'transparent';
             const isDark = !isTransparent && isColorDark(p.color);
             
