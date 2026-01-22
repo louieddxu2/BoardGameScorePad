@@ -1,17 +1,28 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Database, Users, MapPin, Clock, Hash, LayoutGrid, ChevronRight, ChevronDown, Palette, Calendar, Watch, RefreshCw, Loader2, Trash2, AlertTriangle } from 'lucide-react';
+import { X, Database, Users, MapPin, Clock, Hash, LayoutGrid, ChevronRight, ChevronDown, Palette, Calendar, Watch, RefreshCw, Loader2, Trash2, AlertTriangle, Image as ImageIcon, HardDrive, Table as TableIcon } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
-import { SavedListItem } from '../../types';
+import { SavedListItem, LocalImage } from '../../types';
 import { useTranslation } from '../../i18n';
 import { inspectorTranslations, InspectorTranslationKey } from '../../i18n/inspector';
 import { relationshipService } from '../../services/relationshipService'; // Import Service
 import { useToast } from '../../hooks/useToast'; // Import Toast
+import ConfirmationModal from '../shared/ConfirmationModal'; // [New] Import Modal
 
 // --- Helpers for formatting ---
 const WEEKDAY_MAP = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+
+// Helper to format bytes
+const formatBytes = (bytes: number, decimals = 2) => {
+    if (!+bytes) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+};
 
 // Helper hook for local translations
 const useInspectorTranslation = () => {
@@ -58,6 +69,7 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
     const games = useLiveQuery(() => db.savedGames.toArray()) || [];
     const weekdays = useLiveQuery(() => db.savedWeekdays.toArray()) || [];
     const timeSlots = useLiveQuery(() => db.savedTimeSlots.toArray()) || [];
+    const playerCounts = useLiveQuery(() => db.savedPlayerCounts.toArray()) || [];
 
     // Create Lookup Maps
     const lookups = useMemo(() => {
@@ -67,9 +79,10 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
             locations: createMap(locations),
             games: createMap(games),
             weekdays: createMap(weekdays),
-            timeSlots: createMap(timeSlots)
+            timeSlots: createMap(timeSlots),
+            playerCounts: createMap(playerCounts)
         };
-    }, [players, locations, games, weekdays, timeSlots]);
+    }, [players, locations, games, weekdays, timeSlots, playerCounts]);
 
     if (!meta || !meta.relations) return <span className="text-slate-500 italic text-xs">{t('no_relations')}</span>;
 
@@ -91,6 +104,7 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
                 else if (key === 'games') lookupKey = 'games';
                 else if (key === 'weekdays') lookupKey = 'weekdays';
                 else if (key === 'timeSlots') lookupKey = 'timeSlots';
+                else if (key === 'playerCounts') lookupKey = 'playerCounts';
 
                 if (lookupKey) {
                     const entity = lookups[lookupKey].get(r.id);
@@ -130,6 +144,10 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
 
             {renderCategory('games', <LayoutGrid size={12} className="text-emerald-400"/>, t('rel_games'), (id, { entity }) => (
                 <span className="text-slate-300">{entity?.name || id}</span>
+            ))}
+
+            {renderCategory('playerCounts', <Hash size={12} className="text-orange-400"/>, t('rel_player_counts'), (id, { entity }) => (
+                <span className="text-slate-300">{entity?.name || id} 人</span>
             ))}
 
             {renderCategory('colors', <Palette size={12} className="text-pink-400"/>, t('rel_colors'), (id) => (
@@ -321,26 +339,237 @@ const TimeInspector = () => {
     );
 }
 
+// [New] Image Inspector Tab
+const ImageInspector = () => {
+    const images = useLiveQuery(() => db.images.toArray()) || [];
+    const t = useInspectorTranslation();
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+    const totalSize = useMemo(() => images.reduce((acc, img) => acc + (img.blob?.size || 0), 0), [images]);
+    const selectedImage = images.find(img => img.id === selectedId);
+
+    useEffect(() => {
+        if (selectedImage) {
+            const url = URL.createObjectURL(selectedImage.blob);
+            setPreviewUrl(url);
+            return () => URL.revokeObjectURL(url);
+        } else {
+            setPreviewUrl(null);
+        }
+    }, [selectedImage]);
+
+    return (
+        <div className="flex flex-1 min-h-0">
+            {/* Left: Image List */}
+            <div className="w-1/3 border-r border-slate-700 overflow-y-auto no-scrollbar bg-slate-900/50">
+                <div className="p-3 sticky top-0 bg-slate-900 border-b border-slate-700 z-10 backdrop-blur-sm bg-opacity-90">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
+                            <ImageIcon size={12} /> {t('list_images')}
+                        </span>
+                        <span className="text-xs font-bold text-white bg-slate-700 px-2 py-0.5 rounded-full">{images.length}</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-mono">
+                        {t('img_total_size')}: <span className="text-emerald-400 font-bold">{formatBytes(totalSize)}</span>
+                    </div>
+                </div>
+                <div className="p-2 space-y-1">
+                    {images.map((img: LocalImage) => (
+                        <button
+                            key={img.id}
+                            onClick={() => setSelectedId(img.id)}
+                            className={`w-full text-left p-2 rounded-lg text-xs transition-all flex flex-col gap-1 ${selectedId === img.id ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+                        >
+                            <div className="flex justify-between w-full">
+                                <span className="font-mono truncate w-24 text-[10px] opacity-70">{img.id.substring(0,8)}...</span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${selectedId === img.id ? 'bg-indigo-500 text-indigo-100' : 'bg-slate-900 text-slate-400'}`}>
+                                    {formatBytes(img.blob.size)}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 opacity-80">
+                                <span className={`w-2 h-2 rounded-full ${img.relatedType === 'template' ? 'bg-sky-400' : 'bg-yellow-400'}`} />
+                                <span>{img.relatedType === 'template' ? t('img_type_template') : t('img_type_session')}</span>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Right: Preview */}
+            <div className="flex-1 bg-slate-950 p-4 flex flex-col items-center justify-center overflow-hidden">
+                {selectedImage ? (
+                    <div className="flex flex-col items-center gap-4 w-full h-full">
+                        <div className="relative flex-1 w-full min-h-0 rounded-xl overflow-hidden border border-slate-800 bg-black/50 flex items-center justify-center">
+                            {previewUrl && <img src={previewUrl} className="max-w-full max-h-full object-contain" alt="Preview" />}
+                        </div>
+                        <div className="w-full bg-slate-900 p-4 rounded-xl border border-slate-800 grid grid-cols-2 gap-4 text-xs">
+                            <div>
+                                <span className="text-slate-500 block mb-1">ID</span>
+                                <span className="text-white font-mono break-all">{selectedImage.id}</span>
+                            </div>
+                            <div>
+                                <span className="text-slate-500 block mb-1">Size</span>
+                                <span className="text-emerald-400 font-bold">{formatBytes(selectedImage.blob.size)}</span>
+                            </div>
+                            <div>
+                                <span className="text-slate-500 block mb-1">Related ID</span>
+                                <span className="text-indigo-300 font-mono break-all">{selectedImage.relatedId}</span>
+                            </div>
+                            <div>
+                                <span className="text-slate-500 block mb-1">Type</span>
+                                <span className="text-white capitalize">{selectedImage.relatedType}</span>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="text-slate-600 flex flex-col items-center gap-3">
+                        <HardDrive size={48} className="opacity-20" />
+                        <span>{t('select_hint')}</span>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// [New] Database Overview Inspector
+interface TableStats {
+    name: string;
+    count: number;
+    size: number;
+}
+
+const DatabaseInspector = () => {
+    const [stats, setStats] = useState<TableStats[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const t = useInspectorTranslation();
+
+    const calculateObjectSize = (obj: any): number => {
+        if (!obj) return 0;
+        // For LocalImage records, count the blob size explicitly
+        if (obj.blob instanceof Blob) {
+            return obj.blob.size;
+        }
+        // Fallback: estimate using JSON string length * 2 (UTF-16)
+        try {
+            const str = JSON.stringify(obj);
+            return str ? str.length * 2 : 0;
+        } catch (e) {
+            return 0;
+        }
+    };
+
+    useEffect(() => {
+        const analyzeDB = async () => {
+            setIsLoading(true);
+            try {
+                // [Fix] TypeScript error: Property 'tables' does not exist on type 'ScorePadDatabase'
+                // db is an instance of ScorePadDatabase which extends Dexie.
+                // Dexie instance has a 'tables' property (array of Table objects).
+                // We cast to any here to bypass the strict type check if the definitions are slightly off or if generics cause issues.
+                const tables = (db as any).tables;
+                const results: TableStats[] = [];
+
+                for (const table of tables) {
+                    const count = await table.count();
+                    let size = 0;
+                    
+                    // Optimization: For 'images', we don't want to JSON stringify everything.
+                    // We iterate and check .size directly.
+                    // For other tables, iteration is fine for small-medium DBs.
+                    await table.each((item: any) => {
+                        size += calculateObjectSize(item);
+                    });
+
+                    results.push({ name: table.name, count, size });
+                }
+                
+                // Sort by Size (Desc)
+                results.sort((a, b) => b.size - a.size);
+                setStats(results);
+            } catch (e) {
+                console.error("Failed to analyze DB", e);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        analyzeDB();
+    }, []);
+
+    const totalSize = stats.reduce((acc, curr) => acc + curr.size, 0);
+
+    return (
+        <div className="flex-1 overflow-y-auto p-4 bg-slate-950">
+            <div className="max-w-2xl mx-auto space-y-6">
+                {/* Summary Card */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col items-center">
+                    <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mb-3">
+                        <HardDrive size={32} className="text-emerald-500" />
+                    </div>
+                    <span className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">{t('db_total_size')}</span>
+                    <h2 className="text-4xl font-black text-white">{isLoading ? '...' : formatBytes(totalSize)}</h2>
+                </div>
+
+                {/* Table List */}
+                <div className="space-y-3">
+                    <h3 className="text-slate-400 text-xs font-bold uppercase px-2">{t('list_db_tables')}</h3>
+                    
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-8 text-slate-500 gap-2">
+                            <Loader2 size={16} className="animate-spin" /> {t('loading')}
+                        </div>
+                    ) : (
+                        stats.map((stat) => (
+                            <div key={stat.name} className="bg-slate-900 border border-slate-800 rounded-lg p-3 flex items-center justify-between">
+                                <div>
+                                    <div className="text-sm font-bold text-slate-200">{stat.name}</div>
+                                    <div className="text-xs text-slate-500 mt-0.5">{stat.count} {t('db_row_count')}</div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-sm font-mono font-bold text-emerald-400">{formatBytes(stat.size)}</div>
+                                    <div className="w-24 h-1.5 bg-slate-800 rounded-full mt-1 overflow-hidden">
+                                        <div 
+                                            className="h-full bg-emerald-600 rounded-full" 
+                                            style={{ width: `${totalSize > 0 ? (stat.size / totalSize) * 100 : 0}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                <p className="text-[10px] text-slate-600 text-center pt-4">
+                    {t('db_calc_note')}
+                </p>
+            </div>
+        </div>
+    );
+};
+
 const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState<'games' | 'players' | 'locations' | 'time'>('games');
+  const [activeTab, setActiveTab] = useState<'games' | 'players' | 'locations' | 'time' | 'counts' | 'images' | 'db'>('games');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'reset' | 'reprocess' | null>(null); // [New] Modal State
+  
   const t = useInspectorTranslation();
   const { showToast } = useToast();
 
-  const handleResetStats = async () => {
-      if (isProcessing) return;
-      const confirm = window.confirm(
-          "【危險操作】確定要重置所有統計資料庫嗎？\n\n" +
-          "1. 將徹底清空「玩家列表」、「地點列表」、「遊戲列表」等所有自動儲存的資料。\n" +
-          "2. 系統將會忘記所有已知的人、事、時、地、物。\n" +
-          "3. 執行後，您可以點擊「重新掃描」從歷史紀錄中重建這些資料。\n\n" +
-          "注意：這不會刪除您的「歷史紀錄」或「遊戲模板」，僅清除從歷史紀錄衍生的統計資料庫。"
-      );
-      if (!confirm) return;
+  const handleConfirmAction = async () => {
+      if (confirmAction === 'reset') {
+          await executeResetStats();
+      } else if (confirmAction === 'reprocess') {
+          await executeReprocessHistory();
+      }
+      setConfirmAction(null);
+  };
 
+  const executeResetStats = async () => {
+      if (isProcessing) return;
       setIsProcessing(true);
       try {
-          await (db as any).transaction('rw', db.savedPlayers, db.savedLocations, db.savedGames, db.savedWeekdays, db.savedTimeSlots, db.analyticsLogs, async () => {
+          await (db as any).transaction('rw', db.savedPlayers, db.savedLocations, db.savedGames, db.savedWeekdays, db.savedTimeSlots, db.savedPlayerCounts, db.analyticsLogs, async () => {
               // 1. Clear Logs
               await db.analyticsLogs.clear();
 
@@ -350,6 +579,7 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
               await db.savedGames.clear();
               await db.savedWeekdays.clear();
               await db.savedTimeSlots.clear();
+              await db.savedPlayerCounts.clear();
           });
           
           showToast({ message: "統計資料庫已清空 (請點擊右方按鈕重新掃描)", type: 'success' });
@@ -361,12 +591,8 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       }
   };
 
-  const handleReprocessHistory = async () => {
+  const executeReprocessHistory = async () => {
       if (isProcessing) return;
-      
-      const confirm = window.confirm("確定要重新掃描所有歷史紀錄嗎？\n這將補齊所有匯入資料的統計與關聯性。");
-      if (!confirm) return;
-
       setIsProcessing(true);
       try {
           // 1. Fetch all history sorted by time (oldest first)
@@ -392,6 +618,18 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   return createPortal(
     <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col animate-in fade-in duration-200">
       
+      {/* --- Confirmation Modal --- */}
+      <ConfirmationModal 
+          isOpen={!!confirmAction}
+          title={confirmAction === 'reset' ? t('confirm_reset_title') : t('confirm_reprocess_title')}
+          message={confirmAction === 'reset' ? t('confirm_reset_msg') : t('confirm_reprocess_msg')}
+          confirmText={confirmAction === 'reset' ? t('btn_reset') : t('btn_reprocess')}
+          isDangerous={confirmAction === 'reset'}
+          zIndexClass="z-[110]"
+          onCancel={() => setConfirmAction(null)}
+          onConfirm={handleConfirmAction}
+      />
+
       {/* Header */}
       <div className="flex-none bg-slate-900 p-3 border-b border-slate-800 flex justify-between items-center shadow-md z-20">
         <div className="flex items-center gap-3">
@@ -406,7 +644,7 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
         
         <div className="flex items-center gap-2">
             <button 
-                onClick={handleResetStats} 
+                onClick={() => setConfirmAction('reset')} // [Updated] Open custom modal
                 disabled={isProcessing}
                 className="p-2 hover:bg-slate-800 rounded-lg text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
                 title="清空資料庫 (刪除所有列表與關聯)"
@@ -414,7 +652,7 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                 <Trash2 size={20} />
             </button>
             <button 
-                onClick={handleReprocessHistory} 
+                onClick={() => setConfirmAction('reprocess')} // [Updated] Open custom modal
                 disabled={isProcessing}
                 className="p-2 hover:bg-slate-800 rounded-lg text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-50"
                 title="重新掃描並匯入歷史紀錄"
@@ -435,6 +673,9 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             { id: 'players', label: t('tab_players'), icon: Users },
             { id: 'locations', label: t('tab_locations'), icon: MapPin },
             { id: 'time', label: t('tab_time'), icon: Clock },
+            { id: 'counts', label: t('tab_counts'), icon: Hash },
+            { id: 'images', label: t('tab_images'), icon: ImageIcon },
+            { id: 'db', label: t('tab_db'), icon: HardDrive },
         ].map(tab => (
             <button
                 key={tab.id}
@@ -453,6 +694,9 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
         {activeTab === 'players' && <DataList title={t('list_players')} table={db.savedPlayers} icon={Users} />}
         {activeTab === 'locations' && <DataList title={t('list_locations')} table={db.savedLocations} icon={MapPin} />}
         {activeTab === 'time' && <TimeInspector />}
+        {activeTab === 'counts' && <DataList title={t('list_counts')} table={db.savedPlayerCounts} icon={Hash} />}
+        {activeTab === 'images' && <ImageInspector />}
+        {activeTab === 'db' && <DatabaseInspector />}
       </div>
     </div>,
     document.body

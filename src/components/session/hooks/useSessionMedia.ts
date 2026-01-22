@@ -120,7 +120,8 @@ export const useSessionMedia = ({
           return;
       }
 
-      showToast({ message: `正在儲存 ${blobs.length} 張照片...`, type: 'info' });
+      // [Modified] Removed "Saving..." toast per user request
+      
       const newPhotoIds: string[] = [];
 
       for (const blob of blobs) {
@@ -138,7 +139,7 @@ export const useSessionMedia = ({
           const currentPhotos = session.photos || [];
           const updatedSession = { ...session, photos: [...currentPhotos, ...newPhotoIds] };
           onUpdateSession(updatedSession);
-          showToast({ message: "照片已儲存", type: 'success' });
+          // [Modified] Removed "Success" toast per user request
       }
 
       // Close camera and ensure gallery is open underneath

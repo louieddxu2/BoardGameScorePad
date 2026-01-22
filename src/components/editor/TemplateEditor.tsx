@@ -96,6 +96,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
       id: initialTemplate ? initialTemplate.id : generateId(), // Default 36 chars (UUID)
       name: name.trim(),
       description: initialTemplate?.description || (columnCount === 0 ? "簡易計數器" : `${columnCount} 個計分項目`),
+      bggId: initialTemplate?.bggId || '', // [New] Preserve or Init BGG ID
       columns: newColumns,
       createdAt: initialTemplate ? initialTemplate.createdAt : Date.now(),
     };
@@ -140,6 +141,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
               newTemplate.imageId = savedImg.id;
               newTemplate.hasImage = true;
           }
+          // Note: bggId is handled inside templateBuilder via importedTemplate logic
           onSave(newTemplate);
           // Clear all temp states
           setRectifiedImage(null);
@@ -163,6 +165,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
             onSave={handleTextureSave}
             onCancel={handleMapperCancel}
             aspectRatio={rectifiedAspectRatio} // Pass ratio to mapper
+            initialTemplate={initialTemplate} // [New] Pass full template to mapper to preserve BGG ID
           />
       );
   }

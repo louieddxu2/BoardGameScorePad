@@ -157,6 +157,7 @@ export const buildTemplateFromTextureMap = (
     // If this is an update to an existing template, the parent component will override this ID.
     id: generateId(),
     name: initialName,
+    bggId: importedTemplate?.bggId || '', // [New] Initialize BGG ID
     columns: finalColumns,
     createdAt: Date.now(),
     hasImage: true,

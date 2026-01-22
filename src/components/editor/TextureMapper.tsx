@@ -23,11 +23,12 @@ interface TextureMapperProps {
   aspectRatio: number; 
   initialVisuals?: GlobalVisuals;
   initialColumns?: ScoreColumn[];
+  initialTemplate?: GameTemplate; // [New] Receive full source template if editing
 }
 
 const DRAWER_BOUNDARY_X = 128; 
 
-const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, initialColumnCount, onSave, onCancel, allTemplates, aspectRatio, initialVisuals, initialColumns }) => {
+const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, initialColumnCount, onSave, onCancel, allTemplates, aspectRatio, initialVisuals, initialColumns, initialTemplate }) => {
   
   // --- Core State ---
   
@@ -136,7 +137,19 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
               id: 'current',
               name: initialName,
               columns: initialColumns,
-              createdAt: Date.now()
+              createdAt: Date.now(),
+              // [New] Preserve BGG ID if editing existing template
+              bggId: initialTemplate?.bggId || '' 
+          } as GameTemplate;
+      }
+      // [New] Even if starting fresh but we have initialTemplate (re-edit case or similar), pass BGG ID
+      if (initialTemplate) {
+          return {
+              id: 'current',
+              name: initialName,
+              columns: [],
+              createdAt: Date.now(),
+              bggId: initialTemplate.bggId || ''
           } as GameTemplate;
       }
       return null;

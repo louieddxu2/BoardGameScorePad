@@ -26,16 +26,17 @@ import CameraView from '../scanner/CameraView'; // [New Import]
 interface SessionViewProps {
   session: GameSession;
   template: GameTemplate;
-  playerHistory: SavedListItem[]; // [Updated] Use full object type
+  playerHistory: SavedListItem[]; 
+  locationHistory?: SavedListItem[]; // [New Prop]
   zoomLevel: number;
   baseImage: string | null; 
   onUpdateSession: (session: GameSession) => void;
   onUpdateTemplate: (template: GameTemplate) => void;
   onUpdatePlayerHistory: (name: string) => void;
   onUpdateImage: (img: string | Blob | null) => void; 
-  onExit: () => void;
+  onExit: (location?: string) => void; // Updated
   onResetScores: () => void;
-  onSaveToHistory: () => void;
+  onSaveToHistory: (location?: string) => void; // [Updated] Unified save handler
   onDiscard: () => void; 
 }
 
@@ -215,9 +216,11 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       <SessionExitModal 
         isOpen={isSessionExitModalOpen}
         onClose={() => setUiState(p => ({ ...p, isSessionExitModalOpen: false }))}
-        onSaveActive={props.onExit}
+        onSaveActive={(loc) => props.onExit(loc)} // Pass location back
         onSaveHistory={props.onSaveToHistory}
-        onDiscard={props.onDiscard} // New
+        onDiscard={props.onDiscard} 
+        locationHistory={props.locationHistory} 
+        initialLocation={session.location} // Pass current session location
       />
 
       {/* Photo Gallery Modal */}

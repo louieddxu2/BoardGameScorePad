@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Plus, Search } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useTranslation } from '../../../i18n';
 
 interface SearchEmptyStateProps {
@@ -13,10 +13,7 @@ const SearchEmptyState: React.FC<SearchEmptyStateProps> = ({ searchQuery, onCrea
 
   if (!searchQuery) {
     return (
-      <div className="col-span-2 flex flex-col items-center justify-center py-12 text-slate-500 gap-3 border-2 border-dashed border-slate-800 rounded-xl">
-        <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center">
-            <Search size={20} className="opacity-50" />
-        </div>
+      <div className="col-span-2 h-20 flex items-center justify-center text-slate-500 border-2 border-dashed border-slate-800 rounded-xl">
         <span className="text-sm italic">{t('dash_no_templates')}</span>
       </div>
     );

@@ -1,15 +1,18 @@
 
-import React, { useState } from 'react';
-import { Save, LogOut, X } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Save, LogOut, X, MapPin, ChevronDown } from 'lucide-react';
 import { useTranslation } from '../../../i18n';
 import ConfirmationModal from '../../shared/ConfirmationModal';
+import { SavedListItem } from '../../../types';
 
 interface SessionExitModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSaveActive: () => void;
-  onSaveHistory: () => void;
-  onDiscard?: () => void; // New prop
+  onSaveActive: (location: string) => void; // Updated to accept location
+  onSaveHistory: (location?: string) => void; 
+  onDiscard?: () => void;
+  locationHistory?: SavedListItem[]; 
+  initialLocation?: string; // New prop
 }
 
 const SessionExitModal: React.FC<SessionExitModalProps> = ({
@@ -17,10 +20,36 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
   onClose,
   onSaveActive,
   onSaveHistory,
-  onDiscard
+  onDiscard,
+  locationHistory = [],
+  initialLocation = ''
 }) => {
   const { t } = useTranslation();
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [location, setLocation] = useState(initialLocation);
+  const [showLocationMenu, setShowLocationMenu] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Sync state when modal opens or initialLocation changes
+  useEffect(() => {
+      if (isOpen) {
+          setLocation(initialLocation || '');
+      }
+  }, [isOpen, initialLocation]);
+
+  // Sorting: Oldest to Newest (Ascending)
+  // This places the most recently used items at the END of the array.
+  // Combined with "bottom-full", the last item will be visually at the bottom (closest to input).
+  const sortedLocations = useMemo(() => {
+      return [...locationHistory].sort((a, b) => a.lastUsed - b.lastUsed);
+  }, [locationHistory]);
+
+  // Auto-scroll to bottom when menu opens to show most recent items
+  useEffect(() => {
+      if (showLocationMenu && listRef.current) {
+          listRef.current.scrollTop = listRef.current.scrollHeight;
+      }
+  }, [showLocationMenu]);
 
   if (!isOpen) return null;
 
@@ -47,50 +76,94 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
             onClick={onClose}
         >
         <div 
-            className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6 w-full max-w-sm relative"
-            onClick={(e) => e.stopPropagation()}
+            // Removed overflow-hidden to allow dropdown to expand outside
+            className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-5 w-full max-w-sm flex flex-col gap-5 relative"
+            onClick={(e) => { e.stopPropagation(); setShowLocationMenu(false); }}
         >
-            {/* Top Left: Discard Button (Red Text with Border) */}
-            {onDiscard && (
+            {/* 1. Header (Navigation Style) */}
+            <div className="flex items-center justify-between">
+                {onDiscard ? (
+                    <button 
+                        onClick={() => setShowDiscardConfirm(true)}
+                        className="text-red-400 hover:text-red-300 text-sm font-bold px-2 py-1 -ml-2 rounded transition-colors"
+                    >
+                        {t('session_discard')}
+                    </button>
+                ) : <div className="w-10"></div>}
+
+                <div className="flex flex-col items-center">
+                    <h3 className="text-lg font-bold text-white leading-tight">{t('session_exit_title')}</h3>
+                    <span className="text-[10px] text-slate-400">{t('session_exit_msg')}</span>
+                </div>
+
                 <button 
-                    onClick={() => setShowDiscardConfirm(true)}
-                    className="absolute top-3 left-3 text-red-400 border border-red-500/30 hover:bg-red-900/20 px-3 py-2 rounded-lg transition-colors text-xs font-bold"
+                    onClick={onClose}
+                    className="text-slate-500 hover:text-white p-2 -mr-2 rounded-full hover:bg-slate-800 transition-colors"
                 >
-                    {t('session_discard')}
+                    <X size={20} />
                 </button>
-            )}
-
-            {/* Top Right: Close Button */}
-            <button 
-                onClick={onClose}
-                className="absolute top-3 right-3 text-slate-500 hover:text-white p-2 rounded-full hover:bg-slate-800 transition-colors"
-            >
-                <X size={20} />
-            </button>
-
-            <div className="flex flex-col items-center text-center gap-3 mb-6 mt-2">
-            <h3 className="text-xl font-bold text-white">{t('session_exit_title')}</h3>
-            <p className="text-slate-400 text-sm whitespace-pre-wrap">{t('session_exit_msg')}</p>
             </div>
 
-            <div className="flex flex-col gap-3">
-            {/* 暫存放在上方 */}
-            <button
-                onClick={onSaveActive}
-                className="w-full py-4 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 font-medium flex items-center justify-center gap-3 transition-colors group"
-            >
-                <LogOut size={20} className="text-sky-400 group-hover:text-sky-300" />
-                <span>{t('session_btn_draft')}</span>
-            </button>
+            {/* 2. Body (Location Input) */}
+            <div className="relative z-10">
+                <div className="flex items-center bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all">
+                    <div className="pl-3 pr-2 text-indigo-400">
+                        <MapPin size={18} />
+                    </div>
+                    <input 
+                        type="text" 
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        placeholder="在哪裡進行遊戲？" 
+                        className="flex-1 bg-transparent h-12 text-white placeholder-slate-500 text-sm outline-none font-bold"
+                    />
+                    {/* Dropdown Trigger */}
+                    {sortedLocations.length > 0 && (
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); setShowLocationMenu(!showLocationMenu); }}
+                            className="h-12 px-3 border-l border-slate-700 text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors"
+                        >
+                            <ChevronDown size={16} />
+                        </button>
+                    )}
+                </div>
 
-            {/* 結算放在下方 */}
-            <button
-                onClick={onSaveHistory}
-                className="w-full py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-3 transition-transform active:scale-95"
-            >
-                <Save size={20} />
-                <span>{t('session_btn_finish')}</span>
-            </button>
+                {/* Dropdown Menu (Upwards) */}
+                {showLocationMenu && (
+                    <div 
+                        ref={listRef}
+                        className="absolute bottom-full left-0 right-0 mb-2 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto no-scrollbar z-20 animate-in fade-in slide-in-from-bottom-1"
+                    >
+                        {sortedLocations.map(loc => (
+                            <button
+                                key={loc.id}
+                                onClick={() => { setLocation(loc.name); setShowLocationMenu(false); }}
+                                className="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700/50 hover:text-white border-b border-slate-700/50 last:border-0 truncate font-medium"
+                            >
+                                {loc.name}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* 3. Footer (Action Buttons) */}
+            <div className="grid grid-cols-2 gap-3">
+                <button
+                    onClick={() => onSaveActive(location)}
+                    className="flex flex-col items-center justify-center gap-0.5 py-3 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 transition-colors active:scale-95"
+                >
+                    <span className="text-sm font-bold">暫存遊戲</span>
+                    <span className="text-[10px] text-slate-500">(稍後再玩)</span>
+                </button>
+
+                <button
+                    onClick={() => onSaveHistory(location)}
+                    className="flex flex-col items-center justify-center gap-0.5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/50 transition-transform active:scale-95"
+                >
+                    <span className="text-sm font-bold">結束遊戲</span>
+                    <span className="text-[10px] text-emerald-100/60 font-medium">(儲存紀錄)</span>
+                </button>
             </div>
         </div>
         </div>
