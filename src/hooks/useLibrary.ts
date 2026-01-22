@@ -39,8 +39,8 @@ export const useLibrary = (onSystemDirty?: () => void) => {
                       usageCount: 0, 
                       predictivePower: 1.0, // [New] 物件本身的預測權重 (預設 1.0)
                       meta: { 
-                          // [Future] Prediction lists will be stored here
-                          // relatedPlayers: {}, relatedLocations: {}, etc.
+                          relations: {},
+                          confidence: {} // [New] 各維度的可信度 (預設為空，由 RelationshipService 填入)
                       } 
                   });
                   return newId;

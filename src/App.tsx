@@ -311,15 +311,15 @@ const App: React.FC = () => {
       }
   };
 
-  const handleExitSession = () => {
+  const handleExitSession = (location?: string) => {
       isExitingSession.current = true;
-      appData.exitSession();
+      appData.exitSession(location !== undefined ? { location } : undefined);
       setView(AppView.DASHBOARD);
   };
 
-  const handleSaveToHistory = () => {
+  const handleSaveToHistory = (location?: string) => {
       isExitingSession.current = true;
-      appData.saveToHistory();
+      appData.saveToHistory(location);
       setView(AppView.DASHBOARD);
   };
   
@@ -443,6 +443,7 @@ const App: React.FC = () => {
               session={appData.currentSession} 
               template={appData.activeTemplate} 
               playerHistory={appData.playerHistory}
+              locationHistory={appData.locationHistory} // [New] Pass location history
               zoomLevel={zoomLevel}
               baseImage={appData.sessionImage} 
               onUpdateSession={appData.updateSession}
@@ -451,7 +452,7 @@ const App: React.FC = () => {
               onResetScores={appData.resetSessionScores}
               onUpdateTemplate={appData.updateActiveTemplate}
               onExit={handleExitSession}
-              onSaveToHistory={handleSaveToHistory}
+              onSaveToHistory={handleSaveToHistory} // [Updated] Use unified handler
               onDiscard={() => {
                   appData.discardSession(appData.activeTemplate!.id);
                   setView(AppView.DASHBOARD);

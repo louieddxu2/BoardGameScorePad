@@ -84,8 +84,6 @@ export const useSessionManager = ({
         ? Array(playerCount).fill('transparent') 
         : Array.from({ length: playerCount }, (_, i) => COLORS[i % COLORS.length]);
 
-    // [Changed] Use 'player_n' (1-based) as the default ID.
-    // This allows specific identification of un-named players in history (player_1 vs player_2).
     const players: Player[] = Array.from({ length: playerCount }, (_, i) => {
       return {
         id: `player_${i + 1}`, 
@@ -117,7 +115,9 @@ export const useSessionManager = ({
         status: 'active',
         scoringRule: scoringRule,
         cloudFolderId: undefined, 
-        photos: [] 
+        photos: [],
+        location: '', // Init location
+        locationId: undefined
     };
     
     isImageDirtyRef.current = false;
@@ -208,10 +208,12 @@ export const useSessionManager = ({
     setCurrentSession({ ...currentSession, players: resetPlayers, startTime: Date.now(), lastUpdatedAt: Date.now() });
   };
 
-  const exitSession = async () => {
+  const exitSession = async (overrides?: Partial<GameSession>) => {
       if (!currentSession) return;
 
-      const hasScores = currentSession.players.some(p => 
+      const sessionToSave = { ...currentSession, ...overrides };
+
+      const hasScores = sessionToSave.players.some(p => 
           Object.keys(p.scores).length > 0 || 
           (p.bonusScore || 0) !== 0 ||
           p.tieBreaker ||
@@ -219,18 +221,20 @@ export const useSessionManager = ({
           p.isStarter 
       );
 
-      const hasCustomPlayers = currentSession.players.some(p => 
+      const hasCustomPlayers = sessionToSave.players.some(p => 
           !p.id.startsWith('slot_') && !p.id.startsWith('sys_') && !p.id.startsWith('player_')
       );
 
-      const hasPhotos = (currentSession.photos && currentSession.photos.length > 0);
-      const hasDataToSave = hasScores || hasPhotos || hasCustomPlayers;
+      const hasPhotos = (sessionToSave.photos && sessionToSave.photos.length > 0);
+      const hasLocation = !!sessionToSave.location;
+      
+      const hasDataToSave = hasScores || hasPhotos || hasCustomPlayers || hasLocation;
 
       if (!hasDataToSave) {
-          cleanupService.cleanSessionArtifacts(currentSession.id, currentSession.cloudFolderId).catch(console.error);
-          db.sessions.delete(currentSession.id).catch(console.error);
+          cleanupService.cleanSessionArtifacts(sessionToSave.id, sessionToSave.cloudFolderId).catch(console.error);
+          db.sessions.delete(sessionToSave.id).catch(console.error);
       } else {
-          const finalSession = { ...currentSession, lastUpdatedAt: Date.now() };
+          const finalSession = { ...sessionToSave, lastUpdatedAt: Date.now() };
           await db.sessions.put(finalSession);
           
           if (isCloudEnabled()) {
@@ -265,16 +269,15 @@ export const useSessionManager = ({
       isImageDirtyRef.current = false;
   };
 
-  const saveToHistory = async () => {
+  const saveToHistory = async (finalLocation?: string) => {
       if (!currentSession || !activeTemplate) return;
       try {
+          const effectiveLocation = finalLocation !== undefined ? finalLocation : currentSession.location;
+          const trimmedLoc = effectiveLocation?.trim();
+
           const rule = currentSession.scoringRule || 'HIGHEST_WINS';
           let winnerIds: string[] = [];
           
-          // [Correction] Winner IDs logic:
-          // Strictly use `p.id` (Slot ID, e.g. "player_1") to identify winners.
-          // Do NOT use `linkedPlayerId` here, because if multiple slots share the same identity (e.g. Alice vs Alice),
-          // using linkedPlayerId would make it impossible to distinguish which slot won.
           if (rule === 'HIGHEST_WINS') {
               const maxScore = Math.max(...currentSession.players.map(p => p.totalScore));
               winnerIds = currentSession.players
@@ -299,27 +302,22 @@ export const useSessionManager = ({
               players: currentSession.players,
               winnerIds: winnerIds,
               snapshotTemplate: snapshotTemplate,
-              location: undefined,
+              location: trimmedLoc, 
+              locationId: currentSession.locationId, 
               note: '',
               photos: currentSession.photos || [],
               cloudFolderId: currentSession.cloudFolderId 
           };
           
-          // 1. Critical: Save History Record First
           await db.history.put(record); 
-          
-          // 2. Critical: Remove Active Session
           await db.sessions.delete(currentSession.id);
 
-          // 3. Best Effort: Process Relationships (Decoupled, failure ignored for UI)
           try {
               await relationshipService.processGameEnd(record);
           } catch (relError) {
               console.warn("[SessionManager] Relationship processing failed:", relError);
-              // Do NOT block UI exit.
           }
 
-          // 4. Best Effort: Cloud Backup (Background)
           if (isCloudEnabled()) {
               const backgroundHistoryBackup = async () => {
                   let folderId = record.cloudFolderId;
@@ -336,7 +334,6 @@ export const useSessionManager = ({
               backgroundHistoryBackup().catch(e => console.warn("Background history backup failed", e));
           }
           
-          // 5. Update UI State
           setCurrentSession(null); 
           setActiveTemplate(null); 
           setSessionImage(null); 
@@ -345,7 +342,6 @@ export const useSessionManager = ({
           showToast({ message: "遊戲紀錄已儲存！", type: 'success' });
 
       } catch (error) {
-          // Errors here are CRITICAL (History save failed)
           console.error("Save to history failed:", error);
           showToast({ message: "儲存失敗，請重試", type: 'error' });
       }

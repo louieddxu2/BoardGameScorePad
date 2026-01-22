@@ -297,6 +297,9 @@ export const useGoogleDrive = () => {
           
           const total = allTemplates.length + history.length + sessions.length + 1; // +1 for settings
           let processed = 0;
+          let lastReportTime = 0; // [Optimization] Throttle UI updates
+          
+          // Initial Update
           onProgress(0, total);
 
           const processItem = async (task: () => Promise<void>, name: string, isSkipped: boolean = false) => {
@@ -312,7 +315,17 @@ export const useGoogleDrive = () => {
                   failedItems.push(name);
               } finally {
                   processed++;
-                  onProgress(processed, total);
+                  
+                  // [Optimization] Throttle progress updates to avoid freezing the UI when skipping many files
+                  const now = Date.now();
+                  // Update if:
+                  // 1. Not skipped (Action happened, keep user informed)
+                  // 2. OR > 200ms passed since last update (Throttle skips)
+                  // 3. OR it's the last item (Ensure 100%)
+                  if (!isSkipped || now - lastReportTime > 200 || processed === total) {
+                      onProgress(processed, total);
+                      lastReportTime = now;
+                  }
               }
           };
 
@@ -414,6 +427,7 @@ export const useGoogleDrive = () => {
               failedItems.push("System Settings");
           } finally {
               processed++;
+              // Always update for the last item (Settings)
               onProgress(processed, total);
           }
 
@@ -447,14 +461,17 @@ export const useGoogleDrive = () => {
           await ensureConnection();
           await googleDriveService.ensureAppStructure();
 
-          const [cloudTemplates, cloudHistory, cloudActive] = await Promise.all([
+          const [cloudTemplates, cloudHistory] = await Promise.all([
               googleDriveService.listFoldersInParent(googleDriveService.templatesFolderId!),
-              googleDriveService.listFoldersInParent(googleDriveService.historyFolderId!),
-              googleDriveService.listFoldersInParent(googleDriveService.activeFolderId!)
+              googleDriveService.listFoldersInParent(googleDriveService.historyFolderId!)
+              // [EXCLUDE ACTIVE SESSIONS] "One-Click Restore" should NOT touch active sessions
+              // to prevent overwriting local in-progress games.
           ]);
 
-          const total = cloudTemplates.length + cloudHistory.length + cloudActive.length + 1; // +1 for settings
+          const total = cloudTemplates.length + cloudHistory.length + 1; // +1 for settings
           let processed = 0;
+          let lastReportTime = 0; // [Optimization] Throttle UI updates
+          
           onProgress(0, total);
 
           // 1. Restore Settings First (if callback provided)
@@ -481,7 +498,7 @@ export const useGoogleDrive = () => {
               return null;
           };
 
-          const processItem = async (file: CloudFile, type: 'template' | 'history' | 'active') => {
+          const processItem = async (file: CloudFile, type: 'template' | 'history') => {
               const id = getId(file.name);
               const cloudTime = Number(file.appProperties?.originalUpdatedAt || 0);
               let shouldDownload = true;
@@ -493,9 +510,6 @@ export const useGoogleDrive = () => {
                       localTime = localMeta.templates.get(id) || 0;
                   } else if (type === 'history' && localMeta.history.has(id)) {
                       localTime = localMeta.history.get(id) || 0;
-                  } else if (type === 'active' && localMeta.sessions.has(id)) {
-                      // [New] Check active sessions
-                      localTime = localMeta.sessions.get(id) || 0;
                   }
                   
                   // Skip if local is newer or same
@@ -513,9 +527,6 @@ export const useGoogleDrive = () => {
                       } else if (type === 'history') {
                           const data = await googleDriveService.getFileContent(file.id, 'session.json');
                           await onItemRestored('history', data);
-                      } else if (type === 'active') {
-                          const data = await googleDriveService.getFileContent(file.id, 'session.json');
-                          await onItemRestored('session', data);
                       }
                       successCount++;
                   } else {
@@ -529,7 +540,13 @@ export const useGoogleDrive = () => {
                   }
               } finally {
                   processed++;
-                  onProgress(processed, total);
+                  
+                  // [Optimization] Throttle progress updates
+                  const now = Date.now();
+                  if (shouldDownload || now - lastReportTime > 200 || processed === total) {
+                      onProgress(processed, total);
+                      lastReportTime = now;
+                  }
               }
           };
 
@@ -553,14 +570,7 @@ export const useGoogleDrive = () => {
               await Promise.all(chunk.map(f => processItem(f, 'history')));
           }
 
-          // Process Active
-          const activeChunks = [];
-          for (let i = 0; i < cloudActive.length; i += CHUNK_SIZE) {
-              activeChunks.push(cloudActive.slice(i, i + CHUNK_SIZE));
-          }
-          for (const chunk of activeChunks) {
-              await Promise.all(chunk.map(f => processItem(f, 'active')));
-          }
+          // [EXCLUDE ACTIVE SESSIONS LOOP]
 
           if (failedItems.length > 0) {
               onError(failedItems);

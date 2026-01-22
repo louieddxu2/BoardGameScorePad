@@ -1,31 +1,27 @@
 
+// ... (existing imports)
 import { db } from '../db';
 import { HistoryRecord, SavedListItem, AnalyticsLog } from '../types';
 import { generateId } from '../utils/idGenerator';
 import { Table } from 'dexie';
 import { DATA_LIMITS } from '../dataLimits';
 
-// Data Structure: Ordered Array
-// Order = Rank
+// ... (existing interfaces)
 interface RelationItem {
     id: string;
     count: number;
-    weight: number; // [New] 0.2 ~ 5.0, Default 1.0. 代表預測的可信度/權重。
+    weight: number; 
 }
 
 interface ResolvedEntity {
     item: SavedListItem;
     table: Table<SavedListItem>;
-    type: 'player' | 'game' | 'location' | 'weekday' | 'timeslot';
-    isNewContext: boolean; // [Key Feature] 是否為本次新增的上下文 (影響是否計數)
+    type: 'player' | 'game' | 'location' | 'weekday' | 'timeslot' | 'playerCount';
+    isNewContext: boolean; 
 }
 
 class RelationshipService {
 
-    /**
-     * 主要進入點：當遊戲結束並儲存歷史紀錄後，或在歷史紀錄介面修改資料後呼叫。
-     * 它會自動分析並更新所有相關實體 (玩家、遊戲、地點、時間) 的相互關聯性。
-     */
     public async processGameEnd(record: HistoryRecord): Promise<void> {
         console.log(`[RelationshipService] Checking record: ${record.gameName} (${record.id})`);
 
@@ -54,10 +50,8 @@ class RelationshipService {
 
             console.log(`[RelationshipService] Processing mode: ${mode}`);
 
-            await (db as any).transaction('rw', db.savedPlayers, db.savedGames, db.savedLocations, db.savedWeekdays, db.savedTimeSlots, db.analyticsLogs, async () => {
+            await (db as any).transaction('rw', db.savedPlayers, db.savedGames, db.savedLocations, db.savedWeekdays, db.savedTimeSlots, db.savedPlayerCounts, db.analyticsLogs, async () => {
                 
-                // [Fix] Use Map for deduplication based on Item ID
-                // This prevents double-counting if the same player (UUID) occupies multiple slots in one game.
                 const resolvedEntitiesMap = new Map<string, ResolvedEntity>();
 
                 // --- Helper: 安全地取得或建立實體 ---
@@ -73,17 +67,14 @@ class RelationshipService {
 
                     let item: SavedListItem | undefined;
 
-                    // 1. Try to fetch by ID first
                     if (preferredId) {
                         item = await table.get(preferredId);
                     }
 
-                    // 2. If not found, try by Name
                     if (!item) {
                         item = await table.where('name').equals(cleanName).first();
                     }
 
-                    // 3. Create if missing
                     if (!item) {
                         const newId = (preferredId && preferredId.length > 4) ? preferredId : generateId(DATA_LIMITS.ID_LENGTH.DEFAULT);
                         item = {
@@ -91,14 +82,11 @@ class RelationshipService {
                             name: cleanName,
                             lastUsed: 0, 
                             usageCount: 0,
-                            predictivePower: 1.0, // [New] 物件本身的預測權重 (預設 1.0)
-                            meta: { relations: {} } 
+                            predictivePower: 1.0, 
+                            meta: { relations: {}, confidence: {} } // [Updated] Initialize confidence
                         };
                     }
                     
-                    // [Deduplication Logic]
-                    // If this entity is already in our map for this transaction, don't add it again.
-                    // This ensures "Alice" only gets +1 play count even if she played 2 hands.
                     if (resolvedEntitiesMap.has(item.id)) {
                         return;
                     }
@@ -119,8 +107,8 @@ class RelationshipService {
                 await resolveOrCreate(db.savedGames, record.gameName, 'game', isFull);
 
                 // C. Players
+                // 用於統計「玩家個人」的數據，這裡排除系統預設名稱的空位是正確的
                 const validPlayers = record.players.filter(p => {
-                    // Filter out unused slots.
                     const isSlotId = p.id.startsWith('slot_') || p.id.startsWith('player_');
                     const isSystemId = p.id.startsWith('sys_player_'); 
                     const isDefaultName = /^玩家\s?\d+$/.test(p.name);
@@ -136,7 +124,7 @@ class RelationshipService {
                     await resolveOrCreate(db.savedPlayers, p.name, 'player', isFull, targetId);
                 }
 
-                // D. Time
+                // D. Time & Count
                 const date = new Date(record.endTime);
                 const dayIndex = date.getDay(); 
                 const hour = date.getHours();
@@ -144,9 +132,17 @@ class RelationshipService {
                 const startH = String(slotIndex * 3).padStart(2, '0');
                 const endH = String((slotIndex + 1) * 3).padStart(2, '0');
                 const timeSlotName = `${startH}-${endH}`;
+                
+                // [Fix] Player Count logic: Use total session players count, not just named players
+                const playerCount = record.players.length;
 
                 await resolveOrCreate(db.savedWeekdays, dayIndex.toString(), 'weekday', isFull, `weekday_${dayIndex}`);
                 await resolveOrCreate(db.savedTimeSlots, timeSlotName, 'timeslot', isFull, `timeslot_${slotIndex}`);
+                
+                // Player Count Entity
+                if (playerCount > 0) {
+                    await resolveOrCreate(db.savedPlayerCounts, playerCount.toString(), 'playerCount', isFull, `count_${playerCount}`);
+                }
 
                 // --- 3. 執行統計更新 ---
                 const resolvedEntities = Array.from(resolvedEntitiesMap.values());
@@ -168,7 +164,6 @@ class RelationshipService {
                         
                         if (source.isNewContext) {
                             // [Self-Relation Prevention]
-                            // Exclude self from candidates to avoid A->A or B->B links.
                             targetCandidates = resolvedEntities.filter(t => t.item.id !== source.item.id);
                         } else {
                             targetCandidates = newContextEntities;
@@ -187,21 +182,32 @@ class RelationshipService {
                             if (!source.item.meta.relations || Array.isArray(source.item.meta.relations)) {
                                 source.item.meta.relations = {};
                             }
+                            
+                            // [Updated] Ensure confidence object exists
+                            if (!source.item.meta.confidence) {
+                                source.item.meta.confidence = {};
+                            }
 
                             for (const [relKey, activeIds] of targetsByType.entries()) {
-                                const limit = (relKey === 'weekdays' || relKey === 'timeSlots') 
+                                const limit = (relKey === 'weekdays' || relKey === 'timeSlots' || relKey === 'playerCounts') 
                                     ? DATA_LIMITS.RELATION.TIME_LIST_SIZE 
                                     : DATA_LIMITS.RELATION.DEFAULT_LIST_SIZE;
                                     
                                 const currentList = source.item.meta.relations[relKey];
                                 const newList = this.updateRankings(currentList, activeIds, limit);
                                 source.item.meta.relations[relKey] = newList;
+                                
+                                // [Updated] Placeholder for confidence value (default to 1.0 if not set)
+                                // Only initializing structure here as requested, no algorithm implementation yet.
+                                if (source.item.meta.confidence[relKey] === undefined) {
+                                    source.item.meta.confidence[relKey] = 1.0;
+                                }
+                                
                                 hasChanges = true;
                             }
                         }
                         
                         // 3.3 顏色統計 
-                        // [Optimized] Now handles aggregation of multiple colors if the entity played multiple hands
                         if (source.isNewContext && (source.type === 'game' || source.type === 'player')) {
                             const colorsChanged = this.processColorStats(source, record.players);
                             if (colorsChanged) hasChanges = true;
@@ -249,7 +255,6 @@ class RelationshipService {
             
         } else if (source.type === 'player') {
             // For players, we need to find ALL slots that match this entity (deduplicated entity)
-            // [Fix] Use .filter() instead of .find() to catch multiple hands played by same person
             const matchingSlots = validPlayers.filter(p => {
                 const isPlaceholder = p.id.startsWith('slot_') || p.id.startsWith('sys_') || p.id.startsWith('player_');
                 const targetId = p.linkedPlayerId || (!isPlaceholder ? p.id : undefined);
@@ -269,7 +274,7 @@ class RelationshipService {
 
             source.item.meta.relations['colors'] = this.updateRankings(
                 source.item.meta.relations['colors'],
-                colorsToAdd, // Pass array of all colors
+                colorsToAdd, 
                 DATA_LIMITS.RELATION.DEFAULT_LIST_SIZE
             );
             return true;
@@ -277,7 +282,7 @@ class RelationshipService {
         return false;
     }
 
-    // [Refactor] Halving Jump Algorithm (折半躍進)
+    // [Refactor] Halving Jump Algorithm
     private updateRankings(
         currentList: any, 
         activeIds: string[], 
@@ -295,7 +300,6 @@ class RelationshipService {
             })).sort((a, b) => b.count - a.count);
         }
 
-        // Use a map to count occurrences in this batch (handling multiple hands of same color/game)
         const activeCounts = new Map<string, number>();
         activeIds.forEach(id => {
             activeCounts.set(id, (activeCounts.get(id) || 0) + 1);
@@ -306,11 +310,9 @@ class RelationshipService {
         const inactiveItems: RelationItem[] = [];
 
         list.forEach((item, index) => {
-            // [Migration] Ensure weight exists
             if (item.weight === undefined) item.weight = 1.0;
 
             if (activeCounts.has(item.id)) {
-                // Increment by occurrence count (e.g., played Red twice -> +2)
                 item.count = (item.count || 0) + activeCounts.get(item.id)!;
                 oldActiveItems.push({ item, originalIndex: index });
             } else {
@@ -337,16 +339,20 @@ class RelationshipService {
             const newItems: RelationItem[] = newIds.map(id => ({ 
                 id, 
                 count: activeCounts.get(id)!,
-                weight: 1.0 // [New] Init weight
+                weight: 1.0 
             }));
             
-            let insertIndex = resultList.length; 
+            let insertIndex = -1; 
             for (let i = resultList.length - 1; i >= 0; i--) {
                 const itemId = resultList[i].id;
                 if (activeCounts.has(itemId) && !newIds.includes(itemId)) {
                     insertIndex = i + 1; 
                     break;
                 }
+            }
+            
+            if (insertIndex === -1) {
+                insertIndex = Math.floor(resultList.length / 2);
             }
             
             resultList.splice(insertIndex, 0, ...newItems);
@@ -367,6 +373,7 @@ class RelationshipService {
             case 'location': return 'locations';
             case 'weekday': return 'weekdays';
             case 'timeslot': return 'timeSlots';
+            case 'playerCount': return 'playerCounts';
         }
         return 'others';
     }

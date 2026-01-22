@@ -61,7 +61,8 @@ export const useAppQueries = (searchQuery: string) => {
       // Since Dexie doesn't support complex OR queries easily on non-indexed fields
       const items = await collection.limit(DATA_LIMITS.QUERY.USER_TEMPLATES).toArray(list => list.map(t => ({
          id: t.id, 
-         name: t.name, 
+         name: t.name,
+         bggId: t.bggId || '', // [New] Init BGG ID
          updatedAt: t.updatedAt, 
          createdAt: t.createdAt,
          isPinned: t.isPinned,

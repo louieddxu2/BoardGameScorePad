@@ -112,6 +112,7 @@ export const migrateTemplate = (template: any): GameTemplate => {
     const { baseImage, ...rest } = template;
     return {
         ...rest,
+        bggId: rest.bggId || '', // [New] Initialize BGG ID
         hasImage: rest.hasImage || !!baseImage, 
         columns: template.columns.map(migrateColumn),
         updatedAt: rest.updatedAt || rest.createdAt, // Ensure updatedAt exists

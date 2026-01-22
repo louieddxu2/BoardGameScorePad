@@ -148,6 +148,7 @@ export interface GameTemplate {
   id: string;
   name: string;
   description?: string;
+  bggId?: string; // [New] BoardGameGeek ID
   columns: ScoreColumn[];
   createdAt: number;
   updatedAt?: number;    
@@ -177,6 +178,8 @@ export interface GameSession {
   photos?: string[]; // List of LocalImage IDs (Session Photos)
   photoCloudIds?: Record<string, string>; // [New] Map<LocalUUID, CloudFileID> for direct access
   cloudFolderId?: string; // [Cloud] 在 Google Drive 上的資料夾 ID (位於 _Active 或 _History)
+  location?: string; // [New] 進行中遊戲的地點
+  locationId?: string; // [New] 地點 ID
 }
 
 // [New Interface] History Record

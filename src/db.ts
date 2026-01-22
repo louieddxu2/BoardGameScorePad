@@ -16,6 +16,7 @@ export class ScorePadDatabase extends Dexie {
   savedGames!: Table<SavedListItem>; // [v12] 儲存的遊戲清單
   savedWeekdays!: Table<SavedListItem>; // [v12] 星期維度 (0-6)
   savedTimeSlots!: Table<SavedListItem>; // [v12] 時段維度 (0-7, 3hr/slot)
+  savedPlayerCounts!: Table<SavedListItem>; // [v15] 玩家人數維度 (1-24)
   images!: Table<LocalImage>; // [v7] 離線圖片儲存
   analyticsLogs!: Table<AnalyticsLog>; // [v14] 統計處理記錄表
 
@@ -204,6 +205,30 @@ export class ScorePadDatabase extends Dexie {
             
             await trans.table('analyticsLogs').bulkAdd(logs);
         }
+    });
+
+    // Version 15: Add savedPlayerCounts table
+    (this as any).version(15).stores({
+        savedPlayerCounts: 'id, &name, lastUsed, usageCount'
+    }).upgrade(async (trans: any) => {
+        // Seed Player Counts (1 to 24)
+        // Cover most board games and party games
+        const counts = Array.from({length: 24}, (_, i) => {
+            const count = i + 1;
+            return {
+                id: `count_${count}`,
+                name: count.toString(),
+                lastUsed: Date.now(),
+                usageCount: 0,
+                meta: {}
+            };
+        });
+        await trans.table('savedPlayerCounts').bulkAdd(counts);
+    });
+
+    // Version 16: Add location to sessions schema (optional for indexing, but good for structure)
+    (this as any).version(16).stores({
+        sessions: 'id, templateId, startTime, lastUpdatedAt, status' // schema unchanged in Dexie if not indexing new field, but version bump enforces clean state
     });
   }
 }

@@ -5,7 +5,7 @@ import { GameTemplate, GameSession } from '../types';
 import { generateId } from './idGenerator';
 
 // 定義當前內建資料庫的版本
-const CURRENT_BUILTIN_VERSION = 4; 
+const CURRENT_BUILTIN_VERSION = 5; 
 
 export const migrateFromLocalStorage = async () => {
   const MIGRATION_KEY = 'sm_migration_v1_done';

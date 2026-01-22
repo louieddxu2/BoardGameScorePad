@@ -87,7 +87,7 @@ export const cropImageToDataUrl = async (sourceImageSrc: string, rect: Rect): Pr
             0, 0, pixelW, pixelH // Dest (Pixels)
         );
         
-        return canvas.toDataURL('image/jpeg', 0.9);
+        return canvas.toDataURL('image/jpeg', 0.95); // High quality for UI crops
     } catch (e) {
         console.warn("Crop failed", e);
         return '';
@@ -160,7 +160,7 @@ export const getSmartTextureUrl = async (sourceImageSrc: string, baseRect: Rect,
             0, 0, finalWidth, finalHeight 
         );
         
-        return canvas.toDataURL('image/jpeg', 0.9);
+        return canvas.toDataURL('image/jpeg', 0.95); // High quality for textures
     } catch (e) {
         console.warn("Smart texture crop failed", e);
         return '';
@@ -169,6 +169,8 @@ export const getSmartTextureUrl = async (sourceImageSrc: string, baseRect: Rect,
 
 /**
  * Optimized Smart Compress & Resize (Blob Version)
+ * Strategy: Start at high quality (0.95). If file is too large (>1MB),
+ * step down quality gradually instead of dropping instantly to 0.5.
  */
 export const compressAndResizeImage = async (
     source: string | Blob, 
@@ -187,6 +189,7 @@ export const compressAndResizeImage = async (
             let w = img.width;
             let h = img.height;
 
+            // Only resize if significantly larger (to avoid minor resampling blur)
             if (w > maxWidth || h > maxWidth) {
                 const ratio = Math.min(maxWidth / w, maxWidth / h);
                 w = Math.floor(w * ratio);
@@ -203,23 +206,35 @@ export const compressAndResizeImage = async (
                 return;
             }
 
+            // Use high quality image smoothing
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(img, 0, 0, w, h);
 
+            const targetBytes = targetMB * 1024 * 1024;
+
+            // Recursive compression with gradual step-down
             const attemptCompression = (quality: number) => {
                 canvas.toBlob((blob) => {
                     if (!blob) {
                         reject(new Error("Compression failed"));
                         return;
                     }
-                    if (blob.size > targetMB * 1024 * 1024 && quality > 0.5) {
-                        attemptCompression(0.5);
-                    } else {
+                    
+                    // If size fits OR we've reached minimum acceptable quality, resolve.
+                    // Minimum quality increased to 0.6 to prevent pixelation.
+                    if (blob.size <= targetBytes || quality <= 0.6) {
                         resolve(blob);
+                    } else {
+                        // Gradual step down: 0.95 -> 0.85 -> 0.70 -> 0.55
+                        const nextQuality = quality - 0.15;
+                        attemptCompression(Math.max(0.5, nextQuality));
                     }
                 }, 'image/jpeg', quality);
             };
 
-            attemptCompression(0.8);
+            // Start with very high quality
+            attemptCompression(0.95);
         };
         
         img.onerror = (e) => {
