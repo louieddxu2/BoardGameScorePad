@@ -278,16 +278,43 @@ export const useSessionManager = ({
           const rule = currentSession.scoringRule || 'HIGHEST_WINS';
           let winnerIds: string[] = [];
           
-          if (rule === 'HIGHEST_WINS') {
-              const maxScore = Math.max(...currentSession.players.map(p => p.totalScore));
-              winnerIds = currentSession.players
-                  .filter(p => p.totalScore === maxScore)
-                  .map(p => p.id); 
+          if (rule === 'COOP' || rule === 'COOP_NO_SCORE') {
+              const anyForcedLost = currentSession.players.some(p => p.isForceLost);
+              if (!anyForcedLost) {
+                  // Everyone wins
+                  winnerIds = currentSession.players.map(p => p.id);
+              }
+              // Else: winnerIds = [] (everyone loses)
+          } else if (rule === 'HIGHEST_WINS') {
+              const validPlayers = currentSession.players.filter(p => !p.isForceLost);
+              if (validPlayers.length > 0) {
+                  const maxScore = Math.max(...validPlayers.map(p => p.totalScore));
+                  winnerIds = validPlayers
+                      .filter(p => p.totalScore === maxScore)
+                      .map(p => p.id);
+                  // Check tie-breakers
+                  const hasTieBreaker = validPlayers.some(p => p.tieBreaker && p.totalScore === maxScore);
+                  if (hasTieBreaker) {
+                      winnerIds = validPlayers
+                          .filter(p => p.tieBreaker && p.totalScore === maxScore)
+                          .map(p => p.id);
+                  }
+              }
           } else if (rule === 'LOWEST_WINS') {
-              const minScore = Math.min(...currentSession.players.map(p => p.totalScore));
-              winnerIds = currentSession.players
-                  .filter(p => p.totalScore === minScore)
-                  .map(p => p.id);
+              const validPlayers = currentSession.players.filter(p => !p.isForceLost);
+              if (validPlayers.length > 0) {
+                  const minScore = Math.min(...validPlayers.map(p => p.totalScore));
+                  winnerIds = validPlayers
+                      .filter(p => p.totalScore === minScore)
+                      .map(p => p.id);
+                  // Check tie-breakers
+                  const hasTieBreaker = validPlayers.some(p => p.tieBreaker && p.totalScore === minScore);
+                  if (hasTieBreaker) {
+                      winnerIds = validPlayers
+                          .filter(p => p.tieBreaker && p.totalScore === minScore)
+                          .map(p => p.id);
+                  }
+              }
           }
 
           const snapshotTemplate = JSON.parse(JSON.stringify(activeTemplate));
