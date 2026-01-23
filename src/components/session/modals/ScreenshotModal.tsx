@@ -49,10 +49,9 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   });
 
   const [isGenerating, setIsGenerating] = useState(false);
-  // [New] Explicit error state to prevent premature error message
   const [generationError, setGenerationError] = useState(false);
   
-  // [New] State to defer heavy DOM mounting
+  // State to defer heavy DOM mounting
   const [isTargetsMounted, setIsTargetsMounted] = useState(false);
   
   const { showToast } = useToast();
@@ -129,12 +128,10 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
         setImgLogicalSize({ width: 0, height: 0 }); 
         setGenerationError(false);
         
-        // [Key Fix] Defer the mounting of heavy DOM targets.
-        // Initialize to false so the Modal opens instantly with Spinner.
         setIsTargetsMounted(false);
         const timer = setTimeout(() => {
             setIsTargetsMounted(true);
-        }, 100); // 100ms allows the browser to paint the modal first
+        }, 100); 
         return () => clearTimeout(timer);
     } else {
         if (snapshots.full.url) URL.revokeObjectURL(snapshots.full.url);
@@ -152,22 +149,19 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
   useEffect(() => {
       setImgLogicalSize({ width: 0, height: 0 });
-      // Reset error when switching modes
       if (isOpen) setGenerationError(false);
   }, [activeMode, isOpen]);
 
   // --- Generation Logic ---
   useEffect(() => {
-    if (!isOpen || !isTargetsMounted) return; // Wait until targets are mounted
+    if (!isOpen || !isTargetsMounted) return; 
 
     const generateCurrentMode = async () => {
         if (snapshots[activeMode].url) return;
 
-        // Reset error and start loading
         setGenerationError(false);
         setIsGenerating(true);
         
-        // Wait for TexturedBlock images to load/crop
         const renderDelay = baseImage ? 800 : 300; 
         await new Promise(r => setTimeout(r, renderDelay));
 
@@ -176,13 +170,17 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
         if (!targetWrapper) {
              setIsGenerating(false);
-             // Don't set error here, it might just be unmounted/closed
              return;
         }
 
         try {
-            const width = targetWrapper.offsetWidth;
-            const height = targetWrapper.offsetHeight;
+            // Get precise dimensions from the wrapper
+            // max-content ensures this width is tight to the content
+            const rect = targetWrapper.getBoundingClientRect();
+            
+            // Use Math.ceil to avoid sub-pixel clipping
+            const width = Math.ceil(rect.width);
+            const height = Math.ceil(rect.height);
 
             const blob = await toBlob(targetWrapper, {
                 backgroundColor: baseImage ? '#ffffff' : '#0f172a', 
@@ -361,11 +359,6 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
   const currentPreviewUrl = snapshots[activeMode].url;
   
-  // Render Logic:
-  // 1. If we have a URL, show the image (Success state)
-  // 2. If we have an explicit error, show error (Error state)
-  // 3. Otherwise, show loading (Waiting/Generating state)
-  
   const showImage = !!currentPreviewUrl;
   const showError = !showImage && generationError;
   const showLoading = !showImage && !showError;
@@ -375,10 +368,21 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
         className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
         onClick={onClose}
     >
-      {/* Hidden Render Targets - Only mount when needed to prevent UI freeze on open */}
-      <div style={{ position: 'fixed', left: '-10000px', top: 0 }}>
+      {/* 
+        [Render Target Strategy: Off-screen Vertical]
+        1. Fixed at top: -10000px, left: 0 to ensure it is off-screen but respects normal document flow logic.
+        2. Width: max-content ensures it shrinks to fit the table exactly (preventing ghost width).
+        3. zIndex: -1 just in case.
+      */}
+      <div style={{ position: 'fixed', top: '-10000px', left: 0, width: 'max-content', height: 'max-content', zIndex: -1 }}>
          {isTargetsMounted && (
-             <div id={`screenshot-target-${activeMode}`} style={{ display: 'inline-block', width: 'max-content' }}>
+             <div 
+                id={`screenshot-target-${activeMode}`} 
+                style={{
+                    display: 'block', // Default block behavior inside max-content wrapper
+                    width: 'max-content' // Explicitly set max-content again on the wrapper just to be safe
+                }}
+             >
                 <ScreenshotView 
                     session={session}
                     template={template}
@@ -456,6 +460,8 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                             willChange: 'transform',
                             width: imgLogicalSize.width ? `${imgLogicalSize.width}px` : 'auto',
                             height: imgLogicalSize.height ? `${imgLogicalSize.height}px` : 'auto',
+                            maxWidth: 'none',
+                            maxHeight: 'none'
                         }}
                         className="absolute top-0 left-0 block pointer-events-none select-none shadow-2xl origin-top-left"
                         draggable={false}

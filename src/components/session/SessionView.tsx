@@ -90,23 +90,34 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   // Winners Logic
   const rule = session.scoringRule || 'HIGHEST_WINS';
   let winners: string[] = [];
-  const validPlayers = session.players.filter(p => !p.isForceLost);
-  
-  if (validPlayers.length > 0) {
-      let targetScore: number;
-      if (rule === 'HIGHEST_WINS') {
-          targetScore = Math.max(...validPlayers.map(pl => pl.totalScore));
-      } else if (rule === 'LOWEST_WINS') {
-          targetScore = Math.min(...validPlayers.map(pl => pl.totalScore));
-      } else {
-          targetScore = Math.max(...validPlayers.map(pl => pl.totalScore));
+
+  if (rule === 'COOP' || rule === 'COOP_NO_SCORE') {
+      // Co-op Mode: All win unless someone is forced lost
+      const anyForcedLost = session.players.some(p => p.isForceLost);
+      if (!anyForcedLost) {
+          winners = session.players.map(p => p.id);
       }
-      const candidates = validPlayers.filter(p => p.totalScore === targetScore);
-      const hasTieBreaker = candidates.some(p => p.tieBreaker);
-      if (hasTieBreaker) {
-          winners = candidates.filter(p => p.tieBreaker).map(p => p.id);
-      } else {
-          winners = candidates.map(p => p.id);
+      // If anyone is forced lost, winners is empty (everyone loses)
+  } else {
+      // Competitive Mode
+      const validPlayers = session.players.filter(p => !p.isForceLost);
+      
+      if (validPlayers.length > 0) {
+          let targetScore: number;
+          if (rule === 'HIGHEST_WINS') {
+              targetScore = Math.max(...validPlayers.map(pl => pl.totalScore));
+          } else if (rule === 'LOWEST_WINS') {
+              targetScore = Math.min(...validPlayers.map(pl => pl.totalScore));
+          } else {
+              targetScore = Math.max(...validPlayers.map(pl => pl.totalScore));
+          }
+          const candidates = validPlayers.filter(p => p.totalScore === targetScore);
+          const hasTieBreaker = candidates.some(p => p.tieBreaker);
+          if (hasTieBreaker) {
+              winners = candidates.filter(p => p.tieBreaker).map(p => p.id);
+          } else {
+              winners = candidates.map(p => p.id);
+          }
       }
   }
   

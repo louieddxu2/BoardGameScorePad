@@ -33,12 +33,24 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
       winners = customWinners;
   } else {
       const rule = session.scoringRule || 'HIGHEST_WINS';
-      if (rule === 'HIGHEST_WINS') {
-          const maxScore = Math.max(...session.players.map(pl => pl.totalScore));
-          winners = session.players.filter(p => p.totalScore === maxScore).map(p => p.id);
+      
+      if (rule === 'COOP' || rule === 'COOP_NO_SCORE') {
+          const anyForceLost = session.players.some(p => p.isForceLost);
+          if (!anyForceLost) {
+              winners = session.players.map(p => p.id);
+          }
+      } else if (rule === 'HIGHEST_WINS') {
+          const validPlayers = session.players.filter(p => !p.isForceLost);
+          if (validPlayers.length > 0) {
+              const maxScore = Math.max(...validPlayers.map(pl => pl.totalScore));
+              winners = validPlayers.filter(p => p.totalScore === maxScore).map(p => p.id);
+          }
       } else if (rule === 'LOWEST_WINS') {
-          const minScore = Math.min(...session.players.map(pl => pl.totalScore));
-          winners = session.players.filter(p => p.totalScore === minScore).map(p => p.id);
+          const validPlayers = session.players.filter(p => !p.isForceLost);
+          if (validPlayers.length > 0) {
+              const minScore = Math.min(...validPlayers.map(pl => pl.totalScore));
+              winners = validPlayers.filter(p => p.totalScore === minScore).map(p => p.id);
+          }
       }
   }
 
@@ -108,11 +120,11 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
   const X1 = leftRect?.width || 0;
   const Y1 = topRect?.height || 0;
   
-  // W (Full Image Width): Try top, then bottom, then right end, fallback 0
-  const W = topRect?.width || bottomRect?.width || (rightRect ? rightRect.x + rightRect.width : 0);
-  
-  // H (Full Image Height): Try bottom end (y+h), then left end (y+h), fallback 0
-  const H = (bottomRect ? bottomRect.y + bottomRect.height : 0) || (leftRect ? leftRect.y + leftRect.height : 0);
+  // [Fix] Default W and H to 1 (100%) if masks are missing.
+  // This ensures that if the user hasn't set masks (pure grid), we treat the image as full size.
+  // Previous logic defaulted to 0, which caused X2=0, limitX=0, validCount=1.
+  const W = topRect?.width || bottomRect?.width || (rightRect ? rightRect.x + rightRect.width : 1);
+  const H = (bottomRect ? bottomRect.y + bottomRect.height : 0) || (leftRect ? leftRect.y + leftRect.height : 1);
 
   // X2 (Right Mask Start X): If rightRect exists use x, else if W known use W, else 0
   const X2 = rightRect ? rightRect.x : W;
@@ -143,8 +155,9 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
   const rectBC = { x: X1, y: Y2, width: X2 - X1, height: H - Y2 };
   const rectBR = { x: X2, y: Y2, width: W - X2, height: H - Y2 };
 
-  // Only render outer frame if we have at least one dimension to work with
-  const hasTextureFrame = W > 0 || H > 0;
+  // Only render outer frame if we have at least one dimension to work with (and it's not the default 1x1 fallback with 0 margins)
+  // Logic: Show frame if there is actual mask content to render (scaled dims > 0)
+  const hasTextureFrame = scaledTopH > 0 || scaledBottomH > 0 || scaledLeftW > 0 || scaledRightW > 0;
 
   // [FEATURE] Hide App Header in Simple Mode + Textured (Pure Paper look)
   // Logic: if mode is simple AND baseImage is present, hide it.
@@ -182,7 +195,8 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
         {hasTextureFrame && scaledTopH > 0 && (
             <div style={{ display: 'flex', height: scaledTopH }}>
                 <TexturedBlock baseImage={baseImage} rect={rectTL} style={{ width: scaledLeftW, flexShrink: 0 }} />
-                <TexturedBlock baseImage={baseImage} rect={rectTC} style={{ flex: 1 }} />
+                {/* [Fix] Unset aspectRatio to let it stretch horizontally */}
+                <TexturedBlock baseImage={baseImage} rect={rectTC} style={{ flex: 1, width: 'auto', aspectRatio: 'unset' } as any} />
                 <TexturedBlock baseImage={baseImage} rect={rectTR} style={{ width: scaledRightW, flexShrink: 0 }} />
             </div>
         )}
@@ -192,7 +206,8 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
             {/* Left Edge */}
             {hasTextureFrame && scaledLeftW > 0 && (
                 <div style={{ flexShrink: 0, width: `${scaledLeftW}px`, position: 'relative' }}>
-                    <TexturedBlock baseImage={baseImage} rect={rectCL} style={{ width: '100%', height: '100%' }} />
+                    {/* [Fix] Unset aspectRatio to let it stretch vertically */}
+                    <TexturedBlock baseImage={baseImage} rect={rectCL} style={{ width: '100%', height: '100%', aspectRatio: 'unset' } as any} />
                 </div>
             )}
 
@@ -212,6 +227,7 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
                 {session.players.map((p, index) => (
                     <TexturedPlayerHeader
                         key={p.id}
+                        id={`ss-header-tex-${p.id}`} // [Fix] Use prefixed ID
                         player={p}
                         playerIndex={index}
                         baseImage={baseImage || ''}
@@ -347,6 +363,7 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
                                 borderTop: 'none',
                             }}
                             limitX={X2} // Use robustly calculated X2
+                            cleanMode={mode === 'simple'} // [Fix] Enable clean mode for simple view
                         />
                     ))}
                 </div>
@@ -355,7 +372,8 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
             {/* Right Edge */}
             {hasTextureFrame && scaledRightW > 0 && (
                 <div style={{ flexShrink: 0, width: `${scaledRightW}px`, position: 'relative' }}>
-                    <TexturedBlock baseImage={baseImage} rect={rectCR} style={{ width: '100%', height: '100%' }} />
+                    {/* [Fix] Unset aspectRatio to let it stretch vertically */}
+                    <TexturedBlock baseImage={baseImage} rect={rectCR} style={{ width: '100%', height: '100%', aspectRatio: 'unset' } as any} />
                 </div>
             )}
         </div>
@@ -364,7 +382,8 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
         {hasTextureFrame && scaledBottomH > 0 && (
             <div style={{ display: 'flex', height: scaledBottomH }}>
                 <TexturedBlock baseImage={baseImage} rect={rectBL} style={{ width: scaledLeftW, flexShrink: 0 }} />
-                <TexturedBlock baseImage={baseImage} rect={rectBC} style={{ flex: 1 }} />
+                {/* [Fix] Unset aspectRatio to let it stretch horizontally */}
+                <TexturedBlock baseImage={baseImage} rect={rectBC} style={{ flex: 1, width: 'auto', aspectRatio: 'unset' } as any} />
                 <TexturedBlock baseImage={baseImage} rect={rectBR} style={{ width: scaledRightW, flexShrink: 0 }} />
             </div>
         )}

@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Dice5, Search, X, Download, HelpCircle, Calculator, History, Cloud, CloudOff, Loader2 } from 'lucide-react';
 import { useTranslation } from '../../../i18n'; // Import hook
 
@@ -40,6 +40,36 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   
   const searchRef = useRef<HTMLDivElement>(null);
   const { t, language, setLanguage } = useTranslation(); // Use hook
+  
+  // [New] Storage Usage State
+  const [localUsage, setLocalUsage] = useState<string>('');
+
+  // [New] Check Storage Estimate
+  useEffect(() => {
+    const checkUsage = async () => {
+      if (navigator.storage && navigator.storage.estimate) {
+        try {
+          const estimate = await navigator.storage.estimate();
+          if (estimate.usage) {
+            // Convert to MB with 1 decimal place
+            const mb = (estimate.usage / (1024 * 1024)).toFixed(1);
+            setLocalUsage(`${mb} MB`);
+          }
+        } catch (e) {
+          console.warn("Storage estimate failed", e);
+        }
+      }
+    };
+
+    // Check initially
+    checkUsage();
+
+    // Re-check periodically (every 10s) or when syncing state changes (data changed)
+    // This keeps the "shortcut" info relatively fresh without heavy polling
+    const interval = setInterval(checkUsage, 10000);
+    
+    return () => clearInterval(interval);
+  }, [isSyncing, viewMode]); // Re-check after sync or view change (potential deletions)
 
   // [New] Handle click outside to close search
   useEffect(() => {
@@ -194,7 +224,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                     isConnected ? 'bg-sky-900/30 border-sky-500/50 text-sky-400 shadow-[0_0_10px_rgba(14,165,233,0.2)]' :
                     'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'
                 }`}
-                title={t('dash_cloud_sync')}
+                // [Update] Display storage size in tooltip
+                title={`${t('dash_cloud_sync')}${localUsage ? ` (${localUsage})` : ''}`}
               >
                 {isSyncing ? <Loader2 className="animate-spin" size={18} /> :
                  isConnected ? <Cloud size={18} /> : <CloudOff size={18} />}

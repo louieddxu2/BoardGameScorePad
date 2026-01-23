@@ -48,7 +48,10 @@ const TexturedBlock: React.FC<TexturedBlockProps> = ({
   // If cropping failed (bgUrl is null), we default to standard behavior (content dictates height),
   // preventing the row from collapsing to 0 height.
   if (bgUrl && rect && rect.width > 0 && rect.height > 0) {
-      (finalStyle as any).aspectRatio = `${rect.width} / ${rect.height}`;
+      // Check if aspectRatio is already set in style (allow override)
+      if (!style || (style as any).aspectRatio === undefined) {
+          (finalStyle as any).aspectRatio = `${rect.width} / ${rect.height}`;
+      }
       finalStyle.minHeight = '0px';
   }
 

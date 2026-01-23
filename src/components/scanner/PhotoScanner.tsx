@@ -176,28 +176,44 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
 
   const handleRotate = () => {
       if (!canvasRef.current || !imageSrc) return;
+      
+      // [Fix] Capture current DISPLAY dimensions to match 'points' coordinate space
+      const currentDisplayHeight = canvasRef.current.height;
+      const currentDisplayWidth = canvasRef.current.width;
+
       const img = new Image();
       img.onload = () => {
+          const oldW = img.width;
+          const oldH = img.height;
+
           const canvas = document.createElement('canvas');
-          canvas.width = img.height;
-          canvas.height = img.width;
+          canvas.width = oldH;
+          canvas.height = oldW;
           const ctx = canvas.getContext('2d');
           if (ctx) {
               ctx.translate(canvas.width / 2, canvas.height / 2);
               ctx.rotate(90 * Math.PI / 180);
-              ctx.drawImage(img, -img.width / 2, -img.height / 2);
+              ctx.drawImage(img, -oldW / 2, -oldH / 2);
               
               canvas.toBlob((blob) => {
                   if (blob) {
                       const url = URL.createObjectURL(blob);
+                      
+                      // Calculate new points based on 90 deg clockwise rotation
+                      // Formula: newX = oldHeight - oldY, newY = oldX
+                      // We MUST use currentDisplayHeight because 'points' are in that coordinate space
+                      const newPoints = points.map(p => ({
+                          x: currentDisplayHeight - p.y,
+                          y: p.x
+                      }));
+
                       setImageSrc(url);
-                      // Reset points for new orientation
-                      setPoints([
-                          { x: 0, y: 0 },
-                          { x: canvas.width, y: 0 },
-                          { x: canvas.width, y: canvas.height },
-                          { x: 0, y: canvas.height }
-                      ]);
+                      setPoints(newPoints);
+                      
+                      // Immediately swap source dimensions to match rotation
+                      // This prevents visual glitches (points flying off) while waiting for the new image to load/resize
+                      setSourceDimensions({ w: currentDisplayHeight, h: currentDisplayWidth });
+                      
                       hasFittedRef.current = false;
                   }
               }, 'image/jpeg');

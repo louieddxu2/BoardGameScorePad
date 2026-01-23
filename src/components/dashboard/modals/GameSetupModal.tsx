@@ -83,14 +83,18 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
 
   return (
     <>
-    {/* Backdrop for closing dropdown */}
-    {showRuleMenu && (
-        <div className="fixed inset-0 z-[60]" onClick={() => setShowRuleMenu(false)} />
-    )}
-
+    {/* Removed global backdrop div to avoid z-index stacking context issues */}
+    
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm" onClick={onClose}>
-        {/* Removed overflow-hidden from main container to allow dropdowns to pop out */}
-        <div className="bg-slate-900 w-[95vw] max-w-sm rounded-2xl shadow-2xl border border-slate-800 flex flex-col" onClick={(e) => e.stopPropagation()}>
+        {/* Main Card Container */}
+        {/* We handle menu closing here by catching clicks on the card background */}
+        <div 
+            className="bg-slate-900 w-[95vw] max-w-sm rounded-2xl shadow-2xl border border-slate-800 flex flex-col" 
+            onClick={(e) => { 
+                e.stopPropagation(); 
+                setShowRuleMenu(false); 
+            }}
+        >
             
             {/* Header: Added rounded-t-2xl explicitly */}
             <div className="flex-none px-2 py-1.5 border-b border-slate-800 flex justify-between items-center bg-slate-800/50 rounded-t-2xl">
@@ -171,7 +175,11 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                             {reversedOptions.map(opt => (
                                                 <button
                                                     key={opt.value}
-                                                    onClick={() => { setScoringRule(opt.value); setShowRuleMenu(false); }}
+                                                    onClick={(e) => { 
+                                                        e.stopPropagation(); // Prevent closing immediately
+                                                        setScoringRule(opt.value); 
+                                                        setShowRuleMenu(false); 
+                                                    }}
                                                     className={`w-full text-left px-3 py-2.5 text-xs font-bold border-b border-slate-700/50 last:border-0 hover:bg-slate-700 flex items-center justify-between ${scoringRule === opt.value ? 'text-emerald-400 bg-emerald-900/10' : 'text-slate-200'}`}
                                                 >
                                                     {opt.label}
@@ -264,7 +272,11 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                             {reversedOptions.map(opt => (
                                                 <button
                                                     key={opt.value}
-                                                    onClick={() => { setScoringRule(opt.value); setShowRuleMenu(false); }}
+                                                    onClick={(e) => { 
+                                                        e.stopPropagation();
+                                                        setScoringRule(opt.value); 
+                                                        setShowRuleMenu(false); 
+                                                    }}
                                                     className={`w-full text-left px-3 py-3 text-xs font-bold border-b border-slate-700/50 last:border-0 hover:bg-slate-700 flex items-center justify-between ${scoringRule === opt.value ? 'text-emerald-400 bg-emerald-900/10' : 'text-slate-200'}`}
                                                 >
                                                     {opt.label}

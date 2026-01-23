@@ -96,6 +96,7 @@ interface TexturedTotalCellProps {
   isActive?: boolean;
   previewValue?: any;
   onClick?: () => void;
+  cleanMode?: boolean; // [New] If true, hides all icons (crown, x, arrows) and ignores fading
 }
 
 // RESTORED & ADJUSTED: Annotation Arrow Visual
@@ -147,7 +148,8 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
   limitX,
   isActive,
   previewValue,
-  onClick
+  onClick,
+  cleanMode = false
 }) => {
   const [bgUrl, setBgUrl] = useState<string | null>(null);
   const cellRef = useRef<HTMLDivElement>(null);
@@ -192,16 +194,19 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
 
   const hasBonus = !!player.bonusScore;
   const isForceLost = !!player.isForceLost;
+  
+  // [Clean Mode Logic] If active, force disable visual effects of "Force Lost" (fading/coloring)
+  const visualForceLost = cleanMode ? false : isForceLost;
 
   const inkStyle: React.CSSProperties = bgUrl ? {
       fontFamily: '"Kalam", "Caveat", cursive',
-      color: isForceLost ? 'rgba(100, 116, 139, 0.5)' : 'rgba(28, 35, 51, 0.95)',
+      color: visualForceLost ? 'rgba(100, 116, 139, 0.5)' : 'rgba(28, 35, 51, 0.95)',
       transform: `rotate(${((player.id.charCodeAt(0)) % 5) - 2}deg)`,
       mixBlendMode: 'multiply',
       textShadow: 'none',
   } : {
-      color: isForceLost ? '#64748b' : (isTransparent ? '#e2e8f0' : effectiveColor),
-      opacity: isForceLost ? 0.5 : 1,
+      color: visualForceLost ? '#64748b' : (isTransparent ? '#e2e8f0' : effectiveColor),
+      opacity: visualForceLost ? 0.5 : 1,
       ...((isTransparent || isColorDark(effectiveColor)) && { textShadow: ENHANCED_TEXT_SHADOW })
   };
 
@@ -244,22 +249,22 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
       <SmartTextureLayer bgUrl={bgUrl} rect={rect} />
 
       {/* RESTORED: Bonus Annotation Arrow (Shows if bonus exists, even if not textured, for consistency) */}
-      {/* Condition: Show if there is a bonus score AND not force lost */}
-      {hasBonus && !isForceLost && <AnnotationArrow />}
+      {/* Condition: Show if there is a bonus score AND not force lost AND NOT cleanMode */}
+      {!cleanMode && hasBonus && !isForceLost && <AnnotationArrow />}
 
       <span className="font-black text-2xl leading-none w-full text-center truncate px-1 z-10" style={inkStyle}>
         {player.totalScore}
       </span>
 
-      {/* Force Loss Marker */}
-      {isForceLost && (
+      {/* Force Loss Marker - Hidden in Clean Mode */}
+      {!cleanMode && isForceLost && (
           <div className="absolute top-0.5 right-0.5 z-20 pointer-events-none drop-shadow-md">
               <X className="text-red-500/80" size={16} strokeWidth={3} />
           </div>
       )}
 
-      {/* Winner Crown */}
-      {!hideCrown && isWinner && hasMultiplePlayers && !isForceLost && (
+      {/* Winner Crown - Hidden in Clean Mode */}
+      {!cleanMode && !hideCrown && isWinner && hasMultiplePlayers && !isForceLost && (
         <Crown size={14} className="text-yellow-400 absolute top-0.5 right-0.5 z-20 shadow-sm" fill="currentColor" />
       )}
 

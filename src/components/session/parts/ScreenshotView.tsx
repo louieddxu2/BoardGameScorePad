@@ -187,12 +187,24 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
       winners = customWinners;
   } else {
       const rule = session.scoringRule || 'HIGHEST_WINS';
-      if (rule === 'HIGHEST_WINS') {
-          const maxScore = Math.max(...session.players.map(pl => pl.totalScore));
-          winners = session.players.filter(p => p.totalScore === maxScore).map(p => p.id);
+      
+      if (rule === 'COOP' || rule === 'COOP_NO_SCORE') {
+          const anyForceLost = session.players.some(p => p.isForceLost);
+          if (!anyForceLost) {
+              winners = session.players.map(p => p.id);
+          }
+      } else if (rule === 'HIGHEST_WINS') {
+          const validPlayers = session.players.filter(p => !p.isForceLost);
+          if (validPlayers.length > 0) {
+              const maxScore = Math.max(...validPlayers.map(pl => pl.totalScore));
+              winners = validPlayers.filter(p => p.totalScore === maxScore).map(p => p.id);
+          }
       } else if (rule === 'LOWEST_WINS') {
-          const minScore = Math.min(...session.players.map(pl => pl.totalScore));
-          winners = session.players.filter(p => p.totalScore === minScore).map(p => p.id);
+          const validPlayers = session.players.filter(p => !p.isForceLost);
+          if (validPlayers.length > 0) {
+              const minScore = Math.min(...validPlayers.map(pl => pl.totalScore));
+              winners = validPlayers.filter(p => p.totalScore === minScore).map(p => p.id);
+          }
       }
   }
 
