@@ -107,7 +107,7 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
             {/* 2. Body (Location Input) */}
             <div className="relative z-10">
                 <div className="flex items-center bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all">
-                    <div className="pl-3 pr-2 text-indigo-400">
+                    <div className="pl-3 pr-2 text-indigo-400 shrink-0">
                         <MapPin size={18} />
                     </div>
                     <input 
@@ -115,13 +115,13 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
                         value={location}
                         onChange={(e) => setLocation(e.target.value)}
                         placeholder="在哪裡進行遊戲？" 
-                        className="flex-1 bg-transparent h-12 text-white placeholder-slate-500 text-sm outline-none font-bold"
+                        className="flex-1 bg-transparent h-12 text-white placeholder-slate-500 text-sm outline-none font-bold min-w-0"
                     />
                     {/* Dropdown Trigger */}
                     {sortedLocations.length > 0 && (
                         <button 
                             onClick={(e) => { e.stopPropagation(); setShowLocationMenu(!showLocationMenu); }}
-                            className="h-12 px-3 border-l border-slate-700 text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors"
+                            className="h-12 px-3 border-l border-slate-700 text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors shrink-0"
                         >
                             <ChevronDown size={16} />
                         </button>

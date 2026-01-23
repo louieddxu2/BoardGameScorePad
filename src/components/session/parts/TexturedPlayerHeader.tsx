@@ -16,6 +16,7 @@ interface TexturedPlayerHeaderProps {
   className?: string;
   style?: React.CSSProperties;
   limitX?: number; // New Prop for Right Bound limit
+  id?: string;
 }
 
 // Simple Meeple Icon SVG Component with Stroke for visibility
@@ -40,7 +41,8 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
   isEditing,
   className,
   style,
-  limitX
+  limitX,
+  id
 }) => {
   const [bgUrl, setBgUrl] = useState<string | null>(null);
 
@@ -89,7 +91,7 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
 
   return (
     <div
-      id={`header-${player.id}`}
+      id={id || `header-${player.id}`}
       data-player-header-id={player.id}
       onClick={onClick}
       // [CRITICAL CHANGE] Always enforce min-width 3.375rem (approx 54px).
