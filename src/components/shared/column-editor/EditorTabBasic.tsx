@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { ScoreColumn, InputMethod } from '../../../types';
 import { Calculator, Hash, Plus, X as Multiply, Square } from 'lucide-react';
 import QuickActionsEditor from './QuickActionsEditor';
-import { useTranslation } from '../../../i18n';
+import { useColumnEditorTranslation } from '../../../i18n/column_editor'; // Changed Import
 
 interface EditorTabBasicProps {
   column: ScoreColumn;
@@ -26,7 +26,7 @@ const SumPartsSubSettings: React.FC<{
     themeColor?: 'emerald' | 'indigo',
     isProductMode?: boolean
 }> = ({ column, onChange, themeColor = 'emerald', isProductMode = false }) => {
-    const { t } = useTranslation();
+    const { t } = useColumnEditorTranslation(); // Use New Hook
     const activeSwitchClass = themeColor === 'emerald' ? 'bg-emerald-500' : 'bg-indigo-500';
     
     // Normalize logic for undefined (default is true)
@@ -74,7 +74,7 @@ const SumPartsSubSettings: React.FC<{
 };
 
 const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cachedSumPartsInputType, onUpdateCachedSumPartsInputType }) => {
-  const { t } = useTranslation();
+  const { t } = useColumnEditorTranslation(); // Use New Hook
   
   // Logic to determine current mode from formula
   const getCalculationMode = (formula: string): CalculationMode => {

@@ -4,7 +4,7 @@ import { ScoreColumn, MappingRule } from '../../../types';
 import { Sparkles, ArrowRight, Lock, Unlock, Check, Calculator, AlertCircle, Ruler, ChevronDown, ChevronUp, Delete, Trophy, Hash, Users } from 'lucide-react';
 import EditorTabMapping from './EditorTabMapping';
 import { extractIdentifiers } from '../../../utils/formulaEvaluator';
-import { useTranslation } from '../../../i18n';
+import { useColumnEditorTranslation } from '../../../i18n/column_editor'; // Changed Import
 
 interface EditorTabAutoProps {
   column: ScoreColumn;
@@ -15,7 +15,7 @@ interface EditorTabAutoProps {
 const PLAYER_COUNT_ID = '__PLAYER_COUNT__';
 
 const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], onChange }) => {
-  const { t } = useTranslation();
+  const { t } = useColumnEditorTranslation(); // Use New Hook
   const [localFormula, setLocalFormula] = useState(column.formula || '');
   const [isLocked, setIsLocked] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);

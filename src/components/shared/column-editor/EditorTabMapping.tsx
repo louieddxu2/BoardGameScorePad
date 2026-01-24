@@ -2,7 +2,7 @@
 import React, { useEffect } from 'react';
 import { ScoreColumn, MappingRule } from '../../../types';
 import { ArrowRight as ArrowRightIcon, Lock, TrendingUp, Trash2, Plus } from 'lucide-react';
-import { useTranslation } from '../../../i18n';
+import { useColumnEditorTranslation } from '../../../i18n/column_editor'; // Changed Import
 
 interface EditorTabMappingProps {
   column: ScoreColumn;
@@ -13,7 +13,7 @@ interface EditorTabMappingProps {
 const PREF_KEY_STD_UNIT = 'sm_pref_standard_unit';
 
 const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, hideUnitInput }) => {
-  const { t } = useTranslation();
+  const { t } = useColumnEditorTranslation(); // Use New Hook
   const rules = column.f1 || [];
 
   // Load last unit if this is a standalone column mapping (not inside auto) and unit is empty

@@ -2,7 +2,7 @@
 import React from 'react';
 import { ScoreColumn } from '../../../types';
 import QuickActionsEditor from './QuickActionsEditor';
-import { useTranslation } from '../../../i18n';
+import { useColumnEditorTranslation } from '../../../i18n/column_editor'; // Changed Import
 
 interface EditorTabSelectionProps {
   column: ScoreColumn;
@@ -10,7 +10,7 @@ interface EditorTabSelectionProps {
 }
 
 const EditorTabSelection: React.FC<EditorTabSelectionProps> = ({ column, onChange }) => {
-  const { t } = useTranslation();
+  const { t } = useColumnEditorTranslation(); // Use New Hook
   
   const handleQuickActionsChange = (updates: any) => {
     onChange(updates);

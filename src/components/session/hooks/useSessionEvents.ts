@@ -54,6 +54,12 @@ export const useSessionEvents = (
           return;
       }
 
+      // 0.5 Game Settings Modal (New High Priority)
+      if (uiState.isGameSettingsOpen) {
+          setUiState(p => ({ ...p, isGameSettingsOpen: false }));
+          return;
+      }
+
       // 1. Column Editor (Let it handle itself if implemented, but strictly we can guard here)
       if (uiState.editingColumn) { return; }
 
@@ -303,6 +309,18 @@ export const useSessionEvents = (
     setUiState(p => ({ ...p, showShareMenu: false }));
   }, [setUiState]);
 
+  // [New] Game Settings Handlers
+  const handleOpenGameSettings = () => {
+      // Only allow opening if in edit mode (consistent with other edit features)
+      if (!uiState.isEditMode) return;
+      setUiState(p => ({ ...p, isGameSettingsOpen: true }));
+  };
+
+  const handleSaveGameSettings = (updates: Partial<GameTemplate>) => {
+      onUpdateTemplate({ ...template, ...updates });
+      setUiState(p => ({ ...p, isGameSettingsOpen: false }));
+  };
+
   return {
     handleGlobalClick,
     handleCellClick,
@@ -316,6 +334,9 @@ export const useSessionEvents = (
     handleAddBlankColumn,
     handleCopyColumns,
     handleScreenshotRequest,
+    // [New] Export settings handlers
+    handleOpenGameSettings,
+    handleSaveGameSettings,
     // [Updated] Expose unified moveNext
     moveToNext: () => navigation.moveNext(),
     // [New] Expose Joystick Actions

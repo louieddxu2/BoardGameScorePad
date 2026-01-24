@@ -26,6 +26,7 @@ export interface UIState {
   editingPlayerId: string | null;
   editingColumn: GameTemplate['columns'][0] | null;
   isEditingTitle: boolean;
+  isGameSettingsOpen: boolean; // [New] Toggle for Game Settings Modal
   showResetConfirm: boolean;
   isSessionExitModalOpen: boolean; 
   columnToDelete: string | null;
@@ -65,6 +66,7 @@ export const useSessionState = (props: SessionViewProps) => {
       editingPlayerId: null,
       editingColumn: null,
       isEditingTitle: false,
+      isGameSettingsOpen: false, // [New]
       showResetConfirm: false,
       isSessionExitModalOpen: false,
       columnToDelete: null,

@@ -1,18 +1,18 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Save, LogOut, X, MapPin, ChevronDown } from 'lucide-react';
-import { useTranslation } from '../../../i18n';
+import { X, MapPin, ChevronDown } from 'lucide-react';
+import { useGameFlowTranslation } from '../../../i18n/game_flow'; // Changed Import
 import ConfirmationModal from '../../shared/ConfirmationModal';
 import { SavedListItem } from '../../../types';
 
 interface SessionExitModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSaveActive: (location: string) => void; // Updated to accept location
+  onSaveActive: (location: string) => void; 
   onSaveHistory: (location?: string) => void; 
   onDiscard?: () => void;
   locationHistory?: SavedListItem[]; 
-  initialLocation?: string; // New prop
+  initialLocation?: string; 
 }
 
 const SessionExitModal: React.FC<SessionExitModalProps> = ({
@@ -24,7 +24,7 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
   locationHistory = [],
   initialLocation = ''
 }) => {
-  const { t } = useTranslation();
+  const { t } = useGameFlowTranslation(); // Use new hook
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [location, setLocation] = useState(initialLocation);
   const [showLocationMenu, setShowLocationMenu] = useState(false);
@@ -38,13 +38,11 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
   }, [isOpen, initialLocation]);
 
   // Sorting: Oldest to Newest (Ascending)
-  // This places the most recently used items at the END of the array.
-  // Combined with "bottom-full", the last item will be visually at the bottom (closest to input).
   const sortedLocations = useMemo(() => {
       return [...locationHistory].sort((a, b) => a.lastUsed - b.lastUsed);
   }, [locationHistory]);
 
-  // Auto-scroll to bottom when menu opens to show most recent items
+  // Auto-scroll to bottom when menu opens
   useEffect(() => {
       if (showLocationMenu && listRef.current) {
           listRef.current.scrollTop = listRef.current.scrollHeight;
@@ -76,7 +74,6 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
             onClick={onClose}
         >
         <div 
-            // Removed overflow-hidden to allow dropdown to expand outside
             className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-5 w-full max-w-sm flex flex-col gap-5 relative"
             onClick={(e) => { e.stopPropagation(); setShowLocationMenu(false); }}
         >
@@ -87,13 +84,13 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
                         onClick={() => setShowDiscardConfirm(true)}
                         className="text-red-400 hover:text-red-300 text-sm font-bold px-2 py-1 -ml-2 rounded transition-colors"
                     >
-                        {t('session_discard')}
+                        {t('exit_btn_discard')}
                     </button>
                 ) : <div className="w-10"></div>}
 
                 <div className="flex flex-col items-center">
-                    <h3 className="text-lg font-bold text-white leading-tight">{t('session_exit_title')}</h3>
-                    <span className="text-[10px] text-slate-400">{t('session_exit_msg')}</span>
+                    <h3 className="text-lg font-bold text-white leading-tight">{t('exit_title')}</h3>
+                    <span className="text-[10px] text-slate-400">{t('exit_msg')}</span>
                 </div>
 
                 <button 
@@ -114,7 +111,7 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
                         type="text" 
                         value={location}
                         onChange={(e) => setLocation(e.target.value)}
-                        placeholder="在哪裡進行遊戲？" 
+                        placeholder={t('exit_location_ph')} 
                         className="flex-1 bg-transparent h-12 text-white placeholder-slate-500 text-sm outline-none font-bold min-w-0"
                     />
                     {/* Dropdown Trigger */}
@@ -153,16 +150,16 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
                     onClick={() => onSaveActive(location)}
                     className="flex flex-col items-center justify-center gap-0.5 py-3 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 transition-colors active:scale-95"
                 >
-                    <span className="text-sm font-bold">暫存遊戲</span>
-                    <span className="text-[10px] text-slate-500">(稍後再玩)</span>
+                    <span className="text-sm font-bold">{t('exit_btn_draft')}</span>
+                    <span className="text-[10px] text-slate-500">{t('exit_btn_draft_sub')}</span>
                 </button>
 
                 <button
                     onClick={() => onSaveHistory(location)}
                     className="flex flex-col items-center justify-center gap-0.5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/50 transition-transform active:scale-95"
                 >
-                    <span className="text-sm font-bold">結束遊戲</span>
-                    <span className="text-[10px] text-emerald-100/60 font-medium">(儲存紀錄)</span>
+                    <span className="text-sm font-bold">{t('exit_btn_finish')}</span>
+                    <span className="text-[10px] text-emerald-100/60 font-medium">{t('exit_btn_finish_sub')}</span>
                 </button>
             </div>
         </div>

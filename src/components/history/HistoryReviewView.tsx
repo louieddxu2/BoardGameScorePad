@@ -25,7 +25,7 @@ interface HistoryReviewViewProps {
 
 const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRecord, onExit, zoomLevel }) => {
   const [record, setRecord] = useState<HistoryRecord>(initialRecord);
-  const { locationHistory, updateLocationHistory } = useAppData();
+  const { locationHistory, updateLocationHistory, saveTemplate } = useAppData();
   
   // Track if data has been modified to trigger cloud sync on exit
   const isDirtyRef = useRef(false);
@@ -438,6 +438,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
             record={record}
             onSave={handleUpdateRecord}
             locationHistory={locationHistory}
+            onRestoreTemplate={saveTemplate}
         />
     </div>
   );

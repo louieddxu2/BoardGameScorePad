@@ -5,7 +5,7 @@ import { COLORS } from '../../../colors';
 import { isColorDark } from '../../../utils/ui';
 import { Plus, Trash2, Palette, X } from 'lucide-react';
 import { generateId } from '../../../utils/idGenerator';
-import { useTranslation } from '../../../i18n';
+import { useColumnEditorTranslation } from '../../../i18n/column_editor'; // Changed Import
 import { DATA_LIMITS } from '../../../dataLimits';
 
 interface QuickActionsEditorProps {
@@ -82,7 +82,7 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
   showModifierToggle,
   onChange,
 }) => {
-  const { t } = useTranslation();
+  const { t } = useColumnEditorTranslation(); // Use New Hook
   const [colorPickerIdx, setColorPickerIdx] = useState<number | null>(null);
 
   const handleAdd = () => {

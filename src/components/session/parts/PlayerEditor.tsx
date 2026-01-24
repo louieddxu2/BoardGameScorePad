@@ -1,7 +1,7 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Player, SavedListItem } from '../../../types';
-import { Palette, History, Settings2, Ban, Flag } from 'lucide-react';
+import { Settings2, Ban, Flag } from 'lucide-react';
 import { COLORS } from '../../../colors';
 import { isColorDark } from '../../../utils/ui';
 
@@ -16,6 +16,7 @@ interface PlayerEditorProps {
   // [Update] Added linkedId optional param
   onNameSubmit: (playerId: string, newName: string, moveNext?: boolean, linkedId?: string) => void;
   onToggleStarter: (playerId: string) => void; 
+  supportedColors?: string[]; // [New] Prop
 }
 
 // This is the pure content provider component
@@ -29,7 +30,17 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
   onUpdatePlayerColor,
   onNameSubmit,
   onToggleStarter,
+  supportedColors
 }) => {
+
+  const sortedColors = useMemo(() => {
+      if (!supportedColors || supportedColors.length === 0) return COLORS;
+      
+      const preferred = supportedColors;
+      const remaining = COLORS.filter(c => !preferred.includes(c));
+      return [...preferred, ...remaining];
+  }, [supportedColors]);
+
   return (
     // This root div is KEY. It respects the layout contract by handling its own scrolling.
     <div className="h-full overflow-y-auto no-scrollbar" onClick={e => e.stopPropagation()}>
@@ -57,9 +68,8 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
           <div className="flex-1 flex gap-2 min-h-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
             {/* Color Palette - Restored to 1/3 width */}
             <div className="w-1/3 bg-slate-800/50 rounded-xl p-2 overflow-y-auto no-scrollbar border border-slate-700/50">
-              <div className="text-[10px] text-slate-500 font-bold uppercase mb-2 flex items-center justify-center gap-1"><Palette size={10} /> 顏色</div>
               <div className="grid grid-cols-1 gap-2 justify-items-center">
-                {COLORS.map(c => {
+                {sortedColors.map(c => {
                   const isTransparent = c === 'transparent';
                   const isDark = !isTransparent && isColorDark(c);
                   
@@ -85,7 +95,6 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
 
             {/* History - Restored to remaining 2/3 width */}
             <div className="flex-1 bg-slate-800/50 rounded-xl border border-slate-700/50 flex flex-col min-w-0">
-              <div className="p-2 text-[10px] text-slate-500 font-bold uppercase bg-slate-800/80 text-center flex items-center justify-center gap-1 rounded-t-xl"><History size={10} /> 歷史紀錄</div>
               <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-1">
                 {playerHistory.slice(0, 20).map((item, i) => (
                   <button 
@@ -97,7 +106,7 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
                         const linkedId = item.meta?.uuid;
                         onNameSubmit(player.id, item.name, false, linkedId); 
                     }} 
-                    className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-emerald-900/30 hover:text-emerald-400 transition-colors truncate active:scale-95 bg-slate-800 border border-slate-700/50"
+                    className="w-full text-left px-2 py-1.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-emerald-900/30 hover:text-emerald-400 transition-colors truncate active:scale-95 bg-slate-800 border border-slate-700/50"
                   >
                     {item.name}
                   </button>

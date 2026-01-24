@@ -20,7 +20,8 @@ interface ScoreGridProps {
   onPlayerHeaderClick: (playerId: string, e: React.MouseEvent) => void;
   onColumnHeaderClick: (e: React.MouseEvent, col: ScoreColumn) => void;
   onUpdateTemplate: (template: GameTemplate) => void;
-  onAddColumn: () => void; // New prop
+  onAddColumn: () => void; 
+  onOpenSettings?: () => void; // Made optional for robustness
   scrollContainerRef: React.RefObject<HTMLDivElement>;
   contentRef: React.RefObject<HTMLDivElement>;
   baseImage?: string; 
@@ -45,6 +46,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   onColumnHeaderClick,
   onUpdateTemplate,
   onAddColumn,
+  onOpenSettings,
   scrollContainerRef,
   contentRef,
   baseImage,
@@ -56,12 +58,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   const [imageDims, setImageDims] = useState<{width: number, height: number} | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
-  // [Simplified Logic] 
-  // Determine mode strictly by existence of baseImage.
-  // We do NOT wait for dimensions to load to switch modes, preventing style flickering.
   const isTextureMode = !!baseImage;
 
-  // Load image dimensions for ratio calculation (only if in texture mode)
   useEffect(() => {
       if (baseImage) {
           const img = new Image();
@@ -86,24 +84,18 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
     return () => observer.disconnect();
   }, [scrollContainerRef]);
 
-  // Calculate the width of the Left Sticky Column (Label)
   const leftColWidth = useMemo(() => {
-      // 1. Texture Mode: Use loaded dimensions if available
-      // [FIX] playerLabelRect.width is now a normalized percentage (0.0 - 1.0).
-      // We should NOT divide by imageDims.width anymore.
       if (isTextureMode && imageDims && template.globalVisuals?.playerLabelRect) {
           const { playerLabelRect } = template.globalVisuals;
-          // Direct proportion (0-1)
           const itemColProportion = playerLabelRect.width; 
           return containerWidth * itemColProportion * zoomLevel;
       }
       
-      // 2. Standard Mode or Texture Mode (loading): Dynamic calculation / Fallback
       if (containerWidth > 0) {
           return Math.max(70, containerWidth / (session.players.length + 2));
       }
       
-      return 70; // Absolute fallback
+      return 70;
   }, [isTextureMode, imageDims, template.globalVisuals, containerWidth, zoomLevel, session.players.length]);
 
   const itemColStyle = useMemo(() => {
@@ -208,12 +200,21 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
             style={{ width: typeof headerRowWidth === 'number' ? `${headerRowWidth}px` : headerRowWidth }}
         >
           <TexturedBlock 
-            baseImage={baseImage} // Pass directly, TextureBlock handles null
+            baseImage={baseImage}
             rect={template.globalVisuals?.playerLabelRect}
             fallbackContent={<span className="font-bold text-sm text-slate-400">玩家</span>}
-            className={`sticky left-0 bg-slate-800 border-r border-b border-slate-700 flex items-center justify-center z-30 shadow-sm shrink-0 overflow-hidden ${isTextureMode ? 'p-0' : 'p-2'}`}
+            onClick={isEditMode && onOpenSettings ? onOpenSettings : undefined}
+            className={`sticky left-0 bg-slate-800 border-r border-b border-slate-700 flex items-center justify-center z-30 shadow-sm shrink-0 overflow-hidden ${isTextureMode ? 'p-0' : 'p-2'} ${isEditMode ? 'cursor-pointer hover:bg-slate-700' : ''}`}
             style={itemColStyle} 
-          />
+          >
+            {/* Gear Icon: Visual Cue for Settings */}
+            {isEditMode && (
+                <div className="absolute top-1 left-1 text-yellow-400 z-50 pointer-events-none drop-shadow-md">
+                    <Settings size={14} />
+                </div>
+            )}
+          </TexturedBlock>
+
           {session.players.map((p, index) => (
             <TexturedPlayerHeader
                 key={p.id}
@@ -234,7 +235,6 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           const isDropTarget = dnd.dropTargetId === col.id;
           const displayMode = col.resolvedDisplayMode as 'row' | 'overlay' | 'hidden';
           
-          // Zebra Striping Logic
           const isAlt = index % 2 !== 0; 
           const isHidden = displayMode === 'hidden';
           const isOverlay = displayMode === 'overlay';
@@ -260,7 +260,6 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           const rowHiddenClass = (isEditMode && displayMode === 'hidden') ? 'opacity-70 bg-slate-900/50' : '';
           const hiddenStyleClass = (isEditMode && isHidden) ? 'ring-2 ring-amber-500/50 ring-inset bg-amber-900/20' : '';
           
-          // Header Background Color Logic - Dependent on isTextureMode
           const headerBgClass = isEditMode && isDragging 
             ? 'bg-slate-700' 
             : (isAlt && !isTextureMode ? 'bg-[#2e3b4e]' : 'bg-slate-800');
@@ -358,7 +357,6 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                             }
                         }
 
-                        // [Fix] Dynamic Font Sizing for Overlay Items
                         const dynamicFontSize = calculateDynamicFontSize([displayText]);
 
                         const defaultTextColor = isTextureMode ? 'rgba(28, 35, 51, 0.90)' : '#ffffff';
@@ -366,7 +364,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
 
                         const textStyle: React.CSSProperties = {
                             color: hasInput ? (displayScore < 0 ? '#f87171' : displayColor) : '#475569',
-                            fontSize: dynamicFontSize, // Apply dynamic font size
+                            fontSize: dynamicFontSize,
                             ...(isEditMode && overlayCol.color && isColorDark(overlayCol.color) && { textShadow: ENHANCED_TEXT_SHADOW }),
                             ...(isTextureMode && {
                                 fontFamily: '"Kalam", "Caveat", cursive',
@@ -386,12 +384,12 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                                         absolute flex items-center justify-center 
                                         border-2 rounded-md cursor-pointer transition-all pointer-events-auto
                                         ${isOverlayActive 
-                                            ? 'border-emerald-500 bg-emerald-500/20 ring-1 ring-emerald-500' // Active Style
+                                            ? 'border-emerald-500 bg-emerald-500/20 ring-1 ring-emerald-500' 
                                             : (isEditMode 
-                                                ? 'border-dashed border-white/40 hover:border-white/60 hover:bg-white/5' // Edit Mode
+                                                ? 'border-dashed border-white/40 hover:border-white/60 hover:bg-white/5' 
                                                 : (!isTextureMode 
-                                                    ? 'border-dashed border-white/20 hover:border-white/40 hover:bg-white/5' // Play Mode (No BG)
-                                                    : 'border-transparent hover:border-black/10 hover:bg-black/5') // Play Mode (With BG)
+                                                    ? 'border-dashed border-white/20 hover:border-white/40 hover:bg-white/5' 
+                                                    : 'border-transparent hover:border-black/10 hover:bg-black/5') 
                                               )
                                         }
                                     `}
@@ -401,7 +399,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                                         width: `${overlayCol.contentLayout.width}%`,
                                         height: `${overlayCol.contentLayout.height}%`,
                                         borderColor: (!isOverlayActive && isEditMode && overlayCol.color) ? `${overlayCol.color}60` : undefined,
-                                        containerType: 'size', // [Fix] Enable Container Queries for dynamic sizing
+                                        containerType: 'size', 
                                     } as React.CSSProperties}
                                 >
                                     <span className="font-bold tracking-tight w-full text-center truncate px-1" style={textStyle}>
@@ -417,10 +415,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           );
         })}
         
-        {/* [New Feature] Add Blank Column Button in Edit Mode */}
         {isEditMode && (
             <div className="flex relative z-10 animate-in fade-in slide-in-from-left-4 duration-300">
-                {/* Left Sticky Add Button */}
                 <div 
                     className="sticky left-0 bg-slate-900 border-r border-b border-slate-700 flex items-center justify-center p-2 z-20 shrink-0"
                     style={itemColStyle} 
@@ -433,8 +429,6 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         <Plus size={20} className="group-hover:scale-110 transition-transform" />
                     </button>
                 </div>
-                
-                {/* Right Empty Filler - Spans full width */}
                 <div className="flex-1 bg-slate-900 border-b border-slate-800/50 min-h-[3rem]" />
             </div>
         )}

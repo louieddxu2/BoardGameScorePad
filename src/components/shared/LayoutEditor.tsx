@@ -4,6 +4,7 @@ import { ContentLayout, Rect } from '../../types';
 import { X, RotateCcw, MousePointerClick } from 'lucide-react';
 import { cropImageToDataUrl } from '../../utils/imageProcessing';
 import { calculateDynamicFontSize } from '../../utils/dynamicLayout';
+import { useColumnEditorTranslation } from '../../i18n/column_editor'; // New Import
 
 interface LayoutEditorProps {
   initialLayout?: ContentLayout;
@@ -16,6 +17,7 @@ interface LayoutEditorProps {
 }
 
 const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCancel, color, aspectRatio, baseImage, cellRect }) => {
+  const { t } = useColumnEditorTranslation(); // Use New Hook
   const [rect, setRect] = useState<ContentLayout | null>(initialLayout || null);
   const [bgUrl, setBgUrl] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -160,7 +162,7 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
         <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900 shrink-0">
             <h3 className="text-white font-bold flex items-center gap-2">
                 <MousePointerClick size={20} className="text-emerald-500" />
-                設定顯示區域
+                {t('layout_title')}
             </h3>
             <button onClick={onCancel} className="p-2 text-slate-400 hover:text-white rounded-lg transition-colors"><X size={24}/></button>
         </div>
@@ -168,8 +170,8 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
         <div className="flex-1 min-h-0 flex flex-col bg-slate-800/50 relative">
             <div className="flex-none p-4 pb-0 text-center z-10">
                 <p className="text-sm text-slate-400">
-                    在下方區域框選出分數顯示的位置<br/>
-                    <span className="text-xs opacity-70">(若未設定，則預設為置中顯示)</span>
+                    {t('layout_desc')}<br/>
+                    <span className="text-xs opacity-70">{t('layout_hint')}</span>
                 </p>
             </div>
             
@@ -265,12 +267,12 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
 
         <div className="p-4 bg-slate-900 border-t border-slate-800 flex justify-between items-center shrink-0">
             <button onClick={handleReset} className="flex items-center gap-2 px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors text-sm font-medium">
-                <RotateCcw size={16} /> 重置
+                <RotateCcw size={16} /> {t('layout_reset')}
             </button>
             <div className="flex gap-3">
-                <button onClick={onCancel} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition-colors font-bold">取消</button>
+                <button onClick={onCancel} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition-colors font-bold">{t('layout_cancel')}</button>
                 <button onClick={() => onSave(rect || undefined)} className="px-6 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-900/50 flex items-center gap-2">
-                    儲存
+                    {t('layout_save')}
                 </button>
             </div>
         </div>

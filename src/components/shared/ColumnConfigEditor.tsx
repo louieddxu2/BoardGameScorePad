@@ -12,7 +12,7 @@ import EditorTabSelection from './column-editor/EditorTabSelection';
 import EditorTabBasic from './column-editor/EditorTabBasic';
 import EditorTabAuto from './column-editor/EditorTabAuto';
 import { extractIdentifiers } from '../../utils/formulaEvaluator';
-import { useTranslation } from '../../i18n';
+import { useColumnEditorTranslation } from '../../i18n/column_editor'; // Changed Import
 
 interface ColumnConfigEditorProps {
   column: ScoreColumn;
@@ -34,7 +34,7 @@ const PREF_KEY_ADV_OPEN = 'sm_pref_editor_adv';
 const PLAYER_COUNT_ID = '__PLAYER_COUNT__';
 
 const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColumns = [], onSave, onDelete, onClose, baseImage }) => {
-  const { t } = useTranslation();
+  const { t } = useColumnEditorTranslation(); // Use New Hook
   
   const getInitialState = (): ScoreColumn => {
     // 關鍵修改：初始化時整合 functions 結構
@@ -302,7 +302,16 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/95 flex flex-col animate-in slide-in-from-bottom-5" style={{ paddingBottom: visualViewportOffset }}>
-      <ConfirmationModal isOpen={showDiscardConfirm} title="放棄變更？" message="您有未儲存的變更，離開後將會遺失。" confirmText="放棄並離開" cancelText="繼續編輯" isDangerous={true} onConfirm={onClose} onCancel={() => setShowDiscardConfirm(false)} />
+      <ConfirmationModal 
+        isOpen={showDiscardConfirm} 
+        title={t('col_discard_title')} 
+        message={t('col_discard_msg')} 
+        confirmText={t('col_discard_confirm')} 
+        cancelText={t('col_discard_cancel')} 
+        isDangerous={true} 
+        onConfirm={onClose} 
+        onCancel={() => setShowDiscardConfirm(false)} 
+      />
       
       {showLayoutEditor && (
           <LayoutEditor 

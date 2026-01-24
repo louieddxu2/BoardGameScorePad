@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { GameTemplate, GameSession, ScoringRule } from '../../../types';
 import { X, History, Play, Minus, Plus, Clock, Trophy, ChevronDown, Check } from 'lucide-react';
+import { useGameFlowTranslation } from '../../../i18n/game_flow'; // Changed Import
 
 interface GameSetupModalProps {
   template: GameTemplate;
@@ -12,14 +13,6 @@ interface GameSetupModalProps {
   onResume: () => void;
 }
 
-const SCORING_OPTIONS: { value: ScoringRule, label: string }[] = [
-    { value: 'HIGHEST_WINS', label: '競爭：最高分贏' },
-    { value: 'LOWEST_WINS', label: '競爭：最低分贏' },
-    { value: 'COOP', label: '合作模式' },
-    { value: 'COMPETITIVE_NO_SCORE', label: '競爭(不計勝負)' },
-    { value: 'COOP_NO_SCORE', label: '合作(不計勝負)' },
-];
-
 const GameSetupModal: React.FC<GameSetupModalProps> = ({ 
   template, 
   previewSession, 
@@ -28,7 +21,8 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
   onStart, 
   onResume 
 }) => {
-  
+  const { t, language } = useGameFlowTranslation(); // Use new hook
+
   const getInitialCount = () => {
     // 1. Priority: Current session memory (if user just went back)
     if (sessionPlayerCount) return sessionPlayerCount;
@@ -76,10 +70,19 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
       }
   };
 
-  const currentRuleLabel = SCORING_OPTIONS.find(opt => opt.value === scoringRule)?.label || '';
+  // Memoize options to react to language changes
+  const scoringOptions = useMemo(() => [
+      { value: 'HIGHEST_WINS', label: t('rule_highest') },
+      { value: 'LOWEST_WINS', label: t('rule_lowest') },
+      { value: 'COOP', label: t('rule_coop') },
+      { value: 'COMPETITIVE_NO_SCORE', label: t('rule_comp_no_score') },
+      { value: 'COOP_NO_SCORE', label: t('rule_coop_no_score') },
+  ], [t]);
+
+  const currentRuleLabel = scoringOptions.find(opt => opt.value === scoringRule)?.label || '';
 
   // Reverse options for upward menu so the first item (default) is at the bottom (closest to finger)
-  const reversedOptions = [...SCORING_OPTIONS].reverse();
+  const reversedOptions = [...scoringOptions].reverse();
 
   return (
     <>
@@ -112,7 +115,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                             <div className="flex items-center gap-2 mb-1 text-xs text-slate-400">
                                 <History size={12} className="text-emerald-500"/>
                                 <span>
-                                    上次：{new Date(previewSession.startTime).toLocaleString('zh-TW', { hour12: false, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                    {t('setup_last_played')} {new Date(previewSession.startTime).toLocaleString(language === 'en' ? 'en-US' : 'zh-TW', { hour12: false, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                 </span>
                             </div>
                             <div className="grid grid-cols-2 gap-x-2 gap-y-1">
@@ -123,7 +126,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                     </div>
                                 ))}
                             </div>
-                            {previewSession.players.length > 4 && <div className="text-[10px] text-slate-500 mt-1 italic">...共 {previewSession.players.length} 人</div>}
+                            {previewSession.players.length > 4 && <div className="text-[10px] text-slate-500 mt-1 italic">{t('setup_more_players', { count: previewSession.players.length })}</div>}
                         </div>
 
                         {/* Top Right: Resume Button (1/3) */}
@@ -133,14 +136,14 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                 className="w-full h-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-lg flex flex-col items-center justify-center gap-1 shadow-inner active:scale-95 transition-all"
                             >
                                 <Play size={24} fill="currentColor" />
-                                <span className="text-sm font-bold leading-tight">繼續<br/>遊戲</span>
+                                <span className="text-sm font-bold leading-tight whitespace-pre-line text-center">{t('setup_resume_btn')}</span>
                             </button>
                         </div>
 
                         {/* Divider Header */}
                         <div className="col-span-3 row-span-1 bg-slate-900 border-b border-slate-700/50 py-0.5 px-3 flex items-center gap-2">
                             <div className="h-px bg-slate-700 flex-1"></div>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">或是 開始新遊戲</span>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('setup_or_new')}</span>
                             <div className="h-px bg-slate-700 flex-1"></div>
                         </div>
 
@@ -160,7 +163,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                 </div>
                                 
                                 {/* Custom Dropdown Trigger (Compact Mode) */}
-                                <div className="flex-1 bg-slate-800 rounded-lg p-0.5 border border-slate-700 flex items-center relative min-w-0" title="勝利條件">
+                                <div className="flex-1 bg-slate-800 rounded-lg p-0.5 border border-slate-700 flex items-center relative min-w-0" title={t('setup_rule')}>
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); setShowRuleMenu(!showRuleMenu); }}
                                         className="w-full flex items-center justify-between px-1 py-0.5 text-xs font-bold text-white hover:bg-slate-700/50 rounded transition-colors"
@@ -177,7 +180,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                                     key={opt.value}
                                                     onClick={(e) => { 
                                                         e.stopPropagation(); // Prevent closing immediately
-                                                        setScoringRule(opt.value); 
+                                                        setScoringRule(opt.value as any); 
                                                         setShowRuleMenu(false); 
                                                     }}
                                                     className={`w-full text-left px-3 py-2.5 text-xs font-bold border-b border-slate-700/50 last:border-0 hover:bg-slate-700 flex items-center justify-between ${scoringRule === opt.value ? 'text-emerald-400 bg-emerald-900/10' : 'text-slate-200'}`}
@@ -203,7 +206,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                 
                                 <div className="min-w-[2rem] flex flex-col items-center justify-center">
                                     <span className="text-3xl font-black font-mono text-white leading-none tracking-tighter drop-shadow-lg">{playerCount}</span>
-                                    <span className="text-[9px] text-slate-500 uppercase font-bold">玩家</span>
+                                    <span className="text-[9px] text-slate-500 uppercase font-bold">{t('player_unit')}</span>
                                 </div>
                                 
                                 <button 
@@ -218,13 +221,13 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
 
                         {/* Bottom Right: New Game Button (1/3) - Added rounded-br-2xl */}
                         <div className="col-span-1 row-span-1 p-1.5 flex flex-col items-center justify-center bg-slate-900/50 gap-1.5 rounded-br-2xl">
-                            <span className="text-sm font-black text-rose-400 leading-none tracking-tight">重置記錄</span>
-                            <span className="text-[10px] text-slate-500 leading-none">並</span>
+                            <span className="text-sm font-black text-rose-400 leading-none tracking-tight">{t('setup_reset_record')}</span>
+                            <span className="text-[10px] text-slate-500 leading-none">{t('setup_and')}</span>
                             <button 
                                 onClick={handleStartClick} 
                                 className="w-full flex-1 max-h-12 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-md active:scale-95 transition-all flex items-center justify-center"
                             >
-                                <span className="text-xs font-bold leading-tight text-center">開始新遊戲</span>
+                                <span className="text-xs font-bold leading-tight text-center">{t('setup_start_new_btn')}</span>
                             </button>
                         </div>
                     </div>
@@ -238,7 +241,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                             {/* Time */}
                             <div className="flex flex-col gap-1">
                                 <div className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1 pl-1">
-                                    <Clock size={12} /> 遊戲開始時間
+                                    <Clock size={12} /> {t('setup_time')}
                                 </div>
                                 {/* Reduced input padding py-1.5 -> py-1 */}
                                 <div className="bg-slate-800 rounded-lg border border-slate-700 px-2 py-1 w-full flex items-center justify-center hover:border-slate-600 cursor-pointer h-[38px]">
@@ -255,7 +258,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                             {/* Rule - Custom Dropdown */}
                             <div className="flex flex-col gap-1 relative">
                                 <div className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1 pl-1">
-                                    <Trophy size={12} /> 勝利條件
+                                    <Trophy size={12} /> {t('setup_rule')}
                                 </div>
                                 <div className="bg-slate-800 rounded-lg border border-slate-700 px-2 py-1 w-full flex items-center relative hover:border-slate-600 h-[38px]">
                                     <button 
@@ -274,7 +277,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                                     key={opt.value}
                                                     onClick={(e) => { 
                                                         e.stopPropagation();
-                                                        setScoringRule(opt.value); 
+                                                        setScoringRule(opt.value as any); 
                                                         setShowRuleMenu(false); 
                                                     }}
                                                     className={`w-full text-left px-3 py-3 text-xs font-bold border-b border-slate-700/50 last:border-0 hover:bg-slate-700 flex items-center justify-between ${scoringRule === opt.value ? 'text-emerald-400 bg-emerald-900/10' : 'text-slate-200'}`}
@@ -291,7 +294,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
 
                         {/* Player Count */}
                         <div className="w-full max-w-[200px] flex flex-col items-center gap-1 z-10">
-                            <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">玩家人數</span>
+                            <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">{t('setup_players')}</span>
                             {/* Reduced padding p-1.5 -> p-1 */}
                             <div className="flex items-center justify-between w-full bg-slate-800 p-1 rounded-xl border border-slate-700 shadow-inner">
                                 <button 
@@ -317,7 +320,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                             onClick={handleStartClick} 
                             className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-900/50 active:scale-95 transition-all z-10"
                         >
-                            <Play size={20} fill="currentColor" /> 開始計分
+                            <Play size={20} fill="currentColor" /> {t('setup_start_btn')}
                         </button>
                     </div>
                 )}

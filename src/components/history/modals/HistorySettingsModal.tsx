@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { HistoryRecord, ScoringRule, SavedListItem } from '../../../types';
-import { X, Save, Calendar, MapPin, FileText, Settings, Database, Clock, Trophy } from 'lucide-react';
+import { HistoryRecord, ScoringRule, SavedListItem, GameTemplate } from '../../../types';
+import { X, Save, Calendar, MapPin, FileText, Settings, Database, Clock, Trophy, Hash, CopyPlus } from 'lucide-react';
 import { generateId } from '../../../utils/idGenerator';
 import { relationshipService } from '../../../services/relationshipService'; // Import Service
 import { DATA_LIMITS } from '../../../dataLimits';
@@ -12,6 +12,7 @@ interface HistorySettingsModalProps {
   record: HistoryRecord;
   onSave: (updatedRecord: HistoryRecord) => Promise<void>; // Make async
   locationHistory?: SavedListItem[];
+  onRestoreTemplate: (template: GameTemplate) => Promise<void>;
 }
 
 // Helper: Convert timestamp to HTML input datetime-local string (YYYY-MM-DDThh:mm)
@@ -37,7 +38,7 @@ const SCORING_OPTIONS: { value: ScoringRule, label: string }[] = [
     { value: 'COOP_NO_SCORE', label: '合作(不計勝負)' },
 ];
 
-const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onClose, record, onSave, locationHistory = [] }) => {
+const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onClose, record, onSave, locationHistory = [], onRestoreTemplate }) => {
   const [formData, setFormData] = useState<HistoryRecord | null>(null);
   const [showRawInspector, setShowRawInspector] = useState(false);
 
@@ -103,6 +104,25 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
     }
   };
 
+  const handleRestore = async () => {
+      if (!formData || !formData.snapshotTemplate) return;
+      
+      const newId = generateId();
+      const newTemplate: GameTemplate = {
+          ...formData.snapshotTemplate,
+          id: newId,
+          name: `${formData.gameName} (還原)`,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          lastSyncedAt: undefined,
+          cloudImageId: undefined,
+          sourceTemplateId: undefined // Detach
+      };
+      
+      await onRestoreTemplate(newTemplate);
+      onClose();
+  };
+
   // --- Dynamic Field Renderer ---
   // This analyzes the data structure and renders appropriate inputs
   const renderDynamicFields = () => {
@@ -124,6 +144,21 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
                       onChange={(e) => handleFieldChange('gameName', e.target.value)}
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white focus:border-emerald-500 outline-none font-bold"
                   />
+              </div>
+
+              {/* BGG ID (New Requirement) */}
+              <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
+                      <Hash size={12} /> BoardGameGeek ID
+                  </label>
+                  <input
+                      type="text"
+                      value={formData.snapshotTemplate?.bggId || ''}
+                      onChange={(e) => handleDeepChange(['snapshotTemplate', 'bggId'], e.target.value)}
+                      placeholder="例如：12345"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white focus:border-emerald-500 outline-none font-mono"
+                  />
+                  <p className="text-[10px] text-slate-500 px-1">* 此 ID 將儲存於此歷史紀錄的計分板備份中</p>
               </div>
 
               {/* Time Section */}
@@ -263,25 +298,37 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
                     className="flex items-center gap-2 text-xs text-slate-500 hover:text-slate-300 transition-colors w-full justify-center py-2"
                 >
                     <Database size={12} />
-                    {showRawInspector ? "隱藏原始結構" : "檢視原始資料結構 (Debug)"}
+                    {showRawInspector ? "隱藏完整結構" : "檢視完整資料結構 (Debug)"}
                 </button>
                 
                 {showRawInspector && (
                     <div className="mt-2 bg-black/30 p-3 rounded-lg border border-slate-700 overflow-x-auto">
                         <pre className="text-[10px] text-slate-400 font-mono leading-relaxed">
-                            {JSON.stringify(formData, (key, value) => {
-                                // Simplify large objects for display
-                                if (key === 'snapshotTemplate' && value) return `[Template: ${value.name}...]`;
-                                if (key === 'players' && Array.isArray(value)) return `[${value.length} Players...]`;
-                                return value;
-                            }, 2)}
+                            {JSON.stringify(formData, null, 2)}
                         </pre>
                     </div>
                 )}
             </div>
+
+            {/* Restore Section (Moved to Bottom of Content) */}
+            <div className="mt-4 pt-4 border-t border-slate-800">
+                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-1">
+                    進階操作
+                </h4>
+                <button 
+                    onClick={handleRestore}
+                    className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-sky-400 font-bold rounded-xl border border-slate-700 flex items-center justify-center gap-2 transition-all active:scale-95 group"
+                >
+                    <CopyPlus size={18} className="group-hover:scale-110 transition-transform"/>
+                    還原計分板至遊戲庫
+                </button>
+                <p className="text-[10px] text-slate-500 mt-2 text-center">
+                    提取此紀錄的計分板架構，另存為新模板。
+                </p>
+            </div>
         </div>
 
-        {/* Footer */}
+        {/* Footer - Only Save Button */}
         <div className="flex-none p-4 bg-slate-800 border-t border-slate-700 rounded-b-2xl">
           <button 
             onClick={handleSave}

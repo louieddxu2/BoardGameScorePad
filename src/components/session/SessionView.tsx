@@ -21,7 +21,8 @@ import SessionExitModal from './modals/SessionExitModal';
 import PhotoGalleryModal from './modals/PhotoGalleryModal';
 import SessionBackgroundModal from './modals/SessionBackgroundModal';
 import SessionImageFlow from './SessionImageFlow'; 
-import CameraView from '../scanner/CameraView'; // [New Import]
+import CameraView from '../scanner/CameraView'; 
+import GameSettingsEditor from '../shared/GameSettingsEditor'; // [New Import]
 
 interface SessionViewProps {
   session: GameSession;
@@ -82,7 +83,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     isImageUploadModalOpen,
     isScannerOpen,
     isTextureMapperOpen,
-    isGeneralCameraOpen // [New]
+    isGeneralCameraOpen,
+    isGameSettingsOpen // [New]
   } = sessionState.uiState;
 
   const isPanelOpen = editingCell !== null || editingPlayerId !== null;
@@ -278,6 +280,15 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           onFileChange={media.handleFileUpload}
       />
 
+      {/* Game Settings Editor (New) */}
+      {isGameSettingsOpen && (
+          <GameSettingsEditor 
+              template={template}
+              onSave={eventHandlers.handleSaveGameSettings}
+              onClose={() => setUiState(p => ({ ...p, isGameSettingsOpen: false }))}
+          />
+      )}
+
       {editingColumn && (
         <ColumnConfigEditor 
           column={editingColumn} 
@@ -364,6 +375,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           onColumnHeaderClick={eventHandlers.handleColumnHeaderClick}
           onUpdateTemplate={onUpdateTemplate}
           onAddColumn={eventHandlers.handleAddBlankColumn} // Pass the handler
+          onOpenSettings={eventHandlers.handleOpenGameSettings} // [New] Pass handler
           scrollContainerRef={sessionState.tableContainerRef}
           contentRef={sessionState.gridContentRef}
           baseImage={baseImage || undefined} 

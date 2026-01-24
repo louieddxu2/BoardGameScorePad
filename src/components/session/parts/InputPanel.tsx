@@ -19,7 +19,7 @@ interface InputPanelProps {
   eventHandlers: ReturnType<typeof useSessionEvents>;
   session: GameSession;
   template: GameTemplate;
-  playerHistory: SavedListItem[]; // [Update] Type changed
+  playerHistory: SavedListItem[]; // [Update] Updated to accept SavedListItem[] to match AppData
   onUpdateSession: (session: GameSession) => void;
   onUpdatePlayerHistory: (name: string) => void;
 }
@@ -390,6 +390,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
               // [Update] Pass linkedId
               onNameSubmit={(id, name, next, linkedId) => eventHandlers.handlePlayerNameSubmit(id, name, next, linkedId)}
               onToggleStarter={handleToggleStarter}
+              supportedColors={template.supportedColors} // [New] Pass supportedColors
             />
         );
         sidebarContentNode = isInputFocused ? null : <PlayerSettingsPanel player={activePlayer} onToggleStarter={handleToggleStarter} />;
