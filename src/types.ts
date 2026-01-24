@@ -149,6 +149,7 @@ export interface GameTemplate {
   name: string;
   description?: string;
   bggId?: string; // [New] BoardGameGeek ID
+  supportedColors?: string[]; // [New] Custom color palette sequence for this game
   columns: ScoreColumn[];
   createdAt: number;
   updatedAt?: number;    

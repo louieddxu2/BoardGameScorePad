@@ -112,10 +112,11 @@ export const migrateTemplate = (template: any): GameTemplate => {
     const { baseImage, ...rest } = template;
     return {
         ...rest,
-        bggId: rest.bggId || '', // [New] Initialize BGG ID
+        bggId: rest.bggId || '', 
+        supportedColors: rest.supportedColors || [], // [New] Initialize supportedColors
         hasImage: rest.hasImage || !!baseImage, 
         columns: template.columns.map(migrateColumn),
-        updatedAt: rest.updatedAt || rest.createdAt, // Ensure updatedAt exists
+        updatedAt: rest.updatedAt || rest.createdAt, 
     };
 };
 

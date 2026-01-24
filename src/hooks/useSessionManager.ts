@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { db } from '../db';
 import { GameTemplate, GameSession, Player, ScoringRule, HistoryRecord } from '../types';
@@ -80,9 +79,18 @@ export const useSessionManager = ({
     migratedTemplate.defaultScoringRule = scoringRule;
 
     const hasTexture = !!migratedTemplate.globalVisuals || !!migratedTemplate.hasImage;
+    
+    // [Color Logic Update]
+    // 1. Get Preferred colors
+    const preferred = migratedTemplate.supportedColors || [];
+    // 2. Get Remaining colors (System colors excluding preferred ones)
+    const remaining = COLORS.filter(c => !preferred.includes(c));
+    // 3. Combine: Preferred first, then remaining
+    const fullPalette = [...preferred, ...remaining];
+
     const defaultColors = hasTexture 
         ? Array(playerCount).fill('transparent') 
-        : Array.from({ length: playerCount }, (_, i) => COLORS[i % COLORS.length]);
+        : Array.from({ length: playerCount }, (_, i) => fullPalette[i % fullPalette.length]);
 
     const players: Player[] = Array.from({ length: playerCount }, (_, i) => {
       return {
@@ -221,9 +229,14 @@ export const useSessionManager = ({
           p.isStarter 
       );
 
-      const hasCustomPlayers = sessionToSave.players.some(p => 
-          !p.id.startsWith('slot_') && !p.id.startsWith('sys_') && !p.id.startsWith('player_')
-      );
+      const hasCustomPlayers = sessionToSave.players.some(p => {
+          // Check 1: Has Linked Identity (Name changed or selected from history)
+          if (p.linkedPlayerId) return true;
+          
+          // Check 2: Has Custom ID (Not a system default ID)
+          const isSystemId = p.id.startsWith('slot_') || p.id.startsWith('sys_') || p.id.startsWith('player_');
+          return !isSystemId;
+      });
 
       const hasPhotos = (sessionToSave.photos && sessionToSave.photos.length > 0);
       const hasLocation = !!sessionToSave.location;
