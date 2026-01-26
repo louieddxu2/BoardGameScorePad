@@ -166,6 +166,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   useModalBackHandler(!!restoreTarget, () => setRestoreTarget(null), 'restore-template');
   useModalBackHandler(showInstallGuide, () => setShowInstallGuide(false), 'install-guide');
   useModalBackHandler(showInspector, () => setShowInspector(false), 'inspector');
+  useModalBackHandler(showDataModal, () => setShowDataModal(false), 'data-manager');
 
   // Refs for gesture logic
   const debugTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

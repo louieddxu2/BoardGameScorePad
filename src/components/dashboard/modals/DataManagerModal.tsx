@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { GameTemplate } from '../../../types';
 import { X, Library, ArrowRightLeft, Check, Copy, Mail, AlertCircle, Square, CheckSquare } from 'lucide-react';
 import { useToast } from '../../../hooks/useToast';
@@ -25,21 +25,6 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
   const [isExportCopying, setIsExportCopying] = useState(false);
   const { showToast } = useToast();
   const { t } = useTranslation();
-
-  // Handle Back Button
-  useEffect(() => {
-    if (isOpen) {
-      window.history.pushState({ modal: 'data' }, '');
-      const handlePopState = (e: PopStateEvent) => {
-        e.preventDefault();
-        onClose();
-      };
-      window.addEventListener('popstate', handlePopState);
-      return () => {
-        window.removeEventListener('popstate', handlePopState);
-      };
-    }
-  }, [isOpen, onClose]);
 
   // 讀取系統覆寫資料 (Shallow)
   const systemOverrides = useLiveQuery(async () => {
