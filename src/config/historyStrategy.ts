@@ -20,7 +20,7 @@ const WALL_DEPTH_CONFIG: Record<AppView, number> = {
     [AppView.TEMPLATE_CREATOR]: 1,
 
     // [高風險區] 進行中遊戲：絕對不能因為連按兩下上一頁就退出
-    // 這邊設定 3 層，讓使用者有足夠的「後悔空間」
+    // 這邊設定 2 層，讓使用者有足夠的「後悔空間」但又不至於太深
     [AppView.ACTIVE_SESSION]: 3,
 
     // [高風險區] 歷史回顧：為了避免在查看詳細資料時意外退出整個 App
