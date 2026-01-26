@@ -1,22 +1,28 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { AppView, GameTemplate, ScoringRule } from './types';
 import { getTouchDistance } from './utils/ui';
 import { useAppData } from './hooks/useAppData';
 import { Smartphone } from 'lucide-react';
+import { getTargetHistoryDepth } from './config/historyStrategy'; // Import Strategy
+import { useToast } from './hooks/useToast';
+import { useAppTranslation } from './i18n/app';
 
 // Components
 import TemplateEditor from './components/editor/TemplateEditor';
 import SessionView from './components/session/SessionView';
 import Dashboard from './components/dashboard/Dashboard';
 import GameSetupModal from './components/dashboard/modals/GameSetupModal';
-import HistoryReviewView from './components/history/HistoryReviewView'; // New Import
+import HistoryReviewView from './components/history/HistoryReviewView'; 
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.DASHBOARD);
   
   // Custom Hook for all data logic
   const appData = useAppData();
+  
+  const { showToast } = useToast();
+  const { t: tApp } = useAppTranslation();
 
   // Local UI State
   const [pendingTemplate, setPendingTemplate] = useState<GameTemplate | null>(null);
@@ -34,7 +40,9 @@ const App: React.FC = () => {
   const touchStartDist = useRef(0);
   const initialZoomRef = useRef(1.0);
   const isZooming = useRef(false);
-  const isExitingSession = useRef(false);
+  
+  // Ref to ignore popstates triggered by our own history manipulation (pruning)
+  const ignorePopstateRef = useRef(false);
 
   // Landscape Detection State (JS Control)
   const [showLandscapeOverlay, setShowLandscapeOverlay] = useState(false);
@@ -207,10 +215,89 @@ const App: React.FC = () => {
       }
   }, [appData.currentSession, appData.activeTemplate]);
 
-  // --- Back Button Handling (Double Buffer Strategy) ---
+  // --- History Wall Logic (Strategy Pattern) ---
+  const historyWallDepth = useRef(0);
+
+  const replenishWall = useCallback(() => {
+      // 使用策略檔決定目標層數
+      const targetDepth = getTargetHistoryDepth(view, pendingTemplate !== null);
+
+      if (historyWallDepth.current < targetDepth) {
+          const needed = targetDepth - historyWallDepth.current;
+          const baseTime = performance.now();
+          
+          for (let i = 0; i < needed; i++) {
+              window.history.pushState({ wallSignature: `${baseTime}-${i}-${Math.random()}` }, '');
+          }
+          historyWallDepth.current = targetDepth;
+      }
+  }, [view, pendingTemplate]);
+
+  // [New Feature] Active History Pruning
+  // 當我們明確知道要從高層數 (Game=3) 回到低層數 (Dashboard=1) 時，
+  // 使用此函式來「主動拆除」瀏覽器的歷史紀錄，而不是讓它們殘留。
+  const transitionToDashboard = useCallback(() => {
+      // 1. Calculate how many layers to remove
+      // Target for Dashboard is 1
+      const targetDepth = 1;
+      const currentDepth = historyWallDepth.current;
+      
+      if (currentDepth > targetDepth) {
+          const delta = currentDepth - targetDepth;
+          
+          // 2. Set flag to ignore the upcoming popstate events caused by go()
+          ignorePopstateRef.current = true;
+          
+          // 3. Physically go back in browser history
+          // This removes the "Forward" history that traps the user
+          window.history.go(-delta);
+          
+          // 4. Update internal counter immediately
+          historyWallDepth.current = targetDepth;
+          
+          // 5. Safety reset of flag after a short delay
+          // (In case popstate behaves unexpectedly async)
+          setTimeout(() => {
+              ignorePopstateRef.current = false;
+          }, 100);
+      }
+      
+      setView(AppView.DASHBOARD);
+  }, []);
+
+  // 1. Interaction Listener (Replenish on Click/Touch)
   useEffect(() => {
-    const handlePopState = () => {
-      isExitingSession.current = false;
+      const handleInteraction = () => {
+          replenishWall();
+      };
+      
+      // Use capture to ensure we detect it even if propagation is stopped
+      window.addEventListener('click', handleInteraction, { capture: true });
+      window.addEventListener('touchstart', handleInteraction, { capture: true });
+      
+      return () => {
+          window.removeEventListener('click', handleInteraction, { capture: true });
+          window.removeEventListener('touchstart', handleInteraction, { capture: true });
+      };
+  }, [replenishWall]);
+
+  // 2. View Change Trigger (Replenish on Enter)
+  useEffect(() => {
+      replenishWall();
+  }, [replenishWall]);
+
+  // 3. Popstate Handler (Consume Wall & Dispatch)
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      // [Pruning Logic] If this popstate was triggered by our cleanup code, ignore it.
+      if (ignorePopstateRef.current) {
+          ignorePopstateRef.current = false;
+          return;
+      }
+
+      // Decrement wall depth as we consumed one history state
+      historyWallDepth.current = Math.max(0, historyWallDepth.current - 1);
+      
       let handled = false;
 
       if (pendingTemplate) { 
@@ -219,36 +306,26 @@ const App: React.FC = () => {
       }
       else if (view === AppView.TEMPLATE_CREATOR) { 
           setView(AppView.DASHBOARD); 
-          setEditorInitialName(undefined); // Clear prefilled name
+          setEditorInitialName(undefined); 
           handled = true; 
       }
-      // [Modified] Both ACTIVE_SESSION and HISTORY_REVIEW now use event dispatch
+      // Both ACTIVE_SESSION and HISTORY_REVIEW use event dispatch
+      // [Logic] Always dispatch event regardless of whether we consumed a wall or not.
+      // This ensures the UI reacts (e.g. closing modals) even if the history stack was just a buffer.
       else if (view === AppView.ACTIVE_SESSION || view === AppView.HISTORY_REVIEW) {
+         // [UX Enhancement] If depth reaches 0, warn user that next back will exit
+
          window.dispatchEvent(new CustomEvent('app-back-press'));
          handled = true;
       }
-
-      if (handled && !isExitingSession.current) {
-        // [Fix: Double Buffer Strategy]
-        // Instead of pushing 1 dummy state, we maintain a deeper buffer.
-        // This ensures that even if the user double-taps back quickly, 
-        // they only consume the buffer and don't exit the app.
-        // We use Microtask to execute this immediately after the current event loop.
-        Promise.resolve().then(() => {
-            history.pushState(null, '');
-            history.pushState(null, ''); // Double wall
-        });
+      if (historyWallDepth.current === 0) {
+       showToast({ message: tApp('msg_press_again_to_exit'), type: 'info', duration: 2000 });
       }
     };
 
     window.addEventListener('popstate', handlePopState);
-    
-    // Initial Setup: Create the Double Buffer immediately on mount/view change
-    history.pushState(null, '');
-    history.pushState(null, '');
-
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [view, pendingTemplate]);
+  }, [view, pendingTemplate, tApp, showToast]);
 
   // --- Confirm on Refresh ---
   useEffect(() => {
@@ -293,51 +370,44 @@ const App: React.FC = () => {
 
   const handleStartNewGame = async (count: number, options: { startTimeStr: string, scoringRule: ScoringRule }) => {
       if (pendingTemplate) {
-          // [Logic Added] If there is an existing active session for this template, discard it first
-          // This ensures the "Reset Record" promise in the UI is fulfilled.
           if (appData.activeSessionIds.includes(pendingTemplate.id)) {
               await appData.discardSession(pendingTemplate.id);
           }
 
-          // 1. Prepare data (this might involve fetching full template if shallow)
           await appData.startSession(pendingTemplate, count, options);
-          
-          // 2. Switch View FIRST (This mounts SessionView on top of Dashboard)
           setView(AppView.ACTIVE_SESSION);
-          
-          // 3. Close Modal (This unmounts the modal)
-          // The delay ensures the SessionView is rendered before the modal disappears to avoid flashing the dashboard
           setPendingTemplate(null);
       }
   };
 
-  const handleExitSession = (location?: string) => {
-      isExitingSession.current = true;
+  const handleExitSession = useCallback((location?: string) => {
       appData.exitSession(location !== undefined ? { location } : undefined);
-      setView(AppView.DASHBOARD);
-  };
+      transitionToDashboard(); // Use Active Pruning
+  }, [appData, transitionToDashboard]);
 
-  const handleSaveToHistory = (location?: string) => {
-      isExitingSession.current = true;
+  const handleSaveToHistory = useCallback((location?: string) => {
       appData.saveToHistory(location);
-      setView(AppView.DASHBOARD);
-  };
+      transitionToDashboard(); // Use Active Pruning
+  }, [appData, transitionToDashboard]);
   
-  // [Modified] Create & Auto-Start
+  const handleDiscard = useCallback(() => {
+      if (appData.activeTemplate) {
+          appData.discardSession(appData.activeTemplate.id);
+          transitionToDashboard(); // Use Active Pruning
+      }
+  }, [appData, transitionToDashboard]);
+
   const handleTemplateSave = async (template: GameTemplate) => {
       await appData.saveTemplate(template);
-      
-      // Auto-start session with intelligent defaults
-      // Priority: 1. Previous session count (if valid) 2. Template preference 3. Default 4
       const defaultCount = appData.sessionPlayerCount || template.lastPlayerCount || 4;
       
       await appData.startSession(template, defaultCount, {
-          startTimeStr: undefined, // Will default to now
+          startTimeStr: undefined, 
           scoringRule: template.defaultScoringRule || 'HIGHEST_WINS'
       });
       
       setView(AppView.ACTIVE_SESSION);
-      setEditorInitialName(undefined); // Clear prefilled name after save
+      setEditorInitialName(undefined); 
   };
   
   const handleBatchImport = (templates: GameTemplate[]) => {
@@ -350,11 +420,9 @@ const App: React.FC = () => {
       setView(AppView.HISTORY_REVIEW);
   };
 
-  // Helper for history view exit (triggered by internal back button, not browser back)
   const handleHistoryExit = () => {
-      isExitingSession.current = true;
       appData.viewHistory(null); 
-      setView(AppView.DASHBOARD);
+      transitionToDashboard(); // Use Active Pruning
   };
 
   return (
@@ -372,26 +440,21 @@ const App: React.FC = () => {
           <p className="text-slate-400 text-sm">此應用程式在手機上僅支援直式操作，以獲得最佳體驗。</p>
       </div>
 
-      {/* 
-        STACK ARCHITECTURE:
-        Dashboard is always present in DOM to preserve state/scroll.
-        It is hidden via CSS when not active.
-      */}
       <div className={`absolute inset-0 z-0 flex flex-col ${view !== AppView.DASHBOARD ? 'invisible pointer-events-none' : ''}`}>
         <Dashboard 
-          isVisible={view === AppView.DASHBOARD} // Pass visibility for optimization
+          isVisible={view === AppView.DASHBOARD} 
           userTemplates={appData.templates}
-          userTemplatesCount={appData.userTemplatesCount} // Pass Count
+          userTemplatesCount={appData.userTemplatesCount} 
           systemOverrides={appData.systemOverrides}
           systemTemplates={appData.systemTemplates}
-          systemTemplatesCount={appData.systemTemplatesCount} // Pass Count
+          systemTemplatesCount={appData.systemTemplatesCount} 
           pinnedIds={appData.pinnedIds}
           newBadgeIds={appData.newBadgeIds}
           activeSessionIds={appData.activeSessionIds}
           historyRecords={appData.historyRecords}
-          historyCount={appData.historyCount} // Pass Count
-          searchQuery={appData.searchQuery} // Pass search query
-          setSearchQuery={appData.setSearchQuery} // Pass search query setter
+          historyCount={appData.historyCount} 
+          searchQuery={appData.searchQuery} 
+          setSearchQuery={appData.setSearchQuery} 
           themeMode={appData.themeMode} 
           onToggleTheme={appData.toggleTheme} 
           onTemplateSelect={initSetup}
@@ -400,7 +463,7 @@ const App: React.FC = () => {
           onClearAllActiveSessions={appData.clearAllActiveSessions}
           getSessionPreview={appData.getSessionPreview}
           onTemplateCreate={(name) => {
-              setEditorInitialName(name); // Set prefilled name if provided
+              setEditorInitialName(name); 
               setView(AppView.TEMPLATE_CREATOR);
           }}
           onTemplateDelete={appData.deleteTemplate}
@@ -430,12 +493,11 @@ const App: React.FC = () => {
                   setEditorInitialName(undefined);
               }}
               allTemplates={[...appData.systemTemplates, ...appData.templates]}
-              initialName={editorInitialName} // Pass prefilled name
+              initialName={editorInitialName} 
             />
         </div>
       )}
 
-      {/* SessionView z-index increased to z-40 to be higher than DashboardHeader (z-30) */}
       {view === AppView.ACTIVE_SESSION && appData.currentSession && appData.activeTemplate && (
         <div className="absolute inset-0 z-40 bg-slate-900 animate-in fade-in duration-300">
             <SessionView 
@@ -443,7 +505,7 @@ const App: React.FC = () => {
               session={appData.currentSession} 
               template={appData.activeTemplate} 
               playerHistory={appData.playerHistory}
-              locationHistory={appData.locationHistory} // [New] Pass location history
+              locationHistory={appData.locationHistory} 
               zoomLevel={zoomLevel}
               baseImage={appData.sessionImage} 
               onUpdateSession={appData.updateSession}
@@ -452,11 +514,8 @@ const App: React.FC = () => {
               onResetScores={appData.resetSessionScores}
               onUpdateTemplate={appData.updateActiveTemplate}
               onExit={handleExitSession}
-              onSaveToHistory={handleSaveToHistory} // [Updated] Use unified handler
-              onDiscard={() => {
-                  appData.discardSession(appData.activeTemplate!.id);
-                  setView(AppView.DASHBOARD);
-              }}
+              onSaveToHistory={handleSaveToHistory} 
+              onDiscard={handleDiscard}
             />
         </div>
       )}
