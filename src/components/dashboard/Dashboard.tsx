@@ -11,6 +11,7 @@ import { useAppData } from '../../hooks/useAppData';
 import { useSwipe } from '../../hooks/useSwipe'; 
 import { usePullAction } from '../../hooks/usePullAction'; 
 import { useTranslation } from '../../i18n';
+import { useModalBackHandler } from '../../hooks/useModalBackHandler';
 
 // Sub Components
 import DashboardHeader from './parts/DashboardHeader';
@@ -156,6 +157,16 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   
   // --- Secret Inspector State ---
   const [showInspector, setShowInspector] = useState(false);
+  
+  // --- Hook Integration: Handle Back Button for Modals ---
+  useModalBackHandler(!!templateToDelete, () => setTemplateToDelete(null), 'delete-template');
+  useModalBackHandler(!!sessionToDelete, () => setSessionToDelete(null), 'delete-session');
+  useModalBackHandler(!!historyToDelete, () => setHistoryToDelete(null), 'delete-history');
+  useModalBackHandler(showClearAllConfirm, () => setShowClearAllConfirm(false), 'clear-all');
+  useModalBackHandler(!!restoreTarget, () => setRestoreTarget(null), 'restore-template');
+  useModalBackHandler(showInstallGuide, () => setShowInstallGuide(false), 'install-guide');
+  useModalBackHandler(showInspector, () => setShowInspector(false), 'inspector');
+
   // Refs for gesture logic
   const debugTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const debugTouchStartRef = useRef<number>(0);
@@ -196,6 +207,26 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   const systemTemplatesToShow = systemTemplates.filter(t => !pinnedIds.includes(t.id));
 
   // --- Handlers ---
+
+  // [New] Local Quick Create Logic (Fixes "Function not implemented correctly" issue)
+  const handleLocalQuickCreate = (name: string) => {
+      const trimmedName = name.trim();
+      if (!trimmedName) return;
+
+      const newTemplate: GameTemplate = {
+          id: generateId(),
+          name: trimmedName,
+          columns: [], // Empty columns = Simple Mode
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+      };
+
+      // 1. Save to DB immediately
+      onTemplateSave(newTemplate); 
+      
+      // 2. Open Setup Modal immediately (This starts the "Score" flow)
+      onTemplateSelect(newTemplate); 
+  };
 
   const handleHeaderCloudClick = async () => {
       if (viewMode === 'history') {
@@ -522,12 +553,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
                         </div>
                         {isUserLibOpen && (
                             <div className={`grid grid-cols-2 gap-3 ${animClass}`}>
-                                {userTemplatesCount === 0 && (
-                                    <SearchEmptyState 
-                                        searchQuery={searchQuery}
-                                        onCreate={onTemplateCreate}
-                                    />
-                                )}
                                 {userTemplatesToShow.map(t => (
                                     <GameCard 
                                         key={t.id}
@@ -543,6 +568,15 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
                                         isAutoConnectEnabled={isAutoConnectEnabled}
                                     />
                                 ))}
+                                {/* Search Empty State - Placed at the END of the list */}
+                                {searchQuery.length > 0 && (
+                                    <SearchEmptyState 
+                                        searchQuery={searchQuery}
+                                        onCreate={onTemplateCreate}
+                                        onQuickCreate={handleLocalQuickCreate} 
+                                        hasResults={userTemplatesToShow.length > 0} 
+                                    />
+                                )}
                             </div>
                         )}
                     </div>

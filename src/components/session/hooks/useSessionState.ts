@@ -61,9 +61,21 @@ export const useSessionState = (props: SessionViewProps) => {
     const initialEditMode = typeof window !== 'undefined' ? localStorage.getItem('app_edit_mode') !== 'false' : true;
     const savedDirection = (typeof window !== 'undefined' ? localStorage.getItem('sm_pref_advance_direction') : null) as 'horizontal' | 'vertical';
     
+    // [Feature] Auto-open first player editor for Zero-Column templates (Simple Counter Mode)
+    // Behavior: Open the panel fully (editingPlayerId set) but do NOT focus input (isInputFocused false)
+    // so the user sees the full interface (Color Palette, History).
+    let initialEditingPlayerId = null;
+    let initialTempName = '';
+    
+    if (props.template.columns.length === 0 && props.session.players.length > 0) {
+        const firstPlayer = props.session.players[0];
+        initialEditingPlayerId = firstPlayer.id;
+        initialTempName = firstPlayer.name;
+    }
+
     return {
       editingCell: null,
-      editingPlayerId: null,
+      editingPlayerId: initialEditingPlayerId,
       editingColumn: null,
       isEditingTitle: false,
       isGameSettingsOpen: false, // [New]
@@ -82,7 +94,7 @@ export const useSessionState = (props: SessionViewProps) => {
       advanceDirection: savedDirection || 'vertical', // Default to vertical if no preference saved
       overwriteMode: true,
       isInputFocused: false,
-      tempPlayerName: '',
+      tempPlayerName: initialTempName,
       isEditMode: initialEditMode,
       previewValue: 0,
     };
@@ -110,7 +122,11 @@ export const useSessionState = (props: SessionViewProps) => {
     if (uiState.editingPlayerId) {
         const p = props.session.players.find(pl => pl.id === uiState.editingPlayerId);
         if (p) {
-            setUiState(prev => ({ ...prev, tempPlayerName: p.name, isInputFocused: false }));
+            setUiState(prev => {
+                // Optimization: If name is already set (e.g. from init), don't update
+                if (prev.tempPlayerName === p.name) return prev;
+                return { ...prev, tempPlayerName: p.name, isInputFocused: false };
+            });
         }
     }
   }, [uiState.editingPlayerId, props.session.players]);

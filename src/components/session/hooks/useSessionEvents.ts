@@ -1,5 +1,5 @@
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { GameSession, GameTemplate, ScoreColumn, SavedListItem } from '../../../types';
 import { useSessionState } from './useSessionState';
 import { useSessionNavigation } from './useSessionNavigation';
@@ -45,75 +45,141 @@ export const useSessionEvents = (
     setEditingPlayerId: (id) => setUiState(prev => ({ ...prev, editingPlayerId: id, editingCell: null, previewValue: 0 })),
   });
 
+  // [Optimization] Use Ref to track latest UI State without triggering effect re-run
+  const uiStateRef = useRef(uiState);
+  const sessionRef = useRef(session);
+  const localUiStateRef = useRef(localUiState);
+  // [Fix] Track onExit in a ref to prevent listener re-binding when parent re-renders
+  const onExitRef = useRef(onExit);
+
+  useEffect(() => { uiStateRef.current = uiState; }, [uiState]);
+  useEffect(() => { sessionRef.current = session; }, [session]);
+  useEffect(() => { localUiStateRef.current = localUiState; }, [localUiState]);
+  useEffect(() => { onExitRef.current = onExit; }, [onExit]);
+
   // --- Back Button Logic (Stack Priority) ---
   useEffect(() => {
-    const handleSessionBackPress = () => {
+    const handleSessionBackPress = (e: Event) => {
+      const currentUi = uiStateRef.current;
+      const currentSession = sessionRef.current;
+      const currentLocalUi = localUiStateRef.current;
+
       // 0. Photo Preview (Highest Priority - Local State)
-      if (localUiState?.isPhotoPreviewOpen) {
-          localUiState.onClosePhotoPreview();
+      if (currentLocalUi?.isPhotoPreviewOpen) {
+          currentLocalUi.onClosePhotoPreview();
+          e.stopImmediatePropagation(); // Critical: Stop bubbling to background editors
+          return;
+      }
+
+      // [New] 0.1 General Camera Overlay
+      if (currentUi.isGeneralCameraOpen) {
+          setUiState(p => ({ ...p, isGeneralCameraOpen: false }));
+          e.stopImmediatePropagation();
+          return;
+      }
+
+      // [New] 0.2 Texture Mapper (Grid Editor)
+      if (currentUi.isTextureMapperOpen) {
+          setUiState(p => ({ ...p, isTextureMapperOpen: false }));
+          e.stopImmediatePropagation();
+          return;
+      }
+
+      // [New] 0.3 Scanner (Photo Rectification)
+      if (currentUi.isScannerOpen) {
+          setUiState(p => ({ ...p, isScannerOpen: false }));
+          e.stopImmediatePropagation();
           return;
       }
 
       // 0.5 Game Settings Modal (New High Priority)
-      if (uiState.isGameSettingsOpen) {
+      if (currentUi.isGameSettingsOpen) {
           setUiState(p => ({ ...p, isGameSettingsOpen: false }));
+          e.stopImmediatePropagation();
           return;
       }
 
+      // --- Modals above Column Editor ---
+      
+      // 9.5 Delete Column Confirmation (Moved Up)
+      // This MUST be checked before editingColumn to prevent the editor from closing instead of the modal
+      if (currentUi.columnToDelete) {
+          setUiState(p => ({ ...p, columnToDelete: null }));
+          e.stopImmediatePropagation();
+          return;
+      }
+
+      // 6. Add Column Modal (Moved Up)
+      if (currentUi.isAddColumnModalOpen) { 
+          setUiState(p => ({ ...p, isAddColumnModalOpen: false })); 
+          e.stopImmediatePropagation();
+          return; 
+      }
+
+      // --- Column Editor ---
+
       // 1. Column Editor (Let it handle itself if implemented, but strictly we can guard here)
-      if (uiState.editingColumn) { return; }
+      // If the editor is open, we stop propagation so it can handle its own internal back press (check changes)
+      if (currentUi.editingColumn) { 
+          // Do nothing, let ColumnConfigEditor's listener handle it.
+          // BUT, we should 'return' so we don't proceed to lower checks.
+          return; 
+      }
+
+      // --- Other Modals ---
 
       // 2. Image Upload Modal (Missing Image / Manual Upload)
-      if (uiState.isImageUploadModalOpen) {
+      if (currentUi.isImageUploadModalOpen) {
           setUiState(p => ({ ...p, isImageUploadModalOpen: false }));
+          e.stopImmediatePropagation();
           return;
       }
 
       // 3. Photo Gallery
-      if (uiState.isPhotoGalleryOpen) {
+      if (currentUi.isPhotoGalleryOpen) {
           setUiState(p => ({ ...p, isPhotoGalleryOpen: false }));
+          e.stopImmediatePropagation();
           return;
       }
 
       // 4. Session Exit Confirmation Modal
-      if (uiState.isSessionExitModalOpen) {
+      if (currentUi.isSessionExitModalOpen) {
           setUiState(p => ({ ...p, isSessionExitModalOpen: false }));
+          e.stopImmediatePropagation();
           return;
       }
 
       // 5. Share Menu
-      if (uiState.showShareMenu) { 
+      if (currentUi.showShareMenu) { 
           setUiState(p => ({ ...p, showShareMenu: false })); 
-          return; 
-      }
-
-      // 6. Add Column Modal
-      if (uiState.isAddColumnModalOpen) { 
-          setUiState(p => ({ ...p, isAddColumnModalOpen: false })); 
+          e.stopImmediatePropagation();
           return; 
       }
 
       // 7. Screenshot Modal
-      if (uiState.screenshotModal.isOpen) { 
+      if (currentUi.screenshotModal.isOpen) { 
           setUiState(p => ({ ...p, screenshotModal: { ...p.screenshotModal, isOpen: false } })); 
+          e.stopImmediatePropagation();
           return; 
       }
 
       // 8. Input Panel (Editing Cell/Player)
-      if (uiState.editingCell || uiState.editingPlayerId) {
+      if (currentUi.editingCell || currentUi.editingPlayerId) {
         setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null, previewValue: 0 }));
+        e.stopImmediatePropagation();
         return;
       }
 
       // 9. Reset Confirmation
-      if (uiState.showResetConfirm) {
+      if (currentUi.showResetConfirm) {
           setUiState(p => ({ ...p, showResetConfirm: false }));
+          e.stopImmediatePropagation();
           return;
       }
 
       // 10. Default: Open Exit Confirmation
       // Check if we need to confirm or just exit
-      const hasData = session.players.some((p, index) => {
+      const hasData = currentSession.players.some((p, index) => {
           // A. Has Scores
           if (Object.keys(p.scores).length > 0) return true;
           
@@ -134,17 +200,20 @@ export const useSessionEvents = (
           return false;
       });
 
-      const hasPhotos = (session.photos && session.photos.length > 0);
+      const hasPhotos = (currentSession.photos && currentSession.photos.length > 0);
 
       if (hasData || hasPhotos) {
           setUiState(p => ({ ...p, isSessionExitModalOpen: true }));
       } else {
-          onExit();
+          onExitRef.current(); // Use Ref
       }
     };
-    window.addEventListener('app-back-press', handleSessionBackPress);
-    return () => window.removeEventListener('app-back-press', handleSessionBackPress);
-  }, [uiState, onExit, setUiState, session.players, session.photos, localUiState]);
+    
+    // [Important] Use capture phase to intercept before children (like ColumnConfigEditor) 
+    // IF we are handling a high-priority modal.
+    window.addEventListener('app-back-press', handleSessionBackPress, { capture: true });
+    return () => window.removeEventListener('app-back-press', handleSessionBackPress, { capture: true });
+  }, [setUiState]); // Removed onExit to keep listener stable
 
 
   // --- Event Handlers ---
