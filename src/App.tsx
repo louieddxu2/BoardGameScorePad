@@ -223,13 +223,21 @@ const App: React.FC = () => {
       const targetDepth = getTargetHistoryDepth(view, pendingTemplate !== null);
 
       if (historyWallDepth.current < targetDepth) {
-          const needed = targetDepth - historyWallDepth.current;
-          const baseTime = performance.now();
-          
-          for (let i = 0; i < needed; i++) {
-              window.history.pushState({ wallSignature: `${baseTime}-${i}-${Math.random()}` }, '');
+          let countToAdd = targetDepth - historyWallDepth.current;
+
+          // [Update] For high-risk views (Session/History), replenish incrementally (1 at a time)
+          // instead of filling immediately. This creates a "regenerating shield" feel.
+          if (view === AppView.ACTIVE_SESSION || view === AppView.HISTORY_REVIEW) {
+              countToAdd = 1;
           }
-          historyWallDepth.current = targetDepth;
+
+          if (countToAdd > 0) {
+              const baseTime = performance.now();
+              for (let i = 0; i < countToAdd; i++) {
+                  window.history.pushState({ wallSignature: `${baseTime}-${i}-${Math.random()}` }, '');
+              }
+              historyWallDepth.current += countToAdd;
+          }
       }
   }, [view, pendingTemplate]);
 
@@ -319,7 +327,7 @@ const App: React.FC = () => {
          handled = true;
       }
       if (historyWallDepth.current === 0) {
-       showToast({ message: tApp('msg_press_again_to_exit'), type: 'info', duration: 2000 });
+       //showToast({ message: tApp('msg_press_again_to_exit'), type: 'info', duration: 2000 });
       }
     };
 
