@@ -230,6 +230,9 @@ export class ScorePadDatabase extends Dexie {
     (this as any).version(16).stores({
         sessions: 'id, templateId, startTime, lastUpdatedAt, status' // schema unchanged in Dexie if not indexing new field, but version bump enforces clean state
     });
+
+    // Version 17: Release Bump (Ensure Clean State)
+    (this as any).version(17).stores({});
   }
 }
 

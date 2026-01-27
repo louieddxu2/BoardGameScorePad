@@ -4,7 +4,7 @@ export const cloudOnboardingTranslations = {
     // Letter / Onboarding
     greeting: "你好～",
     p1: "感謝你使用此 App，雲端功能其實是不必要的，但如果你有「多裝置使用」、「轉移裝置」的需求，或單純覺得「備份比較安心」的話，可以啟用這個功能，有「一鍵上傳/下載」的功能，可以將本機端的所有儲存資料都上傳到你自己的 Google Drive 裡面。",
-    p2: "此 App 徵詢的權限只有在你的 Google Drive 裡新增/刪除「由此 App 所建立的檔案」，實際上會創建一個名為 BoardGameScorePad 資料夾來存放所有東西，拍攝的照片也可以在對應的歷史紀錄裡找到。",
+    p2: "此 App 徵詢的權限只有在你的 Google Drive 裡讀取/更改「由此 App 所建立的檔案」，實際上會創建一個名為 BoardGameScorePad 資料夾來存放所有東西，拍攝的照片也可以在對應的歷史紀錄裡找到。",
     signature: "東東(黃紹東)",
 
     // UI Elements
