@@ -15,6 +15,20 @@ import { useAppQueries } from './useAppQueries';
 import { useSessionManager } from './useSessionManager';
 import { useLibrary } from './useLibrary'; 
 
+// --- Storage Helpers (Synchronous) ---
+
+function loadFromStorage<T>(key: string, fallback: T, migrateFn?: (data: any) => T): T {
+    try {
+        const item = localStorage.getItem(key);
+        if (!item) return fallback;
+        const parsed = JSON.parse(item);
+        return migrateFn ? migrateFn(parsed) : parsed;
+    } catch (e) {
+        console.error(`Error loading ${key} from storage`, e);
+        return fallback;
+    }
+}
+
 export const useAppData = () => {
   const { showToast } = useToast();
   const [isDbReady, setIsDbReady] = useState(false);
