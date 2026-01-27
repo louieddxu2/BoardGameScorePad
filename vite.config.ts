@@ -1,3 +1,4 @@
+
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -19,6 +20,8 @@ export default defineConfig(({ command }) => ({
     }
   ],
   build: {
+    // 提高警告門檻至 1000kB，避免因第三方套件過大而頻繁警告
+    chunkSizeWarningLimit: 1000, 
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -28,13 +31,16 @@ export default defineConfig(({ command }) => ({
               return 'utils-vendor';
             }
             // 獨立打包 lucide-react (圖示庫)
-            // 注意：必須在檢查 react 之前檢查，因為名稱包含 react
             if (id.includes('lucide-react')) {
               return 'icons-vendor';
             }
             // 獨立打包 React 核心 (最穩定，幾乎不變動)
             if (id.includes('react') || id.includes('react-dom')) {
               return 'react-vendor';
+            }
+            // [新增] 獨立打包 Dexie (資料庫核心)
+            if (id.includes('dexie')) {
+              return 'db-vendor';
             }
           }
         }
