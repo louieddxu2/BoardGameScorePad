@@ -5,7 +5,8 @@ import { GameTemplate, GameSession } from '../types';
 import { generateId } from './idGenerator';
 
 // 定義當前內建資料庫的版本
-const CURRENT_BUILTIN_VERSION = 5; 
+// [Update] Bumped to 6 to force refresh of built-in templates
+const CURRENT_BUILTIN_VERSION = 6; 
 
 export const migrateFromLocalStorage = async () => {
   const MIGRATION_KEY = 'sm_migration_v1_done';
