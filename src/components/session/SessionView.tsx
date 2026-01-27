@@ -1,40 +1,68 @@
 
-import React, { useEffect, useCallback } from 'react';
-import { GameSession, GameTemplate } from '../../types';
+import React, { useCallback, useRef, useMemo } from 'react';
+import { GameSession, GameTemplate, SavedListItem } from '../../types';
 import { useSessionState, ScreenshotLayout } from './hooks/useSessionState';
 import { useSessionEvents } from './hooks/useSessionEvents';
+import { useSessionMedia } from './hooks/useSessionMedia';
 import { useToast } from '../../hooks/useToast';
+import { useTranslation } from '../../i18n';
 
 // Parts
 import SessionHeader from './parts/SessionHeader';
 import ScoreGrid from './parts/ScoreGrid';
 import TotalsBar from './parts/TotalsBar';
 import InputPanel from './parts/InputPanel';
-// Removed: ScreenshotView import (now handled by Modal)
-
 // Modals
+import ScreenshotModal from './modals/ScreenshotModal';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import ColumnConfigEditor from '../shared/ColumnConfigEditor';
 import AddColumnModal from './modals/AddColumnModal';
-import ScreenshotModal from './modals/ScreenshotModal';
+import SessionExitModal from './modals/SessionExitModal';
+import PhotoGalleryModal from './modals/PhotoGalleryModal';
+import SessionBackgroundModal from './modals/SessionBackgroundModal';
+import SessionImageFlow from './SessionImageFlow'; 
+import CameraView from '../scanner/CameraView'; 
+import GameSettingsEditor from '../shared/GameSettingsEditor'; // [New Import]
 
 interface SessionViewProps {
   session: GameSession;
   template: GameTemplate;
-  playerHistory: string[];
+  playerHistory: SavedListItem[]; 
+  locationHistory?: SavedListItem[]; // [New Prop]
   zoomLevel: number;
+  baseImage: string | null; 
   onUpdateSession: (session: GameSession) => void;
   onUpdateTemplate: (template: GameTemplate) => void;
   onUpdatePlayerHistory: (name: string) => void;
-  onExit: () => void;
+  onUpdateImage: (img: string | Blob | null) => void; 
+  onExit: (location?: string) => void; // Updated
   onResetScores: () => void;
+  onSaveToHistory: (location?: string) => void; // [Updated] Unified save handler
+  onDiscard: () => void; 
 }
 
 const SessionView: React.FC<SessionViewProps> = (props) => {
-  const { session, template, zoomLevel } = props;
+  const { session, template, zoomLevel, baseImage, onUpdateTemplate } = props;
+  const { t } = useTranslation();
 
   const sessionState = useSessionState(props);
+  const { setUiState } = sessionState;
+
+  // No special local state needed for photo preview anymore
   const eventHandlers = useSessionEvents(props, sessionState);
+  
+  // Media Logic
+  const media = useSessionMedia({
+      session,
+      template,
+      baseImage,
+      onUpdateSession: props.onUpdateSession,
+      onUpdateTemplate: props.onUpdateTemplate,
+      onUpdateImage: props.onUpdateImage,
+      setUiState,
+      isEditMode: sessionState.uiState.isEditMode
+  });
+
   const { showToast } = useToast();
   
   const {
@@ -43,84 +71,120 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     editingColumn,
     isEditingTitle,
     showResetConfirm,
-    showExitConfirm,
+    isSessionExitModalOpen,
     columnToDelete,
     isAddColumnModalOpen,
     showShareMenu,
     screenshotModal,
     isInputFocused,
+    isEditMode, 
+    previewValue,
+    isPhotoGalleryOpen,
+    isImageUploadModalOpen,
+    isScannerOpen,
+    isTextureMapperOpen,
+    isGeneralCameraOpen,
+    isGameSettingsOpen // [New]
   } = sessionState.uiState;
-
-  const { setUiState } = sessionState;
 
   const isPanelOpen = editingCell !== null || editingPlayerId !== null;
   
-  const winners = session.players
-    .filter(p => p.totalScore === Math.max(...session.players.map(pl => pl.totalScore)))
-    .map(p => p.id);
+  // Winners Logic
+  const rule = session.scoringRule || 'HIGHEST_WINS';
+  let winners: string[] = [];
+
+  if (rule === 'COOP' || rule === 'COOP_NO_SCORE') {
+      // Co-op Mode: All win unless someone is forced lost
+      const anyForcedLost = session.players.some(p => p.isForceLost);
+      if (!anyForcedLost) {
+          winners = session.players.map(p => p.id);
+      }
+      // If anyone is forced lost, winners is empty (everyone loses)
+  } else {
+      // Competitive Mode
+      const validPlayers = session.players.filter(p => !p.isForceLost);
+      
+      if (validPlayers.length > 0) {
+          let targetScore: number;
+          if (rule === 'HIGHEST_WINS') {
+              targetScore = Math.max(...validPlayers.map(pl => pl.totalScore));
+          } else if (rule === 'LOWEST_WINS') {
+              targetScore = Math.min(...validPlayers.map(pl => pl.totalScore));
+          } else {
+              targetScore = Math.max(...validPlayers.map(pl => pl.totalScore));
+          }
+          const candidates = validPlayers.filter(p => p.totalScore === targetScore);
+          const hasTieBreaker = candidates.some(p => p.tieBreaker);
+          if (hasTieBreaker) {
+              winners = candidates.filter(p => p.tieBreaker).map(p => p.id);
+          } else {
+              winners = candidates.map(p => p.id);
+          }
+      }
+  }
   
-  // --- New Screenshot Handler (Opens Modal) ---
+  // Prepare Overlay Data for Photo Gallery
+  const overlayData = useMemo(() => ({
+      gameName: template.name,
+      date: session.startTime,
+      players: session.players,
+      winners: winners
+  }), [template.name, session.startTime, session.players, winners]);
+  
   const handleScreenshotRequest = useCallback((mode: 'full' | 'simple') => {
-    // Measure layout to ensure screenshot matches live grid
-    const itemHeaderEl = document.querySelector('#live-player-header-row > div:first-child') as HTMLElement;
-    const playerHeaderEls = document.querySelectorAll('[data-player-header-id]');
+    const playerHeaderRowEl = document.querySelector('#live-player-header-row') as HTMLElement;
+    const itemHeaderEl = playerHeaderRowEl?.querySelector('div:first-child') as HTMLElement;
+    const playerHeaderEls = playerHeaderRowEl?.querySelectorAll('[data-player-header-id]');
+    const totalsRowEl = document.querySelector('#live-totals-bar') as HTMLElement;
     
-    if (!itemHeaderEl || playerHeaderEls.length === 0) {
+    if (!playerHeaderRowEl || !itemHeaderEl || !playerHeaderEls || playerHeaderEls.length === 0) {
         showToast({ message: "無法測量佈局，截圖失敗。", type: 'error' });
         return;
     }
 
     const measuredLayout: ScreenshotLayout = {
         itemWidth: itemHeaderEl.offsetWidth,
-        playerWidths: {}
+        playerWidths: {},
+        playerHeaderHeight: playerHeaderRowEl.offsetHeight,
+        rowHeights: {},
+        totalRowHeight: totalsRowEl ? totalsRowEl.offsetHeight : undefined
     };
 
     playerHeaderEls.forEach(el => {
         const playerId = el.getAttribute('data-player-header-id');
-        if (playerId) {
-            measuredLayout.playerWidths[playerId] = (el as HTMLElement).offsetWidth;
-        }
+        if (playerId) measuredLayout.playerWidths[playerId] = (el as HTMLElement).offsetWidth;
     });
     
-    // Open the modal with the measured layout
+    template.columns.forEach(col => {
+      const rowEl = document.getElementById(`row-${col.id}`) as HTMLElement;
+      if (rowEl) measuredLayout.rowHeights[col.id] = rowEl.offsetHeight;
+    });
+
     setUiState(p => ({ 
         ...p, 
-        showShareMenu: false,
-        screenshotModal: {
-            isOpen: true,
-            initialMode: mode,
-            layout: measuredLayout
-        }
+        showShareMenu: false, 
+        editingCell: null,
+        editingPlayerId: null,
+        previewValue: 0,
+        screenshotModal: { isOpen: true, mode, layout: measuredLayout } 
     }));
 
-  }, [setUiState, showToast]);
+  }, [setUiState, showToast, template.columns]);
 
-  // --- Scroll Synchronization ---
-  useEffect(() => {
+  // Sync Scroll & Width Observers (same as before)
+  React.useEffect(() => {
     const grid = sessionState.tableContainerRef.current;
     const bar = sessionState.totalBarScrollRef.current;
-
     if (!grid || !bar) return;
-
-    const handleScroll = () => {
-      if (bar.scrollLeft !== grid.scrollLeft) {
-          bar.scrollLeft = grid.scrollLeft;
-      }
-    };
-
+    const handleScroll = () => { if (bar.scrollLeft !== grid.scrollLeft) bar.scrollLeft = grid.scrollLeft; };
     grid.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      grid.removeEventListener('scroll', handleScroll);
-    };
+    return () => grid.removeEventListener('scroll', handleScroll);
   }, [sessionState.tableContainerRef, sessionState.totalBarScrollRef]);
 
-  // --- Width Synchronization ---
-  useEffect(() => {
+  React.useEffect(() => {
     const gridContent = sessionState.gridContentRef.current;
     const totalContent = sessionState.totalContentRef.current;
-
     if (!gridContent || !totalContent) return;
-
     const observer = new ResizeObserver((entries) => {
       window.requestAnimationFrame(() => {
         for (const entry of entries) {
@@ -129,15 +193,11 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
              const stickyHeader = document.querySelector('#live-player-header-row > div:first-child') as HTMLElement;
              const headerOffset = stickyHeader ? stickyHeader.offsetWidth : 70;
              const newTotalWidth = `${Math.max(0, gridWidth - headerOffset)}px`;
-             
-             if (totalContent.style.width !== newTotalWidth) {
-                 totalContent.style.width = newTotalWidth;
-             }
+             if (totalContent.style.width !== newTotalWidth) totalContent.style.width = newTotalWidth;
           }
         }
       });
     });
-
     observer.observe(gridContent);
     return () => observer.disconnect();
   }, [sessionState.gridContentRef, sessionState.totalContentRef]);
@@ -146,18 +206,99 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   return (
     <div className="flex flex-col h-full bg-slate-900 text-slate-100 overflow-hidden relative">
       {/* --- Modals --- */}
-      <ConfirmationModal isOpen={showResetConfirm} title="確定重置？" message="此動作將清空所有已輸入的分數，且無法復原。" confirmText="確定重置" isDangerous={true} onCancel={() => setUiState(prev => ({ ...prev, showResetConfirm: false }))} onConfirm={eventHandlers.handleConfirmReset} />
-      <ConfirmationModal isOpen={showExitConfirm} title="確定要返回目錄嗎？" message="你會失去目前的計分內容(計分板架構會自動儲存)。" confirmText="離開" cancelText="取消" isDangerous={false} onCancel={() => setUiState(prev => ({ ...prev, showExitConfirm: false }))} onConfirm={props.onExit} />
-      <ConfirmationModal isOpen={!!columnToDelete} title="確定刪除此項目？" message="刪除後，所有玩家在該項目的分數將會遺失。" confirmText="確定刪除" isDangerous={true} onCancel={() => setUiState(prev => ({ ...prev, columnToDelete: null }))} onConfirm={eventHandlers.handleConfirmDeleteColumn} />
+      <ConfirmationModal 
+        isOpen={showResetConfirm} 
+        title={t('session_reset_confirm_title')} 
+        message={t('session_reset_confirm_msg')} 
+        confirmText={t('reset')} 
+        isDangerous={true} 
+        onCancel={() => setUiState(prev => ({ ...prev, showResetConfirm: false }))} 
+        onConfirm={eventHandlers.handleConfirmReset} 
+      />
+      <ConfirmationModal 
+        isOpen={!!columnToDelete} 
+        title={t('session_delete_col_title')} 
+        message={t('session_delete_col_msg')} 
+        confirmText={t('delete')} 
+        isDangerous={true} 
+        onCancel={() => setUiState(prev => ({ ...prev, columnToDelete: null }))} 
+        onConfirm={eventHandlers.handleConfirmDeleteColumn} 
+      />
+      
+      {/* Exit Modal */}
+      <SessionExitModal 
+        isOpen={isSessionExitModalOpen}
+        onClose={() => setUiState(p => ({ ...p, isSessionExitModalOpen: false }))}
+        onSaveActive={(loc) => props.onExit(loc)} // Pass location back
+        onSaveHistory={props.onSaveToHistory}
+        onDiscard={props.onDiscard} 
+        locationHistory={props.locationHistory} 
+        initialLocation={session.location} // Pass current session location
+      />
+
+      {/* Photo Gallery Modal */}
+      <PhotoGalleryModal 
+        isOpen={isPhotoGalleryOpen}
+        onClose={() => setUiState(p => ({ ...p, isPhotoGalleryOpen: false }))}
+        photoIds={session.photos || []}
+        onUploadPhoto={media.openPhotoLibrary}
+        onTakePhoto={media.openCamera} // This now triggers custom camera overlay
+        onDeletePhoto={media.handleDeletePhoto}
+        overlayData={overlayData} // Pass context for score overlay
+      />
+
+      {/* [New] General Camera Overlay */}
+      {isGeneralCameraOpen && (
+          <CameraView 
+              onCapture={media.handleCameraBatchCapture}
+              onClose={() => setUiState(p => ({ ...p, isGeneralCameraOpen: false }))}
+              singleShot={false} // Enable multi-shot mode
+          />
+      )}
+
+      {/* Image Processing Flow (Scanner & Texture Mapper) */}
+      <SessionImageFlow 
+          uiState={sessionState.uiState}
+          setUiState={setUiState}
+          template={template}
+          baseImage={baseImage}
+          onScannerConfirm={media.handleScannerConfirm}
+          onUpdateTemplate={onUpdateTemplate}
+      />
+
+      {/* Background Settings Modal */}
+      <SessionBackgroundModal 
+          isOpen={isImageUploadModalOpen && !isScannerOpen && !isTextureMapperOpen}
+          onClose={() => setUiState(p => ({ ...p, isImageUploadModalOpen: false }))}
+          hasCloudImage={!!template.cloudImageId}
+          isConnected={media.isConnected}
+          onCloudDownload={media.handleCloudDownload}
+          onScannerCamera={media.openScannerCamera}
+          onUploadClick={media.openBackgroundUpload}
+          onRemoveBackground={media.handleRemoveBackground}
+          fileInputRef={media.fileInputRef}
+          onFileChange={media.handleFileUpload}
+      />
+
+      {/* Game Settings Editor (New) */}
+      {isGameSettingsOpen && (
+          <GameSettingsEditor 
+              template={template}
+              onSave={eventHandlers.handleSaveGameSettings}
+              onClose={() => setUiState(p => ({ ...p, isGameSettingsOpen: false }))}
+          />
+      )}
 
       {editingColumn && (
         <ColumnConfigEditor 
           column={editingColumn} 
+          allColumns={template.columns} 
           onSave={eventHandlers.handleSaveColumn} 
           onDelete={() => {
               setUiState(prev => ({ ...prev, columnToDelete: editingColumn.id }));
           }} 
-          onClose={() => setUiState(prev => ({...prev, editingColumn: null}))} 
+          onClose={() => setUiState(prev => ({...prev, editingColumn: null}))}
+          baseImage={baseImage || undefined} 
         />
       )}
 
@@ -170,31 +311,44 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         />
       )}
 
-      {screenshotModal.isOpen && (
-          <ScreenshotModal
-            isOpen={screenshotModal.isOpen}
-            initialMode={screenshotModal.initialMode}
-            layout={screenshotModal.layout}
-            session={session}
-            template={template}
-            zoomLevel={zoomLevel}
-            onClose={() => setUiState(p => ({ ...p, screenshotModal: { ...p.screenshotModal, isOpen: false } }))}
-          />
-      )}
+      {/* Hidden inputs for photos */}
+      <input ref={media.photoInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={media.handlePhotoSelect} />
+      <input ref={media.galleryInputRef} type="file" accept="image/*" className="hidden" onChange={media.handlePhotoSelect} />
 
       {/* --- Main UI --- */}
       <SessionHeader
         templateName={template.name}
         isEditingTitle={isEditingTitle}
         showShareMenu={showShareMenu}
-        screenshotActive={screenshotModal.isOpen}
-        onEditTitleToggle={(editing) => setUiState(prev => ({ ...prev, isEditingTitle: editing }))}
+        screenshotActive={screenshotModal.isOpen} 
+        isEditMode={isEditMode}
+        hasVisuals={!!template.globalVisuals} 
+        hasCloudImage={!!template.cloudImageId && !baseImage} 
+        onEditTitleToggle={(editing) => {
+            setUiState(prev => {
+                const newState = { ...prev, isEditingTitle: editing };
+                if (editing) {
+                    newState.editingCell = null;
+                    newState.editingPlayerId = null;
+                    newState.previewValue = 0;
+                }
+                return newState;
+            });
+        }}
         onTitleSubmit={eventHandlers.handleTitleSubmit}
         onAddColumn={() => setUiState(prev => ({ ...prev, isAddColumnModalOpen: true }))}
         onReset={() => setUiState(prev => ({ ...prev, showResetConfirm: true }))}
-        onExit={() => setUiState(prev => ({ ...prev, showExitConfirm: true }))}
+        onExit={() => {
+            window.dispatchEvent(new CustomEvent('app-back-press'));
+        }}
         onShareMenuToggle={(show) => setUiState(prev => ({...prev, showShareMenu: show}))}
         onScreenshotRequest={handleScreenshotRequest}
+        onToggleEditMode={() => setUiState(prev => ({ ...prev, isEditMode: !prev.isEditMode }))}
+        onUploadImage={() => setUiState(p => ({ ...p, isImageUploadModalOpen: true, showShareMenu: false }))} 
+        onCloudDownload={media.handleCloudDownload} 
+        onOpenGallery={() => setUiState(p => ({ ...p, isPhotoGalleryOpen: true, showShareMenu: false }))}
+        onTakePhoto={media.openCamera} // Direct call via media hook (sets both flags)
+        photoCount={session.photos?.length || 0}
       />
       
       <div 
@@ -219,9 +373,15 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           onCellClick={eventHandlers.handleCellClick}
           onPlayerHeaderClick={eventHandlers.handlePlayerHeaderClick}
           onColumnHeaderClick={eventHandlers.handleColumnHeaderClick}
-          onUpdateTemplate={props.onUpdateTemplate}
+          onUpdateTemplate={onUpdateTemplate}
+          onAddColumn={eventHandlers.handleAddBlankColumn} // Pass the handler
+          onOpenSettings={eventHandlers.handleOpenGameSettings} // [New] Pass handler
           scrollContainerRef={sessionState.tableContainerRef}
           contentRef={sessionState.gridContentRef}
+          baseImage={baseImage || undefined} 
+          isEditMode={isEditMode}
+          zoomLevel={zoomLevel}
+          previewValue={previewValue}
         />
       </div>
 
@@ -233,6 +393,12 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         scrollRef={sessionState.totalBarScrollRef}
         contentRef={sessionState.totalContentRef}
         isHidden={isInputFocused}
+        template={template}
+        baseImage={baseImage || undefined} 
+        editingCell={editingCell}
+        previewValue={previewValue}
+        onTotalClick={(playerId) => eventHandlers.handleCellClick(playerId, '__TOTAL__', { stopPropagation: () => {} } as any)}
+        zoomLevel={zoomLevel} 
       />
 
       <InputPanel
@@ -243,6 +409,18 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         playerHistory={props.playerHistory}
         onUpdateSession={props.onUpdateSession}
         onUpdatePlayerHistory={props.onUpdatePlayerHistory}
+      />
+
+      <ScreenshotModal 
+        isOpen={screenshotModal.isOpen}
+        onClose={() => setUiState(p => ({ ...p, screenshotModal: { ...p.screenshotModal, isOpen: false } }))}
+        initialMode={screenshotModal.mode}
+        session={session}
+        template={template}
+        zoomLevel={zoomLevel}
+        layout={screenshotModal.layout}
+        baseImage={baseImage || undefined}
+        customWinners={winners} 
       />
     </div>
   );

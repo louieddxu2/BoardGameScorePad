@@ -2,11 +2,14 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import './index.css'; 
-import '@fontsource/inter/400.css';
-import '@fontsource/inter/700.css';
-import '@fontsource/inter/900.css';
-import ErrorBoundary from './components/shared/ErrorBoundary';
+import ErrorBoundary from './src/components/shared/ErrorBoundary';
+import { ToastProvider } from './src/hooks/useToast';
+import { LanguageProvider } from './src/i18n'; // Import i18n provider
+import './src/index.css';
+
+// [Requirement] Force reset the cloud connection preference on App boot / Refresh.
+// This ensures that every time the user opens or refreshes the page, the auto-connect is disabled.
+localStorage.setItem('google_drive_auto_connect', 'false');
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -17,7 +20,11 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      <LanguageProvider>
+        <ToastProvider>
+          <App />
+        </ToastProvider>
+      </LanguageProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );

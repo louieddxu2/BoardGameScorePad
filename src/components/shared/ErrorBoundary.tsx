@@ -1,3 +1,4 @@
+
 import React, { ErrorInfo, ReactNode } from 'react';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
 
@@ -65,7 +66,8 @@ class ErrorBoundary extends React.Component<Props, State> {
       );
     }
 
-    return this.props.children;
+    // Explicit cast to any to avoid "Property 'props' does not exist" error in some environments
+    return (this as any).props.children;
   }
 }
 

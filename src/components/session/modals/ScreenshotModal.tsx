@@ -1,11 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Copy, Download, Share, Loader2, Image as ImageIcon, LayoutPanelLeft } from 'lucide-react';
 import { toBlob } from 'html-to-image';
 import { GameSession, GameTemplate } from '../../../types';
 import { ScreenshotLayout } from '../hooks/useSessionState';
 import ScreenshotView from '../parts/ScreenshotView';
 import { useToast } from '../../../hooks/useToast';
+import { getTouchDistance } from '../../../utils/ui';
 
 interface ScreenshotModalProps {
   isOpen: boolean;
@@ -15,12 +16,16 @@ interface ScreenshotModalProps {
   template: GameTemplate;
   zoomLevel: number;
   layout: ScreenshotLayout | null;
+  baseImage?: string; 
+  customWinners?: string[]; 
 }
 
 interface SnapshotCache {
   blob: Blob | null;
   url: string | null;
 }
+
+const PIXEL_RATIO = 2; // Generate image at 2x resolution
 
 const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   isOpen,
@@ -29,11 +34,12 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   session,
   template,
   zoomLevel,
-  layout
+  layout,
+  baseImage,
+  customWinners
 }) => {
   const [activeMode, setActiveMode] = useState<'full' | 'simple'>(initialMode);
   
-  // Cache state for both modes
   const [snapshots, setSnapshots] = useState<{
     full: SnapshotCache;
     simple: SnapshotCache;
@@ -43,11 +49,91 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   });
 
   const [isGenerating, setIsGenerating] = useState(false);
-  const { showToast } = useToast();
+  const [generationError, setGenerationError] = useState(false);
   
-  // Cleanup object URLs on unmount or close
+  // State to defer heavy DOM mounting
+  const [isTargetsMounted, setIsTargetsMounted] = useState(false);
+  
+  const { showToast } = useToast();
+
+  // --- Preview State ---
+  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+  
+  // We still keep this state to apply explicit width/height styles to the img tag to prevent layout thrashing
+  const [imgLogicalSize, setImgLogicalSize] = useState({ width: 0, height: 0 }); 
+  
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  
+  // Interaction Refs
+  const isDragging = useRef(false);
+  const lastPos = useRef({ x: 0, y: 0 });
+  const startPinchDist = useRef(0);
+  const startPinchScale = useRef(1);
+
+  // --- Reset / Fit Logic ---
+  const fitToScreen = useCallback(() => {
+      const container = containerRef.current;
+      const img = imgRef.current;
+
+      if (!container || !img) return;
+      
+      const naturalW = img.naturalWidth;
+      const naturalH = img.naturalHeight;
+
+      if (!naturalW || !naturalH) return; 
+
+      const logicalImgW = naturalW / PIXEL_RATIO;
+      const logicalImgH = naturalH / PIXEL_RATIO;
+
+      const containerW = container.clientWidth;
+      const containerH = container.clientHeight;
+
+      if (containerW === 0 || containerH === 0) return;
+
+      const scale = Math.min(containerW / logicalImgW, containerH / logicalImgH);
+
+      const x = (containerW - logicalImgW * scale) / 2;
+      const y = (containerH - logicalImgH * scale) / 2;
+
+      setTransform({ x, y, scale });
+  }, []);
+
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+      const img = e.currentTarget;
+      setImgLogicalSize({ 
+          width: img.naturalWidth / PIXEL_RATIO, 
+          height: img.naturalHeight / PIXEL_RATIO 
+      });
+      requestAnimationFrame(() => fitToScreen());
+  };
+
   useEffect(() => {
-    if (!isOpen) {
+      const container = containerRef.current;
+      if (!container || !isOpen) return;
+
+      const observer = new ResizeObserver(() => {
+          if (snapshots[activeMode].url) {
+              requestAnimationFrame(() => fitToScreen());
+          }
+      });
+      observer.observe(container);
+      return () => observer.disconnect();
+  }, [isOpen, activeMode, snapshots, fitToScreen]);
+
+  useEffect(() => {
+    if (isOpen) {
+        setActiveMode(initialMode);
+        setTransform({ x: 0, y: 0, scale: 1 });
+        setImgLogicalSize({ width: 0, height: 0 }); 
+        setGenerationError(false);
+        
+        setIsTargetsMounted(false);
+        const timer = setTimeout(() => {
+            setIsTargetsMounted(true);
+        }, 100); 
+        return () => clearTimeout(timer);
+    } else {
         if (snapshots.full.url) URL.revokeObjectURL(snapshots.full.url);
         if (snapshots.simple.url) URL.revokeObjectURL(snapshots.simple.url);
         
@@ -55,51 +141,55 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
             full: { blob: null, url: null },
             simple: { blob: null, url: null }
         });
-        setActiveMode(initialMode);
+        setIsTargetsMounted(false);
+        setGenerationError(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, initialMode]);
 
-  // Effect: Generate image for active mode if missing
   useEffect(() => {
-    if (!isOpen) return;
+      setImgLogicalSize({ width: 0, height: 0 });
+      if (isOpen) setGenerationError(false);
+  }, [activeMode, isOpen]);
+
+  // --- Generation Logic ---
+  useEffect(() => {
+    if (!isOpen || !isTargetsMounted) return; 
 
     const generateCurrentMode = async () => {
-        // If already cached, do nothing (instant switch)
         if (snapshots[activeMode].url) return;
 
+        setGenerationError(false);
         setIsGenerating(true);
-        // Delay to allow DOM render. Crucial.
-        await new Promise(r => setTimeout(r, 200));
+        
+        const renderDelay = baseImage ? 800 : 300; 
+        await new Promise(r => setTimeout(r, renderDelay));
 
         const targetId = `screenshot-target-${activeMode}`;
-        const target = document.getElementById(targetId);
+        const targetWrapper = document.getElementById(targetId);
 
-        if (!target) {
-            console.error(`Target ${targetId} not found`);
-            setIsGenerating(false);
-            return;
-        }
-        
-        // Ensure dimensions are valid
-        if (target.offsetWidth === 0 || target.offsetHeight === 0) {
-             console.error(`Target ${targetId} has 0 dimensions!`);
+        if (!targetWrapper) {
              setIsGenerating(false);
              return;
         }
 
         try {
-             // Force font load
-            const fontStyles = `normal ${16 * zoomLevel}px Inter`;
-            await document.fonts.load(fontStyles);
+            // Get precise dimensions from the wrapper
+            // max-content ensures this width is tight to the content
+            const rect = targetWrapper.getBoundingClientRect();
+            
+            // Use Math.ceil to avoid sub-pixel clipping
+            const width = Math.ceil(rect.width);
+            const height = Math.ceil(rect.height);
 
-            const blob = await toBlob(target, {
-                backgroundColor: '#0f172a',
-                pixelRatio: 2,
-                width: target.offsetWidth,
-                height: target.offsetHeight,
+            const blob = await toBlob(targetWrapper, {
+                backgroundColor: baseImage ? '#ffffff' : '#0f172a', 
+                pixelRatio: PIXEL_RATIO, 
+                width: width,
+                height: height,
                 style: { 
                     transform: 'none',
+                    margin: '0',
                     fontFamily: 'Inter, sans-serif'
                 }
             });
@@ -110,9 +200,12 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                     ...prev,
                     [activeMode]: { blob, url }
                 }));
+            } else {
+                throw new Error("Blob creation returned null");
             }
         } catch (err) {
             console.error("Screenshot generation failed", err);
+            setGenerationError(true);
             showToast({ message: "圖片產生失敗，請重試", type: 'error' });
         } finally {
             setIsGenerating(false);
@@ -121,7 +214,100 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
     generateCurrentMode();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, activeMode]);
+  }, [isOpen, activeMode, isTargetsMounted]); 
+
+  // --- Interaction Handlers ---
+
+  const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!snapshots[activeMode].url) return;
+    e.stopPropagation(); 
+    e.preventDefault(); 
+
+    const isTouch = 'touches' in e;
+    if (isTouch && (e as React.TouchEvent).touches.length === 2) {
+        startPinchDist.current = getTouchDistance((e as React.TouchEvent).touches);
+        startPinchScale.current = transform.scale;
+        isDragging.current = false;
+    } else {
+        isDragging.current = true;
+        const clientX = isTouch ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
+        const clientY = isTouch ? (e as React.TouchEvent).touches[0].clientY : (e as React.MouseEvent).clientY;
+        lastPos.current = { x: clientX, y: clientY };
+    }
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (!snapshots[activeMode].url || !containerRef.current) return;
+    e.stopPropagation();
+    
+    const scaleChange = -e.deltaY * 0.001;
+    const newScale = Math.max(0.1, Math.min(5, transform.scale * (1 + scaleChange)));
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const imgX = (mouseX - transform.x) / transform.scale;
+    const imgY = (mouseY - transform.y) / transform.scale;
+    
+    const newX = mouseX - (imgX * newScale);
+    const newY = mouseY - (imgY * newScale);
+
+    setTransform({ x: newX, y: newY, scale: newScale });
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const onMove = (e: MouseEvent | TouchEvent) => {
+        if (!isDragging.current && !('touches' in e && e.touches.length === 2)) return;
+        if (e.cancelable) e.preventDefault();
+
+        if ('touches' in e && e.touches.length === 2) {
+            const dist = getTouchDistance(e.touches);
+            if (startPinchDist.current > 0) {
+                const scaleFactor = dist / startPinchDist.current;
+                const newScale = Math.max(0.1, Math.min(5, startPinchScale.current * scaleFactor));
+                
+                if (containerRef.current) {
+                    const rect = containerRef.current.getBoundingClientRect();
+                    const cx = rect.width / 2;
+                    const cy = rect.height / 2;
+                    const imgCx = (cx - transform.x) / transform.scale;
+                    const imgCy = (cy - transform.y) / transform.scale;
+                    const newTx = cx - (imgCx * newScale);
+                    const newTy = cy - (imgCy * newScale);
+                    setTransform({ x: newTx, y: newTy, scale: newScale });
+                }
+            }
+        } else if (isDragging.current) {
+            const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+            const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+            
+            const dx = clientX - lastPos.current.x;
+            const dy = clientY - lastPos.current.y;
+            setTransform(prev => ({ ...prev, x: prev.x + dx, y: prev.y + dy }));
+            lastPos.current = { x: clientX, y: clientY };
+        }
+    };
+
+    const onUp = () => {
+        isDragging.current = false;
+        startPinchDist.current = 0;
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchend', onUp);
+    
+    return () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('touchmove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        window.removeEventListener('touchend', onUp);
+    };
+  }, [isOpen, transform]);
 
 
   const handleCopy = async () => {
@@ -172,50 +358,49 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
   if (!isOpen) return null;
 
   const currentPreviewUrl = snapshots[activeMode].url;
-  const showLoading = isGenerating && !currentPreviewUrl;
+  
+  const showImage = !!currentPreviewUrl;
+  const showError = !showImage && generationError;
+  const showLoading = !showImage && !showError;
 
   return (
-    // Backdrop with onClick to close
     <div 
         className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
         onClick={onClose}
     >
-      
       {/* 
-         Hidden container with BOTH views rendered simultaneously.
-         CRITICAL FIXES:
-         1. position fixed, but FAR OFF SCREEN (left: -200vw) so it doesn't block interactions.
-         2. top: 0 to ensure it's "in view" vertically for rendering engines if needed.
-         3. pointerEvents: none to double safety against clicks.
-         4. ScreenshotView now renders as static/absolute (removed fixed class inside ScreenshotView)
+        [Render Target Strategy: Off-screen Vertical]
+        1. Fixed at top: -10000px, left: 0 to ensure it is off-screen but respects normal document flow logic.
+        2. Width: max-content ensures it shrinks to fit the table exactly (preventing ghost width).
+        3. zIndex: -1 just in case.
       */}
-      <div style={{ position: 'fixed', left: '-200vw', top: 0, opacity: 0, pointerEvents: 'none' }}>
-         <ScreenshotView 
-            id="screenshot-target-full"
-            className="absolute top-0 left-0" // Explicit positioning within the hidden container
-            session={session}
-            template={template}
-            zoomLevel={zoomLevel}
-            mode="full"
-            layout={layout}
-         />
-         <ScreenshotView 
-            id="screenshot-target-simple"
-            className="absolute top-0 left-0"
-            session={session}
-            template={template}
-            zoomLevel={zoomLevel}
-            mode="simple"
-            layout={layout}
-         />
+      <div style={{ position: 'fixed', top: '-10000px', left: 0, width: 'max-content', height: 'max-content', zIndex: -1 }}>
+         {isTargetsMounted && (
+             <div 
+                id={`screenshot-target-${activeMode}`} 
+                style={{
+                    display: 'block', // Default block behavior inside max-content wrapper
+                    width: 'max-content' // Explicitly set max-content again on the wrapper just to be safe
+                }}
+             >
+                <ScreenshotView 
+                    session={session}
+                    template={template}
+                    zoomLevel={1} 
+                    mode={activeMode}
+                    layout={layout}
+                    baseImage={baseImage}
+                    customWinners={customWinners}
+                />
+             </div>
+         )}
       </div>
 
       {/* Main Modal Container */}
       <div 
         className="bg-slate-900 w-[95vw] h-[90vh] max-w-6xl rounded-2xl shadow-2xl border border-slate-800 flex flex-col relative"
-        onClick={e => e.stopPropagation()} // Prevent click-through closing
+        onClick={e => e.stopPropagation()} 
       >
-        
         {/* Header */}
         <div className="flex-none bg-slate-800 px-4 py-3 rounded-t-2xl border-b border-slate-700 flex items-center justify-between z-10">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -225,14 +410,14 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
             <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700">
                 <button 
                     onClick={() => setActiveMode('full')}
-                    disabled={isGenerating}
+                    disabled={showLoading}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${activeMode === 'full' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
                 >
                     <ImageIcon size={14} /> 完整版
                 </button>
                 <button 
                     onClick={() => setActiveMode('simple')}
-                    disabled={isGenerating}
+                    disabled={showLoading}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${activeMode === 'simple' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
                 >
                     <LayoutPanelLeft size={14} /> 簡潔版
@@ -243,26 +428,50 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
         </div>
 
         {/* Preview Area */}
-        <div className="flex-1 min-h-0 bg-slate-950 relative flex flex-col z-0">
-            <div className="flex-1 w-full h-full p-4 overflow-hidden flex items-center justify-center">
-                {showLoading ? (
-                    <div className="flex flex-col items-center gap-4 text-emerald-500 animate-in fade-in zoom-in duration-300">
+        <div className="flex-1 min-h-0 bg-slate-950 relative flex flex-col z-0 overflow-hidden">
+            <div 
+                ref={containerRef}
+                className="flex-1 w-full h-full relative overflow-hidden bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] touch-none cursor-grab active:cursor-grabbing"
+                onMouseDown={handlePointerDown}
+                onTouchStart={handlePointerDown}
+                onWheel={handleWheel}
+                onDoubleClick={() => fitToScreen()}
+            >
+                {showLoading && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-emerald-500 animate-in fade-in zoom-in duration-300 pointer-events-none">
                         <div className="relative">
                             <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full animate-pulse"></div>
                             <Loader2 size={48} className="animate-spin relative z-10" />
                         </div>
                         <span className="text-sm font-bold animate-pulse tracking-wider">正在繪製圖片...</span>
                     </div>
-                ) : currentPreviewUrl ? (
+                )}
+                
+                {showImage && (
                     <img 
-                        src={currentPreviewUrl} 
+                        ref={imgRef}
+                        src={currentPreviewUrl!} 
                         alt="Preview" 
-                        className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg shadow-2xl animate-in fade-in zoom-in-95 duration-200 border border-slate-800" 
+                        onLoad={handleImageLoad}
+                        style={{
+                            transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+                            transformOrigin: 'top left',
+                            transition: isDragging.current ? 'none' : 'transform 0.2s ease-out',
+                            willChange: 'transform',
+                            width: imgLogicalSize.width ? `${imgLogicalSize.width}px` : 'auto',
+                            height: imgLogicalSize.height ? `${imgLogicalSize.height}px` : 'auto',
+                            maxWidth: 'none',
+                            maxHeight: 'none'
+                        }}
+                        className="absolute top-0 left-0 block pointer-events-none select-none shadow-2xl origin-top-left"
+                        draggable={false}
                     />
-                ) : (
-                    <div className="flex flex-col items-center gap-2">
+                )}
+                
+                {showError && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none">
                         <span className="text-red-400 text-sm border border-red-900/50 bg-red-900/10 px-4 py-2 rounded-lg">預覽載入失敗</span>
-                        <button onClick={() => { setSnapshots(p => ({...p, [activeMode]: {url:null, blob:null}})); setActiveMode(m => m); }} className="text-xs text-slate-500 underline">重試</button>
+                        <button onClick={() => { setSnapshots(p => ({...p, [activeMode]: {url:null, blob:null}})); setActiveMode(m => m); }} className="text-xs text-slate-500 underline pointer-events-auto">重試</button>
                     </div>
                 )}
             </div>
@@ -270,15 +479,15 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
         {/* Actions Footer */}
         <div className="flex-none p-4 bg-slate-800 rounded-b-2xl border-t border-slate-700 flex justify-center gap-4 z-10">
-            <button onClick={handleCopy} disabled={isGenerating || !currentPreviewUrl} className="flex-1 max-w-[200px] flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+            <button onClick={handleCopy} disabled={showLoading} className="flex-1 max-w-[200px] flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 <Copy size={18} className="text-emerald-400" />
                 <span className="font-bold">複製</span>
             </button>
-            <button onClick={handleDownload} disabled={isGenerating || !currentPreviewUrl} className="flex-1 max-w-[200px] flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+            <button onClick={handleDownload} disabled={showLoading} className="flex-1 max-w-[200px] flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 <Download size={18} className="text-sky-400" />
                 <span className="font-bold">下載</span>
             </button>
-            <button onClick={handleShare} disabled={isGenerating || !currentPreviewUrl} className="flex-1 max-w-[200px] flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+            <button onClick={handleShare} disabled={showLoading} className="flex-1 max-w-[200px] flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 <Share size={18} className="text-indigo-400" />
                 <span className="font-bold">分享</span>
             </button>

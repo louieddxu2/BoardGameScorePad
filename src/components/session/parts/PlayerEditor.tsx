@@ -1,19 +1,22 @@
 
-import React from 'react';
-import { Player } from '../../../types';
-import { Palette, History, Info, ArrowRight, ArrowDown } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Player, SavedListItem } from '../../../types';
+import { Settings2, Ban, Flag } from 'lucide-react';
 import { COLORS } from '../../../colors';
 import { isColorDark } from '../../../utils/ui';
 
 interface PlayerEditorProps {
   player: Player;
-  playerHistory: string[];
+  playerHistory: SavedListItem[]; // [Update] Changed type
   tempName: string;
   setTempName: (name: string) => void;
   isInputFocused: boolean;
   setIsInputFocused: (focused: boolean) => void;
   onUpdatePlayerColor: (color: string) => void;
-  onNameSubmit: (playerId: string, newName: string, moveNext?: boolean) => void;
+  // [Update] Added linkedId optional param
+  onNameSubmit: (playerId: string, newName: string, moveNext?: boolean, linkedId?: string) => void;
+  onToggleStarter: (playerId: string) => void; 
+  supportedColors?: string[]; // [New] Prop
 }
 
 // This is the pure content provider component
@@ -26,7 +29,18 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
   setIsInputFocused,
   onUpdatePlayerColor,
   onNameSubmit,
+  onToggleStarter,
+  supportedColors
 }) => {
+
+  const sortedColors = useMemo(() => {
+      if (!supportedColors || supportedColors.length === 0) return COLORS;
+      
+      const preferred = supportedColors;
+      const remaining = COLORS.filter(c => !preferred.includes(c));
+      return [...preferred, ...remaining];
+  }, [supportedColors]);
+
   return (
     // This root div is KEY. It respects the layout contract by handling its own scrolling.
     <div className="h-full overflow-y-auto no-scrollbar" onClick={e => e.stopPropagation()}>
@@ -52,22 +66,50 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
         </div>
         {!isInputFocused && (
           <div className="flex-1 flex gap-2 min-h-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            {/* Color Palette */}
+            {/* Color Palette - Restored to 1/3 width */}
             <div className="w-1/3 bg-slate-800/50 rounded-xl p-2 overflow-y-auto no-scrollbar border border-slate-700/50">
-              <div className="text-[10px] text-slate-500 font-bold uppercase mb-2 flex items-center justify-center gap-1"><Palette size={10} /> 顏色</div>
               <div className="grid grid-cols-1 gap-2 justify-items-center">
-                {COLORS.map(c => {
-                  const isDark = isColorDark(c);
-                  return <button key={c} onClick={() => onUpdatePlayerColor(c)} className={`w-8 h-8 rounded-full shadow-lg border-2 transition-transform active:scale-90 ${player.color === c ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'} ${isDark ? 'ring-1 ring-white/50' : ''}`} style={{ backgroundColor: c }} />;
+                {sortedColors.map(c => {
+                  const isTransparent = c === 'transparent';
+                  const isDark = !isTransparent && isColorDark(c);
+                  
+                  return (
+                    <button 
+                        key={c} 
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => onUpdatePlayerColor(c)} 
+                        className={`w-8 h-8 rounded-full shadow-lg border-2 transition-transform active:scale-95 flex items-center justify-center relative ${player.color === c ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'} ${isDark ? 'ring-1 ring-white/50' : ''}`} 
+                        style={{ backgroundColor: isTransparent ? 'transparent' : c }}
+                        title={isTransparent ? "無色" : c}
+                    >
+                        {isTransparent && (
+                            <div className="w-full h-full rounded-full border border-slate-600 flex items-center justify-center bg-slate-800/50">
+                                <Ban size={14} className="text-slate-400" />
+                            </div>
+                        )}
+                    </button>
+                  );
                 })}
               </div>
             </div>
-            {/* History */}
-            <div className="w-2/3 bg-slate-800/50 rounded-xl border border-slate-700/50 flex flex-col">
-              <div className="p-2 text-[10px] text-slate-500 font-bold uppercase bg-slate-800/80 text-center flex items-center justify-center gap-1"><History size={10} /> 歷史</div>
+
+            {/* History - Restored to remaining 2/3 width */}
+            <div className="flex-1 bg-slate-800/50 rounded-xl border border-slate-700/50 flex flex-col min-w-0">
               <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-1">
-                {playerHistory.slice(0, 20).map((name, i) => (
-                  <button key={i} onClick={() => { setTempName(name); onNameSubmit(player.id, name, true); }} className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-emerald-900/30 hover:text-emerald-400 transition-colors truncate active:scale-95 bg-slate-800">{name}</button>
+                {playerHistory.slice(0, 20).map((item, i) => (
+                  <button 
+                    key={item.id || i} 
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => { 
+                        setTempName(item.name); 
+                        // [New Logic] Pass linked UUID from meta if available
+                        const linkedId = item.meta?.uuid;
+                        onNameSubmit(player.id, item.name, false, linkedId); 
+                    }} 
+                    className="w-full text-left px-2 py-1.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-emerald-900/30 hover:text-emerald-400 transition-colors truncate active:scale-95 bg-slate-800 border border-slate-700/50"
+                  >
+                    {item.name}
+                  </button>
                 ))}
                 {playerHistory.length === 0 && <div className="text-center text-xs text-slate-600 py-4">無紀錄</div>}
               </div>
@@ -79,19 +121,33 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
   );
 };
 
-// This is the named export for the sidebar info, now correctly located.
-export const PlayerEditorInfo: React.FC = () => (
+// Replaced PlayerEditorInfo with PlayerSettingsPanel
+const PlayerSettingsPanel: React.FC<{ player: Player, onToggleStarter: (id: string) => void }> = ({ player, onToggleStarter }) => (
     <div className="flex flex-col h-full text-slate-400 text-xs">
-        <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0">
-            <Info size={12} /> 編輯玩家
-        </div>
-        <div className="flex-1 overflow-y-auto no-scrollbar pt-2 pr-1 space-y-3 text-left">
-            <p><strong>名稱：</strong> 點擊輸入框以編輯玩家名稱。您可以從右側的「歷史」清單中選擇常用名稱快速套用。</p>
-            <p><strong>顏色：</strong> 從左側的調色盤中選擇一個代表色，方便在計分板上快速識別。</p>
-            <p><strong>歷史紀錄：</strong> 系統會自動儲存您輸入過的玩家名稱，方便下次快速選用。</p>
-            <p><strong>快速跳轉：</strong> 完成編輯後，點擊右下角的「下一項」按鈕 (<ArrowRight size={12} className="inline-block align-middle" /> / <ArrowDown size={12} className="inline-block align-middle" />) 可直接跳到下一位玩家進行編輯，或進入計分格。</p>
+        <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-2 text-center flex flex-col justify-center">
+            
+            {/* Starter Button - Compact size */}
+            <button 
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => onToggleStarter(player.id)}
+                className={`w-full h-16 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all active:scale-95
+                    ${player.isStarter 
+                        ? 'bg-amber-900/30 border-amber-500 text-amber-200 shadow-lg shadow-amber-900/20' 
+                        : 'bg-slate-800 border-slate-700 text-slate-500 hover:border-slate-600 hover:text-slate-300'
+                    }
+                `}
+                title="設為起始玩家"
+            >
+                <Flag size={20} className={player.isStarter ? "fill-current" : ""} />
+                <span className="font-bold text-[10px] leading-none">{player.isStarter ? "起始玩家" : "設為起始"}</span>
+            </button>
+
+            {/* Spacer for future buttons */}
+            <div className="flex-1"></div>
         </div>
     </div>
 );
 
+// Removed PlayerEditorInfo export as it's no longer used
+export { PlayerSettingsPanel };
 export default PlayerEditor;

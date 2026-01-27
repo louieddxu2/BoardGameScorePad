@@ -1,5 +1,7 @@
 {
-  "name": "萬用桌遊計分板 V2.3",
-  "description": "萬能桌遊計分助手。自定義計分模板，具備歷史記錄與自動加總功能。",
-  "requestFramePermissions": []
+  "name": "萬用桌遊計分板V3",
+  "description": "萬能桌遊計分助手。自定義計分模板。\n添加背景圖計分紙的功能。\n乘積模式下支援分項累加。\n完善自動功能。\n預覽indexDB，完整保留暫存檔效果。\n完善雲端一鍵備份/上傳效果",
+  "requestFramePermissions": [
+    "camera"
+  ]
 }

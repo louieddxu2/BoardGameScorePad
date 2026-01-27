@@ -1,0 +1,7 @@
+{
+  "id": "init-placeholder",
+  "name": "系統初始化佔位檔",
+  "description": "此檔案用於確保 public_templates 資料夾存在，您可以隨時刪除或忽略它。",
+  "updatedAt": 1700000000000,
+  "columns": []
+}
