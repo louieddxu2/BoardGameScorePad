@@ -109,14 +109,14 @@ export const migrateColumn = (oldCol: any): ScoreColumn => {
 
 export const migrateTemplate = (template: any): GameTemplate => {
     if (!template || !template.columns?.length) return template;
-    const { baseImage, ...rest } = template;
+    
     return {
-        ...rest,
-        bggId: rest.bggId || '', 
-        supportedColors: rest.supportedColors || [], // [New] Initialize supportedColors
-        hasImage: rest.hasImage || !!baseImage, 
+        ...template,
+        bggId: template.bggId || '', 
+        supportedColors: template.supportedColors || [], // [New] Initialize supportedColors
+        hasImage: template.hasImage || false, 
         columns: template.columns.map(migrateColumn),
-        updatedAt: rest.updatedAt || rest.createdAt, 
+        updatedAt: template.updatedAt || template.createdAt, 
     };
 };
 

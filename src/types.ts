@@ -1,4 +1,5 @@
 
+
 // --- Formula-based structure ---
 export interface ScoreValue {
   parts: number[];
@@ -147,8 +148,14 @@ export interface LocalImage {
 export interface GameTemplate {
   id: string;
   name: string;
+  
   description?: string;
-  bggId?: string; // [New] BoardGameGeek ID
+  
+  // [BGG Link]
+  // 記錄此模板對應的 BGG ID (選填)
+  // 若有此 ID，可直接查詢 bggGames 表獲取圖片與詳細資訊
+  bggId?: string; 
+  
   supportedColors?: string[]; // [New] Custom color palette sequence for this game
   columns: ScoreColumn[];
   createdAt: number;
@@ -163,9 +170,10 @@ export interface GameTemplate {
   defaultScoringRule?: ScoringRule; // 兼容舊資料，優先使用 TemplatePreference
   
   // [New Phase 1] Fork Mechanism
-  // 如果此欄位存在，代表此模板是針對某個內建模板 (或未來其他模板) 的修改版 (Fork/Override)
-  // 原本的 id 會是一個新的 UUID，而 sourceTemplateId 則指向原始內建 ID (例如 "Built-in-Agricola")
-  sourceTemplateId?: string; 
+  sourceTemplateId?: string;
+  
+  // [Import Mapping]
+  bgStatsId?: string; // 明確對應 Board Game Stats 的 Game ID
 }
 
 export interface GameSession {
@@ -188,6 +196,9 @@ export interface HistoryRecord {
   id: string; // [Changed] 使用 UUID (與 Session ID 相同)，不再是 number
   templateId: string; // 原始模板 ID (用於關聯)
   gameName: string; // 當時的遊戲名稱 (快照)
+  // [BGG Link] 記錄這場遊戲對應的 BGG ID
+  bggId?: string;
+  
   startTime: number;
   endTime: number;
   updatedAt?: number; // [New] 紀錄最後修改時間 (例如修改筆記)
@@ -200,28 +211,56 @@ export interface HistoryRecord {
   photos?: string[]; // List of LocalImage IDs
   photoCloudIds?: Record<string, string>; // [New] Map<LocalUUID, CloudFileID>
   cloudFolderId?: string; // [Cloud] 備份資料夾 ID
+
+  // [Import Mapping]
+  bgStatsId?: string; // 明確對應 Board Game Stats 的 Play ID
+  
+  // [v25 Migration] 提升為頂層屬性，減少對 snapshotTemplate 的依賴
+  scoringRule?: ScoringRule;
 }
 
 // [New Type] 資料處理狀態
 export type AnalyticsStatus = 'processed' | 'missing_location';
 
 // [New Interface] 統計處理記錄表 (Local Only)
-// 這張表紀錄每一筆 HistoryRecord 是否已經被納入 SavedLists (玩家、地點、遊戲) 的統計中
 export interface AnalyticsLog {
   historyId: string; // PK
   status: AnalyticsStatus;
   lastProcessedAt: number;
 }
 
+// [New Interface] Dedicated BGG Game Data Storage
+// 這是您要求的獨立架構，專門用來儲存 BGG 資料
+export interface BggGame {
+  id: string; // BGG ID (Primary Key)
+  name: string; // Official Name (from BGG)
+  altNames?: string[]; // [New] Aliases / Alternative Names (e.g. Chinese Name)
+  year?: number;
+  imageUrl?: string;
+  thumbnailUrl?: string;
+  designers?: string;
+  minPlayers?: number;
+  maxPlayers?: number;
+  playingTime?: number;
+  minAge?: number; // [New]
+  rank?: number; // BGG Rank
+  updatedAt: number; // Last cache update
+}
+
 // [New Interface] Generic Saved List Item (for Players, Locations, etc.)
 export interface SavedListItem {
-  id: string; // [Changed] UUID
+  id: string; // Internal 8-char ID (Base62)
   name: string;
+
   lastUsed: number;
   usageCount: number;
-  predictivePower?: number; // [New] 0.2 ~ 5.0, Default 1.0. 代表此項目作為預測來源時的可信度權重。
+  
+  // [Import Mapping]
+  bgStatsId?: string; // BGStats 內部 ID
+  bggId?: string;     // 若此 Item 是遊戲，這裡存 BGG ID (Foreign Key 指向 bggGames)
+
   meta?: {
-      uuid?: string; // Legacy field (can be deprecated eventually as id is now uuid)
+      uuid?: string; // Legacy field
       stats?: {
           weekDays?: number[]; // 0-6 (Sun-Sat)
           timeSlots?: number[]; // 0-11 (2-hour buckets)
@@ -229,6 +268,10 @@ export interface SavedListItem {
       // Generic container for relations
       // key: 'players' | 'locations' | 'games' | 'colors' ...
       relations?: Record<string, any>; 
+      confidence?: Record<string, number>;
+      
+      // 注意：BGG Metadata 應優先從 bggGames 資料表讀取
+      // 這裡僅保留作為快取或舊資料相容
       [key: string]: any;
   }; 
 }

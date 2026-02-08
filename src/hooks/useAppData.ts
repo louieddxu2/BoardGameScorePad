@@ -3,31 +3,20 @@ import { useState, useEffect, useCallback } from 'react';
 import { db } from '../db';
 import { migrateFromLocalStorage } from '../utils/dbMigration';
 import { GameTemplate, GameSession, HistoryRecord } from '../types';
-import { googleDriveService } from '../services/googleDrive';
+import { googleDriveService, getAutoConnectPreference } from '../services/googleDrive';
 import { imageService } from '../services/imageService';
 import { cleanupService } from '../services/cleanupService';
+import { bgStatsImportService } from '../features/bgstats/services/bgStatsImportService'; 
+import { BgStatsExport, ImportManualLinks } from '../features/bgstats/types'; 
 import { useToast } from './useToast';
-import { migrateTemplate } from '../utils/dataMigration';
 import { generateId } from '../utils/idGenerator';
+import { prepareTemplateForSave, isDisposableTemplate } from '../utils/templateUtils'; 
 
 // Sub-hooks
 import { useAppQueries } from './useAppQueries';
 import { useSessionManager } from './useSessionManager';
 import { useLibrary } from './useLibrary'; 
-
-// --- Storage Helpers (Synchronous) ---
-
-function loadFromStorage<T>(key: string, fallback: T, migrateFn?: (data: any) => T): T {
-    try {
-        const item = localStorage.getItem(key);
-        if (!item) return fallback;
-        const parsed = JSON.parse(item);
-        return migrateFn ? migrateFn(parsed) : parsed;
-    } catch (e) {
-        console.error(`Error loading ${key} from storage`, e);
-        return fallback;
-    }
-}
+import { useDebounce } from './useDebounce'; 
 
 export const useAppData = () => {
   const { showToast } = useToast();
@@ -35,8 +24,11 @@ export const useAppData = () => {
   
   // [Search State]
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // [Performance] Debounce search query
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-  // [System Dirty Tracking] - Timestamp of last modification to system data
+  // [System Dirty Tracking]
   const [systemDirtyTime, setSystemDirtyTime] = useState<number>(0);
   const markSystemDirty = useCallback(() => setSystemDirtyTime(Date.now()), []);
 
@@ -50,20 +42,17 @@ export const useAppData = () => {
   }, []);
 
   // --- 2. Queries, Library & Session Management ---
-  const queries = useAppQueries(searchQuery);
+  const queries = useAppQueries(debouncedSearchQuery);
   
-  // Library Hook for Global Access (e.g., HistoryReview)
+  // Library Hook for Global Access
   const { updatePlayer, updateLocation, commitPlayerStats, commitLocationStats } = useLibrary(markSystemDirty);
 
-  // Check cloud availability helper
-  const isCloudEnabled = () => {
-      return localStorage.getItem('google_drive_auto_connect') === 'true';
-  };
+  // [Standardized] Use shared helper
+  const isCloudEnabled = getAutoConnectPreference;
 
   const sessionManager = useSessionManager({
       getTemplate: queries.getTemplate,
       activeSessions: queries.activeSessions,
-      // updatePlayerHistory prop removed - now handled internally in sessionManager
       isCloudEnabled
   });
 
@@ -111,29 +100,18 @@ export const useAppData = () => {
 
   const saveTemplate = async (template: GameTemplate, options: { skipCloud?: boolean, preserveTimestamps?: boolean } = {}) => {
     const finalUpdatedAt = options.preserveTimestamps ? (template.updatedAt || Date.now()) : Date.now();
-    const migratedTemplate = migrateTemplate({ ...template, updatedAt: finalUpdatedAt });
     
-    // Phase 1 Logic: Forking
-    // Check if this is a Built-in ID
-    const isBuiltin = !!(await db.builtins.get(migratedTemplate.id));
+    const finalTemplate = await prepareTemplateForSave(
+        { ...template, updatedAt: finalUpdatedAt }, 
+        async (id) => !!(await db.builtins.get(id))
+    );
     
-    if (isBuiltin) {
-        // First time overriding a built-in: Create a fork
-        // 1. Keep original ID as source
-        migratedTemplate.sourceTemplateId = migratedTemplate.id;
-        // 2. Generate new UUID for the fork
-        migratedTemplate.id = generateId();
-        // 3. Save to templates table
-        await db.templates.put(migratedTemplate);
-    } else {
-        // It's either a pure custom template or an already-forked shadow template
-        await db.templates.put(migratedTemplate);
-    }
+    await db.templates.put(finalTemplate);
 
-    if (!options.skipCloud && isCloudEnabled()) {
-        googleDriveService.backupTemplate(migratedTemplate).then((updated) => {
-            if (updated) { // ADDED CHECK
-                // [FIX] Use updated.updatedAt instead of Date.now()
+    // [Filter Logic] Do not backup disposable templates to cloud
+    if (!options.skipCloud && isCloudEnabled() && !isDisposableTemplate(finalTemplate)) {
+        googleDriveService.backupTemplate(finalTemplate).then((updated) => {
+            if (updated) {
                 db.templates.update(updated.id, { lastSyncedAt: updated.updatedAt || Date.now() });
             }
         }).catch(console.error);
@@ -144,7 +122,6 @@ export const useAppData = () => {
       try {
           const templateToDelete = await queries.getTemplate(id); 
           
-          // 1. Delete associated active sessions first to avoid orphaned data
           const relatedSessions = await db.sessions.where('templateId').equals(id).toArray();
           if (relatedSessions.length > 0) {
               for (const s of relatedSessions) {
@@ -153,14 +130,10 @@ export const useAppData = () => {
               await db.sessions.bulkDelete(relatedSessions.map(s => s.id));
           }
 
-          // 2. Delete the template itself
           await db.templates.delete(id);
-          
-          // 3. Cleanup template-related data
           await db.templatePrefs.delete(id);
           await imageService.deleteImagesByRelatedId(id);
 
-          // 4. Cloud cleanup
           if (isCloudEnabled() && templateToDelete) {
               googleDriveService.softDeleteFolder(id, 'template').then(() => {
                   showToast({ message: "已同步移至雲端垃圾桶", type: 'info' });
@@ -172,20 +145,9 @@ export const useAppData = () => {
       }
   };
 
-  /**
-   * Restore System Template Logic (Phase 1 Update):
-   * Since we now use Forks (UUIDs) to mask Built-ins, "Restoring" means deleting the Fork.
-   * However, to be safe, we backup the Fork as a regular custom template first.
-   */
   const restoreSystemTemplate = async (templateId: string) => {
       try {
-          // The ID passed here is the Shadow ID (UUID) if a fork exists.
-          // Or it could be the Built-in ID if the UI logic passed the original.
-          // We need to find the fork.
-          
           let shadowTemplate = await db.templates.get(templateId);
-          
-          // If not found by ID, maybe we passed the source ID? Try to find a template referencing it.
           if (!shadowTemplate) {
               shadowTemplate = await db.templates.where('sourceTemplateId').equals(templateId).first();
           }
@@ -193,49 +155,35 @@ export const useAppData = () => {
           if (!shadowTemplate || !shadowTemplate.sourceTemplateId) return;
 
           const backupId = generateId();
-          // Backup as a detached custom template
           const backupTemplate: GameTemplate = {
               ...shadowTemplate,
               id: backupId,
-              // [Fix 3] Remove (Backup) suffix for cleaner UX
               name: shadowTemplate.name, 
-              sourceTemplateId: undefined, // Detach from system
+              sourceTemplateId: undefined, 
               updatedAt: Date.now(),
               cloudImageId: undefined, 
               lastSyncedAt: undefined
           };
           
-          // Find related items using the Shadow ID
           const relatedSessions = await db.sessions.where('templateId').equals(shadowTemplate.id).toArray();
           const relatedImages = await db.images.where('relatedId').equals(shadowTemplate.id).toArray(); 
 
-          // Execute as atomic transaction
           await (db as any).transaction('rw', db.templates, db.sessions, db.images, db.templatePrefs, async () => {
-              // 1. Add Backup
               await db.templates.add(backupTemplate);
-
-              // 2. Migrate Active Sessions to Backup
               for (const session of relatedSessions) {
                   await db.sessions.update(session.id, { templateId: backupId });
               }
-
-              // 3. Migrate Template Images to Backup
               for (const img of relatedImages) {
                   await db.images.update(img.id, { relatedId: backupId });
               }
-
-              // 4. Migrate Preferences
               const prefs = await db.templatePrefs.get(shadowTemplate!.id);
               if (prefs) {
                   await db.templatePrefs.put({ ...prefs, templateId: backupId });
                   await db.templatePrefs.delete(shadowTemplate!.id);
               }
-
-              // 5. Delete the Shadow Fork -> UI will fall back to Built-in
               await db.templates.delete(shadowTemplate!.id);
           });
 
-          // Cloud Cleanup
           if (isCloudEnabled()) {
               googleDriveService.softDeleteFolder(shadowTemplate.id, 'template').catch(console.error);
           }
@@ -265,14 +213,21 @@ export const useAppData = () => {
       }
   };
   
-  const viewHistory = (record: HistoryRecord | null) => { setViewingHistoryRecord(record); };
+  const viewHistory = async (id: string | null) => { 
+      if (!id) {
+          setViewingHistoryRecord(null);
+          return;
+      }
+      const fullRecord = await db.history.get(id);
+      if (fullRecord) {
+          setViewingHistoryRecord(fullRecord);
+      }
+  };
 
-  // --- Export System Data ---
   const getSystemExportData = async () => {
       const players = await db.savedPlayers.toArray();
       const locations = await db.savedLocations.toArray();
       const customTemplates = await db.templates.toArray();
-      // overrides is now empty, but keeping structure for compat
       const overrides: GameTemplate[] = []; 
       const history = await db.history.toArray();
       const activeSessions = await db.sessions.toArray(); 
@@ -346,9 +301,6 @@ export const useAppData = () => {
   const importHistoryRecord = async (record: HistoryRecord) => {
       try {
           await db.history.put(record);
-          // [Fix] If active session with same ID exists (stale), remove it.
-          // This prevents "Zombie Session" issues where a finished game reappears as active.
-          // Note: We do NOT delete images because HistoryRecord shares the same image IDs.
           const activeConflict = await db.sessions.get(record.id);
           if (activeConflict) {
               await db.sessions.delete(record.id);
@@ -359,6 +311,21 @@ export const useAppData = () => {
       } catch (e) {
           console.error("Failed to import history", e);
           showToast({ message: "還原失敗", type: 'error' });
+      }
+  };
+
+  const importBgStatsData = async (data: BgStatsExport, links: ImportManualLinks): Promise<boolean> => {
+      try {
+          const count = await bgStatsImportService.importData(data, links, (msg) => {
+              console.log("[BG Stats]", msg);
+          });
+          showToast({ message: `成功匯入 ${count} 筆紀錄`, type: 'success' });
+          markSystemDirty(); 
+          return true;
+      } catch (e) {
+          console.error("BG Stats Import Failed", e);
+          showToast({ message: "匯入失敗，請檢查檔案格式", type: 'error' });
+          return false;
       }
   };
   
@@ -373,24 +340,34 @@ export const useAppData = () => {
   return { 
       searchQuery,
       setSearchQuery,
+      
       // Data from Queries
       templates: queries.templates, 
       userTemplatesCount: queries.userTemplatesCount,
       systemTemplates: queries.systemTemplates, 
       systemTemplatesCount: queries.systemTemplatesCount,
       systemOverrides: queries.systemOverrides,
+      
+      // [NEW] Merged Options (renamed from Candidates)
+      gameOptions: queries.gameOptions,
+
       activeSessionIds: queries.activeSessionIds, 
       historyRecords: queries.historyRecords,
       historyCount: queries.historyCount,
-      playerHistory: queries.playerHistory, 
-      locationHistory: queries.locationHistory,
+      
+      savedPlayers: queries.savedPlayers,     
+      savedLocations: queries.savedLocations, 
+      
+      savedGames: queries.savedGames, 
       getTemplate: queries.getTemplate, 
       getSessionPreview: queries.getSessionPreview,
+      
       // Session Manager State
       currentSession: sessionManager.currentSession, 
       activeTemplate: sessionManager.activeTemplate, 
       sessionImage: sessionManager.sessionImage, 
       sessionPlayerCount: sessionManager.sessionPlayerCount,
+      
       // Global State
       newBadgeIds, 
       pinnedIds, 
@@ -398,7 +375,8 @@ export const useAppData = () => {
       viewingHistoryRecord,
       systemDirtyTime,
       isDbReady,
-      // Actions - Session
+      
+      // Actions
       startSession: sessionManager.startSession, 
       resumeSession: sessionManager.resumeSession, 
       discardSession: sessionManager.discardSession, 
@@ -409,15 +387,14 @@ export const useAppData = () => {
       saveToHistory: sessionManager.saveToHistory, 
       updateActiveTemplate: sessionManager.updateActiveTemplate,
       setSessionImage: sessionManager.setSessionImage,
-      // [Changed] Use sessionManager's exposed wrapper for updates
-      updatePlayerHistory: sessionManager.updatePlayerHistory, 
-      // Actions - Global
+      updateSavedPlayer: sessionManager.updateSavedPlayer, 
+      
       setTemplates: () => {}, 
       toggleTheme, 
       togglePin, 
       clearNewBadges,
-      updateLocationHistory: updateLocation, // Keep as direct library hook
-      commitLocationStats, // Keep as direct library hook
+      updateSavedLocation: updateLocation, 
+      commitLocationStats, 
       saveTemplate, 
       deleteTemplate, 
       restoreSystemTemplate,
@@ -429,5 +406,6 @@ export const useAppData = () => {
       importSystemSettings, 
       importSession,
       importHistoryRecord, 
+      importBgStatsData 
   };
 };

@@ -1,22 +1,22 @@
-
 import Dexie, { Table } from 'dexie';
-import { GameTemplate, GameSession, TemplatePreference, HistoryRecord, SavedListItem, LocalImage, AnalyticsLog } from './types';
+import { GameTemplate, GameSession, TemplatePreference, HistoryRecord, SavedListItem, LocalImage, AnalyticsLog, BggGame } from './types';
 import { generateId } from './utils/idGenerator';
 import { DATA_LIMITS } from './dataLimits';
 
 export class ScorePadDatabase extends Dexie {
   templates!: Table<GameTemplate>;
-  systemOverrides!: Table<GameTemplate>;
   builtins!: Table<GameTemplate>; // 內建遊戲表
   sessions!: Table<GameSession>;
   templatePrefs!: Table<TemplatePreference>; // 模板偏好設定表
   history!: Table<HistoryRecord>; // 歷史紀錄表
   savedPlayers!: Table<SavedListItem>; // [v4] 儲存的玩家清單
   savedLocations!: Table<SavedListItem>; // [v4] 儲存的地點清單
-  savedGames!: Table<SavedListItem>; // [v12] 儲存的遊戲清單
+  savedGames!: Table<SavedListItem>; // [v12] 儲存的遊戲清單 (使用者習慣)
+  bggGames!: Table<BggGame>; // [v19] BGG 資料庫 (獨立架構)
   savedWeekdays!: Table<SavedListItem>; // [v12] 星期維度 (0-6)
   savedTimeSlots!: Table<SavedListItem>; // [v12] 時段維度 (0-7, 3hr/slot)
   savedPlayerCounts!: Table<SavedListItem>; // [v15] 玩家人數維度 (1-24)
+  savedGameModes!: Table<SavedListItem>; // [v23] 遊戲模式維度 (HIGHEST_WINS, etc.)
   images!: Table<LocalImage>; // [v7] 離線圖片儲存
   analyticsLogs!: Table<AnalyticsLog>; // [v14] 統計處理記錄表
 
@@ -102,9 +102,6 @@ export class ScorePadDatabase extends Dexie {
     });
 
     // Version 10: Migrate savedPlayers/Locations to UUID PK
-    // 1. Delete old tables (auto-inc)
-    // 2. Create new tables (uuid)
-    // 3. Migrate data (convert old IDs to UUIDs)
     (this as any).version(10).stores({
         savedPlayers: null,
         savedLocations: null,
@@ -116,9 +113,7 @@ export class ScorePadDatabase extends Dexie {
         if (oldPlayers.length > 0) {
             const newPlayers = oldPlayers.map((p: any) => ({
                 ...p,
-                // Use existing UUID in meta if available, otherwise generate new one
                 id: p.meta?.uuid || generateId(DATA_LIMITS.ID_LENGTH.DEFAULT), 
-                // Keep name at root
             }));
             await trans.table('savedPlayers_v2').bulkAdd(newPlayers);
         }
@@ -148,25 +143,21 @@ export class ScorePadDatabase extends Dexie {
         if (locations.length > 0) await trans.table('savedLocations').bulkAdd(locations);
     });
 
-    // Version 12: Add Games, Weekdays, TimeSlots as First-Class Citizens
+    // Version 12: Add Games, Weekdays, TimeSlots
     (this as any).version(12).stores({
         savedGames: 'id, &name, lastUsed, usageCount',
         savedWeekdays: 'id, &name, lastUsed, usageCount',
         savedTimeSlots: 'id, &name, lastUsed, usageCount'
     }).upgrade(async (trans: any) => {
-        // 1. Seed Weekdays (0=Sun, 6=Sat)
         const weekdays = Array.from({length: 7}, (_, i) => ({
             id: `weekday_${i}`,
-            name: i.toString(), // 0-6
+            name: i.toString(),
             lastUsed: Date.now(),
             usageCount: 0,
-            meta: {} // Ready for relations
+            meta: {} 
         }));
         await trans.table('savedWeekdays').bulkAdd(weekdays);
 
-        // 2. Seed TimeSlots (8 slots per day, 3 hours each)
-        // 0: 00-03, 1: 03-06, ..., 7: 21-24
-        // [Modified] Use readable names "00-03" instead of "0"
         const timeSlots = Array.from({length: 8}, (_, i) => {
             const startH = String(i * 3).padStart(2, '0');
             const endH = String((i + 1) * 3).padStart(2, '0');
@@ -175,34 +166,23 @@ export class ScorePadDatabase extends Dexie {
                 name: `${startH}-${endH}`,
                 lastUsed: Date.now(),
                 usageCount: 0,
-                meta: {} // Ready for relations
+                meta: {} 
             };
         });
         await trans.table('savedTimeSlots').bulkAdd(timeSlots);
     });
 
-    // Version 13: Add analyticsStatus Index (REVERTED)
-    // 我們改用外部表 (analyticsLogs)，所以移除 HistoryRecord 內部的索引
-    // 但因為 Dexie 的升級是線性的，我們不能直接刪除 v13，而是覆蓋它或在 v14 做修正。
-    // 在此為了保持乾淨，我們假設 v13 是一個過渡狀態，v14 才是正式實作。
-    
-    // Version 14: Add analyticsLogs table
+    // Version 14: Add analyticsLogs table (Skip v13)
     (this as any).version(14).stores({
         analyticsLogs: 'historyId, status' 
     }).upgrade(async (trans: any) => {
-        // Initialization: Scan existing history records and create log entries
         const allHistory = await trans.table('history').toArray();
-        
         if (allHistory.length > 0) {
             const logs: AnalyticsLog[] = allHistory.map((rec: HistoryRecord) => ({
                 historyId: rec.id,
-                // 假設舊資料在存檔當下都已經執行過 RelationshipService (這是 v12 以前的行為)
-                // 所以如果有地點，狀態就是 processed。
-                // 如果沒有地點，標記為 missing_location 以便未來補地點時觸發更新。
                 status: rec.location ? 'processed' : 'missing_location',
                 lastProcessedAt: Date.now()
             }));
-            
             await trans.table('analyticsLogs').bulkAdd(logs);
         }
     });
@@ -211,8 +191,6 @@ export class ScorePadDatabase extends Dexie {
     (this as any).version(15).stores({
         savedPlayerCounts: 'id, &name, lastUsed, usageCount'
     }).upgrade(async (trans: any) => {
-        // Seed Player Counts (1 to 24)
-        // Cover most board games and party games
         const counts = Array.from({length: 24}, (_, i) => {
             const count = i + 1;
             return {
@@ -226,13 +204,72 @@ export class ScorePadDatabase extends Dexie {
         await trans.table('savedPlayerCounts').bulkAdd(counts);
     });
 
-    // Version 16: Add location to sessions schema (optional for indexing, but good for structure)
+    // Version 16: Add location to sessions schema
     (this as any).version(16).stores({
-        sessions: 'id, templateId, startTime, lastUpdatedAt, status' // schema unchanged in Dexie if not indexing new field, but version bump enforces clean state
+        sessions: 'id, templateId, startTime, lastUpdatedAt, status' 
     });
 
-    // Version 17: Release Bump (Ensure Clean State)
-    (this as any).version(17).stores({});
+    // Version 17: Drop systemOverrides (Cleanup)
+    (this as any).version(17).stores({
+        systemOverrides: null
+    });
+
+    // Version 18: Prepare for BGStats/BGG Import (Add Explicit ID Mapping)
+    (this as any).version(18).stores({
+        savedPlayers: 'id, &name, lastUsed, usageCount, bgStatsId', 
+        savedLocations: 'id, &name, lastUsed, usageCount, bgStatsId', 
+        savedGames: 'id, &name, lastUsed, usageCount, bgStatsId, bggId', 
+        history: 'id, templateId, startTime, endTime, updatedAt, bgStatsId', 
+        templates: 'id, name, updatedAt, bgStatsId' 
+    });
+
+    // Version 19: Add dedicated BGG Games table
+    (this as any).version(19).stores({
+        bggGames: 'id, name' // Primary Key: BGG ID
+    });
+    
+    // Version 20: Add altName (English Name) Index
+    (this as any).version(20).stores({
+        savedGames: 'id, &name, altName, lastUsed, usageCount, bgStatsId, bggId', 
+        templates: 'id, name, altName, updatedAt, bgStatsId'
+    });
+
+    // Version 21: Add *altNames multi-entry index to BggGame
+    (this as any).version(21).stores({
+        bggGames: 'id, name, *altNames' 
+    });
+
+    // Version 22: Remove altName from savedGames/templates (Consolidated into BggGame)
+    (this as any).version(22).stores({
+        savedGames: 'id, &name, lastUsed, usageCount, bgStatsId, bggId', 
+        templates: 'id, name, updatedAt, bgStatsId'
+    }).upgrade(async (trans: any) => {
+        // Data cleaning optional, schema change is sufficient for index removal
+    });
+
+    // Version 23: Add savedGameModes table (ScoringRule Dimension)
+    (this as any).version(23).stores({
+        savedGameModes: 'id, &name, lastUsed, usageCount'
+    }).upgrade(async (trans: any) => {
+        // Seed standard game modes
+        const modes = [
+            'HIGHEST_WINS',
+            'LOWEST_WINS',
+            'COOP',
+            'COMPETITIVE_NO_SCORE',
+            'COOP_NO_SCORE'
+        ];
+        
+        const seedData = modes.map(mode => ({
+            id: mode, // ID is the enum key itself
+            name: mode, // Name matches ID, translation handles display
+            lastUsed: Date.now(),
+            usageCount: 0,
+            meta: {}
+        }));
+        
+        await trans.table('savedGameModes').bulkAdd(seedData);
+    });
   }
 }
 

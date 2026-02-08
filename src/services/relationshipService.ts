@@ -1,12 +1,10 @@
-
-// ... (existing imports)
 import { db } from '../db';
 import { HistoryRecord, SavedListItem, AnalyticsLog } from '../types';
-import { generateId } from '../utils/idGenerator';
 import { Table } from 'dexie';
 import { DATA_LIMITS } from '../dataLimits';
+import { entityService } from './entityService';
+import { getRecordBggId, getRecordScoringRule } from '../utils/historyUtils';
 
-// ... (existing interfaces)
 interface RelationItem {
     id: string;
     count: number;
@@ -16,7 +14,7 @@ interface RelationItem {
 interface ResolvedEntity {
     item: SavedListItem;
     table: Table<SavedListItem>;
-    type: 'player' | 'game' | 'location' | 'weekday' | 'timeslot' | 'playerCount';
+    type: 'player' | 'game' | 'location' | 'weekday' | 'timeslot' | 'playerCount' | 'gameMode';
     isNewContext: boolean; 
 }
 
@@ -50,49 +48,48 @@ class RelationshipService {
 
             console.log(`[RelationshipService] Processing mode: ${mode}`);
 
-            await (db as any).transaction('rw', db.savedPlayers, db.savedGames, db.savedLocations, db.savedWeekdays, db.savedTimeSlots, db.savedPlayerCounts, db.analyticsLogs, async () => {
+            // Added db.savedGameModes to transaction scope
+            await (db as any).transaction('rw', db.savedPlayers, db.savedGames, db.savedLocations, db.savedWeekdays, db.savedTimeSlots, db.savedPlayerCounts, db.savedGameModes, db.analyticsLogs, db.bggGames, async () => {
                 
                 const resolvedEntitiesMap = new Map<string, ResolvedEntity>();
 
-                // --- Helper: 安全地取得或建立實體 ---
-                const resolveOrCreate = async (
+                // --- Helper: 使用 EntityService 解析並快取結果 ---
+                const resolveAndCache = async (
                     table: Table<SavedListItem>, 
                     name: string, 
                     type: ResolvedEntity['type'],
                     forceNewContext: boolean, 
-                    preferredId?: string
-                ): Promise<void> => {
-                    const cleanName = name?.trim();
-                    if (!cleanName) return;
-
-                    let item: SavedListItem | undefined;
-
-                    if (preferredId) {
-                        item = await table.get(preferredId);
-                    }
-
-                    if (!item) {
-                        item = await table.where('name').equals(cleanName).first();
-                    }
-
-                    if (!item) {
-                        const newId = (preferredId && preferredId.length > 4) ? preferredId : generateId(DATA_LIMITS.ID_LENGTH.DEFAULT);
-                        item = {
-                            id: newId,
-                            name: cleanName,
-                            lastUsed: 0, 
-                            usageCount: 0,
-                            predictivePower: 1.0, 
-                            meta: { relations: {}, confidence: {} } // [Updated] Initialize confidence
-                        };
-                    }
+                    preferredId?: string,
+                    externalIds?: { bggId?: string, bgStatsId?: string }
+                ) => {
+                    if (!name) return;
                     
-                    if (resolvedEntitiesMap.has(item.id)) {
-                        return;
+                    // 固定 ID 的實體 (時間、人數、模式) 不走複雜解析
+                    if (type === 'weekday' || type === 'timeslot' || type === 'playerCount' || type === 'gameMode') {
+                         let item = await table.get(preferredId!);
+                         if (!item) {
+                             item = {
+                                 id: preferredId!,
+                                 name: name,
+                                 lastUsed: 0,
+                                 usageCount: 0,
+                                 meta: { relations: {} }
+                             };
+                             await table.add(item);
+                         }
+                         if (!resolvedEntitiesMap.has(item.id)) {
+                             resolvedEntitiesMap.set(item.id, { item, table, type, isNewContext: forceNewContext });
+                         }
+                         return;
                     }
 
-                    const isNewContext = forceNewContext; 
-                    resolvedEntitiesMap.set(item.id, { item, table, type, isNewContext });
+                    // 一般實體使用 EntityService
+                    // 注意：EntityService 會負責「建立」新項目，這裡我們確保拿到的是已存在的
+                    const item = await entityService.resolveOrCreate(table, name, type as any, preferredId, externalIds);
+                    
+                    if (item && !resolvedEntitiesMap.has(item.id)) {
+                        resolvedEntitiesMap.set(item.id, { item, table, type, isNewContext: forceNewContext });
+                    }
                 };
 
                 // --- 2. 解析實體 (Load Entities) ---
@@ -100,14 +97,30 @@ class RelationshipService {
 
                 // A. Location
                 if (record.location) {
-                    await resolveOrCreate(db.savedLocations, record.location, 'location', true, record.locationId);
+                    await resolveAndCache(
+                        db.savedLocations, 
+                        record.location, 
+                        'location', 
+                        true, 
+                        record.locationId,
+                        { bgStatsId: undefined } 
+                    );
                 }
 
                 // B. Game
-                await resolveOrCreate(db.savedGames, record.gameName, 'game', isFull);
+                const bggId = getRecordBggId(record);
+                const bgStatsId = record.bgStatsId;
+
+                await resolveAndCache(
+                    db.savedGames, 
+                    record.gameName, 
+                    'game', 
+                    isFull, 
+                    undefined, 
+                    { bggId, bgStatsId }
+                );
 
                 // C. Players
-                // 用於統計「玩家個人」的數據，這裡排除系統預設名稱的空位是正確的
                 const validPlayers = record.players.filter(p => {
                     const isSlotId = p.id.startsWith('slot_') || p.id.startsWith('player_');
                     const isSystemId = p.id.startsWith('sys_player_'); 
@@ -121,10 +134,10 @@ class RelationshipService {
                     const isPlaceholderId = p.id.startsWith('slot_') || p.id.startsWith('player_') || p.id.startsWith('sys_');
                     const targetId = p.linkedPlayerId || (!isPlaceholderId ? p.id : undefined);
                     
-                    await resolveOrCreate(db.savedPlayers, p.name, 'player', isFull, targetId);
+                    await resolveAndCache(db.savedPlayers, p.name, 'player', isFull, targetId);
                 }
 
-                // D. Time & Count
+                // D. Time & Count & Game Mode
                 const date = new Date(record.endTime);
                 const dayIndex = date.getDay(); 
                 const hour = date.getHours();
@@ -132,17 +145,16 @@ class RelationshipService {
                 const startH = String(slotIndex * 3).padStart(2, '0');
                 const endH = String((slotIndex + 1) * 3).padStart(2, '0');
                 const timeSlotName = `${startH}-${endH}`;
-                
-                // [Fix] Player Count logic: Use total session players count, not just named players
                 const playerCount = record.players.length;
+                const scoringRule = getRecordScoringRule(record);
 
-                await resolveOrCreate(db.savedWeekdays, dayIndex.toString(), 'weekday', isFull, `weekday_${dayIndex}`);
-                await resolveOrCreate(db.savedTimeSlots, timeSlotName, 'timeslot', isFull, `timeslot_${slotIndex}`);
-                
-                // Player Count Entity
+                await resolveAndCache(db.savedWeekdays, dayIndex.toString(), 'weekday', isFull, `weekday_${dayIndex}`);
+                await resolveAndCache(db.savedTimeSlots, timeSlotName, 'timeslot', isFull, `timeslot_${slotIndex}`);
                 if (playerCount > 0) {
-                    await resolveOrCreate(db.savedPlayerCounts, playerCount.toString(), 'playerCount', isFull, `count_${playerCount}`);
+                    await resolveAndCache(db.savedPlayerCounts, playerCount.toString(), 'playerCount', isFull, `count_${playerCount}`);
                 }
+                // [New] Resolve Game Mode using the rule string as ID
+                await resolveAndCache(db.savedGameModes, scoringRule, 'gameMode', isFull, scoringRule);
 
                 // --- 3. 執行統計更新 ---
                 const resolvedEntities = Array.from(resolvedEntitiesMap.values());
@@ -159,11 +171,9 @@ class RelationshipService {
                             hasChanges = true;
                         }
 
-                        // 3.2 關聯更新 (不對稱優化)
+                        // 3.2 關聯更新
                         let targetCandidates: ResolvedEntity[] = [];
-                        
                         if (source.isNewContext) {
-                            // [Self-Relation Prevention]
                             targetCandidates = resolvedEntities.filter(t => t.item.id !== source.item.id);
                         } else {
                             targetCandidates = newContextEntities;
@@ -182,27 +192,19 @@ class RelationshipService {
                             if (!source.item.meta.relations || Array.isArray(source.item.meta.relations)) {
                                 source.item.meta.relations = {};
                             }
-                            
-                            // [Updated] Ensure confidence object exists
                             if (!source.item.meta.confidence) {
                                 source.item.meta.confidence = {};
                             }
 
                             for (const [relKey, activeIds] of targetsByType.entries()) {
-                                const limit = (relKey === 'weekdays' || relKey === 'timeSlots' || relKey === 'playerCounts') 
+                                const limit = (relKey === 'weekdays' || relKey === 'timeSlots' || relKey === 'playerCounts' || relKey === 'gameModes') 
                                     ? DATA_LIMITS.RELATION.TIME_LIST_SIZE 
                                     : DATA_LIMITS.RELATION.DEFAULT_LIST_SIZE;
                                     
                                 const currentList = source.item.meta.relations[relKey];
                                 const newList = this.updateRankings(currentList, activeIds, limit);
                                 source.item.meta.relations[relKey] = newList;
-                                
-                                // [Updated] Placeholder for confidence value (default to 1.0 if not set)
-                                // Only initializing structure here as requested, no algorithm implementation yet.
-                                if (source.item.meta.confidence[relKey] === undefined) {
-                                    source.item.meta.confidence[relKey] = 1.0;
-                                }
-                                
+                                source.item.meta.confidence[relKey] = 1.0;
                                 hasChanges = true;
                             }
                         }
@@ -221,7 +223,6 @@ class RelationshipService {
 
                 // --- 4. Update Log ---
                 const newStatus: AnalyticsLog['status'] = record.location ? 'processed' : 'missing_location';
-                
                 await db.analyticsLogs.put({
                     historyId: record.id,
                     status: newStatus,
@@ -248,24 +249,14 @@ class RelationshipService {
         });
 
         if (source.type === 'game') {
-            // For games, collect ALL valid player colors
-            colorsToAdd = validPlayers
-                .map(p => p.color)
-                .filter(c => c && c !== 'transparent');
-            
+            colorsToAdd = validPlayers.map(p => p.color).filter(c => c && c !== 'transparent');
         } else if (source.type === 'player') {
-            // For players, we need to find ALL slots that match this entity (deduplicated entity)
             const matchingSlots = validPlayers.filter(p => {
                 const isPlaceholder = p.id.startsWith('slot_') || p.id.startsWith('sys_') || p.id.startsWith('player_');
                 const targetId = p.linkedPlayerId || (!isPlaceholder ? p.id : undefined);
-                
-                // Match by ID (preferred) or Name (legacy fallback)
                 return (targetId && source.item.id === targetId) || source.item.name === p.name;
             });
-
-            colorsToAdd = matchingSlots
-                .map(p => p.color)
-                .filter(c => c && c !== 'transparent');
+            colorsToAdd = matchingSlots.map(p => p.color).filter(c => c && c !== 'transparent');
         }
 
         if (colorsToAdd.length > 0) {
@@ -282,36 +273,25 @@ class RelationshipService {
         return false;
     }
 
-    // [Refactor] Halving Jump Algorithm
-    private updateRankings(
-        currentList: any, 
-        activeIds: string[], 
-        limit: number
-    ): RelationItem[] {
-        // 1. 標準化輸入 (List)
+    private updateRankings(currentList: any, activeIds: string[], limit: number): RelationItem[] {
+        // Standardized ranking update logic (Halving Jump)
         let list: RelationItem[] = [];
         if (Array.isArray(currentList)) {
             list = [...currentList];
         } else if (currentList && typeof currentList === 'object') {
             list = Object.entries(currentList).map(([id, count]) => ({
-                id,
-                count: Number(count),
-                weight: 1.0 // Legacy data migration
+                id, count: Number(count), weight: 1.0
             })).sort((a, b) => b.count - a.count);
         }
 
         const activeCounts = new Map<string, number>();
-        activeIds.forEach(id => {
-            activeCounts.set(id, (activeCounts.get(id) || 0) + 1);
-        });
+        activeIds.forEach(id => activeCounts.set(id, (activeCounts.get(id) || 0) + 1));
         
-        // 分離 Active 和 Inactive
         const oldActiveItems: { item: RelationItem; originalIndex: number }[] = [];
         const inactiveItems: RelationItem[] = [];
 
         list.forEach((item, index) => {
             if (item.weight === undefined) item.weight = 1.0;
-
             if (activeCounts.has(item.id)) {
                 item.count = (item.count || 0) + activeCounts.get(item.id)!;
                 oldActiveItems.push({ item, originalIndex: index });
@@ -320,7 +300,6 @@ class RelationshipService {
             }
         });
 
-        // 2. 重組列表 (Process Old Active Items)
         const resultList = [...inactiveItems];
         const insertionOffsets: Record<number, number> = {};
 
@@ -332,37 +311,21 @@ class RelationshipService {
             insertionOffsets[targetBase] = offset + 1;
         });
 
-        // 3. 插入全新項目 (Process New Items)
         const newIds = Array.from(activeCounts.keys()).filter(id => !list.find(existing => existing.id === id));
-        
         if (newIds.length > 0) {
-            const newItems: RelationItem[] = newIds.map(id => ({ 
-                id, 
-                count: activeCounts.get(id)!,
-                weight: 1.0 
-            }));
-            
+            const newItems: RelationItem[] = newIds.map(id => ({ id, count: activeCounts.get(id)!, weight: 1.0 }));
             let insertIndex = -1; 
             for (let i = resultList.length - 1; i >= 0; i--) {
                 const itemId = resultList[i].id;
                 if (activeCounts.has(itemId) && !newIds.includes(itemId)) {
-                    insertIndex = i + 1; 
-                    break;
+                    insertIndex = i + 1; break;
                 }
             }
-            
-            if (insertIndex === -1) {
-                insertIndex = Math.floor(resultList.length / 2);
-            }
-            
+            if (insertIndex === -1) insertIndex = Math.floor(resultList.length / 2);
             resultList.splice(insertIndex, 0, ...newItems);
         }
 
-        // 4. 截斷長度
-        if (resultList.length > limit) {
-            return resultList.slice(0, limit);
-        }
-
+        if (resultList.length > limit) return resultList.slice(0, limit);
         return resultList;
     }
 
@@ -374,6 +337,7 @@ class RelationshipService {
             case 'weekday': return 'weekdays';
             case 'timeslot': return 'timeSlots';
             case 'playerCount': return 'playerCounts';
+            case 'gameMode': return 'gameModes';
         }
         return 'others';
     }
