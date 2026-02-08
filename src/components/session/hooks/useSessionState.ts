@@ -5,10 +5,10 @@ import { GameSession, GameTemplate, SavedListItem } from '../../../types';
 interface SessionViewProps {
   session: GameSession;
   template: GameTemplate;
-  playerHistory: SavedListItem[];
+  savedPlayers: SavedListItem[]; // Renamed from playerHistory
   onUpdateSession: (session: GameSession) => void;
   onUpdateTemplate: (template: GameTemplate) => void;
-  onUpdatePlayerHistory: (name: string, uuid?: string) => void;
+  onUpdateSavedPlayer: (name: string, uuid?: string) => void; // Renamed from onUpdatePlayerHistory
   onExit: () => void;
   onResetScores: () => void;
 }

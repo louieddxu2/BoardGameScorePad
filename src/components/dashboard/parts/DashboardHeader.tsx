@@ -19,6 +19,10 @@ interface DashboardHeaderProps {
   isSyncing: boolean;
   onCloudClick: () => void; // Changed from onToggleCloud
   onTriggerInspector: () => void; // New prop for debug tool
+  // [Refactor] Allow passing external refs to ignore clicks
+  interactionRefs?: React.RefObject<HTMLElement | null>[];
+  // [Fix] New prop to prevent background clicks when global modal is open
+  isOverlayOpen?: boolean;
 }
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({
@@ -35,7 +39,9 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   isConnected,
   isSyncing,
   onCloudClick,
-  onTriggerInspector
+  onTriggerInspector,
+  interactionRefs,
+  isOverlayOpen
 }) => {
   
   const searchRef = useRef<HTMLDivElement>(null);
@@ -71,15 +77,31 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     return () => clearInterval(interval);
   }, [isSyncing, viewMode]); // Re-check after sync or view change (potential deletions)
 
-  // [New] Handle click outside to close search
+  // [Refactor] Handle click outside with explicit Refs
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
-      if (isSearchActive && searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        // [Modified] Only close if the search query is empty.
-        // If there is text, keep it open so the user knows the list is filtered.
-        if (!searchQuery || searchQuery.trim() === '') {
-            setIsSearchActive(false);
-        }
+      // 1. If not searching, do nothing
+      if (!isSearchActive || !searchRef.current) return;
+      
+      // [Fix] If a global overlay (modal) is open, do NOT handle background clicks.
+      // This prevents the search mode (and setup panel) from closing when interacting with the modal.
+      if (isOverlayOpen) return;
+
+      const target = event.target as Node;
+
+      // 2. If clicking inside search bar, do nothing
+      if (searchRef.current.contains(target)) return;
+
+      // 3. If clicking inside any excluded element (e.g. setup panel), do nothing
+      if (interactionRefs?.some(ref => ref.current?.contains(target))) {
+          return;
+      }
+
+      // 4. Otherwise, handle close logic
+      // Only close if the search query is empty.
+      // If there is text, keep it open so the user knows the list is filtered.
+      if (!searchQuery || searchQuery.trim() === '') {
+          setIsSearchActive(false);
       }
     };
 
@@ -92,7 +114,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [isSearchActive, setIsSearchActive, searchQuery]);
+  }, [isSearchActive, setIsSearchActive, searchQuery, interactionRefs, isOverlayOpen]);
 
   const toggleView = () => {
       setViewMode(viewMode === 'library' ? 'history' : 'library');

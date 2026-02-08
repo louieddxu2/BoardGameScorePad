@@ -7,6 +7,7 @@ import TexturedPlayerHeader from './TexturedPlayerHeader';
 import TexturedTotalCell from './TexturedTotalCell';
 import TexturedBlock from './TexturedBlock';
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
+import { calculateWinners } from '../../../utils/templateUtils'; // [Refactor]
 
 interface ScreenshotLayout {
   itemWidth: number;
@@ -27,31 +28,13 @@ interface ScreenshotViewProps {
 }
 
 const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, template, zoomLevel, mode, layout, baseImage, customWinners }) => {
-  // Calculate Winners
+  // Calculate Winners - [Refactor] Use shared util
   let winners: string[] = [];
   if (customWinners) {
       winners = customWinners;
   } else {
       const rule = session.scoringRule || 'HIGHEST_WINS';
-      
-      if (rule === 'COOP' || rule === 'COOP_NO_SCORE') {
-          const anyForceLost = session.players.some(p => p.isForceLost);
-          if (!anyForceLost) {
-              winners = session.players.map(p => p.id);
-          }
-      } else if (rule === 'HIGHEST_WINS') {
-          const validPlayers = session.players.filter(p => !p.isForceLost);
-          if (validPlayers.length > 0) {
-              const maxScore = Math.max(...validPlayers.map(pl => pl.totalScore));
-              winners = validPlayers.filter(p => p.totalScore === maxScore).map(p => p.id);
-          }
-      } else if (rule === 'LOWEST_WINS') {
-          const validPlayers = session.players.filter(p => !p.isForceLost);
-          if (validPlayers.length > 0) {
-              const minScore = Math.min(...validPlayers.map(pl => pl.totalScore));
-              winners = validPlayers.filter(p => p.totalScore === minScore).map(p => p.id);
-          }
-      }
+      winners = calculateWinners(session.players, rule);
   }
 
   const headerIconBoxClass = 'bg-emerald-500/10 border border-emerald-500/20';
@@ -310,7 +293,6 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = ({ session, templa
                                         <div
                                             key={overlayCol.id}
                                             className="absolute inset-0 z-10 pointer-events-none"
-                                            // [Fix] Removed styles here. ScoreCell handles layout positioning internally if column.contentLayout is present.
                                         >
                                             <div className="w-full h-full">
                                                 <ScoreCell

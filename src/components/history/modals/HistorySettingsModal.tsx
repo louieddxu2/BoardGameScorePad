@@ -1,10 +1,12 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { HistoryRecord, ScoringRule, SavedListItem, GameTemplate } from '../../../types';
 import { X, Save, Calendar, MapPin, FileText, Settings, Database, Clock, Trophy, Hash, CopyPlus } from 'lucide-react';
 import { generateId } from '../../../utils/idGenerator';
 import { relationshipService } from '../../../services/relationshipService'; // Import Service
 import { DATA_LIMITS } from '../../../dataLimits';
+import { getRecordScoringRule, getRecordBggId } from '../../../utils/historyUtils';
 
 interface HistorySettingsModalProps {
   isOpen: boolean;
@@ -45,8 +47,21 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
   // Initialize form data when modal opens
   useEffect(() => {
     if (isOpen && record) {
-      // Deep clone to safely edit nested snapshotTemplate if needed
-      setFormData(JSON.parse(JSON.stringify(record)));
+      // Deep clone to safely edit
+      const initialForm = JSON.parse(JSON.stringify(record));
+      
+      // Ensure scoringRule is populated from fallback if missing (migration)
+      // Note: getRecordScoringRule handles the fallback logic centrally
+      if (!initialForm.scoringRule) {
+          initialForm.scoringRule = getRecordScoringRule(record);
+      }
+      
+      // Ensure bggId is populated if missing
+      if (!initialForm.bggId) {
+          initialForm.bggId = getRecordBggId(record) || '';
+      }
+
+      setFormData(initialForm);
     }
   }, [isOpen, record]);
 
@@ -93,6 +108,23 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
             finalRecord.locationId = undefined;
         }
 
+        // Also ensure BGG ID in snapshot matches (consistency)
+        if (finalRecord.bggId) {
+            if (!finalRecord.snapshotTemplate) {
+                // Should technically exist, but guard against weird state
+                finalRecord.snapshotTemplate = {} as any;
+            }
+            finalRecord.snapshotTemplate.bggId = finalRecord.bggId;
+        }
+
+        // Also ensure defaultScoringRule in snapshot matches (consistency)
+        if (finalRecord.scoringRule) {
+            if (!finalRecord.snapshotTemplate) {
+                finalRecord.snapshotTemplate = {} as any;
+            }
+            finalRecord.snapshotTemplate.defaultScoringRule = finalRecord.scoringRule;
+        }
+
         // 1. Save changes to DB
         await onSave(finalRecord);
         
@@ -116,7 +148,10 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
           updatedAt: Date.now(),
           lastSyncedAt: undefined,
           cloudImageId: undefined,
-          sourceTemplateId: undefined // Detach
+          sourceTemplateId: undefined, // Detach
+          // Apply current form values
+          bggId: formData.bggId, 
+          defaultScoringRule: formData.scoringRule 
       };
       
       await onRestoreTemplate(newTemplate);
@@ -127,8 +162,8 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
   // This analyzes the data structure and renders appropriate inputs
   const renderDynamicFields = () => {
       // Define known priority fields that we want to show with specific UI
-      const priorityKeys = ['gameName', 'location', 'startTime', 'endTime', 'note'];
-      const hiddenKeys = ['id', 'templateId', 'players', 'winnerIds', 'snapshotTemplate', 'locationId'];
+      const priorityKeys = ['gameName', 'location', 'startTime', 'endTime', 'note', 'scoringRule', 'bggId'];
+      const hiddenKeys = ['id', 'templateId', 'players', 'winnerIds', 'snapshotTemplate', 'locationId', 'bgStatsId', 'photoCloudIds', 'photos', 'cloudFolderId'];
       
       // 1. Render Priority Fields (Specific UI)
       return (
@@ -153,8 +188,8 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
                   </label>
                   <input
                       type="text"
-                      value={formData.snapshotTemplate?.bggId || ''}
-                      onChange={(e) => handleDeepChange(['snapshotTemplate', 'bggId'], e.target.value)}
+                      value={formData.bggId || ''}
+                      onChange={(e) => handleFieldChange('bggId', e.target.value)}
                       placeholder="例如：12345"
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white focus:border-emerald-500 outline-none font-mono"
                   />
@@ -207,14 +242,14 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
                   </datalist>
               </div>
 
-              {/* Scoring Rule (Extracted from snapshotTemplate) */}
+              {/* Scoring Rule (Top-level) */}
               <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
                       <Settings size={12} /> 競爭 / 合作模式
                   </label>
                   <select 
-                      value={formData.snapshotTemplate?.defaultScoringRule || 'HIGHEST_WINS'}
-                      onChange={(e) => handleDeepChange(['snapshotTemplate', 'defaultScoringRule'], e.target.value)}
+                      value={formData.scoringRule}
+                      onChange={(e) => handleFieldChange('scoringRule', e.target.value)}
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white focus:border-emerald-500 outline-none appearance-none"
                   >
                       {SCORING_OPTIONS.map(opt => (

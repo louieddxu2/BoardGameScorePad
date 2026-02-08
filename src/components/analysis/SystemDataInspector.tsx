@@ -1,15 +1,15 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Database, Users, MapPin, Clock, Hash, LayoutGrid, ChevronRight, ChevronDown, Palette, Calendar, Watch, RefreshCw, Loader2, Trash2, AlertTriangle, Image as ImageIcon, HardDrive, Table as TableIcon } from 'lucide-react';
+import { X, Database, Users, MapPin, Clock, Hash, LayoutGrid, ChevronRight, ChevronDown, Palette, Calendar, Watch, RefreshCw, Loader2, Trash2, AlertTriangle, Image as ImageIcon, HardDrive, Table as TableIcon, Skull, ExternalLink, Search, Trophy } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
+import Dexie from 'dexie'; 
 import { SavedListItem, LocalImage } from '../../types';
 import { useTranslation } from '../../i18n';
 import { inspectorTranslations, InspectorTranslationKey } from '../../i18n/inspector';
-import { relationshipService } from '../../services/relationshipService'; // Import Service
-import { useToast } from '../../hooks/useToast'; // Import Toast
-import ConfirmationModal from '../shared/ConfirmationModal'; // [New] Import Modal
+import { relationshipService } from '../../services/relationshipService'; 
+import { useToast } from '../../hooks/useToast'; 
+import ConfirmationModal from '../shared/ConfirmationModal'; 
 
 // --- Helpers for formatting ---
 const WEEKDAY_MAP = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
@@ -70,6 +70,7 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
     const weekdays = useLiveQuery(() => db.savedWeekdays.toArray()) || [];
     const timeSlots = useLiveQuery(() => db.savedTimeSlots.toArray()) || [];
     const playerCounts = useLiveQuery(() => db.savedPlayerCounts.toArray()) || [];
+    const gameModes = useLiveQuery(() => db.savedGameModes.toArray()) || [];
 
     // Create Lookup Maps
     const lookups = useMemo(() => {
@@ -80,9 +81,10 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
             games: createMap(games),
             weekdays: createMap(weekdays),
             timeSlots: createMap(timeSlots),
-            playerCounts: createMap(playerCounts)
+            playerCounts: createMap(playerCounts),
+            gameModes: createMap(gameModes)
         };
-    }, [players, locations, games, weekdays, timeSlots, playerCounts]);
+    }, [players, locations, games, weekdays, timeSlots, playerCounts, gameModes]);
 
     if (!meta || !meta.relations) return <span className="text-slate-500 italic text-xs">{t('no_relations')}</span>;
 
@@ -105,6 +107,7 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
                 else if (key === 'weekdays') lookupKey = 'weekdays';
                 else if (key === 'timeSlots') lookupKey = 'timeSlots';
                 else if (key === 'playerCounts') lookupKey = 'playerCounts';
+                else if (key === 'gameModes') lookupKey = 'gameModes';
 
                 if (lookupKey) {
                     const entity = lookups[lookupKey].get(r.id);
@@ -150,6 +153,10 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
                 <span className="text-slate-300">{entity?.name || id} 人</span>
             ))}
 
+            {renderCategory('gameModes', <Trophy size={12} className="text-yellow-400"/>, t('rel_modes'), (id, { entity }) => (
+                <span className="text-slate-300">{entity?.name || id}</span>
+            ))}
+
             {renderCategory('colors', <Palette size={12} className="text-pink-400"/>, t('rel_colors'), (id) => (
                 <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: id === 'transparent' ? 'transparent' : id }}>
@@ -172,8 +179,17 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
 };
 
 // Reusable Detail Panel
-const InspectorDetailPanel = ({ selectedItem, icon: Icon }: { selectedItem: any, icon: any }) => {
+const InspectorDetailPanel = ({ selectedItem, icon: Icon, isBGG = false }: { selectedItem: any, icon: any, isBGG?: boolean }) => {
     const t = useInspectorTranslation();
+
+    // Fetch BGG Metadata if available (If this IS a BGG item, it already IS the metadata)
+    const bggInfo = useLiveQuery(async () => {
+        if (isBGG) return selectedItem; // Direct display
+        if (selectedItem?.bggId) {
+            return await db.bggGames.get(selectedItem.bggId.toString());
+        }
+        return null;
+    }, [selectedItem, isBGG]);
 
     return (
         <div className="flex-1 overflow-y-auto p-4 bg-slate-950">
@@ -184,7 +200,7 @@ const InspectorDetailPanel = ({ selectedItem, icon: Icon }: { selectedItem: any,
                         <div>
                             <h3 className="text-xl font-bold text-white leading-tight">
                                 {/* Special formatting for Weekdays */}
-                                {selectedItem.id.startsWith('weekday_') 
+                                {selectedItem.id && selectedItem.id.startsWith('weekday_') 
                                     ? WEEKDAY_MAP[parseInt(selectedItem.name)] || selectedItem.name
                                     : selectedItem.name}
                             </h3>
@@ -192,35 +208,86 @@ const InspectorDetailPanel = ({ selectedItem, icon: Icon }: { selectedItem: any,
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
-                            <span className="text-[10px] text-slate-500 uppercase font-bold block mb-1">{t('usage_count')}</span>
-                            <span className="text-lg font-mono text-emerald-400 font-bold">{selectedItem.usageCount}</span>
+                    {/* BGG Info Card */}
+                    {bggInfo && (
+                        <div className="bg-indigo-950/30 border border-indigo-500/30 rounded-xl p-3 flex gap-4 animate-in fade-in slide-in-from-top-2 shadow-inner">
+                            <div className="w-16 h-16 shrink-0 bg-black/20 rounded-lg overflow-hidden border border-white/10 shadow-sm">
+                                {bggInfo.thumbnailUrl ? (
+                                    <img src={bggInfo.thumbnailUrl} alt="Cover" className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-indigo-800">
+                                        <ImageIcon size={24} />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between">
+                                    <h4 className="font-bold text-indigo-200 text-sm truncate">{bggInfo.name}</h4>
+                                    <a 
+                                        href={`https://boardgamegeek.com/boardgame/${bggInfo.id}`} 
+                                        target="_blank" 
+                                        rel="noreferrer"
+                                        className="text-indigo-400 hover:text-indigo-300 p-1 bg-indigo-500/10 rounded transition-colors"
+                                        title="Open in BGG"
+                                    >
+                                        <ExternalLink size={14} />
+                                    </a>
+                                </div>
+                                <div className="text-xs text-indigo-300/70 mt-1 space-y-0.5">
+                                    {bggInfo.year && <div>年份: <span className="text-indigo-200">{bggInfo.year}</span></div>}
+                                    
+                                    <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                                        {(bggInfo.minPlayers || bggInfo.maxPlayers) && (
+                                            <div>人數: <span className="text-indigo-200">{bggInfo.minPlayers || 1}{bggInfo.maxPlayers ? `-${bggInfo.maxPlayers}` : ''}</span></div>
+                                        )}
+                                        {bggInfo.playingTime && (
+                                            <div>時間: <span className="text-indigo-200">{bggInfo.playingTime}m</span></div>
+                                        )}
+                                        {bggInfo.minAge && (
+                                            <div>年齡: <span className="text-indigo-200">{bggInfo.minAge}+</span></div>
+                                        )}
+                                    </div>
+                                    
+                                    {bggInfo.designers && <div className="truncate">設計師: <span className="text-indigo-200">{bggInfo.designers}</span></div>}
+                                    <div className="font-mono text-[9px] opacity-40 mt-1">BGG ID: {bggInfo.id}</div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
-                            <span className="text-[10px] text-slate-500 uppercase font-bold block mb-1">{t('last_used')}</span>
-                            <span className="text-sm font-mono text-slate-300">{selectedItem.lastUsed > 0 ? new Date(selectedItem.lastUsed).toLocaleString() : '-'}</span>
-                        </div>
-                    </div>
+                    )}
 
-                    <div className="space-y-2">
-                        <div className="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">
-                            <div className="px-3 py-2 bg-slate-800/50 border-b border-slate-800 text-[10px] font-bold text-slate-500 uppercase flex justify-between items-center">
-                                <span>{t('relations_analysis')}</span>
-                                <span className="text-[9px] bg-slate-700 px-1.5 rounded text-slate-300">{t('filtered')}</span>
+                    {!isBGG && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
+                                <span className="text-[10px] text-slate-500 uppercase font-bold block mb-1">{t('usage_count')}</span>
+                                <span className="text-lg font-mono text-emerald-400 font-bold">{selectedItem.usageCount}</span>
                             </div>
-                            <div className="p-3">
-                                <MetaFriendlyView meta={selectedItem.meta} />
+                            <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
+                                <span className="text-[10px] text-slate-500 uppercase font-bold block mb-1">{t('last_used')}</span>
+                                <span className="text-sm font-mono text-slate-300">{selectedItem.lastUsed > 0 ? new Date(selectedItem.lastUsed).toLocaleString() : '-'}</span>
                             </div>
                         </div>
+                    )}
 
-                        <div className="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">
-                            <div className="px-3 py-2 bg-slate-800/50 border-b border-slate-800 text-[10px] font-bold text-slate-500 uppercase">{t('full_dump')}</div>
-                            <div className="p-3 max-h-60 overflow-y-auto custom-scrollbar">
-                                <pre className="text-xs font-mono text-sky-400/80 whitespace-pre-wrap break-all">
-                                    {JSON.stringify(selectedItem, null, 2)}
-                                </pre>
+                    {!isBGG && (
+                        <div className="space-y-2">
+                            <div className="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">
+                                <div className="px-3 py-2 bg-slate-800/50 border-b border-slate-800 text-[10px] font-bold text-slate-500 uppercase flex justify-between items-center">
+                                    <span>{t('relations_analysis')}</span>
+                                    <span className="text-[9px] bg-slate-700 px-1.5 rounded text-slate-300">{t('filtered')}</span>
+                                </div>
+                                <div className="p-3">
+                                    <MetaFriendlyView meta={selectedItem.meta} />
+                                </div>
                             </div>
+                        </div>
+                    )}
+
+                    <div className="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">
+                        <div className="px-3 py-2 bg-slate-800/50 border-b border-slate-800 text-[10px] font-bold text-slate-500 uppercase">{t('full_dump')}</div>
+                        <div className="p-3 max-h-60 overflow-y-auto custom-scrollbar">
+                            <pre className="text-xs font-mono text-sky-400/80 whitespace-pre-wrap break-all">
+                                {JSON.stringify(selectedItem, null, 2)}
+                            </pre>
                         </div>
                     </div>
                 </div>
@@ -236,10 +303,23 @@ const InspectorDetailPanel = ({ selectedItem, icon: Icon }: { selectedItem: any,
     );
 };
 
-const DataList = ({ title, table, icon: Icon }: { title: string, table: any, icon: any }) => {
+const DataList = ({ title, table, icon: Icon, isBGG = false }: { title: string, table: any, icon: any, isBGG?: boolean }) => {
   const data = useLiveQuery(() => table.toArray());
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const t = useInspectorTranslation();
+
+  const filteredData = useMemo(() => {
+      if (!data) return [];
+      if (!searchTerm.trim()) return data;
+      
+      const lower = searchTerm.toLowerCase();
+      return data.filter((item: any) => 
+          (item.name && item.name.toLowerCase().includes(lower)) ||
+          (item.id && item.id.toLowerCase().includes(lower)) ||
+          (item.bggId && String(item.bggId).includes(lower))
+      );
+  }, [data, searchTerm]);
 
   if (!data) return <div className="p-4 text-slate-500">{t('loading')}</div>;
 
@@ -249,23 +329,53 @@ const DataList = ({ title, table, icon: Icon }: { title: string, table: any, ico
     <div className="flex flex-1 min-h-0">
       {/* Left: List */}
       <div className="w-1/3 border-r border-slate-700 overflow-y-auto no-scrollbar bg-slate-900/50">
-        <div className="p-2 sticky top-0 bg-slate-900 border-b border-slate-700 z-10 flex justify-between items-center backdrop-blur-sm bg-opacity-90">
-            <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
-                <Icon size={12} /> {title} ({data.length})
-            </span>
+        <div className="p-2 sticky top-0 bg-slate-900 border-b border-slate-700 z-10 backdrop-blur-sm bg-opacity-95">
+            <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
+                    <Icon size={12} /> {title} ({filteredData.length})
+                </span>
+            </div>
+            <div className="relative">
+                <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                <input 
+                    type="text" 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="搜尋..." 
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-7 pr-6 py-1 text-xs text-white focus:border-emerald-500 outline-none"
+                />
+                {searchTerm && (
+                    <button onClick={() => setSearchTerm('')} className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white p-1">
+                        <X size={12} />
+                    </button>
+                )}
+            </div>
         </div>
         <div className="p-2 space-y-1">
-            {data.map((item: any) => (
+            {filteredData.map((item: any) => (
             <button
                 key={item.id}
                 onClick={() => setSelectedId(item.id)}
                 className={`w-full text-left p-2 rounded-lg text-xs transition-all flex justify-between items-center ${selectedId === item.id ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100'}`}
             >
-                <span className="truncate font-bold">{item.name || item.id}</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded ${selectedId === item.id ? 'bg-indigo-500 text-indigo-100' : 'bg-slate-700 text-slate-500'}`}>{item.usageCount || 0}</span>
+                <div className="flex flex-col min-w-0">
+                    <span className="truncate font-bold">{item.name || item.id}</span>
+                    {/* Visual hint for BGG link */}
+                    {!isBGG && item.bggId && (
+                        <span className="text-[9px] text-indigo-300/80 font-mono leading-none mt-0.5 flex items-center gap-0.5">
+                            <Hash size={8} /> BGG
+                        </span>
+                    )}
+                    {isBGG && (
+                        <span className="text-[9px] text-slate-500 font-mono leading-none mt-0.5">
+                            ID: {item.id}
+                        </span>
+                    )}
+                </div>
+                {!isBGG && <span className={`text-[10px] px-1.5 py-0.5 rounded ${selectedId === item.id ? 'bg-indigo-500 text-indigo-100' : 'bg-slate-700 text-slate-500'}`}>{item.usageCount || 0}</span>}
             </button>
             ))}
-            {data.length === 0 && (
+            {filteredData.length === 0 && (
                 <div className="text-center py-8 text-xs text-slate-600 italic">
                     {t('no_data_category')}
                 </div>
@@ -274,7 +384,7 @@ const DataList = ({ title, table, icon: Icon }: { title: string, table: any, ico
       </div>
 
       {/* Right: Inspector */}
-      <InspectorDetailPanel selectedItem={selectedItem} icon={Icon} />
+      <InspectorDetailPanel selectedItem={selectedItem} icon={Icon} isBGG={isBGG} />
     </div>
   );
 };
@@ -345,9 +455,19 @@ const ImageInspector = () => {
     const t = useInspectorTranslation();
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const totalSize = useMemo(() => images.reduce((acc, img) => acc + (img.blob?.size || 0), 0), [images]);
     const selectedImage = images.find(img => img.id === selectedId);
+
+    const filteredImages = useMemo(() => {
+        if (!searchTerm.trim()) return images;
+        const lower = searchTerm.toLowerCase();
+        return images.filter(img => 
+            img.id.toLowerCase().includes(lower) || 
+            img.relatedId.toLowerCase().includes(lower)
+        );
+    }, [images, searchTerm]);
 
     useEffect(() => {
         if (selectedImage) {
@@ -363,19 +483,34 @@ const ImageInspector = () => {
         <div className="flex flex-1 min-h-0">
             {/* Left: Image List */}
             <div className="w-1/3 border-r border-slate-700 overflow-y-auto no-scrollbar bg-slate-900/50">
-                <div className="p-3 sticky top-0 bg-slate-900 border-b border-slate-700 z-10 backdrop-blur-sm bg-opacity-90">
+                <div className="p-3 sticky top-0 bg-slate-900 border-b border-slate-700 z-10 backdrop-blur-sm bg-opacity-95">
                     <div className="flex justify-between items-center mb-2">
                         <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
                             <ImageIcon size={12} /> {t('list_images')}
                         </span>
-                        <span className="text-xs font-bold text-white bg-slate-700 px-2 py-0.5 rounded-full">{images.length}</span>
+                        <span className="text-xs font-bold text-white bg-slate-700 px-2 py-0.5 rounded-full">{filteredImages.length}</span>
+                    </div>
+                    <div className="relative mb-2">
+                        <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                        <input 
+                            type="text" 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="搜尋 ID..." 
+                            className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-7 pr-6 py-1 text-xs text-white focus:border-emerald-500 outline-none"
+                        />
+                        {searchTerm && (
+                            <button onClick={() => setSearchTerm('')} className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white p-1">
+                                <X size={12} />
+                            </button>
+                        )}
                     </div>
                     <div className="text-[10px] text-slate-500 font-mono">
                         {t('img_total_size')}: <span className="text-emerald-400 font-bold">{formatBytes(totalSize)}</span>
                     </div>
                 </div>
                 <div className="p-2 space-y-1">
-                    {images.map((img: LocalImage) => (
+                    {filteredImages.map((img: LocalImage) => (
                         <button
                             key={img.id}
                             onClick={() => setSelectedId(img.id)}
@@ -393,6 +528,11 @@ const ImageInspector = () => {
                             </div>
                         </button>
                     ))}
+                    {filteredImages.length === 0 && (
+                        <div className="text-center py-8 text-xs text-slate-600 italic">
+                            {t('no_data_category')}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -440,7 +580,7 @@ interface TableStats {
     size: number;
 }
 
-const DatabaseInspector = () => {
+const DatabaseInspector = ({ onRequestFactoryReset }: { onRequestFactoryReset: () => void }) => {
     const [stats, setStats] = useState<TableStats[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const t = useInspectorTranslation();
@@ -464,10 +604,6 @@ const DatabaseInspector = () => {
         const analyzeDB = async () => {
             setIsLoading(true);
             try {
-                // [Fix] TypeScript error: Property 'tables' does not exist on type 'ScorePadDatabase'
-                // db is an instance of ScorePadDatabase which extends Dexie.
-                // Dexie instance has a 'tables' property (array of Table objects).
-                // We cast to any here to bypass the strict type check if the definitions are slightly off or if generics cause issues.
                 const tables = (db as any).tables;
                 const results: TableStats[] = [];
 
@@ -543,15 +679,26 @@ const DatabaseInspector = () => {
                 <p className="text-[10px] text-slate-600 text-center pt-4">
                     {t('db_calc_note')}
                 </p>
+
+                {/* Factory Reset Section */}
+                <div className="pt-8 border-t border-slate-800">
+                    <button 
+                        onClick={onRequestFactoryReset}
+                        className="w-full py-4 bg-red-900/20 hover:bg-red-900/40 text-red-500 font-bold rounded-xl border border-red-900/30 flex items-center justify-center gap-2 transition-all active:scale-95 group"
+                    >
+                        <Skull size={20} className="group-hover:animate-pulse" />
+                        {t('btn_factory_reset')}
+                    </button>
+                </div>
             </div>
         </div>
     );
 };
 
 const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState<'games' | 'players' | 'locations' | 'time' | 'counts' | 'images' | 'db'>('games');
+  const [activeTab, setActiveTab] = useState<'games' | 'players' | 'locations' | 'time' | 'counts' | 'modes' | 'images' | 'bgg' | 'db'>('games');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<'reset' | 'reprocess' | null>(null); // [New] Modal State
+  const [confirmAction, setConfirmAction] = useState<'reset' | 'reprocess' | 'factory_reset' | null>(null); 
   
   const t = useInspectorTranslation();
   const { showToast } = useToast();
@@ -561,6 +708,8 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
           await executeResetStats();
       } else if (confirmAction === 'reprocess') {
           await executeReprocessHistory();
+      } else if (confirmAction === 'factory_reset') {
+          await executeFactoryReset();
       }
       setConfirmAction(null);
   };
@@ -569,7 +718,7 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       if (isProcessing) return;
       setIsProcessing(true);
       try {
-          await (db as any).transaction('rw', db.savedPlayers, db.savedLocations, db.savedGames, db.savedWeekdays, db.savedTimeSlots, db.savedPlayerCounts, db.analyticsLogs, async () => {
+          await (db as any).transaction('rw', db.savedPlayers, db.savedLocations, db.savedGames, db.savedWeekdays, db.savedTimeSlots, db.savedPlayerCounts, db.savedGameModes, db.analyticsLogs, async () => {
               // 1. Clear Logs
               await db.analyticsLogs.clear();
 
@@ -580,6 +729,7 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
               await db.savedWeekdays.clear();
               await db.savedTimeSlots.clear();
               await db.savedPlayerCounts.clear();
+              await db.savedGameModes.clear();
           });
           
           showToast({ message: "統計資料庫已清空 (請點擊右方按鈕重新掃描)", type: 'success' });
@@ -615,16 +765,50 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       }
   };
 
+  const executeFactoryReset = async () => {
+      if (isProcessing) return;
+      setIsProcessing(true);
+      try {
+          // [Fix] Close connection first to prevent hook updates from crashing UI
+          (db as any).close();
+          
+          // 2. Delete the entire database
+          await Dexie.delete('BoardGameScorePadDB');
+          
+          // 3. Clear local storage
+          localStorage.clear();
+
+          // 4. Reload to re-initialize
+          window.location.reload();
+      } catch (error) {
+          console.error("Factory Reset failed", error);
+          // Force reload anyway if something went wrong, as state is likely corrupted
+          window.location.reload();
+      }
+  };
+
   return createPortal(
     <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col animate-in fade-in duration-200">
       
       {/* --- Confirmation Modal --- */}
       <ConfirmationModal 
           isOpen={!!confirmAction}
-          title={confirmAction === 'reset' ? t('confirm_reset_title') : t('confirm_reprocess_title')}
-          message={confirmAction === 'reset' ? t('confirm_reset_msg') : t('confirm_reprocess_msg')}
-          confirmText={confirmAction === 'reset' ? t('btn_reset') : t('btn_reprocess')}
-          isDangerous={confirmAction === 'reset'}
+          title={
+              confirmAction === 'factory_reset' ? t('confirm_factory_reset_title') : 
+              confirmAction === 'reset' ? t('confirm_reset_title') : 
+              t('confirm_reprocess_title')
+          }
+          message={
+              confirmAction === 'factory_reset' ? t('confirm_factory_reset_msg') :
+              confirmAction === 'reset' ? t('confirm_reset_msg') : 
+              t('confirm_reprocess_msg')
+          }
+          confirmText={
+              confirmAction === 'factory_reset' ? t('btn_factory_reset') :
+              confirmAction === 'reset' ? t('btn_reset') : 
+              t('btn_reprocess')
+          }
+          isDangerous={confirmAction === 'reset' || confirmAction === 'factory_reset'}
           zIndexClass="z-[110]"
           onCancel={() => setConfirmAction(null)}
           onConfirm={handleConfirmAction}
@@ -674,7 +858,9 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             { id: 'locations', label: t('tab_locations'), icon: MapPin },
             { id: 'time', label: t('tab_time'), icon: Clock },
             { id: 'counts', label: t('tab_counts'), icon: Hash },
+            { id: 'modes', label: t('tab_modes'), icon: Trophy }, // New
             { id: 'images', label: t('tab_images'), icon: ImageIcon },
+            { id: 'bgg', label: t('tab_bgg'), icon: Database }, 
             { id: 'db', label: t('tab_db'), icon: HardDrive },
         ].map(tab => (
             <button
@@ -695,8 +881,10 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
         {activeTab === 'locations' && <DataList title={t('list_locations')} table={db.savedLocations} icon={MapPin} />}
         {activeTab === 'time' && <TimeInspector />}
         {activeTab === 'counts' && <DataList title={t('list_counts')} table={db.savedPlayerCounts} icon={Hash} />}
+        {activeTab === 'modes' && <DataList title={t('list_modes')} table={db.savedGameModes} icon={Trophy} />}
         {activeTab === 'images' && <ImageInspector />}
-        {activeTab === 'db' && <DatabaseInspector />}
+        {activeTab === 'bgg' && <DataList title={t('list_bgg')} table={db.bggGames} icon={Database} isBGG={true} />}
+        {activeTab === 'db' && <DatabaseInspector onRequestFactoryReset={() => setConfirmAction('factory_reset')} />}
       </div>
     </div>,
     document.body

@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { X, MapPin, ChevronDown } from 'lucide-react';
-import { useGameFlowTranslation } from '../../../i18n/game_flow'; // Changed Import
+import { useGameFlowTranslation } from '../../../i18n/game_flow'; 
 import ConfirmationModal from '../../shared/ConfirmationModal';
 import { SavedListItem } from '../../../types';
 
@@ -11,7 +11,7 @@ interface SessionExitModalProps {
   onSaveActive: (location: string) => void; 
   onSaveHistory: (location?: string) => void; 
   onDiscard?: () => void;
-  locationHistory?: SavedListItem[]; 
+  savedLocations?: SavedListItem[]; // Renamed from locationHistory
   initialLocation?: string; 
 }
 
@@ -21,7 +21,7 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
   onSaveActive,
   onSaveHistory,
   onDiscard,
-  locationHistory = [],
+  savedLocations = [], // Renamed
   initialLocation = ''
 }) => {
   const { t } = useGameFlowTranslation(); // Use new hook
@@ -39,8 +39,8 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
 
   // Sorting: Oldest to Newest (Ascending)
   const sortedLocations = useMemo(() => {
-      return [...locationHistory].sort((a, b) => a.lastUsed - b.lastUsed);
-  }, [locationHistory]);
+      return [...savedLocations].sort((a, b) => a.lastUsed - b.lastUsed);
+  }, [savedLocations]);
 
   // Auto-scroll to bottom when menu opens
   useEffect(() => {

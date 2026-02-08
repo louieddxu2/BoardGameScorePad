@@ -11,10 +11,10 @@ import { DATA_LIMITS } from '../../../dataLimits';
 interface SessionViewProps {
   session: GameSession;
   template: GameTemplate;
-  playerHistory: SavedListItem[]; // [Update] Updated to accept SavedListItem[] to match AppData
+  savedPlayers: SavedListItem[]; // Renamed
   onUpdateSession: (session: GameSession) => void;
   onUpdateTemplate: (template: GameTemplate) => void;
-  onUpdatePlayerHistory: (name: string, uuid?: string) => void; // [Modified] Accepts optional UUID
+  onUpdateSavedPlayer: (name: string, uuid?: string) => void; // Renamed
   onExit: () => void;
   onResetScores: () => void;
 }
@@ -31,7 +31,7 @@ export const useSessionEvents = (
   sessionState: SessionStateHook,
   localUiState?: LocalUiState
 ) => {
-  const { session, template, playerHistory, onUpdateSession, onUpdateTemplate, onUpdatePlayerHistory, onExit, onResetScores } = props;
+  const { session, template, savedPlayers, onUpdateSession, onUpdateTemplate, onUpdateSavedPlayer, onExit, onResetScores } = props;
   const { uiState, setUiState } = sessionState;
   const { showToast } = useToast();
 
@@ -281,7 +281,7 @@ export const useSessionEvents = (
           if (!finalLinkedId) {
               if (nameChanged && finalName) {
                   // If name changed, try to find a match or generate new
-                  const matchedRecord = playerHistory.find(h => h.name.toLowerCase() === finalName.toLowerCase());
+                  const matchedRecord = savedPlayers.find(h => h.name.toLowerCase() === finalName.toLowerCase());
                   if (matchedRecord) {
                       finalLinkedId = matchedRecord.id; 
                   } else {
@@ -313,9 +313,9 @@ export const useSessionEvents = (
               
               onUpdateSession({ ...session, players });
 
-              // Update history list if it's a manual entry AND has a valid linked ID
+              // Update library list if it's a manual entry AND has a valid linked ID
               if (finalName && !linkedId && finalLinkedId) {
-                  onUpdatePlayerHistory(finalName, finalLinkedId);
+                  onUpdateSavedPlayer(finalName, finalLinkedId);
               }
           }
       }

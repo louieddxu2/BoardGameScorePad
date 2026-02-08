@@ -6,6 +6,7 @@ import { useSessionEvents } from './hooks/useSessionEvents';
 import { useSessionMedia } from './hooks/useSessionMedia';
 import { useToast } from '../../hooks/useToast';
 import { useTranslation } from '../../i18n';
+import { calculateWinners } from '../../utils/templateUtils'; // [Refactor]
 
 // Parts
 import SessionHeader from './parts/SessionHeader';
@@ -22,22 +23,22 @@ import PhotoGalleryModal from './modals/PhotoGalleryModal';
 import SessionBackgroundModal from './modals/SessionBackgroundModal';
 import SessionImageFlow from './SessionImageFlow'; 
 import CameraView from '../scanner/CameraView'; 
-import GameSettingsEditor from '../shared/GameSettingsEditor'; // [New Import]
+import GameSettingsEditor from '../shared/GameSettingsEditor'; 
 
 interface SessionViewProps {
   session: GameSession;
   template: GameTemplate;
-  playerHistory: SavedListItem[]; 
-  locationHistory?: SavedListItem[]; // [New Prop]
+  savedPlayers: SavedListItem[]; // Renamed from playerHistory
+  savedLocations?: SavedListItem[]; // Renamed from locationHistory
   zoomLevel: number;
   baseImage: string | null; 
   onUpdateSession: (session: GameSession) => void;
   onUpdateTemplate: (template: GameTemplate) => void;
-  onUpdatePlayerHistory: (name: string) => void;
+  onUpdateSavedPlayer: (name: string) => void; // Renamed from onUpdatePlayerHistory
   onUpdateImage: (img: string | Blob | null) => void; 
-  onExit: (location?: string) => void; // Updated
+  onExit: (location?: string) => void; 
   onResetScores: () => void;
-  onSaveToHistory: (location?: string) => void; // [Updated] Unified save handler
+  onSaveToHistory: (location?: string) => void; 
   onDiscard: () => void; 
 }
 
@@ -89,39 +90,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   const isPanelOpen = editingCell !== null || editingPlayerId !== null;
   
-  // Winners Logic
+  // Winners Logic - [Refactor] Use shared util
   const rule = session.scoringRule || 'HIGHEST_WINS';
-  let winners: string[] = [];
-
-  if (rule === 'COOP' || rule === 'COOP_NO_SCORE') {
-      // Co-op Mode: All win unless someone is forced lost
-      const anyForcedLost = session.players.some(p => p.isForceLost);
-      if (!anyForcedLost) {
-          winners = session.players.map(p => p.id);
-      }
-      // If anyone is forced lost, winners is empty (everyone loses)
-  } else {
-      // Competitive Mode
-      const validPlayers = session.players.filter(p => !p.isForceLost);
-      
-      if (validPlayers.length > 0) {
-          let targetScore: number;
-          if (rule === 'HIGHEST_WINS') {
-              targetScore = Math.max(...validPlayers.map(pl => pl.totalScore));
-          } else if (rule === 'LOWEST_WINS') {
-              targetScore = Math.min(...validPlayers.map(pl => pl.totalScore));
-          } else {
-              targetScore = Math.max(...validPlayers.map(pl => pl.totalScore));
-          }
-          const candidates = validPlayers.filter(p => p.totalScore === targetScore);
-          const hasTieBreaker = candidates.some(p => p.tieBreaker);
-          if (hasTieBreaker) {
-              winners = candidates.filter(p => p.tieBreaker).map(p => p.id);
-          } else {
-              winners = candidates.map(p => p.id);
-          }
-      }
-  }
+  const winners = calculateWinners(session.players, rule);
   
   // Prepare Overlay Data for Photo Gallery
   const overlayData = useMemo(() => ({
@@ -232,7 +203,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onSaveActive={(loc) => props.onExit(loc)} // Pass location back
         onSaveHistory={props.onSaveToHistory}
         onDiscard={props.onDiscard} 
-        locationHistory={props.locationHistory} 
+        savedLocations={props.savedLocations} // Updated Prop Name
         initialLocation={session.location} // Pass current session location
       />
 
@@ -406,9 +377,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         eventHandlers={eventHandlers}
         session={session}
         template={template}
-        playerHistory={props.playerHistory}
+        savedPlayers={props.savedPlayers} // Updated Prop Name
         onUpdateSession={props.onUpdateSession}
-        onUpdatePlayerHistory={props.onUpdatePlayerHistory}
+        onUpdateSavedPlayer={props.onUpdateSavedPlayer} // Updated Prop Name
       />
 
       <ScreenshotModal 

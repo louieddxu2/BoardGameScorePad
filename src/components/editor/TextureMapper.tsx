@@ -230,7 +230,6 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
       if (!selectedShallow.columns || selectedShallow.columns.length === 0) {
           try {
               let full = await db.templates.get(selectedShallow.id);
-              if (!full) full = await db.systemOverrides.get(selectedShallow.id);
               if (!full) full = await db.builtins.get(selectedShallow.id);
               
               if (full) {

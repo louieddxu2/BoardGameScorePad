@@ -7,7 +7,7 @@ import { isColorDark } from '../../../utils/ui';
 
 interface PlayerEditorProps {
   player: Player;
-  playerHistory: SavedListItem[]; // [Update] Changed type
+  savedPlayers: SavedListItem[]; // Renamed from playerHistory
   tempName: string;
   setTempName: (name: string) => void;
   isInputFocused: boolean;
@@ -22,7 +22,7 @@ interface PlayerEditorProps {
 // This is the pure content provider component
 const PlayerEditor: React.FC<PlayerEditorProps> = ({
   player,
-  playerHistory,
+  savedPlayers, // Renamed
   tempName,
   setTempName,
   isInputFocused,
@@ -96,7 +96,7 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
             {/* History - Restored to remaining 2/3 width */}
             <div className="flex-1 bg-slate-800/50 rounded-xl border border-slate-700/50 flex flex-col min-w-0">
               <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-1">
-                {playerHistory.slice(0, 20).map((item, i) => (
+                {savedPlayers.slice(0, 20).map((item, i) => (
                   <button 
                     key={item.id || i} 
                     onMouseDown={(e) => e.preventDefault()}
@@ -111,7 +111,7 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
                     {item.name}
                   </button>
                 ))}
-                {playerHistory.length === 0 && <div className="text-center text-xs text-slate-600 py-4">無紀錄</div>}
+                {savedPlayers.length === 0 && <div className="text-center text-xs text-slate-600 py-4">無紀錄</div>}
               </div>
             </div>
           </div>

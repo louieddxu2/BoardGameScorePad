@@ -19,9 +19,9 @@ interface InputPanelProps {
   eventHandlers: ReturnType<typeof useSessionEvents>;
   session: GameSession;
   template: GameTemplate;
-  playerHistory: SavedListItem[]; // [Update] Updated to accept SavedListItem[] to match AppData
+  savedPlayers: SavedListItem[]; // Renamed from playerHistory
   onUpdateSession: (session: GameSession) => void;
-  onUpdatePlayerHistory: (name: string) => void;
+  onUpdateSavedPlayer: (name: string) => void; // Renamed from onUpdatePlayerHistory
 }
 
 const PanelHeader: React.FC<{
@@ -145,7 +145,7 @@ const TotalAdjustmentSidebar: React.FC<{
 
 
 const InputPanel: React.FC<InputPanelProps> = (props) => {
-  const { sessionState, eventHandlers, session, template, playerHistory, onUpdateSession, onUpdatePlayerHistory } = props;
+  const { sessionState, eventHandlers, session, template, savedPlayers, onUpdateSession, onUpdateSavedPlayer } = props;
   const { uiState, setUiState, panelHeight } = sessionState;
   const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue } = uiState;
 
@@ -382,7 +382,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
               // This is the most reliable way to clear focus state and ensure a fresh input render.
               key={activePlayer.id}
               player={activePlayer} 
-              playerHistory={playerHistory} 
+              savedPlayers={savedPlayers} // Updated Prop Name
               tempName={uiState.tempPlayerName}
               setTempName={(name) => setUiState((p: any) => ({ ...p, tempPlayerName: name }))}
               isInputFocused={uiState.isInputFocused} setIsInputFocused={(focused) => setUiState((p: any) => ({ ...p, isInputFocused: focused }))}
