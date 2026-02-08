@@ -5,11 +5,12 @@ import App from './App';
 import ErrorBoundary from './src/components/shared/ErrorBoundary';
 import { ToastProvider } from './src/hooks/useToast';
 import { LanguageProvider } from './src/i18n'; // Import i18n provider
+import { setAutoConnectPreference } from './src/services/googleDrive';
 import './src/index.css';
 
 // [Requirement] Force reset the cloud connection preference on App boot / Refresh.
 // This ensures that every time the user opens or refreshes the page, the auto-connect is disabled.
-localStorage.setItem('google_drive_auto_connect', 'false');
+setAutoConnectPreference(false);
 
 // [Requirement] Request Persistent Storage
 // This tells the browser to treat this site's storage as "persistent" and not clear it
