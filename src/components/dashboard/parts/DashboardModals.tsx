@@ -7,6 +7,7 @@ import InstallGuideModal from '../../modals/InstallGuideModal';
 import DataManagerModal from '../modals/DataManagerModal';
 import CloudManagerModal from '../modals/CloudManagerModal';
 import BgStatsModal from '../../../features/bgstats/components/BgStatsModal';
+import BggImportModal from '../../../features/bgg/components/BggImportModal'; // New Import
 import SystemDataInspector from '../../analysis/SystemDataInspector';
 import { CloudFile, CloudResourceType } from '../../../services/googleDrive';
 import { BgStatsExport, ImportManualLinks } from '../../../features/bgstats/types';
@@ -23,6 +24,7 @@ interface DashboardModalsProps {
     cloudModalCategory: 'templates' | 'sessions' | 'history';
     showInstallGuide: boolean;
     showBgStatsModal: boolean;
+    showBggImportModal: boolean; // New Prop
     showInspector: boolean;
   };
   actions: {
@@ -35,6 +37,7 @@ interface DashboardModalsProps {
     setShowCloudModal: (show: boolean) => void;
     setShowInstallGuide: (show: boolean) => void;
     setShowBgStatsModal: (show: boolean) => void;
+    setShowBggImportModal: (show: boolean) => void; // New Action
     setShowInspector: (show: boolean) => void;
   };
   
@@ -177,6 +180,12 @@ export const DashboardModals: React.FC<DashboardModalsProps> = ({
           isOpen={state.showBgStatsModal}
           onClose={() => actions.setShowBgStatsModal(false)}
           onImport={onBgStatsImport}
+      />
+
+      {/* New Modal */}
+      <BggImportModal 
+          isOpen={state.showBggImportModal}
+          onClose={() => actions.setShowBggImportModal(false)}
       />
 
       <CloudManagerModal 

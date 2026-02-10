@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { HistoryRecord } from '../../../types';
-import { Search, FileJson } from 'lucide-react';
+import { Search, FileJson, Database } from 'lucide-react';
 import HistoryList from '../HistoryList';
 import { useTranslation } from '../../../i18n';
 
@@ -12,6 +12,7 @@ interface HistoryViewProps {
   onDelete: (id: string) => void;
   onSelect: (record: HistoryRecord) => void;
   onOpenBgStats: () => void;
+  onOpenBggImport: () => void; // New Prop
 }
 
 const TruncationFooter: React.FC<{ displayed: number, total: number }> = ({ displayed, total }) => {
@@ -32,7 +33,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   searchQuery,
   onDelete,
   onSelect,
-  onOpenBgStats
+  onOpenBgStats,
+  onOpenBggImport
 }) => {
   const { t } = useTranslation();
 
@@ -41,10 +43,18 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
         <div className="flex gap-2 mb-2 overflow-x-auto no-scrollbar animate-in fade-in slide-in-from-top-1">
            <button 
                onClick={onOpenBgStats}
-               className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-indigo-400 font-bold text-xs rounded-xl border border-slate-700/50 shadow-sm transition-colors"
+               className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-indigo-400 font-bold text-xs rounded-xl border border-slate-700/50 shadow-sm transition-colors whitespace-nowrap"
            >
                <FileJson size={14} />
                BG Stats 整合
+           </button>
+           
+           <button 
+               onClick={onOpenBggImport}
+               className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-indigo-400 font-bold text-xs rounded-xl border border-slate-700/50 shadow-sm transition-colors whitespace-nowrap"
+           >
+               <Database size={14} />
+               BGG 字典匯入
            </button>
         </div>
 

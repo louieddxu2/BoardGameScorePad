@@ -1,4 +1,5 @@
 
+
 import React, { useCallback, useRef, useMemo } from 'react';
 import { GameSession, GameTemplate, SavedListItem } from '../../types';
 import { useSessionState, ScreenshotLayout } from './hooks/useSessionState';
@@ -96,11 +97,11 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   
   // Prepare Overlay Data for Photo Gallery
   const overlayData = useMemo(() => ({
-      gameName: template.name,
+      gameName: session.name || template.name, // [Identity Upgrade] Use Session Name
       date: session.startTime,
       players: session.players,
       winners: winners
-  }), [template.name, session.startTime, session.players, winners]);
+  }), [session.name, template.name, session.startTime, session.players, winners]);
   
   const handleScreenshotRequest = useCallback((mode: 'full' | 'simple') => {
     const playerHeaderRowEl = document.querySelector('#live-player-header-row') as HTMLElement;
@@ -288,7 +289,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
       {/* --- Main UI --- */}
       <SessionHeader
-        templateName={template.name}
+        templateName={session.name || template.name} // [Identity Upgrade] Use Session Name if available
         isEditingTitle={isEditingTitle}
         showShareMenu={showShareMenu}
         screenshotActive={screenshotModal.isOpen} 

@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Database, Users, MapPin, Clock, Hash, LayoutGrid, ChevronRight, ChevronDown, Palette, Calendar, Watch, RefreshCw, Loader2, Trash2, AlertTriangle, Image as ImageIcon, HardDrive, Table as TableIcon, Skull, ExternalLink, Search, Trophy } from 'lucide-react';
+import { X, Database, Users, MapPin, Clock, Hash, LayoutGrid, ChevronRight, ChevronDown, Palette, Calendar, Watch, RefreshCw, Loader2, Trash2, AlertTriangle, Image as ImageIcon, HardDrive, Table as TableIcon, Skull, ExternalLink, Search, Trophy, Star } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import Dexie from 'dexie'; 
@@ -208,20 +209,11 @@ const InspectorDetailPanel = ({ selectedItem, icon: Icon, isBGG = false }: { sel
                         </div>
                     </div>
 
-                    {/* BGG Info Card */}
+                    {/* BGG Info Card (Enhanced for Detail View) */}
                     {bggInfo && (
-                        <div className="bg-indigo-950/30 border border-indigo-500/30 rounded-xl p-3 flex gap-4 animate-in fade-in slide-in-from-top-2 shadow-inner">
-                            <div className="w-16 h-16 shrink-0 bg-black/20 rounded-lg overflow-hidden border border-white/10 shadow-sm">
-                                {bggInfo.thumbnailUrl ? (
-                                    <img src={bggInfo.thumbnailUrl} alt="Cover" className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-indigo-800">
-                                        <ImageIcon size={24} />
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between">
+                        <div className="bg-indigo-950/30 border border-indigo-500/30 rounded-xl p-3 flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 shadow-inner">
+                            <div className="w-full">
+                                <div className="flex items-start justify-between mb-2">
                                     <h4 className="font-bold text-indigo-200 text-sm truncate">{bggInfo.name}</h4>
                                     <a 
                                         href={`https://boardgamegeek.com/boardgame/${bggInfo.id}`} 
@@ -233,24 +225,55 @@ const InspectorDetailPanel = ({ selectedItem, icon: Icon, isBGG = false }: { sel
                                         <ExternalLink size={14} />
                                     </a>
                                 </div>
-                                <div className="text-xs text-indigo-300/70 mt-1 space-y-0.5">
-                                    {bggInfo.year && <div>年份: <span className="text-indigo-200">{bggInfo.year}</span></div>}
-                                    
-                                    <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                                        {(bggInfo.minPlayers || bggInfo.maxPlayers) && (
-                                            <div>人數: <span className="text-indigo-200">{bggInfo.minPlayers || 1}{bggInfo.maxPlayers ? `-${bggInfo.maxPlayers}` : ''}</span></div>
-                                        )}
-                                        {bggInfo.playingTime && (
-                                            <div>時間: <span className="text-indigo-200">{bggInfo.playingTime}m</span></div>
-                                        )}
-                                        {bggInfo.minAge && (
-                                            <div>年齡: <span className="text-indigo-200">{bggInfo.minAge}+</span></div>
-                                        )}
-                                    </div>
-                                    
-                                    {bggInfo.designers && <div className="truncate">設計師: <span className="text-indigo-200">{bggInfo.designers}</span></div>}
-                                    <div className="font-mono text-[9px] opacity-40 mt-1">BGG ID: {bggInfo.id}</div>
+                                
+                                <div className="flex flex-wrap gap-x-3 text-xs text-indigo-300/70">
+                                    {bggInfo.year && <span>年份: <span className="text-indigo-200">{bggInfo.year}</span></span>}
+                                    {bggInfo.rank && <span>排名: <span className="text-indigo-200">#{bggInfo.rank}</span></span>}
                                 </div>
+
+                                {bggInfo.complexity > 0 && (
+                                     <div className="text-xs text-indigo-300/70 mt-0.5">
+                                        重度: <span className="text-indigo-200">{Number(bggInfo.complexity).toFixed(2)} / 5</span>
+                                     </div>
+                                )}
+                            </div>
+
+                            {/* Detailed Stats Grid */}
+                            <div className="text-xs text-indigo-300/70 space-y-1 pt-2 border-t border-indigo-500/20">
+                                <div className="flex flex-wrap gap-x-4">
+                                    {(bggInfo.minPlayers || bggInfo.maxPlayers) && (
+                                        <div>人數: <span className="text-indigo-200">{bggInfo.minPlayers || 1}{bggInfo.maxPlayers ? `-${bggInfo.maxPlayers}` : ''}</span></div>
+                                    )}
+                                    {bggInfo.bestPlayers && bggInfo.bestPlayers.length > 0 && (
+                                         <div><Star size={10} className="inline mb-0.5 mr-0.5 text-yellow-500" fill="currentColor"/>最佳: <span className="text-emerald-300 font-bold">{bggInfo.bestPlayers.join(', ')}</span> 人</div>
+                                    )}
+                                </div>
+
+                                <div className="flex flex-wrap gap-x-4">
+                                    {bggInfo.playingTime && (
+                                        <div>時間: <span className="text-indigo-200">{bggInfo.playingTime}m</span></div>
+                                    )}
+                                    {bggInfo.minAge && (
+                                        <div>年齡: <span className="text-indigo-200">{bggInfo.minAge}+</span></div>
+                                    )}
+                                </div>
+                                
+                                {bggInfo.designers && (
+                                    <div className="truncate">設計師: <span className="text-indigo-200">{bggInfo.designers}</span></div>
+                                )}
+
+                                {bggInfo.altNames && bggInfo.altNames.length > 0 && (
+                                    <div className="pt-1 mt-1 border-t border-indigo-500/10">
+                                        <span className="block opacity-60 text-[10px] uppercase">別名:</span>
+                                        <div className="text-indigo-200 flex flex-wrap gap-1 mt-0.5">
+                                            {bggInfo.altNames.map((name: string) => (
+                                                <span key={name} className="bg-indigo-900/40 px-1.5 py-0.5 rounded text-[10px] border border-indigo-500/20">{name}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="font-mono text-[9px] opacity-40 mt-1 text-right">BGG ID: {bggInfo.id}</div>
                             </div>
                         </div>
                     )}
@@ -317,7 +340,8 @@ const DataList = ({ title, table, icon: Icon, isBGG = false }: { title: string, 
       return data.filter((item: any) => 
           (item.name && item.name.toLowerCase().includes(lower)) ||
           (item.id && item.id.toLowerCase().includes(lower)) ||
-          (item.bggId && String(item.bggId).includes(lower))
+          (item.bggId && String(item.bggId).includes(lower)) ||
+          (item.altNames && item.altNames.some((n: string) => n.toLowerCase().includes(lower)))
       );
   }, [data, searchTerm]);
 

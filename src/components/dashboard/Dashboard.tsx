@@ -35,6 +35,7 @@ interface DashboardProps {
   pinnedIds: string[];
   newBadgeIds: string[]; 
   activeSessionIds: string[];
+  activeSessions: GameSession[] | undefined;
   historyRecords?: HistoryRecord[];
   historyCount?: number; 
   searchQuery: string;
@@ -67,7 +68,7 @@ interface DashboardProps {
   savedLocations?: SavedListItem[]; 
   savedGames: SavedListItem[]; 
   isSetupModalOpen?: boolean;
-  gameOptions: GameOption[]; // [New] Received from AppQueries
+  gameOptions: GameOption[]; 
 }
 
 const Dashboard: React.FC<DashboardProps> = React.memo(({
@@ -80,6 +81,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   pinnedIds,
   newBadgeIds,
   activeSessionIds,
+  activeSessions, 
   historyRecords,
   historyCount,
   searchQuery,
@@ -117,7 +119,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   const [viewMode, setViewMode] = useState<'library' | 'history'>('library');
   const { t } = useTranslation();
   
-  // [Fix] Auto-close search when hidden
   useEffect(() => {
     if (!isVisible) {
       setIsSearchActive(false);
@@ -127,7 +128,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
 
   // Use Data Hook
   const { 
-    activeGameItems, 
+    sortedActiveSessions, 
     pinnedTemplates, 
     userTemplatesToShow, 
     systemTemplatesToShow, 
@@ -137,6 +138,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
     systemTemplates,
     pinnedIds,
     activeSessionIds,
+    activeSessions, 
     getSessionPreview
   });
 
@@ -174,7 +176,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
     return () => window.removeEventListener('popstate', handlePopState);
   }, [isSearchActive, setSearchQuery]);
 
-  // isSetupMode needs manual BackHandler
   useModalBackHandler(isSetupMode, () => setIsSetupMode(false), 'setup-mode');
 
   // Refs for gesture logic
@@ -443,10 +444,11 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
                     onDelete={(id) => modals.actions.setHistoryToDelete(id)}
                     onSelect={onHistorySelect}
                     onOpenBgStats={() => modals.actions.setShowBgStatsModal(true)}
+                    onOpenBggImport={() => modals.actions.setShowBggImportModal(true)} // Pass Handler
                 />
             ) : (
                 <LibraryView 
-                    activeGameItems={activeGameItems}
+                    activeSessions={sortedActiveSessions}
                     pinnedTemplates={pinnedTemplates}
                     userTemplates={userTemplatesToShow}
                     userTemplatesTotal={userTemplatesCount}

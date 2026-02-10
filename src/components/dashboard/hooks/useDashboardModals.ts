@@ -15,6 +15,7 @@ export const useDashboardModals = () => {
   const [cloudModalCategory, setCloudModalCategory] = useState<'templates' | 'sessions' | 'history'>('templates');
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [showBgStatsModal, setShowBgStatsModal] = useState(false);
+  const [showBggImportModal, setShowBggImportModal] = useState(false); // New
   const [showInspector, setShowInspector] = useState(false);
 
   // Back Button Handlers
@@ -27,6 +28,7 @@ export const useDashboardModals = () => {
   useModalBackHandler(showInspector, () => setShowInspector(false), 'inspector');
   useModalBackHandler(showDataModal, () => setShowDataModal(false), 'data-manager');
   useModalBackHandler(showBgStatsModal, () => setShowBgStatsModal(false), 'bg-stats');
+  useModalBackHandler(showBggImportModal, () => setShowBggImportModal(false), 'bgg-import'); // New
   useModalBackHandler(showCloudModal, () => setShowCloudModal(false), 'cloud-manager');
 
   return {
@@ -41,6 +43,7 @@ export const useDashboardModals = () => {
       cloudModalCategory,
       showInstallGuide,
       showBgStatsModal,
+      showBggImportModal, // New
       showInspector
     },
     actions: {
@@ -54,6 +57,7 @@ export const useDashboardModals = () => {
       setCloudModalCategory,
       setShowInstallGuide,
       setShowBgStatsModal,
+      setShowBggImportModal, // New
       setShowInspector
     }
   };

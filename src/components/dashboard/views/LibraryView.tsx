@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { GameTemplate } from '../../../types';
+import { GameTemplate, GameSession } from '../../../types';
 import { Activity, Pin, LayoutGrid, ArrowRightLeft, Plus, Library, Sparkles } from 'lucide-react';
 import DashboardSection from '../parts/DashboardSection';
 import GameCard from '../parts/GameCard';
@@ -8,7 +8,7 @@ import { useTranslation } from '../../../i18n';
 
 interface LibraryViewProps {
   // Data
-  activeGameItems: { template: GameTemplate, timestamp: number }[];
+  activeSessions: GameSession[]; // [Modified] Use raw session array
   pinnedTemplates: GameTemplate[];
   userTemplates: GameTemplate[];
   userTemplatesTotal: number;
@@ -49,7 +49,7 @@ const TruncationFooter: React.FC<{ displayed: number, total: number }> = ({ disp
 };
 
 export const LibraryView: React.FC<LibraryViewProps> = ({
-  activeGameItems,
+  activeSessions,
   pinnedTemplates,
   userTemplates,
   userTemplatesTotal,
@@ -88,11 +88,11 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   return (
     <>
         {/* Active Sessions - Only show if there are items */}
-        {activeGameItems.length > 0 && (
+        {activeSessions.length > 0 && (
             <DashboardSection 
                 title={t('dash_active_sessions')}
                 icon={<Activity size={18} />}
-                count={activeGameItems.length}
+                count={activeSessions.length}
                 iconColorClass="text-emerald-400"
                 isOpen={isActiveLibOpen}
                 onToggle={() => setIsActiveLibOpen(!isActiveLibOpen)}
@@ -103,13 +103,20 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 }
             >
                 <div className={`grid grid-cols-2 gap-3 ${animClass}`}>
-                    {activeGameItems.map(item => (
+                    {activeSessions.map(session => (
                         <GameCard 
-                            key={`active-${item.template.id}`}
-                            template={item.template}
+                            key={`active-${session.id}`}
+                            // [View Model Adaptation] 
+                            // Construct a minimal "Template-like" object just for display.
+                            // We use session.name and session.templateId (as the ID to resume).
+                            template={{
+                                id: session.templateId,
+                                name: session.name || "未命名遊戲",
+                                bggId: session.bggId,
+                            } as GameTemplate}
                             mode="active"
-                            onClick={() => onDirectResume(item.template.id)}
-                            onDelete={(e) => { e.stopPropagation(); onDeleteSession(item.template.id); }}
+                            onClick={() => onDirectResume(session.templateId)}
+                            onDelete={(e) => { e.stopPropagation(); onDeleteSession(session.templateId); }}
                         />
                     ))}
                 </div>

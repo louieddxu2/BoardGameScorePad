@@ -218,7 +218,7 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
         </div>
         
         <div className="flex-1 p-4 overflow-hidden flex flex-col h-full min-h-0">
-          {activeTab === 'import' ? (
+          {activeTab === 'import' && (
             <div className="flex flex-col h-full gap-4">
               <p className="text-sm text-slate-400 flex-none">{t('data_import_ph')}</p>
               <textarea 
@@ -233,10 +233,6 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
                 {importError && <p className="text-red-400 text-xs flex items-center gap-1 bg-red-900/10 p-2 rounded border border-red-900/30"><AlertCircle size={12}/> {importError}</p>}
                 
                 <div className="grid grid-cols-2 gap-3">
-                    {/* 
-                      [FIX] 使用 Native Label 包裹 Input
-                      這是最穩定的檔案觸發方式，避免 onClick 被攔截或 ref 失效。
-                    */}
                     <label className={`flex flex-col items-center justify-center gap-1 w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl border border-slate-700 cursor-pointer transition-colors group ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
                         <div className="flex items-center gap-2">
                             <FileJson size={20} className="text-indigo-400" />
@@ -244,13 +240,11 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
                         </div>
                         <span className="text-[9px] text-slate-500 scale-90 group-hover:text-slate-400">僅支援 GameTemplate 格式</span>
                         
-                        {/* Hidden Input inside Label */}
                         <input 
                             type="file" 
                             accept=".json" 
                             className="hidden" 
                             disabled={isProcessing}
-                            // [Fix] 重置 value 移到 onClick，確保 onChange 每次都能觸發
                             onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
                             onChange={handleFileChange}
                         />
@@ -271,7 +265,9 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
                 </div>
               </div>
             </div>
-          ) : (
+          )}
+
+          {activeTab === 'export' && (
             <div className="flex flex-col h-full gap-2">
               <p className="text-sm text-slate-400 flex-none">{t('data_export_hint')}</p>
               
