@@ -1,4 +1,6 @@
+
 import { HistoryRecord, ScoringRule, GameTemplate } from '../types';
+import { createVirtualTemplate } from './templateUtils';
 
 /**
  * 安全獲取歷史紀錄的計分規則 (Scoring Rule)
@@ -43,17 +45,12 @@ export const getRecordTemplate = (record: HistoryRecord): GameTemplate => {
   }
 
   // 建構虛擬模板 (Virtual Template)
-  // 對應 "簡易模式" (Simple Mode) 或 資料遺失的情況
-  return {
-    id: record.templateId,
-    name: record.gameName,
-    columns: [], // 無欄位，UI 會自動顯示為簡易模式
-    bggId: getRecordBggId(record) || '',
-    createdAt: record.startTime,
-    updatedAt: record.updatedAt || record.endTime,
-    lastPlayerCount: record.players.length,
-    defaultScoringRule: getRecordScoringRule(record),
-    hasImage: false,
-    description: "Generated from history record"
-  };
+  return createVirtualTemplate(
+      record.templateId,
+      record.gameName,
+      getRecordBggId(record),
+      record.updatedAt || record.endTime,
+      record.players.length,
+      getRecordScoringRule(record)
+  );
 };

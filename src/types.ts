@@ -1,5 +1,4 @@
 
-
 // --- Formula-based structure ---
 export interface ScoreValue {
   parts: number[];
@@ -145,16 +144,22 @@ export interface LocalImage {
   isSynced?: boolean;  // Whether it has been uploaded
 }
 
-export interface GameTemplate {
+/**
+ * [Core Interface] 遊戲身分識別
+ * 定義了「這是一個什麼遊戲」的最小資訊集。
+ * 所有涉及遊戲實體的介面 (Template, Session, SavedItem) 都應繼承此介面。
+ */
+export interface GameIdentity {
+  name: string;      // 遊戲顯示名稱
+  bggId?: string;    // BoardGameGeek ID (外部關聯鍵)
+}
+
+export interface GameTemplate extends GameIdentity {
   id: string;
-  name: string;
+  // name: string; // Inherited from GameIdentity
+  // bggId?: string; // Inherited from GameIdentity
   
   description?: string;
-  
-  // [BGG Link]
-  // 記錄此模板對應的 BGG ID (選填)
-  // 若有此 ID，可直接查詢 bggGames 表獲取圖片與詳細資訊
-  bggId?: string; 
   
   supportedColors?: string[]; // [New] Custom color palette sequence for this game
   columns: ScoreColumn[];
@@ -176,9 +181,13 @@ export interface GameTemplate {
   bgStatsId?: string; // 明確對應 Board Game Stats 的 Game ID
 }
 
-export interface GameSession {
+export interface GameSession extends GameIdentity {
   id: string;
   templateId: string;
+  
+  // name: string; // Inherited from GameIdentity
+  // bggId?: string; // Inherited from GameIdentity
+
   startTime: number;
   lastUpdatedAt?: number; // [New] 最後操作時間，用於排序與同步
   players: Player[];
@@ -192,9 +201,12 @@ export interface GameSession {
 }
 
 // [New Interface] History Record
+// HistoryRecord 暫時保持 gameName 屬性以維持與舊資料的相容性，
+// 但我們手動加上 bggId 使其在概念上與 GameIdentity 保持一致。
 export interface HistoryRecord {
   id: string; // [Changed] 使用 UUID (與 Session ID 相同)，不再是 number
   templateId: string; // 原始模板 ID (用於關聯)
+  
   gameName: string; // 當時的遊戲名稱 (快照)
   // [BGG Link] 記錄這場遊戲對應的 BGG ID
   bggId?: string;
@@ -236,28 +248,34 @@ export interface BggGame {
   name: string; // Official Name (from BGG)
   altNames?: string[]; // [New] Aliases / Alternative Names (e.g. Chinese Name)
   year?: number;
-  imageUrl?: string;
-  thumbnailUrl?: string;
   designers?: string;
+  
+  // Game Specs
   minPlayers?: number;
   maxPlayers?: number;
   playingTime?: number;
-  minAge?: number; // [New]
+  minAge?: number; 
+  
+  // Advanced Stats
   rank?: number; // BGG Rank
+  complexity?: number; // Weight (1-5)
+  bestPlayers?: number[]; // Community voted best player counts
+  
   updatedAt: number; // Last cache update
 }
 
 // [New Interface] Generic Saved List Item (for Players, Locations, etc.)
-export interface SavedListItem {
+export interface SavedListItem extends GameIdentity {
   id: string; // Internal 8-char ID (Base62)
-  name: string;
+  
+  // name: string; // Inherited from GameIdentity
+  // bggId?: string; // Inherited from GameIdentity (Only used if this item IS a game)
 
   lastUsed: number;
   usageCount: number;
   
   // [Import Mapping]
   bgStatsId?: string; // BGStats 內部 ID
-  bggId?: string;     // 若此 Item 是遊戲，這裡存 BGG ID (Foreign Key 指向 bggGames)
 
   meta?: {
       uuid?: string; // Legacy field

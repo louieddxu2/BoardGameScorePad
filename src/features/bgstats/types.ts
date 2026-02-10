@@ -23,7 +23,19 @@ export interface BgStatsGame {
   image?: string;     
   thumbnail?: string;
   urlImage?: string;  
-  urlThumb?: string;  
+  urlThumb?: string;
+  
+  // Game Stats (Explicitly mapped)
+  minPlayerCount?: number;
+  maxPlayerCount?: number;
+  minPlayTime?: number;
+  maxPlayTime?: number;
+  minAge?: number;
+  
+  // Optional / Extended fields
+  averageWeight?: number; // BGStats doesn't standardly export this, but supporting it if present
+  rank?: number;          // [New] Explicitly support rank if available
+  
   modificationDate?: string; 
   cooperative?: boolean;
   highestWins?: boolean; // ExportService 使用

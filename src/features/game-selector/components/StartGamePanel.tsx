@@ -114,9 +114,10 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
       if (!dockedItem) return processedOptions;
       
       // 否則過濾掉已 Dock 的項目
-      return processedOptions
-          .filter(t => t.uid !== dockedItem.uid)
-          .slice(0, 4);
+      // [Fix] 移除原本的 .slice(0, 4) 限制。
+      // processedOptions 在搜尋模式下已經由 getSearchResults 限制了數量 (5 + 1)。
+      // 這裡不應該再裁切，否則會導致第 6 個項目 (通常是建立新遊戲) 被隱藏。
+      return processedOptions.filter(t => t.uid !== dockedItem.uid);
   }, [processedOptions, dockedItem]);
 
   // --- Handlers ---

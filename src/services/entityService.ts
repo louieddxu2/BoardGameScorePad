@@ -15,14 +15,15 @@ export interface EntityAnalysisResult {
 // [New] BGG Metadata payload for creating/updating games
 export interface GameMetadataPayload {
     year?: number;
-    image?: string;
-    thumbnail?: string;
     designers?: string;
     // [Added] Extended BGG Stats for Recommendation Engine
     minPlayers?: number;
     maxPlayers?: number;
     playingTime?: number;
     minAge?: number;
+    complexity?: number;
+    rank?: number;
+    bestPlayers?: number[];
 }
 
 class EntityService {
@@ -111,10 +112,9 @@ class EntityService {
             // [Metadata Logic] 檢查是否有新的有效資料 (用於判斷是否需要觸發更新)
             const hasNewMetadata = metadata && (
                 metadata.year !== undefined || 
-                metadata.image !== undefined || 
-                metadata.thumbnail !== undefined || 
                 metadata.designers !== undefined ||
-                metadata.minPlayers !== undefined
+                metadata.minPlayers !== undefined ||
+                metadata.complexity !== undefined
             );
 
             // [Smart Name Promotion Logic]
@@ -124,8 +124,8 @@ class EntityService {
 
             if (existingBgg) {
                 // 只有在 existingBgg 存在時才進行判斷，減少 redundant check
-                // 判斷是否為「資料升級」: 當資料庫內僅有「佔位符」(無年份/無圖片)，而本次寫入帶有 Metadata 時
-                const isUpgrade = !existingBgg.year && !existingBgg.imageUrl && hasNewMetadata;
+                // 判斷是否為「資料升級」: 當資料庫內僅有「佔位符」(無年份)，而本次寫入帶有 Metadata 時
+                const isUpgrade = !existingBgg.year && hasNewMetadata;
 
                 if (isUpgrade) {
                     // 情境：升級。新資料(英文)變正宮 (finalPrimaryName 保持 currentName)，舊資料(中文)變別名。
@@ -164,15 +164,15 @@ class EntityService {
                     // 若新資料為空，則回退使用舊資料 (Existing)
                     // 這確保了「歷史掃描」(無 metadata) 不會覆蓋「BG Stats 匯入」(有 metadata) 的結果
                     year: metadata?.year ?? existingBgg?.year,
-                    imageUrl: metadata?.image || existingBgg?.imageUrl,
-                    thumbnailUrl: metadata?.thumbnail || existingBgg?.thumbnailUrl,
                     designers: metadata?.designers || existingBgg?.designers,
                     
                     minPlayers: metadata?.minPlayers ?? existingBgg?.minPlayers,
                     maxPlayers: metadata?.maxPlayers ?? existingBgg?.maxPlayers,
                     playingTime: metadata?.playingTime ?? existingBgg?.playingTime,
                     minAge: metadata?.minAge ?? existingBgg?.minAge,
-                    rank: existingBgg?.rank, // Rank 通常不會從此處更新
+                    rank: metadata?.rank ?? existingBgg?.rank,
+                    complexity: metadata?.complexity ?? existingBgg?.complexity,
+                    bestPlayers: metadata?.bestPlayers ?? existingBgg?.bestPlayers,
 
                     updatedAt: Date.now()
                 };

@@ -92,7 +92,6 @@ export const getRecommendations = (options: GameOption[]): GameOption[] => {
  */
 export const getSearchResults = (options: GameOption[], searchQuery: string): GameOption[] => {
     // 1. 基礎列表：取前 5 筆並排序 (Fuse 已經根據關聯度排過一次，這裡微調優先權)
-    // 我們可以信任 Fuse 的結果，但可以將有 Template 的往上提一點，或保持原樣。
     // 使用 byTemplateExistence 讓有模板的優先顯示在前面 (比較好點選)
     const topResults = options.slice(0, 5);
     const sorted = applySort(topResults, byTemplateExistence);
@@ -123,7 +122,7 @@ export const getSearchResults = (options: GameOption[], searchQuery: string): Ga
                 defaultScoringRule: 'HIGHEST_WINS',
                 _searchTokens: []
              };
-             // 加在最後面
+             // 加在最後面 (第 6 個)
              sorted.push(virtualOption);
         }
     }

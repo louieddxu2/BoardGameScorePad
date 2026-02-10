@@ -6,6 +6,7 @@ import { GameTemplate, TemplatePreference } from '../../types';
 import { DATA_LIMITS } from '../../dataLimits';
 import { searchService } from '../../services/searchService';
 import { extractTemplateSummary, TemplateSummary } from '../../utils/extractDataSummaries';
+import { isDisposableTemplate } from '../../utils/templateUtils';
 
 export const useTemplateQuery = (searchQuery: string) => {
   // --- PREFERENCES & HELPERS ---
@@ -47,8 +48,11 @@ export const useTemplateQuery = (searchQuery: string) => {
 
       const rawItems = await collection.limit(fetchLimit).toArray();
 
+      // [Filter] Directly discard disposable templates at source
+      const filteredItems = rawItems.filter(t => !isDisposableTemplate(t));
+
       // Inject properties using centralized extractor
-      const mappedItems = rawItems.map(t => extractTemplateSummary(t, imageSet));
+      const mappedItems = filteredItems.map(t => extractTemplateSummary(t, imageSet));
 
       return mappedItems;
   }, [], []);

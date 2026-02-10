@@ -1,5 +1,5 @@
 
-import { GameTemplate, HistoryRecord, ScoreColumn, SavedListItem } from '../types';
+import { GameTemplate, HistoryRecord, ScoreColumn, SavedListItem, BggGame } from '../types';
 
 // ==========================================
 // 1. 共通泛型架構 (Common Generic Infrastructure)
@@ -113,7 +113,34 @@ export type SavedGameSummary = BaseSummary<SavedGameSearchIndex> & SavedGameSear
 }
 
 // ==========================================
-// 5. 轉換函式 (Transform Functions)
+// 5. BGG 遊戲具體實作 (BggGame Implementation)
+// ==========================================
+
+/**
+ * BGG 搜尋索引
+ */
+export interface BggGameSearchIndex extends BaseSearchIndex {
+  _searchName: string;
+  _altNames: string; // 扁平化的別名搜尋字串
+}
+
+/**
+ * BGG 遊戲摘要 (View Model)
+ * 只保留用於顯示列表與建立新遊戲時所需的欄位
+ */
+export type BggGameSummary = BaseSummary<BggGameSearchIndex> & BggGameSearchIndex & {
+  name: string;
+  altNames: string[]; // 保留陣列結構以供邏輯比對 (如 Aggregator)
+  year?: number;      // 用於顯示年份以區分同名遊戲
+  
+  // Smart Defaults
+  minPlayers?: number;
+  bestPlayers?: number[];
+}
+
+
+// ==========================================
+// 6. 轉換函式 (Transform Functions)
 // ==========================================
 
 /**
@@ -127,7 +154,6 @@ export const extractTemplateSummary = (
   const searchName = template.name;
 
   // 2. 顯式投影 (Explicit Projection)
-  // 強制轉型為 TemplateSummary，TypeScript 會檢查是否符合 BaseSummary 的結構
   const summary: TemplateSummary = {
     id: template.id,
     name: template.name,
@@ -145,6 +171,9 @@ export const extractTemplateSummary = (
     defaultScoringRule: template.defaultScoringRule,
     
     globalVisuals: template.globalVisuals ? {} : undefined,
+    
+    // [Memory Optimization] 
+    // 列表顯示不需要詳細欄位資料，清空以節省記憶體。
     columns: [], 
 
     isLocalImageAvailable: template.imageId ? availableImageIds.has(template.imageId) : false,
@@ -183,7 +212,6 @@ export const extractHistorySummary = (
     }));
 
     // 3. 組裝摘要
-    // 強制轉型為 HistorySummary，確保包含 id 與底線開頭的索引欄位
     const summary: HistorySummary = {
         id: record.id,
         gameName: record.gameName,
@@ -226,6 +254,35 @@ export const extractSavedGameSummary = (
     
     _searchName: searchName,
     _bggId: bggId
+  };
+
+  return summary;
+};
+
+/**
+ * 擷取 BGG 遊戲摘要
+ */
+export const extractBggGameSummary = (
+  game: BggGame
+): BggGameSummary => {
+  // 1. 建立搜尋索引
+  const searchName = game.name;
+  // 將別名陣列轉換為單一字串，方便 Fuse.js 搜尋
+  const altNamesStr = (game.altNames || []).join(' ');
+
+  // 2. 顯式投影
+  const summary: BggGameSummary = {
+    id: game.id,
+    name: game.name,
+    altNames: game.altNames || [],
+    year: game.year,
+    
+    // 智慧預設值資料
+    minPlayers: game.minPlayers,
+    bestPlayers: game.bestPlayers,
+
+    _searchName: searchName,
+    _altNames: altNamesStr
   };
 
   return summary;

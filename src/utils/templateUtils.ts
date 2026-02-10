@@ -1,7 +1,35 @@
 
+
 import { GameTemplate, Player, ScoringRule } from '../types';
 import { generateId } from './idGenerator';
 import { migrateTemplate } from './dataMigration';
+
+/**
+ * 建立虛擬模板 (Virtual Template)
+ * 用於當原始模板遺失 (Fail-safe) 或簡易模式 (Simple Mode) 時，
+ * 動態產生一個符合 GameTemplate 介面的物件。
+ */
+export const createVirtualTemplate = (
+    id: string,
+    name: string,
+    bggId?: string,
+    timestamp: number = Date.now(),
+    playerCount: number = 0,
+    scoringRule: ScoringRule = 'HIGHEST_WINS'
+): GameTemplate => {
+  return {
+    id,
+    name,
+    bggId: bggId || '',
+    columns: [], // 空欄位代表簡易模式
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    lastPlayerCount: playerCount,
+    defaultScoringRule: scoringRule,
+    hasImage: false,
+    description: "Virtual Template (Original Missing)"
+  };
+};
 
 /**
  * 判定是否為「免洗」計分板 (Disposable Template)
@@ -17,6 +45,8 @@ import { migrateTemplate } from './dataMigration';
  */
 export const isDisposableTemplate = (template: GameTemplate): boolean => {
   // 1. 無結構
+  // 由於我們現在是在 extractDataSummaries 產生摘要前就呼叫此函式，
+  // 傳入的 template 保證是完整的，因此直接檢查 columns 長度即可。
   if (template.columns && template.columns.length > 0) {
     return false;
   }

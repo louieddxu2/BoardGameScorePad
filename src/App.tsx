@@ -416,6 +416,7 @@ const App: React.FC = () => {
           pinnedIds={appData.pinnedIds}
           newBadgeIds={appData.newBadgeIds}
           activeSessionIds={appData.activeSessionIds}
+          activeSessions={appData.activeSessions} // [Fix] Explicitly passing activeSessions to Dashboard
           historyRecords={appData.historyRecords}
           historyCount={appData.historyCount} 
           searchQuery={appData.searchQuery} 
@@ -451,7 +452,7 @@ const App: React.FC = () => {
           savedLocations={appData.savedLocations}
           savedGames={appData.savedGames}
           isSetupModalOpen={!!pendingTemplate}
-          gameOptions={appData.gameOptions} // [New] Pass merged options
+          gameOptions={appData.gameOptions} 
         />
       </div>
 

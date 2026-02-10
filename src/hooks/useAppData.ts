@@ -351,7 +351,8 @@ export const useAppData = () => {
       // [NEW] Merged Options (renamed from Candidates)
       gameOptions: queries.gameOptions,
 
-      activeSessionIds: queries.activeSessionIds, 
+      activeSessionIds: queries.activeSessionIds,
+      activeSessions: queries.activeSessions, // [Update] Expose this!
       historyRecords: queries.historyRecords,
       historyCount: queries.historyCount,
       

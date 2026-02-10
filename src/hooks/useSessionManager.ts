@@ -1,4 +1,5 @@
 
+
 import { useState, useRef, useEffect } from 'react';
 import { db } from '../db';
 import { GameTemplate, GameSession, Player, ScoringRule, HistoryRecord } from '../types';
@@ -12,7 +13,7 @@ import { relationshipService } from '../services/relationshipService';
 import { useToast } from './useToast';
 import { COLORS } from '../colors';
 import { useLibrary } from './useLibrary';
-import { isDisposableTemplate, calculateWinners, prepareTemplateForSave } from '../utils/templateUtils';
+import { isDisposableTemplate, calculateWinners, prepareTemplateForSave, createVirtualTemplate } from '../utils/templateUtils';
 
 interface UseSessionManagerProps {
     getTemplate: (id: string) => Promise<GameTemplate | null>;
@@ -119,6 +120,10 @@ export const useSessionManager = ({
     const newSession: GameSession = { 
         id: sessionId, 
         templateId: migratedTemplate.id, 
+        // [Identity Upgrade] Copy identity from template to session
+        name: migratedTemplate.name,
+        bggId: migratedTemplate.bggId,
+        
         startTime: startTime, 
         lastUpdatedAt: Date.now(),
         players: players, 
@@ -149,30 +154,56 @@ export const useSessionManager = ({
       try {
           const session = await db.sessions.where('templateId').equals(templateId).and(s => s.status === 'active').first();
           if (!session) return false;
+          
           let template = await getTemplate(templateId);
-          if (template) {
-              template = migrateTemplate(template);
-              session.players = session.players.map((p: any) => ({ 
-                  ...p, scores: migrateScores(p.scores, template!) 
-              }));
-              
-              if (!session.lastUpdatedAt) {
-                  session.lastUpdatedAt = Date.now();
-              }
-
-              let loadedImageUrl: string | null = null;
-              if (template.imageId) {
-                  const localImg = await imageService.getImage(template.imageId);
-                  if (localImg) {
-                      loadedImageUrl = URL.createObjectURL(localImg.blob);
-                  }
-              }
-
-              setSessionImage(loadedImageUrl);
-              setActiveTemplate(template);
-              setCurrentSession(session);
-              return true;
+          
+          // [Fail-Safe Reader]
+          // If the template is missing (deleted), create a virtual one using session data.
+          // This prevents the app from crashing and allows the user to finish the game.
+          if (!template) {
+              console.warn(`Template ${templateId} missing for session ${session.id}. Creating virtual fallback.`);
+              template = createVirtualTemplate(
+                  templateId,
+                  session.name || "Unknown Game",
+                  session.bggId,
+                  session.startTime,
+                  session.players.length,
+                  session.scoringRule
+              );
           }
+
+          // At this point, template is guaranteed to be a valid GameTemplate object
+          template = migrateTemplate(template);
+          
+          session.players = session.players.map((p: any) => ({ 
+              ...p, scores: migrateScores(p.scores, template!) 
+          }));
+          
+          // [Identity Upgrade] Backfill legacy sessions
+          if (!session.name && template) {
+              session.name = template.name;
+          }
+          if (session.bggId === undefined && template) {
+              session.bggId = template.bggId;
+          }
+          
+          if (!session.lastUpdatedAt) {
+              session.lastUpdatedAt = Date.now();
+          }
+
+          let loadedImageUrl: string | null = null;
+          if (template.imageId) {
+              const localImg = await imageService.getImage(template.imageId);
+              if (localImg) {
+                  loadedImageUrl = URL.createObjectURL(localImg.blob);
+              }
+          }
+
+          setSessionImage(loadedImageUrl);
+          setActiveTemplate(template);
+          setCurrentSession(session);
+          return true;
+
       } catch (e) { console.error("Failed to resume session", e); }
       return false;
   };
@@ -268,13 +299,16 @@ export const useSessionManager = ({
           if (isCloudEnabled()) {
               const backgroundCloudBackup = async () => {
                   let folderId = finalSession.cloudFolderId;
-                  if (!folderId && activeTemplate) {
-                      folderId = await googleDriveService.createActiveSessionFolder(activeTemplate.name, finalSession.id);
+                  // [Identity Upgrade] Use session.name for folder name
+                  const folderName = finalSession.name || activeTemplate?.name || "Unknown Game";
+                  
+                  if (!folderId) {
+                      folderId = await googleDriveService.createActiveSessionFolder(folderName, finalSession.id);
                       await db.sessions.update(finalSession.id, { cloudFolderId: folderId });
                   }
 
-                  if (folderId && activeTemplate) {
-                      await googleDriveService.backupActiveSession(finalSession, activeTemplate.name, folderId);
+                  if (folderId) {
+                      await googleDriveService.backupActiveSession(finalSession, folderName, folderId);
                   }
               };
               backgroundCloudBackup().catch(e => console.warn("Background session backup failed", e));
@@ -310,8 +344,6 @@ export const useSessionManager = ({
           const winnerIds = calculateWinners(currentSession.players, rule);
 
           // [Optimization] If the template is disposable (simple mode), we don't need to store the snapshot structure.
-          // The history reader (getRecordTemplate) knows how to reconstruct a virtual simple template if snapshot is missing.
-          // This saves storage space in the history table.
           const snapshotTemplate = isDisposableTemplate(activeTemplate) 
             ? undefined 
             : JSON.parse(JSON.stringify(activeTemplate));
@@ -320,14 +352,17 @@ export const useSessionManager = ({
           const record: HistoryRecord = {
               id: currentSession.id, 
               templateId: activeTemplate.id,
-              gameName: activeTemplate.name,
-              bggId: activeTemplate.bggId, 
+              
+              // [Identity Upgrade] Use Session as source of truth for name/BGG
+              gameName: currentSession.name || activeTemplate.name,
+              bggId: currentSession.bggId || activeTemplate.bggId, 
+              
               startTime: currentSession.startTime,
               endTime: now,
               updatedAt: now, 
               players: currentSession.players,
               winnerIds: winnerIds,
-              snapshotTemplate: snapshotTemplate as any, // Cast to any/GameTemplate
+              snapshotTemplate: snapshotTemplate as any, 
               location: trimmedLoc, 
               locationId: currentSession.locationId, 
               note: '',
@@ -349,7 +384,7 @@ export const useSessionManager = ({
               const backgroundHistoryBackup = async () => {
                   let folderId = record.cloudFolderId;
                   if (!folderId) {
-                      folderId = await googleDriveService.createActiveSessionFolder(activeTemplate.name, currentSession.id);
+                      folderId = await googleDriveService.createActiveSessionFolder(record.gameName, currentSession.id);
                       await db.history.update(record.id, { cloudFolderId: folderId });
                   }
                   
@@ -403,7 +438,17 @@ export const useSessionManager = ({
               const updatedPlayers = currentSession.players.map(player => ({ 
                   ...player, totalScore: calculatePlayerTotal(player, finalTemplate, currentSession.players) 
               }));
-              setCurrentSession({ ...currentSession, players: updatedPlayers, lastUpdatedAt: Date.now() });
+              
+              // [Identity Upgrade] Sync changes to Session
+              const sessionWithSync = {
+                  ...currentSession,
+                  name: finalTemplate.name,
+                  bggId: finalTemplate.bggId,
+                  players: updatedPlayers,
+                  lastUpdatedAt: Date.now()
+              };
+              
+              setCurrentSession(sessionWithSync);
           }
       }
 

@@ -1,5 +1,4 @@
 
-
 import { db } from '../../../db';
 import { BgStatsGame } from '../types';
 import { generateId } from '../../../utils/idGenerator';
@@ -153,30 +152,24 @@ export class BgStatsEntityService {
   }
 
   // Helper: 更新 BGG 資料表
-  // [Fix] 新增 localNameAlias 參數，用於手動綁定時注入本地名稱
+  // [Fix] 實作 Safe Merge 邏輯，避免 BGStats 的空值覆蓋了 BGG CSV 匯入的豐富資料
   private async upsertBggData(sourceGame: BgStatsGame, localNameAlias?: string) {
       if (!sourceGame.bggId) return;
       const id = sourceGame.bggId.toString();
 
-      // 1. Get existing data to preserve altNames
+      // 1. Get existing data to preserve altNames & stats
       const existing = await db.bggGames.get(id);
       const altNames = new Set<string>(existing?.altNames || []);
       
       // 2. Determine Primary Name & Alias
-      // sourceGame.name is the name in the user's BG Stats list (e.g. "水壩")
-      // sourceGame.bggName is the BGG name (e.g. "Barrage")
-      
-      // If we have a BGG Name, that is the Source of Truth Name.
-      // Otherwise keep existing primary name or fallback to local name.
       const primaryName = sourceGame.bggName || existing?.name || sourceGame.name;
       
-      // Case A: Import Source Name differs from Official Name (e.g. BGStats says "水壩", BGG says "Barrage")
+      // Case A: Import Source Name differs
       if (sourceGame.name && sourceGame.name !== primaryName) {
           altNames.add(sourceGame.name);
       }
 
-      // Case B: Local Name differs from Official Name (e.g. Local says "強國爭壩", BGG says "Barrage")
-      // 這是修復手動連結問題的關鍵：把手動指定的本地名稱也加進去
+      // Case B: Local Name differs
       if (localNameAlias && localNameAlias !== primaryName) {
           altNames.add(localNameAlias);
       }
@@ -185,14 +178,23 @@ export class BgStatsEntityService {
           id: id,
           name: primaryName,
           altNames: Array.from(altNames),
-          year: sourceGame.bggYear,
-          imageUrl: sourceGame.urlImage || sourceGame.image,
-          thumbnailUrl: sourceGame.urlThumb || sourceGame.thumbnail,
-          designers: sourceGame.designers,
-          minPlayers: sourceGame.minPlayerCount,
-          maxPlayers: sourceGame.maxPlayerCount,
-          playingTime: sourceGame.maxPlayTime,
-          minAge: sourceGame.minAge,
+          // Merge Strategy: New ?? Old
+          year: sourceGame.bggYear ?? existing?.year,
+          
+          designers: sourceGame.designers || existing?.designers,
+          
+          // Map Extended Stats from BG Stats with Safe Merge (prefer non-zero/non-empty)
+          // 如果 BG Stats 有資料 (>0)，優先使用；否則保留資料庫舊資料。
+          minPlayers: (sourceGame.minPlayerCount && sourceGame.minPlayerCount > 0) ? sourceGame.minPlayerCount : existing?.minPlayers,
+          maxPlayers: (sourceGame.maxPlayerCount && sourceGame.maxPlayerCount > 0) ? sourceGame.maxPlayerCount : existing?.maxPlayers,
+          playingTime: (sourceGame.maxPlayTime && sourceGame.maxPlayTime > 0) ? sourceGame.maxPlayTime : existing?.playingTime, 
+          minAge: (sourceGame.minAge && sourceGame.minAge > 0) ? sourceGame.minAge : existing?.minAge,
+          complexity: (sourceGame.averageWeight && sourceGame.averageWeight > 0) ? sourceGame.averageWeight : existing?.complexity,
+          rank: (sourceGame.rank && sourceGame.rank > 0) ? sourceGame.rank : existing?.rank,
+          
+          // Best Players 通常不在 BG Stats 中，保留舊有資料
+          bestPlayers: existing?.bestPlayers,
+
           updatedAt: Date.now()
       };
       await db.bggGames.put(bggData);

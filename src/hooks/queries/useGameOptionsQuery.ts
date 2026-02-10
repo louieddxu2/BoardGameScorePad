@@ -1,22 +1,22 @@
 
 import { useMemo } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../db';
 import { useTemplateQuery } from './useTemplateQuery';
 import { useSavedGameQuery } from './useSavedGameQuery';
 import { useGameOptionAggregator } from '../../features/game-selector/hooks/useGameOptionAggregator';
 import { searchService } from '../../services/searchService';
 import { GameOption } from '../../features/game-selector/types';
+import { extractBggGameSummary } from '../../utils/extractDataSummaries';
 
 /**
  * Game Options Query Hook
  * 
- * 職責：專門為「開始新遊戲」面板提供經過「合併」與「搜尋」的選項列表。
- * 流程：
- * 1. 獲取全量原始資料 (Templates & SavedGames)。
- * 2. 透過 Aggregator 合併為 GameOption 列表。
- * 3. 透過 SearchService 進行統一過濾。
+ * 職責：專門為「開始新遊戲」面板提供選項列表。
+ * 策略：整合 Templates、SavedGames 與 BggGames (字典)。
  */
 export const useGameOptionsQuery = (searchQuery: string) => {
-  // 1. Fetch RAW Data (Pass empty string to bypass internal filtering)
+  // 1. Fetch Local Data
   const { 
     templates: allTemplates, 
     systemTemplates: allSystemTemplates 
@@ -26,21 +26,28 @@ export const useGameOptionsQuery = (searchQuery: string) => {
     savedGames: allSavedGames 
   } = useSavedGameQuery('');
 
-  // 2. Aggregate (Merge & Deduplicate)
-  // 將來自不同來源的資料整合成統一的選項格式
-  const allGameOptions = useGameOptionAggregator(
+  // 2. Fetch BGG Dictionary (Lite Summary)
+  // [Optimization] 使用 extractBggGameSummary 轉換為輕量物件
+  const allBggGames = useLiveQuery(async () => {
+    const rawGames = await db.bggGames.toArray();
+    return rawGames.map(extractBggGameSummary);
+  }, [], []);
+
+  // 3. Aggregate Data (Merge & Deduplicate)
+  // 將 BGG Summary 傳入，讓 Aggregator 進行名稱匹配與搜尋索引補完
+  const aggregatedOptions = useGameOptionAggregator(
     [...allTemplates, ...allSystemTemplates],
-    allSavedGames
+    allSavedGames,
+    allBggGames || []
   );
 
-  // 3. Search (Filter)
-  // 在合併後的完整清單上進行搜尋，確保能搜尋到所有來源的關鍵字
+  // 4. Search
   const gameOptions = useMemo(() => {
-    return searchService.search<GameOption>(allGameOptions, searchQuery, [
+    return searchService.search<GameOption>(aggregatedOptions, searchQuery, [
       { name: 'displayName', weight: 1.0 },
       { name: '_searchTokens', weight: 0.8 }
     ]);
-  }, [allGameOptions, searchQuery]);
+  }, [aggregatedOptions, searchQuery]);
 
   return gameOptions;
 };
