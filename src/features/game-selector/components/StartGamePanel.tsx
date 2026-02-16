@@ -190,8 +190,8 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
   };
 
   // Constants
-  const BOTTOM_ROW_HEIGHT_PX = 60;
-  const BOTTOM_ROW_HEIGHT_CLASS = `h-[${BOTTOM_ROW_HEIGHT_PX}px]`;
+  // [Fix] Use static class string for Tailwind compiler detection
+  const BOTTOM_ROW_HEIGHT_CLASS = "h-[60px]";
   const LIST_ITEM_HEIGHT = "h-[56px]";
   const RIGHT_PANEL_WIDTH = "w-[140px]"; 
 
