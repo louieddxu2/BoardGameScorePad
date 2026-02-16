@@ -170,7 +170,13 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           <div ref={searchRef} className="flex items-center gap-2 w-full animate-in fade-in duration-300">
             <Search size={20} className="text-emerald-500 shrink-0 ml-1" />
             <input 
-              type="text" 
+              type="search" 
+              inputMode="search"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              name="q"
               placeholder={viewMode === 'library' ? t('dash_search_placeholder') : t('dash_history_search_placeholder')} 
               value={searchQuery} 
               onChange={(e) => setSearchQuery(e.target.value)} 
