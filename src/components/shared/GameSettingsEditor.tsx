@@ -39,7 +39,7 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ template, onSav
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col animate-in slide-in-from-bottom-5">
+    <div className="fixed inset-0 z-[70] bg-slate-950 flex flex-col animate-in slide-in-from-bottom-5">
       {/* Header */}
       <header className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 flex-none z-20">
           <div className="flex items-center gap-2">

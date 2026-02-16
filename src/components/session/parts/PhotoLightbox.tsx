@@ -13,12 +13,13 @@ interface PhotoLightboxProps {
   onClose: () => void;
   onDelete: (id: string) => void;
   overlayData?: OverlayData; // Optional, only needed if overlay feature is used
+  initialShowOverlay?: boolean; // [New]
 }
 
-const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onClose, onDelete, overlayData }) => {
+const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onClose, onDelete, overlayData, initialShowOverlay = false }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
-  const [showOverlay, setShowOverlay] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(initialShowOverlay);
   const [isGenerating, setIsGenerating] = useState(false);
   const [composedImageUrl, setComposedImageUrl] = useState<string | null>(null);
   
@@ -40,7 +41,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
   // Reset transform when index changes
   useEffect(() => {
     setTransform({ x: 0, y: 0, scale: 1 });
-    setShowOverlay(false);
+    // [Modified] Do NOT reset showOverlay here. Persist the toggle state (or initial prop state) across images.
     setComposedImageUrl(null);
     setSwipeOffset(0);
   }, [currentIndex]);

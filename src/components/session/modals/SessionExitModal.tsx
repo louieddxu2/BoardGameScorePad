@@ -60,7 +60,7 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
             confirmText={t('delete')}
             cancelText={t('cancel')}
             isDangerous={true}
-            zIndexClass="z-[70]"
+            // zIndexClass removed to use default z-[110]
             onCancel={() => setShowDiscardConfirm(false)}
             onConfirm={() => {
                 if (onDiscard) onDiscard();

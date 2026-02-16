@@ -9,10 +9,20 @@ import QuickButtonPad from '../../shared/QuickButtonPad';
 import PlayerEditor, { PlayerSettingsPanel } from './PlayerEditor';
 import AutoScorePanel from './AutoScorePanel';
 import InputPanelLayout from './InputPanelLayout';
-import { Eraser, ArrowRight, ArrowDown, Edit, Plus, ArrowUpToLine, ListPlus, Calculator, Scale, X, Check } from 'lucide-react';
+import SmartSpacer from './SmartSpacer'; 
+import { Eraser, ArrowRight, ArrowDown, Edit, Plus, ArrowUpToLine, ListPlus, Calculator, Scale, X, Check, MousePointerClick } from 'lucide-react';
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
 import { getScoreHistory, getRawValue } from '../../../utils/scoring';
 import { useVisualViewportOffset } from '../../../hooks/useVisualViewportOffset';
+
+// Helper for extracting factors from score value
+const getFactors = (value: any): [string | number, string | number] => {
+  if (value && Array.isArray(value.parts)) return [value.parts[0] ?? 0, value.parts[1] ?? 1];
+  if (typeof value === 'object' && value !== null && 'factors' in value && Array.isArray(value.factors)) {
+      return [value.factors[0] ?? 0, value.factors[1] ?? 1];
+  }
+  return [0, 1];
+};
 
 interface InputPanelProps {
   sessionState: ReturnType<typeof useSessionState>;
@@ -22,6 +32,9 @@ interface InputPanelProps {
   savedPlayers: SavedListItem[]; // Renamed from playerHistory
   onUpdateSession: (session: GameSession) => void;
   onUpdateSavedPlayer: (name: string) => void; // Renamed from onUpdatePlayerHistory
+  // [New Props for SmartSpacer]
+  onTakePhoto?: () => void;
+  onScreenshotRequest?: (mode: 'full' | 'simple') => void;
 }
 
 const PanelHeader: React.FC<{
@@ -145,9 +158,9 @@ const TotalAdjustmentSidebar: React.FC<{
 
 
 const InputPanel: React.FC<InputPanelProps> = (props) => {
-  const { sessionState, eventHandlers, session, template, savedPlayers, onUpdateSession, onUpdateSavedPlayer } = props;
-  const { uiState, setUiState, panelHeight } = sessionState;
-  const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue } = uiState;
+  const { sessionState, eventHandlers, session, template, savedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest } = props;
+  const { uiState, setUiState, panelHeight, isShortList } = sessionState;
+  const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue, isEditingTitle, isToolboxOpen } = uiState;
 
   const visualViewportOffset = useVisualViewportOffset();
   const [activeFactorIdx, setActiveFactorIdx] = useState<0 | 1>(0);
@@ -178,12 +191,28 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             }
 
             const col = template.columns.find((c: any) => c.id === editingCell.colId);
-            if (col && (col.formula || '').includes('+next') && col.formula.includes('×a2')) {
-                setUiState((p: any) => {
-                    return { ...p, previewValue: { factors: [0, 1] } };
-                });
+            if (col && (col.formula || '').includes('+next')) {
+                if (col.formula.includes('×a2')) {
+                    setUiState((p: any) => ({ ...p, previewValue: { factors: [0, 1] } }));
+                } else {
+                    setPreview(0); // Sum parts starts empty/zero
+                }
             } else {
-                setPreview(0); 
+                // [Update] Standard Mode: Initialize preview with EXISTING value
+                // This ensures that when we open the panel, we see the current score in the "preview" state,
+                // allowing us to append decimals or edit it visually.
+                const player = session.players.find(p => p.id === editingCell.playerId);
+                const existingScoreObject = player?.scores[editingCell.colId];
+                
+                if (col && col.formula === 'a1×a2') {
+                    // Standard Product Mode
+                    const factors = existingScoreObject?.parts || [0, 1];
+                    setPreview({ factors });
+                } else {
+                    // Standard Numeric
+                    const val = existingScoreObject?.parts?.[0] ?? 0;
+                    setPreview({ value: val });
+                }
             }
         }
     }
@@ -277,6 +306,10 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             } else {
                 setPreview(0);
             }
+        } else if (col.formula === 'a1×a2') {
+            setPreview({ factors: [0, 1] });
+        } else {
+            setPreview({ value: 0 });
         }
         updateScore(player.id, col.id, undefined);
         setUiState((p: any) => ({ ...p, overwriteMode: true }));
@@ -387,7 +420,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
               setTempName={(name) => setUiState((p: any) => ({ ...p, tempPlayerName: name }))}
               isInputFocused={uiState.isInputFocused} setIsInputFocused={(focused) => setUiState((p: any) => ({ ...p, isInputFocused: focused }))}
               onUpdatePlayerColor={(color) => onUpdateSession({ ...session, players: session.players.map((p: any) => p.id === editingPlayerId ? { ...p, color } : p) })}
-              // [Update] Pass linkedId
+              // [Update] Added linkedId optional param
               onNameSubmit={(id, name, next, linkedId) => eventHandlers.handlePlayerNameSubmit(id, name, next, linkedId)}
               onToggleStarter={handleToggleStarter}
               supportedColors={template.supportedColors} // [New] Pass supportedColors
@@ -547,7 +580,14 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     </div>
                 );
             } else if (activeColumn.inputType === 'clicker') {
-                mainContentNode = ( <QuickButtonPad column={activeColumn} onAction={handleQuickButtonAction} /> );
+                // [Update] Pass currentOptionId to enable highlighting
+                mainContentNode = ( 
+                    <QuickButtonPad 
+                        column={activeColumn} 
+                        onAction={handleQuickButtonAction}
+                        currentOptionId={cellScoreObject?.optionId} // Pass current selected option
+                    /> 
+                );
                 
                 if (isProductSumPartsMode) {
                     sidebarContentNode = <ScoreInfoPanel 
@@ -610,7 +650,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                                 const currentHistory = getScoreHistory(cellScoreObject);
                                 const newHistory = [...currentHistory, String(valToAdd)];
                                 const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
-                                updateScore(activePlayer!.id, activeColumn!.id, { value: newSum, history: newHistory });
+                                updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
                                 setPreview(0);
                                 setUiState((p: any) => ({ ...p, overwriteMode: true }));
                             } else {
@@ -619,7 +659,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                         };
                     }
                 } else if (isProductMode) {
-                    const n1 = parseFloat(String(cellScoreObject?.parts?.[0] ?? 0)) || 0;
+                    const n1 = parseFloat(String(getFactors(previewValue)[0])) || 0;
                     if (n1 !== 0 && activeFactorIdx === 0) {
                         nextButtonContent = (<div className="flex flex-col items-center leading-none"><span className="text-xs">輸入 {activeColumn.subUnits?.[1] || 'B'}</span><ArrowDown size={16} /></div>);
                         onNextAction = () => {
@@ -629,20 +669,25 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     }
                 }
 
-                let keypadValue;
-                if (isSumPartsMode) { keypadValue = previewValue; } 
-                else if (isProductMode) { keypadValue = { factors: cellScoreObject?.parts ?? [0, 1] }; } 
-                else { keypadValue = { value: cellScoreObject?.parts?.[0] ?? 0 }; }
+                // [Updated] Always pass previewValue to keypad to enable real-time reflection of input
+                const keypadValue = previewValue;
                 
                 mainContentNode = <NumericKeypad 
                     value={keypadValue}
-                    onChange={(val: any) => isSumPartsMode ? setPreview(val) : updateScore(activePlayer!.id, activeColumn!.id, val)}
+                    onChange={(val: any) => {
+                        setPreview(val);
+                        // [Fix] In Standard/Product Mode, we update DB immediately for "Real-time" feel
+                        if (!isSumPartsMode) {
+                             updateScore(activePlayer!.id, activeColumn!.id, val);
+                        }
+                    }}
                     column={activeColumn} overwrite={overwriteMode} setOverwrite={(v: boolean) => setUiState((p: any) => ({ ...p, overwriteMode: v }))}
                     onNext={onNextAction} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={setActiveFactorIdx} playerId={activePlayer.id}
                 />;
+                
                 sidebarContentNode = <ScoreInfoPanel 
                 column={activeColumn} value={cellScoreObject} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={setActiveFactorIdx}
-                localKeypadValue={isSumPartsMode ? previewValue : undefined}
+                localKeypadValue={previewValue}
                 onDeleteLastPart={isSumPartsMode ? handleDeleteLastPart : undefined}
                 setOverwrite={(v) => setUiState((p: any) => ({ ...p, overwriteMode: v }))}
                 />;
@@ -706,16 +751,24 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
       };
   }, [editingCell?.playerId, editingCell?.colId]);
 
+  // [New] Show panel if it's explicitly open OR if it's forced by short list logic OR Toolbox is toggled on
+  // [Fix] Hide panel even in short-list/toolbox mode if we are editing title (keyboard open)
+  const isVisible = (isPanelOpen || isShortList || isToolboxOpen) && !isEditingTitle;
+
+  // Logic: Are we in a state where the panel is just a placeholder spacer?
+  // If no cell/player is selected, but short list/toolbox forces panel height -> Placeholder
+  const isPlaceholderMode = (isShortList || isToolboxOpen) && !isPanelOpen;
+
   return (
     <div
-      className={`fixed left-0 right-0 z-50 bg-slate-950/50 backdrop-blur-sm border-t border-slate-700/50 shadow-[0_-8px_30px_rgba(0,0,0,0.5)] transition-all ease-in-out flex flex-col overflow-hidden ${isPanelOpen ? 'translate-y-0' : 'translate-y-full'} ${isInputFocused ? 'duration-0' : 'duration-300'}`}
+      className={`fixed left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-sm border-t border-slate-700/50 shadow-[0_-8px_30px_rgba(0,0,0,0.5)] transition-all ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'} ${isInputFocused ? 'duration-0' : 'duration-300'}`}
       style={{ height: panelHeight, bottom: visualViewportOffset }}
       // [Added] Joystick Touch Handlers
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {activePlayer && (
+      {activePlayer && !isPlaceholderMode && (
         <PanelHeader 
             player={activePlayer} 
             col={activeColumn} 
@@ -726,11 +779,23 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             isTotalMode={isTotalMode}
         />
       )}
-      <div className="flex-1 min-h-0 bg-slate-900">
-        {mainContentNode && (
+      
+      <div className="flex-1 min-h-0 bg-slate-900 relative">
+        {mainContentNode && !isPlaceholderMode && (
           <InputPanelLayout onNext={onNextAction} nextButtonDirection={advanceDirection} sidebarContent={sidebarContentNode} nextButtonContent={nextButtonContent} isCompact={isInputFocused}>
             {mainContentNode}
           </InputPanelLayout>
+        )}
+        
+        {/* Smart Spacer (Toolbox) Mode */}
+        {isPlaceholderMode && (
+            <SmartSpacer 
+                session={session} 
+                template={template} 
+                onTakePhoto={onTakePhoto}
+                onScreenshot={() => onScreenshotRequest?.('simple')} // Default to simple for quick screenshot
+                onUpdateSession={onUpdateSession} // [Fix] Pass updater to allow order shuffling
+            />
         )}
       </div>
     </div>

@@ -143,11 +143,13 @@ export const useSessionMedia = ({
       }
 
       // Close camera and ensure gallery is open underneath
+      // NOTE: We rely on the previously set galleryParams (from openScoreCamera) to persist
+      // so that PhotoGalleryModal knows how to behave when it mounts/updates.
       setUiState(p => ({ 
           ...p, 
           isGeneralCameraOpen: false,
           showShareMenu: false, 
-          isPhotoGalleryOpen: true 
+          isPhotoGalleryOpen: true,
       }));
   };
 
@@ -170,7 +172,9 @@ export const useSessionMedia = ({
                     setUiState(prev => ({ 
                         ...prev, 
                         showShareMenu: false, 
-                        isPhotoGalleryOpen: true 
+                        isPhotoGalleryOpen: true,
+                        // Manual upload implies standard view, so reset mode
+                        galleryParams: { mode: 'default' }
                     }));
                 } catch (err) {
                     console.error("Save failed", err);
@@ -267,14 +271,26 @@ export const useSessionMedia = ({
       }));
   };
   
-  // [MODIFIED] Use custom camera overlay instead of file input
+  // Standard Camera (from Header) - Resets mode
   const openCamera = () => {
       setUiState(p => ({ 
           ...p, 
           isGeneralCameraOpen: true,
           // Ensure gallery is "ready" underneath
           isPhotoGalleryOpen: true, 
-          showShareMenu: false 
+          showShareMenu: false,
+          galleryParams: { mode: 'default' } // [Reset]
+      }));
+  };
+  
+  // [New] Score Camera (from Toolbox) - Activates overlay mode
+  const openScoreCamera = () => {
+      setUiState(p => ({ 
+          ...p, 
+          isGeneralCameraOpen: true,
+          isPhotoGalleryOpen: true, 
+          showShareMenu: false,
+          galleryParams: { mode: 'lightbox_overlay' } // [Active]
       }));
   };
   
@@ -294,6 +310,7 @@ export const useSessionMedia = ({
       openBackgroundUpload,
       openScannerCamera, 
       openCamera,
+      openScoreCamera, // [New Export]
       openPhotoLibrary,
       isConnected 
   };

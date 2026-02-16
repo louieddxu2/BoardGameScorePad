@@ -1,5 +1,4 @@
 
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { HistoryRecord, GameSession, ScoreColumn, SavedListItem } from '../../types';
 import { ArrowLeft, Share2, Download, Check, Settings } from 'lucide-react';
@@ -39,6 +38,8 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
 
   const fakeSession: GameSession = useMemo(() => ({
     id: 'history-review',
+    name: record.gameName,
+    bggId: record.bggId,
     templateId: record.templateId,
     startTime: record.startTime,
     players: record.players, 

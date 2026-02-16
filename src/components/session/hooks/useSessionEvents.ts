@@ -201,8 +201,12 @@ export const useSessionEvents = (
       });
 
       const hasPhotos = (currentSession.photos && currentSession.photos.length > 0);
+      const hasNote = !!currentSession.note && currentSession.note.trim().length > 0;
 
-      if (hasData || hasPhotos) {
+      // Note: We deliberately exclude 'hasLocation' here as location setting is often done during setup
+      // and not considered "session data" that needs saving confirmation if nothing else happened.
+
+      if (hasData || hasPhotos || hasNote) {
           setUiState(p => ({ ...p, isSessionExitModalOpen: true }));
       } else {
           onExitRef.current(); // Use Ref
@@ -390,6 +394,20 @@ export const useSessionEvents = (
       setUiState(p => ({ ...p, isGameSettingsOpen: false }));
   };
 
+  // [New] Toolbox Toggle
+  const handleToggleToolbox = () => {
+      setUiState(p => {
+          const willOpen = !p.isToolboxOpen;
+          return {
+              ...p,
+              isToolboxOpen: willOpen,
+              // If opening toolbox, clear selection so the toolbox content shows up
+              // If closing, we just update the flag.
+              ...(willOpen ? { editingCell: null, editingPlayerId: null, previewValue: 0 } : {})
+          };
+      });
+  };
+
   return {
     handleGlobalClick,
     handleCellClick,
@@ -406,6 +424,7 @@ export const useSessionEvents = (
     // [New] Export settings handlers
     handleOpenGameSettings,
     handleSaveGameSettings,
+    handleToggleToolbox, // Export new handler
     // [Updated] Expose unified moveNext
     moveToNext: () => navigation.moveNext(),
     // [New] Expose Joystick Actions

@@ -4,6 +4,7 @@ import { Player, SavedListItem } from '../../../types';
 import { Settings2, Ban, Flag } from 'lucide-react';
 import { COLORS } from '../../../colors';
 import { isColorDark } from '../../../utils/ui';
+import { searchService } from '../../../services/searchService';
 
 interface PlayerEditorProps {
   player: Player;
@@ -40,6 +41,22 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
       const remaining = COLORS.filter(c => !preferred.includes(c));
       return [...preferred, ...remaining];
   }, [supportedColors]);
+
+  const displayedPlayers = useMemo(() => {
+    const trimmedInput = tempName.trim();
+    
+    // 1. 如果輸入為空，顯示完整歷史紀錄 (依最近使用排序)
+    if (!trimmedInput) return savedPlayers;
+
+    // 2. 如果完全匹配現有玩家名稱，顯示完整歷史紀錄 (依照使用者需求)
+    const hasExactMatch = savedPlayers.some(p => p.name.toLowerCase() === trimmedInput.toLowerCase());
+    if (hasExactMatch) {
+        return savedPlayers;
+    }
+
+    // 3. 否則，顯示模糊搜尋結果
+    return searchService.search(savedPlayers, trimmedInput, ['name']);
+  }, [savedPlayers, tempName]);
 
   return (
     // This root div is KEY. It respects the layout contract by handling its own scrolling.
@@ -96,7 +113,7 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
             {/* History - Restored to remaining 2/3 width */}
             <div className="flex-1 bg-slate-800/50 rounded-xl border border-slate-700/50 flex flex-col min-w-0">
               <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-1">
-                {savedPlayers.slice(0, 20).map((item, i) => (
+                {displayedPlayers.slice(0, 20).map((item, i) => (
                   <button 
                     key={item.id || i} 
                     onMouseDown={(e) => e.preventDefault()}
@@ -111,7 +128,11 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
                     {item.name}
                   </button>
                 ))}
-                {savedPlayers.length === 0 && <div className="text-center text-xs text-slate-600 py-4">無紀錄</div>}
+                {displayedPlayers.length === 0 && (
+                    <div className="text-center text-xs text-slate-600 py-4">
+                        {tempName ? "無符合搜尋結果" : "無紀錄"}
+                    </div>
+                )}
               </div>
             </div>
           </div>
