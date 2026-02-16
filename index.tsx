@@ -6,6 +6,7 @@ import ErrorBoundary from './src/components/shared/ErrorBoundary';
 import { ToastProvider } from './src/hooks/useToast';
 import { LanguageProvider } from './src/i18n'; // Import i18n provider
 import { setAutoConnectPreference } from './src/services/googleDrive';
+import { db } from './src/db'; // Import DB to clear session context
 import './src/index.css';
 
 // [Requirement] Force reset the cloud connection preference on App boot / Refresh.
@@ -26,6 +27,10 @@ if (navigator.storage && navigator.storage.persist) {
     console.warn("Storage persistence request failed:", err);
   });
 }
+
+// [Requirement] Clear Short-term Session Context on boot
+// This ensures "Current Session" recommendations are reset when the app is restarted or refreshed.
+db.savedCurrentSession.clear().catch(err => console.warn("Failed to clear session context:", err));
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
