@@ -1,10 +1,11 @@
 
+
 import { SavedListItem } from '../../types';
-import { PlayerRecommendationWeights, PlayerRecommendationFactor } from './types';
+import { RecommendationFactor } from './types';
 
 export interface Voter {
     item: SavedListItem;
-    factor: PlayerRecommendationFactor;
+    factor: RecommendationFactor;
 }
 
 export class VotingEngine {
@@ -28,7 +29,7 @@ export class VotingEngine {
      */
     public calculateScores(
         voters: Voter[],
-        weights: PlayerRecommendationWeights,
+        weights: Record<string, number>,
         relationKey: string,
         ignoreIds: string[] = [],
         candidateLimit: number = VotingEngine.DEFAULT_LIMIT
@@ -57,22 +58,29 @@ export class VotingEngine {
             // B. Factor Weight (該類型因子的全域權重)
             const factorWeight = weights[factor] ?? 1.0;
 
-            // Voting Logic: 只取前 N 名候選人進行計分
-            const votingCandidates = candidates.slice(0, candidateLimit);
-
-            votingCandidates.forEach((candidateId: string, index: number) => {
-                if (ignoreSet.has(candidateId)) return;
+            // Voting Logic: 動態遞補 (Dynamic Filling)
+            // 遍歷清單，跳過已選的 ID，直到投滿 candidateLimit 票為止
+            let validVotes = 0;
+            
+            for (const candidateId of candidates) {
+                // 若已投滿票數，停止
+                if (validVotes >= candidateLimit) break;
+                
+                // 若在忽略名單中，跳過 (自動遞補下一位)
+                if (ignoreSet.has(candidateId)) continue;
 
                 // Score Formula: (排名越高分越多) * 信心值 * 權重
-                // [Change] 固定最高分為 MAX_SCORE_BASE (5)，不再依賴候選人數
+                // 使用 validVotes (有效順位) 來計算分數，確保遞補上來的第一位能拿到最高分
                 // index 0 -> 5分, index 1 -> 4分 ...
-                const baseScore = Math.max(1, VotingEngine.MAX_SCORE_BASE - index);
+                const baseScore = Math.max(1, VotingEngine.MAX_SCORE_BASE - validVotes);
                 
                 const finalScore = baseScore * confidence * factorWeight;
 
                 const currentScore = scores.get(candidateId) || 0;
                 scores.set(candidateId, currentScore + finalScore);
-            });
+                
+                validVotes++;
+            }
         }
 
         return scores;

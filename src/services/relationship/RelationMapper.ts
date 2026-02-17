@@ -1,5 +1,5 @@
 
-import { PlayerRecommendationFactor, CountRecommendationFactor, LocationRecommendationFactor } from '../../features/recommendation/types';
+import { PlayerRecommendationFactor, CountRecommendationFactor, LocationRecommendationFactor, ColorRecommendationFactor } from '../../features/recommendation/types';
 import { EntityType } from './types';
 
 // [New] Prediction Strategy Configuration
@@ -116,6 +116,19 @@ export class RelationMapper {
             case 'timeslot': return 'timeSlot';
             case 'sessionContext': return 'sessionContext';
             case 'player': return 'relatedPlayer'; // Known players strongly influence location
+        }
+        return undefined;
+    }
+
+    /**
+     * 將實體類型映射到權重調整引擎的 Factor (顏色預測用)
+     * 用於判斷該實體是否具備「推薦顏色」的能力
+     */
+    public static getColorRecommendationFactor(type: EntityType): ColorRecommendationFactor | undefined {
+        switch (type) {
+            case 'game': return 'game';
+            case 'player': return 'player';
+            // templateSetting is virtual, not an entity type
         }
         return undefined;
     }

@@ -115,6 +115,7 @@ export interface Player {
   totalScore: number;
   isStarter?: boolean; // New: Starting player marker
   linkedPlayerId?: string; // [New] 指向歷史紀錄的 UUID，用於關聯分析
+  isColorManuallySet?: boolean; // [New] 指示此顏色是否為使用者手動選擇 (用於過濾雜訊)
   
   // New: Total Score Adjustment Logic
   bonusScore?: number; // Manually added bonus/penalty to total

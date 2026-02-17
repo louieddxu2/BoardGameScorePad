@@ -1,9 +1,11 @@
 
-import { RecommendationContext, SuggestedPlayer, DEFAULT_PLAYER_WEIGHTS, DEFAULT_COUNT_WEIGHTS, DEFAULT_LOCATION_WEIGHTS } from './types';
+import { RecommendationContext, SuggestedPlayer, DEFAULT_PLAYER_WEIGHTS, DEFAULT_COUNT_WEIGHTS, DEFAULT_LOCATION_WEIGHTS, DEFAULT_COLOR_WEIGHTS } from './types';
 import { playerRecommendationEngine } from './PlayerRecommendationEngine';
 import { countRecommendationEngine } from './CountRecommendationEngine';
 import { locationRecommendationEngine } from './LocationRecommendationEngine';
-import { weightAdjustmentEngine, PLAYER_WEIGHTS_ID, COUNT_WEIGHTS_ID, LOCATION_WEIGHTS_ID } from './WeightAdjustmentEngine';
+import { colorRecommendationEngine } from './ColorRecommendationEngine';
+import { weightAdjustmentEngine, PLAYER_WEIGHTS_ID, COUNT_WEIGHTS_ID, LOCATION_WEIGHTS_ID, COLOR_WEIGHTS_ID } from './WeightAdjustmentEngine';
+import { GameTemplate } from '../../types';
 
 class RecommendationService {
 
@@ -42,6 +44,28 @@ class RecommendationService {
 
         // Delegate to Location Engine
         const suggestions = await locationRecommendationEngine.generateSuggestions(context, weights);
+
+        return suggestions;
+    }
+
+    /**
+     * 取得推薦顏色列表
+     * @param context 推薦情境
+     * @param template 遊戲模板 (提供設定檔顏色)
+     * @param targetPlayerId 目標玩家 ID
+     * @param ignoreColors 要排除的顏色 (例如已被其他玩家選走)
+     */
+    public async getSuggestedColors(
+        context: RecommendationContext, 
+        template: GameTemplate,
+        targetPlayerId: string,
+        ignoreColors: string[] = []
+    ): Promise<string[]> {
+        // Load Dynamic Weights
+        const weights = await weightAdjustmentEngine.getWeights(COLOR_WEIGHTS_ID, DEFAULT_COLOR_WEIGHTS);
+
+        // Delegate to Color Engine
+        const suggestions = await colorRecommendationEngine.generateSuggestions(context, template, targetPlayerId, weights, ignoreColors);
 
         return suggestions;
     }

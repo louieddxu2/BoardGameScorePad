@@ -101,7 +101,8 @@ export const useSessionManager = ({
         name: `玩家 ${i + 1}`,
         scores: {},
         totalScore: 0,
-        color: defaultColors[i]
+        color: defaultColors[i],
+        isColorManuallySet: false // Init to false
       };
     });
     
@@ -137,7 +138,8 @@ export const useSessionManager = ({
     };
     
     // [Refactor] Delegate Auto-Fill Logic to specialized initializer
-    newSession.players = await applyRecommendationsToPlayers(newSession);
+    // Now passing the full template to handle texture mode logic
+    newSession.players = await applyRecommendationsToPlayers(newSession, migratedTemplate);
 
     isImageDirtyRef.current = false;
     

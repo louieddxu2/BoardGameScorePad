@@ -1,7 +1,7 @@
 
 import { db } from '../../db';
 import { COLORS } from '../../colors';
-import { PlayerRecommendationWeights, CountRecommendationWeights, LocationRecommendationWeights } from '../../features/recommendation/types';
+import { PlayerRecommendationWeights, CountRecommendationWeights, LocationRecommendationWeights, ColorRecommendationWeights } from '../../features/recommendation/types';
 import { weightAdjustmentEngine } from '../../features/recommendation/WeightAdjustmentEngine';
 import { ConfidenceCalculator } from '../../features/recommendation/ConfidenceCalculator';
 import { DATA_LIMITS } from '../../dataLimits';
@@ -155,9 +155,15 @@ export class RelationTrainer {
 
     /**
      * 訓練顏色偏好統計
+     * [Updated] Now supports Global Weight Training
      */
-    public async trainColors(source: ResolvedEntity, players: HistoryRecord['players']): Promise<boolean> {
+    public async trainColors(
+        source: ResolvedEntity, 
+        players: HistoryRecord['players'],
+        globalColorWeights: ColorRecommendationWeights
+    ): Promise<{ itemChanged: boolean, weightChanged: boolean }> {
         let colorsToAdd: string[] = [];
+        let weightChanged = false;
 
         // 過濾有效玩家
         const validPlayers = players.filter(p => {
@@ -166,10 +172,13 @@ export class RelationTrainer {
             return !isSystemId || !isDefaultName;
         });
 
+        // [Filter] Only include colors explicitly set by user (Noise Filter)
+        const manualColorPlayers = validPlayers.filter(p => p.isColorManuallySet);
+
         if (source.type === 'game') {
-            colorsToAdd = validPlayers.map(p => p.color).filter(c => c && c !== 'transparent');
+            colorsToAdd = manualColorPlayers.map(p => p.color).filter(c => c && c !== 'transparent');
         } else if (source.type === 'player') {
-            const matchingSlots = validPlayers.filter(p => {
+            const matchingSlots = manualColorPlayers.filter(p => {
                 const isPlaceholder = p.id.startsWith('slot_') || p.id.startsWith('sys_') || p.id.startsWith('player_');
                 const targetId = p.linkedPlayerId || (!isPlaceholder ? p.id : undefined);
                 return (targetId && source.item.id === targetId) || source.item.name === p.name;
@@ -181,6 +190,7 @@ export class RelationTrainer {
             this.ensureMeta(source);
             const relKey = 'colors';
             
+            // [READ]
             const currentList = source.item.meta!.relations![relKey] as RelationItem[] | undefined;
             const currentConfidence = source.item.meta!.confidence![relKey] || 1.0;
             
@@ -188,6 +198,20 @@ export class RelationTrainer {
             const totalPoolSize = COLORS.length;
             const predictionWindow = RelationMapper.getPredictionWindow(relKey, totalPoolSize);
 
+            // [LEARN 1] Update Global Weights
+            const factor = RelationMapper.getColorRecommendationFactor(source.type);
+            if (factor) {
+                this.updateGlobalWeight(
+                    currentList,
+                    colorsToAdd,
+                    globalColorWeights as any,
+                    factor,
+                    predictionWindow,
+                    () => { weightChanged = true; }
+                );
+            }
+
+            // [LEARN 2] Calculate Confidence
             const newConfidence = ConfidenceCalculator.calculate(
                 currentList,
                 colorsToAdd, 
@@ -195,6 +219,7 @@ export class RelationTrainer {
                 predictionWindow
             );
 
+            // [UPDATE] Update List
             source.item.meta!.relations![relKey] = RelationRanking.update(
                 currentList,
                 colorsToAdd, 
@@ -202,9 +227,9 @@ export class RelationTrainer {
             );
             
             source.item.meta!.confidence![relKey] = newConfidence;
-            return true;
+            return { itemChanged: true, weightChanged };
         }
-        return false;
+        return { itemChanged: false, weightChanged: false };
     }
 
     private ensureMeta(source: ResolvedEntity) {

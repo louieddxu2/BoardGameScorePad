@@ -1,11 +1,12 @@
 
+
 import { db } from '../../db';
 import { SavedListItem } from '../../types';
-import { RecommendationContext, PlayerRecommendationFactor } from './types';
+import { RecommendationContext, PlayerRecommendationFactor, RecommendationFactor } from './types';
 
 export interface Voter {
     item: SavedListItem;
-    factor: PlayerRecommendationFactor;
+    factor: RecommendationFactor;
 }
 
 export class ContextResolver {

@@ -1,8 +1,8 @@
 
 import { db } from '../db';
 import { HistoryRecord, AnalyticsLog } from '../types';
-import { weightAdjustmentEngine, PLAYER_WEIGHTS_ID, COUNT_WEIGHTS_ID, LOCATION_WEIGHTS_ID } from '../features/recommendation/WeightAdjustmentEngine';
-import { PlayerRecommendationWeights, DEFAULT_PLAYER_WEIGHTS, CountRecommendationWeights, DEFAULT_COUNT_WEIGHTS, LocationRecommendationWeights, DEFAULT_LOCATION_WEIGHTS } from '../features/recommendation/types';
+import { weightAdjustmentEngine, PLAYER_WEIGHTS_ID, COUNT_WEIGHTS_ID, LOCATION_WEIGHTS_ID, COLOR_WEIGHTS_ID } from '../features/recommendation/WeightAdjustmentEngine';
+import { PlayerRecommendationWeights, DEFAULT_PLAYER_WEIGHTS, CountRecommendationWeights, DEFAULT_COUNT_WEIGHTS, LocationRecommendationWeights, DEFAULT_LOCATION_WEIGHTS, ColorRecommendationWeights, DEFAULT_COLOR_WEIGHTS } from '../features/recommendation/types';
 
 // New Imports
 import { ResolvedEntity } from './relationship/types';
@@ -52,10 +52,12 @@ class RelationshipService {
                 const globalPlayerWeights = await weightAdjustmentEngine.getWeights<PlayerRecommendationWeights>(PLAYER_WEIGHTS_ID, DEFAULT_PLAYER_WEIGHTS);
                 const globalCountWeights = await weightAdjustmentEngine.getWeights<CountRecommendationWeights>(COUNT_WEIGHTS_ID, DEFAULT_COUNT_WEIGHTS);
                 const globalLocationWeights = await weightAdjustmentEngine.getWeights<LocationRecommendationWeights>(LOCATION_WEIGHTS_ID, DEFAULT_LOCATION_WEIGHTS);
+                const globalColorWeights = await weightAdjustmentEngine.getWeights<ColorRecommendationWeights>(COLOR_WEIGHTS_ID, DEFAULT_COLOR_WEIGHTS);
                 
                 let playerWeightsDirty = false;
                 let countWeightsDirty = false;
                 let locationWeightsDirty = false;
+                let colorWeightsDirty = false;
 
                 if (resolvedEntities.length > 0) {
                     for (const source of resolvedEntities) {
@@ -97,8 +99,13 @@ class RelationshipService {
                         // 3.3 顏色統計 
                         if (source.isNewContext && (source.type === 'game' || source.type === 'player')) {
                             // [Refactor] 委派給 RelationTrainer
-                            const colorsChanged = await relationTrainer.trainColors(source, record.players);
-                            if (colorsChanged) hasChanges = true;
+                            const colorResult = await relationTrainer.trainColors(
+                                source, 
+                                record.players, 
+                                globalColorWeights
+                            );
+                            if (colorResult.itemChanged) hasChanges = true;
+                            if (colorResult.weightChanged) colorWeightsDirty = true;
                         }
 
                         if (hasChanges) {
@@ -116,6 +123,9 @@ class RelationshipService {
                 }
                 if (locationWeightsDirty) {
                     await weightAdjustmentEngine.saveWeights(LOCATION_WEIGHTS_ID, globalLocationWeights);
+                }
+                if (colorWeightsDirty) {
+                    await weightAdjustmentEngine.saveWeights(COLOR_WEIGHTS_ID, globalColorWeights);
                 }
 
                 // --- 4. Update Log ---

@@ -48,7 +48,7 @@ export class PlayerRecommendationEngine {
             // 將 selectedPlayerIds 作為忽略清單，避免重複推薦
             const scoresMap = votingEngine.calculateScores(
                 currentVoters, 
-                weights, 
+                weights as unknown as Record<string, number>, 
                 'players', 
                 selectedPlayerIds,
                 candidateLimit

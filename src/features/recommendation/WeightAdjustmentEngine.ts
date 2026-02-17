@@ -4,6 +4,7 @@ import { db } from '../../db';
 export const PLAYER_WEIGHTS_ID = 'player_recommendation';
 export const COUNT_WEIGHTS_ID = 'count_recommendation';
 export const LOCATION_WEIGHTS_ID = 'location_recommendation';
+export const COLOR_WEIGHTS_ID = 'color_recommendation'; // [New]
 
 export class WeightAdjustmentEngine {
 
@@ -77,8 +78,12 @@ export class WeightAdjustmentEngine {
             newWeight -= (PENALTY * penaltyFactor);
         }
 
-        return Math.max(MIN, Math.min(MAX, Math.round(newWeight * 100) / 100));
+        return Math.max(this.MIN_CONFIDENCE || MIN, Math.min(this.MAX_CONFIDENCE || MAX, Math.round(newWeight * 100) / 100));
     }
+    
+    // Bounds helpers (for flexibility if needed later)
+    private readonly MIN_CONFIDENCE = 0.2;
+    private readonly MAX_CONFIDENCE = 5.0;
 }
 
 export const weightAdjustmentEngine = new WeightAdjustmentEngine();

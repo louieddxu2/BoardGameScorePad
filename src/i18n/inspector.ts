@@ -74,6 +74,9 @@ export const inspectorTranslations = {
 
     engine_location_title: "地點預測 (Context → Location)",
     engine_location_desc: "根據遊戲、人數、時間等因素，預測最可能的地點。",
+
+    engine_color_title: "顏色預測 (Context → Color)",
+    engine_color_desc: "根據遊戲設定、遊戲慣例、玩家偏好，預測玩家的代表色。",
     
     weight_factor: "影響因子",
     weight_value: "權重",
@@ -85,7 +88,9 @@ export const inspectorTranslations = {
     factor_playerCount: "玩家人數",
     factor_gameMode: "遊戲模式",
     factor_relatedPlayer: "玩家人脈 (P2P)", 
-    factor_sessionContext: "短期記憶", // New
+    factor_sessionContext: "短期記憶", 
+    factor_templateSetting: "模板設定 (限制)",
+    factor_player: "玩家偏好",
     
     btn_reset_weights: "重置此模型",
 
@@ -182,6 +187,9 @@ export const inspectorTranslations = {
     engine_location_title: "Location Predictor (Context → Location)",
     engine_location_desc: "Predicts likely locations based on game, count, and environment.",
 
+    engine_color_title: "Color Predictor (Context → Color)",
+    engine_color_desc: "Predicts player color based on game settings, game history, and player preference.",
+
     weight_factor: "Factor",
     weight_value: "Weight",
     
@@ -192,7 +200,9 @@ export const inspectorTranslations = {
     factor_playerCount: "Player Count",
     factor_gameMode: "Game Mode",
     factor_relatedPlayer: "Friendship (P2P)", 
-    factor_sessionContext: "Short-term Memory", // New
+    factor_sessionContext: "Short-term Memory", 
+    factor_templateSetting: "Template Setting",
+    factor_player: "Player Preference",
     
     btn_reset_weights: "Reset Model",
 

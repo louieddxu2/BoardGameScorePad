@@ -95,3 +95,26 @@ export const DEFAULT_LOCATION_WEIGHTS: LocationRecommendationWeights = {
     sessionContext: 1.0,
     relatedPlayer: 1.0 // 玩家 (特定團特定地點)
 };
+
+// --- Color Recommendation Types ---
+
+// 影響「顏色推薦」的因素
+// templateSetting: 遊戲模板設定 (虛擬投票者)
+// game: 遊戲歷史 (這款遊戲常被選的顏色)
+// player: 玩家偏好 (這個人喜歡的顏色)
+export type ColorRecommendationFactor = 'templateSetting' | 'game' | 'player';
+
+export interface ColorRecommendationWeights {
+    templateSetting: number;
+    game: number;
+    player: number;
+}
+
+export const DEFAULT_COLOR_WEIGHTS: ColorRecommendationWeights = {
+    templateSetting: 1.0, // [Reset] 權重設為 1.0，高信心值 (5.0) 由 voter.meta.confidence 處理
+    game: 1.0,            
+    player: 1.0           
+};
+
+// [New] Union type for all possible factors across different engines
+export type RecommendationFactor = PlayerRecommendationFactor | CountRecommendationFactor | LocationRecommendationFactor | ColorRecommendationFactor;
