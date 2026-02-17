@@ -1,9 +1,9 @@
 
 import React from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { RotateCcw, Scale, BrainCircuit, Calculator, MapPin } from 'lucide-react';
-import { DEFAULT_PLAYER_WEIGHTS, PlayerRecommendationWeights, DEFAULT_COUNT_WEIGHTS, CountRecommendationWeights, DEFAULT_LOCATION_WEIGHTS, LocationRecommendationWeights } from '../../features/recommendation/types';
-import { weightAdjustmentEngine, PLAYER_WEIGHTS_ID, COUNT_WEIGHTS_ID, LOCATION_WEIGHTS_ID } from '../../features/recommendation/WeightAdjustmentEngine';
+import { RotateCcw, Scale, BrainCircuit, Calculator, MapPin, Palette } from 'lucide-react';
+import { DEFAULT_PLAYER_WEIGHTS, PlayerRecommendationWeights, DEFAULT_COUNT_WEIGHTS, CountRecommendationWeights, DEFAULT_LOCATION_WEIGHTS, LocationRecommendationWeights, DEFAULT_COLOR_WEIGHTS, ColorRecommendationWeights } from '../../features/recommendation/types';
+import { weightAdjustmentEngine, PLAYER_WEIGHTS_ID, COUNT_WEIGHTS_ID, LOCATION_WEIGHTS_ID, COLOR_WEIGHTS_ID } from '../../features/recommendation/WeightAdjustmentEngine';
 import { useTranslation } from '../../i18n';
 import { inspectorTranslations, InspectorTranslationKey } from '../../i18n/inspector';
 
@@ -24,7 +24,7 @@ const EngineWeightSection: React.FC<{
     icon: React.ReactNode;
     weights: Record<string, number>;
     onReset: () => void;
-    colorTheme?: 'indigo' | 'amber' | 'rose'; // Added 'rose'
+    colorTheme?: 'indigo' | 'amber' | 'rose' | 'pink'; // Added 'pink'
 }> = ({ title, desc, icon, weights, onReset, colorTheme = 'indigo' }) => {
     const t = useInspectorTranslation();
 
@@ -38,6 +38,8 @@ const EngineWeightSection: React.FC<{
             case 'gameMode': return t('factor_gameMode');
             case 'relatedPlayer': return t('factor_relatedPlayer');
             case 'sessionContext': return t('factor_sessionContext');
+            case 'templateSetting': return t('factor_templateSetting');
+            case 'player': return t('factor_player');
             default: return key;
         }
     };
@@ -80,6 +82,7 @@ const EngineWeightSection: React.FC<{
     let themeClass = 'indigo';
     if (colorTheme === 'amber') themeClass = 'amber';
     if (colorTheme === 'rose') themeClass = 'rose';
+    if (colorTheme === 'pink') themeClass = 'pink';
 
     const bgHeaderClass = `bg-${themeClass}-900/20 border-b border-${themeClass}-500/20`;
     const iconBgClass = `bg-${themeClass}-500/20 text-${themeClass}-400`;
@@ -145,6 +148,11 @@ const WeightsInspector: React.FC = () => {
         return await weightAdjustmentEngine.getWeights(LOCATION_WEIGHTS_ID, DEFAULT_LOCATION_WEIGHTS);
     }, [], DEFAULT_LOCATION_WEIGHTS);
 
+    // 4. Live query for Color Weights
+    const colorWeights = useLiveQuery(async () => {
+        return await weightAdjustmentEngine.getWeights(COLOR_WEIGHTS_ID, DEFAULT_COLOR_WEIGHTS);
+    }, [], DEFAULT_COLOR_WEIGHTS);
+
     const handleResetPlayer = async () => {
         if (confirm('確定要重置「玩家預測」模型為預設值嗎？')) {
             await weightAdjustmentEngine.saveWeights(PLAYER_WEIGHTS_ID, DEFAULT_PLAYER_WEIGHTS);
@@ -160,6 +168,12 @@ const WeightsInspector: React.FC = () => {
     const handleResetLocation = async () => {
         if (confirm('確定要重置「地點預測」模型為預設值嗎？')) {
             await weightAdjustmentEngine.saveWeights(LOCATION_WEIGHTS_ID, DEFAULT_LOCATION_WEIGHTS);
+        }
+    };
+
+    const handleResetColor = async () => {
+        if (confirm('確定要重置「顏色預測」模型為預設值嗎？')) {
+            await weightAdjustmentEngine.saveWeights(COLOR_WEIGHTS_ID, DEFAULT_COLOR_WEIGHTS);
         }
     };
 
@@ -204,6 +218,16 @@ const WeightsInspector: React.FC = () => {
                     weights={locationWeights as unknown as Record<string, number>}
                     onReset={handleResetLocation}
                     colorTheme="rose"
+                />
+
+                {/* Engine 4: Color Recommendation */}
+                <EngineWeightSection 
+                    title={t('engine_color_title')}
+                    desc={t('engine_color_desc')}
+                    icon={<Palette size={16} />}
+                    weights={colorWeights as unknown as Record<string, number>}
+                    onReset={handleResetColor}
+                    colorTheme="pink"
                 />
 
             </div>
