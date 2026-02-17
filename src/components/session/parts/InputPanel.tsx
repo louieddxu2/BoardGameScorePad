@@ -419,7 +419,8 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
               tempName={uiState.tempPlayerName}
               setTempName={(name) => setUiState((p: any) => ({ ...p, tempPlayerName: name }))}
               isInputFocused={uiState.isInputFocused} setIsInputFocused={(focused) => setUiState((p: any) => ({ ...p, isInputFocused: focused }))}
-              onUpdatePlayerColor={(color) => onUpdateSession({ ...session, players: session.players.map((p: any) => p.id === editingPlayerId ? { ...p, color } : p) })}
+              // [Update] Set isColorManuallySet to true when color is updated
+              onUpdatePlayerColor={(color) => onUpdateSession({ ...session, players: session.players.map((p: any) => p.id === editingPlayerId ? { ...p, color, isColorManuallySet: true } : p) })}
               // [Update] Added linkedId optional param
               onNameSubmit={(id, name, next, linkedId) => eventHandlers.handlePlayerNameSubmit(id, name, next, linkedId)}
               onToggleStarter={handleToggleStarter}
