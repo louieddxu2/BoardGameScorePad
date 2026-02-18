@@ -1,4 +1,3 @@
-
 import React, { useCallback, useEffect, useRef } from 'react';
 import { GameSession, GameTemplate, ScoreColumn, SavedListItem } from '../../../types';
 import { useSessionState } from './useSessionState';
@@ -7,6 +6,7 @@ import { generateId } from '../../../utils/idGenerator';
 import { calculatePlayerTotal } from '../../../utils/scoring';
 import { useToast } from '../../../hooks/useToast';
 import { DATA_LIMITS } from '../../../dataLimits';
+import { bgStatsEntityService } from '../../../features/bgstats/services/bgStatsEntityService'; 
 
 interface SessionViewProps {
   session: GameSession;
@@ -392,6 +392,16 @@ export const useSessionEvents = (
   const handleSaveGameSettings = (updates: Partial<GameTemplate>) => {
       onUpdateTemplate({ ...template, ...updates });
       setUiState(p => ({ ...p, isGameSettingsOpen: false }));
+      
+      // [Feature] Auto-backfill history BGG IDs if bggId is updated (Scenario A)
+      if (updates.bggId) {
+          bgStatsEntityService.updateHistoryByTemplateId(updates.bggId, template.id)
+              .then(count => {
+                  if (count > 0) {
+                      showToast({ message: `已同步更新 ${count} 筆歷史紀錄的連結`, type: 'info' });
+                  }
+              });
+      }
   };
 
   // [New] Toolbox Toggle
