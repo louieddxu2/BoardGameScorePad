@@ -57,7 +57,9 @@ export const useGoogleDrive = () => {
   }, [showToast]);
 
   const ensureConnection = async () => {
-      if (!isAutoConnectEnabled) {
+      // [Fix] Read directly from storage to avoid stale state in multiple hook instances
+      const enabled = getAutoConnectPreference();
+      if (!enabled) {
           throw new Error("雲端功能未開啟");
       }
       if (!googleDriveService.isAuthorized) {
@@ -82,12 +84,13 @@ export const useGoogleDrive = () => {
   };
 
   const handleBackup = useCallback(async (template: GameTemplate): Promise<GameTemplate | null> => {
-    if (!isAutoConnectEnabled) return null;
+    // [Fix] Check preference directly
+    if (!getAutoConnectPreference()) return null;
+    
     setIsSyncing(true);
     try {
       await ensureConnection();
       showToast({ message: "正在上傳備份...", type: 'info' });
-      // Remove deprecated imageBase64 arg
       const updatedTemplate = await googleDriveService.backupTemplate(template);
       setIsConnected(true); 
       showToast({ message: "備份成功！", type: 'success' });
@@ -98,7 +101,7 @@ export const useGoogleDrive = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   const fetchFileList = useCallback(async (mode: 'active' | 'trash' = 'active', source: 'templates' | 'sessions' | 'history' = 'templates'): Promise<CloudFile[]> => {
       try {
@@ -112,7 +115,7 @@ export const useGoogleDrive = () => {
           }
           throw error;
       }
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   const restoreBackup = useCallback(async (fileId: string): Promise<GameTemplate> => {
       setIsSyncing(true);
@@ -130,7 +133,7 @@ export const useGoogleDrive = () => {
       } finally {
           setIsSyncing(false);
       }
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   const restoreSessionBackup = useCallback(async (fileId: string): Promise<GameSession> => {
       setIsSyncing(true);
@@ -147,7 +150,7 @@ export const useGoogleDrive = () => {
       } finally {
           setIsSyncing(false);
       }
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   const restoreHistoryBackup = useCallback(async (fileId: string): Promise<HistoryRecord> => {
       setIsSyncing(true);
@@ -164,7 +167,7 @@ export const useGoogleDrive = () => {
       } finally {
           setIsSyncing(false);
       }
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   const restoreFromTrash = useCallback(async (folderId: string, type: CloudResourceType): Promise<boolean> => {
       setIsSyncing(true);
@@ -180,7 +183,7 @@ export const useGoogleDrive = () => {
       } finally {
           setIsSyncing(false);
       }
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   // [UPDATED] Return Blob instead of string
   const downloadCloudImage = useCallback(async (fileId: string): Promise<Blob | null> => {
@@ -198,7 +201,7 @@ export const useGoogleDrive = () => {
       } finally {
           setIsSyncing(false);
       }
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   const deleteCloudFile = useCallback(async (fileId: string): Promise<boolean> => {
       setIsSyncing(true);
@@ -215,7 +218,7 @@ export const useGoogleDrive = () => {
       } finally {
           setIsSyncing(false);
       }
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   const emptyTrash = useCallback(async (type?: CloudResourceType): Promise<boolean> => {
       setIsSyncing(true);
@@ -232,10 +235,10 @@ export const useGoogleDrive = () => {
       } finally {
           setIsSyncing(false);
       }
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   const silentSystemBackup = useCallback(async (data: any): Promise<void> => {
-      if (!isAutoConnectEnabled) return;
+      if (!getAutoConnectPreference()) return;
       if (!googleDriveService.isAuthorized) return;
       try {
           // [Note] 自動背景備份目前不執行合併邏輯，僅在上傳單一設定檔時使用。
@@ -245,7 +248,7 @@ export const useGoogleDrive = () => {
       } catch (e) {
           console.warn("Silent settings backup failed:", e);
       }
-  }, [isAutoConnectEnabled]);
+  }, []);
 
   // [Full Backup] Smart Skip Logic: Cloud.ts >= Local.ts -> Skip
   const performFullBackup = useCallback(async (
@@ -443,7 +446,7 @@ export const useGoogleDrive = () => {
           setIsSyncing(false);
       }
       return { success: successCount, skipped: skippedCount, failed: failedItems.length };
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   // [Full Restore] Smart Skip Logic: Local.ts >= Cloud.ts -> Skip
   const performFullRestore = useCallback(async (
@@ -584,7 +587,7 @@ export const useGoogleDrive = () => {
           setIsSyncing(false);
       }
       return { success: successCount, skipped: skippedCount, failed: failedItems.length };
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   return {
     handleBackup,

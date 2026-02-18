@@ -1,4 +1,3 @@
-
 import { db } from '../../../db';
 import { BgStatsGame } from '../types';
 import { generateId } from '../../../utils/idGenerator';
@@ -7,13 +6,79 @@ import { DATA_LIMITS } from '../../../dataLimits';
 
 /**
  * BG Stats Entity Service
- * 負責執行資料庫的「寫入」操作：包含「綁定現有」與「建立新項目」。
- * 
- * 核心原則：
- * 1. Bind: 將 bgStatsId 寫入現有的本地資料。對於遊戲，確保 SavedGame 紀錄存在。
- * 2. Create: 僅建立 SavedListItem (列表記錄)，不建立 Template (計分板)。
+ * 負責執行資料庫的「寫入」操作。
  */
 export class BgStatsEntityService {
+
+  // --- History Backfill: Scenario 1 (Template) ---
+  /**
+   * 情境 A: 當計分板 (Template) 寫入 BGG ID 時
+   * 這是最強的關聯，因為 History 直接記錄了 templateId。
+   * 直接更新所有使用該 Template ID 的歷史紀錄。
+   */
+  async updateHistoryByTemplateId(bggId: string, templateId: string): Promise<number> {
+      if (!bggId || !templateId) return 0;
+      
+      try {
+          return await db.history
+              .where('templateId').equals(templateId)
+              .filter(r => !r.bggId) // 只更新還沒有 BGG ID 的
+              .modify({ bggId, updatedAt: Date.now() });
+      } catch (e) {
+          console.error(`[Backfill] Failed for Template ${templateId}`, e);
+          return 0;
+      }
+  }
+
+  // --- History Backfill: Scenario 2 (SavedGame) ---
+  /**
+   * 情境 B: 當 SavedGame 寫入 BGG ID 時
+   * 因為 History 紀錄中並沒有 savedGameId，我們必須透過「名稱匹配」來尋找關聯的歷史紀錄。
+   * 邏輯：
+   * 1. 讀取 SavedGame 取得主名稱。
+   * 2. 讀取 BGG Dictionary 取得別名 (因為 SavedGame 已經連結 BGG)。
+   * 3. 掃描 History，若 gameName 符合上述任一名稱且尚未有 BGG ID，則更新。
+   */
+  async updateHistoryBySavedGame(bggId: string, savedGameId: string): Promise<number> {
+      if (!bggId || !savedGameId) return 0;
+
+      try {
+          // 1. 取得 SavedGame 名稱
+          const savedGame = await db.savedGames.get(savedGameId);
+          if (!savedGame) return 0;
+
+          // 2. 收集所有可能的名稱 (Name Set)
+          const nameSet = new Set<string>();
+          nameSet.add(savedGame.name.trim().toLowerCase());
+          
+          // 嘗試取得 BGG 別名增強匹配率
+          const bggEntry = await db.bggGames.get(bggId);
+          if (bggEntry) {
+              nameSet.add(bggEntry.name.trim().toLowerCase());
+              if (bggEntry.altNames) {
+                  bggEntry.altNames.forEach(n => nameSet.add(n.trim().toLowerCase()));
+              }
+          }
+
+          const searchNames = Array.from(nameSet);
+
+          // 3. 執行更新 (掃描)
+          // 由於 gameName 沒有索引，必須使用 filter 掃描全表 (Client-side filtering)
+          // 若歷史紀錄量大，這可能會稍慢，但在匯入操作中可接受。
+          return await db.history
+              .filter(r => {
+                  if (r.bggId) return false; // 已有 ID 則跳過
+                  if (!r.gameName) return false;
+                  const hName = r.gameName.trim().toLowerCase();
+                  return searchNames.includes(hName);
+              })
+              .modify({ bggId, updatedAt: Date.now() });
+              
+      } catch (e) {
+          console.error(`[Backfill] Failed for SavedGame ${savedGameId}`, e);
+          return 0;
+      }
+  }
 
   // --- Players ---
 
@@ -65,12 +130,7 @@ export class BgStatsEntityService {
 
   // --- Games ---
 
-  /**
-   * 綁定遊戲：
-   * 1. 順手更新 Template 的 BGG ID (如果存在)。
-   * 2. [關鍵] 確保 SavedGame 紀錄存在並更新連結 (Upsert 邏輯)。
-   */
-  async bindGame(localId: string, sourceGame: BgStatsGame): Promise<void> {
+  async bindGame(localId: string, sourceGame: BgStatsGame, options: { backfillHistory?: boolean } = {}): Promise<void> {
     const updates: any = { bgStatsId: sourceGame.uuid };
     const bggIdStr = (sourceGame.bggId && sourceGame.bggId > 0) ? sourceGame.bggId.toString() : undefined;
     
@@ -79,22 +139,17 @@ export class BgStatsEntityService {
     }
 
     try {
-      // 1. 嘗試更新 Template (Side Effect: 順手補資料)
-      // 如果這個 ID 是內建遊戲或不存在於 Templates 表，這裡會被忽略，不影響後續流程
+      // 1. 更新 Template (如果存在)
       await db.templates.update(localId, updates).catch(() => {});
       
-      // 2. 確保 SavedGame 存在並更新連結 (Main Logic)
+      // 2. 更新 SavedGame (如果存在) 或 建立
       const existingGame = await db.savedGames.get(localId);
-      let localName = existingGame?.name; // 暫存本地名稱
+      let localName = existingGame?.name;
       
       if (existingGame) {
-          // 如果已存在於清單，單純更新連結
           await db.savedGames.update(localId, updates);
       } else {
-          // 如果不存在 (例如連結到內建遊戲 Template，但尚未加入過清單)，則建立一筆新的 SavedGame 紀錄
-          // 這樣確保了 BGG ID 和 BGStats UUID 有地方存放
-          
-          // 嘗試從 Template 獲取名稱，因為 SavedGame 不存在
+          // Fallback name resolution
           if (!localName) {
              const tmpl = await db.templates.get(localId);
              const builtin = await db.builtins.get(localId);
@@ -102,9 +157,9 @@ export class BgStatsEntityService {
           }
 
           const newGameRecord: SavedListItem = {
-              id: localId, // 使用相同的 ID 連結 Template
+              id: localId,
               name: localName,
-              lastUsed: 0, // 保持為 0，直到真正玩過
+              lastUsed: 0,
               usageCount: 0,
               bgStatsId: sourceGame.uuid,
               bggId: bggIdStr,
@@ -113,25 +168,30 @@ export class BgStatsEntityService {
           await db.savedGames.put(newGameRecord);
       }
       
-      // [BGG Data] 補充 BGG 資料庫 (百科全書)
-      if (sourceGame.bggId) {
-          // 將本地名稱傳入，以便註冊為別名
+      // [單一操作時] 立即觸發歷史補完
+      if (options.backfillHistory !== false && bggIdStr) {
+          await this.upsertBggData(sourceGame, localName);
+          
+          // 嘗試兩條路徑更新歷史
+          // A. 透過 Template ID (如果 localId 其實是 Template)
+          await this.updateHistoryByTemplateId(bggIdStr, localId);
+          
+          // B. 透過 SavedGame (如果 localId 是 SavedGame)
+          await this.updateHistoryBySavedGame(bggIdStr, localId);
+      } else if (bggIdStr) {
+          // 批次匯入時，只更新 BGG 字典，不跑歷史掃描
           await this.upsertBggData(sourceGame, localName);
       }
+
     } catch (e) {
       console.warn(`[Binding] Failed to bind game ${localId}`, e);
     }
   }
 
-  /**
-   * 建立遊戲紀錄：只在 SavedGames 建立條目，不建立 Template
-   */
-  async createGame(sourceGame: BgStatsGame): Promise<string> {
-    // 使用預設長度 ID (與其他列表項目一致)
+  async createGame(sourceGame: BgStatsGame, options: { backfillHistory?: boolean } = {}): Promise<string> {
     const newId = generateId(DATA_LIMITS.ID_LENGTH.DEFAULT); 
     const bggIdStr = (sourceGame.bggId && sourceGame.bggId > 0) ? sourceGame.bggId.toString() : undefined;
 
-    // 1. 建立 SavedGame 項目 (僅作為關聯實體)
     const newGame: SavedListItem = {
         id: newId,
         name: sourceGame.name.trim(),
@@ -143,73 +203,48 @@ export class BgStatsEntityService {
     };
     await db.savedGames.add(newGame);
 
-    // 2. 更新 BGG 資料庫
-    if (sourceGame.bggId) {
+    if (bggIdStr) {
         await this.upsertBggData(sourceGame);
+
+        // [單一操作時] 立即觸發歷史補完
+        if (options.backfillHistory !== false) {
+             await this.updateHistoryBySavedGame(bggIdStr, newId);
+        }
     }
 
     return newId;
   }
 
-  // Helper: 更新 BGG 資料表
-  // [Fix] 實作 Safe Merge 邏輯，避免 BGStats 的空值覆蓋了 BGG CSV 匯入的豐富資料
+  // Helper: 更新 BGG 資料表 (Dictionary)
   private async upsertBggData(sourceGame: BgStatsGame, localNameAlias?: string) {
       if (!sourceGame.bggId) return;
       const id = sourceGame.bggId.toString();
 
-      // 1. Get existing data to preserve altNames & stats
       const existing = await db.bggGames.get(id);
       const altNames = new Set<string>(existing?.altNames || []);
       
-      // 2. Determine Primary Name & Alias
       const primaryName = sourceGame.bggName || existing?.name || sourceGame.name;
       
-      // Case A: Import Source Name differs from Primary
       if (sourceGame.name && sourceGame.name !== primaryName) {
           altNames.add(sourceGame.name);
       }
-
-      // Case B: Local Name differs from Primary
       if (localNameAlias && localNameAlias !== primaryName) {
           altNames.add(localNameAlias);
-      }
-
-      // [New Case C]: Scan SavedGames for this BGG ID to catch aliases
-      // This is important because 'localNameAlias' passed here is only for the *current* game being processed.
-      // There might be other SavedGames (e.g. duplicates or pre-existing unlinked ones) that share this BGG ID.
-      // We check this lazily here.
-      try {
-          const otherSavedWithSameBgg = await db.savedGames.where('bggId').equals(id).toArray();
-          otherSavedWithSameBgg.forEach(g => {
-              if (g.name && g.name !== primaryName) {
-                  altNames.add(g.name.trim());
-              }
-          });
-      } catch (e) {
-          // Ignore error, non-critical enhancement
       }
 
       const bggData: BggGame = {
           id: id,
           name: primaryName,
           altNames: Array.from(altNames),
-          // Merge Strategy: New ?? Old
           year: sourceGame.bggYear ?? existing?.year,
-          
           designers: sourceGame.designers || existing?.designers,
-          
-          // Map Extended Stats from BG Stats with Safe Merge (prefer non-zero/non-empty)
-          // 如果 BG Stats 有資料 (>0)，優先使用；否則保留資料庫舊資料。
-          minPlayers: (sourceGame.minPlayerCount && sourceGame.minPlayerCount > 0) ? sourceGame.minPlayerCount : existing?.minPlayers,
-          maxPlayers: (sourceGame.maxPlayerCount && sourceGame.maxPlayerCount > 0) ? sourceGame.maxPlayerCount : existing?.maxPlayers,
-          playingTime: (sourceGame.maxPlayTime && sourceGame.maxPlayTime > 0) ? sourceGame.maxPlayTime : existing?.playingTime, 
-          minAge: (sourceGame.minAge && sourceGame.minAge > 0) ? sourceGame.minAge : existing?.minAge,
-          complexity: (sourceGame.averageWeight && sourceGame.averageWeight > 0) ? sourceGame.averageWeight : existing?.complexity,
-          rank: (sourceGame.rank && sourceGame.rank > 0) ? sourceGame.rank : existing?.rank,
-          
-          // Best Players 通常不在 BG Stats 中，保留舊有資料
+          minPlayers: sourceGame.minPlayerCount || existing?.minPlayers,
+          maxPlayers: sourceGame.maxPlayerCount || existing?.maxPlayers,
+          playingTime: sourceGame.maxPlayTime || existing?.playingTime, 
+          minAge: sourceGame.minAge || existing?.minAge,
+          complexity: sourceGame.averageWeight || existing?.complexity,
+          rank: sourceGame.rank || existing?.rank,
           bestPlayers: existing?.bestPlayers,
-
           updatedAt: Date.now()
       };
       await db.bggGames.put(bggData);

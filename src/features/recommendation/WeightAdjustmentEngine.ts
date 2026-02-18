@@ -4,7 +4,7 @@ import { db } from '../../db';
 export const PLAYER_WEIGHTS_ID = 'player_recommendation';
 export const COUNT_WEIGHTS_ID = 'count_recommendation';
 export const LOCATION_WEIGHTS_ID = 'location_recommendation';
-export const COLOR_WEIGHTS_ID = 'color_recommendation'; // [New]
+export const COLOR_WEIGHTS_ID = 'color_recommendation';
 
 export class WeightAdjustmentEngine {
 

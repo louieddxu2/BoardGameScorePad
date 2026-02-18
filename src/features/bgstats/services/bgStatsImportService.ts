@@ -1,9 +1,9 @@
-
 import { BgStatsExport, BgStatsGame, BgStatsPlayer, BgStatsLocation, ImportAnalysisReport, ImportCategoryData, ManualLink, ImportManualLinks } from '../types';
 import { HistoryRecord, GameTemplate, Player, SavedListItem, ScoringRule } from '../../../types';
 import { generateId } from '../../../utils/idGenerator';
 import { db } from '../../../db';
 import { importStrategies } from './importStrategies';
+import { bgStatsEntityService } from './bgStatsEntityService';
 
 class BgStatsImportService {
   
@@ -14,6 +14,19 @@ class BgStatsImportService {
       const savedGames = await db.savedGames.toArray();
       const savedPlayers = await db.savedPlayers.toArray();
       const savedLocations = await db.savedLocations.toArray();
+      
+      // [New] 讀取 BGG 字典以支援別名匹配
+      const bggDict = await db.bggGames.toArray();
+      const aliasToBggId = new Map<string, string>();
+      
+      bggDict.forEach(entry => {
+          // 將主名稱與所有別名都映射到 BGG ID
+          const id = entry.id;
+          if (entry.name) aliasToBggId.set(entry.name.toLowerCase().trim(), id);
+          if (entry.altNames) {
+              entry.altNames.forEach(alt => aliasToBggId.set(alt.toLowerCase().trim(), id));
+          }
+      });
 
       // 2. 準備遊戲候選清單 (Game Identities)
       const gameIdentityMap = new Map<string, SavedListItem>();
@@ -48,7 +61,7 @@ class BgStatsImportService {
           importItems.forEach(imp => {
               let matchFound = false;
 
-              // 1. UUID Match
+              // 1. UUID Match (Strongest)
               if (imp.uuid) {
                   const match = localByUuid.get(imp.uuid);
                   if (match) {
@@ -58,7 +71,7 @@ class BgStatsImportService {
                   }
               }
 
-              // 2. BGG ID Match
+              // 2. BGG ID Match (Explicit)
               if (!matchFound && type === 'game' && imp.bggId && imp.bggId > 0) {
                   const match = localByBggId.get(imp.bggId.toString());
                   if (match) {
@@ -68,7 +81,7 @@ class BgStatsImportService {
                   }
               }
 
-              // 3. Name Match
+              // 3. Name Match (Exact)
               if (!matchFound && imp.name) {
                   const match = localByName.get(imp.name.trim().toLowerCase());
                   if (match) {
@@ -77,16 +90,29 @@ class BgStatsImportService {
                       matchFound = true;
                   }
               }
+
+              // 4. [New] Dictionary Alias Match (Indirect via BGG Dictionary)
+              // 邏輯：ImportName -> BGG Dictionary -> BGG ID -> Local Game (w/ BGG ID)
+              if (!matchFound && type === 'game' && imp.name) {
+                  const cleanName = imp.name.trim().toLowerCase();
+                  const dictBggId = aliasToBggId.get(cleanName);
+                  
+                  if (dictBggId) {
+                      // 字典說這個名字對應到某個 BGG ID，檢查本地是否有遊戲綁定此 ID
+                      const match = localByBggId.get(dictBggId);
+                      if (match) {
+                          matchedImportIds.add(imp.id);
+                          matchedLocalIds.add(match.id);
+                          matchFound = true;
+                      }
+                  }
+              }
           });
 
           const localUnmatched = localItems.filter(l => {
-              // 1. 已配對 -> 隱藏
               if (matchedLocalIds.has(l.id)) return false;
-              // 2. 已綁定 BGStats UUID -> 隱藏
               if (l.bgStatsId) return false;
-              // 3. [New] 遊戲且已綁定 BGG ID -> 隱藏 (視為已識別)
               if (type === 'game' && l.bggId) return false;
-              
               return true;
           });
           
@@ -95,7 +121,6 @@ class BgStatsImportService {
           return { localUnmatched, importUnmatched, matchedCount: matchedImportIds.size };
       };
 
-      // [Filter] 預先過濾掉匿名玩家，不讓其進入分析報告，避免使用者看到並嘗試連結
       const validSourcePlayers = (data.players || []).filter(p => !p.isAnonymous);
 
       return {
@@ -114,21 +139,22 @@ class BgStatsImportService {
       
       console.log("[BgStatsImportService] Starting import...");
 
-      // 0. Prepare Source Maps (Int ID -> Object) for fast lookup during history processing
+      // 0. Prepare Source Maps
       const sourceGames = new Map<number, BgStatsGame>();
       (data.games || []).forEach(g => sourceGames.set(g.id, g));
 
       const sourcePlayers = new Map<number, BgStatsPlayer>();
-      // 注意：這裡必須包含所有玩家(含匿名)，以便後續在 History Processing 階段查閱其 isAnonymous 屬性
       (data.players || []).forEach(p => sourcePlayers.set(p.id, p));
 
       const sourceLocations = new Map<number, BgStatsLocation>();
       (data.locations || []).forEach(l => sourceLocations.set(l.id, l));
 
+      // [Cache for Phase 5] Map BGG ID to Set of Local IDs (Templates or SavedGames)
+      // 這解決了 templates 表格中 bggId 沒有索引導致無法反查的問題
+      const bggToLocalIdMap = new Map<string, Set<string>>();
+
       // --- Phase 1: Entity Resolution (Writes to DB) ---
-      // This phase ensures all entities exist in DB with correct bgStatsId (UUID)
       
-      // 1.1 Locations
       if (onProgress) onProgress(`正在同步地點...`);
       for (const loc of (data.locations || [])) {
           try {
@@ -139,12 +165,9 @@ class BgStatsImportService {
           }
       }
 
-      // 1.2 Players
       if (onProgress) onProgress(`正在同步玩家...`);
       for (const p of (data.players || [])) {
-          // [Logic Change] 忽略匿名玩家，不建立實體
           if (p.isAnonymous) continue;
-
           try {
               const link = links.players.get(p.id);
               await importStrategies.resolvePlayer(p.name, p.uuid, link);
@@ -153,37 +176,42 @@ class BgStatsImportService {
           }
       }
 
-      // 1.3 Games
       if (onProgress) onProgress(`正在同步遊戲資料...`);
+      const processedBggIds = new Set<string>();
+
       for (const g of (data.games || [])) {
           try {
               const link = links.games.get(g.id);
-              await importStrategies.resolveGame(g, link);
+              // 批次匯入時關閉即時回溯，統一在 Phase 5 處理
+              const localId = await importStrategies.resolveGame(g, link, { backfillHistory: false });
+              
+              if (g.bggId) {
+                  const bggIdStr = g.bggId.toString();
+                  processedBggIds.add(bggIdStr);
+
+                  // 記錄這個 BGG ID 對應到的 Local ID (可能是 Template 或 SavedGame)
+                  if (!bggToLocalIdMap.has(bggIdStr)) {
+                      bggToLocalIdMap.set(bggIdStr, new Set());
+                  }
+                  bggToLocalIdMap.get(bggIdStr)!.add(localId);
+              }
           } catch (e) {
               console.warn(`Failed to sync game ${g.name}`, e);
           }
       }
 
-      // --- Phase 2: Build Lookup Maps (Read from DB) ---
-      // Instead of relying on return values from Phase 1, we trust the DB now.
-      // We load all entities that have a bgStatsId into memory for O(1) lookup.
-      
+      // --- Phase 2: Build Lookup Maps ---
       if (onProgress) onProgress("正在建立索引...");
-      
-      // Map: BgStats UUID -> Local Entity
       const gameLookup = new Map<string, SavedListItem>();
       const playerLookup = new Map<string, SavedListItem>();
       const locationLookup = new Map<string, SavedListItem>();
 
-      // Fetch all SavedGames with bgStatsId
       await db.savedGames.where('bgStatsId').notEqual('').each(g => {
           if (g.bgStatsId) gameLookup.set(g.bgStatsId, g);
       });
-
       await db.savedPlayers.where('bgStatsId').notEqual('').each(p => {
           if (p.bgStatsId) playerLookup.set(p.bgStatsId, p);
       });
-
       await db.savedLocations.where('bgStatsId').notEqual('').each(l => {
           if (l.bgStatsId) locationLookup.set(l.bgStatsId, l);
       });
@@ -197,24 +225,17 @@ class BgStatsImportService {
       const BATCH_SIZE = 100;
 
       for (const play of plays) {
-          // Check duplication
           if (play.uuid) {
              const existing = await db.history.where('bgStatsId').equals(play.uuid).first();
              if (existing) continue; 
           }
 
-          // Resolve Game
-          // Play(Int) -> Source(UUID) -> Lookup(LocalEntity)
           const sourceGame = sourceGames.get(play.gameRefId);
-          if (!sourceGame) continue; // Should not happen if data is consistent
+          if (!sourceGame) continue; 
 
           const localGame = gameLookup.get(sourceGame.uuid);
-          if (!localGame) {
-              // Can't find linked local game, skip play
-              continue; 
-          }
+          if (!localGame) continue; 
 
-          // Resolve Location
           let localLocationName: string | undefined = undefined;
           let localLocationId: string | undefined = undefined;
           if (play.locationRefId) {
@@ -225,38 +246,30 @@ class BgStatsImportService {
                       localLocationName = localLoc.name;
                       localLocationId = localLoc.id;
                   } else {
-                      // Fallback to name if not found in DB (Graceful degradation)
                       localLocationName = sourceLoc.name;
                   }
               }
           }
 
-          // Resolve Players & Scores
           const players: Player[] = [];
           const winnerIds: string[] = [];
           
           if (Array.isArray(play.playerScores)) {
               play.playerScores.forEach((ps: any, index: number) => {
                   const sourcePlayer = sourcePlayers.get(ps.playerRefId);
-                  
-                  // Default fallback name (if anonymous or missing)
                   let name = `玩家 ${index + 1}`;
                   let localPlayerId: string | undefined = undefined;
 
                   if (sourcePlayer) {
-                      // [Logic Change] 檢查是否為匿名玩家
                       if (sourcePlayer.isAnonymous) {
-                          // 匿名玩家：強制使用「玩家 n」，不連結 ID (防止污染統計)
                           name = `玩家 ${index + 1}`;
                           localPlayerId = undefined;
                       } else {
-                          // 具名玩家：嘗試連結本地資料庫
                           const localP = playerLookup.get(sourcePlayer.uuid);
                           if (localP) {
                               localPlayerId = localP.id;
-                              name = localP.name; // Use local name if available
+                              name = localP.name; 
                           } else {
-                              // 若找不到本地連結 (極少見，除非 Phase 1 失敗)，暫時使用來源名稱
                               name = sourcePlayer.name;
                           }
                       }
@@ -273,7 +286,7 @@ class BgStatsImportService {
                       color: 'transparent',
                       scores: {}, 
                       totalScore: validScore,
-                      linkedPlayerId: localPlayerId, // Link to DB player (undefined for Anonymous)
+                      linkedPlayerId: localPlayerId,
                       isStarter: ps.startPlayer === true || ps.startPlayer === 1
                   };
                   
@@ -285,10 +298,8 @@ class BgStatsImportService {
               });
           }
 
-          // Create Snapshot Template
           const snapshotTemplate = this.createEmptySnapshot(sourceGame);
           
-          // Determine Scoring Rule
           let scoringRule: ScoringRule = 'HIGHEST_WINS';
           if (sourceGame.cooperative) {
               scoringRule = sourceGame.noPoints ? 'COOP_NO_SCORE' : 'COOP';
@@ -301,7 +312,7 @@ class BgStatsImportService {
           const record: HistoryRecord = {
               id: generateId(), 
               bgStatsId: play.uuid, 
-              templateId: localGame.id, // Use Local Game ID
+              templateId: localGame.id, 
               gameName: localGame.name,
               bggId: (sourceGame.bggId && sourceGame.bggId > 0) ? sourceGame.bggId.toString() : undefined,
               startTime: this.parseDate(play.playDate),
@@ -313,7 +324,7 @@ class BgStatsImportService {
               location: localLocationName,
               locationId: localLocationId,
               note: play.comments || "",
-              scoringRule: scoringRule // [New]
+              scoringRule: scoringRule
           };
 
           historyBatch.push(record);
@@ -329,16 +340,45 @@ class BgStatsImportService {
           await db.history.bulkAdd(historyBatch);
       }
 
-      // --- Phase 4: Post-Processing ---
+      // --- Phase 4: Propagate BGG IDs ---
       if (onProgress) onProgress("正在更新計分板資訊...");
       await this.propagateBggIds();
+
+      // --- Phase 5: Backfill History ---
+      if (processedBggIds.size > 0) {
+          if (onProgress) onProgress(`正在連結 ${processedBggIds.size} 款遊戲的歷史紀錄...`);
+          
+          for (const bggId of processedBggIds) {
+              try {
+                  // Strategy 1: ID Match (Preferred)
+                  // 直接使用 Phase 1 建立的對照表，解決 Templates 表格 bggId 無索引的問題
+                  const localIds = bggToLocalIdMap.get(bggId);
+                  if (localIds) {
+                      for (const localId of localIds) {
+                          // updateHistoryByTemplateId 會執行：UPDATE history SET bggId WHERE templateId = localId
+                          await bgStatsEntityService.updateHistoryByTemplateId(bggId, localId);
+                      }
+                  }
+
+                  // Strategy 2: Name Match via SavedGames (Fallback)
+                  // SavedGames 表格有 bggId 索引，所以這裡的查詢是有效的
+                  // 用於捕捉那些 ID 已經遺失但名稱相符的歷史紀錄
+                  const linkedSavedGames = await db.savedGames.where('bggId').equals(bggId).toArray();
+                  for (const g of linkedSavedGames) {
+                      await bgStatsEntityService.updateHistoryBySavedGame(bggId, g.id);
+                  }
+
+              } catch (e) {
+                  console.warn(`History backfill failed for BGG ID ${bggId}`, e);
+              }
+          }
+      }
       
       return successCount;
   }
 
   private parseDate(dateStr: string): number {
       try {
-          // BG Stats format: "YYYY-MM-DD HH:mm:ss"
           const d = new Date(dateStr.replace(' ', 'T'));
           if (!isNaN(d.getTime())) return d.getTime();
       } catch(e) {}
@@ -346,7 +386,6 @@ class BgStatsImportService {
   }
 
   private createEmptySnapshot(sourceGame: BgStatsGame): GameTemplate {
-      // Determine Scoring Rule
       let scoringRule: ScoringRule = 'HIGHEST_WINS';
       if (sourceGame.cooperative) {
           scoringRule = sourceGame.noPoints ? 'COOP_NO_SCORE' : 'COOP';
@@ -361,11 +400,10 @@ class BgStatsImportService {
           name: sourceGame.name,
           bggId: (sourceGame.bggId && sourceGame.bggId > 0) ? sourceGame.bggId.toString() : undefined, 
           bgStatsId: sourceGame.uuid, 
-          columns: [], // 空欄位，確保不依賴本地欄位設定
+          columns: [], 
           createdAt: Date.now(),
           updatedAt: Date.now(),
           description: "Imported from BG Stats",
-          // [重要] 使用 BG Stats 的勝負規則設定
           defaultScoringRule: scoringRule
       };
   }
@@ -376,7 +414,6 @@ class BgStatsImportService {
           const builtins = await db.builtins.toArray();
           const savedGames = await db.savedGames.toArray();
           
-          // 建立 SavedGame Lookup (Name -> BGG ID)
           const gameBggMap = new Map<string, string>();
           savedGames.forEach(g => {
               if (g.bggId && g.name) {
@@ -386,7 +423,6 @@ class BgStatsImportService {
 
           const updates: Promise<any>[] = [];
 
-          // 1. Process Custom Templates
           for (const t of templates) {
               if (!t.bggId) {
                   const matchBggId = gameBggMap.get(t.name.trim().toLowerCase());
@@ -396,7 +432,6 @@ class BgStatsImportService {
               }
           }
 
-          // 2. Process Built-in Templates
           for (const t of builtins) {
               if (!t.bggId) {
                   const matchBggId = gameBggMap.get(t.name.trim().toLowerCase());

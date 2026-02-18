@@ -43,6 +43,7 @@ export interface TemplateSearchIndex extends BaseSearchIndex {
 export interface TemplateSummary extends BaseSummary<TemplateSearchIndex>, TemplateSearchIndex {
   // 顯示資料
   name: string;
+  bggId?: string; // [Fix] Added for aggregator merging logic
   
   // [Sync Check]
   updatedAt?: number;
@@ -160,6 +161,7 @@ export const extractTemplateSummary = (
   const summary: TemplateSummary = {
     id: template.id,
     name: template.name,
+    bggId: template.bggId, // [Fix] Map bggId
     
     updatedAt: template.updatedAt,
     lastSyncedAt: template.lastSyncedAt,

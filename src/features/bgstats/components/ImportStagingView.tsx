@@ -13,7 +13,33 @@ interface ImportStagingViewProps {
 }
 
 const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm, onCancel, isProcessing }) => {
-  const [activeTab, setActiveTab] = useState<'games' | 'players' | 'locations'>('games');
+  // [Logic] Determine available tabs dynamically based on data presence
+  // If a category has no local unmatched, no import unmatched, and no matched items, we hide it.
+  // This handles the "BGG Import" case where players/locations are empty.
+  const tabs = useMemo(() => {
+      const allTabs = [
+          { id: 'games', label: '遊戲', icon: LayoutGrid, data: report.games },
+          { id: 'players', label: '玩家', icon: Users, data: report.players },
+          { id: 'locations', label: '地點', icon: MapPin, data: report.locations },
+      ];
+      
+      return allTabs.filter(t => {
+          const hasLocal = t.data.localUnmatched.length > 0;
+          const hasImport = t.data.importUnmatched.length > 0;
+          const hasMatched = t.data.matchedCount > 0;
+          return hasLocal || hasImport || hasMatched;
+      });
+  }, [report]);
+
+  const [activeTab, setActiveTab] = useState<string>(tabs[0]?.id || 'games');
+  
+  // Ensure activeTab is valid when tabs change (e.g., if switching data sources)
+  useEffect(() => {
+      if (!tabs.find(t => t.id === activeTab) && tabs.length > 0) {
+          setActiveTab(tabs[0].id);
+      }
+  }, [tabs, activeTab]);
+
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // We need separate hooks for each category to preserve state when switching tabs
@@ -112,25 +138,27 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
             </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex-none flex border-b border-slate-800">
-            {[
-                { id: 'games', label: '遊戲', icon: LayoutGrid, count: report.games.localUnmatched.length },
-                { id: 'players', label: '玩家', icon: Users, count: report.players.localUnmatched.length },
-                { id: 'locations', label: '地點', icon: MapPin, count: report.locations.localUnmatched.length },
-            ].map(tab => (
-                <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
-                    className={`flex-1 py-3 text-xs font-bold flex flex-col items-center gap-1 border-b-2 transition-colors ${activeTab === tab.id ? 'border-emerald-500 text-emerald-400 bg-slate-800' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
-                >
-                    <div className="flex items-center gap-1.5">
-                        <tab.icon size={14} /> {tab.label}
-                    </div>
-                    {tab.count > 0 && <span className="text-[9px] bg-slate-700 px-1.5 rounded-full">{tab.count} 待處理</span>}
-                </button>
-            ))}
-        </div>
+        {/* Tabs - Now dynamic based on data presence */}
+        {tabs.length > 1 && (
+            <div className="flex-none flex border-b border-slate-800">
+                {tabs.map(tab => {
+                    const count = tab.data.localUnmatched.length;
+                    const Icon = tab.icon;
+                    return (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex-1 py-3 text-xs font-bold flex flex-col items-center gap-1 border-b-2 transition-colors ${activeTab === tab.id ? 'border-emerald-500 text-emerald-400 bg-slate-800' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
+                        >
+                            <div className="flex items-center gap-1.5">
+                                <Icon size={14} /> {tab.label}
+                            </div>
+                            {count > 0 && <span className="text-[9px] bg-slate-700 px-1.5 rounded-full">{count} 待處理</span>}
+                        </button>
+                    );
+                })}
+            </div>
+        )}
 
         {/* Content (Two Columns using LinkerList) */}
         <div className="flex-1 flex min-h-0">

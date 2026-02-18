@@ -1,10 +1,10 @@
-
 import { db } from '../../../db';
 import { BggGame, SavedListItem } from '../../../types';
 import { parseCSV } from '../../../utils/csv';
 import { 
     BgStatsExport, BgStatsGame, ImportAnalysisReport, ImportCategoryData, ImportManualLinks 
 } from '../../bgstats/types';
+import { bgStatsEntityService } from '../../bgstats/services/bgStatsEntityService';
 
 export const bggImportService = {
   
@@ -162,6 +162,20 @@ export const bggImportService = {
                 matchedImportIds.add(imp.id);
                 matchedLocalIds.add(match.id);
                 matchFound = true;
+            }
+        }
+        
+        // [New] Alt Name Match (CSV provided aliases vs Local Name)
+        // 這是為了解決 CSV 中有 "Catan" 且別名欄有 "卡坦島"，而本地遊戲只有 "卡坦島" (無 ID) 的情況
+        if (!matchFound && imp.altNames && imp.altNames.length > 0) {
+            for (const alt of imp.altNames) {
+                const match = localByName.get(alt.trim().toLowerCase());
+                if (match) {
+                    matchedImportIds.add(imp.id);
+                    matchedLocalIds.add(match.id);
+                    matchFound = true;
+                    break; 
+                }
             }
         }
     });
@@ -388,7 +402,12 @@ export const bggImportService = {
                           if (bggAltMatch) matchBggId = bggAltMatch.id;
                       }
 
-                      if (matchBggId) updates.push(table.update(t.id, { bggId: matchBggId }));
+                      if (matchBggId) {
+                          updates.push(table.update(t.id, { bggId: matchBggId }));
+                          // [Critical Fix] 同時觸發歷史紀錄的回溯更新
+                          // 確保當計分板被賦予 BGG ID 時，舊的歷史紀錄也能連結上
+                          updates.push(bgStatsEntityService.updateHistoryByTemplateId(matchBggId, t.id));
+                      }
                   }
               }
           };

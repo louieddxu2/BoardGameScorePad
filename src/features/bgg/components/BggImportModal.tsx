@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from 'react';
 import { X, Upload, Loader2, Database, AlertTriangle, ArrowRight, Globe, Clock, DownloadCloud } from 'lucide-react';
 import { useToast } from '../../../hooks/useToast';
@@ -16,12 +17,15 @@ type ImportState = 'file_selection' | 'analyzing' | 'staging' | 'importing';
 const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1L_RGm03e07gZc8Di12Tnwk5hbd0BYKvyOng3WY4r3Zs/edit?usp=sharing";
 const URL_STORAGE_KEY = 'bgg_import_target_url';
 const COOLDOWN_KEY = 'bgg_url_import_last_success';
-const COOLDOWN_HOURS = 24;
+const COOLDOWN_MINUTES = 5; // [Changed] Shortened to 5 minutes
 
 const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
   const [importState, setImportState] = useState<ImportState>('file_selection');
   const [analysisReport, setAnalysisReport] = useState<ImportAnalysisReport | null>(null);
   const [cooldownRemaining, setCooldownRemaining] = useState<string | null>(null);
+  
+  // Track import source to decide whether to trigger cooldown on success
+  const [isUrlSource, setIsUrlSource] = useState(false);
   
   // URL State with persistence
   const [targetUrl, setTargetUrl] = useState(() => {
@@ -35,6 +39,7 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
       if (!isOpen) {
           setImportState('file_selection');
           setAnalysisReport(null);
+          setIsUrlSource(false);
       } else {
           checkCooldown();
       }
@@ -52,12 +57,12 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
           const lastSuccess = parseInt(lastSuccessStr, 10);
           const now = Date.now();
           const diffMs = now - lastSuccess;
-          const cooldownMs = COOLDOWN_HOURS * 60 * 60 * 1000;
+          const cooldownMs = COOLDOWN_MINUTES * 60 * 1000;
 
           if (diffMs < cooldownMs) {
               const remainingMs = cooldownMs - diffMs;
-              const remainingHours = Math.ceil(remainingMs / (60 * 60 * 1000));
-              setCooldownRemaining(`${remainingHours}h`);
+              const remainingMins = Math.ceil(remainingMs / (60 * 1000));
+              setCooldownRemaining(`${remainingMins}m`);
           } else {
               setCooldownRemaining(null);
           }
@@ -106,7 +111,7 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
 
   const handleUrlImport = async () => {
       if (cooldownRemaining) {
-          showToast({ message: `請稍後再試，資料庫每日僅限更新一次。`, type: 'info' });
+          showToast({ message: `請稍後再試，資料庫更新冷卻中。`, type: 'info' });
           return;
       }
       
@@ -116,6 +121,7 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
       }
 
       setImportState('analyzing');
+      setIsUrlSource(true); // Mark as URL source
 
       try {
           // 1. Convert URL to CSV format if needed
@@ -138,10 +144,7 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
           setAnalysisReport(report);
           setImportState('staging');
           
-          // 5. Set Cooldown (Only on success analysis)
-          // 真正的匯入還沒發生，但我們已經成功抓取並解析了，這就算是消耗了一次額度
-          localStorage.setItem(COOLDOWN_KEY, Date.now().toString());
-          checkCooldown(); // Update UI
+          // [Updated] Do NOT set cooldown here. Wait for confirm.
 
       } catch (e: any) {
           console.error("URL Import Failed", e);
@@ -156,6 +159,8 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
       if (!file) return;
 
       setImportState('analyzing');
+      setIsUrlSource(false); // Mark as File source
+
       const reader = new FileReader();
       
       reader.onload = async (ev) => {
@@ -189,6 +194,13 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
           // 2. 執行匯入
           const count = await bggImportService.importData(analysisReport.sourceData, links);
           showToast({ message: `成功更新 ${count} 個現有遊戲，並擴充 BGG 字典`, type: 'success' });
+          
+          // [Updated] Set cooldown ONLY if it was a URL import and it succeeded
+          if (isUrlSource) {
+              localStorage.setItem(COOLDOWN_KEY, Date.now().toString());
+              checkCooldown(); 
+          }
+
           onClose();
       } catch (e) {
           console.error(e);
@@ -287,7 +299,7 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
                             <div className="text-[10px] text-slate-500 pl-1">
                                 {cooldownRemaining 
                                     ? `資料庫冷卻中，請於 ${cooldownRemaining} 後再試` 
-                                    : "支援 Google Sheet 分享連結"
+                                    : "支援 Google Sheet 分享連結 (5分鐘/次)"
                                 }
                             </div>
                         </div>
