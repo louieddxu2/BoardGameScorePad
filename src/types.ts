@@ -177,9 +177,6 @@ export interface GameTemplate extends GameIdentity {
   
   // [New Phase 1] Fork Mechanism
   sourceTemplateId?: string;
-  
-  // [Import Mapping]
-  bgStatsId?: string; // 明確對應 Board Game Stats 的 Game ID
 }
 
 export interface GameSession extends GameIdentity {
@@ -226,9 +223,6 @@ export interface HistoryRecord {
   photoCloudIds?: Record<string, string>; // [New] Map<LocalUUID, CloudFileID>
   cloudFolderId?: string; // [Cloud] 備份資料夾 ID
 
-  // [Import Mapping]
-  bgStatsId?: string; // 明確對應 Board Game Stats 的 Play ID
-  
   // [v25 Migration] 提升為頂層屬性，減少對 snapshotTemplate 的依賴
   scoringRule?: ScoringRule;
 }
@@ -268,7 +262,7 @@ export interface BggGame {
 
 // [New Interface] Generic Saved List Item (for Players, Locations, etc.)
 export interface SavedListItem extends GameIdentity {
-  id: string; // Internal 8-char ID (Base62)
+  id: string; // Internal 8-char ID (Base62) OR UUID
   
   // name: string; // Inherited from GameIdentity
   // bggId?: string; // Inherited from GameIdentity (Only used if this item IS a game)
@@ -276,9 +270,6 @@ export interface SavedListItem extends GameIdentity {
   lastUsed: number;
   usageCount: number;
   
-  // [Import Mapping]
-  bgStatsId?: string; // BGStats 內部 ID
-
   meta?: {
       uuid?: string; // Legacy field
       stats?: {

@@ -217,13 +217,13 @@ export class ScorePadDatabase extends Dexie {
         systemOverrides: null
     });
 
-    // Version 18: Prepare for BGStats/BGG Import (Add Explicit ID Mapping)
+    // Version 18: Prepare for BGStats/BGG Import (Removed bgStatsId)
     (this as any).version(18).stores({
-        savedPlayers: 'id, &name, lastUsed, usageCount, bgStatsId', 
-        savedLocations: 'id, &name, lastUsed, usageCount, bgStatsId', 
-        savedGames: 'id, &name, lastUsed, usageCount, bgStatsId, bggId', 
-        history: 'id, templateId, startTime, endTime, updatedAt, bgStatsId', 
-        templates: 'id, name, updatedAt, bgStatsId' 
+        savedPlayers: 'id, &name, lastUsed, usageCount', 
+        savedLocations: 'id, &name, lastUsed, usageCount', 
+        savedGames: 'id, &name, lastUsed, usageCount, bggId', 
+        history: 'id, templateId, startTime, endTime, updatedAt', 
+        templates: 'id, name, updatedAt' 
     });
 
     // Version 19: Add dedicated BGG Games table
@@ -233,8 +233,8 @@ export class ScorePadDatabase extends Dexie {
     
     // Version 20: Add altName (English Name) Index
     (this as any).version(20).stores({
-        savedGames: 'id, &name, altName, lastUsed, usageCount, bgStatsId, bggId', 
-        templates: 'id, name, altName, updatedAt, bgStatsId'
+        savedGames: 'id, &name, altName, lastUsed, usageCount, bggId', 
+        templates: 'id, name, altName, updatedAt'
     });
 
     // Version 21: Add *altNames multi-entry index to BggGame
@@ -244,8 +244,8 @@ export class ScorePadDatabase extends Dexie {
 
     // Version 22: Remove altName from savedGames/templates (Consolidated into BggGame)
     (this as any).version(22).stores({
-        savedGames: 'id, &name, lastUsed, usageCount, bgStatsId, bggId', 
-        templates: 'id, name, updatedAt, bgStatsId'
+        savedGames: 'id, &name, lastUsed, usageCount, bggId', 
+        templates: 'id, name, updatedAt'
     }).upgrade(async (trans: any) => {
         // Data cleaning optional, schema change is sufficient for index removal
     });
