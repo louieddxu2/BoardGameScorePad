@@ -110,7 +110,7 @@ export type SavedGameSummary = BaseSummary<SavedGameSearchIndex> & SavedGameSear
   lastUsed: number;
   usageCount: number;
   bggId?: string;
-  bgStatsId?: string;
+  // bgStatsId Removed
 }
 
 // ==========================================
@@ -255,7 +255,7 @@ export const extractSavedGameSummary = (
     lastUsed: item.lastUsed,
     usageCount: item.usageCount,
     bggId: item.bggId,
-    bgStatsId: item.bgStatsId,
+    // bgStatsId: item.bgStatsId, // REMOVED
     
     _searchName: searchName,
     _bggId: bggId

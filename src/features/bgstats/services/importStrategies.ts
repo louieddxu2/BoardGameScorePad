@@ -1,12 +1,13 @@
+
 import { db } from '../../../db';
 import { entityService } from '../../../services/entityService';
 import { bgStatsEntityService } from './bgStatsEntityService';
 import { BgStatsGame, ManualLink } from '../types';
 
 /**
- * Import Strategies (Refactored)
+ * Import Strategies (Unified UUID Version)
  * 職責：
- * 1. 決策 (Decision): 決定要使用哪個 Local ID (手動指定 or 自動配對 or 無)。
+ * 1. 決策 (Decision): 決定要使用哪個 ID (手動指定 or 自動配對 or 新增(使用 Source UUID))。
  * 2. 委派 (Delegate): 將 ID 與資料交給 bgStatsEntityService 執行寫入。
  */
 export const importStrategies = {
@@ -26,7 +27,7 @@ export const importStrategies = {
             'game',
             { 
                 bggId: sourceGame.bggId?.toString(), 
-                bgStatsId: sourceGame.uuid 
+                bgStatsId: sourceGame.uuid // Will check if ID == uuid
             }
         );
 
@@ -34,7 +35,7 @@ export const importStrategies = {
             targetId = analysis.match.id;
         } 
         
-        // C. 補強檢查：Templates
+        // C. 補強檢查：Templates (Name Match)
         if (!targetId) {
             const templateMatch = await db.templates.where('name').equals(sourceGame.name.trim()).first();
             if (templateMatch) {
@@ -45,11 +46,11 @@ export const importStrategies = {
 
     // --- Phase 2: Execution ---
     if (targetId) {
-        // [連結模式]
+        // [連結模式] - 可能更新 BGG ID
         await bgStatsEntityService.bindGame(targetId, sourceGame, options);
         return targetId;
     } else {
-        // [新增模式]
+        // [新增模式] - 使用 Source UUID
         return await bgStatsEntityService.createGame(sourceGame, options);
     }
   },

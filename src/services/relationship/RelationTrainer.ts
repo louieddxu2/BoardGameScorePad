@@ -15,13 +15,16 @@ export class RelationTrainer {
     /**
      * 訓練一般實體關聯 (Players, Locations, etc.)
      * 回傳 boolean: 全域權重是否發生變化 (需要存檔)
+     * 
+     * @param overridePoolSizes (Optional) 批次處理時傳入的快取總數，避免頻繁查詢 DB
      */
     public async trainRelations(
         source: ResolvedEntity,
         targetCandidates: ResolvedEntity[],
         globalPlayerWeights: PlayerRecommendationWeights,
         globalCountWeights: CountRecommendationWeights,
-        globalLocationWeights?: LocationRecommendationWeights // Optional for backward compatibility but recommended
+        globalLocationWeights?: LocationRecommendationWeights,
+        overridePoolSizes?: Record<string, number> 
     ): Promise<{ playerWeightsChanged: boolean, countWeightsChanged: boolean, locationWeightsChanged: boolean }> {
         let playerWeightsChanged = false;
         let countWeightsChanged = false;
@@ -47,8 +50,14 @@ export class RelationTrainer {
             const currentConfidence = source.item.meta!.confidence![relKey] || 1.0;
 
             // [CALC] 根據 Config 取得正確的預測窗口大小
-            // 如果是 Fixed 策略，Pool Size 不重要，但為了介面統一我們還是傳入
-            const totalPoolSize = await this.getTotalPoolSize(relKey);
+            // 優化：如果提供了 overridePoolSizes，直接使用，否則查詢 DB
+            let totalPoolSize = 100;
+            if (overridePoolSizes && overridePoolSizes[relKey] !== undefined) {
+                totalPoolSize = overridePoolSizes[relKey];
+            } else {
+                totalPoolSize = await this.getTotalPoolSize(relKey);
+            }
+            
             const predictionWindow = RelationMapper.getPredictionWindow(relKey, totalPoolSize);
 
             // [LEARN 1] 調整全域權重 (Evaluate Prediction)
@@ -160,7 +169,8 @@ export class RelationTrainer {
     public async trainColors(
         source: ResolvedEntity, 
         players: HistoryRecord['players'],
-        globalColorWeights: ColorRecommendationWeights
+        globalColorWeights: ColorRecommendationWeights,
+        overridePoolSizes?: Record<string, number>
     ): Promise<{ itemChanged: boolean, weightChanged: boolean }> {
         let colorsToAdd: string[] = [];
         let weightChanged = false;
@@ -195,7 +205,11 @@ export class RelationTrainer {
             const currentConfidence = source.item.meta!.confidence![relKey] || 1.0;
             
             // Get Config Window
-            const totalPoolSize = COLORS.length;
+            let totalPoolSize = COLORS.length;
+            if (overridePoolSizes && overridePoolSizes[relKey] !== undefined) {
+                 totalPoolSize = overridePoolSizes[relKey];
+            }
+
             const predictionWindow = RelationMapper.getPredictionWindow(relKey, totalPoolSize);
 
             // [LEARN 1] Update Global Weights

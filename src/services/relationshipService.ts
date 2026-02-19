@@ -4,12 +4,21 @@ import { HistoryRecord, AnalyticsLog } from '../types';
 import { weightAdjustmentEngine, PLAYER_WEIGHTS_ID, COUNT_WEIGHTS_ID, LOCATION_WEIGHTS_ID, COLOR_WEIGHTS_ID } from '../features/recommendation/WeightAdjustmentEngine';
 import { PlayerRecommendationWeights, DEFAULT_PLAYER_WEIGHTS, CountRecommendationWeights, DEFAULT_COUNT_WEIGHTS, LocationRecommendationWeights, DEFAULT_LOCATION_WEIGHTS, ColorRecommendationWeights, DEFAULT_COLOR_WEIGHTS } from '../features/recommendation/types';
 
-// New Imports
 import { ResolvedEntity } from './relationship/types';
 import { trainingContextResolver } from './relationship/TrainingContextResolver';
 import { relationTrainer } from './relationship/RelationTrainer';
+import { HistoryBatchProcessor } from './relationship/HistoryBatchProcessor';
 
 class RelationshipService {
+
+    /**
+     * 批次處理歷史紀錄
+     * 將邏輯委派給 HistoryBatchProcessor
+     */
+    public async processHistoryBatch(records: HistoryRecord[]): Promise<void> {
+        const processor = new HistoryBatchProcessor();
+        return processor.run(records);
+    }
 
     public async processGameEnd(record: HistoryRecord): Promise<void> {
         console.log(`[RelationshipService] Checking record: ${record.gameName} (${record.id})`);

@@ -1,5 +1,4 @@
 
-
 import { db } from '../../../db';
 import { BgStatsExport, BgStatsGame, BgStatsPlayer, BgStatsLocation } from '../types';
 import { HistoryRecord, BggGame } from '../../../types';
@@ -52,22 +51,6 @@ class BgStatsExportService {
         const bggLookup = new Map<string, BggGame>(bggGames.map(g => [g.id, g])); // Key: BGG ID String
         const playerLookup = new Map(savedPlayers.map(p => [p.id, p]));
         
-        // [New] ID Translation Maps (Local ID -> BG Stats UUID)
-        const gameUuidMap = new Map<string, string>();
-        savedGames.forEach(g => {
-            if (g.bgStatsId) gameUuidMap.set(g.id, g.bgStatsId);
-        });
-
-        const playerUuidMap = new Map<string, string>();
-        savedPlayers.forEach(p => {
-            if (p.bgStatsId) playerUuidMap.set(p.id, p.bgStatsId);
-        });
-
-        const locationUuidMap = new Map<string, string>();
-        savedLocations.forEach(l => {
-            if (l.bgStatsId) locationUuidMap.set(l.id, l.bgStatsId);
-        });
-
         // ID Mappers for Export Integer IDs
         const gameMapper = new IntIdMapper();
         const playerMapper = new IntIdMapper();
@@ -95,8 +78,11 @@ class BgStatsExportService {
                 // Construct Game Object
                 const bggData = bggId ? bggLookup.get(bggId) : undefined;
                 
-                // [Crucial Fix] Use BG Stats UUID if mapped, otherwise leave blank to avoid pollution
-                const originalUuid = gameUuidMap.get(record.templateId) || "";
+                // [Unified UUID Strategy] Use record.templateId as the UUID if no specific logic overrides it.
+                // Or better, use the ID of the SavedGame if available. 
+                // Since we don't have bgStatsId map anymore, we need a stable ID.
+                // record.templateId is the stable local ID for the game definition.
+                const originalUuid = record.templateId;
 
                 const scoringRule = getRecordScoringRule(record);
 
@@ -127,8 +113,7 @@ class BgStatsExportService {
                 locationRefId = locationMapper.getId(locKey);
                 
                 if (!locationsMap.has(locationRefId)) {
-                    // [Crucial Fix] Use BG Stats UUID if mapped, otherwise leave blank
-                    const originalUuid = (record.locationId && locationUuidMap.get(record.locationId)) || "";
+                    const originalUuid = record.locationId || "";
 
                     locationsMap.set(locationRefId, {
                         id: locationRefId,
@@ -152,8 +137,7 @@ class BgStatsExportService {
                     // Try to find full info from saved list
                     const savedP = p.linkedPlayerId ? playerLookup.get(p.linkedPlayerId) : undefined;
                     
-                    // [Crucial Fix] Use BG Stats UUID if mapped, otherwise leave blank
-                    const originalUuid = (p.linkedPlayerId && playerUuidMap.get(p.linkedPlayerId)) || "";
+                    const originalUuid = p.linkedPlayerId || "";
 
                     playersMap.set(playerRefId, {
                         id: playerRefId,
@@ -184,9 +168,8 @@ class BgStatsExportService {
 
             // --- Play Object ---
             plays.push({
-                // [Self-Sync Fix] If this record originally came from BG Stats, use that ID. 
-                // Otherwise use local ID (so new plays have a UUID).
-                uuid: record.bgStatsId || record.id,
+                // [Unified UUID Strategy] record.id IS the UUID.
+                uuid: record.id,
                 gameRefId: gameRefId,
                 locationRefId: locationRefId || undefined,
                 playDate: formatDate(record.startTime),

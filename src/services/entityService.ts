@@ -48,9 +48,9 @@ class EntityService {
             if (match) return { status: 'MATCH_BY_ID', match };
         }
 
-        // 2. Check BGStats ID
+        // 2. Check BGStats ID (Now treated as Primary Key Check)
         if (externalIds?.bgStatsId) {
-            const match = await table.where('bgStatsId').equals(externalIds.bgStatsId).first();
+            const match = await table.get(externalIds.bgStatsId);
             if (match) return { status: 'MATCH_BY_ID', match };
         }
 
@@ -67,7 +67,7 @@ class EntityService {
     /**
      * 核心解析與寫入邏輯
      * 1. 若提供 preferredId (內部 8 位 ID)，則強制使用該 ID。
-     * 2. 若無，則呼叫 analyzeEntity 自動判斷 (檢查 bggId, bgStatsId, name)。
+     * 2. 若提供 externalIds.bgStatsId 且找不到現有紀錄，則將其作為 ID 建立新項目 (Unified UUID)。
      * 3. 執行資料庫寫入 (建立新項目 或 更新現有項目 ID)。
      */
     public async resolveOrCreate(
@@ -181,7 +181,7 @@ class EntityService {
             }
         }
 
-        // 情境 1: 找到現有資料 -> 檢查是否需要補完 ID (Enrichment)
+        // 情境 1: 找到現有資料 -> 檢查是否需要補完 BGG ID
         if (item) {
             const updates: Partial<SavedListItem> = {};
             let hasUpdates = false;
@@ -191,11 +191,7 @@ class EntityService {
                 hasUpdates = true;
             }
                 
-            if (externalIds?.bgStatsId && !item.bgStatsId) {
-                updates.bgStatsId = externalIds.bgStatsId;
-                hasUpdates = true;
-            }
-
+            // Note: We don't store bgStatsId anymore as a secondary field. It is the ID itself.
             // Note: 我們不將 metadata 寫入 SavedListItem.meta，因為已經有 bggGames 表了
 
             if (hasUpdates) {
@@ -206,18 +202,16 @@ class EntityService {
         }
 
         // 情境 2: 完全新資料 -> 建立 (Create)
-        // 內部 ID 生成
-        const newId = preferredId || generateId(DATA_LIMITS.ID_LENGTH.DEFAULT);
+        // [Unified UUID Strategy] 優先使用外部 bgStatsId 作為 Primary Key
+        const newId = preferredId || externalIds?.bgStatsId || generateId(DATA_LIMITS.ID_LENGTH.DEFAULT);
         
         item = {
             id: newId,
             name: cleanName,
             lastUsed: 0, 
             usageCount: 0,
-            // predictivePower removed
             // 記錄 BGG ID 作為 Foreign Key
             bggId: (type === 'game') ? externalIds?.bggId : undefined,
-            bgStatsId: externalIds?.bgStatsId,
             meta: { relations: {}, confidence: {} } // 保持 meta 乾淨
         };
         

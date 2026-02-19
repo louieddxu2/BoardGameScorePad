@@ -13,9 +13,7 @@ interface ImportStagingViewProps {
 }
 
 const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm, onCancel, isProcessing }) => {
-  // [Logic] Determine available tabs dynamically based on data presence
-  // If a category has no local unmatched, no import unmatched, and no matched items, we hide it.
-  // This handles the "BGG Import" case where players/locations are empty.
+  // [Logic] Determine available tabs
   const tabs = useMemo(() => {
       const allTabs = [
           { id: 'games', label: '遊戲', icon: LayoutGrid, data: report.games },
@@ -33,7 +31,6 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
 
   const [activeTab, setActiveTab] = useState<string>(tabs[0]?.id || 'games');
   
-  // Ensure activeTab is valid when tabs change (e.g., if switching data sources)
   useEffect(() => {
       if (!tabs.find(t => t.id === activeTab) && tabs.length > 0) {
           setActiveTab(tabs[0].id);
@@ -42,12 +39,11 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // We need separate hooks for each category to preserve state when switching tabs
+  // Separate hooks per category
   const gameLinking = useImportLinking({ categoryData: report.games, categoryType: 'game' });
   const playerLinking = useImportLinking({ categoryData: report.players, categoryType: 'player' });
   const locationLinking = useImportLinking({ categoryData: report.locations, categoryType: 'location' });
 
-  // Select active hook based on tab
   const activeHook = activeTab === 'games' ? gameLinking 
                    : activeTab === 'players' ? playerLinking 
                    : locationLinking;
@@ -82,7 +78,9 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
       }
   }, [activeHook.lastLinkedLocalId]);
 
-  // Prepare List Data
+  // --- Prepare List Data ---
+
+  // LEFT: Local List (Target)
   const localListItems: LinkerItemProps[] = currentData.localUnmatched.map(item => ({
     id: item.id,
     name: item.name,
@@ -92,11 +90,12 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
     linkedName: localToImportNameMap.get(item.id)
   }));
 
+  // RIGHT: Import List (Source)
   const importListItems: LinkerItemProps[] = activeHook.displayedImportItems.map(item => {
-    // Only highlight as "Linked" (Solid Green) if it matches the CURRENTLY selected local item
+    // Highlight if it matches the CURRENT selected Local Item's link
     const isActuallyLinked = item.id === activeHook.activeLinkedImportId;
     
-    // Only highlight as "Suggested" (Dashed Yellow) if it matches search AND isn't the already linked one
+    // Highlight as Suggested if it matches search AND isn't the one already linked
     const isSuggested = activeHook.suggestedMatchId === item.id && !isActuallyLinked;
 
     return {
@@ -105,12 +104,10 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
         subTitle: (item as any).bggId ? `BGG: ${(item as any).bggId}` : undefined,
         isLinked: isActuallyLinked,
         isSuggested: isSuggested,
-        // We don't mark other items as "linked" on the right side to reduce visual noise
     };
   });
 
   const handleConfirmClick = () => {
-    // Return structured links object instead of merged map
     onConfirm({
         games: gameLinking.links,
         players: playerLinking.links,
@@ -138,10 +135,11 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
             </div>
         </div>
 
-        {/* Tabs - Now dynamic based on data presence */}
+        {/* Tabs */}
         {tabs.length > 1 && (
             <div className="flex-none flex border-b border-slate-800">
                 {tabs.map(tab => {
+                    // Count represents LOCAL items to process
                     const count = tab.data.localUnmatched.length;
                     const Icon = tab.icon;
                     return (
@@ -160,18 +158,18 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
             </div>
         )}
 
-        {/* Content (Two Columns using LinkerList) */}
+        {/* Content (Two Columns) */}
         <div className="flex-1 flex min-h-0">
-            {/* Left: Local Unmatched */}
+            {/* Left: Local Unmatched (Target) */}
             <div className="flex-1 border-r border-slate-800 flex flex-col min-w-0 bg-slate-900/50">
                 <LinkerList 
                   items={localListItems}
-                  title={<><Database size={12} /> 本機 ({localListItems.length})</>}
+                  title={<><Database size={12} /> 本機資料庫 ({localListItems.length})</>}
                   onItemClick={activeHook.handleLocalSelect}
                 />
             </div>
 
-            {/* Right: Import Unmatched */}
+            {/* Right: Import Unmatched (Source) */}
             <div className="flex-1 flex flex-col min-w-0 bg-slate-900">
                 {/* Search Bar */}
                 <div className="p-2 border-b border-slate-800 flex-none">
@@ -182,7 +180,7 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
                             type="text"
                             value={activeHook.manualSearchQuery}
                             onChange={(e) => activeHook.setManualSearchQuery(e.target.value)}
-                            placeholder="搜尋..."
+                            placeholder="搜尋匯入資料..."
                             className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-8 py-2 text-sm text-white focus:border-emerald-500 outline-none"
                         />
                         {activeHook.manualSearchQuery && (
@@ -196,13 +194,10 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
                 <div className="flex-1 min-h-0">
                     <LinkerList 
                       items={importListItems}
-                      title={<><FileJson size={12} /> 匯入 ({activeHook.totalImportCount})</>}
+                      title={<><FileJson size={12} /> 匯入資料 ({activeHook.totalImportCount})</>}
                       onItemClick={(id) => {
                           activeHook.handleImportSelect(Number(id));
-                          // Blur input to dismiss keyboard/focus on link action
-                          if (searchInputRef.current) {
-                              searchInputRef.current.blur();
-                          }
+                          if (searchInputRef.current) searchInputRef.current.blur();
                       }}
                       emptyMessage={activeHook.manualSearchQuery ? "找不到相關項目" : "請從左側選擇項目進行配對"}
                     />

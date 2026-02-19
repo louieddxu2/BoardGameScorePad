@@ -11,20 +11,19 @@ interface UseImportLinkingProps {
 const DISPLAY_LIMIT = 20;
 
 export const useImportLinking = ({ categoryData, categoryType }: UseImportLinkingProps) => {
-  // 1. Selection State
+  // 1. Selection State (Driver: Local Item on Left)
   const [selectedLocalId, setSelectedLocalId] = useState<string | null>(null);
   
-  // 2. Search State
+  // 2. Search State (Filters Import Items on Right)
   const [manualSearchQuery, setManualSearchQuery] = useState('');
   
   // 3. Links State (Map<ImportID, ManualLink>)
   const [links, setLinks] = useState<Map<number, ManualLink>>(new Map());
   
-  // State to track the last successfully linked local ID (for scroll positioning)
+  // State to track the last successfully linked local ID (for scroll positioning on left side)
   const [lastLinkedLocalId, setLastLinkedLocalId] = useState<string | null>(null);
 
-  // [Optimization] Create Fuse instance only when the source data changes
-  // This prevents rebuilding the index on every keystroke or selection change
+  // [Target: Import Items] Create Fuse instance for IMPORT items
   const fuseInstance = useMemo(() => {
       return new Fuse(categoryData.importUnmatched, {
           keys: ['name'],
@@ -35,22 +34,23 @@ export const useImportLinking = ({ categoryData, categoryType }: UseImportLinkin
   }, [categoryData.importUnmatched]);
 
   // --- Logic: Search & Filtering ---
-  // Calculates which import items to show on the right side
+  // Calculates which IMPORT items to show on the RIGHT side based on LEFT selection
   const { displayedImportItems, suggestedMatchId, activeLinkedImportId, totalImportCount } = useMemo(() => {
     
     // 1. Determine which Import ID is currently linked to the selected Local ID
-    let currentLinkedId: number | null = null;
+    let currentLinkedImportId: number | null = null;
     if (selectedLocalId) {
+        // We have to search the map values
         for (const [importId, link] of links.entries()) {
             if (link.targetId === selectedLocalId) {
-                currentLinkedId = importId;
+                currentLinkedImportId = importId;
                 break;
             }
         }
     }
 
     let fuseSearchTerm = '';
-    const allItems = categoryData.importUnmatched;
+    const allImportItems = categoryData.importUnmatched;
 
     // 2. Determine Search Term
     if (manualSearchQuery.trim()) {
@@ -63,8 +63,8 @@ export const useImportLinking = ({ categoryData, categoryType }: UseImportLinkin
         }
     }
 
-    // 3. Perform Search
-    let searchResultItems: typeof allItems = [];
+    // 3. Perform Search on IMPORT items
+    let searchResultItems: typeof allImportItems = [];
     let bestMatchId: number | null = null;
     let totalMatches = 0;
 
@@ -72,43 +72,39 @@ export const useImportLinking = ({ categoryData, categoryType }: UseImportLinkin
         const results = fuseInstance.search(fuseSearchTerm);
         bestMatchId = results.length > 0 ? results[0].item.id : null;
         totalMatches = results.length;
-        // Limit search results processing to avoid huge array mapping
         searchResultItems = results.slice(0, DISPLAY_LIMIT).map(r => r.item);
     } else {
-        totalMatches = allItems.length;
-        // If no search, we just take the top items from the raw list
-        searchResultItems = allItems.slice(0, DISPLAY_LIMIT);
+        totalMatches = allImportItems.length;
+        // Default list
+        searchResultItems = allImportItems.slice(0, DISPLAY_LIMIT);
     }
 
     // 4. Assemble Final List
-    // Priority: [Linked Item] -> [Search Results / Default List]
-    // Note: We need to deduplicate. If the Linked Item is also in Search Results, don't show it twice.
+    // Priority: [Linked Item] -> [Search Results]
     
-    let linkedItem: typeof allItems[0] | undefined;
-    if (currentLinkedId !== null) {
-        linkedItem = allItems.find(i => i.id === currentLinkedId);
+    let linkedItem: typeof allImportItems[0] | undefined;
+    if (currentLinkedImportId !== null) {
+        linkedItem = allImportItems.find(i => i.id === currentLinkedImportId);
     }
 
-    let finalDisplayList: typeof allItems = [];
+    let finalDisplayList: typeof allImportItems = [];
 
     if (linkedItem) {
         finalDisplayList.push(linkedItem);
-        // Append results, filtering out the linked item
-        const rest = searchResultItems.filter(i => i.id !== currentLinkedId);
+        const rest = searchResultItems.filter(i => i.id !== currentLinkedImportId);
         finalDisplayList.push(...rest);
     } else {
         finalDisplayList = searchResultItems;
     }
 
     // 5. Final Cut
-    // Strictly limit to prevent rendering crashes
     const truncatedList = finalDisplayList.slice(0, DISPLAY_LIMIT);
     
     return { 
         displayedImportItems: truncatedList,
-        totalImportCount: totalMatches, // Return total matches before slicing
+        totalImportCount: totalMatches,
         suggestedMatchId: bestMatchId,
-        activeLinkedImportId: currentLinkedId
+        activeLinkedImportId: currentLinkedImportId
     };
 
   }, [categoryData.importUnmatched, categoryData.localUnmatched, selectedLocalId, manualSearchQuery, links, fuseInstance]);
@@ -116,32 +112,32 @@ export const useImportLinking = ({ categoryData, categoryType }: UseImportLinkin
   // --- Actions ---
 
   const handleLocalSelect = (id: string | number) => {
-    const strId = String(id);
-    setSelectedLocalId(prev => prev === strId ? null : strId);
-    setManualSearchQuery(''); // Clear manual search when switching selection context
+    setSelectedLocalId(String(id));
+    setManualSearchQuery(''); 
   };
 
   const handleImportSelect = (importId: number) => {
     // Only allow linking if a local item is selected
     if (!selectedLocalId) return;
-
+    
     setLinks(prev => {
       const newLinks = new Map<number, ManualLink>(prev);
       
-      // Check if already linked to THIS local ID (Toggle Off)
+      // Check if this import item is already linked to THIS local item (Toggle off)
       const existingLink = newLinks.get(importId);
       if (existingLink && existingLink.targetId === selectedLocalId) {
         newLinks.delete(importId);
         return newLinks;
       }
-      
-      // Clear any existing link for this Local ID (One-to-One logic for UI consistency)
+
+      // Check if this Local ID is already linked to ANOTHER import item (One-to-One logic for this specific Local ID)
+      // Remove any existing link pointing to selectedLocalId
       for (const [key, link] of newLinks.entries()) {
           if (link.targetId === selectedLocalId) {
               newLinks.delete(key);
           }
       }
-
+      
       // Create New Link
       let linkType: ManualLink['type'] = 'game';
       if (categoryType === 'player') linkType = 'player';
@@ -167,13 +163,11 @@ export const useImportLinking = ({ categoryData, categoryType }: UseImportLinkin
             setSelectedLocalId(nextItem.id);
             setManualSearchQuery('');
         } else {
-            // End of list: Stay on the current item (don't deselect), but clear search
             setManualSearchQuery('');
         }
     }
   };
 
-  // Helper to check status
   const getLinkStatus = (importId: number) => links.has(importId);
 
   return {
@@ -188,6 +182,6 @@ export const useImportLinking = ({ categoryData, categoryType }: UseImportLinkin
     getLinkStatus,
     suggestedMatchId,
     lastLinkedLocalId,
-    activeLinkedImportId // Expose the ID of the item linked to the CURRENT selection
+    activeLinkedImportId 
   };
 };

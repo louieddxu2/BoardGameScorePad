@@ -1,8 +1,7 @@
+
 import { db } from '../../../db';
 import { BgStatsGame } from '../types';
-import { generateId } from '../../../utils/idGenerator';
 import { SavedListItem, BggGame } from '../../../types';
-import { DATA_LIMITS } from '../../../dataLimits';
 
 /**
  * BG Stats Entity Service
@@ -83,73 +82,70 @@ export class BgStatsEntityService {
   // --- Players ---
 
   async bindPlayer(localId: string, bgStatsId: string): Promise<void> {
-    try {
-      await db.savedPlayers.update(localId, { bgStatsId });
-    } catch (e) {
-      console.warn(`[Binding] Failed to bind player ${localId}`, e);
-    }
+    // No-op for Unified UUID Strategy: If localId == bgStatsId, no action needed.
+    // If different (manual link), we rely on the ManualLink logic to use the existing ID.
+    // We do NOT update a bgStatsId field anymore.
   }
 
   async createPlayer(name: string, bgStatsId: string): Promise<string> {
-    const newId = generateId(DATA_LIMITS.ID_LENGTH.DEFAULT);
+    // Use bgStatsId as the primary key
+    const newId = bgStatsId; 
     const newPlayer: SavedListItem = {
       id: newId,
       name: name.trim(),
       lastUsed: 0,
       usageCount: 0,
-      bgStatsId: bgStatsId,
       meta: { relations: {}, confidence: {} }
     };
-    await db.savedPlayers.add(newPlayer);
+    await db.savedPlayers.put(newPlayer); // Put handles idempotent create
     return newId;
   }
 
   // --- Locations ---
 
   async bindLocation(localId: string, bgStatsId: string): Promise<void> {
-    try {
-      await db.savedLocations.update(localId, { bgStatsId });
-    } catch (e) {
-      console.warn(`[Binding] Failed to bind location ${localId}`, e);
-    }
+     // No-op
   }
 
   async createLocation(name: string, bgStatsId: string): Promise<string> {
-    const newId = generateId(DATA_LIMITS.ID_LENGTH.DEFAULT);
+    const newId = bgStatsId;
     const newLocation: SavedListItem = {
       id: newId,
       name: name.trim(),
       lastUsed: 0,
       usageCount: 0,
-      bgStatsId: bgStatsId,
       meta: { relations: {}, confidence: {} }
     };
-    await db.savedLocations.add(newLocation);
+    await db.savedLocations.put(newLocation);
     return newId;
   }
 
   // --- Games ---
 
   async bindGame(localId: string, sourceGame: BgStatsGame, options: { backfillHistory?: boolean } = {}): Promise<void> {
-    const updates: any = { bgStatsId: sourceGame.uuid };
     const bggIdStr = (sourceGame.bggId && sourceGame.bggId > 0) ? sourceGame.bggId.toString() : undefined;
     
+    // Only BGG ID updates are relevant now
+    const updates: any = {};
     if (bggIdStr) {
       updates.bggId = bggIdStr;
+    } else {
+      return; // Nothing to update
     }
 
     try {
       // 1. 更新 Template (如果存在)
       await db.templates.update(localId, updates).catch(() => {});
       
-      // 2. 更新 SavedGame (如果存在) 或 建立
+      // 2. 更新 SavedGame (如果存在)
       const existingGame = await db.savedGames.get(localId);
       let localName = existingGame?.name;
       
       if (existingGame) {
           await db.savedGames.update(localId, updates);
       } else {
-          // Fallback name resolution
+          // If binding to an ID that is not a SavedGame (e.g. a Template ID), we might want to create a SavedGame for it
+          // But only if we are treating this as a game record.
           if (!localName) {
              const tmpl = await db.templates.get(localId);
              const builtin = await db.builtins.get(localId);
@@ -161,7 +157,6 @@ export class BgStatsEntityService {
               name: localName,
               lastUsed: 0,
               usageCount: 0,
-              bgStatsId: sourceGame.uuid,
               bggId: bggIdStr,
               meta: { relations: {}, confidence: {} }
           };
@@ -189,7 +184,7 @@ export class BgStatsEntityService {
   }
 
   async createGame(sourceGame: BgStatsGame, options: { backfillHistory?: boolean } = {}): Promise<string> {
-    const newId = generateId(DATA_LIMITS.ID_LENGTH.DEFAULT); 
+    const newId = sourceGame.uuid; // Use Source UUID as Primary Key
     const bggIdStr = (sourceGame.bggId && sourceGame.bggId > 0) ? sourceGame.bggId.toString() : undefined;
 
     const newGame: SavedListItem = {
@@ -197,11 +192,10 @@ export class BgStatsEntityService {
         name: sourceGame.name.trim(),
         lastUsed: 0,
         usageCount: 0,
-        bgStatsId: sourceGame.uuid,
         bggId: bggIdStr,
         meta: { relations: {}, confidence: {} }
     };
-    await db.savedGames.add(newGame);
+    await db.savedGames.put(newGame);
 
     if (bggIdStr) {
         await this.upsertBggData(sourceGame);

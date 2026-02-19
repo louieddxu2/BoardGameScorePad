@@ -67,7 +67,6 @@ export class TrainingContextResolver {
 
         // B. Game
         const bggId = getRecordBggId(record);
-        const bgStatsId = record.bgStatsId;
 
         await resolveAndCache(
             db.savedGames, 
@@ -75,7 +74,7 @@ export class TrainingContextResolver {
             'game', 
             isFull, 
             undefined, 
-            { bggId, bgStatsId }
+            { bggId }
         );
 
         // C. Players
