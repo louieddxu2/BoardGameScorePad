@@ -350,6 +350,7 @@ const DatabaseInspector = ({ onRequestFactoryReset }: { onRequestFactoryReset: (
 const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState<'games' | 'players' | 'locations' | 'time' | 'counts' | 'modes' | 'weights' | 'images' | 'bgg' | 'session' | 'db'>('games');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0); // [New]
   const [confirmAction, setConfirmAction] = useState<'reset' | 'reprocess' | 'factory_reset' | null>(null); 
   
   const t = useInspectorTranslation();
@@ -396,24 +397,37 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   const executeReprocessHistory = async () => {
       if (isProcessing) return;
       setIsProcessing(true);
+      setProgress(0);
       try {
           // 1. Fetch all history sorted by time (oldest first)
           const allHistory = await db.history.orderBy('endTime').toArray();
-          
+          const total = allHistory.length;
           let count = 0;
           
-          // 2. Sequential processing to preserve logical order
-          for (const record of allHistory) {
-              await relationshipService.processGameEnd(record);
-              count++;
+          // 2. Batch Processing with Chunking
+          // [Optimization] Increase chunk size to 200 as requested
+          const CHUNK_SIZE = 200;
+          
+          for (let i = 0; i < total; i += CHUNK_SIZE) {
+              const chunk = allHistory.slice(i, i + CHUNK_SIZE);
+              
+              // Process chunk
+              await relationshipService.processHistoryBatch(chunk);
+              
+              count += chunk.length;
+              setProgress(Math.min(100, Math.round((count / total) * 100)));
+              
+              // Yield to main thread to prevent UI freeze
+              await new Promise(resolve => setTimeout(resolve, 0));
           }
           
-          showToast({ message: `已成功掃描 ${count} 筆紀錄`, type: 'success' });
+          showToast({ message: `已成功掃描 ${total} 筆紀錄`, type: 'success' });
       } catch (error) {
           console.error("Reprocess failed", error);
           showToast({ message: "掃描過程發生錯誤", type: 'error' });
       } finally {
           setIsProcessing(false);
+          setProgress(0);
       }
   };
 
@@ -490,10 +504,17 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             <button 
                 onClick={() => setConfirmAction('reprocess')} 
                 disabled={isProcessing}
-                className="p-2 hover:bg-slate-800 rounded-lg text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-50"
+                className="p-2 hover:bg-slate-800 rounded-lg text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-50 relative overflow-hidden"
                 title="重新掃描並匯入歷史紀錄"
             >
-                {isProcessing ? <Loader2 size={20} className="animate-spin" /> : <RefreshCw size={20} />}
+                {isProcessing ? (
+                    <>
+                        <div className="absolute inset-0 bg-indigo-500/20" style={{ width: `${progress}%` }}></div>
+                        <span className="relative text-[10px] font-bold">{progress}%</span>
+                    </>
+                ) : (
+                    <RefreshCw size={20} />
+                )}
             </button>
             <div className="w-px h-6 bg-slate-800 mx-1"></div>
             <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">

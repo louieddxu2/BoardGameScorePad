@@ -124,9 +124,15 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
   const handleDeleteConfirm = () => {
       if (photoToDelete) {
           onDeletePhoto(photoToDelete);
-          // If we are in lightbox view, we need to adjust logic or close it
-          // Simpler approach: Close lightbox when deleting
-          setInitialIndex(null); 
+          
+          // [New Logic] If in single-shot mode (toolbox camera), deletion means the task is aborted/finished.
+          // Directly close the modal to return to scoreboard.
+          if (autoEnterMode === 'lightbox_overlay') {
+              onClose();
+          } else {
+              // Otherwise, just close the lightbox and return to the grid.
+              setInitialIndex(null); 
+          }
           setPhotoToDelete(null);
       }
   };
