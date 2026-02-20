@@ -3,12 +3,13 @@ import React, { forwardRef } from 'react';
 import { Player } from '../../../types';
 import { Crown, Calendar, Trophy } from 'lucide-react';
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
+import StickerElement from './StickerElement';
 
 export interface OverlayData {
   gameName: string;
   date: number;
   endTime?: number; // 新增：結束時間 (可選)
-  players: Player[];
+  players: (Player & { isAnonymous?: boolean })[]; // Update to allow isAnonymous flag
   winners: string[];
 }
 
@@ -19,6 +20,8 @@ interface ScoreOverlayGeneratorProps {
 
 // 固定寬度以確保輸出解析度一致 (1080px 寬度適合大多數手機與社群分享)
 const GENERATOR_WIDTH = 1080;
+const PADDING_PX = 32; // Fixed 32px (equivalent to p-8 at 1rem=16px)
+const GAP_PX = 24;     // Fixed 24px (equivalent to gap-6 at 1rem=16px)
 
 const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorProps>(({ imageSrc, data }, ref) => {
   // Logic: 優先顯示結束時間 (歷史紀錄)，若無則顯示開始時間 (進行中遊戲)
@@ -29,17 +32,17 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
 
   // [Auto-Balance Logic]
   // 計算每列應該顯示幾個玩家，以避免孤兒 (例如 5 人變成 4+1)。
-  // 規則：最多 4 欄。
-  // 範例 5人: 2列 -> ceil(5/2) = 3欄寬 -> 第一列3個, 第二列2個(置中)
-  // 範例 6人: 2列 -> ceil(6/2) = 3欄寬 -> 3/3
-  // 範例 9人: 3列 -> ceil(9/3) = 3欄寬 -> 3/3/3
   const totalPlayers = data.players.length;
   const MAX_COLS = 4;
   const numRows = Math.ceil(totalPlayers / MAX_COLS);
   const targetCols = Math.ceil(totalPlayers / numRows);
   
-  // gap-6 等於 1.5rem (24px)
-  const GAP_PX = 24; 
+  // Precise Calculation for Pixel-Perfect Layout
+  // Avoid using calc(100%...) which suffers from sub-pixel rounding errors causing wrap
+  const containerInnerWidth = GENERATOR_WIDTH - (PADDING_PX * 2);
+  const totalGapWidth = (targetCols - 1) * GAP_PX;
+  // Floor the width to ensure it strictly fits, subtract a tiny buffer for browser render quirks
+  const cardWidth = Math.floor((containerInnerWidth - totalGapWidth) / targetCols) - 0.1;
 
   return (
     <div 
@@ -48,7 +51,10 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
         className="bg-slate-900 text-white flex flex-col items-stretch overflow-hidden"
     >
       {/* Header: Game Info */}
-      <div className="bg-slate-800 p-8 border-b border-slate-700 flex justify-between items-center shadow-md z-10 relative">
+      <div 
+        className="bg-slate-800 border-b border-slate-700 flex justify-between items-center shadow-md z-10 relative"
+        style={{ padding: PADDING_PX }}
+      >
         <div>
             <h2 className="text-5xl font-black text-white mb-3 flex items-center gap-4">
                 <Trophy size={48} className="text-emerald-500" />
@@ -76,8 +82,14 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
       </div>
 
       {/* Footer: Player Scores */}
-      <div className="bg-slate-900 p-8 border-t border-slate-700">
-        <div className="flex flex-wrap gap-6 justify-center">
+      <div 
+        className="bg-slate-900 border-t border-slate-700"
+        style={{ padding: PADDING_PX }}
+      >
+        <div 
+            className="flex flex-wrap justify-center"
+            style={{ gap: GAP_PX }}
+        >
             {data.players.map(p => {
                 const isWinner = data.winners.includes(p.id);
                 // Fallback color if transparent
@@ -89,10 +101,8 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                         key={p.id} 
                         className="relative flex flex-col items-center justify-center bg-slate-800 rounded-2xl shadow-xl border border-slate-700 overflow-hidden"
                         style={{
-                            // 動態計算寬度，強制 Flexbox 換行以達成平衡佈局
-                            // 公式：(100% - 總縫隙寬度) / 欄數
-                            width: `calc((100% - ${(targetCols - 1) * GAP_PX}px) / ${targetCols})`,
-                            minWidth: '200px' // 保持最小寬度以防計算過小
+                            width: `${cardWidth}px`,
+                            minWidth: '200px' // 保持最小寬度
                         }}
                     >
                         {/* Winner Crown (Floating Badge) - Adjusted position for new layout */}
@@ -109,15 +119,21 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                 backgroundColor: `${playerColor}26` // Add ~15% opacity to the background
                             }}
                         >
-                            <span 
-                                className="text-3xl font-black truncate w-full text-center"
-                                style={{ 
-                                    color: playerColor,
-                                    textShadow: isDark ? ENHANCED_TEXT_SHADOW : 'none'
-                                }}
-                            >
-                                {p.name}
-                            </span>
+                            {p.isAnonymous ? (
+                                <StickerElement id={p.id} color={playerColor} />
+                            ) : (
+                                <span 
+                                    className="text-3xl font-black w-full text-center"
+                                    style={{ 
+                                        color: playerColor,
+                                        textShadow: isDark ? ENHANCED_TEXT_SHADOW : 'none',
+                                        wordBreak: 'break-word',
+                                        lineHeight: '1.2'
+                                    }}
+                                >
+                                    {p.name}
+                                </span>
+                            )}
                         </div>
 
                         {/* Score Section */}

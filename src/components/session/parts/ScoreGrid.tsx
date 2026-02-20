@@ -1,10 +1,11 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { GameSession, GameTemplate, Player, ScoreColumn } from '../../../types';
-import { GripVertical, EyeOff, Layers, Sparkles, Settings, Sigma, X, Plus } from 'lucide-react';
+import { GripVertical, EyeOff, Layers, Sparkles, Settings, Sigma, X } from 'lucide-react';
 import ScoreCell from './ScoreCell';
 import TexturedPlayerHeader from './TexturedPlayerHeader';
 import TexturedBlock from './TexturedBlock';
+import GridFooter from './GridFooter'; // [New Import]
 import { useColumnDragAndDrop } from '../hooks/useColumnDragAndDrop';
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
 import { usePlayerWidthSync } from '../../../hooks/usePlayerWidthSync';
@@ -28,6 +29,9 @@ interface ScoreGridProps {
   isEditMode: boolean; 
   zoomLevel: number;
   previewValue?: any; 
+  // [New Props]
+  onToggleToolbox?: () => void;
+  isToolboxOpen?: boolean;
 }
 
 const formatDisplayNumber = (num: number | undefined | null): string => {
@@ -47,6 +51,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   onUpdateTemplate,
   onAddColumn,
   onOpenSettings,
+  onToggleToolbox, // [New]
+  isToolboxOpen,   // [New]
   scrollContainerRef,
   contentRef,
   baseImage,
@@ -59,6 +65,13 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   const [containerWidth, setContainerWidth] = useState(0);
 
   const isTextureMode = !!baseImage;
+
+  // [Logic] Determine if the list is "Long" (needs toolbox button)
+  // Short list = No image AND columns < 5.
+  // So Long list = Image OR columns >= 5.
+  const showToolboxButton = useMemo(() => {
+      return !!baseImage || template.columns.length >= 5;
+  }, [baseImage, template.columns.length]);
 
   useEffect(() => {
       if (baseImage) {
@@ -280,7 +293,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 rect={col.visuals?.headerRect}
                 onClick={(e: any) => onColumnHeaderClick(e, col)}
                 {...getDragHandlers(col.id)}
-                className={`sticky left-0 ${headerBgClass} ${hiddenStyleClass} border-r-2 border-b border-slate-700 flex flex-col justify-center transition-colors z-20 group select-none shrink-0 overflow-hidden ${isEditMode ? (isDragging ? 'cursor-grabbing' : 'cursor-grab hover:bg-slate-700') : 'cursor-default'} ${isTextureMode ? 'p-0' : 'p-2'}`}
+                className={`sticky left-0 ${headerBgClass} ${hiddenStyleClass} border-r-2 border-b border-slate-700 flex flex-col justify-center transition-colors z-20 group select-none shrink-0 overflow-hidden ${isEditMode ? (isDragging ? 'cursor-grabbing' : 'cursor-grab hover:bg-slate-700') : 'cursor-default'} ${isTextureMode ? 'p-0' : 'p-2'} `}
                 style={{
                   ...itemColStyle,
                   borderRightColor: col.color || 'var(--border-slate-700)'
@@ -415,29 +428,21 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           );
         })}
         
-        {isEditMode && (
-            <div className="flex relative z-10 animate-in fade-in slide-in-from-left-4 duration-300">
-                <div 
-                    className="sticky left-0 bg-slate-900 border-r border-b border-slate-700 flex items-center justify-center p-2 z-20 shrink-0"
-                    style={itemColStyle} 
-                >
-                    <button 
-                        onClick={onAddColumn}
-                        className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-emerald-500 border border-slate-600 hover:border-emerald-500/50 flex items-center justify-center transition-all active:scale-95 shadow-sm group"
-                        title="新增空白項目"
-                    >
-                        <Plus size={20} className="group-hover:scale-110 transition-transform" />
-                    </button>
-                </div>
-                <div className="flex-1 bg-slate-900 border-b border-slate-800/50 min-h-[3rem]" />
-            </div>
-        )}
+        {/* Footer Area */}
+        <GridFooter 
+            isEditMode={isEditMode}
+            onAddColumn={onAddColumn}
+            itemColStyle={itemColStyle}
+            showToolboxButton={showToolboxButton} // [New]
+            isToolboxOpen={!!isToolboxOpen}      // [New]
+            onToggleToolbox={onToggleToolbox || (() => {})} // [New]
+        />
 
         <div 
             data-row-id={lastColId} 
             onDragOver={(e) => { if (isEditMode && lastColId) dnd.handleDragOver(e, lastColId); }}
             onDrop={(e) => { if (isEditMode && lastColId) dnd.handleDrop(e, lastColId); }}
-            className={`w-full ${editingCell || editingPlayerId ? 'h-[40vh]' : 'h-24'}`} 
+            className={`w-full ${(editingCell || editingPlayerId || (!baseImage && template.columns.length < 5) || isToolboxOpen) ? 'h-[40vh]' : 'h-24'}`} 
         />
       </div>
     </div>

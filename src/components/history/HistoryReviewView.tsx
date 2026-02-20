@@ -16,6 +16,7 @@ import ShareMenu from '../session/modals/ShareMenu';
 import PhotoGalleryModal from '../session/modals/PhotoGalleryModal'; 
 import { imageService } from '../../services/imageService';
 import { compressAndResizeImage } from '../../utils/imageProcessing';
+import { getRecordScoringRule, getRecordTemplate } from '../../utils/historyUtils';
 
 interface HistoryReviewViewProps {
   record: HistoryRecord;
@@ -25,7 +26,7 @@ interface HistoryReviewViewProps {
 
 const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRecord, onExit, zoomLevel }) => {
   const [record, setRecord] = useState<HistoryRecord>(initialRecord);
-  const { locationHistory, updateLocationHistory, saveTemplate } = useAppData();
+  const { savedLocations, updateSavedLocation, saveTemplate } = useAppData(); // Renamed properties
   
   // Track if data has been modified to trigger cloud sync on exit
   const isDirtyRef = useRef(false);
@@ -37,14 +38,18 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
 
   const fakeSession: GameSession = useMemo(() => ({
     id: 'history-review',
+    name: record.gameName,
+    bggId: record.bggId,
     templateId: record.templateId,
     startTime: record.startTime,
     players: record.players, 
     status: 'completed',
-    scoringRule: record.snapshotTemplate.defaultScoringRule
+    scoringRule: getRecordScoringRule(record)
   }), [record]);
 
-  const template = record.snapshotTemplate;
+  // Use helper to safely get template (handles missing/empty snapshot via virtual template)
+  const template = useMemo(() => getRecordTemplate(record), [record]);
+  
   const { downloadCloudImage, isAutoConnectEnabled, isConnected } = useGoogleDrive();
   const [baseImage, setBaseImage] = useState<string | null>(null);
   
@@ -255,7 +260,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
               
               if (recordToSave.location) {
                   // [Modified] Pass the generated locationId to ensure syncing
-                  updateLocationHistory(recordToSave.location, recordToSave.locationId);
+                  updateSavedLocation(recordToSave.location, recordToSave.locationId);
               }
               showToast({ message: "紀錄已更新", type: 'success' });
           }
@@ -437,7 +442,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
             onClose={() => setShowSettingsModal(false)}
             record={record}
             onSave={handleUpdateRecord}
-            locationHistory={locationHistory}
+            locationHistory={savedLocations}
             onRestoreTemplate={saveTemplate}
         />
     </div>

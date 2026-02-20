@@ -29,8 +29,10 @@ interface ScoreInfoPanelProps {
 }
 
 // 1. InfoProduct: Handles "a1×a2"
-const InfoProduct: React.FC<ScoreInfoPanelProps> = ({ column, value, activeFactorIdx, setActiveFactorIdx, setOverwrite }) => {
-    const factors = getFactors(value);
+const InfoProduct: React.FC<ScoreInfoPanelProps> = ({ column, value, activeFactorIdx, setActiveFactorIdx, setOverwrite, localKeypadValue }) => {
+    // [Update] Use localKeypadValue for display if available
+    const factors = getFactors(localKeypadValue || value);
+    
     const unitA = column.subUnits?.[0] || '數量';
     const unitB = column.subUnits?.[1] || '單價';
     const unitTotal = column.unit || '分';
@@ -113,8 +115,14 @@ const InfoSumParts: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypa
             currentFactors = localKeypadValue.factors;
         }
     } else {
-        const currentInputRaw = getRawValue(localKeypadValue);
-        currentInputStr = String(currentInputRaw || '0');
+        // [Update] Check for raw string value first to preserve "5." or "-0"
+        if (localKeypadValue && typeof localKeypadValue === 'object' && 'value' in localKeypadValue) {
+            currentInputStr = String(localKeypadValue.value);
+        } else {
+            const currentInputRaw = getRawValue(localKeypadValue);
+            currentInputStr = String(currentInputRaw || '0');
+            if (Object.is(currentInputRaw, -0)) currentInputStr = "-0";
+        }
     }
 
     const isFactorAActive = activeFactorIdx === 0;
@@ -203,9 +211,9 @@ const InfoSumParts: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypa
 };
 
 // 3. InfoMapping: Handles "f1(a1)" (Lookup Table)
-const InfoMapping: React.FC<ScoreInfoPanelProps> = ({ column, value }) => {
+const InfoMapping: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypadValue }) => {
     const activeRuleRef = useRef<HTMLDivElement>(null);
-    const rawValueForEffect = getRawValue(value);
+    const rawValueForEffect = getRawValue(localKeypadValue || value); // [Update] Use local value for effect dependency
 
     useEffect(() => {
         if (activeRuleRef.current) {
@@ -214,26 +222,45 @@ const InfoMapping: React.FC<ScoreInfoPanelProps> = ({ column, value }) => {
     }, [rawValueForEffect]);
 
     const unitStr = column.unit || '';
-    const currentVal = parseFloat(String(getRawValue(value))) || 0;
+    
+    // [Update] Get display string from localKeypadValue if available
+    let displayVal: string | number = 0;
+    if (localKeypadValue && typeof localKeypadValue === 'object' && 'value' in localKeypadValue) {
+        displayVal = localKeypadValue.value;
+    } else {
+        displayVal = getRawValue(localKeypadValue || value);
+    }
+    
+    // Logic still needs number
+    const currentVal = parseFloat(String(displayVal)) || 0;
     
     // Calculate final score for footer display
     let activeRule = null;
-    let effectiveMaxForActive: number | undefined = undefined;
     let finalScore = 0;
 
     for (let idx = 0; idx < (column.f1?.length || 0); idx++) {
         const rule = column.f1![idx];
-        let effectiveMax = Infinity;
-        if (rule.max === 'next') {
-            const nextRule = column.f1![idx + 1];
-            if (nextRule && typeof nextRule.min === 'number') effectiveMax = nextRule.min - 1;
-        } else if (typeof rule.max === 'number') {
-            effectiveMax = rule.max;
+        let isMatch = false;
+
+        // [Updated] Continuous Range Match Logic
+        if (rule.min !== undefined && currentVal < rule.min) {
+             isMatch = false;
+        } else if (rule.max === 'next') {
+             const nextRule = column.f1![idx + 1];
+             if (nextRule && typeof nextRule.min === 'number') {
+                 // Match if < nextMin
+                 isMatch = currentVal < nextRule.min;
+             } else {
+                 isMatch = true;
+             }
+        } else if (rule.max !== undefined) {
+             isMatch = currentVal <= rule.max;
+        } else {
+             isMatch = true;
         }
-        const isMatch = (rule.min === undefined || currentVal >= rule.min) && (currentVal <= effectiveMax);
+
         if (isMatch) {
             activeRule = rule;
-            effectiveMaxForActive = effectiveMax;
             break;
         }
     }
@@ -283,14 +310,32 @@ const InfoMapping: React.FC<ScoreInfoPanelProps> = ({ column, value }) => {
             <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0"><Ruler size={12} /> 範圍查表</div>
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-1 py-1">
                 {column.f1?.map((rule, idx) => {
-                    let effectiveMax = Infinity;
+                    // Display Logic for Label (Keep roughly using integer bounds for display "1~4")
+                    let displayMax = Infinity;
                     if (rule.max === 'next') {
                         const nextRule = column.f1?.[idx + 1];
-                        if (nextRule && typeof nextRule.min === 'number') effectiveMax = nextRule.min - 1;
+                        if (nextRule && typeof nextRule.min === 'number') displayMax = nextRule.min - 1;
                     } else if (typeof rule.max === 'number') {
-                        effectiveMax = rule.max;
+                        displayMax = rule.max;
                     }
-                    const isMatch = (rule.min === undefined || currentVal >= rule.min) && (currentVal <= effectiveMax);
+                    
+                    // Matching Logic (Sync with above)
+                    let isMatch = false;
+                    if (rule.min !== undefined && currentVal < rule.min) {
+                         isMatch = false;
+                    } else if (rule.max === 'next') {
+                         const nextRule = column.f1?.[idx + 1];
+                         if (nextRule && typeof nextRule.min === 'number') {
+                             isMatch = currentVal < nextRule.min;
+                         } else {
+                             isMatch = true;
+                         }
+                    } else if (rule.max !== undefined) {
+                         isMatch = currentVal <= rule.max;
+                    } else {
+                         isMatch = true;
+                    }
+
                     const minVal = rule.min ?? 0;
                     let labelNode: React.ReactNode;
                     let scoreNode: React.ReactNode;
@@ -308,7 +353,7 @@ const InfoMapping: React.FC<ScoreInfoPanelProps> = ({ column, value }) => {
                             </div>
                         );
                     } else {
-                            let text = (effectiveMax === Infinity) ? `${minVal}+${unitStr}` : (minVal === effectiveMax) ? `${minVal}${unitStr}` : `${minVal}~${effectiveMax}${unitStr}`;
+                            let text = (displayMax === Infinity) ? `${minVal}+${unitStr}` : (minVal === displayMax) ? `${minVal}${unitStr}` : `${minVal}~${displayMax}${unitStr}`;
                             labelNode = <span>{text}</span>;
                             scoreNode = <span className="text-emerald-400 font-bold">{rule.score}</span>;
                     }
@@ -326,7 +371,7 @@ const InfoMapping: React.FC<ScoreInfoPanelProps> = ({ column, value }) => {
                 <div className="bg-slate-900 rounded-lg border border-indigo-500/40 p-2 shadow-sm flex flex-col gap-1">
                     <div className="flex justify-between items-center border-b border-indigo-500/20 pb-2 mb-0.5">
                         <div className="bg-emerald-900/30 border border-emerald-500 rounded px-2 py-0.5 shadow-[0_0_10px_rgba(16,185,129,0.1)] flex items-baseline gap-1">
-                                <span className="font-mono font-bold text-white text-sm leading-none">{currentVal}</span>
+                                <span className="font-mono font-bold text-white text-sm leading-none">{displayVal}</span>
                         </div>
                         <ArrowRight size={12} className="text-slate-500" />
                         <div className="flex items-center"><span className="text-emerald-400 font-bold text-sm">{finalScore}</span></div>

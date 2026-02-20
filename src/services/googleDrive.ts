@@ -8,6 +8,20 @@ import { DATA_LIMITS } from '../dataLimits';
 
 export type { CloudFile, CloudResourceType };
 
+// [Config] LocalStorage Key
+const AUTO_CONNECT_KEY = 'google_drive_auto_connect';
+
+// [Standardized Helpers]
+// Central source of truth for cloud sync preference.
+
+export const getAutoConnectPreference = (): boolean => {
+    return localStorage.getItem(AUTO_CONNECT_KEY) === 'true';
+};
+
+export const setAutoConnectPreference = (enabled: boolean): void => {
+    localStorage.setItem(AUTO_CONNECT_KEY, String(enabled));
+};
+
 class GoogleDriveService {
   
   // Folder ID Cache

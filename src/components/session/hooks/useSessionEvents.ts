@@ -1,4 +1,3 @@
-
 import React, { useCallback, useEffect, useRef } from 'react';
 import { GameSession, GameTemplate, ScoreColumn, SavedListItem } from '../../../types';
 import { useSessionState } from './useSessionState';
@@ -7,14 +6,15 @@ import { generateId } from '../../../utils/idGenerator';
 import { calculatePlayerTotal } from '../../../utils/scoring';
 import { useToast } from '../../../hooks/useToast';
 import { DATA_LIMITS } from '../../../dataLimits';
+import { bgStatsEntityService } from '../../../features/bgstats/services/bgStatsEntityService'; 
 
 interface SessionViewProps {
   session: GameSession;
   template: GameTemplate;
-  playerHistory: SavedListItem[]; // [Update] Updated to accept SavedListItem[] to match AppData
+  savedPlayers: SavedListItem[]; // Renamed
   onUpdateSession: (session: GameSession) => void;
   onUpdateTemplate: (template: GameTemplate) => void;
-  onUpdatePlayerHistory: (name: string, uuid?: string) => void; // [Modified] Accepts optional UUID
+  onUpdateSavedPlayer: (name: string, uuid?: string) => void; // Renamed
   onExit: () => void;
   onResetScores: () => void;
 }
@@ -31,7 +31,7 @@ export const useSessionEvents = (
   sessionState: SessionStateHook,
   localUiState?: LocalUiState
 ) => {
-  const { session, template, playerHistory, onUpdateSession, onUpdateTemplate, onUpdatePlayerHistory, onExit, onResetScores } = props;
+  const { session, template, savedPlayers, onUpdateSession, onUpdateTemplate, onUpdateSavedPlayer, onExit, onResetScores } = props;
   const { uiState, setUiState } = sessionState;
   const { showToast } = useToast();
 
@@ -201,8 +201,12 @@ export const useSessionEvents = (
       });
 
       const hasPhotos = (currentSession.photos && currentSession.photos.length > 0);
+      const hasNote = !!currentSession.note && currentSession.note.trim().length > 0;
 
-      if (hasData || hasPhotos) {
+      // Note: We deliberately exclude 'hasLocation' here as location setting is often done during setup
+      // and not considered "session data" that needs saving confirmation if nothing else happened.
+
+      if (hasData || hasPhotos || hasNote) {
           setUiState(p => ({ ...p, isSessionExitModalOpen: true }));
       } else {
           onExitRef.current(); // Use Ref
@@ -281,7 +285,7 @@ export const useSessionEvents = (
           if (!finalLinkedId) {
               if (nameChanged && finalName) {
                   // If name changed, try to find a match or generate new
-                  const matchedRecord = playerHistory.find(h => h.name.toLowerCase() === finalName.toLowerCase());
+                  const matchedRecord = savedPlayers.find(h => h.name.toLowerCase() === finalName.toLowerCase());
                   if (matchedRecord) {
                       finalLinkedId = matchedRecord.id; 
                   } else {
@@ -313,9 +317,9 @@ export const useSessionEvents = (
               
               onUpdateSession({ ...session, players });
 
-              // Update history list if it's a manual entry AND has a valid linked ID
+              // Update library list if it's a manual entry AND has a valid linked ID
               if (finalName && !linkedId && finalLinkedId) {
-                  onUpdatePlayerHistory(finalName, finalLinkedId);
+                  onUpdateSavedPlayer(finalName, finalLinkedId);
               }
           }
       }
@@ -388,6 +392,30 @@ export const useSessionEvents = (
   const handleSaveGameSettings = (updates: Partial<GameTemplate>) => {
       onUpdateTemplate({ ...template, ...updates });
       setUiState(p => ({ ...p, isGameSettingsOpen: false }));
+      
+      // [Feature] Auto-backfill history BGG IDs if bggId is updated (Scenario A)
+      if (updates.bggId) {
+          bgStatsEntityService.updateHistoryByTemplateId(updates.bggId, template.id)
+              .then(count => {
+                  if (count > 0) {
+                      showToast({ message: `已同步更新 ${count} 筆歷史紀錄的連結`, type: 'info' });
+                  }
+              });
+      }
+  };
+
+  // [New] Toolbox Toggle
+  const handleToggleToolbox = () => {
+      setUiState(p => {
+          const willOpen = !p.isToolboxOpen;
+          return {
+              ...p,
+              isToolboxOpen: willOpen,
+              // If opening toolbox, clear selection so the toolbox content shows up
+              // If closing, we just update the flag.
+              ...(willOpen ? { editingCell: null, editingPlayerId: null, previewValue: 0 } : {})
+          };
+      });
   };
 
   return {
@@ -406,6 +434,7 @@ export const useSessionEvents = (
     // [New] Export settings handlers
     handleOpenGameSettings,
     handleSaveGameSettings,
+    handleToggleToolbox, // Export new handler
     // [Updated] Expose unified moveNext
     moveToNext: () => navigation.moveNext(),
     // [New] Expose Joystick Actions

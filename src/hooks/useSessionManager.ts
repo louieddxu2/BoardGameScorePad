@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { db } from '../db';
 import { GameTemplate, GameSession, Player, ScoringRule, HistoryRecord } from '../types';
@@ -8,9 +9,11 @@ import { imageService } from '../services/imageService';
 import { googleDriveService } from '../services/googleDrive';
 import { cleanupService } from '../services/cleanupService';
 import { relationshipService } from '../services/relationshipService'; 
+import { applyRecommendationsToPlayers } from '../features/recommendation/SessionPlayerInitializer'; // [Refactor] New Import
 import { useToast } from './useToast';
 import { COLORS } from '../colors';
 import { useLibrary } from './useLibrary';
+import { isDisposableTemplate, calculateWinners, prepareTemplateForSave, createVirtualTemplate } from '../utils/templateUtils';
 
 interface UseSessionManagerProps {
     getTemplate: (id: string) => Promise<GameTemplate | null>;
@@ -56,8 +59,8 @@ export const useSessionManager = ({
   const startSession = async (
       partialTemplate: GameTemplate, 
       playerCount: number, 
-      options?: { startTimeStr?: string, scoringRule?: ScoringRule }
-  ) => {
+      options?: { startTimeStr?: string, scoringRule?: ScoringRule, location?: string, locationId?: string }
+  ): Promise<string | null> => {
     setSessionPlayerCount(playerCount);
     const scoringRule = options?.scoringRule || 'HIGHEST_WINS';
     try {
@@ -72,7 +75,7 @@ export const useSessionManager = ({
     const fullTemplate = await getTemplate(partialTemplate.id);
     if (!fullTemplate) {
         showToast({ message: "無法讀取模板資料", type: 'error' });
-        return;
+        return null;
     }
     const migratedTemplate = migrateTemplate(fullTemplate);
     migratedTemplate.lastPlayerCount = playerCount;
@@ -98,7 +101,8 @@ export const useSessionManager = ({
         name: `玩家 ${i + 1}`,
         scores: {},
         totalScore: 0,
-        color: defaultColors[i]
+        color: defaultColors[i],
+        isColorManuallySet: false // Init to false
       };
     });
     
@@ -117,6 +121,10 @@ export const useSessionManager = ({
     const newSession: GameSession = { 
         id: sessionId, 
         templateId: migratedTemplate.id, 
+        // [Identity Upgrade] Copy identity from template to session
+        name: migratedTemplate.name,
+        bggId: migratedTemplate.bggId,
+        
         startTime: startTime, 
         lastUpdatedAt: Date.now(),
         players: players, 
@@ -124,10 +132,15 @@ export const useSessionManager = ({
         scoringRule: scoringRule,
         cloudFolderId: undefined, 
         photos: [],
-        location: '', // Init location
-        locationId: undefined
+        location: options?.location || '', 
+        locationId: options?.locationId, 
+        note: ''
     };
     
+    // [Refactor] Delegate Auto-Fill Logic to specialized initializer
+    // Now passing the full template to handle texture mode logic
+    newSession.players = await applyRecommendationsToPlayers(newSession, migratedTemplate);
+
     isImageDirtyRef.current = false;
     
     let loadedImageUrl: string | null = null;
@@ -141,46 +154,74 @@ export const useSessionManager = ({
     setSessionImage(loadedImageUrl);
     setActiveTemplate(migratedTemplate);
     setCurrentSession(newSession);
+    
+    return sessionId; 
   };
 
   const resumeSession = async (templateId: string): Promise<boolean> => {
       try {
           const session = await db.sessions.where('templateId').equals(templateId).and(s => s.status === 'active').first();
           if (!session) return false;
+          
           let template = await getTemplate(templateId);
-          if (template) {
-              template = migrateTemplate(template);
-              session.players = session.players.map((p: any) => ({ 
-                  ...p, scores: migrateScores(p.scores, template!) 
-              }));
-              
-              if (!session.lastUpdatedAt) {
-                  session.lastUpdatedAt = Date.now();
-              }
-
-              let loadedImageUrl: string | null = null;
-              if (template.imageId) {
-                  const localImg = await imageService.getImage(template.imageId);
-                  if (localImg) {
-                      loadedImageUrl = URL.createObjectURL(localImg.blob);
-                  }
-              }
-
-              setSessionImage(loadedImageUrl);
-              setActiveTemplate(template);
-              setCurrentSession(session);
-              return true;
+          
+          // [Fail-Safe Reader]
+          if (!template) {
+              console.warn(`Template ${templateId} missing for session ${session.id}. Creating virtual fallback.`);
+              template = createVirtualTemplate(
+                  templateId,
+                  session.name || "Unknown Game",
+                  session.bggId,
+                  session.startTime,
+                  session.players.length,
+                  session.scoringRule
+              );
           }
+
+          template = migrateTemplate(template);
+          
+          session.players = session.players.map((p: any) => ({ 
+              ...p, scores: migrateScores(p.scores, template!) 
+          }));
+          
+          // [Identity Upgrade] Backfill legacy sessions
+          if (!session.name && template) {
+              session.name = template.name;
+          }
+          if (session.bggId === undefined && template) {
+              session.bggId = template.bggId;
+          }
+          
+          if (!session.lastUpdatedAt) {
+              session.lastUpdatedAt = Date.now();
+          }
+
+          let loadedImageUrl: string | null = null;
+          if (template.imageId) {
+              const localImg = await imageService.getImage(template.imageId);
+              if (localImg) {
+                  loadedImageUrl = URL.createObjectURL(localImg.blob);
+              }
+          }
+
+          setSessionImage(loadedImageUrl);
+          setActiveTemplate(template);
+          setCurrentSession(session);
+          return true;
+
       } catch (e) { console.error("Failed to resume session", e); }
       return false;
   };
 
   const discardSession = async (templateId: string) => {
       const session = activeSessions?.find(s => s.templateId === templateId);
+      
       if (session) {
           await cleanupService.cleanSessionArtifacts(session.id, session.cloudFolderId);
           await db.sessions.delete(session.id);
+          await cleanupService.cleanupDisposableTemplate(templateId);
       }
+
       if (currentSession?.templateId === templateId) { 
           setCurrentSession(null); 
           setActiveTemplate(null); 
@@ -230,22 +271,24 @@ export const useSessionManager = ({
       );
 
       const hasCustomPlayers = sessionToSave.players.some(p => {
-          // Check 1: Has Linked Identity (Name changed or selected from history)
           if (p.linkedPlayerId) return true;
-          
-          // Check 2: Has Custom ID (Not a system default ID)
           const isSystemId = p.id.startsWith('slot_') || p.id.startsWith('sys_') || p.id.startsWith('player_');
           return !isSystemId;
       });
 
       const hasPhotos = (sessionToSave.photos && sessionToSave.photos.length > 0);
       const hasLocation = !!sessionToSave.location;
+      const hasNote = !!sessionToSave.note && sessionToSave.note.trim().length > 0;
       
-      const hasDataToSave = hasScores || hasPhotos || hasCustomPlayers || hasLocation;
+      const hasDataToSave = hasScores || hasPhotos || hasCustomPlayers || hasLocation || hasNote;
 
       if (!hasDataToSave) {
           cleanupService.cleanSessionArtifacts(sessionToSave.id, sessionToSave.cloudFolderId).catch(console.error);
           db.sessions.delete(sessionToSave.id).catch(console.error);
+
+          if (activeTemplate) {
+              await cleanupService.cleanupDisposableTemplate(activeTemplate.id);
+          }
       } else {
           const finalSession = { ...sessionToSave, lastUpdatedAt: Date.now() };
           await db.sessions.put(finalSession);
@@ -253,13 +296,15 @@ export const useSessionManager = ({
           if (isCloudEnabled()) {
               const backgroundCloudBackup = async () => {
                   let folderId = finalSession.cloudFolderId;
-                  if (!folderId && activeTemplate) {
-                      folderId = await googleDriveService.createActiveSessionFolder(activeTemplate.name, finalSession.id);
+                  const folderName = finalSession.name || activeTemplate?.name || "Unknown Game";
+                  
+                  if (!folderId) {
+                      folderId = await googleDriveService.createActiveSessionFolder(folderName, finalSession.id);
                       await db.sessions.update(finalSession.id, { cloudFolderId: folderId });
                   }
 
-                  if (folderId && activeTemplate) {
-                      await googleDriveService.backupActiveSession(finalSession, activeTemplate.name, folderId);
+                  if (folderId) {
+                      await googleDriveService.backupActiveSession(finalSession, folderName, folderId);
                   }
               };
               backgroundCloudBackup().catch(e => console.warn("Background session backup failed", e));
@@ -268,7 +313,7 @@ export const useSessionManager = ({
 
       const isPureBuiltin = !!(await db.builtins.get(activeTemplate!.id)) && !activeTemplate!.sourceTemplateId;
       
-      if (activeTemplate && !isPureBuiltin && isCloudEnabled() && isImageDirtyRef.current) {
+      if (activeTemplate && !isPureBuiltin && isCloudEnabled() && isImageDirtyRef.current && !isDisposableTemplate(activeTemplate)) {
           googleDriveService.backupTemplate(activeTemplate).then((updated) => {
               if (updated) {
                   db.templates.update(updated.id, { lastSyncedAt: updated.updatedAt || Date.now() });
@@ -289,64 +334,33 @@ export const useSessionManager = ({
           const trimmedLoc = effectiveLocation?.trim();
 
           const rule = currentSession.scoringRule || 'HIGHEST_WINS';
-          let winnerIds: string[] = [];
           
-          if (rule === 'COOP' || rule === 'COOP_NO_SCORE') {
-              const anyForcedLost = currentSession.players.some(p => p.isForceLost);
-              if (!anyForcedLost) {
-                  // Everyone wins
-                  winnerIds = currentSession.players.map(p => p.id);
-              }
-              // Else: winnerIds = [] (everyone loses)
-          } else if (rule === 'HIGHEST_WINS') {
-              const validPlayers = currentSession.players.filter(p => !p.isForceLost);
-              if (validPlayers.length > 0) {
-                  const maxScore = Math.max(...validPlayers.map(p => p.totalScore));
-                  winnerIds = validPlayers
-                      .filter(p => p.totalScore === maxScore)
-                      .map(p => p.id);
-                  // Check tie-breakers
-                  const hasTieBreaker = validPlayers.some(p => p.tieBreaker && p.totalScore === maxScore);
-                  if (hasTieBreaker) {
-                      winnerIds = validPlayers
-                          .filter(p => p.tieBreaker && p.totalScore === maxScore)
-                          .map(p => p.id);
-                  }
-              }
-          } else if (rule === 'LOWEST_WINS') {
-              const validPlayers = currentSession.players.filter(p => !p.isForceLost);
-              if (validPlayers.length > 0) {
-                  const minScore = Math.min(...validPlayers.map(p => p.totalScore));
-                  winnerIds = validPlayers
-                      .filter(p => p.totalScore === minScore)
-                      .map(p => p.id);
-                  // Check tie-breakers
-                  const hasTieBreaker = validPlayers.some(p => p.tieBreaker && p.totalScore === minScore);
-                  if (hasTieBreaker) {
-                      winnerIds = validPlayers
-                          .filter(p => p.tieBreaker && p.totalScore === minScore)
-                          .map(p => p.id);
-                  }
-              }
-          }
+          const winnerIds = calculateWinners(currentSession.players, rule);
 
-          const snapshotTemplate = JSON.parse(JSON.stringify(activeTemplate));
+          const snapshotTemplate = isDisposableTemplate(activeTemplate) 
+            ? undefined 
+            : JSON.parse(JSON.stringify(activeTemplate));
+
           const now = Date.now();
           const record: HistoryRecord = {
               id: currentSession.id, 
               templateId: activeTemplate.id,
-              gameName: activeTemplate.name,
+              
+              gameName: currentSession.name || activeTemplate.name,
+              bggId: currentSession.bggId || activeTemplate.bggId, 
+              
               startTime: currentSession.startTime,
               endTime: now,
               updatedAt: now, 
               players: currentSession.players,
               winnerIds: winnerIds,
-              snapshotTemplate: snapshotTemplate,
+              snapshotTemplate: snapshotTemplate as any, 
               location: trimmedLoc, 
               locationId: currentSession.locationId, 
-              note: '',
+              note: currentSession.note || '', 
               photos: currentSession.photos || [],
-              cloudFolderId: currentSession.cloudFolderId 
+              cloudFolderId: currentSession.cloudFolderId,
+              scoringRule: rule
           };
           
           await db.history.put(record); 
@@ -362,7 +376,7 @@ export const useSessionManager = ({
               const backgroundHistoryBackup = async () => {
                   let folderId = record.cloudFolderId;
                   if (!folderId) {
-                      folderId = await googleDriveService.createActiveSessionFolder(activeTemplate.name, currentSession.id);
+                      folderId = await googleDriveService.createActiveSessionFolder(record.gameName, currentSession.id);
                       await db.history.update(record.id, { cloudFolderId: folderId });
                   }
                   
@@ -372,6 +386,10 @@ export const useSessionManager = ({
                   }
               };
               backgroundHistoryBackup().catch(e => console.warn("Background history backup failed", e));
+          }
+
+          if (activeTemplate) {
+              await cleanupService.cleanupDisposableTemplate(activeTemplate.id);
           }
           
           setCurrentSession(null); 
@@ -388,40 +406,42 @@ export const useSessionManager = ({
   };
 
   const updateActiveTemplate = async (updatedTemplate: GameTemplate) => {
-      const migratedTemplate = migrateTemplate({ ...updatedTemplate, updatedAt: Date.now() });
-      const isBuiltin = !!(await db.builtins.get(migratedTemplate.id));
-      let finalTemplate = migratedTemplate;
+      const finalTemplate = await prepareTemplateForSave(
+          { ...updatedTemplate, updatedAt: Date.now() }, 
+          async (id) => !!(await db.builtins.get(id))
+      );
 
-      if (isBuiltin) {
-          const oldId = migratedTemplate.id;
-          const newId = generateId();
-          finalTemplate = {
-              ...migratedTemplate,
-              id: newId,
-              sourceTemplateId: oldId
-          };
-          await db.templates.put(finalTemplate);
-          
+      await db.templates.put(finalTemplate);
+      
+      if (finalTemplate.id !== updatedTemplate.id) {
           if (currentSession) {
-              const newSession = { ...currentSession, templateId: newId, lastUpdatedAt: Date.now() };
+              const newSession = { ...currentSession, templateId: finalTemplate.id, lastUpdatedAt: Date.now() };
               const updatedPlayers = newSession.players.map(player => ({ 
                   ...player, totalScore: calculatePlayerTotal(player, finalTemplate, newSession.players) 
               }));
               setCurrentSession({ ...newSession, players: updatedPlayers });
           }
       } else {
-          await db.templates.put(migratedTemplate);
           if (currentSession) {
               const updatedPlayers = currentSession.players.map(player => ({ 
-                  ...player, totalScore: calculatePlayerTotal(player, migratedTemplate, currentSession.players) 
+                  ...player, totalScore: calculatePlayerTotal(player, finalTemplate, currentSession.players) 
               }));
-              setCurrentSession({ ...currentSession, players: updatedPlayers, lastUpdatedAt: Date.now() });
+              
+              const sessionWithSync = {
+                  ...currentSession,
+                  name: finalTemplate.name,
+                  bggId: finalTemplate.bggId,
+                  players: updatedPlayers,
+                  lastUpdatedAt: Date.now()
+              };
+              
+              setCurrentSession(sessionWithSync);
           }
       }
 
       setActiveTemplate(finalTemplate);
 
-      if (isCloudEnabled()) {
+      if (isCloudEnabled() && !isDisposableTemplate(finalTemplate)) {
           googleDriveService.backupTemplate(finalTemplate).then((updated) => {
               if (updated) {
                   db.templates.update(updated.id, { lastSyncedAt: updated.updatedAt || Date.now() });
@@ -481,6 +501,6 @@ export const useSessionManager = ({
       saveToHistory,
       updateActiveTemplate,
       setSessionImage: handleUpdateSessionImage,
-      updatePlayerHistory: updatePlayer 
+      updateSavedPlayer: updatePlayer
   };
 };

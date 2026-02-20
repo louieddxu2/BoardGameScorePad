@@ -1,7 +1,7 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { X, Trash2, ZoomIn, ZoomOut, Maximize, Share2, ReceiptText, Loader2, Download, ChevronLeft, ChevronRight } from 'lucide-react';
-import { getTouchDistance } from '../../../utils/ui';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { X, Trash2, Maximize, Share2, ReceiptText, Loader2, Download, ChevronLeft, ChevronRight, VenetianMask, Check, EyeOff } from 'lucide-react';
+import { getTouchDistance, isColorDark } from '../../../utils/ui';
 import { useToast } from '../../../hooks/useToast';
 import { toBlob } from 'html-to-image';
 import ScoreOverlayGenerator, { OverlayData } from './ScoreOverlayGenerator';
@@ -12,16 +12,21 @@ interface PhotoLightboxProps {
   initialIndex: number;
   onClose: () => void;
   onDelete: (id: string) => void;
-  overlayData?: OverlayData; // Optional, only needed if overlay feature is used
+  overlayData?: OverlayData;
+  initialShowOverlay?: boolean;
 }
 
-const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onClose, onDelete, overlayData }) => {
+const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onClose, onDelete, overlayData, initialShowOverlay = false }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
-  const [showOverlay, setShowOverlay] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(initialShowOverlay);
   const [isGenerating, setIsGenerating] = useState(false);
   const [composedImageUrl, setComposedImageUrl] = useState<string | null>(null);
   
+  // Anonymous Feature State
+  const [isAnonPanelOpen, setIsAnonPanelOpen] = useState(false);
+  const [anonymousPlayerIds, setAnonymousPlayerIds] = useState<Set<string>>(new Set());
+
   // Swipe State
   const [swipeOffset, setSwipeOffset] = useState(0);
   
@@ -40,9 +45,9 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
   // Reset transform when index changes
   useEffect(() => {
     setTransform({ x: 0, y: 0, scale: 1 });
-    setShowOverlay(false);
     setComposedImageUrl(null);
     setSwipeOffset(0);
+    // Don't reset anonymous state per image, keep it persistent for session flow
   }, [currentIndex]);
 
   // Cleanup object URL
@@ -52,52 +57,75 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
       };
   }, [composedImageUrl]);
 
+  // Prepare Data for Generator (Masking Names)
+  const displayOverlayData = useMemo(() => {
+      if (!overlayData) return undefined;
+      return {
+          ...overlayData,
+          players: overlayData.players.map((p, i) => ({
+              ...p,
+              // If ID is in anonymous set, replace name with Player N or trigger visual mask
+              isAnonymous: anonymousPlayerIds.has(p.id),
+              name: anonymousPlayerIds.has(p.id) ? `玩家 ${i + 1}` : p.name
+          }))
+      };
+  }, [overlayData, anonymousPlayerIds]);
+
   // --- Generation Logic ---
   useEffect(() => {
-      if (showOverlay && overlayData && !composedImageUrl && !isGenerating) {
+      if (showOverlay && displayOverlayData && !isGenerating) {
+          
           const generate = async () => {
               setIsGenerating(true);
               // Wait for DOM render & Image load inside generator
-              await new Promise(r => setTimeout(r, 800)); 
+              await new Promise(r => setTimeout(r, 600)); 
               
               if (generatorRef.current) {
                   try {
                       const blob = await toBlob(generatorRef.current, {
-                          pixelRatio: 1, // Already set to 1080px width
+                          pixelRatio: 1,
                           backgroundColor: '#0f172a',
                           skipFonts: true 
                       });
                       if (blob) {
-                          setComposedImageUrl(URL.createObjectURL(blob));
+                          const newUrl = URL.createObjectURL(blob);
+                          setComposedImageUrl(prev => {
+                              if (prev) URL.revokeObjectURL(prev);
+                              return newUrl;
+                          });
                       } else {
                           throw new Error("Blob generation returned null");
                       }
                   } catch (e) {
                       console.error("Overlay generation failed", e);
                       showToast({ message: "合成圖片失敗，請重試", type: 'error' });
-                      setShowOverlay(false); // Revert
+                      setShowOverlay(false);
                   }
               }
               setIsGenerating(false);
           };
           generate();
       }
-  }, [showOverlay, overlayData, composedImageUrl, isGenerating, showToast]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showOverlay, displayOverlayData]); 
+  // Removed isGenerating from deps to prevent infinite loop.
+  // When setIsGenerating(false) happens, it triggers re-render, but since isGenerating is not in deps, effect won't re-run.
 
   const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.nativeEvent) e.nativeEvent.stopPropagation();
 
+    // Close anon panel if clicking background
+    if (isAnonPanelOpen) setIsAnonPanelOpen(false);
+
     const isTouch = 'touches' in e;
     
     if (isTouch && (e as React.TouchEvent).touches.length === 2) {
-        // Double finger -> Pinch Zoom
         startPinchDist.current = getTouchDistance((e as React.TouchEvent).touches);
         startPinchScale.current = transform.scale;
         isDragging.current = false;
     } else {
-        // Single finger -> Pan or Swipe
         isDragging.current = true;
         const clientX = isTouch ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
         const clientY = isTouch ? (e as React.TouchEvent).touches[0].clientY : (e as React.MouseEvent).clientY;
@@ -110,7 +138,6 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
     e.stopPropagation();
     if (e.nativeEvent) e.nativeEvent.stopPropagation();
 
-    // Pinch Zoom Logic
     if ('touches' in e && e.touches.length === 2) {
         const dist = getTouchDistance(e.touches);
         if (startPinchDist.current > 0) {
@@ -121,7 +148,6 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
         return;
     } 
     
-    // Drag Logic
     if (isDragging.current) {
         const clientX = 'touches' in e ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
         const clientY = 'touches' in e ? (e as React.TouchEvent).touches[0].clientY : (e as React.MouseEvent).clientY;
@@ -129,15 +155,11 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
         const dx = clientX - lastPos.current.x;
         const dy = clientY - lastPos.current.y;
         
-        // Mode A: Zoomed In -> Pan
         if (transform.scale > 1.05) {
             setTransform(prev => ({ ...prev, x: prev.x + dx, y: prev.y + dy }));
-        } 
-        // Mode B: Zoomed Out -> Swipe
-        else {
+        } else {
             setSwipeOffset(prev => prev + dx);
         }
-
         lastPos.current = { x: clientX, y: clientY };
     }
   };
@@ -150,7 +172,6 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
     isDragging.current = false;
     startPinchDist.current = 0;
 
-    // Handle Swipe Commit (Only if Zoomed Out)
     if (transform.scale <= 1.05) {
         const SWIPE_THRESHOLD = 80;
         if (swipeOffset > SWIPE_THRESHOLD && currentIndex > 0) {
@@ -161,7 +182,6 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
         setSwipeOffset(0);
         setTransform({ x: 0, y: 0, scale: 1 });
     } else {
-        // If zoomed out completely, reset pos
         if (transform.scale <= 1) {
             setTransform({ x: 0, y: 0, scale: 1 });
         }
@@ -219,44 +239,62 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
       if (currentIndex < images.length - 1) setCurrentIndex(i => i + 1);
   };
 
+  const toggleAnonymous = (playerId: string) => {
+      setAnonymousPlayerIds(prev => {
+          const next = new Set(prev);
+          if (next.has(playerId)) {
+              next.delete(playerId);
+          } else {
+              next.add(playerId);
+          }
+          return next;
+      });
+  };
+
+  const handleToggleOverlay = () => {
+      if (showOverlay) {
+          setShowOverlay(false);
+      } else {
+          // If panel is open when showing score, close it for better view
+          setIsAnonPanelOpen(false);
+          setShowOverlay(true);
+      }
+  };
+
   const currentDisplayImage = (showOverlay && composedImageUrl) ? composedImageUrl : currentImage.url;
 
   return (
     <div className="fixed inset-0 z-[100] bg-black flex flex-col animate-in fade-in duration-300">
       
       {/* Hidden Generator */}
-      {showOverlay && overlayData && (
+      {showOverlay && displayOverlayData && (
           <div style={{ position: 'absolute', top: 0, left: '-9999px', opacity: 0, pointerEvents: 'none', zIndex: -1 }}>
               <ScoreOverlayGenerator 
                   ref={generatorRef}
                   imageSrc={currentImage.url}
-                  data={overlayData}
+                  data={displayOverlayData}
               />
           </div>
       )}
 
       {/* Header Toolbar */}
-      <div className="flex-none flex justify-between items-center p-4 bg-slate-900 border-b border-slate-800 z-10">
+      <div className="flex-none flex justify-between items-center p-4 bg-slate-900 border-b border-slate-800 z-10 h-16">
         <button onClick={onClose} className="p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white border border-slate-700 transition-colors">
             <X size={24} />
         </button>
         
-        {/* Pagination Dots */}
         {images.length > 1 && (
             <div className="text-white text-sm font-bold bg-slate-800/80 px-3 py-1 rounded-full border border-slate-700">
                 {currentIndex + 1} / {images.length}
             </div>
         )}
 
-        <div className="flex items-center gap-3">
-            {!showOverlay && (
-                <button onClick={() => onDelete(currentImage.id)} className="p-2 bg-red-900/30 rounded-full text-red-400 hover:text-red-200 border border-red-500/30 transition-colors">
-                    <Trash2 size={20} />
-                </button>
-            )}
-            
-            <button onClick={handleShare} disabled={isGenerating} className="p-2 bg-slate-800 rounded-full text-sky-400 hover:text-sky-200 border border-slate-700 transition-colors">
-                {navigator.share ? <Share2 size={20} /> : <Download size={20} />}
+        <div className="flex items-center gap-2">
+            <button onClick={() => onDelete(currentImage.id)} className="p-2 bg-slate-800 rounded-full text-red-400 hover:text-red-200 border border-slate-700 transition-colors active:scale-95">
+                <Trash2 size={24} />
+            </button>
+            <button onClick={handleShare} disabled={isGenerating} className="p-2 bg-slate-800 rounded-full text-sky-400 hover:text-sky-200 border border-slate-700 transition-colors active:scale-95">
+                {navigator.share ? <Share2 size={24} /> : <Download size={24} />}
             </button>
         </div>
       </div>
@@ -275,7 +313,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
         onWheel={handleWheel}
       >
         {isGenerating ? (
-            <div className="flex flex-col items-center gap-3 text-emerald-500">
+            <div className="flex flex-col items-center gap-3 text-emerald-500 z-20">
                 <Loader2 size={48} className="animate-spin" />
                 <span className="text-sm font-bold animate-pulse">正在合成計分表...</span>
             </div>
@@ -297,47 +335,101 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
             </div>
         )}
 
-        {/* Navigation Arrows (Visible on Desktop or when needed) */}
+        {/* Navigation Arrows */}
         {currentIndex > 0 && transform.scale <= 1.05 && (
-            <button 
-                onClick={handlePrev}
-                className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-sm z-20 transition-opacity opacity-50 hover:opacity-100 hidden sm:block"
-            >
+            <button onClick={handlePrev} className="absolute left-2 top-1/2 -translate-y-1/2 p-3 bg-black/30 hover:bg-black/60 text-white rounded-full backdrop-blur-sm z-20 hidden sm:block">
                 <ChevronLeft size={32} />
             </button>
         )}
         {currentIndex < images.length - 1 && transform.scale <= 1.05 && (
-            <button 
-                onClick={handleNext}
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-sm z-20 transition-opacity opacity-50 hover:opacity-100 hidden sm:block"
-            >
+            <button onClick={handleNext} className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-black/30 hover:bg-black/60 text-white rounded-full backdrop-blur-sm z-20 hidden sm:block">
                 <ChevronRight size={32} />
             </button>
         )}
       </div>
 
-      {/* Footer Controls */}
-      <div className="flex-none p-4 bg-slate-900 border-t border-slate-800 z-10 flex items-center relative h-20">
-         {/* Left: Score Toggle Button */}
-         <div className="absolute left-4 top-1/2 -translate-y-1/2">
+      {/* Anonymous Settings Panel (Floating) */}
+      {isAnonPanelOpen && overlayData && (
+          <div className="absolute bottom-24 left-4 right-4 bg-slate-800/95 backdrop-blur-md border border-slate-700 rounded-2xl p-4 z-30 shadow-2xl animate-in slide-in-from-bottom-5">
+              <div className="flex justify-between items-center mb-3">
+                  <span className="text-xs font-bold text-slate-400 uppercase">點擊以隱藏玩家姓名</span>
+                  <button onClick={() => setIsAnonPanelOpen(false)} className="p-1 bg-slate-700 rounded-full text-slate-300"><X size={14} /></button>
+              </div>
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                  {overlayData.players.map((p, i) => {
+                      const isHidden = anonymousPlayerIds.has(p.id);
+                      const playerColor = p.color === 'transparent' ? '#94a3b8' : p.color;
+                      const isDark = isColorDark(playerColor);
+
+                      return (
+                          <button
+                              key={p.id}
+                              onClick={() => toggleAnonymous(p.id)}
+                              className={`
+                                  flex items-center gap-2 px-3 py-2 rounded-lg border transition-all shrink-0 min-w-[100px]
+                                  ${isHidden 
+                                      ? 'bg-slate-900 border-slate-700 text-slate-500 opacity-70' 
+                                      : 'border-transparent shadow-md'
+                                  }
+                              `}
+                              style={!isHidden ? { backgroundColor: playerColor, color: isDark ? 'white' : 'black' } : {}}
+                          >
+                              {isHidden ? <EyeOff size={14} /> : <Check size={14} />}
+                              <span className={`text-sm font-bold truncate ${isHidden ? 'line-through' : ''}`}>
+                                  {p.name}
+                              </span>
+                          </button>
+                      );
+                  })}
+              </div>
+          </div>
+      )}
+
+      {/* Footer Controls - Reorganized */}
+      <div className="flex-none px-4 py-3 bg-slate-900 border-t border-slate-800 z-20 flex items-center justify-between h-20 gap-4">
+         
+         {/* Left Group: Config & Show */}
+         <div className="flex items-center gap-2">
             {overlayData && (
-                <button 
-                    onClick={() => setShowOverlay(!showOverlay)} 
-                    disabled={isGenerating}
-                    className={`flex flex-col items-center justify-center gap-1 w-16 h-14 rounded-xl border transition-all active:scale-95 ${showOverlay ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 text-slate-400 border-slate-700'}`}
-                >
-                    {isGenerating ? <Loader2 size={20} className="animate-spin" /> : <ReceiptText size={20} />}
-                    <span className="text-[10px] font-bold">{showOverlay ? "隱藏分數" : "顯示分數"}</span>
-                </button>
+                <>
+                    <button 
+                        onClick={() => setIsAnonPanelOpen(!isAnonPanelOpen)}
+                        disabled={isGenerating}
+                        className={`p-3 rounded-xl border transition-all active:scale-95 ${isAnonPanelOpen ? 'bg-slate-700 border-slate-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}
+                        title="匿名設定"
+                    >
+                        <VenetianMask size={20} />
+                    </button>
+
+                    <button 
+                        onClick={handleToggleOverlay}
+                        disabled={isGenerating}
+                        className={`flex items-center gap-2 px-4 py-3 rounded-xl border transition-all active:scale-95 font-bold text-sm min-w-[110px] justify-center
+                            ${showOverlay 
+                                ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-900/50' 
+                                : 'bg-slate-800 text-emerald-400 border-slate-700 hover:bg-slate-700'
+                            }`}
+                    >
+                        {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <ReceiptText size={18} />}
+                        <span>{showOverlay ? "隱藏分數" : "顯示分數"}</span>
+                    </button>
+                </>
             )}
          </div>
 
-         {/* Center: Zoom Controls */}
-         <div className="flex-1 flex justify-center gap-6">
-            <button onClick={() => setTransform(p => ({...p, scale: Math.max(1, p.scale - 0.5)}))} className="p-3 rounded-full bg-slate-800 text-white border border-slate-700 active:scale-95"><ZoomOut size={24}/></button>
-            <button onClick={() => setTransform({ x: 0, y: 0, scale: 1 })} className="p-3 rounded-full bg-slate-800 text-white border border-slate-700 active:scale-95"><Maximize size={24}/></button>
-            <button onClick={() => setTransform(p => ({...p, scale: Math.min(5, p.scale + 0.5)}))} className="p-3 rounded-full bg-slate-800 text-white border border-slate-700 active:scale-95"><ZoomIn size={24}/></button>
+         {/* Center: Reset View */}
+         <div className="flex-1 flex justify-center">
+             <button 
+                onClick={() => setTransform({ x: 0, y: 0, scale: 1 })} 
+                className="p-3 rounded-full bg-slate-800 text-slate-400 border border-slate-700 active:scale-95 hover:text-white"
+                title="重置視角"
+             >
+                <Maximize size={20}/>
+             </button>
          </div>
+
+         {/* Right Group: Empty Spacer (Buttons moved to Header) */}
+         <div className="w-[80px]"></div>
       </div>
     </div>
   );

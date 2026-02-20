@@ -163,6 +163,14 @@ body {
     scrollbar-width: none;
 }
 
+/* 隱藏搜尋框的原生清除按鈕與裝飾 (讓 type="search" 看起來像一般輸入框) */
+input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-results-button,
+input[type="search"]::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+}
+
 /* Scoped Toast Animations */
 @keyframes toast-fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes toast-fadeOut { from { opacity: 1; } to { opacity: 0; } }

@@ -6,6 +6,7 @@ import { useSessionEvents } from './hooks/useSessionEvents';
 import { useSessionMedia } from './hooks/useSessionMedia';
 import { useToast } from '../../hooks/useToast';
 import { useTranslation } from '../../i18n';
+import { calculateWinners } from '../../utils/templateUtils'; // [Refactor]
 
 // Parts
 import SessionHeader from './parts/SessionHeader';
@@ -22,22 +23,22 @@ import PhotoGalleryModal from './modals/PhotoGalleryModal';
 import SessionBackgroundModal from './modals/SessionBackgroundModal';
 import SessionImageFlow from './SessionImageFlow'; 
 import CameraView from '../scanner/CameraView'; 
-import GameSettingsEditor from '../shared/GameSettingsEditor'; // [New Import]
+import GameSettingsEditor from '../shared/GameSettingsEditor'; 
 
 interface SessionViewProps {
   session: GameSession;
   template: GameTemplate;
-  playerHistory: SavedListItem[]; 
-  locationHistory?: SavedListItem[]; // [New Prop]
+  savedPlayers: SavedListItem[]; // Renamed from playerHistory
+  savedLocations?: SavedListItem[]; // Renamed from locationHistory
   zoomLevel: number;
   baseImage: string | null; 
   onUpdateSession: (session: GameSession) => void;
   onUpdateTemplate: (template: GameTemplate) => void;
-  onUpdatePlayerHistory: (name: string) => void;
+  onUpdateSavedPlayer: (name: string) => void; // Renamed from onUpdatePlayerHistory
   onUpdateImage: (img: string | Blob | null) => void; 
-  onExit: (location?: string) => void; // Updated
+  onExit: (location?: string) => void; 
   onResetScores: () => void;
-  onSaveToHistory: (location?: string) => void; // [Updated] Unified save handler
+  onSaveToHistory: (location?: string) => void; 
   onDiscard: () => void; 
 }
 
@@ -89,47 +90,17 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   const isPanelOpen = editingCell !== null || editingPlayerId !== null;
   
-  // Winners Logic
+  // Winners Logic - [Refactor] Use shared util
   const rule = session.scoringRule || 'HIGHEST_WINS';
-  let winners: string[] = [];
-
-  if (rule === 'COOP' || rule === 'COOP_NO_SCORE') {
-      // Co-op Mode: All win unless someone is forced lost
-      const anyForcedLost = session.players.some(p => p.isForceLost);
-      if (!anyForcedLost) {
-          winners = session.players.map(p => p.id);
-      }
-      // If anyone is forced lost, winners is empty (everyone loses)
-  } else {
-      // Competitive Mode
-      const validPlayers = session.players.filter(p => !p.isForceLost);
-      
-      if (validPlayers.length > 0) {
-          let targetScore: number;
-          if (rule === 'HIGHEST_WINS') {
-              targetScore = Math.max(...validPlayers.map(pl => pl.totalScore));
-          } else if (rule === 'LOWEST_WINS') {
-              targetScore = Math.min(...validPlayers.map(pl => pl.totalScore));
-          } else {
-              targetScore = Math.max(...validPlayers.map(pl => pl.totalScore));
-          }
-          const candidates = validPlayers.filter(p => p.totalScore === targetScore);
-          const hasTieBreaker = candidates.some(p => p.tieBreaker);
-          if (hasTieBreaker) {
-              winners = candidates.filter(p => p.tieBreaker).map(p => p.id);
-          } else {
-              winners = candidates.map(p => p.id);
-          }
-      }
-  }
+  const winners = calculateWinners(session.players, rule);
   
   // Prepare Overlay Data for Photo Gallery
   const overlayData = useMemo(() => ({
-      gameName: template.name,
+      gameName: session.name || template.name, // [Identity Upgrade] Use Session Name
       date: session.startTime,
       players: session.players,
       winners: winners
-  }), [template.name, session.startTime, session.players, winners]);
+  }), [session.name, template.name, session.startTime, session.players, winners]);
   
   const handleScreenshotRequest = useCallback((mode: 'full' | 'simple') => {
     const playerHeaderRowEl = document.querySelector('#live-player-header-row') as HTMLElement;
@@ -202,6 +173,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     return () => observer.disconnect();
   }, [sessionState.gridContentRef, sessionState.totalContentRef]);
 
+  // [New] Check if we are in "Score Camera" mode (Single Shot)
+  // This mode is triggered when galleryParams.mode is 'lightbox_overlay'
+  const isScoreCameraMode = sessionState.uiState.galleryParams?.mode === 'lightbox_overlay';
 
   return (
     <div className="flex flex-col h-full bg-slate-900 text-slate-100 overflow-hidden relative">
@@ -232,7 +206,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onSaveActive={(loc) => props.onExit(loc)} // Pass location back
         onSaveHistory={props.onSaveToHistory}
         onDiscard={props.onDiscard} 
-        locationHistory={props.locationHistory} 
+        savedLocations={props.savedLocations} // Updated Prop Name
         initialLocation={session.location} // Pass current session location
       />
 
@@ -242,9 +216,10 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onClose={() => setUiState(p => ({ ...p, isPhotoGalleryOpen: false }))}
         photoIds={session.photos || []}
         onUploadPhoto={media.openPhotoLibrary}
-        onTakePhoto={media.openCamera} // This now triggers custom camera overlay
+        onTakePhoto={media.openCamera} // Standard camera (from within gallery)
         onDeletePhoto={media.handleDeletePhoto}
         overlayData={overlayData} // Pass context for score overlay
+        autoEnterMode={sessionState.uiState.galleryParams?.mode} // [New] Pass auto-open mode
       />
 
       {/* [New] General Camera Overlay */}
@@ -252,7 +227,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           <CameraView 
               onCapture={media.handleCameraBatchCapture}
               onClose={() => setUiState(p => ({ ...p, isGeneralCameraOpen: false }))}
-              singleShot={false} // Enable multi-shot mode
+              singleShot={isScoreCameraMode} // [FIXED] Pass dynamic singleShot prop
           />
       )}
 
@@ -317,7 +292,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
       {/* --- Main UI --- */}
       <SessionHeader
-        templateName={template.name}
+        templateName={session.name || template.name} // [Identity Upgrade] Use Session Name if available
         isEditingTitle={isEditingTitle}
         showShareMenu={showShareMenu}
         screenshotActive={screenshotModal.isOpen} 
@@ -346,8 +321,13 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onToggleEditMode={() => setUiState(prev => ({ ...prev, isEditMode: !prev.isEditMode }))}
         onUploadImage={() => setUiState(p => ({ ...p, isImageUploadModalOpen: true, showShareMenu: false }))} 
         onCloudDownload={media.handleCloudDownload} 
-        onOpenGallery={() => setUiState(p => ({ ...p, isPhotoGalleryOpen: true, showShareMenu: false }))}
-        onTakePhoto={media.openCamera} // Direct call via media hook (sets both flags)
+        onOpenGallery={() => setUiState(p => ({ 
+            ...p, 
+            isPhotoGalleryOpen: true, 
+            showShareMenu: false,
+            galleryParams: { mode: 'default' } // [Reset] Ensure manual open resets special modes
+        }))}
+        onTakePhoto={media.openCamera} // Direct call via media hook (sets default)
         photoCount={session.photos?.length || 0}
       />
       
@@ -376,6 +356,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           onUpdateTemplate={onUpdateTemplate}
           onAddColumn={eventHandlers.handleAddBlankColumn} // Pass the handler
           onOpenSettings={eventHandlers.handleOpenGameSettings} // [New] Pass handler
+          onToggleToolbox={eventHandlers.handleToggleToolbox} // [New Step 2]
+          isToolboxOpen={sessionState.uiState.isToolboxOpen} // [New Step 2]
           scrollContainerRef={sessionState.tableContainerRef}
           contentRef={sessionState.gridContentRef}
           baseImage={baseImage || undefined} 
@@ -392,7 +374,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         panelHeight={sessionState.panelHeight}
         scrollRef={sessionState.totalBarScrollRef}
         contentRef={sessionState.totalContentRef}
-        isHidden={isInputFocused}
+        isHidden={isInputFocused || isEditingTitle} // [Modified] Also hide when editing title
         template={template}
         baseImage={baseImage || undefined} 
         editingCell={editingCell}
@@ -406,9 +388,11 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         eventHandlers={eventHandlers}
         session={session}
         template={template}
-        playerHistory={props.playerHistory}
+        savedPlayers={props.savedPlayers} // Updated Prop Name
         onUpdateSession={props.onUpdateSession}
-        onUpdatePlayerHistory={props.onUpdatePlayerHistory}
+        onUpdateSavedPlayer={props.onUpdateSavedPlayer} // Updated Prop Name
+        onTakePhoto={media.openScoreCamera} // [FIXED] Use special mode for toolbox camera
+        onScreenshotRequest={handleScreenshotRequest} // [New] Pass screenshot action
       />
 
       <ScreenshotModal 

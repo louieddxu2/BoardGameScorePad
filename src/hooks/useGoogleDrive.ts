@@ -1,19 +1,17 @@
 
 import { useState, useCallback, useEffect } from 'react';
-import { googleDriveService, CloudFile, CloudResourceType } from '../services/googleDrive';
+import { googleDriveService, CloudFile, CloudResourceType, getAutoConnectPreference, setAutoConnectPreference } from '../services/googleDrive';
 import { systemSyncService } from '../services/systemSyncService';
 import { useToast } from './useToast';
 import { GameTemplate, GameSession, HistoryRecord } from '../types';
+import { isDisposableTemplate } from '../utils/templateUtils';
 
 export const useGoogleDrive = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isConnected, setIsConnected] = useState(googleDriveService.isAuthorized);
   
-  // [Change] Initialize from localStorage to maintain state across views (e.g. Dashboard -> HistoryReview).
-  // The "Reset on Boot" logic is handled in index.tsx, so this is safe for SPA navigation.
-  const [isAutoConnectEnabled, setIsAutoConnectEnabled] = useState(() => {
-      return localStorage.getItem('google_drive_auto_connect') === 'true';
-  });
+  // [Standardized] Initialize from shared helper
+  const [isAutoConnectEnabled, setIsAutoConnectEnabled] = useState(getAutoConnectPreference);
 
   const { showToast } = useToast();
 
@@ -28,8 +26,8 @@ export const useGoogleDrive = () => {
           setIsConnected(true);
           // Only enable auto-connect preference AFTER successful sign-in
           setIsAutoConnectEnabled(true); 
-          // [Fix] Sync state to localStorage so other hooks (like useAppData) can read it
-          localStorage.setItem('google_drive_auto_connect', 'true');
+          // [Fix] Sync state using shared helper
+          setAutoConnectPreference(true);
           
           showToast({ message: "Google Drive 連線成功", type: 'success' });
           return true;
@@ -37,7 +35,7 @@ export const useGoogleDrive = () => {
           console.error("Manual connection failed:", e);
           
           setIsAutoConnectEnabled(false); 
-          localStorage.setItem('google_drive_auto_connect', 'false');
+          setAutoConnectPreference(false);
           setIsConnected(false);
 
           if (e.error === 'popup_closed_by_user') {
@@ -52,14 +50,16 @@ export const useGoogleDrive = () => {
   // [Modified] Explicit Disconnect Function
   const disconnectFromCloud = useCallback(async () => {
       setIsAutoConnectEnabled(false);
-      localStorage.setItem('google_drive_auto_connect', 'false');
+      setAutoConnectPreference(false);
       await googleDriveService.signOut();
       setIsConnected(false);
       showToast({ message: "已斷開 Google Drive 連線", type: 'info' });
   }, [showToast]);
 
   const ensureConnection = async () => {
-      if (!isAutoConnectEnabled) {
+      // [Fix] Read directly from storage to avoid stale state in multiple hook instances
+      const enabled = getAutoConnectPreference();
+      if (!enabled) {
           throw new Error("雲端功能未開啟");
       }
       if (!googleDriveService.isAuthorized) {
@@ -84,12 +84,13 @@ export const useGoogleDrive = () => {
   };
 
   const handleBackup = useCallback(async (template: GameTemplate): Promise<GameTemplate | null> => {
-    if (!isAutoConnectEnabled) return null;
+    // [Fix] Check preference directly
+    if (!getAutoConnectPreference()) return null;
+    
     setIsSyncing(true);
     try {
       await ensureConnection();
       showToast({ message: "正在上傳備份...", type: 'info' });
-      // Remove deprecated imageBase64 arg
       const updatedTemplate = await googleDriveService.backupTemplate(template);
       setIsConnected(true); 
       showToast({ message: "備份成功！", type: 'success' });
@@ -100,7 +101,7 @@ export const useGoogleDrive = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   const fetchFileList = useCallback(async (mode: 'active' | 'trash' = 'active', source: 'templates' | 'sessions' | 'history' = 'templates'): Promise<CloudFile[]> => {
       try {
@@ -114,7 +115,7 @@ export const useGoogleDrive = () => {
           }
           throw error;
       }
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   const restoreBackup = useCallback(async (fileId: string): Promise<GameTemplate> => {
       setIsSyncing(true);
@@ -132,7 +133,7 @@ export const useGoogleDrive = () => {
       } finally {
           setIsSyncing(false);
       }
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   const restoreSessionBackup = useCallback(async (fileId: string): Promise<GameSession> => {
       setIsSyncing(true);
@@ -149,7 +150,7 @@ export const useGoogleDrive = () => {
       } finally {
           setIsSyncing(false);
       }
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   const restoreHistoryBackup = useCallback(async (fileId: string): Promise<HistoryRecord> => {
       setIsSyncing(true);
@@ -166,7 +167,7 @@ export const useGoogleDrive = () => {
       } finally {
           setIsSyncing(false);
       }
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   const restoreFromTrash = useCallback(async (folderId: string, type: CloudResourceType): Promise<boolean> => {
       setIsSyncing(true);
@@ -182,7 +183,7 @@ export const useGoogleDrive = () => {
       } finally {
           setIsSyncing(false);
       }
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   // [UPDATED] Return Blob instead of string
   const downloadCloudImage = useCallback(async (fileId: string): Promise<Blob | null> => {
@@ -200,7 +201,7 @@ export const useGoogleDrive = () => {
       } finally {
           setIsSyncing(false);
       }
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   const deleteCloudFile = useCallback(async (fileId: string): Promise<boolean> => {
       setIsSyncing(true);
@@ -217,7 +218,7 @@ export const useGoogleDrive = () => {
       } finally {
           setIsSyncing(false);
       }
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   const emptyTrash = useCallback(async (type?: CloudResourceType): Promise<boolean> => {
       setIsSyncing(true);
@@ -234,10 +235,10 @@ export const useGoogleDrive = () => {
       } finally {
           setIsSyncing(false);
       }
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   const silentSystemBackup = useCallback(async (data: any): Promise<void> => {
-      if (!isAutoConnectEnabled) return;
+      if (!getAutoConnectPreference()) return;
       if (!googleDriveService.isAuthorized) return;
       try {
           // [Note] 自動背景備份目前不執行合併邏輯，僅在上傳單一設定檔時使用。
@@ -247,7 +248,7 @@ export const useGoogleDrive = () => {
       } catch (e) {
           console.warn("Silent settings backup failed:", e);
       }
-  }, [isAutoConnectEnabled]);
+  }, []);
 
   // [Full Backup] Smart Skip Logic: Cloud.ts >= Local.ts -> Skip
   const performFullBackup = useCallback(async (
@@ -302,6 +303,25 @@ export const useGoogleDrive = () => {
           // Initial Update
           onProgress(0, total);
 
+          // [Optimization] Concurrency Pool Runner
+          // Allows us to process multiple items in parallel but limited by concurrency.
+          // Skipped items resolve immediately, freeing up a slot for the next item.
+          const runWithConcurrency = async <T>(
+              items: T[],
+              concurrency: number,
+              fn: (item: T) => Promise<void>
+          ) => {
+              const executing = new Set<Promise<void>>();
+              for (const item of items) {
+                  const p = fn(item).then(() => { executing.delete(p); });
+                  executing.add(p);
+                  if (executing.size >= concurrency) {
+                      await Promise.race(executing);
+                  }
+              }
+              await Promise.all(executing);
+          };
+
           const processItem = async (task: () => Promise<void>, name: string, isSkipped: boolean = false) => {
               try {
                   if (isSkipped) {
@@ -329,94 +349,79 @@ export const useGoogleDrive = () => {
               }
           };
 
-          const chunkArray = <T>(arr: T[], size: number) => {
-              const res = [];
-              for (let i = 0; i < arr.length; i += size) {
-                  res.push(arr.slice(i, i + size));
+          const CHUNK_SIZE = 3; // Max active uploads
+
+          // 2a. Process Templates (Concurrency Pool)
+          await runWithConcurrency(allTemplates, CHUNK_SIZE, async (t) => {
+              // [Fix] Automatically skip disposable (simple) templates to avoid cluttering cloud
+              if (isDisposableTemplate(t)) {
+                  return processItem(async () => {}, t.name, true);
               }
-              return res;
-          };
 
-          const CHUNK_SIZE = 3; // Reduced concurrency for safety
+              const cloudInfo = templateMap.get(t.id);
+              
+              // Skip Logic: If cloud exists AND cloud ts >= local ts
+              let isUpToDate = false;
+              if (cloudInfo && t.updatedAt) {
+                  const cloudTime = Number(cloudInfo.appProperties?.originalUpdatedAt || 0);
+                  if (cloudTime >= t.updatedAt) {
+                      isUpToDate = true;
+                  }
+              }
 
-          // 2a. Process Templates
-          const templateChunks = chunkArray(allTemplates, CHUNK_SIZE);
-          for (const chunk of templateChunks) {
-              await Promise.all(chunk.map(t => {
-                  const cloudInfo = templateMap.get(t.id);
+              return processItem(async () => {
+                  const updatedT = await googleDriveService.backupTemplate(t, null, cloudInfo?.id, cloudInfo?.name);
+                  if (onItemSuccess) onItemSuccess('template', updatedT);
+              }, t.name, isUpToDate);
+          });
+
+          // 2b. Process History (Concurrency Pool)
+          await runWithConcurrency(history, CHUNK_SIZE, async (h) => {
+              const cloudInfo = historyMap.get(h.id);
+              
+              // [Change] Use updatedAt for history comparison
+              let isUpToDate = false;
+              const localTime = h.updatedAt || h.endTime;
+              if (cloudInfo && localTime) {
+                  const cloudTime = Number(cloudInfo.appProperties?.originalUpdatedAt || 0);
+                  if (cloudTime >= localTime) {
+                      isUpToDate = true;
+                  }
+              }
+
+              return processItem(async () => {
+                  await googleDriveService.backupHistoryRecord(h, cloudInfo?.id, cloudInfo?.name);
                   
-                  // Skip Logic: If cloud exists AND cloud ts >= local ts
-                  let isUpToDate = false;
-                  if (cloudInfo && t.updatedAt) {
-                      const cloudTime = Number(cloudInfo.appProperties?.originalUpdatedAt || 0);
-                      if (cloudTime >= t.updatedAt) {
-                          isUpToDate = true;
+                  // [Fix] Logic to cleanup stale Active Session in Cloud
+                  if (activeMap.has(h.id)) {
+                      const staleActiveFile = activeMap.get(h.id);
+                      if (staleActiveFile) {
+                          googleDriveService.softDeleteFolder(staleActiveFile.id, 'active')
+                              .catch(err => console.warn("Failed to cleanup stale active session", err));
                       }
                   }
+              }, `${h.gameName} (${new Date(h.endTime).toLocaleDateString()})`, isUpToDate);
+          });
 
-                  return processItem(async () => {
-                      const updatedT = await googleDriveService.backupTemplate(t, null, cloudInfo?.id, cloudInfo?.name);
-                      if (onItemSuccess) onItemSuccess('template', updatedT);
-                  }, t.name, isUpToDate);
-              }));
-          }
-
-          // 2b. Process History
-          const historyChunks = chunkArray(history, CHUNK_SIZE);
-          for (const chunk of historyChunks) {
-              await Promise.all(chunk.map(h => {
-                  const cloudInfo = historyMap.get(h.id);
-                  
-                  // [Change] Use updatedAt for history comparison
-                  let isUpToDate = false;
-                  const localTime = h.updatedAt || h.endTime;
-                  if (cloudInfo && localTime) {
-                      const cloudTime = Number(cloudInfo.appProperties?.originalUpdatedAt || 0);
-                      if (cloudTime >= localTime) {
-                          isUpToDate = true;
-                      }
+          // 2c. Process Active Sessions (Concurrency Pool)
+          await runWithConcurrency(sessions, CHUNK_SIZE, async (s) => {
+              const cloudInfo = activeMap.get(s.id);
+              const templateName = allTemplates.find(t => t.id === s.templateId)?.name || '未命名遊戲';
+              
+              // [Comparison Logic Added] Check lastUpdatedAt
+              let isUpToDate = false;
+              const localTime = s.lastUpdatedAt || s.startTime;
+              if (cloudInfo && localTime) {
+                  const cloudTime = Number(cloudInfo.appProperties?.originalUpdatedAt || 0);
+                  if (cloudTime >= localTime) {
+                      isUpToDate = true;
                   }
+              }
 
-                  return processItem(async () => {
-                      await googleDriveService.backupHistoryRecord(h, cloudInfo?.id, cloudInfo?.name);
-                      
-                      // [Fix] Logic to cleanup stale Active Session in Cloud
-                      // If we are successfully backing up this history record,
-                      // and there is an 'Active' folder with the same ID in the cloud,
-                      // it means the game is finished and the cloud active record is zombie.
-                      if (activeMap.has(h.id)) {
-                          const staleActiveFile = activeMap.get(h.id);
-                          if (staleActiveFile) {
-                              googleDriveService.softDeleteFolder(staleActiveFile.id, 'active')
-                                  .catch(err => console.warn("Failed to cleanup stale active session", err));
-                          }
-                      }
-                  }, `${h.gameName} (${new Date(h.endTime).toLocaleDateString()})`, isUpToDate);
-              }));
-          }
-
-          // 2c. Process Active Sessions
-          const sessionChunks = chunkArray(sessions, CHUNK_SIZE);
-          for (const chunk of sessionChunks) {
-              await Promise.all(chunk.map(s => {
-                  const cloudInfo = activeMap.get(s.id);
-                  const templateName = allTemplates.find(t => t.id === s.templateId)?.name || '未命名遊戲';
-                  
-                  // [Comparison Logic Added] Check lastUpdatedAt
-                  let isUpToDate = false;
-                  const localTime = s.lastUpdatedAt || s.startTime;
-                  if (cloudInfo && localTime) {
-                      const cloudTime = Number(cloudInfo.appProperties?.originalUpdatedAt || 0);
-                      if (cloudTime >= localTime) {
-                          isUpToDate = true;
-                      }
-                  }
-
-                  return processItem(async () => {
-                      await googleDriveService.backupActiveSession(s, templateName, cloudInfo?.id, cloudInfo?.name);
-                  }, `進行中: ${s.id.slice(0,8)}`, isUpToDate);
-              }));
-          }
+              return processItem(async () => {
+                  await googleDriveService.backupActiveSession(s, templateName, cloudInfo?.id, cloudInfo?.name);
+              }, `進行中: ${s.id.slice(0,8)}`, isUpToDate);
+          });
 
           // 2d. Process System Settings (Merge & Upload via Service)
           try {
@@ -441,7 +446,7 @@ export const useGoogleDrive = () => {
           setIsSyncing(false);
       }
       return { success: successCount, skipped: skippedCount, failed: failedItems.length };
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   // [Full Restore] Smart Skip Logic: Local.ts >= Cloud.ts -> Skip
   const performFullRestore = useCallback(async (
@@ -582,7 +587,7 @@ export const useGoogleDrive = () => {
           setIsSyncing(false);
       }
       return { success: successCount, skipped: skippedCount, failed: failedItems.length };
-  }, [isAutoConnectEnabled, showToast]);
+  }, [showToast]);
 
   return {
     handleBackup,

@@ -45,9 +45,9 @@ const GameCard: React.FC<GameCardProps> = ({
   
   // Logic: Image Status
   // globalVisuals implies a grid structure is set up.
-  // _localImageAvailable (injected by hook) tells us if the file exists.
+  // isLocalImageAvailable (injected by hook) tells us if the file exists.
   const hasGrid = !!template.globalVisuals;
-  const isLocalImageReady = (template as any)._localImageAvailable;
+  const isLocalImageReady = (template as any).isLocalImageAvailable;
 
   const renderImageStatus = () => {
       if (!hasGrid) return null;

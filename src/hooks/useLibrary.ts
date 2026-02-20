@@ -37,7 +37,7 @@ export const useLibrary = (onSystemDirty?: () => void) => {
                       name: cleanName, 
                       lastUsed: 0, 
                       usageCount: 0, 
-                      predictivePower: 1.0, // [New] 物件本身的預測權重 (預設 1.0)
+                      // predictivePower removed
                       meta: { 
                           relations: {},
                           confidence: {} // [New] 各維度的可信度 (預設為空，由 RelationshipService 填入)

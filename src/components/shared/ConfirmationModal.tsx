@@ -24,7 +24,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   onConfirm,
   onCancel,
   isDangerous = false,
-  zIndexClass = "z-[60]", // Default value
+  zIndexClass = "z-[110]", // [Fixed] Bumped from z-[60] to z-[110]
 }) => {
   const { t } = useTranslation();
 
@@ -43,7 +43,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       }}
     >
       <div 
-        className="bg-slate-800 rounded-2xl border border-slate-700 shadow-2xl p-6 w-full max-w-sm"
+        className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6 w-full max-w-sm"
         onClick={(e) => e.stopPropagation()} // Prevent click propagation from content
       >
         <div className="flex flex-col items-center text-center gap-3 mb-6">

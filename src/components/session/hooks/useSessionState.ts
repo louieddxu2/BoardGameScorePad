@@ -5,12 +5,13 @@ import { GameSession, GameTemplate, SavedListItem } from '../../../types';
 interface SessionViewProps {
   session: GameSession;
   template: GameTemplate;
-  playerHistory: SavedListItem[];
+  savedPlayers: SavedListItem[]; // Renamed from playerHistory
   onUpdateSession: (session: GameSession) => void;
   onUpdateTemplate: (template: GameTemplate) => void;
-  onUpdatePlayerHistory: (name: string, uuid?: string) => void;
+  onUpdateSavedPlayer: (name: string, uuid?: string) => void; // Renamed from onUpdatePlayerHistory
   onExit: () => void;
   onResetScores: () => void;
+  baseImage?: string | null; // [New] Added to check texture mode
 }
 
 export interface ScreenshotLayout {
@@ -38,6 +39,12 @@ export interface UIState {
     layout: ScreenshotLayout | null;
   };
   isPhotoGalleryOpen: boolean;
+  
+  // [New] Controls gallery behavior (e.g. auto open lightbox with overlay)
+  galleryParams?: {
+      mode: 'default' | 'lightbox_overlay';
+  };
+
   isImageUploadModalOpen: boolean;
   
   isScannerOpen: boolean;
@@ -47,6 +54,8 @@ export interface UIState {
   isGeneralCameraOpen: boolean; // [New] Camera for photo gallery
 
   isTextureMapperOpen: boolean; // [New] Grid Editor State
+  
+  isToolboxOpen: boolean; // [New] Toolbox Sticky State
 
   advanceDirection: 'horizontal' | 'vertical';
   overwriteMode: boolean;
@@ -86,11 +95,13 @@ export const useSessionState = (props: SessionViewProps) => {
       showShareMenu: false,
       screenshotModal: { isOpen: false, mode: 'full', layout: null },
       isPhotoGalleryOpen: false,
+      galleryParams: { mode: 'default' }, // Default init
       isImageUploadModalOpen: false,
       isScannerOpen: false,
       scannerInitialImage: null,
       isGeneralCameraOpen: false, // Default false
       isTextureMapperOpen: false, // Default closed
+      isToolboxOpen: false, // [New] Default closed
       advanceDirection: savedDirection || 'vertical', // Default to vertical if no preference saved
       overwriteMode: true,
       isInputFocused: false,
@@ -217,9 +228,17 @@ export const useSessionState = (props: SessionViewProps) => {
   }, [uiState.editingCell, uiState.editingPlayerId, props.template.columns]);
   
   // --- Derived State ---
+  // [Smart Layout] Identify if the list is "Short"
+  // Conditions:
+  // 1. Not in Texture Mode (baseImage is null)
+  // 2. Column count is small (< 5)
+  const isShortList = !props.baseImage && props.template.columns.length < 5;
+
   const isPanelOpen = uiState.editingCell !== null || uiState.editingPlayerId !== null;
   
-  const panelHeight = isPanelOpen 
+  // [Updated] If short list OR toolbox is open, force the panel space to be open (40vh) to push the Total Bar up.
+  // This effectively centers the Total Bar and removes the gap.
+  const panelHeight = (isPanelOpen || isShortList || uiState.isToolboxOpen)
     ? (uiState.isInputFocused ? '112px' : '40vh')
     : '0px';
 
@@ -227,6 +246,7 @@ export const useSessionState = (props: SessionViewProps) => {
     uiState,
     setUiState,
     panelHeight,
+    isShortList, // Export for InputPanel to know when to show placeholder
     tableContainerRef,
     totalBarScrollRef,
     gridContentRef,

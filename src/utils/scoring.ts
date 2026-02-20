@@ -23,10 +23,26 @@ const createLookupFunction = (rules: MappingRule[]): Function => {
         if (!rules || rules.length === 0) return 0;
         
         const ruleIndex = rules.findIndex((r, index, allRules) => {
-            let effectiveMax = r.max === 'next'
-              ? (allRules[index + 1]?.min ? allRules[index + 1].min! - 1 : Infinity)
-              : (r.max === undefined ? Infinity : r.max);
-            return (r.min === undefined || val >= r.min) && (val <= effectiveMax);
+            // Min Check
+            if (r.min !== undefined && val < r.min) return false;
+
+            // Max Check
+            if (r.max === 'next') {
+                const nextRule = allRules[index + 1];
+                if (nextRule && nextRule.min !== undefined) {
+                    // Continuous range: [min, nextMin)
+                    // Allows decimals (e.g. 1.5) to fall into bucket starting at 1, if next bucket starts at 2
+                    return val < nextRule.min;
+                }
+                return true; // Infinity (Last rule with 'next')
+            }
+            
+            // Explicit Max (Inclusive)
+            if (r.max !== undefined) {
+                return val <= r.max;
+            }
+
+            return true; // undefined max -> Infinity
         });
 
         if (ruleIndex === -1) return 0;

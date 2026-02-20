@@ -117,8 +117,6 @@ const App: React.FC = () => {
       const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
       
       // 2. Allow large screens (Tablets/Desktops) to rotate freely
-      // We check the smallest dimension. If min(w,h) >= 600px, it's likely a tablet.
-      // Most large phones have a width < 500px in portrait.
       const smallestDimension = Math.min(window.innerWidth, window.innerHeight);
       const isTabletOrDesktop = smallestDimension >= 600;
 
@@ -128,8 +126,6 @@ const App: React.FC = () => {
       }
 
       // 3. Use Modern API if available (Screen Orientation)
-      // This is the key fix: screen.orientation reports DEVICE PHYSICAL orientation, not viewport aspect ratio.
-      // So keyboard popping up (shrinking viewport) does NOT change screen.orientation.
       if (window.screen && window.screen.orientation && window.screen.orientation.type) {
         const type = window.screen.orientation.type;
         const isLandscape = type.includes('landscape');
@@ -138,7 +134,6 @@ const App: React.FC = () => {
       }
 
       // 4. Fallback for iOS (older versions) which relies on window.orientation
-      // 0 = Portrait, 90/-90 = Landscape
       if (typeof (window as any).orientation === 'number') {
         const orientation = (window as any).orientation;
         setShowLandscapeOverlay(Math.abs(orientation) === 90);
@@ -146,15 +141,12 @@ const App: React.FC = () => {
       }
 
       // 5. Last Resort: Aspect Ratio Check
-      // Only check this if NO input is focused, to avoid keyboard trigger.
       const activeTag = document.activeElement?.tagName;
       const isKeyboardLikelyOpen = activeTag === 'INPUT' || activeTag === 'TEXTAREA';
       
       if (isKeyboardLikelyOpen) {
-          // If typing, assume we are fine (don't show overlay)
           setShowLandscapeOverlay(false);
       } else {
-          // Normal logic for phones without modern API
           setShowLandscapeOverlay(window.innerWidth > window.innerHeight);
       }
     };
@@ -219,14 +211,11 @@ const App: React.FC = () => {
   const historyWallDepth = useRef(0);
 
   const replenishWall = useCallback(() => {
-      // 使用策略檔決定目標層數
       const targetDepth = getTargetHistoryDepth(view, pendingTemplate !== null);
 
       if (historyWallDepth.current < targetDepth) {
           let countToAdd = targetDepth - historyWallDepth.current;
 
-          // [Update] For high-risk views (Session/History), replenish incrementally (1 at a time)
-          // instead of filling immediately. This creates a "regenerating shield" feel.
           if (view === AppView.ACTIVE_SESSION || view === AppView.HISTORY_REVIEW) {
               countToAdd = 1;
           }
@@ -241,45 +230,27 @@ const App: React.FC = () => {
       }
   }, [view, pendingTemplate]);
 
-  // [New Feature] Active History Pruning
-  // 當我們明確知道要從高層數 (Game=3) 回到低層數 (Dashboard=1) 時，
-  // 使用此函式來「主動拆除」瀏覽器的歷史紀錄，而不是讓它們殘留。
   const transitionToDashboard = useCallback(() => {
-      // 1. Calculate how many layers to remove
-      // Target for Dashboard is 1
       const targetDepth = 1;
       const currentDepth = historyWallDepth.current;
       
       if (currentDepth > targetDepth) {
           const delta = currentDepth - targetDepth;
-          
-          // 2. Set flag to ignore the upcoming popstate events caused by go()
           ignorePopstateRef.current = true;
-          
-          // 3. Physically go back in browser history
-          // This removes the "Forward" history that traps the user
           window.history.go(-delta);
-          
-          // 4. Update internal counter immediately
           historyWallDepth.current = targetDepth;
-          
-          // 5. Safety reset of flag after a short delay
-          // (In case popstate behaves unexpectedly async)
           setTimeout(() => {
               ignorePopstateRef.current = false;
           }, 100);
       }
-      
       setView(AppView.DASHBOARD);
   }, []);
 
-  // 1. Interaction Listener (Replenish on Click/Touch)
   useEffect(() => {
       const handleInteraction = () => {
           replenishWall();
       };
       
-      // Use capture to ensure we detect it even if propagation is stopped
       window.addEventListener('click', handleInteraction, { capture: true });
       window.addEventListener('touchstart', handleInteraction, { capture: true });
       
@@ -289,21 +260,17 @@ const App: React.FC = () => {
       };
   }, [replenishWall]);
 
-  // 2. View Change Trigger (Replenish on Enter)
   useEffect(() => {
       replenishWall();
   }, [replenishWall]);
 
-  // 3. Popstate Handler (Consume Wall & Dispatch)
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
-      // [Pruning Logic] If this popstate was triggered by our cleanup code, ignore it.
       if (ignorePopstateRef.current) {
           ignorePopstateRef.current = false;
           return;
       }
 
-      // Decrement wall depth as we consumed one history state
       historyWallDepth.current = Math.max(0, historyWallDepth.current - 1);
       
       let handled = false;
@@ -317,17 +284,9 @@ const App: React.FC = () => {
           setEditorInitialName(undefined); 
           handled = true; 
       }
-      // Both ACTIVE_SESSION and HISTORY_REVIEW use event dispatch
-      // [Logic] Always dispatch event regardless of whether we consumed a wall or not.
-      // This ensures the UI reacts (e.g. closing modals) even if the history stack was just a buffer.
       else if (view === AppView.ACTIVE_SESSION || view === AppView.HISTORY_REVIEW) {
-         // [UX Enhancement] If depth reaches 0, warn user that next back will exit
-
          window.dispatchEvent(new CustomEvent('app-back-press'));
          handled = true;
-      }
-      if (historyWallDepth.current === 0) {
-       //showToast({ message: tApp('msg_press_again_to_exit'), type: 'info', duration: 2000 });
       }
     };
 
@@ -335,7 +294,6 @@ const App: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [view, pendingTemplate, tApp, showToast]);
 
-  // --- Confirm on Refresh ---
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (view === AppView.ACTIVE_SESSION) {
@@ -382,26 +340,46 @@ const App: React.FC = () => {
               await appData.discardSession(pendingTemplate.id);
           }
 
+          // Normal start doesn't trigger auto-fill (as user has opportunity to set manually in setup modal)
           await appData.startSession(pendingTemplate, count, options);
           setView(AppView.ACTIVE_SESSION);
           setPendingTemplate(null);
       }
   };
 
+  // [New] Direct Start Handler (Bypasses Setup Modal)
+  // [Updated] Integrate Auto-Fill logic directly in startSession
+  const handleQuickStart = async (template: GameTemplate, playerCount: number, location: string, locationId?: string) => {
+      if (appData.activeSessionIds.includes(template.id)) {
+          await appData.discardSession(template.id);
+      }
+      
+      // 1. Start Session (Async) - Includes Auto-Fill Logic
+      await appData.startSession(template, playerCount, { 
+          startTimeStr: undefined, 
+          scoringRule: template.defaultScoringRule || 'HIGHEST_WINS',
+          location: location,
+          locationId: locationId 
+      });
+      
+      // 2. Switch View (Session is already populated with players)
+      setView(AppView.ACTIVE_SESSION);
+  };
+
   const handleExitSession = useCallback((location?: string) => {
       appData.exitSession(location !== undefined ? { location } : undefined);
-      transitionToDashboard(); // Use Active Pruning
+      transitionToDashboard(); 
   }, [appData, transitionToDashboard]);
 
   const handleSaveToHistory = useCallback((location?: string) => {
       appData.saveToHistory(location);
-      transitionToDashboard(); // Use Active Pruning
+      transitionToDashboard(); 
   }, [appData, transitionToDashboard]);
   
   const handleDiscard = useCallback(() => {
       if (appData.activeTemplate) {
           appData.discardSession(appData.activeTemplate.id);
-          transitionToDashboard(); // Use Active Pruning
+          transitionToDashboard(); 
       }
   }, [appData, transitionToDashboard]);
 
@@ -423,20 +401,19 @@ const App: React.FC = () => {
       setView(AppView.DASHBOARD);
   };
 
-  const handleHistorySelect = (record: any) => {
-      appData.viewHistory(record);
+  const handleHistorySelect = async (record: any) => {
+      await appData.viewHistory(record.id);
       setView(AppView.HISTORY_REVIEW);
   };
 
   const handleHistoryExit = () => {
       appData.viewHistory(null); 
-      transitionToDashboard(); // Use Active Pruning
+      transitionToDashboard(); 
   };
 
   return (
     <div className="h-full bg-slate-900 text-slate-100 font-sans overflow-hidden transition-colors duration-300 relative">
       
-      {/* Landscape Lock Overlay (Controlled by JS State) */}
       <div 
         id="landscape-overlay" 
         className={`fixed inset-0 z-[9999] bg-slate-950 flex-col items-center justify-center text-center p-10 ${showLandscapeOverlay ? 'flex' : 'hidden'}`}
@@ -459,6 +436,7 @@ const App: React.FC = () => {
           pinnedIds={appData.pinnedIds}
           newBadgeIds={appData.newBadgeIds}
           activeSessionIds={appData.activeSessionIds}
+          activeSessions={appData.activeSessions} 
           historyRecords={appData.historyRecords}
           historyCount={appData.historyCount} 
           searchQuery={appData.searchQuery} 
@@ -488,7 +466,14 @@ const App: React.FC = () => {
           onInstallClick={handleInstallClick}
           onImportSession={appData.importSession}
           onImportHistory={appData.importHistoryRecord} 
-          onImportSettings={appData.importSystemSettings} 
+          onImportSettings={appData.importSystemSettings}
+          onBgStatsImport={appData.importBgStatsData}
+          onGetLocalData={appData.getSystemExportData}
+          savedLocations={appData.savedLocations}
+          savedGames={appData.savedGames}
+          isSetupModalOpen={!!pendingTemplate}
+          gameOptions={appData.gameOptions} 
+          onQuickStart={handleQuickStart} 
         />
       </div>
 
@@ -512,12 +497,12 @@ const App: React.FC = () => {
               key={appData.currentSession.id}
               session={appData.currentSession} 
               template={appData.activeTemplate} 
-              playerHistory={appData.playerHistory}
-              locationHistory={appData.locationHistory} 
+              savedPlayers={appData.savedPlayers} 
+              savedLocations={appData.savedLocations} 
               zoomLevel={zoomLevel}
               baseImage={appData.sessionImage} 
               onUpdateSession={appData.updateSession}
-              onUpdatePlayerHistory={appData.updatePlayerHistory}
+              onUpdateSavedPlayer={appData.updateSavedPlayer} 
               onUpdateImage={appData.setSessionImage} 
               onResetScores={appData.resetSessionScores}
               onUpdateTemplate={appData.updateActiveTemplate}

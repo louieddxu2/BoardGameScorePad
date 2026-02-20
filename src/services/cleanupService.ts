@@ -1,6 +1,8 @@
 
 import { imageService } from './imageService';
-import { googleDriveService } from './googleDrive';
+import { googleDriveService, getAutoConnectPreference } from './googleDrive';
+import { db } from '../db';
+import { isDisposableTemplate } from '../utils/templateUtils';
 
 export const cleanupService = {
   /**
@@ -17,8 +19,10 @@ export const cleanupService = {
 
       // 2. 將雲端資料夾移至垃圾桶 (若有) - [Fix] 改為 Fire-and-forget，不等待網路回應
       if (cloudFolderId) {
-        // 檢查 Google Drive 服務是否已授權，避免報錯
-        if (googleDriveService.isAuthorized) {
+        // [Standardized Check] 統一使用共享的 helper
+        const isCloudEnabled = getAutoConnectPreference();
+        
+        if (isCloudEnabled) {
           googleDriveService.softDeleteFolder(cloudFolderId, 'active')
             .catch(e => console.warn(`[Cleanup] Background cloud deletion failed for session ${sessionId}`, e));
         }
@@ -26,5 +30,34 @@ export const cleanupService = {
     } catch (error) {
       console.error(`[Cleanup] Error cleaning artifacts for session ${sessionId}:`, error);
     }
+  },
+
+  /**
+   * 檢查並清理免洗模板
+   * 定義：如果一個模板是「免洗」的 (無欄位/無圖/未釘選)，則將其從資料庫中移除。
+   * 通常在該模板的 Session 結束或捨棄時呼叫。
+   * 
+   * @param templateId 模板 ID
+   */
+  async cleanupDisposableTemplate(templateId: string) {
+      try {
+          const template = await db.templates.get(templateId);
+          if (template && isDisposableTemplate(template)) {
+              await db.templates.delete(templateId);
+              await db.templatePrefs.delete(templateId);
+
+              // [Standardized Check] 統一使用共享的 helper
+              const isCloudEnabled = getAutoConnectPreference();
+
+              if (isCloudEnabled) {
+                  googleDriveService.softDeleteFolder(templateId, 'template')
+                      .catch(e => console.warn(`[Cleanup] Cloud deletion failed for disposable template ${templateId}`, e));
+              }
+
+              console.log(`[Cleanup] Deleted disposable template: ${template.name} (${templateId})`);
+          }
+      } catch (e) {
+          console.warn(`[Cleanup] Failed to process disposable template ${templateId}`, e);
+      }
   }
 };

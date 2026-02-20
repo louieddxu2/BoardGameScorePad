@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { GameTemplate } from '../../types';
-import { X, Save, Settings, RotateCcw, Palette } from 'lucide-react';
+import { X, Save, Settings, RotateCcw, Palette, Hash } from 'lucide-react';
 import { COLORS } from '../../colors';
 import { isColorDark } from '../../utils/ui';
 import { useTranslation } from '../../i18n';
@@ -21,6 +21,7 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ template, onSav
   };
 
   const [supportedColors, setSupportedColors] = useState<string[]>(template.supportedColors || []);
+  const [bggId, setBggId] = useState<string>(template.bggId || '');
 
   const toggleColor = (color: string) => {
     if (supportedColors.includes(color)) {
@@ -31,11 +32,14 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ template, onSav
   };
 
   const handleSave = () => {
-    onSave({ supportedColors });
+    onSave({ 
+        supportedColors,
+        bggId: bggId.trim()
+    });
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col animate-in slide-in-from-bottom-5">
+    <div className="fixed inset-0 z-[70] bg-slate-950 flex flex-col animate-in slide-in-from-bottom-5">
       {/* Header */}
       <header className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 flex-none z-20">
           <div className="flex items-center gap-2">
@@ -54,6 +58,31 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ template, onSav
       <main className="flex-1 overflow-y-auto no-scrollbar">
           <section className="p-4 space-y-6">
               
+              {/* General Info Section */}
+              <div className="space-y-4">
+                  <div className="flex items-start gap-3 bg-slate-800 p-3 rounded-xl border border-slate-700">
+                      <div className="p-2 bg-slate-700 rounded-lg text-slate-400 shrink-0"><Hash size={24} /></div>
+                      <div className="flex-1">
+                          <h3 className="font-bold text-slate-200 text-sm">{t('general_section')}</h3>
+                          
+                          <div className="mt-3">
+                              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('bgg_id_label')}</label>
+                              <input 
+                                  type="text" 
+                                  inputMode="numeric"
+                                  value={bggId}
+                                  onChange={(e) => setBggId(e.target.value)}
+                                  placeholder="e.g. 13"
+                                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 text-white font-mono text-sm focus:border-emerald-500 outline-none"
+                              />
+                              <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
+                                  {t('bgg_id_desc')}
+                              </p>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+
               {/* Colors Section */}
               <div className="space-y-4">
                   <div className="flex items-start gap-3 bg-indigo-900/20 p-3 rounded-xl border border-indigo-500/30">

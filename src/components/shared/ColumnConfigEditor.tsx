@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ScoreColumn, InputMethod, MappingRule } from '../../types';
-import { X, Ruler, Calculator, ListPlus, Settings, Save, Trash2, Crop, LayoutList, Layers, Sigma, Sparkles, Settings2, Info } from 'lucide-react';
+import { X, Ruler, Calculator, ListPlus, Settings, Save, Trash2, Crop, LayoutList, Layers, Sigma, Sparkles, Settings2, Info, EyeOff } from 'lucide-react';
 import { COLORS } from '../../colors';
 import { isColorDark } from '../../utils/ui';
 import { useVisualViewportOffset } from '../../hooks/useVisualViewportOffset';
@@ -270,11 +270,12 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
       setEditedCol(prev => ({ ...prev, ...updates }));
   };
 
-  const toggleDisplayMode = () => {
-      setEditedCol(prev => ({
-          ...prev,
-          displayMode: prev.displayMode === 'row' ? 'overlay' : 'row'
-      }));
+  const cycleDisplayMode = () => {
+      setEditedCol(prev => {
+          const mode = prev.displayMode || 'row';
+          const next = mode === 'row' ? 'overlay' : (mode === 'overlay' ? 'hidden' : 'row');
+          return { ...prev, displayMode: next };
+      });
       setHelpText('col_help_display');
   };
 
@@ -299,9 +300,25 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
 
   const cellRect = editedCol.visuals?.cellRect;
   const aspectRatio = (cellRect && cellRect.height > 0) ? cellRect.width / cellRect.height : undefined;
+  
+  // Logic to determine icon/color/text based on displayMode
+  const displayMode = editedCol.displayMode || 'row';
+  let DisplayIcon = LayoutList;
+  let displayLabelKey = 'col_display_row';
+  let displayClass = 'text-slate-400 border-slate-700 bg-slate-900 hover:text-white'; 
+  
+  if (displayMode === 'overlay') {
+      DisplayIcon = Layers;
+      displayLabelKey = 'col_display_overlay';
+      displayClass = 'text-indigo-400 border-indigo-500/50 bg-indigo-900/20';
+  } else if (displayMode === 'hidden') {
+      DisplayIcon = EyeOff;
+      displayLabelKey = 'col_display_hidden';
+      displayClass = 'text-amber-400 border-amber-500/50 bg-amber-900/20';
+  }
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/95 flex flex-col animate-in slide-in-from-bottom-5" style={{ paddingBottom: visualViewportOffset }}>
+    <div className="fixed inset-0 z-[70] bg-slate-950/95 flex flex-col animate-in slide-in-from-bottom-5" style={{ paddingBottom: visualViewportOffset }}>
       <ConfirmationModal 
         isOpen={showDiscardConfirm} 
         title={t('col_discard_title')} 
@@ -389,13 +406,13 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                                   <span className="text-[10px]">{editedCol.contentLayout ? t('col_cropped') : t('col_crop')}</span>
                               </button>
 
-                              {/* Display Mode */}
+                              {/* Display Mode (3-Way Toggle) */}
                               <button 
-                                onClick={toggleDisplayMode} 
-                                className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${editedCol.displayMode === 'overlay' ? 'text-indigo-400 border-indigo-500/50 bg-indigo-900/20' : 'text-slate-400 border-slate-700 bg-slate-900 hover:text-white'}`}
+                                onClick={cycleDisplayMode} 
+                                className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${displayClass}`}
                               >
-                                  {editedCol.displayMode === 'overlay' ? <Layers size={20}/> : <LayoutList size={20}/>}
-                                  <span className="text-[10px]">{editedCol.displayMode === 'overlay' ? t('col_display_overlay') : t('col_display_row')}</span>
+                                  <DisplayIcon size={20} />
+                                  <span className="text-[10px]">{t(displayLabelKey as any)}</span>
                               </button>
                           </div>
                           <div className="bg-slate-900/50 rounded py-1 px-2 text-center text-[10px] text-slate-400 border border-slate-800/50 flex items-center justify-center gap-1">
