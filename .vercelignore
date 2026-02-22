@@ -1,0 +1,11 @@
+# 忽略原始計分板檔案 (由 GitHub Actions 處理，不需要部署到 Vercel)
+public_templates/
+
+# 忽略 GitHub Actions 設定
+.github/
+
+# 忽略本地開發的環境變數檔
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

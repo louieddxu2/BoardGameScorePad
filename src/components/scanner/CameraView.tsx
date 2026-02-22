@@ -168,7 +168,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
     // Transform Context for Rotation
     if (uiRotation !== 0) {
         ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.rotate((uiRotation * Math.PI) / 180);
+        ctx.rotate((-uiRotation * Math.PI) / 180); // 修正：照片的旋轉方向應與 UI 翻轉方向相反
         ctx.drawImage(video, -video.videoWidth / 2, -video.videoHeight / 2);
     } else {
         // Standard Portrait (or Native Landscape)

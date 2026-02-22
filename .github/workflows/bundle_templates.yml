@@ -1,0 +1,48 @@
+name: Bundle Templates
+
+# 觸發條件：當 public_templates 資料夾內的檔案有變動並推送到 main 分支時
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'public_templates/**.json'
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # 必須擁有寫入權限才能提交打包後的檔案
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Bundle JSON files
+        run: |
+          # 建立 dist 目錄 (如果不存在)
+          mkdir -p dist
+          
+          # 1. 產生全量包 (all_games.json)
+          # 使用 jq 的 slurp (-s) 模式將所有獨立 JSON 合併為一個陣列
+          # 排除 _ 開頭的檔案 (如 _init.json)，避免範例檔混入正式資料，除非那是您想要的
+          # 若暫無正式檔案，可暫時包含所有 .json
+          jq -s '.' public_templates/*.json > dist/all_games.json
+          
+          # 2. 產生索引檔 (catalog.json) - 用於快速比對更新
+          # 只提取 id, name, updatedAt 欄位，減少檔案大小
+          jq -s 'map({id: .id, name: .name, updatedAt: .updatedAt, versionHash: .updatedAt})' public_templates/*.json > dist/catalog.json
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name "Template Bot"
+          git config --global user.email "bot@noreply.github.com"
+          
+          # 檢查是否有變動
+          if [[ -n $(git status -s dist/) ]]; then
+            git add dist/
+            git commit -m "Auto-bundle templates [skip ci]"
+            git push
+          else
+            echo "No changes to bundle."
+          fi
