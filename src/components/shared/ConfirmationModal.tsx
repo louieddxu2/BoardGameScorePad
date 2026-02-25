@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { useTranslation } from '../../i18n';
+import { useCommonTranslation } from '../../i18n/common';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -26,7 +26,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   isDangerous = false,
   zIndexClass = "z-[110]", // [Fixed] Bumped from z-[60] to z-[110]
 }) => {
-  const { t } = useTranslation();
+  const { t } = useCommonTranslation();
 
   if (!isOpen) return null;
 
@@ -35,14 +35,14 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   const effectiveCancelText = cancelText || t('cancel');
 
   return (
-    <div 
+    <div
       className={`fixed inset-0 ${zIndexClass} bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200`}
       onClick={(e) => {
         // Allow clicking backdrop to cancel
         if (e.target === e.currentTarget) onCancel();
       }}
     >
-      <div 
+      <div
         className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6 w-full max-w-sm"
         onClick={(e) => e.stopPropagation()} // Prevent click propagation from content
       >
@@ -64,11 +64,10 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           </button>
           <button
             onClick={onConfirm}
-            className={`flex-1 py-3 rounded-xl text-white font-bold shadow-lg transition-colors ${
-              isDangerous 
-                ? 'bg-red-600 hover:bg-red-500 shadow-red-900/50' 
+            className={`flex-1 py-3 rounded-xl text-white font-bold shadow-lg transition-colors ${isDangerous
+                ? 'bg-red-600 hover:bg-red-500 shadow-red-900/50'
                 : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/50'
-            }`}
+              }`}
           >
             {effectiveConfirmText}
           </button>

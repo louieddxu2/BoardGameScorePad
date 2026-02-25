@@ -27,9 +27,8 @@ export const useGameLauncher = ({
     // 1. Resolve Template Source
     if (option.templateId) {
       // [Case A] Existing Template (Standard Flow)
-      // Try to find it in memory first (fastest)
-      let found = allVisibleTemplates.find(t => t.id === option.templateId);
-      
+      let found: GameTemplate | undefined | null = allVisibleTemplates.find(t => t.id === option.templateId);
+
       if (!found) {
         // Fallback: Fetch from DB (full load)
         found = await onGetFullTemplate(option.templateId);
@@ -45,7 +44,7 @@ export const useGameLauncher = ({
       // [Case B] No Existing Template (Virtual Option / SavedGame Promotion)
       // Logic: Create a new transient template on the fly and SAVE it.
       // This handles both "Promoting a SavedGame to a Template" and "Creating a fresh game from Search".
-      
+
       templateToStart = {
         id: generateId(), // Create new UUID for the template (Clean Slate)
         name: option.cleanName || option.displayName, // [Fix] Use clean name if available
@@ -67,7 +66,7 @@ export const useGameLauncher = ({
     try {
       // 2. Save Session Preferences (Player Count, etc.)
       // Note: We use templateToStart.id. If it was a new/promoted template, this is the NEW ID.
-      
+
       await db.templatePrefs.put({
         templateId: templateToStart.id,
         lastPlayerCount: playerCount,
@@ -77,7 +76,7 @@ export const useGameLauncher = ({
       // 3. Launch Session Directly (Bypassing Setup Modal)
       // [Changed] Pass locationId
       onGameStart(templateToStart, playerCount, location, locationId);
-      
+
     } catch (e) {
       console.error("Failed to start game", e);
       // Fallback launch even if prefs fail

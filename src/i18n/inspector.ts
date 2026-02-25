@@ -1,22 +1,22 @@
-
 // 專屬於 SystemDataInspector 的翻譯檔
 // 採用模組化設計，只有當 Inspector 介面被開啟時，此檔案才會被載入
 
+import { useTranslation } from './index';
 export const inspectorTranslations = {
   'zh-TW': {
     title: "系統資料檢視器",
     subtitle: "除錯控制台與資料庫管理",
-    
+
     // Tabs
     tab_games: "遊戲",
     tab_players: "玩家",
     tab_locations: "地點",
     tab_time: "時間統計",
     tab_counts: "人數統計",
-    tab_modes: "模式統計", 
-    tab_weights: "權重模型", 
+    tab_modes: "模式統計",
+    tab_weights: "權重模型",
     tab_images: "圖片儲存",
-    tab_bgg: "BGG 快取", 
+    tab_bgg: "BGG 快取",
     tab_session: "短期記憶", // New
     tab_db: "資料庫總覽",
 
@@ -27,12 +27,12 @@ export const inspectorTranslations = {
     list_weekdays: "星期統計 (0-6)",
     list_timeslots: "時段統計 (0-7)",
     list_counts: "玩家人數統計",
-    list_modes: "遊戲模式統計", 
+    list_modes: "遊戲模式統計",
     list_images: "本地圖片庫",
-    list_bgg: "BGG 資料庫", 
+    list_bgg: "BGG 資料庫",
     list_session: "本次會話 (Session Context)", // New
     list_db_tables: "資料表統計",
-    
+
     // Empty States
     loading: "讀取資料庫中...",
     no_data_category: "此分類尚無資料。",
@@ -65,7 +65,7 @@ export const inspectorTranslations = {
     // [Updated] More specific naming
     weights_title: "全域預測模型",
     weights_subtitle: "檢視各個推薦系統的影響因子權重",
-    
+
     engine_player_title: "玩家預測 (Context → Player)",
     engine_player_desc: "根據遊戲、地點、時間等環境因素，預測本次參與的玩家。",
 
@@ -77,21 +77,21 @@ export const inspectorTranslations = {
 
     engine_color_title: "顏色預測 (Context → Color)",
     engine_color_desc: "根據遊戲設定、遊戲慣例、玩家偏好，預測玩家的代表色。",
-    
+
     weight_factor: "影響因子",
     weight_value: "權重",
-    
+
     factor_game: "遊戲種類",
     factor_location: "遊玩地點",
     factor_weekday: "星期幾",
     factor_timeSlot: "時段",
     factor_playerCount: "玩家人數",
     factor_gameMode: "遊戲模式",
-    factor_relatedPlayer: "玩家人脈 (P2P)", 
-    factor_sessionContext: "短期記憶", 
+    factor_relatedPlayer: "玩家人脈 (P2P)",
+    factor_sessionContext: "短期記憶",
     factor_templateSetting: "模板設定 (限制)",
     factor_player: "玩家偏好",
-    
+
     btn_reset_weights: "重置此模型",
 
     // Relation Categories
@@ -125,8 +125,8 @@ export const inspectorTranslations = {
     tab_locations: "Locations",
     tab_time: "Time Stats",
     tab_counts: "Player Counts",
-    tab_modes: "Mode Stats", 
-    tab_weights: "Weights", 
+    tab_modes: "Mode Stats",
+    tab_weights: "Weights",
     tab_images: "Storage",
     tab_bgg: "BGG Cache",
     tab_session: "Session Memory", // New
@@ -139,9 +139,9 @@ export const inspectorTranslations = {
     list_weekdays: "Weekdays (0-6)",
     list_timeslots: "Time Slots (0-7)",
     list_counts: "Player Count Stats",
-    list_modes: "Game Mode Stats", 
+    list_modes: "Game Mode Stats",
     list_images: "Local Images",
-    list_bgg: "BGG Database", 
+    list_bgg: "BGG Database",
     list_session: "Current Session Context", // New
     list_db_tables: "Table Statistics",
 
@@ -192,18 +192,18 @@ export const inspectorTranslations = {
 
     weight_factor: "Factor",
     weight_value: "Weight",
-    
+
     factor_game: "Game",
     factor_location: "Location",
     factor_weekday: "Weekday",
     factor_timeSlot: "Time Slot",
     factor_playerCount: "Player Count",
     factor_gameMode: "Game Mode",
-    factor_relatedPlayer: "Friendship (P2P)", 
-    factor_sessionContext: "Short-term Memory", 
+    factor_relatedPlayer: "Friendship (P2P)",
+    factor_sessionContext: "Short-term Memory",
     factor_templateSetting: "Template Setting",
     factor_player: "Player Preference",
-    
+
     btn_reset_weights: "Reset Model",
 
     // Relation Categories

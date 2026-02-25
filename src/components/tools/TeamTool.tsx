@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Users, Shuffle, RefreshCw } from 'lucide-react';
-import { Player } from '../../../types';
+import { Player } from '../../types';
 
 interface TeamToolProps {
     players: Player[];
@@ -12,7 +12,7 @@ const TeamTool: React.FC<TeamToolProps> = ({ players }) => {
 
     const generateTeams = () => {
         if (players.length < 2) return;
-        
+
         // Fisher-Yates Shuffle
         const shuffled = [...players];
         for (let i = shuffled.length - 1; i > 0; i--) {
@@ -25,7 +25,7 @@ const TeamTool: React.FC<TeamToolProps> = ({ players }) => {
             a: shuffled.slice(0, mid).map(p => p.name),
             b: shuffled.slice(mid).map(p => p.name)
         });
-        
+
         if (navigator.vibrate) navigator.vibrate(50);
     };
 
@@ -35,7 +35,7 @@ const TeamTool: React.FC<TeamToolProps> = ({ players }) => {
                 <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
                     <Users size={12} /> 隊伍分配
                 </span>
-                <button 
+                <button
                     onClick={generateTeams}
                     disabled={players.length < 2}
                     className="p-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"

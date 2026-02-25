@@ -1,5 +1,7 @@
 import React from 'react';
 import { X, Share, MoreVertical, PlusSquare, Download, Smartphone } from 'lucide-react';
+import { useAppTranslation } from '../../i18n/app';
+import { useCommonTranslation } from '../../i18n/common';
 
 interface InstallGuideModalProps {
   isOpen: boolean;
@@ -7,26 +9,29 @@ interface InstallGuideModalProps {
 }
 
 const InstallGuideModal: React.FC<InstallGuideModalProps> = ({ isOpen, onClose }) => {
+  const { t: tApp } = useAppTranslation();
+  const { t: tCommon } = useCommonTranslation();
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={onClose}>
       <div className="bg-slate-900 w-full max-w-sm rounded-2xl shadow-2xl border border-slate-800 flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
-        
+
         {/* Header */}
         <div className="bg-slate-800 p-4 border-b border-slate-700 flex items-center justify-between">
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
             <Download size={20} className="text-emerald-500" />
-            安裝到主畫面
+            {tApp('install_title')}
           </h3>
           <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={24} /></button>
         </div>
 
         {/* Content */}
         <div className="p-5 space-y-6 overflow-y-auto max-h-[70vh]">
-          
+
           <p className="text-sm text-slate-400 leading-relaxed">
-            將此網頁安裝為 App，可獲得最佳的全螢幕體驗與離線功能。請依照您的裝置類型操作：
+            {tApp('install_desc')}
           </p>
 
           {/* iOS Section */}
@@ -80,9 +85,9 @@ const InstallGuideModal: React.FC<InstallGuideModalProps> = ({ isOpen, onClose }
         </div>
 
         <div className="p-4 bg-slate-800 border-t border-slate-700">
-            <button onClick={onClose} className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl transition-colors">
-                我瞭解了
-            </button>
+          <button onClick={onClose} className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl transition-colors">
+            {tCommon('understand')}
+          </button>
         </div>
       </div>
     </div>

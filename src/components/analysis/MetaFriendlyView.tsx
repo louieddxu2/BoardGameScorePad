@@ -4,31 +4,20 @@ import { Users, MapPin, Hash, LayoutGrid, ChevronRight, ChevronDown, Palette, Ca
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { SavedListItem } from '../../types';
-import { useTranslation } from '../../i18n';
-import { inspectorTranslations, InspectorTranslationKey } from '../../i18n/inspector';
+import { useInspectorTranslation } from './InspectorShared';
 
 const WEEKDAY_MAP = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
-
-// Helper hook for local translations
-const useInspectorTranslation = () => {
-    const { language } = useTranslation();
-    const t = (key: InspectorTranslationKey) => {
-        const dict = inspectorTranslations[language] || inspectorTranslations['zh-TW'];
-        return dict[key] || key;
-    };
-    return t;
-};
 
 const CollapsibleSection = ({ icon, title, count, confidence, children }: { icon: React.ReactNode, title: string, count: number, confidence?: number, children?: React.ReactNode }) => {
     const [isOpen, setIsOpen] = useState(true);
     return (
         <div className="border border-slate-700/50 rounded-lg overflow-hidden bg-slate-900/30">
-            <button 
-                onClick={() => setIsOpen(!isOpen)} 
+            <button
+                onClick={() => setIsOpen(!isOpen)}
                 className="w-full flex items-center justify-between p-2 hover:bg-slate-800 transition-colors"
             >
                 <div className="flex items-center gap-2">
-                    {isOpen ? <ChevronDown size={14} className="text-slate-500"/> : <ChevronRight size={14} className="text-slate-500"/>}
+                    {isOpen ? <ChevronDown size={14} className="text-slate-500" /> : <ChevronRight size={14} className="text-slate-500" />}
                     <div className="flex items-center gap-1.5">
                         {icon}
                         <span className="text-xs font-bold text-slate-300">{title}</span>
@@ -71,7 +60,7 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
     const players = useLiveQuery(() => db.savedPlayers.where('id').anyOf(JSON.parse(playerIdsStr)).toArray(), [playerIdsStr]) || [];
     const locations = useLiveQuery(() => db.savedLocations.where('id').anyOf(JSON.parse(locationIdsStr)).toArray(), [locationIdsStr]) || [];
     const games = useLiveQuery(() => db.savedGames.where('id').anyOf(JSON.parse(gameIdsStr)).toArray(), [gameIdsStr]) || [];
-    
+
     // Small dimension tables
     const weekdays = useLiveQuery(() => db.savedWeekdays.toArray()) || [];
     const timeSlots = useLiveQuery(() => db.savedTimeSlots.toArray()) || [];
@@ -104,7 +93,7 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
         const validItems = items
             .map((r: any) => {
                 if (key === 'colors') return { ...r, resolved: r.id };
-                
+
                 let lookupKey: keyof typeof lookups | null = null;
                 if (key === 'players') lookupKey = 'players';
                 else if (key === 'locations') lookupKey = 'locations';
@@ -118,9 +107,9 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
                     const entity = lookups[lookupKey].get(r.id);
                     return { ...r, entity };
                 }
-                return r; 
+                return r;
             })
-            .filter(Boolean); 
+            .filter(Boolean);
 
         if (validItems.length === 0) return null;
 
@@ -142,27 +131,27 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
 
     return (
         <div className="space-y-1">
-            {renderCategory('players', <Users size={12} className="text-indigo-400"/>, t('rel_players'), (id, { entity }) => (
-                <span className="text-slate-300">{entity?.name || id}</span>
-            ))}
-            
-            {renderCategory('locations', <MapPin size={12} className="text-rose-400"/>, t('rel_locations'), (id, { entity }) => (
+            {renderCategory('players', <Users size={12} className="text-indigo-400" />, t('rel_players'), (id, { entity }) => (
                 <span className="text-slate-300">{entity?.name || id}</span>
             ))}
 
-            {renderCategory('games', <LayoutGrid size={12} className="text-emerald-400"/>, t('rel_games'), (id, { entity }) => (
+            {renderCategory('locations', <MapPin size={12} className="text-rose-400" />, t('rel_locations'), (id, { entity }) => (
                 <span className="text-slate-300">{entity?.name || id}</span>
             ))}
 
-            {renderCategory('playerCounts', <Hash size={12} className="text-orange-400"/>, t('rel_player_counts'), (id, { entity }) => (
+            {renderCategory('games', <LayoutGrid size={12} className="text-emerald-400" />, t('rel_games'), (id, { entity }) => (
+                <span className="text-slate-300">{entity?.name || id}</span>
+            ))}
+
+            {renderCategory('playerCounts', <Hash size={12} className="text-orange-400" />, t('rel_player_counts'), (id, { entity }) => (
                 <span className="text-slate-300">{entity?.name || id} 人</span>
             ))}
 
-            {renderCategory('gameModes', <Trophy size={12} className="text-yellow-400"/>, t('rel_modes'), (id, { entity }) => (
+            {renderCategory('gameModes', <Trophy size={12} className="text-yellow-400" />, t('rel_modes'), (id, { entity }) => (
                 <span className="text-slate-300">{entity?.name || id}</span>
             ))}
 
-            {renderCategory('colors', <Palette size={12} className="text-pink-400"/>, t('rel_colors'), (id) => (
+            {renderCategory('colors', <Palette size={12} className="text-pink-400" />, t('rel_colors'), (id) => (
                 <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: id === 'transparent' ? 'transparent' : id }}>
                         {id === 'transparent' && <div className="w-full h-full border border-slate-500 rounded-full" />}
@@ -171,12 +160,12 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
                 </div>
             ))}
 
-            {renderCategory('weekdays', <Calendar size={12} className="text-sky-400"/>, t('rel_weekdays'), (id, { entity }) => {
+            {renderCategory('weekdays', <Calendar size={12} className="text-sky-400" />, t('rel_weekdays'), (id, { entity }) => {
                 const dayIdx = parseInt(entity?.name || '0', 10);
                 return <span className="text-slate-300">{WEEKDAY_MAP[dayIdx] || entity?.name}</span>;
             })}
 
-            {renderCategory('timeSlots', <Watch size={12} className="text-amber-400"/>, t('rel_timeslots'), (id, { entity }) => (
+            {renderCategory('timeSlots', <Watch size={12} className="text-amber-400" />, t('rel_timeslots'), (id, { entity }) => (
                 <span className="text-slate-300">{entity?.name || id}</span>
             ))}
         </div>

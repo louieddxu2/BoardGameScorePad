@@ -1,5 +1,5 @@
 
-import { useTranslation } from '../i18n';
+import { useTranslation } from './index';
 
 export const columnEditorTranslations = {
   'zh-TW': {
@@ -23,7 +23,7 @@ export const columnEditorTranslations = {
     col_display_hidden: "隱藏",
     col_color: "代表色",
     col_btn_save: "儲存設定",
-    
+
     // Discard Confirm
     col_discard_title: "放棄變更？",
     col_discard_msg: "您有未儲存的變更，離開後將會遺失。",

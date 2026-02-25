@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Users } from 'lucide-react';
-import { Player } from '../../../types';
+import { Player } from '../../types';
 
 interface PickerToolProps {
     players: Player[];
@@ -22,7 +22,7 @@ const PickerTool: React.FC<PickerToolProps> = ({ players }) => {
             const randomIdx = Math.floor(Math.random() * players.length);
             setPickedName(players[randomIdx].name);
             count++;
-            
+
             if (count >= totalSpins) {
                 clearInterval(interval);
                 setIsPicking(false);
@@ -32,7 +32,7 @@ const PickerTool: React.FC<PickerToolProps> = ({ players }) => {
     };
 
     return (
-        <button 
+        <button
             onClick={pick}
             className="w-full h-full flex flex-col items-center justify-center p-3 bg-slate-800/50 hover:bg-slate-700/80 rounded-2xl border border-slate-700/50 transition-all active:scale-95 group min-h-[96px]"
         >

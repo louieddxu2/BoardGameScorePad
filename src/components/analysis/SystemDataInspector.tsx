@@ -4,13 +4,14 @@ import { createPortal } from 'react-dom';
 import { X, Database, Users, MapPin, Clock, Hash, LayoutGrid, Zap, Image as ImageIcon, HardDrive, Loader2, Trash2, Search, RefreshCw, Skull, Trophy } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
-import Dexie from 'dexie'; 
+import Dexie from 'dexie';
 import { LocalImage } from '../../types';
-import { relationshipService } from '../../services/relationshipService'; 
-import { useToast } from '../../hooks/useToast'; 
-import ConfirmationModal from '../shared/ConfirmationModal'; 
-import WeightsInspector from './WeightsInspector'; 
+import { relationshipService } from '../../services/relationshipService';
+import { useToast } from '../../hooks/useToast';
+import ConfirmationModal from '../shared/ConfirmationModal';
+import WeightsInspector from './WeightsInspector';
 import { DataList, InspectorDetailPanel, useInspectorTranslation } from './InspectorShared';
+import { useCommonTranslation } from '../../i18n/common';
 
 // --- Helpers for formatting ---
 const WEEKDAY_MAP = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
@@ -30,7 +31,7 @@ const TimeInspector = () => {
     const weekdays = useLiveQuery(() => db.savedWeekdays.toArray()) || [];
     const timeSlots = useLiveQuery(() => db.savedTimeSlots.toArray()) || [];
     const t = useInspectorTranslation();
-    
+
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
     // Local icon components for list
@@ -102,8 +103,8 @@ const ImageInspector = () => {
         let collection = db.images.toCollection();
         if (searchTerm.trim()) {
             const lower = searchTerm.toLowerCase();
-            collection = collection.filter(img => 
-                img.id.toLowerCase().includes(lower) || 
+            collection = collection.filter(img =>
+                img.id.toLowerCase().includes(lower) ||
                 img.relatedId.toLowerCase().includes(lower)
             );
         }
@@ -124,11 +125,11 @@ const ImageInspector = () => {
             setSelectedImage(null);
             setPreviewUrl(null);
         }
-        
+
         return () => {
             if (previewUrl) URL.revokeObjectURL(previewUrl);
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedId]);
 
     const displayImages = images || [];
@@ -145,11 +146,11 @@ const ImageInspector = () => {
                     </div>
                     <div className="relative mb-2">
                         <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="搜尋 ID..." 
+                            placeholder="搜尋 ID..."
                             className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-7 pr-6 py-1 text-xs text-white focus:border-emerald-500 outline-none"
                         />
                         {searchTerm && (
@@ -167,7 +168,7 @@ const ImageInspector = () => {
                             className={`w-full text-left p-2 rounded-lg text-xs transition-all flex flex-col gap-1 ${selectedId === img.id ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
                         >
                             <div className="flex justify-between w-full">
-                                <span className="font-mono truncate w-24 text-[10px] opacity-70">{img.id.substring(0,8)}...</span>
+                                <span className="font-mono truncate w-24 text-[10px] opacity-70">{img.id.substring(0, 8)}...</span>
                                 {/* Since we haven't loaded the blob in list view for performance, size isn't available here without full load. */}
                                 {/* We show type instead */}
                                 <span className="text-[9px] font-bold text-slate-400">{img.relatedType}</span>
@@ -234,6 +235,7 @@ const DatabaseInspector = ({ onRequestFactoryReset }: { onRequestFactoryReset: (
     const [stats, setStats] = useState<TableStats[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const t = useInspectorTranslation();
+    const { t: tCommon } = useCommonTranslation();
 
     const calculateObjectSize = (obj: any): number => {
         if (!obj) return 0;
@@ -260,19 +262,19 @@ const DatabaseInspector = ({ onRequestFactoryReset }: { onRequestFactoryReset: (
                 for (const table of tables) {
                     const count = await table.count();
                     let size = 0;
-                    
+
                     if (count < 5000) {
                         await table.each((item: any) => {
                             size += calculateObjectSize(item);
                         });
                     } else {
                         // Estimate for huge tables
-                         size = count * 100; // Rough average
+                        size = count * 100; // Rough average
                     }
 
                     results.push({ name: table.name, count, size });
                 }
-                
+
                 // Sort by Size (Desc)
                 results.sort((a, b) => b.size - a.size);
                 setStats(results);
@@ -302,10 +304,10 @@ const DatabaseInspector = ({ onRequestFactoryReset }: { onRequestFactoryReset: (
                 {/* Table List */}
                 <div className="space-y-3">
                     <h3 className="text-slate-400 text-xs font-bold uppercase px-2">{t('list_db_tables')}</h3>
-                    
+
                     {isLoading ? (
                         <div className="flex items-center justify-center py-8 text-slate-500 gap-2">
-                            <Loader2 size={16} className="animate-spin" /> {t('loading')}
+                            <Loader2 size={16} className="animate-spin" /> {tCommon('loading')}
                         </div>
                     ) : (
                         stats.map((stat) => (
@@ -317,8 +319,8 @@ const DatabaseInspector = ({ onRequestFactoryReset }: { onRequestFactoryReset: (
                                 <div className="text-right">
                                     <div className="text-sm font-mono font-bold text-emerald-400">{formatBytes(stat.size)}</div>
                                     <div className="w-24 h-1.5 bg-slate-800 rounded-full mt-1 overflow-hidden">
-                                        <div 
-                                            className="h-full bg-emerald-600 rounded-full" 
+                                        <div
+                                            className="h-full bg-emerald-600 rounded-full"
                                             style={{ width: `${totalSize > 0 ? (stat.size / totalSize) * 100 : 0}%` }}
                                         />
                                     </div>
@@ -334,7 +336,7 @@ const DatabaseInspector = ({ onRequestFactoryReset }: { onRequestFactoryReset: (
 
                 {/* Factory Reset Section */}
                 <div className="pt-8 border-t border-slate-800">
-                    <button 
+                    <button
                         onClick={onRequestFactoryReset}
                         className="w-full py-4 bg-red-900/20 hover:bg-red-900/40 text-red-500 font-bold rounded-xl border border-red-900/30 flex items-center justify-center gap-2 transition-all active:scale-95 group"
                     >
@@ -348,225 +350,225 @@ const DatabaseInspector = ({ onRequestFactoryReset }: { onRequestFactoryReset: (
 };
 
 const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState<'games' | 'players' | 'locations' | 'time' | 'counts' | 'modes' | 'weights' | 'images' | 'bgg' | 'session' | 'db'>('games');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [progress, setProgress] = useState(0); // [New]
-  const [confirmAction, setConfirmAction] = useState<'reset' | 'reprocess' | 'factory_reset' | null>(null); 
-  
-  const t = useInspectorTranslation();
-  const { showToast } = useToast();
+    const [activeTab, setActiveTab] = useState<'games' | 'players' | 'locations' | 'time' | 'counts' | 'modes' | 'weights' | 'images' | 'bgg' | 'session' | 'db'>('games');
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [progress, setProgress] = useState(0); // [New]
+    const [confirmAction, setConfirmAction] = useState<'reset' | 'reprocess' | 'factory_reset' | null>(null);
 
-  const handleConfirmAction = async () => {
-      if (confirmAction === 'reset') {
-          await executeResetStats();
-      } else if (confirmAction === 'reprocess') {
-          await executeReprocessHistory();
-      } else if (confirmAction === 'factory_reset') {
-          await executeFactoryReset();
-      }
-      setConfirmAction(null);
-  };
+    const t = useInspectorTranslation();
+    const { showToast } = useToast();
 
-  const executeResetStats = async () => {
-      if (isProcessing) return;
-      setIsProcessing(true);
-      try {
-          await (db as any).transaction('rw', db.savedPlayers, db.savedLocations, db.savedGames, db.savedWeekdays, db.savedTimeSlots, db.savedPlayerCounts, db.savedGameModes, db.analyticsLogs, async () => {
-              // 1. Clear Logs
-              await db.analyticsLogs.clear();
+    const handleConfirmAction = async () => {
+        if (confirmAction === 'reset') {
+            await executeResetStats();
+        } else if (confirmAction === 'reprocess') {
+            await executeReprocessHistory();
+        } else if (confirmAction === 'factory_reset') {
+            await executeFactoryReset();
+        }
+        setConfirmAction(null);
+    };
 
-              // 2. Clear All Saved Lists (Wipe Everything)
-              await db.savedPlayers.clear();
-              await db.savedLocations.clear();
-              await db.savedGames.clear();
-              await db.savedWeekdays.clear();
-              await db.savedTimeSlots.clear();
-              await db.savedPlayerCounts.clear();
-              await db.savedGameModes.clear();
-          });
-          
-          showToast({ message: "統計資料庫已清空 (請點擊右方按鈕重新掃描)", type: 'success' });
-      } catch (error) {
-          console.error("Reset failed", error);
-          showToast({ message: "重置失敗", type: 'error' });
-      } finally {
-          setIsProcessing(false);
-      }
-  };
+    const executeResetStats = async () => {
+        if (isProcessing) return;
+        setIsProcessing(true);
+        try {
+            await (db as any).transaction('rw', db.savedPlayers, db.savedLocations, db.savedGames, db.savedWeekdays, db.savedTimeSlots, db.savedPlayerCounts, db.savedGameModes, db.analyticsLogs, async () => {
+                // 1. Clear Logs
+                await db.analyticsLogs.clear();
 
-  const executeReprocessHistory = async () => {
-      if (isProcessing) return;
-      setIsProcessing(true);
-      setProgress(0);
-      try {
-          // 1. Fetch all history sorted by time (oldest first)
-          const allHistory = await db.history.orderBy('endTime').toArray();
-          const total = allHistory.length;
-          let count = 0;
-          
-          // 2. Batch Processing with Chunking
-          // [Optimization] Increase chunk size to 200 as requested
-          const CHUNK_SIZE = 200;
-          
-          for (let i = 0; i < total; i += CHUNK_SIZE) {
-              const chunk = allHistory.slice(i, i + CHUNK_SIZE);
-              
-              // Process chunk
-              await relationshipService.processHistoryBatch(chunk);
-              
-              count += chunk.length;
-              setProgress(Math.min(100, Math.round((count / total) * 100)));
-              
-              // Yield to main thread to prevent UI freeze
-              await new Promise(resolve => setTimeout(resolve, 0));
-          }
-          
-          showToast({ message: `已成功掃描 ${total} 筆紀錄`, type: 'success' });
-      } catch (error) {
-          console.error("Reprocess failed", error);
-          showToast({ message: "掃描過程發生錯誤", type: 'error' });
-      } finally {
-          setIsProcessing(false);
-          setProgress(0);
-      }
-  };
+                // 2. Clear All Saved Lists (Wipe Everything)
+                await db.savedPlayers.clear();
+                await db.savedLocations.clear();
+                await db.savedGames.clear();
+                await db.savedWeekdays.clear();
+                await db.savedTimeSlots.clear();
+                await db.savedPlayerCounts.clear();
+                await db.savedGameModes.clear();
+            });
 
-  const executeFactoryReset = async () => {
-      if (isProcessing) return;
-      setIsProcessing(true);
-      try {
-          // [Fix] Close connection first to prevent hook updates from crashing UI
-          (db as any).close();
-          
-          // 2. Delete the entire database
-          await Dexie.delete('BoardGameScorePadDB');
-          
-          // 3. Clear local storage
-          localStorage.clear();
+            showToast({ message: "統計資料庫已清空 (請點擊右方按鈕重新掃描)", type: 'success' });
+        } catch (error) {
+            console.error("Reset failed", error);
+            showToast({ message: "重置失敗", type: 'error' });
+        } finally {
+            setIsProcessing(false);
+        }
+    };
 
-          // 4. Reload to re-initialize
-          window.location.reload();
-      } catch (error) {
-          console.error("Factory Reset failed", error);
-          // Force reload anyway if something went wrong, as state is likely corrupted
-          window.location.reload();
-      }
-  };
+    const executeReprocessHistory = async () => {
+        if (isProcessing) return;
+        setIsProcessing(true);
+        setProgress(0);
+        try {
+            // 1. Fetch all history sorted by time (oldest first)
+            const allHistory = await db.history.orderBy('endTime').toArray();
+            const total = allHistory.length;
+            let count = 0;
 
-  return createPortal(
-    <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col animate-in fade-in duration-200">
-      
-      {/* --- Confirmation Modal --- */}
-      <ConfirmationModal 
-          isOpen={!!confirmAction}
-          title={
-              confirmAction === 'factory_reset' ? t('confirm_factory_reset_title') : 
-              confirmAction === 'reset' ? t('confirm_reset_title') : 
-              t('confirm_reprocess_title')
-          }
-          message={
-              confirmAction === 'factory_reset' ? t('confirm_factory_reset_msg') :
-              confirmAction === 'reset' ? t('confirm_reset_msg') : 
-              t('confirm_reprocess_msg')
-          }
-          confirmText={
-              confirmAction === 'factory_reset' ? t('btn_factory_reset') :
-              confirmAction === 'reset' ? t('btn_reset') : 
-              t('btn_reprocess')
-          }
-          isDangerous={confirmAction === 'reset' || confirmAction === 'factory_reset'}
-          zIndexClass="z-[110]"
-          onCancel={() => setConfirmAction(null)}
-          onConfirm={handleConfirmAction}
-      />
+            // 2. Batch Processing with Chunking
+            // [Optimization] Increase chunk size to 200 as requested
+            const CHUNK_SIZE = 200;
 
-      {/* Header */}
-      <div className="flex-none bg-slate-900 p-3 border-b border-slate-800 flex justify-between items-center shadow-md z-20">
-        <div className="flex items-center gap-3">
-            <div className="bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
-                <Database size={18} className="text-emerald-500" />
+            for (let i = 0; i < total; i += CHUNK_SIZE) {
+                const chunk = allHistory.slice(i, i + CHUNK_SIZE);
+
+                // Process chunk
+                await relationshipService.processHistoryBatch(chunk);
+
+                count += chunk.length;
+                setProgress(Math.min(100, Math.round((count / total) * 100)));
+
+                // Yield to main thread to prevent UI freeze
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+
+            showToast({ message: `已成功掃描 ${total} 筆紀錄`, type: 'success' });
+        } catch (error) {
+            console.error("Reprocess failed", error);
+            showToast({ message: "掃描過程發生錯誤", type: 'error' });
+        } finally {
+            setIsProcessing(false);
+            setProgress(0);
+        }
+    };
+
+    const executeFactoryReset = async () => {
+        if (isProcessing) return;
+        setIsProcessing(true);
+        try {
+            // [Fix] Close connection first to prevent hook updates from crashing UI
+            (db as any).close();
+
+            // 2. Delete the entire database
+            await Dexie.delete('BoardGameScorePadDB');
+
+            // 3. Clear local storage
+            localStorage.clear();
+
+            // 4. Reload to re-initialize
+            window.location.reload();
+        } catch (error) {
+            console.error("Factory Reset failed", error);
+            // Force reload anyway if something went wrong, as state is likely corrupted
+            window.location.reload();
+        }
+    };
+
+    return createPortal(
+        <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col animate-in fade-in duration-200">
+
+            {/* --- Confirmation Modal --- */}
+            <ConfirmationModal
+                isOpen={!!confirmAction}
+                title={
+                    confirmAction === 'factory_reset' ? t('confirm_factory_reset_title') :
+                        confirmAction === 'reset' ? t('confirm_reset_title') :
+                            t('confirm_reprocess_title')
+                }
+                message={
+                    confirmAction === 'factory_reset' ? t('confirm_factory_reset_msg') :
+                        confirmAction === 'reset' ? t('confirm_reset_msg') :
+                            t('confirm_reprocess_msg')
+                }
+                confirmText={
+                    confirmAction === 'factory_reset' ? t('btn_factory_reset') :
+                        confirmAction === 'reset' ? t('btn_reset') :
+                            t('btn_reprocess')
+                }
+                isDangerous={confirmAction === 'reset' || confirmAction === 'factory_reset'}
+                zIndexClass="z-[110]"
+                onCancel={() => setConfirmAction(null)}
+                onConfirm={handleConfirmAction}
+            />
+
+            {/* Header */}
+            <div className="flex-none bg-slate-900 p-3 border-b border-slate-800 flex justify-between items-center shadow-md z-20">
+                <div className="flex items-center gap-3">
+                    <div className="bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
+                        <Database size={18} className="text-emerald-500" />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-white leading-tight">{t('title')}</h3>
+                        <span className="text-[10px] text-slate-500 block">{t('subtitle')}</span>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setConfirmAction('reset')}
+                        disabled={isProcessing}
+                        className="p-2 hover:bg-slate-800 rounded-lg text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+                        title="清空資料庫 (刪除所有列表與關聯)"
+                    >
+                        <Trash2 size={20} />
+                    </button>
+                    <button
+                        onClick={() => setConfirmAction('reprocess')}
+                        disabled={isProcessing}
+                        className="p-2 hover:bg-slate-800 rounded-lg text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-50 relative overflow-hidden"
+                        title="重新掃描並匯入歷史紀錄"
+                    >
+                        {isProcessing ? (
+                            <>
+                                <div className="absolute inset-0 bg-indigo-500/20" style={{ width: `${progress}%` }}></div>
+                                <span className="relative text-[10px] font-bold">{progress}%</span>
+                            </>
+                        ) : (
+                            <RefreshCw size={20} />
+                        )}
+                    </button>
+                    <div className="w-px h-6 bg-slate-800 mx-1"></div>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">
+                        <X size={20} />
+                    </button>
+                </div>
             </div>
-            <div>
-                <h3 className="font-bold text-white leading-tight">{t('title')}</h3>
-                <span className="text-[10px] text-slate-500 block">{t('subtitle')}</span>
+
+            {/* Tabs */}
+            <div className="flex-none bg-slate-900 border-b border-slate-800 flex px-2 overflow-x-auto no-scrollbar">
+                {[
+                    { id: 'games', label: t('tab_games'), icon: LayoutGrid },
+                    { id: 'players', label: t('tab_players'), icon: Users },
+                    { id: 'locations', label: t('tab_locations'), icon: MapPin },
+                    { id: 'time', label: t('tab_time'), icon: Clock },
+                    { id: 'counts', label: t('tab_counts'), icon: Hash },
+                    { id: 'modes', label: t('tab_modes'), icon: Trophy },
+                    { id: 'session', label: t('tab_session'), icon: Zap }, // Moved Session before Weights
+                    { id: 'weights', label: t('tab_weights'), icon: Users },
+                    { id: 'images', label: t('tab_images'), icon: ImageIcon },
+                    { id: 'bgg', label: t('tab_bgg'), icon: Database },
+                    { id: 'db', label: t('tab_db'), icon: HardDrive },
+                ].map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id as any)}
+                        className={`px-4 py-3 text-xs font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id ? 'border-emerald-500 text-emerald-400 bg-slate-800/50' : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'}`}
+                    >
+                        {/* Use imported icon or fallback */}
+                        <tab.icon size={14} />
+                        {tab.label}
+                    </button>
+                ))}
             </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-            <button 
-                onClick={() => setConfirmAction('reset')} 
-                disabled={isProcessing}
-                className="p-2 hover:bg-slate-800 rounded-lg text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
-                title="清空資料庫 (刪除所有列表與關聯)"
-            >
-                <Trash2 size={20} />
-            </button>
-            <button 
-                onClick={() => setConfirmAction('reprocess')} 
-                disabled={isProcessing}
-                className="p-2 hover:bg-slate-800 rounded-lg text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-50 relative overflow-hidden"
-                title="重新掃描並匯入歷史紀錄"
-            >
-                {isProcessing ? (
-                    <>
-                        <div className="absolute inset-0 bg-indigo-500/20" style={{ width: `${progress}%` }}></div>
-                        <span className="relative text-[10px] font-bold">{progress}%</span>
-                    </>
-                ) : (
-                    <RefreshCw size={20} />
-                )}
-            </button>
-            <div className="w-px h-6 bg-slate-800 mx-1"></div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">
-                <X size={20} />
-            </button>
-        </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="flex-none bg-slate-900 border-b border-slate-800 flex px-2 overflow-x-auto no-scrollbar">
-        {[
-            { id: 'games', label: t('tab_games'), icon: LayoutGrid },
-            { id: 'players', label: t('tab_players'), icon: Users },
-            { id: 'locations', label: t('tab_locations'), icon: MapPin },
-            { id: 'time', label: t('tab_time'), icon: Clock },
-            { id: 'counts', label: t('tab_counts'), icon: Hash },
-            { id: 'modes', label: t('tab_modes'), icon: Trophy }, 
-            { id: 'session', label: t('tab_session'), icon: Zap }, // Moved Session before Weights
-            { id: 'weights', label: t('tab_weights'), icon: Users }, 
-            { id: 'images', label: t('tab_images'), icon: ImageIcon },
-            { id: 'bgg', label: t('tab_bgg'), icon: Database }, 
-            { id: 'db', label: t('tab_db'), icon: HardDrive },
-        ].map(tab => (
-            <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`px-4 py-3 text-xs font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id ? 'border-emerald-500 text-emerald-400 bg-slate-800/50' : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'}`}
-            >
-                {/* Use imported icon or fallback */}
-                <tab.icon size={14} />
-                {tab.label}
-            </button>
-        ))}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-h-0 flex flex-col bg-black relative">
-        {activeTab === 'games' && <DataList title={t('list_games')} table={db.savedGames} icon={LayoutGrid} />}
-        {activeTab === 'players' && <DataList title={t('list_players')} table={db.savedPlayers} icon={Users} />}
-        {activeTab === 'locations' && <DataList title={t('list_locations')} table={db.savedLocations} icon={MapPin} />}
-        {activeTab === 'time' && <TimeInspector />}
-        {activeTab === 'counts' && <DataList title={t('list_counts')} table={db.savedPlayerCounts} icon={Hash} />}
-        {activeTab === 'modes' && <DataList title={t('list_modes')} table={db.savedGameModes} icon={Trophy} />}
-        {activeTab === 'weights' && <WeightsInspector />} 
-        {activeTab === 'images' && <ImageInspector />}
-        {activeTab === 'bgg' && <DataList title={t('list_bgg')} table={db.bggGames} icon={Database} isBGG={true} />}
-        {activeTab === 'session' && <DataList title={t('list_session')} table={db.savedCurrentSession} icon={Zap} />}
-        {activeTab === 'db' && <DatabaseInspector onRequestFactoryReset={() => setConfirmAction('factory_reset')} />}
-      </div>
-    </div>,
-    document.body
-  );
+            {/* Content */}
+            <div className="flex-1 min-h-0 flex flex-col bg-black relative">
+                {activeTab === 'games' && <DataList title={t('list_games')} table={db.savedGames} icon={LayoutGrid} />}
+                {activeTab === 'players' && <DataList title={t('list_players')} table={db.savedPlayers} icon={Users} />}
+                {activeTab === 'locations' && <DataList title={t('list_locations')} table={db.savedLocations} icon={MapPin} />}
+                {activeTab === 'time' && <TimeInspector />}
+                {activeTab === 'counts' && <DataList title={t('list_counts')} table={db.savedPlayerCounts} icon={Hash} />}
+                {activeTab === 'modes' && <DataList title={t('list_modes')} table={db.savedGameModes} icon={Trophy} />}
+                {activeTab === 'weights' && <WeightsInspector />}
+                {activeTab === 'images' && <ImageInspector />}
+                {activeTab === 'bgg' && <DataList title={t('list_bgg')} table={db.bggGames} icon={Database} isBGG={true} />}
+                {activeTab === 'session' && <DataList title={t('list_session')} table={db.savedCurrentSession} icon={Zap} />}
+                {activeTab === 'db' && <DatabaseInspector onRequestFactoryReset={() => setConfirmAction('factory_reset')} />}
+            </div>
+        </div>,
+        document.body
+    );
 };
 
 export default SystemDataInspector;

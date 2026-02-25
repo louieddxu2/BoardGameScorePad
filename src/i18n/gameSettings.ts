@@ -1,3 +1,4 @@
+import { useTranslation } from './index';
 
 export const gameSettingsTranslations = {
   'zh-TW': {

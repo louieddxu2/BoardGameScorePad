@@ -1,0 +1,5 @@
+src/components/session/parts/PhotoLightbox.tsx(297,18): error TS2774: This condition will always return true since this function is always defined. Did you mean to call it instead?
+src/components/shared/column-editor/EditorTabBasic.tsx(430,17): error TS2322: Type 'boolean | undefined' is not assignable to type 'boolean'.
+  Type 'undefined' is not assignable to type 'boolean'.
+src/components/tools/PickerTool.tsx(4,24): error TS2307: Cannot find module '../../../types' or its corresponding type declarations.
+src/components/tools/TeamTool.tsx(4,24): error TS2307: Cannot find module '../../../types' or its corresponding type declarations.

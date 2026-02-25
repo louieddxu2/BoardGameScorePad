@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { GameTemplate, GameSession, HistoryRecord } from '../../../types';
-import { useTranslation } from '../../../i18n';
+import { useCommonTranslation } from '../../../i18n/common';
+import { useDashboardTranslation } from '../../../i18n/dashboard';
 import ConfirmationModal from '../../shared/ConfirmationModal';
 import InstallGuideModal from '../../modals/InstallGuideModal';
 import DataManagerModal from '../modals/DataManagerModal';
@@ -40,7 +41,7 @@ interface DashboardModalsProps {
     setShowBggImportModal: (show: boolean) => void; // New Action
     setShowInspector: (show: boolean) => void;
   };
-  
+
   userTemplates: GameTemplate[];
   isConnected: boolean;
   isMockMode: boolean;
@@ -64,7 +65,7 @@ interface DashboardModalsProps {
   emptyTrash: (type?: CloudResourceType) => Promise<boolean>;
   connectToCloud: () => Promise<boolean>;
   disconnectFromCloud: () => Promise<void>;
-  
+
   onCloudRestoreSuccess: (t: GameTemplate) => void;
   onSessionRestoreSuccess: (s: GameSession) => void;
   onHistoryRestoreSuccess: (r: HistoryRecord) => void;
@@ -103,112 +104,113 @@ export const DashboardModals: React.FC<DashboardModalsProps> = ({
   onSystemRestore,
   onGetLocalData
 }) => {
-  const { t } = useTranslation();
+  const { t: tCommon } = useCommonTranslation();
+  const { t: tDash } = useDashboardTranslation();
 
   return (
     <>
       {state.showInspector && <SystemDataInspector onClose={() => actions.setShowInspector(false)} />}
-      
-      <ConfirmationModal 
-        isOpen={!!state.templateToDelete} 
-        title={t('confirm_delete_template_title')} 
-        message={t('confirm_delete_template_msg')} 
-        confirmText={t('delete')} 
-        isDangerous={true} 
-        onCancel={() => actions.setTemplateToDelete(null)} 
-        onConfirm={() => { if(state.templateToDelete) onTemplateDelete(state.templateToDelete); actions.setTemplateToDelete(null); }} 
-      />
-      
-      <ConfirmationModal 
-        isOpen={!!state.sessionToDelete} 
-        title={t('confirm_delete_session_title')} 
-        message={t('confirm_delete_session_msg')} 
-        confirmText={t('delete')} 
-        isDangerous={true} 
-        onCancel={() => actions.setSessionToDelete(null)} 
-        onConfirm={() => { if(state.sessionToDelete) onDiscardSession(state.sessionToDelete); actions.setSessionToDelete(null); }} 
-      />
-      
-      <ConfirmationModal 
-        isOpen={!!state.historyToDelete} 
-        title={t('confirm_delete_history_title')} 
-        message={t('confirm_delete_template_msg')} 
-        confirmText={t('delete')} 
-        isDangerous={true} 
-        onCancel={() => actions.setHistoryToDelete(null)} 
-        onConfirm={() => { if(state.historyToDelete) onDeleteHistory(state.historyToDelete); actions.setHistoryToDelete(null); }} 
-      />
-      
-      <ConfirmationModal 
-        isOpen={state.showClearAllConfirm} 
-        title={t('confirm_clear_all_sessions_title')} 
-        message={t('confirm_clear_all_sessions_msg')} 
-        confirmText={t('confirm_clear_all')} 
-        isDangerous={true} 
-        onCancel={() => actions.setShowClearAllConfirm(false)} 
-        onConfirm={() => { onClearAllActiveSessions(); actions.setShowClearAllConfirm(false); }} 
-      />
-      
-      <ConfirmationModal 
-        isOpen={!!state.restoreTarget} 
-        title={t('confirm_restore_title')} 
-        message={t('confirm_restore_msg')} 
-        confirmText={t('restore')} 
-        onCancel={() => actions.setRestoreTarget(null)} 
-        onConfirm={async () => { 
-            if(state.restoreTarget) { 
-                onRestoreSystem(state.restoreTarget.id);
-                actions.setRestoreTarget(null); 
-            } 
-        }} 
-      />
-      
-      <InstallGuideModal 
-        isOpen={state.showInstallGuide} 
-        onClose={() => actions.setShowInstallGuide(false)} 
+
+      <ConfirmationModal
+        isOpen={!!state.templateToDelete}
+        title={tDash('confirm_delete_template_title')}
+        message={tDash('confirm_delete_template_msg')}
+        confirmText={tCommon('delete')}
+        isDangerous={true}
+        onCancel={() => actions.setTemplateToDelete(null)}
+        onConfirm={() => { if (state.templateToDelete) onTemplateDelete(state.templateToDelete); actions.setTemplateToDelete(null); }}
       />
 
-      <DataManagerModal 
-        isOpen={state.showDataModal} 
+      <ConfirmationModal
+        isOpen={!!state.sessionToDelete}
+        title={tDash('confirm_delete_session_title')}
+        message={tDash('confirm_delete_session_msg')}
+        confirmText={tCommon('delete')}
+        isDangerous={true}
+        onCancel={() => actions.setSessionToDelete(null)}
+        onConfirm={() => { if (state.sessionToDelete) onDiscardSession(state.sessionToDelete); actions.setSessionToDelete(null); }}
+      />
+
+      <ConfirmationModal
+        isOpen={!!state.historyToDelete}
+        title={tDash('confirm_delete_history_title')}
+        message={tDash('confirm_delete_template_msg')}
+        confirmText={tCommon('delete')}
+        isDangerous={true}
+        onCancel={() => actions.setHistoryToDelete(null)}
+        onConfirm={() => { if (state.historyToDelete) onDeleteHistory(state.historyToDelete); actions.setHistoryToDelete(null); }}
+      />
+
+      <ConfirmationModal
+        isOpen={state.showClearAllConfirm}
+        title={tDash('confirm_clear_all_sessions_title')}
+        message={tDash('confirm_clear_all_sessions_msg')}
+        confirmText={tDash('confirm_clear_all')}
+        isDangerous={true}
+        onCancel={() => actions.setShowClearAllConfirm(false)}
+        onConfirm={() => { onClearAllActiveSessions(); actions.setShowClearAllConfirm(false); }}
+      />
+
+      <ConfirmationModal
+        isOpen={!!state.restoreTarget}
+        title={tDash('confirm_restore_title')}
+        message={tDash('confirm_restore_msg')}
+        confirmText={tCommon('restore')}
+        onCancel={() => actions.setRestoreTarget(null)}
+        onConfirm={async () => {
+          if (state.restoreTarget) {
+            onRestoreSystem(state.restoreTarget.id);
+            actions.setRestoreTarget(null);
+          }
+        }}
+      />
+
+      <InstallGuideModal
+        isOpen={state.showInstallGuide}
+        onClose={() => actions.setShowInstallGuide(false)}
+      />
+
+      <DataManagerModal
+        isOpen={state.showDataModal}
         onClose={() => actions.setShowDataModal(false)}
-        userTemplates={userTemplates} 
+        userTemplates={userTemplates}
         onImport={onBatchImport}
         onGetFullTemplate={onGetFullTemplate}
       />
 
-      <BgStatsModal 
-          isOpen={state.showBgStatsModal}
-          onClose={() => actions.setShowBgStatsModal(false)}
-          onImport={onBgStatsImport}
+      <BgStatsModal
+        isOpen={state.showBgStatsModal}
+        onClose={() => actions.setShowBgStatsModal(false)}
+        onImport={onBgStatsImport}
       />
 
       {/* New Modal */}
-      <BggImportModal 
-          isOpen={state.showBggImportModal}
-          onClose={() => actions.setShowBggImportModal(false)}
+      <BggImportModal
+        isOpen={state.showBggImportModal}
+        onClose={() => actions.setShowBggImportModal(false)}
       />
 
-      <CloudManagerModal 
+      <CloudManagerModal
         isOpen={state.showCloudModal}
-        initialCategory={state.cloudModalCategory} 
-        isConnected={isConnected} 
+        initialCategory={state.cloudModalCategory}
+        isConnected={isConnected}
         onClose={() => actions.setShowCloudModal(false)}
         isMockMode={isMockMode}
         fetchFileList={fetchFileList}
         restoreBackup={restoreBackup}
         restoreSessionBackup={restoreSessionBackup}
-        restoreHistoryBackup={restoreHistoryBackup} 
+        restoreHistoryBackup={restoreHistoryBackup}
         restoreFromTrash={restoreFromTrash}
         deleteCloudFile={deleteCloudFile}
         emptyTrash={emptyTrash}
         connectToCloud={connectToCloud}
         disconnectFromCloud={disconnectFromCloud}
-        onRestoreSuccess={onCloudRestoreSuccess} 
+        onRestoreSuccess={onCloudRestoreSuccess}
         onSessionRestoreSuccess={onSessionRestoreSuccess}
-        onHistoryRestoreSuccess={onHistoryRestoreSuccess} 
-        onSystemBackup={onSystemBackup} 
-        onSystemRestore={onSystemRestore} 
-        onGetLocalData={onGetLocalData} 
+        onHistoryRestoreSuccess={onHistoryRestoreSuccess}
+        onSystemBackup={onSystemBackup}
+        onSystemRestore={onSystemRestore}
+        onGetLocalData={onGetLocalData}
       />
     </>
   );
