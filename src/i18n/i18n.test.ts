@@ -4,7 +4,7 @@ import { columnEditorTranslations } from './column_editor';
 import { appTranslations } from './app';
 import { dashboardTranslations } from './dashboard';
 import { gameFlowTranslations } from './game_flow';
-import { bgStatsTranslations } from './bgstats';
+import { integrationTranslations } from './integration';
 import { cloudOnboardingTranslations } from './cloud_onboarding';
 import { gameSettingsTranslations } from './gameSettings';
 import { inspectorTranslations } from './inspector';
@@ -51,8 +51,8 @@ describe('i18n 雙語模組結構檢查', () => {
     expectSameKeysForLanguages('game_flow', gameFlowTranslations as BiTranslations);
   });
 
-  it('bgstats 雙語 key 應一致', () => {
-    expectSameKeysForLanguages('bgstats', bgStatsTranslations as BiTranslations);
+  it('integration 雙語 key 應一致', () => {
+    expectSameKeysForLanguages('integration', integrationTranslations as BiTranslations);
   });
 
   it('cloud_onboarding 雙語 key 應一致', () => {

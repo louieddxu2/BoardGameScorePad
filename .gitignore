@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Temp / Debug files (AI-generated during debugging sessions)
+err.txt
+err2.txt
+err3.txt
+err4.txt
+*.output.txt
+tsc_output.txt
+session_strings.txt
