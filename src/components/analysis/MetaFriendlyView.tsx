@@ -6,10 +6,9 @@ import { db } from '../../db';
 import { SavedListItem } from '../../types';
 import { useInspectorTranslation } from './InspectorShared';
 
-const WEEKDAY_MAP = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
-
 const CollapsibleSection = ({ icon, title, count, confidence, children }: { icon: React.ReactNode, title: string, count: number, confidence?: number, children?: React.ReactNode }) => {
     const [isOpen, setIsOpen] = useState(true);
+    const t = useInspectorTranslation();
     return (
         <div className="border border-slate-700/50 rounded-lg overflow-hidden bg-slate-900/30">
             <button
@@ -25,7 +24,7 @@ const CollapsibleSection = ({ icon, title, count, confidence, children }: { icon
                 </div>
                 <div className="flex items-center gap-2">
                     {confidence !== undefined && (
-                        <span className="text-[9px] font-mono text-sky-400 bg-sky-900/20 px-1.5 py-0.5 rounded border border-sky-500/20 flex items-center gap-1" title="信心值 (Confidence)">
+                        <span className="text-[9px] font-mono text-sky-400 bg-sky-900/20 px-1.5 py-0.5 rounded border border-sky-500/20 flex items-center gap-1" title={t('confidence_hint')}>
                             <Activity size={10} />
                             {confidence.toFixed(2)}
                         </span>
@@ -44,6 +43,12 @@ const CollapsibleSection = ({ icon, title, count, confidence, children }: { icon
 
 const MetaFriendlyView = ({ meta }: { meta: any }) => {
     const t = useInspectorTranslation();
+
+    // Weekday map from translations
+    const getWeekdayName = (idx: number) => {
+        const key = `day_${idx}` as any;
+        return t(key);
+    };
 
     // Helper to extract IDs from relation object safely
     const getRelIds = (key: string): string[] => {
@@ -144,7 +149,7 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
             ))}
 
             {renderCategory('playerCounts', <Hash size={12} className="text-orange-400" />, t('rel_player_counts'), (id, { entity }) => (
-                <span className="text-slate-300">{entity?.name || id} 人</span>
+                <span className="text-slate-300">{entity?.name || id} {t('unit_player')}</span>
             ))}
 
             {renderCategory('gameModes', <Trophy size={12} className="text-yellow-400" />, t('rel_modes'), (id, { entity }) => (
@@ -162,7 +167,7 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
 
             {renderCategory('weekdays', <Calendar size={12} className="text-sky-400" />, t('rel_weekdays'), (id, { entity }) => {
                 const dayIdx = parseInt(entity?.name || '0', 10);
-                return <span className="text-slate-300">{WEEKDAY_MAP[dayIdx] || entity?.name}</span>;
+                return <span className="text-slate-300">{getWeekdayName(dayIdx)}</span>;
             })}
 
             {renderCategory('timeSlots', <Watch size={12} className="text-amber-400" />, t('rel_timeslots'), (id, { entity }) => (

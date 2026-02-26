@@ -169,7 +169,7 @@ const CountdownTool: React.FC = () => {
                         ) : (
                             <>
                                 <BellOff size={12} />
-                                <span>關閉</span>
+                                <span>{t('countdown_close')}</span>
                             </>
                         )}
                     </button>

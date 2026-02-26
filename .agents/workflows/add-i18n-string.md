@@ -90,3 +90,8 @@ npx tsc --noEmit
 1. **忘記在 `en` 區段加字串** → `tsc` 不會報錯，但切換到英文時 key 名稱會直接顯示
 2. **從 `../i18n` 或 `../../i18n` 直接 import** → Vite 可能解析錯誤，應從 `./index` 或對應字典檔匯入
 3. **新增字串後未重啟 dev server** → 若 Vite HMR 異常，可能需要 `Ctrl+C` 後重新 `npm run dev`
+
+## 🚫 絕對禁止
+
+4. **在 ErrorBoundary 等安全網元件使用 `useXxxTranslation()` hook** → 這些元件是 React 最後防線，若它們依賴的 Context Provider 出問題，整個 App 白畫面。安全網元件應使用硬編碼雙語字串 + `localStorage.getItem('app_language')` 直接判斷語言。
+5. **在 `index.html` 中新增額外的 `<script type="module" src="...index.tsx">` 或 `<script type="importmap">`** → 會導致 Vite 建立多個模組實體，React Context 實例分裂，造成 Provider 與 Consumer 斷裂。`index.html` 的 script 入口**永遠只能有一個**。

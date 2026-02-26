@@ -10,9 +10,16 @@ import MetaFriendlyView from './MetaFriendlyView';
 // --- Helper Hook ---
 export const useInspectorTranslation = () => {
     const { language } = useCommonTranslation();
-    const t = (key: InspectorTranslationKey) => {
+    const t = (key: InspectorTranslationKey, params?: Record<string, any>) => {
         const dict = inspectorTranslations[language] || inspectorTranslations['zh-TW'];
-        return dict[key] || key;
+        let text = dict[key] || key;
+
+        if (params) {
+            Object.entries(params).forEach(([k, v]) => {
+                text = text.replace(`{${k}}`, String(v));
+            });
+        }
+        return text;
     };
     return t;
 };
@@ -64,13 +71,13 @@ export const InspectorDetailPanel = ({ selectedItem, icon: Icon, isBGG = false }
                                 </div>
 
                                 <div className="flex flex-wrap gap-x-3 text-xs text-indigo-300/70">
-                                    {bggInfo.year && <span>年份: <span className="text-indigo-200">{bggInfo.year}</span></span>}
-                                    {bggInfo.rank && <span>排名: <span className="text-indigo-200">#{bggInfo.rank}</span></span>}
+                                    {bggInfo.year && <span>{t('bgg_year')}: <span className="text-indigo-200">{bggInfo.year}</span></span>}
+                                    {bggInfo.rank && <span>{t('bgg_rank')}: <span className="text-indigo-200">#{bggInfo.rank}</span></span>}
                                 </div>
 
                                 {bggInfo.complexity > 0 && (
                                     <div className="text-xs text-indigo-300/70 mt-0.5">
-                                        重度: <span className="text-indigo-200">{Number(bggInfo.complexity).toFixed(2)} / 5</span>
+                                        {t('bgg_complexity')}: <span className="text-indigo-200">{Number(bggInfo.complexity).toFixed(2)} / 5</span>
                                     </div>
                                 )}
                             </div>
@@ -78,29 +85,29 @@ export const InspectorDetailPanel = ({ selectedItem, icon: Icon, isBGG = false }
                             <div className="text-xs text-indigo-300/70 space-y-1 pt-2 border-t border-indigo-500/20">
                                 <div className="flex flex-wrap gap-x-4">
                                     {(bggInfo.minPlayers || bggInfo.maxPlayers) && (
-                                        <div>人數: <span className="text-indigo-200">{bggInfo.minPlayers || 1}{bggInfo.maxPlayers ? `-${bggInfo.maxPlayers}` : ''}</span></div>
+                                        <div>{t('bgg_players')}: <span className="text-indigo-200">{bggInfo.minPlayers || 1}{bggInfo.maxPlayers ? `-${bggInfo.maxPlayers}` : ''}</span></div>
                                     )}
                                     {bggInfo.bestPlayers && bggInfo.bestPlayers.length > 0 && (
-                                        <div><Star size={10} className="inline mb-0.5 mr-0.5 text-yellow-500" fill="currentColor" />最佳: <span className="text-emerald-300 font-bold">{bggInfo.bestPlayers.join(', ')}</span> 人</div>
+                                        <div><Star size={10} className="inline mb-0.5 mr-0.5 text-yellow-500" fill="currentColor" />{t('bgg_best')}: <span className="text-emerald-300 font-bold">{bggInfo.bestPlayers.join(', ')}</span> {t('unit_player')}</div>
                                     )}
                                 </div>
 
                                 <div className="flex flex-wrap gap-x-4">
                                     {bggInfo.playingTime && (
-                                        <div>時間: <span className="text-indigo-200">{bggInfo.playingTime}m</span></div>
+                                        <div>{t('bgg_playing_time')}: <span className="text-indigo-200">{bggInfo.playingTime}{t('unit_minute')}</span></div>
                                     )}
                                     {bggInfo.minAge && (
-                                        <div>年齡: <span className="text-indigo-200">{bggInfo.minAge}+</span></div>
+                                        <div>{t('bgg_age')}: <span className="text-indigo-200">{bggInfo.minAge}+</span></div>
                                     )}
                                 </div>
 
                                 {bggInfo.designers && (
-                                    <div className="truncate">設計師: <span className="text-indigo-200">{bggInfo.designers}</span></div>
+                                    <div className="truncate">{t('bgg_designers')}: <span className="text-indigo-200">{bggInfo.designers}</span></div>
                                 )}
 
                                 {bggInfo.altNames && bggInfo.altNames.length > 0 && (
                                     <div className="pt-1 mt-1 border-t border-indigo-500/10">
-                                        <span className="block opacity-60 text-[10px] uppercase">別名:</span>
+                                        <span className="block opacity-60 text-[10px] uppercase">{t('bgg_alt_names')}:</span>
                                         <div className="text-indigo-200 flex flex-wrap gap-1 mt-0.5">
                                             {bggInfo.altNames.map((name: string) => (
                                                 <span key={name} className="bg-indigo-900/40 px-1.5 py-0.5 rounded text-[10px] border border-indigo-500/20">{name}</span>
@@ -199,7 +206,7 @@ export const DataList = ({ title, table, icon: Icon, isBGG = false }: { title: s
                 <div className="p-2 sticky top-0 bg-slate-900 border-b border-slate-700 z-10 backdrop-blur-sm bg-opacity-95">
                     <div className="flex justify-between items-center mb-2">
                         <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
-                            <Icon size={12} /> {title} (顯示前{data.length}筆)
+                            <Icon size={12} /> {title} ({t('list_display_prefix')}{data.length}{t('list_display_suffix')})
                         </span>
                     </div>
                     <div className="relative">
@@ -208,7 +215,7 @@ export const DataList = ({ title, table, icon: Icon, isBGG = false }: { title: s
                             type="text"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="搜尋..."
+                            placeholder={t('input_search_placeholder')}
                             className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-7 pr-6 py-1 text-xs text-white focus:border-emerald-500 outline-none"
                         />
                         {searchTerm && (

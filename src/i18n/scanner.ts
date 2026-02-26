@@ -44,6 +44,19 @@ export const scannerTranslations = {
         mapper_struct_clear: "清空此列",
         mapper_success: "模板建立成功",
         mapper_success_msg: "已套用計分紙紋理！",
+
+        // New additions
+        scan_share_title: "已校正計分表",
+        scan_preview_alt: "校正結果",
+        scan_btn_save_device_title: "儲存圖片到裝置",
+        scan_btn_edit_grid: "修改網格",
+        scan_source_or: "或",
+
+        camera_toast_auto_rotate: "已啟用自動旋轉偵測",
+        camera_toast_access_denied: "相機存取被拒。",
+        camera_toast_no_device: "找不到相機裝置。",
+        camera_toast_start_failed: "無法啟動相機。",
+        camera_auto_save: "拍照後自動儲存",
     },
     'en': {
         scan_title: "Rectify Image",
@@ -88,6 +101,19 @@ export const scannerTranslations = {
         mapper_struct_clear: "Clear Row",
         mapper_success: "Template Created",
         mapper_success_msg: "Texture applied successfully!",
+
+        // New additions
+        scan_share_title: "Rectified Score Sheet",
+        scan_preview_alt: "Rectified Result",
+        scan_btn_save_device_title: "Save image to device",
+        scan_btn_edit_grid: "Edit Grid",
+        scan_source_or: "OR",
+
+        camera_toast_auto_rotate: "Auto-rotation detection enabled",
+        camera_toast_access_denied: "Camera access denied.",
+        camera_toast_no_device: "No camera device found.",
+        camera_toast_start_failed: "Failed to start camera.",
+        camera_auto_save: "Auto-save after capture",
     }
 };
 

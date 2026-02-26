@@ -136,12 +136,12 @@ export const useAppData = () => {
 
             if (isCloudEnabled() && templateToDelete) {
                 googleDriveService.softDeleteFolder(id, 'template').then(() => {
-                    showToast({ message: "已同步移至雲端垃圾桶", type: 'info' });
+                    showToast({ message: tApp('app_toast_sync_trash'), type: 'info' });
                 }).catch(console.error);
             }
         } catch (error) {
             console.error("Delete failed", error);
-            showToast({ message: "刪除失敗，請重試", type: 'error' });
+            showToast({ message: tApp('app_toast_delete_failed'), type: 'error' });
         }
     };
 
@@ -160,7 +160,7 @@ export const useAppData = () => {
                 // Check if it qualifies as disposable based on the NEW pinned state (unpinned)
                 if (isDisposableTemplate(template, nextPinnedIds)) {
                     await deleteTemplate(id);
-                    showToast({ message: "簡易計分板已移除", type: 'info' });
+                    showToast({ message: tApp('app_toast_disposable_removed'), type: 'info' });
                 }
             }
         }
@@ -209,11 +209,11 @@ export const useAppData = () => {
                 googleDriveService.softDeleteFolder(shadowTemplate.id, 'template').catch(console.error);
             }
 
-            showToast({ message: "已還原預設值 (修改已另存為備份)", type: 'success' });
+            showToast({ message: tApp('app_toast_restore_builtin'), type: 'success' });
 
         } catch (error) {
             console.error("Restore failed", error);
-            showToast({ message: "還原失敗", type: 'error' });
+            showToast({ message: tApp('app_toast_restore_failed'), type: 'error' });
         }
     };
 
@@ -227,10 +227,10 @@ export const useAppData = () => {
                 googleDriveService.softDeleteFolder(record.cloudFolderId, 'history').catch(console.error);
             }
 
-            showToast({ message: "紀錄已刪除", type: 'info' });
+            showToast({ message: tApp('app_toast_history_deleted'), type: 'info' });
         } catch (error) {
             console.error("Failed to delete history:", error);
-            showToast({ message: "刪除失敗", type: 'error' });
+            showToast({ message: tApp('app_toast_delete_failed'), type: 'error' });
         }
     };
 
@@ -312,10 +312,10 @@ export const useAppData = () => {
     const importSession = async (session: GameSession) => {
         try {
             await db.sessions.put(session);
-            showToast({ message: "遊戲進度已匯入", type: 'success' });
+            showToast({ message: tApp('app_toast_import_session'), type: 'success' });
         } catch (e) {
             console.error("Failed to import session", e);
-            showToast({ message: "匯入失敗", type: 'error' });
+            showToast({ message: tApp('app_toast_import_failed'), type: 'error' });
         }
     };
 
@@ -328,21 +328,16 @@ export const useAppData = () => {
                 console.log("Cleaned up conflicting active session during history restore");
             }
 
-            showToast({ message: "歷史紀錄已還原", type: 'success' });
+            showToast({ message: tApp('app_toast_history_restored'), type: 'success' });
         } catch (e) {
             console.error("Failed to import history", e);
-            showToast({ message: "還原失敗", type: 'error' });
+            showToast({ message: tApp('app_toast_restore_failed'), type: 'error' });
         }
     };
 
     const importBgStatsData = async (data: BgStatsExport, links: ImportManualLinks): Promise<boolean> => {
         try {
             const count = await bgStatsImportService.importData(data, links, (msgKey) => {
-                // Now we pass KEYS to importData and resolve them here or vice versa?
-                // Actually, simpler to just pass the translated string if the service 
-                // doesn't know about i18n.
-                // Let's modify importData to accept msgKey instead if we want to be clean,
-                // OR just translate it here.
             });
             showToast({ message: tApp('msg_import_success', { count }), type: 'success' });
             markSystemDirty();

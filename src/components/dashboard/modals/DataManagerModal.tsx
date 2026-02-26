@@ -46,7 +46,7 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
         try {
           parsed = JSON.parse(jsonString);
         } catch (e) {
-          const msg = "JSON 格式錯誤，無法解析";
+          const msg = t('data_json_parse_err');
           setImportError(msg);
           if (source === 'file') alert(msg);
           setIsProcessing(false);
@@ -54,9 +54,8 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
         }
 
         // 1. 系統備份檔偵測 (App 自己的備份檔)
-        // 這是給未來擴充用的防呆，避免使用者在這裡匯入全系統備份
         if (parsed.data && parsed.preferences && parsed.library) {
-          alert("偵測到完整系統備份檔。請至「同步與備份」功能中的「從雲端還原」介面進行匯入。\n目前此處僅支援匯入「遊戲模板列表」。");
+          alert(t('data_backup_detect'));
           setIsProcessing(false);
           return;
         }
@@ -100,16 +99,16 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
         console.error(e);
         const msg = e.message || t('data_import_error');
         setImportError(msg);
-        alert(`匯入失敗：${msg}`);
+        alert(`${t('data_import_fail_prefix')}${msg}`);
       } finally {
         setIsProcessing(false);
       }
-    }, 100); // 100ms delay to ensure UI paints 'Processing...'
+    }, 100);
   };
 
   const handleManualImport = () => {
     if (!importJson.trim()) {
-      showToast({ message: "請先貼上 JSON 資料或選擇檔案", type: 'warning' });
+      showToast({ message: t('data_import_empty_ph'), type: 'warning' });
       return;
     }
     processJsonData(importJson, 'paste');
@@ -123,7 +122,6 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
     reader.onload = (ev) => {
       const result = ev.target?.result;
       if (typeof result === 'string') {
-        // 讀取完成後，交給處理函式 (這會觸發 Processing UI)
         processJsonData(result, 'file');
       }
     };
@@ -236,9 +234,9 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
                   <label className={`flex flex-col items-center justify-center gap-1 w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl border border-slate-700 cursor-pointer transition-colors group ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
                     <div className="flex items-center gap-2">
                       <FileJson size={20} className="text-indigo-400" />
-                      <span className="text-xs text-white">讀取模板 JSON</span>
+                      <span className="text-xs text-white">{t('data_read_json_btn')}</span>
                     </div>
-                    <span className="text-[9px] text-slate-500 scale-90 group-hover:text-slate-400">僅支援 GameTemplate 格式</span>
+                    <span className="text-[9px] text-slate-500 scale-90 group-hover:text-slate-400">{t('data_template_only')}</span>
 
                     <input
                       type="file"
@@ -256,11 +254,11 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
                     className={`w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/50 flex flex-col items-center justify-center gap-0.5 ${isProcessing ? 'opacity-70 cursor-not-allowed' : ''}`}
                   >
                     {isProcessing ? (
-                      <span className="text-xs flex items-center gap-1"><Loader2 size={16} className="animate-spin" /> 處理中...</span>
+                      <span className="text-xs flex items-center gap-1"><Loader2 size={16} className="animate-spin" /> {t('data_processing')}</span>
                     ) : (
-                      <span className="text-xs flex items-center gap-1"><Check size={16} /> 執行匯入</span>
+                      <span className="text-xs flex items-center gap-1"><Check size={16} /> {t('data_execute_import')}</span>
                     )}
-                    <span className="text-[9px] text-emerald-100 opacity-80">解析上方內容</span>
+                    <span className="text-[9px] text-emerald-100 opacity-80">{t('data_parse_content')}</span>
                   </button>
                 </div>
               </div>

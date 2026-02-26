@@ -31,20 +31,18 @@ export const sessionTranslations = {
     session_action_share: '分享',
     session_action_options: '選項',
 
-    // --- Modals common ---
-    modal_or: "或",
-    modal_no_cols: "沒有可複製的項目",
-
     // --- Add Column Modal ---
     modal_add_col_title: "新增計分項目",
     modal_copy_existing: "複製現有項目：",
     modal_copy_count: "複製 {count} 個選取項目",
     modal_add_blank: "建立全新空白項目",
+    modal_or: "或",
+    modal_no_cols: "沒有可複製的項目",
 
     // --- Input Panel ---
     input_edit_player: "編輯玩家",
     input_total_adjust: "總分修正",
-    input_clear: "清除",
+    input_clear: '清除',
     input_reset: "重置",
     input_next: "下一項",
     input_tie_breaker: "打破平手",
@@ -52,16 +50,16 @@ export const sessionTranslations = {
     input_auto_calc: "自動計算",
     input_auto_desc: "此欄位由公式自動產生結果。您無需手動輸入數值。",
     input_list_menu: "列表選單",
-    input_calc_mode: "數值運算",
-    input_rounding: "小數處理",
-    input_not_scored: "此欄位不計入總分",
-    input_prod_title: "乘積輸入",
-    input_sum_title: "分項累加",
-    input_lookup_title: "範圍查表",
-    input_fixed_score: "固定分數",
-    input_no_rule: "無規則",
     input_btn_enter: "輸入",
     input_placeholder_name: '變更玩家名稱',
+    input_prod_title: '乘積輸入',
+    input_sum_title: '分項累加',
+    input_lookup_title: '範圍查表',
+    input_calc_mode: '數值運算',
+    input_rounding: '小數處理',
+    input_not_scored: '此欄位不計入總分',
+    input_fixed_score: "固定分數",
+    input_no_rule: "無規則",
 
     // --- Player Editor ---
     player_placeholder: "輸入名稱",
@@ -78,12 +76,17 @@ export const sessionTranslations = {
     player_stats_rank: '目前排名',
     player_action_remove: '移除玩家',
     player_action_remove_confirm: '確定',
+    player_editor_placeholder: '輸入名稱',
+    player_editor_no_results: '無符合搜尋結果',
+    player_editor_no_history: '無紀錄',
+    player_editor_set_starter: '設為起始玩家',
+    player_editor_is_starter: '起始玩家',
+    player_color_none: '無色',
+    player_is_starter_short: '起始玩家',
+    player_search_empty: "無符合搜尋結果",
 
     // --- Photo / Screenshot Actions ---
     photo_modal_title: '分享結果',
-    ss_generating: "正在繪製圖片...",
-    ss_copy_success: "已複製到剪貼簿",
-    ss_download_start: "下載已開始",
     photo_btn_capture: '截圖',
     photo_btn_delete: '刪除',
     photo_btn_share: '分享',
@@ -103,6 +106,12 @@ export const sessionTranslations = {
     photo_action_hide_score: '隱藏分數',
     photo_action_show_score: '顯示分數',
     photo_anon_title: '點擊以隱藏玩家姓名',
+    ss_generating: "正在繪製圖片...",
+    ss_copy_success: "已複製到剪貼簿",
+    ss_download_start: "下載已開始",
+    ss_total_label: "總分",
+    ss_player_label: "玩家",
+    ss_app_title: "萬用桌遊計分板",
 
     // --- Photo Gallery ---
     gallery_title: "遊戲照片庫",
@@ -124,6 +133,10 @@ export const sessionTranslations = {
     share_photo_count: "目前 {count} 張照片",
     share_camera_title: '拍照並儲存',
     share_set_bg: '設定計分紙背景',
+    share_download_success: '已下載圖片',
+    share_failed: '分享失敗',
+    share_composite_failed: '合成圖片失敗，請重試',
+    share_title: '遊戲照片',
 
     // --- Background Modal ---
     bg_modal_title: "設定計分紙背景",
@@ -139,6 +152,7 @@ export const sessionTranslations = {
     // --- Smart Spacer ---
     smart_spacer_hint: '點擊上方分數格開始輸入',
     smart_spacer_tools_title: '桌遊工具箱',
+    quick_button_empty: "尚未設定快速按鈕",
 
     // --- Grid ---
     grid_total_score: '總分',
@@ -148,7 +162,61 @@ export const sessionTranslations = {
     grid_player: "玩家",
     grid_hidden: "隱藏中",
     grid_overlay: "疊加模式",
-    grid_toggle_toolbox: "開啟/關閉工具箱"
+    grid_toggle_toolbox: "開啟/關閉工具箱",
+    col_copy_suffix: " (複製)",
+    col_name_with_index: "項目 {n}",
+    toast_add_column_success: "已新增空白項目",
+    toast_copy_columns_success: "已複製 {count} 個項目",
+    toast_sync_bgg_success: "已同步更新 {count} 筆歷史紀錄的連結",
+    toast_bg_updated: "背景圖片已更新",
+    toast_edit_mode_tip: "提醒：部分計分紙需點選上方鎖定至使用模式才能獲得完整體驗",
+    toast_save_failed: "儲存失敗",
+    toast_process_failed: "圖片處理失敗",
+    toast_photo_deleted: "照片已刪除",
+    toast_delete_failed: "刪除失敗",
+    toast_bg_removed: "背景計分紙已移除",
+    toast_remove_failed: "移除失敗",
+    msg_template_read_failed: "無法讀取模板資料",
+    msg_session_saved: "遊戲紀錄已儲存！",
+    msg_session_save_failed: "儲存失敗，請重試",
+
+    // --- Errors ---
+    error_ref_lost: '參照的欄位已遺失',
+    error_calc_general: '計算錯誤',
+    error_calc_div_zero: '計算錯誤 (如除以0)',
+
+    // --- Score Info Details ---
+    score_info_unit_qty: '數量',
+    score_info_unit_price: '單價',
+    score_info_unit_score: '分',
+    score_info_no_rule: "無規則",
+    score_info_fixed: '固定分數',
+    score_info_parts_empty: '尚無分項',
+    score_info_per_unit: '每 {unit}{suffix}',
+    score_info_add: '加',
+    score_info_round_floor: '無條件捨去',
+    score_info_round_ceil: '無條件進位',
+    score_info_round_any: '四捨五入',
+
+    // --- Lightbox ---
+    lightbox_generating: '正在合成計分表...',
+    lightbox_anon_hint: '點擊以隱藏玩家姓名',
+    lightbox_show_score: '顯示分數',
+    lightbox_hide_score: '隱藏分數',
+    lightbox_view_reset: '重置視角',
+    lightbox_anon_setting: '匿名設定',
+    lightbox_player_n: '玩家 {n}',
+
+    auto_panel_title: '自動計算公式',
+    auto_panel_result: '結果',
+    auto_panel_no_vars: '此公式沒有使用任何變數',
+    auto_panel_vars_detail: '變數詳情',
+    auto_panel_player_count: '👥 玩家人數',
+    auto_panel_not_found: '找不到欄位',
+    auto_panel_mode_rank_score: '分數排名',
+    auto_panel_mode_rank_player: '玩家排名',
+    auto_panel_mode_tie_count: '平手數',
+    auto_panel_footer_hint: '數值將自動隨其他欄位更新而變化',
   },
   'en': {
     // --- Session View ---
@@ -180,20 +248,18 @@ export const sessionTranslations = {
     session_action_share: 'Share',
     session_action_options: 'Options',
 
-    // --- Modals common ---
-    modal_or: "or",
-    modal_no_cols: "No items to copy",
-
     // --- Add Column Modal ---
     modal_add_col_title: "Add Item",
     modal_copy_existing: "Copy existing:",
     modal_copy_count: "Copy {count} selected",
     modal_add_blank: "Create new blank item",
+    modal_or: "or",
+    modal_no_cols: "No items to copy",
 
     // --- Input Panel ---
     input_edit_player: "Edit Player",
     input_total_adjust: "Total Adjustment",
-    input_clear: "Clear",
+    input_clear: 'Clear',
     input_reset: "Reset",
     input_next: "Next",
     input_tie_breaker: "Tie Breaker",
@@ -201,16 +267,16 @@ export const sessionTranslations = {
     input_auto_calc: "Auto Calc",
     input_auto_desc: "This field is calculated automatically. No manual input required.",
     input_list_menu: "List Menu",
-    input_calc_mode: "Calculator",
-    input_rounding: "Rounding",
-    input_not_scored: "Not included in total",
-    input_prod_title: "Product Input",
-    input_sum_title: "Sum Parts",
-    input_lookup_title: "Lookup Table",
-    input_fixed_score: "Fixed Score",
-    input_no_rule: "No Rule",
     input_btn_enter: "Enter",
     input_placeholder_name: 'Change player name',
+    input_prod_title: 'Product Input',
+    input_sum_title: 'Sum Parts',
+    input_lookup_title: 'Lookup Table',
+    input_calc_mode: 'Calculation',
+    input_rounding: 'Rounding',
+    input_not_scored: 'Not included in total score',
+    input_fixed_score: "Fixed Score",
+    input_no_rule: "No Rule",
 
     // --- Player Editor ---
     player_placeholder: "Enter Name",
@@ -227,12 +293,17 @@ export const sessionTranslations = {
     player_stats_rank: 'Current Rank',
     player_action_remove: 'Remove Player',
     player_action_remove_confirm: 'Confirm',
+    player_editor_placeholder: 'Enter name',
+    player_editor_no_results: 'No matching results',
+    player_editor_no_history: 'No history',
+    player_editor_set_starter: 'Set as Starter',
+    player_editor_is_starter: 'Starter Player',
+    player_color_none: 'Transparent',
+    player_is_starter_short: 'Starter',
+    player_search_empty: "No results matched",
 
     // --- Photo / Screenshot Actions ---
     photo_modal_title: 'Share Results',
-    ss_generating: "Generating...",
-    ss_copy_success: "Copied to clipboard",
-    ss_download_start: "Download started",
     photo_btn_capture: 'Capture',
     photo_btn_delete: 'Delete',
     photo_btn_share: 'Share',
@@ -252,6 +323,12 @@ export const sessionTranslations = {
     photo_action_hide_score: 'Hide Score',
     photo_action_show_score: 'Show Score',
     photo_anon_title: 'Tap to hide name',
+    ss_generating: "Generating...",
+    ss_copy_success: "Copied to clipboard",
+    ss_download_start: "Download started",
+    ss_total_label: "Total",
+    ss_player_label: "Player",
+    ss_app_title: "Board Game ScorePad",
 
     // --- Photo Gallery ---
     gallery_title: "Game Photos",
@@ -273,6 +350,10 @@ export const sessionTranslations = {
     share_photo_count: "{count} Photos",
     share_camera_title: 'Take & Save',
     share_set_bg: 'Set Background',
+    share_download_success: 'Image downloaded',
+    share_failed: 'Share failed',
+    share_composite_failed: 'Composite failed, please try again',
+    share_title: 'Game Photo',
 
     // --- Background Modal ---
     bg_modal_title: "Set Score Sheet Background",
@@ -288,6 +369,7 @@ export const sessionTranslations = {
     // --- Smart Spacer ---
     smart_spacer_hint: 'Tap a score cell to start',
     smart_spacer_tools_title: 'Game Toolbox',
+    quick_button_empty: "No quick buttons configured",
 
     // --- Grid ---
     grid_total_score: 'Total',
@@ -297,7 +379,61 @@ export const sessionTranslations = {
     grid_player: "Player",
     grid_hidden: "Hidden",
     grid_overlay: "Overlay",
-    grid_toggle_toolbox: "Toggle Toolbox"
+    grid_toggle_toolbox: "Toggle Toolbox",
+    col_copy_suffix: " (Copy)",
+    col_name_with_index: "Item {n}",
+    toast_add_column_success: "Added blank item",
+    toast_copy_columns_success: "Copied {count} items",
+    toast_sync_bgg_success: "Synced {count} history records",
+    toast_bg_updated: "Background updated",
+    toast_edit_mode_tip: "Tip: Some score sheets require locking to Play Mode for the best experience",
+    toast_save_failed: "Save failed",
+    toast_process_failed: "Processing failed",
+    toast_photo_deleted: "Photo deleted",
+    toast_delete_failed: "Delete failed",
+    toast_bg_removed: "Background removed",
+    toast_remove_failed: "Removal failed",
+    msg_template_read_failed: "Failed to read template data",
+    msg_session_saved: "Game record saved!",
+    msg_session_save_failed: "Failed to save, please try again",
+
+    // --- Errors ---
+    error_ref_lost: "Referenced item lost",
+    error_calc_general: "Calculation error",
+    error_calc_div_zero: "Calc error (Div by 0)",
+
+    // --- Score Info Details ---
+    score_info_unit_qty: "Qty",
+    score_info_unit_price: "Price",
+    score_info_unit_score: "pts",
+    score_info_no_rule: "No rule",
+    score_info_fixed: "Fixed",
+    score_info_parts_empty: "No parts yet",
+    score_info_per_unit: "per {unit}{suffix}",
+    score_info_add: "add",
+    score_info_round_floor: "Floor",
+    score_info_round_ceil: "Ceil",
+    score_info_round_any: "Round",
+
+    // --- Lightbox ---
+    lightbox_generating: 'Composing score sheet...',
+    lightbox_anon_hint: 'Click to hide player names',
+    lightbox_show_score: 'Show Score',
+    lightbox_hide_score: 'Hide Score',
+    lightbox_view_reset: 'Reset View',
+    lightbox_anon_setting: 'Anonymous Settings',
+    lightbox_player_n: 'Player {n}',
+
+    auto_panel_title: 'Auto Calculation Formula',
+    auto_panel_result: 'Result',
+    auto_panel_no_vars: 'This formula uses no variables',
+    auto_panel_vars_detail: 'Variable Details',
+    auto_panel_player_count: '👥 Player Count',
+    auto_panel_not_found: 'Field not found',
+    auto_panel_mode_rank_score: 'Score Rank',
+    auto_panel_mode_rank_player: 'Player Rank',
+    auto_panel_mode_tie_count: 'Tie Count',
+    auto_panel_footer_hint: 'Values update automatically based on other fields',
   },
 };
 

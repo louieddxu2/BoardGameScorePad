@@ -8,7 +8,7 @@ import { useToast } from '../../../hooks/useToast';
 import SyncDashboard from './SyncDashboard';
 import { db } from '../../../db';
 import { useCommonTranslation } from '../../../i18n/common';
-import { cloudOnboardingTranslations, CloudOnboardingKey } from '../../../i18n/cloud_onboarding';
+import { useCloudTranslation } from '../../../i18n/cloud';
 
 interface CloudManagerModalProps {
     isOpen: boolean;
@@ -51,17 +51,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
     const { showToast } = useToast();
     const { t: tCommon, language } = useCommonTranslation();
 
-    // Helper for Cloud Onboarding Translation with Params support
-    const tCloud = (key: CloudOnboardingKey, params?: Record<string, string | number>) => {
-        const dict = cloudOnboardingTranslations[language] || cloudOnboardingTranslations['zh-TW'];
-        let text = dict[key] || key;
-        if (params) {
-            Object.entries(params).forEach(([k, v]) => {
-                text = text.replace(`{${k}}`, String(v));
-            });
-        }
-        return text;
-    };
+    const { t: tCloud } = useCloudTranslation();
 
     // Sync Dashboard State
     const [showSyncDashboard, setShowSyncDashboard] = useState(false);
@@ -298,7 +288,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                 const { _tempImageBase64, ...cleanTemplate } = templateWithExtra as any;
                 onRestoreSuccess(cleanTemplate);
                 if (_tempImageBase64) {
-                    showToast({ message: "模板已還原。注意：背景圖片需在開啟遊戲時重新設定或由雲端載入。", type: 'info' });
+                    showToast({ message: tCloud('cloud_image_note'), type: 'info' });
                 }
             } else if (category === 'sessions') {
                 const uuid = extractId(file.name);
@@ -306,7 +296,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                     const historyRecord = await db.history.get(uuid);
                     if (historyRecord) {
                         const dateStr = new Date(historyRecord.endTime).toLocaleString();
-                        window.alert(`此進行中遊戲已結束並存放於歷史紀錄中，要下載請先手動刪除該歷史紀錄（時間：${dateStr}）`);
+                        window.alert(tCloud('cloud_alert_session_in_history', { date: dateStr }));
                         setIsLoading(false);
                         return;
                     }
@@ -317,7 +307,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                 if (localTemplate) {
                     onSessionRestoreSuccess(session);
                 } else {
-                    showToast({ message: "本機找不到對應計分板，正在搜尋雲端備份...", type: 'info' });
+                    showToast({ message: tCloud('cloud_toast_find_linked_template'), type: 'info' });
                     const templatesList = await fetchFileList('active', 'templates');
                     const targetFile = templatesList.find(t => extractId(t.name) === session.templateId);
 
@@ -326,9 +316,9 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                         const { _tempImageBase64, ...cleanTemplate } = templateWithExtra as any;
                         onRestoreSuccess(cleanTemplate);
                         onSessionRestoreSuccess(session);
-                        showToast({ message: "已自動還原關聯的計分板與紀錄", type: 'success' });
+                        showToast({ message: tCloud('cloud_toast_restore_all_success'), type: 'success' });
                     } else {
-                        window.alert("對應計分板已遺失，無法還原此紀錄");
+                        window.alert(tCloud('cloud_alert_template_missing'));
                     }
                 }
 
@@ -438,17 +428,17 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
         >
             <ConfirmationModal
                 isOpen={!!fileToDelete}
-                title={tCloud('confirm_delete_title')}
-                message={tCloud('confirm_delete_msg', { name: fileToDelete ? cleanName(fileToDelete.name) : '' })}
-                confirmText={tCloud('btn_delete_perm')}
+                title={tCloud('cloud_confirm_delete_title')}
+                message={tCloud('cloud_confirm_delete_msg', { name: fileToDelete ? cleanName(fileToDelete.name) : '' })}
+                confirmText={tCloud('cloud_delete_perm')}
                 isDangerous={true}
                 onCancel={() => setFileToDelete(null)}
                 onConfirm={handleFileDelete}
             />
             <ConfirmationModal
                 isOpen={showEmptyTrashConfirm}
-                title={tCloud('confirm_empty_title')}
-                message={tCloud('confirm_empty_msg')}
+                title={tCloud('cloud_confirm_empty_title')}
+                message={tCloud('cloud_confirm_empty_msg')}
                 confirmText={tCommon('confirm')}
                 isDangerous={true}
                 onCancel={() => setShowEmptyTrashConfirm(false)}
@@ -456,8 +446,8 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
             />
             <ConfirmationModal
                 isOpen={showDisconnectConfirm}
-                title={tCloud('confirm_logout_title')}
-                message={tCloud('confirm_logout_msg')}
+                title={tCloud('cloud_confirm_logout_title')}
+                message={tCloud('cloud_confirm_logout_msg')}
                 confirmText={tCommon('confirm')}
                 onCancel={() => setShowDisconnectConfirm(false)}
                 onConfirm={handleDisconnect}
@@ -485,14 +475,14 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                                 <button
                                     onClick={() => setShowDisconnectConfirm(true)}
                                     className="p-1.5 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 rounded-lg text-red-400 transition-colors"
-                                    title={tCloud('disconnect')}
+                                    title={tCloud('cloud_disconnect')}
                                 >
                                     <CloudOff size={16} />
                                 </button>
                             )}
                             <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                <DownloadCloud size={20} className="text-sky-400" /> {tCloud('title')}
-                                {isMockMode && <span className="text-xs bg-amber-900/50 text-amber-400 px-2 py-0.5 rounded border border-amber-500/30">模擬</span>}
+                                <DownloadCloud size={20} className="text-sky-400" /> {tCloud('cloud_title')}
+                                {isMockMode && <span className="text-xs bg-amber-900/50 text-amber-400 px-2 py-0.5 rounded border border-amber-500/30">{tCloud('cloud_mock_badge')}</span>}
                             </h3>
                         </div>
 
@@ -503,7 +493,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                                     className="bg-emerald-600 hover:bg-emerald-500 text-white p-1.5 px-3 rounded-lg transition-all flex items-center gap-2 shadow-sm font-bold text-xs"
                                     title={tCloud('sync_title')}
                                 >
-                                    <ArrowRightLeft size={16} /> {tCloud('open_sync')}
+                                    <ArrowRightLeft size={16} /> {tCloud('cloud_open_sync')}
                                 </button>
                             )}
                             <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={24} /></button>
@@ -516,27 +506,27 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                             disabled={!isConnected}
                             className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${category === 'templates' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                            <LayoutGrid size={14} /> {tCloud('tab_templates')}
+                            <LayoutGrid size={14} /> {tCloud('cloud_tab_templates')}
                         </button>
                         <button
                             onClick={() => handleSwitchCategory('sessions')}
                             disabled={!isConnected}
                             className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${category === 'sessions' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                            <Activity size={14} /> {tCloud('tab_active')}
+                            <Activity size={14} /> {tCloud('cloud_tab_active')}
                         </button>
                         <button
                             onClick={() => handleSwitchCategory('history')}
                             disabled={!isConnected}
                             className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${category === 'history' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                            <History size={14} /> {tCloud('tab_history')}
+                            <History size={14} /> {tCloud('cloud_tab_history')}
                         </button>
                     </div>
 
                     <div className="flex gap-2 bg-slate-900 p-1 rounded-lg border border-slate-700/50">
-                        <button onClick={() => handleSwitchMode('active')} disabled={!isConnected} className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center justify-center gap-1 ${viewMode === 'active' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}><FolderOpen size={14} /> {tCloud('tab_files')}</button>
-                        <button onClick={() => handleSwitchMode('trash')} disabled={!isConnected} className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center justify-center gap-1 ${viewMode === 'trash' ? 'bg-red-900/50 text-red-200 shadow-sm border border-red-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}><Trash2 size={14} /> {tCloud('tab_trash')}</button>
+                        <button onClick={() => handleSwitchMode('active')} disabled={!isConnected} className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center justify-center gap-1 ${viewMode === 'active' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}><FolderOpen size={14} /> {tCloud('cloud_tab_files')}</button>
+                        <button onClick={() => handleSwitchMode('trash')} disabled={!isConnected} className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center justify-center gap-1 ${viewMode === 'trash' ? 'bg-red-900/50 text-red-200 shadow-sm border border-red-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}><Trash2 size={14} /> {tCloud('cloud_tab_trash')}</button>
                     </div>
                 </div>
 
@@ -565,7 +555,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                                 className="w-full max-w-[200px] py-3 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl shadow-lg shadow-sky-900/50 flex items-center justify-center gap-2 transition-transform active:scale-95"
                             >
                                 {isLoading ? <Loader2 size={20} className="animate-spin" /> : <Cloud size={20} />}
-                                <span>{tCloud('btn_connect')}</span>
+                                <span>{tCloud('cloud_btn_connect')}</span>
                             </button>
                         </div>
                     ) : (
@@ -574,7 +564,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                             {isLoading ? (
                                 <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500"><RefreshCw size={24} className="animate-spin" /><span className="text-xs">{tCommon('loading')}</span></div>
                             ) : cloudFiles.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500">{viewMode === 'trash' ? <Trash2 size={32} className="opacity-50" /> : <UploadCloud size={32} className="opacity-50" />}<span className="text-sm">{viewMode === 'trash' ? tCloud('empty_trash_list') : tCloud('empty_list')}</span></div>
+                                <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500">{viewMode === 'trash' ? <Trash2 size={32} className="opacity-50" /> : <UploadCloud size={32} className="opacity-50" />}<span className="text-sm">{viewMode === 'trash' ? tCloud('cloud_empty_trash_list') : tCloud('cloud_empty_list')}</span></div>
                             ) : (
                                 <div className="space-y-2">
                                     {cloudFiles.map(file => (
@@ -584,7 +574,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); setFileToDelete(file); }}
                                                     className="p-2 text-slate-600 hover:text-red-400 hover:bg-slate-900/50 rounded-lg transition-colors"
-                                                    title={viewMode === 'active' ? "移至垃圾桶" : tCloud('btn_delete_perm')}
+                                                    title={viewMode === 'active' ? tCloud('cloud_tooltip_trash') : tCloud('cloud_delete_perm')}
                                                 >
                                                     <Trash2 size={20} />
                                                 </button>
@@ -602,7 +592,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                                                     <button
                                                         onClick={() => handleFileSelect(file)}
                                                         className="p-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg shadow-md transition-all active:scale-95 flex items-center gap-1.5"
-                                                        title={tCloud('btn_download_restore')}
+                                                        title={tCloud('cloud_action_download')}
                                                     >
                                                         <Download size={18} />
                                                         <span className="text-xs font-bold hidden sm:inline">{tCommon('download')}</span>
@@ -611,7 +601,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleRestoreFromTrash(file); }}
                                                         className="p-2 text-emerald-400 hover:text-white bg-slate-900 hover:bg-emerald-600 border border-slate-600 hover:border-emerald-500 rounded-lg transition-colors"
-                                                        title={tCloud('btn_restore')}
+                                                        title={tCloud('cloud_restore')}
                                                     >
                                                         <RefreshCcw size={18} />
                                                     </button>
@@ -624,7 +614,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                         </>
                     )}
                 </div>
-                {viewMode === 'trash' && cloudFiles.length > 0 && isConnected && (<div className="flex-none p-3 bg-slate-800 border-t border-slate-700"><button onClick={() => setShowEmptyTrashConfirm(true)} className="w-full py-2 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 text-red-200 text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2"><Trash2 size={16} /> {tCloud('btn_empty_trash')}</button></div>)}
+                {viewMode === 'trash' && cloudFiles.length > 0 && isConnected && (<div className="flex-none p-3 bg-slate-800 border-t border-slate-700"><button onClick={() => setShowEmptyTrashConfirm(true)} className="w-full py-2 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 text-red-200 text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2"><Trash2 size={16} /> {tCloud('cloud_empty_trash')}</button></div>)}
             </div>
         </div>
     );

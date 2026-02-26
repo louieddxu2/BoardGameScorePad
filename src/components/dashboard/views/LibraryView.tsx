@@ -36,14 +36,12 @@ interface LibraryViewProps {
     onSystemRestore: (template: GameTemplate, e: React.MouseEvent) => void;
 }
 
-const TruncationFooter: React.FC<{ displayed: number, total: number }> = ({ displayed, total }) => {
+const TruncationFooter: React.FC<{ displayed: number, total: number, label: string }> = ({ displayed, total, label }) => {
     if (displayed >= total) return null;
     return (
         <div className="col-span-2 py-4 flex flex-col items-center justify-center text-slate-500 opacity-70">
             <div className="w-12 h-1 bg-slate-700/50 rounded-full mb-2"></div>
-            <span className="text-[10px] font-mono">
-                顯示 {displayed} 筆，共 {total} 筆
-            </span>
+            <span className="text-[10px] font-mono">{label}</span>
         </div>
     );
 };
@@ -111,7 +109,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                                 // We use session.name and session.templateId (as the ID to resume).
                                 template={{
                                     id: session.templateId,
-                                    name: session.name || "未命名遊戲",
+                                    name: session.name || t('dash_unnamed_session'),
                                     bggId: session.bggId,
                                 } as GameTemplate}
                                 mode="active"
@@ -179,7 +177,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                         />
                     ))}
                     {/* SearchEmptyState is removed here as "Create" logic is moved to StartGamePanel */}
-                    <TruncationFooter displayed={userTemplates.length} total={userTemplatesTotal} />
+                    <TruncationFooter displayed={userTemplates.length} total={userTemplatesTotal} label={t('dash_footer_count', { displayed: userTemplates.length, total: userTemplatesTotal })} />
                 </div>
             </DashboardSection>
 
@@ -221,7 +219,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                             </div>
                         );
                     })}
-                    <TruncationFooter displayed={systemTemplates.length} total={systemTemplatesTotal} />
+                    <TruncationFooter displayed={systemTemplates.length} total={systemTemplatesTotal} label={t('dash_footer_count', { displayed: systemTemplates.length, total: systemTemplatesTotal })} />
                 </div>
             </DashboardSection>
         </>

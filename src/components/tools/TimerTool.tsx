@@ -1,8 +1,10 @@
 
 import React, { useState, useRef } from 'react';
 import { Timer, RefreshCcw, Pause, Play } from 'lucide-react';
+import { useToolsTranslation } from '../../i18n/tools';
 
 const TimerTool: React.FC = () => {
+    const { t } = useToolsTranslation();
     const [seconds, setSeconds] = useState(0);
     const [isRunning, setIsRunning] = useState(false);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -29,25 +31,25 @@ const TimerTool: React.FC = () => {
     const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
     return (
-        <button 
+        <button
             onClick={toggle}
             className={`relative w-full h-full flex flex-col items-center justify-center p-3 rounded-2xl border transition-all active:scale-95 min-h-[96px]
                 ${isRunning ? 'bg-emerald-900/20 border-emerald-500/50' : 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-700/80'}
             `}
         >
             {seconds > 0 && !isRunning && (
-                <div 
+                <div
                     onClick={reset}
                     className="absolute top-1 right-1 p-2 text-slate-500 hover:text-red-400 z-10 hover:bg-slate-700 rounded-full transition-colors"
                 >
                     <RefreshCcw size={14} />
                 </div>
             )}
-            
+
             {seconds === 0 && !isRunning ? (
                 <>
                     <Timer size={28} className="text-slate-400 mb-1" />
-                    <span className="text-xs text-slate-500 font-bold">計時器</span>
+                    <span className="text-xs text-slate-500 font-bold">{t('timer_title')}</span>
                 </>
             ) : (
                 <>
@@ -57,7 +59,7 @@ const TimerTool: React.FC = () => {
                     <div className="flex items-center gap-1.5 mt-1">
                         {isRunning ? <Pause size={10} className="text-emerald-500 fill-current" /> : <Play size={10} className="text-slate-500 fill-current" />}
                         <span className={`text-[10px] ${isRunning ? 'text-emerald-500' : 'text-slate-500'}`}>
-                            {isRunning ? '計時中' : '已暫停'}
+                            {isRunning ? t('timer_running') : t('timer_paused')}
                         </span>
                     </div>
                 </>

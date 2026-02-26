@@ -49,6 +49,28 @@ export const toolsTranslations = {
         picker_title: "誰是起始玩家",
         picker_start: "開始抽取",
         picker_hint: "按住螢幕來選擇玩家",
+        picker_who_is_first: "誰是起始玩家？",
+        picker_picking: "抽選中...",
+        picker_decided: "就決定是你了！",
+
+        // Timer additions
+        timer_running: "計時中",
+        timer_paused: "已暫停",
+
+        // Team additions
+        team_tool: "隊伍分配",
+        team_randomize_hint: "點擊按鈕隨機分隊",
+        team_not_enough_players: "人數不足 (需 2+)",
+
+        // Misc Tools
+        sound_board: "音效板",
+        dice_roll_d6: "擲骰子 (D6)",
+        counter_title: "計數器",
+        counter_reset: "歸零",
+        countdown_close: "關閉",
+        coin_flip: "擲硬幣",
+        coin_result_heads: "正面 (Heads)",
+        coin_result_tails: "反面 (Tails)",
     },
     'en': {
         tools_title: "Tools",
@@ -69,6 +91,8 @@ export const toolsTranslations = {
         timer_warning_hint: "Alert Settings",
         timer_unit_min: "m",
         timer_unit_sec: "s",
+        timer_running: "Running",
+        timer_paused: "Paused",
 
         // Memo / Notes
         memo_title: "Game Notes",
@@ -92,11 +116,27 @@ export const toolsTranslations = {
         team_title: "Team Generator",
         team_count: "Team Count",
         team_generate: "Generate Teams",
+        team_tool: "Team Tool",
+        team_randomize_hint: "Tap to randomize teams",
+        team_not_enough_players: "Not enough players (2+)",
 
         // Selection / Picker
         picker_title: "First Player Picker",
         picker_start: "Start Picker",
         picker_hint: "Hold screen to pick a player",
+        picker_who_is_first: "Who's First?",
+        picker_picking: "Picking...",
+        picker_decided: "It's You!",
+
+        // Misc Tools
+        sound_board: "Soundboard",
+        dice_roll_d6: "Roll Dice (D6)",
+        counter_title: "Counter",
+        counter_reset: "Reset",
+        countdown_close: "Close",
+        coin_flip: "Flip Coin",
+        coin_result_heads: "Heads",
+        coin_result_tails: "Tails",
     }
 };
 

@@ -158,7 +158,7 @@ export const useDashboardActions = ({
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
                 hasImage: false,
-                description: "簡易計分板",
+                description: t('dash_simple_template_desc'),
                 // We DO NOT set isPinned on the template object. 
                 // Pinning is an external state managed by onTogglePin.
             };
@@ -170,7 +170,7 @@ export const useDashboardActions = ({
             // This updates the local pinnedIds list, which allows the new template to be seen by isDisposableTemplate check
             onTogglePin(newTemplate.id);
 
-            showToast({ message: "已建立並釘選簡易計分板", type: 'success' });
+            showToast({ message: t('toast_pin_simple_success'), type: 'success' });
         }
     };
 

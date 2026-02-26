@@ -4,6 +4,7 @@ import { GameOption } from '../types';
 import { useToast } from '../../../hooks/useToast';
 import { db } from '../../../db';
 import { generateId } from '../../../utils/idGenerator';
+import { useAppTranslation } from '../../../i18n/app';
 
 interface UseGameLauncherProps {
   allVisibleTemplates: GameTemplate[];
@@ -20,6 +21,7 @@ export const useGameLauncher = ({
   onGameStart
 }: UseGameLauncherProps) => {
   const { showToast } = useToast();
+  const { t } = useAppTranslation();
 
   const handlePanelStart = async (option: GameOption, playerCount: number, location: string, locationId?: string) => {
     let templateToStart: GameTemplate;
@@ -37,7 +39,7 @@ export const useGameLauncher = ({
       if (found) {
         templateToStart = found;
       } else {
-        showToast({ message: "找不到模板", type: 'error' });
+        showToast({ message: t('app_toast_launch_error'), type: 'error' });
         return;
       }
     } else {

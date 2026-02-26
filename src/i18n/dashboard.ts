@@ -30,12 +30,19 @@ export const dashboardTranslations = {
     dash_import_export: "資料管理",
     dash_cloud_sync: "同步與備份",
     dash_disconnect: "登出 Google Drive",
+    dash_footer_count: "顯示 {displayed} 筆，共 {total} 筆",
+    dash_unnamed_session: "未命名遊戲",
+    dash_simple_template_desc: "簡易計分板",
+    dash_switch_language: "切換語言",
+    dash_pull_release_cloud: "放開管理雲端",
+    dash_pull_release_search: "放開開始搜尋",
 
     // --- Messages (Dashboard) ---
     msg_json_copied: "JSON 已複製",
     msg_cloud_connect_first: "請先點擊上方雲端按鈕啟用連線",
     msg_read_template_failed: "讀取模板失敗",
     msg_copy_created: "已建立副本",
+    toast_pin_simple_success: "已建立並釘選簡易計分板",
 
     // --- Game Card Actions ---
     card_resume: "繼續遊戲",
@@ -91,12 +98,19 @@ export const dashboardTranslations = {
     dash_import_export: "Manage Data",
     dash_cloud_sync: "Sync & Backup",
     dash_disconnect: "Disconnect Drive",
+    dash_footer_count: "Showing {displayed} of {total}",
+    dash_unnamed_session: "Unnamed Session",
+    dash_simple_template_desc: "Simple score sheet",
+    dash_switch_language: "Switch Language",
+    dash_pull_release_cloud: "Release to manage cloud",
+    dash_pull_release_search: "Release to start search",
 
     // --- Messages (Dashboard) ---
     msg_json_copied: "JSON Copied",
     msg_cloud_connect_first: "Please connect to cloud first",
     msg_read_template_failed: "Failed to read template",
     msg_copy_created: "Copy created",
+    toast_pin_simple_success: "Simple score sheet created and pinned",
 
     // --- Game Card Actions ---
     card_resume: "Resume",

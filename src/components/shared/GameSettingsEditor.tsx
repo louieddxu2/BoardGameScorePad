@@ -111,7 +111,7 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ template, onSav
                             <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 min-h-[80px] flex flex-wrap gap-3 items-center">
                                 {supportedColors.length === 0 && (
                                     <span className="text-sm text-slate-600 italic w-full text-center py-2">
-                                        {t('reset_default')} (系統自動分配)
+                                        {t('reset_default')} {t('colors_auto_assign')}
                                     </span>
                                 )}
                                 {supportedColors.map((c, i) => (

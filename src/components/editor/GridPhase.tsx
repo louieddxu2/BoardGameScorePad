@@ -2,6 +2,7 @@
 import React from 'react';
 import { Trash2, ScanLine } from 'lucide-react';
 import { useTextureMapper } from './TextureMapperContext';
+import { useTemplateEditorTranslation } from '../../i18n/template_editor';
 
 const GridPhase: React.FC = () => {
   const {
@@ -17,6 +18,7 @@ const GridPhase: React.FC = () => {
     deleteLine,
     transform
   } = useTextureMapper();
+  const { t } = useTemplateEditorTranslation();
 
   // Masks - Using robust CSS positioning
   // bg-black/50 corresponds to rgba(0,0,0,0.5)
@@ -29,68 +31,68 @@ const GridPhase: React.FC = () => {
   // We need to scale X by (1/s) to match, and keep Y as 1 (since parent shrinks Y)
   // Net Result: X=1/s, Y=1/s (Uniform)
   const hLabelStyle: React.CSSProperties = {
-      transform: `translate(0, -50%) scale(${1/s}, 1)`,
-      transformOrigin: 'right center', // Grow from right (towards left)
-      zIndex: 50,
-      whiteSpace: 'nowrap'
+    transform: `translate(0, -50%) scale(${1 / s}, 1)`,
+    transformOrigin: 'right center', // Grow from right (towards left)
+    zIndex: 50,
+    whiteSpace: 'nowrap'
   };
 
   // Style for labels attached to Vertical Lines (Parent has scaleX(1/s))
   // We need to scale Y by (1/s) to match, and keep X as 1 (since parent shrinks X)
   // Net Result: X=1/s, Y=1/s (Uniform)
   const vLabelTopStyle: React.CSSProperties = {
-      transform: `translate(-50%, 0) scale(1, ${1/s})`,
-      transformOrigin: 'bottom center', // Grow upwards
-      zIndex: 50,
-      whiteSpace: 'nowrap'
+    transform: `translate(-50%, 0) scale(1, ${1 / s})`,
+    transformOrigin: 'bottom center', // Grow upwards
+    zIndex: 50,
+    whiteSpace: 'nowrap'
   };
 
   const vLabelBottomStyle: React.CSSProperties = {
-      transform: `translate(-50%, 0) scale(1, ${1/s})`,
-      transformOrigin: 'top center', // Grow downwards
-      zIndex: 50,
-      whiteSpace: 'nowrap'
+    transform: `translate(-50%, 0) scale(1, ${1 / s})`,
+    transformOrigin: 'top center', // Grow downwards
+    zIndex: 50,
+    whiteSpace: 'nowrap'
   };
 
   return (
     <div className="absolute inset-0 pointer-events-auto">
       {/* --- Masks (Cropped Areas) --- */}
       {/* Top Mask: Full Width */}
-      <div 
-        className={maskClass} 
-        style={{ top: 0, left: 0, right: 0, height: `${gridBounds.top}%` }} 
+      <div
+        className={maskClass}
+        style={{ top: 0, left: 0, right: 0, height: `${gridBounds.top}%` }}
       />
-      
+
       {/* Bottom Mask: Full Width */}
-      <div 
-        className={maskClass} 
-        style={{ bottom: 0, left: 0, right: 0, height: `${100 - gridBounds.bottom}%` }} 
+      <div
+        className={maskClass}
+        style={{ bottom: 0, left: 0, right: 0, height: `${100 - gridBounds.bottom}%` }}
       />
-      
+
       {/* Left Mask: Constrained Vertical */}
-      <div 
-        className={maskClass} 
-        style={{ 
-            left: 0, 
-            top: `${gridBounds.top}%`, 
-            height: `${gridBounds.bottom - gridBounds.top}%`,
-            width: `${gridBounds.left}%` 
-        }} 
+      <div
+        className={maskClass}
+        style={{
+          left: 0,
+          top: `${gridBounds.top}%`,
+          height: `${gridBounds.bottom - gridBounds.top}%`,
+          width: `${gridBounds.left}%`
+        }}
       />
-      
+
       {/* Right Mask: Constrained Vertical */}
-      <div 
-        className={maskClass} 
-        style={{ 
-            right: 0, 
-            top: `${gridBounds.top}%`, 
-            height: `${gridBounds.bottom - gridBounds.top}%`,
-            width: `${100 - gridBounds.right}%` 
-        }} 
+      <div
+        className={maskClass}
+        style={{
+          right: 0,
+          top: `${gridBounds.top}%`,
+          height: `${gridBounds.bottom - gridBounds.top}%`,
+          width: `${100 - gridBounds.right}%`
+        }}
       />
 
       {/* --- Boundary Lines (Draggable) --- */}
-      
+
       {/* Top Bound */}
       <div
         className="absolute left-0 right-0 h-[2px] group bg-emerald-500 cursor-row-resize z-40"
@@ -98,16 +100,16 @@ const GridPhase: React.FC = () => {
         onMouseDown={(e) => handlePointerDown(e, 'line', { type: 'bound', boundType: 'top' })}
         onTouchStart={(e) => handlePointerDown(e, 'line', { type: 'bound', boundType: 'top' })}
       >
-         <div className="absolute -top-4 bottom-4 left-0 right-0 bg-transparent" />
-         {/* Position: Outside Left, Centered Vertically relative to line */}
-         <div 
-            className="absolute right-[100%] top-[50%] mr-4 flex items-center justify-end" 
-            style={hLabelStyle}
-         >
-             <div className="bg-emerald-600 text-white px-2 py-1 rounded text-xs font-bold shadow flex items-center gap-1 border border-emerald-400">
-                 <ScanLine size={12} /> 頂部邊界
-             </div>
-         </div>
+        <div className="absolute -top-4 bottom-4 left-0 right-0 bg-transparent" />
+        {/* Position: Outside Left, Centered Vertically relative to line */}
+        <div
+          className="absolute right-[100%] top-[50%] mr-4 flex items-center justify-end"
+          style={hLabelStyle}
+        >
+          <div className="bg-emerald-600 text-white px-2 py-1 rounded text-xs font-bold shadow flex items-center gap-1 border border-emerald-400">
+            <ScanLine size={12} /> {t('mapper_grid_top')}
+          </div>
+        </div>
       </div>
 
       {/* Bottom Bound */}
@@ -117,16 +119,16 @@ const GridPhase: React.FC = () => {
         onMouseDown={(e) => handlePointerDown(e, 'line', { type: 'bound', boundType: 'bottom' })}
         onTouchStart={(e) => handlePointerDown(e, 'line', { type: 'bound', boundType: 'bottom' })}
       >
-         <div className="absolute -top-4 bottom-4 left-0 right-0 bg-transparent" />
-         {/* Position: Outside Left, Centered Vertically relative to line */}
-         <div 
-            className="absolute right-[100%] top-[50%] mr-4 flex items-center justify-end" 
-            style={hLabelStyle}
-         >
-             <div className="bg-emerald-600 text-white px-2 py-1 rounded text-xs font-bold shadow flex items-center gap-1 border border-emerald-400">
-                 <ScanLine size={12} /> 底部邊界
-             </div>
-         </div>
+        <div className="absolute -top-4 bottom-4 left-0 right-0 bg-transparent" />
+        {/* Position: Outside Left, Centered Vertically relative to line */}
+        <div
+          className="absolute right-[100%] top-[50%] mr-4 flex items-center justify-end"
+          style={hLabelStyle}
+        >
+          <div className="bg-emerald-600 text-white px-2 py-1 rounded text-xs font-bold shadow flex items-center gap-1 border border-emerald-400">
+            <ScanLine size={12} /> {t('mapper_grid_bottom')}
+          </div>
+        </div>
       </div>
 
       {/* Left Bound */}
@@ -136,14 +138,14 @@ const GridPhase: React.FC = () => {
         onMouseDown={(e) => handlePointerDown(e, 'line', { type: 'bound', boundType: 'left' })}
         onTouchStart={(e) => handlePointerDown(e, 'line', { type: 'bound', boundType: 'left' })}
       >
-         <div className="absolute -left-4 right-4 top-0 bottom-0 bg-transparent" />
-         {/* Position: Outside Top, Centered Horizontally relative to line */}
-         <div 
-            className="absolute bottom-[100%] left-[50%] mb-4 flex flex-col items-center" 
-            style={vLabelTopStyle}
-         >
-             <div className="bg-emerald-600 text-white px-2 py-1 rounded text-xs font-bold shadow whitespace-nowrap border border-emerald-400">左邊界</div>
-         </div>
+        <div className="absolute -left-4 right-4 top-0 bottom-0 bg-transparent" />
+        {/* Position: Outside Top, Centered Horizontally relative to line */}
+        <div
+          className="absolute bottom-[100%] left-[50%] mb-4 flex flex-col items-center"
+          style={vLabelTopStyle}
+        >
+          <div className="bg-emerald-600 text-white px-2 py-1 rounded text-xs font-bold shadow whitespace-nowrap border border-emerald-400">{t('mapper_grid_left')}</div>
+        </div>
       </div>
 
       {/* Right Bound */}
@@ -153,14 +155,14 @@ const GridPhase: React.FC = () => {
         onMouseDown={(e) => handlePointerDown(e, 'line', { type: 'bound', boundType: 'right' })}
         onTouchStart={(e) => handlePointerDown(e, 'line', { type: 'bound', boundType: 'right' })}
       >
-         <div className="absolute -left-4 right-4 top-0 bottom-0 bg-transparent" />
-         {/* Position: Outside Top, Centered Horizontally relative to line */}
-         <div 
-            className="absolute bottom-[100%] left-[50%] mb-4 flex flex-col items-center" 
-            style={vLabelTopStyle}
-         >
-             <div className="bg-emerald-600 text-white px-2 py-1 rounded text-xs font-bold shadow whitespace-nowrap border border-emerald-400">右邊界</div>
-         </div>
+        <div className="absolute -left-4 right-4 top-0 bottom-0 bg-transparent" />
+        {/* Position: Outside Top, Centered Horizontally relative to line */}
+        <div
+          className="absolute bottom-[100%] left-[50%] mb-4 flex flex-col items-center"
+          style={vLabelTopStyle}
+        >
+          <div className="bg-emerald-600 text-white px-2 py-1 rounded text-xs font-bold shadow whitespace-nowrap border border-emerald-400">{t('mapper_grid_right')}</div>
+        </div>
       </div>
 
 
@@ -170,16 +172,16 @@ const GridPhase: React.FC = () => {
 
         const originalIndex = hLines.indexOf(y);
         const isUserLine = originalIndex !== -1;
-        
+
         return (
           <div
             key={`h-${i}`}
             className="absolute h-[2px] group bg-sky-400/80 hover:bg-yellow-400 cursor-row-resize"
-            style={{ 
-                top: `${y}%`, 
-                left: `${gridBounds.left}%`,
-                width: `${gridBounds.right - gridBounds.left}%`,
-                ...inverseScaleYStyle 
+            style={{
+              top: `${y}%`,
+              left: `${gridBounds.left}%`,
+              width: `${gridBounds.right - gridBounds.left}%`,
+              ...inverseScaleYStyle
             }}
             onMouseDown={(e) => handlePointerDown(e, 'line', { type: 'h', index: originalIndex })}
             onTouchStart={(e) => handlePointerDown(e, 'line', { type: 'h', index: originalIndex })}
@@ -194,7 +196,7 @@ const GridPhase: React.FC = () => {
                   </button>
                 )}
                 <div className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold whitespace-nowrap shadow-sm border ${!isUserLine ? 'bg-slate-800/80 text-slate-500 border-slate-700' : 'bg-sky-600 text-white border-sky-500'}`}>
-                  Line {i}
+                  {t('mapper_grid_line_n', { i })}
                 </div>
                 <div className={`w-2 h-[1px] ${!isUserLine ? 'bg-slate-700' : 'bg-sky-400'}`}></div>
               </div>
@@ -214,15 +216,15 @@ const GridPhase: React.FC = () => {
         >
           <div className="absolute -left-4 right-4 top-0 bottom-0 bg-transparent"></div>
           {/* Position: Outside Bottom */}
-          <div 
-            className="absolute top-[100%] left-[50%] mt-4 flex flex-col items-center" 
+          <div
+            className="absolute top-[100%] left-[50%] mt-4 flex flex-col items-center"
             style={vLabelBottomStyle}
           >
             <div className="h-4 w-[1px] bg-cyan-400 absolute top-0 left-1/2 -translate-x-1/2 -mt-4"></div>
-            <div className="bg-cyan-600 text-white px-2 py-1 rounded text-xs font-bold shadow whitespace-nowrap border border-cyan-500">項目右邊界</div>
+            <div className="bg-cyan-600 text-white px-2 py-1 rounded text-xs font-bold shadow whitespace-nowrap border border-cyan-500">{t('mapper_grid_v_item')}</div>
           </div>
         </div>
-        
+
         {/* Player 1 Right Boundary */}
         <div
           className="absolute top-0 bottom-0 w-[2px] group bg-emerald-400 hover:bg-emerald-300 cursor-col-resize pointer-events-auto"
@@ -232,15 +234,15 @@ const GridPhase: React.FC = () => {
         >
           <div className="absolute -left-4 right-4 top-0 bottom-0 bg-transparent"></div>
           {/* Position: Outside Top */}
-          <div 
-            className="absolute bottom-[100%] left-[50%] mb-4 flex flex-col items-center" 
+          <div
+            className="absolute bottom-[100%] left-[50%] mb-4 flex flex-col items-center"
             style={vLabelTopStyle}
           >
-            <div className="bg-emerald-600 text-white px-2 py-1 rounded text-xs font-bold shadow whitespace-nowrap border border-emerald-500">首位玩家欄右邊界</div>
+            <div className="bg-emerald-600 text-white px-2 py-1 rounded text-xs font-bold shadow whitespace-nowrap border border-emerald-500">{t('mapper_grid_v_player')}</div>
             <div className="h-4 w-[1px] bg-emerald-400 absolute bottom-0 left-1/2 -translate-x-1/2 -mb-4"></div>
           </div>
         </div>
-        
+
         {/* Guides */}
         {(() => {
           // Adjust width calculation to account for Left Bound
@@ -254,15 +256,15 @@ const GridPhase: React.FC = () => {
               <div
                 key={`v-guide-${currentLeft}`}
                 className="absolute top-0 bottom-0 pointer-events-none"
-                style={{ 
-                    left: `${currentLeft}%`, 
-                    top: `${gridBounds.top}%`, 
-                    height: `${gridBounds.bottom - gridBounds.top}%`,
-                    width: 0, 
-                    borderLeft: `2px dashed white`, 
-                    opacity: 0.4, 
-                    transform: `scaleX(${1 / transform.scale})`, 
-                    transformOrigin: 'left' 
+                style={{
+                  left: `${currentLeft}%`,
+                  top: `${gridBounds.top}%`,
+                  height: `${gridBounds.bottom - gridBounds.top}%`,
+                  width: 0,
+                  borderLeft: `2px dashed white`,
+                  opacity: 0.4,
+                  transform: `scaleX(${1 / transform.scale})`,
+                  transformOrigin: 'left'
                 }}
               />
             );

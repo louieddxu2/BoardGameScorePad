@@ -202,7 +202,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 className="flex items-center gap-2 min-w-0 shrink cursor-pointer active:opacity-50 transition-opacity"
                 onClick={toggleLanguage}
                 role="button"
-                title="Switch Language"
+                title={tDash('dash_switch_language')}
               >
                 <div className="bg-emerald-500/10 p-1.5 rounded-lg border border-emerald-500/20 shrink-0">
                   <Dice5 size={24} className="text-emerald-500" />

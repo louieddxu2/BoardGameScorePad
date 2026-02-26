@@ -26,6 +26,15 @@ export const integrationTranslations = {
         bgg_btn_select_file: "選擇 CSV 檔案",
         bgg_file_hint: "手動上傳您的 BGG 匯出檔",
         bgg_footer: "支援從 BGG 網站匯出的標準 CSV 格式 (支援 Big5/UTF-8)",
+        bgg_err_html_detected: "下載到的是網頁而非 CSV，請確認連結是否為公開且正確的 CSV 匯出連結。",
+        bgg_err_empty_csv: "CSV 為空或格式錯誤",
+        bgg_err_no_header: "找不到有效的標題列",
+        bgg_err_format_mismatch: "CSV 格式不相符：找不到必要的 'Game ID' 或 '名稱' (Name) 欄位。",
+        bgg_prog_parsing: "正在解析 {count} 筆資料...",
+        bgg_prog_preparing: "正在準備 {count} 筆資料...",
+        bgg_prog_writing: "正在寫入 BGG 字典 ({current} / {total})...",
+        bgg_prog_updating_links: "正在更新 {count} 個已存遊戲連結...",
+        bgg_prog_propagating: "正在更新計分板連結...",
 
         // BGStats
         bgstats_sync: "同步 BGStats",
@@ -116,6 +125,15 @@ export const integrationTranslations = {
         bgg_btn_select_file: "Select CSV File",
         bgg_file_hint: "Manually upload your BGG export file",
         bgg_footer: "Supports standard CSV exported from BGG (Big5/UTF-8)",
+        bgg_err_html_detected: "Webpage detected instead of CSV. Please ensure the link is a public CSV export link.",
+        bgg_err_empty_csv: "CSV is empty or malformed",
+        bgg_err_no_header: "No valid header row found",
+        bgg_err_format_mismatch: "Format Mismatch: Required fields 'Game ID' or 'Name' not found.",
+        bgg_prog_parsing: "Parsing {count} rows...",
+        bgg_prog_preparing: "Preparing {count} items...",
+        bgg_prog_writing: "Writing BGG Dictionary ({current} / {total})...",
+        bgg_prog_updating_links: "Updating {count} game links...",
+        bgg_prog_propagating: "Propagating BGG IDs to sheets...",
 
         // BGStats
         bgstats_sync: "Sync BGStats",

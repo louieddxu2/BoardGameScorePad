@@ -26,6 +26,15 @@ export const dataManagerTranslations = {
         data_prep_fail: "準備資料失敗",
         data_mail_subject: "【萬用桌遊計分板】分享遊戲模板 ({date})",
         data_mail_body: "開發者你好！這是我製作的計分板\n↓↓↓ 資料已複製，請在下方貼上(Ctrl+V)↓↓↓\n--------------------------------------------------\n\n--------------------------------------------------",
+        data_json_parse_err: "JSON 格式錯誤，無法解析",
+        data_backup_detect: "偵測到完整系統備份檔。請至「同步與備份」功能中的「從雲端還原」介面進行匯入。\n目前此處僅支援匯入「遊戲模板列表」。",
+        data_import_empty_ph: "請先貼上 JSON 資料或選擇檔案",
+        data_read_json_btn: "讀取模板 JSON",
+        data_template_only: "僅支援 GameTemplate 格式",
+        data_processing: "處理中...",
+        data_execute_import: "執行匯入",
+        data_parse_content: "解析上方內容",
+        data_import_fail_prefix: "匯入失敗：",
     },
     'en': {
         data_mgr_title: "Data Manager",
@@ -52,6 +61,15 @@ export const dataManagerTranslations = {
         data_prep_fail: "Failed to prepare data",
         data_mail_subject: "[ScorePad] Share Templates ({date})",
         data_mail_body: "Hi Dev! Here are my custom templates\n↓↓↓ Data Copied Below (Ctrl+V) ↓↓↓\n--------------------------------------------------\n\n--------------------------------------------------",
+        data_json_parse_err: "JSON format error, unable to parse",
+        data_backup_detect: "System backup detected. Please use 'Sync & Backup' to restore system data.\nThis section only supports Importing Game Templates.",
+        data_import_empty_ph: "Please paste JSON or select a file first",
+        data_read_json_btn: "Read Template JSON",
+        data_template_only: "Supports GameTemplate format only",
+        data_processing: "Processing...",
+        data_execute_import: "Import Now",
+        data_parse_content: "Parse content above",
+        data_import_fail_prefix: "Import failed: ",
     }
 };
 

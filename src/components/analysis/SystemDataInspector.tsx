@@ -14,7 +14,9 @@ import { DataList, InspectorDetailPanel, useInspectorTranslation } from './Inspe
 import { useCommonTranslation } from '../../i18n/common';
 
 // --- Helpers for formatting ---
-const WEEKDAY_MAP = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+const getWeekdayName = (idx: number, t: (key: any) => string) => {
+    return t(`day_${idx}`);
+};
 
 // Helper to format bytes
 const formatBytes = (bytes: number, decimals = 2) => {
@@ -71,7 +73,7 @@ const TimeInspector = () => {
                         </span>
                     </div>
                     <div className="p-2 space-y-1">
-                        {weekdays.map(w => renderListItem(w, WEEKDAY_MAP[parseInt(w.name)] || w.name))}
+                        {weekdays.map(w => renderListItem(w, getWeekdayName(parseInt(w.name), t) || w.name))}
                     </div>
                 </div>
                 <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col min-h-0">
@@ -141,7 +143,7 @@ const ImageInspector = () => {
                 <div className="p-3 sticky top-0 bg-slate-900 border-b border-slate-700 z-10 backdrop-blur-sm bg-opacity-95">
                     <div className="flex justify-between items-center mb-2">
                         <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
-                            <ImageIcon size={12} /> {t('list_images')} (前{displayImages.length}筆)
+                            <ImageIcon size={12} /> {t('list_images')} ({t('list_display_prefix')}{displayImages.length}{t('list_display_suffix')})
                         </span>
                     </div>
                     <div className="relative mb-2">
@@ -150,7 +152,7 @@ const ImageInspector = () => {
                             type="text"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="搜尋 ID..."
+                            placeholder={t('input_search_id_placeholder')}
                             className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-7 pr-6 py-1 text-xs text-white focus:border-emerald-500 outline-none"
                         />
                         {searchTerm && (
@@ -196,19 +198,19 @@ const ImageInspector = () => {
                         </div>
                         <div className="w-full bg-slate-900 p-4 rounded-xl border border-slate-800 grid grid-cols-2 gap-4 text-xs">
                             <div>
-                                <span className="text-slate-500 block mb-1">ID</span>
+                                <span className="text-slate-500 block mb-1">{t('img_id')}</span>
                                 <span className="text-white font-mono break-all">{selectedImage.id}</span>
                             </div>
                             <div>
-                                <span className="text-slate-500 block mb-1">Size</span>
+                                <span className="text-slate-500 block mb-1">{t('img_size')}</span>
                                 <span className="text-emerald-400 font-bold">{formatBytes(selectedImage.blob.size)}</span>
                             </div>
                             <div>
-                                <span className="text-slate-500 block mb-1">Related ID</span>
+                                <span className="text-slate-500 block mb-1">{t('img_related_id')}</span>
                                 <span className="text-indigo-300 font-mono break-all">{selectedImage.relatedId}</span>
                             </div>
                             <div>
-                                <span className="text-slate-500 block mb-1">Type</span>
+                                <span className="text-slate-500 block mb-1">{t('img_type')}</span>
                                 <span className="text-white capitalize">{selectedImage.relatedType}</span>
                             </div>
                         </div>
@@ -387,10 +389,10 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                 await db.savedGameModes.clear();
             });
 
-            showToast({ message: "統計資料庫已清空 (請點擊右方按鈕重新掃描)", type: 'success' });
+            showToast({ message: t('toast_reset_success'), type: 'success' });
         } catch (error) {
             console.error("Reset failed", error);
-            showToast({ message: "重置失敗", type: 'error' });
+            showToast({ message: t('toast_reset_failed'), type: 'error' });
         } finally {
             setIsProcessing(false);
         }
@@ -423,10 +425,10 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                 await new Promise(resolve => setTimeout(resolve, 0));
             }
 
-            showToast({ message: `已成功掃描 ${total} 筆紀錄`, type: 'success' });
+            showToast({ message: t('toast_reprocess_success', { count: total }), type: 'success' });
         } catch (error) {
             console.error("Reprocess failed", error);
-            showToast({ message: "掃描過程發生錯誤", type: 'error' });
+            showToast({ message: t('toast_reprocess_failed'), type: 'error' });
         } finally {
             setIsProcessing(false);
             setProgress(0);
@@ -499,7 +501,7 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                         onClick={() => setConfirmAction('reset')}
                         disabled={isProcessing}
                         className="p-2 hover:bg-slate-800 rounded-lg text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
-                        title="清空資料庫 (刪除所有列表與關聯)"
+                        title={t('tooltip_reset')}
                     >
                         <Trash2 size={20} />
                     </button>
@@ -507,7 +509,7 @@ const SystemDataInspector: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                         onClick={() => setConfirmAction('reprocess')}
                         disabled={isProcessing}
                         className="p-2 hover:bg-slate-800 rounded-lg text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-50 relative overflow-hidden"
-                        title="重新掃描並匯入歷史紀錄"
+                        title={t('tooltip_reprocess')}
                     >
                         {isProcessing ? (
                             <>

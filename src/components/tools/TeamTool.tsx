@@ -2,12 +2,14 @@
 import React, { useState } from 'react';
 import { Users, Shuffle, RefreshCw } from 'lucide-react';
 import { Player } from '../../types';
+import { useToolsTranslation } from '../../i18n/tools';
 
 interface TeamToolProps {
     players: Player[];
 }
 
 const TeamTool: React.FC<TeamToolProps> = ({ players }) => {
+    const { t } = useToolsTranslation();
     const [teams, setTeams] = useState<{ a: string[], b: string[] } | null>(null);
 
     const generateTeams = () => {
@@ -33,7 +35,7 @@ const TeamTool: React.FC<TeamToolProps> = ({ players }) => {
         <div className="w-full h-full bg-slate-800/50 rounded-2xl border border-slate-700/50 p-3 flex flex-col min-h-[180px]">
             <div className="flex justify-between items-center mb-3">
                 <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                    <Users size={12} /> 隊伍分配
+                    <Users size={12} /> {t('team_tool')}
                 </span>
                 <button
                     onClick={generateTeams}
@@ -68,8 +70,8 @@ const TeamTool: React.FC<TeamToolProps> = ({ players }) => {
             ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-slate-500 gap-2 opacity-60">
                     <Shuffle size={32} />
-                    <span className="text-xs">點擊按鈕隨機分隊</span>
-                    {players.length < 2 && <span className="text-[10px] text-red-400">人數不足 (需 2+)</span>}
+                    <span className="text-xs">{t('team_randomize_hint')}</span>
+                    {players.length < 2 && <span className="text-[10px] text-red-400">{t('team_not_enough_players')}</span>}
                 </div>
             )}
         </div>

@@ -1,0 +1,2777 @@
+﻿
+[WARNING] Found 143 possible hardcoded Chinese UI string(s):
+
+
+File                                                   Line Con
+                                                            ten
+                                                            t  
+----                                                   ---- ---
+src\components\dashboard\hooks\useDashboardActions.ts   173 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "撌
+                                                            脣 
+                                                            遣 
+                                                            蝡 
+                                                             
+                                                            蒂?
+                                                             
+                                                             
+                                                            蝪 
+                                                            ⊥?
+                                                            閮 
+                                                            ?
+                                                            ??,
+                                                             ty
+                                                            pe:
+                                                             's
+                                                            ucc
+                                                            ess
+                                                            ' }
+                                                            ); 
+src\components\dashboard\parts\DashboardFAB.tsx          22 tit
+                                                            le=
+                                                            "? 
+                                                            ?
+                                                            ?圈
+                                                            ???
+src\components\dashboard\parts\PullActionIsland.tsx      55 {/*
+                                                             ? 
+                                                             
+                                                            ?
+                                                            ?
+                                                            頠 
+                                                            ?
+                                                             (T
+                                                            he 
+                                                            Tra
+                                                            ck)
+                                                             */
+                                                            }  
+src\components\dashboard\parts\PullActionIsland.tsx      59 {/*
+                                                             撌
+                                                            阡 
+                                                             
+                                                            暺 
+                                                            ?
+                                                            ?脩
+                                                            垢 
+                                                            */}
+src\components\dashboard\parts\PullActionIsland.tsx      64 {/*
+                                                             銝
+                                                            剝 
+                                                             
+                                                            暺 
+                                                            ?
+                                                            ?
+                                                            ? *
+                                                            /} 
+src\components\dashboard\parts\PullActionIsland.tsx      69 {/*
+                                                             ? 
+                                                            喲 
+                                                             
+                                                            暺 
+                                                            ?
+                                                            ?
+                                                            ? *
+                                                            /} 
+src\components\dashboard\parts\PullActionIsland.tsx      74 {/*
+                                                             ? 
+                                                            阡?
+                                                            ?
+                                                             
+                                                            (Th
+                                                            e F
+                                                            ocu
+                                                            s R
+                                                            ing
+                                                             / 
+                                                            Cur
+                                                            sor
+                                                            ) *
+                                                            /} 
+src\components\dashboard\parts\PullActionIsland.tsx      88 {/*
+                                                             ? 
+                                                             
+                                                            內?
+                                                            ?
+                                                             */
+                                                            }  
+src\components\dashboard\parts\PullActionIsland.tsx      97 {is
+                                                            Clo
+                                                            udA
+                                                            cti
+                                                            ve 
+                                                            ? '
+                                                            ?暸
+                                                            ?蝞
+                                                            ∠?
+                                                            ?脩
+                                                            垢'
+                                                             : 
+                                                            '? 
+                                                            暸?
+                                                            ?
+                                                            ?? 
+                                                            ?
+                                                            '} 
+src\components\dashboard\views\LibraryView.tsx           45 憿 
+                                                            舐 
+                                                            內 
+                                                            {di
+                                                            spl
+                                                            aye
+                                                            d} 
+                                                            蝑 
+                                                            ?
+                                                            ??{
+                                                            tot
+                                                            al}
+                                                             蝑
+                                                            ?  
+                                                               
+                                                               
+                                                               
+                                                             </
+                                                            spa
+                                                            n> 
+src\components\dashboard\views\LibraryView.tsx          113 nam
+                                                            e: 
+                                                            ses
+                                                            sio
+                                                            n.n
+                                                            ame
+                                                             ||
+                                                             "?
+                                                            芸 
+                                                            ?
+                                                            ?
+                                                            ??,
+src\components\history\HistoryReviewView.tsx            224 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "? 
+                                                            ⊥?
+                                                            皜 
+                                                            祇?
+                                                            雿 
+                                                            ?
+                                                            嚗 
+                                                             
+                                                            ?
+                                                             
+                                                            ?
+                                                            賭?
+                                                            皞 
+                                                             
+                                                            Ⅱ?
+                                                            ?, 
+                                                            typ
+                                                            e: 
+                                                            'wa
+                                                            rni
+                                                            ng'
+                                                             })
+                                                            ;  
+src\components\modals\InstallGuideModal.tsx              47 暺 
+                                                            ?
+                                                            ?
+                                                            汗?
+                                                            典?
+                                                            ?函
+                                                            ? <
+                                                            spa
+                                                            n c
+                                                            las
+                                                            sNa
+                                                            me=
+                                                            "in
+                                                            lin
+                                                            e-f
+                                                            lex
+                                                             it
+                                                            ems
+                                                            -ce
+                                                            nte
+                                                            r g
+                                                            ap-
+                                                            1 b
+                                                            g-s
+                                                            lat
+                                                            e-7
+                                                            00 
+                                                            px-
+                                                            1.5
+                                                             py
+                                                            -0.
+                                                            5 r
+                                                            o  
+src\components\modals\InstallGuideModal.tsx              52 ?券
+                                                            ?
+                                                            桐 
+                                                            葉 
+                                                            敺
+                                                            銝 
+                                                            ?
+                                                            嚗 
+                                                             
+                                                            ?
+                                                            唬 
+                                                            蒂 
+                                                            暺 
+                                                            ?
+                                                             <s
+                                                            pan
+                                                             cl
+                                                            ass
+                                                            Nam
+                                                            e="
+                                                            inl
+                                                            ine
+                                                            -fl
+                                                            ex 
+                                                            ite
+                                                            ms-
+                                                            cen
+                                                            ter
+                                                             ga
+                                                            p-1
+                                                             bg
+                                                            -sl
+                                                            ate
+                                                            -70
+                                                            0 p
+                                                            x-1
+                                                            .5 
+                                                            p  
+src\components\modals\InstallGuideModal.tsx              56 <sp
+                                                            an>
+                                                            暺 
+                                                            ?
+                                                            ?喃
+                                                            ?閫
+                                                            ?
+                                                            ?
+                                                            ?? 
+                                                            乓
+                                                             
+                                                            ?
+                                                            臬?
+                                                            ?
+                                                            ?/
+                                                            spa
+                                                            n> 
+src\components\modals\InstallGuideModal.tsx              71 暺 
+                                                            ?
+                                                            ?
+                                                            汗?
+                                                            典 
+                                                             
+                                                            銝 
+                                                            ?
+                                                            ??<
+                                                            spa
+                                                            n c
+                                                            las
+                                                            sNa
+                                                            me=
+                                                            "in
+                                                            lin
+                                                            e-f
+                                                            lex
+                                                             it
+                                                            ems
+                                                            -ce
+                                                            nte
+                                                            r g
+                                                            ap-
+                                                            1 b
+                                                            g-s
+                                                            lat
+                                                            e-7
+                                                            00 
+                                                            px-
+                                                            1.5
+                                                             py
+                                                            -0.
+                                                            5 r
+src\components\modals\InstallGuideModal.tsx              76 ?豢
+                                                            ? <
+                                                            spa
+                                                            n c
+                                                            las
+                                                            sNa
+                                                            me=
+                                                            "fo
+                                                            nt-
+                                                            bol
+                                                            d t
+                                                            ext
+                                                            -wh
+                                                            ite
+                                                            ">?
+                                                            ?
+                                                            鋆 
+                                                            ?
+                                                            ?函
+                                                            ?撘
+                                                            
+                                                            ?/s
+                                                            pan
+                                                            > ?
+                                                            ?<s
+                                                            pan
+                                                             cl
+                                                            ass
+                                                            Nam
+                                                            e="
+                                                            fon
+                                                            t-b
+                                                            ol 
+src\components\scanner\CameraView.tsx                    90 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "撌
+                                                            脣?
+                                                            ?刻
+                                                            ?
+                                                            ?
+                                                            頧 
+                                                             
+                                                             
+                                                            皜?
+                                                            , t
+                                                            ype
+                                                            : '
+                                                            suc
+                                                            ces
+                                                            s' 
+                                                            });
+src\components\scanner\CameraView.tsx                   128 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "? 
+                                                            豢?
+                                                            摮 
+                                                            ?
+                                                            鋡 
+                                                            急?
+                                                            ??,
+                                                             ty
+                                                            pe:
+                                                             'w
+                                                            arn
+                                                            ing
+                                                            ' }
+                                                            ); 
+src\components\scanner\CameraView.tsx                   130 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "? 
+                                                            曆?
+                                                            ?啁
+                                                             
+                                                            璈 
+                                                            ?
+                                                            蝵 
+                                                            柴
+                                                            ?, 
+                                                            typ
+                                                            e: 
+                                                            'wa
+                                                            rni
+                                                            ng'
+                                                             })
+                                                            ;  
+src\components\scanner\CameraView.tsx                   132 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "? 
+                                                            ⊥?
+                                                            ?
+                                                            ?? 
+                                                            豢?
+                                                            ??,
+                                                             ty
+                                                            pe:
+                                                             'e
+                                                            rro
+                                                            r' 
+                                                            });
+src\components\scanner\CameraView.tsx                   266 ?
+                                                             
+                                                            敺 
+                                                             
+                                                            ?
+                                                             
+                                                             
+                                                            摮?
+src\components\scanner\PhotoScanner.tsx                 301 <h2
+                                                             cl
+                                                            ass
+                                                            Nam
+                                                            e="
+                                                            tex
+                                                            t-w
+                                                            hit
+                                                            e f
+                                                            ont
+                                                            -bo
+                                                            ld"
+                                                            >? 
+                                                            拙 
+                                                            耦?
+                                                            ⊥ 
+                                                            迤<
+                                                            /h2
+                                                            >  
+src\components\scanner\PhotoScanner.tsx                 358 <Mo
+                                                            ve 
+                                                            siz
+                                                            e={
+                                                            12}
+                                                             />
+                                                             ? 
+                                                             
+                                                            4
+                                                            ?
+                                                            ?? 
+                                                            啗?
+                                                            ?
+                                                            ?閫
+                                                             
+                                                             
+src\components\scanner\ScannerControls.tsx               34 ?賊
+                                                            ?  
+src\components\scanner\ScannerControls.tsx               43 蝵 
+                                                            桐 
+                                                            葉 
+src\components\scanner\ScannerOverlay.tsx               103 <><
+                                                            Box
+                                                            Sel
+                                                            ect
+                                                             si
+                                                            ze=
+                                                            {10
+                                                            } c
+                                                            las
+                                                            sNa
+                                                            me=
+                                                            "te
+                                                            xt-
+                                                            sky
+                                                            -40
+                                                            0"/
+                                                            >  
+                                                            撟 
+                                                            曆?
+                                                            ?賊
+                                                            ?</
+                                                            >  
+src\components\scanner\ScannerOverlay.tsx               105 <><
+                                                            Sca
+                                                            nLi
+                                                            ne 
+                                                            siz
+                                                            e={
+                                                            10}
+                                                             cl
+                                                            ass
+                                                            Nam
+                                                            e="
+                                                            tex
+                                                            t-y
+                                                            ell
+                                                            ow-
+                                                            400
+                                                            "/>
+                                                             ? 
+                                                            渡?
+                                                            ?賊
+                                                            ?</
+                                                            >  
+src\components\scanner\ScannerOverlay.tsx               107 <><
+                                                            Mag
+                                                            net
+                                                             si
+                                                            ze=
+                                                            {10
+                                                            } c
+                                                            las
+                                                            sNa
+                                                            me=
+                                                            "te
+                                                            xt-
+                                                            sla
+                                                            te-
+                                                            400
+                                                            "/>
+                                                             ? 
+                                                            芰 
+                                                             
+                                                            蝘 
+                                                            餃?
+                                                            </>
+src\components\scanner\ScannerSourceSelector.tsx         19 <h3
+                                                             cl
+                                                            ass
+                                                            Nam
+                                                            e="
+                                                            tex
+                                                            t-x
+                                                            l f
+                                                            ont
+                                                            -bo
+                                                            ld 
+                                                            tex
+                                                            t-w
+                                                            hit
+                                                            e">
+                                                            隢 
+                                                             
+                                                            ?
+                                                            ?
+                                                            ?
+                                                            ?皞
+                                                            ?/h
+                                                            3> 
+src\components\scanner\ScannerSourceSelector.tsx         25 <Ap
+                                                            ert
+                                                            ure
+                                                             si
+                                                            ze=
+                                                            {24
+                                                            } /
+                                                            > <
+                                                            spa
+                                                            n c
+                                                            las
+                                                            sNa
+                                                            me=
+                                                            "te
+                                                            xt-
+                                                            lg"
+                                                            >? 
+                                                            ?
+                                                            ?抒
+                                                            ?</
+                                                            spa
+                                                            n> 
+src\components\scanner\ScannerSourceSelector.tsx         35 <Up
+                                                            loa
+                                                            d s
+                                                            ize
+                                                            ={2
+                                                            4} 
+                                                            /> 
+                                                            <sp
+                                                            an 
+                                                            cla
+                                                            ssN
+                                                            ame
+                                                            ="t
+                                                            ext
+                                                            -lg
+                                                            "> 
+                                                            敺 
+                                                             
+                                                             
+                                                            蝪 
+                                                            蹂?
+                                                            ??/
+                                                            spa
+                                                            n> 
+src\components\scanner\ScannerSourceSelector.tsx         45 <p 
+                                                            cla
+                                                            ssN
+                                                            ame
+                                                            ="t
+                                                            ext
+                                                            -xs
+                                                             te
+                                                            xt-
+                                                            sla
+                                                            te-
+                                                            500
+                                                             mt
+                                                            -4"
+                                                            >? 
+                                                             
+                                                            內 
+                                                            嚗 
+                                                            ?
+                                                            ?
+                                                            ?隢
+                                                             
+                                                            ?
+                                                            ?
+                                                            ?
+                                                            ?蝺
+                                                            ?
+                                                            頞 
+                                                            喉?
+                                                            銝 
+                                                            血?
+                                                            ?湔
+                                                            ?? 
+                                                            ?
+                                                            ?
+                                                            ”?
+                                                            ?/p
+                                                            >  
+src\components\scanner\ScanPreview.tsx                   26 awa
+                                                            it 
+                                                            nav
+                                                            iga
+                                                            tor
+                                                            .sh
+                                                            are
+                                                            ({ 
+                                                            fil
+                                                            es:
+                                                             [f
+                                                            ile
+                                                            ], 
+                                                            tit
+                                                            le:
+                                                             ' 
+                                                            撌 
+                                                            脫 
+                                                             
+                                                            甇?
+                                                            ?? 
+                                                             
+                                                            ”'
+                                                             })
+                                                            ;  
+src\components\scanner\ScanPreview.tsx                  135 <h2
+                                                             cl
+                                                            ass
+                                                            Nam
+                                                            e="
+                                                            tex
+                                                            t-w
+                                                            hit
+                                                            e f
+                                                            ont
+                                                            -bo
+                                                            ld"
+                                                            >? 
+                                                             
+                                                            汗?
+                                                             
+                                                            Ⅱ 
+                                                            隤?
+                                                            /h2
+                                                            >  
+src\components\scanner\ScanPreview.tsx                  156 alt
+                                                            ="?
+                                                            ⊥ 
+                                                            迤 
+                                                            蝯 
+                                                            ?
+                                                            "  
+src\components\scanner\ScanPreview.tsx                  165 <bu
+                                                            tto
+                                                            n o
+                                                            nCl
+                                                            ick
+                                                            ={o
+                                                            nBa
+                                                            ck}
+                                                             cl
+                                                            ass
+                                                            Nam
+                                                            e="
+                                                            px-
+                                                            4 p
+                                                            y-3
+                                                             bg
+                                                            -sl
+                                                            ate
+                                                            -80
+                                                            0 t
+                                                            ext
+                                                            -wh
+                                                            ite
+                                                             ro
+                                                            und
+                                                            ed-
+                                                            xl 
+                                                            bor
+                                                            der
+                                                             bo
+src\components\scanner\ScanPreview.tsx                  168 <bu
+                                                            tto
+                                                            n o
+                                                            nCl
+                                                            ick
+                                                            ={h
+                                                            and
+                                                            leS
+                                                            ave
+                                                            ToD
+                                                            evi
+                                                            ce}
+                                                             cl
+                                                            ass
+                                                            Nam
+                                                            e="
+                                                            px-
+                                                            3 p
+                                                            y-3
+                                                             bg
+                                                            -sl
+                                                            ate
+                                                            -80
+                                                            0 t
+                                                            ext
+                                                            -sl
+                                                            ate
+                                                            -30
+                                                            0 h
+                                                            ove
+src\components\scanner\ScanPreview.tsx                  174 <Ed
+                                                            it3
+                                                             si
+                                                            ze=
+                                                            {18
+                                                            } /
+                                                            >  
+                                                            靽 
+                                                            格 
+                                                             
+                                                            蝬 
+                                                            脫 
+                                                             
+src\components\session\hooks\useSessionEvents.ts        362 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "撌
+                                                            脫 
+                                                             
+                                                            憓 
+                                                             
+                                                            征?
+                                                            賡?
+                                                            ??,
+                                                             ty
+                                                            pe:
+                                                             's
+                                                            ucc
+                                                            ess
+                                                            ' }
+                                                            ); 
+src\components\session\hooks\useSessionEvents.ts        371 new
+                                                            Col
+                                                            umn
+                                                            .na
+                                                            me 
+                                                            = `
+                                                            ${o
+                                                            rig
+                                                            ina
+                                                            l.n
+                                                            ame
+                                                            } (
+                                                            銴 
+                                                             
+                                                            ˊ)
+                                                            `; 
+src\components\session\hooks\useSessionEvents.ts        377 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            `撌
+                                                            脰?
+                                                            鋆?
+                                                            ${n
+                                                            ewC
+                                                            olu
+                                                            mns
+                                                            .le
+                                                            ngt
+                                                            h} 
+                                                            ?
+                                                            ?? 
+                                                            害,
+                                                             ty
+                                                            pe:
+                                                             's
+                                                            ucc
+                                                            ess
+                                                            ' }
+                                                            ); 
+src\components\session\hooks\useSessionEvents.ts        401 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            `撌
+                                                            脣?
+                                                            甇 
+                                                            交 
+                                                            ?
+                                                            ?${
+                                                            cou
+                                                            nt}
+                                                             蝑
+                                                             
+                                                            風?
+                                                            脩?
+                                                            ?
+                                                            ???
+                                                            ?`,
+                                                             ty
+                                                            pe:
+                                                             'i
+                                                            nfo
+                                                            ' }
+                                                            ); 
+src\components\session\hooks\useSessionMedia.ts         105 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "? 
+                                                             
+                                                            ?
+                                                            ?
+                                                            撌 
+                                                            脫 
+                                                            ?
+                                                            ?, 
+                                                            typ
+                                                            e: 
+                                                            'su
+                                                            cce
+                                                            ss'
+                                                             })
+                                                            ;  
+src\components\session\hooks\useSessionMedia.ts         110 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "? 
+                                                            ?
+                                                            嚗 
+                                                             
+                                                            ?
+                                                            ?
+                                                            ?
+                                                            ??
+                                                            暺 
+                                                             
+                                                             
+                                                            銝 
+                                                             
+                                                            ?
+                                                            ?
+                                                            ?喃
+                                                            蝙?
+                                                            冽 
+                                                            芋 
+                                                            撘 
+                                                            ?
+                                                            ?賜
+                                                             
+                                                            敺 
+                                                            ?
+                                                            ?湧
+                                                            ?撽
+                                                            ?, 
+                                                            typ
+                                                            e: 
+                                                            'in
+                                                            fo'
+                                                            , d
+                                                            ura
+                                                            tio
+                                                            n: 
+src\components\session\hooks\useSessionMedia.ts         181 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "? 
+                                                            脣?
+                                                            憭 
+                                                            望?
+                                                            ", 
+                                                            typ
+                                                            e: 
+                                                            'er
+                                                            ror
+                                                            ' }
+                                                            ); 
+src\components\session\hooks\useSessionMedia.ts         188 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "? 
+                                                            ?
+                                                            ?
+                                                            ?憭
+                                                            望?
+                                                            ", 
+                                                            typ
+                                                            e: 
+                                                            'er
+                                                            ror
+                                                            ' }
+                                                            ); 
+src\components\session\hooks\useSessionMedia.ts         202 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "? 
+                                                            抒?
+                                                            撌 
+                                                            脣 
+                                                            ?
+                                                            ?, 
+                                                            typ
+                                                            e: 
+                                                            'in
+                                                            fo'
+                                                             })
+                                                            ;  
+src\components\session\hooks\useSessionMedia.ts         205 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "? 
+                                                            芷 
+                                                             
+                                                            憭 
+                                                            望?
+                                                            ", 
+                                                            typ
+                                                            e: 
+                                                            'er
+                                                            ror
+                                                            ' }
+                                                            ); 
+src\components\session\hooks\useSessionMedia.ts         224 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "? 
+                                                            ?
+                                                            嚗 
+                                                             
+                                                            ?
+                                                            ?
+                                                            ?
+                                                            ??
+                                                            暺 
+                                                             
+                                                             
+                                                            銝 
+                                                             
+                                                            ?
+                                                            ?
+                                                            ?喃
+                                                            蝙?
+                                                            冽 
+                                                            芋 
+                                                            撘 
+                                                            ?
+                                                            ?賜
+                                                             
+                                                            敺 
+                                                            ?
+                                                            ?湧
+                                                            ?撽
+                                                            ?, 
+                                                            typ
+                                                            e: 
+                                                            'in
+                                                            fo'
+                                                            , d
+                                                            ura
+                                                            tio
+                                                            n: 
+src\components\session\hooks\useSessionMedia.ts         255 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "? 
+                                                             
+                                                             
+                                                            閮 
+                                                            ?
+                                                            蝝 
+                                                             
+                                                            歇 
+                                                            蝘 
+                                                            駁 
+                                                            "
+                                                            , t
+                                                            ype
+                                                            : '
+                                                            inf
+                                                            o' 
+                                                            });
+src\components\session\hooks\useSessionMedia.ts         258 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "蝘
+                                                            駁 
+                                                             
+                                                            憭 
+                                                            望?
+                                                            ", 
+                                                            typ
+                                                            e: 
+                                                            'er
+                                                            ror
+                                                            ' }
+                                                            ); 
+src\components\session\parts\ScoreOverlayGenerator.tsx   75 {/*
+                                                             ob
+                                                            jec
+                                                            t-c
+                                                            ont
+                                                            ain
+                                                             蝣
+                                                            箔?
+                                                            ?
+                                                            ?摰
+                                                             
+                                                             
+                                                            憿 
+                                                            舐 
+                                                            內 
+                                                            嚗 
+                                                            ?
+                                                            鋆 
+                                                            ?
+                                                            ?
+                                                            g-b
+                                                            lac
+                                                            k  
+                                                            憛 
+                                                            怨?
+                                                            ?航
+                                                            ?
+                                                             
+                                                            征?
+                                                            ?*/
+                                                            }  
+src\components\session\SessionUI.test.tsx                21 des
+                                                            cri
+                                                            be.
+                                                            ski
+                                                            p('
+                                                            UI 
+                                                            鈭 
+                                                            ?
+                                                            ?
+                                                            ?璈
+                                                            ?
+                                                            ?ａ
+                                                            ?
+                                                             
+                                                            葫 
+                                                            閰?
+                                                            , (
+                                                            ) =
+                                                            > {
+src\components\session\SessionUI.test.tsx                23 it(
+                                                            '? 
+                                                            箸 
+                                                            ?
+                                                            ?
+                                                            瘚 
+                                                            ?
+                                                            嚗 
+                                                            ?
+                                                            ?
+                                                            ?? 
+                                                             
+                                                            ?
+                                                            ?
+                                                            ?
+                                                            撓?
+                                                            仿 
+                                                            ?
+                                                            ?, 
+                                                            asy
+                                                            nc 
+                                                            () 
+                                                            => 
+                                                            {  
+src\components\session\SessionUI.test.tsx                27 con
+                                                            st 
+                                                            tem
+                                                            pla
+                                                            teC
+                                                            ard
+                                                             = 
+                                                            scr
+                                                            een
+                                                            .ge
+                                                            tBy
+                                                            Tex
+                                                            t('
+                                                            颲 
+                                                            脣 
+                                                            振 
+                                                            璅?
+                                                            ); 
+src\components\session\SessionUI.test.tsx                31 con
+                                                            st 
+                                                            sta
+                                                            rtB
+                                                            utt
+                                                            on 
+                                                            = s
+                                                            cre
+                                                            en.
+                                                            get
+                                                            ByT
+                                                            ext
+                                                            ('?
+                                                            ?
+                                                            閮 
+                                                            ?
+                                                            ');
+src\components\session\SessionUI.test.tsx                35 exp
+                                                            ect
+                                                            (sc
+                                                            ree
+                                                            n.g
+                                                            etB
+                                                            yTe
+                                                            xt(
+                                                            '? 
+                                                            拙 
+                                                            振 
+                                                            1')
+                                                            ).t
+                                                            oBe
+                                                            InT
+                                                            heD
+                                                            ocu
+                                                            men
+                                                            t()
+                                                            ;  
+src\components\session\SessionUI.test.tsx                41 con
+                                                            st 
+                                                            cle
+                                                            arB
+                                                            utt
+                                                            on 
+                                                            = s
+                                                            cre
+                                                            en.
+                                                            get
+                                                            ByT
+                                                            ext
+                                                            (' 
+                                                            皜 
+                                                             
+                                                            '
+                                                            ); 
+src\components\session\SessionUI.test.tsx                50 it(
+                                                            '? 
+                                                            ?
+                                                            璅 
+                                                            ⊥ 
+                                                            ?
+                                                             
+                                                             
+                                                            皜 
+                                                            祈 
+                                                            岫 
+                                                            嚗 
+                                                            ?
+                                                            ?祇
+                                                            ?
+                                                            文?
+                                                            ?箸
+                                                            ?嚗
+                                                             
+                                                            撓?
+                                                            仿 
+                                                            ?
+                                                            踵?
+                                                            ?芸
+                                                            ?銝
+                                                             
+                                                            宏'
+                                                            , a
+                                                            syn
+                                                            c (
+                                                            ) =
+                                                            > {
+src\components\session\SessionUI.test.tsx                54 fir
+                                                            eEv
+                                                            ent
+                                                            .cl
+                                                            ick
+                                                            (sc
+                                                            ree
+                                                            n.g
+                                                            etB
+                                                            yTe
+                                                            xt(
+                                                            '颲
+                                                            脣 
+                                                            振 
+                                                            璅?
+                                                            ));
+src\components\session\SessionUI.test.tsx                55 fir
+                                                            eEv
+                                                            ent
+                                                            .cl
+                                                            ick
+                                                            (sc
+                                                            ree
+                                                            n.g
+                                                            etB
+                                                            yTe
+                                                            xt(
+                                                            '? 
+                                                            ?
+                                                            閮 
+                                                            ?
+                                                            '))
+                                                            ;  
+src\components\session\SessionUI.test.tsx                62 con
+                                                            st 
+                                                            cle
+                                                            arB
+                                                            utt
+                                                            on 
+                                                            = s
+                                                            cre
+                                                            en.
+                                                            get
+                                                            ByT
+                                                            ext
+                                                            (' 
+                                                            皜 
+                                                             
+                                                            '
+                                                            ); 
+src\components\session\SessionUI.test.tsx               103 it(
+                                                            '隞
+                                                             
+                                                            ?
+                                                            ?
+                                                            皜 
+                                                            祈 
+                                                            岫 
+                                                            嚗 
+                                                            ?
+                                                            ?
+                                                             
+                                                            摰 
+                                                            嗆?
+                                                            憿 
+                                                            ?
+                                                            ?脣
+                                                            ?
+                                                             
+                                                             
+                                                            摰 
+                                                            嗥 
+                                                            楊 
+                                                            頛 
+                                                            舀 
+                                                            芋 
+                                                            撘 
+                                                            
+                                                            ?? 
+                                                            Ｘ 
+                                                             
+                                                            霈 
+                                                             
+                                                            )
+                                                            ', 
+                                                            asy
+                                                            nc 
+                                                            () 
+                                                            => 
+                                                            {  
+src\components\session\SessionUI.test.tsx               107 fir
+                                                            eEv
+                                                            ent
+                                                            .cl
+                                                            ick
+                                                            (sc
+                                                            ree
+                                                            n.g
+                                                            etB
+                                                            yTe
+                                                            xt(
+                                                            '颲
+                                                            脣 
+                                                            振 
+                                                            璅?
+                                                            ));
+src\components\session\SessionUI.test.tsx               108 fir
+                                                            eEv
+                                                            ent
+                                                            .cl
+                                                            ick
+                                                            (sc
+                                                            ree
+                                                            n.g
+                                                            etB
+                                                            yTe
+                                                            xt(
+                                                            '? 
+                                                            ?
+                                                            閮 
+                                                            ?
+                                                            '))
+                                                            ;  
+src\components\session\SessionUI.test.tsx               111 con
+                                                            st 
+                                                            pla
+                                                            yer
+                                                            Hea
+                                                            der
+                                                             = 
+                                                            scr
+                                                            een
+                                                            .ge
+                                                            tBy
+                                                            Tex
+                                                            t('
+                                                            ?拙
+                                                            振 
+                                                            1')
+                                                            ;  
+src\components\session\SessionUI.test.tsx               119 con
+                                                            st 
+                                                            cle
+                                                            arB
+                                                            utt
+                                                            on 
+                                                            = s
+                                                            cre
+                                                            en.
+                                                            get
+                                                            ByT
+                                                            ext
+                                                            (' 
+                                                            皜 
+                                                             
+                                                            '
+                                                            ); 
+src\components\shared\column-editor\EditorTabAuto.tsx   229 靘 
+                                                            ?
+                                                            嚗?
+                                                            cod
+                                                            e>f
+                                                            1(x
+                                                            1) 
+                                                            + f
+                                                            2(x
+                                                            2) 
+                                                            * 5
+                                                            </c
+                                                            ode
+                                                            >  
+src\components\shared\column-editor\EditorTabAuto.tsx   269 {/*
+                                                             ? 
+                                                            ?
+                                                            蝚 
+                                                            西?
+                                                             */
+                                                            }  
+src\components\shared\column-editor\EditorTabAuto.tsx   279 {/*
+                                                             霈
+                                                             
+                                                            ?
+                                                             
+                                                            ?
+                                                            詨 
+                                                            翰?
+                                                            琿 
+                                                             
+                                                            */}
+src\components\shared\column-editor\EditorTabAuto.tsx   281 {/*
+                                                             撌
+                                                            脣?
+                                                            ?函
+                                                            ?霈
+                                                             
+                                                             
+                                                            */}
+src\components\shared\column-editor\EditorTabAuto.tsx   284 {/*
+                                                             ? 
+                                                            啣?
+                                                            霈 
+                                                             
+                                                             
+                                                            */}
+src\components\shared\column-editor\EditorTabAuto.tsx   292 {/*
+                                                             撌
+                                                            脣?
+                                                            ?函
+                                                            ?? 
+                                                            賣 
+                                                             
+                                                            */}
+src\components\shared\column-editor\EditorTabAuto.tsx   299 {/*
+                                                             ? 
+                                                            啣?
+                                                            ?賣
+                                                             
+                                                            */}
+src\components\shared\column-editor\EditorTabAuto.tsx   311 {/*
+                                                             1.
+                                                             霈
+                                                             
+                                                             
+                                                            閮 
+                                                            剖?
+                                                            ? 
+                                                            憛?
+                                                            */}
+src\components\shared\column-editor\EditorTabAuto.tsx   351 {/*
+                                                             Mo
+                                                            de 
+                                                            Sel
+                                                            ect
+                                                            ion
+                                                             - 
+                                                            ?梯
+                                                            ?? 
+                                                            嗉?
+                                                            ?貊
+                                                            ?
+                                                            拙 
+                                                            振 
+                                                            鈭 
+                                                            箸 
+                                                            ?
+                                                            ?*/
+                                                            }  
+src\components\shared\column-editor\EditorTabAuto.tsx   388 {/*
+                                                             2.
+                                                             ? 
+                                                            賣 
+                                                             
+                                                            閮 
+                                                            剖?
+                                                            ? 
+                                                            憛?
+                                                            */}
+src\components\shared\ColumnConfigEditor.tsx            166 : {
+                                                             id
+                                                            : P
+                                                            LAY
+                                                            ER_
+                                                            COU
+                                                            NT_
+                                                            ID,
+                                                             na
+                                                            me:
+                                                             '?
+                                                            拙 
+                                                            振 
+                                                            鈭 
+                                                            箸 
+                                                            '
+                                                            , m
+                                                            ode
+                                                            : '
+                                                            val
+                                                            ue'
+                                                             };
+src\components\shared\ErrorBoundary.tsx                  49 <h1
+                                                             cl
+                                                            ass
+                                                            Nam
+                                                            e="
+                                                            tex
+                                                            t-x
+                                                            l f
+                                                            ont
+                                                            -bo
+                                                            ld 
+                                                            mb-
+                                                            2">
+                                                            ?潛
+                                                            ?鈭
+                                                            ?
+                                                            鈭 
+                                                            ?
+                                                            憿?
+                                                            /h1
+                                                            >  
+src\components\shared\ErrorBoundary.tsx                  51 ?
+                                                             
+                                                            蝔 
+                                                            ?
+                                                            ?
+                                                            ?
+                                                            ?
+                                                            憭 
+                                                            ?
+                                                            ?航
+                                                            炊?
+                                                            
+                                                            
+                                                             
+                                                            虜?
+                                                            臬?
+                                                            ?箇
+                                                            
+                                                            汗?
+                                                            函 
+                                                            蕃 
+                                                            霅 
+                                                            舀?
+                                                            隞 
+                                                            嗥 
+                                                             
+                                                            憯 
+                                                            ?
+                                                            蝬 
+                                                            脤?
+                                                            蝯 
+                                                            ?
+                                                            嚗 
+                                                            ?
+                                                            ?
+                                                            岫?
+                                                            ?
+                                                            蝧 
+                                                            餉 
+                                                            陌 
+                                                            敺 
+                                                            ?
+                                                            ?啗
+                                                            ?? 
+                                                            乓
+                                                            ?  
+src\components\shared\ErrorBoundary.tsx                  63 ?
+                                                             
+                                                            頛 
+                                                             
+                                                            ?
+                                                             
+                                                             
+                                                            蝔 
+                                                            ?
+src\components\shared\GameSettingsEditor.tsx            114 {t(
+                                                            're
+                                                            set
+                                                            _de
+                                                            fau
+                                                            lt'
+                                                            )} 
+                                                            (蝟
+                                                            餌 
+                                                            絞?
+                                                            芸?
+                                                            ?
+                                                            ?) 
+src\components\shared\QuickButtonPad.tsx                 24 撠 
+                                                             
+                                                             
+                                                            閮 
+                                                            剖?
+                                                            敹 
+                                                            恍
+                                                            ?
+                                                            ?? 
+src\components\tools\CoinTool.tsx                        33 <sp
+                                                            an 
+                                                            cla
+                                                            ssN
+                                                            ame
+                                                            ="t
+                                                            ext
+                                                            -xs
+                                                             te
+                                                            xt-
+                                                            sla
+                                                            te-
+                                                            500
+                                                             fo
+                                                            nt-
+                                                            bol
+                                                            d">
+                                                            ?脩
+                                                            ′ 
+                                                            撟?
+                                                            /sp
+                                                            an>
+src\components\tools\CoinTool.tsx                        54 {re
+                                                            sul
+                                                            t =
+                                                            == 
+                                                            'he
+                                                            ads
+                                                            ' ?
+                                                             ' 
+                                                            甇?
+                                                             
+                                                            (He
+                                                            ads
+                                                            )' 
+                                                            : '
+                                                            ?
+                                                             
+                                                            (Ta
+                                                            ils
+                                                            )'}
+src\components\tools\CounterTool.tsx                     17 <sp
+                                                            an 
+                                                            cla
+                                                            ssN
+                                                            ame
+                                                            ="t
+                                                            ext
+                                                            -[1
+                                                            0px
+                                                            ] f
+                                                            ont
+                                                            -bo
+                                                            ld 
+                                                            tex
+                                                            t-s
+                                                            lat
+                                                            e-5
+                                                            00 
+                                                            upp
+                                                            erc
+                                                            ase
+                                                             tr
+                                                            ack
+                                                            ing
+                                                            -wi
+                                                            der
+                                                             px
+                                                            -1"
+                                                            >閮
+                                                             
+                                                            ?
+                                                            ?  
+src\components\tools\CounterTool.tsx                     21 tit
+                                                            le=
+                                                            "甇
+                                                            賊 
+                                                            "
+src\components\tools\DiceTool.tsx                        39 <sp
+                                                            an 
+                                                            cla
+                                                            ssN
+                                                            ame
+                                                            ="t
+                                                            ext
+                                                            -xs
+                                                             te
+                                                            xt-
+                                                            sla
+                                                            te-
+                                                            500
+                                                             fo
+                                                            nt-
+                                                            bol
+                                                            d">
+                                                            ?脤
+                                                            狐 
+                                                            摮?
+                                                            (D6
+                                                            )</
+                                                            spa
+                                                            n> 
+src\components\tools\PickerTool.tsx                      42 <sp
+                                                            an 
+                                                            cla
+                                                            ssN
+                                                            ame
+                                                            ="t
+                                                            ext
+                                                            -xs
+                                                             te
+                                                            xt-
+                                                            sla
+                                                            te-
+                                                            500
+                                                             fo
+                                                            nt-
+                                                            bol
+                                                            d">
+                                                            隤 
+                                                            唳 
+                                                             
+                                                            韏 
+                                                            瑕?
+                                                            ?拙
+                                                            振 
+                                                            嚗?
+                                                            /sp
+                                                            an>
+src\components\tools\PickerTool.tsx                      49 <sp
+                                                            an 
+                                                            cla
+                                                            ssN
+                                                            ame
+                                                            ="t
+                                                            ext
+                                                            -[1
+                                                            0px
+                                                            ] t
+                                                            ext
+                                                            -sl
+                                                            ate
+                                                            -50
+                                                            0 m
+                                                            t-1
+                                                            ">{
+                                                            isP
+                                                            ick
+                                                            ing
+                                                             ? 
+                                                            '? 
+                                                            賡 
+                                                             
+                                                            銝?
+                                                            ..'
+                                                             : 
+                                                            '撠
+                                                            望 
+                                                            捱 
+                                                            摰 
+                                                             
+                                                             
+                                                            雿 
+                                                            ?
+                                                            嚗?
+                                                            }</
+src\components\tools\SoundTool.tsx                       61 <Vo
+                                                            lum
+                                                            e2 
+                                                            siz
+                                                            e={
+                                                            12}
+                                                             />
+                                                             ? 
+                                                            單?
+                                                            ?? 
+src\components\tools\TeamTool.tsx                        71 <sp
+                                                            an 
+                                                            cla
+                                                            ssN
+                                                            ame
+                                                            ="t
+                                                            ext
+                                                            -xs
+                                                            "> 
+                                                            暺 
+                                                            ?
+                                                            ?
+                                                            ?? 
+                                                            冽?
+                                                            ?
+                                                            ?</
+                                                            spa
+                                                            n> 
+src\components\tools\TeamTool.tsx                        72 {pl
+                                                            aye
+                                                            rs.
+                                                            len
+                                                            gth
+                                                             < 
+                                                            2 &
+                                                            & <
+                                                            spa
+                                                            n c
+                                                            las
+                                                            sNa
+                                                            me=
+                                                            "te
+                                                            xt-
+                                                            [10
+                                                            px]
+                                                             te
+                                                            xt-
+                                                            red
+                                                            -40
+                                                            0">
+                                                            鈭 
+                                                            箸 
+                                                             
+                                                            銝 
+                                                             
+                                                            雲 
+                                                            (?
+                                                             2+
+                                                            )</
+                                                            spa
+                                                            n>}
+src\components\tools\TimerTool.tsx                       50 <sp
+                                                            an 
+                                                            cla
+                                                            ssN
+                                                            ame
+                                                            ="t
+                                                            ext
+                                                            -xs
+                                                             te
+                                                            xt-
+                                                            sla
+                                                            te-
+                                                            500
+                                                             fo
+                                                            nt-
+                                                            bol
+                                                            d">
+                                                            閮 
+                                                            ?
+                                                            ??/
+                                                            spa
+                                                            n> 
+src\components\tools\TimerTool.tsx                       60 {is
+                                                            Run
+                                                            nin
+                                                            g ?
+                                                             ' 
+                                                            閮 
+                                                            ?
+                                                            銝?
+                                                             : 
+                                                            '撌
+                                                            脫 
+                                                            ?
+                                                            ?} 
+src\features\bgg\services\bggImportService.ts            59 id:
+                                                             fi
+                                                            ndI
+                                                            dx(
+                                                            ['G
+                                                            ame
+                                                             ID
+                                                            ', 
+                                                            'Ob
+                                                            jec
+                                                            tID
+                                                            ', 
+                                                            'BG
+                                                            GID
+                                                            ', 
+                                                            'id
+                                                            ', 
+                                                            'ga
+                                                            mei
+                                                            d',
+                                                             '?
+                                                             
+                                                            I
+                                                            D',
+                                                             ' 
+                                                            蝺 
+                                                            刻?
+                                                            ', 
+                                                            'bg
+                                                            g蝺
+                                                            刻?
+                                                            '])
+                                                            ,  
+src\features\bgg\services\bggImportService.ts            60 nam
+                                                            e: 
+                                                            fin
+                                                            dId
+                                                            x([
+                                                            'Na
+                                                            me'
+                                                            , '
+                                                            Obj
+                                                            ect
+                                                            Nam
+                                                            e',
+                                                             'T
+                                                            itl
+                                                            e',
+                                                             'P
+                                                            rim
+                                                            ary
+                                                            Nam
+                                                            e',
+                                                             'o
+                                                            bje
+                                                            ctn
+                                                            ame
+                                                            ', 
+                                                            '? 
+                                                             
+                                                            迂'
+                                                            , '
+                                                            ?
+                                                            ?
+                                                             
+                                                            迂'
+src\features\bgg\services\bggImportService.ts            61 alt
+                                                            Nam
+                                                            es:
+                                                             fi
+                                                            ndI
+                                                            dx(
+                                                            ['a
+                                                            ltn
+                                                            ame
+                                                            s',
+                                                             'a
+                                                            lte
+                                                            rna
+                                                            te 
+                                                            nam
+                                                            es'
+                                                            , '
+                                                            ?亙
+                                                            ?',
+                                                             '?
+                                                            嗡?
+                                                            ?
+                                                            迂'
+                                                            , '
+                                                            ?望
+                                                            ?? 
+                                                             
+                                                            迂'
+                                                            ]),
+src\features\bgg\services\bggImportService.ts            62 yea
+                                                            r: 
+                                                            fin
+                                                            dId
+                                                            x([
+                                                            'Ye
+                                                            arP
+                                                            ubl
+                                                            ish
+                                                            ed'
+                                                            , '
+                                                            Yea
+                                                            r',
+                                                             'y
+                                                            ear
+                                                            pub
+                                                            lis
+                                                            hed
+                                                            ', 
+                                                            '撟
+                                                            港 
+                                                            遢'
+                                                            , '
+                                                            ?箇
+                                                            ?撟
+                                                            港 
+                                                            遢'
+                                                            ]),
+src\features\bgg\services\bggImportService.ts            63 min
+                                                            Pla
+                                                            yer
+                                                            s: 
+                                                            fin
+                                                            dId
+                                                            x([
+                                                            'Mi
+                                                            n P
+                                                            lay
+                                                            ers
+                                                            ', 
+                                                            'mi
+                                                            npl
+                                                            aye
+                                                            rs'
+                                                            , '
+                                                            ? 
+                                                            撠 
+                                                             
+                                                            犖?
+                                                            ?, 
+                                                            '?
+                                                            撠 
+                                                             
+                                                            犖?
+                                                            ?])
+                                                            ,  
+src\features\bgg\services\bggImportService.ts            64 max
+                                                            Pla
+                                                            yer
+                                                            s: 
+                                                            fin
+                                                            dId
+                                                            x([
+                                                            'Ma
+                                                            x P
+                                                            lay
+                                                            ers
+                                                            ', 
+                                                            'ma
+                                                            xpl
+                                                            aye
+                                                            rs'
+                                                            , '
+                                                            ? 
+                                                            憭 
+                                                            找 
+                                                            犖?
+                                                            ?, 
+                                                            '?
+                                                            憭 
+                                                             
+                                                            犖?
+                                                            ?])
+                                                            ,  
+src\features\bgg\services\bggImportService.ts            65 min
+                                                            Dur
+                                                            ati
+                                                            on:
+                                                             fi
+                                                            ndI
+                                                            dx(
+                                                            ['M
+                                                            in 
+                                                            Dur
+                                                            ati
+                                                            on'
+                                                            , '
+                                                            min
+                                                            dur
+                                                            ati
+                                                            on'
+                                                            , '
+                                                            ??
+                                                            剜?
+                                                            ??]
+                                                            ), 
+src\features\bgg\services\bggImportService.ts            67 min
+                                                            Age
+                                                            : f
+                                                            ind
+                                                            Idx
+                                                            (['
+                                                            Min
+                                                             Ag
+                                                            e',
+                                                             'a
+                                                            ge'
+                                                            , '
+                                                            min
+                                                            age
+                                                            ', 
+                                                            '撟
+                                                            湧 
+                                                            翩'
+                                                            , '
+                                                            ?拍
+                                                             
+                                                            撟 
+                                                            湧 
+                                                            翩'
+                                                            ]),
+src\features\bgg\services\bggImportService.ts            69 wei
+                                                            ght
+                                                            : f
+                                                            ind
+                                                            Idx
+                                                            (['
+                                                            Wei
+                                                            ght
+                                                            ', 
+                                                            'Av
+                                                            era
+                                                            geW
+                                                            eig
+                                                            ht'
+                                                            , '
+                                                            Com
+                                                            ple
+                                                            xit
+                                                            y',
+                                                             'a
+                                                            ver
+                                                            age
+                                                            wei
+                                                            ght
+                                                            ', 
+                                                            '? 
+                                                             
+                                                            漲'
+                                                            , '
+                                                            銴 
+                                                            ?
+                                                            摨?
+                                                            ]) 
+src\features\bgg\services\bggImportService.ts            70 bes
+                                                            tPl
+                                                            aye
+                                                            rs:
+                                                             fi
+                                                            ndI
+                                                            dx(
+                                                            ['B
+                                                            est
+                                                             Pl
+                                                            aye
+                                                            rs'
+                                                            , '
+                                                            Rec
+                                                            omm
+                                                            end
+                                                            ed 
+                                                            Pla
+                                                            yer
+                                                            s',
+                                                             'B
+                                                            GGB
+                                                            est
+                                                            Pla
+                                                            yer
+                                                            s',
+                                                             '?
+                                                            雿
+                                                            喃 
+                                                            犖?
+                                                            ?, 
+                                                            '  
+src\features\bgg\services\bggImportService.ts            71 des
+                                                            ign
+                                                            ers
+                                                            : f
+                                                            ind
+                                                            Idx
+                                                            (['
+                                                            Des
+                                                            ign
+                                                            ers
+                                                            ', 
+                                                            'De
+                                                            sig
+                                                            ner
+                                                            ', 
+                                                            '閮
+                                                            剛?
+                                                            撣?
+                                                            ]),
+src\features\bgstats\mocks\bgStatsSample.ts             172 "na
+                                                            me"
+                                                             : 
+                                                            "敹
+                                                            急?
+                                                            獢 
+                                                            ?
+                                                            摨?
+                                                            ,  
+src\features\bgstats\mocks\bgStatsSample.ts             178 "na
+                                                            me"
+                                                             : 
+                                                            "蝺
+                                                            ?
+                                                            撟 
+                                                            喳 
+                                                            "
+                                                            ,  
+src\features\bgstats\mocks\bgStatsSample.ts             184 "na
+                                                            me"
+                                                             : 
+                                                            "撠
+                                                            ?
+                                                            摰?
+                                                            ,  
+src\features\bgstats\mocks\bgStatsSample.ts             201 "na
+                                                            me"
+                                                             : 
+                                                            "? 
+                                                            輯 
+                                                            "
+                                                            ,  
+src\features\bgstats\mocks\bgStatsSample.ts             209 "na
+                                                            me"
+                                                             : 
+                                                            "撠
+                                                            ?
+                                                            ", 
+src\features\bgstats\mocks\bgStatsSample.ts             349 "co
+                                                            mme
+                                                            nts
+                                                            " :
+                                                             " 
+                                                            瞈
+                                                            ?
+                                                            ?撠
+                                                             
+                                                            "
+                                                            ,  
+src\features\bgstats\services\historyBatchUtils.ts      123 let
+                                                             na
+                                                            me 
+                                                            = `
+                                                            ?拙
+                                                            振 
+                                                            ${i
+                                                            nde
+                                                            x +
+                                                             1}
+                                                            `; 
+src\features\bgstats\services\historyBatchUtils.ts      128 nam
+                                                            e =
+                                                             `?
+                                                            拙 
+                                                            振 
+                                                            ${i
+                                                            nde
+                                                            x +
+                                                             1}
+                                                            `; 
+src\features\game-selector\hooks\useGameLauncher.ts      40 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "? 
+                                                            曆?
+                                                            ?唳
+                                                            芋?
+                                                            ?, 
+                                                            typ
+                                                            e: 
+                                                            'er
+                                                            ror
+                                                            ' }
+                                                            ); 
+src\hooks\useSessionManager.ts                           77 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "? 
+                                                            ⊥?
+                                                            霈
+                                                            ?
+                                                            芋?
+                                                            輯?
+                                                            ??,
+                                                             ty
+                                                            pe:
+                                                             'e
+                                                            rro
+                                                            r' 
+                                                            });
+src\hooks\useSessionManager.ts                          101 nam
+                                                            e: 
+                                                            `? 
+                                                            拙 
+                                                            振 
+                                                            ${i
+                                                             + 
+                                                            1}`
+                                                            ,  
+src\hooks\useSessionManager.ts                          400 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "? 
+                                                             
+                                                             
+                                                            蝝
+                                                            ?
+                                                            歇?
+                                                            脣?
+                                                            嚗?
+                                                            , t
+                                                            ype
+                                                            : '
+                                                            suc
+                                                            ces
+                                                            s' 
+                                                            });
+src\hooks\useSessionManager.ts                          404 sho
+                                                            wTo
+                                                            ast
+                                                            ({ 
+                                                            mes
+                                                            sag
+                                                            e: 
+                                                            "? 
+                                                            脣?
+                                                            憭 
+                                                            望?
+                                                            嚗 
+                                                            ?
+                                                            ?
+                                                            岫"
+                                                            , t
+                                                            ype
+                                                            : '
+                                                            err
+                                                            or'
+                                                             })
+                                                            ;  
+src\services\cloud\googleDriveClient.ts                 158 thr
+                                                            ow 
+                                                            new
+                                                             Er
+                                                            ror
+                                                            ("?
+                                                            芷 
+                                                             
+                                                            憭 
+                                                            望?
+                                                            ");
+src\services\cloud\googleDriveClient.ts                 166 if 
+                                                            (!r
+                                                            esp
+                                                            ons
+                                                            e.o
+                                                            k) 
+                                                            thr
+                                                            ow 
+                                                            new
+                                                             Er
+                                                            ror
+                                                            (" 
+                                                            銝 
+                                                            ?
+                                                            憭 
+                                                            望?
+                                                            ");
+src\services\cloud\googleDriveClient.ts                 174 if 
+                                                            (!r
+                                                            esp
+                                                            ons
+                                                            e.o
+                                                            k) 
+                                                            thr
+                                                            ow 
+                                                            new
+                                                             Er
+                                                            ror
+                                                            (" 
+                                                            銝 
+                                                            ?
+                                                            憭 
+                                                            望?
+                                                            ");
+src\services\relationship\HistoryBatchProcessor.ts       90 con
+                                                            st 
+                                                            isD
+                                                            efa
+                                                            ult
+                                                            Nam
+                                                            e =
+                                                             /^
+                                                            ?拙
+                                                            振\
+                                                            s?\
+                                                            d+$
+                                                            /.t
+                                                            est
+                                                            (p.
+                                                            nam
+                                                            e);
+src\services\relationship\HistoryBatchProcessor.ts      271 con
+                                                            st 
+                                                            isD
+                                                            efa
+                                                            ult
+                                                            Nam
+                                                            e =
+                                                             /^
+                                                            ?拙
+                                                            振\
+                                                            s?\
+                                                            d+$
+                                                            /.t
+                                                            est
+                                                            (p.
+                                                            nam
+                                                            e);
+src\services\relationship\RelationTrainer.ts            177 con
+                                                            st 
+                                                            isD
+                                                            efa
+                                                            ult
+                                                            Nam
+                                                            e =
+                                                             /^
+                                                            ?拙
+                                                            振\
+                                                            s?\
+                                                            d+$
+                                                            /.t
+                                                            est
+                                                            (p.
+                                                            nam
+                                                            e);
+src\services\relationship\TrainingContextResolver.ts     83 con
+                                                            st 
+                                                            isD
+                                                            efa
+                                                            ult
+                                                            Nam
+                                                            e =
+                                                             /^
+                                                            ?拙
+                                                            振\
+                                                            s?\
+                                                            d+$
+                                                            /.t
+                                                            est
+                                                            (p.
+                                                            nam
+                                                            e);
+src\utils\dataMigration.ts                               19 { l
+                                                            abe
+                                                            l: 
+                                                            'NO
+                                                             (?
+                                                            芷?
+                                                            ??'
+                                                            , v
+                                                            alu
+                                                            e: 
+                                                            0 }
+src\utils\scoring.test.ts                                17 des
+                                                            cri
+                                                            be(
+                                                            '閮
+                                                            ?
+                                                            ?
+                                                            摩 
+                                                            皜 
+                                                            祈 
+                                                            岫 
+                                                            (Sc
+                                                            ori
+                                                            ng 
+                                                            Log
+                                                            ic)
+                                                            ', 
+                                                            () 
+                                                            => 
+                                                            {  
+src\utils\scoring.test.ts                                19 des
+                                                            cri
+                                                            be(
+                                                            '? 
+                                                            詨
+                                                            潭?
+                                                            ??(
+                                                            get
+                                                            Raw
+                                                            Val
+                                                            ue 
+                                                            & g
+                                                            etS
+                                                            cor
+                                                            eHi
+                                                            sto
+                                                            ry)
+                                                            ', 
+                                                            () 
+                                                            => 
+                                                            {  
+src\utils\scoring.test.ts                                20 it(
+                                                            '? 
+                                                             
+                                                            迤 
+                                                            蝣 
+                                                            箸?
+                                                            ?
+                                                             
+                                                            蝷 
+                                                             
+                                                            ?
+                                                            ?, 
+                                                            () 
+                                                            => 
+                                                            {  
+src\utils\scoring.test.ts                                27 it(
+                                                            '? 
+                                                             
+                                                            迤 
+                                                            蝣 
+                                                            箸?
+                                                            ?
+                                                            風?
+                                                            脩?
+                                                            ??,
+                                                             ()
+                                                             =>
+                                                             { 
+src\utils\scoring.test.ts                                33 des
+                                                            cri
+                                                            be(
+                                                            '? 
+                                                            箸 
+                                                            ?
+                                                            ?
+                                                            ?
+                                                            ?? 
+                                                            賊?
+                                                             (S
+                                                            tan
+                                                            dar
+                                                            d &
+                                                             Ro
+                                                            und
+                                                            ing
+                                                            )',
+                                                             ()
+                                                             =>
+                                                             { 
+src\utils\scoring.test.ts                                34 it(
+                                                            '? 
+                                                             
+                                                            迤 
+                                                            蝣 
+                                                            箄?
+                                                            蝞 
+                                                            ?
+                                                            ??,
+                                                             ()
+                                                             =>
+                                                             { 
+src\utils\scoring.test.ts                                40 it(
+                                                            '? 
+                                                             
+                                                            迤 
+                                                            蝣 
+                                                            箄?
+                                                            ?
+                                                            ?? 
+                                                            賊?
+                                                             (F
+                                                            loo
+                                                            r/C
+                                                            eil
+                                                            /Ro
+                                                            und
+                                                            )',
+                                                             ()
+                                                             =>
+                                                             { 
+src\utils\scoring.test.ts                                53 des
+                                                            cri
+                                                            be(
+                                                            '? 
+                                                            亥 
+                                                            ” 
+                                                            閬 
+                                                            ?
+                                                             (M
+                                                            app
+                                                            ing
+                                                             Ru
+                                                            les
+                                                            )',
+                                                             ()
+                                                             =>
+                                                             { 
+src\utils\scoring.test.ts                                61 it(
+                                                            '? 
+                                                             
+                                                            迤 
+                                                            蝣 
+                                                            箏 
+                                                            ?
+                                                            ?
+                                                            ??,
+                                                             ()
+                                                             =>
+                                                             { 
+src\utils\scoring.test.ts                                69 des
+                                                            cri
+                                                            be(
+                                                            '蝺
+                                                            
+                                                            抒 
+                                                            敞?
+                                                            ?
+                                                            ??(
+                                                            Lin
+                                                            ear
+                                                             Ru
+                                                            les
+                                                            )',
+                                                             ()
+                                                             =>
+                                                             { 
+src\utils\scoring.test.ts                                78 it(
+                                                            '? 
+                                                             
+                                                            迤 
+                                                            蝣 
+                                                            箄?
+                                                            蝞 
+                                                             
+                                                            毽?
+                                                            ?
+                                                            ?批
+                                                            ???
+                                                            , (
+                                                            ) =
+                                                            > {
+src\utils\scoring.test.ts                                92 des
+                                                            cri
+                                                            be(
+                                                            '? 
+                                                            寞?
+                                                            閮 
+                                                            ?
+                                                            璅 
+                                                            ∪?
+                                                             (S
+                                                            pec
+                                                            ial
+                                                             Ca
+                                                            lcu
+                                                            lat
+                                                            ion
+                                                             Ty
+                                                            pes
+                                                            )',
+                                                             ()
+                                                             =>
+                                                             { 
+src\utils\scoring.test.ts                                93 it(
+                                                            '銋
+                                                            ?
+                                                            璅 
+                                                            ∪?
+                                                             (P
+                                                            rod
+                                                            uct
+                                                            ): 
+                                                            ?
+                                                            ?蝞
+                                                             
+                                                            ?
+                                                            ?, 
+                                                            () 
+                                                            => 
+                                                            {  
+src\utils\scoring.test.ts                                98 it(
+                                                            '撣
+                                                            ?
+                                                            ??(
+                                                            Boo
+                                                            lea
+                                                            n) 
+                                                            - n
+                                                            ow 
+                                                            rep
+                                                            res
+                                                            ent
+                                                            ed 
+                                                            by 
+                                                            qui
+                                                            ckA
+                                                            cti
+                                                            ons
+                                                             an
+                                                            d c
+                                                            lic
+                                                            ker
+                                                            ', 
+                                                            () 
+                                                            => 
+                                                            {  
+src\utils\scoring.test.ts                               105 it(
+                                                            '? 
+                                                            賊?
+                                                             (S
+                                                            ele
+                                                            ct)
+                                                             - 
+                                                            now
+                                                             re
+                                                            pre
+                                                            sen
+                                                            ted
+                                                             by
+                                                             qu
+                                                            ick
+                                                            Act
+                                                            ion
+                                                            s a
+                                                            nd 
+                                                            cli
+                                                            cke
+                                                            r',
+                                                             ()
+                                                             =>
+                                                             { 
+
+
+Move UI strings into the corresponding src/i18n/*.ts dictionary and use the translation hook.
+
+

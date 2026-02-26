@@ -8,7 +8,17 @@ $excludeFileSubstrings = @(
     "\src\i18n\",
     "\node_modules\",
     "\dist\",
-    "\constants.ts"
+    "\constants.ts",
+    "\ErrorBoundary.tsx",  # 安全網元件：刻意使用硬編碼雙語字串，不依賴 LanguageProvider
+    ".test.ts",
+    ".test.tsx",
+    "\mocks\",
+    "\tests\",
+    "\services\cloud\googleDriveClient.ts", # 內部開發用錯誤訊息，非對外 UI
+    "\services\relationship\", # 底層 Regex 檢查名稱規則
+    "\features\bgstats\services\historyBatchUtils.ts", # 歷史批次預設玩家名稱（寫入用，不在此翻譯）
+    "\features\recommendation\SessionPlayerInitializer.ts", # 判斷預設名稱的正則表達式
+    "\utils\dataMigration.ts" # 歷史資料庫轉移用標籤
 )
 
 # Line-level exclusions: skip lines matching these patterns (comments, dev-only calls, etc.)
@@ -21,7 +31,12 @@ $excludeLinePatterns = @(
     'alert\(',          # alert() dialogs
     '^\s*description:', # Description strings in config objects
     '^\s*//.*',         # Comment after code
-    '//.*[\u4e00-\u9fa5]' # Inline comment at end of line
+    '//.*[\u4e00-\u9fa5]', # Inline comment at end of line
+    '\{\s*/\*',         # JSX multi-line comment open
+    '\*/\s*\}',         # JSX multi-line comment close
+    'findIdx\(',        # CSV import mappings
+    'describe\(',       # Test describe (fallback if file exclusion missed it)
+    'it\('              # Test it (fallback)
 )
 
 $allFiles = Get-ChildItem -Path "src" -Recurse -Include "*.tsx", "*.ts" -ErrorAction SilentlyContinue

@@ -163,7 +163,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                     } else {
                         newVariableMap[v] = availableColumns[0]
                             ? { id: availableColumns[0].id, name: availableColumns[0].name, mode: 'value' }
-                            : { id: PLAYER_COUNT_ID, name: '玩家人數', mode: 'value' };
+                            : { id: PLAYER_COUNT_ID, name: t('col_auto_player_count'), mode: 'value' };
                     }
                 });
                 finalUpdates.variableMap = newVariableMap;

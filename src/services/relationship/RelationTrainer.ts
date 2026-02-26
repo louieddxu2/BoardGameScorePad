@@ -11,7 +11,7 @@ import { ResolvedEntity, RelationItem } from './types';
 import { HistoryRecord } from '../../types';
 
 export class RelationTrainer {
-    
+
     /**
      * 訓練一般實體關聯 (Players, Locations, etc.)
      * 回傳 boolean: 全域權重是否發生變化 (需要存檔)
@@ -24,7 +24,7 @@ export class RelationTrainer {
         globalPlayerWeights: PlayerRecommendationWeights,
         globalCountWeights: CountRecommendationWeights,
         globalLocationWeights?: LocationRecommendationWeights,
-        overridePoolSizes?: Record<string, number> 
+        overridePoolSizes?: Record<string, number>
     ): Promise<{ playerWeightsChanged: boolean, countWeightsChanged: boolean, locationWeightsChanged: boolean }> {
         let playerWeightsChanged = false;
         let countWeightsChanged = false;
@@ -41,8 +41,8 @@ export class RelationTrainer {
         this.ensureMeta(source);
 
         for (const [relKey, activeIds] of targetsByType.entries()) {
-            const limit = (relKey === 'weekdays' || relKey === 'timeSlots' || relKey === 'playerCounts' || relKey === 'gameModes') 
-                ? DATA_LIMITS.RELATION.TIME_LIST_SIZE 
+            const limit = (relKey === 'weekdays' || relKey === 'timeSlots' || relKey === 'playerCounts' || relKey === 'gameModes')
+                ? DATA_LIMITS.RELATION.TIME_LIST_SIZE
                 : DATA_LIMITS.RELATION.DEFAULT_LIST_SIZE;
 
             // [READ] 讀取「舊」狀態快照
@@ -57,21 +57,21 @@ export class RelationTrainer {
             } else {
                 totalPoolSize = await this.getTotalPoolSize(relKey);
             }
-            
+
             const predictionWindow = RelationMapper.getPredictionWindow(relKey, totalPoolSize);
 
             // [LEARN 1] 調整全域權重 (Evaluate Prediction)
-            
+
             // --- Player Prediction Learning ---
             if (relKey === 'players') {
                 const factor = RelationMapper.getRecommendationFactor(source.type);
                 if (factor) {
                     this.updateGlobalWeight(
-                        currentList, 
-                        activeIds, 
-                        globalPlayerWeights as any, 
-                        factor, 
-                        predictionWindow, 
+                        currentList,
+                        activeIds,
+                        globalPlayerWeights as any,
+                        factor,
+                        predictionWindow,
                         () => { playerWeightsChanged = true; }
                     );
                 }
@@ -82,11 +82,11 @@ export class RelationTrainer {
                 const factor = RelationMapper.getCountRecommendationFactor(source.type);
                 if (factor) {
                     this.updateGlobalWeight(
-                        currentList, 
-                        activeIds, 
-                        globalCountWeights as any, 
-                        factor, 
-                        predictionWindow, 
+                        currentList,
+                        activeIds,
+                        globalCountWeights as any,
+                        factor,
+                        predictionWindow,
                         () => { countWeightsChanged = true; }
                     );
                 }
@@ -122,7 +122,7 @@ export class RelationTrainer {
 
             // [UPDATE] 更新排名與狀態 (Mutation)
             const newList = RelationRanking.update(currentList, activeIds, limit);
-            
+
             // 寫入變更
             source.item.meta!.relations![relKey] = newList;
             source.item.meta!.confidence![relKey] = newConfidence;
@@ -141,7 +141,7 @@ export class RelationTrainer {
         onChange: () => void
     ) {
         const historyLength = currentList ? currentList.length : 0;
-        
+
         const penaltyFactor = historyLength <= windowSize
             ? (windowSize > 0 ? historyLength / windowSize : 0)
             : 1.0;
@@ -154,7 +154,7 @@ export class RelationTrainer {
             const isHit = predictionPool.has(id);
             const oldWeight = weightsObj[factorKey];
             const newWeight = weightAdjustmentEngine.calculateNewWeight(oldWeight, isHit, penaltyFactor);
-            
+
             if (oldWeight !== newWeight) {
                 weightsObj[factorKey] = newWeight;
                 onChange();
@@ -167,7 +167,7 @@ export class RelationTrainer {
      * [Updated] Now supports Global Weight Training
      */
     public async trainColors(
-        source: ResolvedEntity, 
+        source: ResolvedEntity,
         players: HistoryRecord['players'],
         globalColorWeights: ColorRecommendationWeights,
         overridePoolSizes?: Record<string, number>
@@ -178,7 +178,7 @@ export class RelationTrainer {
         // 過濾有效玩家
         const validPlayers = players.filter(p => {
             const isSystemId = p.id.startsWith('sys_player_') || p.id.startsWith('slot_') || p.id.startsWith('player_');
-            const isDefaultName = /^玩家\s?\d+$/.test(p.name);
+            const isDefaultName = /^(玩家|Player)\s?\d+$/.test(p.name);
             return !isSystemId || !isDefaultName;
         });
 
@@ -199,15 +199,15 @@ export class RelationTrainer {
         if (colorsToAdd.length > 0) {
             this.ensureMeta(source);
             const relKey = 'colors';
-            
+
             // [READ]
             const currentList = source.item.meta!.relations![relKey] as RelationItem[] | undefined;
             const currentConfidence = source.item.meta!.confidence![relKey] || 1.0;
-            
+
             // Get Config Window
             let totalPoolSize = COLORS.length;
             if (overridePoolSizes && overridePoolSizes[relKey] !== undefined) {
-                 totalPoolSize = overridePoolSizes[relKey];
+                totalPoolSize = overridePoolSizes[relKey];
             }
 
             const predictionWindow = RelationMapper.getPredictionWindow(relKey, totalPoolSize);
@@ -228,7 +228,7 @@ export class RelationTrainer {
             // [LEARN 2] Calculate Confidence
             const newConfidence = ConfidenceCalculator.calculate(
                 currentList,
-                colorsToAdd, 
+                colorsToAdd,
                 currentConfidence,
                 predictionWindow
             );
@@ -236,10 +236,10 @@ export class RelationTrainer {
             // [UPDATE] Update List
             source.item.meta!.relations![relKey] = RelationRanking.update(
                 currentList,
-                colorsToAdd, 
+                colorsToAdd,
                 DATA_LIMITS.RELATION.DEFAULT_LIST_SIZE
             );
-            
+
             source.item.meta!.confidence![relKey] = newConfidence;
             return { itemChanged: true, weightChanged };
         }
@@ -263,10 +263,10 @@ export class RelationTrainer {
             case 'locations': return await db.savedLocations.count();
             case 'weekdays': return 7;
             case 'timeSlots': return 8;
-            case 'playerCounts': return 24; 
+            case 'playerCounts': return 24;
             case 'gameModes': return 5;
             case 'colors': return COLORS.length;
-            default: return 100; 
+            default: return 100;
         }
     }
 }

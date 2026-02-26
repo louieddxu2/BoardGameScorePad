@@ -6,6 +6,7 @@ import { useToast } from '../../../hooks/useToast';
 import { toBlob } from 'html-to-image';
 import ScoreOverlayGenerator, { OverlayData } from './ScoreOverlayGenerator';
 import { LoadedImage } from '../modals/PhotoGalleryModal';
+import { useSessionTranslation } from '../../../i18n/session';
 
 interface PhotoLightboxProps {
     images: LoadedImage[];
@@ -17,6 +18,7 @@ interface PhotoLightboxProps {
 }
 
 const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onClose, onDelete, overlayData, initialShowOverlay = false }) => {
+    const { t } = useSessionTranslation();
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
     const [showOverlay, setShowOverlay] = useState(initialShowOverlay);
@@ -66,7 +68,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                 ...p,
                 // If ID is in anonymous set, replace name with Player N or trigger visual mask
                 isAnonymous: anonymousPlayerIds.has(p.id),
-                name: anonymousPlayerIds.has(p.id) ? `玩家 ${i + 1}` : p.name
+                name: anonymousPlayerIds.has(p.id) ? t('lightbox_player_n', { n: i + 1 }) : p.name
             }))
         };
     }, [overlayData, anonymousPlayerIds]);
@@ -98,7 +100,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                         }
                     } catch (e) {
                         console.error("Overlay generation failed", e);
-                        showToast({ message: "合成圖片失敗，請重試", type: 'error' });
+                        showToast({ message: t('share_composite_failed'), type: 'error' });
                         setShowOverlay(false);
                     }
                 }
@@ -211,7 +213,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
             const file = new File([blob], fileName, { type: mimeType });
 
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({ files: [file], title: '遊戲照片' });
+                await navigator.share({ files: [file], title: t('share_title') });
             } else {
                 const a = document.createElement('a');
                 a.href = targetSrc;
@@ -219,12 +221,12 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-                if (!navigator.canShare) showToast({ message: "已下載圖片", type: 'success' });
+                if (!navigator.canShare) showToast({ message: t('share_download_success'), type: 'success' });
             }
         } catch (e: any) {
             if (e.name !== 'AbortError') {
                 console.error("Share failed", e);
-                showToast({ message: "分享失敗", type: 'error' });
+                showToast({ message: t('share_failed'), type: 'error' });
             }
         }
     };
@@ -315,7 +317,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                 {isGenerating ? (
                     <div className="flex flex-col items-center gap-3 text-emerald-500 z-20">
                         <Loader2 size={48} className="animate-spin" />
-                        <span className="text-sm font-bold animate-pulse">正在合成計分表...</span>
+                        <span className="text-sm font-bold animate-pulse">{t('lightbox_generating')}</span>
                     </div>
                 ) : (
                     <div
@@ -352,7 +354,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
             {isAnonPanelOpen && overlayData && (
                 <div className="absolute bottom-24 left-4 right-4 bg-slate-800/95 backdrop-blur-md border border-slate-700 rounded-2xl p-4 z-30 shadow-2xl animate-in slide-in-from-bottom-5">
                     <div className="flex justify-between items-center mb-3">
-                        <span className="text-xs font-bold text-slate-400 uppercase">點擊以隱藏玩家姓名</span>
+                        <span className="text-xs font-bold text-slate-400 uppercase">{t('lightbox_anon_hint')}</span>
                         <button onClick={() => setIsAnonPanelOpen(false)} className="p-1 bg-slate-700 rounded-full text-slate-300"><X size={14} /></button>
                     </div>
                     <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
@@ -396,7 +398,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                                 onClick={() => setIsAnonPanelOpen(!isAnonPanelOpen)}
                                 disabled={isGenerating}
                                 className={`p-3 rounded-xl border transition-all active:scale-95 ${isAnonPanelOpen ? 'bg-slate-700 border-slate-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}
-                                title="匿名設定"
+                                title={t('lightbox_anon_setting')}
                             >
                                 <VenetianMask size={20} />
                             </button>
@@ -411,7 +413,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                                     }`}
                             >
                                 {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <ReceiptText size={18} />}
-                                <span>{showOverlay ? "隱藏分數" : "顯示分數"}</span>
+                                <span>{showOverlay ? t('lightbox_hide_score') : t('lightbox_show_score')}</span>
                             </button>
                         </>
                     )}
@@ -422,7 +424,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                     <button
                         onClick={() => setTransform({ x: 0, y: 0, scale: 1 })}
                         className="p-3 rounded-full bg-slate-800 text-slate-400 border border-slate-700 active:scale-95 hover:text-white"
-                        title="重置視角"
+                        title={t('lightbox_view_reset')}
                     >
                         <Maximize size={20} />
                     </button>

@@ -2,12 +2,14 @@
 import React, { useState } from 'react';
 import { Users } from 'lucide-react';
 import { Player } from '../../types';
+import { useToolsTranslation } from '../../i18n/tools';
 
 interface PickerToolProps {
     players: Player[];
 }
 
 const PickerTool: React.FC<PickerToolProps> = ({ players }) => {
+    const { t } = useToolsTranslation();
     const [pickedName, setPickedName] = useState<string | null>(null);
     const [isPicking, setIsPicking] = useState(false);
 
@@ -39,14 +41,14 @@ const PickerTool: React.FC<PickerToolProps> = ({ players }) => {
             {pickedName === null ? (
                 <div className="flex flex-col items-center gap-1">
                     <Users size={24} className="text-slate-400 group-hover:text-amber-400 transition-colors" />
-                    <span className="text-xs text-slate-500 font-bold">誰是起始玩家？</span>
+                    <span className="text-xs text-slate-500 font-bold">{t('picker_who_is_first')}</span>
                 </div>
             ) : (
                 <div className="flex flex-col items-center animate-in zoom-in duration-200 w-full px-2">
                     <span className={`text-lg font-bold truncate max-w-full ${isPicking ? 'text-slate-400' : 'text-amber-400 scale-110 transition-transform'}`}>
                         {pickedName}
                     </span>
-                    <span className="text-[10px] text-slate-500 mt-1">{isPicking ? '抽選中...' : '就決定是你了！'}</span>
+                    <span className="text-[10px] text-slate-500 mt-1">{isPicking ? t('picker_picking') : t('picker_decided')}</span>
                 </div>
             )}
         </button>

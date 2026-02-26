@@ -1,8 +1,10 @@
 
 import React, { useRef } from 'react';
 import { Volume2, CheckCircle, XCircle, Trophy, Clock } from 'lucide-react';
+import { useToolsTranslation } from '../../i18n/tools';
 
 const SoundTool: React.FC = () => {
+    const { t } = useToolsTranslation();
     const audioCtxRef = useRef<AudioContext | null>(null);
 
     const getCtx = () => {
@@ -58,7 +60,7 @@ const SoundTool: React.FC = () => {
     return (
         <div className="w-full h-full flex flex-col min-h-[96px] bg-slate-900/30 rounded-2xl border border-slate-800 p-2">
             <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase px-1 mb-2">
-                <Volume2 size={12} /> 音效板
+                <Volume2 size={12} /> {t('sound_board')}
             </div>
             <div className="grid grid-cols-4 gap-2 flex-1">
                 <button onClick={sfxCorrect} className={btnClass}>

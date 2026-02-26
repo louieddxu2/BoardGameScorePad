@@ -143,25 +143,25 @@ const WeightsInspector: React.FC = () => {
     }, [], DEFAULT_COLOR_WEIGHTS);
 
     const handleResetPlayer = async () => {
-        if (confirm('確定要重置「玩家預測」模型為預設值嗎？')) {
+        if (confirm(t('confirm_reset_player'))) {
             await weightAdjustmentEngine.saveWeights(PLAYER_WEIGHTS_ID, DEFAULT_PLAYER_WEIGHTS);
         }
     };
 
     const handleResetCount = async () => {
-        if (confirm('確定要重置「人數預測」模型為預設值嗎？')) {
+        if (confirm(t('confirm_reset_count'))) {
             await weightAdjustmentEngine.saveWeights(COUNT_WEIGHTS_ID, DEFAULT_COUNT_WEIGHTS);
         }
     };
 
     const handleResetLocation = async () => {
-        if (confirm('確定要重置「地點預測」模型為預設值嗎？')) {
+        if (confirm(t('confirm_reset_location'))) {
             await weightAdjustmentEngine.saveWeights(LOCATION_WEIGHTS_ID, DEFAULT_LOCATION_WEIGHTS);
         }
     };
 
     const handleResetColor = async () => {
-        if (confirm('確定要重置「顏色預測」模型為預設值嗎？')) {
+        if (confirm(t('confirm_reset_color'))) {
             await weightAdjustmentEngine.saveWeights(COLOR_WEIGHTS_ID, DEFAULT_COLOR_WEIGHTS);
         }
     };

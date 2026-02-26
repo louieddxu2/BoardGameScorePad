@@ -100,6 +100,7 @@ export const columnEditorTranslations = {
     // Tab Auto
     col_auto_title: "高級自動計算",
     col_auto_desc: "使用 x1, x2... 代表來源欄位，f1(...), f2(...) 代表查表規則。",
+    col_auto_example: "例如：",
     col_auto_formula: "計算公式",
     col_auto_vars: "變數對應",
     col_auto_player_count: "👥 玩家人數 (本局設定)",
@@ -219,6 +220,7 @@ export const columnEditorTranslations = {
     // Tab Auto
     col_auto_title: "Advanced Formula",
     col_auto_desc: "Use x1, x2... for source columns, f1(...), f2(...) for lookup tables.",
+    col_auto_example: "e.g. ",
     col_auto_formula: "Formula",
     col_auto_vars: "Variables",
     col_auto_player_count: "👥 Player Count",

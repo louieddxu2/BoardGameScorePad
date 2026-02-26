@@ -40,11 +40,35 @@ export const inspectorTranslations = {
     no_relations: "無關聯資料",
 
     // Detail Panel
+    // Detail Panel
     usage_count: "使用次數",
     last_used: "最後使用",
     relations_analysis: "關聯分析",
     filtered: "已篩選",
     full_dump: "完整資料 (JSON)",
+
+    // BGG Metadata Labels
+    bgg_year: "年份",
+    bgg_rank: "排名",
+    bgg_complexity: "重度",
+    bgg_players: "人數",
+    bgg_best: "最佳",
+    bgg_playing_time: "時間",
+    bgg_age: "年齡",
+    bgg_designers: "設計師",
+    bgg_alt_names: "別名",
+    unit_minute: "分",
+    unit_player: "人",
+    confidence_hint: "信心值 (Confidence)",
+
+    // Weekdays
+    day_0: "週日",
+    day_1: "週一",
+    day_2: "週二",
+    day_3: "週三",
+    day_4: "週四",
+    day_5: "週五",
+    day_6: "週六",
 
     // Image Inspector
     img_total_size: "總佔用空間",
@@ -114,6 +138,33 @@ export const inspectorTranslations = {
     btn_reprocess: "開始掃描",
     btn_reset: "確認清空",
     btn_factory_reset: "⚠️ 刪除所有資料 (Factory Reset) ⚠️",
+    list_display_prefix: "顯示前",
+    list_display_suffix: "筆",
+    input_search_placeholder: "搜尋...",
+    input_search_id_placeholder: "搜尋 ID...",
+
+    // Image Detail Labels
+    img_id: "ID",
+    img_size: "容量",
+    img_related_id: "關聯 ID",
+    img_type: "類型",
+
+    // Toasts
+    toast_reset_success: "統計資料庫已清空 (請點擊右方按鈕重新掃描)",
+    toast_reset_failed: "重置失敗",
+    toast_reprocess_success: "已成功掃描 {count} 筆紀錄",
+    toast_reprocess_failed: "掃描過程發生錯誤",
+    toast_fetch_template_failed: "警告：無法讀取完整模板資料",
+
+    // Tooltips
+    tooltip_reset: "清空資料庫 (刪除所有列表與關聯)",
+    tooltip_reprocess: "重新掃描並匯入歷史紀錄",
+
+    // Weight reset confirmations
+    confirm_reset_player: "確定要重置「玩家預測」模型為預設值嗎？",
+    confirm_reset_count: "確定要重置「人數預測」模型為預設值嗎？",
+    confirm_reset_location: "確定要重置「地點預測」模型為預設值嗎？",
+    confirm_reset_color: "確定要重置「顏色預測」模型為預設值嗎？",
   },
   'en': {
     title: "System Data Inspector",
@@ -157,6 +208,29 @@ export const inspectorTranslations = {
     relations_analysis: "Relations Analysis",
     filtered: "Filtered",
     full_dump: "Full Dump (JSON)",
+
+    // BGG Metadata Labels
+    bgg_year: "Year",
+    bgg_rank: "Rank",
+    bgg_complexity: "Weight",
+    bgg_players: "Players",
+    bgg_best: "Best",
+    bgg_playing_time: "Time",
+    bgg_age: "Age",
+    bgg_designers: "Designer",
+    bgg_alt_names: "Aliases",
+    unit_minute: "m",
+    unit_player: "P",
+    confidence_hint: "Confidence Score",
+
+    // Weekdays
+    day_0: "Sun",
+    day_1: "Mon",
+    day_2: "Tue",
+    day_3: "Wed",
+    day_4: "Thu",
+    day_5: "Fri",
+    day_6: "Sat",
 
     // Image Inspector
     img_total_size: "Total Size",
@@ -226,7 +300,35 @@ export const inspectorTranslations = {
     btn_reprocess: "Start Scan",
     btn_reset: "Confirm Reset",
     btn_factory_reset: "⚠️ DELETE ALL DATA (Factory Reset) ⚠️",
+    list_display_prefix: "Displaying top ",
+    list_display_suffix: " items",
+    input_search_placeholder: "Search...",
+    input_search_id_placeholder: "Search ID...",
+
+    // Image Detail Labels
+    img_id: "ID",
+    img_size: "Size",
+    img_related_id: "Related ID",
+    img_type: "Type",
+
+    // Toasts
+    toast_reset_success: "Stats DB cleared (Click the button on right to rescan)",
+    toast_reset_failed: "Reset failed",
+    toast_reprocess_success: "Successfully scanned {count} records",
+    toast_reprocess_failed: "Error occurred during scanning",
+    toast_fetch_template_failed: "Warning: Unable to load full template data",
+
+    // Tooltips
+    tooltip_reset: "Clear Library (Delete all lists and relations)",
+    tooltip_reprocess: "Rescan and import history records",
+
+    // Weight reset confirmations
+    confirm_reset_player: "Are you sure you want to reset the 'Player Predictor' model to defaults?",
+    confirm_reset_count: "Are you sure you want to reset the 'Count Predictor' model to defaults?",
+    confirm_reset_location: "Are you sure you want to reset the 'Location Predictor' model to defaults?",
+    confirm_reset_color: "Are you sure you want to reset the 'Color Predictor' model to defaults?",
   }
+
 };
 
 export type InspectorTranslationKey = keyof typeof inspectorTranslations['zh-TW'];
