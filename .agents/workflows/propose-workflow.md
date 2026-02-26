@@ -2,6 +2,8 @@
 description: 評估是否需要建立新 Workflow、重構或新增工具腳本的決策流程
 ---
 
+> 📌 **此 Workflow 適用所有專案**（非此專案專屬）。開新專案時應將此檔案複製過去。
+
 # 提案新 Workflow / 重構 / 工具腳本
 
 本 Workflow 定義「AI 應在何時主動提出建立新 Workflow 或進行重構」的判斷標準。
