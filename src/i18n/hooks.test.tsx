@@ -43,7 +43,7 @@ describe('i18n Hooks (useTranslation logic)', () => {
         const { result } = renderHookWithProvider(() => useCommonTranslation(), 'zh-TW');
 
         expect(result.current.language).toBe('zh-TW');
-        expect(result.current.t('confirm')).toBe('確定');
+        expect(result.current.t('confirm')).toBe('確認');
         expect(result.current.t('cancel')).toBe('取消');
     });
 
