@@ -11,8 +11,8 @@
 - Run before release or on nightly schedule.
 
 ## Current Policy
-- `npm test` remains default developer check.
-- High-cost UI suites should be controlled by env flag (example: `RUN_UI_TESTS=1`).
+- `npm test` / `npm run test:core`: daily checks for regular changes.
+- `npm run test:release`: full pre-release validation (includes high-cost UI suites).
 
 ## Recommended CI Gates
 1. Required on every PR:
