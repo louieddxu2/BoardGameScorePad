@@ -4,7 +4,7 @@ import { Users, MapPin, Hash, LayoutGrid, ChevronRight, ChevronDown, Palette, Ca
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { SavedListItem } from '../../types';
-import { useInspectorTranslation } from './InspectorShared';
+import { useInspectorTranslation } from './inspector/shared/InspectorCommon';
 
 const CollapsibleSection = ({ icon, title, count, confidence, children }: { icon: React.ReactNode, title: string, count: number, confidence?: number, children?: React.ReactNode }) => {
     const [isOpen, setIsOpen] = useState(true);
