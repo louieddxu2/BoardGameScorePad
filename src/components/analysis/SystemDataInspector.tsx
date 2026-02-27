@@ -100,7 +100,7 @@ const ImageInspector = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedImage, setSelectedImage] = useState<LocalImage | null>(null);
 
-    // [Performance] DB-Level Pagination & Filtering
+    // [Performance] DB-Level Pagination & Filtering + Source Resolution
     const images = useLiveQuery(async () => {
         let collection = db.images.toCollection();
         if (searchTerm.trim()) {
@@ -110,7 +110,31 @@ const ImageInspector = () => {
                 img.relatedId.toLowerCase().includes(lower)
             );
         }
-        return await collection.limit(50).toArray();
+        const records = await collection.reverse().offset(0).limit(50).toArray();
+
+        // Resolve source names
+        return await Promise.all(records.map(async (img) => {
+            let sourceName = img.relatedId;
+            try {
+                if (img.relatedType === 'template') {
+                    const template = await db.templates.get(img.relatedId);
+                    if (template) sourceName = template.name;
+                } else if (img.relatedType === 'session') {
+                    // Try history first (completed games)
+                    const history = await db.history.get(img.relatedId);
+                    if (history) {
+                        sourceName = history.gameName;
+                    } else {
+                        // Try active sessions
+                        const session = await db.sessions.get(img.relatedId);
+                        if (session) sourceName = session.name;
+                    }
+                }
+            } catch (e) {
+                console.warn(`Failed to resolve source name for ${img.id}`, e);
+            }
+            return { ...img, sourceName };
+        }));
     }, [searchTerm]);
 
     // Load full image blob only for the SINGLE selected item
@@ -163,7 +187,7 @@ const ImageInspector = () => {
                     </div>
                 </div>
                 <div className="p-2 space-y-1">
-                    {displayImages.map((img: LocalImage) => (
+                    {displayImages.map((img: LocalImage & { sourceName?: string }) => (
                         <button
                             key={img.id}
                             onClick={() => setSelectedId(img.id)}
@@ -171,14 +195,20 @@ const ImageInspector = () => {
                         >
                             <div className="flex justify-between w-full">
                                 <span className="font-mono truncate w-24 text-[10px] opacity-70">{img.id.substring(0, 8)}...</span>
-                                {/* Since we haven't loaded the blob in list view for performance, size isn't available here without full load. */}
-                                {/* We show type instead */}
-                                <span className="text-[9px] font-bold text-slate-400">{img.relatedType}</span>
+                                <span className="text-[9px] font-bold text-slate-400">
+                                    {img.createdAt ? new Date(img.createdAt).toLocaleDateString() : img.relatedType}
+                                </span>
                             </div>
-                            <div className="flex items-center gap-1.5 opacity-80">
-                                <span className={`w-2 h-2 rounded-full ${img.relatedType === 'template' ? 'bg-sky-400' : 'bg-yellow-400'}`} />
-                                <span className="truncate w-full">{img.relatedId}</span>
+                            <div className="flex items-center gap-1.5 opacity-80 min-w-0">
+                                <span className={`flex-shrink-0 w-2 h-2 rounded-full ${img.relatedType === 'template' ? 'bg-sky-400' : 'bg-yellow-400'}`} />
+                                <span className="font-bold truncate">{img.sourceName || img.relatedId}</span>
                             </div>
+                            {img.createdAt && (
+                                <div className="text-[9px] opacity-50 flex items-center gap-1">
+                                    <Clock size={8} />
+                                    {new Date(img.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                            )}
                         </button>
                     ))}
                     {displayImages.length === 0 && (
@@ -208,6 +238,10 @@ const ImageInspector = () => {
                             <div>
                                 <span className="text-slate-500 block mb-1">{t('img_related_id')}</span>
                                 <span className="text-indigo-300 font-mono break-all">{selectedImage.relatedId}</span>
+                            </div>
+                            <div>
+                                <span className="text-slate-500 block mb-1">{t('last_used')}</span>
+                                <span className="text-white">{selectedImage.createdAt ? new Date(selectedImage.createdAt).toLocaleString() : '-'}</span>
                             </div>
                             <div>
                                 <span className="text-slate-500 block mb-1">{t('img_type')}</span>
