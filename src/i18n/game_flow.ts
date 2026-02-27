@@ -1,5 +1,5 @@
 
-import { useTranslation } from '../i18n';
+import { useTranslation } from './index';
 
 export const gameFlowTranslations = {
   'zh-TW': {
@@ -36,7 +36,7 @@ export const gameFlowTranslations = {
     // Discard Confirmation (Context specific)
     confirm_discard_title: "確定捨棄本局？",
     confirm_discard_msg: "此動作將完全刪除本局遊戲的所有紀錄（包含照片），且無法復原。",
-    
+
     // Generic used in flow
     delete: "刪除",
     cancel: "取消",

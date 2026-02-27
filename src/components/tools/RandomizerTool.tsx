@@ -1,12 +1,14 @@
 
 import React, { useState } from 'react';
 import { Dices, CircleDollarSign, Triangle, Square, Hexagon, Octagon, Circle } from 'lucide-react';
+import { useToolsTranslation } from '../../i18n/tools';
 
 type RandomType = 'COIN' | 'D4' | 'D6' | 'D8' | 'D12' | 'D20';
 
 const RandomizerTool: React.FC = () => {
+    const { t } = useToolsTranslation();
     const [displayVal, setDisplayVal] = useState<string | number | null>(null);
-    const [subLabel, setSubLabel] = useState<string>('隨機生成器');
+    const [subLabel, setSubLabel] = useState<string>(t('random_title'));
     const [isRolling, setIsRolling] = useState(false);
     const [activeType, setActiveType] = useState<RandomType | null>(null);
 
@@ -14,7 +16,7 @@ const RandomizerTool: React.FC = () => {
         if (isRolling) return;
         setIsRolling(true);
         setActiveType(type);
-        
+
         let max = 6;
         let isCoin = false;
 
@@ -33,7 +35,7 @@ const RandomizerTool: React.FC = () => {
 
         const loop = () => {
             const raw = Math.floor(Math.random() * max) + 1;
-            
+
             if (isCoin) {
                 setDisplayVal(raw === 1 ? 'H' : 'T');
             } else {
@@ -41,7 +43,7 @@ const RandomizerTool: React.FC = () => {
             }
 
             count++;
-            
+
             if (count < totalSpins) {
                 delay += 10;
                 setTimeout(loop, delay);
@@ -50,26 +52,26 @@ const RandomizerTool: React.FC = () => {
                 // Final Result Logic
                 if (isCoin) {
                     const finalRaw = Math.floor(Math.random() * 2) + 1;
-                    setDisplayVal(finalRaw === 1 ? '正面' : '反面');
+                    setDisplayVal(finalRaw === 1 ? t('random_coin_heads') : t('random_coin_tails'));
                     setSubLabel(finalRaw === 1 ? 'Heads' : 'Tails');
                 } else {
                     const finalVal = Math.floor(Math.random() * max) + 1;
                     setDisplayVal(finalVal);
                     setSubLabel(`${type} = ${finalVal}`);
                 }
-                
+
                 if (navigator.vibrate) navigator.vibrate(50);
             }
         };
-        
-        setSubLabel('Rolling...');
+
+        setSubLabel(t('random_rolling'));
         loop();
     };
 
     const btnClass = (type: RandomType) => `
         flex flex-col items-center justify-center p-1 rounded-lg border transition-all active:scale-90 h-12 relative
-        ${activeType === type && isRolling 
-            ? 'bg-indigo-600 text-white border-indigo-500 shadow-inner' 
+        ${activeType === type && isRolling
+            ? 'bg-indigo-600 text-white border-indigo-500 shadow-inner'
             : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
         }
     `;
@@ -81,7 +83,7 @@ const RandomizerTool: React.FC = () => {
                 {!displayVal ? (
                     <div className="flex flex-col items-center opacity-40">
                         <Dices size={24} className="mb-1" />
-                        <span className="text-[10px] font-bold">點擊下方按鈕</span>
+                        <span className="text-[10px] font-bold">{t('random_hint')}</span>
                     </div>
                 ) : (
                     <>
@@ -99,7 +101,7 @@ const RandomizerTool: React.FC = () => {
             <div className="grid grid-cols-6 gap-1.5">
                 <button onClick={() => roll('COIN')} className={btnClass('COIN')}>
                     <CircleDollarSign size={18} />
-                    <span className="text-[9px] font-bold mt-0.5">硬幣</span>
+                    <span className="text-[9px] font-bold mt-0.5">{t('random_coin')}</span>
                 </button>
                 <button onClick={() => roll('D4')} className={btnClass('D4')}>
                     <Triangle size={16} className="fill-current opacity-20 absolute" />

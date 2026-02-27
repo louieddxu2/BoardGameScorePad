@@ -17,14 +17,14 @@ import { getRecordScoringRule, getRecordBggId } from '../../utils/historyUtils';
  * 目的：將資料庫 I/O 從 O(N) 降為 O(1)，解決手機端效能瓶頸。
  */
 export class HistoryBatchProcessor {
-    
+
     public async run(records: HistoryRecord[]): Promise<void> {
         if (records.length === 0) return;
 
         console.time("BatchProcess");
 
         await (db as any).transaction('rw', db.savedPlayers, db.savedGames, db.savedLocations, db.savedWeekdays, db.savedTimeSlots, db.savedPlayerCounts, db.savedGameModes, db.savedCurrentSession, db.analyticsLogs, db.bggGames, db.weights, async () => {
-            
+
             // --- 1. Pre-load Fixed Dimensions (Read All) ---
             // 這些維度資料量小，一次全讀取比反覆查詢快得多
             const [weekdays, timeSlots, playerCounts, gameModes] = await Promise.all([
@@ -37,7 +37,7 @@ export class HistoryBatchProcessor {
             // 建立 ID 索引 Map
             const mapById = new Map<string, SavedListItem>();
             const addAllToMap = (items: SavedListItem[]) => items.forEach(i => mapById.set(i.id, i));
-            
+
             addAllToMap(weekdays);
             addAllToMap(timeSlots);
             addAllToMap(playerCounts);
@@ -47,17 +47,17 @@ export class HistoryBatchProcessor {
             const gameIds = new Set<string>();
             const gameNames = new Set<string>();
             const gameBggIds = new Set<string>();
-            
+
             const locationIds = new Set<string>();
             const locationNames = new Set<string>();
-            
+
             const playerIds = new Set<string>();
             const playerNames = new Set<string>();
 
             // 預先過濾 Log 狀態
             const recordIds = records.map(r => r.id);
             const logs = await db.analyticsLogs.bulkGet(recordIds);
-            
+
             const logsMap = new Map<string, AnalyticsLog>();
             logs.forEach(l => {
                 if (l) logsMap.set(l.historyId, l);
@@ -79,7 +79,7 @@ export class HistoryBatchProcessor {
 
                 // Harvest Logic
                 const bggId = getRecordBggId(record);
-                if (record.templateId) gameIds.add(record.templateId); 
+                if (record.templateId) gameIds.add(record.templateId);
                 if (record.gameName) gameNames.add(record.gameName.trim());
                 if (bggId) gameBggIds.add(bggId);
 
@@ -88,17 +88,17 @@ export class HistoryBatchProcessor {
 
                 if (mode === 'full') {
                     for (const p of record.players) {
-                         const isSlotId = p.id.startsWith('slot_') || p.id.startsWith('player_');
-                         const isSystemId = p.id.startsWith('sys_player_'); 
-                         const isDefaultName = /^玩家\s?\d+$/.test(p.name);
-                         
-                         // Skip pure placeholders
-                         if ((isSlotId || isSystemId) && isDefaultName && !p.linkedPlayerId) continue;
-                         
-                         if (p.linkedPlayerId) playerIds.add(p.linkedPlayerId);
-                         else if (!isSlotId && !isSystemId) playerIds.add(p.id);
-                         
-                         if (p.name) playerNames.add(p.name.trim());
+                        const isSlotId = p.id.startsWith('slot_') || p.id.startsWith('player_');
+                        const isSystemId = p.id.startsWith('sys_player_');
+                        const isDefaultName = /^玩家\s?\d+$/.test(p.name);
+
+                        // Skip pure placeholders
+                        if ((isSlotId || isSystemId) && isDefaultName && !p.linkedPlayerId) continue;
+
+                        if (p.linkedPlayerId) playerIds.add(p.linkedPlayerId);
+                        else if (!isSlotId && !isSystemId) playerIds.add(p.id);
+
+                        if (p.name) playerNames.add(p.name.trim());
                     }
                 }
             }
@@ -106,20 +106,20 @@ export class HistoryBatchProcessor {
             if (recordsToProcess.length === 0) return;
 
             // --- 3. Bulk Fetch Dynamic Entities (預載階段) ---
-            
+
             // Helper: Safe fetch that handles empty sets to avoid 'anyOf([])' crash
             const safeFetch = async (
-                table: Table<SavedListItem>, 
-                ids: Set<string>, 
-                names: Set<string>, 
+                table: Table<SavedListItem>,
+                ids: Set<string>,
+                names: Set<string>,
                 bggIds?: Set<string>
             ) => {
                 const tasks: Promise<SavedListItem[] | (SavedListItem | undefined)[]>[] = [];
-                
+
                 if (ids.size > 0) tasks.push(table.bulkGet([...ids]));
                 if (names.size > 0) tasks.push(table.where('name').anyOf([...names]).toArray());
                 if (bggIds && bggIds.size > 0) tasks.push(table.where('bggId').anyOf([...bggIds]).toArray());
-                
+
                 const results = await Promise.all(tasks);
                 // Flatten and remove undefined/null
                 return results.flat().filter((i): i is SavedListItem => !!i);
@@ -177,7 +177,7 @@ export class HistoryBatchProcessor {
                 else if (type === 'playerCount') modifiedPlayerCounts.set(item.id, item);
                 else if (type === 'gameMode') modifiedGameModes.set(item.id, item);
             };
-            
+
             // Pool Sizes (Base + New Created)
             const poolSizes = {
                 players: totalPlayersCount,
@@ -195,7 +195,7 @@ export class HistoryBatchProcessor {
             const globalCountWeights = await weightAdjustmentEngine.getWeights<CountRecommendationWeights>(COUNT_WEIGHTS_ID, DEFAULT_COUNT_WEIGHTS);
             const globalLocationWeights = await weightAdjustmentEngine.getWeights<LocationRecommendationWeights>(LOCATION_WEIGHTS_ID, DEFAULT_LOCATION_WEIGHTS);
             const globalColorWeights = await weightAdjustmentEngine.getWeights<ColorRecommendationWeights>(COLOR_WEIGHTS_ID, DEFAULT_COLOR_WEIGHTS);
-            
+
             let playerWeightsDirty = false;
             let countWeightsDirty = false;
             let locationWeightsDirty = false;
@@ -206,9 +206,9 @@ export class HistoryBatchProcessor {
             // *** In-Memory Resolver Helper ***
             // 模擬 EntityService 的 resolveOrCreate 邏輯，但操作記憶體物件
             const resolveInMemory = (
-                type: EntityType, 
-                name: string | undefined, 
-                preferredId?: string, 
+                type: EntityType,
+                name: string | undefined,
+                preferredId?: string,
                 bggId?: string
             ): SavedListItem | null => {
                 if (!name) return null;
@@ -240,7 +240,7 @@ export class HistoryBatchProcessor {
                 mapById.set(newId, newItem);
                 mapByName.set(key, newItem);
                 if (type === 'game' && bggId) mapByBggId.set(bggId, newItem);
-                
+
                 markDirty(newItem, type);
 
                 // Increment Pool Size immediately for accurate calculation
@@ -271,8 +271,8 @@ export class HistoryBatchProcessor {
                 if (isFull) {
                     const validPlayers = record.players.filter(p => {
                         const isSlotId = p.id.startsWith('slot_') || p.id.startsWith('player_');
-                        const isSystemId = p.id.startsWith('sys_player_'); 
-                        const isDefaultName = /^玩家\s?\d+$/.test(p.name);
+                        const isSystemId = p.id.startsWith('sys_player_');
+                        const isDefaultName = /^(玩家|Player)\s?\d+$/.test(p.name);
                         if ((isSlotId || isSystemId) && isDefaultName && !p.linkedPlayerId) return false;
                         return true;
                     });
@@ -288,10 +288,10 @@ export class HistoryBatchProcessor {
                 // D. Fixed Dimensions
                 if (isFull) {
                     const date = new Date(record.endTime);
-                    const dayIndex = date.getDay(); 
+                    const dayIndex = date.getDay();
                     const hour = date.getHours();
-                    const slotIndex = Math.floor(hour / 3); 
-                    
+                    const slotIndex = Math.floor(hour / 3);
+
                     const startH = String(slotIndex * 3).padStart(2, '0');
                     const endH = String((slotIndex + 1) * 3).padStart(2, '0');
                     const timeSlotName = `${startH}-${endH}`;
@@ -317,7 +317,7 @@ export class HistoryBatchProcessor {
 
                     resolveFixed(`weekday_${dayIndex}`, dayIndex.toString(), 'weekday', db.savedWeekdays);
                     resolveFixed(`timeslot_${slotIndex}`, timeSlotName, 'timeslot', db.savedTimeSlots);
-                    
+
                     if (playerCount > 0) {
                         resolveFixed(`count_${playerCount}`, playerCount.toString(), 'playerCount', db.savedPlayerCounts);
                     }
@@ -329,7 +329,7 @@ export class HistoryBatchProcessor {
 
                 // --- Train Relations ---
                 const newContextEntities = resolvedEntities.filter(e => e.isNewContext);
-                
+
                 if (resolvedEntities.length > 0) {
                     for (const source of resolvedEntities) {
                         let entityChanged = false;
@@ -352,27 +352,27 @@ export class HistoryBatchProcessor {
                         if (targetCandidates.length > 0) {
                             // [Critical Fix] Wrap non-DB async work with Dexie.waitFor to prevent transaction commit
                             const result = await Dexie.waitFor(relationTrainer.trainRelations(
-                                source, 
-                                targetCandidates, 
-                                globalPlayerWeights, 
-                                globalCountWeights, 
+                                source,
+                                targetCandidates,
+                                globalPlayerWeights,
+                                globalCountWeights,
                                 globalLocationWeights,
                                 poolSizes // Use current pool sizes
                             ));
-                            
+
                             if (result.playerWeightsChanged) playerWeightsDirty = true;
                             if (result.countWeightsChanged) countWeightsDirty = true;
                             if (result.locationWeightsChanged) locationWeightsDirty = true;
-                            
+
                             entityChanged = true;
                         }
 
                         // Colors
                         if (source.isNewContext && (source.type === 'game' || source.type === 'player')) {
-                             // [Critical Fix] Wrap non-DB async work with Dexie.waitFor
-                             const colorResult = await Dexie.waitFor(relationTrainer.trainColors(
-                                source, 
-                                record.players, 
+                            // [Critical Fix] Wrap non-DB async work with Dexie.waitFor
+                            const colorResult = await Dexie.waitFor(relationTrainer.trainColors(
+                                source,
+                                record.players,
                                 globalColorWeights,
                                 poolSizes
                             ));
@@ -414,7 +414,7 @@ export class HistoryBatchProcessor {
             if (colorWeightsDirty) await weightAdjustmentEngine.saveWeights(COLOR_WEIGHTS_ID, globalColorWeights);
 
         });
-        
+
         console.timeEnd("BatchProcess");
     }
 }

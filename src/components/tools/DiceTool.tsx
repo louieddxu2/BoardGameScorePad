@@ -1,8 +1,10 @@
 
 import React, { useState } from 'react';
 import { Dice5 } from 'lucide-react';
+import { useToolsTranslation } from '../../i18n/tools';
 
 const DiceTool: React.FC = () => {
+    const { t } = useToolsTranslation();
     const [val, setVal] = useState<number | null>(null);
     const [isRolling, setIsRolling] = useState(false);
 
@@ -13,7 +15,7 @@ const DiceTool: React.FC = () => {
         const max = 12;
         // Exponential decay interval for realistic rolling feel
         let delay = 50;
-        
+
         const loop = () => {
             setVal(Math.floor(Math.random() * 6) + 1);
             count++;
@@ -29,14 +31,14 @@ const DiceTool: React.FC = () => {
     };
 
     return (
-        <button 
+        <button
             onClick={roll}
             className="w-full h-full flex flex-col items-center justify-center p-3 bg-slate-800/50 hover:bg-slate-700/80 rounded-2xl border border-slate-700/50 transition-all active:scale-95 group min-h-[96px]"
         >
             {val === null ? (
                 <>
                     <Dice5 size={28} className="text-slate-400 group-hover:text-indigo-400 transition-colors mb-1" />
-                    <span className="text-xs text-slate-500 font-bold">擲骰子 (D6)</span>
+                    <span className="text-xs text-slate-500 font-bold">{t('dice_roll_d6')}</span>
                 </>
             ) : (
                 <div className="flex flex-col items-center">

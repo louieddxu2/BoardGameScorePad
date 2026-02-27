@@ -11,7 +11,8 @@ import ImportTemplateModal from './ImportTemplateModal';
 import MappingDrawer from './MappingDrawer';
 import { useTextureMapperInteractions } from './hooks/useTextureMapperInteractions';
 import { buildTemplateFromTextureMap } from './utils/templateBuilder';
-import { db } from '../../db'; 
+import { db } from '../../db';
+import { useTemplateEditorTranslation } from '../../i18n/template_editor';
 
 interface TextureMapperProps {
   imageSrc: string;
@@ -20,67 +21,68 @@ interface TextureMapperProps {
   onSave: (template: GameTemplate) => void;
   onCancel: () => void;
   allTemplates: GameTemplate[];
-  aspectRatio: number; 
+  aspectRatio: number;
   initialVisuals?: GlobalVisuals;
   initialColumns?: ScoreColumn[];
   initialTemplate?: GameTemplate; // [New] Receive full source template if editing
 }
 
-const DRAWER_BOUNDARY_X = 128; 
+const DRAWER_BOUNDARY_X = 128;
 
 const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, initialColumnCount, onSave, onCancel, allTemplates, aspectRatio, initialVisuals, initialColumns, initialTemplate }) => {
-  
+  const { t } = useTemplateEditorTranslation();
+
   // --- Core State ---
-  
+
   // Initialize Bounds
   const [gridBounds, setGridBounds] = useState<GridBounds>(() => {
     if (initialVisuals && initialVisuals.topMaskRect) {
-       return {
-         top: (initialVisuals.topMaskRect.height || 0) * 100,
-         bottom: initialVisuals.bottomMaskRect ? initialVisuals.bottomMaskRect.y * 100 : 100,
-         left: (initialVisuals.leftMaskRect?.width || 0) * 100,
-         right: initialVisuals.rightMaskRect ? initialVisuals.rightMaskRect.x * 100 : 100
-       };
+      return {
+        top: (initialVisuals.topMaskRect.height || 0) * 100,
+        bottom: initialVisuals.bottomMaskRect ? initialVisuals.bottomMaskRect.y * 100 : 100,
+        left: (initialVisuals.leftMaskRect?.width || 0) * 100,
+        right: initialVisuals.rightMaskRect ? initialVisuals.rightMaskRect.x * 100 : 100
+      };
     }
     return { top: 0, bottom: 100, left: 0, right: 100 };
   });
-  
+
   // Initialize Horizontal Lines
   const [hLines, setHLines] = useState<number[]>(() => {
     if (initialVisuals && initialColumns && initialColumns.length > 0) {
-        const lines = new Set<number>();
-        
-        // Add Header Line
-        if (initialVisuals.playerHeaderRect) {
-             const y = (initialVisuals.playerHeaderRect.y + initialVisuals.playerHeaderRect.height) * 100;
-             lines.add(Math.round(y * 1000) / 1000);
-        }
+      const lines = new Set<number>();
 
-        // Add Column Bottoms
-        initialColumns.forEach(col => {
-            // Only add if visible (row mode)
-            if (col.visuals?.cellRect && col.displayMode !== 'hidden' && col.displayMode !== 'overlay') {
-                const y = (col.visuals.cellRect.y + col.visuals.cellRect.height) * 100;
-                lines.add(Math.round(y * 1000) / 1000);
-            }
-        });
-        
-        // Add Total Row Top (if distinct)
-        if (initialVisuals.totalRowRect) {
-            const y = initialVisuals.totalRowRect.y * 100;
-            lines.add(Math.round(y * 1000) / 1000);
-        }
+      // Add Header Line
+      if (initialVisuals.playerHeaderRect) {
+        const y = (initialVisuals.playerHeaderRect.y + initialVisuals.playerHeaderRect.height) * 100;
+        lines.add(Math.round(y * 1000) / 1000);
+      }
 
-        const sorted = Array.from(lines).sort((a, b) => a - b);
-        
-        // Filter out lines that are too close to bounds to avoid duplication/glitches
-        const topBound = (initialVisuals.topMaskRect?.height || 0) * 100;
-        const bottomBound = (initialVisuals.bottomMaskRect?.y || 1) * 100;
-        
-        return sorted.filter(y => y > topBound + 0.1 && y < bottomBound - 0.1);
+      // Add Column Bottoms
+      initialColumns.forEach(col => {
+        // Only add if visible (row mode)
+        if (col.visuals?.cellRect && col.displayMode !== 'hidden' && col.displayMode !== 'overlay') {
+          const y = (col.visuals.cellRect.y + col.visuals.cellRect.height) * 100;
+          lines.add(Math.round(y * 1000) / 1000);
+        }
+      });
+
+      // Add Total Row Top (if distinct)
+      if (initialVisuals.totalRowRect) {
+        const y = initialVisuals.totalRowRect.y * 100;
+        lines.add(Math.round(y * 1000) / 1000);
+      }
+
+      const sorted = Array.from(lines).sort((a, b) => a - b);
+
+      // Filter out lines that are too close to bounds to avoid duplication/glitches
+      const topBound = (initialVisuals.topMaskRect?.height || 0) * 100;
+      const bottomBound = (initialVisuals.bottomMaskRect?.y || 1) * 100;
+
+      return sorted.filter(y => y > topBound + 0.1 && y < bottomBound - 0.1);
     }
 
-    const totalRows = initialColumnCount + 2; 
+    const totalRows = initialColumnCount + 2;
     const rowHeight = 100 / totalRows;
     return Array.from({ length: initialColumnCount + 1 }, (_, i) => (i + 1) * rowHeight);
   });
@@ -88,95 +90,95 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
   // Initialize Vertical Lines
   const [vLines, setVLines] = useState<number[]>(() => {
     if (initialVisuals && initialVisuals.playerLabelRect && initialVisuals.playerHeaderRect) {
-        const v0 = (initialVisuals.playerLabelRect.width) * 100;
-        const v1 = (initialVisuals.playerHeaderRect.x + initialVisuals.playerHeaderRect.width) * 100;
-        return [Math.round(v0 * 1000) / 1000, Math.round(v1 * 1000) / 1000];
+      const v0 = (initialVisuals.playerLabelRect.width) * 100;
+      const v1 = (initialVisuals.playerHeaderRect.x + initialVisuals.playerHeaderRect.width) * 100;
+      return [Math.round(v0 * 1000) / 1000, Math.round(v1 * 1000) / 1000];
     }
     return [25, 50];
   });
 
   const [headerSepIdx, setHeaderSepIdx] = useState<number>(1);
-  
+
   // Initialize totalSepIdx
   const [totalSepIdx, setTotalSepIdx] = useState<number>(() => {
-      // If hydrating, totalSepIdx is effectively the last line + 1 (representing the Total Row area)
-      // Because hLines stores separators. 
-      // If we have N hLines, we have N+1 rows inside the bounds.
-      // If Header uses 1 row (index 0), then we have N rows left.
-      // Usually totalSepIdx matches hLines.length.
-      if (initialVisuals) {
-          // We can't know exactly which was total without analyzing logic, 
-          // but typically the last separator defines the start of Total Row.
-          // So the index of the line starting the total row in 'sortedHLines' would be hLines.length + 1 (accounting for top bound).
-          // But hLines state only has internal lines.
-          // Let's assume it's at the end.
-          
-          // Re-calculate how many lines we initialized
-          let linesCount = 0;
-          if (initialColumns) {
-             const visibleCols = initialColumns.filter(c => c.displayMode !== 'hidden' && c.displayMode !== 'overlay');
-             linesCount = visibleCols.length + 1; // +1 for header
-          }
-          return linesCount > 0 ? linesCount : initialColumnCount + 1;
+    // If hydrating, totalSepIdx is effectively the last line + 1 (representing the Total Row area)
+    // Because hLines stores separators. 
+    // If we have N hLines, we have N+1 rows inside the bounds.
+    // If Header uses 1 row (index 0), then we have N rows left.
+    // Usually totalSepIdx matches hLines.length.
+    if (initialVisuals) {
+      // We can't know exactly which was total without analyzing logic, 
+      // but typically the last separator defines the start of Total Row.
+      // So the index of the line starting the total row in 'sortedHLines' would be hLines.length + 1 (accounting for top bound).
+      // But hLines state only has internal lines.
+      // Let's assume it's at the end.
+
+      // Re-calculate how many lines we initialized
+      let linesCount = 0;
+      if (initialColumns) {
+        const visibleCols = initialColumns.filter(c => c.displayMode !== 'hidden' && c.displayMode !== 'overlay');
+        linesCount = visibleCols.length + 1; // +1 for header
       }
-      return initialColumnCount + 1;
+      return linesCount > 0 ? linesCount : initialColumnCount + 1;
+    }
+    return initialColumnCount + 1;
   });
 
   const [phase, setPhase] = useState<'grid' | 'structure'>('grid');
-  const [activeLine, setActiveLine] = useState<{ type: 'h' | 'v' | 'bound', index: number, boundType?: 'top'|'bottom'|'left'|'right' } | null>(null);
+  const [activeLine, setActiveLine] = useState<{ type: 'h' | 'v' | 'bound', index: number, boundType?: 'top' | 'bottom' | 'left' | 'right' } | null>(null);
   const [transform, setTransform] = useState<ViewTransform>({ x: 0, y: 0, scale: 1 });
-  
+
   // --- Mapping & Custom Drag State ---
   const [showImportModal, setShowImportModal] = useState(false);
-  
+
   // [Feature] If editing existing grid, prepopulate rowMapping with existing columns
   const [importedTemplate, setImportedTemplate] = useState<GameTemplate | null>(() => {
-      if (initialColumns && initialColumns.length > 0) {
-          // Mock a template containing these columns for the drawer/mapping logic
-          return {
-              id: 'current',
-              name: initialName,
-              columns: initialColumns,
-              createdAt: Date.now(),
-              // [New] Preserve BGG ID if editing existing template
-              bggId: initialTemplate?.bggId || '' 
-          } as GameTemplate;
-      }
-      // [New] Even if starting fresh but we have initialTemplate (re-edit case or similar), pass BGG ID
-      if (initialTemplate) {
-          return {
-              id: 'current',
-              name: initialName,
-              columns: [],
-              createdAt: Date.now(),
-              bggId: initialTemplate.bggId || ''
-          } as GameTemplate;
-      }
-      return null;
+    if (initialColumns && initialColumns.length > 0) {
+      // Mock a template containing these columns for the drawer/mapping logic
+      return {
+        id: 'current',
+        name: initialName,
+        columns: initialColumns,
+        createdAt: Date.now(),
+        // [New] Preserve BGG ID if editing existing template
+        bggId: initialTemplate?.bggId || ''
+      } as GameTemplate;
+    }
+    // [New] Even if starting fresh but we have initialTemplate (re-edit case or similar), pass BGG ID
+    if (initialTemplate) {
+      return {
+        id: 'current',
+        name: initialName,
+        columns: [],
+        createdAt: Date.now(),
+        bggId: initialTemplate.bggId || ''
+      } as GameTemplate;
+    }
+    return null;
   });
 
   const [rowMapping, setRowMapping] = useState<string[][]>(() => {
-      if (initialColumns && initialColumns.length > 0) {
-          // Map existing columns to rows
-          // Assumption: initialColumns are ordered by row
-          const mapping: string[][] = [];
-          
-          // Row 0 is header (skipped).
-          // Rows 1..N are items.
-          
-          let currentRowIdx = 0;
-          
-          initialColumns.forEach(col => {
-              if (col.displayMode === 'hidden' || col.displayMode === 'overlay') return;
-              
-              if (!mapping[currentRowIdx]) mapping[currentRowIdx] = [];
-              mapping[currentRowIdx].push(col.id);
-              currentRowIdx++;
-          });
-          
-          return mapping;
-      }
-      return [];
+    if (initialColumns && initialColumns.length > 0) {
+      // Map existing columns to rows
+      // Assumption: initialColumns are ordered by row
+      const mapping: string[][] = [];
+
+      // Row 0 is header (skipped).
+      // Rows 1..N are items.
+
+      let currentRowIdx = 0;
+
+      initialColumns.forEach(col => {
+        if (col.displayMode === 'hidden' || col.displayMode === 'overlay') return;
+
+        if (!mapping[currentRowIdx]) mapping[currentRowIdx] = [];
+        mapping[currentRowIdx].push(col.id);
+        currentRowIdx++;
+      });
+
+      return mapping;
+    }
+    return [];
   });
 
   const [draggedItem, setDraggedItem] = useState<DraggedItemInfo | null>(null);
@@ -197,26 +199,26 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
   const { showToast } = useToast();
 
   const sortedHLines = useMemo(() => {
-      const valid = hLines.filter(y => y > gridBounds.top + 0.5 && y < gridBounds.bottom - 0.5);
-      return Array.from(new Set([gridBounds.top, ...valid, gridBounds.bottom])).sort((a, b) => a - b);
+    const valid = hLines.filter(y => y > gridBounds.top + 0.5 && y < gridBounds.bottom - 0.5);
+    return Array.from(new Set([gridBounds.top, ...valid, gridBounds.bottom])).sort((a, b) => a - b);
   }, [hLines, gridBounds.top, gridBounds.bottom]);
 
   const sortedVLines = useMemo(() => {
-      const valid = vLines.filter(x => x > gridBounds.left + 0.5 && x < gridBounds.right - 0.5);
-      return Array.from(new Set([gridBounds.left, ...valid, gridBounds.right])).sort((a, b) => a - b);
+    const valid = vLines.filter(x => x > gridBounds.left + 0.5 && x < gridBounds.right - 0.5);
+    return Array.from(new Set([gridBounds.left, ...valid, gridBounds.right])).sort((a, b) => a - b);
   }, [vLines, gridBounds.left, gridBounds.right]);
-  
+
   // --- Logic Effects ---
 
   useEffect(() => {
     if (phase === 'grid') {
       // Auto-adjust Total Separator to be the last line if user deletes/adds lines
       const lastUserLineIdx = Math.max(1, sortedHLines.length - 2);
-      
+
       if (sortedHLines.length > 2) {
-          setTotalSepIdx(lastUserLineIdx);
+        setTotalSepIdx(lastUserLineIdx);
       }
-      
+
       if (headerSepIdx > lastUserLineIdx) {
         setHeaderSepIdx(1);
       }
@@ -227,33 +229,33 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
   // We handle initialization in useState now to support "Edit Grid" flow
 
   const handleTemplateSelect = async (selectedShallow: GameTemplate) => {
-      if (!selectedShallow.columns || selectedShallow.columns.length === 0) {
-          try {
-              let full = await db.templates.get(selectedShallow.id);
-              if (!full) full = await db.builtins.get(selectedShallow.id);
-              
-              if (full) {
-                  setImportedTemplate(full);
-              } else {
-                  setImportedTemplate(selectedShallow);
-                  showToast({ message: "警告：無法讀取完整模板資料", type: 'warning' });
-              }
-          } catch (e) {
-              console.error("Fetch template failed", e);
-              setImportedTemplate(selectedShallow);
-          }
-      } else {
+    if (!selectedShallow.columns || selectedShallow.columns.length === 0) {
+      try {
+        let full = await db.templates.get(selectedShallow.id);
+        if (!full) full = await db.builtins.get(selectedShallow.id);
+
+        if (full) {
+          setImportedTemplate(full);
+        } else {
           setImportedTemplate(selectedShallow);
+          showToast({ message: t('toast_fetch_template_failed'), type: 'warning' });
+        }
+      } catch (e) {
+        console.error("Fetch template failed", e);
+        setImportedTemplate(selectedShallow);
       }
-      // Reset mapping when selecting a new template from modal
-      setRowMapping(new Array(rowCount).fill(null).map(() => []));
-      setShowImportModal(false);
+    } else {
+      setImportedTemplate(selectedShallow);
+    }
+    // Reset mapping when selecting a new template from modal
+    setRowMapping(new Array(rowCount).fill(null).map(() => []));
+    setShowImportModal(false);
   };
 
   const handleDropOnRow = (rowIndex: number, draggedColId: string) => {
     setRowMapping(currentMapping => {
       const newMapping = JSON.parse(JSON.stringify(currentMapping));
-      
+
       // Ensure array size
       while (newMapping.length <= rowIndex) newMapping.push([]);
 
@@ -262,10 +264,10 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
         const indexInRow = newMapping[i].indexOf(draggedColId);
         if (indexInRow > -1) {
           newMapping[i].splice(indexInRow, 1);
-          break; 
+          break;
         }
       }
-      
+
       if (rowIndex >= 0) {
         if (!newMapping[rowIndex]) newMapping[rowIndex] = [];
         newMapping[rowIndex].push(draggedColId);
@@ -284,11 +286,11 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
 
   const handleRemoveItemFromRow = (rowIndex: number, colIdToRemove: string) => {
     setRowMapping(currentMapping => {
-        const newMapping = JSON.parse(JSON.stringify(currentMapping));
-        if (newMapping[rowIndex]) {
-            newMapping[rowIndex] = newMapping[rowIndex].filter((id: string) => id !== colIdToRemove);
-        }
-        return newMapping;
+      const newMapping = JSON.parse(JSON.stringify(currentMapping));
+      if (newMapping[rowIndex]) {
+        newMapping[rowIndex] = newMapping[rowIndex].filter((id: string) => id !== colIdToRemove);
+      }
+      return newMapping;
     });
   };
 
@@ -337,7 +339,7 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
     if (type === 'line') setActiveLine(payload);
     else { isDraggingCanvas.current = true; lastPanPoint.current = { x: clientX, y: clientY }; }
   };
-  
+
   const handleWheel = (e: React.WheelEvent) => {
     e.stopPropagation();
     const scaleChange = -e.deltaY * 0.001;
@@ -355,118 +357,120 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
   };
 
   const addLine = (type: 'h') => {
-    if (type === 'h') setHLines(prev => { 
-        // Important: Filter only lines within current bounds to calculate next position correctly
-        const refLines = [gridBounds.top, ...prev.filter(y => y > gridBounds.top && y < gridBounds.bottom)].sort((a, b) => a - b);
-        
-        let nextPos;
+    if (type === 'h') setHLines(prev => {
+      // Important: Filter only lines within current bounds to calculate next position correctly
+      const refLines = [gridBounds.top, ...prev.filter(y => y > gridBounds.top && y < gridBounds.bottom)].sort((a, b) => a - b);
 
-        if (refLines.length >= 2) {
-            const last = refLines[refLines.length - 1];
-            const secondLast = refLines[refLines.length - 2];
-            const gap = last - secondLast;
-            nextPos = last + gap;
-        } else {
-            nextPos = gridBounds.top + (gridBounds.bottom - gridBounds.top) / (initialColumnCount + 1);
-        }
+      let nextPos;
 
-        if (nextPos >= gridBounds.bottom - 0.5) {
-            const lastLine = refLines[refLines.length - 1];
-            nextPos = lastLine + (gridBounds.bottom - lastLine) / 2;
-        }
+      if (refLines.length >= 2) {
+        const last = refLines[refLines.length - 1];
+        const secondLast = refLines[refLines.length - 2];
+        const gap = last - secondLast;
+        nextPos = last + gap;
+      } else {
+        nextPos = gridBounds.top + (gridBounds.bottom - gridBounds.top) / (initialColumnCount + 1);
+      }
 
-        if (Number.isNaN(nextPos) || nextPos <= gridBounds.top) {
-             nextPos = (gridBounds.top + gridBounds.bottom) / 2;
-        }
+      if (nextPos >= gridBounds.bottom - 0.5) {
+        const lastLine = refLines[refLines.length - 1];
+        nextPos = lastLine + (gridBounds.bottom - lastLine) / 2;
+      }
 
-        return [...prev, nextPos].sort((a, b) => a - b); 
+      if (Number.isNaN(nextPos) || nextPos <= gridBounds.top) {
+        nextPos = (gridBounds.top + gridBounds.bottom) / 2;
+      }
+
+      return [...prev, nextPos].sort((a, b) => a - b);
     });
   };
-  const deleteLine = (type: 'h', index: number) => { 
-      if (type === 'h') { 
-          if (hLines.length <= 1) return; 
-          setHLines(prev => prev.filter((_, i) => i !== index)); 
-      } 
+  const deleteLine = (type: 'h', index: number) => {
+    if (type === 'h') {
+      if (hLines.length <= 1) return;
+      setHLines(prev => prev.filter((_, i) => i !== index));
+    }
   };
-  
-  const handleSave = () => {
-      if (!imgRef.current) return;
-      
-      const newTemplate = buildTemplateFromTextureMap(
-          initialName, isMappingMode, importedTemplate, rowCount, rowMapping,
-          headerSepIdx, totalSepIdx, dataColIdx, sortedHLines, sortedVLines,
-          imgRef.current.naturalWidth, imgRef.current.naturalHeight,
-          gridBounds,
-          aspectRatio 
-      );
 
-      onSave(newTemplate);
-      showToast({ title: "模板建立成功", message: "已套用計分紙紋理！", type: 'success' });
+  const handleSave = () => {
+    if (!imgRef.current) return;
+
+    const newTemplate = buildTemplateFromTextureMap(
+      initialName, isMappingMode, importedTemplate, rowCount, rowMapping,
+      headerSepIdx, totalSepIdx, dataColIdx, sortedHLines, sortedVLines,
+      imgRef.current.naturalWidth, imgRef.current.naturalHeight,
+      gridBounds,
+      aspectRatio,
+      t('mapper_slot_name'), // [i18n]
+      t('mapper_item_name')  // [i18n]
+    );
+
+    onSave(newTemplate);
+    showToast({ title: t('mapper_toast_success_title'), message: t('mapper_toast_success_msg'), type: 'success' });
   };
 
   const contextValue = {
-      hLines, setHLines, vLines, setVLines, sortedHLines, sortedVLines,
-      gridBounds, setGridBounds,
-      headerSepIdx, setHeaderSepIdx, totalSepIdx, setTotalSepIdx,
-      phase, setPhase,
-      importedTemplate, setImportedTemplate, rowMapping, setRowMapping,
-      rowCount, isMappingMode, transform,
-      inverseScaleStyle: { transform: `scale(${1 / transform.scale})` },
-      inverseScaleYStyle: { transform: `scaleY(${1 / transform.scale})` },
-      inverseScaleXStyle: { transform: `scaleX(${1 / transform.scale})` },
-      hLineChildStyle: { transform: `scale(${1 / transform.scale}, 1)` },
-      vLineChildStyle: { transform: `translate(-50%, -50%) scale(1, ${1 / transform.scale})` },
-      activeLine, setActiveLine,
-      handlePointerDown: (e: React.MouseEvent | React.TouchEvent, type: 'line', payload?: any) => handlePointerDown(e, type, payload),
-      addLine, deleteLine,
-      handleDropOnRow,
-      handleClearRow,
-      handleRemoveItemFromRow,
-      draggedItem, setDraggedItem,
-      dropTargetRow, setDropTargetRow,
-      allTemplates, showImportModal, setShowImportModal
+    hLines, setHLines, vLines, setVLines, sortedHLines, sortedVLines,
+    gridBounds, setGridBounds,
+    headerSepIdx, setHeaderSepIdx, totalSepIdx, setTotalSepIdx,
+    phase, setPhase,
+    importedTemplate, setImportedTemplate, rowMapping, setRowMapping,
+    rowCount, isMappingMode, transform,
+    inverseScaleStyle: { transform: `scale(${1 / transform.scale})` },
+    inverseScaleYStyle: { transform: `scaleY(${1 / transform.scale})` },
+    inverseScaleXStyle: { transform: `scaleX(${1 / transform.scale})` },
+    hLineChildStyle: { transform: `scale(${1 / transform.scale}, 1)` },
+    vLineChildStyle: { transform: `translate(-50%, -50%) scale(1, ${1 / transform.scale})` },
+    activeLine, setActiveLine,
+    handlePointerDown: (e: React.MouseEvent | React.TouchEvent, type: 'line', payload?: any) => handlePointerDown(e, type, payload),
+    addLine, deleteLine,
+    handleDropOnRow,
+    handleClearRow,
+    handleRemoveItemFromRow,
+    draggedItem, setDraggedItem,
+    dropTargetRow, setDropTargetRow,
+    allTemplates, showImportModal, setShowImportModal
   };
 
   return (
     <TextureMapperContext.Provider value={contextValue}>
       <div className="fixed inset-0 z-[80] bg-slate-950 flex flex-col overflow-hidden">
         {draggedItem && importedTemplate && (
-            <div
-                style={{
-                    position: 'fixed',
-                    top: draggedItem.y,
-                    left: draggedItem.x,
-                    transform: 'translate(-20px, -20px)',
-                    pointerEvents: 'none',
-                    zIndex: 9999,
-                }}
-            >
-                <div className="w-28 flex items-center gap-1.5 p-1.5 rounded-lg border bg-slate-600 border-slate-500 shadow-lg">
-                    <GripVertical size={12} className="shrink-0 text-slate-400" />
-                    <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium text-slate-200 truncate block">
-                            {importedTemplate.columns.find(c => c.id === draggedItem.colId)?.name}
-                        </span>
-                    </div>
-                </div>
+          <div
+            style={{
+              position: 'fixed',
+              top: draggedItem.y,
+              left: draggedItem.x,
+              transform: 'translate(-20px, -20px)',
+              pointerEvents: 'none',
+              zIndex: 9999,
+            }}
+          >
+            <div className="w-28 flex items-center gap-1.5 p-1.5 rounded-lg border bg-slate-600 border-slate-500 shadow-lg">
+              <GripVertical size={12} className="shrink-0 text-slate-400" />
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-medium text-slate-200 truncate block">
+                  {importedTemplate.columns.find(c => c.id === draggedItem.colId)?.name}
+                </span>
+              </div>
             </div>
+          </div>
         )}
 
         {showImportModal && <ImportTemplateModal allTemplates={allTemplates} onSelect={handleTemplateSelect} onClose={() => setShowImportModal(false)} />}
         <header className="flex-none bg-slate-900 border-b border-slate-800 p-2 flex items-center justify-between z-50 shadow-md">
-          <button onClick={onCancel} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors shrink-0"><ArrowLeft size={20}/></button>
+          <button onClick={onCancel} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors shrink-0"><ArrowLeft size={20} /></button>
           <div className="flex-1 px-3 flex flex-col items-center justify-center overflow-hidden">
-            <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">{phase === 'grid' ? '步驟 1/2 : 調整網格' : '步驟 2/2 : 定義結構'}</span>
-            <p className="text-xs text-slate-300 text-center truncate w-full">{phase === 'grid' ? '拖曳四邊邊界裁切，再對齊內部線條。' : isMappingMode ? `從左側拖曳項目至右方橫列。` : '預覽項目分割，或點擊「匯入設定」套用規則。'}</p>
+            <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">{phase === 'grid' ? t('mapper_step_1') : t('mapper_step_2')}</span>
+            <p className="text-xs text-slate-300 text-center truncate w-full">{phase === 'grid' ? t('mapper_grid_desc') : isMappingMode ? t('mapper_structure_desc') : t('mapper_structure_desc_no_template')}</p>
           </div>
           <div className="w-[36px] shrink-0"></div>
         </header>
 
         <main className="flex-1 relative bg-slate-900 overflow-hidden touch-none select-none" ref={containerRef} onMouseDown={(e) => handlePointerDown(e, 'bg')} onTouchStart={(e) => handlePointerDown(e, 'bg')} onWheel={handleWheel}>
           <div className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/60 backdrop-blur text-white text-xs rounded-full pointer-events-none flex items-center gap-2 z-40 opacity-70">
-            <Move size={12} /> 單指平移 • 雙指縮放 • 拖曳線條
+            <Move size={12} /> {t('mapper_interaction_hint')}
           </div>
-          
+
           {phase === 'structure' && isMappingMode && importedTemplate && (
             <MappingDrawer
               template={importedTemplate}
@@ -484,25 +488,25 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
           {phase === 'grid' ? (
             <>
               <div className="flex items-center gap-4">
-                <button onClick={resetView} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"><div className="p-3 rounded-xl bg-slate-800"><ZoomIn size={20} /></div>重置視角</button>
-                <button onClick={(e) => { e.stopPropagation(); addLine('h'); }} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"><div className="p-3 rounded-xl bg-slate-800"><Plus size={20} /></div>新增橫列 ({hLines.length}欄)</button>
+                <button onClick={resetView} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"><div className="p-3 rounded-xl bg-slate-800"><ZoomIn size={20} /></div>{t('mapper_btn_reset_view')}</button>
+                <button onClick={(e) => { e.stopPropagation(); addLine('h'); }} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"><div className="p-3 rounded-xl bg-slate-800"><Plus size={20} /></div>{t('mapper_btn_add_line', { n: hLines.length })}</button>
               </div>
-              <button onClick={() => setPhase('structure')} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2">下一步 <ArrowRight size={16} /></button>
+              <button onClick={() => setPhase('structure')} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2">{t('mapper_btn_next')} <ArrowRight size={16} /></button>
             </>
           ) : (
             <>
               <div className="flex items-center gap-2">
                 {!isMappingMode ? (
-                  <button onClick={() => setPhase('grid')} className="bg-slate-800 text-slate-300 px-4 py-3 rounded-lg text-sm font-bold shadow flex items-center gap-2 border border-slate-700"><Settings2 size={16} /> 返回網格</button>
+                  <button onClick={() => setPhase('grid')} className="bg-slate-800 text-slate-300 px-4 py-3 rounded-lg text-sm font-bold shadow flex items-center gap-2 border border-slate-700"><Settings2 size={16} /> {t('mapper_btn_back_grid')}</button>
                 ) : (
-                  <button onClick={() => setImportedTemplate(null)} className="bg-slate-800 text-slate-300 px-4 py-3 rounded-lg text-sm font-bold shadow flex items-center gap-2 border border-slate-700"><CopyPlus size={16} /> 取消匯入</button>
+                  <button onClick={() => setImportedTemplate(null)} className="bg-slate-800 text-slate-300 px-4 py-3 rounded-lg text-sm font-bold shadow flex items-center gap-2 border border-slate-700"><CopyPlus size={16} /> {t('mapper_btn_cancel_import')}</button>
                 )}
                 {/* Hide import button if already pre-populated from initialColumns (edit mode) */}
                 {(!initialColumns || initialColumns.length === 0) && (
-                    <button onClick={() => setShowImportModal(true)} className="bg-sky-800 text-sky-300 px-4 py-3 rounded-lg text-sm font-bold shadow flex items-center gap-2 border border-sky-700"><CopyPlus size={16} /> 匯入設定</button>
+                  <button onClick={() => setShowImportModal(true)} className="bg-sky-800 text-sky-300 px-4 py-3 rounded-lg text-sm font-bold shadow flex items-center gap-2 border border-sky-700"><CopyPlus size={16} /> {t('mapper_btn_import')}</button>
                 )}
               </div>
-              <button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2"><Check size={18} /> 完成</button>
+              <button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2"><Check size={18} /> {t('mapper_btn_finish')}</button>
             </>
           )}
         </footer>

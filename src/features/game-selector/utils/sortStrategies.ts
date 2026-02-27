@@ -64,37 +64,37 @@ export const applySort = (items: GameOption[], ...strategies: Comparator[]): Gam
  * [New] 若顯示名稱與 BGG 原名不同，自動格式化為 "顯示名稱 (BGG原名)"。
  */
 export const getRecommendations = (options: GameOption[]): GameOption[] => {
-    if (options.length === 0) return [];
+  if (options.length === 0) return [];
 
-    // 1. 取出最新的 2 筆 (Recent)
-    // 復用 applySort 與 byRecency
-    const sortedByTime = applySort(options, byRecency);
-    const recents = sortedByTime.slice(0, 2);
-    
-    // 用 Set 紀錄 ID 以便排除
-    const recentIds = new Set(recents.map(r => r.uid));
+  // 1. 取出最新的 2 筆 (Recent)
+  // 復用 applySort 與 byRecency
+  const sortedByTime = applySort(options, byRecency);
+  const recents = sortedByTime.slice(0, 2);
 
-    // 2. 從剩下的項目中，取出最常用的 3 筆 (Popular)
-    const remaining = options.filter(r => !recentIds.has(r.uid));
-    // 復用 applySort 與 byUsage
-    const sortedByUsage = applySort(remaining, byUsage);
-    const populars = sortedByUsage.slice(0, 3);
+  // 用 Set 紀錄 ID 以便排除
+  const recentIds = new Set(recents.map(r => r.uid));
 
-    // 3. 合併結果
-    const results = [...recents, ...populars];
+  // 2. 從剩下的項目中，取出最常用的 3 筆 (Popular)
+  const remaining = options.filter(r => !recentIds.has(r.uid));
+  // 復用 applySort 與 byUsage
+  const sortedByUsage = applySort(remaining, byUsage);
+  const populars = sortedByUsage.slice(0, 3);
 
-    // 4. [New] 格式化顯示名稱
-    return results.map(opt => {
-        // 若有 BGG 原名，且與顯示名稱不同，則格式化為 "顯示名稱 (BGG原名)"
-        if (opt.bggName && opt.displayName.toLowerCase() !== opt.bggName.toLowerCase()) {
-            return {
-                ...opt,
-                cleanName: opt.displayName, // 原始顯示名稱即為純淨名稱
-                displayName: `${opt.displayName} (${opt.bggName})`
-            };
-        }
-        return opt;
-    });
+  // 3. 合併結果
+  const results = [...recents, ...populars];
+
+  // 4. [New] 格式化顯示名稱
+  return results.map(opt => {
+    // 若有 BGG 原名，且與顯示名稱不同，則格式化為 "顯示名稱 (BGG原名)"
+    if (opt.bggName && opt.displayName.toLowerCase() !== opt.bggName.toLowerCase()) {
+      return {
+        ...opt,
+        cleanName: opt.displayName, // 原始顯示名稱即為純淨名稱
+        displayName: `${opt.displayName} (${opt.bggName})`
+      };
+    }
+    return opt;
+  });
 };
 
 /**
@@ -107,86 +107,49 @@ export const getRecommendations = (options: GameOption[]): GameOption[] => {
  * 5. 若無完全匹配的名稱，則在最後加入「建立新遊戲」的虛擬選項。
  */
 export const getSearchResults = (options: GameOption[], searchQuery: string): GameOption[] => {
-    const trimmedQuery = searchQuery.trim();
-    
-    // 1. 基礎列表：取前 5 筆
-    // 由於 Fuse 已經根據相關性排序，這裡直接取前 5 筆即可保留該排序
-    let topResults = options.slice(0, 5);
+  const trimmedQuery = searchQuery.trim();
 
-    // [New] 名稱格式化邏輯
-    if (trimmedQuery) {
-        const lowerQuery = trimmedQuery.toLowerCase();
-        
-        topResults = topResults.map(opt => {
-            // 在搜尋索引中找到最符合的關鍵字 (Token)
-            const matchedToken = opt._searchTokens.find(token => 
-                token.toLowerCase().includes(lowerQuery)
-            );
+  // 1. 基礎列表：取前 5 筆
+  // 由於 Fuse 已經根據相關性排序，這裡直接取前 5 筆即可保留該排序
+  let topResults = options.slice(0, 5);
 
-            if (matchedToken) {
-                // 優先使用 BGG 原名，若無則使用顯示名稱作為「原名」
-                const originalName = opt.bggName || opt.displayName;
-                
-                // 邏輯：如果搜尋到的關鍵字 (matchedToken) 與 原名 (originalName) 不同
-                // 則顯示為：matchedToken (originalName)
-                // 例如：搜「農」-> 找到「農家樂」 -> 原名「Agricola」 -> 顯示「農家樂 (Agricola)」
-                if (matchedToken.toLowerCase() !== originalName.toLowerCase()) {
-                    return {
-                        ...opt,
-                        cleanName: matchedToken, // 搜尋到的別名作為純淨名稱
-                        displayName: `${matchedToken} (${originalName})`
-                    };
-                }
-                
-                // 邏輯：如果搜尋到的關鍵字 就是 原名
-                // 我們直接顯示該名稱。這會覆蓋掉本地可能已修改的 displayName，讓搜尋體驗更一致。
-                return {
-                    ...opt,
-                    cleanName: matchedToken,
-                    displayName: matchedToken
-                };
-            }
-            return opt;
-        });
+  // 2. [Removed] 排序：不再強制優先顯示有 Template 的項目，保留 Fuse 分數排序。
+  // const sorted = applySort(topResults, byTemplateExistence);
+  const sorted = topResults;
+
+  // 3. 注入「建立」選項
+  if (trimmedQuery) {
+    const normalizedQuery = trimmedQuery.toLowerCase();
+
+    // 檢查是否已有完全匹配的項目 (忽略大小寫)
+    // 這裡檢查 cleanName 或 displayName
+    const hasExactMatch = sorted.some(opt =>
+      (opt.cleanName || opt.displayName).trim().toLowerCase() === normalizedQuery
+    );
+
+    if (!hasExactMatch) {
+      const virtualOption: GameOption = {
+        uid: '__CREATE_NEW__', // 特殊 ID 用於 UI 識別
+        displayName: trimmedQuery, // 使用者輸入的名稱
+        cleanName: trimmedQuery,
+
+        // 關鍵：這兩個 ID 為 undefined 會觸發 useGameLauncher 的 "Case B" (建立新遊戲)
+        templateId: undefined,
+        savedGameId: undefined,
+        bggId: undefined,
+
+        // 預設值
+        lastUsed: 0,
+        usageCount: 0,
+        isPinned: false,
+        defaultPlayerCount: 4,
+        defaultScoringRule: 'HIGHEST_WINS',
+        _searchTokens: []
+      };
+      // 加在最後面
+      sorted.push(virtualOption);
     }
+  }
 
-    // 2. [Removed] 排序：不再強制優先顯示有 Template 的項目，保留 Fuse 分數排序。
-    // const sorted = applySort(topResults, byTemplateExistence);
-    const sorted = topResults;
-
-    // 3. 注入「建立」選項
-    if (trimmedQuery) {
-        const normalizedQuery = trimmedQuery.toLowerCase();
-        
-        // 檢查是否已有完全匹配的項目 (忽略大小寫)
-        // 這裡檢查 cleanName 或 displayName
-        const hasExactMatch = sorted.some(opt => 
-            (opt.cleanName || opt.displayName).trim().toLowerCase() === normalizedQuery
-        );
-
-        if (!hasExactMatch) {
-             const virtualOption: GameOption = {
-                uid: '__CREATE_NEW__', // 特殊 ID 用於 UI 識別
-                displayName: trimmedQuery, // 使用者輸入的名稱
-                cleanName: trimmedQuery,
-                
-                // 關鍵：這兩個 ID 為 undefined 會觸發 useGameLauncher 的 "Case B" (建立新遊戲)
-                templateId: undefined,
-                savedGameId: undefined,
-                bggId: undefined,
-                
-                // 預設值
-                lastUsed: 0,
-                usageCount: 0,
-                isPinned: false,
-                defaultPlayerCount: 4,
-                defaultScoringRule: 'HIGHEST_WINS',
-                _searchTokens: []
-             };
-             // 加在最後面
-             sorted.push(virtualOption);
-        }
-    }
-
-    return sorted;
+  return sorted;
 };

@@ -16,7 +16,7 @@ export class RelationRanking {
      */
     public static update(currentList: any, activeIds: string[], limit: number): RelationItem[] {
         let list: RelationItem[] = [];
-        
+
         // 兼容舊資料結構 (Object -> Array)
         if (Array.isArray(currentList)) {
             list = [...currentList];
@@ -28,14 +28,14 @@ export class RelationRanking {
 
         const activeCounts = new Map<string, number>();
         activeIds.forEach(id => activeCounts.set(id, (activeCounts.get(id) || 0) + 1));
-        
+
         const oldActiveItems: { item: RelationItem; originalIndex: number }[] = [];
         const inactiveItems: RelationItem[] = [];
 
         list.forEach((item, index) => {
             // 清理舊資料可能殘留的 weight 屬性
             const { weight, ...cleanItem } = item as any;
-            
+
             if (activeCounts.has(cleanItem.id)) {
                 cleanItem.count = (cleanItem.count || 0) + activeCounts.get(cleanItem.id)!;
                 oldActiveItems.push({ item: cleanItem, originalIndex: index });
@@ -45,34 +45,57 @@ export class RelationRanking {
         });
 
         const resultList = [...inactiveItems];
-        const insertionOffsets: Record<number, number> = {};
+        let insertTargetIndex = 0; // 用於維持同批活躍項目的相對順序
 
-        // Halving Jump Logic: 舊項目排名提升
+        // Count-Bounded Jump Logic: 減半位置與次數位置取小
         oldActiveItems.forEach(({ item, originalIndex }) => {
-            const targetBase = Math.floor(originalIndex / 2);
-            const offset = insertionOffsets[targetBase] || 0;
-            const finalTarget = targetBase + offset;
-            resultList.splice(finalTarget, 0, item);
-            insertionOffsets[targetBase] = offset + 1;
+            // 1. 減半位置 (Halved Position)
+            const halvedIndex = Math.floor(originalIndex / 2);
+
+            // 2. 次數位置 (Count Position)
+            // 從 insertTargetIndex 開始往後找，找到第一個 count <= item.count 的位置
+            let countIndex = resultList.length; // 預設插在最後
+            for (let i = insertTargetIndex; i < resultList.length; i++) {
+                if ((resultList[i].count || 0) <= item.count) {
+                    countIndex = i;
+                    break;
+                }
+            }
+
+            // 最終位置為兩者取小，但絕不能小於 insertTargetIndex (維持輸入相對順序)
+            const minIndex = Math.min(halvedIndex, countIndex);
+            const finalIndex = Math.max(insertTargetIndex, minIndex);
+
+            resultList.splice(finalIndex, 0, item);
+            insertTargetIndex = finalIndex + 1; // 下一個項目必須加在此項目之後
         });
 
-        // New Items Logic: 新項目插入
+        // New Items Logic: 新人加入 (被視為原本在陣列最尾端)
         const newIds = Array.from(activeCounts.keys()).filter(id => !list.find(existing => existing.id === id));
         if (newIds.length > 0) {
             const newItems: RelationItem[] = newIds.map(id => ({ id, count: activeCounts.get(id)! }));
-            let insertIndex = -1; 
-            
-            // 尋找最後一個活躍項目的位置，插入在它之後
-            for (let i = resultList.length - 1; i >= 0; i--) {
-                const itemId = resultList[i].id;
-                if (activeCounts.has(itemId) && !newIds.includes(itemId)) {
-                    insertIndex = i + 1; break;
+            // 新項目不需特別依照 count 排序，依照傳入順序即可 (通常是同局一起加入的玩家或地點)
+
+            let newItemTargetIndex = 0;
+            newItems.forEach((item, index) => {
+                // 原位置視為陣列最尾端 (現有列表長度 + 目前已處理的新人數量 index)
+                const originalIndex = list.length + index;
+                const halvedIndex = Math.floor(originalIndex / 2);
+
+                let countIndex = resultList.length;
+                for (let i = newItemTargetIndex; i < resultList.length; i++) {
+                    if ((resultList[i].count || 0) <= item.count) {
+                        countIndex = i;
+                        break;
+                    }
                 }
-            }
-            
-            // 如果沒找到參考點，則插入在中間位置
-            if (insertIndex === -1) insertIndex = Math.floor(resultList.length / 2);
-            resultList.splice(insertIndex, 0, ...newItems);
+
+                const minIndex = Math.min(halvedIndex, countIndex);
+                const finalIndex = Math.max(newItemTargetIndex, minIndex);
+
+                resultList.splice(finalIndex, 0, item);
+                newItemTargetIndex = finalIndex + 1;
+            });
         }
 
         if (resultList.length > limit) return resultList.slice(0, limit);

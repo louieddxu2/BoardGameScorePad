@@ -1,0 +1,1989 @@
+﻿
+=== Board Game ScorePad - Verification ===
+
+[1/3] Scanning for hardcoded Chinese strings...
+
+[WARNING] Found 139 possible hardcoded Chinese UI string(s):
+
+
+File                                                   Line Cont
+                                                            ent 
+----                                                   ---- ----
+src\components\dashboard\hooks\useDashboardActions.ts   173 show
+                                                            Toas
+                                                            t({ 
+                                                            mess
+                                                            age:
+                                                             "撌
+                                                            脣遣
+                                                            蝡
+                                                            蒂? 
+                                                            
+                                                            蝪⊥
+                                                            ?閮 
+                                                            ??
+                                                            ?, t
+                                                            ype:
+                                                             'su
+                                                            cces
+                                                            s' }
+                                                            );  
+src\components\dashboard\parts\DashboardFAB.tsx          22 titl
+                                                            e="?
+                                                            ??
+                                                            圈??
+                                                            ?   
+src\components\dashboard\parts\PullActionIsland.tsx      55 {/* 
+                                                            ? 
+                                                            ? 
+                                                            ? 
+                                                            頠
+                                                            ? (T
+                                                            he T
+                                                            rack
+                                                            ) */
+                                                            }   
+src\components\dashboard\parts\PullActionIsland.tsx      59 {/* 
+                                                            撌阡
+                                                            暺
+                                                            ??
+                                                            脩垢
+                                                             */}
+src\components\dashboard\parts\PullActionIsland.tsx      64 {/* 
+                                                            銝剝
+                                                            暺
+                                                            ??
+                                                            ? 
+                                                            */} 
+src\components\dashboard\parts\PullActionIsland.tsx      69 {/* 
+                                                            ?喲 
+                                                            暺
+                                                            ??
+                                                            ? 
+                                                            */} 
+src\components\dashboard\parts\PullActionIsland.tsx      74 {/* 
+                                                            ?阡?
+                                                            ? 
+                                                             (
+                                                            The 
+                                                            Focu
+                                                            s Ri
+                                                            ng /
+                                                             Cur
+                                                            sor)
+                                                             */}
+src\components\dashboard\parts\PullActionIsland.tsx      88 {/* 
+                                                            ? 
+                                                            內? 
+                                                            ? 
+                                                            */} 
+src\components\dashboard\parts\PullActionIsland.tsx      97 {isC
+                                                            loud
+                                                            Acti
+                                                            ve ?
+                                                             '? 
+                                                            暸? 
+                                                            蝞∠
+                                                            ??脩
+                                                            垢' 
+                                                            : '?
+                                                            暸??
+                                                            ??
+                                                            ?'
+                                                            }   
+src\components\dashboard\views\LibraryView.tsx           45 憿舐
+                                                            內 {
+                                                            disp
+                                                            laye
+                                                            d}  
+                                                            蝑
+                                                            ???{
+                                                            tota
+                                                            l}  
+                                                            蝑? 
+                                                                
+                                                                
+                                                               <
+                                                            /spa
+                                                            n>  
+src\components\dashboard\views\LibraryView.tsx          113 name
+                                                            : se
+                                                            ssio
+                                                            n.na
+                                                            me |
+                                                            | "?
+                                                            芸
+                                                            ??
+                                                            ??, 
+src\components\history\HistoryReviewView.tsx            224 show
+                                                            Toas
+                                                            t({ 
+                                                            mess
+                                                            age:
+                                                             "? 
+                                                            ⊥? 
+                                                            皜祇
+                                                            ?雿 
+                                                            ? 
+                                                            嚗
+                                                            ? 
+                                                            
+                                                            ?賭?
+                                                            皞
+                                                            Ⅱ??
+                                                            , ty
+                                                            pe: 
+                                                            'war
+                                                            ning
+                                                            ' })
+                                                            ;   
+src\components\modals\InstallGuideModal.tsx              47 暺
+                                                            ??
+                                                            汗? 
+                                                            典??
+                                                            函? 
+                                                            <spa
+                                                            n cl
+                                                            assN
+                                                            ame=
+                                                            "inl
+                                                            ine-
+                                                            flex
+                                                             ite
+                                                            ms-c
+                                                            ente
+                                                            r ga
+                                                            p-1 
+                                                            bg-s
+                                                            late
+                                                            -700
+                                                             px-
+                                                            1.5 
+                                                            py-0
+                                                            .5 r
+                                                            o   
+src\components\modals\InstallGuideModal.tsx              52 ?券 
+                                                            ? 
+                                                            桐葉
+                                                            敺 
+                                                            銝
+                                                            ?嚗 
+                                                            
+                                                            ?唬 
+                                                            蒂暺
+                                                            ? 
+                                                            <spa
+                                                            n cl
+                                                            assN
+                                                            ame=
+                                                            "inl
+                                                            ine-
+                                                            flex
+                                                             ite
+                                                            ms-c
+                                                            ente
+                                                            r ga
+                                                            p-1 
+                                                            bg-s
+                                                            late
+                                                            -700
+                                                             px-
+                                                            1.5 
+                                                            p   
+src\components\modals\InstallGuideModal.tsx              56 <spa
+                                                            n>暺
+                                                            ??
+                                                            喃? 
+                                                            閫
+                                                            ??
+                                                            ??乓
+                                                             
+                                                            ? 
+                                                            臬??
+                                                            ?
+                                                            /spa
+                                                            n>  
+src\components\modals\InstallGuideModal.tsx              71 暺
+                                                            ??
+                                                            汗? 
+                                                            典
+                                                            銝
+                                                            ???<
+                                                            span
+                                                             cla
+                                                            ssNa
+                                                            me="
+                                                            inli
+                                                            ne-f
+                                                            lex 
+                                                            item
+                                                            s-ce
+                                                            nter
+                                                             gap
+                                                            -1 b
+                                                            g-sl
+                                                            ate-
+                                                            700 
+                                                            px-1
+                                                            .5 p
+                                                            y-0.
+                                                            5 r 
+src\components\modals\InstallGuideModal.tsx              76 ?豢?
+                                                             <sp
+                                                            an c
+                                                            lass
+                                                            Name
+                                                            ="fo
+                                                            nt-b
+                                                            old 
+                                                            text
+                                                            -whi
+                                                            te">
+                                                            ??
+                                                            鋆
+                                                            ??函
+                                                            ?撘 
+                                                            ?
+                                                            /spa
+                                                            n> ?
+                                                            ?<sp
+                                                            an c
+                                                            lass
+                                                            Name
+                                                            ="fo
+                                                            nt-b
+                                                            ol  
+src\components\scanner\CameraView.tsx                    90 show
+                                                            Toas
+                                                            t({ 
+                                                            mess
+                                                            age:
+                                                             "撌
+                                                            脣??
+                                                            刻
+                                                            ??
+                                                            頧
+                                                            皜
+                                                            ?, t
+                                                            ype:
+                                                             'su
+                                                            cces
+                                                            s' }
+                                                            );  
+src\components\scanner\CameraView.tsx                   128 show
+                                                            Toas
+                                                            t({ 
+                                                            mess
+                                                            age:
+                                                             "? 
+                                                            豢? 
+                                                            摮
+                                                            ?鋡 
+                                                            急??
+                                                            ?, t
+                                                            ype:
+                                                             'wa
+                                                            rnin
+                                                            g' }
+                                                            );  
+src\components\scanner\CameraView.tsx                   130 show
+                                                            Toas
+                                                            t({ 
+                                                            mess
+                                                            age:
+                                                             "? 
+                                                            曆??
+                                                            啁
+                                                            璈
+                                                            ?蝵 
+                                                            柴?
+                                                            , ty
+                                                            pe: 
+                                                            'war
+                                                            ning
+                                                            ' })
+                                                            ;   
+src\components\scanner\CameraView.tsx                   132 show
+                                                            Toas
+                                                            t({ 
+                                                            mess
+                                                            age:
+                                                             "? 
+                                                            ⊥??
+                                                            ??
+                                                            豢??
+                                                            ?, t
+                                                            ype:
+                                                             'er
+                                                            ror'
+                                                             });
+src\components\scanner\CameraView.tsx                   266 ? 
+                                                            敺
+                                                            
+                                                            ? 
+                                                            摮
+                                                            ?   
+src\components\scanner\PhotoScanner.tsx                 301 <h2 
+                                                            clas
+                                                            sNam
+                                                            e="t
+                                                            ext-
+                                                            whit
+                                                            e fo
+                                                            nt-b
+                                                            old"
+                                                            >?拙
+                                                            耦? 
+                                                            ⊥迤
+                                                            </h2
+                                                            >   
+src\components\scanner\PhotoScanner.tsx                 358 <Mov
+                                                            e si
+                                                            ze={
+                                                            12} 
+                                                            /> ?
+                                                            
+                                                            4?
+                                                            ??啗
+                                                            ??
+                                                            ?閫 
+                                                            
+src\components\scanner\ScannerControls.tsx               34 ?賊?
+src\components\scanner\ScannerControls.tsx               43 蝵桐
+                                                            葉  
+src\components\scanner\ScannerOverlay.tsx               103 <><B
+                                                            oxSe
+                                                            lect
+                                                             siz
+                                                            e={1
+                                                            0} c
+                                                            lass
+                                                            Name
+                                                            ="te
+                                                            xt-s
+                                                            ky-4
+                                                            00"/
+                                                            > 撟
+                                                            曆??
+                                                            賊?<
+                                                            />  
+src\components\scanner\ScannerOverlay.tsx               105 <><S
+                                                            canL
+                                                            ine 
+                                                            size
+                                                            ={10
+                                                            } cl
+                                                            assN
+                                                            ame=
+                                                            "tex
+                                                            t-ye
+                                                            llow
+                                                            -400
+                                                            "/> 
+                                                            ?渡?
+                                                            ?賊?
+                                                            </> 
+src\components\scanner\ScannerOverlay.tsx               107 <><M
+                                                            agne
+                                                            t si
+                                                            ze={
+                                                            10} 
+                                                            clas
+                                                            sNam
+                                                            e="t
+                                                            ext-
+                                                            slat
+                                                            e-40
+                                                            0"/>
+                                                             ?芰
+                                                            蝘
+                                                            餃?<
+                                                            />  
+src\components\scanner\ScannerSourceSelector.tsx         19 <h3 
+                                                            clas
+                                                            sNam
+                                                            e="t
+                                                            ext-
+                                                            xl f
+                                                            ont-
+                                                            bold
+                                                             tex
+                                                            t-wh
+                                                            ite"
+                                                            >隢 
+                                                            
+                                                            ??
+                                                            ??
+                                                            皞?/
+                                                            h3> 
+src\components\scanner\ScannerSourceSelector.tsx         25 <Ape
+                                                            rtur
+                                                            e si
+                                                            ze={
+                                                            24} 
+                                                            /> <
+                                                            span
+                                                             cla
+                                                            ssNa
+                                                            me="
+                                                            text
+                                                            -lg"
+                                                            >?
+                                                            ??抒
+                                                            ?</s
+                                                            pan>
+src\components\scanner\ScannerSourceSelector.tsx         35 <Upl
+                                                            oad 
+                                                            size
+                                                            ={24
+                                                            } />
+                                                             <sp
+                                                            an c
+                                                            lass
+                                                            Name
+                                                            ="te
+                                                            xt-l
+                                                            g"> 
+                                                            敺
+                                                            蝪
+                                                            蹂??
+                                                            ?/sp
+                                                            an> 
+src\components\scanner\ScannerSourceSelector.tsx         45 <p c
+                                                            lass
+                                                            Name
+                                                            ="te
+                                                            xt-x
+                                                            s te
+                                                            xt-s
+                                                            late
+                                                            -500
+                                                             mt-
+                                                            4">?
+                                                            內
+                                                            嚗
+                                                            ??
+                                                            ?隢 
+                                                            
+                                                            ??
+                                                            ??
+                                                            蝺
+                                                            ?頞 
+                                                            喉? 
+                                                            銝血
+                                                            ??湔
+                                                            ??
+                                                            ??
+                                                            ”??
+                                                            /p> 
+src\components\scanner\ScanPreview.tsx                   26 awai
+                                                            t na
+                                                            viga
+                                                            tor.
+                                                            shar
+                                                            e({ 
+                                                            file
+                                                            s: [
+                                                            file
+                                                            ], t
+                                                            itle
+                                                            : ' 
+                                                            撌脫
+                                                            甇
+                                                            ??? 
+                                                            ”
+                                                            ' })
+                                                            ;   
+src\components\scanner\ScanPreview.tsx                  135 <h2 
+                                                            clas
+                                                            sNam
+                                                            e="t
+                                                            ext-
+                                                            whit
+                                                            e fo
+                                                            nt-b
+                                                            old"
+                                                            >?
+                                                            汗? 
+                                                            Ⅱ
+                                                            隤?/
+                                                            h2> 
+src\components\scanner\ScanPreview.tsx                  156 alt=
+                                                            "?⊥
+                                                            迤蝯
+                                                            ?"
+src\components\scanner\ScanPreview.tsx                  165 <but
+                                                            ton 
+                                                            onCl
+                                                            ick=
+                                                            {onB
+                                                            ack}
+                                                             cla
+                                                            ssNa
+                                                            me="
+                                                            px-4
+                                                             py-
+                                                            3 bg
+                                                            -sla
+                                                            te-8
+                                                            00 t
+                                                            ext-
+                                                            whit
+                                                            e ro
+                                                            unde
+                                                            d-xl
+                                                             bor
+                                                            der 
+                                                            bo  
+src\components\scanner\ScanPreview.tsx                  168 <but
+                                                            ton 
+                                                            onCl
+                                                            ick=
+                                                            {han
+                                                            dleS
+                                                            aveT
+                                                            oDev
+                                                            ice}
+                                                             cla
+                                                            ssNa
+                                                            me="
+                                                            px-3
+                                                             py-
+                                                            3 bg
+                                                            -sla
+                                                            te-8
+                                                            00 t
+                                                            ext-
+                                                            slat
+                                                            e-30
+                                                            0 ho
+                                                            ve  
+src\components\scanner\ScanPreview.tsx                  174 <Edi
+                                                            t3 s
+                                                            ize=
+                                                            {18}
+                                                             /> 
+                                                            靽格
+                                                            蝬
+                                                            脫
+src\components\session\hooks\useSessionMedia.ts         105 show
+                                                            Toas
+                                                            t({ 
+                                                            mess
+                                                            age:
+                                                             "? 
+                                                            
+                                                            ??
+                                                            撌脫
+                                                            ??
+                                                            , ty
+                                                            pe: 
+                                                            'suc
+                                                            cess
+                                                            ' })
+                                                            ;   
+src\components\session\hooks\useSessionMedia.ts         110 show
+                                                            Toas
+                                                            t({ 
+                                                            mess
+                                                            age:
+                                                             "? 
+                                                            ? 
+                                                            嚗
+                                                            ? 
+                                                            ??
+                                                            ??
+                                                            暺 
+                                                            
+                                                            銝
+                                                            ? 
+                                                            ??
+                                                            喃蝙
+                                                            ?冽 
+                                                            芋撘
+                                                            ??
+                                                            賜
+                                                            敺
+                                                            ??湧
+                                                            ?撽?
+                                                            , ty
+                                                            pe: 
+                                                            'inf
+                                                            o', 
+                                                            dura
+                                                            tion
+                                                            :   
+src\components\session\hooks\useSessionMedia.ts         181 show
+                                                            Toas
+                                                            t({ 
+                                                            mess
+                                                            age:
+                                                             "? 
+                                                            脣? 
+                                                            憭望
+                                                            ?", 
+                                                            type
+                                                            : 'e
+                                                            rror
+                                                            ' })
+                                                            ;   
+src\components\session\hooks\useSessionMedia.ts         188 show
+                                                            Toas
+                                                            t({ 
+                                                            mess
+                                                            age:
+                                                             "? 
+                                                            ??
+                                                            ? 
+                                                            憭望
+                                                            ?", 
+                                                            type
+                                                            : 'e
+                                                            rror
+                                                            ' })
+                                                            ;   
+src\components\session\hooks\useSessionMedia.ts         202 show
+                                                            Toas
+                                                            t({ 
+                                                            mess
+                                                            age:
+                                                             "? 
+                                                            抒? 
+                                                            撌脣
+                                                            ??
+                                                            , ty
+                                                            pe: 
+                                                            'inf
+                                                            o' }
+                                                            );  
+src\components\session\hooks\useSessionMedia.ts         205 show
+                                                            Toas
+                                                            t({ 
+                                                            mess
+                                                            age:
+                                                             "? 
+                                                            芷
+                                                            憭望
+                                                            ?", 
+                                                            type
+                                                            : 'e
+                                                            rror
+                                                            ' })
+                                                            ;   
+src\components\session\hooks\useSessionMedia.ts         224 show
+                                                            Toas
+                                                            t({ 
+                                                            mess
+                                                            age:
+                                                             "? 
+                                                            ? 
+                                                            嚗
+                                                            ? 
+                                                            ??
+                                                            ??
+                                                            暺 
+                                                            
+                                                            銝
+                                                            ? 
+                                                            ??
+                                                            喃蝙
+                                                            ?冽 
+                                                            芋撘
+                                                            ??
+                                                            賜
+                                                            敺
+                                                            ??湧
+                                                            ?撽?
+                                                            , ty
+                                                            pe: 
+                                                            'inf
+                                                            o', 
+                                                            dura
+                                                            tion
+                                                            :   
+src\components\session\hooks\useSessionMedia.ts         255 show
+                                                            Toas
+                                                            t({ 
+                                                            mess
+                                                            age:
+                                                             "? 
+                                                            
+                                                            閮
+                                                            ?蝝 
+                                                            歇
+                                                            蝘駁
+                                                            ",
+                                                             typ
+                                                            e: '
+                                                            info
+                                                            ' })
+                                                            ;   
+src\components\session\hooks\useSessionMedia.ts         258 show
+                                                            Toas
+                                                            t({ 
+                                                            mess
+                                                            age:
+                                                             "蝘
+                                                            駁
+                                                            憭望
+                                                            ?", 
+                                                            type
+                                                            : 'e
+                                                            rror
+                                                            ' })
+                                                            ;   
+src\components\session\parts\ScoreOverlayGenerator.tsx   74 {/* 
+                                                            obje
+                                                            ct-c
+                                                            onta
+                                                            in  
+                                                            蝣箔
+                                                            ??
+                                                            ?摰 
+                                                            
+                                                            憿舐
+                                                            內嚗
+                                                            ? 
+                                                            鋆
+                                                            ??
+                                                            g-bl
+                                                            ack 
+                                                            憛怨
+                                                            ??航
+                                                            ? 
+                                                            征
+                                                            ??*/
+                                                            }   
+src\components\session\SessionUI.test.tsx                21 desc
+                                                            ribe
+                                                            .ski
+                                                            p('U
+                                                            I 鈭
+                                                            ??
+                                                            ? 
+                                                            璈
+                                                            ??ａ
+                                                            ? 
+                                                            葫
+                                                            閰?,
+                                                             () 
+                                                            => {
+src\components\session\SessionUI.test.tsx                23 it('
+                                                            ?箸 
+                                                            ? 
+                                                            ? 
+                                                            瘚
+                                                            ?嚗 
+                                                            ??
+                                                            ??
+                                                            
+                                                            ??
+                                                            ? 
+                                                            撓? 
+                                                            仿
+                                                            ??, 
+                                                            asyn
+                                                            c ()
+                                                             => 
+                                                            {   
+src\components\session\SessionUI.test.tsx                27 cons
+                                                            t te
+                                                            mpla
+                                                            teCa
+                                                            rd =
+                                                             scr
+                                                            een.
+                                                            getB
+                                                            yTex
+                                                            t(' 
+                                                            颲脣
+                                                            振璅
+                                                            ?); 
+src\components\session\SessionUI.test.tsx                31 cons
+                                                            t st
+                                                            artB
+                                                            utto
+                                                            n = 
+                                                            scre
+                                                            en.g
+                                                            etBy
+                                                            Text
+                                                            ('? 
+                                                            ? 
+                                                            閮
+                                                            ?');
+src\components\session\SessionUI.test.tsx                35 expe
+                                                            ct(s
+                                                            cree
+                                                            n.ge
+                                                            tByT
+                                                            ext(
+                                                            '?拙
+                                                            振 1
+                                                            ')).
+                                                            toBe
+                                                            InTh
+                                                            eDoc
+                                                            umen
+                                                            t();
+src\components\session\SessionUI.test.tsx                41 cons
+                                                            t cl
+                                                            earB
+                                                            utto
+                                                            n = 
+                                                            scre
+                                                            en.g
+                                                            etBy
+                                                            Text
+                                                            ('皜
+                                                            
+                                                            '); 
+src\components\session\SessionUI.test.tsx                50 it('
+                                                            ??
+                                                            璅⊥
+                                                            ? 
+                                                            
+                                                            皜祈
+                                                            岫嚗
+                                                            ??
+                                                            祇
+                                                            ?文?
+                                                            ?箸?
+                                                            嚗
+                                                            撓? 
+                                                            仿
+                                                            ?踵?
+                                                            ?芸?
+                                                            銝
+                                                            宏',
+                                                             asy
+                                                            nc (
+                                                            ) =>
+                                                             {  
+src\components\session\SessionUI.test.tsx                54 fire
+                                                            Even
+                                                            t.cl
+                                                            ick(
+                                                            scre
+                                                            en.g
+                                                            etBy
+                                                            Text
+                                                            ('颲
+                                                            脣振
+                                                            璅?)
+                                                            );  
+src\components\session\SessionUI.test.tsx                55 fire
+                                                            Even
+                                                            t.cl
+                                                            ick(
+                                                            scre
+                                                            en.g
+                                                            etBy
+                                                            Text
+                                                            ('? 
+                                                            ? 
+                                                            閮
+                                                            ?'))
+                                                            ;   
+src\components\session\SessionUI.test.tsx                62 cons
+                                                            t cl
+                                                            earB
+                                                            utto
+                                                            n = 
+                                                            scre
+                                                            en.g
+                                                            etBy
+                                                            Text
+                                                            ('皜
+                                                            
+                                                            '); 
+src\components\session\SessionUI.test.tsx               103 it('
+                                                            隞
+                                                            ? 
+                                                            ? 
+                                                            皜祈
+                                                            岫嚗
+                                                            ??
+                                                            
+                                                            摰嗆
+                                                            ?憿 
+                                                            ??
+                                                            脣
+                                                            ? 
+                                                            摰
+                                                            嗥楊
+                                                            頛舀
+                                                            芋撘
+                                                            ?
+                                                            ?Ｘ 
+                                                            霈
+                                                            
+                                                            )', 
+                                                            asyn
+                                                            c ()
+                                                             => 
+                                                            {   
+src\components\session\SessionUI.test.tsx               107 fire
+                                                            Even
+                                                            t.cl
+                                                            ick(
+                                                            scre
+                                                            en.g
+                                                            etBy
+                                                            Text
+                                                            ('颲
+                                                            脣振
+                                                            璅?)
+                                                            );  
+src\components\session\SessionUI.test.tsx               108 fire
+                                                            Even
+                                                            t.cl
+                                                            ick(
+                                                            scre
+                                                            en.g
+                                                            etBy
+                                                            Text
+                                                            ('? 
+                                                            ? 
+                                                            閮
+                                                            ?'))
+                                                            ;   
+src\components\session\SessionUI.test.tsx               111 cons
+                                                            t pl
+                                                            ayer
+                                                            Head
+                                                            er =
+                                                             scr
+                                                            een.
+                                                            getB
+                                                            yTex
+                                                            t('?
+                                                            拙振
+                                                             1')
+                                                            ;   
+src\components\session\SessionUI.test.tsx               119 cons
+                                                            t cl
+                                                            earB
+                                                            utto
+                                                            n = 
+                                                            scre
+                                                            en.g
+                                                            etBy
+                                                            Text
+                                                            ('皜
+                                                            
+                                                            '); 
+src\components\shared\column-editor\EditorTabAuto.tsx   229 靘
+                                                            ?嚗?
+                                                            code
+                                                            >f1(
+                                                            x1) 
+                                                            + f2
+                                                            (x2)
+                                                             * 5
+                                                            </co
+                                                            de> 
+src\components\shared\column-editor\EditorTabAuto.tsx   269 {/* 
+                                                            ??
+                                                            蝚西
+                                                            ? */
+                                                            }   
+src\components\shared\column-editor\EditorTabAuto.tsx   279 {/* 
+                                                            霈
+                                                            ? 
+                                                            
+                                                            ?詨 
+                                                            翰? 
+                                                            琿
+                                                             */}
+src\components\shared\column-editor\EditorTabAuto.tsx   281 {/* 
+                                                            撌脣
+                                                            ??函
+                                                            ?霈 
+                                                            
+                                                             */}
+src\components\shared\column-editor\EditorTabAuto.tsx   284 {/* 
+                                                            ?啣?
+                                                            霈
+                                                             *
+                                                            /}  
+src\components\shared\column-editor\EditorTabAuto.tsx   292 {/* 
+                                                            撌脣
+                                                            ??函
+                                                            ??賣
+                                                             *
+                                                            /}  
+src\components\shared\column-editor\EditorTabAuto.tsx   299 {/* 
+                                                            ?啣?
+                                                            ?賣 
+                                                             *
+                                                            /}  
+src\components\shared\column-editor\EditorTabAuto.tsx   311 {/* 
+                                                            1.  
+                                                            霈
+                                                            閮
+                                                            剖??
+                                                            憛?
+                                                            */} 
+src\components\shared\column-editor\EditorTabAuto.tsx   351 {/* 
+                                                            Mode
+                                                             Sel
+                                                            ecti
+                                                            on -
+                                                             ?梯
+                                                            ??嗉
+                                                            ??貊
+                                                            ? 
+                                                            拙振
+                                                            鈭箸
+                                                            ??
+                                                            */} 
+src\components\shared\column-editor\EditorTabAuto.tsx   388 {/* 
+                                                            2. ?
+                                                            賣
+                                                            閮剖
+                                                            ?? 
+                                                            憛?*
+                                                            /}  
+src\components\shared\ColumnConfigEditor.tsx            166 : { 
+                                                            id: 
+                                                            PLAY
+                                                            ER_C
+                                                            OUNT
+                                                            _ID,
+                                                             nam
+                                                            e: '
+                                                            ?拙 
+                                                            振鈭
+                                                            箸
+                                                            ', m
+                                                            ode:
+                                                             'va
+                                                            lue'
+                                                             }; 
+src\components\shared\ErrorBoundary.tsx                  49 <h1 
+                                                            clas
+                                                            sNam
+                                                            e="t
+                                                            ext-
+                                                            xl f
+                                                            ont-
+                                                            bold
+                                                             mb-
+                                                            2">?
+                                                            潛? 
+                                                            鈭
+                                                            ?鈭 
+                                                            ? 
+                                                            憿?/
+                                                            h1> 
+src\components\shared\ErrorBoundary.tsx                  51 ? 
+                                                            蝔
+                                                            ??
+                                                            
+                                                            ??
+                                                            憭
+                                                            ??航
+                                                            炊? 
+                                                             
+                                                             
+                                                            虜
+                                                            ?臬?
+                                                            ?箇
+                                                            汗
+                                                            ?函 
+                                                            蕃霅
+                                                            舀? 
+                                                            隞嗥
+                                                            憯
+                                                            ? 
+                                                            蝬脤
+                                                            ?蝯 
+                                                            ? 
+                                                            嚗
+                                                            ??
+                                                            岫? 
+                                                            ? 
+                                                            蝧餉
+                                                            陌敺
+                                                            ??
+                                                            啗??
+                                                            乓?
+src\components\shared\ErrorBoundary.tsx                  63 ? 
+                                                            頛
+                                                            
+                                                            ? 
+                                                            蝔
+                                                            ? 
+src\components\shared\GameSettingsEditor.tsx            114 {t('
+                                                            rese
+                                                            t_de
+                                                            faul
+                                                            t')}
+                                                             (蝟
+                                                            餌絞
+                                                            ?芸?
+                                                            ??
+                                                            )   
+src\components\shared\QuickButtonPad.tsx                 24 撠
+                                                            閮
+                                                            剖? 
+                                                            敹恍
+                                                            ?
+                                                            ??  
+src\components\tools\CoinTool.tsx                        33 <spa
+                                                            n cl
+                                                            assN
+                                                            ame=
+                                                            "tex
+                                                            t-xs
+                                                             tex
+                                                            t-sl
+                                                            ate-
+                                                            500 
+                                                            font
+                                                            -bol
+                                                            d">?
+                                                            脩′
+                                                            撟?/
+                                                            span
+                                                            >   
+src\components\tools\CoinTool.tsx                        54 {res
+                                                            ult 
+                                                            === 
+                                                            'hea
+                                                            ds' 
+                                                            ? ' 
+                                                            甇? 
+                                                             (
+                                                            Head
+                                                            s)' 
+                                                            : '?
+                                                            
+                                                             (Ta
+                                                            ils)
+                                                            '}  
+src\components\tools\CounterTool.tsx                     17 <spa
+                                                            n cl
+                                                            assN
+                                                            ame=
+                                                            "tex
+                                                            t-[1
+                                                            0px]
+                                                             fon
+                                                            t-bo
+                                                            ld t
+                                                            ext-
+                                                            slat
+                                                            e-50
+                                                            0 up
+                                                            perc
+                                                            ase 
+                                                            trac
+                                                            king
+                                                            -wid
+                                                            er p
+                                                            x-1"
+                                                            >閮 
+                                                            
+                                                            ??  
+src\components\tools\CounterTool.tsx                     21 titl
+                                                            e=" 
+                                                            甇賊
+                                                            " 
+src\components\tools\DiceTool.tsx                        39 <spa
+                                                            n cl
+                                                            assN
+                                                            ame=
+                                                            "tex
+                                                            t-xs
+                                                             tex
+                                                            t-sl
+                                                            ate-
+                                                            500 
+                                                            font
+                                                            -bol
+                                                            d">?
+                                                            脤狐
+                                                            摮?(
+                                                            D6)<
+                                                            /spa
+                                                            n>  
+src\components\tools\PickerTool.tsx                      42 <spa
+                                                            n cl
+                                                            assN
+                                                            ame=
+                                                            "tex
+                                                            t-xs
+                                                             tex
+                                                            t-sl
+                                                            ate-
+                                                            500 
+                                                            font
+                                                            -bol
+                                                            d"> 
+                                                            隤唳
+                                                            韏
+                                                            瑕??
+                                                            拙振
+                                                            嚗?/
+                                                            span
+                                                            >   
+src\components\tools\PickerTool.tsx                      49 <spa
+                                                            n cl
+                                                            assN
+                                                            ame=
+                                                            "tex
+                                                            t-[1
+                                                            0px]
+                                                             tex
+                                                            t-sl
+                                                            ate-
+                                                            500 
+                                                            mt-1
+                                                            ">{i
+                                                            sPic
+                                                            king
+                                                             ? '
+                                                            ?賡 
+                                                            銝
+                                                            ?..'
+                                                             : '
+                                                            撠望
+                                                            捱摰
+                                                            
+                                                            雿
+                                                            ?嚗?
+                                                            }</ 
+src\components\tools\SoundTool.tsx                       61 <Vol
+                                                            ume2
+                                                             siz
+                                                            e={1
+                                                            2} /
+                                                            > ? 
+                                                            單??
+                                                            ?   
+src\components\tools\TeamTool.tsx                        71 <spa
+                                                            n cl
+                                                            assN
+                                                            ame=
+                                                            "tex
+                                                            t-xs
+                                                            ">暺
+                                                            ??
+                                                            ??
+                                                            冽??
+                                                            ?<
+                                                            /spa
+                                                            n>  
+src\components\tools\TeamTool.tsx                        72 {pla
+                                                            yers
+                                                            .len
+                                                            gth 
+                                                            < 2 
+                                                            && <
+                                                            span
+                                                             cla
+                                                            ssNa
+                                                            me="
+                                                            text
+                                                            -[10
+                                                            px] 
+                                                            text
+                                                            -red
+                                                            -400
+                                                            ">鈭
+                                                            箸
+                                                            銝
+                                                            雲 (
+                                                            ? 2
+                                                            +)</
+                                                            span
+                                                            >}  
+src\components\tools\TimerTool.tsx                       50 <spa
+                                                            n cl
+                                                            assN
+                                                            ame=
+                                                            "tex
+                                                            t-xs
+                                                             tex
+                                                            t-sl
+                                                            ate-
+                                                            500 
+                                                            font
+                                                            -bol
+                                                            d"> 
+                                                            閮
+                                                            ???/
+                                                            span
+                                                            >   
+src\components\tools\TimerTool.tsx                       60 {isR
+                                                            unni
+                                                            ng ?
+                                                             '閮
+                                                            ? 
+                                                            銝? 
+                                                            : ' 
+                                                            撌脫
+                                                            ??
+                                                            }   
+src\features\bgg\services\bggImportService.ts            59 id: 
+                                                            find
+                                                            Idx(
+                                                            ['Ga
+                                                            me I
+                                                            D', 
+                                                            'Obj
+                                                            ectI
+                                                            D', 
+                                                            'BGG
+                                                            ID',
+                                                             'id
+                                                            ', '
+                                                            game
+                                                            id',
+                                                             '? 
+                                                            
+                                                            ID',
+                                                             '蝺
+                                                            刻?'
+                                                            , 'b
+                                                            gg蝺
+                                                            刻?'
+                                                            ]), 
+src\features\bgg\services\bggImportService.ts            60 name
+                                                            : fi
+                                                            ndId
+                                                            x(['
+                                                            Name
+                                                            ', '
+                                                            Obje
+                                                            ctNa
+                                                            me',
+                                                             'Ti
+                                                            tle'
+                                                            , 'P
+                                                            rima
+                                                            ryNa
+                                                            me',
+                                                             'ob
+                                                            ject
+                                                            name
+                                                            ', '
+                                                            ? 
+                                                            迂',
+                                                             '? 
+                                                            
+                                                            ? 
+                                                            迂' 
+src\features\bgg\services\bggImportService.ts            61 altN
+                                                            ames
+                                                            : fi
+                                                            ndId
+                                                            x(['
+                                                            altn
+                                                            ames
+                                                            ', '
+                                                            alte
+                                                            rnat
+                                                            e na
+                                                            mes'
+                                                            , '?
+                                                            亙?'
+                                                            , '?
+                                                            嗡??
+                                                            迂
+                                                            ', '
+                                                            ?望?
+                                                            ? 
+                                                            迂']
+                                                            ),  
+src\features\bgg\services\bggImportService.ts            62 year
+                                                            : fi
+                                                            ndId
+                                                            x(['
+                                                            Year
+                                                            Publ
+                                                            ishe
+                                                            d', 
+                                                            'Yea
+                                                            r', 
+                                                            'yea
+                                                            rpub
+                                                            lish
+                                                            ed',
+                                                             '撟
+                                                            港遢
+                                                            ', '
+                                                            ?箇?
+                                                            撟港
+                                                            遢']
+                                                            ),  
+src\features\bgg\services\bggImportService.ts            63 minP
+                                                            laye
+                                                            rs: 
+                                                            find
+                                                            Idx(
+                                                            ['Mi
+                                                            n Pl
+                                                            ayer
+                                                            s', 
+                                                            'min
+                                                            play
+                                                            ers'
+                                                            , '?
+                                                            撠 
+                                                            犖
+                                                            ??, 
+                                                            '? 
+                                                            撠
+                                                            犖??
+                                                            ]), 
+src\features\bgg\services\bggImportService.ts            64 maxP
+                                                            laye
+                                                            rs: 
+                                                            find
+                                                            Idx(
+                                                            ['Ma
+                                                            x Pl
+                                                            ayer
+                                                            s', 
+                                                            'max
+                                                            play
+                                                            ers'
+                                                            , '?
+                                                            憭 
+                                                            找犖
+                                                            ??, 
+                                                            '? 
+                                                            憭
+                                                            犖??
+                                                            ]), 
+src\features\bgg\services\bggImportService.ts            65 minD
+                                                            urat
+                                                            ion:
+                                                             fin
+                                                            dIdx
+                                                            (['M
+                                                            in D
+                                                            urat
+                                                            ion'
+                                                            , 'm
+                                                            indu
+                                                            rati
+                                                            on',
+                                                             '?
+                                                            ?剜?
+                                                            ??])
+                                                            ,   
+src\features\bgg\services\bggImportService.ts            67 minA
+                                                            ge: 
+                                                            find
+                                                            Idx(
+                                                            ['Mi
+                                                            n Ag
+                                                            e', 
+                                                            'age
+                                                            ', '
+                                                            mina
+                                                            ge',
+                                                             '撟
+                                                            湧翩
+                                                            ', '
+                                                            ?拍 
+                                                            撟
+                                                            湧翩
+                                                            ']),
+src\features\bgg\services\bggImportService.ts            69 weig
+                                                            ht: 
+                                                            find
+                                                            Idx(
+                                                            ['We
+                                                            ight
+                                                            ', '
+                                                            Aver
+                                                            ageW
+                                                            eigh
+                                                            t', 
+                                                            'Com
+                                                            plex
+                                                            ity'
+                                                            , 'a
+                                                            vera
+                                                            gewe
+                                                            ight
+                                                            ', '
+                                                            ? 
+                                                            漲',
+                                                             '銴
+                                                            ? 
+                                                            摨?]
+                                                            )   
+src\features\bgg\services\bggImportService.ts            70 best
+                                                            Play
+                                                            ers:
+                                                             fin
+                                                            dIdx
+                                                            (['B
+                                                            est 
+                                                            Play
+                                                            ers'
+                                                            , 'R
+                                                            ecom
+                                                            mend
+                                                            ed P
+                                                            laye
+                                                            rs',
+                                                             'BG
+                                                            GBes
+                                                            tPla
+                                                            yers
+                                                            ', '
+                                                            ?雿
+                                                            喃犖
+                                                            ??, 
+                                                            '   
+src\features\bgg\services\bggImportService.ts            71 desi
+                                                            gner
+                                                            s: f
+                                                            indI
+                                                            dx([
+                                                            'Des
+                                                            igne
+                                                            rs',
+                                                             'De
+                                                            sign
+                                                            er',
+                                                             '閮
+                                                            剛? 
+                                                            撣?]
+                                                            ),  
+src\features\bgstats\mocks\bgStatsSample.ts             172 "nam
+                                                            e" :
+                                                             "敹
+                                                            急? 
+                                                            獢
+                                                            ?摨?
+                                                            ,   
+src\features\bgstats\mocks\bgStatsSample.ts             178 "nam
+                                                            e" :
+                                                             "蝺
+                                                            ? 
+                                                            撟喳
+                                                            ",
+src\features\bgstats\mocks\bgStatsSample.ts             184 "nam
+                                                            e" :
+                                                             "撠
+                                                            ? 
+                                                            摰?,
+src\features\bgstats\mocks\bgStatsSample.ts             201 "nam
+                                                            e" :
+                                                             "? 
+                                                            輯
+                                                            ",  
+src\features\bgstats\mocks\bgStatsSample.ts             209 "nam
+                                                            e" :
+                                                             "撠
+                                                            ?"
+                                                            ,   
+src\features\bgstats\mocks\bgStatsSample.ts             349 "com
+                                                            ment
+                                                            s" :
+                                                             "瞈
+                                                            ?
+                                                            ?撠 
+                                                            
+                                                            ",  
+src\features\bgstats\services\historyBatchUtils.ts      123 let 
+                                                            name
+                                                             = `
+                                                            ?拙 
+                                                            振 $
+                                                            {ind
+                                                            ex +
+                                                             1}`
+                                                            ;   
+src\features\bgstats\services\historyBatchUtils.ts      128 name
+                                                             = `
+                                                            ?拙 
+                                                            振 $
+                                                            {ind
+                                                            ex +
+                                                             1}`
+                                                            ;   
+src\features\game-selector\hooks\useGameLauncher.ts      40 show
+                                                            Toas
+                                                            t({ 
+                                                            mess
+                                                            age:
+                                                             "? 
+                                                            曆??
+                                                            唳芋
+                                                            ??, 
+                                                            type
+                                                            : 'e
+                                                            rror
+                                                            ' })
+                                                            ;   
+src\hooks\useSessionManager.ts                           77 show
+                                                            Toas
+                                                            t({ 
+                                                            mess
+                                                            age:
+                                                             "? 
+                                                            ⊥? 
+                                                            霈?
+                                                            芋
+                                                            ?輯?
+                                                            ??, 
+                                                            type
+                                                            : 'e
+                                                            rror
+                                                            ' })
+                                                            ;   
+src\hooks\useSessionManager.ts                          101 name
+                                                            : `?
+                                                            拙振
+                                                             ${i
+                                                             + 1
+                                                            }`, 
+src\hooks\useSessionManager.ts                          400 show
+                                                            Toas
+                                                            t({ 
+                                                            mess
+                                                            age:
+                                                             "? 
+                                                            
+                                                            蝝?
+                                                            歇
+                                                            ?脣?
+                                                            嚗?,
+                                                             typ
+                                                            e: '
+                                                            succ
+                                                            ess'
+                                                             });
+src\hooks\useSessionManager.ts                          404 show
+                                                            Toas
+                                                            t({ 
+                                                            mess
+                                                            age:
+                                                             "? 
+                                                            脣? 
+                                                            憭望
+                                                            ?嚗 
+                                                            ??
+                                                            岫
+                                                            ", t
+                                                            ype:
+                                                             'er
+                                                            ror'
+                                                             });
+src\services\cloud\googleDriveClient.ts                 158 thro
+                                                            w ne
+                                                            w Er
+                                                            ror(
+                                                            "?芷
+                                                            憭
+                                                            望?"
+                                                            );  
+src\services\cloud\googleDriveClient.ts                 166 if (
+                                                            !res
+                                                            pons
+                                                            e.ok
+                                                            ) th
+                                                            row 
+                                                            new 
+                                                            Erro
+                                                            r(" 
+                                                            銝
+                                                            ?憭 
+                                                            望?"
+                                                            );  
+src\services\cloud\googleDriveClient.ts                 174 if (
+                                                            !res
+                                                            pons
+                                                            e.ok
+                                                            ) th
+                                                            row 
+                                                            new 
+                                                            Erro
+                                                            r(" 
+                                                            銝
+                                                            ?憭 
+                                                            望?"
+                                                            );  
+src\services\relationship\HistoryBatchProcessor.ts       90 cons
+                                                            t is
+                                                            Defa
+                                                            ultN
+                                                            ame 
+                                                            = /^
+                                                            ?拙 
+                                                            振\s
+                                                            ?\d+
+                                                            $/.t
+                                                            est(
+                                                            p.na
+                                                            me);
+src\services\relationship\HistoryBatchProcessor.ts      271 cons
+                                                            t is
+                                                            Defa
+                                                            ultN
+                                                            ame 
+                                                            = /^
+                                                            ?拙 
+                                                            振\s
+                                                            ?\d+
+                                                            $/.t
+                                                            est(
+                                                            p.na
+                                                            me);
+src\services\relationship\RelationTrainer.ts            177 cons
+                                                            t is
+                                                            Defa
+                                                            ultN
+                                                            ame 
+                                                            = /^
+                                                            ?拙 
+                                                            振\s
+                                                            ?\d+
+                                                            $/.t
+                                                            est(
+                                                            p.na
+                                                            me);
+src\services\relationship\TrainingContextResolver.ts     83 cons
+                                                            t is
+                                                            Defa
+                                                            ultN
+                                                            ame 
+                                                            = /^
+                                                            ?拙 
+                                                            振\s
+                                                            ?\d+
+                                                            $/.t
+                                                            est(
+                                                            p.na
+                                                            me);
+src\utils\dataMigration.ts                               19 { la
+                                                            bel:
+                                                             'NO
+                                                             (? 
+                                                            芷??
+                                                            ?', 
+                                                            valu
+                                                            e: 0
+                                                             }  
+src\utils\scoring.test.ts                                17 desc
+                                                            ribe
+                                                            ('閮
+                                                            ??
+                                                            摩
+                                                            皜祈
+                                                            岫 (
+                                                            Scor
+                                                            ing 
+                                                            Logi
+                                                            c)',
+                                                             () 
+                                                            => {
+src\utils\scoring.test.ts                                19 desc
+                                                            ribe
+                                                            ('? 
+                                                            詨 
+                                                            潭??
+                                                            ?(ge
+                                                            tRaw
+                                                            Valu
+                                                            e & 
+                                                            getS
+                                                            core
+                                                            Hist
+                                                            ory)
+                                                            ', (
+                                                            ) =>
+                                                             {  
+src\utils\scoring.test.ts                                20 it('
+                                                            ? 
+                                                            迤蝣
+                                                            箸??
+                                                            
+                                                            蝷
+                                                            ??
+                                                            , ()
+                                                             => 
+                                                            {   
+src\utils\scoring.test.ts                                27 it('
+                                                            ? 
+                                                            迤蝣
+                                                            箸??
+                                                            風
+                                                            ?脩?
+                                                            ??, 
+                                                            () =
+                                                            > { 
+src\utils\scoring.test.ts                                33 desc
+                                                            ribe
+                                                            ('? 
+                                                            箸
+                                                            ??
+                                                            ??
+                                                            ?賊?
+                                                             (St
+                                                            anda
+                                                            rd &
+                                                             Rou
+                                                            ndin
+                                                            g)',
+                                                             () 
+                                                            => {
+src\utils\scoring.test.ts                                34 it('
+                                                            ? 
+                                                            迤蝣
+                                                            箄? 
+                                                            蝞
+                                                            ???,
+                                                             () 
+                                                            => {
+src\utils\scoring.test.ts                                40 it('
+                                                            ? 
+                                                            迤蝣
+                                                            箄??
+                                                            ??
+                                                            賊? 
+                                                            (Flo
+                                                            or/C
+                                                            eil/
+                                                            Roun
+                                                            d)',
+                                                             () 
+                                                            => {
+src\utils\scoring.test.ts                                53 desc
+                                                            ribe
+                                                            ('? 
+                                                            亥”
+                                                            閬
+                                                            ? (M
+                                                            appi
+                                                            ng R
+                                                            ules
+                                                            )', 
+                                                            () =
+                                                            > { 
+src\utils\scoring.test.ts                                61 it('
+                                                            ? 
+                                                            迤蝣
+                                                            箏
+                                                            ??
+                                                            ??, 
+                                                            () =
+                                                            > { 
+src\utils\scoring.test.ts                                69 desc
+                                                            ribe
+                                                            ('蝺
+                                                             
+                                                            抒敞
+                                                            ??
+                                                            ??(L
+                                                            inea
+                                                            r Ru
+                                                            les)
+                                                            ', (
+                                                            ) =>
+                                                             {  
+src\utils\scoring.test.ts                                78 it('
+                                                            ? 
+                                                            迤蝣
+                                                            箄? 
+                                                            蝞
+                                                            毽? 
+                                                            ??
+                                                            批??
+                                                            ?, (
+                                                            ) =>
+                                                             {  
+src\utils\scoring.test.ts                                92 desc
+                                                            ribe
+                                                            ('? 
+                                                            寞? 
+                                                            閮
+                                                            ?璅 
+                                                            ∪? 
+                                                            (Spe
+                                                            cial
+                                                             Cal
+                                                            cula
+                                                            tion
+                                                             Typ
+                                                            es)'
+                                                            , ()
+                                                             => 
+                                                            {   
+src\utils\scoring.test.ts                                93 it('
+                                                            銋
+                                                            ?璅 
+                                                            ∪? 
+                                                            (Pro
+                                                            duct
+                                                            ): ?
+                                                            ? 
+                                                            蝞
+                                                            ??
+                                                            , ()
+                                                             => 
+                                                            {   
+src\utils\scoring.test.ts                                98 it('
+                                                            撣
+                                                            ???(
+                                                            Bool
+                                                            ean)
+                                                             - n
+                                                            ow r
+                                                            epre
+                                                            sent
+                                                            ed b
+                                                            y qu
+                                                            ickA
+                                                            ctio
+                                                            ns a
+                                                            nd c
+                                                            lick
+                                                            er',
+                                                             () 
+                                                            => {
+src\utils\scoring.test.ts                               105 it('
+                                                            ?賊?
+                                                             (Se
+                                                            lect
+                                                            ) - 
+                                                            now 
+                                                            repr
+                                                            esen
+                                                            ted 
+                                                            by q
+                                                            uick
+                                                            Acti
+                                                            ons 
+                                                            and 
+                                                            clic
+                                                            ker'
+                                                            , ()
+                                                             => 
+                                                            {   
+
+
+Move UI strings into the corresponding src/i18n/*.ts dictionary and use the translation hook.
+
+[1/3] FAIL
+
+[2/3] TypeScript type check...
+[2/3] OK
+
+[3/3] Running unit tests (vitest)...
+[2m Test Files [22m [1m[32m6 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (7)[39m
+[2m      Tests [22m [1m[32m37 passed[39m[22m[2m | [22m[33m3 skipped[39m[90m (40)[39m
+[2m   Duration [22m 2.35s[2m (transform 946ms, setup 847ms, collect 2.57s, tests 65ms, environment 3.68s, prepare 622ms)[22m
+[3/3] OK
+
+=== FAILED - Fix issues before committing ===
+

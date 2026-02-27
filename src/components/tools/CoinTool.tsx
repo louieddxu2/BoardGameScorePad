@@ -1,8 +1,10 @@
 
 import React, { useState } from 'react';
 import { CircleDollarSign } from 'lucide-react';
+import { useToolsTranslation } from '../../i18n/tools';
 
 const CoinTool: React.FC = () => {
+    const { t } = useToolsTranslation();
     const [result, setResult] = useState<'heads' | 'tails' | null>(null);
     const [isFlipping, setIsFlipping] = useState(false);
 
@@ -10,7 +12,7 @@ const CoinTool: React.FC = () => {
         if (isFlipping) return;
         setIsFlipping(true);
         setResult(null);
-        
+
         // Duration of animation
         setTimeout(() => {
             setResult(Math.random() > 0.5 ? 'heads' : 'tails');
@@ -20,18 +22,18 @@ const CoinTool: React.FC = () => {
     };
 
     return (
-        <button 
+        <button
             onClick={flip}
             className="w-full h-full flex flex-col items-center justify-center p-3 bg-slate-800/50 hover:bg-slate-700/80 rounded-2xl border border-slate-700/50 transition-all active:scale-95 min-h-[96px] overflow-hidden relative"
         >
             {/* Background Hint Icon */}
             {!result && !isFlipping && (
-                 <>
+                <>
                     <div className="bg-yellow-500/10 p-2 rounded-full mb-1 text-yellow-500/80">
-                         <CircleDollarSign size={24} />
+                        <CircleDollarSign size={24} />
                     </div>
-                    <span className="text-xs text-slate-500 font-bold">擲硬幣</span>
-                 </>
+                    <span className="text-xs text-slate-500 font-bold">{t('coin_flip')}</span>
+                </>
             )}
 
             {/* Coin Graphic */}
@@ -48,11 +50,11 @@ const CoinTool: React.FC = () => {
                     )}
                 </div>
             )}
-            
+
             {result && !isFlipping && (
-                 <span className="text-[10px] text-yellow-500 font-bold mt-2 uppercase tracking-wider animate-in fade-in slide-in-from-bottom-1">
-                     {result === 'heads' ? '正面 (Heads)' : '反面 (Tails)'}
-                 </span>
+                <span className="text-[10px] text-yellow-500 font-bold mt-2 uppercase tracking-wider animate-in fade-in slide-in-from-bottom-1">
+                    {result === 'heads' ? t('coin_result_heads') : t('coin_result_tails')}
+                </span>
             )}
         </button>
     );

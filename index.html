@@ -1,166 +1,193 @@
-
 <!DOCTYPE html>
 <html lang="zh-Hant">
-  <head>
-    <meta charset="utf-8" />
-    <!-- 關鍵修改：加入 interactive-widget=resizes-content -->
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, interactive-widget=resizes-content" />
-    <title>萬用桌遊計分板 BoardGameScorePad</title>
-    
-    <!-- 圖示設定 -->
-    <link rel="icon" href="/favicon.ico">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-    
-    <!-- 釜底抽薪的修復：優先載入字型 -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Kalam:wght@400;700&display=swap" rel="stylesheet" crossorigin="anonymous">
 
-    <link rel="manifest" href="/manifest.json">
+<head>
+  <meta charset="utf-8" />
+  <!-- 關鍵修改：加入 interactive-widget=resizes-content -->
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, interactive-widget=resizes-content" />
+  <title>萬用桌遊計分板 BoardGameScorePad</title>
 
-    <!-- DEV_ONLY_START -->
-    <!-- 
-      =======================================================================
-      [DEV ONLY START] 方便 IDE 測試用的 CDN 設定
-      注意：這裡的設定必須與 tailwind.config.js 同步，否則 CDN 會覆蓋本地變數設定
-      =======================================================================
-    -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              // 這裡必須同步 tailwind.config.js 的變數設定，讓 CDN 也能正確解析變數
-              slate: {
-                50: 'rgb(var(--c-slate-50) / <alpha-value>)',
-                100: 'rgb(var(--c-slate-100) / <alpha-value>)',
-                200: 'rgb(var(--c-slate-200) / <alpha-value>)',
-                300: 'rgb(var(--c-slate-300) / <alpha-value>)',
-                400: 'rgb(var(--c-slate-400) / <alpha-value>)',
-                500: 'rgb(var(--c-slate-500) / <alpha-value>)',
-                600: 'rgb(var(--c-slate-600) / <alpha-value>)',
-                700: 'rgb(var(--c-slate-700) / <alpha-value>)',
-                800: 'rgb(var(--c-slate-800) / <alpha-value>)',
-                900: 'rgb(var(--c-slate-900) / <alpha-value>)',
-                950: 'rgb(var(--c-slate-950) / <alpha-value>)',
-              },
-              white: 'rgb(var(--c-white) / <alpha-value>)',
-              black: 'rgb(var(--c-black) / <alpha-value>)',
-              
-              static: {
-                white: '#ffffff',
-                black: '#000000',
-              },
-              gray: {
-                750: '#2d3748',
-                850: '#1a202c',
-                950: '#0d1117',
-              }
+  <!-- 圖示設定 -->
+  <link rel="icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+  <!-- 釜底抽薪的修復：優先載入字型 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Kalam:wght@400;700&display=swap"
+    rel="stylesheet" crossorigin="anonymous">
+
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- DEV_ONLY_START -->
+  <!--
+    =======================================================================
+    [DEV ONLY] Tailwind CDN — 僅在 AI Studio 網頁版 IDE 中使用
+    本地開發 (npm run dev) 不需要此區塊，Tailwind 已由 PostCSS 處理。
+    若需在 AI Studio 中即時預覽，取消下方 HTML 註解即可啟用。
+    注意：CDN 設定必須與 tailwind.config.js 同步。
+    =======================================================================
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            slate: {
+              50: 'rgb(var(--c-slate-50) / <alpha-value>)',
+              100: 'rgb(var(--c-slate-100) / <alpha-value>)',
+              200: 'rgb(var(--c-slate-200) / <alpha-value>)',
+              300: 'rgb(var(--c-slate-300) / <alpha-value>)',
+              400: 'rgb(var(--c-slate-400) / <alpha-value>)',
+              500: 'rgb(var(--c-slate-500) / <alpha-value>)',
+              600: 'rgb(var(--c-slate-600) / <alpha-value>)',
+              700: 'rgb(var(--c-slate-700) / <alpha-value>)',
+              800: 'rgb(var(--c-slate-800) / <alpha-value>)',
+              900: 'rgb(var(--c-slate-900) / <alpha-value>)',
+              950: 'rgb(var(--c-slate-950) / <alpha-value>)',
             },
-            fontFamily: {
-              sans: ['Inter', 'system-ui', 'sans-serif'],
-              hand: ['Kalam', 'cursive'],
+            white: 'rgb(var(--c-white) / <alpha-value>)',
+            black: 'rgb(var(--c-black) / <alpha-value>)',
+            static: {
+              white: '#ffffff',
+              black: '#000000',
             },
+            gray: {
+              750: '#2d3748',
+              850: '#1a202c',
+              950: '#0d1117',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            hand: ['Kalam', 'cursive'],
           },
         },
-      }
-    </script>
-    <!-- DEV_ONLY_END -->
+      },
+    }
+  </script>
+  -->
+  <!-- DEV_ONLY_END -->
 
-    <style>
-      /* 關鍵修復：使用 dvh (Dynamic Viewport Height) 確保在網址列伸縮時高度正確 */
-      html, body, #root {
-        height: 100%;       /* Fallback for older browsers */
-        height: 100dvh;     /* Modern mobile viewport fix */
-        width: 100%;
-        margin: 0;
-        padding: 0;
-        /* 禁止 Body 層級的捲動，強制讓捲動發生在 App 內部的容器 */
-        overflow: hidden; 
-        overscroll-behavior-y: contain;
-      }
-      body {
-        /* 使用 CSS 變數，這些變數會在 index.css 中定義 */
-        background-color: rgb(var(--c-slate-900)); 
-        color: rgb(var(--c-slate-50));
-        -webkit-tap-highlight-color: transparent;
-      }
-      .no-scrollbar::-webkit-scrollbar {
-          display: none;
-      }
-      .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-      }
-      /* Scoped Toast Animations */
-      @keyframes toast-fadeIn { from { opacity: 0; } to { opacity: 1; } }
-      @keyframes toast-fadeOut { from { opacity: 1; } to { opacity: 0; } }
-      @keyframes toast-slideInFromTop { from { transform: translateY(-1rem); } to { transform: translateY(0); } }
-      @keyframes toast-slideOutToTop { from { transform: translateY(0); } to { transform: translateY(-1rem); } }
+  <style>
+    /* 關鍵修復：使用 dvh (Dynamic Viewport Height) 確保在網址列伸縮時高度正確 */
+    html,
+    body,
+    #root {
+      height: 100%;
+      /* Fallback for older browsers */
+      height: 100dvh;
+      /* Modern mobile viewport fix */
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      /* 禁止 Body 層級的捲動，強制讓捲動發生在 App 內部的容器 */
+      overflow: hidden;
+      overscroll-behavior-y: contain;
+    }
 
-      .toast-enter-active {
-        animation: toast-fadeIn 0.3s ease-out, toast-slideInFromTop 0.3s ease-out;
+    body {
+      /* 使用 CSS 變數，這些變數會在 index.css 中定義 */
+      background-color: rgb(var(--c-slate-900));
+      color: rgb(var(--c-slate-50));
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Scoped Toast Animations */
+    @keyframes toast-fadeIn {
+      from {
+        opacity: 0;
       }
-      .toast-exit-active {
-        animation: toast-fadeOut 0.3s ease-in forwards, toast-slideOutToTop 0.3s ease-in forwards;
+
+      to {
+        opacity: 1;
       }
-    </style>
-    <!-- ========================= [DEV ONLY END] ========================= -->
-    
-<script type="importmap">
-{
-  "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.1/",
-    "react": "https://aistudiocdn.com/react@^19.2.1",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
-    "vite": "https://aistudiocdn.com/vite@^7.2.6",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
-    "html-to-image": "https://aistudiocdn.com/html-to-image@^1.11.11",
-    "vite-plugin-static-copy": "https://aistudiocdn.com/vite-plugin-static-copy@^3.1.4",
-    "vitest": "https://esm.sh/vitest@^4.0.15",
-    "@testing-library/react": "https://esm.sh/@testing-library/react@^16.3.0",
-    "@testing-library/jest-dom": "https://esm.sh/@testing-library/jest-dom@^6.9.1",
-    "dexie-react-hooks": "https://esm.sh/dexie-react-hooks@^4.2.0?external=react,react-dom",
-    "dexie": "https://esm.sh/dexie@^4.2.1",
-    "react-dom": "https://esm.sh/react-dom@^19.2.3",
-    "fuse.js": "https://esm.sh/fuse.js@^7.1.0"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
+    }
+
+    @keyframes toast-fadeOut {
+      from {
+        opacity: 1;
+      }
+
+      to {
+        opacity: 0;
+      }
+    }
+
+    @keyframes toast-slideInFromTop {
+      from {
+        transform: translateY(-1rem);
+      }
+
+      to {
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes toast-slideOutToTop {
+      from {
+        transform: translateY(0);
+      }
+
+      to {
+        transform: translateY(-1rem);
+      }
+    }
+
+    .toast-enter-active {
+      animation: toast-fadeIn 0.3s ease-out, toast-slideInFromTop 0.3s ease-out;
+    }
+
+    .toast-exit-active {
+      animation: toast-fadeOut 0.3s ease-in forwards, toast-slideOutToTop 0.3s ease-in forwards;
+    }
+  </style>
+  <!-- ========================= [DEV ONLY END] ========================= -->
 </head>
-  <body>
-    <div id="root"></div>
-    <!-- 這是 Vite 的標準進入點 -->
-    <script type="module" src="./index.tsx"></script>
 
-    <!-- PWA 更新與錯誤急救處理 -->
-    <script>
-      // 1. Service Worker 註冊
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-              console.log('SW Registered');
-              // 手動檢查更新
-              registration.update();
-            })
-            .catch(error => {
-              console.log('SW Registration failed:', error);
-            });
-        });
-      }
+<body>
+  <div id="root"></div>
+  <!-- 這是 Vite 的標準進入點 -->
+  <script type="module" src="./index.tsx"></script>
 
-      // 2. 資源載入失敗急救 (偵測 JS 404 黑屏)
-      window.addEventListener('error', (e) => {
-        // 偵測是否為 Script 載入錯誤 (通常發生在 JS 404 但 HTML 舊時)
-        if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
-           const root = document.getElementById('root');
-           // 如果 root 是空的，代表 React 根本沒跑起來
-           if (root && !root.hasChildNodes()) {
-              root.innerHTML = `
+  <!-- PWA 更新與錯誤急救處理 -->
+  <script>
+    // 1. Service Worker 註冊 (僅正式環境)
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        var isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        if (isDev) return; // 開發環境跳過，由 registerSW.ts 負責清除舊 SW
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('SW Registered');
+            // 手動檢查更新
+            registration.update();
+          })
+          .catch(error => {
+            console.log('SW Registration failed:', error);
+          });
+      });
+    }
+
+    // 2. 資源載入失敗急救 (偵測 JS 404 黑屏)
+    window.addEventListener('error', (e) => {
+      // 偵測是否為 Script 載入錯誤 (通常發生在 JS 404 但 HTML 舊時)
+      if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+        const root = document.getElementById('root');
+        // 如果 root 是空的，代表 React 根本沒跑起來
+        if (root && !root.hasChildNodes()) {
+          root.innerHTML = `
                 <div style="
                   display:flex; flex-direction:column; align-items:center; justify-content:center; 
                   height:100vh; background:#0f172a; color:#fff; text-align:center; padding:20px; font-family:sans-serif;">
@@ -174,10 +201,10 @@
                   <p style="margin-top:20px; font-size:0.8rem; color:#64748b;">(若問題持續，請嘗試清除瀏覽器快取)</p>
                 </div>
               `;
-           }
         }
-      }, true);
-    </script>
-  <script type="module" src="/index.tsx"></script>
+      }
+    }, true);
+  </script>
 </body>
+
 </html>

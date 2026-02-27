@@ -2,7 +2,7 @@
 import React from 'react';
 import { GameTemplate } from '../../../types';
 import { Trash2, Pin, Check, Code, PlayCircle, Copy, RefreshCw, UploadCloud, Image as ImageIcon } from 'lucide-react';
-import { useTranslation } from '../../../i18n';
+import { useDashboardTranslation } from '../../../i18n/dashboard';
 
 interface GameCardProps {
   template: GameTemplate;
@@ -38,11 +38,11 @@ const GameCard: React.FC<GameCardProps> = ({
   isConnected,
   isAutoConnectEnabled
 }) => {
-  const { t } = useTranslation();
+  const { t } = useDashboardTranslation();
 
   // Logic: Compare lastSyncedAt with updatedAt
   const isSynced = (template.lastSyncedAt || 0) >= (template.updatedAt || 0);
-  
+
   // Logic: Image Status
   // globalVisuals implies a grid structure is set up.
   // isLocalImageAvailable (injected by hook) tells us if the file exists.
@@ -50,27 +50,27 @@ const GameCard: React.FC<GameCardProps> = ({
   const isLocalImageReady = (template as any).isLocalImageAvailable;
 
   const renderImageStatus = () => {
-      if (!hasGrid) return null;
+    if (!hasGrid) return null;
 
-      // Use p-1.5 to align perfectly with adjacent buttons (which have p-1.5)
-      // Size 16 matches the Trash icon size
-      if (isLocalImageReady) {
-          return (
-              <div title={t('card_img_ready')} className="p-1.5 text-sky-400 opacity-90">
-                  <ImageIcon size={16} />
-              </div>
-          );
-      } else {
-          return (
-              <div title={t('card_img_missing')} className="p-1.5 text-slate-600 opacity-60">
-                  <ImageIcon size={16} />
-              </div>
-          );
-      }
+    // Use p-1.5 to align perfectly with adjacent buttons (which have p-1.5)
+    // Size 16 matches the Trash icon size
+    if (isLocalImageReady) {
+      return (
+        <div title={t('card_img_ready')} className="p-1.5 text-sky-400 opacity-90">
+          <ImageIcon size={16} />
+        </div>
+      );
+    } else {
+      return (
+        <div title={t('card_img_missing')} className="p-1.5 text-slate-600 opacity-60">
+          <ImageIcon size={16} />
+        </div>
+      );
+    }
   };
 
   const baseClasses = "bg-slate-800 rounded-xl p-3 shadow-md hover:bg-slate-750 transition-all cursor-pointer relative flex flex-col h-20 group";
-  
+
   if (mode === 'active') {
     return (
       <div onClick={onClick} className={`${baseClasses} border border-emerald-500/30`}>
@@ -96,8 +96,8 @@ const GameCard: React.FC<GameCardProps> = ({
 
       {/* Pin Button */}
       {onPin && (
-        <button 
-          onClick={onPin} 
+        <button
+          onClick={onPin}
           className={`absolute top-1 right-1 p-1.5 rounded-md transition-colors ${mode === 'pinned' ? 'text-yellow-400 bg-slate-700/50 hover:bg-slate-700' : 'text-slate-600 hover:text-yellow-400 hover:bg-slate-700'}`}
         >
           <Pin size={16} fill={mode === 'pinned' ? "currentColor" : "none"} />
@@ -111,7 +111,7 @@ const GameCard: React.FC<GameCardProps> = ({
             <Trash2 size={16} />
           </button>
         )}
-        
+
         {/* System Specific Actions */}
         {mode === 'system' && (
           systemOverride ? (

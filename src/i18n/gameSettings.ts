@@ -1,3 +1,4 @@
+import { useTranslation } from './index';
 
 export const gameSettingsTranslations = {
   'zh-TW': {
@@ -11,7 +12,8 @@ export const gameSettingsTranslations = {
     colors_selected: "已選順序 (點擊移除)",
     colors_palette: "點擊選擇顏色 (依序加入)",
     btn_save: "儲存設定",
-    reset_default: "重置為系統預設"
+    reset_default: "重置為系統預設",
+    colors_auto_assign: "(系統自動分配)"
   },
   'en': {
     title: "Game Settings",
@@ -24,6 +26,7 @@ export const gameSettingsTranslations = {
     colors_selected: "Selected Order (Tap to remove)",
     colors_palette: "Tap to append color",
     btn_save: "Save Settings",
-    reset_default: "Reset to Default"
+    reset_default: "Reset to Default",
+    colors_auto_assign: "(Auto-assigned)"
   }
 };

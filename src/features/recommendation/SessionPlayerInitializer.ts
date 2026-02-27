@@ -20,7 +20,7 @@ export const applyRecommendationsToPlayers = async (
 ): Promise<Player[]> => {
     try {
         const playerCount = session.players.length;
-        
+
         // 1. 判斷是否為 Texture Mode (有背景圖或視覺設定)
         // 在這種模式下，我們不希望顏色遮擋背景，且通常也不需要顏色區分(位置已區分)
         const isTextureMode = !!template.globalVisuals || !!template.hasImage || !!template.imageId || !!template.cloudImageId;
@@ -39,7 +39,8 @@ export const applyRecommendationsToPlayers = async (
         const playersWithNames = session.players.map((p, index) => {
             const suggestion = nameSuggestions ? nameSuggestions[index] : undefined;
             const newP = { ...p };
-            if (suggestion) {
+            const isBogusSuggestion = suggestion && /^(玩家|Player)\s?\d+$/.test(suggestion.name);
+            if (suggestion && !isBogusSuggestion) {
                 newP.name = suggestion.name;
                 newP.linkedPlayerId = suggestion.id;
             }
@@ -47,7 +48,7 @@ export const applyRecommendationsToPlayers = async (
         });
 
         // 4. 顏色分配 (Color Assignment)
-        
+
         if (isTextureMode) {
             // Texture Mode: 強制透明
             return playersWithNames.map(p => ({
@@ -55,7 +56,7 @@ export const applyRecommendationsToPlayers = async (
                 color: 'transparent',
                 isColorManuallySet: false
             }));
-        } 
+        }
 
         // Standard Mode: 智慧分配
         const finalPlayers: Player[] = [...playersWithNames]; // Clone array for mutation
@@ -83,7 +84,7 @@ export const applyRecommendationsToPlayers = async (
         for (let i = 0; i < finalPlayers.length; i++) {
             const p = finalPlayers[i];
             const targetId = p.linkedPlayerId || p.id;
-            
+
             // 呼叫引擎取得該玩家的推薦顏色列表
             // 關鍵：傳入 current usedColors 以讓引擎知道哪些顏色已被佔用 (雖然引擎內也會過濾，但雙重保險)
             const suggestedColors = await recommendationService.getSuggestedColors(

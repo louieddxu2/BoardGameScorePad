@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { Shuffle } from 'lucide-react';
-import { GameSession } from '../../../types';
+import { GameSession } from '../../types';
+import { useToolsTranslation } from '../../i18n/tools';
 
 interface OrderToolProps {
     session: GameSession;
@@ -9,9 +10,10 @@ interface OrderToolProps {
 }
 
 const OrderTool: React.FC<OrderToolProps> = ({ session, onUpdateSession }) => {
+    const { t } = useToolsTranslation();
     const handleShuffle = () => {
         const newPlayers = [...session.players];
-        
+
         // 1. Fisher-Yates Shuffle
         for (let i = newPlayers.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -28,17 +30,17 @@ const OrderTool: React.FC<OrderToolProps> = ({ session, onUpdateSession }) => {
             ...session,
             players: newPlayers
         });
-        
+
         if (navigator.vibrate) navigator.vibrate(50);
     };
 
     return (
-        <button 
+        <button
             onClick={handleShuffle}
             className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl border border-slate-700 transition-all active:scale-95 flex items-center justify-center gap-2 group shadow-sm"
         >
             <Shuffle size={18} className="text-indigo-400 group-hover:scale-110 transition-transform" />
-            <span className="font-bold text-sm">順位與分組</span>
+            <span className="font-bold text-sm">{t('order_title')}</span>
         </button>
     );
 };

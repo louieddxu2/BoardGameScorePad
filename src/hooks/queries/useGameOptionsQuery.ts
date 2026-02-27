@@ -18,13 +18,13 @@ import { extractBggGameSummary } from '../../utils/extractDataSummaries';
 export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[]) => {
   // 1. Fetch Local Data
   // Pass pinnedIds to ensure pinned simple templates are visible
-  const { 
-    templates: allTemplates, 
-    systemTemplates: allSystemTemplates 
+  const {
+    templates: allTemplates,
+    systemTemplates: allSystemTemplates
   } = useTemplateQuery('', pinnedIds);
 
-  const { 
-    savedGames: allSavedGames 
+  const {
+    savedGames: allSavedGames
   } = useSavedGameQuery('');
 
   // 2. Fetch BGG Dictionary (Lite Summary)
@@ -46,10 +46,35 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[]) =>
 
   // 4. Search
   const gameOptions = useMemo(() => {
-    return searchService.search<GameOption>(aggregatedOptions, searchQuery, [
+    const fuseResults = searchService.searchWithMatches<GameOption>(aggregatedOptions, searchQuery, [
       { name: 'displayName', weight: 1.0 },
       { name: '_searchTokens', weight: 0.8 }
     ]);
+
+    return fuseResults.map(result => {
+      // 若沒有匹配資訊，直接回傳原物件 (雖然 searchWithMatches 預設會給)
+      if (!result.matches || result.matches.length === 0) {
+        return result.item;
+      }
+
+      // 找出 _searchTokens 的匹配
+      const tokenMatch = result.matches.find(m => m.key === '_searchTokens');
+      if (tokenMatch && tokenMatch.value) {
+        const matchedMatched = tokenMatch.value;
+        const originalName = result.item.bggName || result.item.displayName;
+
+        // 如果命中的別名和原本的名字不同，則動態覆寫 displayName
+        if (matchedMatched.toLowerCase() !== originalName.toLowerCase()) {
+          return {
+            ...result.item,
+            cleanName: matchedMatched,
+            displayName: `${matchedMatched} (${originalName})`
+          };
+        }
+      }
+
+      return result.item;
+    });
   }, [aggregatedOptions, searchQuery]);
 
   return gameOptions;

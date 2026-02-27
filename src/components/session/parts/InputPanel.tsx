@@ -14,6 +14,7 @@ import { Eraser, ArrowRight, ArrowDown, Edit, Plus, ArrowUpToLine, ListPlus, Cal
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
 import { getScoreHistory, getRawValue } from '../../../utils/scoring';
 import { useVisualViewportOffset } from '../../../hooks/useVisualViewportOffset';
+import { useSessionTranslation } from '../../../i18n/session';
 
 // Helper for extracting factors from score value
 const getFactors = (value: any): [string | number, string | number] => {
@@ -55,6 +56,7 @@ const PanelHeader: React.FC<{
 
     // Auto columns cannot be cleared manually
     const isAuto = col?.inputType === 'auto';
+    const { t } = useSessionTranslation();
 
     return (
         <div
@@ -64,7 +66,7 @@ const PanelHeader: React.FC<{
             {isEditingPlayer ? (
                 <>
                     <Edit size={12} className="shrink-0" style={{ color: displayColor }} />
-                    <span className="text-xs shrink-0 font-bold opacity-70" style={{ color: displayColor }}>編輯玩家</span>
+                    <span className="text-xs shrink-0 font-bold opacity-70" style={{ color: displayColor }}>{t('input_edit_player')}</span>
                     <div className="w-px h-4 bg-white/10 mx-1" />
                     <span
                         key={player.id}
@@ -85,7 +87,7 @@ const PanelHeader: React.FC<{
                     </span>
                     <div className="w-px h-4 bg-white/10 mx-1" />
                     <span className="text-xs shrink-0 font-bold opacity-70" style={{ color: displayColor }}>
-                        {isTotalMode ? '總分修正' : col?.name}
+                        {isTotalMode ? t('input_total_adjust') : col?.name}
                     </span>
                 </>
             )}
@@ -96,7 +98,7 @@ const PanelHeader: React.FC<{
                     onClick={onClear}
                     className="bg-red-900/30 text-red-400 px-3 py-1 rounded text-xs border border-red-500/30 hover:bg-red-900/50 flex items-center gap-1 shrink-0"
                 >
-                    <Eraser size={12} /> {isTotalMode ? '重置' : '清除'}
+                    <Eraser size={12} /> {isTotalMode ? t('input_reset') : t('input_clear')}
                 </button>
             )}
             {/* [Modified] Show direction toggle even in Total Mode */}
@@ -105,7 +107,7 @@ const PanelHeader: React.FC<{
                 onClick={onDirectionToggle}
                 className="bg-slate-700/50 hover:bg-slate-700 text-slate-300 px-3 h-8 rounded-lg flex items-center justify-center gap-1 text-xs font-bold transition-colors shrink-0 border border-slate-600"
             >
-                <span className="text-emerald-400">下一項</span>
+                <span className="text-emerald-400">{t('input_next')}</span>
                 <span className={`font-mono transition-colors ${direction === 'vertical' ? 'text-emerald-400' : 'text-slate-600'}`}>↓</span>
                 <span className={`font-mono transition-colors ${direction === 'horizontal' ? 'text-emerald-400' : 'text-slate-600'}`}>→</span>
             </button>
@@ -118,10 +120,11 @@ const TotalAdjustmentSidebar: React.FC<{
     player: Player;
     onUpdatePlayer: (updates: Partial<Player>) => void;
 }> = ({ player, onUpdatePlayer }) => {
+    const { t } = useSessionTranslation();
     return (
         <div className="flex flex-col h-full p-2 gap-2">
             <div className="text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 flex items-center justify-center gap-1 shrink-0">
-                勝負修正
+                {t('input_total_adjust')}
             </div>
             <div className="flex-1 flex flex-col gap-2 overflow-y-auto no-scrollbar pt-1">
                 {/* Tie Breaker Toggle */}
@@ -135,7 +138,7 @@ const TotalAdjustmentSidebar: React.FC<{
                     `}
                 >
                     <Scale size={24} className={player.tieBreaker ? "fill-current" : ""} />
-                    <span className="font-bold text-[10px] leading-none">打破平手</span>
+                    <span className="font-bold text-[10px] leading-none">{t('input_tie_breaker')}</span>
                 </button>
 
                 {/* Force Loss Toggle */}
@@ -149,7 +152,7 @@ const TotalAdjustmentSidebar: React.FC<{
                     `}
                 >
                     <X size={24} className={player.isForceLost ? "stroke-[3px]" : ""} />
-                    <span className="font-bold text-[10px] leading-none">強制落敗</span>
+                    <span className="font-bold text-[10px] leading-none">{t('input_force_loss')}</span>
                 </button>
             </div>
         </div>
@@ -161,6 +164,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     const { sessionState, eventHandlers, session, template, savedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest } = props;
     const { uiState, setUiState, panelHeight, isShortList } = sessionState;
     const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue, isEditingTitle, isToolboxOpen } = uiState;
+    const { t } = useSessionTranslation();
 
     const visualViewportOffset = useVisualViewportOffset();
     const [activeFactorIdx, setActiveFactorIdx] = useState<0 | 1>(0);
@@ -442,7 +446,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             if (activePlayer) {
                 const dummyCol: ScoreColumn = {
                     id: '__TOTAL__',
-                    name: '總分修正',
+                    name: t('input_total_adjust'),
                     formula: 'a1',
                     inputType: 'keypad',
                     isScoring: true,
@@ -572,11 +576,10 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     sidebarContentNode = (
                         <div className="flex flex-col h-full p-2 text-slate-400 text-xs">
                             <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0">
-                                <Calculator size={12} /> 自動計算
+                                <Calculator size={12} /> {t('input_auto_calc')}
                             </div>
                             <div className="flex-1 overflow-y-auto pt-2 space-y-2">
-                                <p>此欄位由公式自動產生結果。</p>
-                                <p>您無需手動輸入數值。</p>
+                                <p>{t('input_auto_desc')}</p>
                             </div>
                         </div>
                     );
@@ -603,7 +606,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     } else if (isSumPartsMode) {
                         sidebarContentNode = <ScoreInfoPanel column={activeColumn} value={cellScoreObject} onDeleteLastPart={handleDeleteLastPart} />;
                     } else {
-                        sidebarContentNode = (<div className="flex flex-col h-full p-2 text-slate-400 text-xs"><div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0"><ListPlus size={12} /> 列表選單</div><div className="flex-1"></div></div>);
+                        sidebarContentNode = (<div className="flex flex-col h-full p-2 text-slate-400 text-xs"><div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0"><ListPlus size={12} /> {t('input_list_menu')}</div><div className="flex-1"></div></div>);
                     }
                 } else {
                     if (isSumPartsMode) {
@@ -616,7 +619,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
                             if (n1 !== 0) {
                                 if (activeFactorIdx === 0) {
-                                    nextButtonContent = (<div className="flex flex-col items-center leading-none"><span className="text-xs">輸入 {activeColumn.subUnits?.[1] || 'B'}</span><ArrowDown size={16} /></div>);
+                                    nextButtonContent = (<div className="flex flex-col items-center leading-none"><span className="text-xs">{t('input_btn_enter')} {activeColumn.subUnits?.[1] || 'B'}</span><ArrowDown size={16} /></div>);
                                     onNextAction = () => {
                                         setActiveFactorIdx(1);
                                         setUiState((p: any) => ({ ...p, overwriteMode: true }));
@@ -651,7 +654,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                                     const currentHistory = getScoreHistory(cellScoreObject);
                                     const newHistory = [...currentHistory, String(valToAdd)];
                                     const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
-                                    updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
+                                    updateScore(activePlayer!.id, activeColumn!.id, { value: newSum, history: newHistory });
                                     setPreview(0);
                                     setUiState((p: any) => ({ ...p, overwriteMode: true }));
                                 } else {
@@ -662,7 +665,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     } else if (isProductMode) {
                         const n1 = parseFloat(String(getFactors(previewValue)[0])) || 0;
                         if (n1 !== 0 && activeFactorIdx === 0) {
-                            nextButtonContent = (<div className="flex flex-col items-center leading-none"><span className="text-xs">輸入 {activeColumn.subUnits?.[1] || 'B'}</span><ArrowDown size={16} /></div>);
+                            nextButtonContent = (<div className="flex flex-col items-center leading-none"><span className="text-xs">{t('input_btn_enter')} {activeColumn.subUnits?.[1] || 'B'}</span><ArrowDown size={16} /></div>);
                             onNextAction = () => {
                                 setActiveFactorIdx(1);
                                 setUiState((p: any) => ({ ...p, overwriteMode: true }));

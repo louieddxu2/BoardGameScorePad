@@ -2,15 +2,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GameTemplate, GameSession, HistoryRecord, SavedListItem } from '../../types';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
-import { usePullAction } from '../../hooks/usePullAction'; 
+import { usePullAction } from '../../hooks/usePullAction';
 import { useModalBackHandler } from '../../hooks/useModalBackHandler';
+import { HistorySummary } from '../../utils/extractDataSummaries';
 import { BgStatsExport, ImportManualLinks } from '../../features/bgstats/types';
 import { GameOption } from '../../features/game-selector/types';
 
 // Sub Components
 import DashboardHeader from './parts/DashboardHeader';
-import PullActionIsland from './parts/PullActionIsland'; 
-import StartGamePanel from '../../features/game-selector/components/StartGamePanel'; 
+import PullActionIsland from './parts/PullActionIsland';
+import StartGamePanel from '../../features/game-selector/components/StartGamePanel';
 import { LibraryView } from './views/LibraryView';
 import { HistoryView } from './views/HistoryView';
 import { DashboardModals } from './parts/DashboardModals';
@@ -24,18 +25,18 @@ import { useDebugGestures } from './hooks/useDebugGestures';
 import { useDashboardActions } from './hooks/useDashboardActions';
 
 interface DashboardProps {
-  isVisible: boolean; 
+  isVisible: boolean;
   userTemplates: GameTemplate[];
-  userTemplatesCount: number; 
+  userTemplatesCount: number;
   systemOverrides: Record<string, GameTemplate>;
-  systemTemplates: GameTemplate[]; 
-  systemTemplatesCount: number; 
+  systemTemplates: GameTemplate[];
+  systemTemplatesCount: number;
   pinnedIds: string[];
-  newBadgeIds: string[]; 
+  newBadgeIds: string[];
   activeSessionIds: string[];
   activeSessions: GameSession[] | undefined;
-  historyRecords?: HistoryRecord[];
-  historyCount?: number; 
+  historyRecords?: HistorySummary[] | HistoryRecord[];
+  historyCount?: number;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   themeMode: 'dark' | 'light';
@@ -47,28 +48,28 @@ interface DashboardProps {
   getSessionPreview: (templateId: string) => GameSession | null;
   onTemplateCreate: (initialName?: string) => void;
   onTemplateDelete: (id: string) => void;
-  onTemplateSave: (template: GameTemplate, options?: { skipCloud?: boolean, preserveTimestamps?: boolean }) => void; 
+  onTemplateSave: (template: GameTemplate, options?: { skipCloud?: boolean, preserveTimestamps?: boolean }) => void;
   onBatchImport: (templates: GameTemplate[]) => void;
   onTogglePin: (id: string) => void;
-  onClearNewBadges: () => void; 
+  onClearNewBadges: () => void;
   onRestoreSystem: (id: string) => void;
   onGetFullTemplate: (id: string) => Promise<GameTemplate | null>;
-  onDeleteHistory: (id: string) => void; 
-  onHistorySelect: (record: HistoryRecord) => void; 
+  onDeleteHistory: (id: string) => void;
+  onHistorySelect: (record: HistoryRecord | HistorySummary) => void;
   isInstalled: boolean;
   canInstall: boolean;
   onInstallClick: () => void;
   onImportSession: (session: GameSession) => void;
-  onImportHistory: (record: HistoryRecord) => void; 
-  onImportSettings?: (settings: any) => void; 
-  onBgStatsImport: (data: BgStatsExport, links: ImportManualLinks) => Promise<boolean>; 
+  onImportHistory: (record: HistoryRecord) => void;
+  onImportSettings?: (settings: any) => void;
+  onBgStatsImport: (data: BgStatsExport, links: ImportManualLinks) => Promise<boolean>;
   onGetLocalData: () => Promise<any>;
-  savedLocations?: SavedListItem[]; 
-  savedGames: SavedListItem[]; 
+  savedLocations?: SavedListItem[];
+  savedGames: SavedListItem[];
   isSetupModalOpen?: boolean;
-  gameOptions: GameOption[]; 
+  gameOptions: GameOption[];
   // [Changed] Add optional locationId
-  onQuickStart: (template: GameTemplate, playerCount: number, location: string, locationId?: string) => void; 
+  onQuickStart: (template: GameTemplate, playerCount: number, location: string, locationId?: string) => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = React.memo(({
@@ -81,7 +82,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   pinnedIds,
   newBadgeIds,
   activeSessionIds,
-  activeSessions, 
+  activeSessions,
   historyRecords,
   historyCount,
   searchQuery,
@@ -116,9 +117,9 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   onQuickStart
 }) => {
   const [isSearchActive, setIsSearchActive] = useState(false);
-  const [isSetupMode, setIsSetupMode] = useState(false); 
+  const [isSetupMode, setIsSetupMode] = useState(false);
   const [viewMode, setViewMode] = useState<'library' | 'history'>('library');
-  
+
   useEffect(() => {
     if (!isVisible) {
       setIsSearchActive(false);
@@ -129,18 +130,18 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   // --- Core Hooks ---
   const modals = useDashboardModals();
 
-  const { 
-    sortedActiveSessions, 
-    pinnedTemplates, 
-    userTemplatesToShow, 
-    systemTemplatesToShow, 
-    allVisibleTemplates 
+  const {
+    sortedActiveSessions,
+    pinnedTemplates,
+    userTemplatesToShow,
+    systemTemplatesToShow,
+    allVisibleTemplates
   } = useDashboardData({
     userTemplates,
     systemTemplates,
     pinnedIds,
     activeSessionIds,
-    activeSessions, 
+    activeSessions,
     getSessionPreview
   });
 
@@ -151,38 +152,38 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
     onGameStart: onQuickStart // [Updated] Pass quick start handler
   });
 
-  const { 
-      fetchFileList, restoreBackup, restoreSessionBackup, restoreHistoryBackup, restoreFromTrash, deleteCloudFile, emptyTrash, 
-      connectToCloud, disconnectFromCloud, isSyncing, isConnected, isAutoConnectEnabled, isMockMode 
+  const {
+    fetchFileList, restoreBackup, restoreSessionBackup, restoreHistoryBackup, restoreFromTrash, deleteCloudFile, emptyTrash,
+    connectToCloud, disconnectFromCloud, isSyncing, isConnected, isAutoConnectEnabled, isMockMode
   } = useGoogleDrive();
 
   // --- Handlers & Actions (Refactored) ---
   const dashboardActions = useDashboardActions({
-      isAutoConnectEnabled,
-      onGetFullTemplate,
-      onTemplateSave,
-      onImportHistory,
-      onImportSession,
-      onImportSettings,
-      onGetLocalData,
-      onTogglePin 
+    isAutoConnectEnabled,
+    onGetFullTemplate,
+    onTemplateSave,
+    onImportHistory,
+    onImportSession,
+    onImportSettings,
+    onGetLocalData,
+    onTogglePin
   });
 
   const debugGestures = useDebugGestures({
-      viewMode,
-      setViewMode,
-      onTriggerInspector: () => modals.actions.setShowInspector(true)
+    viewMode,
+    setViewMode,
+    onTriggerInspector: () => modals.actions.setShowInspector(true)
   });
 
   // --- UI Logic ---
-  
+
   // Back Button for Search
   const isSearchPoppedRef = useRef(false);
   useEffect(() => {
     if (isSearchActive) {
       window.history.pushState({ modal: 'search' }, '');
       isSearchPoppedRef.current = false;
-    } 
+    }
   }, [isSearchActive]);
 
   useEffect(() => {
@@ -190,8 +191,8 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
       if (isSearchActive) {
         isSearchPoppedRef.current = true;
         setIsSearchActive(false);
-        setIsSetupMode(false); 
-        setSearchQuery(''); 
+        setIsSetupMode(false);
+        setSearchQuery('');
       }
     };
     window.addEventListener('popstate', handlePopState);
@@ -205,42 +206,42 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   const setupPanelRef = useRef<HTMLDivElement>(null);
 
   const handleHeaderCloudClick = async () => {
-      if (viewMode === 'history') modals.actions.setCloudModalCategory('history');
-      else modals.actions.setCloudModalCategory('templates');
-      
-      modals.actions.setShowCloudModal(true);
-      if (!isConnected && !isSyncing) await connectToCloud();
+    if (viewMode === 'history') modals.actions.setCloudModalCategory('history');
+    else modals.actions.setCloudModalCategory('templates');
+
+    modals.actions.setShowCloudModal(true);
+    if (!isConnected && !isSyncing) await connectToCloud();
   };
 
   const { pullY, pullX, activeState, isPulling } = usePullAction(scrollContainerRef, {
-      onTriggerSearch: () => { setIsSearchActive(true); setIsSetupMode(false); },
-      onTriggerCloud: handleHeaderCloudClick,
-      disabled: false
+    onTriggerSearch: () => { setIsSearchActive(true); setIsSetupMode(false); },
+    onTriggerCloud: handleHeaderCloudClick,
+    disabled: false
   });
 
   // Damped swipe effect
   let validOffset = 0;
   if (!isPulling) {
-      if (viewMode === 'library') validOffset = Math.min(0, debugGestures.swipeOffset); 
-      else if (viewMode === 'history') validOffset = Math.max(0, debugGestures.swipeOffset); 
+    if (viewMode === 'library') validOffset = Math.min(0, debugGestures.swipeOffset);
+    else if (viewMode === 'history') validOffset = Math.max(0, debugGestures.swipeOffset);
   }
   const dampedOffset = validOffset * 0.5;
 
   const handlePanelSearchFocus = () => {
-      setIsSearchActive(true);
-      setTimeout(() => {
-          const input = document.querySelector('header input') as HTMLInputElement;
-          if (input) input.focus();
-      }, 0);
+    setIsSearchActive(true);
+    setTimeout(() => {
+      const input = document.querySelector('header input') as HTMLInputElement;
+      if (input) input.focus();
+    }, 0);
   };
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-slate-900 transition-colors duration-300 overflow-hidden relative">
-      <DashboardHeader 
+      <DashboardHeader
         isSearchActive={isSearchActive}
         setIsSearchActive={(active) => {
-            setIsSearchActive(active);
-            setIsSetupMode(false); 
+          setIsSearchActive(active);
+          setIsSetupMode(false);
         }}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -253,128 +254,128 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         isConnected={isConnected}
         isSyncing={isSyncing}
         onCloudClick={handleHeaderCloudClick}
-        onTriggerInspector={() => modals.actions.setShowInspector(true)} 
+        onTriggerInspector={() => modals.actions.setShowInspector(true)}
         interactionRefs={[setupPanelRef]}
-        isOverlayOpen={isSetupModalOpen} 
+        isOverlayOpen={isSetupModalOpen}
       />
 
-      <div 
+      <div
         className="flex-1 overflow-y-auto no-scrollbar relative"
         ref={scrollContainerRef}
         onTouchStart={debugGestures.handleDebugTouchStart}
         onTouchMove={debugGestures.handleDebugTouchMove}
         onTouchEnd={debugGestures.handleDebugTouchEnd}
       >
-        <PullActionIsland 
-            pullY={pullY} 
-            pullX={pullX} 
-            activeState={activeState} 
+        <PullActionIsland
+          pullY={pullY}
+          pullX={pullX}
+          activeState={activeState}
         />
 
-        <main 
-            className="p-4 space-y-4 min-h-full transition-transform duration-75 ease-out pb-32"
-            style={{ transform: `translateX(${dampedOffset}px)` }}
+        <main
+          className="p-4 space-y-4 min-h-full transition-transform duration-75 ease-out pb-32"
+          style={{ transform: `translateX(${dampedOffset}px)` }}
         >
-            {viewMode === 'history' ? (
-                <HistoryView 
-                    records={historyRecords}
-                    totalCount={historyCount || 0}
-                    searchQuery={searchQuery}
-                    onDelete={(id) => modals.actions.setHistoryToDelete(id)}
-                    onSelect={onHistorySelect}
-                    onOpenBgStats={() => modals.actions.setShowBgStatsModal(true)}
-                    onOpenBggImport={() => modals.actions.setShowBggImportModal(true)}
-                />
-            ) : (
-                <LibraryView 
-                    activeSessions={sortedActiveSessions}
-                    pinnedTemplates={pinnedTemplates}
-                    userTemplates={userTemplatesToShow}
-                    userTemplatesTotal={userTemplatesCount}
-                    systemTemplates={systemTemplatesToShow}
-                    systemTemplatesTotal={systemTemplatesCount}
-                    newBadgeIds={newBadgeIds}
-                    searchQuery={searchQuery}
-                    copiedId={dashboardActions.copiedId}
-                    isConnected={isConnected}
-                    isAutoConnectEnabled={isAutoConnectEnabled}
-                    onTemplateSelect={onTemplateSelect}
-                    onDirectResume={onDirectResume}
-                    onDeleteSession={(id) => modals.actions.setSessionToDelete(id)}
-                    onClearAllSessions={() => modals.actions.setShowClearAllConfirm(true)}
-                    onPin={onTogglePin}
-                    onDeleteTemplate={(id) => modals.actions.setTemplateToDelete(id)}
-                    onCopyJSON={dashboardActions.handleCopyJSON}
-                    onCloudBackup={dashboardActions.handleCloudBackup}
-                    onOpenDataManager={() => modals.actions.setShowDataModal(true)}
-                    onTemplateCreate={onTemplateCreate}
-                    onClearNewBadges={onClearNewBadges}
-                    onSystemCopy={dashboardActions.handleCopySystemTemplate}
-                    onSystemRestore={(t) => modals.actions.setRestoreTarget(t)}
-                />
-            )}
+          {viewMode === 'history' ? (
+            <HistoryView
+              records={historyRecords}
+              totalCount={historyCount || 0}
+              searchQuery={searchQuery}
+              onDelete={(id) => modals.actions.setHistoryToDelete(id)}
+              onSelect={onHistorySelect}
+              onOpenBgStats={() => modals.actions.setShowBgStatsModal(true)}
+              onOpenBggImport={() => modals.actions.setShowBggImportModal(true)}
+            />
+          ) : (
+            <LibraryView
+              activeSessions={sortedActiveSessions}
+              pinnedTemplates={pinnedTemplates}
+              userTemplates={userTemplatesToShow}
+              userTemplatesTotal={userTemplatesCount}
+              systemTemplates={systemTemplatesToShow}
+              systemTemplatesTotal={systemTemplatesCount}
+              newBadgeIds={newBadgeIds}
+              searchQuery={searchQuery}
+              copiedId={dashboardActions.copiedId}
+              isConnected={isConnected}
+              isAutoConnectEnabled={isAutoConnectEnabled}
+              onTemplateSelect={onTemplateSelect}
+              onDirectResume={onDirectResume}
+              onDeleteSession={(id) => modals.actions.setSessionToDelete(id)}
+              onClearAllSessions={() => modals.actions.setShowClearAllConfirm(true)}
+              onPin={onTogglePin}
+              onDeleteTemplate={(id) => modals.actions.setTemplateToDelete(id)}
+              onCopyJSON={dashboardActions.handleCopyJSON}
+              onCloudBackup={dashboardActions.handleCloudBackup}
+              onOpenDataManager={() => modals.actions.setShowDataModal(true)}
+              onTemplateCreate={onTemplateCreate}
+              onClearNewBadges={onClearNewBadges}
+              onSystemCopy={dashboardActions.handleCopySystemTemplate}
+              onSystemRestore={(t) => modals.actions.setRestoreTarget(t)}
+            />
+          )}
         </main>
       </div>
 
-      <DashboardFAB 
-          isVisible={!isSetupMode} 
-          onClick={() => {
-              setIsSearchActive(true);
-              setIsSetupMode(true);
-          }}
+      <DashboardFAB
+        isVisible={!isSetupMode}
+        onClick={() => {
+          setIsSearchActive(true);
+          setIsSetupMode(true);
+        }}
       />
 
       {isSetupMode && (
-          <StartGamePanel 
-                ref={setupPanelRef}
-                options={gameOptions} 
-                locations={savedLocations} 
-                onStart={handlePanelStart}
-                onSearchClick={handlePanelSearchFocus}
-                onPin={dashboardActions.handlePinGameOption} 
-                isSearching={searchQuery.trim().length > 0}
-                searchQuery={searchQuery}
-            />
+        <StartGamePanel
+          ref={setupPanelRef}
+          options={gameOptions}
+          locations={savedLocations}
+          onStart={handlePanelStart}
+          onSearchClick={handlePanelSearchFocus}
+          onPin={dashboardActions.handlePinGameOption}
+          isSearching={searchQuery.trim().length > 0}
+          searchQuery={searchQuery}
+        />
       )}
 
-      <DashboardModals 
-          state={modals.state}
-          actions={modals.actions}
-          userTemplates={userTemplates}
-          isConnected={isConnected}
-          isMockMode={isMockMode}
-          onTemplateDelete={onTemplateDelete}
-          onDiscardSession={onDiscardSession}
-          onDeleteHistory={onDeleteHistory}
-          onClearAllActiveSessions={onClearAllActiveSessions}
-          onRestoreSystem={onRestoreSystem}
-          onBatchImport={onBatchImport}
-          onGetFullTemplate={onGetFullTemplate}
-          onBgStatsImport={onBgStatsImport}
-          fetchFileList={fetchFileList}
-          restoreBackup={restoreBackup}
-          restoreSessionBackup={restoreSessionBackup}
-          restoreHistoryBackup={restoreHistoryBackup}
-          restoreFromTrash={restoreFromTrash}
-          deleteCloudFile={deleteCloudFile}
-          emptyTrash={emptyTrash}
-          connectToCloud={connectToCloud}
-          disconnectFromCloud={disconnectFromCloud}
-          onCloudRestoreSuccess={(t) => onTemplateSave({ ...t, lastSyncedAt: t.updatedAt || Date.now() }, { skipCloud: true, preserveTimestamps: true })}
-          onSessionRestoreSuccess={onImportSession}
-          onHistoryRestoreSuccess={onImportHistory}
-          onSystemBackup={dashboardActions.handleSystemBackupAction}
-          onSystemRestore={dashboardActions.handleSystemRestoreAction}
-          onGetLocalData={onGetLocalData}
+      <DashboardModals
+        state={modals.state}
+        actions={modals.actions}
+        userTemplates={userTemplates}
+        isConnected={isConnected}
+        isMockMode={isMockMode}
+        onTemplateDelete={onTemplateDelete}
+        onDiscardSession={onDiscardSession}
+        onDeleteHistory={onDeleteHistory}
+        onClearAllActiveSessions={onClearAllActiveSessions}
+        onRestoreSystem={onRestoreSystem}
+        onBatchImport={onBatchImport}
+        onGetFullTemplate={onGetFullTemplate}
+        onBgStatsImport={onBgStatsImport}
+        fetchFileList={fetchFileList}
+        restoreBackup={restoreBackup}
+        restoreSessionBackup={restoreSessionBackup}
+        restoreHistoryBackup={restoreHistoryBackup}
+        restoreFromTrash={restoreFromTrash}
+        deleteCloudFile={deleteCloudFile}
+        emptyTrash={emptyTrash}
+        connectToCloud={connectToCloud}
+        disconnectFromCloud={disconnectFromCloud}
+        onCloudRestoreSuccess={(t) => onTemplateSave({ ...t, lastSyncedAt: t.updatedAt || Date.now() }, { skipCloud: true, preserveTimestamps: true })}
+        onSessionRestoreSuccess={onImportSession}
+        onHistoryRestoreSuccess={onImportHistory}
+        onSystemBackup={dashboardActions.handleSystemBackupAction}
+        onSystemRestore={dashboardActions.handleSystemRestoreAction}
+        onGetLocalData={onGetLocalData}
       />
     </div>
   );
 }, (prevProps, nextProps) => {
-    // Only re-render if visible, or if visibility changed.
-    if (!prevProps.isVisible && !nextProps.isVisible) {
-        return true; 
-    }
-    return false;
+  // Only re-render if visible, or if visibility changed.
+  if (!prevProps.isVisible && !nextProps.isVisible) {
+    return true;
+  }
+  return false;
 });
 
 export default Dashboard;

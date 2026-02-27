@@ -44,30 +44,30 @@ export interface TemplateSummary extends BaseSummary<TemplateSearchIndex>, Templ
   // 顯示資料
   name: string;
   bggId?: string; // [Fix] Added for aggregator merging logic
-  
+
   // [Sync Check]
   updatedAt?: number;
   lastSyncedAt?: number;
-  
+
   // [UI State]
   // isPinned Removed: Pin status is maintained externally by pinnedIds list
   hasImage?: boolean;
-  
+
   // [Icons]
   imageId?: string;
   cloudImageId?: string;
   isLocalImageAvailable: boolean; // Computed (UI Helper) [Renamed to avoid index signature conflict]
-  
+
   // [Logic]
   sourceTemplateId?: string;
-  
+
   // [UX]
   lastPlayerCount?: number;
   defaultScoringRule?: any;
-  
+
   // [Optimization]
-  globalVisuals?: any; 
-  columns: ScoreColumn[]; 
+  globalVisuals?: any;
+  columns: ScoreColumn[];
 }
 
 // ==========================================
@@ -88,7 +88,17 @@ export interface HistorySearchIndex extends BaseSearchIndex {
  * 歷史紀錄摘要 (View Model)
  * 使用 Type Alias 組合：基底結構 + 搜尋索引 + 原始資料的子集(Partial)
  */
-export type HistorySummary = BaseSummary<HistorySearchIndex> & HistorySearchIndex & Partial<HistoryRecord>;
+export type HistorySummary = BaseSummary<HistorySearchIndex> & HistorySearchIndex & Pick<HistoryRecord, 'gameName' | 'endTime' | 'location' | 'winnerIds'> & {
+  players: {
+    id: string;
+    name: string;
+    color: string;
+    totalScore: number;
+    linkedPlayerId?: string;
+    scores?: any;
+  }[];
+  snapshotTemplate?: undefined;
+};
 
 // ==========================================
 // 4. 儲存遊戲具體實作 (SavedGame Implementation)
@@ -133,7 +143,7 @@ export type BggGameSummary = BaseSummary<BggGameSearchIndex> & BggGameSearchInde
   name: string;
   altNames: string[]; // 保留陣列結構以供邏輯比對 (如 Aggregator)
   year?: number;      // 用於顯示年份以區分同名遊戲
-  
+
   // Smart Defaults & Metadata
   minPlayers?: number;
   maxPlayers?: number;
@@ -162,24 +172,24 @@ export const extractTemplateSummary = (
     id: template.id,
     name: template.name,
     bggId: template.bggId, // [Fix] Map bggId
-    
+
     updatedAt: template.updatedAt,
     lastSyncedAt: template.lastSyncedAt,
-    
+
     // isPinned removed
     hasImage: template.hasImage,
     imageId: template.imageId,
     cloudImageId: template.cloudImageId,
     sourceTemplateId: template.sourceTemplateId,
-    
+
     lastPlayerCount: template.lastPlayerCount,
     defaultScoringRule: template.defaultScoringRule,
-    
+
     globalVisuals: template.globalVisuals ? {} : undefined,
-    
+
     // [Memory Optimization] 
     // 列表顯示不需要詳細欄位資料，清空以節省記憶體。
-    columns: [], 
+    columns: [],
 
     isLocalImageAvailable: template.imageId ? availableImageIds.has(template.imageId) : false,
     _searchName: searchName
@@ -194,48 +204,48 @@ export const extractTemplateSummary = (
 export const extractHistorySummary = (
   record: HistoryRecord
 ): HistorySummary => {
-    const d = new Date(record.endTime);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    
-    // 1. 搜尋索引
-    const dateStr = `${y}/${m}/${dd}`;
-    const compactDateStr = `${String(y).slice(-2)}${m}${dd}`;
-    const rocYear = y - 1911;
-    const rocDateStr = rocYear > 0 ? `${rocYear}${m}${dd}` : '';
-    const playerNames = record.players.map(p => p.name).join(' ');
+  const d = new Date(record.endTime);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
 
-    // 2. 輕量化玩家
-    const lightweightPlayers = record.players.map(p => ({
-        id: p.id,
-        name: p.name,
-        color: p.color,
-        totalScore: p.totalScore,
-        linkedPlayerId: p.linkedPlayerId,
-        scores: {} 
-    }));
+  // 1. 搜尋索引
+  const dateStr = `${y}/${m}/${dd}`;
+  const compactDateStr = `${String(y).slice(-2)}${m}${dd}`;
+  const rocYear = y - 1911;
+  const rocDateStr = rocYear > 0 ? `${rocYear}${m}${dd}` : '';
+  const playerNames = record.players.map(p => p.name).join(' ');
 
-    // 3. 組裝摘要
-    const summary: HistorySummary = {
-        id: record.id,
-        gameName: record.gameName,
-        endTime: record.endTime,
-        location: record.location,
-        winnerIds: record.winnerIds,
-        
-        players: lightweightPlayers as any,
-        
-        // Search Index
-        _playerNames: playerNames,
-        _dateStr: dateStr,
-        _compactDate: compactDateStr,
-        _rocDate: rocDateStr,
-        
-        snapshotTemplate: undefined,
-    };
+  // 2. 輕量化玩家
+  const lightweightPlayers = record.players.map(p => ({
+    id: p.id,
+    name: p.name,
+    color: p.color,
+    totalScore: p.totalScore,
+    linkedPlayerId: p.linkedPlayerId,
+    scores: {}
+  }));
 
-    return summary;
+  // 3. 組裝摘要
+  const summary: HistorySummary = {
+    id: record.id,
+    gameName: record.gameName,
+    endTime: record.endTime,
+    location: record.location,
+    winnerIds: record.winnerIds,
+
+    players: lightweightPlayers as any,
+
+    // Search Index
+    _playerNames: playerNames,
+    _dateStr: dateStr,
+    _compactDate: compactDateStr,
+    _rocDate: rocDateStr,
+
+    snapshotTemplate: undefined,
+  };
+
+  return summary;
 };
 
 /**
@@ -256,7 +266,7 @@ export const extractSavedGameSummary = (
     usageCount: item.usageCount,
     bggId: item.bggId,
     // bgStatsId: item.bgStatsId, // REMOVED
-    
+
     _searchName: searchName,
     _bggId: bggId
   };
@@ -281,7 +291,7 @@ export const extractBggGameSummary = (
     name: game.name,
     altNames: game.altNames || [],
     year: game.year,
-    
+
     // 智慧預設值資料
     minPlayers: game.minPlayers,
     maxPlayers: game.maxPlayers,
