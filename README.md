@@ -1,20 +1,75 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Board Game Score Pad
 
-# Run and deploy your AI Studio app
+離線優先（PWA）的桌遊計分與對局紀錄 App，支援：
+- 自訂計分板模板（Template）
+- 進行中對局（Session）與歷史紀錄（History）
+- 本地資料庫（IndexedDB / Dexie）
+- Google Drive 雲端備份與還原
+- 中英雙語 UI（i18n）
 
-This contains everything you need to run your app locally.
+## Tech Stack
+- React 18 + TypeScript + Vite
+- Tailwind CSS
+- Dexie + dexie-react-hooks
+- Vitest + Testing Library
 
-View your app in AI Studio: https://ai.studio/apps/drive/1iRyJKazCO3ZxbYAxjFVlko7Gx3WZJHBr
+## Local Development
+### Prerequisites
+- Node.js 18+
 
-## Run Locally
+### Setup
+1. Install dependencies
+```bash
+npm install
+```
+2. Copy environment file
+```bash
+copy .env.example .env.local
+```
+3. Fill environment variables in `.env.local`
 
-**Prerequisites:**  Node.js
+### Run
+```bash
+npm run dev
+```
 
+### Build
+```bash
+npm run build
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### Test
+```bash
+npm test
+```
+
+### Type Check
+```bash
+npx tsc --noEmit
+```
+
+## Environment Variables
+- `VITE_GOOGLE_CLIENT_ID`: Google OAuth client id for Drive integration
+- `GEMINI_API_KEY`: legacy variable (kept for compatibility with earlier scaffold)
+
+## Project Structure
+- `src/components/`: UI 元件
+- `src/hooks/`: 狀態與流程 hook
+- `src/services/`: 資料與雲端服務
+- `src/features/`: 功能模組（推薦、匯入匯出等）
+- `src/i18n/`: 翻譯字典與 hooks
+- `docs/`: 架構、流程、roadmap、封存文件
+
+## Service Worker Notes
+SW 目前同時涵蓋開發與正式環境差異處理。設計與流程說明請見：
+- `docs/architecture/sw-strategy.md`
+
+## Verification Script
+專案建議驗證流程：
+```powershell
+powershell -ExecutionPolicy Bypass -File "scripts\verify.ps1"
+```
+
+## Known Testing Policy
+- 單元測試：日常開發/PR 必跑
+- 高成本 UI 整合測試：以條件觸發或發版前執行
