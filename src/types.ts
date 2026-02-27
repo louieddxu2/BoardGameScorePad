@@ -30,7 +30,7 @@ export interface GlobalVisuals {
   playerHeaderRect?: Rect; // Crop coordinates for the top row (Player Names)
   totalRowRect?: Rect;     // Crop coordinates for the bottom row (Total Score)
   totalLabelRect?: Rect;   // Crop coordinates for the "Total" label (bottom-left)
-  
+
   // Mask Rects (Used for screenshot reconstruction)
   topMaskRect?: Rect;
   bottomMaskRect?: Rect;
@@ -42,43 +42,43 @@ export interface ScoreColumn {
   id: string;
   name: string;
   color?: string;
-  
+
   // Core Calculation Logic
   formula: string; // e.g., "a1", "a1×c1", "a1+next", "f1(a1)", "a1×a2"
   constants?: {
     c1?: number;
   };
-  
+
   // 函數定義：支援 f1, f2... 多個函數
   f1?: MappingRule[]; // 保留舊欄位以相容舊資料
   functions?: Record<string, MappingRule[]>; // 新格式：{"f1": rules, "f2": rules}
-  
+
   // Automatic Calculation Config
-  isAuto?: boolean; 
-  variableMap?: Record<string, { 
-    id: string; 
+  isAuto?: boolean;
+  variableMap?: Record<string, {
+    id: string;
     name: string;
     mode?: 'value' | 'rank_score' | 'rank_player' | 'tie_count';
   }>; // Maps "x1" -> { id: "uuid", name: "Column Name", mode: "..." }
-  
+
   // Input & UI Helpers
-  inputType: InputMethod; 
+  inputType: InputMethod;
   quickActions?: QuickAction[];
-  
+
   // Formatting & Display
   unit?: string;
-  subUnits?: [string, string]; 
+  subUnits?: [string, string];
   rounding?: RoundingMode;
-  showPartsInGrid?: boolean | 'parts_only'; 
+  showPartsInGrid?: boolean | 'parts_only';
   renderMode?: 'standard' | 'value_only' | 'label_only'; // For select/clicker columns
-  buttonGridColumns?: number; 
-  
+  buttonGridColumns?: number;
+
   // Display Control
   displayMode?: 'row' | 'overlay' | 'hidden';
-  
+
   // Visual Mapping
   visuals?: ColumnVisuals;
-  
+
   // Layout Configuration
   contentLayout?: ContentLayout;
 
@@ -90,13 +90,13 @@ export type RoundingMode = 'none' | 'round' | 'floor' | 'ceil';
 export type InputMethod = 'keypad' | 'clicker' | 'auto';
 
 export interface MappingRule {
-  min?: number; 
-  max?: number | 'next'; 
-  score: number; 
-  
-  isLinear?: boolean; 
-  unitScore?: number; 
-  unit?: number; 
+  min?: number;
+  max?: number | 'next';
+  score: number;
+
+  isLinear?: boolean;
+  unitScore?: number;
+  unit?: number;
 }
 
 export interface QuickAction {
@@ -104,19 +104,19 @@ export interface QuickAction {
   label: string;
   value: number;
   color?: string;
-  isModifier?: boolean; 
+  isModifier?: boolean;
 }
 
 export interface Player {
-  id:string;
+  id: string;
   name: string;
   color: string;
-  scores: Record<string, ScoreValue>; 
+  scores: Record<string, ScoreValue>;
   totalScore: number;
   isStarter?: boolean; // New: Starting player marker
   linkedPlayerId?: string; // [New] 指向歷史紀錄的 UUID，用於關聯分析
   isColorManuallySet?: boolean; // [New] 指示此顏色是否為使用者手動選擇 (用於過濾雜訊)
-  
+
   // New: Total Score Adjustment Logic
   bonusScore?: number; // Manually added bonus/penalty to total
   tieBreaker?: boolean; // Wins ties
@@ -159,14 +159,14 @@ export interface GameTemplate extends GameIdentity {
   id: string;
   // name: string; // Inherited from GameIdentity
   // bggId?: string; // Inherited from GameIdentity
-  
+
   description?: string;
-  
+
   supportedColors?: string[]; // [New] Custom color palette sequence for this game
   columns: ScoreColumn[];
   createdAt: number;
-  updatedAt?: number;    
-  lastSyncedAt?: number; 
+  updatedAt?: number;
+  lastSyncedAt?: number;
   // [Removed] isPinned is now managed externally by pinnedIds list
   hasImage?: boolean;
   imageId?: string;       // [Offline] ID pointing to LocalImage table
@@ -174,7 +174,7 @@ export interface GameTemplate extends GameIdentity {
   globalVisuals?: GlobalVisuals;
   lastPlayerCount?: number; // 兼容舊資料，優先使用 TemplatePreference
   defaultScoringRule?: ScoringRule; // 兼容舊資料，優先使用 TemplatePreference
-  
+
   // [New Phase 1] Fork Mechanism
   sourceTemplateId?: string;
 }
@@ -182,7 +182,7 @@ export interface GameTemplate extends GameIdentity {
 export interface GameSession extends GameIdentity {
   id: string;
   templateId: string;
-  
+
   // name: string; // Inherited from GameIdentity
   // bggId?: string; // Inherited from GameIdentity
 
@@ -205,11 +205,11 @@ export interface GameSession extends GameIdentity {
 export interface HistoryRecord {
   id: string; // [Changed] 使用 UUID (與 Session ID 相同)，不再是 number
   templateId: string; // 原始模板 ID (用於關聯)
-  
+
   gameName: string; // 當時的遊戲名稱 (快照)
   // [BGG Link] 記錄這場遊戲對應的 BGG ID
   bggId?: string;
-  
+
   startTime: number;
   endTime: number;
   updatedAt?: number; // [New] 紀錄最後修改時間 (例如修改筆記)
@@ -245,46 +245,46 @@ export interface BggGame {
   altNames?: string[]; // [New] Aliases / Alternative Names (e.g. Chinese Name)
   year?: number;
   designers?: string;
-  
+
   // Game Specs
   minPlayers?: number;
   maxPlayers?: number;
   playingTime?: number;
-  minAge?: number; 
-  
+  minAge?: number;
+
   // Advanced Stats
   rank?: number; // BGG Rank
   complexity?: number; // Weight (1-5)
   bestPlayers?: number[]; // Community voted best player counts
-  
+
   updatedAt: number; // Last cache update
 }
 
 // [New Interface] Generic Saved List Item (for Players, Locations, etc.)
 export interface SavedListItem extends GameIdentity {
   id: string; // Internal 8-char ID (Base62) OR UUID
-  
+
   // name: string; // Inherited from GameIdentity
   // bggId?: string; // Inherited from GameIdentity (Only used if this item IS a game)
 
   lastUsed: number;
   usageCount: number;
-  
+
   meta?: {
-      uuid?: string; // Legacy field
-      stats?: {
-          weekDays?: number[]; // 0-6 (Sun-Sat)
-          timeSlots?: number[]; // 0-11 (2-hour buckets)
-      };
-      // Generic container for relations
-      // key: 'players' | 'locations' | 'games' | 'colors' ...
-      relations?: Record<string, any>; 
-      confidence?: Record<string, number>;
-      
-      // 注意：BGG Metadata 應優先從 bggGames 資料表讀取
-      // 這裡僅保留作為快取或舊資料相容
-      [key: string]: any;
-  }; 
+    uuid?: string; // Legacy field
+    stats?: {
+      weekDays?: number[]; // 0-6 (Sun-Sat)
+      timeSlots?: number[]; // 0-11 (2-hour buckets)
+    };
+    // Generic container for relations
+    // key: 'players' | 'locations' | 'games' | 'colors' ...
+    relations?: Record<string, any>;
+    confidence?: Record<string, number>;
+
+    // 注意：BGG Metadata 應優先從 bggGames 資料表讀取
+    // 這裡僅保留作為快取或舊資料相容
+    [key: string]: any;
+  };
 }
 
 // [v24 New] System Weight Configuration

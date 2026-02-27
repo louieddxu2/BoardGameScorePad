@@ -235,9 +235,17 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
 
         return (
             <div key={option.uid} className={`${heightClass} w-full relative group shrink-0`}>
-                <button
+                <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleOptionClick(option)}
-                    className={`absolute inset-0 w-full px-4 text-left transition-all ${isSelected ? 'bg-slate-800 z-10' : 'bg-transparent text-slate-400 hover:bg-slate-800/50'}`}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleOptionClick(option);
+                        }
+                    }}
+                    className={`absolute inset-0 w-full px-4 text-left cursor-pointer transition-all ${isSelected ? 'bg-slate-800 z-10' : 'bg-transparent text-slate-400 hover:bg-slate-800/50'}`}
                 >
                     <div className="flex items-stretch w-full h-full gap-3">
                         <div className="min-w-0 flex-1 flex flex-col justify-center gap-0.5 py-1">
@@ -280,7 +288,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                             </button>
                         )}
                     </div>
-                </button>
+                </div>
                 {!isDocked && <div className="absolute bottom-0 left-4 right-4 h-px bg-slate-800 pointer-events-none"></div>}
             </div>
         );

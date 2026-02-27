@@ -163,9 +163,11 @@
 
   <!-- PWA 更新與錯誤急救處理 -->
   <script>
-    // 1. Service Worker 註冊
+    // 1. Service Worker 註冊 (僅正式環境)
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
+        var isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        if (isDev) return; // 開發環境跳過，由 registerSW.ts 負責清除舊 SW
         navigator.serviceWorker.register('/sw.js')
           .then(registration => {
             console.log('SW Registered');
