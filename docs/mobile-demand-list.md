@@ -8,9 +8,6 @@
 
 ## 📥 待處理需求 (Pending Demands)
 
-- [ ] (範例) 測試手機需求同步：請 Agent 同步此項，並將其移動至歸檔區。
-- 確認介面全部雙語化i18n
-
 ---
 
 ## 🔄 實作中 (In Progress)
@@ -20,9 +17,11 @@
 ## 📦 已完成紀錄 (Archived Demands)
 
 ### 🎨 UI & 介面優化
+- [x] 確認介面全部雙語化i18n (Audit complete: No hardcoded Chinese found)
 
 ### ⚙️ 核心邏輯與預測系統
 
 ### 🐞 Bug 修復
 
 ### 🛠️ 其他雜項
+- [x] (範例) 測試手機需求同步 (Sync test successful)
