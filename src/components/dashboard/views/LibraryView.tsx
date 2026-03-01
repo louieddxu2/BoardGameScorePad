@@ -212,7 +212,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                                     mode="system"
                                     onClick={() => onTemplateSelect(t)}
                                     onPin={(e) => { e.stopPropagation(); onPin(t.id); }}
-                                    onCopyLink={(e) => onCopyShareLink(t, e)}
+                                    onCopyLink={t.sourceTemplateId ? undefined : ((e) => onCopyShareLink(t, e))}
+                                    onCopyJSON={t.sourceTemplateId ? ((e) => onCopyJSON(t, e)) : undefined}
                                     onSystemCopy={(e) => onSystemCopy(t, e)}
                                     onSystemRestore={(e) => { e.stopPropagation(); onSystemRestore(t, e); }}
                                     isCopied={copiedId === t.id}
