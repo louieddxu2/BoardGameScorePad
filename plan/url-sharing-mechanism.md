@@ -1,23 +1,45 @@
-# URL 共享機制計劃
+# URL Sharing Mechanism (Current Version)
 
-本文件詳細描述了 URL 共享機制的計劃，包括 DSL 壓縮、BggId 處理以及實施清單。
+This document reflects the implemented behavior in `V3test`.
 
-## 1. DSL 壓縮
-- 設計一種方法，將長 URL 使用 DSL 進行壓縮。
-- 確保壓縮後的 URL 可以正確重建原始 URL。
-- 測試各種長度的 URL 以確保壓縮算法的有效性。
+## Scope
+- Only built-in scoreboards are shareable by URL in the current phase.
+- Shared link opens the built-in scoreboard setup modal (not direct session start).
+- User can still choose player count and location before starting.
 
-## 2. BggId 處理
-- 定義 BggId 的格式及其用法。
-- 開發一個算法，能夠根據 BggId 獲取相關的遊戲資訊。
-- 將 BggId 與共享的 URL 鏈接進行整合。
+## URL Format
+- Hash format:
+  - `#v=1&src=builtin&id=<shortId>`
+- Example:
+  - `#v=1&src=builtin&id=Agricola`
+- `id` uses short ID (without `Built-in-` prefix) to keep URL shorter.
 
-## 3. 實施清單
-- [ ] 確定項目的需求和範圍。
-- [ ] 完成 DSL 壓縮方案的設計。
-- [ ] 實現 BggId 的處理方法。
-- [ ] 測試和驗證 URL 共享機制的所有部分。
-- [ ] 撰寫最終報告和使用手冊。
+## Runtime Flow
+1. App boot parses `window.location.hash`.
+2. If hash matches `v=1 + src=builtin + id`, resolve built-in template by short ID.
+3. If found, open setup modal for that built-in template.
+4. If invalid or not found, stay on dashboard and show warning (not-found case).
+5. Hash is cleared after handling (success/failure/invalid) to avoid repeated triggering.
 
-## 總結
-本計劃旨在確保 URL 共享機制的有效性和可靠性，並進一步提升用戶體驗。
+## UI Change
+- Built-in library cards no longer use the JSON copy button.
+- For built-in cards, the button is replaced with "copy share link".
+
+## Why hash is cleared
+- Prevents repeated deep-link side effects on refresh/back.
+- Avoids users getting stuck with bad links.
+- Treats deep link as one-time action input, not persistent screen state.
+
+## Test Level
+- Unit tests:
+  - deep link parse/build/ID conversion utilities.
+- Integration tests (`App` level):
+  - valid link opens setup modal.
+  - valid-but-missing template shows warning + stays dashboard.
+  - invalid hash is ignored + stays dashboard.
+  - hash is cleared in all handled cases.
+
+## Future Extensions (Not implemented yet)
+- `src=packed` for compressed custom template payload.
+- `src=cloud` for cloud shared template ID.
+- Optional explicit short-code map for built-ins if naming changes are expected.
