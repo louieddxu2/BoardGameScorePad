@@ -381,6 +381,7 @@ export const useAppData = () => {
 
         savedGames: queries.savedGames,
         getTemplate: queries.getTemplate,
+        getBuiltinTemplateByShortId: queries.getBuiltinTemplateByShortId,
         getSessionPreview: queries.getSessionPreview,
 
         // Session Manager State

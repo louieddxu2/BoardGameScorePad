@@ -6,6 +6,7 @@ import { useDashboardTranslation } from '../../../i18n/dashboard';
 import { generateId } from '../../../utils/idGenerator';
 import { useGoogleDrive } from '../../../hooks/useGoogleDrive';
 import { GameOption } from '../../../features/game-selector/types';
+import { buildBuiltinShareUrl, toBuiltinShortId } from '../../../utils/deepLink';
 
 interface UseDashboardActionsProps {
     isAutoConnectEnabled: boolean;
@@ -88,6 +89,24 @@ export const useDashboardActions = ({
         };
         onTemplateSave(newTemplate, { skipCloud: true });
         showToast({ message: t('msg_copy_created'), type: 'success' });
+    };
+
+    // Action: Copy built-in deep link
+    const handleCopyBuiltinShareLink = (template: GameTemplate, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const sourceId = template.sourceTemplateId || template.id;
+        if (!sourceId.startsWith('Built-in-')) {
+            showToast({ message: t('msg_read_template_failed'), type: 'warning' });
+            return;
+        }
+        const shortId = toBuiltinShortId(sourceId);
+        const link = buildBuiltinShareUrl(shortId);
+
+        navigator.clipboard.writeText(link).then(() => {
+            setCopiedId(template.id);
+            setTimeout(() => setCopiedId(null), 2000);
+            showToast({ message: t('msg_share_link_copied'), type: 'success' });
+        });
     };
 
     // Action: Wrapper for Full System Backup
@@ -177,6 +196,7 @@ export const useDashboardActions = ({
     return {
         copiedId,
         handleCopyJSON,
+        handleCopyBuiltinShareLink,
         handleCloudBackup,
         handleCopySystemTemplate,
         handleSystemBackupAction,

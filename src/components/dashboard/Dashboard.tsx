@@ -306,6 +306,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
               onPin={onTogglePin}
               onDeleteTemplate={(id) => modals.actions.setTemplateToDelete(id)}
               onCopyJSON={dashboardActions.handleCopyJSON}
+              onCopyShareLink={dashboardActions.handleCopyBuiltinShareLink}
               onCloudBackup={dashboardActions.handleCloudBackup}
               onOpenDataManager={() => modals.actions.setShowDataModal(true)}
               onTemplateCreate={onTemplateCreate}

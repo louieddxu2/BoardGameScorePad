@@ -28,6 +28,7 @@ interface LibraryViewProps {
     onPin: (id: string) => void;
     onDeleteTemplate: (id: string) => void;
     onCopyJSON: (template: GameTemplate, e: React.MouseEvent) => void;
+    onCopyShareLink: (template: GameTemplate, e: React.MouseEvent) => void;
     onCloudBackup: (template: GameTemplate, e: React.MouseEvent) => void;
     onOpenDataManager: () => void;
     onTemplateCreate: () => void;
@@ -65,6 +66,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     onPin,
     onDeleteTemplate,
     onCopyJSON,
+    onCopyShareLink,
     onCloudBackup,
     onOpenDataManager,
     onTemplateCreate,
@@ -210,7 +212,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                                     mode="system"
                                     onClick={() => onTemplateSelect(t)}
                                     onPin={(e) => { e.stopPropagation(); onPin(t.id); }}
-                                    onCopyJSON={(e) => onCopyJSON(t, e)}
+                                    onCopyLink={(e) => onCopyShareLink(t, e)}
                                     onSystemCopy={(e) => onSystemCopy(t, e)}
                                     onSystemRestore={(e) => { e.stopPropagation(); onSystemRestore(t, e); }}
                                     isCopied={copiedId === t.id}

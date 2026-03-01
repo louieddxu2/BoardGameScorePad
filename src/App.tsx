@@ -7,6 +7,7 @@ import { Smartphone } from 'lucide-react';
 import { getTargetHistoryDepth } from './config/historyStrategy'; // Import Strategy
 import { useToast } from './hooks/useToast';
 import { useAppTranslation } from './i18n/app';
+import { parseBuiltinDeepLinkFromHash } from './utils/deepLink';
 
 // Components
 import TemplateEditor from './components/editor/TemplateEditor';
@@ -43,6 +44,7 @@ const App: React.FC = () => {
 
   // Ref to ignore popstates triggered by our own history manipulation (pruning)
   const ignorePopstateRef = useRef(false);
+  const deepLinkHandledRef = useRef(false);
 
   // Landscape Detection State (JS Control)
   const [showLandscapeOverlay, setShowLandscapeOverlay] = useState(false);
@@ -206,6 +208,45 @@ const App: React.FC = () => {
       setView(AppView.ACTIVE_SESSION);
     }
   }, [appData.currentSession, appData.activeTemplate]);
+
+  // --- Deep Link (Built-in template -> Setup Modal) ---
+  useEffect(() => {
+    if (deepLinkHandledRef.current || !appData.isDbReady) return;
+
+    const parsed = parseBuiltinDeepLinkFromHash(window.location.hash);
+    deepLinkHandledRef.current = true;
+    const clearDeepLinkHash = () => {
+      if (!window.location.hash) return;
+      window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}`);
+    };
+
+    if (!parsed) {
+      clearDeepLinkHash();
+      setView(AppView.DASHBOARD);
+      return;
+    }
+
+    const openBuiltinSetup = async () => {
+      const template = await appData.getBuiltinTemplateByShortId(parsed.shortId);
+      if (!template) {
+        clearDeepLinkHash();
+        setView(AppView.DASHBOARD);
+        showToast({ message: tApp('app_toast_link_template_missing'), type: 'warning' });
+        return;
+      }
+
+      clearDeepLinkHash();
+      setView(AppView.DASHBOARD);
+      setPendingTemplate(template);
+    };
+
+    openBuiltinSetup().catch((error) => {
+      console.error('Failed to open deep link:', error);
+      clearDeepLinkHash();
+      setView(AppView.DASHBOARD);
+      showToast({ message: tApp('app_toast_link_open_failed'), type: 'error' });
+    });
+  }, [appData.isDbReady, appData.getBuiltinTemplateByShortId, showToast, tApp]);
 
   // --- History Wall Logic (Strategy Pattern) ---
   const historyWallDepth = useRef(0);

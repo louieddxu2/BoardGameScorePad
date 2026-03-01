@@ -42,6 +42,7 @@ export const dashboardTranslations = {
     msg_cloud_connect_first: "請先點擊上方雲端按鈕啟用連線",
     msg_read_template_failed: "讀取模板失敗",
     msg_copy_created: "已建立副本",
+    msg_share_link_copied: "分享連結已複製",
     toast_pin_simple_success: "已建立並釘選簡易計分板",
 
     // --- Game Card Actions ---
@@ -51,6 +52,7 @@ export const dashboardTranslations = {
     card_pin: "釘選",
     card_unpin: "取消釘選",
     card_copy_json: "複製 JSON",
+    card_copy_share_link: "複製連結",
     card_cloud_backup: "備份到雲端",
     card_backup_hint: "有變更！點擊備份到 Google Drive",
     card_create_copy: "建立副本",
@@ -110,6 +112,7 @@ export const dashboardTranslations = {
     msg_cloud_connect_first: "Please connect to cloud first",
     msg_read_template_failed: "Failed to read template",
     msg_copy_created: "Copy created",
+    msg_share_link_copied: "Share link copied",
     toast_pin_simple_success: "Simple score sheet created and pinned",
 
     // --- Game Card Actions ---
@@ -119,6 +122,7 @@ export const dashboardTranslations = {
     card_pin: "Pin",
     card_unpin: "Unpin",
     card_copy_json: "Copy JSON",
+    card_copy_share_link: "Copy Link",
     card_cloud_backup: "Backup to Cloud",
     card_backup_hint: "Changes detected! Click to backup to Google Drive",
     card_create_copy: "Create Copy",

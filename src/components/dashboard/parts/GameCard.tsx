@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { GameTemplate } from '../../../types';
-import { Trash2, Pin, Check, Code, PlayCircle, Copy, RefreshCw, UploadCloud, Image as ImageIcon } from 'lucide-react';
+import { Trash2, Pin, Check, Code, PlayCircle, Copy, RefreshCw, UploadCloud, Image as ImageIcon, Link2 } from 'lucide-react';
 import { useDashboardTranslation } from '../../../i18n/dashboard';
 
 interface GameCardProps {
@@ -12,6 +12,7 @@ interface GameCardProps {
   onDelete?: (e: React.MouseEvent) => void;
   onPin?: (e: React.MouseEvent) => void;
   onCopyJSON?: (e: React.MouseEvent) => void;
+  onCopyLink?: (e: React.MouseEvent) => void;
   onCloudBackup?: (e: React.MouseEvent) => void;
   onSystemCopy?: (e: React.MouseEvent) => void;
   onSystemRestore?: (e: React.MouseEvent) => void;
@@ -30,6 +31,7 @@ const GameCard: React.FC<GameCardProps> = ({
   onDelete,
   onPin,
   onCopyJSON,
+  onCopyLink,
   onCloudBackup,
   onSystemCopy,
   onSystemRestore,
@@ -137,11 +139,15 @@ const GameCard: React.FC<GameCardProps> = ({
             <UploadCloud size={14} />
           </button>
         )}
-        {onCopyJSON && (
+        {onCopyLink ? (
+          <button onClick={onCopyLink} className="p-1.5 text-slate-600 hover:text-emerald-400 rounded transition-colors" title={t('card_copy_share_link')}>
+            {isCopied ? <Check size={14} className="text-emerald-500" /> : <Link2 size={14} />}
+          </button>
+        ) : onCopyJSON ? (
           <button onClick={onCopyJSON} className="p-1.5 text-slate-600 hover:text-emerald-400 rounded transition-colors">
             {isCopied ? <Check size={14} className="text-emerald-500" /> : <Code size={14} />}
           </button>
-        )}
+        ) : null}
       </div>
     </div>
   );

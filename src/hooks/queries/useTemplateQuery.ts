@@ -7,8 +7,13 @@ import { DATA_LIMITS } from '../../dataLimits';
 import { searchService } from '../../services/searchService';
 import { extractTemplateSummary, TemplateSummary } from '../../utils/extractDataSummaries';
 import { isDisposableTemplate } from '../../utils/templateUtils';
+import { toBuiltinFullId, toBuiltinShortId } from '../../utils/deepLink';
 
 export const useTemplateQuery = (searchQuery: string, pinnedIds: string[]) => {
+  const normalizeBuiltinKey = useCallback((value: string) => {
+      return value.trim().toLowerCase().replace(/\s+/g, ' ');
+  }, []);
+
   // --- PREFERENCES & HELPERS ---
   const allPrefs = useLiveQuery(() => db.templatePrefs.toArray(), [], []);
   
@@ -99,6 +104,40 @@ export const useTemplateQuery = (searchQuery: string, pinnedIds: string[]) => {
       return raw.map(t => extractTemplateSummary(t, new Set()));
   }, []);
 
+  const builtinIdMap = useMemo(() => {
+      const map = new Map<string, string>();
+      (allBuiltinsData || []).forEach((builtin) => {
+          const fullId = builtin.id;
+          const shortId = toBuiltinShortId(fullId);
+          map.set(normalizeBuiltinKey(fullId), fullId);
+          map.set(normalizeBuiltinKey(shortId), fullId);
+      });
+      return map;
+  }, [allBuiltinsData, normalizeBuiltinKey]);
+
+  const getBuiltinTemplateByShortId = async (shortId: string): Promise<GameTemplate | null> => {
+      const normalizedShortId = normalizeBuiltinKey(shortId);
+      const normalizedFullId = normalizeBuiltinKey(toBuiltinFullId(shortId));
+      const resolvedId =
+          builtinIdMap.get(normalizedShortId) ||
+          builtinIdMap.get(normalizedFullId) ||
+          toBuiltinFullId(shortId);
+
+      let template = await db.builtins.get(resolvedId);
+
+      if (!template) {
+          const allBuiltins = await db.builtins.toArray();
+          template = allBuiltins.find((item) => {
+              const fullKey = normalizeBuiltinKey(item.id);
+              const shortKey = normalizeBuiltinKey(toBuiltinShortId(item.id));
+              return fullKey === normalizedShortId || shortKey === normalizedShortId || fullKey === normalizedFullId;
+          });
+      }
+
+      if (!template) return null;
+      return mergePrefs(template, prefsMap);
+  };
+
   const filteredBuiltins = useMemo<{ total: number, items: TemplateSummary[] }>(() => {
       if (!allBuiltinsData) return { total: 0, items: [] };
       // [Update] Use _searchName architecture
@@ -128,6 +167,7 @@ export const useTemplateQuery = (searchQuery: string, pinnedIds: string[]) => {
       systemTemplates,
       systemTemplatesCount: filteredBuiltins.total,
       systemOverrides: shadowTemplatesMap,
-      getTemplate
+      getTemplate,
+      getBuiltinTemplateByShortId
   };
 };
