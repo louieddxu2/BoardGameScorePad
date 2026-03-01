@@ -314,6 +314,12 @@ export interface SystemLibrary {
   savedLocations: SavedListItem[];
 }
 
+export interface TemplateShareCache {
+  templateId: string;
+  templateUpdatedAt: number;
+  cloudId: string;
+}
+
 export enum AppView {
   DASHBOARD = 'DASHBOARD',
   TEMPLATE_CREATOR = 'TEMPLATE_CREATOR',

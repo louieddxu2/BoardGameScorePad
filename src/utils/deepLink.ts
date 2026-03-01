@@ -4,6 +4,14 @@ export interface BuiltinDeepLink {
   shortId: string;
 }
 
+export interface CloudDeepLink {
+  version: '1';
+  source: 'cloud';
+  cloudId: string;
+}
+
+export type ParsedDeepLink = BuiltinDeepLink | CloudDeepLink;
+
 const BUILTIN_PREFIX = 'Built-in-';
 
 const normalizeShortId = (value: string): string => {
@@ -56,4 +64,29 @@ export const parseBuiltinDeepLinkFromHash = (hash: string): BuiltinDeepLink | nu
     source: 'builtin',
     shortId
   };
+};
+
+export const parseDeepLinkFromHash = (hash: string): ParsedDeepLink | null => {
+  const raw = hash.startsWith('#') ? hash.slice(1) : hash;
+  if (!raw) return null;
+
+  const params = new URLSearchParams(raw);
+  const version = params.get('v');
+  const source = params.get('src');
+  const id = params.get('id');
+  if (version !== '1' || !id) return null;
+
+  if (source === 'builtin') {
+    const shortId = normalizeShortId(id);
+    if (!shortId) return null;
+    return { version: '1', source: 'builtin', shortId };
+  }
+
+  if (source === 'cloud') {
+    const cloudId = normalizeShortId(id);
+    if (!cloudId) return null;
+    return { version: '1', source: 'cloud', cloudId };
+  }
+
+  return null;
 };

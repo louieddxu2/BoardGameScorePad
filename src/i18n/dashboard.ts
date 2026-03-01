@@ -43,6 +43,7 @@ export const dashboardTranslations = {
     msg_read_template_failed: "讀取模板失敗",
     msg_copy_created: "已建立副本",
     msg_share_link_copied: "分享連結已複製",
+    msg_cloud_share_failed: "分享失敗，請稍後再試",
     toast_pin_simple_success: "已建立並釘選簡易計分板",
 
     // --- Game Card Actions ---
@@ -113,6 +114,7 @@ export const dashboardTranslations = {
     msg_read_template_failed: "Failed to read template",
     msg_copy_created: "Copy created",
     msg_share_link_copied: "Share link copied",
+    msg_cloud_share_failed: "Share failed, please try again",
     toast_pin_simple_success: "Simple score sheet created and pinned",
 
     // --- Game Card Actions ---

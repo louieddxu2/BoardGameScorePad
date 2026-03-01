@@ -7,7 +7,8 @@ import { Smartphone } from 'lucide-react';
 import { getTargetHistoryDepth } from './config/historyStrategy'; // Import Strategy
 import { useToast } from './hooks/useToast';
 import { useAppTranslation } from './i18n/app';
-import { parseBuiltinDeepLinkFromHash } from './utils/deepLink';
+import { parseDeepLinkFromHash } from './utils/deepLink';
+import { fetchTemplateFromCloud } from './services/templateShareService';
 
 // Components
 import TemplateEditor from './components/editor/TemplateEditor';
@@ -213,7 +214,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (deepLinkHandledRef.current || !appData.isDbReady) return;
 
-    const parsed = parseBuiltinDeepLinkFromHash(window.location.hash);
+    const parsed = parseDeepLinkFromHash(window.location.hash);
     deepLinkHandledRef.current = true;
     const clearDeepLinkHash = () => {
       if (!window.location.hash) return;
@@ -226,21 +227,64 @@ const App: React.FC = () => {
       return;
     }
 
-    const openBuiltinSetup = async () => {
-      const template = await appData.getBuiltinTemplateByShortId(parsed.shortId);
-      if (!template) {
+    const openByDeepLink = async () => {
+      if (parsed.source === 'builtin') {
+        const template = await appData.getBuiltinTemplateByShortId(parsed.shortId);
+        if (!template) {
+          clearDeepLinkHash();
+          setView(AppView.DASHBOARD);
+          showToast({ message: tApp('app_toast_link_template_missing'), type: 'warning' });
+          return;
+        }
+
         clearDeepLinkHash();
         setView(AppView.DASHBOARD);
-        showToast({ message: tApp('app_toast_link_template_missing'), type: 'warning' });
+        setPendingTemplate(template);
         return;
       }
 
-      clearDeepLinkHash();
-      setView(AppView.DASHBOARD);
-      setPendingTemplate(template);
+      if (parsed.source === 'cloud') {
+        const shared = await fetchTemplateFromCloud(parsed.cloudId);
+        if (!shared) {
+          clearDeepLinkHash();
+          setView(AppView.DASHBOARD);
+          showToast({ message: tApp('app_toast_cloud_link_expired'), type: 'warning' });
+          return;
+        }
+
+        const payloadTemplate = shared.payload as Partial<GameTemplate>;
+        if (!payloadTemplate || !Array.isArray(payloadTemplate.columns)) {
+          clearDeepLinkHash();
+          setView(AppView.DASHBOARD);
+          showToast({ message: tApp('app_toast_link_open_failed'), type: 'error' });
+          return;
+        }
+
+        const localTemplateId = `Cloud-${parsed.cloudId}`;
+        const now = Date.now();
+        const localTemplate: GameTemplate = {
+          ...payloadTemplate,
+          id: localTemplateId,
+          name: shared.name || payloadTemplate.name || tApp('app_cloud_template_default_name'),
+          columns: payloadTemplate.columns,
+          createdAt: payloadTemplate.createdAt || now,
+          updatedAt: payloadTemplate.updatedAt || now,
+          hasImage: false,
+          imageId: undefined,
+          cloudImageId: undefined,
+          sourceTemplateId: payloadTemplate.sourceTemplateId,
+          bggId: payloadTemplate.bggId || '',
+          supportedColors: payloadTemplate.supportedColors || []
+        } as GameTemplate;
+
+        await appData.saveTemplate(localTemplate, { skipCloud: true, preserveTimestamps: true });
+        clearDeepLinkHash();
+        setView(AppView.DASHBOARD);
+        setPendingTemplate(localTemplate);
+      }
     };
 
-    openBuiltinSetup().catch((error) => {
+    openByDeepLink().catch((error) => {
       console.error('Failed to open deep link:', error);
       clearDeepLinkHash();
       setView(AppView.DASHBOARD);

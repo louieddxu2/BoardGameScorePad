@@ -84,6 +84,10 @@ vi.mock('./i18n/app', () => ({
   useAppTranslation: () => ({ t: (key: string) => key })
 }));
 
+vi.mock('./services/templateShareService', () => ({
+  fetchTemplateFromCloud: vi.fn(async () => null),
+}));
+
 vi.mock('./components/dashboard/Dashboard', () => ({
   default: () => <div data-testid="dashboard-view">dashboard</div>
 }));

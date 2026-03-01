@@ -28,6 +28,7 @@ interface LibraryViewProps {
     onPin: (id: string) => void;
     onDeleteTemplate: (id: string) => void;
     onCopyJSON: (template: GameTemplate, e: React.MouseEvent) => void;
+    onCopyTemplateShareLink: (template: GameTemplate, e: React.MouseEvent) => void;
     onCopyShareLink: (template: GameTemplate, e: React.MouseEvent) => void;
     onCloudBackup: (template: GameTemplate, e: React.MouseEvent) => void;
     onOpenDataManager: () => void;
@@ -66,6 +67,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     onPin,
     onDeleteTemplate,
     onCopyJSON,
+    onCopyTemplateShareLink,
     onCopyShareLink,
     onCloudBackup,
     onOpenDataManager,
@@ -139,7 +141,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                             mode="pinned"
                             onClick={() => onTemplateSelect(t)}
                             onPin={(e) => { e.stopPropagation(); onPin(t.id); }}
-                            onCopyJSON={(e) => onCopyJSON(t, e)}
+                            onCopyLink={(e) => onCopyTemplateShareLink(t, e)}
                             isCopied={copiedId === t.id}
                             isConnected={isConnected}
                             isAutoConnectEnabled={isAutoConnectEnabled}
@@ -171,7 +173,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                             onClick={() => onTemplateSelect(t)}
                             onPin={(e) => { e.stopPropagation(); onPin(t.id); }}
                             onDelete={(e) => { e.stopPropagation(); onDeleteTemplate(t.id); }}
-                            onCopyJSON={(e) => onCopyJSON(t, e)}
+                            onCopyLink={(e) => onCopyTemplateShareLink(t, e)}
                             onCloudBackup={(e) => onCloudBackup(t, e)}
                             isCopied={copiedId === t.id}
                             isConnected={isConnected}
@@ -212,8 +214,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                                     mode="system"
                                     onClick={() => onTemplateSelect(t)}
                                     onPin={(e) => { e.stopPropagation(); onPin(t.id); }}
-                                    onCopyLink={t.sourceTemplateId ? undefined : ((e) => onCopyShareLink(t, e))}
-                                    onCopyJSON={t.sourceTemplateId ? ((e) => onCopyJSON(t, e)) : undefined}
+                                    onCopyLink={t.sourceTemplateId ? ((e) => onCopyTemplateShareLink(t, e)) : ((e) => onCopyShareLink(t, e))}
                                     onSystemCopy={(e) => onSystemCopy(t, e)}
                                     onSystemRestore={(e) => { e.stopPropagation(); onSystemRestore(t, e); }}
                                     isCopied={copiedId === t.id}

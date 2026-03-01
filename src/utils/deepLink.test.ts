@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildBuiltinHash,
+  parseDeepLinkFromHash,
   parseBuiltinDeepLinkFromHash,
   toBuiltinFullId,
   toBuiltinShortId
@@ -18,6 +19,14 @@ describe('deepLink', () => {
 
   it('rejects invalid hash', () => {
     expect(parseBuiltinDeepLinkFromHash('#foo=bar')).toBeNull();
+  });
+
+  it('parses cloud link hash', () => {
+    expect(parseDeepLinkFromHash('#v=1&src=cloud&id=abc123')).toEqual({
+      version: '1',
+      source: 'cloud',
+      cloudId: 'abc123'
+    });
   });
 
   it('builds stable builtin hash', () => {

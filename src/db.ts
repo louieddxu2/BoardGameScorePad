@@ -1,6 +1,6 @@
 
 import Dexie, { Table } from 'dexie';
-import { GameTemplate, GameSession, TemplatePreference, HistoryRecord, SavedListItem, LocalImage, AnalyticsLog, BggGame, SystemWeightConfig } from './types';
+import { GameTemplate, GameSession, TemplatePreference, HistoryRecord, SavedListItem, LocalImage, AnalyticsLog, BggGame, SystemWeightConfig, TemplateShareCache } from './types';
 import { generateId } from './utils/idGenerator';
 import { DATA_LIMITS } from './dataLimits';
 
@@ -14,6 +14,7 @@ export class ScorePadDatabase extends Dexie {
   savedLocations!: Table<SavedListItem>; // [v4] 儲存的地點清單
   savedGames!: Table<SavedListItem>; // [v12] 儲存的遊戲清單 (使用者習慣)
   savedCurrentSession!: Table<SavedListItem>; // [v25] 短期會話推薦者 (App重啟即清空)
+  templateShareCache!: Table<TemplateShareCache>; // [v26] Template cloud share cache
   bggGames!: Table<BggGame>; // [v19] BGG 資料庫 (獨立架構)
   savedWeekdays!: Table<SavedListItem>; // [v12] 星期維度 (0-6)
   savedTimeSlots!: Table<SavedListItem>; // [v12] 時段維度 (0-7, 3hr/slot)
@@ -282,6 +283,11 @@ export class ScorePadDatabase extends Dexie {
     // Version 25: Add savedCurrentSession for short-term session memory
     (this as any).version(25).stores({
         savedCurrentSession: 'id' // 單例表格，主要用 ID 'current_session' 存取
+    });
+
+    // Version 26: Add template cloud share cache
+    (this as any).version(26).stores({
+        templateShareCache: 'templateId, templateUpdatedAt, cloudId'
     });
   }
 }

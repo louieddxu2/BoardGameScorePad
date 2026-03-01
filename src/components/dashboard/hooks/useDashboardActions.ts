@@ -7,6 +7,8 @@ import { generateId } from '../../../utils/idGenerator';
 import { useGoogleDrive } from '../../../hooks/useGoogleDrive';
 import { GameOption } from '../../../features/game-selector/types';
 import { buildBuiltinShareUrl, toBuiltinShortId } from '../../../utils/deepLink';
+import { buildCloudShareUrl, uploadTemplateToCloud } from '../../../services/templateShareService';
+import { db } from '../../../db';
 
 interface UseDashboardActionsProps {
     isAutoConnectEnabled: boolean;
@@ -109,6 +111,47 @@ export const useDashboardActions = ({
         });
     };
 
+    // Action: Copy cloud share link for user template
+    const handleCopyTemplateShareLink = async (partialTemplate: GameTemplate, e: React.MouseEvent) => {
+        e.stopPropagation();
+        try {
+            let templateToShare = partialTemplate;
+            if (!partialTemplate.columns || partialTemplate.columns.length === 0) {
+                const full = await onGetFullTemplate(partialTemplate.id);
+                if (full) templateToShare = full;
+                else {
+                    showToast({ message: t('msg_read_template_failed'), type: 'error' });
+                    return;
+                }
+            }
+
+            const currentUpdatedAt = templateToShare.updatedAt || templateToShare.createdAt || 0;
+            const cached = await db.templateShareCache.get(templateToShare.id);
+
+            let cloudId: string;
+            if (cached && cached.templateUpdatedAt === currentUpdatedAt) {
+                cloudId = cached.cloudId;
+            } else {
+                const uploaded = await uploadTemplateToCloud(templateToShare);
+                cloudId = uploaded.id;
+                await db.templateShareCache.put({
+                    templateId: templateToShare.id,
+                    templateUpdatedAt: currentUpdatedAt,
+                    cloudId
+                });
+            }
+
+            const link = buildCloudShareUrl(cloudId);
+            await navigator.clipboard.writeText(link);
+            setCopiedId(partialTemplate.id);
+            setTimeout(() => setCopiedId(null), 2000);
+            showToast({ message: t('msg_share_link_copied'), type: 'success' });
+        } catch (error) {
+            console.error('Cloud share failed:', error);
+            showToast({ message: t('msg_cloud_share_failed'), type: 'error' });
+        }
+    };
+
     // Action: Wrapper for Full System Backup
     const handleSystemBackupAction = async (onProgress: (count: number, total: number) => void, onError: (failedItems: string[]) => void) => {
         const data = await onGetLocalData();
@@ -197,6 +240,7 @@ export const useDashboardActions = ({
         copiedId,
         handleCopyJSON,
         handleCopyBuiltinShareLink,
+        handleCopyTemplateShareLink,
         handleCloudBackup,
         handleCopySystemTemplate,
         handleSystemBackupAction,
