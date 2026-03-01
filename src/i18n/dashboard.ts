@@ -44,7 +44,14 @@ export const dashboardTranslations = {
     msg_copy_created: "已建立副本",
     msg_share_link_copied: "分享連結已複製",
     msg_cloud_share_failed: "分享失敗，請稍後再試",
+    msg_share_ready_click_again: "連結已就緒，請再點擊一次即可複製",
     toast_pin_simple_success: "已建立並釘選簡易計分板",
+
+    // --- Share Modal ---
+    share_modal_title: "分享計分板",
+    share_modal_loading: "正在產生雲端連結...",
+    share_modal_desc: "任何人擁有此連結皆可匯入此計分板模板。",
+    share_modal_copy_success: "連結已複製到剪貼簿",
 
     // --- Game Card Actions ---
     card_resume: "繼續遊戲",
@@ -115,7 +122,14 @@ export const dashboardTranslations = {
     msg_copy_created: "Copy created",
     msg_share_link_copied: "Share link copied",
     msg_cloud_share_failed: "Share failed, please try again",
+    msg_share_ready_click_again: "Link ready! Please click again to copy",
     toast_pin_simple_success: "Simple score sheet created and pinned",
+
+    // --- Share Modal ---
+    share_modal_title: "Share Scoreboard",
+    share_modal_loading: "Generating cloud link...",
+    share_modal_desc: "Anyone with this link can import this scoreboard template.",
+    share_modal_copy_success: "Link copied to clipboard",
 
     // --- Game Card Actions ---
     card_resume: "Resume",

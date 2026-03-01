@@ -16,6 +16,7 @@ import { LibraryView } from './views/LibraryView';
 import { HistoryView } from './views/HistoryView';
 import { DashboardModals } from './parts/DashboardModals';
 import DashboardFAB from './parts/DashboardFAB';
+import ShareTemplateModal from './modals/ShareTemplateModal';
 
 // Hooks
 import { useDashboardData } from './hooks/useDashboardData';
@@ -59,6 +60,7 @@ interface DashboardProps {
   isInstalled: boolean;
   canInstall: boolean;
   onInstallClick: () => void;
+  onInstallClickLocal?: () => void; // redundant?
   onImportSession: (session: GameSession) => void;
   onImportHistory: (record: HistoryRecord) => void;
   onImportSettings?: (settings: any) => void;
@@ -68,7 +70,6 @@ interface DashboardProps {
   savedGames: SavedListItem[];
   isSetupModalOpen?: boolean;
   gameOptions: GameOption[];
-  // [Changed] Add optional locationId
   onQuickStart: (template: GameTemplate, playerCount: number, location: string, locationId?: string) => void;
 }
 
@@ -149,7 +150,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
     allVisibleTemplates,
     onGetFullTemplate,
     onTemplateSave,
-    onGameStart: onQuickStart // [Updated] Pass quick start handler
+    onGameStart: onQuickStart
   });
 
   const {
@@ -370,10 +371,18 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         onSystemRestore={dashboardActions.handleSystemRestoreAction}
         onGetLocalData={onGetLocalData}
       />
+
+      {dashboardActions.sharingTemplate && (
+        <ShareTemplateModal
+          isOpen={!!dashboardActions.sharingTemplate}
+          onClose={() => dashboardActions.setSharingTemplate(null)}
+          template={dashboardActions.sharingTemplate}
+          onGetFullTemplate={onGetFullTemplate}
+        />
+      )}
     </div>
   );
 }, (prevProps, nextProps) => {
-  // Only re-render if visible, or if visibility changed.
   if (!prevProps.isVisible && !nextProps.isVisible) {
     return true;
   }
