@@ -102,13 +102,25 @@ export const buildCloudShareUrl = (cloudId: string): string => {
 };
 
 export const uploadTemplateToCloud = async (template: GameTemplate): Promise<UploadResponse> => {
+  // Sanitize template: Remove fields that change hash but don't affect structure (deduplication)
+  // or that are local-only (privacy/broken links).
+  const {
+    createdAt: _c,
+    updatedAt: _u,
+    lastSyncedAt: _s,
+    imageId: _i,
+    hasImage: _h,
+    cloudImageId: _ci,
+    ...sanitizedTemplate
+  } = template;
+
   const token = await getTurnstileToken();
   const response = await fetch(`${CLOUD_SHARE_BASE_URL}/api/template/upload`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      name: template.name,
-      payload: template,
+      name: sanitizedTemplate.name,
+      payload: sanitizedTemplate,
       turnstileToken: token,
     }),
   });
