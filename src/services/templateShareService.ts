@@ -80,7 +80,7 @@ const getTurnstileToken = async (): Promise<string> => {
     widgetId = window.turnstile!.render(container, {
       sitekey: TURNSTILE_SITE_KEY,
       action: 'template_share_upload',
-      execution: 'eager', // Start as soon as rendered
+      execution: 'render', // Start as soon as rendered
       callback: (token: string) => {
         if (settled) return;
         settled = true;
