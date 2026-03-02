@@ -4,7 +4,7 @@ const CLOUD_SHARE_BASE_URL = import.meta.env.VITE_TEMPLATE_SHARE_API_BASE_URL ||
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
 
 type UploadResponse = { id: string; reused?: boolean };
-type FetchResponse = { id: string; name: string; payload: unknown; createdAt: number };
+type FetchResponse = { id: string; name: string; payload: unknown; downloadCount?: number; createdAt: number };
 
 declare global {
   interface Window {

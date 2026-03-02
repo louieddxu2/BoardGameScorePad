@@ -9,6 +9,7 @@ import { useToast } from './hooks/useToast';
 import { useAppTranslation } from './i18n/app';
 import { parseDeepLinkFromHash } from './utils/deepLink';
 import { fetchTemplateFromCloud } from './services/templateShareService';
+import { db } from './db';
 
 // Components
 import TemplateEditor from './components/editor/TemplateEditor';
@@ -245,6 +246,28 @@ const App: React.FC = () => {
       }
 
       if (parsed.source === 'cloud') {
+        const checkCloudCache = async () => {
+          // 1. Check if we already have a mapping for this cloudId
+          const cached = await db.templateShareCache.where('cloudId').equals(parsed.cloudId).first();
+          if (cached) {
+            const localTemplate = await db.templates.get(cached.templateId);
+            // 2. Ensure the local template exists and its updatedAt matches our cache
+            // (If the user modified it, we might want to offer a fresh download, but for now we prioritize the existing one)
+            if (localTemplate && (localTemplate.updatedAt || localTemplate.createdAt) === cached.templateUpdatedAt) {
+              return localTemplate;
+            }
+          }
+          return null;
+        };
+
+        const existingTemplate = await checkCloudCache();
+        if (existingTemplate) {
+          clearDeepLinkHash();
+          setView(AppView.DASHBOARD);
+          setPendingTemplate(existingTemplate);
+          return;
+        }
+
         setIsCloudImporting(true);
         const shared = await fetchTemplateFromCloud(parsed.cloudId);
         if (!shared) {
@@ -265,14 +288,15 @@ const App: React.FC = () => {
         }
 
         const localTemplateId = `Cloud-${parsed.cloudId}`;
-        const now = Date.now();
+        const cloudTime = shared.createdAt;
+
         const localTemplate: GameTemplate = {
           ...payloadTemplate,
           id: localTemplateId,
           name: shared.name || payloadTemplate.name || tApp('app_cloud_template_default_name'),
           columns: payloadTemplate.columns,
-          createdAt: payloadTemplate.createdAt || now,
-          updatedAt: payloadTemplate.updatedAt || now,
+          createdAt: cloudTime,
+          updatedAt: cloudTime,
           hasImage: false,
           imageId: undefined,
           cloudImageId: undefined,
@@ -282,6 +306,14 @@ const App: React.FC = () => {
         } as GameTemplate;
 
         await appData.saveTemplate(localTemplate, { skipCloud: true, preserveTimestamps: true });
+
+        // Update Share Cache so next time it's instant
+        await db.templateShareCache.put({
+          templateId: localTemplateId,
+          templateUpdatedAt: cloudTime,
+          cloudId: parsed.cloudId
+        });
+
         setIsCloudImporting(false);
         clearDeepLinkHash();
         setView(AppView.DASHBOARD);
