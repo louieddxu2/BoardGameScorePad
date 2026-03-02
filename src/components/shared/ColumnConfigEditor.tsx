@@ -251,18 +251,17 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
             delete finalUpdates.functions;
         }
 
-        // --- Save Preferences ---
         if (activeTab === 'basic') {
             if (getCalculationMode(finalUpdates.formula || '') === 'product') {
                 if (finalUpdates.subUnits && finalUpdates.subUnits.length === 2) {
-                    if (finalUpdates.subUnits[0]) localStorage.setItem(PREF_KEY_PROD_UNIT_A, finalUpdates.subUnits[0]);
-                    if (finalUpdates.subUnits[1]) localStorage.setItem(PREF_KEY_PROD_UNIT_B, finalUpdates.subUnits[1]);
+                    localStorage.setItem(PREF_KEY_PROD_UNIT_A, finalUpdates.subUnits[0] || '');
+                    localStorage.setItem(PREF_KEY_PROD_UNIT_B, finalUpdates.subUnits[1] || '');
                 }
             } else {
-                if (finalUpdates.unit) localStorage.setItem(PREF_KEY_STD_UNIT, finalUpdates.unit);
+                localStorage.setItem(PREF_KEY_STD_UNIT, finalUpdates.unit || '');
             }
         } else if (activeTab === 'mapping') {
-            if (finalUpdates.unit) localStorage.setItem(PREF_KEY_STD_UNIT, finalUpdates.unit);
+            localStorage.setItem(PREF_KEY_STD_UNIT, finalUpdates.unit || '');
         }
 
         onSave(finalUpdates);

@@ -121,6 +121,10 @@ export const columnEditorTranslations = {
     col_auto_err_invalid_char: "非法符號",
     col_auto_err_invalid_result: "無效結果",
     col_auto_err_syntax: "公式語法錯誤，請檢查符號與括號",
+
+    // Default Units
+    col_default_unit_qty: "個",
+    col_default_unit_pts: "分",
   },
   'en': {
     // Top Level Editor
@@ -241,6 +245,10 @@ export const columnEditorTranslations = {
     col_auto_err_invalid_char: "Invalid characters",
     col_auto_err_invalid_result: "Invalid result",
     col_auto_err_syntax: "Syntax error, check symbols and parentheses",
+
+    // Default Units
+    col_default_unit_qty: "qty",
+    col_default_unit_pts: "pts",
   }
 };
 

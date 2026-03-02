@@ -352,13 +352,17 @@ export const useSessionEvents = (
   };
 
   const handleAddBlankColumn = () => {
+    // 獲取上次使用的單位作為預設值，若無則根據語系初始化
+    const lastUnit = localStorage.getItem('sm_pref_standard_unit') ?? t('col_default_unit_pts');
+
     const newCol: ScoreColumn = {
       id: generateId(DATA_LIMITS.ID_LENGTH.DEFAULT),
       name: t('col_name_with_index', { n: template.columns.length + 1 }),
       isScoring: true,
       formula: 'a1',
       inputType: 'keypad',
-      rounding: 'none'
+      rounding: 'none',
+      unit: lastUnit
     };
     onUpdateTemplate({ ...template, columns: [...template.columns, newCol] });
     showToast({ message: t('toast_add_column_success'), type: 'success' });
