@@ -306,12 +306,12 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                       {col.name}
                     </span>
                     {col.isScoring && (
-                      <div className="text-xs text-slate-500 mt-1 flex flex-col items-center justify-center w-full leading-none">
+                      <div className="text-[10px] text-slate-400 mt-1 flex flex-col items-center justify-center w-full leading-none">
                         {(() => {
-                          if (col.formula.includes('a1×a2') && col.subUnits) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span>{col.subUnits[0]}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span>{col.subUnits[1]}</span></div>;
-                          if (col.inputType === 'clicker' && !col.formula.includes('+next')) return <div className="flex items-center justify-center gap-1 flex-wrap w-full"><Settings size={10} />{col.unit && <span className="text-xs break-words text-center">{col.unit}</span>}</div>;
-                          if (col.formula?.includes('×c1')) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="break-words text-center">{col.unit}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="text-emerald-500 font-bold font-mono">{col.constants?.c1 ?? 1}</span></div>;
-                          if (col.unit) return <span className="text-xs break-words w-full text-center">{col.unit}</span>;
+                          if (col.formula.includes('a1×a2') && col.subUnits) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span>{col.subUnits[0]}</span><span className="text-slate-400 text-[11px] mx-0.5">×</span><span>{col.subUnits[1]}</span></div>;
+                          if (col.inputType === 'clicker' && !col.formula.includes('+next')) return <div className="flex items-center justify-center gap-1 flex-wrap w-full"><Settings size={10} />{col.unit && <span className="text-[11px] break-words text-center">{col.unit}</span>}</div>;
+                          if (col.formula?.includes('×c1')) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="break-words text-center">{col.unit}</span><span className="text-slate-400 text-[11px] mx-0.5">×</span><span className="text-emerald-500 font-bold font-mono">{col.constants?.c1 ?? 1}</span></div>;
+                          if (col.unit) return <span className="text-[11px] break-words w-full text-center">{col.unit}</span>;
                           return null;
                         })()}
                       </div>

@@ -23,10 +23,14 @@ const hoisted = vi.hoisted(() => {
     templatePrefs: {
       delete: vi.fn(async () => undefined),
     },
+    templateShareCache: {
+      delete: vi.fn(async () => undefined),
+    },
   };
 
   const cleanupServiceMock = {
     cleanSessionArtifacts: vi.fn(async () => undefined),
+    fullTemplateCleanup: vi.fn(async () => undefined),
   };
 
   const imageServiceMock = {
@@ -135,14 +139,7 @@ describe('useAppData.deleteTemplate', () => {
     });
 
     expect(hoisted.queriesMock.getTemplate).toHaveBeenCalledWith('tpl_1');
-    expect(hoisted.dbMock.sessions.where).toHaveBeenCalledWith('templateId');
-    expect(hoisted.cleanupServiceMock.cleanSessionArtifacts).toHaveBeenCalledTimes(2);
-    expect(hoisted.cleanupServiceMock.cleanSessionArtifacts).toHaveBeenCalledWith('s1', 'cloud_1');
-    expect(hoisted.cleanupServiceMock.cleanSessionArtifacts).toHaveBeenCalledWith('s2', undefined);
-    expect(hoisted.dbMock.sessions.bulkDelete).toHaveBeenCalledWith(['s1', 's2']);
-    expect(hoisted.dbMock.templates.delete).toHaveBeenCalledWith('tpl_1');
-    expect(hoisted.dbMock.templatePrefs.delete).toHaveBeenCalledWith('tpl_1');
-    expect(hoisted.imageServiceMock.deleteImagesByRelatedId).toHaveBeenCalledWith('tpl_1');
+    expect(hoisted.cleanupServiceMock.fullTemplateCleanup).toHaveBeenCalledWith('tpl_1');
   });
 });
 
