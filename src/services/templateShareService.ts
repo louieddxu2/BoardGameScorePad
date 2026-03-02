@@ -95,10 +95,12 @@ const getTurnstileToken = async (): Promise<string> => {
   });
 };
 
-export const buildCloudShareUrl = (cloudId: string): string => {
-  const params = new URLSearchParams({ v: '1', src: 'cloud', id: cloudId });
+import { buildCloudHash } from '../utils/deepLink';
+
+export const buildCloudShareUrl = (cloudId: string, englishName?: string): string => {
+  const hash = buildCloudHash(cloudId, englishName);
   const { origin, pathname, search } = window.location;
-  return `${origin}${pathname}${search}#${params.toString()}`;
+  return `${origin}${pathname}${search}${hash}`;
 };
 
 export const uploadTemplateToCloud = async (template: GameTemplate): Promise<UploadResponse> => {

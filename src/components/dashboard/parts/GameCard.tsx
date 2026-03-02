@@ -135,16 +135,27 @@ const GameCard: React.FC<GameCardProps> = ({
       <div className="absolute bottom-1 right-1 flex gap-1">
         {/* Only show Upload button if NOT synced (Actionable) */}
         {onCloudBackup && isAutoConnectEnabled && isConnected && !isSynced && (
-          <button onClick={onCloudBackup} className="p-1.5 text-amber-400/80 hover:text-amber-300 hover:bg-slate-700 rounded transition-colors" title={t('card_backup_hint')}>
+          <button
+            onClick={(e) => { e.stopPropagation(); onCloudBackup(e); }}
+            className="p-1.5 text-amber-400/80 hover:text-amber-300 hover:bg-slate-700 rounded transition-colors"
+            title={t('card_backup_hint')}
+          >
             <UploadCloud size={14} />
           </button>
         )}
         {onCopyLink ? (
-          <button onClick={onCopyLink} className="p-1.5 text-slate-600 hover:text-emerald-400 rounded transition-colors" title={t('card_copy_share_link')}>
+          <button
+            onClick={(e) => { e.stopPropagation(); onCopyLink(e); }}
+            className="p-1.5 text-slate-600 hover:text-emerald-400 rounded transition-colors"
+            title={t('card_copy_share_link')}
+          >
             {isCopied ? <Check size={14} className="text-emerald-500" /> : <Link2 size={14} />}
           </button>
         ) : onCopyJSON ? (
-          <button onClick={onCopyJSON} className="p-1.5 text-slate-600 hover:text-emerald-400 rounded transition-colors">
+          <button
+            onClick={(e) => { e.stopPropagation(); onCopyJSON(e); }}
+            className="p-1.5 text-slate-600 hover:text-emerald-400 rounded transition-colors"
+          >
             {isCopied ? <Check size={14} className="text-emerald-500" /> : <Code size={14} />}
           </button>
         ) : null}

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { AppView, GameTemplate, ScoringRule } from './types';
 import { getTouchDistance } from './utils/ui';
 import { useAppData } from './hooks/useAppData';
-import { Smartphone } from 'lucide-react';
+import { Smartphone, Loader2 } from 'lucide-react';
 import { getTargetHistoryDepth } from './config/historyStrategy'; // Import Strategy
 import { useToast } from './hooks/useToast';
 import { useAppTranslation } from './i18n/app';
@@ -19,6 +19,7 @@ import HistoryReviewView from './components/history/HistoryReviewView';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.DASHBOARD);
+  const [isCloudImporting, setIsCloudImporting] = useState(false);
 
   // Custom Hook for all data logic
   const appData = useAppData();
@@ -244,8 +245,10 @@ const App: React.FC = () => {
       }
 
       if (parsed.source === 'cloud') {
+        setIsCloudImporting(true);
         const shared = await fetchTemplateFromCloud(parsed.cloudId);
         if (!shared) {
+          setIsCloudImporting(false);
           clearDeepLinkHash();
           setView(AppView.DASHBOARD);
           showToast({ message: tApp('app_toast_cloud_link_expired'), type: 'warning' });
@@ -254,6 +257,7 @@ const App: React.FC = () => {
 
         const payloadTemplate = shared.payload as Partial<GameTemplate>;
         if (!payloadTemplate || !Array.isArray(payloadTemplate.columns)) {
+          setIsCloudImporting(false);
           clearDeepLinkHash();
           setView(AppView.DASHBOARD);
           showToast({ message: tApp('app_toast_link_open_failed'), type: 'error' });
@@ -278,6 +282,7 @@ const App: React.FC = () => {
         } as GameTemplate;
 
         await appData.saveTemplate(localTemplate, { skipCloud: true, preserveTimestamps: true });
+        setIsCloudImporting(false);
         clearDeepLinkHash();
         setView(AppView.DASHBOARD);
         setPendingTemplate(localTemplate);
@@ -286,6 +291,7 @@ const App: React.FC = () => {
 
     openByDeepLink().catch((error) => {
       console.error('Failed to open deep link:', error);
+      setIsCloudImporting(false);
       clearDeepLinkHash();
       setView(AppView.DASHBOARD);
       showToast({ message: tApp('app_toast_link_open_failed'), type: 'error' });
@@ -498,6 +504,18 @@ const App: React.FC = () => {
 
   return (
     <div className="h-full bg-slate-900 text-slate-100 font-sans overflow-hidden transition-colors duration-300 relative">
+
+      {isCloudImporting && (
+        <div className="fixed inset-0 z-[10000] bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300">
+          <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 mb-6 animate-bounce">
+            <Smartphone size={32} />
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+            <p className="text-lg font-bold text-white tracking-wide">{tApp('msg_loading_cloud_data')}</p>
+          </div>
+        </div>
+      )}
 
       <div
         id="landscape-overlay"

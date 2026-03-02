@@ -8,7 +8,7 @@ import { useDashboardTranslation } from '../../../i18n/dashboard';
 
 interface LibraryViewProps {
     // Data
-    activeSessions: GameSession[]; // [Modified] Use raw session array
+    activeSessions: GameSession[];
     pinnedTemplates: GameTemplate[];
     userTemplates: GameTemplate[];
     userTemplatesTotal: number;
@@ -89,7 +89,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
     return (
         <>
-            {/* Active Sessions - Only show if there are items */}
+            {/* Active Sessions */}
             {activeSessions.length > 0 && (
                 <DashboardSection
                     title={t('dash_active_sessions')}
@@ -108,9 +108,6 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                         {activeSessions.map(session => (
                             <GameCard
                                 key={`active-${session.id}`}
-                                // [View Model Adaptation] 
-                                // Construct a minimal "Template-like" object just for display.
-                                // We use session.name and session.templateId (as the ID to resume).
                                 template={{
                                     id: session.templateId,
                                     name: session.name || t('dash_unnamed_session'),
@@ -134,15 +131,15 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 onToggle={() => setIsPinnedLibOpen(!isPinnedLibOpen)}
             >
                 <div className={`grid grid-cols-2 gap-3 ${animClass}`}>
-                    {pinnedTemplates.map(t => (
+                    {pinnedTemplates.map(tData => (
                         <GameCard
-                            key={`pinned-${t.id}`}
-                            template={t}
+                            key={`pinned-${tData.id}`}
+                            template={tData}
                             mode="pinned"
-                            onClick={() => onTemplateSelect(t)}
-                            onPin={(e) => { e.stopPropagation(); onPin(t.id); }}
-                            onCopyLink={(e) => onCopyTemplateShareLink(t, e)}
-                            isCopied={copiedId === t.id}
+                            onClick={() => onTemplateSelect(tData)}
+                            onPin={(e) => { e.stopPropagation(); onPin(tData.id); }}
+                            onCopyLink={(e) => { e.stopPropagation(); onCopyTemplateShareLink(tData, e); }}
+                            isCopied={copiedId === tData.id}
                             isConnected={isConnected}
                             isAutoConnectEnabled={isAutoConnectEnabled}
                         />
@@ -159,28 +156,27 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 onToggle={() => setIsUserLibOpen(!isUserLibOpen)}
                 actionButton={
                     <div className="flex items-center gap-2">
-                        <button onClick={(e) => { e.stopPropagation(); onOpenDataManager(); }} className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors" title={t('dash_import_export')}><ArrowRightLeft size={18} /></button>
-                        <button onClick={(e) => { e.stopPropagation(); onTemplateCreate(); }} className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg active:scale-95"><Plus size={14} /> {t('dash_add_new')}</button>
+                        <button onClick={(e) => { e.stopPropagation(); onOpenDataManager(); }} className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors focus:outline-none" title={t('dash_import_export')}><ArrowRightLeft size={18} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); onTemplateCreate(); }} className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg active:scale-95 focus:outline-none"><Plus size={14} /> {t('dash_add_new')}</button>
                     </div>
                 }
             >
                 <div className={`grid grid-cols-2 gap-3 ${animClass}`}>
-                    {userTemplates.map(t => (
+                    {userTemplates.map(tData => (
                         <GameCard
-                            key={t.id}
-                            template={t}
+                            key={tData.id}
+                            template={tData}
                             mode="user"
-                            onClick={() => onTemplateSelect(t)}
-                            onPin={(e) => { e.stopPropagation(); onPin(t.id); }}
-                            onDelete={(e) => { e.stopPropagation(); onDeleteTemplate(t.id); }}
-                            onCopyLink={(e) => onCopyTemplateShareLink(t, e)}
-                            onCloudBackup={(e) => onCloudBackup(t, e)}
-                            isCopied={copiedId === t.id}
+                            onClick={() => onTemplateSelect(tData)}
+                            onPin={(e) => { e.stopPropagation(); onPin(tData.id); }}
+                            onDelete={(e) => { e.stopPropagation(); onDeleteTemplate(tData.id); }}
+                            onCopyLink={(e) => { e.stopPropagation(); onCopyTemplateShareLink(tData, e); }}
+                            onCloudBackup={(e) => { e.stopPropagation(); onCloudBackup(tData, e); }}
+                            isCopied={copiedId === tData.id}
                             isConnected={isConnected}
                             isAutoConnectEnabled={isAutoConnectEnabled}
                         />
                     ))}
-                    {/* SearchEmptyState is removed here as "Create" logic is moved to StartGamePanel */}
                     <TruncationFooter displayed={userTemplates.length} total={userTemplatesTotal} label={t('dash_footer_count', { displayed: userTemplates.length, total: userTemplatesTotal })} />
                 </div>
             </DashboardSection>
@@ -195,30 +191,34 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 highlight={newSystemTemplatesCount > 0 && !searchQuery}
                 actionButton={
                     newSystemTemplatesCount > 0 && !searchQuery ? (
-                        <button onClick={(e) => { e.stopPropagation(); onClearNewBadges(); setIsSystemLibOpen(true); }} className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg animate-pulse">
+                        <button onClick={(e) => { e.stopPropagation(); onClearNewBadges(); setIsSystemLibOpen(true); }} className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg">
                             <Sparkles size={14} /> {t('dash_new_games_found', { count: newSystemTemplatesCount })}
                         </button>
                     ) : undefined
                 }
             >
                 <div className={`grid grid-cols-2 gap-3 ${animClass}`}>
-                    {systemTemplates.map(t => {
-                        const isNew = newBadgeIds.includes(t.id);
+                    {systemTemplates.map(tData => {
+                        const isNew = newBadgeIds.includes(tData.id);
                         return (
-                            <div key={t.id} className="relative">
+                            <div key={tData.id} className="relative">
                                 {isNew && (
                                     <div className="absolute -top-1 -right-1 z-10 w-3 h-3 bg-red-500 rounded-full border-2 border-slate-900 shadow-md animate-bounce" />
                                 )}
                                 <GameCard
-                                    template={t}
+                                    template={tData}
                                     mode="system"
-                                    onClick={() => onTemplateSelect(t)}
-                                    onPin={(e) => { e.stopPropagation(); onPin(t.id); }}
-                                    onCopyLink={t.sourceTemplateId ? ((e) => onCopyTemplateShareLink(t, e)) : ((e) => onCopyShareLink(t, e))}
-                                    onSystemCopy={(e) => onSystemCopy(t, e)}
-                                    onSystemRestore={(e) => { e.stopPropagation(); onSystemRestore(t, e); }}
-                                    isCopied={copiedId === t.id}
-                                    systemOverride={!!t.sourceTemplateId}
+                                    onClick={() => onTemplateSelect(tData)}
+                                    onPin={(e) => { e.stopPropagation(); onPin(tData.id); }}
+                                    onCopyLink={(e) => {
+                                        e.stopPropagation();
+                                        if (tData.sourceTemplateId) onCopyTemplateShareLink(tData, e);
+                                        else onCopyShareLink(tData, e);
+                                    }}
+                                    onSystemCopy={(e) => { e.stopPropagation(); onSystemCopy(tData, e); }}
+                                    onSystemRestore={(e) => { e.stopPropagation(); onSystemRestore(tData, e); }}
+                                    isCopied={copiedId === tData.id}
+                                    systemOverride={!!tData.sourceTemplateId}
                                 />
                             </div>
                         );

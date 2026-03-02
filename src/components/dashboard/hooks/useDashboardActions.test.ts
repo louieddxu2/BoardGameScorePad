@@ -84,7 +84,10 @@ describe('useDashboardActions.handleCopyJSON', () => {
     );
 
     await act(async () => {
-      await result.current.handleCopyJSON(partialSystemCardTemplate, { stopPropagation: vi.fn() } as unknown as React.MouseEvent);
+      await result.current.handleCopyJSON(partialSystemCardTemplate, {
+        stopPropagation: vi.fn(),
+        preventDefault: vi.fn()
+      } as unknown as React.MouseEvent);
     });
 
     expect(onGetFullTemplate).toHaveBeenCalledWith('override_tpl_1');

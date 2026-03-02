@@ -53,6 +53,14 @@ export const dashboardTranslations = {
     share_modal_desc: "任何人擁有此連結皆可匯入此計分板模板。",
     share_modal_copy_success: "連結已複製到剪貼簿",
 
+    share_modal_local_title: "本地分享",
+    share_modal_local_desc: "直接將模板內容複製為 JSON 字串。",
+    share_modal_cloud_title: "雲端分享",
+    share_modal_cloud_btn: "上傳至雲端並取得連結",
+    share_modal_cloud_warning: "⚠️ 此操作會將計分板內容上傳至公開雲端，請勿上傳隱私資訊。",
+    share_modal_img_note: "💡 提醒：背景圖片不會被上傳。",
+    share_modal_uploading: "正在上傳...",
+
     // --- Game Card Actions ---
     card_resume: "繼續遊戲",
     card_start_new: "開始新遊戲",
@@ -130,6 +138,14 @@ export const dashboardTranslations = {
     share_modal_loading: "Generating cloud link...",
     share_modal_desc: "Anyone with this link can import this scoreboard template.",
     share_modal_copy_success: "Link copied to clipboard",
+
+    share_modal_local_title: "Local Export",
+    share_modal_local_desc: "Copy template content directly as a JSON string.",
+    share_modal_cloud_title: "Cloud Share",
+    share_modal_cloud_btn: "Upload to Cloud & Get Link",
+    share_modal_cloud_warning: "⚠️ This uploads content to a public cloud. Do not include private info.",
+    share_modal_img_note: "💡 Note: Background images will not be uploaded.",
+    share_modal_uploading: "Uploading...",
 
     // --- Game Card Actions ---
     card_resume: "Resume",
