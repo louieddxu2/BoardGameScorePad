@@ -163,7 +163,7 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
 
     return (
         <div
-            className="fixed inset-0 z-[110] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+            className="modal-backdrop z-[110] animate-in fade-in duration-200"
             onMouseDown={(e) => {
                 if (e.target === e.currentTarget) onClose();
             }}

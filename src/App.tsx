@@ -506,13 +506,15 @@ const App: React.FC = () => {
     <div className="h-full bg-slate-900 text-slate-100 font-sans overflow-hidden transition-colors duration-300 relative">
 
       {isCloudImporting && (
-        <div className="fixed inset-0 z-[10000] bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300">
-          <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 mb-6 animate-bounce">
-            <Smartphone size={32} />
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
-            <p className="text-lg font-bold text-white tracking-wide">{tApp('msg_loading_cloud_data')}</p>
+        <div className="modal-backdrop z-[10000] animate-in fade-in duration-300">
+          <div className="modal-container items-center justify-center p-8 text-center bg-slate-900 border-none shadow-none">
+            <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 mb-6 animate-bounce">
+              <Smartphone size={32} />
+            </div>
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+              <p className="text-lg font-bold text-white tracking-wide">{tApp('msg_loading_cloud_data')}</p>
+            </div>
           </div>
         </div>
       )}
