@@ -13,6 +13,7 @@ import {
     getGhostPreview
 } from '../../../utils/scoreDisplay';
 import { useSessionTranslation } from '../../../i18n/session';
+import { injectSoftHyphens } from '../../../utils/text';
 
 interface ScoreCellProps {
     player: Player;
@@ -82,10 +83,10 @@ const CellContentSelect: React.FC<CellContentProps> = ({ parts, scoreValue, disp
         return (
             <div className="w-full h-full flex items-center justify-center p-1">
                 <span
-                    className={`text-lg font-bold text-center leading-tight whitespace-pre-wrap break-words w-full ${forceHeight ? 'max-h-full overflow-hidden' : ''}`}
+                    className={`text-lg font-bold text-center leading-tight whitespace-pre-wrap break-words w-full hyphenate ${forceHeight ? 'max-h-full overflow-hidden' : ''}`}
                     style={labelStyle}
                 >
-                    {option.label}
+                    {injectSoftHyphens(option.label)}
                 </span>
             </div>
         );
@@ -101,10 +102,10 @@ const CellContentSelect: React.FC<CellContentProps> = ({ parts, scoreValue, disp
             {/* Standard Mode Label */}
             {renderMode === 'standard' && !simpleMode && option && (
                 <span
-                    className="absolute bottom-1 right-1 text-[10px] font-bold px-1 text-right max-w-[90%] whitespace-pre-wrap leading-tight"
+                    className="absolute bottom-1 right-1 text-[10px] font-bold px-1 text-right max-w-[90%] whitespace-pre-wrap leading-tight hyphenate"
                     style={labelStyle}
                 >
-                    {option.label}
+                    {injectSoftHyphens(option.label)}
                 </span>
             )}
         </>
@@ -424,10 +425,10 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
                             {(option?.label || '').split(/\r\n|\r|\n/).map((line, i) => (
                                 <span
                                     key={i}
-                                    className="font-bold text-center break-words w-full"
+                                    className="font-bold text-center break-words whitespace-pre-wrap w-full hyphenate"
                                     style={{ color: labelColor, fontSize: dynamicFontSize, textShadow: isColorDark(labelColor) ? ENHANCED_TEXT_SHADOW : undefined }}
                                 >
-                                    {line}
+                                    {injectSoftHyphens(line)}
                                 </span>
                             ))}
                         </div>

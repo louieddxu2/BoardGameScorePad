@@ -12,6 +12,7 @@ import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
 import { usePlayerWidthSync } from '../../../hooks/usePlayerWidthSync';
 import { calculateColumnScore, resolveSelectOption } from '../../../utils/scoring';
 import { calculateDynamicFontSize } from '../../../utils/dynamicLayout';
+import { injectSoftHyphens } from '../../../utils/text';
 
 interface ScoreGridProps {
   session: GameSession;
@@ -302,8 +303,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 }}
                 fallbackContent={
                   <>
-                    <span className="text-sm font-bold text-slate-300 w-full text-center break-words whitespace-pre-wrap leading-tight" style={{ ...(col.color && { color: col.color, ...(isColorDark(col.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }) }}>
-                      {col.name}
+                    <span className="text-sm font-bold text-slate-300 w-full text-center break-words whitespace-pre-wrap leading-tight hyphenate" style={{ ...(col.color && { color: col.color, ...(isColorDark(col.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }) }}>
+                      {injectSoftHyphens(col.name)}
                     </span>
                     {col.isScoring && (
                       <div className="text-[10px] text-slate-400 mt-1 flex flex-col items-center justify-center w-full leading-none">
