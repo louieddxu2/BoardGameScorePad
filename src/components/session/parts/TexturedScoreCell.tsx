@@ -7,6 +7,7 @@ import SmartTextureLayer from './SmartTextureLayer';
 import { Link2Off, AlertTriangle } from 'lucide-react';
 import { calculateDynamicFontSize } from '../../../utils/dynamicLayout';
 import { useSessionTranslation } from '../../../i18n/session';
+import { injectSoftHyphens } from '../../../utils/text';
 
 interface TexturedScoreCellProps {
     player: Player;
@@ -158,10 +159,10 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                         {(option?.label || '').split(/\r\n|\r|\n/).map((line, i) => (
                             <span
                                 key={i}
-                                className="font-bold text-center break-words w-full"
+                                className="font-bold text-center break-words w-full hyphenate"
                                 style={{ ...inkStyle, color: labelColor, fontSize: dynamicFontSize }}
                             >
-                                {line}
+                                {injectSoftHyphens(line)}
                             </span>
                         ))}
                     </div>
@@ -256,14 +257,14 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                 return (
                     <div className="relative z-10 w-full h-full flex items-center justify-center p-1">
                         <span
-                            className="text-lg font-bold text-center leading-tight whitespace-pre-wrap break-words w-full"
+                            className="text-lg font-bold text-center leading-tight whitespace-pre-wrap break-words w-full hyphenate"
                             style={{
                                 ...inkStyle,
                                 color: labelColor,
                                 mixBlendMode: 'multiply',
                             }}
                         >
-                            {option.label}
+                            {injectSoftHyphens(option.label)}
                         </span>
                     </div>
                 );
@@ -279,7 +280,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                     {renderMode === 'standard' && !simpleMode && column.showPartsInGrid !== false && option && (
                         <div className="absolute bottom-1 right-1 z-10 max-w-[90%] flex justify-end pointer-events-none">
                             <span
-                                className="text-xs font-bold leading-tight text-right whitespace-pre-wrap"
+                                className="text-xs font-bold leading-tight text-right whitespace-pre-wrap hyphenate"
                                 style={{
                                     fontFamily: '"Kalam", cursive',
                                     color: option.color || column.color || 'rgba(71, 85, 105, 0.9)',
@@ -287,7 +288,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                                     transform: 'rotate(-2deg)',
                                 }}
                             >
-                                {option.label}
+                                {injectSoftHyphens(option.label)}
                             </span>
                         </div>
                     )}

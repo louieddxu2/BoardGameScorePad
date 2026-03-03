@@ -38,6 +38,8 @@ interface InputPanelProps {
     onScreenshotRequest?: (mode: 'full' | 'simple') => void;
 }
 
+import { injectSoftHyphens } from '../../../utils/text';
+
 const PanelHeader: React.FC<{
     player: Player;
     col?: ScoreColumn;
@@ -86,8 +88,8 @@ const PanelHeader: React.FC<{
                         {player.name}
                     </span>
                     <div className="w-px h-4 bg-white/10 mx-1" />
-                    <span className="text-xs shrink-0 font-bold opacity-70" style={{ color: displayColor }}>
-                        {isTotalMode ? t('input_total_adjust') : col?.name}
+                    <span className="text-xs shrink-0 font-bold opacity-70 hyphenate" style={{ color: displayColor }}>
+                        {isTotalMode ? t('input_total_adjust') : injectSoftHyphens(col?.name || '')}
                     </span>
                 </>
             )}
