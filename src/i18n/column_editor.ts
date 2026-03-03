@@ -23,6 +23,9 @@ export const columnEditorTranslations = {
     col_display_hidden: "隱藏",
     col_color: "代表色",
     col_btn_save: "儲存設定",
+    col_shared_on: "共享項目",
+    col_shared_off: "獨立項目",
+    col_help_shared: "切換：所有玩家共享同一個數值",
 
     // Discard Confirm
     col_discard_title: "放棄變更？",
@@ -140,13 +143,16 @@ export const columnEditorTranslations = {
     col_help_crop: "Set display area on background image",
     col_scoring_on: "Scoring",
     col_scoring_off: "No Score",
-    col_crop: "Crop Area",
+    col_crop: "Area",
     col_cropped: "Cropped",
     col_display_row: "Show",
     col_display_overlay: "Overlay",
     col_display_hidden: "Hidden",
     col_color: "Color",
     col_btn_save: "Save Changes",
+    col_shared_on: "Shared",
+    col_shared_off: "Individual",
+    col_help_shared: "Toggle: All players share the same value",
 
     // Discard Confirm
     col_discard_title: "Discard Changes?",

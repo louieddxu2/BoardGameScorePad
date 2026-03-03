@@ -75,6 +75,8 @@ export interface ScoreColumn {
 
   // Display Control
   displayMode?: 'row' | 'overlay' | 'hidden';
+  isShared?: boolean; // [New] Whether this value is shared by all players
+
 
   // Visual Mapping
   visuals?: ColumnVisuals;

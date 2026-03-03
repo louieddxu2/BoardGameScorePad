@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ScoreColumn, InputMethod, MappingRule } from '../../types';
-import { X, Ruler, Calculator, ListPlus, Settings, Save, Trash2, Crop, LayoutList, Layers, Sigma, Sparkles, Settings2, Info, EyeOff } from 'lucide-react';
+import { X, Ruler, Calculator, ListPlus, Settings, Save, Trash2, Crop, LayoutList, Layers, Sigma, Sparkles, Settings2, Info, EyeOff, Users } from 'lucide-react';
 import { COLORS } from '../../colors';
 import { isColorDark } from '../../utils/ui';
 import { useVisualViewportOffset } from '../../hooks/useVisualViewportOffset';
@@ -280,6 +280,11 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
         setHelpText('col_help_display');
     };
 
+    const toggleShared = () => {
+        setEditedCol(prev => ({ ...prev, isShared: !prev.isShared }));
+        setHelpText('col_help_shared');
+    };
+
     const toggleScoring = () => {
         setEditedCol(prev => ({ ...prev, isScoring: !prev.isScoring }));
         setHelpText(editedCol.isScoring ? 'col_help_scoring_off' : 'col_help_scoring_on');
@@ -385,7 +390,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                         {/* Advanced Settings Panel */}
                         {showAdvanced && (
                             <div className="mt-2 bg-slate-800 rounded-xl p-2 border border-slate-700 animate-in fade-in slide-in-from-top-1">
-                                <div className="grid grid-cols-3 gap-2 mb-2">
+                                <div className="grid grid-cols-4 gap-2 mb-2">
                                     {/* Scoring Toggle */}
                                     <button
                                         onClick={toggleScoring}
@@ -414,6 +419,15 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                                     >
                                         <DisplayIcon size={20} />
                                         <span className="text-[10px]">{t(displayLabelKey as any)}</span>
+                                    </button>
+
+                                    {/* Shared Variable Toggle */}
+                                    <button
+                                        onClick={toggleShared}
+                                        className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${editedCol.isShared ? 'text-emerald-400 border-emerald-500/50 bg-emerald-900/20' : 'text-slate-400 border-slate-700 bg-slate-900 hover:text-white'}`}
+                                    >
+                                        <Users size={20} />
+                                        <span className="text-[10px]">{editedCol.isShared ? t('col_shared_on') : t('col_shared_off')}</span>
                                     </button>
                                 </div>
                                 <div className="bg-slate-900/50 rounded py-1 px-2 text-center text-[10px] text-slate-400 border border-slate-800/50 flex items-center justify-center gap-1">

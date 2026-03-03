@@ -324,110 +324,158 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 {isEditMode && isTextureMode && <div className="absolute top-1/2 left-0.5 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded p-0.5 text-white/70"><GripVertical size={10} /></div>}
               </TexturedBlock>
 
-              {session.players.map((p, pIdx) => {
-                const isActive = editingCell?.playerId === p.id && editingCell?.colId === col.id;
+              {col.isShared ? (
+                <div className={`${rowHiddenClass} flex-1 relative`}>
+                  <ScoreCell
+                    player={session.players[0]}
+                    playerIndex={0}
+                    column={col}
+                    allColumns={template.columns}
+                    allPlayers={session.players}
+                    baseImage={baseImage}
+                    isActive={editingCell?.colId === col.id}
+                    onClick={(e) => onCellClick(session.players[0].id, col.id, e)}
+                    isEditMode={isEditMode}
+                    limitX={template.globalVisuals?.rightMaskRect?.x}
+                    isAlt={isAlt}
+                    previewValue={editingCell?.colId === col.id ? previewValue : undefined}
+                  />
+                  {/* Overlays for shared column (if any) using first player as reference */}
+                  {col.overlayColumns.map(overlayCol => {
+                    const isOverlayActive = editingCell?.colId === overlayCol.id;
+                    const p = session.players[0];
+                    const scoreData = p.scores[overlayCol.id];
+                    const parts = scoreData?.parts || [];
+                    const overlayContext = { allColumns: template.columns, playerScores: p.scores, allPlayers: session.players };
+                    const displayScore = calculateColumnScore(overlayCol, parts, overlayContext);
+                    let displayText = '';
+                    const hasInput = overlayCol.isAuto ? true : parts.length > 0;
+                    if (hasInput) displayText = formatDisplayNumber(displayScore);
+                    const dynamicFontSize = calculateDynamicFontSize([displayText]);
+                    const textStyle = {
+                      color: hasInput ? (displayScore < 0 ? '#f87171' : (isTextureMode ? 'rgba(28, 35, 51, 0.90)' : '#ffffff')) : '#475569',
+                      fontSize: dynamicFontSize,
+                    };
+                    if (!overlayCol.contentLayout) return null;
+                    return (
+                      <div key={overlayCol.id} className="absolute inset-0 pointer-events-none">
+                        <div
+                          onClick={(e) => { e.stopPropagation(); onCellClick(p.id, overlayCol.id, e); }}
+                          className={`absolute flex items-center justify-center border-2 rounded-md cursor-pointer transition-all pointer-events-auto ${isOverlayActive ? 'border-emerald-500 bg-emerald-500/20 ring-1 ring-emerald-500' : (isEditMode ? 'border-dashed border-white/40 hover:border-white/60 hover:bg-white/5' : 'border-transparent hover:border-black/10 hover:bg-black/5')}`}
+                          style={{ left: `${overlayCol.contentLayout.x}%`, top: `${overlayCol.contentLayout.y}%`, width: `${overlayCol.contentLayout.width}%`, height: `${overlayCol.contentLayout.height}%` } as React.CSSProperties}
+                        >
+                          <span className="font-bold tracking-tight w-full text-center truncate px-1" style={textStyle}>{displayText}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                session.players.map((p, pIdx) => {
+                  const isActive = editingCell?.playerId === p.id && editingCell?.colId === col.id;
 
-                return (
-                  <div key={p.id} className={`${rowHiddenClass} w-full relative player-col-${p.id}`}>
-                    <ScoreCell
-                      player={p}
-                      playerIndex={pIdx}
-                      column={col}
-                      allColumns={template.columns}
-                      allPlayers={session.players}
-                      baseImage={baseImage}
-                      isActive={isActive}
-                      onClick={(e) => onCellClick(p.id, col.id, e)}
-                      isEditMode={isEditMode}
-                      limitX={template.globalVisuals?.rightMaskRect?.x}
-                      isAlt={isAlt}
-                      previewValue={isActive ? previewValue : undefined}
-                    />
-                    {col.overlayColumns.map(overlayCol => {
-                      const isOverlayActive = editingCell?.playerId === p.id && editingCell?.colId === overlayCol.id;
-                      const scoreData = p.scores[overlayCol.id];
-                      const parts = scoreData?.parts || [];
+                  return (
+                    <div key={p.id} className={`${rowHiddenClass} w-full relative player-col-${p.id}`}>
+                      <ScoreCell
+                        player={p}
+                        playerIndex={pIdx}
+                        column={col}
+                        allColumns={template.columns}
+                        allPlayers={session.players}
+                        baseImage={baseImage}
+                        isActive={isActive}
+                        onClick={(e) => onCellClick(p.id, col.id, e)}
+                        isEditMode={isEditMode}
+                        limitX={template.globalVisuals?.rightMaskRect?.x}
+                        isAlt={isAlt}
+                        previewValue={isActive ? previewValue : undefined}
+                      />
+                      {col.overlayColumns.map(overlayCol => {
+                        const isOverlayActive = editingCell?.playerId === p.id && editingCell?.colId === overlayCol.id;
+                        const scoreData = p.scores[overlayCol.id];
+                        const parts = scoreData?.parts || [];
 
-                      const overlayContext = {
-                        allColumns: template.columns,
-                        playerScores: p.scores,
-                        allPlayers: session.players
-                      };
-                      const displayScore = calculateColumnScore(overlayCol, parts, overlayContext);
+                        const overlayContext = {
+                          allColumns: template.columns,
+                          playerScores: p.scores,
+                          allPlayers: session.players
+                        };
+                        const displayScore = calculateColumnScore(overlayCol, parts, overlayContext);
 
-                      let displayText = '';
-                      const hasInput = overlayCol.isAuto ? true : parts.length > 0;
-                      const isSelectList = overlayCol.inputType === 'clicker' && !(overlayCol.formula || '').includes('+next');
+                        let displayText = '';
+                        const hasInput = overlayCol.isAuto ? true : parts.length > 0;
+                        const isSelectList = overlayCol.inputType === 'clicker' && !(overlayCol.formula || '').includes('+next');
 
-                      if (hasInput) {
-                        if (isSelectList && parts.length > 0) {
-                          const option = resolveSelectOption(overlayCol, scoreData);
-                          const renderMode = overlayCol.renderMode || 'standard';
-                          if (option && (renderMode === 'label_only' || renderMode === 'standard')) {
-                            displayText = option.label;
+                        if (hasInput) {
+                          if (isSelectList && parts.length > 0) {
+                            const option = resolveSelectOption(overlayCol, scoreData);
+                            const renderMode = overlayCol.renderMode || 'standard';
+                            if (option && (renderMode === 'label_only' || renderMode === 'standard')) {
+                              displayText = option.label;
+                            } else {
+                              displayText = formatDisplayNumber(displayScore);
+                            }
                           } else {
                             displayText = formatDisplayNumber(displayScore);
                           }
-                        } else {
-                          displayText = formatDisplayNumber(displayScore);
                         }
-                      }
 
-                      const dynamicFontSize = calculateDynamicFontSize([displayText]);
+                        const dynamicFontSize = calculateDynamicFontSize([displayText]);
 
-                      const defaultTextColor = isTextureMode ? 'rgba(28, 35, 51, 0.90)' : '#ffffff';
-                      const displayColor = (isEditMode && overlayCol.color) ? overlayCol.color : defaultTextColor;
+                        const defaultTextColor = isTextureMode ? 'rgba(28, 35, 51, 0.90)' : '#ffffff';
+                        const displayColor = (isEditMode && overlayCol.color) ? overlayCol.color : defaultTextColor;
 
-                      const textStyle: React.CSSProperties = {
-                        color: hasInput ? (displayScore < 0 ? '#f87171' : displayColor) : '#475569',
-                        fontSize: dynamicFontSize,
-                        ...(isEditMode && overlayCol.color && isColorDark(overlayCol.color) && { textShadow: ENHANCED_TEXT_SHADOW }),
-                        ...(isTextureMode && {
-                          fontFamily: '"Kalam", "Caveat", cursive',
-                          transform: `rotate(${((p.id.charCodeAt(0) + overlayCol.id.charCodeAt(0)) % 5) - 2}deg)`,
-                          mixBlendMode: 'multiply',
-                          textShadow: 'none',
-                        })
-                      };
+                        const textStyle: React.CSSProperties = {
+                          color: hasInput ? (displayScore < 0 ? '#f87171' : displayColor) : '#475569',
+                          fontSize: dynamicFontSize,
+                          ...(isEditMode && overlayCol.color && isColorDark(overlayCol.color) && { textShadow: ENHANCED_TEXT_SHADOW }),
+                          ...(isTextureMode && {
+                            fontFamily: '"Kalam", "Caveat", cursive',
+                            transform: `rotate(${((p.id.charCodeAt(0) + overlayCol.id.charCodeAt(0)) % 5) - 2}deg)`,
+                            mixBlendMode: 'multiply',
+                            textShadow: 'none',
+                          })
+                        };
 
-                      if (!overlayCol.contentLayout) return null;
+                        if (!overlayCol.contentLayout) return null;
 
-                      return (
-                        <div key={overlayCol.id} className="absolute inset-0 pointer-events-none">
-                          <div
-                            onClick={(e) => { e.stopPropagation(); onCellClick(p.id, overlayCol.id, e); }}
-                            className={`
-                                        absolute flex items-center justify-center 
-                                        border-2 rounded-md cursor-pointer transition-all pointer-events-auto
-                                        ${isOverlayActive
-                                ? 'border-emerald-500 bg-emerald-500/20 ring-1 ring-emerald-500'
-                                : (isEditMode
-                                  ? 'border-dashed border-white/40 hover:border-white/60 hover:bg-white/5'
-                                  : (!isTextureMode
-                                    ? 'border-dashed border-white/20 hover:border-white/40 hover:bg-white/5'
-                                    : 'border-transparent hover:border-black/10 hover:bg-black/5')
-                                )
-                              }
-                                    `}
-                            style={{
-                              left: `${overlayCol.contentLayout.x}%`,
-                              top: `${overlayCol.contentLayout.y}%`,
-                              width: `${overlayCol.contentLayout.width}%`,
-                              height: `${overlayCol.contentLayout.height}%`,
-                              borderColor: (!isOverlayActive && isEditMode && overlayCol.color) ? `${overlayCol.color}60` : undefined,
-                              containerType: 'size',
-                            } as React.CSSProperties}
-                          >
-                            <span className="font-bold tracking-tight w-full text-center truncate px-1" style={textStyle}>
-                              {displayText}
-                            </span>
+                        return (
+                          <div key={overlayCol.id} className="absolute inset-0 pointer-events-none">
+                            <div
+                              onClick={(e) => { e.stopPropagation(); onCellClick(p.id, overlayCol.id, e); }}
+                              className={`
+                                          absolute flex items-center justify-center 
+                                          border-2 rounded-md cursor-pointer transition-all pointer-events-auto
+                                          ${isOverlayActive
+                                  ? 'border-emerald-500 bg-emerald-500/20 ring-1 ring-emerald-500'
+                                  : (isEditMode
+                                    ? 'border-dashed border-white/40 hover:border-white/60 hover:bg-white/5'
+                                    : (!isTextureMode
+                                      ? 'border-dashed border-white/20 hover:border-white/40 hover:bg-white/5'
+                                      : 'border-transparent hover:border-black/10 hover:bg-black/5')
+                                  )
+                                }
+                                      `}
+                              style={{
+                                left: `${overlayCol.contentLayout.x}%`,
+                                top: `${overlayCol.contentLayout.y}%`,
+                                width: `${overlayCol.contentLayout.width}%`,
+                                height: `${overlayCol.contentLayout.height}%`,
+                                borderColor: (!isOverlayActive && isEditMode && overlayCol.color) ? `${overlayCol.color}60` : undefined,
+                                containerType: 'size',
+                              } as React.CSSProperties}
+                            >
+                              <span className="font-bold tracking-tight w-full text-center truncate px-1" style={textStyle}>
+                                {displayText}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
+                        );
+                      })}
+                    </div>
+                  );
+                })
+              )}
             </div>
           );
         })}

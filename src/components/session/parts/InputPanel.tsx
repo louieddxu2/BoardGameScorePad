@@ -227,10 +227,10 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     const isPanelOpen = editingCell !== null || editingPlayerId !== null;
 
     const updateScore = (playerId: string, colId: string, value: any) => {
+        const col = template.columns.find((c: any) => c.id === colId);
         const players = session.players.map((p: any) => {
-            if (p.id !== playerId) return p;
+            if (!col?.isShared && p.id !== playerId) return p;
             const newScores = { ...p.scores };
-            const col = template.columns.find((c: any) => c.id === colId);
 
             if (value === undefined || value === null || !col) {
                 delete newScores[colId];
