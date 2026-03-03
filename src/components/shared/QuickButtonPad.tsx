@@ -31,7 +31,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
     }
 
     const cols = column.buttonGridColumns || 1;
-    const isListMode = cols <= 2;
+    const isListMode = cols <= 1;
     const minRowHeight = isListMode ? '3.5rem' : '4.5rem';
 
     return (
