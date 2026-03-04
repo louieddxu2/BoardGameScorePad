@@ -92,26 +92,6 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
         }
     }, [isSumPartsEnabled, column.inputType, onUpdateCachedSumPartsInputType]);
 
-    // Load preferences on mount or mode switch (only if current values are empty)
-    useEffect(() => {
-        if (currentCalcMode === 'standard') {
-            if (!column.unit) {
-                const lastUnit = localStorage.getItem(PREF_KEY_STD_UNIT);
-                if (lastUnit) onChange({ unit: lastUnit });
-            }
-        } else if (currentCalcMode === 'product') {
-            const currentA = column.subUnits?.[0];
-            const currentB = column.subUnits?.[1];
-            // Only load if both are empty (fresh state)
-            if (!currentA && !currentB) {
-                const lastA = localStorage.getItem(PREF_KEY_PROD_UNIT_A);
-                const lastB = localStorage.getItem(PREF_KEY_PROD_UNIT_B);
-                if (lastA || lastB) {
-                    onChange({ subUnits: [lastA || '', lastB || ''] });
-                }
-            }
-        }
-    }, [currentCalcMode]);
 
     const setCalculationMode = (mode: CalculationMode) => {
         // Determine the state of Sum Parts BEFORE switch to preserve it
@@ -126,9 +106,9 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
 
             // Initialize subUnits if missing
             if (!column.subUnits || column.subUnits.length !== 2) {
-                // Priority: LocalStorage Pref -> Default '個', '分'
-                const prefA = localStorage.getItem(PREF_KEY_PROD_UNIT_A) || '個';
-                const prefB = localStorage.getItem(PREF_KEY_PROD_UNIT_B) || '分';
+                // Priority: LocalStorage Pref -> Default i18n
+                const prefA = localStorage.getItem(PREF_KEY_PROD_UNIT_A) || t('col_default_unit_qty');
+                const prefB = localStorage.getItem(PREF_KEY_PROD_UNIT_B) || t('col_default_unit_pts');
                 updates.subUnits = [prefA, prefB];
             }
 

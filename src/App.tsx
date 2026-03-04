@@ -3,10 +3,13 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { AppView, GameTemplate, ScoringRule } from './types';
 import { getTouchDistance } from './utils/ui';
 import { useAppData } from './hooks/useAppData';
-import { Smartphone } from 'lucide-react';
+import { Smartphone, Loader2 } from 'lucide-react';
 import { getTargetHistoryDepth } from './config/historyStrategy'; // Import Strategy
 import { useToast } from './hooks/useToast';
 import { useAppTranslation } from './i18n/app';
+import { parseDeepLinkFromHash } from './utils/deepLink';
+import { fetchTemplateFromCloud } from './services/templateShareService';
+import { db } from './db';
 
 // Components
 import TemplateEditor from './components/editor/TemplateEditor';
@@ -17,6 +20,7 @@ import HistoryReviewView from './components/history/HistoryReviewView';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.DASHBOARD);
+  const [isCloudImporting, setIsCloudImporting] = useState(false);
 
   // Custom Hook for all data logic
   const appData = useAppData();
@@ -43,6 +47,7 @@ const App: React.FC = () => {
 
   // Ref to ignore popstates triggered by our own history manipulation (pruning)
   const ignorePopstateRef = useRef(false);
+  const deepLinkHandledRef = useRef(false);
 
   // Landscape Detection State (JS Control)
   const [showLandscapeOverlay, setShowLandscapeOverlay] = useState(false);
@@ -206,6 +211,124 @@ const App: React.FC = () => {
       setView(AppView.ACTIVE_SESSION);
     }
   }, [appData.currentSession, appData.activeTemplate]);
+
+  // --- Deep Link (Built-in template -> Setup Modal) ---
+  useEffect(() => {
+    if (deepLinkHandledRef.current || !appData.isDbReady) return;
+
+    const parsed = parseDeepLinkFromHash(window.location.hash);
+    deepLinkHandledRef.current = true;
+    const clearDeepLinkHash = () => {
+      if (!window.location.hash) return;
+      window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}`);
+    };
+
+    if (!parsed) {
+      clearDeepLinkHash();
+      setView(AppView.DASHBOARD);
+      return;
+    }
+
+    const openByDeepLink = async () => {
+      if (parsed.source === 'builtin') {
+        const template = await appData.getBuiltinTemplateByShortId(parsed.shortId);
+        if (!template) {
+          clearDeepLinkHash();
+          setView(AppView.DASHBOARD);
+          showToast({ message: tApp('app_toast_link_template_missing'), type: 'warning' });
+          return;
+        }
+
+        clearDeepLinkHash();
+        setView(AppView.DASHBOARD);
+        setPendingTemplate(template);
+        return;
+      }
+
+      if (parsed.source === 'cloud') {
+        const checkCloudCache = async () => {
+          // 1. Check if we already have a mapping for this cloudId
+          const cached = await db.templateShareCache.where('cloudId').equals(parsed.cloudId).first();
+          if (cached) {
+            const localTemplate = await db.templates.get(cached.templateId);
+            // 2. Ensure the local template exists and its updatedAt matches our cache
+            // (If the user modified it, we might want to offer a fresh download, but for now we prioritize the existing one)
+            if (localTemplate && (localTemplate.updatedAt || localTemplate.createdAt) === cached.templateUpdatedAt) {
+              return localTemplate;
+            }
+          }
+          return null;
+        };
+
+        const existingTemplate = await checkCloudCache();
+        if (existingTemplate) {
+          clearDeepLinkHash();
+          setView(AppView.DASHBOARD);
+          setPendingTemplate(existingTemplate);
+          return;
+        }
+
+        setIsCloudImporting(true);
+        const shared = await fetchTemplateFromCloud(parsed.cloudId);
+        if (!shared) {
+          setIsCloudImporting(false);
+          clearDeepLinkHash();
+          setView(AppView.DASHBOARD);
+          showToast({ message: tApp('app_toast_cloud_link_expired'), type: 'warning' });
+          return;
+        }
+
+        const payloadTemplate = shared.payload as Partial<GameTemplate>;
+        if (!payloadTemplate || !Array.isArray(payloadTemplate.columns)) {
+          setIsCloudImporting(false);
+          clearDeepLinkHash();
+          setView(AppView.DASHBOARD);
+          showToast({ message: tApp('app_toast_link_open_failed'), type: 'error' });
+          return;
+        }
+
+        const localTemplateId = `Cloud-${parsed.cloudId}`;
+        const cloudTime = shared.createdAt;
+
+        const localTemplate: GameTemplate = {
+          ...payloadTemplate,
+          id: localTemplateId,
+          name: shared.name || payloadTemplate.name || tApp('app_cloud_template_default_name'),
+          columns: payloadTemplate.columns,
+          createdAt: cloudTime,
+          updatedAt: cloudTime,
+          hasImage: false,
+          imageId: undefined,
+          cloudImageId: undefined,
+          sourceTemplateId: payloadTemplate.sourceTemplateId,
+          bggId: payloadTemplate.bggId || '',
+          supportedColors: payloadTemplate.supportedColors || []
+        } as GameTemplate;
+
+        await appData.saveTemplate(localTemplate, { skipCloud: true, preserveTimestamps: true });
+
+        // Update Share Cache so next time it's instant
+        await db.templateShareCache.put({
+          templateId: localTemplateId,
+          templateUpdatedAt: cloudTime,
+          cloudId: parsed.cloudId
+        });
+
+        setIsCloudImporting(false);
+        clearDeepLinkHash();
+        setView(AppView.DASHBOARD);
+        setPendingTemplate(localTemplate);
+      }
+    };
+
+    openByDeepLink().catch((error) => {
+      console.error('Failed to open deep link:', error);
+      setIsCloudImporting(false);
+      clearDeepLinkHash();
+      setView(AppView.DASHBOARD);
+      showToast({ message: tApp('app_toast_link_open_failed'), type: 'error' });
+    });
+  }, [appData.isDbReady, appData.getBuiltinTemplateByShortId, showToast, tApp]);
 
   // --- History Wall Logic (Strategy Pattern) ---
   const historyWallDepth = useRef(0);
@@ -413,6 +536,20 @@ const App: React.FC = () => {
 
   return (
     <div className="h-full bg-slate-900 text-slate-100 font-sans overflow-hidden transition-colors duration-300 relative">
+
+      {isCloudImporting && (
+        <div className="modal-backdrop z-[10000] animate-in fade-in duration-300">
+          <div className="modal-container items-center justify-center p-8 text-center bg-slate-900 border-none shadow-none">
+            <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 mb-6 animate-bounce">
+              <Smartphone size={32} />
+            </div>
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+              <p className="text-lg font-bold text-white tracking-wide">{tApp('msg_loading_cloud_data')}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div
         id="landscape-overlay"

@@ -54,6 +54,11 @@ export const appTranslations = {
     app_toast_import_failed: "匯入失敗",
     app_toast_launch_error: "遊戲啟動失敗",
     app_toast_history_restored: "歷史紀錄已還原",
+    app_toast_link_template_missing: "找不到對應的內建計分板",
+    app_toast_link_open_failed: "無法開啟分享連結",
+    app_toast_cloud_link_expired: "此計分板連結已失效，請通知網址的主人稍微修改該計分板後重新上傳",
+    app_cloud_template_default_name: "雲端分享計分板",
+    msg_loading_cloud_data: "正在載入計分板...",
   },
   'en': {
     msg_press_again_to_exit: "Press back again to exit",
@@ -108,6 +113,11 @@ export const appTranslations = {
     app_toast_import_failed: "Import failed",
     app_toast_launch_error: "Failed to launch game",
     app_toast_history_restored: "History record restored",
+    app_toast_link_template_missing: "Built-in scoreboard not found",
+    app_toast_link_open_failed: "Failed to open share link",
+    app_toast_cloud_link_expired: "This shared scoreboard link is no longer valid. Please ask the owner to edit and re-upload it.",
+    app_cloud_template_default_name: "Shared Cloud Scoreboard",
+    msg_loading_cloud_data: "Loading scoreboard...",
   }
 };
 

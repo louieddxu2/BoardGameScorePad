@@ -5,6 +5,8 @@ import { isColorTooLight } from '../../utils/ui';
 import { Check } from 'lucide-react';
 import { useSessionTranslation } from '../../i18n/session';
 
+import { injectSoftHyphens } from '../../utils/text';
+
 interface QuickButtonPadProps {
     column: ScoreColumn;
     onAction: (action: QuickAction) => void;
@@ -29,7 +31,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
     }
 
     const cols = column.buttonGridColumns || 1;
-    const isListMode = cols <= 2;
+    const isListMode = cols <= 1;
     const minRowHeight = isListMode ? '3.5rem' : '4.5rem';
 
     return (
@@ -86,10 +88,10 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
                             )}
 
                             <span
-                                className={`font-bold leading-tight break-words whitespace-pre-wrap pointer-events-none ${isListMode ? 'text-[20px] text-left flex-1 min-w-0' : 'text-[16px] text-center w-full mb-1'}`}
+                                className={`font-bold leading-tight break-words whitespace-pre-wrap pointer-events-none hyphenate ${isListMode ? 'text-[20px] text-left flex-1 min-w-0' : 'text-[16px] text-center w-full mb-1'}`}
                                 style={{ color: textColor }}
                             >
-                                {action.label}
+                                {injectSoftHyphens(action.label)}
                             </span>
                             <span
                                 className={`font-mono font-bold rounded-full flex items-center justify-center shrink-0 pointer-events-none ${isListMode ? 'text-[16px] px-3 py-1 ml-2' : 'text-[14px] px-2 py-0.5'} ${badgeBgClass}`}

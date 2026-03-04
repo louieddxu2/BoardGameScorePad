@@ -121,23 +121,14 @@ export const useAppData = () => {
     const deleteTemplate = async (id: string) => {
         try {
             const templateToDelete = await queries.getTemplate(id);
+            if (!templateToDelete) return;
 
-            const relatedSessions = await db.sessions.where('templateId').equals(id).toArray();
-            if (relatedSessions.length > 0) {
-                for (const s of relatedSessions) {
-                    await cleanupService.cleanSessionArtifacts(s.id, s.cloudFolderId);
-                }
-                await db.sessions.bulkDelete(relatedSessions.map(s => s.id));
-            }
+            // [Centralized] 使用統一的物理刪除服務
+            await cleanupService.fullTemplateCleanup(id);
 
-            await db.templates.delete(id);
-            await db.templatePrefs.delete(id);
-            await imageService.deleteImagesByRelatedId(id);
-
-            if (isCloudEnabled() && templateToDelete) {
-                googleDriveService.softDeleteFolder(id, 'template').then(() => {
-                    showToast({ message: tApp('app_toast_sync_trash'), type: 'info' });
-                }).catch(console.error);
+            // 若雲端同步開啟，則提示同步訊息 (維持原有 UX)
+            if (isCloudEnabled()) {
+                showToast({ message: tApp('app_toast_sync_trash'), type: 'info' });
             }
         } catch (error) {
             console.error("Delete failed", error);
@@ -381,6 +372,7 @@ export const useAppData = () => {
 
         savedGames: queries.savedGames,
         getTemplate: queries.getTemplate,
+        getBuiltinTemplateByShortId: queries.getBuiltinTemplateByShortId,
         getSessionPreview: queries.getSessionPreview,
 
         // Session Manager State

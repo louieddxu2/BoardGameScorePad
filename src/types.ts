@@ -75,6 +75,8 @@ export interface ScoreColumn {
 
   // Display Control
   displayMode?: 'row' | 'overlay' | 'hidden';
+  isShared?: boolean; // [New] Whether this value is shared by all players
+
 
   // Visual Mapping
   visuals?: ColumnVisuals;
@@ -312,6 +314,12 @@ export interface SystemLibrary {
   updatedAt: number;
   savedPlayers: SavedListItem[];
   savedLocations: SavedListItem[];
+}
+
+export interface TemplateShareCache {
+  templateId: string;
+  templateUpdatedAt: number;
+  cloudId: string;
 }
 
 export enum AppView {

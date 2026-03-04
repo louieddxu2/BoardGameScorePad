@@ -16,7 +16,7 @@ const ImportTemplateModal: React.FC<ImportTemplateModalProps> = ({ allTemplates,
 
     return (
         <div
-            className="fixed inset-0 z-[90] bg-slate-950/80 backdrop-blur-sm flex flex-col p-4"
+            className="modal-backdrop z-[90]"
             onClick={(e) => {
                 // Allow clicking backdrop to close
                 if (e.target === e.currentTarget) onClose();

@@ -233,11 +233,17 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                                         }
                                     />
 
-                                    {session.players.map((p, index) => (
-                                        <div key={p.id} style={getPlayerColStyle(p.id)} className="relative">
+                                    {col.isShared && session.players.length > 0 ? (
+                                        <div
+                                            style={layout ? {
+                                                width: `${session.players.reduce((sum, p) => sum + (layout.playerWidths[p.id] || 0), 0)}px`,
+                                                flexShrink: 0
+                                            } : { flex: '1 1 0%' }}
+                                            className="relative"
+                                        >
                                             <ScoreCell
-                                                player={p}
-                                                playerIndex={index}
+                                                player={session.players[0]}
+                                                playerIndex={0}
                                                 column={col}
                                                 allColumns={template.columns}
                                                 allPlayers={session.players}
@@ -249,9 +255,31 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                                                 forceHeight={"h-full"}
                                                 limitX={X2}
                                                 isAlt={false}
+                                                forceWidth="100%"
+                                                skipTextureRendering={true} // For shared merged cell we only render text logic, let texture render globally
                                             />
                                         </div>
-                                    ))}
+                                    ) : (
+                                        session.players.map((p, index) => (
+                                            <div key={p.id} style={getPlayerColStyle(p.id)} className="relative">
+                                                <ScoreCell
+                                                    player={p}
+                                                    playerIndex={index}
+                                                    column={col}
+                                                    allColumns={template.columns}
+                                                    allPlayers={session.players}
+                                                    isActive={false}
+                                                    onClick={() => { }}
+                                                    screenshotMode={true}
+                                                    simpleMode={mode === 'simple'}
+                                                    baseImage={baseImage}
+                                                    forceHeight={"h-full"}
+                                                    limitX={X2}
+                                                    isAlt={false}
+                                                />
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
                             );
                         })}

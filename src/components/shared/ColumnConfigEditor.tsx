@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ScoreColumn, InputMethod, MappingRule } from '../../types';
-import { X, Ruler, Calculator, ListPlus, Settings, Save, Trash2, Crop, LayoutList, Layers, Sigma, Sparkles, Settings2, Info, EyeOff } from 'lucide-react';
+import { X, Ruler, Calculator, ListPlus, Settings, Save, Trash2, Crop, LayoutList, Layers, Sigma, Sparkles, Settings2, Info, EyeOff, Users } from 'lucide-react';
 import { COLORS } from '../../colors';
 import { isColorDark } from '../../utils/ui';
 import { useVisualViewportOffset } from '../../hooks/useVisualViewportOffset';
@@ -251,18 +251,17 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
             delete finalUpdates.functions;
         }
 
-        // --- Save Preferences ---
         if (activeTab === 'basic') {
             if (getCalculationMode(finalUpdates.formula || '') === 'product') {
                 if (finalUpdates.subUnits && finalUpdates.subUnits.length === 2) {
-                    if (finalUpdates.subUnits[0]) localStorage.setItem(PREF_KEY_PROD_UNIT_A, finalUpdates.subUnits[0]);
-                    if (finalUpdates.subUnits[1]) localStorage.setItem(PREF_KEY_PROD_UNIT_B, finalUpdates.subUnits[1]);
+                    localStorage.setItem(PREF_KEY_PROD_UNIT_A, finalUpdates.subUnits[0] || '');
+                    localStorage.setItem(PREF_KEY_PROD_UNIT_B, finalUpdates.subUnits[1] || '');
                 }
             } else {
-                if (finalUpdates.unit) localStorage.setItem(PREF_KEY_STD_UNIT, finalUpdates.unit);
+                localStorage.setItem(PREF_KEY_STD_UNIT, finalUpdates.unit || '');
             }
         } else if (activeTab === 'mapping') {
-            if (finalUpdates.unit) localStorage.setItem(PREF_KEY_STD_UNIT, finalUpdates.unit);
+            localStorage.setItem(PREF_KEY_STD_UNIT, finalUpdates.unit || '');
         }
 
         onSave(finalUpdates);
@@ -279,6 +278,14 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
             return { ...prev, displayMode: next };
         });
         setHelpText('col_help_display');
+    };
+
+    const toggleShared = () => {
+        setEditedCol(prev => {
+            const nextShared = !prev.isShared;
+            setHelpText(nextShared ? 'col_help_shared_on' : 'col_help_shared_off');
+            return { ...prev, isShared: nextShared };
+        });
     };
 
     const toggleScoring = () => {
@@ -386,7 +393,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                         {/* Advanced Settings Panel */}
                         {showAdvanced && (
                             <div className="mt-2 bg-slate-800 rounded-xl p-2 border border-slate-700 animate-in fade-in slide-in-from-top-1">
-                                <div className="grid grid-cols-3 gap-2 mb-2">
+                                <div className="grid grid-cols-4 gap-2 mb-2">
                                     {/* Scoring Toggle */}
                                     <button
                                         onClick={toggleScoring}
@@ -415,6 +422,15 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                                     >
                                         <DisplayIcon size={20} />
                                         <span className="text-[10px]">{t(displayLabelKey as any)}</span>
+                                    </button>
+
+                                    {/* Shared Variable Toggle */}
+                                    <button
+                                        onClick={toggleShared}
+                                        className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${editedCol.isShared ? 'text-emerald-400 border-emerald-500/50 bg-emerald-900/20' : 'text-slate-400 border-slate-700 bg-slate-900 hover:text-white'}`}
+                                    >
+                                        <Users size={20} />
+                                        <span className="text-[10px]">{t('col_shared_var' as any)}</span>
                                     </button>
                                 </div>
                                 <div className="bg-slate-900/50 rounded py-1 px-2 text-center text-[10px] text-slate-400 border border-slate-800/50 flex items-center justify-center gap-1">

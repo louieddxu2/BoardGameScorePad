@@ -42,7 +42,25 @@ export const dashboardTranslations = {
     msg_cloud_connect_first: "請先點擊上方雲端按鈕啟用連線",
     msg_read_template_failed: "讀取模板失敗",
     msg_copy_created: "已建立副本",
+    msg_share_link_copied: "分享連結已複製",
+    msg_cloud_share_failed: "分享失敗，請稍後再試",
+    msg_share_ready_click_again: "連結已就緒，請再點擊一次即可複製",
     toast_pin_simple_success: "已建立並釘選簡易計分板",
+
+    // --- Share Modal ---
+    share_modal_title: "分享計分板",
+    share_modal_loading: "正在產生雲端連結...",
+    share_modal_desc: "任何人擁有此連結皆可匯入此計分板模板。",
+    share_modal_copy_success: "連結已複製到剪貼簿",
+
+    share_modal_local_title: "本地分享",
+    share_modal_local_desc: "直接將模板內容複製為 JSON 字串。",
+    share_modal_cloud_title: "雲端分享",
+    share_modal_cloud_btn: "上傳至雲端並取得連結",
+    share_modal_cloud_warning: "⚠️ 此操作會將計分板內容上傳至公開雲端，請勿上傳隱私資訊。",
+    share_modal_img_note: "💡 提醒：背景圖片不會被上傳。",
+    share_modal_uploading: "正在上傳...",
+    share_modal_recruitment: "提醒：上傳的模板未來有可能被更新添加到「內建計分板」裡。",
 
     // --- Game Card Actions ---
     card_resume: "繼續遊戲",
@@ -51,6 +69,7 @@ export const dashboardTranslations = {
     card_pin: "釘選",
     card_unpin: "取消釘選",
     card_copy_json: "複製 JSON",
+    card_copy_share_link: "複製連結",
     card_cloud_backup: "備份到雲端",
     card_backup_hint: "有變更！點擊備份到 Google Drive",
     card_create_copy: "建立副本",
@@ -110,7 +129,25 @@ export const dashboardTranslations = {
     msg_cloud_connect_first: "Please connect to cloud first",
     msg_read_template_failed: "Failed to read template",
     msg_copy_created: "Copy created",
+    msg_share_link_copied: "Share link copied",
+    msg_cloud_share_failed: "Share failed, please try again",
+    msg_share_ready_click_again: "Link ready! Please click again to copy",
     toast_pin_simple_success: "Simple score sheet created and pinned",
+
+    // --- Share Modal ---
+    share_modal_title: "Share Scoreboard",
+    share_modal_loading: "Generating cloud link...",
+    share_modal_desc: "Anyone with this link can import this scoreboard template.",
+    share_modal_copy_success: "Link copied to clipboard",
+
+    share_modal_local_title: "Local Export",
+    share_modal_local_desc: "Copy template content directly as a JSON string.",
+    share_modal_cloud_title: "Cloud Share",
+    share_modal_cloud_btn: "Upload to Cloud & Get Link",
+    share_modal_cloud_warning: "⚠️ This uploads content to a public cloud. Do not include private info.",
+    share_modal_img_note: "💡 Note: Background images will not be uploaded.",
+    share_modal_uploading: "Uploading...",
+    share_modal_recruitment: "Note: Uploaded templates may be added to 'Built-in Library' in future updates.",
 
     // --- Game Card Actions ---
     card_resume: "Resume",
@@ -119,6 +156,7 @@ export const dashboardTranslations = {
     card_pin: "Pin",
     card_unpin: "Unpin",
     card_copy_json: "Copy JSON",
+    card_copy_share_link: "Copy Link",
     card_cloud_backup: "Backup to Cloud",
     card_backup_hint: "Changes detected! Click to backup to Google Drive",
     card_create_copy: "Create Copy",

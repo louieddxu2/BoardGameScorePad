@@ -14,6 +14,8 @@ export const columnEditorTranslations = {
     col_help_scoring_off: "關閉：僅作記錄，不加總",
     col_help_display: "切換：顯示 / 重疊 / 隱藏",
     col_help_crop: "設定此欄位在背景圖上的顯示位置",
+    col_help_shared_on: "開啟：此欄位的所有玩家共用同一個值",
+    col_help_shared_off: "關閉：每個玩家各自獨立計分",
     col_scoring_on: "計分中",
     col_scoring_off: "不計分",
     col_crop: "框選區域",
@@ -22,7 +24,11 @@ export const columnEditorTranslations = {
     col_display_overlay: "重疊",
     col_display_hidden: "隱藏",
     col_color: "代表色",
+    col_shared_var: "共用變數",
     col_btn_save: "儲存設定",
+    col_shared_on: "共享項目",
+    col_shared_off: "獨立項目",
+    col_help_shared: "切換：所有玩家共享同一個數值",
 
     // Discard Confirm
     col_discard_title: "放棄變更？",
@@ -121,6 +127,10 @@ export const columnEditorTranslations = {
     col_auto_err_invalid_char: "非法符號",
     col_auto_err_invalid_result: "無效結果",
     col_auto_err_syntax: "公式語法錯誤，請檢查符號與括號",
+
+    // Default Units
+    col_default_unit_qty: "個",
+    col_default_unit_pts: "分",
   },
   'en': {
     // Top Level Editor
@@ -134,15 +144,21 @@ export const columnEditorTranslations = {
     col_help_scoring_off: "Off: Value recorded but not summed",
     col_help_display: "Cycle: Show / Overlay / Hide",
     col_help_crop: "Set display area on background image",
+    col_help_shared_on: "On: All players share the same value for this column",
+    col_help_shared_off: "Off: Each player scores independently",
     col_scoring_on: "Scoring",
     col_scoring_off: "No Score",
-    col_crop: "Crop Area",
+    col_crop: "Area",
     col_cropped: "Cropped",
     col_display_row: "Show",
     col_display_overlay: "Overlay",
     col_display_hidden: "Hidden",
     col_color: "Color",
+    col_shared_var: "Shared Var",
     col_btn_save: "Save Changes",
+    col_shared_on: "Shared",
+    col_shared_off: "Individual",
+    col_help_shared: "Toggle: All players share the same value",
 
     // Discard Confirm
     col_discard_title: "Discard Changes?",
@@ -241,6 +257,10 @@ export const columnEditorTranslations = {
     col_auto_err_invalid_char: "Invalid characters",
     col_auto_err_invalid_result: "Invalid result",
     col_auto_err_syntax: "Syntax error, check symbols and parentheses",
+
+    // Default Units
+    col_default_unit_qty: "qty",
+    col_default_unit_pts: "pts",
   }
 };
 
