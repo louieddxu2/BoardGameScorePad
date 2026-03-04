@@ -124,20 +124,20 @@ describe('App deep-link flow', () => {
       createdAt: Date.now()
     };
     hoisted.getBuiltinTemplateByShortId.mockResolvedValue(template);
-    window.location.hash = '#v=1&src=builtin&id=Agricola';
+    window.location.hash = '#Agricola';
 
     render(<App />);
 
     await waitFor(() => {
       expect(hoisted.getBuiltinTemplateByShortId).toHaveBeenCalledWith('Agricola');
       expect(screen.getByTestId('setup-modal')).toHaveTextContent('Built-in-Agricola');
-    });
+    }, { timeout: 3000 });
     expect(window.location.hash).toBe('');
   });
 
   it('shows warning and stays on dashboard when builtin template does not exist', async () => {
     hoisted.getBuiltinTemplateByShortId.mockResolvedValue(null);
-    window.location.hash = '#v=1&src=builtin&id=NoSuchTemplate';
+    window.location.hash = '#NoSuchTemplate';
 
     render(<App />);
 
