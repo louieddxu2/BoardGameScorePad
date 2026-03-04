@@ -301,6 +301,9 @@ export class ScorePadDatabase extends Dexie {
         (this as any).version(26).stores({
             templateShareCache: 'templateId, templateUpdatedAt, cloudId'
         });
+
+        // Version 27: Force update for built-in template changes
+        (this as any).version(27).stores({});
     }
 }
 

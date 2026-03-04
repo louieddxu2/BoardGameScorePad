@@ -60,6 +60,7 @@ export const dashboardTranslations = {
     share_modal_cloud_warning: "⚠️ 此操作會將計分板內容上傳至公開雲端，請勿上傳隱私資訊。",
     share_modal_img_note: "💡 提醒：背景圖片不會被上傳。",
     share_modal_uploading: "正在上傳...",
+    share_modal_recruitment: "提醒：上傳的模板未來有可能被更新添加到「內建計分板」裡。",
 
     // --- Game Card Actions ---
     card_resume: "繼續遊戲",
@@ -146,6 +147,7 @@ export const dashboardTranslations = {
     share_modal_cloud_warning: "⚠️ This uploads content to a public cloud. Do not include private info.",
     share_modal_img_note: "💡 Note: Background images will not be uploaded.",
     share_modal_uploading: "Uploading...",
+    share_modal_recruitment: "Note: Uploaded templates may be added to 'Built-in Library' in future updates.",
 
     // --- Game Card Actions ---
     card_resume: "Resume",

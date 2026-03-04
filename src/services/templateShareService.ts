@@ -103,7 +103,7 @@ export const buildCloudShareUrl = (cloudId: string, englishName?: string): strin
   return `${origin}${pathname}${search}${hash}`;
 };
 
-export const uploadTemplateToCloud = async (template: GameTemplate): Promise<UploadResponse> => {
+export const uploadTemplateToCloud = async (template: GameTemplate, lang?: string): Promise<UploadResponse> => {
   // Sanitize template: Remove fields that change hash but don't affect structure (deduplication)
   // or that are local-only (privacy/broken links).
   const {
@@ -123,6 +123,7 @@ export const uploadTemplateToCloud = async (template: GameTemplate): Promise<Upl
     body: JSON.stringify({
       name: sanitizedTemplate.name,
       payload: sanitizedTemplate,
+      lang,
       turnstileToken: token,
     }),
   });

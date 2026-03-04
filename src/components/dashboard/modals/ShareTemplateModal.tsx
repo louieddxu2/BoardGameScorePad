@@ -104,7 +104,7 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
             if (cached && cached.templateUpdatedAt === currentUpdatedAt) {
                 cloudId = cached.cloudId;
             } else {
-                const uploaded = await uploadTemplateToCloud(templateToShare);
+                const uploaded = await uploadTemplateToCloud(templateToShare, (t as any).language);
                 cloudId = uploaded.id;
                 await db.templateShareCache.put({
                     templateId: templateToShare.id,
@@ -216,9 +216,15 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
                     <div className="bg-emerald-500/5 rounded-xl p-4 border border-emerald-500/20 space-y-4">
                         {!shareUrl && !isLoading && (
                             <>
-                                <div className="flex gap-3 text-amber-500/80">
-                                    <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                                    <p className="text-xs leading-relaxed">{t('share_modal_cloud_warning')}</p>
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex gap-3 text-amber-500/80">
+                                        <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                                        <p className="text-xs leading-relaxed">{t('share_modal_cloud_warning')}</p>
+                                    </div>
+                                    <div className="flex gap-3 text-blue-400/80">
+                                        <Check size={16} className="shrink-0 mt-0.5" />
+                                        <p className="text-xs leading-relaxed italic">{t('share_modal_recruitment')}</p>
+                                    </div>
                                 </div>
                                 {hasBgImage && <p className="text-[10px] text-slate-500 italic pl-7">{t('share_modal_img_note')}</p>}
                                 <button

@@ -83,8 +83,6 @@ export interface ScoreColumn {
 
   // Layout Configuration
   contentLayout?: ContentLayout;
-  isShared?: boolean; // [New] Indicates if the value is shared across all players
-
 
   // Meta
   isScoring: boolean;
