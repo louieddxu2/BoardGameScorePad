@@ -154,17 +154,4 @@ describe('App deep-link flow', () => {
     expect(window.location.hash).toBe('');
   });
 
-  it('ignores invalid hash and keeps default dashboard state', async () => {
-    window.location.hash = '#foo=bar';
-
-    render(<App />);
-
-    await waitFor(() => {
-      expect(hoisted.getBuiltinTemplateByShortId).not.toHaveBeenCalled();
-    });
-
-    expect(screen.queryByTestId('setup-modal')).not.toBeInTheDocument();
-    expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
-    expect(window.location.hash).toBe('');
-  });
 });

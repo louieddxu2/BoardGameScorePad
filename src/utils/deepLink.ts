@@ -72,11 +72,6 @@ export const parseDeepLinkFromHash = (hash: string): ParsedDeepLink | null => {
   const raw = hash.startsWith('#') ? hash.slice(1) : hash;
   if (!raw) return null;
 
-  // 拒絕舊格式 (v=1&...)
-  if (raw.includes('v=1') || raw.includes('src=') || raw.includes('id=')) {
-    return null;
-  }
-
   // 1. 檢查是否為雲端網址 (包含 /s/)
   if (raw.includes('/s/')) {
     const parts = raw.split('/s/');
@@ -97,9 +92,6 @@ export const parseDeepLinkFromHash = (hash: string): ParsedDeepLink | null => {
   // 3. 預設為內建模板 (需解碼)
   try {
     const decodedId = decodeURIComponent(raw);
-    // 排除包含參數特徵或路徑符號的字串 (增強穩健性)
-    if (raw.includes('=') || raw.includes('&')) return null;
-
     return { source: 'builtin', shortId: decodedId };
   } catch (e) {
     return null;

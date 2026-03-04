@@ -83,8 +83,11 @@ describe('deepLink — 最終網址架構', () => {
       });
     });
 
-    it('拒絕不合規或查詢參數格式 (為了過往遷移之乾淨)', () => {
-      expect(parseDeepLinkFromHash('#v=1&src=builtin&id=Agricola')).toBeNull();
+    it('無硬性阻擋：舊版參數將被直接作為完整字串處理 (交由後方自然報錯)', () => {
+      expect(parseDeepLinkFromHash('#v=1&src=builtin&id=Agricola')).toEqual({
+        source: 'builtin',
+        shortId: 'v=1&src=builtin&id=Agricola'
+      });
     });
   });
 
