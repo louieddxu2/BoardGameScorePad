@@ -324,51 +324,123 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 {isEditMode && isTextureMode && <div className="absolute top-1/2 left-0.5 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded p-0.5 text-white/70"><GripVertical size={10} /></div>}
               </TexturedBlock>
 
-              {col.isShared ? (
-                <div className={`${rowHiddenClass} flex-1 relative`}>
-                  <ScoreCell
-                    player={session.players[0]}
-                    playerIndex={0}
-                    column={col}
-                    allColumns={template.columns}
-                    allPlayers={session.players}
-                    baseImage={baseImage}
-                    isActive={editingCell?.colId === col.id}
-                    onClick={(e) => onCellClick(session.players[0].id, col.id, e)}
-                    isEditMode={isEditMode}
-                    limitX={template.globalVisuals?.rightMaskRect?.x}
-                    isAlt={isAlt}
-                    previewValue={editingCell?.colId === col.id ? previewValue : undefined}
-                  />
-                  {/* Overlays for shared column (if any) using first player as reference */}
-                  {col.overlayColumns.map(overlayCol => {
-                    const isOverlayActive = editingCell?.colId === overlayCol.id;
-                    const p = session.players[0];
-                    const scoreData = p.scores[overlayCol.id];
-                    const parts = scoreData?.parts || [];
-                    const overlayContext = { allColumns: template.columns, playerScores: p.scores, allPlayers: session.players };
-                    const displayScore = calculateColumnScore(overlayCol, parts, overlayContext);
-                    let displayText = '';
-                    const hasInput = overlayCol.isAuto ? true : parts.length > 0;
-                    if (hasInput) displayText = formatDisplayNumber(displayScore);
-                    const dynamicFontSize = calculateDynamicFontSize([displayText]);
-                    const textStyle = {
-                      color: hasInput ? (displayScore < 0 ? '#f87171' : (isTextureMode ? 'rgba(28, 35, 51, 0.90)' : '#ffffff')) : '#475569',
-                      fontSize: dynamicFontSize,
-                    };
-                    if (!overlayCol.contentLayout) return null;
-                    return (
-                      <div key={overlayCol.id} className="absolute inset-0 pointer-events-none">
-                        <div
-                          onClick={(e) => { e.stopPropagation(); onCellClick(p.id, overlayCol.id, e); }}
-                          className={`absolute flex items-center justify-center border-2 rounded-md cursor-pointer transition-all pointer-events-auto ${isOverlayActive ? 'border-emerald-500 bg-emerald-500/20 ring-1 ring-emerald-500' : (isEditMode ? 'border-dashed border-white/40 hover:border-white/60 hover:bg-white/5' : 'border-transparent hover:border-black/10 hover:bg-black/5')}`}
-                          style={{ left: `${overlayCol.contentLayout.x}%`, top: `${overlayCol.contentLayout.y}%`, width: `${overlayCol.contentLayout.width}%`, height: `${overlayCol.contentLayout.height}%` } as React.CSSProperties}
-                        >
-                          <span className="font-bold tracking-tight w-full text-center truncate px-1" style={textStyle}>{displayText}</span>
+              {/* Normal Players Row OR Shared Player Row */}
+              {col.isShared && session.players.length > 0 ? (
+                <div
+                  className={`${rowHiddenClass} w-full relative shared-col-container flex`}
+                  style={{
+                    width: `${session.players.length * minPlayerWidth}px`, // 讓外層佔據所有合併玩家的總寬度
+                    minWidth: '100%'
+                  }}
+                >
+                  <div
+                    className="sticky z-10 flex items-center justify-center overflow-hidden"
+                    style={{
+                      left: leftColWidth,
+                      width: `min(calc(100% - ${leftColWidth}px), ${containerWidth - leftColWidth}px)`,
+                      // 這邊不再利用 100vw，而是用外層 scroll container 的 containerWidth 來限制可視區塊寬度
+                      // 若玩家很少 (總寬度小於視窗寬度)，就乖乖維持在 100% (總寬度) 內置中。
+                    }}
+                  >
+                    <ScoreCell
+                      player={session.players[0]} // 只讀取第一個玩家的值作為顯示代表，不過 InputPanel 更新時記得要寫給所有人
+                      playerIndex={0}
+                      column={col}
+                      allColumns={template.columns}
+                      allPlayers={session.players}
+                      baseImage={baseImage}
+                      isActive={editingCell?.colId === col.id} // 只要此 column 處於編輯中就一起亮起來
+                      onClick={(e) => onCellClick(session.players[0].id, col.id, e)} // 點下去還是當作點 Player 0，InputPanel 也會認得這個 col 是 shared
+                      isEditMode={isEditMode}
+                      limitX={template.globalVisuals?.rightMaskRect?.x}
+                      isAlt={isAlt}
+                      previewValue={editingCell?.colId === col.id ? previewValue : undefined}
+                      forceWidth="100%"
+                    />
+                    {/* 疊加的 Overlay 也一併在此渲染 (例如公式、文字顯示) */}
+                    {col.overlayColumns.map((overlayCol) => {
+                      const isOverlayActive = editingCell?.colId === overlayCol.id;
+                      const scoreData = session.players[0].scores[overlayCol.id];
+                      const parts = scoreData?.parts || [];
+
+                      // 略過複雜的顯示層次計算，因為這整段都是照抄原版玩家 Overlay，只是對應到共用欄位
+                      const overlayContext = {
+                        allColumns: template.columns,
+                        playerScores: session.players[0].scores,
+                        allPlayers: session.players
+                      };
+                      const displayScore = calculateColumnScore(overlayCol, parts, overlayContext);
+
+                      let displayText = '';
+                      const hasInput = overlayCol.isAuto ? true : parts.length > 0;
+                      const isSelectList = overlayCol.inputType === 'clicker' && !(overlayCol.formula || '').includes('+next');
+
+                      if (hasInput) {
+                        if (isSelectList && parts.length > 0) {
+                          const option = resolveSelectOption(overlayCol, scoreData);
+                          const renderMode = overlayCol.renderMode || 'standard';
+                          if (option && (renderMode === 'label_only' || renderMode === 'standard')) {
+                            displayText = option.label;
+                          } else {
+                            displayText = formatDisplayNumber(displayScore);
+                          }
+                        } else {
+                          displayText = formatDisplayNumber(displayScore);
+                        }
+                      }
+
+                      const dynamicFontSize = calculateDynamicFontSize([displayText]);
+                      const defaultTextColor = isTextureMode ? 'rgba(28, 35, 51, 0.90)' : '#ffffff';
+                      const displayColor = (isEditMode && overlayCol.color) ? overlayCol.color : defaultTextColor;
+
+                      const textStyle: React.CSSProperties = {
+                        color: hasInput ? (displayScore < 0 ? '#f87171' : displayColor) : '#475569',
+                        fontSize: dynamicFontSize,
+                        ...(isEditMode && overlayCol.color && isColorDark(overlayCol.color) && { textShadow: ENHANCED_TEXT_SHADOW }),
+                        ...(isTextureMode && {
+                          fontFamily: '"Kalam", "Caveat", cursive',
+                          transform: `rotate(${((session.players[0].id.charCodeAt(0) + overlayCol.id.charCodeAt(0)) % 5) - 2}deg)`,
+                          mixBlendMode: 'multiply',
+                          textShadow: 'none',
+                        })
+                      };
+
+                      if (!overlayCol.contentLayout) return null;
+
+                      return (
+                        <div key={overlayCol.id} className="absolute inset-0 pointer-events-none">
+                          <div
+                            onClick={(e) => { e.stopPropagation(); onCellClick(session.players[0].id, overlayCol.id, e); }}
+                            className={`
+                                          absolute flex items-center justify-center 
+                                          border-2 rounded-md cursor-pointer transition-all pointer-events-auto
+                                          ${isOverlayActive
+                                ? 'border-emerald-500 bg-emerald-500/20 ring-1 ring-emerald-500'
+                                : (isEditMode
+                                  ? 'border-dashed border-white/40 hover:border-white/60 hover:bg-white/5'
+                                  : (!isTextureMode
+                                    ? 'border-dashed border-white/20 hover:border-white/40 hover:bg-white/5'
+                                    : 'border-transparent hover:border-black/10 hover:bg-black/5')
+                                )
+                              }
+                                      `}
+                            style={{
+                              left: `${overlayCol.contentLayout.x}%`,
+                              top: `${overlayCol.contentLayout.y}%`,
+                              width: `${overlayCol.contentLayout.width}%`,
+                              height: `${overlayCol.contentLayout.height}%`,
+                              borderColor: (!isOverlayActive && isEditMode && overlayCol.color) ? `${overlayCol.color}60` : undefined,
+                              containerType: 'size',
+                            } as React.CSSProperties}
+                          >
+                            <span className="font-bold tracking-tight w-full text-center truncate px-1" style={textStyle}>
+                              {displayText}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               ) : (
                 session.players.map((p, pIdx) => {

@@ -281,8 +281,11 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
     };
 
     const toggleShared = () => {
-        setEditedCol(prev => ({ ...prev, isShared: !prev.isShared }));
-        setHelpText('col_help_shared');
+        setEditedCol(prev => {
+            const nextShared = !prev.isShared;
+            setHelpText(nextShared ? 'col_help_shared_on' : 'col_help_shared_off');
+            return { ...prev, isShared: nextShared };
+        });
     };
 
     const toggleScoring = () => {
@@ -427,7 +430,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                                         className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${editedCol.isShared ? 'text-emerald-400 border-emerald-500/50 bg-emerald-900/20' : 'text-slate-400 border-slate-700 bg-slate-900 hover:text-white'}`}
                                     >
                                         <Users size={20} />
-                                        <span className="text-[10px]">{editedCol.isShared ? t('col_shared_on') : t('col_shared_off')}</span>
+                                        <span className="text-[10px]">{t('col_shared_var' as any)}</span>
                                     </button>
                                 </div>
                                 <div className="bg-slate-900/50 rounded py-1 px-2 text-center text-[10px] text-slate-400 border border-slate-800/50 flex items-center justify-center gap-1">

@@ -31,6 +31,7 @@ interface ScoreCellProps {
     limitX?: number;
     isAlt?: boolean;
     previewValue?: any;
+    forceWidth?: string; // [New] For enforcing full width in shared columns
     skipTextureRendering?: boolean;
 }
 
@@ -280,7 +281,7 @@ const CellContentStandard: React.FC<CellContentProps> = ({ parts, displayScore, 
 // --- Main Component ---
 
 const ScoreCell: React.FC<ScoreCellProps> = (props) => {
-    const { player, playerIndex, column, allColumns, allPlayers, isActive, onClick, forceHeight, screenshotMode = false, baseImage, isEditMode, limitX, isAlt, previewValue, skipTextureRendering } = props;
+    const { player, playerIndex, column, allColumns, allPlayers, isActive, onClick, forceHeight, screenshotMode = false, baseImage, isEditMode, limitX, isAlt, previewValue, forceWidth, skipTextureRendering } = props;
     const { t } = useSessionTranslation();
     const scoreData: ScoreValue | undefined = player.scores[column.id];
 
@@ -312,6 +313,7 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
     const cursorClass = hasLayout ? 'cursor-default' : 'cursor-pointer';
     const pointerEventsClass = hasLayout ? 'pointer-events-none' : '';
     const baseContainerClasses = `w-full h-full ${forceHeight || ''} ${borderStructureClasses} relative ${cursorClass} ${pointerEventsClass} transition-colors select-none flex flex-col justify-center items-center overflow-hidden`;
+    const containerStyle: React.CSSProperties = forceWidth ? { width: forceWidth, minWidth: forceWidth } : {};
 
     const isStandardAuto = !baseImage && column.isAuto;
     let visualClasses = '';
@@ -445,7 +447,7 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
     ) : renderContent();
 
     return (
-        <div onClick={hasLayout ? undefined : onClick} className={`${baseContainerClasses} ${visualClasses}`}>
+        <div onClick={hasLayout ? undefined : onClick} className={`${baseContainerClasses} ${visualClasses}`} style={containerStyle}>
             {finalContent}
         </div>
     );

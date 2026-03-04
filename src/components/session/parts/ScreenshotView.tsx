@@ -282,14 +282,22 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                             >
                             </ScreenshotHeaderCell>
 
-                            {session.players.map((p, index) => (
-                                <div key={p.id} style={getPlayerColStyle(p.id)} className="relative">
+                            {col.isShared && session.players.length > 0 ? (
+                                <div
+                                    className="relative flex items-center justify-center p-2"
+                                    style={{
+                                        // 優先使用 layout 來計算精確的玩家總寬度，若無則使用簡單估算 fallback
+                                        ...(layout ? { width: `${session.players.reduce((sum, p) => sum + (layout.playerWidths[p.id] || 0), 0)}px` } : { flex: '1 1 0%', width: `${session.players.length * itemColWidth}px` }),
+                                        borderRight: '1px solid var(--border-slate-700)',
+                                        borderBottom: '1px solid var(--border-slate-700)'
+                                    }}
+                                >
                                     <ScoreCell
-                                        player={p}
-                                        playerIndex={index}
+                                        player={session.players[0]}
+                                        playerIndex={0}
                                         column={col}
                                         allColumns={template.columns}
-                                        allPlayers={session.players} // Pass session players
+                                        allPlayers={session.players}
                                         isActive={false}
                                         onClick={() => { }}
                                         screenshotMode={true}
@@ -297,38 +305,81 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                                         baseImage={undefined}
                                         forceHeight={"h-full"}
                                         isAlt={isAlt}
+                                        forceWidth="100%"
                                     />
-
-                                    {/* Render Overlays using ScoreCell directly */}
                                     {col.overlayColumns.map(overlayCol => {
                                         if (!overlayCol.contentLayout) return null;
-
                                         return (
-                                            <div
-                                                key={overlayCol.id}
-                                                className="absolute inset-0 z-10 pointer-events-none"
-                                            >
-                                                {/* Use wrapper to ensure height fill */}
+                                            <div key={overlayCol.id} className="absolute inset-0 z-10 pointer-events-none">
                                                 <div className="w-full h-full">
                                                     <ScoreCell
-                                                        player={p}
-                                                        playerIndex={index}
+                                                        player={session.players[0]}
+                                                        playerIndex={0}
                                                         column={overlayCol}
                                                         allColumns={template.columns}
-                                                        allPlayers={session.players} // Pass session players
+                                                        allPlayers={session.players}
                                                         isActive={false}
                                                         onClick={() => { }}
                                                         screenshotMode={true}
                                                         simpleMode={mode === 'simple'}
                                                         baseImage={undefined}
                                                         forceHeight={"h-full"}
+                                                        forceWidth="100%"
                                                     />
                                                 </div>
                                             </div>
                                         );
                                     })}
                                 </div>
-                            ))}
+                            ) : (
+                                session.players.map((p, index) => (
+                                    <div key={p.id} style={getPlayerColStyle(p.id)} className="relative">
+                                        <ScoreCell
+                                            player={p}
+                                            playerIndex={index}
+                                            column={col}
+                                            allColumns={template.columns}
+                                            allPlayers={session.players} // Pass session players
+                                            isActive={false}
+                                            onClick={() => { }}
+                                            screenshotMode={true}
+                                            simpleMode={mode === 'simple'}
+                                            baseImage={undefined}
+                                            forceHeight={"h-full"}
+                                            isAlt={isAlt}
+                                        />
+
+                                        {/* Render Overlays using ScoreCell directly */}
+                                        {col.overlayColumns.map(overlayCol => {
+                                            if (!overlayCol.contentLayout) return null;
+
+                                            return (
+                                                <div
+                                                    key={overlayCol.id}
+                                                    className="absolute inset-0 z-10 pointer-events-none"
+                                                >
+                                                    {/* Use wrapper to ensure height fill */}
+                                                    <div className="w-full h-full">
+                                                        <ScoreCell
+                                                            player={p}
+                                                            playerIndex={index}
+                                                            column={overlayCol}
+                                                            allColumns={template.columns}
+                                                            allPlayers={session.players} // Pass session players
+                                                            isActive={false}
+                                                            onClick={() => { }}
+                                                            screenshotMode={true}
+                                                            simpleMode={mode === 'simple'}
+                                                            baseImage={undefined}
+                                                            forceHeight={"h-full"}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ))
+                            )}
                         </div>
                     );
                 })}
