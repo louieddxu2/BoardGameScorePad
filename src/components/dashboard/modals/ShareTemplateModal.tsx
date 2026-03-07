@@ -97,6 +97,16 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
                 if (full) templateToShare = full;
             }
 
+            // Validation: Prevent upload of unfinished templates
+            const hasNoColumns = !templateToShare.columns || templateToShare.columns.length === 0;
+            const hasDefaultNames = templateToShare.columns?.some(c => /^(項目|Item)\s*\d+$/i.test(c.name));
+
+            if (hasNoColumns || hasDefaultNames) {
+                showToast({ message: t('msg_cloud_share_unfinished'), type: 'error' });
+                setIsLoading(false);
+                return;
+            }
+
             const currentUpdatedAt = templateToShare.updatedAt || templateToShare.createdAt || 0;
             const cached = await db.templateShareCache.get(templateToShare.id);
 
