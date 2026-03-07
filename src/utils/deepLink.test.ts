@@ -96,5 +96,10 @@ describe('deepLink — 最終網址架構', () => {
       expect(toBuiltinShortId('Built-in-Agricola')).toBe('Agricola');
       expect(toBuiltinFullId('Agricola')).toBe('Built-in-Agricola');
     });
+
+    it('toBuiltinShortId 應剝離 EN- 前綴，確保分享連結保持語言中立', () => {
+      expect(toBuiltinShortId('Built-in-EN-Agricola')).toBe('Agricola');
+      expect(toBuiltinShortId('EN-Agricola')).toBe('Agricola');
+    });
   });
 });

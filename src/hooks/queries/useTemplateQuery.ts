@@ -8,6 +8,7 @@ import { searchService } from '../../services/searchService';
 import { extractTemplateSummary, TemplateSummary } from '../../utils/extractDataSummaries';
 import { isDisposableTemplate } from '../../utils/templateUtils';
 import { toBuiltinFullId, toBuiltinShortId } from '../../utils/deepLink';
+import { useAppTranslation } from '../../i18n/app';
 
 export const useTemplateQuery = (searchQuery: string, pinnedIds: string[]) => {
     // --- PREFERENCES & HELPERS ---
@@ -92,18 +93,36 @@ export const useTemplateQuery = (searchQuery: string, pinnedIds: string[]) => {
     }, [filteredUserTemplates, prefsMap, mergePrefs]);
 
 
+    const { t: tApp } = useAppTranslation();
+
     // --- TEMPLATES (Built-in) ---
     const allBuiltinsData = useLiveQuery<TemplateSummary[]>(async () => {
         const raw = await db.builtins.toArray();
+        const lang = tApp('app_lang_code') || 'zh-TW';
+        const isEn = lang.startsWith('en');
+
+        const filteredRawRaw = raw.filter(t => {
+             const isEnTemplate = t.id.startsWith('Built-in-EN-');
+             return isEn ? isEnTemplate : !isEnTemplate;
+        });
+
         // Standardize Built-ins to TemplateSummary as well for consistent search architecture
         // Pass empty Set for images as built-ins don't use local DB images
-        return raw.map(t => extractTemplateSummary(t, new Set()));
-    }, []);
+        return filteredRawRaw.map(t => extractTemplateSummary(t, new Set()));
+    }, [tApp]);
 
     const getBuiltinTemplateByShortId = async (shortId: string): Promise<GameTemplate | null> => {
-        // 直接使用 Primary Key (Full ID) 進行 O(1) 檢索，不建立任何索引或迴圈
+        // 1. Try direct lookup (fastest)
         const fullId = toBuiltinFullId(shortId);
-        const template = await db.builtins.get(fullId);
+        let template = await db.builtins.get(fullId);
+
+        // 2. Fallback: Case-insensitive search (handles built-in- vs Built-in- and slug variations)
+        if (!template) {
+            const normalizedShort = shortId.toLowerCase();
+            template = await db.builtins
+                .filter(t => toBuiltinShortId(t.id).toLowerCase() === normalizedShort)
+                .first();
+        }
 
         if (!template) return null;
         return mergePrefs(template, prefsMap);

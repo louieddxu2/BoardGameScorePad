@@ -4,8 +4,8 @@ import { migrateTemplate, migrateScores } from './dataMigration';
 import { GameTemplate, GameSession } from '../types';
 import { generateId } from './idGenerator';
 
-// [Update] Bumped to 8 to force refresh of built-in templates after constants update
-const CURRENT_BUILTIN_VERSION = 8;
+// [Update] Bumped to 9 to force refresh of built-in templates (added English templates)
+const CURRENT_BUILTIN_VERSION = 9;
 
 export const migrateFromLocalStorage = async () => {
     const MIGRATION_KEY = 'sm_migration_v1_done';
@@ -22,20 +22,26 @@ export const migrateFromLocalStorage = async () => {
 
         if (savedVersion !== CURRENT_BUILTIN_VERSION || isFreshInstall) {
             console.log(`Updating built-in templates from v${savedVersion} to v${CURRENT_BUILTIN_VERSION}...`);
-            const { DEFAULT_TEMPLATES } = await import('../constants');
+            const { DEFAULT_TEMPLATES } = await import('../data/templates');
+            const { DEFAULT_TEMPLATES_EN } = await import('../data/templates-en');
 
             if (!isFreshInstall) {
                 const existingIds = new Set(existingBuiltins.map(t => t.id));
                 const newArrivals = DEFAULT_TEMPLATES.filter(t => !existingIds.has(t.id)).map(t => t.id);
-                if (newArrivals.length > 0) {
+                // Also check new English templates arrivals for badges
+                const newArrivalsEN = DEFAULT_TEMPLATES_EN.filter(t => !existingIds.has(t.id)).map(t => t.id);
+                const allNewArrivals = [...newArrivals, ...newArrivalsEN];
+                
+                if (allNewArrivals.length > 0) {
                     const currentBadges = JSON.parse(localStorage.getItem(NEW_BADGES_KEY) || '[]');
-                    localStorage.setItem(NEW_BADGES_KEY, JSON.stringify(Array.from(new Set([...currentBadges, ...newArrivals]))));
+                    localStorage.setItem(NEW_BADGES_KEY, JSON.stringify(Array.from(new Set([...currentBadges, ...allNewArrivals]))));
                 }
             }
 
             await db.builtins.clear();
             const normalizedDefaults = DEFAULT_TEMPLATES.map(t => migrateTemplate(t));
-            await db.builtins.bulkPut(normalizedDefaults);
+            const normalizedDefaultsEN = DEFAULT_TEMPLATES_EN.map(t => migrateTemplate(t));
+            await db.builtins.bulkPut([...normalizedDefaults, ...normalizedDefaultsEN]);
             localStorage.setItem(VERSION_KEY, String(CURRENT_BUILTIN_VERSION));
         }
 

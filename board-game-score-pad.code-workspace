@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../scoreboard-cloud"
+		}
+	],
+	"settings": {
+		"powershell.cwd": "board-game-score-pad"
+	}
+}

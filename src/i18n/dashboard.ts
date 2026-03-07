@@ -44,6 +44,7 @@ export const dashboardTranslations = {
     msg_copy_created: "已建立副本",
     msg_share_link_copied: "分享連結已複製",
     msg_cloud_share_failed: "分享失敗，請稍後再試",
+    msg_cloud_share_unfinished: "請不要上傳未完成的計分板哦，感謝",
     msg_share_ready_click_again: "連結已就緒，請再點擊一次即可複製",
     toast_pin_simple_success: "已建立並釘選簡易計分板",
 
@@ -131,6 +132,7 @@ export const dashboardTranslations = {
     msg_copy_created: "Copy created",
     msg_share_link_copied: "Share link copied",
     msg_cloud_share_failed: "Share failed, please try again",
+    msg_cloud_share_unfinished: "Please do not upload unfinished scoreboards, thank you",
     msg_share_ready_click_again: "Link ready! Please click again to copy",
     toast_pin_simple_success: "Simple score sheet created and pinned",
 

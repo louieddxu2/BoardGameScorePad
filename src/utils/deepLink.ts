@@ -33,14 +33,19 @@ export const getEnglishSlug = (name: string): string => {
 };
 
 export const toBuiltinShortId = (fullTemplateId: string): string => {
-  if (fullTemplateId.startsWith(BUILTIN_PREFIX)) {
-    return fullTemplateId.slice(BUILTIN_PREFIX.length);
+  let shortId = fullTemplateId;
+  const prefixLower = BUILTIN_PREFIX.toLowerCase();
+  if (shortId.toLowerCase().startsWith(prefixLower)) {
+    shortId = shortId.slice(BUILTIN_PREFIX.length);
   }
-  return fullTemplateId;
+  if (shortId.startsWith('EN-')) {
+    shortId = shortId.slice(3);
+  }
+  return shortId;
 };
 
 export const toBuiltinFullId = (shortId: string): string => {
-  if (shortId.startsWith(BUILTIN_PREFIX)) return shortId;
+  if (shortId.toLowerCase().startsWith(BUILTIN_PREFIX.toLowerCase())) return shortId;
   return `${BUILTIN_PREFIX}${shortId}`;
 };
 
