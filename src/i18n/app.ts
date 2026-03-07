@@ -2,6 +2,7 @@ import { useTranslation } from './index';
 
 export const appTranslations = {
   'zh-TW': {
+    app_lang_code: "zh-TW",
     msg_press_again_to_exit: "再按一次即可離開",
 
     // --- Install Guide ---
@@ -61,6 +62,7 @@ export const appTranslations = {
     msg_loading_cloud_data: "正在載入計分板...",
   },
   'en': {
+    app_lang_code: "en",
     msg_press_again_to_exit: "Press back again to exit",
 
     // --- Sessions & History ---

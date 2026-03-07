@@ -8,7 +8,7 @@ $excludeFileSubstrings = @(
     "\src\i18n\",
     "\node_modules\",
     "\dist\",
-    "\constants.ts",
+    "\data\",
     "\ErrorBoundary.tsx",  # 安全網元件：刻意使用硬編碼雙語字串，不依賴 LanguageProvider
     ".test.ts",
     ".test.tsx",

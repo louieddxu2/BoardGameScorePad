@@ -39,7 +39,7 @@
 
 ## 🚫 專案禁區
 
-- **`src/constants.ts`**：保留區，絕對不可修改。
+（原 `src/constants.ts` 內容已移至 `src/data/templates.ts` 與 `src/data/templates-en.ts`。在此目錄下的樣板資料應視為準正式環境資料，非必要請勿隨意更動）
 
 ## 🔧 驗證指令
 

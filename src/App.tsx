@@ -231,7 +231,22 @@ const App: React.FC = () => {
 
     const openByDeepLink = async () => {
       if (parsed.source === 'builtin') {
-        const template = await appData.getBuiltinTemplateByShortId(parsed.shortId);
+        const lang = tApp('app_lang_code') || 'zh-TW'; // Assume app_lang_code returns 'en' or similar based on i18n
+        const isEn = lang.startsWith('en');
+        
+        // Ensure shortId doesn't already have EN- prefix if passed manually
+        const baseShortId = parsed.shortId.startsWith('EN-') ? parsed.shortId.substring(3) : parsed.shortId;
+        const enShortId = `EN-${baseShortId}`;
+
+        // Two-way fallback logic
+        const primaryId = isEn ? enShortId : baseShortId;
+        const fallbackId = isEn ? baseShortId : enShortId;
+
+        let template = await appData.getBuiltinTemplateByShortId(primaryId);
+        if (!template) {
+          template = await appData.getBuiltinTemplateByShortId(fallbackId);
+        }
+
         if (!template) {
           clearDeepLinkHash();
           setView(AppView.DASHBOARD);

@@ -75,9 +75,6 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ template, onSav
                                         placeholder="e.g. 13"
                                         className="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 text-white font-mono text-sm focus:border-emerald-500 outline-none"
                                     />
-                                    <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
-                                        {t('bgg_id_desc')}
-                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -171,7 +168,7 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ template, onSav
             </main>
 
             {/* Footer */}
-            <footer className="fixed bottom-0 left-0 right-0 p-4 bg-slate-900/80 backdrop-blur-sm border-t border-slate-800 z-20">
+            <footer className="p-4 bg-slate-900 border-t border-slate-800 flex-none mt-auto">
                 <button
                     onClick={handleSave}
                     className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2 transition-transform active:scale-95"
