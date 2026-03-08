@@ -65,10 +65,14 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
 
-    // Auto-select first option
+    // Auto-select first option (only if current selection is no longer valid)
     useEffect(() => {
         if (processedOptions.length > 0) {
-            setSelectedOptionUid(processedOptions[0].uid);
+            // [Fix] 保留使用者的當前選取，除非該選項已不在列表中
+            const isCurrentSelectionValid = selectedOptionUid && processedOptions.some(o => o.uid === selectedOptionUid);
+            if (!isCurrentSelectionValid) {
+                setSelectedOptionUid(processedOptions[0].uid);
+            }
         } else {
             setSelectedOptionUid(null);
         }
