@@ -193,6 +193,7 @@ export interface GameSession extends GameIdentity {
   players: Player[];
   status: 'active' | 'completed';
   scoringRule?: ScoringRule; // 當次遊戲的勝利條件
+  winnerIds?: string[]; // [New] 預計算的贏家列表，用於穩定渲染引用與防止無窮重新渲染
   photos?: string[]; // List of LocalImage IDs (Session Photos)
   photoCloudIds?: Record<string, string>; // [New] Map<LocalUUID, CloudFileID> for direct access
   cloudFolderId?: string; // [Cloud] 在 Google Drive 上的資料夾 ID (位於 _Active 或 _History)

@@ -92,9 +92,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   const isPanelOpen = editingCell !== null || editingPlayerId !== null;
 
-  // Winners Logic - [Refactor] Use shared util
-  const rule = session.scoringRule || 'HIGHEST_WINS';
-  const winners = calculateWinners(session.players, rule);
+  // Winners Logic - Use pre-calculated winners from session to stabilize references
+  const winners = useMemo(() => session.winnerIds || [], [session.winnerIds]);
 
   // Prepare Overlay Data for Photo Gallery
   const overlayData = useMemo(() => ({

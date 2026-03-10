@@ -17,6 +17,7 @@ interface UseDashboardActionsProps {
     onImportSettings?: (settings: any) => void;
     onGetLocalData: () => Promise<any>;
     onTogglePin: (id: string) => void;
+    onTogglePinOption: (option: GameOption) => void;
 }
 
 export const useDashboardActions = ({
@@ -27,7 +28,8 @@ export const useDashboardActions = ({
     onImportSession,
     onImportSettings,
     onGetLocalData,
-    onTogglePin
+    onTogglePin,
+    onTogglePinOption
 }: UseDashboardActionsProps) => {
     const { t } = useDashboardTranslation();
     const { showToast } = useToast();
@@ -114,27 +116,10 @@ export const useDashboardActions = ({
         handleCopyBuiltinShareLink,
         handleCloudBackup,
         handleCopySystemTemplate,
-        handlePinGameOption: async (opt: GameOption) => {
-            if (opt.templateId) {
-                // [Case A] 已有 Template：直接 toggle pin
-                onTogglePin(opt.templateId);
-            } else {
-                // [Case B] 簡易遊戲（無 Template）：比照 useGameLauncher 的 Case B，先建立拋棄式模板再釘選
-                const newTemplate: GameTemplate = {
-                    id: generateId(),
-                    name: opt.cleanName || opt.displayName,
-                    columns: [],
-                    bggId: opt.bggId || '',
-                    createdAt: Date.now(),
-                    updatedAt: Date.now(),
-                    defaultScoringRule: (opt.defaultScoringRule as any) || 'HIGHEST_WINS',
-                    hasImage: false
-                };
-                await onTemplateSave(newTemplate, { skipCloud: true });
-                onTogglePin(newTemplate.id);
-            }
-        },
         handleSystemBackupAction: async () => ({ success: 0, skipped: 0, failed: 0 }), // Mock
-        handleSystemRestoreAction: async () => ({ success: 0, skipped: 0, failed: 0 })  // Mock
+        handleSystemRestoreAction: async () => ({ success: 0, skipped: 0, failed: 0 }), // Mock
+        handlePinGameOption: (opt: GameOption) => {
+            onTogglePinOption(opt);
+        },
     };
 };

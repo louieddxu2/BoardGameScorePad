@@ -129,15 +129,13 @@ export const useSessionState = (props: SessionViewProps) => {
     }
   }, [uiState.editingCell?.playerId, uiState.editingCell?.colId]);
   
+  // [Optimization] Only sync tempPlayerName when the actual name in the session changes
+  // to avoid redundant setUiState calls during global re-renders.
   useEffect(() => {
     if (uiState.editingPlayerId) {
-        const p = props.session.players.find(pl => pl.id === uiState.editingPlayerId);
-        if (p) {
-            setUiState(prev => {
-                // Optimization: If name is already set (e.g. from init), don't update
-                if (prev.tempPlayerName === p.name) return prev;
-                return { ...prev, tempPlayerName: p.name, isInputFocused: false };
-            });
+        const player = props.session.players.find(pl => pl.id === uiState.editingPlayerId);
+        if (player && player.name !== uiState.tempPlayerName) {
+            setUiState(prev => ({ ...prev, tempPlayerName: player.name }));
         }
     }
   }, [uiState.editingPlayerId, props.session.players]);

@@ -5,6 +5,7 @@ import { useToast } from '../../../hooks/useToast';
 import { db } from '../../../db';
 import { generateId } from '../../../utils/idGenerator';
 import { useAppTranslation } from '../../../i18n/app';
+import { createTemplateFromOption } from '../../../utils/templateUtils';
 
 interface UseGameLauncherProps {
   allVisibleTemplates: GameTemplate[];
@@ -47,18 +48,9 @@ export const useGameLauncher = ({
       // Logic: Create a new transient template on the fly and SAVE it.
       // This handles both "Promoting a SavedGame to a Template" and "Creating a fresh game from Search".
 
-      templateToStart = {
-        id: generateId(), // Create new UUID for the template (Clean Slate)
-        name: option.cleanName || option.displayName, // [Fix] Use clean name if available
-        columns: [], // Empty columns = Simple Mode
-        bggId: option.bggId || '', // Inherit BGG ID if available
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        // Default settings for quick start
-        lastPlayerCount: playerCount,
-        defaultScoringRule: (option.defaultScoringRule as any) || 'HIGHEST_WINS',
-        hasImage: false
-      };
+      templateToStart = createTemplateFromOption(option, {
+        lastPlayerCount: playerCount
+      });
 
       // Save immediately to allow session start
       // { skipCloud: true } to save time, it will sync eventually

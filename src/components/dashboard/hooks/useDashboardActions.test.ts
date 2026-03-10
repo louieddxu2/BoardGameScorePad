@@ -80,6 +80,7 @@ describe('useDashboardActions.handleCopyJSON', () => {
         onImportSession: vi.fn(),
         onGetLocalData: vi.fn(async () => ({})),
         onTogglePin: vi.fn(),
+        onTogglePinOption: vi.fn(),
       })
     );
 
