@@ -141,6 +141,9 @@ export const useSessionManager = ({
         // [Refactor] Delegate Auto-Fill Logic to specialized initializer
         // Now passing the full template to handle texture mode logic
         newSession.players = await applyRecommendationsToPlayers(newSession, migratedTemplate);
+        
+        // [New] Initial Winner Calculation
+        newSession.winnerIds = calculateWinners(newSession.players, newSession.scoringRule);
 
         isImageDirtyRef.current = false;
 
@@ -184,6 +187,11 @@ export const useSessionManager = ({
             session.players = session.players.map((p: any) => ({
                 ...p, scores: migrateScores(p.scores, template!)
             }));
+
+            // [New] Ensure winnerIds are calculated on resume if missing (Compatibility)
+            if (!session.winnerIds) {
+                session.winnerIds = calculateWinners(session.players, session.scoringRule);
+            }
 
             // [Identity Upgrade] Backfill legacy sessions
             if (!session.name && template) {
@@ -246,7 +254,15 @@ export const useSessionManager = ({
             const playersWithTotal = sessionWithTimestamp.players.map(p => ({
                 ...p, totalScore: calculatePlayerTotal(p, activeTemplate, sessionWithTimestamp.players)
             }));
-            setCurrentSession({ ...sessionWithTimestamp, players: playersWithTotal });
+            
+            // [New] Pre-calculate winners to stabilize reference in SessionView
+            const winnerIds = calculateWinners(playersWithTotal, sessionWithTimestamp.scoringRule);
+            
+            setCurrentSession({ 
+                ...sessionWithTimestamp, 
+                players: playersWithTotal,
+                winnerIds: winnerIds
+            });
         } else {
             setCurrentSession(sessionWithTimestamp);
         }
@@ -255,7 +271,17 @@ export const useSessionManager = ({
     const resetSessionScores = () => {
         if (!currentSession) return;
         const resetPlayers = currentSession.players.map(p => ({ ...p, scores: {}, totalScore: 0, bonusScore: 0 }));
-        setCurrentSession({ ...currentSession, players: resetPlayers, startTime: Date.now(), lastUpdatedAt: Date.now() });
+        
+        // [New] Recalculate winners after reset
+        const winnerIds = calculateWinners(resetPlayers, currentSession.scoringRule);
+        
+        setCurrentSession({ 
+            ...currentSession, 
+            players: resetPlayers, 
+            winnerIds: winnerIds,
+            startTime: Date.now(), 
+            lastUpdatedAt: Date.now() 
+        });
     };
 
     const exitSession = async (overrides?: Partial<GameSession>) => {
@@ -428,11 +454,14 @@ export const useSessionManager = ({
                     ...player, totalScore: calculatePlayerTotal(player, finalTemplate, currentSession.players)
                 }));
 
+                const winnerIds = calculateWinners(updatedPlayers, currentSession.scoringRule);
+
                 const sessionWithSync = {
                     ...currentSession,
                     name: finalTemplate.name,
                     bggId: finalTemplate.bggId,
                     players: updatedPlayers,
+                    winnerIds: winnerIds,
                     lastUpdatedAt: Date.now()
                 };
 

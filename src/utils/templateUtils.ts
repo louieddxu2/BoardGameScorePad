@@ -2,6 +2,28 @@
 import { GameTemplate, Player, ScoringRule } from '../types';
 import { generateId } from './idGenerator';
 import { migrateTemplate } from './dataMigration';
+import { GameOption } from '../features/game-selector/types';
+
+/**
+ * 從搜尋選項建立模板 (Create Template from Search Option)
+ * 用於將搜尋到的遊戲 (GameOption) 轉換為資料庫中的模板 (GameTemplate)。
+ */
+export const createTemplateFromOption = (
+    option: GameOption,
+    overrides?: Partial<GameTemplate>
+): GameTemplate => {
+    return {
+        id: generateId(),
+        name: option.cleanName || option.displayName,
+        columns: [], // 簡易模式
+        bggId: option.bggId || '',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        defaultScoringRule: (option.defaultScoringRule as ScoringRule) || 'HIGHEST_WINS',
+        hasImage: false,
+        ...overrides
+    };
+};
 
 /**
  * 建立虛擬模板 (Virtual Template)

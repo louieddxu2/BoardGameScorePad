@@ -52,6 +52,7 @@ interface DashboardProps {
   onTemplateSave: (template: GameTemplate, options?: { skipCloud?: boolean, preserveTimestamps?: boolean }) => void;
   onBatchImport: (templates: GameTemplate[]) => void;
   onTogglePin: (id: string) => void;
+  onTogglePinOption: (option: GameOption) => void;
   onClearNewBadges: () => void;
   onRestoreSystem: (id: string) => void;
   onGetFullTemplate: (id: string) => Promise<GameTemplate | null>;
@@ -98,6 +99,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   onTemplateSave,
   onBatchImport,
   onTogglePin,
+  onTogglePinOption,
   onClearNewBadges,
   onRestoreSystem,
   onGetFullTemplate,
@@ -167,7 +169,8 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
     onImportSession,
     onImportSettings,
     onGetLocalData,
-    onTogglePin
+    onTogglePin,
+    onTogglePinOption
   });
 
   const debugGestures = useDebugGestures({

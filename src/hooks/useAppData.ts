@@ -11,7 +11,8 @@ import { BgStatsExport, ImportManualLinks } from '../features/bgstats/types';
 import { useToast } from './useToast';
 import { generateId } from '../utils/idGenerator';
 import { useAppTranslation } from '../i18n/app';
-import { prepareTemplateForSave, isDisposableTemplate } from '../utils/templateUtils';
+import { prepareTemplateForSave, isDisposableTemplate, createTemplateFromOption } from '../utils/templateUtils';
+import { GameOption } from '../features/game-selector/types';
 
 // Sub-hooks
 import { useAppQueries } from './useAppQueries';
@@ -154,6 +155,21 @@ export const useAppData = () => {
                     showToast({ message: tApp('app_toast_disposable_removed'), type: 'info' });
                 }
             }
+        }
+    };
+
+    /**
+     * 專供「搜尋結果選項」使用的釘選邏輯 (Only for search panel)
+     * 此方法負責處理尚未入庫的遊戲 (Promote to Template)
+     */
+    const togglePinOption = async (option: GameOption) => {
+        if (option.templateId) {
+            await togglePin(option.templateId);
+        } else {
+            // 尚未入庫的搜尋結果 -> 先建立模板
+            const newTemplate = createTemplateFromOption(option);
+            await saveTemplate(newTemplate, { skipCloud: true });
+            await togglePin(newTemplate.id);
         }
     };
 
@@ -405,6 +421,7 @@ export const useAppData = () => {
         setTemplates: () => { },
         toggleTheme,
         togglePin,
+        togglePinOption,
         clearNewBadges,
         updateSavedLocation: updateLocation,
         commitLocationStats,

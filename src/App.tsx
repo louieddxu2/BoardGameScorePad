@@ -608,6 +608,7 @@ const App: React.FC = () => {
           onTemplateSave={appData.saveTemplate}
           onBatchImport={handleBatchImport}
           onTogglePin={appData.togglePin}
+          onTogglePinOption={appData.togglePinOption}
           onClearNewBadges={appData.clearNewBadges}
           onRestoreSystem={appData.restoreSystemTemplate}
           onGetFullTemplate={appData.getTemplate}
