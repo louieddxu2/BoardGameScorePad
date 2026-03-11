@@ -264,11 +264,7 @@ export const useGoogleDrive = () => {
 
     // [Full Backup] Smart Skip Logic: Cloud.ts >= Local.ts -> Skip
     const performFullBackup = useCallback(async (
-        systemData: any, // [New Argument] Full system data for merging
-        templates: GameTemplate[],
-        history: HistoryRecord[],
-        sessions: GameSession[],
-        overrides: GameTemplate[],
+        onGetLocalData: () => Promise<any>,
         onProgress: (count: number, total: number) => void,
         onError: (failedItems: string[]) => void,
         onItemSuccess?: (type: 'template' | 'history' | 'session', item: any) => void
@@ -280,8 +276,14 @@ export const useGoogleDrive = () => {
 
         try {
             await ensureConnection();
-
             await googleDriveService.ensureAppStructure();
+
+            // Fetch local data directly inside the sync routine
+            const localData = await onGetLocalData();
+            const templates: GameTemplate[] = localData.data.templates || [];
+            const history: HistoryRecord[] = localData.data.history || [];
+            const sessions: GameSession[] = localData.data.sessions || [];
+            const overrides: GameTemplate[] = localData.data.overrides || [];
 
             const [cloudTemplates, cloudHistory, cloudActive] = await Promise.all([
                 googleDriveService.listFoldersInParent(googleDriveService.templatesFolderId!),
@@ -448,7 +450,7 @@ export const useGoogleDrive = () => {
 
             // 2d. Process System Settings (Merge & Upload via Service)
             try {
-                await systemSyncService.mergeAndBackupSystemSettings(systemData);
+                await systemSyncService.mergeAndBackupSystemSettings(localData);
                 successCount++;
             } catch (e) {
                 console.warn("Settings backup failed", e);

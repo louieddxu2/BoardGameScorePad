@@ -75,7 +75,8 @@ describe('useGoogleDrive Skip Logic Debug', () => {
         
         await act(async () => {
             const res = await result.current.performFullBackup(
-                {}, localTemplates, [], [], [], onProgressSpy, onErrorSpy
+                async () => ({ data: { templates: localTemplates, history: [], sessions: [], overrides: [] } }),
+                onProgressSpy, onErrorSpy
             );
         });
 
@@ -99,7 +100,8 @@ describe('useGoogleDrive Skip Logic Debug', () => {
         
         await act(async () => {
             await result.current.performFullBackup(
-                {}, localTemplates, [], [], [], () => {}, () => {}
+                async () => ({ data: { templates: localTemplates, history: [], sessions: [], overrides: [] } }),
+                () => {}, () => {}
             );
         });
 
@@ -127,8 +129,8 @@ describe('useGoogleDrive Skip Logic Debug', () => {
         let processedCount = 0;
         await act(async () => {
             await result.current.performFullBackup(
-                {}, [], localHistory, [], [], 
-                (c, total) => { processedCount++; }, 
+                async () => ({ data: { templates: [], history: localHistory, sessions: [], overrides: [] } }),
+                (c: number, total: number) => { processedCount++; }, 
                 () => {}
             );
         });
@@ -152,7 +154,8 @@ describe('useGoogleDrive Skip Logic Debug', () => {
         
         await act(async () => {
             await result.current.performFullBackup(
-                {}, [], localHistory, [], [], () => {}, () => {}
+                async () => ({ data: { templates: [], history: localHistory, sessions: [], overrides: [] } }),
+                () => {}, () => {}
             );
         });
 

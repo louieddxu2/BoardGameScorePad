@@ -116,7 +116,7 @@ export const useDashboardActions = ({
         handleCopyBuiltinShareLink,
         handleCloudBackup,
         handleCopySystemTemplate,
-        handleSystemBackupAction: performFullBackup,
+        handleSystemBackupAction: (p: (c: number, t: number) => void, e: (f: string[]) => void) => performFullBackup(onGetLocalData, p, e),
         handleSystemRestoreAction: performFullRestore,
         handlePinGameOption: (opt: GameOption) => {
             onTogglePinOption(opt);
