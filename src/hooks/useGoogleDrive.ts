@@ -384,10 +384,19 @@ export const useGoogleDrive = () => {
                     console.log(`[Backup Debug] Template ${t.name} - Local: ${t.updatedAt}, Cloud: ${cloudTime}, isUpToDate: ${isUpToDate}`);
                 }
 
+                if (isUpToDate) {
+                    if (t.updatedAt) {
+                        await db.templates.update(t.id, { lastSyncedAt: t.updatedAt });
+                    }
+                    return processItem(async () => { }, t.name, true);
+                }
+
                 return processItem(async () => {
                     const updatedT = await googleDriveService.backupTemplate(t, null, cloudInfo?.id, cloudInfo?.name);
+                    // [Fix] Update lastSyncedAt locally to hide the pending upload icon
+                    await db.templates.update(t.id, { lastSyncedAt: Date.now() });
                     if (onItemSuccess) onItemSuccess('template', updatedT);
-                }, t.name, isUpToDate);
+                }, t.name, false);
             });
 
             // 2b. Process History (Concurrency Pool)
@@ -408,8 +417,16 @@ export const useGoogleDrive = () => {
                 return processItem(async () => {
                     const { updatedRecord } = await googleDriveService.backupHistoryRecord(h, cloudInfo?.id, cloudInfo?.name);
                     
+                    // [Update] Consolidate metadata updates
+                    const updateData: any = {};
                     if (updatedRecord.photoCloudIds && Object.keys(updatedRecord.photoCloudIds).length > 0) {
-                        await db.history.update(h.id, { photoCloudIds: updatedRecord.photoCloudIds });
+                        updateData.photoCloudIds = updatedRecord.photoCloudIds;
+                    }
+
+                    // Always update updatedAt if it changed or to ensure sync status is marked
+                    // For History, we don't have lastSyncedAt, but we can update updatedAt to cloud ts
+                    if (Object.keys(updateData).length > 0) {
+                        await db.history.update(h.id, updateData);
                     }
 
                     // [Fix] Logic to cleanup stale Active Session in Cloud
@@ -442,8 +459,13 @@ export const useGoogleDrive = () => {
                 return processItem(async () => {
                     const { updatedSession } = await googleDriveService.backupActiveSession(s, templateName, cloudInfo?.id, cloudInfo?.name);
                     
+                    const updateData: any = {};
                     if (updatedSession.photoCloudIds && Object.keys(updatedSession.photoCloudIds).length > 0) {
-                        await db.sessions.update(s.id, { photoCloudIds: updatedSession.photoCloudIds });
+                        updateData.photoCloudIds = updatedSession.photoCloudIds;
+                    }
+                    
+                    if (Object.keys(updateData).length > 0) {
+                        await db.sessions.update(s.id, updateData);
                     }
                 }, tCloud('cloud_active_session_prefix', { id: s.id.slice(0, 8) }), isUpToDate);
             });
