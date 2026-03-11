@@ -89,7 +89,11 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                         }
 
                         if (folderId) {
-                            await googleDriveService.backupHistoryRecord(record, folderId);
+                            const { updatedRecord } = await googleDriveService.backupHistoryRecord(record, folderId);
+                            
+                            if (updatedRecord.photoCloudIds && Object.keys(updatedRecord.photoCloudIds).length > 0) {
+                                await db.history.update(record.id, { photoCloudIds: updatedRecord.photoCloudIds });
+                            }
 
                             // If we just created this folder, it is currently in _ActiveSessions.
                             // We must move it to _History.

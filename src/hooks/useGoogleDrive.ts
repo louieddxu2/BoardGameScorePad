@@ -6,6 +6,7 @@ import { useToast } from './useToast';
 import { useCloudTranslation } from '../i18n/cloud';
 import { GameTemplate, GameSession, HistoryRecord } from '../types';
 import { isDisposableTemplate } from '../utils/templateUtils';
+import { db } from '../db';
 
 export const useGoogleDrive = () => {
     const [isSyncing, setIsSyncing] = useState(false);
@@ -378,6 +379,7 @@ export const useGoogleDrive = () => {
                     if (cloudTime >= t.updatedAt) {
                         isUpToDate = true;
                     }
+                    console.log(`[Backup Debug] Template ${t.name} - Local: ${t.updatedAt}, Cloud: ${cloudTime}, isUpToDate: ${isUpToDate}`);
                 }
 
                 return processItem(async () => {
@@ -398,10 +400,15 @@ export const useGoogleDrive = () => {
                     if (cloudTime >= localTime) {
                         isUpToDate = true;
                     }
+                    console.log(`[Backup Debug] History ${h.gameName} - Local: ${localTime}, Cloud: ${cloudTime}, isUpToDate: ${isUpToDate}`);
                 }
 
                 return processItem(async () => {
-                    await googleDriveService.backupHistoryRecord(h, cloudInfo?.id, cloudInfo?.name);
+                    const { updatedRecord } = await googleDriveService.backupHistoryRecord(h, cloudInfo?.id, cloudInfo?.name);
+                    
+                    if (updatedRecord.photoCloudIds && Object.keys(updatedRecord.photoCloudIds).length > 0) {
+                        await db.history.update(h.id, { photoCloudIds: updatedRecord.photoCloudIds });
+                    }
 
                     // [Fix] Logic to cleanup stale Active Session in Cloud
                     if (activeMap.has(h.id)) {
@@ -427,10 +434,15 @@ export const useGoogleDrive = () => {
                     if (cloudTime >= localTime) {
                         isUpToDate = true;
                     }
+                    console.log(`[Backup Debug] Session ${templateName} - Local: ${localTime}, Cloud: ${cloudTime}, isUpToDate: ${isUpToDate}`);
                 }
 
                 return processItem(async () => {
-                    await googleDriveService.backupActiveSession(s, templateName, cloudInfo?.id, cloudInfo?.name);
+                    const { updatedSession } = await googleDriveService.backupActiveSession(s, templateName, cloudInfo?.id, cloudInfo?.name);
+                    
+                    if (updatedSession.photoCloudIds && Object.keys(updatedSession.photoCloudIds).length > 0) {
+                        await db.sessions.update(s.id, { photoCloudIds: updatedSession.photoCloudIds });
+                    }
                 }, tCloud('cloud_active_session_prefix', { id: s.id.slice(0, 8) }), isUpToDate);
             });
 
@@ -532,6 +544,7 @@ export const useGoogleDrive = () => {
                     if (localTime >= cloudTime && localTime > 0) {
                         shouldDownload = false;
                     }
+                    console.log(`[Restore Debug] File ${file.name} - Local: ${localTime}, Cloud: ${cloudTime}, shouldDownload: ${shouldDownload}`);
                 }
 
                 try {

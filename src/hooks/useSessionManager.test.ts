@@ -94,8 +94,8 @@ vi.mock('../services/imageService', () => ({
 vi.mock('../services/googleDrive', () => ({
   googleDriveService: {
     createActiveSessionFolder: vi.fn(async () => 'folder_1'),
-    backupActiveSession: vi.fn(async () => undefined),
-    backupHistoryRecord: vi.fn(async () => undefined),
+    backupActiveSession: vi.fn(async () => ({ folderId: 'folderId', updatedSession: {} })),
+    backupHistoryRecord: vi.fn(async () => ({ folderId: 'folderId', updatedRecord: {} })),
     moveSessionToHistory: vi.fn(async () => undefined),
     backupTemplate: vi.fn(async (t: any) => t),
   },

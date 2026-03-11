@@ -362,7 +362,7 @@ class GoogleDriveService {
         return updatedTemplate;
     }
 
-    public async backupHistoryRecord(record: HistoryRecord, knownFolderId?: string, existingFolderName?: string): Promise<string> {
+    public async backupHistoryRecord(record: HistoryRecord, knownFolderId?: string, existingFolderName?: string): Promise<{ folderId: string, updatedRecord: HistoryRecord }> {
         if (!this.isAuthorized) await this.signIn();
         await this.ensureAppStructure();
         if (!this.historyFolderId) throw new Error("History folder not found");
@@ -397,10 +397,10 @@ class GoogleDriveService {
             appProperties: { originalUpdatedAt: String(timestamp) }
         });
 
-        return folderId;
+        return { folderId, updatedRecord: recordToSave };
     }
 
-    public async backupActiveSession(session: GameSession, templateName: string, knownFolderId?: string, existingFolderName?: string): Promise<string> {
+    public async backupActiveSession(session: GameSession, templateName: string, knownFolderId?: string, existingFolderName?: string): Promise<{ folderId: string, updatedSession: GameSession }> {
         if (!this.isAuthorized) await this.signIn();
         await this.ensureAppStructure();
         if (!this.activeFolderId) throw new Error("Active folder not found");
@@ -436,7 +436,7 @@ class GoogleDriveService {
             appProperties: { originalUpdatedAt: String(timestamp) }
         });
 
-        return folderId;
+        return { folderId, updatedSession: sessionToSave };
     }
 
     // --- Utility Methods ---

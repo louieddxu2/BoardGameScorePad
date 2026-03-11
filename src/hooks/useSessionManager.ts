@@ -331,7 +331,10 @@ export const useSessionManager = ({
                     }
 
                     if (folderId) {
-                        await googleDriveService.backupActiveSession(finalSession, folderName, folderId);
+                        const { updatedSession } = await googleDriveService.backupActiveSession(finalSession, folderName, folderId);
+                        if (updatedSession.photoCloudIds && Object.keys(updatedSession.photoCloudIds).length > 0) {
+                            await db.sessions.update(finalSession.id, { photoCloudIds: updatedSession.photoCloudIds });
+                        }
                     }
                 };
                 backgroundCloudBackup().catch(e => console.warn("Background session backup failed", e));
@@ -408,7 +411,10 @@ export const useSessionManager = ({
                     }
 
                     if (folderId) {
-                        await googleDriveService.backupHistoryRecord(record, folderId);
+                        const { updatedRecord } = await googleDriveService.backupHistoryRecord(record, folderId);
+                        if (updatedRecord.photoCloudIds && Object.keys(updatedRecord.photoCloudIds).length > 0) {
+                            await db.history.update(record.id, { photoCloudIds: updatedRecord.photoCloudIds });
+                        }
                         await googleDriveService.moveSessionToHistory(folderId);
                     }
                 };
