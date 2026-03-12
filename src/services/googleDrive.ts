@@ -355,7 +355,15 @@ class GoogleDriveService {
 
         if (template.updatedAt) {
             await googleDriveClient.updateFileMetadata(gameFolderId, {
-                appProperties: { originalUpdatedAt: String(template.updatedAt) }
+                appProperties: { 
+                    originalUpdatedAt: String(template.updatedAt),
+                    localUuid: template.id
+                }
+            });
+        } else {
+            // Even if no updatedAt, still tag it with the ID
+            await googleDriveClient.updateFileMetadata(gameFolderId, {
+                appProperties: { localUuid: template.id }
             });
         }
 
@@ -471,17 +479,28 @@ class GoogleDriveService {
         if (!this.isAuthorized) return;
         await this.ensureAppStructure();
 
-        let sourceParentId;
-        if (type === 'active') sourceParentId = this.activeFolderId;
-        else if (type === 'history') sourceParentId = this.historyFolderId;
-        else sourceParentId = this.templatesFolderId || this.appRootId;
+        let resolvedFolderId = folderId;
+
+        // [Robust Resolution] If type is template, prioritize tag-based search
+        if (type === 'template') {
+            const foundByTag = await googleDriveClient.findFileByProperty('localUuid', folderId, this.templatesFolderId || undefined);
+            if (foundByTag) {
+                resolvedFolderId = foundByTag.id;
+            } else {
+                // Fallback: Try name convention (Backward compatibility)
+                const query = `'${this.templatesFolderId}' in parents and name contains '_${folderId}' and trashed = false`;
+                const foundByName = await googleDriveClient.fetchAllItems(query, 'files(id)');
+                if (foundByName && foundByName.length > 0) {
+                    resolvedFolderId = foundByName[0].id;
+                }
+            }
+        }
 
         const trashId = await this.getTrashFolder(type);
-
-        if (sourceParentId) {
-            await googleDriveClient.moveFile(folderId, sourceParentId, trashId);
-            this.cleanupTrashLimit(trashId);
-        }
+        
+        // Use atomic move (no sourceParentId needed)
+        await googleDriveClient.moveFile(resolvedFolderId, undefined, trashId);
+        this.cleanupTrashLimit(trashId);
     }
 
     public async restoreFolder(folderId: string, type: CloudResourceType): Promise<void> {
@@ -493,10 +512,9 @@ class GoogleDriveService {
         else if (type === 'history') targetParentId = this.historyFolderId;
         else targetParentId = this.templatesFolderId || await this.getAppRoot();
 
-        const trashId = await this.getTrashFolder(type);
-
         if (targetParentId) {
-            await googleDriveClient.moveFile(folderId, trashId, targetParentId);
+            // Use atomic move (no sourceParentId needed)
+            await googleDriveClient.moveFile(folderId, undefined, targetParentId);
         }
     }
 
