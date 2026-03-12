@@ -402,7 +402,7 @@ class GoogleDriveService {
         // [Update] Use updatedAt if available, fallback to endTime
         const timestamp = record.updatedAt || record.endTime;
         await googleDriveClient.updateFileMetadata(folderId, {
-            appProperties: { originalUpdatedAt: String(timestamp) }
+            appProperties: { originalUpdatedAt: String(timestamp), localUuid: record.id }
         });
 
         return { folderId, updatedRecord: recordToSave };
@@ -441,7 +441,7 @@ class GoogleDriveService {
         // Fallback to startTime if lastUpdatedAt is missing (legacy data)
         const timestamp = session.lastUpdatedAt || session.startTime || Date.now();
         await googleDriveClient.updateFileMetadata(folderId, {
-            appProperties: { originalUpdatedAt: String(timestamp) }
+            appProperties: { originalUpdatedAt: String(timestamp), localUuid: session.id }
         });
 
         return { folderId, updatedSession: sessionToSave };
@@ -481,14 +481,22 @@ class GoogleDriveService {
 
         let resolvedFolderId = folderId;
 
-        // [Robust Resolution] If type is template, prioritize tag-based search
-        if (type === 'template') {
-            const foundByTag = await googleDriveClient.findFileByProperty('localUuid', folderId, this.templatesFolderId || undefined);
+        // [Robust Resolution] Resolve the cloud folder ID via tag, then name fallback
+        const parentIdMap: Record<CloudResourceType, string | null> = {
+            template: this.templatesFolderId,
+            active: this.activeFolderId,
+            history: this.historyFolderId,
+        };
+        const parentId = parentIdMap[type];
+
+        if (parentId) {
+            // 1. Tag-based search (preferred)
+            const foundByTag = await googleDriveClient.findFileByProperty('localUuid', folderId, parentId);
             if (foundByTag) {
                 resolvedFolderId = foundByTag.id;
             } else {
-                // Fallback: Try name convention (Backward compatibility)
-                const query = `'${this.templatesFolderId}' in parents and name contains '_${folderId}' and trashed = false`;
+                // 2. Name convention fallback (backward compatibility)
+                const query = `'${parentId}' in parents and name contains '_${folderId}' and trashed = false`;
                 const foundByName = await googleDriveClient.fetchAllItems(query, 'files(id)');
                 if (foundByName && foundByName.length > 0) {
                     resolvedFolderId = foundByName[0].id;
