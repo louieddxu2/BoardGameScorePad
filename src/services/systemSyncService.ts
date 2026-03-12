@@ -46,18 +46,18 @@ export const systemSyncService = {
           };
 
           // 合併玩家清單
-          finalLib.savedPlayers = mergeList(
-            localLib.savedPlayers || [],
+          finalLib.players = mergeList(
+            localLib.players || [],
             cloudSettings.library.players || [] // 注意：舊版雲端結構可能是 library.players
           );
 
           // 合併地點清單
-          finalLib.savedLocations = mergeList(
-            localLib.savedLocations || [],
+          finalLib.locations = mergeList(
+            localLib.locations || [],
             cloudSettings.library.locations || []
           );
           
-          console.log(`[SystemSync] Merge complete. Players: ${finalLib.savedPlayers.length}, Locations: ${finalLib.savedLocations.length}`);
+          console.log(`[SystemSync] Merge complete. Players: ${finalLib.players.length}, Locations: ${finalLib.locations.length}`);
         }
       } catch (e: any) {
         // 404 或網路錯誤通常代表雲端無檔案，或是第一次備份

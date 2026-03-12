@@ -23,10 +23,13 @@ catch {
 
 # Step 2: TypeScript type check
 Write-Host ""
-Write-Host "[2/3] TypeScript type check..." -ForegroundColor White
-$tscOutput = npx tsc --noEmit 2>&1
-if ($LASTEXITCODE -ne 0) {
-    Write-Host $tscOutput
+Write-Host "[2/3] TypeScript type check (tsc)..." -ForegroundColor White
+$tscOutput = cmd /c "npx tsc --noEmit --pretty false 2>&1" | Out-String
+$tscExitCode = $LASTEXITCODE
+
+if ($tscExitCode -ne 0) {
+    Write-Host "TypeScript errors found:" -ForegroundColor Yellow
+    Write-Host $tscOutput -ForegroundColor Gray
     Write-Host "[2/3] FAIL" -ForegroundColor Red
     $allPassed = $false
 }
@@ -37,14 +40,19 @@ else {
 # Step 3: Unit tests
 Write-Host ""
 Write-Host "[3/3] Running unit tests (vitest)..." -ForegroundColor White
-npm test 2>&1 | Tee-Object -Variable testOutput | Out-Null
-$testSummary = $testOutput | Select-String "Tests|passed|failed" | Select-Object -Last 3
-$testSummary | ForEach-Object { Write-Host $_.Line }
-if ($LASTEXITCODE -ne 0) {
+$testOutput = cmd /c "npx vitest run --no-color 2>&1" | Out-String
+$testExitCode = $LASTEXITCODE
+
+if ($testExitCode -ne 0) {
+    Write-Host "Unit tests failed:" -ForegroundColor Yellow
+    Write-Host $testOutput -ForegroundColor Gray
     Write-Host "[3/3] FAIL" -ForegroundColor Red
     $allPassed = $false
 }
 else {
+    # If success, show passing counts
+    $summary = $testOutput | Select-String "Tests.*passed" | Select-Object -Last 1
+    if ($summary) { Write-Host $summary.Line.Trim() -ForegroundColor Gray }
     Write-Host "[3/3] OK" -ForegroundColor Green
 }
 

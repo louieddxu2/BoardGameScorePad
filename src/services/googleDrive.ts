@@ -355,14 +355,22 @@ class GoogleDriveService {
 
         if (template.updatedAt) {
             await googleDriveClient.updateFileMetadata(gameFolderId, {
-                appProperties: { originalUpdatedAt: String(template.updatedAt) }
+                appProperties: { 
+                    originalUpdatedAt: String(template.updatedAt),
+                    localUuid: template.id
+                }
+            });
+        } else {
+            // Even if no updatedAt, still tag it with the ID
+            await googleDriveClient.updateFileMetadata(gameFolderId, {
+                appProperties: { localUuid: template.id }
             });
         }
 
         return updatedTemplate;
     }
 
-    public async backupHistoryRecord(record: HistoryRecord, knownFolderId?: string, existingFolderName?: string): Promise<string> {
+    public async backupHistoryRecord(record: HistoryRecord, knownFolderId?: string, existingFolderName?: string): Promise<{ folderId: string, updatedRecord: HistoryRecord }> {
         if (!this.isAuthorized) await this.signIn();
         await this.ensureAppStructure();
         if (!this.historyFolderId) throw new Error("History folder not found");
@@ -394,13 +402,13 @@ class GoogleDriveService {
         // [Update] Use updatedAt if available, fallback to endTime
         const timestamp = record.updatedAt || record.endTime;
         await googleDriveClient.updateFileMetadata(folderId, {
-            appProperties: { originalUpdatedAt: String(timestamp) }
+            appProperties: { originalUpdatedAt: String(timestamp), localUuid: record.id }
         });
 
-        return folderId;
+        return { folderId, updatedRecord: recordToSave };
     }
 
-    public async backupActiveSession(session: GameSession, templateName: string, knownFolderId?: string, existingFolderName?: string): Promise<string> {
+    public async backupActiveSession(session: GameSession, templateName: string, knownFolderId?: string, existingFolderName?: string): Promise<{ folderId: string, updatedSession: GameSession }> {
         if (!this.isAuthorized) await this.signIn();
         await this.ensureAppStructure();
         if (!this.activeFolderId) throw new Error("Active folder not found");
@@ -433,10 +441,10 @@ class GoogleDriveService {
         // Fallback to startTime if lastUpdatedAt is missing (legacy data)
         const timestamp = session.lastUpdatedAt || session.startTime || Date.now();
         await googleDriveClient.updateFileMetadata(folderId, {
-            appProperties: { originalUpdatedAt: String(timestamp) }
+            appProperties: { originalUpdatedAt: String(timestamp), localUuid: session.id }
         });
 
-        return folderId;
+        return { folderId, updatedSession: sessionToSave };
     }
 
     // --- Utility Methods ---
@@ -471,17 +479,36 @@ class GoogleDriveService {
         if (!this.isAuthorized) return;
         await this.ensureAppStructure();
 
-        let sourceParentId;
-        if (type === 'active') sourceParentId = this.activeFolderId;
-        else if (type === 'history') sourceParentId = this.historyFolderId;
-        else sourceParentId = this.templatesFolderId || this.appRootId;
+        let resolvedFolderId = folderId;
+
+        // [Robust Resolution] Resolve the cloud folder ID via tag, then name fallback
+        const parentIdMap: Record<CloudResourceType, string | null> = {
+            template: this.templatesFolderId,
+            active: this.activeFolderId,
+            history: this.historyFolderId,
+        };
+        const parentId = parentIdMap[type];
+
+        if (parentId) {
+            // 1. Tag-based search (preferred)
+            const foundByTag = await googleDriveClient.findFileByProperty('localUuid', folderId, parentId);
+            if (foundByTag) {
+                resolvedFolderId = foundByTag.id;
+            } else {
+                // 2. Name convention fallback (backward compatibility)
+                const query = `'${parentId}' in parents and name contains '_${folderId}' and trashed = false`;
+                const foundByName = await googleDriveClient.fetchAllItems(query, 'files(id)');
+                if (foundByName && foundByName.length > 0) {
+                    resolvedFolderId = foundByName[0].id;
+                }
+            }
+        }
 
         const trashId = await this.getTrashFolder(type);
-
-        if (sourceParentId) {
-            await googleDriveClient.moveFile(folderId, sourceParentId, trashId);
-            this.cleanupTrashLimit(trashId);
-        }
+        
+        // Use atomic move (no sourceParentId needed)
+        await googleDriveClient.moveFile(resolvedFolderId, undefined, trashId);
+        this.cleanupTrashLimit(trashId);
     }
 
     public async restoreFolder(folderId: string, type: CloudResourceType): Promise<void> {
@@ -493,10 +520,9 @@ class GoogleDriveService {
         else if (type === 'history') targetParentId = this.historyFolderId;
         else targetParentId = this.templatesFolderId || await this.getAppRoot();
 
-        const trashId = await this.getTrashFolder(type);
-
         if (targetParentId) {
-            await googleDriveClient.moveFile(folderId, trashId, targetParentId);
+            // Use atomic move (no sourceParentId needed)
+            await googleDriveClient.moveFile(folderId, undefined, targetParentId);
         }
     }
 

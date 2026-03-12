@@ -54,6 +54,14 @@ class GoogleDriveClient {
     return data.files && data.files.length > 0 ? data.files[0] : null;
   }
 
+  public async findFileByProperty(key: string, value: string, parentId: string = 'root'): Promise<DriveFile | null> {
+    const query = `'${parentId}' in parents and appProperties has { key='${key}' and value='${value}' } and trashed = false`;
+    const data = await this.fetchDrive(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id, name, mimeType, parents)`
+    );
+    return data.files && data.files.length > 0 ? data.files[0] : null;
+  }
+
   public async getFile(fileId: string, fields: string = 'id, name, mimeType'): Promise<DriveFile> {
       const data = await this.fetchDrive(
           `https://www.googleapis.com/drive/v3/files/${fileId}?fields=${fields}`
@@ -133,8 +141,24 @@ class GoogleDriveClient {
     return response.json();
   }
 
-  public async moveFile(fileId: string, previousParentId: string, newParentId: string): Promise<void> {
-      await this.fetchDrive(`https://www.googleapis.com/drive/v3/files/${fileId}?addParents=${newParentId}&removeParents=${previousParentId}`, {
+  public async moveFile(fileId: string, previousParentId: string | undefined, newParentId: string): Promise<void> {
+      let removeParents = previousParentId;
+      
+      // If previousParentId is missing, fetch it first (Atomic Auto-Resolution)
+      if (!removeParents) {
+          try {
+              const file = await this.getFile(fileId, 'parents');
+              if (file.parents && file.parents.length > 0) {
+                  removeParents = file.parents.join(',');
+              }
+          } catch (e) {
+              console.warn(`[moveFile] Could not resolve parents for ${fileId}, skipping removeParents`, e);
+          }
+      }
+
+      const url = `https://www.googleapis.com/drive/v3/files/${fileId}?addParents=${newParentId}${removeParents ? `&removeParents=${removeParents}` : ''}`;
+      
+      await this.fetchDrive(url, {
           method: 'PATCH'
       });
   }

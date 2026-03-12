@@ -70,7 +70,13 @@ interface DashboardModalsProps {
   onSessionRestoreSuccess: (s: GameSession) => void;
   onHistoryRestoreSuccess: (r: HistoryRecord) => void;
   onSystemBackup: (onProgress: (c: number, t: number) => void, onError: (f: string[]) => void) => Promise<{ success: number, skipped: number, failed: number }>;
-  onSystemRestore: (meta: any, onProgress: (c: number, t: number) => void, onError: (f: string[]) => void) => Promise<{ success: number, skipped: number, failed: number }>;
+  onSystemRestore: (
+    localMeta: { templates: Map<string, number>, history: Map<string, number>, sessions: Map<string, number> },
+    onProgress: (c: number, t: number) => void,
+    onError: (f: string[]) => void,
+    onItemRestored: (type: 'template' | 'history' | 'session', item: any) => Promise<void>,
+    onSettingsRestored?: (settings: any) => void
+  ) => Promise<{ success: number, skipped: number, failed: number }>;
   onGetLocalData: () => Promise<any>;
 }
 

@@ -6,6 +6,7 @@ import { useToast } from './useToast';
 import { useCloudTranslation } from '../i18n/cloud';
 import { GameTemplate, GameSession, HistoryRecord } from '../types';
 import { isDisposableTemplate } from '../utils/templateUtils';
+import { db } from '../db';
 
 export const useGoogleDrive = () => {
     const [isSyncing, setIsSyncing] = useState(false);
@@ -263,11 +264,7 @@ export const useGoogleDrive = () => {
 
     // [Full Backup] Smart Skip Logic: Cloud.ts >= Local.ts -> Skip
     const performFullBackup = useCallback(async (
-        systemData: any, // [New Argument] Full system data for merging
-        templates: GameTemplate[],
-        history: HistoryRecord[],
-        sessions: GameSession[],
-        overrides: GameTemplate[],
+        onGetLocalData: () => Promise<any>,
         onProgress: (count: number, total: number) => void,
         onError: (failedItems: string[]) => void,
         onItemSuccess?: (type: 'template' | 'history' | 'session', item: any) => void
@@ -279,8 +276,14 @@ export const useGoogleDrive = () => {
 
         try {
             await ensureConnection();
-
             await googleDriveService.ensureAppStructure();
+
+            // Fetch local data directly inside the sync routine
+            const localData = await onGetLocalData();
+            const templates: GameTemplate[] = localData.data.templates || [];
+            const history: HistoryRecord[] = localData.data.history || [];
+            const sessions: GameSession[] = localData.data.sessions || [];
+            const overrides: GameTemplate[] = localData.data.overrides || [];
 
             const [cloudTemplates, cloudHistory, cloudActive] = await Promise.all([
                 googleDriveService.listFoldersInParent(googleDriveService.templatesFolderId!),
@@ -378,12 +381,22 @@ export const useGoogleDrive = () => {
                     if (cloudTime >= t.updatedAt) {
                         isUpToDate = true;
                     }
+                    console.log(`[Backup Debug] Template ${t.name} - Local: ${t.updatedAt}, Cloud: ${cloudTime}, isUpToDate: ${isUpToDate}`);
+                }
+
+                if (isUpToDate) {
+                    if (t.updatedAt) {
+                        await db.templates.update(t.id, { lastSyncedAt: t.updatedAt });
+                    }
+                    return processItem(async () => { }, t.name, true);
                 }
 
                 return processItem(async () => {
                     const updatedT = await googleDriveService.backupTemplate(t, null, cloudInfo?.id, cloudInfo?.name);
+                    // [Fix] Update lastSyncedAt locally to hide the pending upload icon
+                    await db.templates.update(t.id, { lastSyncedAt: Date.now() });
                     if (onItemSuccess) onItemSuccess('template', updatedT);
-                }, t.name, isUpToDate);
+                }, t.name, false);
             });
 
             // 2b. Process History (Concurrency Pool)
@@ -398,10 +411,23 @@ export const useGoogleDrive = () => {
                     if (cloudTime >= localTime) {
                         isUpToDate = true;
                     }
+                    console.log(`[Backup Debug] History ${h.gameName} - Local: ${localTime}, Cloud: ${cloudTime}, isUpToDate: ${isUpToDate}`);
                 }
 
                 return processItem(async () => {
-                    await googleDriveService.backupHistoryRecord(h, cloudInfo?.id, cloudInfo?.name);
+                    const { updatedRecord } = await googleDriveService.backupHistoryRecord(h, cloudInfo?.id, cloudInfo?.name);
+                    
+                    // [Update] Consolidate metadata updates
+                    const updateData: any = {};
+                    if (updatedRecord.photoCloudIds && Object.keys(updatedRecord.photoCloudIds).length > 0) {
+                        updateData.photoCloudIds = updatedRecord.photoCloudIds;
+                    }
+
+                    // Always update updatedAt if it changed or to ensure sync status is marked
+                    // For History, we don't have lastSyncedAt, but we can update updatedAt to cloud ts
+                    if (Object.keys(updateData).length > 0) {
+                        await db.history.update(h.id, updateData);
+                    }
 
                     // [Fix] Logic to cleanup stale Active Session in Cloud
                     if (activeMap.has(h.id)) {
@@ -427,16 +453,26 @@ export const useGoogleDrive = () => {
                     if (cloudTime >= localTime) {
                         isUpToDate = true;
                     }
+                    console.log(`[Backup Debug] Session ${templateName} - Local: ${localTime}, Cloud: ${cloudTime}, isUpToDate: ${isUpToDate}`);
                 }
 
                 return processItem(async () => {
-                    await googleDriveService.backupActiveSession(s, templateName, cloudInfo?.id, cloudInfo?.name);
+                    const { updatedSession } = await googleDriveService.backupActiveSession(s, templateName, cloudInfo?.id, cloudInfo?.name);
+                    
+                    const updateData: any = {};
+                    if (updatedSession.photoCloudIds && Object.keys(updatedSession.photoCloudIds).length > 0) {
+                        updateData.photoCloudIds = updatedSession.photoCloudIds;
+                    }
+                    
+                    if (Object.keys(updateData).length > 0) {
+                        await db.sessions.update(s.id, updateData);
+                    }
                 }, tCloud('cloud_active_session_prefix', { id: s.id.slice(0, 8) }), isUpToDate);
             });
 
             // 2d. Process System Settings (Merge & Upload via Service)
             try {
-                await systemSyncService.mergeAndBackupSystemSettings(systemData);
+                await systemSyncService.mergeAndBackupSystemSettings(localData);
                 successCount++;
             } catch (e) {
                 console.warn("Settings backup failed", e);
@@ -532,6 +568,7 @@ export const useGoogleDrive = () => {
                     if (localTime >= cloudTime && localTime > 0) {
                         shouldDownload = false;
                     }
+                    console.log(`[Restore Debug] File ${file.name} - Local: ${localTime}, Cloud: ${cloudTime}, shouldDownload: ${shouldDownload}`);
                 }
 
                 try {
