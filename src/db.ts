@@ -304,6 +304,9 @@ export class ScorePadDatabase extends Dexie {
 
         // Version 27: Force update for built-in template changes
         (this as any).version(27).stores({});
+
+        // Version 28: Force update for English templates
+        (this as any).version(28).stores({});
     }
 }
 

@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { db } from './db';
 
-describe('database schema guard (v27)', () => {
+describe('database schema guard (v28)', () => {
   it('keeps expected schema version', () => {
-    expect(db.verno).toBe(27);
+    expect(db.verno).toBe(28);
   });
 
   it('includes key tables required by migration path', () => {

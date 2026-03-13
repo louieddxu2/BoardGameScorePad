@@ -16,6 +16,8 @@
     "dexie-react-hooks": "^1.1.7",
     "fuse.js": "^7.0.0",
     "html-to-image": "^1.11.11",
+    "hyphenation.en-us": "^0.2.1",
+    "hypher": "^0.2.5",
     "lucide-react": "^0.344.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
