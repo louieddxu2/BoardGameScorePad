@@ -1,7 +1,7 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, SwitchCamera, Check, RotateCcw, Loader2 } from 'lucide-react';
+import { X, SwitchCamera, Check, RotateCcw, Loader2, Camera } from 'lucide-react';
 import { useToast } from '../../hooks/useToast';
 import { useScannerTranslation } from '../../i18n/scanner';
 
@@ -261,14 +261,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
                     </div>
                 </div>
 
-                {/* Single Shot Hint */}
-                {singleShot && (
-                    <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none z-10">
-                        <span className="text-white/70 text-xs bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm">
-                            {t('camera_auto_save')}
-                        </span>
-                    </div>
-                )}
+
             </div>
 
             {/* Bottom Controls - Adaptive Layout */}
@@ -302,7 +295,9 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
                     {isProcessing ? (
                         <Loader2 size={32} className="animate-spin text-white" />
                     ) : (
-                        <div className="w-16 h-16 bg-white rounded-full transition-all" style={iconStyle}></div>
+                        <div className="w-16 h-16 bg-white rounded-full transition-all flex items-center justify-center">
+                            <Camera size={28} className="text-slate-400" style={iconStyle} />
+                        </div>
                     )}
                 </button>
 
