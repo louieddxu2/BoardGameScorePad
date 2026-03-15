@@ -57,7 +57,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     }, [options, isSearching, searchQuery]);
 
     // --- Local UI State (Selection & Menus) ---
-    const [selectedOptionUid, setSelectedOptionUid] = useState<string | null>(null);
+    const [userSelectedUid, setUserSelectedUid] = useState<string | null>(null);
     const [activeMenu, setActiveMenu] = useState<{ type: 'mode' | 'location', bottom: number, left: number, width: number } | null>(null);
     const [isManualInput, setIsManualInput] = useState(!hasLocationHistory);
     const [showRuleMenu, setShowRuleMenu] = useState(false); // For compact dropdown
@@ -65,30 +65,27 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
 
-    // Auto-select first option (only if current selection is no longer valid)
+    // [New] 搜尋字串改變時，清空手動選取，回歸自動選取模式
     useEffect(() => {
-        if (processedOptions.length > 0) {
-            // [Fix] 保留使用者的當前選取，除非該選項已不在列表中
-            const isCurrentSelectionValid = selectedOptionUid && processedOptions.some(o => o.uid === selectedOptionUid);
-            if (!isCurrentSelectionValid) {
-                setSelectedOptionUid(processedOptions[0].uid);
-            }
-        } else {
-            setSelectedOptionUid(null);
-        }
-    }, [processedOptions]);
+        setUserSelectedUid(null);
+    }, [searchQuery]);
+
 
     // Determine Docked Item
     const dockedItem = useMemo(() => {
-        if (selectedOptionUid) {
-            const found = processedOptions.find(t => t.uid === selectedOptionUid);
+        // 1. 優先使用使用者手動點選的項目 (若該項目目前仍在列表中)
+        if (userSelectedUid) {
+            const found = processedOptions.find(t => t.uid === userSelectedUid);
             if (found) return found;
         }
+
+        // 2. 否則，自動使用列表中的第一項 (搜尋結果第一名 或 推薦第一名)
         if (processedOptions.length > 0) {
             return processedOptions[0];
         }
+
         return null;
-    }, [processedOptions, selectedOptionUid]);
+    }, [processedOptions, userSelectedUid]);
 
     // --- Hook: Setup State & Recommendations ---
     // Passing dockedItem as the active context for recommendations
@@ -156,7 +153,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     // --- Handlers ---
 
     const handleOptionClick = (t: GameOption) => {
-        setSelectedOptionUid(t.uid);
+        setUserSelectedUid(t.uid);
     };
 
     const handleStart = () => {

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { GameTemplate, GameSession, HistoryRecord, SavedListItem } from '../../types';
+import { GameTemplate, GameSession, HistoryRecord, SavedListItem, ScoringRule } from '../../types';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 import { usePullAction } from '../../hooks/usePullAction';
 import { useModalBackHandler } from '../../hooks/useModalBackHandler';
@@ -71,7 +71,7 @@ interface DashboardProps {
   savedGames: SavedListItem[];
   isSetupModalOpen?: boolean;
   gameOptions: GameOption[];
-  onQuickStart: (template: GameTemplate, playerCount: number, location: string, locationId?: string) => void;
+  onQuickStart: (template: GameTemplate, playerCount: number, location: string, locationId?: string, extra?: { startTimeStr?: string, scoringRule?: ScoringRule }) => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = React.memo(({

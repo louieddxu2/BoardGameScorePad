@@ -233,7 +233,7 @@ const App: React.FC = () => {
       if (parsed.source === 'builtin') {
         const lang = tApp('app_lang_code') || 'zh-TW'; // Assume app_lang_code returns 'en' or similar based on i18n
         const isEn = lang.startsWith('en');
-        
+
         // Ensure shortId doesn't already have EN- prefix if passed manually
         const baseShortId = parsed.shortId.startsWith('EN-') ? parsed.shortId.substring(3) : parsed.shortId;
         const enShortId = `EN-${baseShortId}`;
@@ -487,15 +487,15 @@ const App: React.FC = () => {
 
   // [New] Direct Start Handler (Bypasses Setup Modal)
   // [Updated] Integrate Auto-Fill logic directly in startSession
-  const handleQuickStart = async (template: GameTemplate, playerCount: number, location: string, locationId?: string) => {
+  const handleQuickStart = async (template: GameTemplate, playerCount: number, location: string, locationId?: string, extra?: { startTimeStr?: string, scoringRule?: ScoringRule }) => {
     if (appData.activeSessionIds.includes(template.id)) {
       await appData.discardSession(template.id);
     }
 
     // 1. Start Session (Async) - Includes Auto-Fill Logic
     await appData.startSession(template, playerCount, {
-      startTimeStr: undefined,
-      scoringRule: template.defaultScoringRule || 'HIGHEST_WINS',
+      startTimeStr: extra?.startTimeStr,
+      scoringRule: extra?.scoringRule || template.defaultScoringRule || 'HIGHEST_WINS',
       location: location,
       locationId: locationId
     });
