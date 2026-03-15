@@ -10,6 +10,7 @@ import { cropImageToDataUrl } from '../../../utils/imageProcessing';
 import TexturedScreenshotView from './TexturedScreenshotView';
 import { calculateWinners } from '../../../utils/templateUtils'; // [Refactor]
 import { useSessionTranslation } from '../../../i18n/session';
+import { injectSoftHyphens } from '../../../utils/text';
 
 interface ScreenshotLayout {
     itemWidth: number;
@@ -39,7 +40,7 @@ const ScreenshotHeaderCell: React.FC<{ col: any; baseImage?: string; children?: 
         <div className={props.className} style={style}>
             <div className="flex flex-col items-center justify-center w-full h-full">
                 <span
-                    className="text-sm font-bold text-slate-300 w-full leading-tight"
+                    className="text-sm font-bold text-slate-300 w-full leading-tight hyphenate"
                     style={{
                         whiteSpace: 'pre-wrap',
                         wordBreak: 'break-word',
@@ -47,7 +48,7 @@ const ScreenshotHeaderCell: React.FC<{ col: any; baseImage?: string; children?: 
                         ...(props.col.color && { color: props.col.color, ...(isColorDark(props.col.color) && { textShadow: ENHANCED_TEXT_SHADOW }) })
                     }}
                 >
-                    {props.col.name}
+                    {injectSoftHyphens(props.col.name)}
                 </span>
                 {props.col.isScoring && (
                     <div className="text-xs text-slate-500 mt-1 flex flex-col items-center justify-center w-full leading-none">
@@ -96,8 +97,8 @@ const ScreenshotTotalLabel: React.FC<{ template: GameTemplate, baseImage?: strin
     }
 
     return (
-        <div className={className} style={finalStyle}>
-            {!hasTexture && <span className="font-black text-emerald-400 text-sm">{t('ss_total_label')}</span>}
+        <div className={className + " hyphenate"} style={finalStyle}>
+            {!hasTexture && <span className="font-black text-emerald-400 text-sm">{injectSoftHyphens(t('ss_total_label'))}</span>}
         </div>
     );
 }
@@ -130,8 +131,8 @@ const ScreenshotPlayerLabelCorner: React.FC<{ template: GameTemplate, baseImage?
     }
 
     return (
-        <div className={className} style={finalStyle}>
-            {!hasTexture && <span className="font-bold text-sm text-slate-400">{t('ss_player_label')}</span>}
+        <div className={className + " hyphenate"} style={finalStyle}>
+            {!hasTexture && <span className="font-bold text-sm text-slate-400">{injectSoftHyphens(t('ss_player_label'))}</span>}
         </div>
     );
 }
