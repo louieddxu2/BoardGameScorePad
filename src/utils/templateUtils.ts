@@ -38,18 +38,18 @@ export const createVirtualTemplate = (
     playerCount: number = 0,
     scoringRule: ScoringRule = 'HIGHEST_WINS'
 ): GameTemplate => {
-  return {
-    id,
-    name,
-    bggId: bggId || '',
-    columns: [], // 空欄位代表簡易模式
-    createdAt: timestamp,
-    updatedAt: timestamp,
-    lastPlayerCount: playerCount,
-    defaultScoringRule: scoringRule,
-    hasImage: false,
-    description: "Virtual Template (Original Missing)"
-  };
+    return {
+        id,
+        name,
+        bggId: bggId || '',
+        columns: [], // 空欄位代表簡易模式
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        lastPlayerCount: playerCount,
+        defaultScoringRule: scoringRule,
+        hasImage: false,
+        description: "Virtual Template (Original Missing)"
+    };
 };
 
 /**
@@ -65,29 +65,29 @@ export const createVirtualTemplate = (
  * 4. 未釘選 (不在 pinnedIds 列表中)
  */
 export const isDisposableTemplate = (template: GameTemplate, pinnedIds: string[] = []): boolean => {
-  // 0. 優先檢查：如果已被釘選，絕對不是免洗模板
-  if (pinnedIds.includes(template.id)) {
-    return false;
-  }
+    // 0. 優先檢查：如果已被釘選，絕對不是免洗模板
+    if (pinnedIds.includes(template.id)) {
+        return false;
+    }
 
-  // 1. 無結構
-  // 由於我們現在是在 extractDataSummaries 產生摘要前就呼叫此函式，
-  // 傳入的 template 保證是完整的，因此直接檢查 columns 長度即可。
-  if (template.columns && template.columns.length > 0) {
-    return false;
-  }
+    // 1. 無結構
+    // 由於我們現在是在 extractDataSummaries 產生摘要前就呼叫此函式，
+    // 傳入的 template 保證是完整的，因此直接檢查 columns 長度即可。
+    if (template.columns && template.columns.length > 0) {
+        return false;
+    }
 
-  // 2. 無圖片
-  if (template.imageId || template.cloudImageId || template.hasImage) {
-    return false;
-  }
+    // 2. 無圖片
+    if (template.imageId || template.cloudImageId || template.hasImage) {
+        return false;
+    }
 
-  // 3. 無自訂顏色
-  if (template.supportedColors && template.supportedColors.length > 0) {
-    return false;
-  }
+    // 3. 無自訂顏色
+    if (template.supportedColors && template.supportedColors.length > 0) {
+        return false;
+    }
 
-  return true;
+    return true;
 };
 
 /**
@@ -97,9 +97,10 @@ export const isDisposableTemplate = (template: GameTemplate, pinnedIds: string[]
  * @returns 贏家的 Player ID 陣列
  */
 export const calculateWinners = (players: Player[], rule: ScoringRule = 'HIGHEST_WINS'): string[] => {
+    if (rule === 'COMPETITIVE_NO_SCORE' || rule === 'COOP_NO_SCORE') return [];
     let winnerIds: string[] = [];
 
-    if (rule === 'COOP' || rule === 'COOP_NO_SCORE') {
+    if (rule === 'COOP') {
         // 合作模式：只要沒人強制落敗，全員皆贏
         const anyForcedLost = players.some(p => p.isForceLost);
         if (!anyForcedLost) {
@@ -109,10 +110,10 @@ export const calculateWinners = (players: Player[], rule: ScoringRule = 'HIGHEST
     } else {
         // 競爭模式
         const validPlayers = players.filter(p => !p.isForceLost);
-        
+
         if (validPlayers.length > 0) {
             let targetScore: number;
-            
+
             if (rule === 'LOWEST_WINS') {
                 targetScore = Math.min(...validPlayers.map(p => p.totalScore));
             } else {
@@ -121,7 +122,7 @@ export const calculateWinners = (players: Player[], rule: ScoringRule = 'HIGHEST
             }
 
             const candidates = validPlayers.filter(p => p.totalScore === targetScore);
-            
+
             // Tie Breaker 邏輯
             const hasTieBreaker = candidates.some(p => p.tieBreaker);
             if (hasTieBreaker) {
@@ -131,7 +132,7 @@ export const calculateWinners = (players: Player[], rule: ScoringRule = 'HIGHEST
             }
         }
     }
-    
+
     return winnerIds;
 };
 
@@ -149,15 +150,15 @@ export const calculateWinners = (players: Player[], rule: ScoringRule = 'HIGHEST
  * @returns 準備好寫入 DB 的 GameTemplate (ID 可能已變更)
  */
 export const prepareTemplateForSave = async (
-    template: GameTemplate, 
+    template: GameTemplate,
     checkIsBuiltin: (id: string) => Promise<boolean>
 ): Promise<GameTemplate> => {
     // 確保結構正規化
     const migratedTemplate = migrateTemplate(template);
-    
+
     // 檢查是否需要分叉 (Fork)
     const isBuiltin = await checkIsBuiltin(migratedTemplate.id);
-    
+
     if (isBuiltin) {
         // 是內建模板 -> 建立副本
         const oldId = migratedTemplate.id;
@@ -168,7 +169,7 @@ export const prepareTemplateForSave = async (
             sourceTemplateId: oldId
         };
     }
-    
+
     // 一般模板 -> 直接回傳
     return migratedTemplate;
 };

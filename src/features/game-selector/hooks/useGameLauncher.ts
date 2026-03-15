@@ -1,5 +1,5 @@
 
-import { GameTemplate } from '../../../types';
+import { GameTemplate, ScoringRule } from '../../../types';
 import { GameOption } from '../types';
 import { useToast } from '../../../hooks/useToast';
 import { db } from '../../../db';
@@ -12,7 +12,7 @@ interface UseGameLauncherProps {
   onGetFullTemplate: (id: string) => Promise<GameTemplate | null>;
   onTemplateSave: (template: GameTemplate, options?: { skipCloud?: boolean; preserveTimestamps?: boolean }) => void;
   // [Changed] Add optional locationId to the callback signature
-  onGameStart: (template: GameTemplate, playerCount: number, location: string, locationId?: string) => void;
+  onGameStart: (template: GameTemplate, playerCount: number, location: string, locationId?: string, extra?: { startTimeStr?: string, scoringRule?: ScoringRule }) => void;
 }
 
 export const useGameLauncher = ({
@@ -24,7 +24,7 @@ export const useGameLauncher = ({
   const { showToast } = useToast();
   const { t } = useAppTranslation();
 
-  const handlePanelStart = async (option: GameOption, playerCount: number, location: string, locationId?: string) => {
+  const handlePanelStart = async (option: GameOption, playerCount: number, location: string, locationId?: string, extra?: { startTimeStr?: string, scoringRule?: ScoringRule }) => {
     let templateToStart: GameTemplate;
 
     // 1. Resolve Template Source
@@ -69,12 +69,11 @@ export const useGameLauncher = ({
 
       // 3. Launch Session Directly (Bypassing Setup Modal)
       // [Changed] Pass locationId
-      onGameStart(templateToStart, playerCount, location, locationId);
-
+      onGameStart(templateToStart, playerCount, location, locationId, extra);
     } catch (e) {
       console.error("Failed to start game", e);
       // Fallback launch even if prefs fail
-      onGameStart(templateToStart, playerCount, location, locationId);
+      onGameStart(templateToStart, playerCount, location, locationId, extra);
     }
   };
 

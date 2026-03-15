@@ -7,6 +7,7 @@ import { generateId } from '../../../utils/idGenerator';
 import { relationshipService } from '../../../services/relationshipService'; // Import Service
 import { DATA_LIMITS } from '../../../dataLimits';
 import { getRecordScoringRule, getRecordBggId } from '../../../utils/historyUtils';
+import { calculateWinners } from '../../../utils/templateUtils';
 
 import { useHistoryTranslation } from '../../../i18n/history';
 
@@ -113,6 +114,9 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
                     finalRecord.snapshotTemplate = {} as any;
                 }
                 finalRecord.snapshotTemplate.defaultScoringRule = finalRecord.scoringRule;
+
+                // [Fix] Recalculate winners based on the NEW rule (Root Fix)
+                finalRecord.winnerIds = calculateWinners(finalRecord.players, finalRecord.scoringRule);
             }
 
             // 1. Save changes to DB
