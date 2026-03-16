@@ -225,20 +225,25 @@ export const useAppData = () => {
     };
 
     const deleteHistoryRecord = async (id: string) => {
-        try {
-            const record = await db.history.get(id);
-            await db.history.delete(id);
-            await imageService.deleteImagesByRelatedId(id);
+        // [Optimistic UI] Step 1: Mask immediately — React will re-render and hide the item
+        queries.setPendingDeleteHistoryIds(prev => [...prev, id]);
+        showToast({ message: tApp('app_toast_history_deleted'), type: 'info' });
 
-            if (isCloudEnabled() && record?.cloudFolderId) {
-                googleDriveService.softDeleteFolder(record.cloudFolderId, 'history').catch(console.error);
+        // [Async Scheduling] Step 2: Defer heavy DB work to next event loop tick.
+        // This ensures the browser paints the masked state BEFORE IndexedDB blocks the main thread.
+        setTimeout(async () => {
+            try {
+                const record = await db.history.get(id);
+                await db.history.delete(id);
+                await imageService.deleteImagesByRelatedId(id);
+
+                if (isCloudEnabled() && record?.cloudFolderId) {
+                    googleDriveService.softDeleteFolder(record.cloudFolderId, 'history').catch(console.error);
+                }
+            } catch (error) {
+                console.error("Failed to delete history:", error);
             }
-
-            showToast({ message: tApp('app_toast_history_deleted'), type: 'info' });
-        } catch (error) {
-            console.error("Failed to delete history:", error);
-            showToast({ message: tApp('app_toast_delete_failed'), type: 'error' });
-        }
+        }, 0);
     };
 
     const viewHistory = async (id: string | null) => {

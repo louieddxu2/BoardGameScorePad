@@ -1,9 +1,6 @@
 
 import React from 'react';
 import { GameTemplate, GameSession, HistoryRecord } from '../../../types';
-import { useCommonTranslation } from '../../../i18n/common';
-import { useDashboardTranslation } from '../../../i18n/dashboard';
-import ConfirmationModal from '../../shared/ConfirmationModal';
 import InstallGuideModal from '../../modals/InstallGuideModal';
 import DataManagerModal from '../modals/DataManagerModal';
 import CloudManagerModal from '../modals/CloudManagerModal';
@@ -15,11 +12,6 @@ import { BgStatsExport, ImportManualLinks } from '../../../features/bgstats/type
 
 interface DashboardModalsProps {
   state: {
-    templateToDelete: string | null;
-    sessionToDelete: string | null;
-    historyToDelete: string | null;
-    showClearAllConfirm: boolean;
-    restoreTarget: GameTemplate | null;
     showDataModal: boolean;
     showCloudModal: boolean;
     cloudModalCategory: 'templates' | 'sessions' | 'history';
@@ -29,11 +21,6 @@ interface DashboardModalsProps {
     showInspector: boolean;
   };
   actions: {
-    setTemplateToDelete: (id: string | null) => void;
-    setSessionToDelete: (id: string | null) => void;
-    setHistoryToDelete: (id: string | null) => void;
-    setShowClearAllConfirm: (show: boolean) => void;
-    setRestoreTarget: (target: GameTemplate | null) => void;
     setShowDataModal: (show: boolean) => void;
     setShowCloudModal: (show: boolean) => void;
     setShowInstallGuide: (show: boolean) => void;
@@ -46,11 +33,6 @@ interface DashboardModalsProps {
   isConnected: boolean;
   isMockMode: boolean;
 
-  onTemplateDelete: (id: string) => void;
-  onDiscardSession: (id: string) => void;
-  onDeleteHistory: (id: string) => void;
-  onClearAllActiveSessions: () => void;
-  onRestoreSystem: (id: string) => void;
   onBatchImport: (templates: GameTemplate[]) => void;
   onGetFullTemplate: (id: string) => Promise<GameTemplate | null>;
   onBgStatsImport: (data: BgStatsExport, links: ImportManualLinks) => Promise<boolean>;
@@ -86,11 +68,6 @@ export const DashboardModals: React.FC<DashboardModalsProps> = ({
   userTemplates,
   isConnected,
   isMockMode,
-  onTemplateDelete,
-  onDiscardSession,
-  onDeleteHistory,
-  onClearAllActiveSessions,
-  onRestoreSystem,
   onBatchImport,
   onGetFullTemplate,
   onBgStatsImport,
@@ -110,66 +87,9 @@ export const DashboardModals: React.FC<DashboardModalsProps> = ({
   onSystemRestore,
   onGetLocalData
 }) => {
-  const { t: tCommon } = useCommonTranslation();
-  const { t: tDash } = useDashboardTranslation();
-
   return (
     <>
       {state.showInspector && <SystemDataInspector onClose={() => actions.setShowInspector(false)} />}
-
-      <ConfirmationModal
-        isOpen={!!state.templateToDelete}
-        title={tDash('confirm_delete_template_title')}
-        message={tDash('confirm_delete_template_msg')}
-        confirmText={tCommon('delete')}
-        isDangerous={true}
-        onCancel={() => actions.setTemplateToDelete(null)}
-        onConfirm={() => { if (state.templateToDelete) onTemplateDelete(state.templateToDelete); actions.setTemplateToDelete(null); }}
-      />
-
-      <ConfirmationModal
-        isOpen={!!state.sessionToDelete}
-        title={tDash('confirm_delete_session_title')}
-        message={tDash('confirm_delete_session_msg')}
-        confirmText={tCommon('delete')}
-        isDangerous={true}
-        onCancel={() => actions.setSessionToDelete(null)}
-        onConfirm={() => { if (state.sessionToDelete) onDiscardSession(state.sessionToDelete); actions.setSessionToDelete(null); }}
-      />
-
-      <ConfirmationModal
-        isOpen={!!state.historyToDelete}
-        title={tDash('confirm_delete_history_title')}
-        message={tDash('confirm_delete_template_msg')}
-        confirmText={tCommon('delete')}
-        isDangerous={true}
-        onCancel={() => actions.setHistoryToDelete(null)}
-        onConfirm={() => { if (state.historyToDelete) onDeleteHistory(state.historyToDelete); actions.setHistoryToDelete(null); }}
-      />
-
-      <ConfirmationModal
-        isOpen={state.showClearAllConfirm}
-        title={tDash('confirm_clear_all_sessions_title')}
-        message={tDash('confirm_clear_all_sessions_msg')}
-        confirmText={tDash('confirm_clear_all')}
-        isDangerous={true}
-        onCancel={() => actions.setShowClearAllConfirm(false)}
-        onConfirm={() => { onClearAllActiveSessions(); actions.setShowClearAllConfirm(false); }}
-      />
-
-      <ConfirmationModal
-        isOpen={!!state.restoreTarget}
-        title={tDash('confirm_restore_title')}
-        message={tDash('confirm_restore_msg')}
-        confirmText={tCommon('restore')}
-        onCancel={() => actions.setRestoreTarget(null)}
-        onConfirm={async () => {
-          if (state.restoreTarget) {
-            onRestoreSystem(state.restoreTarget.id);
-            actions.setRestoreTarget(null);
-          }
-        }}
-      />
 
       <InstallGuideModal
         isOpen={state.showInstallGuide}

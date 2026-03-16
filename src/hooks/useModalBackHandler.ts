@@ -33,10 +33,16 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
 
       // 3. 定義上一頁監聽器
       const handlePopState = (e: PopStateEvent) => {
-        // 標記為「由瀏覽器上一頁觸發」
-        isPoppedRef.current = true;
-        // 執行關閉
-        onCloseRef.current();
+        const state = e.state;
+        // [Fix] 只有在回到「初始狀態(null)」或是「明確的其他彈窗」時才執行關閉邏輯。
+        // 如果是回到「自己的 ID」或是「緩衝層 (wall entry，即沒有 modal 屬性的 state)」，則維持開啟。
+        // 這能確保當子彈窗關閉觸發 back() 導致 land 在父彈窗的緩衝層時，父彈窗不會跟著關閉。
+        if (state === null || (state.modal && state.modal !== modalId)) {
+          // 標記為「由瀏覽器上一頁觸發」
+          isPoppedRef.current = true;
+          // 執行關閉
+          onCloseRef.current();
+        }
       };
 
       window.addEventListener('popstate', handlePopState);

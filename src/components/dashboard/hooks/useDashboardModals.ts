@@ -5,11 +5,6 @@ import { GameTemplate } from '../../../types';
 
 export const useDashboardModals = () => {
   // Modal Control States
-  const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
-  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
-  const [historyToDelete, setHistoryToDelete] = useState<string | null>(null);
-  const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
-  const [restoreTarget, setRestoreTarget] = useState<GameTemplate | null>(null);
   const [showDataModal, setShowDataModal] = useState(false);
   const [showCloudModal, setShowCloudModal] = useState(false);
   const [cloudModalCategory, setCloudModalCategory] = useState<'templates' | 'sessions' | 'history'>('templates');
@@ -19,11 +14,6 @@ export const useDashboardModals = () => {
   const [showInspector, setShowInspector] = useState(false);
 
   // Back Button Handlers
-  useModalBackHandler(!!templateToDelete, () => setTemplateToDelete(null), 'delete-template');
-  useModalBackHandler(!!sessionToDelete, () => setSessionToDelete(null), 'delete-session');
-  useModalBackHandler(!!historyToDelete, () => setHistoryToDelete(null), 'delete-history');
-  useModalBackHandler(showClearAllConfirm, () => setShowClearAllConfirm(false), 'clear-all');
-  useModalBackHandler(!!restoreTarget, () => setRestoreTarget(null), 'restore-template');
   useModalBackHandler(showInstallGuide, () => setShowInstallGuide(false), 'install-guide');
   useModalBackHandler(showInspector, () => setShowInspector(false), 'inspector');
   useModalBackHandler(showDataModal, () => setShowDataModal(false), 'data-manager');
@@ -33,11 +23,6 @@ export const useDashboardModals = () => {
 
   return {
     state: {
-      templateToDelete,
-      sessionToDelete,
-      historyToDelete,
-      showClearAllConfirm,
-      restoreTarget,
       showDataModal,
       showCloudModal,
       cloudModalCategory,
@@ -47,11 +32,6 @@ export const useDashboardModals = () => {
       showInspector
     },
     actions: {
-      setTemplateToDelete,
-      setSessionToDelete,
-      setHistoryToDelete,
-      setShowClearAllConfirm,
-      setRestoreTarget,
       setShowDataModal,
       setShowCloudModal,
       setCloudModalCategory,

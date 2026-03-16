@@ -23,6 +23,14 @@ vi.mock('../../../i18n/dashboard', () => ({
   useDashboardTranslation: () => ({ t: hoisted.t }),
 }));
 
+vi.mock('../../../i18n/common', () => ({
+  useCommonTranslation: () => ({ t: hoisted.t }),
+}));
+
+vi.mock('../../../hooks/useConfirm', () => ({
+  useConfirm: () => ({ confirm: vi.fn(async () => true) }),
+}));
+
 vi.mock('../../../hooks/useGoogleDrive', () => ({
   useGoogleDrive: () => ({
     handleBackup: vi.fn(async () => null),
@@ -81,6 +89,11 @@ describe('useDashboardActions.handleCopyJSON', () => {
         onGetLocalData: vi.fn(async () => ({})),
         onTogglePin: vi.fn(),
         onTogglePinOption: vi.fn(),
+        onDeleteHistory: vi.fn(),
+        onClearAllActiveSessions: vi.fn(),
+        onRestoreSystem: vi.fn(),
+        onTemplateDelete: vi.fn(),
+        onDiscardSession: vi.fn(),
       })
     );
 

@@ -5,6 +5,7 @@ import { RotateCcw, Scale, BrainCircuit, Calculator, MapPin, Palette } from 'luc
 import { DEFAULT_PLAYER_WEIGHTS, PlayerRecommendationWeights, DEFAULT_COUNT_WEIGHTS, CountRecommendationWeights, DEFAULT_LOCATION_WEIGHTS, LocationRecommendationWeights, DEFAULT_COLOR_WEIGHTS, ColorRecommendationWeights } from '../../../../features/recommendation/types';
 import { weightAdjustmentEngine, PLAYER_WEIGHTS_ID, COUNT_WEIGHTS_ID, LOCATION_WEIGHTS_ID, COLOR_WEIGHTS_ID } from '../../../../features/recommendation/WeightAdjustmentEngine';
 import { useInspectorTranslation } from '../shared/InspectorCommon';
+import { useConfirm } from '../../../../hooks/useConfirm';
 
 // Reusable Component for displaying a single engine's weights
 const EngineWeightSection: React.FC<{
@@ -111,6 +112,7 @@ const EngineWeightSection: React.FC<{
 
 const WeightsInspector: React.FC = () => {
     const t = useInspectorTranslation();
+    const { confirm } = useConfirm();
 
     const playerWeights = useLiveQuery(async () => {
         return await weightAdjustmentEngine.getWeights(PLAYER_WEIGHTS_ID, DEFAULT_PLAYER_WEIGHTS);
@@ -129,25 +131,40 @@ const WeightsInspector: React.FC = () => {
     }, [], DEFAULT_COLOR_WEIGHTS);
 
     const handleResetPlayer = async () => {
-        if (confirm(t('confirm_reset_player'))) {
-            await weightAdjustmentEngine.saveWeights(PLAYER_WEIGHTS_ID, DEFAULT_PLAYER_WEIGHTS);
+        if (await confirm({ title: t('btn_reset_weights'), message: t('confirm_reset_player'), isDangerous: true })) {
+            // Reset player model factors, but ignore 'sessionContext' (short-term memory)
+            await weightAdjustmentEngine.resetWeightsExcept(
+                PLAYER_WEIGHTS_ID,
+                DEFAULT_PLAYER_WEIGHTS,
+                ['sessionContext']
+            );
         }
     };
 
     const handleResetCount = async () => {
-        if (confirm(t('confirm_reset_count'))) {
-            await weightAdjustmentEngine.saveWeights(COUNT_WEIGHTS_ID, DEFAULT_COUNT_WEIGHTS);
+        if (await confirm({ title: t('btn_reset_weights'), message: t('confirm_reset_count'), isDangerous: true })) {
+            // Reset count model factors, but ignore 'sessionContext'
+            await weightAdjustmentEngine.resetWeightsExcept(
+                COUNT_WEIGHTS_ID,
+                DEFAULT_COUNT_WEIGHTS,
+                ['sessionContext']
+            );
         }
     };
 
     const handleResetLocation = async () => {
-        if (confirm(t('confirm_reset_location'))) {
-            await weightAdjustmentEngine.saveWeights(LOCATION_WEIGHTS_ID, DEFAULT_LOCATION_WEIGHTS);
+        if (await confirm({ title: t('btn_reset_weights'), message: t('confirm_reset_location'), isDangerous: true })) {
+            // Reset location model factors, but ignore 'sessionContext'
+            await weightAdjustmentEngine.resetWeightsExcept(
+                LOCATION_WEIGHTS_ID,
+                DEFAULT_LOCATION_WEIGHTS,
+                ['sessionContext']
+            );
         }
     };
 
     const handleResetColor = async () => {
-        if (confirm(t('confirm_reset_color'))) {
+        if (await confirm({ title: t('btn_reset_weights'), message: t('confirm_reset_color'), isDangerous: true })) {
             await weightAdjustmentEngine.saveWeights(COLOR_WEIGHTS_ID, DEFAULT_COLOR_WEIGHTS);
         }
     };

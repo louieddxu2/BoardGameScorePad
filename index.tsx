@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import ErrorBoundary from './src/components/shared/ErrorBoundary';
 import { ToastProvider } from './src/hooks/useToast';
+import { ConfirmationProvider } from './src/hooks/useConfirm';
 import { LanguageProvider } from './src/i18n'; // Import i18n provider
 import { setAutoConnectPreference } from './src/services/googleDrive';
 import { db } from './src/db'; // Import DB to clear session context
@@ -47,7 +48,9 @@ root.render(
     <ErrorBoundary>
       <LanguageProvider>
         <ToastProvider>
-          <App />
+          <ConfirmationProvider>
+            <App />
+          </ConfirmationProvider>
         </ToastProvider>
       </LanguageProvider>
     </ErrorBoundary>
