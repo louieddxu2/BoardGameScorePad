@@ -46,6 +46,11 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
   const displayedPlayers = useMemo(() => {
     const trimmedInput = tempName.trim();
 
+    // [New] 特殊判定：若目前為預設名稱且尚未連結身分，直接顯示完整歷史名單
+    // 這解決了「玩家 1」狀態下搜尋會導致空列表的問題。
+    const isDefaultUnlinked = !player.linkedPlayerId && tempName === player.name;
+    if (isDefaultUnlinked) return savedPlayers;
+
     // 1. 如果輸入為空，顯示完整歷史紀錄 (依最近使用排序)
     if (!trimmedInput) return savedPlayers;
 
@@ -57,7 +62,7 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
 
     // 3. 否則，顯示模糊搜尋結果
     return searchService.search(savedPlayers, trimmedInput, ['name']);
-  }, [savedPlayers, tempName]);
+  }, [savedPlayers, tempName, player.linkedPlayerId, player.name]);
 
   return (
     // This root div is KEY. It respects the layout contract by handling its own scrolling.

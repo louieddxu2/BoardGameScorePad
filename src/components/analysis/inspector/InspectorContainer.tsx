@@ -5,7 +5,7 @@ import { X, Database, Users, MapPin, Clock, Hash, LayoutGrid, Zap, Image as Imag
 import { db } from '../../../db';
 import { DataList, useInspectorTranslation } from './shared/InspectorCommon';
 import { useMaintenance } from './hooks/useMaintenance';
-import ConfirmationModal from '../../shared/ConfirmationModal';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 // Inspectors
 import TimeInspector from './inspectors/TimeInspector';
@@ -15,7 +15,7 @@ import DatabaseInspector from './inspectors/DatabaseInspector';
 
 const InspectorContainer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const [activeTab, setActiveTab] = useState<'games' | 'players' | 'locations' | 'time' | 'counts' | 'modes' | 'weights' | 'images' | 'bgg' | 'session' | 'db'>('games');
-    const [confirmAction, setConfirmAction] = useState<'reset' | 'reprocess' | 'factory_reset' | null>(null);
+    const { confirm } = useConfirm();
 
     const t = useInspectorTranslation();
     const {
@@ -26,15 +26,36 @@ const InspectorContainer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         executeFactoryReset
     } = useMaintenance();
 
-    const handleConfirmAction = async () => {
-        if (confirmAction === 'reset') {
+    const handleResetStats = async () => {
+        if (await confirm({
+            title: t('confirm_reset_title'),
+            message: t('confirm_reset_msg'),
+            confirmText: t('btn_reset'),
+            isDangerous: true
+        })) {
             await executeResetStats();
-        } else if (confirmAction === 'reprocess') {
+        }
+    };
+
+    const handleReprocessHistory = async () => {
+        if (await confirm({
+            title: t('confirm_reprocess_title'),
+            message: t('confirm_reprocess_msg'),
+            confirmText: t('btn_reprocess')
+        })) {
             await executeReprocessHistory();
-        } else if (confirmAction === 'factory_reset') {
+        }
+    };
+
+    const handleFactoryReset = async () => {
+        if (await confirm({
+            title: t('confirm_factory_reset_title'),
+            message: t('confirm_factory_reset_msg'),
+            confirmText: t('btn_factory_reset'),
+            isDangerous: true
+        })) {
             await executeFactoryReset();
         }
-        setConfirmAction(null);
     };
 
     const tabs = [
@@ -53,29 +74,6 @@ const InspectorContainer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
     return createPortal(
         <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col animate-in fade-in duration-200">
-            {/* Confirmation Modal */}
-            <ConfirmationModal
-                isOpen={!!confirmAction}
-                title={
-                    confirmAction === 'factory_reset' ? t('confirm_factory_reset_title') :
-                        confirmAction === 'reset' ? t('confirm_reset_title') :
-                            t('confirm_reprocess_title')
-                }
-                message={
-                    confirmAction === 'factory_reset' ? t('confirm_factory_reset_msg') :
-                        confirmAction === 'reset' ? t('confirm_reset_msg') :
-                            t('confirm_reprocess_msg')
-                }
-                confirmText={
-                    confirmAction === 'factory_reset' ? t('btn_factory_reset') :
-                        confirmAction === 'reset' ? t('btn_reset') :
-                            t('btn_reprocess')
-                }
-                isDangerous={confirmAction === 'reset' || confirmAction === 'factory_reset'}
-                zIndexClass="z-[110]"
-                onCancel={() => setConfirmAction(null)}
-                onConfirm={handleConfirmAction}
-            />
 
             {/* Header */}
             <div className="flex-none bg-slate-900 p-3 border-b border-slate-800 flex justify-between items-center shadow-md z-20">
@@ -91,7 +89,7 @@ const InspectorContainer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={() => setConfirmAction('reset')}
+                        onClick={handleResetStats}
                         disabled={isProcessing}
                         className="p-2 hover:bg-slate-800 rounded-lg text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
                         title={t('tooltip_reset')}
@@ -99,7 +97,7 @@ const InspectorContainer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                         <Trash2 size={20} />
                     </button>
                     <button
-                        onClick={() => setConfirmAction('reprocess')}
+                        onClick={handleReprocessHistory}
                         disabled={isProcessing}
                         className="p-2 hover:bg-slate-800 rounded-lg text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-50 relative overflow-hidden"
                         title={t('tooltip_reprocess')}
@@ -146,7 +144,7 @@ const InspectorContainer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 {activeTab === 'images' && <ImageInspector />}
                 {activeTab === 'bgg' && <DataList title={t('list_bgg')} table={db.bggGames} icon={Database} isBGG={true} />}
                 {activeTab === 'session' && <DataList title={t('list_session')} table={db.savedCurrentSession} icon={Zap} />}
-                {activeTab === 'db' && <DatabaseInspector onRequestFactoryReset={() => setConfirmAction('factory_reset')} />}
+                {activeTab === 'db' && <DatabaseInspector onRequestFactoryReset={handleFactoryReset} />}
             </div>
         </div>,
         document.body

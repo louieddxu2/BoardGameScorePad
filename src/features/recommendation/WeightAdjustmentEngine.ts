@@ -47,6 +47,49 @@ export class WeightAdjustmentEngine {
     }
 
     /**
+     * Resets specific weight factors to their default values, while completely 
+     * ignoring (not overwriting) the specific factors provided.
+     * 
+     * [Why use this?]
+     * Some factors (like 'sessionContext' / Short-term memory) are learned in real-time
+     * and cannot be reconstructed by rescanning history. We should "ignore" them
+     * during a general model reset to preserve the calibrated state.
+     * 
+     * This uses Dexie's partial update (dot notation) to ensure the 
+     * ignored factors are never touched in the database.
+     */
+    public async resetWeightsExcept<T extends object>(
+        configId: string,
+        defaultWeights: T,
+        factorsToIgnore: (keyof T)[]
+    ): Promise<void> {
+        try {
+            const updateData: Record<string, any> = {
+                updatedAt: Date.now()
+            };
+
+            // Only add fields that are NOT in factorsToIgnore
+            Object.keys(defaultWeights).forEach(key => {
+                if (!factorsToIgnore.includes(key as keyof T)) {
+                    // Use dot notation for partial object update in Dexie
+                    // This ensures "ignored" keys are not overwritten or deleted
+                    updateData[`weights.${key}`] = (defaultWeights as any)[key];
+                }
+            });
+
+            const exists = await db.weights.get(configId);
+            if (exists) {
+                await db.weights.update(configId, updateData);
+            } else {
+                // If no config exists yet, save the whole default object
+                await this.saveWeights(configId, defaultWeights);
+            }
+        } catch (e) {
+            console.warn(`[WeightEngine] Failed to reset weights with exclusions for ${configId}`, e);
+        }
+    }
+
+    /**
      * Calculate the new weight based on whether the factor predicted correctly.
      * 
      * Logic:
