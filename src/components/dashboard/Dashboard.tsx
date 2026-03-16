@@ -170,7 +170,12 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
     onImportSettings,
     onGetLocalData,
     onTogglePin,
-    onTogglePinOption
+    onTogglePinOption,
+    onDeleteHistory,
+    onClearAllActiveSessions,
+    onRestoreSystem,
+    onTemplateDelete,
+    onDiscardSession
   });
 
   const debugGestures = useDebugGestures({
@@ -285,7 +290,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
               records={historyRecords}
               totalCount={historyCount || 0}
               searchQuery={searchQuery}
-              onDelete={(id) => modals.actions.setHistoryToDelete(id)}
+              onDelete={dashboardActions.handleDeleteHistoryConfirmed}
               onSelect={onHistorySelect}
               onOpenBgStats={() => modals.actions.setShowBgStatsModal(true)}
               onOpenBggImport={() => modals.actions.setShowBggImportModal(true)}
@@ -305,10 +310,10 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
               isAutoConnectEnabled={isAutoConnectEnabled}
               onTemplateSelect={onTemplateSelect}
               onDirectResume={onDirectResume}
-              onDeleteSession={(id) => modals.actions.setSessionToDelete(id)}
-              onClearAllSessions={() => modals.actions.setShowClearAllConfirm(true)}
+              onDeleteSession={dashboardActions.handleDiscardSessionConfirmed}
+              onClearAllSessions={dashboardActions.handleClearAllSessionsConfirmed}
               onPin={onTogglePin}
-              onDeleteTemplate={(id) => modals.actions.setTemplateToDelete(id)}
+              onDeleteTemplate={dashboardActions.handleDeleteTemplateConfirmed}
               onCopyJSON={dashboardActions.handleCopyJSON}
               onCopyTemplateShareLink={dashboardActions.handleCopyTemplateShareLink}
               onCopyShareLink={dashboardActions.handleCopyBuiltinShareLink}
@@ -317,7 +322,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
               onTemplateCreate={onTemplateCreate}
               onClearNewBadges={onClearNewBadges}
               onSystemCopy={dashboardActions.handleCopySystemTemplate}
-              onSystemRestore={(t) => modals.actions.setRestoreTarget(t)}
+              onSystemRestore={dashboardActions.handleRestoreSystemConfirmed}
             />
           )}
         </main>
@@ -350,11 +355,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         userTemplates={userTemplates}
         isConnected={isConnected}
         isMockMode={isMockMode}
-        onTemplateDelete={onTemplateDelete}
-        onDiscardSession={onDiscardSession}
-        onDeleteHistory={onDeleteHistory}
-        onClearAllActiveSessions={onClearAllActiveSessions}
-        onRestoreSystem={onRestoreSystem}
         onBatchImport={onBatchImport}
         onGetFullTemplate={onGetFullTemplate}
         onBgStatsImport={onBgStatsImport}

@@ -7,6 +7,8 @@ import { generateId } from '../../../utils/idGenerator';
 import { useGoogleDrive } from '../../../hooks/useGoogleDrive';
 import { GameOption } from '../../../features/game-selector/types';
 import { buildBuiltinShareUrl, toBuiltinShortId } from '../../../utils/deepLink';
+import { useConfirm } from '../../../hooks/useConfirm';
+import { useCommonTranslation } from '../../../i18n/common';
 
 interface UseDashboardActionsProps {
     isAutoConnectEnabled: boolean;
@@ -18,6 +20,11 @@ interface UseDashboardActionsProps {
     onGetLocalData: () => Promise<any>;
     onTogglePin: (id: string) => void;
     onTogglePinOption: (option: GameOption) => void;
+    onDeleteHistory: (id: string) => void;
+    onClearAllActiveSessions: () => void;
+    onRestoreSystem: (id: string) => void;
+    onTemplateDelete: (id: string) => void;
+    onDiscardSession: (id: string) => void;
 }
 
 export const useDashboardActions = ({
@@ -29,9 +36,16 @@ export const useDashboardActions = ({
     onImportSettings,
     onGetLocalData,
     onTogglePin,
-    onTogglePinOption
+    onTogglePinOption,
+    onDeleteHistory,
+    onClearAllActiveSessions,
+    onRestoreSystem,
+    onTemplateDelete,
+    onDiscardSession
 }: UseDashboardActionsProps) => {
     const { t } = useDashboardTranslation();
+    const { t: tCommon } = useCommonTranslation();
+    const { confirm } = useConfirm();
     const { showToast } = useToast();
     const { handleBackup, performFullBackup, performFullRestore } = useGoogleDrive();
 
@@ -107,6 +121,62 @@ export const useDashboardActions = ({
         }
     };
 
+    // --- Wrapped Confirmation Actions ---
+
+    const handleDeleteTemplateConfirmed = async (id: string) => {
+        if (await confirm({
+            title: t('confirm_delete_template_title'),
+            message: t('confirm_delete_template_msg'),
+            confirmText: tCommon('delete'),
+            isDangerous: true
+        })) {
+            onTemplateDelete(id);
+        }
+    };
+
+    const handleDiscardSessionConfirmed = async (id: string) => {
+        if (await confirm({
+            title: t('confirm_delete_session_title'),
+            message: t('confirm_delete_session_msg'),
+            confirmText: tCommon('delete'),
+            isDangerous: true
+        })) {
+            onDiscardSession(id);
+        }
+    };
+
+    const handleDeleteHistoryConfirmed = async (id: string) => {
+        if (await confirm({
+            title: t('confirm_delete_history_title'),
+            message: t('confirm_delete_template_msg'),
+            confirmText: tCommon('delete'),
+            isDangerous: true
+        })) {
+            onDeleteHistory(id);
+        }
+    };
+
+    const handleClearAllSessionsConfirmed = async () => {
+        if (await confirm({
+            title: t('confirm_clear_all_sessions_title'),
+            message: t('confirm_clear_all_sessions_msg'),
+            confirmText: t('confirm_clear_all'),
+            isDangerous: true
+        })) {
+            onClearAllActiveSessions();
+        }
+    };
+
+    const handleRestoreSystemConfirmed = async (template: GameTemplate) => {
+        if (await confirm({
+            title: t('confirm_restore_title'),
+            message: t('confirm_restore_msg'),
+            confirmText: tCommon('restore')
+        })) {
+            onRestoreSystem(template.id);
+        }
+    };
+
     return {
         copiedId,
         sharingTemplate,
@@ -116,6 +186,11 @@ export const useDashboardActions = ({
         handleCopyBuiltinShareLink,
         handleCloudBackup,
         handleCopySystemTemplate,
+        handleDeleteTemplateConfirmed,
+        handleDiscardSessionConfirmed,
+        handleDeleteHistoryConfirmed,
+        handleClearAllSessionsConfirmed,
+        handleRestoreSystemConfirmed,
         handleSystemBackupAction: (p: (c: number, t: number) => void, e: (f: string[]) => void) => performFullBackup(onGetLocalData, p, e),
         handleSystemRestoreAction: performFullRestore,
         handlePinGameOption: (opt: GameOption) => {
