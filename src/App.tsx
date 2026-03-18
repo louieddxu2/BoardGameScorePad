@@ -411,6 +411,12 @@ const App: React.FC = () => {
 
       historyWallDepth.current = Math.max(0, historyWallDepth.current - 1);
 
+      // [Silent Back] 由 useModalBackHandler 的 UI 關閉清理觸發，非使用者按返回鍵。
+      // 牆壁深度已正確遞減，但不執行任何視圖切換動作。
+      if ((window as any).__silentBack) {
+        return;
+      }
+
       let handled = false;
 
       if (pendingTemplate) {

@@ -33,11 +33,14 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
 
       // 3. 定義上一頁監聽器
       const handlePopState = (e: PopStateEvent) => {
+        // [Silent Back] 如果是子彈窗 UI 關閉觸發的程式清理，不是使用者按返回鍵，跳過。
+        // 這取代了原本靠忽略 wall entry 來防止級聯關閉的做法。
+        if ((window as any).__silentBack) return;
+
         const state = e.state;
-        // [Fix] 只有在回到「初始狀態(null)」或是「明確的其他彈窗」時才執行關閉邏輯。
-        // 如果是回到「自己的 ID」或是「緩衝層 (wall entry，即沒有 modal 屬性的 state)」，則維持開啟。
-        // 這能確保當子彈窗關閉觸發 back() 導致 land 在父彈窗的緩衝層時，父彈窗不會跟著關閉。
-        if (state === null || (state.modal && state.modal !== modalId)) {
+        // 只要落回的 state 不是「自己推入的 modalId」，就代表應該關閉。
+        // 涵蓋：null（初始狀態）、wall entry、其他彈窗的 state。
+        if (state?.modal !== modalId) {
           // 標記為「由瀏覽器上一頁觸發」
           isPoppedRef.current = true;
           // 執行關閉
@@ -55,8 +58,12 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
         // 如果這個 Effect 被清理（彈窗關閉），且「不是」因為按了上一頁造成的（isPoppedRef 為 false），
         // 代表是使用者點了 UI 上的「取消/確認」按鈕。
         // 這時我們需要手動執行 history.back() 來消除步驟 2 推入的那筆紀錄。
+        // [Silent Back] 設定全域旗標，讓 App.tsx 等外層監聽器知道這是程式清理，不是使用者按返回鍵。
         if (!isPoppedRef.current) {
+          (window as any).__silentBack = true;
           window.history.back();
+          // 使用 setTimeout 確保旗標在 popstate 事件處理完畢後清除
+          setTimeout(() => { (window as any).__silentBack = false; }, 0);
         }
       };
     }

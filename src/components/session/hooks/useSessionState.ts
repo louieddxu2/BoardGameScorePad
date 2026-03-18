@@ -29,7 +29,7 @@ export interface UIState {
   isEditingTitle: boolean;
   isGameSettingsOpen: boolean; // [New] Toggle for Game Settings Modal
   showResetConfirm: boolean;
-  isSessionExitModalOpen: boolean; 
+  isSessionExitModalOpen: boolean;
   columnToDelete: string | null;
   isAddColumnModalOpen: boolean;
   showShareMenu: boolean;
@@ -39,47 +39,47 @@ export interface UIState {
     layout: ScreenshotLayout | null;
   };
   isPhotoGalleryOpen: boolean;
-  
+
   // [New] Controls gallery behavior (e.g. auto open lightbox with overlay)
   galleryParams?: {
-      mode: 'default' | 'lightbox_overlay';
+    mode: 'default' | 'lightbox_overlay';
   };
 
   isImageUploadModalOpen: boolean;
-  
+
   isScannerOpen: boolean;
   scannerInitialImage: string | null;
   scannerFixedRatio?: number;
-  
+
   isGeneralCameraOpen: boolean; // [New] Camera for photo gallery
 
   isTextureMapperOpen: boolean; // [New] Grid Editor State
-  
+
   isToolboxOpen: boolean; // [New] Toolbox Sticky State
 
   advanceDirection: 'horizontal' | 'vertical';
   overwriteMode: boolean;
   isInputFocused: boolean;
   tempPlayerName: string;
-  isEditMode: boolean; 
-  previewValue: any; 
+  isEditMode: boolean;
+  previewValue: any;
 }
 
 export const useSessionState = (props: SessionViewProps) => {
   const [uiState, setUiState] = useState<UIState>(() => {
     const initialEditMode = typeof window !== 'undefined' ? localStorage.getItem('app_edit_mode') !== 'false' : true;
     const savedDirection = (typeof window !== 'undefined' ? localStorage.getItem('sm_pref_advance_direction') : null) as 'horizontal' | 'vertical';
-    
+
     // [Feature] Auto-open first player editor for Zero-Column templates (Simple Counter Mode)
     // Behavior: Open the panel fully (editingPlayerId set) but do NOT focus input (isInputFocused false)
     // so the user sees the full interface (Color Palette, History).
     let initialEditingPlayerId = null;
     let initialTempName = '';
-    
+
     if (props.template.columns.length === 0 && props.session.players.length > 0) {
-        const firstPlayer = props.session.players[0];
-        initialEditingPlayerId = firstPlayer.id;
-        initialTempName = firstPlayer.name;
+      const firstPlayer = props.session.players[0];
+      initialEditingPlayerId = firstPlayer.id;
+      initialTempName = firstPlayer.name;
     }
 
     return {
@@ -113,10 +113,10 @@ export const useSessionState = (props: SessionViewProps) => {
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const totalBarScrollRef = useRef<HTMLDivElement>(null);
-  
+
   const gridContentRef = useRef<HTMLDivElement>(null);
   const totalContentRef = useRef<HTMLDivElement>(null);
-  
+
   // --- Effects for state transitions ---
 
   useEffect(() => {
@@ -128,15 +128,15 @@ export const useSessionState = (props: SessionViewProps) => {
       setUiState(prev => ({ ...prev, overwriteMode: true }));
     }
   }, [uiState.editingCell?.playerId, uiState.editingCell?.colId]);
-  
+
   // [Optimization] Only sync tempPlayerName when the actual name in the session changes
   // to avoid redundant setUiState calls during global re-renders.
   useEffect(() => {
     if (uiState.editingPlayerId) {
-        const player = props.session.players.find(pl => pl.id === uiState.editingPlayerId);
-        if (player && player.name !== uiState.tempPlayerName) {
-            setUiState(prev => ({ ...prev, tempPlayerName: player.name }));
-        }
+      const player = props.session.players.find(pl => pl.id === uiState.editingPlayerId);
+      if (player && player.name !== uiState.tempPlayerName) {
+        setUiState(prev => ({ ...prev, tempPlayerName: player.name }));
+      }
     }
   }, [uiState.editingPlayerId, props.session.players]);
 
@@ -156,66 +156,66 @@ export const useSessionState = (props: SessionViewProps) => {
       const targetPlayerHeaderEl = activePlayerId ? document.getElementById(`header-${activePlayerId}`) : null;
 
       if (targetPlayerHeaderEl) {
-          const headerRow = targetPlayerHeaderEl.parentElement;
-          const stickyLabel = headerRow?.children[0] as HTMLElement;
-          const stickyWidth = stickyLabel ? stickyLabel.offsetWidth : 70;
+        const headerRow = targetPlayerHeaderEl.parentElement;
+        const stickyLabel = headerRow?.children[0] as HTMLElement;
+        const stickyWidth = stickyLabel ? stickyLabel.offsetWidth : 70;
 
-          // Align the PREVIOUS player to the sticky edge to provide context
-          const previousPlayerEl = targetPlayerHeaderEl.previousElementSibling as HTMLElement | null;
-          
-          // If previous is the sticky label itself (index 0), we stick to current
-          const alignTarget = (previousPlayerEl && previousPlayerEl !== stickyLabel) ? previousPlayerEl : targetPlayerHeaderEl;
-          
-          // Simple logic: scroll position = element's left position - sticky column width
-          nextLeft = Math.max(0, alignTarget.offsetLeft - stickyWidth);
+        // Align the PREVIOUS player to the sticky edge to provide context
+        const previousPlayerEl = targetPlayerHeaderEl.previousElementSibling as HTMLElement | null;
+
+        // If previous is the sticky label itself (index 0), we stick to current
+        const alignTarget = (previousPlayerEl && previousPlayerEl !== stickyLabel) ? previousPlayerEl : targetPlayerHeaderEl;
+
+        // Simple logic: scroll position = element's left position - sticky column width
+        nextLeft = Math.max(0, alignTarget.offsetLeft - stickyWidth);
       }
 
       // --- 2. Vertical Calculation (Y) ---
       let targetRowEl: HTMLElement | null = null;
 
       if (uiState.editingPlayerId) {
-          // Editing Header -> Force Top
-          nextTop = 0;
+        // Editing Header -> Force Top
+        nextTop = 0;
       } else if (uiState.editingCell) {
-          if (uiState.editingCell.colId !== '__TOTAL__') {
-              let effectiveColId = uiState.editingCell.colId;
-              
-              // Handle Overlays: Find the host row if the column is an overlay
-              if (!document.getElementById(`row-${effectiveColId}`)) {
-                  const allCols = props.template.columns;
-                  const currentIndex = allCols.findIndex(c => c.id === effectiveColId);
-                  for (let i = currentIndex - 1; i >= 0; i--) {
-                      if ((allCols[i].displayMode || 'row') === 'row') {
-                          effectiveColId = allCols[i].id;
-                          break;
-                      }
-                  }
-              }
-              targetRowEl = document.getElementById(`row-${effectiveColId}`);
-          }
+        if (uiState.editingCell.colId !== '__TOTAL__') {
+          let effectiveColId = uiState.editingCell.colId;
 
-          if (targetRowEl) {
-              const headerEl = document.getElementById('live-player-header-row');
-              const headerHeight = headerEl ? headerEl.offsetHeight : 48;
-              
-              // Align the PREVIOUS row to the bottom of the header
-              const previousRowElement = targetRowEl.previousElementSibling as HTMLElement | null;
-              if (previousRowElement) {
-                  nextTop = previousRowElement.offsetTop - headerHeight;
-              } else {
-                  nextTop = targetRowEl.offsetTop - headerHeight;
+          // Handle Overlays: Find the host row if the column is an overlay
+          if (!document.getElementById(`row-${effectiveColId}`)) {
+            const allCols = props.template.columns;
+            const currentIndex = allCols.findIndex(c => c.id === effectiveColId);
+            for (let i = currentIndex - 1; i >= 0; i--) {
+              if ((allCols[i].displayMode || 'row') === 'row') {
+                effectiveColId = allCols[i].id;
+                break;
               }
+            }
           }
+          targetRowEl = document.getElementById(`row-${effectiveColId}`);
+        }
+
+        if (targetRowEl) {
+          const headerEl = document.getElementById('live-player-header-row');
+          const headerHeight = headerEl ? headerEl.offsetHeight : 48;
+
+          // Align the PREVIOUS row to the bottom of the header
+          const previousRowElement = targetRowEl.previousElementSibling as HTMLElement | null;
+          if (previousRowElement) {
+            nextTop = previousRowElement.offsetTop - headerHeight;
+          } else {
+            nextTop = targetRowEl.offsetTop - headerHeight;
+          }
+        }
       }
 
       // --- 3. Execute Scroll (Single Command) ---
       // Only scroll if there is a meaningful difference to avoid jitter
       if (Math.abs(nextLeft - container.scrollLeft) > 2 || Math.abs(nextTop - container.scrollTop) > 2) {
-          container.scrollTo({
-              left: nextLeft,
-              top: nextTop,
-              behavior: 'smooth'
-          });
+        container.scrollTo({
+          left: nextLeft,
+          top: nextTop,
+          behavior: 'smooth'
+        });
       }
     };
 
@@ -224,7 +224,7 @@ export const useSessionState = (props: SessionViewProps) => {
     return () => clearTimeout(timer);
 
   }, [uiState.editingCell, uiState.editingPlayerId, props.template.columns]);
-  
+
   // --- Derived State ---
   // [Smart Layout] Identify if the list is "Short"
   // Conditions:
@@ -233,7 +233,7 @@ export const useSessionState = (props: SessionViewProps) => {
   const isShortList = !props.baseImage && props.template.columns.length < 5;
 
   const isPanelOpen = uiState.editingCell !== null || uiState.editingPlayerId !== null;
-  
+
   // [Updated] If short list OR toolbox is open, force the panel space to be open (40vh) to push the Total Bar up.
   // This effectively centers the Total Bar and removes the gap.
   const panelHeight = (isPanelOpen || isShortList || uiState.isToolboxOpen)
