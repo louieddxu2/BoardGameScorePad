@@ -133,14 +133,16 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
     };
 
     // [Refactor] Add back button interception for modal stability
-    // Handles both the main editor and the sub-layout editor
-    useModalBackHandler(column !== null, () => {
+    // Handles both the main editor and the sub-layout editor.
+    // We use a stable boolean for isOpen to prevent any potential cycling.
+    const isModalOpen = column !== null;
+    useModalBackHandler(isModalOpen, () => {
         if (showLayoutEditor) {
             setShowLayoutEditor(false);
         } else {
             handleAttemptClose();
         }
-    }, 'column-editor');
+    }, 'col-config-editor');
 
     const getCalculationMode = (formula: string): CalculationMode => {
         if (formula.includes('×a2')) return 'product';
