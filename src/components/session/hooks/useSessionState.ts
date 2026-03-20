@@ -28,9 +28,7 @@ export interface UIState {
   editingColumn: GameTemplate['columns'][0] | null;
   isEditingTitle: boolean;
   isGameSettingsOpen: boolean; // [New] Toggle for Game Settings Modal
-  showResetConfirm: boolean;
   isSessionExitModalOpen: boolean;
-  columnToDelete: string | null;
   isAddColumnModalOpen: boolean;
   showShareMenu: boolean;
   screenshotModal: {
@@ -88,9 +86,7 @@ export const useSessionState = (props: SessionViewProps) => {
       editingColumn: null,
       isEditingTitle: false,
       isGameSettingsOpen: false, // [New]
-      showResetConfirm: false,
       isSessionExitModalOpen: false,
-      columnToDelete: null,
       isAddColumnModalOpen: false,
       showShareMenu: false,
       screenshotModal: { isOpen: false, mode: 'full', layout: null },

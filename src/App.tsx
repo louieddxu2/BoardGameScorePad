@@ -5,6 +5,7 @@ import { getTouchDistance } from './utils/ui';
 import { useAppData } from './hooks/useAppData';
 import { Smartphone, Loader2 } from 'lucide-react';
 import { getTargetHistoryDepth } from './config/historyStrategy'; // Import Strategy
+import { hasActiveModals } from './hooks/useModalBackHandler'; // Modal 歷史協調
 import { useToast } from './hooks/useToast';
 import { useAppTranslation } from './i18n/app';
 import { parseDeepLinkFromHash } from './utils/deepLink';
@@ -409,13 +410,19 @@ const App: React.FC = () => {
         return;
       }
 
-      historyWallDepth.current = Math.max(0, historyWallDepth.current - 1);
-
       // [Silent Back] 由 useModalBackHandler 的 UI 關閉清理觸發，非使用者按返回鍵。
-      // 牆壁深度已正確遞減，但不執行任何視圖切換動作。
+      // 不遞減牆壁深度（被消除的是 modal 條目，不是牆壁條目）。
       if ((window as any).__silentBack) {
         return;
       }
+
+      // [Modal 協調] 有 modal 正在透過 useModalBackHandler 管理歷史，
+      // 由 modal 系統自行處理，App.tsx 不介入（不遞減牆壁、不切換視圖）。
+      if (hasActiveModals()) {
+        return;
+      }
+
+      historyWallDepth.current = Math.max(0, historyWallDepth.current - 1);
 
       let handled = false;
 

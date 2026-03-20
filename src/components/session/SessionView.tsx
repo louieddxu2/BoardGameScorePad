@@ -5,6 +5,7 @@ import { useSessionState, ScreenshotLayout } from './hooks/useSessionState';
 import { useSessionEvents } from './hooks/useSessionEvents';
 import { useSessionMedia } from './hooks/useSessionMedia';
 import { useToast } from '../../hooks/useToast';
+import { useConfirm } from '../../hooks/useConfirm';
 import { useSessionTranslation } from '../../i18n/session';
 import { useCommonTranslation } from '../../i18n/common';
 import { calculateWinners } from '../../utils/templateUtils'; // [Refactor]
@@ -16,7 +17,6 @@ import TotalsBar from './parts/TotalsBar';
 import InputPanel from './parts/InputPanel';
 // Modals
 import ScreenshotModal from './modals/ScreenshotModal';
-import ConfirmationModal from '../shared/ConfirmationModal';
 import ColumnConfigEditor from '../shared/ColumnConfigEditor';
 import AddColumnModal from './modals/AddColumnModal';
 import SessionExitModal from './modals/SessionExitModal';
@@ -67,15 +67,14 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   });
 
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
 
   const {
     editingCell,
     editingPlayerId,
     editingColumn,
     isEditingTitle,
-    showResetConfirm,
     isSessionExitModalOpen,
-    columnToDelete,
     isAddColumnModalOpen,
     showShareMenu,
     screenshotModal,
@@ -181,24 +180,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   return (
     <div className="flex flex-col h-full bg-slate-900 text-slate-100 overflow-hidden relative">
       {/* --- Modals --- */}
-      <ConfirmationModal
-        isOpen={showResetConfirm}
-        title={tSession('session_reset_confirm_title')}
-        message={tSession('session_reset_confirm_msg')}
-        confirmText={tCommon('reset')}
-        isDangerous={true}
-        onCancel={() => setUiState(prev => ({ ...prev, showResetConfirm: false }))}
-        onConfirm={eventHandlers.handleConfirmReset}
-      />
-      <ConfirmationModal
-        isOpen={!!columnToDelete}
-        title={tSession('session_delete_col_title')}
-        message={tSession('session_delete_col_msg')}
-        confirmText={tCommon('delete')}
-        isDangerous={true}
-        onCancel={() => setUiState(prev => ({ ...prev, columnToDelete: null }))}
-        onConfirm={eventHandlers.handleConfirmDeleteColumn}
-      />
 
       {/* Exit Modal */}
       <SessionExitModal
@@ -270,8 +251,17 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           column={editingColumn}
           allColumns={template.columns}
           onSave={eventHandlers.handleSaveColumn}
-          onDelete={() => {
-            setUiState(prev => ({ ...prev, columnToDelete: editingColumn.id }));
+          onDelete={async () => {
+            if (await confirm({
+              title: tSession('session_delete_col_title'),
+              message: tSession('session_delete_col_msg'),
+              confirmText: tCommon('delete'),
+              isDangerous: true
+            })) {
+              const newCols = template.columns.filter(c => c.id !== editingColumn.id);
+              onUpdateTemplate({ ...template, columns: newCols });
+              setUiState(p => ({ ...p, editingColumn: null }));
+            }
           }}
           onClose={() => setUiState(prev => ({ ...prev, editingColumn: null }))}
           baseImage={baseImage || undefined}
@@ -313,7 +303,17 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         }}
         onTitleSubmit={eventHandlers.handleTitleSubmit}
         onAddColumn={() => setUiState(prev => ({ ...prev, isAddColumnModalOpen: true }))}
-        onReset={() => setUiState(prev => ({ ...prev, showResetConfirm: true }))}
+        onReset={async () => {
+          if (await confirm({
+            title: tSession('session_reset_confirm_title'),
+            message: tSession('session_reset_confirm_msg'),
+            confirmText: tCommon('reset'),
+            isDangerous: true
+          })) {
+            props.onResetScores();
+            setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null, previewValue: 0 }));
+          }
+        }}
         onExit={() => {
           window.dispatchEvent(new CustomEvent('app-back-press'));
         }}

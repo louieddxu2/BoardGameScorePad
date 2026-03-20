@@ -12,6 +12,7 @@ interface ConfirmationModalProps {
   onConfirm: () => void;
   onCancel: () => void;
   isDangerous?: boolean;
+  hideCancel?: boolean;
   zIndexClass?: string; // New prop for custom z-index
 }
 
@@ -24,6 +25,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   onConfirm,
   onCancel,
   isDangerous = false,
+  hideCancel = false,
   zIndexClass = "z-[110]", // [Fixed] Bumped from z-[60] to z-[110]
 }) => {
   const { t } = useCommonTranslation();
@@ -56,17 +58,19 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           <p className="text-slate-400 text-sm whitespace-pre-wrap">{message}</p>
         </div>
         <div className="flex gap-3">
-          <button
-            onClick={onCancel}
-            className="flex-1 py-3 rounded-xl bg-slate-700 text-white font-medium hover:bg-slate-600 transition-colors"
-          >
-            {effectiveCancelText}
-          </button>
+          {!hideCancel && (
+            <button
+              onClick={onCancel}
+              className="flex-1 py-3 rounded-xl bg-slate-700 text-white font-medium hover:bg-slate-600 transition-colors"
+            >
+              {effectiveCancelText}
+            </button>
+          )}
           <button
             onClick={onConfirm}
             className={`flex-1 py-3 rounded-xl text-white font-bold shadow-lg transition-colors ${isDangerous
-                ? 'bg-red-600 hover:bg-red-500 shadow-red-900/50'
-                : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/50'
+              ? 'bg-red-600 hover:bg-red-500 shadow-red-900/50'
+              : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/50'
               }`}
           >
             {effectiveConfirmText}
