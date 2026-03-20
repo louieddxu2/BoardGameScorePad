@@ -4,7 +4,6 @@ import { X, MapPin, ChevronDown } from 'lucide-react';
 import { useGameFlowTranslation } from '../../../i18n/game_flow';
 import { useCommonTranslation } from '../../../i18n/common';
 import { useConfirm } from '../../../hooks/useConfirm';
-import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 import { SavedListItem } from '../../../types';
 
 interface SessionExitModalProps {
@@ -51,20 +50,6 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
             listRef.current.scrollTop = listRef.current.scrollHeight;
         }
     }, [showLocationMenu]);
-
-    // [Stable Refactor] 採用與 ColumnConfigEditor 一致的延遲掛載模式
-    // 延遲 100ms 啟動，避開導航觸發時的 popstate 殘留波，確保一次返回即可關閉
-    const [isHandlerActive, setIsHandlerActive] = useState(false);
-    useEffect(() => {
-        if (isOpen) {
-            const timer = setTimeout(() => setIsHandlerActive(true), 100);
-            return () => clearTimeout(timer);
-        } else {
-            setIsHandlerActive(false);
-        }
-    }, [isOpen]);
-
-    useModalBackHandler(isHandlerActive, onClose, 'session-exit');
 
     if (!isOpen) return null;
 
