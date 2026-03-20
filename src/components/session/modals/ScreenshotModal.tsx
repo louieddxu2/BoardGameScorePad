@@ -9,6 +9,7 @@ import { useToast } from '../../../hooks/useToast';
 import { getTouchDistance } from '../../../utils/ui';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useCommonTranslation } from '../../../i18n/common';
+import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 
 interface ScreenshotModalProps {
     isOpen: boolean;
@@ -42,6 +43,9 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 }) => {
     const { t } = useSessionTranslation();
     const { t: tCommon } = useCommonTranslation();
+
+    // [Refactor] Add back button interception for modal stability
+    useModalBackHandler(isOpen, onClose, 'screenshot');
     const [activeMode, setActiveMode] = useState<'full' | 'simple'>(initialMode);
 
     const [snapshots, setSnapshots] = useState<{
