@@ -52,8 +52,8 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
         }
     }, [showLocationMenu]);
 
-    // [Stable Refactor]
-    // 延遲 100ms 啟動 Back Handler，確保跳過掛載時可能殘留的 popstate 事件
+    // [Stable Refactor] 採用與 ColumnConfigEditor 一致的延遲掛載模式
+    // 延遲 100ms 啟動，避開導航觸發時的 popstate 殘留波，確保一次返回即可關閉
     const [isHandlerActive, setIsHandlerActive] = useState(false);
     useEffect(() => {
         if (isOpen) {
