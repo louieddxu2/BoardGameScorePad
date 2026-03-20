@@ -7,7 +7,7 @@ describe('useModalBackHandler', () => {
   beforeEach(() => {
     _resetActiveCountForTesting();
     vi.restoreAllMocks();
-    
+
     // Mock history and window events
     vi.spyOn(window.history, 'pushState');
     vi.spyOn(window.history, 'back');
@@ -56,7 +56,7 @@ describe('useModalBackHandler', () => {
     // ONLY the top modal should have closed!
     expect(onCloseTop).toHaveBeenCalled();
     expect(onCloseBottom).not.toHaveBeenCalled();
-    
+
     unmount();
   });
 
@@ -69,7 +69,7 @@ describe('useModalBackHandler', () => {
 
     // Simulate UI close
     unmount();
-    
+
     expect((window as any).__silentBack).toBe(true);
   });
 });
