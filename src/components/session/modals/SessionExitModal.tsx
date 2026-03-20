@@ -4,6 +4,7 @@ import { X, MapPin, ChevronDown } from 'lucide-react';
 import { useGameFlowTranslation } from '../../../i18n/game_flow';
 import { useCommonTranslation } from '../../../i18n/common';
 import { useConfirm } from '../../../hooks/useConfirm';
+import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 import { SavedListItem } from '../../../types';
 
 interface SessionExitModalProps {
@@ -50,6 +51,20 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
             listRef.current.scrollTop = listRef.current.scrollHeight;
         }
     }, [showLocationMenu]);
+
+    // [Stable Refactor]
+    // 延遲 100ms 啟動 Back Handler，確保跳過掛載時可能殘留的 popstate 事件
+    const [isHandlerActive, setIsHandlerActive] = useState(false);
+    useEffect(() => {
+        if (isOpen) {
+            const timer = setTimeout(() => setIsHandlerActive(true), 100);
+            return () => clearTimeout(timer);
+        } else {
+            setIsHandlerActive(false);
+        }
+    }, [isOpen]);
+
+    useModalBackHandler(isHandlerActive, onClose, 'session-exit');
 
     if (!isOpen) return null;
 
