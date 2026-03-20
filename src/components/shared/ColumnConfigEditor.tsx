@@ -14,6 +14,7 @@ import EditorTabAuto from './column-editor/EditorTabAuto';
 import { extractIdentifiers } from '../../utils/formulaEvaluator';
 import { useColumnEditorTranslation } from '../../i18n/column_editor'; // Changed Import
 import { useCommonTranslation } from '../../i18n/common';
+import { useModalBackHandler } from '../../hooks/useModalBackHandler';
 
 interface ColumnConfigEditorProps {
     column: ScoreColumn;
@@ -131,18 +132,15 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
         }
     };
 
-    useEffect(() => {
-        const handleBackPress = (e: Event) => {
-            e.stopImmediatePropagation();
-            if (showLayoutEditor) {
-                setShowLayoutEditor(false);
-                return;
-            }
+    // [Refactor] Add back button interception for modal stability
+    // Handles both the main editor and the sub-layout editor
+    useModalBackHandler(column !== null, () => {
+        if (showLayoutEditor) {
+            setShowLayoutEditor(false);
+        } else {
             handleAttemptClose();
-        };
-        window.addEventListener('app-back-press', handleBackPress, { capture: true });
-        return () => window.removeEventListener('app-back-press', handleBackPress, { capture: true });
-    }, [editedCol, showLayoutEditor]);
+        }
+    }, 'column-editor');
 
     const getCalculationMode = (formula: string): CalculationMode => {
         if (formula.includes('×a2')) return 'product';
