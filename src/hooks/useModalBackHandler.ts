@@ -41,8 +41,6 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
     onCloseRef.current = onClose;
   }, [onClose]);
 
-  const mountTimeRef = useRef(Date.now());
-
   useEffect(() => {
     if (isOpen) {
       // 1. 重置標記 & 註冊到計數器
@@ -58,16 +56,6 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
       const handlePopState = (e: PopStateEvent) => {
         // [Silent Back] 如果是其他彈窗 UI 關閉觸發的程式清理，不是使用者按返回鍵，跳過。
         if ((window as any).__silentBack) return;
-
-        /**
-         * [穩定性核心] 狀態驗證邏輯
-         * 如果 popstate 的 state 與當前 modalId 不符，代表這是一個殘留的、或是來自牆壁的 pop 事件。
-         * 如果誤抓了這個事件，彈窗就會「閃退」。
-         */
-        if (e.state?.modal !== modalId) return;
-
-        // [Mount Guard] 額外保險：避免誤抓剛掛載時極短時間內的事件
-        if (Date.now() - mountTimeRef.current < 50) return;
 
         // [正向匹配] 只有最頂層的 modal 才回應返回鍵。
         // 比起舊版的反向邏輯（state !== myId → close），這能避免巢狀 modal 互相干擾。

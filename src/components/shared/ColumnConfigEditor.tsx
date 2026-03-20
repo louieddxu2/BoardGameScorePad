@@ -132,9 +132,19 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
         }
     };
 
-    // [Refactor] Add back button interception for modal stability
-    // Handles both the main editor and the sub-layout editor.
-    useModalBackHandler(column !== null, () => {
+    // [Stable Refactor]
+    // 延遲 100ms 啟動 Back Handler，確保跳過掛載時可能殘留的 popstate 事件 (解決「開了秒關」問題)
+    const [isHandlerActive, setIsHandlerActive] = useState(false);
+    useEffect(() => {
+        if (column) {
+            const timer = setTimeout(() => setIsHandlerActive(true), 100);
+            return () => clearTimeout(timer);
+        } else {
+            setIsHandlerActive(false);
+        }
+    }, [column]);
+
+    useModalBackHandler(isHandlerActive, () => {
         if (showLayoutEditor) {
             setShowLayoutEditor(false);
         } else {
