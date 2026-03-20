@@ -49,8 +49,9 @@ describe('useModalBackHandler', () => {
     expect(hasActiveModals()).toBe(true);
 
     // 2. Simulate Back Button (popstate)
+    await new Promise(resolve => setTimeout(resolve, 60)); 
     await act(async () => {
-      window.dispatchEvent(new PopStateEvent('popstate'));
+      window.dispatchEvent(new PopStateEvent('popstate', { state: { modal: 'top' } }));
     });
 
     // ONLY the top modal should have closed!

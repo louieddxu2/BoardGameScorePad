@@ -134,9 +134,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
 
     // [Refactor] Add back button interception for modal stability
     // Handles both the main editor and the sub-layout editor.
-    // We use a stable boolean for isOpen to prevent any potential cycling.
-    const isModalOpen = column !== null;
-    useModalBackHandler(isModalOpen, () => {
+    useModalBackHandler(column !== null, () => {
         if (showLayoutEditor) {
             setShowLayoutEditor(false);
         } else {
