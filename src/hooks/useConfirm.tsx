@@ -17,6 +17,7 @@ interface ConfirmOptions {
   confirmText?: string;
   cancelText?: string;
   isDangerous?: boolean;
+  hideCancel?: boolean;
 }
 
 interface ConfirmationContextType {
@@ -64,6 +65,7 @@ export const ConfirmationProvider: React.FC<{ children: ReactNode }> = ({ childr
           confirmText={modalState.options.confirmText}
           cancelText={modalState.options.cancelText}
           isDangerous={modalState.options.isDangerous}
+          hideCancel={modalState.options.hideCancel}
           zIndexClass="z-[110]" // [Precaution] Must be above Inspector (z-100)
           onConfirm={() => handleClose(true)}
           onCancel={() => handleClose(false)}

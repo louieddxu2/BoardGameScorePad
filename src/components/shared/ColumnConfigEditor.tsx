@@ -5,7 +5,7 @@ import { X, Ruler, Calculator, ListPlus, Settings, Save, Trash2, Crop, LayoutLis
 import { COLORS } from '../../colors';
 import { isColorDark } from '../../utils/ui';
 import { useVisualViewportOffset } from '../../hooks/useVisualViewportOffset';
-import ConfirmationModal from './ConfirmationModal';
+import { useConfirm } from '../../hooks/useConfirm';
 import LayoutEditor from './LayoutEditor';
 import EditorTabMapping from './column-editor/EditorTabMapping';
 import EditorTabSelection from './column-editor/EditorTabSelection';
@@ -14,6 +14,7 @@ import EditorTabAuto from './column-editor/EditorTabAuto';
 import { extractIdentifiers } from '../../utils/formulaEvaluator';
 import { useColumnEditorTranslation } from '../../i18n/column_editor'; // Changed Import
 import { useCommonTranslation } from '../../i18n/common';
+import { useModalBackHandler } from '../../hooks/useModalBackHandler';
 
 interface ColumnConfigEditorProps {
     column: ScoreColumn;
@@ -37,6 +38,7 @@ const PLAYER_COUNT_ID = '__PLAYER_COUNT__';
 const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColumns = [], onSave, onDelete, onClose, baseImage }) => {
     const { t } = useColumnEditorTranslation(); // Use New Hook
     const { t: tCommon } = useCommonTranslation();
+    const { confirm } = useConfirm();
 
     const getInitialState = (): ScoreColumn => {
         // 關鍵修改：初始化時整合 functions 結構
@@ -81,7 +83,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
     };
 
     const [activeTab, setActiveTab] = useState<EditorTab>(() => getInitialTab(editedCol));
-    const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+
     const [showLayoutEditor, setShowLayoutEditor] = useState(false);
 
     // Advanced Settings State
@@ -115,23 +117,40 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
 
     const hasUnsavedChanges = () => JSON.stringify(editedCol) !== initialStringifiedRef.current;
 
-    const handleAttemptClose = () => {
-        if (hasUnsavedChanges()) setShowDiscardConfirm(true);
-        else onClose();
+    const handleAttemptClose = async () => {
+        if (hasUnsavedChanges()) {
+            const agreed = await confirm({
+                title: t('col_discard_title'),
+                message: t('col_discard_msg'),
+                confirmText: t('col_discard_confirm'),
+                cancelText: t('col_discard_cancel'),
+                isDangerous: true
+            });
+            if (agreed) onClose();
+        } else {
+            onClose();
+        }
     };
 
+    // [Stable Refactor]
+    // 延遲 100ms 啟動 Back Handler，確保跳過掛載時可能殘留的 popstate 事件 (解決「開了秒關」問題)
+    const [isHandlerActive, setIsHandlerActive] = useState(false);
     useEffect(() => {
-        const handleBackPress = (e: Event) => {
-            e.stopImmediatePropagation();
-            if (showLayoutEditor) {
-                setShowLayoutEditor(false);
-                return;
-            }
+        if (column) {
+            const timer = setTimeout(() => setIsHandlerActive(true), 100);
+            return () => clearTimeout(timer);
+        } else {
+            setIsHandlerActive(false);
+        }
+    }, [column]);
+
+    useModalBackHandler(isHandlerActive, () => {
+        if (showLayoutEditor) {
+            setShowLayoutEditor(false);
+        } else {
             handleAttemptClose();
-        };
-        window.addEventListener('app-back-press', handleBackPress, { capture: true });
-        return () => window.removeEventListener('app-back-press', handleBackPress, { capture: true });
-    }, [editedCol, showLayoutEditor]);
+        }
+    }, 'col-config-editor');
 
     const getCalculationMode = (formula: string): CalculationMode => {
         if (formula.includes('×a2')) return 'product';
@@ -328,16 +347,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
 
     return (
         <div className="fixed inset-0 z-[70] bg-slate-950/95 flex flex-col animate-in slide-in-from-bottom-5" style={{ paddingBottom: visualViewportOffset }}>
-            <ConfirmationModal
-                isOpen={showDiscardConfirm}
-                title={t('col_discard_title')}
-                message={t('col_discard_msg')}
-                confirmText={t('col_discard_confirm')}
-                cancelText={t('col_discard_cancel')}
-                isDangerous={true}
-                onConfirm={onClose}
-                onCancel={() => setShowDiscardConfirm(false)}
-            />
+
 
             {showLayoutEditor && (
                 <LayoutEditor

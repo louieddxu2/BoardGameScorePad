@@ -3,10 +3,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { X, Camera, Image as ImageIcon, Loader2, Upload, Trash2 } from 'lucide-react';
 import { imageService } from '../../../services/imageService';
 import PhotoLightbox from '../parts/PhotoLightbox';
-import ConfirmationModal from '../../shared/ConfirmationModal';
 import { OverlayData } from '../parts/ScoreOverlayGenerator';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useCommonTranslation } from '../../../i18n/common';
+import { useConfirm } from '../../../hooks/useConfirm';
+import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 
 interface PhotoGalleryModalProps {
     isOpen: boolean;
@@ -28,9 +29,9 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
     const [images, setImages] = useState<LoadedImage[]>([]);
     const [loading, setLoading] = useState(false);
     const [initialIndex, setInitialIndex] = useState<number | null>(null); // Changed: Store index instead of object
-    const [photoToDelete, setPhotoToDelete] = useState<string | null>(null);
     const { t } = useSessionTranslation();
     const { t: tCommon } = useCommonTranslation();
+    const { confirm } = useConfirm();
 
     // Load images when IDs change or modal opens
     useEffect(() => {
@@ -103,39 +104,35 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
         }
     }, [autoEnterMode, onClose]);
 
-    // Back button interception
-    useEffect(() => {
-        const isSubStateActive = initialIndex !== null || !!photoToDelete;
-
-        if (isOpen && isSubStateActive) {
-            const handleBack = (e: Event) => {
-                e.stopImmediatePropagation();
-
-                if (photoToDelete) {
-                    setPhotoToDelete(null);
-                } else if (initialIndex !== null) {
-                    handleCloseLightbox(); // Use unified handler
-                }
-            };
-
-            window.addEventListener('app-back-press', handleBack, { capture: true });
-            return () => window.removeEventListener('app-back-press', handleBack, { capture: true });
+    // [Refactored] Unified Back Button Interception
+    // One modal = One history entry. Manage sub-states (Lightbox) internally.
+    useModalBackHandler(isOpen, () => {
+        if (initialIndex !== null) {
+            handleCloseLightbox();
+        } else {
+            onClose();
         }
-    }, [isOpen, initialIndex, photoToDelete, handleCloseLightbox]);
+    }, 'photo-gallery');
 
-    const handleDeleteConfirm = () => {
-        if (photoToDelete) {
-            onDeletePhoto(photoToDelete);
+    const handleDeletePhotoClick = async (id: string) => {
+        const isConfirmed = await confirm({
+            title: t('gallery_delete_confirm_title'),
+            message: t('gallery_delete_confirm_msg'),
+            confirmText: tCommon('delete'),
+            isDangerous: true
+        });
+
+        if (isConfirmed) {
+            // [Stable Sequence] Revert to album view first, then delete.
+            // Since we consolidated the hooks, changing initialIndex no longer calls history.back().
+            // So there's no collision with the confirm modal's history action.
+            setInitialIndex(null);
+            onDeletePhoto(id);
 
             // [New Logic] If in single-shot mode (toolbox camera), deletion means the task is aborted/finished.
-            // Directly close the modal to return to scoreboard.
             if (autoEnterMode === 'lightbox_overlay') {
                 onClose();
-            } else {
-                // Otherwise, just close the lightbox and return to the grid.
-                setInitialIndex(null);
             }
-            setPhotoToDelete(null);
         }
     };
 
@@ -144,23 +141,12 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
 
     return (
         <div className="fixed inset-0 z-[80] bg-slate-950/90 backdrop-blur-sm flex flex-col animate-in fade-in duration-200">
-            <ConfirmationModal
-                isOpen={!!photoToDelete}
-                title={t('gallery_delete_confirm_title')}
-                message={t('gallery_delete_confirm_msg')}
-                confirmText={tCommon('delete')}
-                isDangerous={true}
-                onCancel={() => setPhotoToDelete(null)}
-                onConfirm={handleDeleteConfirm}
-                zIndexClass="z-[120]"
-            />
-
             {initialIndex !== null && images.length > 0 && (
                 <PhotoLightbox
                     images={images}
                     initialIndex={initialIndex}
                     onClose={handleCloseLightbox} // Use unified handler
-                    onDelete={(id) => setPhotoToDelete(id)}
+                    onDelete={handleDeletePhotoClick}
                     overlayData={overlayData} // Pass the context
                     initialShowOverlay={autoEnterMode === 'lightbox_overlay'} // Enable overlay if mode matches
                 />

@@ -103,14 +103,6 @@ export const useSessionEvents = (
 
       // --- Modals above Column Editor ---
 
-      // 9.5 Delete Column Confirmation (Moved Up)
-      // This MUST be checked before editingColumn to prevent the editor from closing instead of the modal
-      if (currentUi.columnToDelete) {
-        setUiState(p => ({ ...p, columnToDelete: null }));
-        e.stopImmediatePropagation();
-        return;
-      }
-
       // 6. Add Column Modal (Moved Up)
       if (currentUi.isAddColumnModalOpen) {
         setUiState(p => ({ ...p, isAddColumnModalOpen: false }));
@@ -168,13 +160,6 @@ export const useSessionEvents = (
       // 8. Input Panel (Editing Cell/Player)
       if (currentUi.editingCell || currentUi.editingPlayerId) {
         setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null, previewValue: 0 }));
-        e.stopImmediatePropagation();
-        return;
-      }
-
-      // 9. Reset Confirmation
-      if (currentUi.showResetConfirm) {
-        setUiState(p => ({ ...p, showResetConfirm: false }));
         e.stopImmediatePropagation();
         return;
       }
@@ -332,23 +317,11 @@ export const useSessionEvents = (
     }
   };
 
-  const handleConfirmReset = () => {
-    onResetScores();
-    setUiState(p => ({ ...p, showResetConfirm: false, editingCell: null, editingPlayerId: null, previewValue: 0 }));
-  };
-
   const handleSaveColumn = (updates: Partial<ScoreColumn>) => {
     if (!uiState.editingColumn) return;
     const newCols = template.columns.map(c => c.id === uiState.editingColumn!.id ? { ...c, ...updates } : c);
     onUpdateTemplate({ ...template, columns: newCols });
     setUiState(p => ({ ...p, editingColumn: null, editingCell: null, editingPlayerId: null }));
-  };
-
-  const handleConfirmDeleteColumn = () => {
-    if (!uiState.columnToDelete) return;
-    const newCols = template.columns.filter(c => c.id !== uiState.columnToDelete);
-    onUpdateTemplate({ ...template, columns: newCols });
-    setUiState(p => ({ ...p, columnToDelete: null, editingColumn: null }));
   };
 
   const handleAddBlankColumn = () => {
@@ -431,9 +404,7 @@ export const useSessionEvents = (
     handleColumnHeaderClick,
     handleTitleSubmit,
     handlePlayerNameSubmit,
-    handleConfirmReset,
     handleSaveColumn,
-    handleConfirmDeleteColumn,
     handleAddBlankColumn,
     handleCopyColumns,
     handleScreenshotRequest,
