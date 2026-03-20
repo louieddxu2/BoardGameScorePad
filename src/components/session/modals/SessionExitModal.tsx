@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { X, MapPin, ChevronDown } from 'lucide-react';
 import { useGameFlowTranslation } from '../../../i18n/game_flow';
 import { useCommonTranslation } from '../../../i18n/common';
-import ConfirmationModal from '../../shared/ConfirmationModal';
+import { useConfirm } from '../../../hooks/useConfirm';
 import { SavedListItem } from '../../../types';
 
 interface SessionExitModalProps {
@@ -27,7 +27,7 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
 }) => {
     const { t } = useGameFlowTranslation(); // Use new hook
     const { t: tCommon } = useCommonTranslation();
-    const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+    const { confirm } = useConfirm();
     const [location, setLocation] = useState(initialLocation);
     const [showLocationMenu, setShowLocationMenu] = useState(false);
     const listRef = useRef<HTMLDivElement>(null);
@@ -53,24 +53,22 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
 
     if (!isOpen) return null;
 
+    const handleDiscardClick = async () => {
+        const isConfirmed = await confirm({
+            title: t('confirm_discard_title'),
+            message: t('confirm_discard_msg'),
+            confirmText: tCommon('delete'),
+            isDangerous: true
+        });
+
+        if (isConfirmed) {
+            if (onDiscard) onDiscard();
+            onClose();
+        }
+    };
+
     return (
         <>
-            <ConfirmationModal
-                isOpen={showDiscardConfirm}
-                title={t('confirm_discard_title')}
-                message={t('confirm_discard_msg')}
-                confirmText={tCommon('delete')}
-                cancelText={tCommon('cancel')}
-                isDangerous={true}
-                // zIndexClass removed to use default z-[110]
-                onCancel={() => setShowDiscardConfirm(false)}
-                onConfirm={() => {
-                    if (onDiscard) onDiscard();
-                    setShowDiscardConfirm(false);
-                    onClose();
-                }}
-            />
-
             <div
                 className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200"
                 onClick={onClose}
@@ -83,7 +81,7 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
                     <div className="flex items-center justify-between">
                         {onDiscard ? (
                             <button
-                                onClick={() => setShowDiscardConfirm(true)}
+                                onClick={handleDiscardClick}
                                 className="text-red-400 hover:text-red-300 text-sm font-bold px-2 py-1 -ml-2 rounded transition-colors"
                             >
                                 {t('exit_btn_discard')}
