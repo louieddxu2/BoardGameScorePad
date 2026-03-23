@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { GameTemplate, GameSession, HistoryRecord } from '../../../types';
 import { DownloadCloud, X, FolderOpen, Trash2, RefreshCw, UploadCloud, Download, Clock, RefreshCcw, Activity, LayoutGrid, History, Loader2, AlertTriangle, CloudOff, Cloud, ArrowRightLeft, Database } from 'lucide-react';
 import { CloudFile, CloudResourceType } from '../../../services/googleDrive';
-import ConfirmationModal from '../../shared/ConfirmationModal';
 import { useToast } from '../../../hooks/useToast';
+import { useConfirm } from '../../../hooks/useConfirm';
 import SyncDashboard from './SyncDashboard';
 import { db } from '../../../db';
 import { useCommonTranslation } from '../../../i18n/common';
@@ -45,10 +45,8 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
 
     const [cloudFiles, setCloudFiles] = useState<CloudFile[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [fileToDelete, setFileToDelete] = useState<CloudFile | null>(null);
-    const [showEmptyTrashConfirm, setShowEmptyTrashConfirm] = useState(false);
-    const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
     const { showToast } = useToast();
+    const { confirm } = useConfirm();
     const { t: tCommon, language } = useCommonTranslation();
 
     const { t: tCloud } = useCloudTranslation();
@@ -296,7 +294,12 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                     const historyRecord = await db.history.get(uuid);
                     if (historyRecord) {
                         const dateStr = new Date(historyRecord.endTime).toLocaleString();
-                        window.alert(tCloud('cloud_alert_session_in_history', { date: dateStr }));
+                        await confirm({
+                            title: tCommon('info'),
+                            message: tCloud('cloud_alert_session_in_history', { date: dateStr }),
+                            confirmText: tCommon('confirm'),
+                            hideCancel: true
+                        });
                         setIsLoading(false);
                         return;
                     }
@@ -318,7 +321,12 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                         onSessionRestoreSuccess(session);
                         showToast({ message: tCloud('cloud_toast_restore_all_success'), type: 'success' });
                     } else {
-                        window.alert(tCloud('cloud_alert_template_missing'));
+                        await confirm({
+                            title: tCommon('info'),
+                            message: tCloud('cloud_alert_template_missing'),
+                            confirmText: tCommon('confirm'),
+                            hideCancel: true
+                        });
                     }
                 }
 
@@ -334,11 +342,18 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
         }
     };
 
-    const handleFileDelete = async () => {
-        if (!fileToDelete) return;
-        const success = await deleteCloudFile(fileToDelete.id);
-        if (success) await refreshList();
-        setFileToDelete(null);
+    const handleFileDelete = async (file: CloudFile) => {
+        const ok = await confirm({
+            title: tCloud('cloud_confirm_delete_title'),
+            message: tCloud('cloud_confirm_delete_msg', { name: cleanName(file.name) }),
+            confirmText: tCloud('cloud_delete_perm'),
+            isDangerous: true
+        });
+
+        if (ok) {
+            const success = await deleteCloudFile(file.id);
+            if (success) await refreshList();
+        }
     };
 
     const handleRestoreFromTrash = async (file: CloudFile) => {
@@ -347,9 +362,17 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
     };
 
     const handleEmptyTrash = async () => {
-        const success = await emptyTrash(getResourceType(category));
-        if (success) await refreshList();
-        setShowEmptyTrashConfirm(false);
+        const ok = await confirm({
+            title: tCloud('cloud_confirm_empty_title'),
+            message: tCloud('cloud_confirm_empty_msg'),
+            confirmText: tCommon('confirm'),
+            isDangerous: true
+        });
+
+        if (ok) {
+            const success = await emptyTrash(getResourceType(category));
+            if (success) await refreshList();
+        }
     };
 
     const handleConnect = async () => {
@@ -359,9 +382,16 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
     };
 
     const handleDisconnect = async () => {
-        await disconnectFromCloud();
-        setCloudFiles([]);
-        setShowDisconnectConfirm(false);
+        const ok = await confirm({
+            title: tCloud('cloud_confirm_logout_title'),
+            message: tCloud('cloud_confirm_logout_msg'),
+            confirmText: tCommon('confirm')
+        });
+
+        if (ok) {
+            await disconnectFromCloud();
+            setCloudFiles([]);
+        }
     };
 
     // --- SYNC ACTIONS ---
@@ -426,32 +456,6 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                 if (e.target === e.currentTarget && (syncStatus === 'idle' || syncStatus === 'scanning')) onClose();
             }}
         >
-            <ConfirmationModal
-                isOpen={!!fileToDelete}
-                title={tCloud('cloud_confirm_delete_title')}
-                message={tCloud('cloud_confirm_delete_msg', { name: fileToDelete ? cleanName(fileToDelete.name) : '' })}
-                confirmText={tCloud('cloud_delete_perm')}
-                isDangerous={true}
-                onCancel={() => setFileToDelete(null)}
-                onConfirm={handleFileDelete}
-            />
-            <ConfirmationModal
-                isOpen={showEmptyTrashConfirm}
-                title={tCloud('cloud_confirm_empty_title')}
-                message={tCloud('cloud_confirm_empty_msg')}
-                confirmText={tCommon('confirm')}
-                isDangerous={true}
-                onCancel={() => setShowEmptyTrashConfirm(false)}
-                onConfirm={handleEmptyTrash}
-            />
-            <ConfirmationModal
-                isOpen={showDisconnectConfirm}
-                title={tCloud('cloud_confirm_logout_title')}
-                message={tCloud('cloud_confirm_logout_msg')}
-                confirmText={tCommon('confirm')}
-                onCancel={() => setShowDisconnectConfirm(false)}
-                onConfirm={handleDisconnect}
-            />
 
             <div className="bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border border-slate-800 flex flex-col h-[600px] max-h-[85vh] relative overflow-hidden">
 
@@ -473,7 +477,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                         <div className="flex items-center gap-2">
                             {isConnected && (
                                 <button
-                                    onClick={() => setShowDisconnectConfirm(true)}
+                                    onClick={handleDisconnect}
                                     className="p-1.5 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 rounded-lg text-red-400 transition-colors"
                                     title={tCloud('cloud_disconnect')}
                                 >
@@ -572,7 +576,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
 
                                             <div className="shrink-0 mr-3">
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); setFileToDelete(file); }}
+                                                    onClick={(e) => { e.stopPropagation(); handleFileDelete(file); }}
                                                     className="p-2 text-slate-600 hover:text-red-400 hover:bg-slate-900/50 rounded-lg transition-colors"
                                                     title={viewMode === 'active' ? tCloud('cloud_tooltip_trash') : tCloud('cloud_delete_perm')}
                                                 >
@@ -614,7 +618,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                         </>
                     )}
                 </div>
-                {viewMode === 'trash' && cloudFiles.length > 0 && isConnected && (<div className="flex-none p-3 bg-slate-800 border-t border-slate-700"><button onClick={() => setShowEmptyTrashConfirm(true)} className="w-full py-2 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 text-red-200 text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2"><Trash2 size={16} /> {tCloud('cloud_empty_trash')}</button></div>)}
+                {viewMode === 'trash' && cloudFiles.length > 0 && isConnected && (<div className="flex-none p-3 bg-slate-800 border-t border-slate-700"><button onClick={handleEmptyTrash} className="w-full py-2 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 text-red-200 text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2"><Trash2 size={16} /> {tCloud('cloud_empty_trash')}</button></div>)}
             </div>
         </div>
     );

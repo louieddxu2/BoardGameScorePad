@@ -4,6 +4,7 @@ import { GameTemplate } from '../../types';
 import { X, Save, Settings, RotateCcw, Palette, Hash } from 'lucide-react';
 import { COLORS } from '../../colors';
 import { isColorDark } from '../../utils/ui';
+import { useConfirm } from '../../hooks/useConfirm';
 import { useCommonTranslation } from '../../i18n/common';
 import { gameSettingsTranslations } from '../../i18n/gameSettings';
 
@@ -23,6 +24,9 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ template, onSav
     const [supportedColors, setSupportedColors] = useState<string[]>(template.supportedColors || []);
     const [bggId, setBggId] = useState<string>(template.bggId || '');
 
+    const { confirm } = useConfirm();
+    const { t: tCommon } = useCommonTranslation();
+
     const toggleColor = (color: string) => {
         if (supportedColors.includes(color)) {
             setSupportedColors(prev => prev.filter(c => c !== color));
@@ -37,6 +41,21 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ template, onSav
             bggId: bggId.trim()
         });
     };
+
+    const handleResetColorsClick = async () => {
+    // 調用全域確認
+    const ok = await confirm({
+        title: t('reset_default'),
+        message: t('reset_colors_confirm_msg'),
+        confirmText: tCommon('confirm'),
+        isDangerous: true
+    });
+    
+    if (ok) {
+        setSupportedColors([]);
+    }
+};
+
 
     return (
         <div className="fixed inset-0 z-[70] bg-slate-950 flex flex-col animate-in slide-in-from-bottom-5">
@@ -98,7 +117,7 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ template, onSav
                                 <label className="block text-xs font-bold text-slate-500 uppercase">{t('colors_selected')}</label>
                                 {supportedColors.length > 0 && (
                                     <button
-                                        onClick={() => setSupportedColors([])}
+                                        onClick={handleResetColorsClick}
                                         className="text-[10px] flex items-center gap-1 text-slate-500 hover:text-slate-300 bg-slate-800 px-2 py-1 rounded-full border border-slate-700 transition-colors"
                                     >
                                         <RotateCcw size={10} /> {t('reset_default')}
