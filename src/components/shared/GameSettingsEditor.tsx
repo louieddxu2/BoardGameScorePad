@@ -7,14 +7,16 @@ import { isColorDark } from '../../utils/ui';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useCommonTranslation } from '../../i18n/common';
 import { gameSettingsTranslations } from '../../i18n/gameSettings';
+import { useModalBackHandler } from '../../hooks/useModalBackHandler';
 
 interface GameSettingsEditorProps {
+    isOpen: boolean;
     template: GameTemplate;
     onSave: (updates: Partial<GameTemplate>) => void;
     onClose: () => void;
 }
 
-const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ template, onSave, onClose }) => {
+const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ isOpen, template, onSave, onClose }) => {
     const { language } = useCommonTranslation();
     const t = (key: keyof typeof gameSettingsTranslations['zh-TW']) => {
         const dict = gameSettingsTranslations[language] || gameSettingsTranslations['zh-TW'];
@@ -26,6 +28,9 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ template, onSav
 
     const { confirm } = useConfirm();
     const { t: tCommon } = useCommonTranslation();
+    const { zIndex } = useModalBackHandler(isOpen, onClose, 'game-settings');
+
+    if (!isOpen) return null;
 
     const toggleColor = (color: string) => {
         if (supportedColors.includes(color)) {
@@ -58,7 +63,10 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ template, onSav
 
 
     return (
-        <div className="fixed inset-0 z-[70] bg-slate-950 flex flex-col animate-in slide-in-from-bottom-5">
+        <div 
+            className="fixed inset-0 bg-slate-950 flex flex-col animate-in slide-in-from-bottom-5"
+            style={{ zIndex }}
+        >
             {/* Header */}
             <header className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 flex-none z-20">
                 <div className="flex items-center gap-2">

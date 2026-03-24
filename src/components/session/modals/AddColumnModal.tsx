@@ -4,18 +4,23 @@ import { ScoreColumn } from '../../../types';
 import { ListPlus, Plus, CopyPlus, Square, CheckSquare, X } from 'lucide-react';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useCommonTranslation } from '../../../i18n/common';
+import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 
 interface AddColumnModalProps {
+  isOpen: boolean;
   columns: ScoreColumn[];
   onClose: () => void;
   onAddBlank: () => void;
   onCopy: (selectedIds: string[]) => void;
 }
 
-const AddColumnModal: React.FC<AddColumnModalProps> = ({ columns, onClose, onAddBlank, onCopy }) => {
+const AddColumnModal: React.FC<AddColumnModalProps> = ({ isOpen, columns, onClose, onAddBlank, onCopy }) => {
   const { t } = useSessionTranslation();
   const { t: tCommon } = useCommonTranslation();
   const [selectedColumnIds, setSelectedColumnIds] = useState<string[]>([]);
+  const { zIndex } = useModalBackHandler(isOpen, onClose, 'add-column');
+
+  if (!isOpen) return null;
 
   const toggleSelection = (colId: string) => {
     setSelectedColumnIds(prev =>
@@ -39,7 +44,11 @@ const AddColumnModal: React.FC<AddColumnModalProps> = ({ columns, onClose, onAdd
   };
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={onClose}>
+    <div 
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" 
+      style={{ zIndex }}
+      onClick={onClose}
+    >
       <div className="bg-slate-900 w-3/4 max-w-md rounded-2xl shadow-2xl border border-slate-800 flex flex-col h-[600px] max-h-[85vh]" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex-none bg-slate-800 p-4 border-b border-slate-700 flex items-center justify-between">
