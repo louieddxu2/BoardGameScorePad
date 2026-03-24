@@ -107,8 +107,22 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
 
     useEffect(() => {
         const startCamera = async () => {
+            // [Security Check] navigator.mediaDevices is only available in Secure Contexts (HTTPS/localhost).
+            // On mobile via IP (http://192.168.x.x), it will be undefined or fail.
+            if (!window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                showToast({ 
+                    message: t('camera_toast_start_failed') + " (Insecure Context)", 
+                    type: 'error' 
+                });
+                return;
+            }
+
             stopCamera();
             try {
+                if (!navigator.mediaDevices?.getUserMedia) {
+                    throw new Error("getUserMedia not supported");
+                }
+
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         facingMode: facingMode,

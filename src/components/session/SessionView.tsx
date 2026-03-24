@@ -286,6 +286,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         templateName={session.name || template.name} // [Identity Upgrade] Use Session Name if available
         isEditingTitle={isEditingTitle}
         showShareMenu={showShareMenu}
+        shareMenuZIndex={eventHandlers.shareMenuZIndex} // [NEW] Pass dynamic zIndex
         screenshotActive={screenshotModal.isOpen}
         isEditMode={isEditMode}
         hasVisuals={!!template.globalVisuals}
@@ -325,7 +326,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onOpenGallery={() => setUiState(p => ({
           ...p,
           isPhotoGalleryOpen: true,
-          showShareMenu: false,
           galleryParams: { mode: 'default' } // [Reset] Ensure manual open resets special modes
         }))}
         onTakePhoto={media.openCamera} // Direct call via media hook (sets default)

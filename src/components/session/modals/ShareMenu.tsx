@@ -11,6 +11,7 @@ interface ShareMenuProps {
   onOpenGallery?: () => void;
   onTakePhoto?: () => void; // New prop
   photoCount?: number;
+  zIndex?: number; // [NEW]
 }
 
 const ShareMenu: React.FC<ShareMenuProps> = ({
@@ -20,11 +21,15 @@ const ShareMenu: React.FC<ShareMenuProps> = ({
   onUploadImage,
   onOpenGallery,
   onTakePhoto,
-  photoCount = 0
+  photoCount = 0,
+  zIndex = 50 // Default
 }) => {
   const { t } = useSessionTranslation();
   return (
-    <div className="absolute top-full right-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-50 flex flex-col p-1 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+    <div 
+      className="absolute top-full right-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col p-1 animate-in fade-in zoom-in-95 duration-200 origin-top-right"
+      style={{ zIndex }}
+    >
       <button
         onClick={() => onScreenshotRequest('full')}
         disabled={isCopying}

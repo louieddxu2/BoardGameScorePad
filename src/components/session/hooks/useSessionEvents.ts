@@ -75,6 +75,13 @@ export const useSessionEvents = (
     'session-title-edit'
   );
 
+  // 3. Share Menu Popover
+  const { zIndex: shareMenuZIndex } = useModalBackHandler(
+    uiState.showShareMenu,
+    () => setUiState(p => ({ ...p, showShareMenu: false })),
+    'session-share-menu'
+  );
+
   // --- Back Button Logic (Stack Priority for non-history managed UI) ---
   useEffect(() => {
     const handleSessionBackPress = (e: Event) => {
@@ -132,13 +139,6 @@ export const useSessionEvents = (
       // 4. Session Exit Confirmation Modal (Targeted by app-back-press fallback)
       if (currentUi.isSessionExitModalOpen) {
         setUiState(p => ({ ...p, isSessionExitModalOpen: false }));
-        e.stopImmediatePropagation();
-        return;
-      }
-
-      // 5. Share Menu
-      if (currentUi.showShareMenu) {
-        setUiState(p => ({ ...p, showShareMenu: false }));
         e.stopImmediatePropagation();
         return;
       }
@@ -399,5 +399,6 @@ export const useSessionEvents = (
     // [New] Expose Joystick Actions
     moveToNextPlayer: navigation.moveToNextPlayer,
     moveToPrevPlayer: navigation.moveToPrevPlayer,
+    shareMenuZIndex // [NEW] Export for SessionView to use
   };
 };

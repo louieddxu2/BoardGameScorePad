@@ -1,5 +1,4 @@
-
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * 追蹤目前有多少個 modal 正透過此 Hook 管理歷史紀錄。
@@ -31,11 +30,13 @@ export const _resetActiveCountForTesting = () => {
  * @param isOpen 彈窗是否開啟
  * @param onClose 關閉彈窗的函式
  * @param modalId 彈窗的唯一識別碼 (用於歷史紀錄的 state 識別)
+ * @returns { order, zIndex } 目前在堆疊中的順位與建議的 zIndex
  */
 export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalId: string) => {
   // 使用 Ref 來保存 onClose，避免因為 onClose 函式本身重建導致 Effect 重跑
   const onCloseRef = useRef(onClose);
   const isPoppedRef = useRef(false);
+  const [order, setOrder] = useState(0);
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -47,6 +48,7 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
       isPoppedRef.current = false;
       const newCount = getActiveCount() + 1;
       setActiveCount(newCount);
+      setOrder(newCount);
       const myOrder = newCount;
 
       // 2. 推入歷史紀錄
@@ -72,6 +74,7 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
       // 4. 清理函式
       return () => {
         window.removeEventListener('popstate', handlePopState);
+        setOrder(0);
 
         if (isPoppedRef.current) {
           // [Popstate 觸發的關閉]
@@ -101,4 +104,10 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
       };
     }
   }, [isOpen, modalId]);
+
+  // 回傳順位與動態 zIndex (基礎值 100 + 每層加 10)
+  return { 
+    order, 
+    zIndex: order > 0 ? 100 + (order * 10) : 0 
+  };
 };

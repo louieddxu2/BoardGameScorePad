@@ -106,7 +106,7 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
 
     // [Refactored] Unified Back Button Interception
     // One modal = One history entry. Manage sub-states (Lightbox) internally.
-    useModalBackHandler(isOpen, () => {
+    const { zIndex } = useModalBackHandler(isOpen, () => {
         if (initialIndex !== null) {
             handleCloseLightbox();
         } else {
@@ -140,7 +140,10 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[85] bg-slate-950/90 backdrop-blur-sm flex flex-col animate-in fade-in duration-200">
+        <div 
+            className="fixed inset-0 bg-slate-950/90 backdrop-blur-sm flex flex-col animate-in fade-in duration-200"
+            style={{ zIndex }}
+        >
             {initialIndex !== null && images.length > 0 && (
                 <PhotoLightbox
                     images={images}
