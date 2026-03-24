@@ -8,6 +8,7 @@ import { useToast } from '../../../hooks/useToast';
 import { DATA_LIMITS } from '../../../dataLimits';
 import { bgStatsEntityService } from '../../../features/bgstats/services/bgStatsEntityService';
 import { useSessionTranslation } from '../../../i18n/session';
+import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 
 interface SessionViewProps {
   session: GameSession;
@@ -59,7 +60,22 @@ export const useSessionEvents = (
   useEffect(() => { localUiStateRef.current = localUiState; }, [localUiState]);
   useEffect(() => { onExitRef.current = onExit; }, [onExit]);
 
-  // --- Back Button Logic (Stack Priority) ---
+  // --- Back Button Logic (History Stack Managed UI) ---
+  // 1. Input Panel (Score Cell / Player Name)
+  useModalBackHandler(
+    uiState.editingCell !== null || uiState.editingPlayerId !== null,
+    () => setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null, previewValue: 0 })),
+    'session-input-panel'
+  );
+
+  // 2. Game Title Editing
+  useModalBackHandler(
+    uiState.isEditingTitle,
+    () => setUiState(p => ({ ...p, isEditingTitle: false })),
+    'session-title-edit'
+  );
+
+  // --- Back Button Logic (Stack Priority for non-history managed UI) ---
   useEffect(() => {
     const handleSessionBackPress = (e: Event) => {
       const currentUi = uiStateRef.current;
@@ -69,74 +85,51 @@ export const useSessionEvents = (
       // 0. Photo Preview (Highest Priority - Local State)
       if (currentLocalUi?.isPhotoPreviewOpen) {
         currentLocalUi.onClosePhotoPreview();
-        e.stopImmediatePropagation(); // Critical: Stop bubbling to background editors
+        e.stopImmediatePropagation();
         return;
       }
 
-      // [New] 0.1 General Camera Overlay
+      // 0.1 General Camera Overlay
       if (currentUi.isGeneralCameraOpen) {
         setUiState(p => ({ ...p, isGeneralCameraOpen: false }));
         e.stopImmediatePropagation();
         return;
       }
 
-      // [New] 0.2 Texture Mapper (Grid Editor)
+      // 0.2 Texture Mapper / Scanner
       if (currentUi.isTextureMapperOpen) {
         setUiState(p => ({ ...p, isTextureMapperOpen: false }));
         e.stopImmediatePropagation();
         return;
       }
-
-      // [New] 0.3 Scanner (Photo Rectification)
       if (currentUi.isScannerOpen) {
         setUiState(p => ({ ...p, isScannerOpen: false }));
         e.stopImmediatePropagation();
         return;
       }
 
-      // 0.5 Game Settings Modal (New High Priority)
+      // 0.5 Game Settings
       if (currentUi.isGameSettingsOpen) {
         setUiState(p => ({ ...p, isGameSettingsOpen: false }));
         e.stopImmediatePropagation();
         return;
       }
 
-      // --- Modals above Column Editor ---
-
-      // 6. Add Column Modal (Moved Up)
+      // 1. Add Column Modal
       if (currentUi.isAddColumnModalOpen) {
         setUiState(p => ({ ...p, isAddColumnModalOpen: false }));
         e.stopImmediatePropagation();
         return;
       }
 
-      // --- Column Editor ---
-
-      // 1. Column Editor (Let it handle itself if implemented, but strictly we can guard here)
-      // If the editor is open, we stop propagation so it can handle its own internal back press (check changes)
-      if (currentUi.editingColumn) {
-        // Do nothing, let ColumnConfigEditor's listener handle it.
-        // BUT, we should 'return' so we don't proceed to lower checks.
-        return;
-      }
-
-      // --- Other Modals ---
-
-      // 2. Image Upload Modal (Missing Image / Manual Upload)
+      // 2. Image Upload / Background
       if (currentUi.isImageUploadModalOpen) {
         setUiState(p => ({ ...p, isImageUploadModalOpen: false }));
         e.stopImmediatePropagation();
         return;
       }
 
-      // 3. Photo Gallery
-      if (currentUi.isPhotoGalleryOpen) {
-        setUiState(p => ({ ...p, isPhotoGalleryOpen: false }));
-        e.stopImmediatePropagation();
-        return;
-      }
-
-      // 4. Session Exit Confirmation Modal
+      // 4. Session Exit Confirmation Modal (Targeted by app-back-press fallback)
       if (currentUi.isSessionExitModalOpen) {
         setUiState(p => ({ ...p, isSessionExitModalOpen: false }));
         e.stopImmediatePropagation();
@@ -150,19 +143,8 @@ export const useSessionEvents = (
         return;
       }
 
-      // 7. Screenshot Modal
-      if (currentUi.screenshotModal.isOpen) {
-        setUiState(p => ({ ...p, screenshotModal: { ...p.screenshotModal, isOpen: false } }));
-        e.stopImmediatePropagation();
-        return;
-      }
-
-      // 8. Input Panel (Editing Cell/Player)
-      if (currentUi.editingCell || currentUi.editingPlayerId) {
-        setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null, previewValue: 0 }));
-        e.stopImmediatePropagation();
-        return;
-      }
+      // Note: ScreenshotModal and ColumnConfigEditor are managed internally by their own hooks.
+      // because App.tsx checks hasActiveModals(), this listener won't be called if they are open.
 
       // 10. Default: Open Exit Confirmation
       // Check if we need to confirm or just exit

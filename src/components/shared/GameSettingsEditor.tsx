@@ -43,18 +43,18 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ template, onSav
     };
 
     const handleResetColorsClick = async () => {
-    // 調用全域確認
-    const ok = await confirm({
-        title: t('reset_default'),
-        message: t('reset_colors_confirm_msg'),
-        confirmText: tCommon('confirm'),
-        isDangerous: true
-    });
-    
-    if (ok) {
-        setSupportedColors([]);
-    }
-};
+        // 調用全域確認
+        const ok = await confirm({
+            title: t('reset_default'),
+            message: t('reset_colors_confirm_msg'),
+            confirmText: tCommon('confirm'),
+            isDangerous: true
+        });
+
+        if (ok) {
+            setSupportedColors([]);
+        }
+    };
 
 
     return (

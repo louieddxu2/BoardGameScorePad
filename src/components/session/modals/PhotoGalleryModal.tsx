@@ -140,7 +140,7 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[80] bg-slate-950/90 backdrop-blur-sm flex flex-col animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[85] bg-slate-950/90 backdrop-blur-sm flex flex-col animate-in fade-in duration-200">
             {initialIndex !== null && images.length > 0 && (
                 <PhotoLightbox
                     images={images}
