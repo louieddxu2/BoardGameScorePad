@@ -9,9 +9,10 @@ interface CameraViewProps {
     onCapture: (blobs: Blob[]) => void;
     onClose: () => void;
     singleShot?: boolean; // Default false (Multi-shot mode)
+    zIndex?: number; // [NEW] Dynamic z-index
 }
 
-const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot = false }) => {
+const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot = false, zIndex }) => {
     const { t } = useScannerTranslation();
     const videoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
@@ -223,7 +224,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
         transition: 'transform 0.3s ease-out'
     };
 
-    let containerClass = "fixed inset-0 bg-black flex z-[10000] ";
+    let containerClass = "fixed inset-0 bg-black flex ";
     let controlsContainerClass = "flex-none bg-black flex items-center justify-between p-4 safe-area-bottom ";
 
     if (isLandscapeLayout) {
@@ -239,7 +240,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
     }
 
     return createPortal(
-        <div className={containerClass}>
+        <div className={containerClass} style={{ zIndex }}>
             {/* Flash Overlay */}
             <div className={`absolute inset-0 bg-white pointer-events-none transition-opacity duration-150 z-20 ${isFlashing ? 'opacity-80' : 'opacity-0'}`} />
 
