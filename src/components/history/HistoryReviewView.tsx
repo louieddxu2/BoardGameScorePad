@@ -12,6 +12,7 @@ import { googleDriveService } from '../../services/googleDrive'; // Import servi
 import { ScreenshotLayout } from '../session/hooks/useSessionState';
 import { db } from '../../db';
 import { useAppData } from '../../hooks/useAppData';
+import { useModalBackHandler } from '../../hooks/useModalBackHandler';
 import ShareMenu from '../session/modals/ShareMenu';
 import PhotoGalleryModal from '../session/modals/PhotoGalleryModal';
 import { imageService } from '../../services/imageService';
@@ -112,27 +113,10 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
         onExit();
     };
 
-    // --- Back Button Handler (Local Priority) ---
-    useEffect(() => {
-        const handleHistoryBackPress = () => {
-            // Priority 1: Photo Gallery
-            if (showPhotoGallery) { setShowPhotoGallery(false); return; }
-            // Priority 2: Settings Modal
-            if (showSettingsModal) { setShowSettingsModal(false); return; }
-            // Priority 3: Screenshot Modal
-            if (showScreenshotModal) { setShowScreenshotModal(false); return; }
-            // Priority 4: Share Menu
-            if (showShareMenu) { setShowShareMenu(false); return; }
-
-            // Default: Exit View with Sync Check
-            handleExitAndSync();
-        };
-
-        window.dispatchEvent(new CustomEvent('app-back-press-register')); // Optional: inform system if needed
-        window.addEventListener('app-back-press', handleHistoryBackPress);
-        return () => window.removeEventListener('app-back-press', handleHistoryBackPress);
-    }, [showPhotoGallery, showSettingsModal, showScreenshotModal, showShareMenu, onExit, record, isAutoConnectEnabled, isConnected]);
-    // Added dependencies for closure safety inside handleExitAndSync
+    // [Standardized Navigation]
+    // 1. History Root Entry: Handles the final exit and cloud sync trigger.
+    // This decouples navigation state from cloud logic as requested.
+    useModalBackHandler(true, handleExitAndSync, 'history-root');
 
     // Load cloud image
     useEffect(() => {
@@ -347,7 +331,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
             <div className="flex-none bg-slate-800 p-2 flex items-center justify-between border-b border-slate-700 shadow-md z-20">
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={() => window.dispatchEvent(new CustomEvent('app-back-press'))}
+                        onClick={() => window.history.back()}
                         className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 shrink-0"
                     >
                         <ArrowLeft size={20} />
@@ -373,17 +357,17 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                         <Share2 size={20} />
                     </button>
 
-                    {showShareMenu && (
-                        <ShareMenu
-                            isCopying={false}
-                            onScreenshotRequest={handleScreenshotRequest}
-                            hasVisuals={!!template.globalVisuals}
-                            onUploadImage={undefined}
-                            onOpenGallery={handleOpenGallery}
-                            photoCount={record.photos?.length || 0}
-                        />
-                    )}
-                    {showShareMenu && <div className="fixed inset-0 z-40" onClick={() => setShowShareMenu(false)}></div>}
+                    <ShareMenu
+                        isOpen={showShareMenu}
+                        onClose={() => setShowShareMenu(false)}
+                        isCopying={false}
+                        onScreenshotRequest={handleScreenshotRequest}
+                        hasVisuals={!!template.globalVisuals}
+                        onUploadImage={undefined}
+                        onOpenGallery={handleOpenGallery}
+                        photoCount={record.photos?.length || 0}
+                        zIndex={100}
+                    />
                 </div>
             </div>
 

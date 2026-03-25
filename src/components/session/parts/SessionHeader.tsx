@@ -176,6 +176,8 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
 
         {showShareMenu && (
           <ShareMenu
+            isOpen={showShareMenu}
+            onClose={() => onShareMenuToggle(false)}
             isCopying={screenshotActive}
             onScreenshotRequest={onScreenshotRequest}
             hasVisuals={hasVisuals}

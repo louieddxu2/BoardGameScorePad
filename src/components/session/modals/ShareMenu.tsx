@@ -2,6 +2,7 @@
 import React from 'react';
 import { Image, Upload, Images, Camera } from 'lucide-react';
 import { useSessionTranslation } from '../../../i18n/session';
+import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 
 interface ShareMenuProps {
   isCopying: boolean;
@@ -11,7 +12,9 @@ interface ShareMenuProps {
   onOpenGallery?: () => void;
   onTakePhoto?: () => void; // New prop
   photoCount?: number;
-  zIndex?: number; // [NEW]
+  zIndex?: number;
+  isOpen?: boolean; // [NEW]
+  onClose?: () => void; // [NEW]
 }
 
 const ShareMenu: React.FC<ShareMenuProps> = ({
@@ -22,13 +25,21 @@ const ShareMenu: React.FC<ShareMenuProps> = ({
   onOpenGallery,
   onTakePhoto,
   photoCount = 0,
-  zIndex = 50 // Default
+  zIndex: customZIndex,
+  isOpen = false,
+  onClose = () => {}
 }) => {
   const { t } = useSessionTranslation();
+  const { zIndex } = useModalBackHandler(isOpen, onClose, 'share-menu');
+
+  if (!isOpen) return null;
+
+  const finalZIndex = customZIndex || zIndex;
+
   return (
     <div 
       className="absolute top-full right-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col p-1 animate-in fade-in zoom-in-95 duration-200 origin-top-right"
-      style={{ zIndex }}
+      style={{ zIndex: finalZIndex }}
     >
       <button
         onClick={() => onScreenshotRequest('full')}

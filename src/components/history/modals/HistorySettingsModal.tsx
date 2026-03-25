@@ -9,6 +9,7 @@ import { DATA_LIMITS } from '../../../dataLimits';
 import { getRecordScoringRule, getRecordBggId } from '../../../utils/historyUtils';
 import { calculateWinners } from '../../../utils/templateUtils';
 
+import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 import { useHistoryTranslation } from '../../../i18n/history';
 
 interface HistorySettingsModalProps {
@@ -68,6 +69,8 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
             setFormData(initialForm);
         }
     }, [isOpen, record]);
+
+    const { zIndex } = useModalBackHandler(isOpen, onClose, 'history-settings');
 
     if (!isOpen || !formData) return null;
 
@@ -296,7 +299,8 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
 
     return (
         <div
-            className="modal-backdrop z-[100] animate-in fade-in duration-200"
+            className="modal-backdrop animate-in fade-in duration-200"
+            style={{ zIndex }}
             onClick={(e) => {
                 if (e.target === e.currentTarget) onClose();
             }}

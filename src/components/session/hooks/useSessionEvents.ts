@@ -104,7 +104,7 @@ export const useSessionEvents = (
       }
 
 
-      // 0.2 Texture Mapper / Scanner
+      // 0.2 Texture Mapper / Scanner (Still manual for now)
       if (currentUi.isTextureMapperOpen) {
         setUiState(p => ({ ...p, isTextureMapperOpen: false }));
         e.stopImmediatePropagation();
@@ -116,33 +116,9 @@ export const useSessionEvents = (
         return;
       }
 
-      // 0.5 Game Settings
-      if (currentUi.isGameSettingsOpen) {
-        setUiState(p => ({ ...p, isGameSettingsOpen: false }));
-        e.stopImmediatePropagation();
-        return;
-      }
-
-      // 1. Add Column Modal
-      if (currentUi.isAddColumnModalOpen) {
-        setUiState(p => ({ ...p, isAddColumnModalOpen: false }));
-        e.stopImmediatePropagation();
-        return;
-      }
-
-      // 2. Image Upload / Background
-      if (currentUi.isImageUploadModalOpen) {
-        setUiState(p => ({ ...p, isImageUploadModalOpen: false }));
-        e.stopImmediatePropagation();
-        return;
-      }
-
-      // 4. Session Exit Confirmation Modal (Targeted by app-back-press fallback)
-      if (currentUi.isSessionExitModalOpen) {
-        setUiState(p => ({ ...p, isSessionExitModalOpen: false }));
-        e.stopImmediatePropagation();
-        return;
-      }
+      // Note: ScreenshotModal, ColumnConfigEditor, GameSettings, AddColumnModal, 
+      // SessionBackgroundModal, and SessionExitModal are now managed internally by useModalBackHandler.
+      // because App.tsx checks hasActiveModals(), this listener won't be called if they are open.
 
       // Note: ScreenshotModal and ColumnConfigEditor are managed internally by their own hooks.
       // because App.tsx checks hasActiveModals(), this listener won't be called if they are open.
