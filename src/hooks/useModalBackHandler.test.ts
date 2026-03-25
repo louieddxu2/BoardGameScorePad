@@ -34,10 +34,11 @@ describe('useModalBackHandler', () => {
   });
 
   it('should handle nested modals and prioritize the top one', async () => {
+    vi.useFakeTimers();
     const onCloseBottom = vi.fn();
     const onCloseTop = vi.fn();
 
-    const { unmount } = renderHook(
+    renderHook(
       ({ showTop }) => {
         useModalBackHandler(true, onCloseBottom, 'bottom');
         useModalBackHandler(showTop, onCloseTop, 'top');
@@ -45,19 +46,23 @@ describe('useModalBackHandler', () => {
       { initialProps: { showTop: true } }
     );
 
-    // 1. Initially activeCount should be 2
+    // 1. Initially activeCount should be true (registration is immediate)
     expect(hasActiveModals()).toBe(true);
 
-    // 2. Simulate Back Button (popstate)
-    await act(async () => {
+    // 2. Wait for guard to finish
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    // 3. Simulate Back Button (popstate)
+    act(() => {
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
 
     // ONLY the top modal should have closed!
     expect(onCloseTop).toHaveBeenCalled();
     expect(onCloseBottom).not.toHaveBeenCalled();
-
-    unmount();
+    vi.useRealTimers();
   });
 
   it('should handle silent back to prevent double closing', () => {

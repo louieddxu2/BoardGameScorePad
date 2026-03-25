@@ -209,7 +209,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           onCapture={media.handleCameraBatchCapture}
           onClose={() => setUiState(p => ({ ...p, isGeneralCameraOpen: false }))}
           singleShot={isScoreCameraMode} // [FIXED] Pass dynamic singleShot prop
-          zIndex={eventHandlers.cameraZIndex} // [NEW] Pass dynamic zIndex
         />
       )}
 

@@ -25,6 +25,7 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
   const onCloseRef = useRef(onClose);
   const isPoppedRef = useRef(false);
   const [order, setOrder] = useState(0);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -33,6 +34,7 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
   useEffect(() => {
     if (isOpen) {
       isPoppedRef.current = false;
+      setIsReady(false); // Reset guard
       
       // 1. 註冊到堆疊 (避免重複註冊)
       const currentStack = getModalStack();
@@ -47,23 +49,12 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
       // 2. 推入歷史紀錄
       window.history.pushState({ modal: modalId }, '');
 
-      // 3. 定義上一頁監聽器
-      const handlePopState = (e: PopStateEvent) => {
-        if ((window as any).__silentBack) return;
-
-        // [精確匹配] 只有位於堆疊最頂層的 ID 才會回應
-        const stack = getModalStack();
-        const topId = stack[stack.length - 1];
-        if (topId !== modalId) return;
-
-        isPoppedRef.current = true;
-        onCloseRef.current();
-      };
-
-      window.addEventListener('popstate', handlePopState);
+      // Defer Phase 2: Wait for previous modal's back event to settle
+      const timer = setTimeout(() => setIsReady(true), 300);
 
       return () => {
-        window.removeEventListener('popstate', handlePopState);
+        clearTimeout(timer);
+        setIsReady(false);
         setOrder(0);
 
         const cleanupStack = () => {
@@ -91,8 +82,30 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
     }
   }, [isOpen, modalId]);
 
+  // Phase 2: Attach popstate listener (Delayed)
+  useEffect(() => {
+    if (isOpen && isReady) {
+      const handlePopState = (e: PopStateEvent) => {
+        if ((window as any).__silentBack) return;
+
+        // [精確匹配] 只有位於堆疊最頂層的 ID 才會回應
+        const stack = getModalStack();
+        const topId = stack[stack.length - 1];
+        if (topId !== modalId) return;
+
+        isPoppedRef.current = true;
+        onCloseRef.current();
+      };
+
+      window.addEventListener('popstate', handlePopState);
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+      };
+    }
+  }, [isOpen, isReady, modalId]);
+
   return { 
     order, 
-    zIndex: order > 0 ? 100 + (order * 10) : 0 
+    zIndex: isOpen ? (order > 0 ? 100 + (order * 10) : 101) : 0 
   };
 };

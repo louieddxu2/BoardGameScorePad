@@ -4,16 +4,20 @@ import { createPortal } from 'react-dom';
 import { X, SwitchCamera, Check, RotateCcw, Loader2, Camera } from 'lucide-react';
 import { useToast } from '../../hooks/useToast';
 import { useScannerTranslation } from '../../i18n/scanner';
+import { useModalBackHandler } from '../../hooks/useModalBackHandler';
 
 interface CameraViewProps {
     onCapture: (blobs: Blob[]) => void;
     onClose: () => void;
     singleShot?: boolean; // Default false (Multi-shot mode)
-    zIndex?: number; // [NEW] Dynamic z-index
+    zIndex?: number; // [LEGACY] Keep for compatibility
+    modalId?: string; // [NEW] Custom ID for history stack
 }
 
-const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot = false, zIndex }) => {
+const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot = false, zIndex: manualZIndex, modalId = 'session-camera' }) => {
     const { t } = useScannerTranslation();
+    const { zIndex: stackZIndex } = useModalBackHandler(true, onClose, modalId);
+    const zIndex = stackZIndex || manualZIndex;
     const videoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
@@ -146,9 +150,10 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
                 } else if (err.name === 'NotFoundError') {
                     showToast({ message: t('camera_toast_no_device'), type: 'warning' });
                 } else {
-                    showToast({ message: t('camera_toast_start_failed'), type: 'error' });
+                    showToast({ message: t('camera_toast_start_failed') + `: ${err.name} - ${err.message}`, type: 'error' });
                 }
-                onClose();
+                // Delay closing slightly so toast is visible and we can distinguish from history pop
+                setTimeout(onClose, 2000);
             }
         };
 

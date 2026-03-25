@@ -275,8 +275,6 @@ export const useSessionMedia = ({
         setUiState(p => ({
             ...p,
             isGeneralCameraOpen: true,
-            // Ensure gallery is "ready" underneath
-            isPhotoGalleryOpen: true,
             galleryParams: { mode: 'default' } // [Reset]
         }));
     };
@@ -286,7 +284,6 @@ export const useSessionMedia = ({
         setUiState(p => ({
             ...p,
             isGeneralCameraOpen: true,
-            isPhotoGalleryOpen: true,
             galleryParams: { mode: 'lightbox_overlay' } // [Active]
         }));
     };
