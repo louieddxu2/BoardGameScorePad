@@ -8,6 +8,12 @@ import { Crown, X } from 'lucide-react';
 import SmartTextureLayer from './SmartTextureLayer';
 import { COLORS } from '../../../colors';
 import { getRawValue } from '../../../utils/scoring';
+// [Fix] 匯入堆疊查詢，用於判斷是否有「非輸入面板」的 Modal 正在開啟
+const INPUT_PANEL_IDS = ['session-input-panel', 'session-title-edit'];
+const hasOverlayModals = (): boolean => {
+    const stack: string[] = (window as any).__modalStack || [];
+    return stack.some(id => !INPUT_PANEL_IDS.includes(id));
+};
 
 // --- Floating Bubble Component ---
 const FloatingBubble: React.FC<{
@@ -269,7 +275,8 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
       )}
 
       {/* Floating Preview Bubble (Anchored Portal) */}
-      {isActive && (
+      {/* [Fix] 當有任何 Modal 開啟時隱藏氣泡，避免 Portal z-index 壓過彈窗 */}
+      {isActive && !hasOverlayModals() && (
           <FloatingBubble 
               anchorRef={cellRef}
               displayValue={bubbleDisplay}
