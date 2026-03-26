@@ -58,7 +58,7 @@ export interface ScoreColumn {
   variableMap?: Record<string, {
     id: string;
     name: string;
-    mode?: 'value' | 'rank_score' | 'rank_player' | 'tie_count';
+    mode?: 'value' | 'rank_score' | 'rank_player' | 'tie_count' | 'sum_all';
   }>; // Maps "x1" -> { id: "uuid", name: "Column Name", mode: "..." }
 
   // Input & UI Helpers

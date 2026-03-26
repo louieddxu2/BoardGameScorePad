@@ -3,7 +3,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { GameTemplate, GameSession, ScoringRule } from '../../../types';
 import { X, History, Play, Minus, Plus, Clock, Trophy, ChevronDown, Check } from 'lucide-react';
 import { useGameFlowTranslation } from '../../../i18n/game_flow'; // Changed Import
-import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 
 interface GameSetupModalProps {
     template: GameTemplate;
@@ -24,8 +23,9 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
 }) => {
     const { t, language } = useGameFlowTranslation(); // Use new hook
 
-    // [Migrated] 返回鍵關閉設定彈窗
-    useModalBackHandler(true, onClose, 'game-setup');
+    // [Note] 返回鍵處理由 App.tsx 的 pendingTemplate popstate 邏輯負責
+    // 不使用 useModalBackHandler，因為此 modal 的生命週期與視圖切換綁定，
+    // cleanup 中的 history.back() 會與新視圖的歷史牆壁產生競態條件。
 
     const getInitialCount = () => {
         // 1. Priority: Current session memory (if user just went back)
