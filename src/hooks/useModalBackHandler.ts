@@ -35,7 +35,7 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
     if (isOpen) {
       isPoppedRef.current = false;
       setIsReady(false); // Reset guard
-      
+
       // 1. 註冊到堆疊 (避免重複註冊)
       const currentStack = getModalStack();
       if (!currentStack.includes(modalId)) {
@@ -58,8 +58,8 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
         setOrder(0);
 
         const cleanupStack = () => {
-             const stack = getModalStack();
-             setModalStack(stack.filter(id => id !== modalId));
+          const stack = getModalStack();
+          setModalStack(stack.filter(id => id !== modalId));
         };
 
         if (isPoppedRef.current) {
@@ -104,8 +104,8 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
     }
   }, [isOpen, isReady, modalId]);
 
-  return { 
-    order, 
-    zIndex: isOpen ? (order > 0 ? 100 + (order * 10) : 101) : 0 
+  return {
+    order,
+    zIndex: isOpen ? (order > 0 ? 100 + (order * 10) : 101) : 0
   };
 };

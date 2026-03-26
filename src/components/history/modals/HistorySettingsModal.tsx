@@ -80,56 +80,45 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
 
     const handleSave = async () => {
         if (formData) {
-            // [AUTO-LINK LOGIC] for Locations
-            // If user typed a location, try to match it with history to get UUID
-            let finalRecord = { ...formData };
+            try {
+                let finalRecord = { ...formData };
 
-            if (finalRecord.location) {
-                const trimmedLoc = finalRecord.location.trim();
-                // Check if name matches any existing record (case-insensitive)
-                const matched = locationHistory.find(l => l.name.toLowerCase() === trimmedLoc.toLowerCase());
+                // [AUTO-LINK LOGIC] for Locations
+                if (finalRecord.location) {
+                    const trimmedLoc = finalRecord.location.trim();
+                    const matched = locationHistory.find(l => l.name.toLowerCase() === trimmedLoc.toLowerCase());
 
-                if (matched && matched.meta?.uuid) {
-                    // Link ID found!
-                    finalRecord.locationId = matched.meta.uuid;
+                    if (matched && matched.meta?.uuid) {
+                        finalRecord.locationId = matched.meta.uuid;
+                    } else {
+                        finalRecord.locationId = generateId(DATA_LIMITS.ID_LENGTH.DEFAULT);
+                    }
                 } else {
-                    // [New] No match in history -> Generate NEW UUID instantly
-                    // This ensures the record has a linked ID even if it's the first time
-                    finalRecord.locationId = generateId(DATA_LIMITS.ID_LENGTH.DEFAULT);
+                    finalRecord.locationId = undefined;
                 }
-            } else {
-                // Location cleared
-                finalRecord.locationId = undefined;
-            }
 
-            // Also ensure BGG ID in snapshot matches (consistency)
-            if (finalRecord.bggId) {
-                if (!finalRecord.snapshotTemplate) {
-                    // Should technically exist, but guard against weird state
-                    finalRecord.snapshotTemplate = {} as any;
+                // Consistency sync for Snapshot
+                if (finalRecord.snapshotTemplate && Array.isArray(finalRecord.snapshotTemplate.columns)) {
+                    if (finalRecord.bggId) finalRecord.snapshotTemplate.bggId = finalRecord.bggId;
+                    if (finalRecord.scoringRule) finalRecord.snapshotTemplate.defaultScoringRule = finalRecord.scoringRule;
                 }
-                finalRecord.snapshotTemplate.bggId = finalRecord.bggId;
-            }
 
-            // Also ensure defaultScoringRule in snapshot matches (consistency)
-            if (finalRecord.scoringRule) {
-                if (!finalRecord.snapshotTemplate) {
-                    finalRecord.snapshotTemplate = {} as any;
+                // Recalculate winners only if players exist (Safeguard)
+                if (Array.isArray(finalRecord.players) && finalRecord.scoringRule) {
+                    finalRecord.winnerIds = calculateWinners(finalRecord.players, finalRecord.scoringRule);
                 }
-                finalRecord.snapshotTemplate.defaultScoringRule = finalRecord.scoringRule;
 
-                // [Fix] Recalculate winners based on the NEW rule (Root Fix)
-                finalRecord.winnerIds = calculateWinners(finalRecord.players, finalRecord.scoringRule);
+                // 1. Save changes to DB
+                onSave(finalRecord);
+
+                // 2. Trigger Relationship Service (Background)
+                relationshipService.processGameEnd(finalRecord).catch(console.error);
+                
+                onClose();
+            } catch (error) {
+                console.error("Save failed in Settings Modal:", error);
+                onClose(); // Force close even on error to prevent UI hang
             }
-
-            // 1. Save changes to DB
-            await onSave(finalRecord);
-
-            // 2. Trigger Relationship Service (checking for location patch)
-            // Note: processGameEnd handles its own checks (log table) to avoid redundant processing
-            relationshipService.processGameEnd(finalRecord).catch(console.error);
-
-            onClose();
         }
     };
 
