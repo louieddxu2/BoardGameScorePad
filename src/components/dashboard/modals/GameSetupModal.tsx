@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { GameTemplate, GameSession, ScoringRule } from '../../../types';
 import { X, History, Play, Minus, Plus, Clock, Trophy, ChevronDown, Check } from 'lucide-react';
 import { useGameFlowTranslation } from '../../../i18n/game_flow'; // Changed Import
+import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 
 interface GameSetupModalProps {
     template: GameTemplate;
@@ -22,6 +23,9 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
     onResume
 }) => {
     const { t, language } = useGameFlowTranslation(); // Use new hook
+
+    // [Migrated] 返回鍵關閉設定彈窗
+    useModalBackHandler(true, onClose, 'game-setup');
 
     const getInitialCount = () => {
         // 1. Priority: Current session memory (if user just went back)

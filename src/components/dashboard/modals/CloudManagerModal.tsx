@@ -115,19 +115,8 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
         }
     }, [isOpen, initialCategory]);
 
-    useEffect(() => {
-        if (isOpen) {
-            window.history.pushState({ modal: 'cloud' }, '');
-            const handlePopState = (e: PopStateEvent) => {
-                e.preventDefault();
-                onClose();
-            };
-            window.addEventListener('popstate', handlePopState);
-            return () => {
-                window.removeEventListener('popstate', handlePopState);
-            };
-        }
-    }, [isOpen, onClose]);
+    // [Migrated] 歷史堆疊由 useDashboardModals.ts 的 useModalBackHandler('cloud-manager') 統一管理
+    // 移除原本的手動 pushState/popstate 處理
 
     // Automatic Scan on Sync Dashboard Open
     useEffect(() => {

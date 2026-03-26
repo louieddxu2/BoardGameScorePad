@@ -104,17 +104,11 @@ export const useSessionEvents = (
       }
 
 
-      // 0.2 Texture Mapper / Scanner (Still manual for now)
-      if (currentUi.isTextureMapperOpen) {
-        setUiState(p => ({ ...p, isTextureMapperOpen: false }));
-        e.stopImmediatePropagation();
-        return;
-      }
-      if (currentUi.isScannerOpen) {
-        setUiState(p => ({ ...p, isScannerOpen: false }));
-        e.stopImmediatePropagation();
-        return;
-      }
+      // 0.2 Texture Mapper / Scanner
+      // [Migrated] 已由各自元件內部的 useModalBackHandler 管理：
+      // - PhotoScanner: 'session-scanner'
+      // - TextureMapper: 'session-texture-mapper'
+      // App.tsx 的 hasActiveModals() 檢查會阻止此處理器在它們開啟時觸發
 
       // Note: ScreenshotModal, ColumnConfigEditor, GameSettings, AddColumnModal, 
       // SessionBackgroundModal, and SessionExitModal are now managed internally by useModalBackHandler.
