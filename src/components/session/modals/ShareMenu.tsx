@@ -2,7 +2,6 @@
 import React from 'react';
 import { Image, Upload, Images, Camera } from 'lucide-react';
 import { useSessionTranslation } from '../../../i18n/session';
-import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 
 interface ShareMenuProps {
   isCopying: boolean;
@@ -30,11 +29,10 @@ const ShareMenu: React.FC<ShareMenuProps> = ({
   onClose = () => {}
 }) => {
   const { t } = useSessionTranslation();
-  const { zIndex } = useModalBackHandler(isOpen, onClose, 'share-menu');
 
   if (!isOpen) return null;
 
-  const finalZIndex = customZIndex || zIndex;
+  const finalZIndex = customZIndex || 50;
 
   return (
     <div 

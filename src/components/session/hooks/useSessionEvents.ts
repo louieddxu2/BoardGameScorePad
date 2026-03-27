@@ -82,13 +82,6 @@ export const useSessionEvents = (
     'session-share-menu'
   );
 
-  // 4. General Camera Overlay
-  const { zIndex: cameraZIndex } = useModalBackHandler(
-    uiState.isGeneralCameraOpen,
-    () => setUiState(p => ({ ...p, isGeneralCameraOpen: false })),
-    'session-camera'
-  );
-
   // --- Back Button Logic (Stack Priority for non-history managed UI) ---
   useEffect(() => {
     const handleSessionBackPress = (e: Event) => {
@@ -370,7 +363,6 @@ export const useSessionEvents = (
     // [New] Expose Joystick Actions
     moveToNextPlayer: navigation.moveToNextPlayer,
     moveToPrevPlayer: navigation.moveToPrevPlayer,
-    shareMenuZIndex, // [NEW] Export for SessionView to use
-    cameraZIndex // [NEW] Export for SessionView to use
+    shareMenuZIndex // [NEW] Export for SessionView to use
   };
 };
