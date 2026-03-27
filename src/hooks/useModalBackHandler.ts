@@ -68,15 +68,13 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
         } else {
           // [UI 觸發] 立即清理並執行 history.back()
           cleanupStack();
-          (window as any).__silentBack = true;
+          // [Reference Counter] 使用計數器而非 boolean，
+          // 確保同一渲染週期內多個 Modal 同時卸載時，所有 silent back popstate 都被正確忽略。
+          (window as any).__silentBack = ((window as any).__silentBack || 0) + 1;
           window.history.back();
-
-          const clearSilentBack = () => {
-            (window as any).__silentBack = false;
-            window.removeEventListener('popstate', clearSilentBack);
-          };
-          window.addEventListener('popstate', clearSilentBack);
-          setTimeout(clearSilentBack, 100);
+          setTimeout(() => {
+            (window as any).__silentBack = Math.max(0, ((window as any).__silentBack || 0) - 1);
+          }, 100);
         }
       };
     }

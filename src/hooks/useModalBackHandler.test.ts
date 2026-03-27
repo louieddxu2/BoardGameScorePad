@@ -75,6 +75,33 @@ describe('useModalBackHandler', () => {
     // Simulate UI close
     unmount();
 
-    expect((window as any).__silentBack).toBe(true);
+    // [Counter] __silentBack should be 1 (truthy) after single modal unmount
+    expect((window as any).__silentBack).toBe(1);
+  });
+
+  it('should handle simultaneous unmount of multiple modals', () => {
+    vi.useFakeTimers();
+    const onCloseA = vi.fn();
+    const onCloseB = vi.fn();
+
+    // Open two modals
+    const { unmount } = renderHook(() => {
+      useModalBackHandler(true, onCloseA, 'modal-a');
+      useModalBackHandler(true, onCloseB, 'modal-b');
+    });
+
+    // Unmount both simultaneously (same render cycle)
+    unmount();
+
+    // [Counter] __silentBack should be 2 (both modals trigger cleanup)
+    expect((window as any).__silentBack).toBe(2);
+
+    // After 100ms, both timeouts fire, counter decrements to 0
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+    expect((window as any).__silentBack).toBe(0);
+
+    vi.useRealTimers();
   });
 });
