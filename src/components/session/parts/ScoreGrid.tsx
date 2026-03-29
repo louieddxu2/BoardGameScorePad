@@ -212,7 +212,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
         {/* Player Headers */}
         <div
           id="live-player-header-row"
-          className="flex sticky top-0 z-20 bg-slate-800 shadow-sm"
+          className="flex sticky top-0 z-20 bg-slate-800 shadow-sm transition-all duration-200"
           style={{ width: typeof headerRowWidth === 'number' ? `${headerRowWidth}px` : headerRowWidth }}
         >
           <TexturedBlock
@@ -288,6 +288,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
               onDragOver={(e) => isEditMode ? dnd.handleDragOver(e, col.id) : undefined}
               onDrop={(e) => isEditMode ? dnd.handleDrop(e, col.id) : undefined}
               className={`flex relative z-10 transition-all duration-200 ${isDragging ? 'opacity-40' : 'opacity-100'}`}
+              style={{ width: typeof headerRowWidth === 'number' ? `${headerRowWidth}px` : headerRowWidth }}
             >
               {indicator}
 
@@ -327,17 +328,16 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
               {/* Normal Players Row OR Shared Player Row */}
               {col.isShared && session.players.length > 0 ? (
                 <div
-                  className={`${rowHiddenClass} w-full relative shared-col-container flex`}
+                  className={`${rowHiddenClass} flex-1 relative shared-col-container flex`}
                   style={{
-                    width: `${session.players.length * minPlayerWidth}px`, // 讓外層佔據所有合併玩家的總寬度
-                    minWidth: '100%'
+                    width: `${session.players.length * minPlayerWidth}px`, // Maintains internal ratio for scoring logic
                   }}
                 >
                   <div
                     className="sticky z-10 flex items-center justify-center overflow-hidden"
                     style={{
                       left: leftColWidth,
-                      width: `min(calc(100% - ${leftColWidth}px), ${containerWidth - leftColWidth}px)`,
+                      width: `min(100%, ${containerWidth - leftColWidth}px)`,
                       // 這邊不再利用 100vw，而是用外層 scroll container 的 containerWidth 來限制可視區塊寬度
                       // 若玩家很少 (總寬度小於視窗寬度)，就乖乖維持在 100% (總寬度) 內置中。
                     }}
