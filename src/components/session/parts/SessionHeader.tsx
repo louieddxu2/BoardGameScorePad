@@ -26,6 +26,7 @@ interface SessionHeaderProps {
   onTakePhoto?: () => void; // New callback for camera shortcut
   photoCount?: number;
   isCloudConnected?: boolean;
+  shareMenuZIndex?: number; // [NEW] Dynamic zIndex from stack
 }
 
 const SessionHeader: React.FC<SessionHeaderProps> = ({
@@ -49,7 +50,8 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   onOpenGallery,
   onTakePhoto,
   photoCount,
-  isCloudConnected
+  isCloudConnected,
+  shareMenuZIndex = 40 // Default for backward compatibility/static
 }) => {
   const { t } = useSessionTranslation();
   const [tempTitle, setTempTitle] = useState('');
@@ -174,6 +176,8 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
 
         {showShareMenu && (
           <ShareMenu
+            isOpen={showShareMenu}
+            onClose={() => onShareMenuToggle(false)}
             isCopying={screenshotActive}
             onScreenshotRequest={onScreenshotRequest}
             hasVisuals={hasVisuals}
@@ -181,9 +185,16 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
             onOpenGallery={onOpenGallery}
             onTakePhoto={onTakePhoto}
             photoCount={photoCount}
+            zIndex={shareMenuZIndex} // [NEW]
           />
         )}
-        {showShareMenu && <div className="fixed inset-0 z-40" onClick={() => onShareMenuToggle(false)}></div>}
+        {showShareMenu && (
+          <div 
+            className="fixed inset-0" 
+            style={{ zIndex: shareMenuZIndex - 1 }} 
+            onClick={() => onShareMenuToggle(false)}
+          ></div>
+        )}
       </div>
     </div>
   );

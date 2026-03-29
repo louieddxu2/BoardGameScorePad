@@ -35,6 +35,28 @@ const PREF_KEY_PROD_UNIT_B = 'sm_pref_product_unit_b';
 const PREF_KEY_ADV_OPEN = 'sm_pref_editor_adv';
 const PLAYER_COUNT_ID = '__PLAYER_COUNT__';
 
+// [Stable] 外部化 TabButton，避免每次渲染重新建立元件導致桌面版事件失效
+const TabButton = ({ id, activeTab, setActiveTab, label, icon: Icon, isSpecial }: {
+    id: EditorTab,
+    activeTab: EditorTab,
+    setActiveTab: (id: EditorTab) => void,
+    label: string,
+    icon: any,
+    isSpecial?: boolean
+}) => (
+    <button
+        onClick={() => setActiveTab(id)}
+        className={`${isSpecial ? 'flex-1' : 'flex-[2]'} py-3 flex flex-col items-center justify-center gap-1 text-xs font-bold transition-colors border-b-2 cursor-pointer
+        ${activeTab === id
+                ? (isSpecial ? 'border-indigo-500 text-indigo-400 bg-slate-800' : 'border-emerald-500 text-emerald-400 bg-slate-800')
+                : 'border-transparent text-slate-500 hover:text-slate-300'
+            }
+    `}
+    >
+        <Icon size={18} />{label}
+    </button>
+);
+
 const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColumns = [], onSave, onDelete, onClose, baseImage }) => {
     const { t } = useColumnEditorTranslation(); // Use New Hook
     const { t: tCommon } = useCommonTranslation();
@@ -72,13 +94,16 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
     const initialStringifiedRef = useRef(JSON.stringify(getInitialState()));
 
     const sumPartsInputTypeCache = useRef<InputMethod>(
-        (editedCol.formula || '').includes('+next') ? (editedCol.inputType || 'keypad') : 'keypad'
+        (editedCol.formula || '').includes('+next')
+            ? ((editedCol.inputType !== 'auto' ? editedCol.inputType : null) || 'keypad')
+            : 'keypad'
     );
 
     const getInitialTab = (col: ScoreColumn): EditorTab => {
         if (col.inputType === 'auto') return 'auto';
-        if ((col.formula || '').startsWith('f1')) return 'mapping';
-        if (col.inputType === 'clicker' && !col.formula.includes('+next')) return 'select';
+        const formula = col.formula || '';
+        if (formula.startsWith('f1')) return 'mapping';
+        if (col.inputType === 'clicker' && !formula.includes('+next')) return 'select';
         return 'basic';
     };
 
@@ -239,8 +264,8 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                 const isSumParts = (editedCol.formula || '').includes('+next');
                 if (isSumParts) {
                     finalUpdates.formula = '(a1×a2)+next';
-                    // Preserve current input settings (allows clicker/keypad)
-                    finalUpdates.inputType = editedCol.inputType || 'keypad';
+                    // Preserve current input settings (allows clicker/keypad), ensure not 'auto'
+                    finalUpdates.inputType = (editedCol.inputType !== 'auto' ? editedCol.inputType : null) || 'keypad';
                 } else {
                     finalUpdates.formula = 'a1×a2';
                     finalUpdates.inputType = 'keypad';
@@ -257,7 +282,8 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                     // 1x weight: a1+next
                     // >1x weight: (a1+next)×c1  <-- Parenthesis format
                     f = weight !== 1 ? '(a1+next)×c1' : 'a1+next';
-                    finalUpdates.inputType = editedCol.inputType || sumPartsInputTypeCache.current || 'keypad';
+                    // Filter out 'auto' from previous tab
+                    finalUpdates.inputType = (editedCol.inputType !== 'auto' ? editedCol.inputType : null) || sumPartsInputTypeCache.current || 'keypad';
                 } else {
                     // Standard: a1 or a1×c1
                     f = weight !== 1 ? 'a1×c1' : 'a1';
@@ -281,6 +307,11 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
             }
         } else if (activeTab === 'mapping') {
             localStorage.setItem(PREF_KEY_STD_UNIT, finalUpdates.unit || '');
+        }
+
+        // [CRITICAL] 安全保險絲：只要分頁不是 'auto' 且 inputType 仍殘留 'auto'，強制修正
+        if (activeTab !== 'auto' && finalUpdates.inputType === 'auto') {
+            finalUpdates.inputType = sumPartsInputTypeCache.current || 'keypad';
         }
 
         onSave(finalUpdates);
@@ -312,19 +343,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
         setHelpText(editedCol.isScoring ? 'col_help_scoring_off' : 'col_help_scoring_on');
     };
 
-    const TabButton = ({ id, label, icon: Icon, isSpecial }: { id: EditorTab, label: string, icon: any, isSpecial?: boolean }) => (
-        <button
-            onClick={() => setActiveTab(id)}
-            className={`${isSpecial ? 'flex-1' : 'flex-[2]'} py-3 flex flex-col items-center justify-center gap-1 text-xs font-bold transition-colors border-b-2 
-            ${activeTab === id
-                    ? (isSpecial ? 'border-indigo-500 text-indigo-400 bg-slate-800' : 'border-emerald-500 text-emerald-400 bg-slate-800')
-                    : 'border-transparent text-slate-500 hover:text-slate-300'
-                }
-        `}
-        >
-            <Icon size={18} />{label}
-        </button>
-    );
+
 
     const cellRect = editedCol.visuals?.cellRect;
     const aspectRatio = (cellRect && cellRect.height > 0) ? cellRect.width / cellRect.height : undefined;
@@ -462,15 +481,15 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                 </section>
 
                 <div className="sticky top-0 z-10 flex border-y border-slate-800 bg-slate-900 shadow-lg">
-                    <TabButton id="basic" label={t('col_tab_basic')} icon={Calculator} />
-                    <TabButton id="select" label={t('col_tab_select')} icon={ListPlus} />
-                    <TabButton id="mapping" label={t('col_tab_mapping')} icon={Ruler} />
-                    <TabButton id="auto" label={t('col_tab_auto')} icon={Sparkles} isSpecial />
+                    <TabButton id="basic" activeTab={activeTab} setActiveTab={setActiveTab} label={t('col_tab_basic')} icon={Calculator} />
+                    <TabButton id="select" activeTab={activeTab} setActiveTab={setActiveTab} label={t('col_tab_select')} icon={ListPlus} />
+                    <TabButton id="mapping" activeTab={activeTab} setActiveTab={setActiveTab} label={t('col_tab_mapping')} icon={Ruler} />
+                    <TabButton id="auto" activeTab={activeTab} setActiveTab={setActiveTab} label={t('col_tab_auto')} icon={Sparkles} isSpecial />
                 </div>
-                <div className="p-4 pb-24">{renderTabContent()}</div>
+                <div className="p-4 pb-4">{renderTabContent()}</div>
             </main>
             {!isKeyboardOpen && (
-                <footer className="fixed bottom-0 left-0 right-0 p-4 bg-slate-900/80 backdrop-blur-sm border-t border-slate-800 z-20" style={{ paddingBottom: `calc(1rem + ${visualViewportOffset}px)` }}>
+                <footer className="flex-none p-4 bg-slate-900/80 backdrop-blur-sm border-t border-slate-800" style={{ paddingBottom: `calc(1rem + ${visualViewportOffset}px)` }}>
                     <button onClick={handleSave} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2"><Save size={20} /> {t('col_btn_save')}</button>
                 </footer>
             )}
@@ -494,7 +513,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                     column={editedCol}
                     onChange={handleColumnUpdate}
                     cachedSumPartsInputType={sumPartsInputTypeCache.current}
-                    onUpdateCachedSumPartsInputType={(type) => sumPartsInputTypeCache.current = type}
+                    onUpdateCachedSumPartsInputType={(type) => { sumPartsInputTypeCache.current = type; }}
                 />
             );
         }

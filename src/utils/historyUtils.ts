@@ -37,20 +37,25 @@ export const getRecordGameName = (record: HistoryRecord): string => {
  */
 export const getRecordTemplate = (record: HistoryRecord): GameTemplate => {
   const snapshot = record.snapshotTemplate as any;
-  
-  // 檢查：存在 AND (不是陣列 OR 陣列長度不為0)
-  // 這會排除 null, undefined, 以及 []
-  if (snapshot && !(Array.isArray(snapshot) && snapshot.length === 0)) {
-    return snapshot as GameTemplate;
+
+  // [Fix] 嚴格檢查 snapshot 是否有效。必須存在且具備 columns 屬性。
+  // 若 snapshot 只是以前 bug 產生的空物件或空殼，則視為無效，回退至虛擬模板。
+  if (snapshot && Array.isArray(snapshot.columns)) {
+    // 額外相容處理：舊版簡易模式可能將 snapshot 存為 []
+    if (snapshot.columns.length === 0 && Array.isArray(snapshot)) {
+       // 跳過，去執行下方的虛擬模板邏輯
+    } else {
+       return snapshot as GameTemplate;
+    }
   }
 
   // 建構虛擬模板 (Virtual Template)
   return createVirtualTemplate(
-      record.templateId,
-      record.gameName,
-      getRecordBggId(record),
-      record.updatedAt || record.endTime,
-      record.players.length,
-      getRecordScoringRule(record)
+    record.templateId,
+    record.gameName,
+    getRecordBggId(record),
+    record.updatedAt || record.endTime,
+    record.players.length,
+    getRecordScoringRule(record)
   );
 };

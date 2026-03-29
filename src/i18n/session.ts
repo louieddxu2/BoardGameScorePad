@@ -218,6 +218,7 @@ export const sessionTranslations = {
     auto_panel_mode_rank_score: '分數排名',
     auto_panel_mode_rank_player: '玩家排名',
     auto_panel_mode_tie_count: '平手數',
+    auto_panel_mode_sum_all: '玩家總和',
     auto_panel_footer_hint: '數值將自動隨其他欄位更新而變化',
   },
   'en': {
@@ -437,6 +438,7 @@ export const sessionTranslations = {
     auto_panel_mode_rank_score: 'Score Rank',
     auto_panel_mode_rank_player: 'Player Rank',
     auto_panel_mode_tie_count: 'Tie Count',
+    auto_panel_mode_sum_all: 'Sum All',
     auto_panel_footer_hint: 'Values update automatically based on other fields',
   },
 };

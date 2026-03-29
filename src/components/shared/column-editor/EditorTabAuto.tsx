@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ScoreColumn, MappingRule } from '../../../types';
-import { Sparkles, ArrowRight, Lock, Unlock, Check, Calculator, AlertCircle, Ruler, ChevronDown, ChevronUp, Delete, Trophy, Hash, Users } from 'lucide-react';
+import { Sparkles, ArrowRight, Lock, Unlock, Check, Calculator, AlertCircle, Ruler, ChevronDown, ChevronUp, Delete, Trophy, Hash, Users, Sigma } from 'lucide-react';
 import EditorTabMapping from './EditorTabMapping';
 import { extractIdentifiers } from '../../../utils/formulaEvaluator';
 import { useColumnEditorTranslation } from '../../../i18n/column_editor'; // Changed Import
@@ -28,7 +28,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
     const variableMap = (column.variableMap || {}) as Record<string, {
         id: string;
         name: string;
-        mode?: 'value' | 'rank_score' | 'rank_player' | 'tie_count';
+        mode?: 'value' | 'rank_score' | 'rank_player' | 'tie_count' | 'sum_all';
     }>;
     const variableList = Object.entries(variableMap);
 
@@ -367,15 +367,17 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                                                     <option value="rank_score">{t('col_auto_mode_rank_score')} (1, 1, 2...)</option>
                                                     <option value="rank_player">{t('col_auto_mode_rank_player')} (1, 1, 3...)</option>
                                                     <option value="tie_count">{t('col_auto_mode_tie')}</option>
+                                                    <option value="sum_all">{t('col_auto_mode_sum_all')}</option>
                                                 </select>
                                             </div>
                                         )}
                                         {!isPlayerCount && currentMode !== 'value' && (
                                             <div className="pl-12 text-[10px] text-amber-600/80 flex items-center gap-1">
-                                                {currentMode === 'tie_count' ? <Hash size={10} /> : <Trophy size={10} />}
+                                                {currentMode === 'tie_count' ? <Hash size={10} /> : currentMode === 'sum_all' ? <Sigma size={10} /> : <Trophy size={10} />}
                                                 {currentMode === 'rank_score' && t('col_auto_rank_score_desc')}
                                                 {currentMode === 'rank_player' && t('col_auto_rank_player_desc')}
                                                 {currentMode === 'tie_count' && t('col_auto_tie_desc')}
+                                                {currentMode === 'sum_all' && t('col_auto_sum_all_desc')}
                                             </div>
                                         )}
                                     </div>

@@ -73,6 +73,27 @@ const SumPartsSubSettings: React.FC<{
     );
 };
 
+const ToggleSwitch = ({ checked, onChange, label, themeColor = 'emerald' }: { checked: boolean, onChange: () => void, label: string, themeColor?: 'emerald' | 'indigo' }) => {
+    const activeClass = themeColor === 'emerald' ? 'bg-emerald-900/30 border-emerald-500' : 'bg-indigo-900/30 border-indigo-500';
+    const activeTextClass = themeColor === 'emerald' ? 'text-emerald-100' : 'text-indigo-100';
+    const activeKnobClass = themeColor === 'emerald' ? 'bg-emerald-500' : 'bg-indigo-500';
+
+    return (
+        <div
+            onClick={(e) => {
+                e.stopPropagation();
+                onChange();
+            }}
+            className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all duration-300 ${checked ? activeClass : 'bg-slate-800 border-slate-700 hover:bg-slate-750'}`}
+        >
+            <span className={`text-sm font-bold transition-colors ${checked ? activeTextClass : 'text-slate-300'}`}>{label}</span>
+            <div className={`w-12 h-6 rounded-full relative transition-colors ${checked ? activeKnobClass : 'bg-slate-600'}`}>
+                <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow transition-transform duration-300 ${checked ? 'translate-x-6' : 'translate-x-0'}`} />
+            </div>
+        </div>
+    );
+};
+
 const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cachedSumPartsInputType, onUpdateCachedSumPartsInputType }) => {
     const { t } = useColumnEditorTranslation(); // Use New Hook
 
@@ -88,7 +109,7 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
     // Sync current input type to cache when in sum-parts mode
     useEffect(() => {
         if (isSumPartsEnabled) {
-            onUpdateCachedSumPartsInputType(column.inputType || 'keypad');
+            onUpdateCachedSumPartsInputType(column.inputType === 'auto' ? 'keypad' : (column.inputType || 'keypad'));
         }
     }, [isSumPartsEnabled, column.inputType, onUpdateCachedSumPartsInputType]);
 
@@ -115,7 +136,7 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
             // CRITICAL: Do NOT reset inputType if Sum Parts is enabled. 
             // If Sum Parts is disabled, Product mode defaults to Keypad.
             if (willEnableSumParts) {
-                updates.inputType = column.inputType || cachedSumPartsInputType;
+                updates.inputType = (column.inputType !== 'auto' ? column.inputType : null) || cachedSumPartsInputType;
             } else {
                 updates.inputType = 'keypad';
             }
@@ -229,27 +250,9 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
         }
     };
 
-    // Enhanced Toggle Switch
-    const ToggleSwitch = ({ checked, onChange, label, themeColor = 'emerald' }: { checked: boolean, onChange: () => void, label: string, themeColor?: 'emerald' | 'indigo' }) => {
-        const activeClass = themeColor === 'emerald' ? 'bg-emerald-900/30 border-emerald-500' : 'bg-indigo-900/30 border-indigo-500';
-        const activeTextClass = themeColor === 'emerald' ? 'text-emerald-100' : 'text-indigo-100';
-        const activeKnobClass = themeColor === 'emerald' ? 'bg-emerald-500' : 'bg-indigo-500';
-
-        return (
-            <div
-                onClick={onChange}
-                className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all duration-300 ${checked ? activeClass : 'bg-slate-800 border-slate-700 hover:bg-slate-750'}`}
-            >
-                <span className={`text-sm font-bold transition-colors ${checked ? activeTextClass : 'text-slate-300'}`}>{label}</span>
-                <div className={`w-12 h-6 rounded-full relative transition-colors ${checked ? activeKnobClass : 'bg-slate-600'}`}>
-                    <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow transition-transform duration-300 ${checked ? 'translate-x-6' : 'translate-x-0'}`} />
-                </div>
-            </div>
-        );
-    };
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <div className="space-y-6 animate-in fade-in duration-200 pb-10">
             {/* Mode Switcher */}
             <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('input_calc_mode')}</label>

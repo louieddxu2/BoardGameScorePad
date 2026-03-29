@@ -22,11 +22,10 @@ const formatScore = (num: number): string | number => {
 
 const AutoScorePanel: React.FC<AutoScorePanelProps> = ({ column, player, allColumns, allPlayers }) => {
     const { t } = useSessionTranslation();
-    // Explicitly type variableMap to fix TS errors
     const variableMap = (column.variableMap || {}) as Record<string, {
         id: string;
         name: string;
-        mode?: 'value' | 'rank_score' | 'rank_player' | 'tie_count';
+        mode?: 'value' | 'rank_score' | 'rank_player' | 'tie_count' | 'sum_all';
     }>;
     const variables = Object.entries(variableMap);
 
@@ -110,10 +109,15 @@ const AutoScorePanel: React.FC<AutoScorePanelProps> = ({ column, player, allColu
                                                 value = getPlayerRank(value, allValues);
                                             } else if (targetRef.mode === 'tie_count') {
                                                 value = getTieCount(value, allValues);
+                                            } else if (targetRef.mode === 'sum_all') {
+                                                value = allValues.reduce((sum, v) => sum + v, 0);
                                             }
                                         } else {
-                                            // 若無玩家資料 (預覽時)，排名預設為 1
-                                            value = 1;
+                                            if (targetRef.mode === 'sum_all') {
+                                                value = 0;
+                                            } else {
+                                                value = 1;
+                                            }
                                         }
                                     }
                                 } else {
@@ -133,7 +137,7 @@ const AutoScorePanel: React.FC<AutoScorePanelProps> = ({ column, player, allColu
                                         {notFound && <span className="text-[10px] text-red-400">{t('auto_panel_not_found')}</span>}
                                         {targetRef.mode && targetRef.mode !== 'value' && !isPlayerCount && (
                                             <span className="text-[9px] text-amber-500/70">
-                                                ({targetRef.mode === 'rank_score' ? t('auto_panel_mode_rank_score') : targetRef.mode === 'rank_player' ? t('auto_panel_mode_rank_player') : t('auto_panel_mode_tie_count')})
+                                                ({targetRef.mode === 'rank_score' ? t('auto_panel_mode_rank_score') : targetRef.mode === 'rank_player' ? t('auto_panel_mode_rank_player') : targetRef.mode === 'sum_all' ? t('auto_panel_mode_sum_all') : t('auto_panel_mode_tie_count')})
                                             </span>
                                         )}
                                     </div>

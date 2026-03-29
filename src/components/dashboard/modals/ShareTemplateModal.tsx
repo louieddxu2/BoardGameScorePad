@@ -7,6 +7,7 @@ import { uploadTemplateToCloud, buildCloudShareUrl } from '../../../services/tem
 import { useToast } from '../../../hooks/useToast';
 import { useDashboardTranslation } from '../../../i18n/dashboard';
 import { useCommonTranslation } from '../../../i18n/common';
+import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 
 interface ShareTemplateModalProps {
     isOpen: boolean;
@@ -24,6 +25,9 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
     const { t } = useDashboardTranslation();
     const { t: tCommon } = useCommonTranslation();
     const { showToast } = useToast();
+
+    // [Migrated] 返回鍵關閉分享彈窗
+    useModalBackHandler(isOpen, onClose, 'share-template');
 
     const [isLoading, setIsLoading] = useState(false);
     const [shareUrl, setShareUrl] = useState('');

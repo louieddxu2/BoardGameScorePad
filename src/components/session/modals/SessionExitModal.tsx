@@ -5,6 +5,7 @@ import { useGameFlowTranslation } from '../../../i18n/game_flow';
 import { useCommonTranslation } from '../../../i18n/common';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { SavedListItem } from '../../../types';
+import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 
 interface SessionExitModalProps {
     isOpen: boolean;
@@ -28,6 +29,7 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
     const { t } = useGameFlowTranslation(); // Use new hook
     const { t: tCommon } = useCommonTranslation();
     const { confirm } = useConfirm();
+    const { zIndex } = useModalBackHandler(isOpen, onClose, 'session-exit');
     const [location, setLocation] = useState(initialLocation);
     const [showLocationMenu, setShowLocationMenu] = useState(false);
     const listRef = useRef<HTMLDivElement>(null);
@@ -70,7 +72,8 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
     return (
         <>
             <div
-                className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200"
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200"
+                style={{ zIndex }}
                 onClick={onClose}
             >
                 <div

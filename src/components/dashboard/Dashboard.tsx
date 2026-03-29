@@ -186,29 +186,19 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
 
   // --- UI Logic ---
 
-  // Back Button for Search
-  const isSearchPoppedRef = useRef(false);
-  useEffect(() => {
-    if (isSearchActive) {
-      window.history.pushState({ modal: 'search' }, '');
-      isSearchPoppedRef.current = false;
-    }
-  }, [isSearchActive]);
+  // [Migrated] 搜尋介面返回鍵由 useModalBackHandler 統一管理
+  useModalBackHandler(isSearchActive, () => {
+    setIsSearchActive(false);
+    setIsSetupMode(false);
+    setSearchQuery('');
+  }, 'dashboard-search');
 
-  useEffect(() => {
-    const handlePopState = (e: PopStateEvent) => {
-      if (isSearchActive) {
-        isSearchPoppedRef.current = true;
-        setIsSearchActive(false);
-        setIsSetupMode(false);
-        setSearchQuery('');
-      }
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [isSearchActive, setSearchQuery]);
-
-  useModalBackHandler(isSetupMode, () => setIsSetupMode(false), 'setup-mode');
+  // [Fix] 關閉面板時一併清除搜尋狀態，避免需要額外按一次返回鍵
+  useModalBackHandler(isSetupMode, () => {
+    setIsSetupMode(false);
+    setIsSearchActive(false);
+    setSearchQuery('');
+  }, 'setup-mode');
 
   // Refs for UI
   const scrollContainerRef = useRef<HTMLDivElement>(null);

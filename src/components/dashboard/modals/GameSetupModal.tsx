@@ -23,6 +23,10 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
 }) => {
     const { t, language } = useGameFlowTranslation(); // Use new hook
 
+    // [Note] 返回鍵處理由 App.tsx 的 pendingTemplate popstate 邏輯負責
+    // 不使用 useModalBackHandler，因為此 modal 的生命週期與視圖切換綁定，
+    // cleanup 中的 history.back() 會與新視圖的歷史牆壁產生競態條件。
+
     const getInitialCount = () => {
         // 1. Priority: Current session memory (if user just went back)
         if (sessionPlayerCount) return sessionPlayerCount;

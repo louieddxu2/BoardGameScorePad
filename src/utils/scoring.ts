@@ -158,7 +158,7 @@ export const calculateColumnScore = (
               depth: (context.depth || 0) + 1 
             });
 
-            // --- Ranking Logic ---
+            // --- Ranking & Sum Logic ---
             if (targetColRef.mode && targetColRef.mode !== 'value') {
                 if (context.allPlayers && context.allPlayers.length > 0) {
                     // Calculate scores for all players for this target column
@@ -181,11 +181,16 @@ export const calculateColumnScore = (
                         currentValue = getPlayerRank(currentValue, allValues);
                     } else if (targetColRef.mode === 'tie_count') {
                         currentValue = getTieCount(currentValue, allValues);
+                    } else if (targetColRef.mode === 'sum_all') {
+                        currentValue = allValues.reduce((sum, v) => sum + v, 0);
                     }
                 } else {
                     // Fallback if no player context (e.g. in simplified preview)
-                    // Default to 1 (1st place or 1 tie count)
-                    currentValue = 1; 
+                    if (targetColRef.mode === 'sum_all') {
+                        currentValue = 0; // Graceful degrade for sum_all
+                    } else {
+                        currentValue = 1; // Default to 1 (1st place or 1 tie count)
+                    }
                 }
             }
           }

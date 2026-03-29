@@ -13,6 +13,7 @@ import ScannerSourceSelector from './ScannerSourceSelector';
 import ScannerOverlay from './ScannerOverlay';
 import ScannerControls from './ScannerControls';
 import { useScannerTranslation } from '../../i18n/scanner';
+import { useModalBackHandler } from '../../hooks/useModalBackHandler';
 
 interface Point {
   x: number;
@@ -30,6 +31,9 @@ interface PhotoScannerProps {
 
 const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initialImage, initialPoints, fixedAspectRatio, template }) => {
   const { t } = useScannerTranslation();
+
+  // [Migrated] 返回鍵關閉掃描器，統一納入歷史堆疊
+  useModalBackHandler(true, onClose, 'session-scanner');
   const [imageSrc, setImageSrc] = useState<string | null>(initialImage || null);
   const [isSnapping, setIsSnapping] = useState(true);
   const [showPreview, setShowPreview] = useState(false);

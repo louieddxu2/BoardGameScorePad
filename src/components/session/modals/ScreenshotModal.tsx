@@ -45,7 +45,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
     const { t: tCommon } = useCommonTranslation();
 
     // [Refactor] Add back button interception for modal stability
-    useModalBackHandler(isOpen, onClose, 'screenshot');
+    const { zIndex } = useModalBackHandler(isOpen, onClose, 'screenshot');
     const [activeMode, setActiveMode] = useState<'full' | 'simple'>(initialMode);
 
     const [snapshots, setSnapshots] = useState<{
@@ -373,7 +373,8 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
     return (
         <div
-            className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+            className="fixed inset-0 bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+            style={{ zIndex }}
             onClick={onClose}
         >
             {/* 

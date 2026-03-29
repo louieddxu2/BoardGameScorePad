@@ -387,6 +387,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const handleInteraction = () => {
+      // [Fix] Modal 開啟時不補牆，避免 capture 階段塞入的歷史狀態
+      // 干擾 useModalBackHandler cleanup 的 history.back()
+      if (hasActiveModals()) return;
       replenishWall();
     };
 

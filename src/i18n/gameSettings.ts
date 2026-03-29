@@ -12,6 +12,7 @@ export const gameSettingsTranslations = {
     colors_palette: "點擊選擇顏色 (依序加入)",
     btn_save: "儲存設定",
     reset_default: "重置為系統預設",
+    reset_colors_confirm_msg: "確認要重設色盤為預設值嗎？這會清除目前的排序。",
     colors_auto_assign: "(系統自動分配)"
   },
   'en': {
@@ -25,6 +26,7 @@ export const gameSettingsTranslations = {
     colors_palette: "Tap to append color",
     btn_save: "Save Settings",
     reset_default: "Reset to Default",
+    reset_colors_confirm_msg: "Reset colors to default? This will clear the current order.",
     colors_auto_assign: "(Auto-assigned)"
   }
 };

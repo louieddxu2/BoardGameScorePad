@@ -13,6 +13,7 @@ import { useTextureMapperInteractions } from './hooks/useTextureMapperInteractio
 import { buildTemplateFromTextureMap } from './utils/templateBuilder';
 import { db } from '../../db';
 import { useTemplateEditorTranslation } from '../../i18n/template_editor';
+import { useModalBackHandler } from '../../hooks/useModalBackHandler';
 
 interface TextureMapperProps {
   imageSrc: string;
@@ -31,6 +32,9 @@ const DRAWER_BOUNDARY_X = 128;
 
 const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, initialColumnCount, onSave, onCancel, allTemplates, aspectRatio, initialVisuals, initialColumns, initialTemplate }) => {
   const { t } = useTemplateEditorTranslation();
+
+  // [Migrated] 返回鍵關閉網格編輯器，統一納入歷史堆疊
+  useModalBackHandler(true, onCancel, 'session-texture-mapper');
 
   // --- Core State ---
 

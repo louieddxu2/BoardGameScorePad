@@ -133,7 +133,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
     setUiState(p => ({
       ...p,
-      showShareMenu: false,
       editingCell: null,
       editingPlayerId: null,
       previewValue: 0,
@@ -238,13 +237,12 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       />
 
       {/* Game Settings Editor (New) */}
-      {isGameSettingsOpen && (
-        <GameSettingsEditor
-          template={template}
-          onSave={eventHandlers.handleSaveGameSettings}
-          onClose={() => setUiState(p => ({ ...p, isGameSettingsOpen: false }))}
-        />
-      )}
+      <GameSettingsEditor
+        isOpen={isGameSettingsOpen}
+        template={template}
+        onSave={eventHandlers.handleSaveGameSettings}
+        onClose={() => setUiState(p => ({ ...p, isGameSettingsOpen: false }))}
+      />
 
       {editingColumn && (
         <ColumnConfigEditor
@@ -268,14 +266,13 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         />
       )}
 
-      {isAddColumnModalOpen && (
-        <AddColumnModal
-          columns={template.columns}
-          onClose={() => setUiState(prev => ({ ...prev, isAddColumnModalOpen: false }))}
-          onAddBlank={eventHandlers.handleAddBlankColumn}
-          onCopy={eventHandlers.handleCopyColumns}
-        />
-      )}
+      <AddColumnModal
+        isOpen={isAddColumnModalOpen}
+        columns={template.columns}
+        onClose={() => setUiState(prev => ({ ...prev, isAddColumnModalOpen: false }))}
+        onAddBlank={eventHandlers.handleAddBlankColumn}
+        onCopy={eventHandlers.handleCopyColumns}
+      />
 
       {/* Hidden inputs for photos */}
       <input ref={media.photoInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={media.handlePhotoSelect} />
@@ -286,6 +283,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         templateName={session.name || template.name} // [Identity Upgrade] Use Session Name if available
         isEditingTitle={isEditingTitle}
         showShareMenu={showShareMenu}
+        shareMenuZIndex={eventHandlers.shareMenuZIndex} // [NEW] Pass dynamic zIndex
         screenshotActive={screenshotModal.isOpen}
         isEditMode={isEditMode}
         hasVisuals={!!template.globalVisuals}
@@ -325,7 +323,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onOpenGallery={() => setUiState(p => ({
           ...p,
           isPhotoGalleryOpen: true,
-          showShareMenu: false,
           galleryParams: { mode: 'default' } // [Reset] Ensure manual open resets special modes
         }))}
         onTakePhoto={media.openCamera} // Direct call via media hook (sets default)

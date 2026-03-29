@@ -1,7 +1,7 @@
-
 import React from 'react';
 import { X, ScanLine, DownloadCloud, Aperture, Upload, Trash2 } from 'lucide-react';
 import { useSessionTranslation } from '../../../i18n/session';
+import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 
 interface SessionBackgroundModalProps {
     isOpen: boolean;
@@ -29,11 +29,14 @@ const SessionBackgroundModal: React.FC<SessionBackgroundModalProps> = ({
     onFileChange
 }) => {
     const { t } = useSessionTranslation();
+    const { zIndex } = useModalBackHandler(isOpen, onClose, 'session-bg');
+
     if (!isOpen) return null;
 
     return (
-        <div
-            className="fixed inset-0 z-[60] bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center"
+        <div 
+            className="fixed inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center"
+            style={{ zIndex }}
             onClick={onClose}
         >
             <div

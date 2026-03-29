@@ -78,7 +78,6 @@ export const useSessionMedia = ({
                 // Open Scanner with this image pre-loaded AND check for fixed ratio
                 setUiState(p => ({
                     ...p,
-                    isImageUploadModalOpen: false,
                     isScannerOpen: true,
                     scannerInitialImage: rawUrl,
                     scannerFixedRatio: template.globalVisuals?.aspectRatio // Pass Ratio
@@ -150,7 +149,6 @@ export const useSessionMedia = ({
         setUiState(p => ({
             ...p,
             isGeneralCameraOpen: false,
-            showShareMenu: false,
             isPhotoGalleryOpen: true,
         }));
     };
@@ -266,7 +264,6 @@ export const useSessionMedia = ({
     const openScannerCamera = () => {
         setUiState(p => ({
             ...p,
-            isImageUploadModalOpen: false,
             isScannerOpen: true,
             scannerInitialImage: null, // Open empty scanner (camera/file choice)
             scannerFixedRatio: template.globalVisuals?.aspectRatio // Pass Ratio
@@ -278,9 +275,6 @@ export const useSessionMedia = ({
         setUiState(p => ({
             ...p,
             isGeneralCameraOpen: true,
-            // Ensure gallery is "ready" underneath
-            isPhotoGalleryOpen: true,
-            showShareMenu: false,
             galleryParams: { mode: 'default' } // [Reset]
         }));
     };
@@ -290,8 +284,6 @@ export const useSessionMedia = ({
         setUiState(p => ({
             ...p,
             isGeneralCameraOpen: true,
-            isPhotoGalleryOpen: true,
-            showShareMenu: false,
             galleryParams: { mode: 'lightbox_overlay' } // [Active]
         }));
     };
