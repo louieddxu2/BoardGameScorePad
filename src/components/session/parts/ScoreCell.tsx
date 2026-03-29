@@ -1,7 +1,7 @@
 
 import React, { useRef, useEffect } from 'react';
 import { Player, ScoreColumn, ScoreValue } from '../../../types';
-import { calculateColumnScore, getAutoColumnError, resolveSelectOption } from '../../../utils/scoring';
+import { calculateColumnScore, getAutoColumnError, resolveSelectedOptions } from '../../../utils/scoring';
 import TexturedScoreCell from './TexturedScoreCell';
 import { Link2Off, AlertTriangle } from 'lucide-react';
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
@@ -68,48 +68,97 @@ const CellContentAuto: React.FC<CellContentProps> = ({ displayScore, forceHeight
     );
 };
 
-const CellContentSelect: React.FC<CellContentProps> = ({ parts, scoreValue, displayScore, hasInput, column, simpleMode, forceHeight, screenshotMode, textStyle }) => {
-    // Use centralized resolver
-    const option = resolveSelectOption(column, scoreValue);
+const CellContentSelect: React.FC<CellContentProps> = ({ scoreValue, displayScore, hasInput, column, simpleMode, forceHeight, screenshotMode, textStyle }) => {
+    // Use plural resolver to support multi-select
+    const options = resolveSelectedOptions(column, scoreValue);
     const renderMode = column.renderMode || 'standard';
 
-    const labelColor = option?.color || column.color || (screenshotMode ? '#10b981' : '#34d399');
-    const labelStyle: React.CSSProperties = {
-        color: labelColor,
-        textShadow: isColorDark(labelColor) ? ENHANCED_TEXT_SHADOW : undefined,
-    };
-
-    // Label Only Mode
-    if (renderMode === 'label_only' && option) {
+    // Label Only Mode (Mimic "Parts Only" from Sum Mode)
+    if (renderMode === 'label_only') {
         return (
-            <div className="w-full h-full flex items-center justify-center p-1">
-                <span
-                    className={`text-lg font-bold text-center leading-tight whitespace-pre-wrap break-words w-full hyphenate ${forceHeight ? 'max-h-full overflow-hidden' : ''}`}
-                    style={labelStyle}
-                >
-                    {injectSoftHyphens(option.label)}
-                </span>
+            <div className="w-full h-full flex flex-col items-center justify-center py-1 leading-tight overflow-hidden">
+                {options.map((opt, optIdx) => {
+                    const labelColor = opt.color || column.color || (screenshotMode ? '#10b981' : '#34d399');
+                    const lines = opt.label.split(/\r\n|\r|\n/);
+                    return lines.map((line, lineIdx) => (
+                        <span
+                            key={`${optIdx}-${lineIdx}`}
+                            className="text-xl font-bold text-center break-words w-full hyphenate px-1"
+                            style={{ 
+                                color: labelColor,
+                                textShadow: isColorDark(labelColor) ? ENHANCED_TEXT_SHADOW : undefined 
+                            }}
+                        >
+                            {injectSoftHyphens(line)}
+                        </span>
+                    ));
+                })}
             </div>
         );
     }
 
-    // Standard & Value Only
-    return (
-        <>
-            <span className={`text-xl font-bold w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
-                {hasInput ? formatDisplayNumber(displayScore) : ''}
-            </span>
-
-            {/* Standard Mode Label */}
-            {renderMode === 'standard' && !simpleMode && option && (
-                <span
-                    className="absolute bottom-1 right-1 text-[10px] font-bold px-1 text-right max-w-[90%] whitespace-pre-wrap leading-tight hyphenate"
-                    style={labelStyle}
-                >
-                    {injectSoftHyphens(option.label)}
+    // Standard Mode (Differentiated by single/multi select)
+    if (!column.isMultiSelect) {
+        // Single Select Case: Absolute Centering
+        return (
+            <div className="relative w-full h-full flex items-center justify-center">
+                <span className={`text-xl font-bold tracking-tight w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
+                    {hasInput ? formatDisplayNumber(displayScore) : ''}
                 </span>
-            )}
-        </>
+
+                {/* Floating label at bottom-right (Doesn't affect center position) */}
+                {renderMode === 'standard' && !simpleMode && options.length > 0 && (
+                    <div className="absolute bottom-1 right-1 flex flex-col items-end leading-[1.1] max-w-[85%] pointer-events-none pr-0.5">
+                        <span
+                            className="text-sm font-bold text-right truncate max-w-full drop-shadow-sm"
+                            style={{ 
+                                color: options[0].color || column.color || (screenshotMode ? '#10b981' : '#34d399'),
+                                textShadow: isColorDark(options[0].color || column.color || '') ? ENHANCED_TEXT_SHADOW : undefined
+                            }}
+                        >
+                            {injectSoftHyphens(options[0].label)}
+                        </span>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // Multi-Select Case: Side-by-Side Flex Layout (Allows Height Expansion)
+    return (
+        <div className="relative w-full h-full">
+            <div className="w-full h-full flex flex-row items-stretch overflow-hidden">
+                {/* Left Side: Score Value (Total) */}
+                <div className="flex-1 flex justify-center items-center min-w-0">
+                    <span className={`text-xl font-bold tracking-tight w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={textStyle}>
+                        {hasInput ? formatDisplayNumber(displayScore) : ''}
+                    </span>
+                </div>
+
+                {/* Right Side: Labels List (Vertical column that pushes height) */}
+                {renderMode === 'standard' && !simpleMode && options.length > 0 && (
+                    <div className="flex flex-col justify-end pb-1 pr-1 max-w-[55%]">
+                        <div className="flex flex-col items-end leading-[1.1]">
+                            {options.map((opt, optIdx) => {
+                                const labelColor = opt.color || column.color || (screenshotMode ? '#10b981' : '#34d399');
+                                return (
+                                    <span
+                                        key={optIdx}
+                                        className="text-sm font-bold text-right truncate max-w-full"
+                                        style={{ 
+                                            color: labelColor,
+                                            textShadow: isColorDark(labelColor) ? ENHANCED_TEXT_SHADOW : undefined
+                                        }}
+                                    >
+                                        {injectSoftHyphens(opt.label)}
+                                    </span>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
     );
 };
 
@@ -301,7 +350,7 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
     // --- Data Preparation ---
     const parts = scoreData?.parts || [];
     const scoringContext = allColumns ? { allColumns, playerScores: player.scores, allPlayers } : undefined;
-    const displayScore = calculateColumnScore(column, parts, scoringContext);
+    const displayScore = calculateColumnScore(column, parts, scoringContext, scoreData);
     const autoError = getAutoColumnError(column, scoringContext);
     const hasInput = column.isAuto ? true : parts.length > 0;
 
@@ -398,8 +447,8 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
                     } else if (isPartsOnly) {
                         contentForCalc = parts.map(formatDisplayNumber);
                     } else if (isLabelOnly) {
-                        const option = resolveSelectOption(column, scoreData);
-                        if (option) contentForCalc = option.label.split(/\r\n|\r|\n/);
+                        const options = resolveSelectedOptions(column, scoreData);
+                        contentForCalc = options.flatMap(opt => opt.label.split(/\r\n|\r|\n/));
                     } else {
                         contentForCalc = [formatDisplayNumber(displayScore)];
                     }
@@ -420,19 +469,22 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
                 }
 
                 if (hasInput && isLabelOnly) {
-                    const option = resolveSelectOption(column, scoreData);
-                    const labelColor = option?.color || column.color || (screenshotMode ? '#10b981' : '#34d399');
+                    const options = resolveSelectedOptions(column, scoreData);
                     return (
                         <div className="flex flex-col items-center justify-center w-full h-full leading-tight overflow-hidden">
-                            {(option?.label || '').split(/\r\n|\r|\n/).map((line, i) => (
-                                <span
-                                    key={i}
-                                    className="font-bold text-center break-words whitespace-pre-wrap w-full hyphenate"
-                                    style={{ color: labelColor, fontSize: dynamicFontSize, textShadow: isColorDark(labelColor) ? ENHANCED_TEXT_SHADOW : undefined }}
-                                >
-                                    {injectSoftHyphens(line)}
-                                </span>
-                            ))}
+                            {options.map((opt, optIdx) => {
+                                const labelColor = opt.color || column.color || (screenshotMode ? '#10b981' : '#34d399');
+                                const lines = opt.label.split(/\r\n|\r|\n/);
+                                return lines.map((line, lineIdx) => (
+                                    <span
+                                        key={`${optIdx}-${lineIdx}`}
+                                        className="font-bold text-center break-words whitespace-pre-wrap w-full hyphenate"
+                                        style={{ color: labelColor, fontSize: dynamicFontSize, textShadow: isColorDark(labelColor) ? ENHANCED_TEXT_SHADOW : undefined }}
+                                    >
+                                        {injectSoftHyphens(line)}
+                                    </span>
+                                ));
+                            })}
                         </div>
                     );
                 }

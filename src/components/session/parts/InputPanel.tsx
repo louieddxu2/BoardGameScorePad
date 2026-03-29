@@ -12,9 +12,10 @@ import InputPanelLayout from './InputPanelLayout';
 import SmartSpacer from './SmartSpacer';
 import { Eraser, ArrowRight, ArrowDown, Edit, Plus, ArrowUpToLine, ListPlus, Calculator, Scale, X, Check, MousePointerClick } from 'lucide-react';
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
-import { getScoreHistory, getRawValue } from '../../../utils/scoring';
+import { getScoreHistory, getRawValue, syncPartsFromIds } from '../../../utils/scoring';
 import { useVisualViewportOffset } from '../../../hooks/useVisualViewportOffset';
 import { useSessionTranslation } from '../../../i18n/session';
+import { getEffectiveIds } from '../../../utils/scoreDisplay';
 
 // Helper for extracting factors from score value
 const getFactors = (value: any): [string | number, string | number] => {
@@ -228,33 +229,43 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
     const updateScore = (playerId: string, colId: string, value: any) => {
         const col = template.columns.find((c: any) => c.id === colId);
+        if (!col) return;
+
         const players = session.players.map((p: any) => {
-            if (!col?.isShared && p.id !== playerId) return p;
+            if (!col.isShared && p.id !== playerId) return p;
             const newScores = { ...p.scores };
 
-            if (value === undefined || value === null || !col) {
+            if (value === undefined || value === null) {
                 delete newScores[colId];
             } else {
                 let parts: number[] = [];
+                let optionId: string | undefined = undefined;
+                let multiOptionIds: string[] | undefined = undefined;
+
                 if ((col.formula || '').includes('+next')) {
                     parts = (value.history || []).map((s: string) => parseFloat(s)).filter((n: number) => !isNaN(n));
                 } else if (col.formula === 'a1×a2') {
                     parts = (value.factors || []).map((f: any) => parseFloat(String(f))).filter((n: number) => !isNaN(n));
+                } else if (col.isMultiSelect) {
+                    // [New] Multi-select Logic
+                    multiOptionIds = value.multiOptionIds || [];
+                    parts = syncPartsFromIds(col, multiOptionIds);
+                } else if (col.inputType === 'clicker') {
+                    // [Consistency] Option-driven Single-select sync
+                    optionId = value.optionId;
+                    parts = optionId ? syncPartsFromIds(col, [optionId]) : [];
                 } else {
+                    // Standard Numeric
                     const rawVal = (typeof value === 'object' && value.value !== undefined) ? value.value : value;
                     const num = parseFloat(String(rawVal));
                     if (!isNaN(num)) parts = [num];
                 }
 
-                const newScoreObj: ScoreValue = { parts };
-                if (typeof value === 'object' && value.optionId) {
-                    newScoreObj.optionId = value.optionId;
-                }
-                newScores[colId] = newScoreObj;
+                newScores[colId] = { parts, optionId, multiOptionIds };
             }
             return { ...p, scores: newScores };
         });
-        onUpdateSession({ ...session, players: players });
+        onUpdateSession({ ...session, players });
     };
 
     const updatePlayerMeta = (playerId: string, updates: Partial<Player>) => {
@@ -559,8 +570,20 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                         const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
                         updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
                     } else {
-                        updateScore(activePlayer.id, activeColumn.id, { value: action.value, optionId: action.id });
-                        // eventHandlers.moveToNext(); // 移除自動跳轉，改由使用者手動按 Next
+                        // Priority 1: Multi-select Toggle Logic
+                        if (activeColumn.isMultiSelect) {
+                            const currentIds = cellScoreObject?.multiOptionIds || [];
+                            const isSelected = currentIds.includes(action.id);
+                            const newIds = isSelected
+                                ? currentIds.filter(id => id !== action.id)
+                                : [...currentIds, action.id];
+
+                            updateScore(activePlayer.id, activeColumn.id, { multiOptionIds: newIds });
+                        }
+                        // Priority 2: Standard Single-select
+                        else {
+                            updateScore(activePlayer.id, activeColumn.id, { optionId: action.id });
+                        }
                     }
                 };
 
@@ -586,12 +609,16 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                         </div>
                     );
                 } else if (activeColumn.inputType === 'clicker') {
-                    // [Update] Pass currentOptionId to enable highlighting
+                    const effectiveIds = getEffectiveIds(activeColumn, cellScoreObject);
+                    const currentOptionId = !activeColumn.isMultiSelect ? effectiveIds[0] : undefined;
+                    const currentMultiOptionIds = activeColumn.isMultiSelect ? effectiveIds : undefined;
+
                     mainContentNode = (
                         <QuickButtonPad
                             column={activeColumn}
                             onAction={handleQuickButtonAction}
-                            currentOptionId={cellScoreObject?.optionId} // Pass current selected option
+                            currentOptionId={currentOptionId}
+                            currentMultiOptionIds={currentMultiOptionIds}
                         />
                     );
 

@@ -103,7 +103,8 @@ export const migrateColumn = (oldCol: any): ScoreColumn => {
     contentLayout: oldCol.contentLayout,
     isAuto: oldCol.isAuto,
     variableMap: oldCol.variableMap,
-    isShared: oldCol.isShared
+    isShared: oldCol.isShared,
+    isMultiSelect: oldCol.isMultiSelect
   };
   return newCol;
 };
@@ -130,7 +131,7 @@ export const migrateScores = (scores: Record<string, any>, template: GameTemplat
     if (!col || oldScore === undefined || oldScore === null) return;
 
     if (typeof oldScore === 'object' && oldScore !== null && oldScore.parts) {
-      newScores[colId] = oldScore;
+      newScores[colId] = { ...oldScore }; // Preserve everything including optionId/optionIds
       return;
     }
 

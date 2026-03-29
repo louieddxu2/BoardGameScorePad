@@ -2,7 +2,8 @@
 // --- Formula-based structure ---
 export interface ScoreValue {
   parts: number[];
-  optionId?: string; // [New] 記錄列表選單中具體選中的選項 ID，解決數值相同導致顯示錯誤的問題
+  optionId?: string; // [Legacy] Single select ID
+  multiOptionIds?: string[]; // [New] Multi-select ID collection
 }
 
 export interface Rect {
@@ -71,6 +72,7 @@ export interface ScoreColumn {
   rounding?: RoundingMode;
   showPartsInGrid?: boolean | 'parts_only';
   renderMode?: 'standard' | 'value_only' | 'label_only'; // For select/clicker columns
+  isMultiSelect?: boolean; // [New] Whether multiple options can be selected simultaneously
   buttonGridColumns?: number;
 
   // Display Control
