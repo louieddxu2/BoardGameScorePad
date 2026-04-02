@@ -41,6 +41,8 @@ interface SessionViewProps {
   onResetScores: () => void;
   onSaveToHistory: (location?: string) => void;
   onDiscard: () => void;
+  isVoiceEnabled?: boolean;
+  onToggleVoice?: () => void;
 }
 
 const SessionView: React.FC<SessionViewProps> = (props) => {
@@ -391,6 +393,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onUpdateSavedPlayer={props.onUpdateSavedPlayer} // Updated Prop Name
         onTakePhoto={media.openScoreCamera} // [FIXED] Use special mode for toolbox camera
         onScreenshotRequest={handleScreenshotRequest} // [New] Pass screenshot action
+        isVoiceEnabled={props.isVoiceEnabled}
+        onToggleVoice={props.onToggleVoice}
       />
 
       <ScreenshotModal

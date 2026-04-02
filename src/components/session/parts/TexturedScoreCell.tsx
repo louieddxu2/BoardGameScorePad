@@ -1,13 +1,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { Player, ScoreColumn, ScoreValue } from '../../../types';
-import { calculateColumnScore, getAutoColumnError, resolveSelectOption } from '../../../utils/scoring';
+import { calculateColumnScore, getAutoColumnError, resolveSelectedOptions } from '../../../utils/scoring';
 import { getSmartTextureUrl } from '../../../utils/imageProcessing';
 import SmartTextureLayer from './SmartTextureLayer';
 import { Link2Off, AlertTriangle } from 'lucide-react';
 import { calculateDynamicFontSize } from '../../../utils/dynamicLayout';
 import { useSessionTranslation } from '../../../i18n/session';
 import { injectSoftHyphens } from '../../../utils/text';
+import { formatDisplayNumber } from '../../../utils/scoreDisplay';
 
 interface TexturedScoreCellProps {
     player: Player;
@@ -26,16 +27,6 @@ interface TexturedScoreCellProps {
     limitX?: number;
     skipTextureRendering?: boolean; // New Prop
 }
-
-// Helper for number formatting
-const formatDisplayNumber = (num: number | undefined | null): string => {
-    if (num === undefined || num === null) return '';
-    if (Number.isNaN(num)) return 'NaN';
-    if (num === Infinity) return '∞';
-    if (num === -Infinity) return '-∞';
-    if (Object.is(num, -0)) return '-0';
-    return String(num);
-};
 
 const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
     player,
@@ -66,7 +57,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
         allPlayers: allPlayers
     } : undefined;
 
-    const displayScore = calculateColumnScore(column, parts, scoringContext);
+    const displayScore = calculateColumnScore(column, parts, scoringContext, scoreValue);
     const autoError = getAutoColumnError(column, scoringContext);
 
     // Auto columns always show value if they are calculated
@@ -125,8 +116,9 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
             } else if (isPartsOnly) {
                 contentForCalc = parts.map(formatDisplayNumber);
             } else if (isLabelOnly) {
-                const option = resolveSelectOption(column, scoreValue);
-                if (option) contentForCalc = option.label.split(/\r\n|\r|\n/);
+                // Label Only Mode
+                const options = resolveSelectedOptions(column, scoreValue);
+                contentForCalc = options.flatMap(opt => opt.label.split(/\r\n|\r|\n/));
             } else {
                 contentForCalc = [formatDisplayNumber(displayScore)];
             }
@@ -151,20 +143,23 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                 );
             } else if (isLabelOnly) {
                 // Label Only Mode
-                const option = resolveSelectOption(column, scoreValue);
-                const labelColor = option?.color || column.color || 'rgba(28, 35, 51, 0.90)';
+                const options = resolveSelectedOptions(column, scoreValue);
+                const labelColorBase = column.color || 'rgba(28, 35, 51, 0.90)';
                 layoutContent = (
                     <div className="flex flex-col items-center justify-center w-full h-full leading-tight overflow-hidden">
-                        {/* Split label lines manually to ensure they stack correctly with flex */}
-                        {(option?.label || '').split(/\r\n|\r|\n/).map((line, i) => (
-                            <span
-                                key={i}
-                                className="font-bold text-center break-words w-full hyphenate"
-                                style={{ ...inkStyle, color: labelColor, fontSize: dynamicFontSize }}
-                            >
-                                {injectSoftHyphens(line)}
-                            </span>
-                        ))}
+                        {options.map((opt, optIdx) => {
+                            const labelColor = opt.color || labelColorBase;
+                            const lines = opt.label.split(/\r\n|\r|\n/);
+                            return lines.map((line, lineIdx) => (
+                                <span
+                                    key={`${optIdx}-${lineIdx}`}
+                                    className="font-bold text-center break-words w-full hyphenate"
+                                    style={{ ...inkStyle, color: labelColor, fontSize: dynamicFontSize }}
+                                >
+                                    {injectSoftHyphens(line)}
+                                </span>
+                            ));
+                        })}
                     </div>
                 );
             } else {
@@ -249,23 +244,33 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
         // 2. Select List (Clicker) with Render Modes
         if (isSelectList) {
             // Use centralized resolver
-            const option = resolveSelectOption(column, scoreValue);
+            const options = resolveSelectedOptions(column, scoreValue);
             const renderMode = column.renderMode || 'standard';
 
-            if (renderMode === 'label_only' && option) {
-                const labelColor = option.color || column.color || 'rgba(28, 35, 51, 0.90)';
+            if (renderMode === 'label_only') {
+                const labelColorBase = column.color || 'rgba(28, 35, 51, 0.90)';
+                const totalLines = options.reduce((acc, opt) => acc + opt.label.split(/\r\n|\r|\n/).length, 0);
+                
                 return (
-                    <div className="relative z-10 w-full h-full flex items-center justify-center p-1">
-                        <span
-                            className="text-lg font-bold text-center leading-tight whitespace-pre-wrap break-words w-full hyphenate"
-                            style={{
-                                ...inkStyle,
-                                color: labelColor,
-                                mixBlendMode: 'multiply',
-                            }}
-                        >
-                            {injectSoftHyphens(option.label)}
-                        </span>
+                    <div className="relative z-10 w-full h-full flex flex-col items-center justify-center p-1 overflow-hidden">
+                        {options.map((opt, optIdx) => {
+                            const labelColor = opt.color || labelColorBase;
+                            const lines = opt.label.split(/\r\n|\r|\n/);
+                            return lines.map((line, lineIdx) => (
+                                <span
+                                    key={`${optIdx}-${lineIdx}`}
+                                    className="font-bold text-center break-words w-full hyphenate"
+                                    style={{
+                                        ...inkStyle,
+                                        color: labelColor,
+                                        mixBlendMode: 'multiply',
+                                        fontSize: totalLines > 2 ? '1rem' : '1.25rem'
+                                    }}
+                                >
+                                    {injectSoftHyphens(line)}
+                                </span>
+                            ));
+                        })}
                     </div>
                 );
             }
@@ -276,20 +281,24 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                         {hasInput ? formatDisplayNumber(displayScore) : ''}
                     </span>
 
-                    {/* Standard Mode -> Render Label at Bottom Right */}
-                    {renderMode === 'standard' && !simpleMode && column.showPartsInGrid !== false && option && (
-                        <div className="absolute bottom-1 right-1 z-10 max-w-[90%] flex justify-end pointer-events-none">
-                            <span
-                                className="text-xs font-bold leading-tight text-right whitespace-pre-wrap hyphenate"
-                                style={{
-                                    fontFamily: '"Kalam", cursive',
-                                    color: option.color || column.color || 'rgba(71, 85, 105, 0.9)',
-                                    mixBlendMode: 'multiply',
-                                    transform: 'rotate(-2deg)',
-                                }}
-                            >
-                                {injectSoftHyphens(option.label)}
-                            </span>
+                    {/* Standard Mode -> Render Multiple Labels at Bottom Right (Stacked) */}
+                    {renderMode === 'standard' && !simpleMode && column.showPartsInGrid !== false && options.length > 0 && (
+                        <div className="absolute bottom-1 right-1 z-10 max-w-[90%] flex flex-col items-end pointer-events-none pr-0.5">
+                            {options.map((opt, i) => (
+                                <span
+                                    key={i}
+                                    className="text-xs font-bold leading-[1.1] text-right whitespace-pre-wrap hyphenate truncate max-w-full"
+                                    style={{
+                                        fontFamily: '"Kalam", cursive',
+                                        color: opt.color || column.color || 'rgba(71, 85, 105, 0.9)',
+                                        mixBlendMode: 'multiply',
+                                        fontSize: '12px',
+                                        transform: `rotate(${((player.id.charCodeAt(0) + i) % 5) - 2}deg)`,
+                                    }}
+                                >
+                                    {injectSoftHyphens(opt.label)}
+                                </span>
+                            ))}
                         </div>
                     )}
                 </div>

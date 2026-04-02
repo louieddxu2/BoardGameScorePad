@@ -1,17 +1,17 @@
 
 import React from 'react';
-import { ScoreColumn } from '../types';
-import { getRawValue } from './scoring';
+import { ScoreColumn, ScoreValue } from '../types';
+import { getRawValue, getEffectiveIds } from './scoring';
 
 // --- 1. Basic Formatting ---
 
 export const formatDisplayNumber = (num: number | undefined | null): string => {
-  if (num === undefined || num === null) return '';
-  if (Number.isNaN(num)) return 'NaN';
-  if (num === Infinity) return '∞';
-  if (num === -Infinity) return '-∞';
-  if (Object.is(num, -0)) return '-0';
-  return String(num);
+    if (num === undefined || num === null) return '';
+    if (Number.isNaN(num)) return 'NaN';
+    if (num === Infinity) return '∞';
+    if (num === -Infinity) return '-∞';
+    if (Object.is(num, -0)) return '-0';
+    return String(num);
 };
 
 // --- 2. Input Resolution (Active Editing State) ---
@@ -25,19 +25,19 @@ export const getRawInputString = (previewValue: any, isActive: boolean): string 
     if (!isActive || previewValue === undefined) return undefined;
 
     if (typeof previewValue === 'object' && 'value' in previewValue) {
-         const val = previewValue.value;
-         if (typeof val === 'string') return val;
-         if (Object.is(val, -0)) return "-0";
-         return String(val);
-    } 
-    
+        const val = previewValue.value;
+        if (typeof val === 'string') return val;
+        if (Object.is(val, -0)) return "-0";
+        return String(val);
+    }
+
     if (typeof previewValue === 'string') {
-         return previewValue;
-    } 
-    
+        return previewValue;
+    }
+
     if (typeof previewValue === 'number') {
-         if (Object.is(previewValue, -0)) return "-0";
-         return String(previewValue);
+        if (Object.is(previewValue, -0)) return "-0";
+        return String(previewValue);
     }
 
     return undefined;
@@ -49,8 +49,8 @@ export const getRawInputString = (previewValue: any, isActive: boolean): string 
  * 回傳 [DisplayA, DisplayB]
  */
 export const getProductInputStrings = (
-    previewValue: any, 
-    isActive: boolean, 
+    previewValue: any,
+    isActive: boolean,
     savedParts: number[]
 ): [string, string] => {
     // 1. Default from saved data
@@ -59,18 +59,18 @@ export const getProductInputStrings = (
 
     // 2. Override if active editing
     if (isActive && previewValue && typeof previewValue === 'object' && Array.isArray(previewValue.factors)) {
-         const rawA = previewValue.factors[0];
-         const rawB = previewValue.factors[1];
-         
-         const formatFactor = (v: any) => {
-             if (typeof v === 'string') return v;
-             return formatDisplayNumber(v);
-         };
+        const rawA = previewValue.factors[0];
+        const rawB = previewValue.factors[1];
 
-         displayA = formatFactor(rawA);
-         displayB = formatFactor(rawB);
+        const formatFactor = (v: any) => {
+            if (typeof v === 'string') return v;
+            return formatDisplayNumber(v);
+        };
+
+        displayA = formatFactor(rawA);
+        displayB = formatFactor(rawB);
     }
-    
+
     return [displayA, displayB];
 };
 
@@ -82,13 +82,13 @@ export const getProductInputStrings = (
  */
 export const getGhostPreview = (previewValue: any, column: ScoreColumn): { val: number | null, labelNode: React.ReactNode | null } => {
     if (!previewValue) return { val: null, labelNode: null };
-    
+
     // Scenario A: Product Sum Parts (A * B)
     if (column.formula.includes('×a2')) {
         if (typeof previewValue === 'object' && previewValue.factors) {
             const f1Raw = previewValue.factors[0];
             const f2Raw = previewValue.factors[1];
-            
+
             const f1 = parseFloat(String(f1Raw)) || 0;
             // Parse f2 correctly, default to 0 if NaN (InputPanel inits to 1 usually, but ghost implies change)
             const f2Num = parseFloat(String(f2Raw));
@@ -97,16 +97,16 @@ export const getGhostPreview = (previewValue: any, column: ScoreColumn): { val: 
             // Display Strings (Preserve raw if string)
             const d1 = typeof f1Raw === 'string' ? f1Raw : formatDisplayNumber(f1);
             const d2 = typeof f2Raw === 'string' ? f2Raw : formatDisplayNumber(f2);
-            
+
             // Show preview if input is meaningful (not just default 0, 1)
             const isDefault = d1 === '0' && d2 === '1';
-            
+
             if (!isDefault) {
-                 const product = f1 * f2;
-                 const ua = column.subUnits?.[0] || '';
-                 const ub = column.subUnits?.[1] || '';
-                 
-                 const labelNode = (
+                const product = f1 * f2;
+                const ua = column.subUnits?.[0] || '';
+                const ub = column.subUnits?.[1] || '';
+
+                const labelNode = (
                     <span className="inline-flex items-baseline justify-end gap-[2px] whitespace-nowrap">
                         <span>{d1}</span>
                         <span className="text-[10px] opacity-80">{ua}</span>
@@ -114,36 +114,36 @@ export const getGhostPreview = (previewValue: any, column: ScoreColumn): { val: 
                         <span>{d2}</span>
                         <span className="text-[10px] opacity-80">{ub}</span>
                     </span>
-                 );
+                );
 
-                 return { val: product, labelNode };
+                return { val: product, labelNode };
             }
         }
         return { val: null, labelNode: null };
     }
-    
+
     // Scenario B: Standard Sum Parts
     let displayStr = "";
     let rawVal = 0;
 
     if (typeof previewValue === 'object' && 'value' in previewValue) {
-         const val = previewValue.value;
-         rawVal = parseFloat(String(val)) || 0;
-         if (typeof val === 'string') displayStr = val;
-         else if (Object.is(val, -0)) displayStr = "-0";
-         else displayStr = String(val);
+        const val = previewValue.value;
+        rawVal = parseFloat(String(val)) || 0;
+        if (typeof val === 'string') displayStr = val;
+        else if (Object.is(val, -0)) displayStr = "-0";
+        else displayStr = String(val);
     } else {
-         rawVal = getRawValue(previewValue);
-         displayStr = formatDisplayNumber(rawVal);
+        rawVal = getRawValue(previewValue);
+        displayStr = formatDisplayNumber(rawVal);
     }
-    
+
     // Show preview if input is not "0" (default/empty) or empty string
     // "-0" counts as valid input to show
     if (displayStr !== "0" && displayStr !== "") {
         const constant = column.constants?.c1 ?? 1;
         let finalLabel = displayStr;
         let finalVal = rawVal;
-        
+
         // If there is a multiplier, show the RESULT
         if (constant !== 1) {
             finalVal = rawVal * constant;
@@ -152,16 +152,20 @@ export const getGhostPreview = (previewValue: any, column: ScoreColumn): { val: 
             // No multiplier: use the raw display string (preserves "5.")
             finalVal = rawVal;
         }
-        
+
         const labelNode = (
             <span className="inline-flex items-baseline justify-end whitespace-nowrap">
                 {finalLabel}
                 {column.unit && <span className="text-[10px] ml-0.5 not-italic opacity-80">{column.unit}</span>}
             </span>
         );
-        
+
         return { val: finalVal, labelNode };
     }
-    
+
     return { val: null, labelNode: null };
 };
+
+// --- 4. Column-Mode-Aware Resolution (Attribute-Driven) ---
+
+export { getEffectiveIds };

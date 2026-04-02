@@ -678,6 +678,8 @@ const App: React.FC = () => {
             onExit={handleExitSession}
             onSaveToHistory={handleSaveToHistory}
             onDiscard={handleDiscard}
+            isVoiceEnabled={appData.isVoiceEnabled}
+            onToggleVoice={appData.toggleVoice}
           />
         </div>
       )}

@@ -13,6 +13,7 @@ import { usePlayerWidthSync } from '../../../hooks/usePlayerWidthSync';
 import { calculateColumnScore, resolveSelectOption } from '../../../utils/scoring';
 import { calculateDynamicFontSize } from '../../../utils/dynamicLayout';
 import { injectSoftHyphens } from '../../../utils/text';
+import { formatDisplayNumber } from '../../../utils/scoreDisplay';
 
 interface ScoreGridProps {
   session: GameSession;
@@ -35,12 +36,6 @@ interface ScoreGridProps {
   onToggleToolbox?: () => void;
   isToolboxOpen?: boolean;
 }
-
-const formatDisplayNumber = (num: number | undefined | null): string => {
-  if (num === undefined || num === null) return '';
-  if (Object.is(num, -0)) return '-0';
-  return String(num);
-};
 
 const ScoreGrid: React.FC<ScoreGridProps> = ({
   session,
@@ -369,7 +364,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         playerScores: session.players[0].scores,
                         allPlayers: session.players
                       };
-                      const displayScore = calculateColumnScore(overlayCol, parts, overlayContext);
+                      const displayScore = calculateColumnScore(overlayCol, parts, overlayContext, scoreData);
 
                       let displayText = '';
                       const hasInput = overlayCol.isAuto ? true : parts.length > 0;
@@ -405,7 +400,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         })
                       };
 
-                      if (!overlayCol.contentLayout) return null;
+                      // 如果沒有設定框選區域，我們依然允許它渲染，只是寬高預設為 100% (真的重疊上去)
 
                       return (
                         <div key={overlayCol.id} className="absolute inset-0 pointer-events-none">
@@ -425,10 +420,10 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                               }
                                       `}
                             style={{
-                              left: `${overlayCol.contentLayout.x}%`,
-                              top: `${overlayCol.contentLayout.y}%`,
-                              width: `${overlayCol.contentLayout.width}%`,
-                              height: `${overlayCol.contentLayout.height}%`,
+                              left: overlayCol.contentLayout ? `${overlayCol.contentLayout.x}%` : undefined,
+                              top: overlayCol.contentLayout ? `${overlayCol.contentLayout.y}%` : undefined,
+                              width: overlayCol.contentLayout ? `${overlayCol.contentLayout.width}%` : '100%',
+                              height: overlayCol.contentLayout ? `${overlayCol.contentLayout.height}%` : '100%',
                               borderColor: (!isOverlayActive && isEditMode && overlayCol.color) ? `${overlayCol.color}60` : undefined,
                               containerType: 'size',
                             } as React.CSSProperties}
@@ -472,7 +467,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                           playerScores: p.scores,
                           allPlayers: session.players
                         };
-                        const displayScore = calculateColumnScore(overlayCol, parts, overlayContext);
+                        const displayScore = calculateColumnScore(overlayCol, parts, overlayContext, p.scores[overlayCol.id]);
 
                         let displayText = '';
                         const hasInput = overlayCol.isAuto ? true : parts.length > 0;
@@ -509,7 +504,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                           })
                         };
 
-                        if (!overlayCol.contentLayout) return null;
+                        // 如果沒有設定框選區域，我們依然允許它渲染，只是寬高預設為 100% (真的重疊上去)
 
                         return (
                           <div key={overlayCol.id} className="absolute inset-0 pointer-events-none">
@@ -529,10 +524,10 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                                 }
                                       `}
                               style={{
-                                left: `${overlayCol.contentLayout.x}%`,
-                                top: `${overlayCol.contentLayout.y}%`,
-                                width: `${overlayCol.contentLayout.width}%`,
-                                height: `${overlayCol.contentLayout.height}%`,
+                                left: overlayCol.contentLayout ? `${overlayCol.contentLayout.x}%` : undefined,
+                                top: overlayCol.contentLayout ? `${overlayCol.contentLayout.y}%` : undefined,
+                                width: overlayCol.contentLayout ? `${overlayCol.contentLayout.width}%` : '100%',
+                                height: overlayCol.contentLayout ? `${overlayCol.contentLayout.height}%` : '100%',
                                 borderColor: (!isOverlayActive && isEditMode && overlayCol.color) ? `${overlayCol.color}60` : undefined,
                                 containerType: 'size',
                               } as React.CSSProperties}

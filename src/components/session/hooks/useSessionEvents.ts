@@ -3,12 +3,14 @@ import { GameSession, GameTemplate, ScoreColumn, SavedListItem } from '../../../
 import { useSessionState } from './useSessionState';
 import { useSessionNavigation } from './useSessionNavigation';
 import { generateId } from '../../../utils/idGenerator';
-import { calculatePlayerTotal } from '../../../utils/scoring';
+import { calculatePlayerTotal, syncPartsFromIds } from '../../../utils/scoring';
 import { useToast } from '../../../hooks/useToast';
 import { DATA_LIMITS } from '../../../dataLimits';
 import { bgStatsEntityService } from '../../../features/bgstats/services/bgStatsEntityService';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
+import { useTranslation } from '../../../i18n';
+import { useVoiceAnnouncements } from './useVoiceAnnouncements';
 
 interface SessionViewProps {
   session: GameSession;
@@ -19,6 +21,8 @@ interface SessionViewProps {
   onUpdateSavedPlayer: (name: string, uuid?: string) => void; // Renamed
   onExit: () => void;
   onResetScores: () => void;
+  isVoiceEnabled?: boolean;
+  onToggleVoice?: () => void;
 }
 
 interface LocalUiState {
@@ -33,10 +37,11 @@ export const useSessionEvents = (
   sessionState: SessionStateHook,
   localUiState?: LocalUiState
 ) => {
-  const { session, template, savedPlayers, onUpdateSession, onUpdateTemplate, onUpdateSavedPlayer, onExit, onResetScores } = props;
+  const { session, template, savedPlayers, onUpdateSession, onUpdateTemplate, onUpdateSavedPlayer, onExit, onResetScores, isVoiceEnabled } = props;
   const { uiState, setUiState } = sessionState;
   const { showToast } = useToast();
   const { t } = useSessionTranslation();
+  const { language } = useTranslation();
 
   const navigation = useSessionNavigation({
     session,
@@ -55,10 +60,17 @@ export const useSessionEvents = (
   // [Fix] Track onExit in a ref to prevent listener re-binding when parent re-renders
   const onExitRef = useRef(onExit);
 
-  useEffect(() => { uiStateRef.current = uiState; }, [uiState]);
-  useEffect(() => { sessionRef.current = session; }, [session]);
-  useEffect(() => { localUiStateRef.current = localUiState; }, [localUiState]);
   useEffect(() => { onExitRef.current = onExit; }, [onExit]);
+
+  // --- Voice Feedback Logic ---
+  useVoiceAnnouncements({
+    isVoiceEnabled,
+    language,
+    uiState,
+    session,
+    template,
+    t
+  });
 
   // --- Back Button Logic (History Stack Managed UI) ---
   // 1. Input Panel (Score Cell / Player Name)
@@ -265,7 +277,44 @@ export const useSessionEvents = (
 
   const handleSaveColumn = (updates: Partial<ScoreColumn>) => {
     if (!uiState.editingColumn) return;
-    const newCols = template.columns.map(c => c.id === uiState.editingColumn!.id ? { ...c, ...updates } : c);
+    const colId = uiState.editingColumn.id;
+
+    // [New] Data Copy Logic (Single <=> Multi)
+    // Perform copy ONLY when mode is explicitly toggled.
+    const prevIsMulti = !!uiState.editingColumn.isMultiSelect;
+    const nextIsMulti = updates.isMultiSelect; // DO NOT use !! yet to avoid false-positives for undefined
+
+    if (nextIsMulti !== undefined && nextIsMulti !== prevIsMulti) {
+      const nextColumn: ScoreColumn = { ...uiState.editingColumn, ...updates };
+
+      const updatedPlayers = session.players.map(p => {
+        const score = p.scores[colId];
+        if (!score) return p;
+
+        const newScore = { ...score };
+        if (nextIsMulti) {
+          // Single -> Multi: Copy optionId to multiOptionIds list
+          const currentMulti = newScore.multiOptionIds || [];
+          if (currentMulti.length === 0 && newScore.optionId) {
+            newScore.multiOptionIds = [newScore.optionId];
+            // Sync parts to ensure numeric total is correct for the new mode
+            newScore.parts = syncPartsFromIds(nextColumn, newScore.multiOptionIds);
+          }
+        } else {
+          // Multi -> Single: Copy first element of multiOptionIds to optionId
+          const currentMulti = newScore.multiOptionIds || [];
+          if (!newScore.optionId && currentMulti.length > 0) {
+            newScore.optionId = currentMulti[0];
+            // Sync parts to ensure numeric total is correct for the new mode
+            newScore.parts = syncPartsFromIds(nextColumn, [newScore.optionId]);
+          }
+        }
+        return { ...p, scores: { ...p.scores, [colId]: newScore } };
+      });
+      onUpdateSession({ ...session, players: updatedPlayers });
+    }
+
+    const newCols = template.columns.map(c => c.id === colId ? { ...c, ...updates } : c);
     onUpdateTemplate({ ...template, columns: newCols });
     setUiState(p => ({ ...p, editingColumn: null, editingCell: null, editingPlayerId: null }));
   };

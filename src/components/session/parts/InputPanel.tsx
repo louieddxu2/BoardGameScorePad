@@ -12,9 +12,10 @@ import InputPanelLayout from './InputPanelLayout';
 import SmartSpacer from './SmartSpacer';
 import { Eraser, ArrowRight, ArrowDown, Edit, Plus, ArrowUpToLine, ListPlus, Calculator, Scale, X, Check, MousePointerClick } from 'lucide-react';
 import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
-import { getScoreHistory, getRawValue } from '../../../utils/scoring';
+import { getScoreHistory, getRawValue, syncPartsFromIds } from '../../../utils/scoring';
 import { useVisualViewportOffset } from '../../../hooks/useVisualViewportOffset';
 import { useSessionTranslation } from '../../../i18n/session';
+import { getEffectiveIds } from '../../../utils/scoreDisplay';
 
 // Helper for extracting factors from score value
 const getFactors = (value: any): [string | number, string | number] => {
@@ -36,6 +37,8 @@ interface InputPanelProps {
     // [New Props for SmartSpacer]
     onTakePhoto?: () => void;
     onScreenshotRequest?: (mode: 'full' | 'simple') => void;
+    isVoiceEnabled?: boolean;
+    onToggleVoice?: () => void;
 }
 
 import { injectSoftHyphens } from '../../../utils/text';
@@ -48,7 +51,10 @@ const PanelHeader: React.FC<{
     onDirectionToggle: () => void;
     direction: 'horizontal' | 'vertical';
     isTotalMode?: boolean; // New prop
-}> = ({ player, col, isEditingPlayer, onClear, onDirectionToggle, direction, isTotalMode }) => {
+    isVoiceEnabled?: boolean;
+    onToggleVoice?: () => void;
+    showSwipeHint?: boolean;
+}> = ({ player, col, isEditingPlayer, onClear, onDirectionToggle, direction, isTotalMode, isVoiceEnabled, onToggleVoice, showSwipeHint }) => {
 
     // Handle transparent color fallback
     const isTransparent = player.color === 'transparent';
@@ -62,60 +68,110 @@ const PanelHeader: React.FC<{
 
     return (
         <div
-            className="border-b h-10 flex items-center px-4 gap-2 overflow-x-auto no-scrollbar shrink-0 transition-colors"
+            className="border-b h-10 flex items-center px-4 gap-2 shrink-0 transition-colors overflow-hidden relative"
             style={{ backgroundColor: bgColor, borderColor: borderColor }}
         >
-            {isEditingPlayer ? (
-                <>
-                    <Edit size={12} className="shrink-0" style={{ color: displayColor }} />
-                    <span className="text-xs shrink-0 font-bold opacity-70" style={{ color: displayColor }}>{t('input_edit_player')}</span>
-                    <div className="w-px h-4 bg-white/10 mx-1" />
-                    <span
-                        key={player.id}
-                        className="text-sm font-bold truncate animate-slide-in-right-shallow"
-                        style={{ color: displayColor, ...(isColorDark(displayColor) && { textShadow: ENHANCED_TEXT_SHADOW }) }}
-                    >
-                        {player.name}
+            {/* Swipe Hint Overlay */}
+            {showSwipeHint && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-slate-900/90 animate-swipe-hint-enter">
+                    <span className="text-xs font-bold text-emerald-400 flex items-center gap-2">
+                        <span className="animate-swipe-hint-left">←</span>
+                        <span>{t('input_swipe_hint')}</span>
+                        <span className="animate-swipe-hint-right">→</span>
                     </span>
-                </>
-            ) : (
-                <>
-                    <span
-                        key={player.id}
-                        className="text-sm font-bold truncate animate-slide-in-right-shallow"
-                        style={{ color: displayColor, ...(isColorDark(displayColor) && { textShadow: ENHANCED_TEXT_SHADOW }) }}
-                    >
-                        {player.name}
-                    </span>
-                    <div className="w-px h-4 bg-white/10 mx-1" />
-                    <span className="text-xs shrink-0 font-bold opacity-70 hyphenate" style={{ color: displayColor }}>
-                        {isTotalMode ? t('input_total_adjust') : injectSoftHyphens(col?.name || '')}
-                    </span>
-                </>
+                    {/* Downward chevron pointing to swipeable area */}
+                    <span className="text-emerald-400/60 text-[10px] leading-none mt-0.5">▼</span>
+                </div>
             )}
-            <div className="flex-1"></div>
-            {!isAuto && (
+            {/* Left Section: Info (Flexible) */}
+            <div className="flex items-center min-w-0 flex-1 gap-1.5">
+                {isEditingPlayer ? (
+                    <>
+                        <Edit size={12} className="shrink-0" style={{ color: displayColor }} />
+                        <span className="text-[10px] shrink-0 font-bold opacity-70 uppercase tracking-tighter" style={{ color: displayColor }}>
+                            {t('input_edit_player')}
+                        </span>
+                        <div className="w-px h-3 bg-white/10 shrink-0" />
+                        <span
+                            key={player.id}
+                            className="text-sm font-bold truncate animate-slide-in-right-shallow"
+                            style={{ color: displayColor, ...(isColorDark(displayColor) && { textShadow: ENHANCED_TEXT_SHADOW }) }}
+                        >
+                            {player.name}
+                        </span>
+                    </>
+                ) : (
+                    <>
+                        <span
+                            key={player.id}
+                            className="text-sm font-bold truncate animate-slide-in-right-shallow max-w-[40%]"
+                            style={{ color: displayColor, ...(isColorDark(displayColor) && { textShadow: ENHANCED_TEXT_SHADOW }) }}
+                        >
+                            {player.name}
+                        </span>
+                        <div className="w-px h-3 bg-white/10 shrink-0" />
+                        <span className="text-xs font-bold opacity-70 truncate" style={{ color: displayColor }}>
+                            {isTotalMode ? t('input_total_adjust') : injectSoftHyphens(col?.name || '')}
+                        </span>
+                    </>
+                )}
+            </div>
+
+            {/* Right Section: Actions (Fixed) */}
+            <div className="flex items-center gap-4 shrink-0">
+                {/* Voice Toggle */}
+                <button
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={onToggleVoice}
+                    className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all border shrink-0 ${isVoiceEnabled 
+                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
+                        : 'bg-slate-800 border-slate-600 text-slate-400'}`}
+                    title={isVoiceEnabled ? t('input_voice_on') : t('input_voice_off')}
+                >
+                    {isVoiceEnabled ? (
+                        <div className="relative">
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+                                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                            </svg>
+                        </div>
+                    ) : (
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+                            <line x1="23" y1="9" x2="17" y2="15"></line>
+                            <line x1="17" y1="9" x2="23" y2="15"></line>
+                        </svg>
+                    )}
+                </button>
+
+                {!isAuto && (
+                    <button
+                        onMouseDown={(e) => e.preventDefault()} // Keep focus on input
+                        onClick={onClear}
+                        className="bg-red-900/30 text-red-400 h-8 px-2.5 rounded-lg border border-red-500/30 hover:bg-red-900/50 flex items-center gap-1 shrink-0 transition-colors"
+                    >
+                        <Eraser size={14} />
+                        <span className="text-xs font-bold hidden xs:inline">{isTotalMode ? t('input_reset') : t('input_clear')}</span>
+                    </button>
+                )}
+                {/* [Modified] Show direction toggle even in Total Mode */}
                 <button
                     onMouseDown={(e) => e.preventDefault()} // Keep focus on input
-                    onClick={onClear}
-                    className="bg-red-900/30 text-red-400 px-3 py-1 rounded text-xs border border-red-500/30 hover:bg-red-900/50 flex items-center gap-1 shrink-0"
+                    onClick={onDirectionToggle}
+                    className="bg-slate-700/50 hover:bg-slate-700 text-slate-300 h-8 px-3 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition-colors shrink-0 border border-slate-600 shadow-sm"
                 >
-                    <Eraser size={12} /> {isTotalMode ? t('input_reset') : t('input_clear')}
+                    <span className="text-emerald-400 hidden xs:inline">{t('input_next')}</span>
+                    <div className="flex font-mono text-[10px] items-center">
+                        <span className={`transition-colors ${direction === 'vertical' ? 'text-emerald-400 scale-125' : 'text-slate-600'}`}>↓</span>
+                        <span className={`mx-0.5 opacity-20`}>/</span>
+                        <span className={`transition-colors ${direction === 'horizontal' ? 'text-emerald-400 scale-125' : 'text-slate-600'}`}>→</span>
+                    </div>
                 </button>
-            )}
-            {/* [Modified] Show direction toggle even in Total Mode */}
-            <button
-                onMouseDown={(e) => e.preventDefault()} // Keep focus on input
-                onClick={onDirectionToggle}
-                className="bg-slate-700/50 hover:bg-slate-700 text-slate-300 px-3 h-8 rounded-lg flex items-center justify-center gap-1 text-xs font-bold transition-colors shrink-0 border border-slate-600"
-            >
-                <span className="text-emerald-400">{t('input_next')}</span>
-                <span className={`font-mono transition-colors ${direction === 'vertical' ? 'text-emerald-400' : 'text-slate-600'}`}>↓</span>
-                <span className={`font-mono transition-colors ${direction === 'horizontal' ? 'text-emerald-400' : 'text-slate-600'}`}>→</span>
-            </button>
+            </div>
         </div>
     );
 };
+
 
 // Sidebar for Total Mode
 const TotalAdjustmentSidebar: React.FC<{
@@ -163,16 +219,23 @@ const TotalAdjustmentSidebar: React.FC<{
 
 
 const InputPanel: React.FC<InputPanelProps> = (props) => {
-    const { sessionState, eventHandlers, session, template, savedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest } = props;
+    const { sessionState, eventHandlers, session, template, savedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice } = props;
     const { uiState, setUiState, panelHeight, isShortList } = sessionState;
     const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue, isEditingTitle, isToolboxOpen } = uiState;
     const { t } = useSessionTranslation();
 
     const visualViewportOffset = useVisualViewportOffset();
     const [activeFactorIdx, setActiveFactorIdx] = useState<0 | 1>(0);
+    const [showSwipeHint, setShowSwipeHint] = useState(false);
 
     // Guard Ref to prevent re-initialization of preview value on every render
     const currentEditingIdRef = useRef<string | null>(null);
+
+    // --- Swipe Hint Detection Refs ---
+    const swipeTriggerRef = useRef(false); // Set true when joystick swipe triggers player switch
+    const hintShownRef = useRef(false); // Track if hint already shown this session
+    const sameColSwitchTimestampsRef = useRef<number[]>([]);
+    const prevEditingCellRef = useRef(editingCell);
 
     // Initialize preview value based on column type when cell changes
     useEffect(() => {
@@ -224,37 +287,89 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
         }
     }, [editingCell, template.columns, setUiState, session.players]);
 
+    // --- Swipe Hint Detection ---
+    useEffect(() => {
+        const prev = prevEditingCellRef.current;
+        prevEditingCellRef.current = editingCell;
+
+        // Skip if hint already shown this session
+        if (hintShownRef.current) return;
+
+        // Only track cell-to-cell transitions (not null -> cell or cell -> null)
+        if (!prev || !editingCell) return;
+
+        // Detect: same column, different player, NOT triggered by swipe gesture
+        if (prev.colId === editingCell.colId && prev.playerId !== editingCell.playerId) {
+            if (swipeTriggerRef.current) {
+                // This switch was triggered by swipe — just reset the flag, don't count it
+                swipeTriggerRef.current = false;
+                return;
+            }
+
+            const now = Date.now();
+            sameColSwitchTimestampsRef.current.push(now);
+
+            // Keep only timestamps within the last 10 seconds
+            sameColSwitchTimestampsRef.current = sameColSwitchTimestampsRef.current.filter(
+                ts => now - ts <= 10000
+            );
+
+            // Trigger hint after 2 same-column switches within 10 seconds
+            if (sameColSwitchTimestampsRef.current.length >= 2) {
+                hintShownRef.current = true;
+                setShowSwipeHint(true);
+
+                // Auto-dismiss after 4 seconds
+                setTimeout(() => setShowSwipeHint(false), 4000);
+            }
+        } else {
+            // Reset swipe flag on any non-same-column transition
+            swipeTriggerRef.current = false;
+        }
+    }, [editingCell]);
+
     const isPanelOpen = editingCell !== null || editingPlayerId !== null;
 
     const updateScore = (playerId: string, colId: string, value: any) => {
         const col = template.columns.find((c: any) => c.id === colId);
+        if (!col) return;
+
         const players = session.players.map((p: any) => {
-            if (!col?.isShared && p.id !== playerId) return p;
+            if (!col.isShared && p.id !== playerId) return p;
             const newScores = { ...p.scores };
 
-            if (value === undefined || value === null || !col) {
+            if (value === undefined || value === null) {
                 delete newScores[colId];
             } else {
                 let parts: number[] = [];
+                let optionId: string | undefined = undefined;
+                let multiOptionIds: string[] | undefined = undefined;
+
                 if ((col.formula || '').includes('+next')) {
                     parts = (value.history || []).map((s: string) => parseFloat(s)).filter((n: number) => !isNaN(n));
                 } else if (col.formula === 'a1×a2') {
                     parts = (value.factors || []).map((f: any) => parseFloat(String(f))).filter((n: number) => !isNaN(n));
+                } else if (col.isMultiSelect) {
+                    // [New] Multi-select Logic
+                    const ids = value.multiOptionIds || [];
+                    multiOptionIds = ids;
+                    parts = syncPartsFromIds(col, ids);
+                } else if (col.inputType === 'clicker') {
+                    // [Consistency] Option-driven Single-select sync
+                    optionId = value.optionId;
+                    parts = optionId ? syncPartsFromIds(col, [optionId]) : [];
                 } else {
+                    // Standard Numeric
                     const rawVal = (typeof value === 'object' && value.value !== undefined) ? value.value : value;
                     const num = parseFloat(String(rawVal));
                     if (!isNaN(num)) parts = [num];
                 }
 
-                const newScoreObj: ScoreValue = { parts };
-                if (typeof value === 'object' && value.optionId) {
-                    newScoreObj.optionId = value.optionId;
-                }
-                newScores[colId] = newScoreObj;
+                newScores[colId] = { parts, optionId, multiOptionIds };
             }
             return { ...p, scores: newScores };
         });
-        onUpdateSession({ ...session, players: players });
+        onUpdateSession({ ...session, players });
     };
 
     const updatePlayerMeta = (playerId: string, updates: Partial<Player>) => {
@@ -380,8 +495,10 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                 // Left Swipe (-X) -> Previous Player
                 if (dx > 0) {
                     // [Note] Auto-commit is handled by useEffect cleanup in InputPanel when editingCell changes
+                    swipeTriggerRef.current = true; // Mark as swipe-triggered
                     eventHandlers.moveToNextPlayer(currentPlayerId);
                 } else {
+                    swipeTriggerRef.current = true; // Mark as swipe-triggered
                     eventHandlers.moveToPrevPlayer(currentPlayerId);
                 }
             }
@@ -559,8 +676,20 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                         const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
                         updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
                     } else {
-                        updateScore(activePlayer.id, activeColumn.id, { value: action.value, optionId: action.id });
-                        // eventHandlers.moveToNext(); // 移除自動跳轉，改由使用者手動按 Next
+                        // Priority 1: Multi-select Toggle Logic
+                        if (activeColumn.isMultiSelect) {
+                            const currentIds = cellScoreObject?.multiOptionIds || [];
+                            const isSelected = currentIds.includes(action.id);
+                            const newIds = isSelected
+                                ? currentIds.filter(id => id !== action.id)
+                                : [...currentIds, action.id];
+
+                            updateScore(activePlayer.id, activeColumn.id, { multiOptionIds: newIds });
+                        }
+                        // Priority 2: Standard Single-select
+                        else {
+                            updateScore(activePlayer.id, activeColumn.id, { optionId: action.id });
+                        }
                     }
                 };
 
@@ -586,12 +715,16 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                         </div>
                     );
                 } else if (activeColumn.inputType === 'clicker') {
-                    // [Update] Pass currentOptionId to enable highlighting
+                    const effectiveIds = getEffectiveIds(activeColumn, cellScoreObject);
+                    const currentOptionId = !activeColumn.isMultiSelect ? effectiveIds[0] : undefined;
+                    const currentMultiOptionIds = activeColumn.isMultiSelect ? effectiveIds : undefined;
+
                     mainContentNode = (
                         <QuickButtonPad
                             column={activeColumn}
                             onAction={handleQuickButtonAction}
-                            currentOptionId={cellScoreObject?.optionId} // Pass current selected option
+                            currentOptionId={currentOptionId}
+                            currentMultiOptionIds={currentMultiOptionIds}
                         />
                     );
 
@@ -783,6 +916,9 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     onDirectionToggle={handleDirectionToggle}
                     direction={advanceDirection}
                     isTotalMode={isTotalMode}
+                    isVoiceEnabled={isVoiceEnabled}
+                    onToggleVoice={onToggleVoice}
+                    showSwipeHint={showSwipeHint}
                 />
             )}
 

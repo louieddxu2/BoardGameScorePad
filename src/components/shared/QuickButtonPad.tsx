@@ -11,9 +11,10 @@ interface QuickButtonPadProps {
     column: ScoreColumn;
     onAction: (action: QuickAction) => void;
     currentOptionId?: string; // New prop for highlighting
+    currentMultiOptionIds?: string[];
 }
 
-const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, currentOptionId }) => {
+const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, currentOptionId, currentMultiOptionIds }) => {
     const { t } = useSessionTranslation();
     const actions = column.quickActions || [];
 
@@ -51,7 +52,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
                     const isStandardSumParts = column.formula.includes('+next') && !column.formula.includes('×a2');
                     const isModifier = isStandardSumParts && action.isModifier;
 
-                    const isSelected = currentOptionId === action.id;
+                    const isSelected = currentOptionId === action.id || (currentMultiOptionIds || []).includes(action.id);
 
                     // --- New Dynamic Style Logic ---
 

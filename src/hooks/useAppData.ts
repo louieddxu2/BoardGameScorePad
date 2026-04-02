@@ -74,6 +74,10 @@ export const useAppData = () => {
         try { return JSON.parse(localStorage.getItem('sm_new_badge_ids') || '[]'); } catch { return []; }
     });
 
+    const [isVoiceEnabled, setIsVoiceEnabled] = useState<boolean>(() =>
+        localStorage.getItem('app_voice_enabled') === 'true'
+    );
+
     const [viewingHistoryRecord, setViewingHistoryRecord] = useState<HistoryRecord | null>(null);
 
     useEffect(() => { localStorage.setItem('sm_new_badge_ids', JSON.stringify(newBadgeIds)); }, [newBadgeIds]);
@@ -85,6 +89,10 @@ export const useAppData = () => {
         localStorage.setItem('app_theme', themeMode);
         document.documentElement.setAttribute('data-theme', themeMode);
     }, [themeMode]);
+
+    useEffect(() => {
+        localStorage.setItem('app_voice_enabled', String(isVoiceEnabled));
+    }, [isVoiceEnabled]);
 
     const toggleTheme = () => {
         setThemeMode(prev => prev === 'dark' ? 'light' : 'dark');
@@ -406,6 +414,7 @@ export const useAppData = () => {
         newBadgeIds,
         pinnedIds,
         themeMode,
+        isVoiceEnabled,
         viewingHistoryRecord,
         systemDirtyTime,
         isDbReady,
@@ -425,6 +434,7 @@ export const useAppData = () => {
 
         setTemplates: () => { },
         toggleTheme,
+        toggleVoice: () => setIsVoiceEnabled(prev => !prev),
         togglePin,
         togglePinOption,
         clearNewBadges,
