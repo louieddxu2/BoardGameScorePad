@@ -60,6 +60,9 @@ export const sessionTranslations = {
     input_not_scored: '此欄位不計入總分',
     input_fixed_score: "固定分數",
     input_no_rule: "無規則",
+    input_swipe_hint: "在下方左右滑動可以切換玩家",
+    input_voice_on: "聲音已開啟",
+    input_voice_off: "聲音已關閉",
 
     // --- Player Editor ---
     player_placeholder: "輸入名稱",
@@ -220,6 +223,14 @@ export const sessionTranslations = {
     auto_panel_mode_tie_count: '平手數',
     auto_panel_mode_sum_all: '玩家總和',
     auto_panel_footer_hint: '數值將自動隨其他欄位更新而變化',
+    
+    // --- Voice Announcements ---
+    voice_score_announcement: "{score} 分",
+    voice_total_announcement: "{name}，{score} 分",
+    voice_special_map_5: "5",
+    voice_digits: "零一二三四五六七八九",
+    voice_units: "十百千",
+    voice_negative: "負",
   },
   'en': {
     // --- Session View ---
@@ -280,6 +291,9 @@ export const sessionTranslations = {
     input_not_scored: 'Not included in total score',
     input_fixed_score: "Fixed Score",
     input_no_rule: "No Rule",
+    input_swipe_hint: "Swipe below to switch player",
+    input_voice_on: "Voice On",
+    input_voice_off: "Voice Off",
 
     // --- Player Editor ---
     player_placeholder: "Enter Name",
@@ -440,6 +454,14 @@ export const sessionTranslations = {
     auto_panel_mode_tie_count: 'Tie Count',
     auto_panel_mode_sum_all: 'Sum All',
     auto_panel_footer_hint: 'Values update automatically based on other fields',
+    
+    // --- Voice Announcements ---
+    voice_score_announcement: "{score} points",
+    voice_total_announcement: "{name} {score} points",
+    voice_special_map_5: "5",
+    voice_digits: "0123456789",
+    voice_units: "HTK",
+    voice_negative: "minus",
   },
 };
 

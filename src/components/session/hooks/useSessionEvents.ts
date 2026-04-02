@@ -9,6 +9,8 @@ import { DATA_LIMITS } from '../../../dataLimits';
 import { bgStatsEntityService } from '../../../features/bgstats/services/bgStatsEntityService';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
+import { useTranslation } from '../../../i18n';
+import { useVoiceAnnouncements } from './useVoiceAnnouncements';
 
 interface SessionViewProps {
   session: GameSession;
@@ -19,6 +21,8 @@ interface SessionViewProps {
   onUpdateSavedPlayer: (name: string, uuid?: string) => void; // Renamed
   onExit: () => void;
   onResetScores: () => void;
+  isVoiceEnabled?: boolean;
+  onToggleVoice?: () => void;
 }
 
 interface LocalUiState {
@@ -33,10 +37,11 @@ export const useSessionEvents = (
   sessionState: SessionStateHook,
   localUiState?: LocalUiState
 ) => {
-  const { session, template, savedPlayers, onUpdateSession, onUpdateTemplate, onUpdateSavedPlayer, onExit, onResetScores } = props;
+  const { session, template, savedPlayers, onUpdateSession, onUpdateTemplate, onUpdateSavedPlayer, onExit, onResetScores, isVoiceEnabled } = props;
   const { uiState, setUiState } = sessionState;
   const { showToast } = useToast();
   const { t } = useSessionTranslation();
+  const { language } = useTranslation();
 
   const navigation = useSessionNavigation({
     session,
@@ -55,10 +60,17 @@ export const useSessionEvents = (
   // [Fix] Track onExit in a ref to prevent listener re-binding when parent re-renders
   const onExitRef = useRef(onExit);
 
-  useEffect(() => { uiStateRef.current = uiState; }, [uiState]);
-  useEffect(() => { sessionRef.current = session; }, [session]);
-  useEffect(() => { localUiStateRef.current = localUiState; }, [localUiState]);
   useEffect(() => { onExitRef.current = onExit; }, [onExit]);
+
+  // --- Voice Feedback Logic ---
+  useVoiceAnnouncements({
+    isVoiceEnabled,
+    language,
+    uiState,
+    session,
+    template,
+    t
+  });
 
   // --- Back Button Logic (History Stack Managed UI) ---
   // 1. Input Panel (Score Cell / Player Name)

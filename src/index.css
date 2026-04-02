@@ -300,6 +300,43 @@ input[type="search"]::-webkit-search-results-decoration {
   animation: slide-in-right-shallow 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Swipe Hint Arrow Animations */
+@keyframes swipe-hint-left {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-6px); }
+}
+
+@keyframes swipe-hint-right {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(6px); }
+}
+
+@keyframes swipe-hint-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes swipe-hint-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.animate-swipe-hint-left {
+  animation: swipe-hint-left 1.2s ease-in-out infinite;
+}
+
+.animate-swipe-hint-right {
+  animation: swipe-hint-right 1.2s ease-in-out infinite;
+}
+
+.animate-swipe-hint-enter {
+  animation: swipe-hint-fade-in 0.3s ease-out forwards;
+}
+
+.animate-swipe-hint-exit {
+  animation: swipe-hint-fade-out 0.5s ease-in forwards;
+}
+
 @layer utilities {
   .modal-backdrop {
     @apply fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm;
