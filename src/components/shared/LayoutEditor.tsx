@@ -201,7 +201,7 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
                                 lineHeight: 0,
                                 // Fallback aspect ratio only if no image is loaded yet
                                 aspectRatio: bgUrl ? undefined : `${targetAspectRatio}`,
-                                backgroundColor: bgUrl ? 'transparent' : 'white'
+                                backgroundColor: bgUrl ? 'transparent' : 'rgb(var(--c-white))'
                             }}
                         >
                             {bgUrl ? (
@@ -223,7 +223,7 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
                                 // Fallback Box (No Image)
                                 <div className="w-full h-full min-w-[200px] min-h-[100px] flex items-center justify-center">
                                     <div className="absolute inset-0 opacity-10 pointer-events-none"
-                                        style={{ backgroundImage: 'linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
+                                        style={{ backgroundImage: 'linear-gradient(rgba(var(--c-black)/0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--c-black)/0.5) 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
                                     </div>
                                     <span className="text-slate-300 opacity-50 font-bold text-4xl">123</span>
                                 </div>
@@ -232,7 +232,7 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
                             {/* Overlay: Selection Box */}
                             {rect ? (
                                 <div
-                                    className="absolute bg-emerald-500/20 border-2 border-emerald-600 flex items-center justify-center shadow-[0_0_10px_rgba(16,185,129,0.5)] z-20"
+                                    className="absolute bg-emerald-500/20 border-2 border-emerald-600 flex items-center justify-center shadow-[0_0_10px_rgba(var(--c-emerald-500)/0.5)] z-20"
                                     style={{
                                         left: `${rect.x}%`,
                                         top: `${rect.y}%`,
@@ -245,7 +245,7 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
                                         className="text-emerald-500 font-bold select-none drop-shadow-md"
                                         style={{
                                             fontSize: dynamicFontSize, // [Dynamic Layout] Apply calculated size
-                                            textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                                            textShadow: '0 1px 2px rgba(var(--c-black) / 0.8)'
                                         }}
                                     >
                                         {previewText}
@@ -271,7 +271,7 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
                     </button>
                     <div className="flex gap-3">
                         <button onClick={onCancel} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition-colors font-bold">{t('layout_cancel')}</button>
-                        <button onClick={() => onSave(rect || undefined)} className="px-6 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-900/50 flex items-center gap-2">
+                        <button onClick={() => onSave(rect || undefined)} className="px-6 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/20 flex items-center gap-2">
                             {t('layout_save')}
                         </button>
                     </div>

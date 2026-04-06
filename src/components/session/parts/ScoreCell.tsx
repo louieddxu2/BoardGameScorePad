@@ -4,7 +4,7 @@ import { Player, ScoreColumn, ScoreValue } from '../../../types';
 import { calculateColumnScore, getAutoColumnError, resolveSelectedOptions } from '../../../utils/scoring';
 import TexturedScoreCell from './TexturedScoreCell';
 import { Link2Off, AlertTriangle } from 'lucide-react';
-import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
+import { isColorDark, ENHANCED_TEXT_SHADOW, getContrastTextShadow, getCurrentTheme } from '../../../utils/ui';
 import { calculateDynamicFontSize } from '../../../utils/dynamicLayout';
 import {
     formatDisplayNumber,
@@ -78,7 +78,7 @@ const CellContentSelect: React.FC<CellContentProps> = ({ scoreValue, displayScor
         return (
             <div className="w-full h-full flex flex-col items-center justify-center py-1 leading-tight overflow-hidden">
                 {options.map((opt, optIdx) => {
-                    const labelColor = opt.color || column.color || (screenshotMode ? '#10b981' : '#34d399');
+                    const labelColor = opt.color || column.color || (screenshotMode ? 'rgb(var(--c-emerald-500))' : 'rgb(var(--c-emerald-400))');
                     const lines = opt.label.split(/\r\n|\r|\n/);
                     return lines.map((line, lineIdx) => (
                         <span
@@ -86,7 +86,7 @@ const CellContentSelect: React.FC<CellContentProps> = ({ scoreValue, displayScor
                             className="text-xl font-bold text-center break-words w-full hyphenate px-1"
                             style={{ 
                                 color: labelColor,
-                                textShadow: isColorDark(labelColor) ? ENHANCED_TEXT_SHADOW : undefined 
+                                textShadow: getContrastTextShadow(labelColor)
                             }}
                         >
                             {injectSoftHyphens(line)}
@@ -112,8 +112,8 @@ const CellContentSelect: React.FC<CellContentProps> = ({ scoreValue, displayScor
                         <span
                             className="text-sm font-bold text-right truncate max-w-full drop-shadow-sm"
                             style={{ 
-                                color: options[0].color || column.color || (screenshotMode ? '#10b981' : '#34d399'),
-                                textShadow: isColorDark(options[0].color || column.color || '') ? ENHANCED_TEXT_SHADOW : undefined
+                                color: options[0].color || column.color || (screenshotMode ? 'rgb(var(--c-emerald-500))' : 'rgb(var(--c-emerald-400))'),
+                                textShadow: getContrastTextShadow(options[0].color || column.color || '')
                             }}
                         >
                             {injectSoftHyphens(options[0].label)}
@@ -140,14 +140,14 @@ const CellContentSelect: React.FC<CellContentProps> = ({ scoreValue, displayScor
                     <div className="flex flex-col justify-end pb-1 pr-1 max-w-[55%]">
                         <div className="flex flex-col items-end leading-[1.1]">
                             {options.map((opt, optIdx) => {
-                                const labelColor = opt.color || column.color || (screenshotMode ? '#10b981' : '#34d399');
+                                const labelColor = opt.color || column.color || (screenshotMode ? 'rgb(var(--c-emerald-500))' : 'rgb(var(--c-emerald-400))');
                                 return (
                                     <span
                                         key={optIdx}
                                         className="text-sm font-bold text-right truncate max-w-full"
                                         style={{ 
                                             color: labelColor,
-                                            textShadow: isColorDark(labelColor) ? ENHANCED_TEXT_SHADOW : undefined
+                                            textShadow: getContrastTextShadow(labelColor)
                                         }}
                                     >
                                         {injectSoftHyphens(opt.label)}
@@ -369,7 +369,7 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
 
     if (screenshotMode) {
         if (baseImage) visualClasses = `bg-transparent h-full`;
-        else if (isStandardAuto) visualClasses = `bg-indigo-900/20 border-indigo-500/30 h-full`;
+        else if (isStandardAuto) visualClasses = `bg-emerald-500/10 border-emerald-500/20 h-full`;
         else {
             const bg = isAlt ? 'bg-slate-800/50' : 'bg-transparent';
             visualClasses = `${bg} border-slate-700 h-full`;
@@ -382,8 +382,8 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
 
         let borderClass = baseImage ? 'border-transparent' : 'border-slate-800';
         if (isStandardAuto) {
-            bgClass = 'bg-indigo-900/20 hover:bg-indigo-900/30';
-            borderClass = 'border-indigo-500/30';
+            bgClass = 'bg-emerald-500/10 hover:bg-emerald-500/20';
+            borderClass = 'border-emerald-500/20';
         }
         if (isActive && !hasLayout) {
             visualClasses = `${minHeightClass} ring-2 ring-inset ring-emerald-500 z-10 ${bgClass}`;
@@ -393,7 +393,7 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
     }
 
     const textStyle = {
-        color: autoError ? '#f43f5e' : (hasInput ? (displayScore < 0 ? '#f87171' : '#ffffff') : '#475569'),
+        color: autoError ? 'rgb(var(--c-rose-500))' : (hasInput ? (displayScore < 0 ? 'rgb(var(--c-red-400))' : 'rgb(var(--c-slate-50))') : 'rgb(var(--c-slate-400))'),
     };
 
     // --- Render Selection ---
@@ -473,13 +473,13 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
                     return (
                         <div className="flex flex-col items-center justify-center w-full h-full leading-tight overflow-hidden">
                             {options.map((opt, optIdx) => {
-                                const labelColor = opt.color || column.color || (screenshotMode ? '#10b981' : '#34d399');
+                                const labelColor = opt.color || column.color || (screenshotMode ? 'rgb(var(--c-emerald-500))' : 'rgb(var(--c-emerald-400))');
                                 const lines = opt.label.split(/\r\n|\r|\n/);
                                 return lines.map((line, lineIdx) => (
                                     <span
                                         key={`${optIdx}-${lineIdx}`}
                                         className="font-bold text-center break-words whitespace-pre-wrap w-full hyphenate"
-                                        style={{ color: labelColor, fontSize: dynamicFontSize, textShadow: isColorDark(labelColor) ? ENHANCED_TEXT_SHADOW : undefined }}
+                                        style={{ color: labelColor, fontSize: dynamicFontSize, textShadow: getContrastTextShadow(labelColor) }}
                                     >
                                         {injectSoftHyphens(line)}
                                     </span>

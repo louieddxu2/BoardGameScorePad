@@ -130,7 +130,7 @@ export const applyRecommendationsToPlayers = async (
 
             // 最後防線：若色票耗盡，重複使用第一個顏色或給予黑色 (極端狀況)
             if (!chosenColor) {
-                chosenColor = fullPalette[0] || '#000000';
+                chosenColor = fullPalette[0] || COLORS[0];
                 // 這裡不加入 usedColors 以避免阻擋後續的 fallback
             } else {
                 usedColors.add(chosenColor);

@@ -89,6 +89,8 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   historyCount,
   searchQuery,
   setSearchQuery,
+  themeMode,
+  onToggleTheme,
   onTemplateSelect,
   onDirectResume,
   onDiscardSession,
@@ -250,6 +252,8 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         onShowInstallGuide={() => modals.actions.setShowInstallGuide(true)}
         viewMode={viewMode}
         setViewMode={setViewMode}
+        themeMode={themeMode}
+        onToggleTheme={onToggleTheme}
         isConnected={isConnected}
         isSyncing={isSyncing}
         onCloudClick={handleHeaderCloudClick}

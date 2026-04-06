@@ -257,14 +257,14 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
             <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('input_calc_mode')}</label>
                 <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => setCalculationMode('standard')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${currentCalcMode === 'standard' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}>
+                    <button onClick={() => setCalculationMode('standard')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${currentCalcMode === 'standard' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400 shadow-[0_0_15px_rgba(var(--c-emerald-500)/0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}>
                         <Calculator size={24} />
                         <div className="leading-tight text-center">
                             <div className="text-xs font-bold uppercase">{t('col_mode_std')}</div>
                             <div className="text-[10px] opacity-70">{t('col_mode_std_desc')}</div>
                         </div>
                     </button>
-                    <button onClick={() => setCalculationMode('product')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${currentCalcMode === 'product' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}>
+                    <button onClick={() => setCalculationMode('product')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${currentCalcMode === 'product' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-400 shadow-[0_0_15px_rgba(var(--c-indigo-500)/0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}>
                         <div className="flex items-center gap-0.5 h-[24px]">
                             <Square size={16} strokeWidth={2.5} />
                             <Multiply size={10} strokeWidth={3} />

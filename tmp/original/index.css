@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -26,9 +26,9 @@
     --c-slate-600: 71 85 105;
     /* #475569 */
     --c-slate-700: 51 65 85;
-    --c-slate-750: 38 48 64;   /* Intermediate */
+    /* #334155 */
     --c-slate-800: 30 41 59;
-    --c-slate-850: 23 31 45;   /* Darker Surface */
+    /* #1e293b */
     --c-slate-900: 15 23 42;
     /* #0f172a */
     --c-slate-950: 2 6 23;
@@ -48,7 +48,6 @@
     /* 標準綠 (按鈕背景) */
     --c-emerald-600: 5 150 105;
     /* 深綠 (按鈕Hover) */
-    --c-emerald-900: 49 46 129; /* [FIX] Use original Deep Indigo/Emerald mapping for compatibility */
 
     /* Indigo (Primary/Info) */
     --c-indigo-300: 165 180 252;
@@ -80,26 +79,6 @@
 
     /* Helper for inline styles */
     --border-slate-700: rgb(var(--c-slate-700));
-
-    /* --- Player Palette (Source of Truth) --- */
-    /* Used by src/colors.ts via CSS Variables */
-    --c-p-emerald: 16 185 129;   /* #10b981 */
-    --c-p-blue:    59 130 246;   /* #3b82f6 */
-    --c-p-yellow:  250 204 21;   /* #facc15 */
-    --c-p-red:     239 68 68;    /* #ef4444 */
-    --c-p-orange:  249 115 22;   /* #f97316 */
-    --c-p-violet:  139 92 246;   /* #8b5cf6 */
-    --c-p-black:   31 41 55;     /* #1f2937 */
-    --c-p-white:   255 255 255;  /* #ffffff */
-    --c-p-pink:    236 72 153;   /* #ec4899 */
-    --c-p-cyan:    6 182 212;    /* #06b6d4 */
-    --c-p-lime:    132 204 22;   /* #84cc16 */
-    --c-p-amber:   245 158 11;   /* #f59e0b */
-    --c-p-indigo:  99 102 241;   /* #6366f1 */
-    --c-p-teal:    20 184 166;   /* #14b8a6 */
-    --c-p-brown:   161 98 7;     /* #a16207 */
-    --c-p-gray:    107 114 128;  /* #6b7280 */
-    --c-p-skin:    254 215 170;  /* #fed7aa */
   }
 
   /* 
@@ -108,100 +87,94 @@
   */
   html[data-theme='light'] {
     /* =========================================
-       [Light Mode] - Clean Studio Edition (V3 Refined)
-       Studio Clarity / Paper Texture / Pro Accents
+       [Light Mode] - Pure White Edition
+       背景純白，卡片淡白(Slate-100)，文字深色
        ========================================= */
 
-    /* --- Grayscale Mapping (Studio Textures - Reverted) --- */
+    /* --- Grayscale Mapping --- */
 
-    /* 900 (Canvas): Neutral Warm Studio Background */
-    --c-slate-900: 242 242 242; /* #f2f2f2 */
+    /* 900 (背景): 強制純白 (#ffffff) */
+    --c-slate-900: 255 255 255;
 
-    /* 950 (Backdrop): Pure White */
-    --c-slate-950: 255 255 255; /* #ffffff */
+    /* 950 (深層/Modal背景): 映射為 Slate 50 (極淺灰) */
+    --c-slate-950: 248 250 252;
 
-    /* 800 (Surfaces): Brilliant White */
-    --c-slate-800: 255 255 255; /* #ffffff */
+    /* 800 (卡片/容器): 映射為 Slate 100 (#f1f5f9) - 淡白色，與純白背景形成微弱層次 */
+    --c-slate-800: 241 245 249;
 
-    /* 750 (Surface Subtle): Ultra light neutral gray */
-    --c-slate-750: 248 248 248;
+    /* 700 (邊框): 映射為 Slate 200 (淺灰線條) */
+    --c-slate-700: 226 232 240;
 
-    /* 850 (Sub-Backdrop): Muted focus background */
-    --c-slate-850: 236 236 236;
+    /* 600 (次要邊框/分隔線): 映射為 Slate 300 */
+    --c-slate-600: 203 213 225;
 
-    /* 700 (Dividers): Transparent Soft Slate (Faint Boundary) */
-    --c-slate-700: 0 0 0 / 0.04; 
+    /* 500 (中性文字): 保持 Slate 500，中性灰 */
+    --c-slate-500: 100 116 139;
 
-    /* 600 (Inner Lines) */
-    --c-slate-600: 0 0 0 / 0.02;
+    /* 文字顏色加深以確保在白底上的對比度 */
+    --c-slate-400: 71 85 105;
+    /* Slate 600 */
+    --c-slate-300: 51 65 85;
+    /* Slate 700 */
+    --c-slate-200: 30 41 59;
+    /* Slate 800 */
+    --c-slate-100: 15 23 42;
+    /* Slate 900 */
+    --c-slate-50: 2 6 23;
+    /* Slate 950 */
 
-    /* --- Text colors (Deep, Readable Neutrals) --- */
-    --c-slate-50: 15 23 42;    /* #0f172a */
-    --c-slate-100: 2 6 23;     /* #020617 */
-    --c-slate-200: 82 82 91;   /* #52525b */
-    --c-slate-300: 115 115 115;/* #737373 */
+    /* Base Text Inversion */
+    --c-white: 15 23 42;
+    /* White text -> Dark Blue/Black */
+    --c-black: 255 255 255;
+    /* Black bg -> White */
 
-    /* Elite Multi-Layered Shadows (The Core of "Studio" Quality) */
-    /* Soft: Ambient lift */
-    --shadow-soft: 
-      0 2px 4px rgba(0, 0, 0, 0.02), 
-      0 1px 2px rgba(0, 0, 0, 0.01), 
-      0 0 1px rgba(0, 0, 0, 0.05);
-    
-    /* Pro: Elevated element */
-    --shadow-pro: 
-      0 10px 20px -5px rgba(0, 0, 0, 0.05), 
-      0 6px 10px -5px rgba(0, 0, 0, 0.02), 
-      0 0 1px rgba(0, 0, 0, 0.05);
+    /* --- Semantic Color Mapping (Darker for White BG) --- */
 
-    /* Floating: Stronger hover/modal state */
-    --shadow-floating: 
-      0 25px 40px -10px rgba(0, 0, 0, 0.08), 
-      0 10px 15px -10px rgba(0, 0, 0, 0.04), 
-      0 0 1px rgba(0, 0, 0, 0.05);
+    /* Emerald */
+    --c-emerald-400: 5 150 105;
+    /* Emerald 600 */
+    --c-emerald-500: 16 185 129;
+    /* Emerald 500 (Keep vivid) */
+    --c-emerald-600: 4 120 87;
+    /* Emerald 700 */
 
-    /* Base Colors Mapping */
-    --c-white: 255 255 255;
-    --c-black: 0 0 0;
-
-    /* --- Semantic Color Mapping (Sophisticated Studio Accents) --- */
-
-    /* Emerald (Clean Success) */
-    --c-emerald-400: 16 185 129;
-    --c-emerald-500: 5 150 105;   /* Emerald 600 */
-    --c-emerald-600: 4 120 87;    /* Emerald 700 */
-    --c-emerald-900: 236 253 245;  /* Emerald 50 (Tint) */
-
-    /* Indigo (Pro Primary Blue) */
-    --c-indigo-300: 79 70 229;    /* Indigo 600 */
-    --c-indigo-400: 67 56 202;    /* Indigo 700 */
-    --c-indigo-500: 55 48 163;    /* Indigo 800 */
-    --c-indigo-600: 49 46 129;    /* Indigo 900 */
-    --c-indigo-900: 238 242 255;   /* Indigo 50 (Tint) */
+    /* Indigo */
+    --c-indigo-300: 79 70 229;
+    /* Indigo 600 */
+    --c-indigo-400: 67 56 202;
+    /* Indigo 700 */
+    --c-indigo-500: 99 102 241;
+    /* Indigo 500 */
+    --c-indigo-600: 55 48 163;
+    /* Indigo 800 */
+    --c-indigo-900: 238 242 255;
+    /* Indigo 50 (Tint) */
 
     /* Sky */
     --c-sky-300: 2 132 199;
+    /* Sky 600 */
     --c-sky-400: 3 105 161;
+    /* Sky 700 */
     --c-sky-500: 14 165 233;
     --c-sky-600: 12 74 110;
-    --c-sky-900: 224 242 254;      /* Sky 100 (Tint) */
+    /* Sky 900 */
 
     /* Yellow/Amber */
-    --c-yellow-400: 202 138 4;     /* Yellow 600 */
-    --c-amber-400: 217 119 6;      /* Amber 600 */
+    --c-yellow-400: 202 138 4;
+    /* Yellow 600 */
+    --c-amber-400: 217 119 6;
+    /* Amber 600 */
     --c-amber-500: 245 158 11;
-    --c-amber-900: 254 243 199;    /* Amber 100 (Tint) */
 
-    /* Red (Error/Danger) */
-    --c-red-400: 220 38 38;        /* Red 600 */
+    /* Red */
+    --c-red-400: 220 38 38;
+    /* Red 600 */
     --c-red-500: 239 68 68;
-    --c-red-900: 254 242 242;      /* Red 50 (Tint) */
+    --c-red-900: 254 242 242;
+    /* Red 50 (Tint) */
 
-    /* Generic Utility */
     --border-slate-700: rgb(var(--c-slate-700));
-    --c-vignette: 249 250 251;     /* Same as background */
-    --shadow-soft: 0 2px 4px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
-    --shadow-pro: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
   }
 }
 
@@ -362,18 +335,6 @@ input[type="search"]::-webkit-search-results-decoration {
 
 .animate-swipe-hint-exit {
   animation: swipe-hint-fade-out 0.5s ease-in forwards;
-}
-
-@layer base {
-  html, body, #root {
-    @apply h-full w-full overflow-hidden select-none touch-none;
-    background-color: rgb(var(--c-slate-900)); /* Solid background, no halos */
-  }
-
-  /* Force solid background for the main utility class to avoid unexpected gradients */
-  .bg-slate-900 {
-    background-color: rgb(var(--c-slate-900)) !important;
-  }
 }
 
 @layer utilities {

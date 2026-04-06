@@ -104,7 +104,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                         </button>
                     }
                 >
-                    <div className={`grid grid-cols-2 gap-3 ${animClass}`}>
+                    <div className={`grid grid-cols-2 gap-4 mt-4 ${animClass}`}>
                         {activeSessions.map(session => (
                             <GameCard
                                 key={`active-${session.id}`}
@@ -130,7 +130,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 isOpen={isPinnedLibOpen}
                 onToggle={() => setIsPinnedLibOpen(!isPinnedLibOpen)}
             >
-                <div className={`grid grid-cols-2 gap-3 ${animClass}`}>
+                <div className={`grid grid-cols-2 gap-4 mt-4 ${animClass}`}>
                     {pinnedTemplates.map(tData => (
                         <GameCard
                             key={`pinned-${tData.id}`}
@@ -161,7 +161,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                     </div>
                 }
             >
-                <div className={`grid grid-cols-2 gap-3 ${animClass}`}>
+                <div className={`grid grid-cols-2 gap-4 mt-4 ${animClass}`}>
                     {userTemplates.map(tData => (
                         <GameCard
                             key={tData.id}
@@ -197,7 +197,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                     ) : undefined
                 }
             >
-                <div className={`grid grid-cols-2 gap-3 ${animClass}`}>
+                <div className={`grid grid-cols-2 gap-4 mt-4 ${animClass}`}>
                     {systemTemplates.map(tData => {
                         const isNew = newBadgeIds.includes(tData.id);
                         return (

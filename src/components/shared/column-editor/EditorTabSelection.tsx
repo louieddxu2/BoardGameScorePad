@@ -26,7 +26,7 @@ const EditorTabSelection: React.FC<EditorTabSelectionProps> = ({ column, onChang
           <div className="grid grid-cols-2 gap-3">
               <button 
                   onClick={() => onChange({ isMultiSelect: false })} 
-                  className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${!column.isMultiSelect ? 'bg-sky-600/20 border-sky-500 text-sky-400 shadow-[0_0_15px_rgba(14,165,233,0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}
+                  className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${!column.isMultiSelect ? 'bg-sky-600/20 border-sky-500 text-sky-400 shadow-[0_0_15px_rgba(var(--c-sky-500)/0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}
               >
                   <div className="h-[24px] flex items-center justify-center">
                     <CircleDot size={22} />
@@ -38,7 +38,7 @@ const EditorTabSelection: React.FC<EditorTabSelectionProps> = ({ column, onChang
               </button>
               <button 
                   onClick={() => onChange({ isMultiSelect: true })} 
-                  className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${column.isMultiSelect ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}
+                  className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${column.isMultiSelect ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400 shadow-[0_0_15px_rgba(var(--c-emerald-500)/0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}
               >
                   <div className="grid grid-cols-2 gap-1 h-[24px] items-center justify-center">
                     <CheckSquare size={11} strokeWidth={3} className={column.isMultiSelect ? 'text-emerald-400' : 'text-slate-500'} />

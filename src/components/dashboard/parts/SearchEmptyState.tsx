@@ -25,7 +25,7 @@ const SearchEmptyState: React.FC<SearchEmptyStateProps> = ({ searchQuery, onCrea
 
   if (!searchQuery) {
     return (
-      <div className="col-span-2 h-20 flex items-center justify-center text-slate-500 border-2 border-dashed border-slate-800 rounded-xl">
+      <div className="col-span-2 h-20 flex items-center justify-center text-slate-200 border-2 border-dashed border-slate-700/30 rounded-xl">
         <span className="text-sm italic">{tDash('dash_no_templates')}</span>
       </div>
     );
@@ -33,10 +33,10 @@ const SearchEmptyState: React.FC<SearchEmptyStateProps> = ({ searchQuery, onCrea
 
   // Centered Block Style (Restored & Enhanced)
   return (
-    <div className={`col-span-2 flex flex-col items-center justify-center py-6 px-4 gap-4 border-2 border-dashed border-slate-800/50 rounded-xl animate-in fade-in zoom-in-95 duration-300 ${hasResults ? 'mt-4 bg-slate-900/30' : ''}`}>
+    <div className={`col-span-2 flex flex-col items-center justify-center py-6 px-4 gap-4 border-2 border-dashed border-slate-700/30 rounded-xl animate-in fade-in zoom-in-95 duration-300 ${hasResults ? 'mt-4 bg-slate-100' : ''}`}>
 
       {!hasResults && (
-        <p className="text-slate-500 text-sm italic">
+        <p className="text-slate-400 text-sm italic">
           {tDash('dash_no_search_results')}
         </p>
       )}
@@ -45,9 +45,9 @@ const SearchEmptyState: React.FC<SearchEmptyStateProps> = ({ searchQuery, onCrea
         {/* Button 1: Original Create (Edit Mode) */}
         <button
           onClick={() => onCreate(searchQuery)}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-800 text-slate-300 border border-slate-700 rounded-xl hover:bg-slate-700 hover:text-white transition-all active:scale-95 shadow-sm group"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 text-slate-50 border border-slate-300 rounded-xl hover:bg-slate-200 hover:text-slate-50 transition-all active:scale-95 shadow-sm group"
         >
-          <LayoutTemplate size={18} className="text-slate-400 group-hover:text-white transition-colors" />
+          <LayoutTemplate size={18} className="text-slate-400 group-hover:text-slate-50 transition-colors" />
           <span className="font-bold text-sm">
             {tDash('dash_create_btn', { name: searchQuery })}
           </span>

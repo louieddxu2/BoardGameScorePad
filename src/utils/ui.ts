@@ -10,27 +10,90 @@ export const getTouchDistance = (touches: { length: number; [index: number]: { c
   );
 };
 
+// --- Color Luminance Helpers ---
+
 /**
- * Determines if a (text) color is dark, requiring a light halo for contrast on some backgrounds.
- * Used for UI elements like color pickers.
+ * Parses a hex color string to RGB components (0-255).
+ */
+const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
+    if (!hex) return null;
+    const clean = hex.replace('#', '');
+    if (clean.length !== 6 && clean.length !== 3) return null;
+    const full = clean.length === 3
+        ? clean[0] + clean[0] + clean[1] + clean[1] + clean[2] + clean[2]
+        : clean;
+    const num = parseInt(full, 16);
+    if (isNaN(num)) return null;
+    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+};
+
+/**
+ * Calculates perceived luminance (0-255) using the standard luminosity formula.
+ * Higher values = brighter color.
+ */
+const getPerceivedLuminance = (hex: string): number => {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return 128; // Default to mid-range (neutral)
+    return 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+};
+
+/**
+ * Determines if a (text) color is dark, requiring a light halo for contrast on dark backgrounds.
+ * Threshold: luminance < 80 (e.g. #1f2937, #a16207, #0f172a)
  */
 export const isColorDark = (hex: string): boolean => {
     if (!hex) return false;
-    const darkColors = ['#a16207', '#6b7280', '#1f2937', '#0f172a']; // Brown, Gray, Black, Slate 900
-    return darkColors.includes(hex.toLowerCase());
+    return getPerceivedLuminance(hex) < 80;
+};
+
+/**
+ * Determines if a (text) color is light, requiring a dark shadow for contrast on light backgrounds.
+ * Threshold: luminance > 200 (e.g. #ffffff, #facc15, #fed7aa)
+ */
+export const isColorLight = (hex: string): boolean => {
+    if (!hex) return false;
+    return getPerceivedLuminance(hex) > 200;
 };
 
 /**
  * Determines if a background color is too light, requiring dark text for contrast.
- * Used for buttons.
+ * Used for buttons (QuickButtonPad).
  */
 export const isColorTooLight = (hex: string): boolean => {
     if (!hex) return true; // Default to light background for safety
-    const lightColors = ['#ffffff', '#facc15', '#fed7aa']; // White, Yellow, Skin
-    return lightColors.includes(hex.toLowerCase());
-}
+    return getPerceivedLuminance(hex) > 200;
+};
+
+// --- Theme-Aware Contrast System ---
+
+/** White halo for dark text on dark backgrounds. */
+export const ENHANCED_TEXT_SHADOW = '1px 0 1px rgba(var(--c-white) / 0.5), -1px 0 1px rgba(var(--c-white) / 0.5), 0 1px 1px rgba(var(--c-white) / 0.5), 0 -1px 1px rgba(var(--c-white) / 0.5)';
+
+/** Dark shadow for light text on light backgrounds. */
+export const DARK_TEXT_SHADOW = '1px 0 1px rgba(var(--c-black) / 0.3), -1px 0 1px rgba(var(--c-black) / 0.3), 0 1px 1px rgba(var(--c-black) / 0.3), 0 -1px 1px rgba(var(--c-black) / 0.3)';
 
 /**
- * Enhanced text shadow for better readability on colored backgrounds.
+ * Reads the current theme from the DOM. Zero-cost since it's a simple attribute read.
  */
-export const ENHANCED_TEXT_SHADOW = '1px 0 1px rgba(255,255,255,0.5), -1px 0 1px rgba(255,255,255,0.5), 0 1px 1px rgba(255,255,255,0.5), 0 -1px 1px rgba(255,255,255,0.5)';
+export const getCurrentTheme = (): 'dark' | 'light' => {
+    return (document.documentElement.getAttribute('data-theme') as 'dark' | 'light') || 'dark';
+};
+
+/**
+ * Returns the appropriate text-shadow for a given text color in the current theme.
+ * - Dark text on dark background → white halo
+ * - Light text on light background → dark shadow
+ * - Neutral (saturated) colors → no shadow needed (returns undefined)
+ */
+export const getContrastTextShadow = (textColorHex: string, theme?: 'dark' | 'light'): string | undefined => {
+    if (!textColorHex) return undefined;
+    const resolvedTheme = theme ?? getCurrentTheme();
+
+    if (resolvedTheme === 'dark' && isColorDark(textColorHex)) {
+        return ENHANCED_TEXT_SHADOW;
+    }
+    if (resolvedTheme === 'light' && isColorLight(textColorHex)) {
+        return DARK_TEXT_SHADOW;
+    }
+    return undefined; // Neutral colors: no treatment needed
+};

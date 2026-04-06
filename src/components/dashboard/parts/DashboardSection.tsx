@@ -21,7 +21,7 @@ const DashboardSection: React.FC<DashboardSectionProps> = ({
   count,
   isOpen,
   onToggle,
-  titleColorClass = "text-white",
+  titleColorClass = "text-slate-50",
   iconColorClass = "text-slate-500",
   actionButton,
   children,
@@ -30,17 +30,17 @@ const DashboardSection: React.FC<DashboardSectionProps> = ({
   if (count === 0 && !actionButton) return null;
 
   return (
-    <div className="space-y-2">
+    <div className="mb-8 last:mb-5 animate-in fade-in duration-500">
       <div 
         onClick={onToggle} 
-        className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-700/50 cursor-pointer hover:bg-slate-800 transition-colors"
+        className="flex items-center justify-between bg-slate-750 p-2.5 px-4 rounded-full border border-slate-700 cursor-pointer hover:bg-slate-700 hover:shadow-soft transition-all active:scale-[0.99]"
       >
         <div className="flex items-center gap-2">
-          {isOpen ? <ChevronDown size={20} className={iconColorClass}/> : <ChevronRight size={20} className="text-slate-500"/>}
-          <h3 className={`text-base font-bold flex items-center gap-2 ${titleColorClass}`}>
+          {isOpen ? <ChevronDown size={18} className={iconColorClass}/> : <ChevronRight size={18} className="text-slate-500"/>}
+          <h3 className={`text-sm font-black flex items-center gap-2 tracking-tight ${titleColorClass}`}>
             <span className={iconColorClass}>{icon}</span> 
             {title} 
-            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{count}</span>
+            <span className="text-[10px] font-mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full min-w-5 text-center shadow-inner">{count}</span>
           </h3>
         </div>
         {actionButton}

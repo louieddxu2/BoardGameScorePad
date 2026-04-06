@@ -1,4 +1,4 @@
-
+﻿
 import React from 'react';
 import { HistoryRecord } from '../../../types';
 import { HistorySummary } from '../../../utils/extractDataSummaries';
@@ -34,13 +34,13 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ record, onDelete, onClick }) 
                             <span>{timeStr}</span>
                         </div>
                         {record.location && (
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-sky-900/15 border border-sky-500/50 text-sky-400 shadow-sky-500/10">
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-300">
                                 <MapPin size={10} />
                                 <span className="truncate max-w-[100px] sm:max-w-[150px]">{record.location}</span>
                             </div>
                         )}
                     </div>
-                    <h3 className="text-lg font-bold text-slate-50 leading-tight truncate pr-2">{record.gameName}</h3>
+                    <h3 className="text-lg font-bold text-white leading-tight truncate pr-2">{record.gameName}</h3>
                 </div>
 
                 <button
@@ -71,11 +71,11 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ record, onDelete, onClick }) 
                         <div key={p.id} className={`flex items-center justify-between text-sm ${isWinner ? 'bg-amber-900/20 -mx-2 px-2 py-1 rounded-lg border border-amber-500/20' : ''}`}>
                             <div className="flex items-center gap-2 overflow-hidden">
                                 {isWinner && <Crown size={14} className="text-yellow-400 shrink-0" fill="currentColor" />}
-                                <span className={`truncate font-medium ${isWinner ? 'text-amber-500' : 'text-slate-300'}`} style={isWinner ? {} : colorStyle}>
+                                <span className={`truncate font-medium ${isWinner ? 'text-yellow-100' : 'text-slate-300'}`} style={isWinner ? {} : colorStyle}>
                                     {p.name}
                                 </span>
                             </div>
-                            <span className={`font-mono font-bold ${isWinner ? 'text-amber-500 text-base' : 'text-slate-400'}`}>
+                            <span className={`font-mono font-bold ${isWinner ? 'text-yellow-400 text-base' : 'text-slate-400'}`}>
                                 {p.totalScore}
                             </span>
                         </div>

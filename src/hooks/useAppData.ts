@@ -66,9 +66,14 @@ export const useAppData = () => {
     });
 
     // --- 3. LocalStorage Settings & Global Actions ---
-    const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() =>
-        (localStorage.getItem('app_theme') as 'dark' | 'light') || 'dark'
-    );
+    const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
+        const saved = localStorage.getItem('app_theme') as 'dark' | 'light' | null;
+        if (saved) return saved;
+        
+        // Use system preference if no saved setting
+        const systemPrefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+        return systemPrefersLight ? 'light' : 'dark';
+    });
 
     const [newBadgeIds, setNewBadgeIds] = useState<string[]>(() => {
         try { return JSON.parse(localStorage.getItem('sm_new_badge_ids') || '[]'); } catch { return []; }

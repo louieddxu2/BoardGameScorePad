@@ -86,7 +86,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                     try {
                         const blob = await toBlob(generatorRef.current, {
                             pixelRatio: 1,
-                            backgroundColor: '#0f172a',
+                            backgroundColor: 'rgb(var(--c-slate-900))',
                             skipFonts: true
                         });
                         if (blob) {
@@ -360,7 +360,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                     <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
                         {overlayData.players.map((p, i) => {
                             const isHidden = anonymousPlayerIds.has(p.id);
-                            const playerColor = p.color === 'transparent' ? '#94a3b8' : p.color;
+                            const playerColor = p.color === 'transparent' ? 'rgb(var(--c-slate-400))' : p.color;
                             const isDark = isColorDark(playerColor);
 
                             return (

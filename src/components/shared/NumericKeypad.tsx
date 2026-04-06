@@ -179,9 +179,9 @@ const NumericKeypad: React.FC<NumericKeypadContentProps> = (props) => {
             <button onClick={handleToggleSign} className={`hover:bg-slate-700 text-slate-400 flex items-center justify-center transition-colors active:scale-95 touch-manipulation font-bold ${!isToggleMode ? 'font-mono text-[28px] leading-none' : 'text-xl'}`}>
               {isToggleMode ? '+/-' : '-'}
             </button>
-            <button onClick={handleDecimal} className="border-t border-slate-700 hover:bg-slate-700 text-white font-bold flex items-center justify-center transition-colors active:scale-95 touch-manipulation"><Dot size={32} /></button>
+            <button onClick={handleDecimal} className="border-t border-slate-700 hover:bg-slate-700 text-slate-50 font-bold flex items-center justify-center transition-colors active:scale-95 touch-manipulation"><Dot size={32} /></button>
         </div>
-        <button onClick={() => handleNumClick(0)} className={`text-[32px] leading-none font-bold rounded-xl touch-manipulation active:scale-95 transition-all h-full ${overwrite ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-white border border-slate-700'}`}>0</button>
+        <button onClick={() => handleNumClick(0)} className={`text-[32px] leading-none font-bold rounded-xl touch-manipulation active:scale-95 transition-all h-full ${overwrite ? 'bg-indigo-600 text-white shadow-indigo-900/50' : 'bg-slate-800 text-slate-50 border border-slate-700'}`}>0</button>
         <button onClick={handleBackspace} className="bg-slate-800 hover:bg-red-900/30 text-red-400 rounded-xl flex items-center justify-center border border-slate-700 active:scale-95 transition-transform h-full"><Delete size={32} /></button>
       </div>
   );

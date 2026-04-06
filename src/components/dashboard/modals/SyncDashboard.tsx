@@ -48,7 +48,7 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
                     <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full animate-pulse"></div>
                     <Loader2 size={64} className="text-emerald-500 animate-spin relative z-10" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">
+                <h3 className="text-xl font-bold text-slate-50 mb-2">
                     {syncResult.type === 'upload' ? tCloud('sync_backup_processing') : tCloud('sync_restore_processing')}
                 </h3>
                 <p className="text-slate-400 text-sm font-mono mb-4">
@@ -75,7 +75,7 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
                         {syncResult.errors.length > 0 ? <AlertTriangle size={40} /> : <CheckCircle size={40} />}
                     </div>
 
-                    <h3 className="text-2xl font-bold text-white mb-6">
+                    <h3 className="text-2xl font-bold text-slate-50 mb-6">
                         {syncResult.type === 'upload' ? tCloud('sync_backup_done') : tCloud('sync_restore_done')}
                     </h3>
 

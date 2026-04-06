@@ -1,5 +1,6 @@
+﻿
 import React, { useRef, useEffect, useState } from 'react';
-import { Dice5, Search, X, Download, HelpCircle, Calculator, History, Cloud, CloudOff, Loader2, Sun, Moon } from 'lucide-react';
+import { Dice5, Search, X, Download, HelpCircle, Calculator, History, Cloud, CloudOff, Loader2 } from 'lucide-react';
 import { useTranslation } from '../../../i18n'; // Keep for language context
 import { useCommonTranslation } from '../../../i18n/common';
 import { useDashboardTranslation } from '../../../i18n/dashboard';
@@ -16,9 +17,6 @@ interface DashboardHeaderProps {
   onShowInstallGuide: () => void;
   viewMode: 'library' | 'history';
   setViewMode: (mode: 'library' | 'history') => void;
-  // Theme Props
-  themeMode: 'dark' | 'light';
-  onToggleTheme: () => void;
   // Cloud Props
   isConnected: boolean;
   isSyncing: boolean;
@@ -41,8 +39,6 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   onShowInstallGuide,
   viewMode,
   setViewMode,
-  themeMode,
-  onToggleTheme,
   isConnected,
   isSyncing,
   onCloudClick,
@@ -172,7 +168,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
   return (
     <header
-      className="flex flex-col bg-slate-900/95 backdrop-blur-md border-b border-slate-700 sticky top-0 z-30 transition-all duration-300 shadow-sm"
+      className="flex flex-col bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 shadow-md transition-colors duration-300"
       onClick={handleHeaderClick}
     >
       <div className="p-2.5 flex items-center gap-2 h-[58px]">
@@ -191,9 +187,9 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               autoFocus
-              className="w-full bg-transparent text-slate-50 focus:outline-none placeholder-slate-400 font-medium"
+              className="w-full bg-transparent text-white focus:outline-none placeholder-slate-500"
             />
-            <button onClick={() => { setIsSearchActive(false); setSearchQuery(''); }} className="text-slate-400 hover:text-slate-50 p-2">
+            <button onClick={() => { setIsSearchActive(false); setSearchQuery(''); }} className="text-slate-400 hover:text-white p-2">
               <X size={20} />
             </button>
           </div>
@@ -201,27 +197,21 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           <div className="flex justify-between items-center w-full animate-in fade-in duration-300 gap-2">
             {/* Left Side: Logo, Title, Toggle */}
             <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
-              {/* Logo: Toggle Theme */}
+              {/* Logo & Title Group - Hidden Language Toggle on Click */}
               <div
-                className="bg-slate-700 p-1.5 rounded-lg border border-slate-600 shrink-0 cursor-pointer active:scale-90 transition-transform shadow-sm"
-                onClick={(e) => { e.stopPropagation(); onToggleTheme(); }}
-                role="button"
-                title={themeMode === 'dark' ? 'Light Mode' : 'Dark Mode'}
-              >
-                {themeMode === 'dark'
-                  ? <Dice5 size={24} className="text-emerald-500" />
-                  : <Sun size={24} className="text-amber-500" />
-                }
-              </div>
-              {/* Title: Toggle Language */}
-              <h1
-                className="text-lg sm:text-xl font-bold tracking-tight text-slate-50 truncate select-none cursor-pointer active:opacity-50 transition-opacity"
+                className="flex items-center gap-2 min-w-0 shrink cursor-pointer active:opacity-50 transition-opacity"
                 onClick={toggleLanguage}
                 role="button"
                 title={tDash('dash_switch_language')}
               >
-                {tCommon('app_name')}
-              </h1>
+                <div className="bg-emerald-500/10 p-1.5 rounded-lg border border-emerald-500/20 shrink-0">
+                  <Dice5 size={24} className="text-emerald-500" />
+                </div>
+                {/* Title: truncate only if necessary */}
+                <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white truncate select-none">
+                  {tCommon('app_name')}
+                </h1>
+              </div>
 
               {/* Unified Toggle Button - Width 56px, tight padding */}
               <button
@@ -264,7 +254,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 onClick={onCloudClick}
                 disabled={isSyncing}
                 className={`h-9 w-9 flex items-center justify-center rounded-xl border transition-all shrink-0 active:scale-95 ${isSyncing ? 'bg-slate-800 border-slate-700 cursor-wait' :
-                  isConnected ? 'bg-sky-900/15 border-sky-500/50 text-sky-400 shadow-sky-500/20' :
+                  isConnected ? 'bg-sky-900/30 border-sky-500/50 text-sky-400 shadow-[0_0_10px_rgba(14,165,233,0.2)]' :
                     'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'
                   }`}
                 // [Update] Display storage size in tooltip
@@ -277,7 +267,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-1 shrink-0 ml-1">
-              <button onClick={() => setIsSearchActive(true)} className="p-2 text-slate-400 hover:text-slate-50 hover:bg-slate-750 rounded-lg transition-colors">
+              <button onClick={() => setIsSearchActive(true)} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors">
                 <Search size={20} />
               </button>
 
@@ -285,14 +275,14 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
               {!isInstalled && (
                 <button
-                  className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all text-white shadow-lg ${canInstall ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}`}
+                  className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all text-white shadow-lg ${canInstall ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}`}
                   onClick={canInstall ? onInstallClick : onShowInstallGuide}
                 >
                   <div className="relative">
                     <Download size={14} />
                     {!canInstall && (
-                      <div className="absolute -bottom-1 -right-1 bg-amber-900/50 rounded-full w-2.5 h-2.5 flex items-center justify-center border border-slate-700">
-                        <HelpCircle size={8} className="text-amber-500" strokeWidth={3} />
+                      <div className="absolute -bottom-1 -right-1 bg-amber-500 rounded-full w-2.5 h-2.5 flex items-center justify-center border border-slate-700">
+                        <HelpCircle size={8} className="text-slate-900" strokeWidth={3} />
                       </div>
                     )}
                   </div>

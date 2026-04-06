@@ -1,6 +1,7 @@
+﻿
 import React from 'react';
 import { GameTemplate } from '../../../types';
-import { Copy, RefreshCw, Trash2, Pin, Check, Share2, UploadCloud, ImageIcon, PlayCircle, Code, Link2 } from 'lucide-react';
+import { Trash2, Pin, Check, Code, PlayCircle, Copy, RefreshCw, UploadCloud, Image as ImageIcon, Link2 } from 'lucide-react';
 import { useDashboardTranslation } from '../../../i18n/dashboard';
 
 interface GameCardProps {
@@ -70,13 +71,13 @@ const GameCard: React.FC<GameCardProps> = ({
     }
   };
 
-  const baseClasses = "bg-slate-800 rounded-xl p-3 shadow-soft hover:bg-slate-750 transition-all cursor-pointer relative flex flex-col h-20 group";
+  const baseClasses = "bg-slate-800 rounded-xl p-3 shadow-md hover:bg-slate-750 transition-all cursor-pointer relative flex flex-col h-20 group";
 
   if (mode === 'active') {
     return (
       <div onClick={onClick} className={`${baseClasses} border border-emerald-500/30`}>
         <div className="flex items-start justify-between gap-1 pr-10">
-          <h3 className="text-sm font-bold text-slate-50 leading-tight line-clamp-2">{template.name}</h3>
+          <h3 className="text-sm font-bold text-white leading-tight line-clamp-2">{template.name}</h3>
         </div>
         <div className="absolute top-1/2 right-3 -translate-y-1/2 text-emerald-500/80">
           <PlayCircle size={36} strokeWidth={1.5} />
@@ -90,12 +91,9 @@ const GameCard: React.FC<GameCardProps> = ({
 
   // Common Layout for Pinned, User, System
   return (
-    <div 
-      onClick={onClick} 
-      className={`${baseClasses} hover:shadow-pro hover:-translate-y-0.5 active:scale-[0.98] ${mode === 'system' ? 'hover:border-indigo-500/10' : 'hover:border-emerald-500/10'}`}
-    >
+    <div onClick={onClick} className={`${baseClasses} border border-slate-700 ${mode === 'system' ? 'hover:border-indigo-500/50' : 'hover:border-emerald-500/50'}`}>
       <div className="flex items-start justify-between gap-1 pr-7">
-        <h3 className={`text-sm font-bold leading-tight line-clamp-2 ${mode === 'system' ? 'text-slate-50 pr-2 opacity-90' : 'text-slate-50'}`}>{template.name}</h3>
+        <h3 className={`text-sm font-bold leading-tight line-clamp-2 ${mode === 'system' ? 'text-indigo-100 pr-2' : 'text-white'}`}>{template.name}</h3>
       </div>
 
       {/* Pin Button */}
@@ -130,11 +128,7 @@ const GameCard: React.FC<GameCardProps> = ({
         )}
 
         {/* Image Status Indicator - Placed here for better visibility and layout balance */}
-        {template.hasImage && (
-          <div className="p-1.5 rounded-lg border border-amber-500/30 bg-amber-900/20 text-amber-400 flex items-center justify-center shadow-amber-500/30 backdrop-blur-[2px] transition-all group-hover:bg-amber-900/40 group-hover:scale-110 active:scale-95" title={t('card_img_ready')}>
-            <ImageIcon size={14} strokeWidth={2.5} />
-          </div>
-        )}
+        {renderImageStatus()}
       </div>
 
       {/* Bottom Actions (Right) */}

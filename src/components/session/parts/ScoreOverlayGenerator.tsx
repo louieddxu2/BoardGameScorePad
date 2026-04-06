@@ -2,7 +2,7 @@
 import React, { forwardRef } from 'react';
 import { Player } from '../../../types';
 import { Crown, Calendar, Trophy } from 'lucide-react';
-import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
+import { isColorDark, ENHANCED_TEXT_SHADOW, getContrastTextShadow } from '../../../utils/ui';
 import StickerElement from './StickerElement';
 import { useSessionTranslation } from '../../../i18n/session';
 
@@ -127,7 +127,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                             className="text-3xl font-black w-full text-center"
                                             style={{
                                                 color: playerColor,
-                                                textShadow: isDark ? ENHANCED_TEXT_SHADOW : 'none',
+                                                textShadow: getContrastTextShadow(playerColor) || 'none',
                                                 wordBreak: 'break-word',
                                                 lineHeight: '1.2'
                                             }}
