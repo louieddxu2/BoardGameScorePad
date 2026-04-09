@@ -156,8 +156,19 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 onToggle={() => setIsUserLibOpen(!isUserLibOpen)}
                 actionButton={
                     <div className="flex items-center gap-2">
-                        <button onClick={(e) => { e.stopPropagation(); onOpenDataManager(); }} className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors focus:outline-none" title={t('dash_import_export')}><ArrowRightLeft size={18} /></button>
-                        <button onClick={(e) => { e.stopPropagation(); onTemplateCreate(); }} className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg active:scale-95 focus:outline-none"><Plus size={14} /> {t('dash_add_new')}</button>
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onOpenDataManager(); }} 
+                            className="btn-ghost-action"
+                            title={t('dash_import_export')}
+                        >
+                            <ArrowRightLeft size={18} />
+                        </button>
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onTemplateCreate(); }} 
+                            className="btn-action-primary"
+                        >
+                            <Plus size={14} /> {t('dash_add_new')}
+                        </button>
                     </div>
                 }
             >

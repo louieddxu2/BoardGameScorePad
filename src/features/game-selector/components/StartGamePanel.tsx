@@ -441,8 +441,10 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                 <Minus size={16} />
                             </button>
 
-                            <div className="flex-1 flex items-center justify-center relative h-9">
-                                <Users size={24} className={`absolute pointer-events-none transition-colors ${isPlayerCountManual ? 'text-emerald-500/20' : 'text-slate-600'}`} />
+                            <div className="flex-1 relative h-9 flex items-center justify-center">
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                                    <Users size={24} className="transition-colors text-slate-600" />
+                                </div>
                                 <span className={`text-xl font-black font-mono relative z-10 drop-shadow-md transition-colors ${isPlayerCountManual ? 'text-emerald-400' : 'text-slate-50'}`}>
                                     {playerCount}
                                 </span>

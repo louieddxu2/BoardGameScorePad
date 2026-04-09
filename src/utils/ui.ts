@@ -17,6 +17,12 @@ export const getTouchDistance = (touches: { length: number; [index: number]: { c
  */
 const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
     if (!hex) return null;
+    if (hex.startsWith('rgb')) {
+        const match = hex.match(/\d+/g);
+        if (match && match.length >= 3) {
+            return { r: parseInt(match[0]), g: parseInt(match[1]), b: parseInt(match[2]) };
+        }
+    }
     const clean = hex.replace('#', '');
     if (clean.length !== 6 && clean.length !== 3) return null;
     const full = clean.length === 3
@@ -60,8 +66,14 @@ export const isColorLight = (hex: string): boolean => {
  * Used for buttons (QuickButtonPad).
  */
 export const isColorTooLight = (hex: string): boolean => {
-    if (!hex) return true; // Default to light background for safety
-    return getPerceivedLuminance(hex) > 200;
+    if (!hex) return true;
+    const lowerHex = hex.toLowerCase();
+    // Support common CSS variable themes and named colors
+    if (lowerHex.includes('white') || lowerHex.includes('slate-50') || lowerHex.includes('slate-100') || lowerHex.includes('--c-white')) {
+        return true;
+    }
+    const lum = getPerceivedLuminance(hex);
+    return lum > 190; // Slightly lower threshold for safer dark text adoption
 };
 
 // --- Theme-Aware Contrast System ---

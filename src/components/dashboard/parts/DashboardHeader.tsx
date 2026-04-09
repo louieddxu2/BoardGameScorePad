@@ -236,11 +236,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
                 {/* Icon Container - Library (Calculator) */}
                 <div
-                  className={`absolute transition-all duration-200 ease-out flex items-center justify-center left-2.5
-                        ${viewMode === 'library'
-                      ? 'z-20 text-emerald-400 drop-shadow-[0_2px_3px_rgba(0,0,0,0.6)]'
-                      : 'z-10 text-slate-600'
-                    }
+                  className={`absolute flex items-center justify-center left-2.5 
+                        ${viewMode === 'library' ? 'icon-toggle-active' : 'z-10 text-slate-600'}
                     `}
                 >
                   <Calculator size={20} strokeWidth={viewMode === 'library' ? 2.5 : 2} />
@@ -248,11 +245,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
                 {/* Icon Container - History (History Clock) */}
                 <div
-                  className={`absolute transition-all duration-200 ease-out flex items-center justify-center right-2.5
-                        ${viewMode === 'history'
-                      ? 'z-20 text-emerald-400 drop-shadow-[0_2px_3px_rgba(0,0,0,0.6)]'
-                      : 'z-10 text-slate-600'
-                    }
+                  className={`absolute flex items-center justify-center right-2.5
+                        ${viewMode === 'history' ? 'icon-toggle-active' : 'z-10 text-slate-600'}
                     `}
                 >
                   <History size={20} strokeWidth={viewMode === 'history' ? 2.5 : 2} />
@@ -263,9 +257,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               <button
                 onClick={onCloudClick}
                 disabled={isSyncing}
-                className={`h-9 w-9 flex items-center justify-center rounded-xl border transition-all shrink-0 active:scale-95 ${isSyncing ? 'bg-slate-800 border-slate-700 cursor-wait' :
-                  isConnected ? 'bg-sky-900/15 border-sky-500/50 text-sky-400 shadow-sky-500/20' :
-                    'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'
+                className={`btn-cloud-status ${isSyncing ? 'bg-slate-800 border-slate-700 cursor-wait' :
+                  isConnected ? 'connected' : 'disconnected'
                   }`}
                 // [Update] Display storage size in tooltip
                 title={`${tDash('dash_cloud_sync')}${localUsage ? ` (${localUsage})` : ''}`}
@@ -285,7 +278,9 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
               {!isInstalled && (
                 <button
-                  className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all text-white shadow-lg ${canInstall ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}`}
+                  className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all text-white shadow-lg ${canInstall 
+                    ? 'btn-action-primary' 
+                    : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}`}
                   onClick={canInstall ? onInstallClick : onShowInstallGuide}
                 >
                   <div className="relative">

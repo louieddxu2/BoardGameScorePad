@@ -26,9 +26,11 @@
     --c-slate-600: 71 85 105;
     /* #475569 */
     --c-slate-700: 51 65 85;
-    --c-slate-750: 38 48 64;   /* Intermediate */
+    --c-slate-750: 38 48 64;
+    /* Intermediate */
     --c-slate-800: 30 41 59;
-    --c-slate-850: 23 31 45;   /* Darker Surface */
+    --c-slate-850: 23 31 45;
+    /* Darker Surface */
     --c-slate-900: 15 23 42;
     /* #0f172a */
     --c-slate-950: 2 6 23;
@@ -48,7 +50,9 @@
     /* 標準綠 (按鈕背景) */
     --c-emerald-600: 5 150 105;
     /* 深綠 (按鈕Hover) */
-    --c-emerald-900: 49 46 129; /* [FIX] Use original Deep Indigo/Emerald mapping for compatibility */
+    --c-emerald-900: 49 46 129;
+    /* [FIX] Use original Deep Indigo/Emerald mapping for compatibility */
+    --c-emerald-900: 6 78 59;
 
     /* Indigo (Primary/Info) */
     --c-indigo-300: 165 180 252;
@@ -81,25 +85,79 @@
     /* Helper for inline styles */
     --border-slate-700: rgb(var(--c-slate-700));
 
+    /* --- Unified Accent Marking (The Core of Consistency) --- */
+    --c-accent-emerald: 16 185 129;
+    /* Emerald 500 (Standard UI Green for Dark) */
+    --c-accent-emerald-dark: 20 184 166;
+    /* Teal 500 */
+
+    /* --- Functional Tokens: Dashboard Buttons --- */
+    --c-btn-primary-bg: var(--c-accent-emerald);
+    --c-btn-primary-text: 255 255 255;
+    --btn-shadow-active: 0 8px 25px -4px rgba(var(--c-accent-emerald), 0.3);
+    --btn-border-primary: var(--c-accent-emerald) / 0.3;
+
+    --c-icon-active: var(--c-accent-emerald);
+    --filter-icon-active: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+
+    --c-btn-cloud-bg: 23 31 45;
+    /* Slate 850 */
+    --c-btn-cloud-border: 14 165 233 / 0.5;
+    /* Sky 500 */
+    --c-btn-cloud-text: 56 189 248;
+    /* Sky 400 */
+    --shadow-cloud-connected: 0 0 15px rgba(14, 165, 233, 0.2);
+
+    --c-btn-ghost-hover: 51 65 85;
+    /* Slate 700 */
+
     /* --- Player Palette (Source of Truth) --- */
     /* Used by src/colors.ts via CSS Variables */
-    --c-p-emerald: 16 185 129;   /* #10b981 */
-    --c-p-blue:    59 130 246;   /* #3b82f6 */
-    --c-p-yellow:  250 204 21;   /* #facc15 */
-    --c-p-red:     239 68 68;    /* #ef4444 */
-    --c-p-orange:  249 115 22;   /* #f97316 */
-    --c-p-violet:  139 92 246;   /* #8b5cf6 */
-    --c-p-black:   31 41 55;     /* #1f2937 */
-    --c-p-white:   255 255 255;  /* #ffffff */
-    --c-p-pink:    236 72 153;   /* #ec4899 */
-    --c-p-cyan:    6 182 212;    /* #06b6d4 */
-    --c-p-lime:    132 204 22;   /* #84cc16 */
-    --c-p-amber:   245 158 11;   /* #f59e0b */
-    --c-p-indigo:  99 102 241;   /* #6366f1 */
-    --c-p-teal:    20 184 166;   /* #14b8a6 */
-    --c-p-brown:   161 98 7;     /* #a16207 */
-    --c-p-gray:    107 114 128;  /* #6b7280 */
-    --c-p-skin:    254 215 170;  /* #fed7aa */
+    --c-p-emerald: 16 185 129;
+    /* #10b981 */
+    --c-p-blue: 59 130 246;
+    /* #3b82f6 */
+    --c-p-yellow: 250 204 21;
+    /* #facc15 */
+    --c-p-red: 239 68 68;
+    /* #ef4444 */
+    --c-p-orange: 249 115 22;
+    /* #f97316 */
+    --c-p-violet: 139 92 246;
+    /* #8b5cf6 */
+    --c-p-black: 31 41 55;
+    /* #1f2937 */
+    --c-p-white: 255 255 255;
+    /* #ffffff */
+    --c-p-pink: 236 72 153;
+    /* #ec4899 */
+    --c-p-cyan: 6 182 212;
+    /* #06b6d4 */
+    --c-p-lime: 132 204 22;
+    /* #84cc16 */
+    --c-p-amber: 245 158 11;
+    /* #f59e0b */
+    --c-p-indigo: 99 102 241;
+    /* #6366f1 */
+    --c-p-teal: 20 184 166;
+    /* #14b8a6 */
+    --c-p-brown: 161 98 7;
+    /* #a16207 */
+    --c-p-gray: 107 114 128;
+    /* #6b7280 */
+    --c-p-skin: 254 215 170;
+    /* #fed7aa */
+
+    /* --- Modal System (Dark Mode) --- */
+    --c-modal-bg: var(--c-slate-900);
+    --c-modal-border: var(--c-slate-800);
+    --c-modal-backdrop: var(--c-slate-950) / 0.6;
+    --c-modal-text-title: var(--c-white);
+    --c-modal-text-body: var(--c-slate-400);
+    --c-modal-btn-sec-bg: var(--c-slate-700);
+    --c-modal-btn-sec-text: var(--c-white);
+    --c-modal-divider: var(--c-slate-800);
+    --c-modal-input-bg: transparent;
   }
 
   /* 
@@ -115,13 +173,16 @@
     /* --- Grayscale Mapping (Studio Textures - Reverted) --- */
 
     /* 900 (Canvas): Neutral Warm Studio Background */
-    --c-slate-900: 242 242 242; /* #f2f2f2 */
+    --c-slate-900: 248 249 250;
+    /* #f8f9fa */
 
     /* 950 (Backdrop): Pure White */
-    --c-slate-950: 255 255 255; /* #ffffff */
+    --c-slate-950: 255 255 255;
+    /* #ffffff */
 
     /* 800 (Surfaces): Brilliant White */
-    --c-slate-800: 255 255 255; /* #ffffff */
+    --c-slate-800: 255 255 255;
+    /* #ffffff */
 
     /* 750 (Surface Subtle): Ultra light neutral gray */
     --c-slate-750: 248 248 248;
@@ -129,36 +190,39 @@
     /* 850 (Sub-Backdrop): Muted focus background */
     --c-slate-850: 236 236 236;
 
-    /* 700 (Dividers): Transparent Soft Slate (Faint Boundary) */
-    --c-slate-700: 0 0 0 / 0.04; 
+    /* 700 (Dividers): Solid Light Gray (Gray 200 equivalent) */
+    --c-slate-700: 229 231 235;
 
-    /* 600 (Inner Lines) */
-    --c-slate-600: 0 0 0 / 0.02;
+    /* 600 (Lines/Watermarks): Solid Medium-Light Gray (Gray 300 equivalent) */
+    --c-slate-600: 209 213 219;
 
     /* --- Text colors (Deep, Readable Neutrals) --- */
-    --c-slate-50: 15 23 42;    /* #0f172a */
-    --c-slate-100: 2 6 23;     /* #020617 */
-    --c-slate-200: 82 82 91;   /* #52525b */
-    --c-slate-300: 115 115 115;/* #737373 */
+    --c-slate-50: 15 23 42;
+    /* #0f172a */
+    --c-slate-100: 17 24 39;
+    /* #111827 */
+    --c-slate-200: 75 85 99;
+    /* #4b5563 */
+    --c-slate-300: 107 114 128;
+    /* #6b7280 */
 
     /* Elite Multi-Layered Shadows (The Core of "Studio" Quality) */
     /* Soft: Ambient lift */
-    --shadow-soft: 
-      0 2px 4px rgba(0, 0, 0, 0.02), 
-      0 1px 2px rgba(0, 0, 0, 0.01), 
+    --shadow-soft:
+      0 2px 4px rgba(0, 0, 0, 0.02),
+      0 1px 2px rgba(0, 0, 0, 0.01),
       0 0 1px rgba(0, 0, 0, 0.05);
-    
+
     /* Pro: Elevated element */
-    --shadow-pro: 
-      0 10px 20px -5px rgba(0, 0, 0, 0.05), 
-      0 6px 10px -5px rgba(0, 0, 0, 0.02), 
+    --shadow-pro:
+      0 10px 20px -5px rgba(0, 0, 0, 0.05),
+      0 6px 10px -5px rgba(0, 0, 0, 0.02),
       0 0 1px rgba(0, 0, 0, 0.05);
 
     /* Floating: Stronger hover/modal state */
-    --shadow-floating: 
-      0 25px 40px -10px rgba(0, 0, 0, 0.08), 
-      0 10px 15px -10px rgba(0, 0, 0, 0.04), 
-      0 0 1px rgba(0, 0, 0, 0.05);
+    --shadow-floating:
+      0 10px 15px -3px rgba(0, 0, 0, 0.08),
+      0 4px 6px -2px rgba(0, 0, 0, 0.04);
 
     /* Base Colors Mapping */
     --c-white: 255 255 255;
@@ -168,40 +232,106 @@
 
     /* Emerald (Clean Success) */
     --c-emerald-400: 16 185 129;
-    --c-emerald-500: 5 150 105;   /* Emerald 600 */
-    --c-emerald-600: 4 120 87;    /* Emerald 700 */
-    --c-emerald-900: 236 253 245;  /* Emerald 50 (Tint) */
+    --c-emerald-500: 5 150 105;
+    /* Emerald 600 */
+    --c-emerald-600: 4 120 87;
+    /* Emerald 700 */
+    --c-emerald-900: 236 253 245;
+    /* Emerald 50 (Tint) */
 
     /* Indigo (Pro Primary Blue) */
-    --c-indigo-300: 79 70 229;    /* Indigo 600 */
-    --c-indigo-400: 67 56 202;    /* Indigo 700 */
-    --c-indigo-500: 55 48 163;    /* Indigo 800 */
-    --c-indigo-600: 49 46 129;    /* Indigo 900 */
-    --c-indigo-900: 238 242 255;   /* Indigo 50 (Tint) */
+    --c-indigo-300: 79 70 229;
+    /* Indigo 600 */
+    --c-indigo-400: 67 56 202;
+    /* Indigo 700 */
+    --c-indigo-500: 55 48 163;
+    /* Indigo 800 */
+    --c-indigo-600: 49 46 129;
+    /* Indigo 900 */
+    --c-indigo-900: 238 242 255;
+    /* Indigo 50 (Tint) */
 
     /* Sky */
     --c-sky-300: 2 132 199;
     --c-sky-400: 3 105 161;
     --c-sky-500: 14 165 233;
     --c-sky-600: 12 74 110;
-    --c-sky-900: 224 242 254;      /* Sky 100 (Tint) */
+    --c-sky-900: 224 242 254;
+    /* Sky 100 (Tint) */
 
     /* Yellow/Amber */
-    --c-yellow-400: 202 138 4;     /* Yellow 600 */
-    --c-amber-400: 217 119 6;      /* Amber 600 */
+    --c-yellow-400: 202 138 4;
+    /* Yellow 600 */
+    --c-amber-400: 217 119 6;
+    /* Amber 600 */
     --c-amber-500: 245 158 11;
-    --c-amber-900: 254 243 199;    /* Amber 100 (Tint) */
+    --c-amber-900: 254 243 199;
+    /* Amber 100 (Tint) */
 
     /* Red (Error/Danger) */
-    --c-red-400: 220 38 38;        /* Red 600 */
+    --c-red-400: 220 38 38;
+    /* Red 600 */
     --c-red-500: 239 68 68;
-    --c-red-900: 254 242 242;      /* Red 50 (Tint) */
+    --c-red-900: 254 242 242;
+    /* Red 50 (Tint) */
 
     /* Generic Utility */
+    --c-white: 255 255 255;
+    --c-black: 0 0 0;
+
+    /* --- Unified Accent Marking (The Core of Consistency) --- */
+    --c-accent-emerald: 5 150 105;
+    /* Emerald 600 (Solid UI Green for Light) */
+
+    /* --- Functional Tokens: Dashboard Buttons --- */
+    --c-btn-primary-bg: var(--c-accent-emerald);
+    --c-btn-primary-text: 255 255 255;
+    --btn-shadow-active: var(--shadow-pro);
+    --btn-border-primary: var(--c-accent-emerald) / 0.3;
+
+    --c-icon-active: var(--c-accent-emerald);
+    --filter-icon-active: none;
+
+    --c-btn-cloud-bg: 240 249 255;
+    /* Sky 50 */
+    --c-btn-cloud-border: 186 230 253;
+    /* Sky 200 */
+    --c-btn-cloud-text: 3 105 161;
+    /* Sky 700 */
+    --shadow-cloud-connected: none;
+
+    --c-btn-ghost-hover: 236 236 236;
+    /* Slate 850 */
     --border-slate-700: rgb(var(--c-slate-700));
-    --c-vignette: 249 250 251;     /* Same as background */
-    --shadow-soft: 0 2px 4px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+    --c-vignette: 249 250 251;
+    /* Same as background */
+    --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
     --shadow-pro: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+
+    /* --- Modal System (Light Mode Refinement) --- */
+    --c-modal-bg: 255 255 255;
+    /* Pure White */
+    --c-modal-border: var(--c-slate-700);
+    /* Gray 200 equivalent */
+    --c-modal-backdrop: 15 23 42 / 0.4;
+    /* Gray 900 / 40% */
+    --c-modal-text-title: var(--c-slate-100);
+    /* Gray 900 */
+    --c-modal-text-body: var(--c-slate-200);
+    /* Gray 600 */
+    --c-modal-btn-sec-bg: 243 244 246;
+    /* Gray 100 */
+    --c-modal-btn-sec-text: 55 65 81;
+    /* Gray 700 */
+    --c-modal-divider: 243 244 246;
+    /* Gray 100 */
+    --c-modal-input-bg: 243 244 246;
+    /* Gray 100 for better depth */
+
+    /* 確保深色文字在淺色背景上不帶陰影以提升清晰度 */
+    .player-count-val {
+      filter: none !important;
+    }
   }
 }
 
@@ -329,23 +459,47 @@ input[type="search"]::-webkit-search-results-decoration {
 
 /* Swipe Hint Arrow Animations */
 @keyframes swipe-hint-left {
-  0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(-6px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  50% {
+    transform: translateX(-6px);
+  }
 }
 
 @keyframes swipe-hint-right {
-  0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(6px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  50% {
+    transform: translateX(6px);
+  }
 }
 
 @keyframes swipe-hint-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes swipe-hint-fade-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
 }
 
 .animate-swipe-hint-left {
@@ -365,14 +519,88 @@ input[type="search"]::-webkit-search-results-decoration {
 }
 
 @layer base {
-  html, body, #root {
+
+  html,
+  body,
+  #root {
     @apply h-full w-full overflow-hidden select-none touch-none;
-    background-color: rgb(var(--c-slate-900)); /* Solid background, no halos */
+    background-color: rgb(var(--c-slate-900));
+    /* Solid background, no halos */
   }
 
   /* Force solid background for the main utility class to avoid unexpected gradients */
   .bg-slate-900 {
     background-color: rgb(var(--c-slate-900)) !important;
+  }
+}
+
+@layer components {
+
+  /* Primary Action Button (e.g., + Add New) */
+  .btn-action-primary {
+    @apply flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg transition-all duration-200 active:scale-95 focus:outline-none border;
+    background-color: rgb(var(--c-btn-primary-bg));
+    color: rgb(var(--c-btn-primary-text));
+    box-shadow: var(--btn-shadow-active);
+    border-color: rgba(var(--btn-border-primary));
+  }
+
+  .btn-action-primary:hover {
+    filter: brightness(1.15);
+    /* Get naturally lighter in dark mode */
+  }
+
+  html[data-theme='light'] .btn-action-primary:hover {
+    filter: brightness(0.9);
+    /* Get naturally darker in light mode */
+  }
+
+  /* Shared Logic for Floating Action Button */
+  .btn-fab-primary {
+    background-color: rgb(var(--c-btn-primary-bg));
+    box-shadow: var(--btn-shadow-active);
+  }
+
+  .btn-fab-primary:hover {
+    filter: brightness(1.15);
+  }
+
+  html[data-theme='light'] .btn-fab-primary:hover {
+    filter: brightness(0.9);
+  }
+
+  /* Ghost/Secondary Action Button (e.g., Import/Export) */
+  .btn-ghost-action {
+    @apply p-1.5 rounded-lg transition-colors focus:outline-none;
+    color: rgb(var(--c-accent-emerald));
+    /* Unified Accent icon */
+  }
+
+  .btn-ghost-action:hover {
+    background-color: rgb(var(--c-btn-ghost-hover));
+  }
+
+  /* Active State for Toggle Icons (Calculator/History) */
+  .icon-toggle-active {
+    @apply z-20 transition-all duration-200;
+    color: rgb(var(--c-icon-active));
+    filter: var(--filter-icon-active);
+  }
+
+  /* Cloud Status Button */
+  .btn-cloud-status {
+    @apply h-9 w-9 flex items-center justify-center rounded-xl border transition-all shrink-0 active:scale-95;
+  }
+
+  .btn-cloud-status.connected {
+    background-color: rgb(var(--c-btn-cloud-bg));
+    border-color: rgb(var(--c-btn-cloud-border));
+    color: rgb(var(--c-btn-cloud-text));
+    box-shadow: var(--shadow-cloud-connected);
+  }
+
+  .btn-cloud-status.disconnected {
+    @apply bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300;
   }
 }
 
