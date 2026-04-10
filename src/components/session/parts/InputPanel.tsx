@@ -13,7 +13,7 @@ import SmartSpacer from './SmartSpacer';
 import { Eraser, ArrowRight, ArrowDown, Edit, Plus, ArrowUpToLine, ListPlus, Calculator, Scale, X, Check, MousePointerClick } from 'lucide-react';
 import { isColorDark, ENHANCED_TEXT_SHADOW, getContrastTextShadow } from '../../../utils/ui';
 import { getScoreHistory, getRawValue, syncPartsFromIds } from '../../../utils/scoring';
-import { useVisualViewportOffset } from '../../../hooks/useVisualViewportOffset';
+import { useKeyboardStatus } from '../../../hooks/useVisualViewportOffset';
 import { useSessionTranslation } from '../../../i18n/session';
 import { getEffectiveIds } from '../../../utils/scoreDisplay';
 
@@ -224,7 +224,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue, isEditingTitle, isToolboxOpen } = uiState;
     const { t } = useSessionTranslation();
 
-    const visualViewportOffset = useVisualViewportOffset();
+    const { offset } = useKeyboardStatus();
     const [activeFactorIdx, setActiveFactorIdx] = useState<0 | 1>(0);
     const [showSwipeHint, setShowSwipeHint] = useState(false);
 
@@ -901,7 +901,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     return (
         <div
             className={`fixed left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-sm border-t border-slate-700/50 shadow-[0_-8px_30px_rgba(var(--c-black)/0.5)] transition-all ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'} ${isInputFocused ? 'duration-0' : 'duration-300'}`}
-            style={{ height: panelHeight, bottom: visualViewportOffset }}
+            style={{ height: panelHeight, bottom: offset }}
             // [Added] Joystick Touch Handlers
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}

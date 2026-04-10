@@ -1,13 +1,13 @@
 
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { GameSession, GameTemplate } from '../../../types';
 import { useToast } from '../../../hooks/useToast';
 import { useGoogleDrive } from '../../../hooks/useGoogleDrive';
 import { imageService } from '../../../services/imageService';
-import { compressAndResizeImage } from '../../../utils/imageProcessing';
 import { googleDriveService } from '../../../services/googleDrive';
 import { UIState } from './useSessionState';
 import { useSessionTranslation } from '../../../i18n/session';
+import { usePhotoManager } from '../../../hooks/usePhotoManager';
 
 interface UseSessionMediaProps {
     session: GameSession;
@@ -34,10 +34,42 @@ export const useSessionMedia = ({
     const { t } = useSessionTranslation();
     const { downloadCloudImage, isAutoConnectEnabled, isConnected, connectToCloud } = useGoogleDrive();
 
-    // Refs for hidden inputs
+    // === 照片管理（委託給 usePhotoManager） ===
+    const photoManager = usePhotoManager({
+        contextId: session.id,
+        currentPhotoIds: session.photos || [],
+        onPhotosAdded: (ids, source) => {
+            onUpdateSession({ ...session, photos: ids });
+            if (source === 'camera') {
+                // Camera capture: 開啟相簿，但不重設 galleryParams（Score Camera 依賴其持久化）
+                setUiState(p => ({ ...p, isPhotoGalleryOpen: true }));
+            } else {
+                // Upload: 關閉分享選單，開啟相簿，重設 galleryParams
+                setUiState(p => ({
+                    ...p,
+                    showShareMenu: false,
+                    isPhotoGalleryOpen: true,
+                    galleryParams: { mode: 'default' }
+                }));
+            }
+        },
+        onPhotoDeleted: (ids) => {
+            onUpdateSession({ ...session, photos: ids });
+            showToast({ message: t('toast_photo_deleted'), type: 'info' });
+        },
+        onError: (type) => {
+            if (type === 'save' || type === 'compress') {
+                showToast({ message: t('toast_save_failed'), type: 'error' });
+            } else {
+                showToast({ message: t('toast_delete_failed'), type: 'error' });
+            }
+        }
+    });
+
+    // === 背景圖管理（Session 專屬） ===
+
+    // Refs for hidden inputs (background only)
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const photoInputRef = useRef<HTMLInputElement>(null);
-    const galleryInputRef = useRef<HTMLInputElement>(null);
 
     const hasPromptedRef = useRef(false);
 
@@ -114,98 +146,6 @@ export const useSessionMedia = ({
         }
     };
 
-    // [Handler] Handle Camera Batch Capture (Custom CameraView)
-    const handleCameraBatchCapture = async (blobs: Blob[]) => {
-        if (blobs.length === 0) {
-            setUiState(p => ({ ...p, isGeneralCameraOpen: false }));
-            return;
-        }
-
-        // [Modified] Removed "Saving..." toast per user request
-
-        const newPhotoIds: string[] = [];
-
-        for (const blob of blobs) {
-            try {
-                // Convert to optimized blob if needed, though camera already returns jpeg 0.95
-                const optimizedBlob = await compressAndResizeImage(blob, 1, 1920);
-                const savedImg = await imageService.saveImage(optimizedBlob, session.id, 'session');
-                newPhotoIds.push(savedImg.id);
-            } catch (err) {
-                console.error("Failed to save camera capture", err);
-            }
-        }
-
-        if (newPhotoIds.length > 0) {
-            const currentPhotos = session.photos || [];
-            const updatedSession = { ...session, photos: [...currentPhotos, ...newPhotoIds] };
-            onUpdateSession(updatedSession);
-            // [Modified] Removed "Success" toast per user request
-        }
-
-        // Close camera and ensure gallery is open underneath
-        // NOTE: We rely on the previously set galleryParams (from openScoreCamera) to persist
-        // so that PhotoGalleryModal knows how to behave when it mounts/updates.
-        setUiState(p => ({
-            ...p,
-            isGeneralCameraOpen: false,
-            isPhotoGalleryOpen: true,
-        }));
-    };
-
-    // [Handler] Session Photo (Gallery Upload Input)
-    const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const objectUrl = URL.createObjectURL(file);
-
-            compressAndResizeImage(objectUrl, 1, 1920)
-                .then(async (compressedBlob) => {
-                    try {
-                        // Save directly to DB
-                        const savedImg = await imageService.saveImage(compressedBlob, session.id, 'session');
-                        const currentPhotos = session.photos || [];
-                        const updatedSession = { ...session, photos: [...currentPhotos, savedImg.id] };
-                        onUpdateSession(updatedSession);
-
-                        // Directly open gallery view
-                        setUiState(prev => ({
-                            ...prev,
-                            showShareMenu: false,
-                            isPhotoGalleryOpen: true,
-                            // Manual upload implies standard view, so reset mode
-                            galleryParams: { mode: 'default' }
-                        }));
-                    } catch (err) {
-                        console.error("Save failed", err);
-                        showToast({ message: t('toast_save_failed'), type: 'error' });
-                    } finally {
-                        URL.revokeObjectURL(objectUrl);
-                    }
-                })
-                .catch(err => {
-                    console.error("Compression failed", err);
-                    showToast({ message: t('toast_process_failed'), type: 'error' });
-                    URL.revokeObjectURL(objectUrl);
-                });
-        }
-        e.target.value = '';
-    };
-
-    // [Handler] Delete Session Photo
-    const handleDeletePhoto = async (id: string) => {
-        try {
-            await imageService.deleteImage(id);
-            const currentPhotos = session.photos || [];
-            const updatedSession = { ...session, photos: currentPhotos.filter(pid => pid !== id) };
-            onUpdateSession(updatedSession);
-            showToast({ message: t('toast_photo_deleted'), type: 'info' });
-        } catch (e) {
-            console.error("Delete failed", e);
-            showToast({ message: t('toast_delete_failed'), type: 'error' });
-        }
-    };
-
     // [Handler] Manual Cloud Download Trigger (from Modal)
     const handleCloudDownload = async () => {
         if (!template.cloudImageId) return;
@@ -270,42 +210,39 @@ export const useSessionMedia = ({
         }));
     };
 
-    // Standard Camera (from Header) - Resets mode
+    // Standard Camera (from Header / Gallery) — 設定 galleryParams 為 default
     const openCamera = () => {
+        photoManager.openCamera();
         setUiState(p => ({
             ...p,
-            isGeneralCameraOpen: true,
-            galleryParams: { mode: 'default' } // [Reset]
+            galleryParams: { mode: 'default' }
         }));
     };
 
-    // [New] Score Camera (from Toolbox) - Activates overlay mode
+    // [New] Score Camera (from Toolbox) — 設定 galleryParams 為 lightbox_overlay
     const openScoreCamera = () => {
+        photoManager.openCamera();
         setUiState(p => ({
             ...p,
-            isGeneralCameraOpen: true,
-            galleryParams: { mode: 'lightbox_overlay' } // [Active]
+            galleryParams: { mode: 'lightbox_overlay' }
         }));
     };
-
-    const openPhotoLibrary = () => galleryInputRef.current?.click();
 
     return {
+        // 照片管理（從 usePhotoManager 轉發）
+        ...photoManager,
+        // 覆寫 openCamera（加上 galleryParams 邏輯）
+        openCamera,
+        // Session 專屬
+        openScoreCamera,
+        // 背景圖管理
         fileInputRef,
-        photoInputRef,
-        galleryInputRef,
         handleFileUpload,
         handleScannerConfirm,
-        handleCameraBatchCapture, // Export this for SessionView
-        handlePhotoSelect,
-        handleDeletePhoto,
         handleCloudDownload,
         handleRemoveBackground,
         openBackgroundUpload,
         openScannerCamera,
-        openCamera,
-        openScoreCamera, // [New Export]
-        openPhotoLibrary,
-        isConnected
+        isConnected,
     };
 };

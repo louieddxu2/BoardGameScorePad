@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { HistoryRecord, GameSession, ScoreColumn, SavedListItem } from '../../types';
-import { ArrowLeft, Share2, Download, Check, Settings } from 'lucide-react';
+import { HistoryRecord, GameSession, SavedListItem } from '../../types';
+import { ArrowLeft, Share2, Settings } from 'lucide-react';
 import { useToast } from '../../hooks/useToast';
 import ScoreGrid from '../session/parts/ScoreGrid';
 import TotalsBar from '../session/parts/TotalsBar';
@@ -15,9 +15,9 @@ import { useAppData } from '../../hooks/useAppData';
 import { useModalBackHandler } from '../../hooks/useModalBackHandler';
 import ShareMenu from '../session/modals/ShareMenu';
 import PhotoGalleryModal from '../session/modals/PhotoGalleryModal';
-import { imageService } from '../../services/imageService';
-import { compressAndResizeImage } from '../../utils/imageProcessing';
+import CameraView from '../scanner/CameraView';
 import { getRecordScoringRule, getRecordTemplate } from '../../utils/historyUtils';
+import { usePhotoManager } from '../../hooks/usePhotoManager';
 
 import { useHistoryTranslation } from '../../i18n/history';
 
@@ -66,8 +66,33 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
     const [screenshotLayout, setScreenshotLayout] = useState<ScreenshotLayout | null>(null);
     const { showToast } = useToast();
 
-    const photoInputRef = useRef<HTMLInputElement>(null);
-    const galleryInputRef = useRef<HTMLInputElement>(null);
+    // === 照片管理（與計分板共用 usePhotoManager） ===
+    const photos = usePhotoManager({
+        contextId: record.id,
+        currentPhotoIds: record.photos || [],
+        onPhotosAdded: async (ids) => {
+            const updated = { ...record, photos: ids, updatedAt: Date.now() };
+            await db.history.put(updated);
+            setRecord(updated);
+            isDirtyRef.current = true;
+            setShowShareMenu(false);
+            setShowPhotoGallery(true);
+        },
+        onPhotoDeleted: async (ids) => {
+            const updated = { ...record, photos: ids, updatedAt: Date.now() };
+            await db.history.put(updated);
+            setRecord(updated);
+            isDirtyRef.current = true;
+            showToast({ message: t('history_photo_delete_success'), type: 'info' });
+        },
+        onError: (type) => {
+            if (type === 'save' || type === 'compress') {
+                showToast({ message: t('history_photo_save_failed'), type: 'error' });
+            } else {
+                showToast({ message: t('history_update_failed'), type: 'error' });
+            }
+        }
+    });
 
     // --- Exit Logic with Cloud Sync ---
     const handleExitAndSync = () => {
@@ -261,61 +286,6 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
         }
     };
 
-    const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const objectUrl = URL.createObjectURL(file);
-
-            compressAndResizeImage(objectUrl, 1, 1920)
-                .then(async (compressedBlob) => {
-                    const savedImg = await imageService.saveImage(compressedBlob, record.id, 'session');
-                    const currentPhotos = record.photos || [];
-                    const updatedRecord = {
-                        ...record,
-                        photos: [...currentPhotos, savedImg.id],
-                        updatedAt: Date.now() // Update timestamp on photo change
-                    };
-
-                    // Update DB explicitly
-                    await db.history.put(updatedRecord);
-                    setRecord(updatedRecord);
-                    isDirtyRef.current = true; // Mark as dirty
-
-                    // [Fix] Remove toast to match SessionView behavior
-                    // showToast({ message: "照片已儲存", type: 'success' });
-
-                    setShowShareMenu(false);
-                    setShowPhotoGallery(true);
-
-                    URL.revokeObjectURL(objectUrl);
-                })
-                .catch(err => {
-                    console.error("Photo save failed", err);
-                    showToast({ message: t('history_photo_save_failed'), type: 'error' });
-                    URL.revokeObjectURL(objectUrl);
-                });
-        }
-        e.target.value = '';
-    };
-
-    const handleDeletePhoto = async (id: string) => {
-        try {
-            await imageService.deleteImage(id);
-            const currentPhotos = record.photos || [];
-            const updatedPhotos = currentPhotos.filter(pid => pid !== id);
-
-            const updatedRecord = { ...record, photos: updatedPhotos, updatedAt: Date.now() };
-            await db.history.put(updatedRecord);
-            setRecord(updatedRecord);
-            isDirtyRef.current = true; // Mark as dirty
-
-            showToast({ message: t('history_photo_delete_success'), type: 'info' });
-        } catch (e) {
-            console.error("Delete failed", e);
-            showToast({ message: t('history_update_failed'), type: 'error' });
-        }
-    };
-
     const handleOpenGallery = () => {
         setShowShareMenu(false);
         setShowPhotoGallery(true);
@@ -324,8 +294,16 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
     return (
         <div className="flex flex-col h-full bg-slate-900 text-slate-100 overflow-hidden relative animate-in fade-in duration-300">
 
-            <input ref={photoInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoSelect} />
-            <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoSelect} />
+            <input ref={photos.photoInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={photos.handlePhotoSelect} />
+            <input ref={photos.galleryInputRef} type="file" accept="image/*" className="hidden" onChange={photos.handlePhotoSelect} />
+
+            {/* CameraView (shared with Session) */}
+            {photos.isCameraOpen && (
+                <CameraView
+                    onCapture={photos.handleCameraBatchCapture}
+                    onClose={() => photos.closeCamera()}
+                />
+            )}
 
             {/* --- Header --- */}
             <div className="flex-none bg-slate-800 p-2 flex items-center justify-between border-b border-slate-700 shadow-md z-20">
@@ -365,6 +343,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                         hasVisuals={!!template.globalVisuals}
                         onUploadImage={undefined}
                         onOpenGallery={handleOpenGallery}
+                        onTakePhoto={photos.openCamera}
                         photoCount={record.photos?.length || 0}
                         zIndex={100}
                     />
@@ -422,9 +401,9 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                 isOpen={showPhotoGallery}
                 onClose={() => setShowPhotoGallery(false)}
                 photoIds={record.photos || []}
-                onUploadPhoto={() => galleryInputRef.current?.click()}
-                onTakePhoto={() => photoInputRef.current?.click()}
-                onDeletePhoto={handleDeletePhoto}
+                onUploadPhoto={photos.openPhotoLibrary}
+                onTakePhoto={photos.openCamera}
+                onDeletePhoto={photos.handleDeletePhoto}
                 overlayData={overlayData} // Pass context
             />
 

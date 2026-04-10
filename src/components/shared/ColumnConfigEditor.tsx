@@ -4,7 +4,7 @@ import { ScoreColumn, InputMethod, MappingRule } from '../../types';
 import { X, Ruler, Calculator, ListPlus, Settings, Save, Trash2, Crop, LayoutList, Layers, Sigma, Sparkles, Settings2, Info, EyeOff, Users } from 'lucide-react';
 import { COLORS } from '../../colors';
 import { isColorDark } from '../../utils/ui';
-import { useVisualViewportOffset } from '../../hooks/useVisualViewportOffset';
+import { useKeyboardStatus } from '../../hooks/useVisualViewportOffset';
 import { useConfirm } from '../../hooks/useConfirm';
 import LayoutEditor from './LayoutEditor';
 import EditorTabMapping from './column-editor/EditorTabMapping';
@@ -128,17 +128,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
         }
     }, [editedCol.name]);
 
-    const visualViewportOffset = useVisualViewportOffset();
-    const [isResizedByKeyboard, setIsResizedByKeyboard] = useState(false);
-
-    useEffect(() => {
-        const initialHeight = window.innerHeight;
-        const handleResize = () => setIsResizedByKeyboard(initialHeight - window.innerHeight > 150);
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
-    const isKeyboardOpen = visualViewportOffset > 0 || isResizedByKeyboard;
+    const { isKeyboardOpen, offset } = useKeyboardStatus();
 
     const hasUnsavedChanges = () => JSON.stringify(editedCol) !== initialStringifiedRef.current;
 
@@ -365,7 +355,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
     }
 
     return (
-        <div className="fixed inset-0 z-[70] bg-slate-950/95 flex flex-col animate-in slide-in-from-bottom-5" style={{ paddingBottom: visualViewportOffset }}>
+        <div className="fixed inset-0 z-[70] bg-slate-950/95 flex flex-col animate-in slide-in-from-bottom-5" style={{ paddingBottom: offset }}>
 
 
             {showLayoutEditor && (
@@ -489,7 +479,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                 <div className="p-4 pb-4">{renderTabContent()}</div>
             </main>
             {!isKeyboardOpen && (
-                <footer className="flex-none p-4 bg-slate-900/80 backdrop-blur-sm border-t border-slate-800" style={{ paddingBottom: `calc(1rem + ${visualViewportOffset}px)` }}>
+                <footer className="flex-none p-4 bg-slate-900/80 backdrop-blur-sm border-t border-slate-800" style={{ paddingBottom: `calc(1rem + ${offset}px)` }}>
                     <button onClick={handleSave} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2"><Save size={20} /> {t('col_btn_save')}</button>
                 </footer>
             )}
