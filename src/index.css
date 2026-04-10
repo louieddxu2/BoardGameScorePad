@@ -602,11 +602,58 @@ input[type="search"]::-webkit-search-results-decoration {
   .btn-cloud-status.disconnected {
     @apply bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300;
   }
+
+  /* --- Modal Semantic Components --- */
+  .modal-container {
+    @apply w-full max-w-sm rounded-2xl flex flex-col overflow-hidden transition-all duration-300;
+    background-color: rgb(var(--c-modal-bg));
+    border: 1px solid rgb(var(--c-modal-border));
+    box-shadow: var(--shadow-floating);
+  }
+
+  .modal-header {
+    @apply flex-none px-4 py-3 border-b flex justify-between items-center transition-colors;
+    background-color: rgba(var(--c-modal-divider) / 0.1);
+    border-color: rgb(var(--c-modal-divider));
+  }
+
+  .modal-title {
+    @apply text-base font-bold truncate transition-colors;
+    color: rgb(var(--c-modal-text-title));
+  }
+
+  .modal-body {
+    @apply flex-1 p-4 overflow-y-auto no-scrollbar transition-colors;
+    background-color: rgb(var(--c-modal-bg));
+    color: rgb(var(--c-modal-text-body));
+  }
+
+  .modal-section-bg {
+    @apply rounded-xl border transition-all;
+    background-color: rgb(var(--c-modal-input-bg));
+    border-color: rgb(var(--c-modal-divider));
+  }
+
+  .modal-text-secondary {
+    @apply text-sm transition-colors;
+    color: rgb(var(--c-modal-text-body));
+  }
+
+  .btn-modal-secondary {
+    @apply flex-1 py-3 rounded-xl font-medium transition-all active:scale-95;
+    background-color: rgb(var(--c-modal-btn-sec-bg));
+    color: rgb(var(--c-modal-btn-sec-text));
+  }
+
+  .btn-modal-secondary:hover {
+    filter: brightness(0.95);
+  }
 }
 
 @layer utilities {
   .modal-backdrop {
-    @apply fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm;
+    @apply fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300;
+    background-color: rgba(var(--c-modal-backdrop));
   }
 
   .modal-container {
