@@ -57,7 +57,7 @@ const ScanPreview: React.FC<ScanPreviewProps> = ({ imageSrc, template, onBack, o
         // Helper to convert rect to style with optional horizontal offset
         const rectToStyle = (
             r: { x: number, y: number, width: number, height: number } | undefined,
-            borderColor: string = '#facc15',
+            borderColor: string = 'rgb(var(--c-yellow-400))',
             xOffset: number = 0,
             opacity: number = 0.6
         ) => {
@@ -73,7 +73,7 @@ const ScanPreview: React.FC<ScanPreviewProps> = ({ imageSrc, template, onBack, o
                 width: toPct(r.width),
                 height: toPct(r.height),
                 border: `1px solid ${borderColor}`,
-                boxShadow: '0 0 2px rgba(0,0,0,0.3)',
+                boxShadow: '0 0 2px rgba(var(--c-black) / 0.3)',
                 pointerEvents: 'none' as const,
                 opacity: opacity
             };
@@ -88,13 +88,13 @@ const ScanPreview: React.FC<ScanPreviewProps> = ({ imageSrc, template, onBack, o
         return (
             <div className="absolute inset-0 pointer-events-none z-10">
                 {/* --- 1. Static Left Column (Yellow/Gold) --- */}
-                <div style={rectToStyle(visuals.playerLabelRect, '#facc15')} />
-                <div style={rectToStyle(visuals.totalLabelRect, '#facc15')} />
+                <div style={rectToStyle(visuals.playerLabelRect, 'rgb(var(--c-yellow-400))')} />
+                <div style={rectToStyle(visuals.totalLabelRect, 'rgb(var(--c-yellow-400))')} />
 
                 {/* Column Headers (Blue) */}
                 {columns.map((col, idx) => {
                     if (col.displayMode === 'hidden') return null;
-                    return <div key={`head-${idx}`} style={rectToStyle(col.visuals?.headerRect, '#38bdf8')} />;
+                    return <div key={`head-${idx}`} style={rectToStyle(col.visuals?.headerRect, 'rgb(var(--c-sky-400))')} />;
                 })}
 
                 {/* --- 2. Repeated Player Columns --- */}
@@ -108,10 +108,10 @@ const ScanPreview: React.FC<ScanPreviewProps> = ({ imageSrc, template, onBack, o
                     return (
                         <React.Fragment key={`p-${i}`}>
                             {/* Player Header Area (Top Row) */}
-                            <div style={rectToStyle(visuals.playerHeaderRect, '#facc15' + borderColorModifier, xOffset, opacity)} />
+                            <div style={rectToStyle(visuals.playerHeaderRect, isFirst ? 'rgb(var(--c-yellow-400))' : 'rgba(var(--c-yellow-400) / 0.5)', xOffset, opacity)} />
 
                             {/* Total Score Area (Bottom Row) */}
-                            <div style={rectToStyle(visuals.totalRowRect, '#facc15' + borderColorModifier, xOffset, opacity)} />
+                            <div style={rectToStyle(visuals.totalRowRect, isFirst ? 'rgb(var(--c-yellow-400))' : 'rgba(var(--c-yellow-400) / 0.5)', xOffset, opacity)} />
 
                             {/* Data Cells (Green) */}
                             {columns.map((col, idx) => {
@@ -119,7 +119,7 @@ const ScanPreview: React.FC<ScanPreviewProps> = ({ imageSrc, template, onBack, o
                                 return (
                                     <div
                                         key={`cell-${i}-${idx}`}
-                                        style={rectToStyle(col.visuals?.cellRect, '#34d399' + borderColorModifier, xOffset, opacity)}
+                                        style={rectToStyle(col.visuals?.cellRect, isFirst ? 'rgb(var(--c-emerald-400))' : 'rgba(var(--c-emerald-400) / 0.5)', xOffset, opacity)}
                                     />
                                 );
                             })}
@@ -137,7 +137,7 @@ const ScanPreview: React.FC<ScanPreviewProps> = ({ imageSrc, template, onBack, o
             </header>
 
             <main
-                className="flex-1 w-full h-full relative overflow-hidden bg-black/50 touch-none select-none"
+                className="flex-1 w-full h-full relative overflow-hidden bg-[rgba(var(--c-black)/0.5)] touch-none select-none"
                 ref={containerRef}
                 onMouseDown={panZoomHandlers.onMouseDown}
                 onTouchStart={panZoomHandlers.onTouchStart}

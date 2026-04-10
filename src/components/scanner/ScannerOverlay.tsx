@@ -47,8 +47,8 @@ const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
       <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${width} ${height}`} style={{ zIndex: 10 }}>
         <polygon
           points={polygonPoints}
-          fill="rgba(6, 182, 212, 0.2)"
-          stroke="#22d3ee"
+          fill="rgba(var(--c-sky-500) / 0.2)"
+          stroke="rgb(var(--c-sky-400))"
           strokeWidth={strokeWidth}
           vectorEffect="non-scaling-stroke"
         />
@@ -62,7 +62,7 @@ const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
               key={`guide-${idx}`}
               x1={p.x - dx} y1={p.y - dy}
               x2={p.x + dx} y2={p.y + dy}
-              stroke={snapType === 'line' ? '#facc15' : '#34d399'}
+              stroke={snapType === 'line' ? 'rgb(var(--c-yellow-400))' : 'rgb(var(--c-emerald-400))'}
               strokeWidth={strokeWidth}
               strokeDasharray={snapType === 'line' ? '' : '8,8'}
               opacity="0.8"
@@ -98,7 +98,7 @@ const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
             transform: `scale(${ghostScale})`
           }}
         >
-          <div className={`w-5 h-5 rounded-full border-[3px] shadow-[0_0_2px_rgba(0,0,0,0.8)] transition-transform ${activePointIdx === i ? 'border-cyan-300 scale-125' : 'border-cyan-500'}`}></div>
+          <div className={`w-5 h-5 rounded-full border-[3px] shadow-[0_0_2px_rgba(var(--c-black)/0.8)] transition-transform ${activePointIdx === i ? 'border-sky-300 scale-125' : 'border-sky-500'}`}></div>
           {activePointIdx === i && isSnapping && (
             <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur text-white text-[10px] px-2 py-1 rounded border border-slate-700 whitespace-nowrap pointer-events-none flex items-center gap-1 shadow-lg">
               {geometricGhost && Math.sqrt(Math.pow(p.x - geometricGhost.x, 2) + Math.pow(p.y - geometricGhost.y, 2)) < (40 / scale) ? (

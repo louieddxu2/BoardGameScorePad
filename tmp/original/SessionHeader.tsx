@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState } from 'react';
 import { ArrowLeft, ListPlus, RotateCcw, Share2, Edit2, Lock, Unlock, DownloadCloud } from 'lucide-react';
 import ShareMenu from '../modals/ShareMenu';
@@ -109,12 +109,12 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
             onBlur={handleTitleBlur}
             onKeyDown={handleKeyDown}
             onFocus={(e) => e.target.select()}
-            className="bg-slate-900 text-slate-50 font-bold text-lg px-2 py-1 rounded border border-emerald-500 w-full outline-none"
+            className="bg-slate-900 text-white font-bold text-lg px-2 py-1 rounded border border-emerald-500 w-full outline-none"
           />
         ) : (
           <div
             onClick={handleTitleClick}
-            className={`font-bold text-lg truncate flex items-center gap-2 px-2 py-1 rounded transition-colors group ${isEditMode ? 'cursor-pointer hover:bg-slate-850' : 'text-slate-50'}`}
+            className={`font-bold text-lg truncate flex items-center gap-2 px-2 py-1 rounded transition-colors group ${isEditMode ? 'cursor-pointer hover:bg-slate-700/50' : ''}`}
           >
             {templateName}
             {isEditMode && <Edit2 size={14} className="text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />}

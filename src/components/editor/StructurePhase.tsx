@@ -34,7 +34,7 @@ const StructurePhase: React.FC = () => {
   const nameColStart = sortedVLines[0];
   const dataColStart = sortedVLines[1];
 
-  const maskClass = "absolute bg-black/50 pointer-events-none z-0";
+  const maskClass = "absolute bg-[rgba(var(--c-black)/0.5)] pointer-events-none z-0";
 
   return (
     <>
@@ -94,24 +94,24 @@ const StructurePhase: React.FC = () => {
       <div className="absolute inset-0 pointer-events-none">
         {/* Player & Total areas - Constrained to bounds */}
         <div
-          className="absolute top-0 bg-black/60 flex items-center justify-center"
+          className="absolute top-0 bg-[rgba(var(--c-black)/0.6)] flex items-center justify-center"
           style={{
             height: `${sortedHLines[headerSepIdx]}%`,
             left: `${leftBound}%`,
             width: `${widthPercent}%`
           }}
         >
-          <span className="text-white/70 font-bold tracking-widest uppercase origin-center bg-black/50 px-2 rounded" style={inverseScaleStyle}>{t('mapper_player_name')}</span>
+          <span className="text-white/70 font-bold tracking-widest uppercase origin-center bg-[rgba(var(--c-black)/0.5)] px-2 rounded" style={inverseScaleStyle}>{t('mapper_player_name')}</span>
         </div>
         <div
-          className="absolute bottom-0 bg-yellow-900/50 flex items-center justify-center"
+          className="absolute bottom-0 bg-[rgba(var(--c-red-900)/0.5)] flex items-center justify-center"
           style={{
             top: `${sortedHLines[totalSepIdx]}%`,
             left: `${leftBound}%`,
             width: `${widthPercent}%`
           }}
         >
-          <span className="text-yellow-400 font-bold tracking-widest uppercase origin-center bg-black/50 px-2 rounded" style={inverseScaleStyle}>{t('mapper_total_score')}</span>
+          <span className="text-amber-500 font-bold tracking-widest uppercase origin-center bg-[rgba(var(--c-black)/0.5)] px-2 rounded" style={inverseScaleStyle}>{t('mapper_total_score')}</span>
         </div>
       </div>
 
@@ -166,7 +166,7 @@ const StructurePhase: React.FC = () => {
                             className="relative inline-flex items-center pr-5 pl-1.5 py-0.5 bg-slate-100/40 backdrop-blur-sm rounded border border-slate-200/50 shadow-lg group/item"
                             style={{ ...inverseScaleStyle, transformOrigin: 'center', fontSize: '10px' }}
                           >
-                            <span className="font-bold text-slate-900 truncate" style={{ textShadow: '0 1px 1px rgba(255,255,255,0.5)' }}>{sourceCol.name}</span>
+                            <span className="font-bold text-slate-900 truncate" style={{ textShadow: '0 1px 1px rgba(var(--c-white) / 0.5)' }}>{sourceCol.name}</span>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleRemoveItemFromRow(i, colId); }}
                               className="absolute top-1/2 right-0.5 -translate-y-1/2 w-4 h-4 rounded-full bg-slate-700/60 hover:bg-red-600/80 text-slate-200 hover:text-white flex items-center justify-center transition-colors pointer-events-auto"
@@ -189,7 +189,7 @@ const StructurePhase: React.FC = () => {
                   >
                     <div className="w-full h-full flex items-center justify-center">
                       <div
-                        className="inline-flex items-center px-2 py-1 bg-slate-800/50 backdrop-blur-sm rounded-md border border-dashed border-slate-500/50"
+                        className="inline-flex items-center px-2 py-1 bg-[rgba(var(--c-slate-800)/0.5)] backdrop-blur-sm rounded-md border border-dashed border-slate-500/50"
                         style={{ ...inverseScaleStyle, transformOrigin: 'center', fontSize: '10px' }}
                       >
                         <span className="font-bold text-slate-400 italic">{t('mapper_empty_row')}</span>

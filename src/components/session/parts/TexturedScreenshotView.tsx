@@ -6,7 +6,7 @@ import ScoreCell from './ScoreCell';
 import TexturedPlayerHeader from './TexturedPlayerHeader';
 import TexturedTotalCell from './TexturedTotalCell';
 import TexturedBlock from './TexturedBlock';
-import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
+import { isColorDark, ENHANCED_TEXT_SHADOW, getContrastTextShadow } from '../../../utils/ui';
 import { calculateWinners } from '../../../utils/templateUtils';
 import { useSessionTranslation } from '../../../i18n/session';
 import { injectSoftHyphens } from '../../../utils/text';
@@ -146,7 +146,7 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                 display: 'inline-flex',
                 flexDirection: 'column',
                 width: 'max-content',
-                color: '#f8fafc',
+                color: 'rgb(var(--c-slate-50))',
                 boxSizing: 'border-box',
                 ...style
             }}
@@ -226,7 +226,7 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                                             <div className="flex flex-col items-center justify-center w-full h-full p-2 border-r border-b border-slate-700 bg-slate-800">
                                                 <span
                                                     className="text-sm font-bold text-slate-300 w-full leading-tight block break-words whitespace-pre-wrap hyphenate"
-                                                    style={{ ...(col.color && { color: col.color, ...(isColorDark(col.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }) }}
+                                                    style={{ ...(col.color && { color: col.color, ...(getContrastTextShadow(col.color) && { textShadow: getContrastTextShadow(col.color) }) }) }}
                                                 >
                                                     {injectSoftHyphens(col.name)}
                                                 </span>
@@ -289,7 +289,7 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                             <TexturedBlock
                                 baseImage={baseImage}
                                 rect={template.globalVisuals?.totalLabelRect}
-                                fallbackContent={<span className="font-black text-emerald-400 text-sm hyphenate">{injectSoftHyphens(t('ss_total_label'))}</span>}
+                                fallbackContent={<span className="font-black text-[rgb(var(--c-emerald-400))] text-sm hyphenate">{injectSoftHyphens(t('ss_total_label'))}</span>}
                                 className="flex items-center justify-center"
                                 style={itemColStyle}
                             />

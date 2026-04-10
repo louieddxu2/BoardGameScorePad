@@ -250,7 +250,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                 >
                     <div className="flex items-stretch w-full h-full gap-3">
                         <div className="min-w-0 flex-1 flex flex-col justify-center gap-0.5 py-1">
-                            <div className={`text-sm font-bold truncate ${isSelected ? 'text-white' : ''} ${isVirtual ? 'text-emerald-400' : ''}`}>
+                            <div className={`text-sm font-bold truncate ${isSelected ? 'text-slate-50' : ''} ${isVirtual ? 'text-emerald-400' : ''}`}>
                                 {isVirtual ? t('selector_create_and_score', { name: option.displayName }) : option.displayName}
                             </div>
 
@@ -342,7 +342,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                 value={startTimeStr}
                                 onClick={handleTimeClick}
                                 onChange={(e) => setStartTimeStr(e.target.value)}
-                                className="bg-transparent text-white font-mono font-bold text-sm outline-none w-full text-center p-0 border-none appearance-none"
+                                className="bg-transparent text-slate-50 font-mono font-bold text-sm outline-none w-full text-center p-0 border-none appearance-none"
                             />
                         </div>
                     </div>
@@ -351,8 +351,8 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                     <div className="shrink-0 relative">
                         <button
                             onClick={(e) => openMenu('mode', e)}
-                            className={`w-full bg-slate-900 border border-slate-700 rounded-lg p-2 flex items-center justify-between text-white hover:border-slate-600 transition-colors
-                          ${activeMenu?.type === 'mode' ? 'border-emerald-500 text-emerald-400 bg-emerald-900/10' : ''}
+                            className={`w-full bg-slate-900 border border-slate-700 rounded-lg p-2 flex items-center justify-between text-slate-50 hover:border-slate-600 transition-colors
+                          ${activeMenu?.type === 'mode' ? 'border-emerald-500 text-emerald-400 bg-emerald-900/40' : ''}
                       `}
                         >
                             <div className="flex-1 flex items-center overflow-hidden">
@@ -377,7 +377,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                     value={location}
                                     onChange={(e) => handleLocationChange(e.target.value)}
                                     placeholder={t('selector_placeholder_location')}
-                                    className={`w-full bg-slate-900 border rounded-lg p-2 pr-7 text-sm text-white focus:border-emerald-500 outline-none placeholder-slate-400 transition-colors
+                                    className={`w-full bg-slate-900 border rounded-lg p-2 pr-7 text-sm text-slate-50 focus:border-emerald-500 outline-none placeholder-slate-400 transition-colors
                                   ${isLocationManual ? 'border-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.15)]' : 'border-slate-700'}
                               `}
                                 />
@@ -404,8 +404,8 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                     }}
                                     className={`w-full flex items-center justify-between bg-slate-900 border rounded-lg p-2 text-sm outline-none transition-colors text-left
                                   ${activeMenu?.type === 'location'
-                                            ? 'border-emerald-500 text-emerald-400 bg-emerald-900/10 relative z-20'
-                                            : (isLocationManual ? 'border-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.15)]' : 'border-slate-700 hover:border-slate-600 text-white')
+                                            ? 'border-emerald-500 text-emerald-400 bg-emerald-900/40 relative z-20'
+                                            : (isLocationManual ? 'border-emerald-500 text-slate-50 shadow-[0_0_8px_rgba(16,185,129,0.15)]' : 'border-slate-700 hover:border-slate-600 text-slate-50')
                                         }
                               `}
                                 >
@@ -441,9 +441,11 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                 <Minus size={16} />
                             </button>
 
-                            <div className="flex-1 flex items-center justify-center relative h-9">
-                                <Users size={24} className={`absolute pointer-events-none transition-colors ${isPlayerCountManual ? 'text-emerald-500/20' : 'text-slate-600'}`} />
-                                <span className={`text-xl font-black font-mono relative z-10 drop-shadow-md transition-colors ${isPlayerCountManual ? 'text-emerald-400' : 'text-white'}`}>
+                            <div className="flex-1 relative h-9 flex items-center justify-center">
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                                    <Users size={24} className="transition-colors text-slate-600" />
+                                </div>
+                                <span className={`text-xl font-black font-mono relative z-10 drop-shadow-md transition-colors ${isPlayerCountManual ? 'text-emerald-400' : 'text-slate-50'}`}>
                                     {playerCount}
                                 </span>
                             </div>
@@ -523,7 +525,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                     <button
                                         key={loc.id}
                                         onClick={() => handleLocationSelect(loc)}
-                                        className="w-full text-left px-3 py-3 text-xs text-slate-300 hover:bg-slate-700 hover:text-white border-b border-slate-700/50 last:border-0 truncate font-medium shrink-0 leading-normal block"
+                                        className="w-full text-left px-3 py-3 text-xs text-slate-300 hover:bg-slate-700 hover:text-slate-50 border-b border-slate-700/50 last:border-0 truncate font-medium shrink-0 leading-normal block"
                                     >
                                         {loc.name}
                                     </button>

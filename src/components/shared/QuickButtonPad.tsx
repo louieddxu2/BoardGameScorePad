@@ -44,10 +44,10 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
                     gridAutoRows: `minmax(${minRowHeight}, auto)`
                 }}
             >
-                <div className="absolute inset-0 bg-black/15 pointer-events-none z-0"></div>
+                <div className="absolute inset-0 bg-[rgba(var(--c-black)/0.15)] pointer-events-none z-0"></div>
 
                 {actions.map(action => {
-                    const bg = action.color || column.color || '#ffffff';
+                    const bg = action.color || column.color || 'rgb(var(--c-white))';
                     const isLightBg = isColorTooLight(bg);
                     const isStandardSumParts = column.formula.includes('+next') && !column.formula.includes('×a2');
                     const isModifier = isStandardSumParts && action.isModifier;
@@ -57,17 +57,17 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
                     // --- New Dynamic Style Logic ---
 
                     // 1. Text Color (for both label and badge number)
-                    const textColor = isLightBg ? '#0f172a' : 'white';
+                    const textColor = isLightBg ? 'rgb(var(--c-slate-900))' : 'rgb(var(--c-slate-50))';
 
                     // 2. Modifier Border Style
                     const borderClass = isModifier
-                        ? `border-dashed border-2 ${isLightBg ? 'border-black/40' : 'border-white/50'}`
-                        : 'border border-black/10';
+                        ? `border-dashed border-2 ${isLightBg ? 'border-[rgba(var(--c-black)/0.4)]' : 'border-[rgba(var(--c-white)/0.5)]'}`
+                        : 'border border-[rgba(var(--c-black)/0.1)]';
 
                     // 3. Badge Background Style
                     const badgeBgClass = isModifier
-                        ? (isLightBg ? 'bg-black/30' : 'bg-white/30')
-                        : 'bg-black/20';
+                        ? (isLightBg ? 'bg-[rgba(var(--c-black)/0.3)]' : 'bg-[rgba(var(--c-white)/0.3)]')
+                        : 'bg-[rgba(var(--c-black)/0.2)]';
 
                     return (
                         <button
@@ -77,13 +77,13 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
                     rounded-xl flex items-center p-2 shadow-sm transition-all relative h-full 
                     ${isListMode ? 'flex-row justify-between px-4' : 'flex-col justify-center'} 
                     ${borderClass}
-                    ${isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900 z-10 scale-[1.02]' : 'active:scale-95 z-10'}
+                    ${isSelected ? 'ring-2 ring-[rgb(var(--c-white))] ring-offset-2 ring-offset-[rgb(var(--c-slate-900))] z-10 scale-[1.02]' : 'active:scale-95 z-10'}
                 `}
                             style={{ backgroundColor: bg }}
                         >
                             {/* Selection Indicator Icon */}
                             {isSelected && (
-                                <div className="absolute -top-1.5 -right-1.5 bg-white text-emerald-600 rounded-full p-0.5 shadow-md animate-in zoom-in duration-200 z-20">
+                                <div className="absolute -top-1.5 -right-1.5 bg-[rgb(var(--c-white))] text-emerald-600 rounded-full p-0.5 shadow-md animate-in zoom-in duration-200 z-20">
                                     <Check strokeWidth={4} size={12} />
                                 </div>
                             )}

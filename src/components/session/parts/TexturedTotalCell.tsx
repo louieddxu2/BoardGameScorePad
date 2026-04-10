@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Player } from '../../../types';
 import { getSmartTextureUrl } from '../../../utils/imageProcessing';
-import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
+import { isColorDark, ENHANCED_TEXT_SHADOW, getContrastTextShadow } from '../../../utils/ui';
 import { Crown, X } from 'lucide-react';
 import SmartTextureLayer from './SmartTextureLayer';
 import { COLORS } from '../../../colors';
@@ -73,7 +73,7 @@ const FloatingBubble: React.FC<{
                 style={{ 
                     borderColor: color, 
                     color: color,
-                    boxShadow: `0 4px 12px rgba(0,0,0,0.5)`
+                    boxShadow: `0 4px 12px rgba(var(--c-black)/0.5)`
                 }}
             >
                 {displayValue}
@@ -186,9 +186,9 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
   const uiColor = isTransparent ? COLORS[playerIndex % COLORS.length] : effectiveColor;
 
   const containerStyle: React.CSSProperties = {
-      backgroundColor: bgUrl ? 'transparent' : (isTransparent ? 'transparent' : `${effectiveColor}20`),
+      backgroundColor: bgUrl ? 'transparent' : (isTransparent ? 'transparent' : 'rgb(var(--c-slate-800))'),
       borderTopColor: isTransparent ? 'transparent' : effectiveColor,
-      borderTopWidth: isTransparent || hasTexture ? '0px' : '2px',
+      borderTopWidth: isTransparent || hasTexture ? '0px' : '4px',
       // [Fix]: Set minHeight to 0px if texture is successfully loaded.
       // Otherwise default to 2.5rem to match TotalsBar standard height.
       minHeight: bgUrl ? '0px' : '2.5rem', 
@@ -206,14 +206,14 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
 
   const inkStyle: React.CSSProperties = bgUrl ? {
       fontFamily: '"Kalam", "Caveat", cursive',
-      color: visualForceLost ? 'rgba(100, 116, 139, 0.5)' : 'rgba(28, 35, 51, 0.95)',
+      color: visualForceLost ? 'rgba(var(--c-slate-500)/0.5)' : 'rgb(var(--c-slate-50))',
       transform: `rotate(${((player.id.charCodeAt(0)) % 5) - 2}deg)`,
       mixBlendMode: 'multiply',
       textShadow: 'none',
   } : {
-      color: visualForceLost ? '#64748b' : (isTransparent ? '#e2e8f0' : effectiveColor),
+      color: visualForceLost ? 'rgb(var(--c-slate-500))' : (isTransparent ? 'rgb(var(--c-slate-200))' : effectiveColor),
       opacity: visualForceLost ? 0.5 : 1,
-      ...((isTransparent || isColorDark(effectiveColor)) && { textShadow: ENHANCED_TEXT_SHADOW })
+      ...((isTransparent || getContrastTextShadow(effectiveColor)) && { textShadow: isTransparent ? ENHANCED_TEXT_SHADOW : getContrastTextShadow(effectiveColor)! })
   };
 
   // --- Display Value Logic for Bubble ---
@@ -238,8 +238,8 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
       key={player.id}
       ref={cellRef}
       className={`player-col-${player.id} flex-none min-w-[3.375rem] flex flex-col items-center justify-center relative overflow-visible group 
-        ${!bgUrl ? 'border-r border-slate-800' : ''} 
-        ${onClick ? 'cursor-pointer hover:bg-white/5' : ''} 
+        ${!bgUrl ? 'border-r border-slate-700/50' : ''} 
+        ${onClick ? 'cursor-pointer hover:bg-slate-950/5' : ''} 
         ${className}`}
       style={containerStyle}
       onClick={onClick}
@@ -284,7 +284,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
           />
       )}
 
-      {bgUrl && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(0,0,0,0.05)] pointer-events-none z-0" />}
+      {bgUrl && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(var(--c-black)/0.05)] pointer-events-none z-0" />}
     </div>
   );
 };

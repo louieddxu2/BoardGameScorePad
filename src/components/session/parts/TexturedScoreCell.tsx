@@ -80,7 +80,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
     // Ink Styles
     const inkStyle: React.CSSProperties = {
         fontFamily: '"Kalam", "Caveat", cursive',
-        color: autoError ? '#f43f5e' : 'rgba(28, 35, 51, 0.90)', // Red on error
+        color: autoError ? 'rgb(var(--c-rose-500))' : 'rgb(var(--c-slate-50))', // Red on error
         transform: hasInput ? `rotate(${((player.id.charCodeAt(0) + column.id.charCodeAt(0)) % 5) - 2}deg)` : 'none',
         textShadow: 'none',
         mixBlendMode: 'multiply',
@@ -90,7 +90,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
 
     const noteStyle: React.CSSProperties = {
         fontFamily: '"Kalam", cursive',
-        color: 'rgba(71, 85, 105, 0.9)',
+        color: 'rgba(var(--c-slate-600)/0.9)',
         mixBlendMode: 'multiply',
         position: 'relative',
         zIndex: 10,
@@ -144,7 +144,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
             } else if (isLabelOnly) {
                 // Label Only Mode
                 const options = resolveSelectedOptions(column, scoreValue);
-                const labelColorBase = column.color || 'rgba(28, 35, 51, 0.90)';
+                const labelColorBase = column.color || 'rgb(var(--c-slate-50))';
                 layoutContent = (
                     <div className="flex flex-col items-center justify-center w-full h-full leading-tight overflow-hidden">
                         {options.map((opt, optIdx) => {
@@ -177,7 +177,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                 onClick={undefined}
                 className={`w-full h-full relative cursor-default select-none overflow-hidden transition-all pointer-events-none`}
                 style={{
-                    backgroundColor: skipTextureRendering ? 'transparent' : '#e2e8f0',
+                    backgroundColor: skipTextureRendering ? 'transparent' : 'rgb(var(--c-slate-200))',
                     minHeight: effectiveMinHeight,
                 }}
             >
@@ -210,7 +210,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                     {/* Render the determined content directly */}
                     {layoutContent}
                 </div>
-                {!skipTextureRendering && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(0,0,0,0.05)] pointer-events-none z-10" />}
+                {!skipTextureRendering && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(var(--c-black)/0.05)] pointer-events-none z-10" />}
             </div>
         );
     }
@@ -248,7 +248,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
             const renderMode = column.renderMode || 'standard';
 
             if (renderMode === 'label_only') {
-                const labelColorBase = column.color || 'rgba(28, 35, 51, 0.90)';
+                const labelColorBase = column.color || 'rgb(var(--c-slate-50))';
                 const totalLines = options.reduce((acc, opt) => acc + opt.label.split(/\r\n|\r|\n/).length, 0);
                 
                 return (
@@ -290,7 +290,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                                     className="text-xs font-bold leading-[1.1] text-right whitespace-pre-wrap hyphenate truncate max-w-full"
                                     style={{
                                         fontFamily: '"Kalam", cursive',
-                                        color: opt.color || column.color || 'rgba(71, 85, 105, 0.9)',
+                                        color: opt.color || column.color || 'rgba(var(--c-slate-600)/0.9)',
                                         mixBlendMode: 'multiply',
                                         fontSize: '12px',
                                         transform: `rotate(${((player.id.charCodeAt(0) + i) % 5) - 2}deg)`,
@@ -360,14 +360,14 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
             onClick={onClick}
             className={`w-full h-full relative cursor-pointer select-none overflow-hidden transition-all ${isActive ? '' : 'hover:brightness-95'}`}
             style={{
-                backgroundColor: skipTextureRendering ? 'transparent' : '#e2e8f0',
+                backgroundColor: skipTextureRendering ? 'transparent' : 'rgb(var(--c-slate-200))',
                 minHeight: effectiveMinHeight,
             }}
         >
             {isActive && <div className="absolute inset-0 ring-2 ring-inset ring-emerald-500 z-30 pointer-events-none"></div>}
             {!skipTextureRendering && <SmartTextureLayer bgUrl={bgUrl} rect={rect} />}
             {renderContent()}
-            {!skipTextureRendering && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(0,0,0,0.05)] pointer-events-none z-10" />}
+            {!skipTextureRendering && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(var(--c-black)/0.05)] pointer-events-none z-10" />}
         </div>
     );
 };

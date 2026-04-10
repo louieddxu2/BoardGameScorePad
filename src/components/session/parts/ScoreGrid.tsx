@@ -8,7 +8,7 @@ import TexturedBlock from './TexturedBlock';
 import GridFooter from './GridFooter';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useColumnDragAndDrop } from '../hooks/useColumnDragAndDrop';
-import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
+import { isColorDark, ENHANCED_TEXT_SHADOW, getContrastTextShadow, getCurrentTheme } from '../../../utils/ui';
 import { usePlayerWidthSync } from '../../../hooks/usePlayerWidthSync';
 import { calculateColumnScore, resolveSelectOption } from '../../../utils/scoring';
 import { calculateDynamicFontSize } from '../../../utils/dynamicLayout';
@@ -184,11 +184,11 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
     return (
       <>
         <div className="absolute top-0.5 right-0.5 flex gap-0.5 z-20">
-          {isHidden && <div className="bg-black/60 rounded p-0.5 text-amber-400 backdrop-blur-sm border border-amber-500/30" title={t('grid_hidden')}><EyeOff size={10} /></div>}
-          {isOverlay && <div className="bg-black/60 rounded p-0.5 text-sky-400 backdrop-blur-sm border border-sky-500/30" title={t('grid_overlay')}><Layers size={10} /></div>}
+          {isHidden && <div className="bg-[rgba(var(--c-black)/0.6)] rounded p-0.5 text-amber-500 backdrop-blur-sm border border-amber-500/30" title={t('grid_hidden')}><EyeOff size={10} /></div>}
+          {isOverlay && <div className="bg-[rgba(var(--c-black)/0.6)] rounded p-0.5 text-sky-400 backdrop-blur-sm border border-sky-500/30" title={t('grid_overlay')}><Layers size={10} /></div>}
         </div>
-        {!col.isScoring && <div className="absolute bottom-0.5 left-0.5 z-20 bg-black/60 rounded p-0.5 backdrop-blur-sm border border-amber-500/30" title={t('input_not_scored')}><div className="relative w-2.5 h-2.5 flex items-center justify-center"><Sigma size={10} className="text-slate-400 opacity-50" /><X size={8} className="absolute -bottom-0.5 -right-0.5 text-amber-500" strokeWidth={3} /></div></div>}
-        <div className="absolute bottom-0.5 right-0.5 z-20 flex gap-0.5">{col.isAuto && <div className="bg-black/60 rounded p-0.5 text-indigo-400 backdrop-blur-sm border border-indigo-500/30" title={t('input_auto_calc')}><Sparkles size={10} /></div>}</div>
+        {!col.isScoring && <div className="absolute bottom-0.5 left-0.5 z-20 bg-[rgba(var(--c-black)/0.6)] rounded p-0.5 backdrop-blur-sm border border-amber-500/30" title={t('input_not_scored')}><div className="relative w-2.5 h-2.5 flex items-center justify-center"><Sigma size={10} className="text-slate-400 opacity-50" /><X size={8} className="absolute -bottom-0.5 -right-0.5 text-amber-500" strokeWidth={3} /></div></div>}
+        <div className="absolute bottom-0.5 right-0.5 z-20 flex gap-0.5">{col.isAuto && <div className="bg-[rgba(var(--c-black)/0.6)] rounded p-0.5 text-indigo-400 backdrop-blur-sm border border-indigo-500/30" title={t('input_auto_calc')}><Sparkles size={10} /></div>}</div>
       </>
     );
   };
@@ -255,15 +255,15 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           if (isEditMode && dnd.draggingId && isDropTarget) {
             if (isDragging) {
               indicator = (
-                <div className="absolute inset-0 z-50 pointer-events-none border-2 border-dashed border-slate-400/50 bg-slate-500/5" />
+                <div className="absolute inset-0 z-50 pointer-events-none border-2 border-dashed border-slate-400/50 bg-[rgba(var(--c-slate-500)/0.05)]" />
               );
             } else if (dragIndex < template.columns.findIndex(c => c.id === col.id)) {
               indicator = (
-                <div className="absolute bottom-0 left-0 right-0 h-[4px] bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] z-50 pointer-events-none rounded-full translate-y-1/2" />
+                <div className="absolute bottom-0 left-0 right-0 h-[4px] bg-emerald-400 shadow-[0_0_8px_rgba(var(--c-emerald-500)/0.8)] z-50 pointer-events-none rounded-full translate-y-1/2" />
               );
             } else {
               indicator = (
-                <div className="absolute top-0 left-0 right-0 h-[4px] bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] z-50 pointer-events-none rounded-full -translate-y-1/2" />
+                <div className="absolute top-0 left-0 right-0 h-[4px] bg-emerald-400 shadow-[0_0_8px_rgba(var(--c-emerald-500)/0.8)] z-50 pointer-events-none rounded-full -translate-y-1/2" />
               );
             }
           }
@@ -273,7 +273,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
 
           const headerBgClass = isEditMode && isDragging
             ? 'bg-slate-700'
-            : (isAlt && !isTextureMode ? 'bg-[#2e3b4e]' : 'bg-slate-800');
+            : (isAlt && !isTextureMode ? 'bg-[rgb(var(--c-slate-800)/0.5)]' : 'bg-slate-800');
 
           return (
             <div
@@ -299,7 +299,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 }}
                 fallbackContent={
                   <>
-                    <span className="text-sm font-bold text-slate-300 w-full text-center break-words whitespace-pre-wrap leading-tight hyphenate" style={{ ...(col.color && { color: col.color, ...(isColorDark(col.color) && { textShadow: ENHANCED_TEXT_SHADOW }) }) }}>
+                    <span className="text-sm font-bold text-slate-300 w-full text-center break-words whitespace-pre-wrap leading-tight hyphenate" style={{ ...(col.color && { color: col.color, ...(getContrastTextShadow(col.color) && { textShadow: getContrastTextShadow(col.color) }) }) }}>
                       {injectSoftHyphens(col.name)}
                     </span>
                     {col.isScoring && (
@@ -317,7 +317,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 }
               >
                 {renderIndicators(col, isHidden, isOverlay)}
-                {isEditMode && isTextureMode && <div className="absolute top-1/2 left-0.5 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded p-0.5 text-white/70"><GripVertical size={10} /></div>}
+                {isEditMode && isTextureMode && <div className="absolute top-1/2 left-0.5 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-[rgba(var(--c-black)/0.4)] rounded p-0.5 text-[rgba(var(--c-white)/0.7)]"><GripVertical size={10} /></div>}
               </TexturedBlock>
 
               {/* Normal Players Row OR Shared Player Row */}
@@ -385,11 +385,11 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                       }
 
                       const dynamicFontSize = calculateDynamicFontSize([displayText]);
-                      const defaultTextColor = isTextureMode ? 'rgba(28, 35, 51, 0.90)' : '#ffffff';
+                      const defaultTextColor = isTextureMode ? 'rgba(var(--c-slate-900)/0.9)' : 'rgb(var(--c-white))';
                       const displayColor = (isEditMode && overlayCol.color) ? overlayCol.color : defaultTextColor;
 
                       const textStyle: React.CSSProperties = {
-                        color: hasInput ? (displayScore < 0 ? '#f87171' : displayColor) : '#475569',
+                        color: hasInput ? (displayScore < 0 ? 'rgb(var(--c-red-400))' : displayColor) : 'rgb(var(--c-slate-600))',
                         fontSize: dynamicFontSize,
                         ...(isEditMode && overlayCol.color && isColorDark(overlayCol.color) && { textShadow: ENHANCED_TEXT_SHADOW }),
                         ...(isTextureMode && {
@@ -489,13 +489,13 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
 
                         const dynamicFontSize = calculateDynamicFontSize([displayText]);
 
-                        const defaultTextColor = isTextureMode ? 'rgba(28, 35, 51, 0.90)' : '#ffffff';
+                        const defaultTextColor = isTextureMode ? 'rgba(var(--c-slate-900)/0.9)' : (getCurrentTheme() === 'light' ? 'rgb(var(--c-slate-900))' : 'rgb(var(--c-white))');
                         const displayColor = (isEditMode && overlayCol.color) ? overlayCol.color : defaultTextColor;
 
                         const textStyle: React.CSSProperties = {
-                          color: hasInput ? (displayScore < 0 ? '#f87171' : displayColor) : '#475569',
+                          color: hasInput ? (displayScore < 0 ? 'rgb(var(--c-red-400))' : displayColor) : 'rgb(var(--c-slate-600))',
                           fontSize: dynamicFontSize,
-                          ...(isEditMode && overlayCol.color && isColorDark(overlayCol.color) && { textShadow: ENHANCED_TEXT_SHADOW }),
+                          ...(isEditMode && overlayCol.color && getContrastTextShadow(overlayCol.color) && { textShadow: getContrastTextShadow(overlayCol.color) }),
                           ...(isTextureMode && {
                             fontFamily: '"Kalam", "Caveat", cursive',
                             transform: `rotate(${((p.id.charCodeAt(0) + overlayCol.id.charCodeAt(0)) % 5) - 2}deg)`,
@@ -516,10 +516,10 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                                           ${isOverlayActive
                                   ? 'border-emerald-500 bg-emerald-500/20 ring-1 ring-emerald-500'
                                   : (isEditMode
-                                    ? 'border-dashed border-white/40 hover:border-white/60 hover:bg-white/5'
+                                    ? 'border-dashed border-[rgba(var(--c-white)/0.4)] hover:border-[rgba(var(--c-white)/0.6)] hover:bg-[rgba(var(--c-white)/0.05)]'
                                     : (!isTextureMode
-                                      ? 'border-dashed border-white/20 hover:border-white/40 hover:bg-white/5'
-                                      : 'border-transparent hover:border-black/10 hover:bg-black/5')
+                                      ? 'border-dashed border-[rgba(var(--c-white)/0.2)] hover:border-[rgba(var(--c-white)/0.4)] hover:bg-[rgba(var(--c-white)/0.05)]'
+                                      : 'border-transparent hover:border-[rgba(var(--c-black)/0.1)] hover:bg-[rgba(var(--c-black)/0.05)]')
                                   )
                                 }
                                       `}

@@ -6,7 +6,7 @@ import { GameSession, GameTemplate } from '../../../types';
 import { ScreenshotLayout } from '../hooks/useSessionState';
 import ScreenshotView from '../parts/ScreenshotView';
 import { useToast } from '../../../hooks/useToast';
-import { getTouchDistance } from '../../../utils/ui';
+import { getTouchDistance, getCurrentTheme } from '../../../utils/ui';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useCommonTranslation } from '../../../i18n/common';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
@@ -190,8 +190,12 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                 const width = Math.ceil(rect.width);
                 const height = Math.ceil(rect.height);
 
+                const backgroundColor = baseImage 
+                    ? 'rgb(var(--c-white))' 
+                    : (getCurrentTheme() === 'light' ? 'rgb(var(--c-slate-50))' : 'rgb(var(--c-slate-900))');
+
                 const blob = await toBlob(targetWrapper, {
-                    backgroundColor: baseImage ? '#ffffff' : '#0f172a',
+                    backgroundColor: backgroundColor,
                     pixelRatio: PIXEL_RATIO,
                     width: width,
                     height: height,
@@ -440,7 +444,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                 <div className="flex-1 min-h-0 bg-slate-950 relative flex flex-col z-0 overflow-hidden">
                     <div
                         ref={containerRef}
-                        className="flex-1 w-full h-full relative overflow-hidden bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] touch-none cursor-grab active:cursor-grabbing"
+                        className="flex-1 w-full h-full relative overflow-hidden bg-[radial-gradient(rgba(var(--c-slate-800)/1)_1px,transparent_1px)] [background-size:16px_16px] touch-none cursor-grab active:cursor-grabbing"
                         onMouseDown={handlePointerDown}
                         onTouchStart={handlePointerDown}
                         onWheel={handleWheel}
@@ -449,7 +453,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                         {showLoading && (
                             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-emerald-500 animate-in fade-in zoom-in duration-300 pointer-events-none">
                                 <div className="relative">
-                                    <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full animate-pulse"></div>
+                                    <div className="absolute inset-0 bg-[rgba(var(--c-emerald-500)/0.2)] blur-xl rounded-full animate-pulse"></div>
                                     <Loader2 size={48} className="animate-spin relative z-10" />
                                 </div>
                                 <span className="text-sm font-bold animate-pulse tracking-wider">{t('photo_msg_generating')}</span>

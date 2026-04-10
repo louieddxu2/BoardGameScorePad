@@ -19,7 +19,9 @@ export default {
           500: 'rgb(var(--c-slate-500) / <alpha-value>)',
           600: 'rgb(var(--c-slate-600) / <alpha-value>)',
           700: 'rgb(var(--c-slate-700) / <alpha-value>)',
+          750: 'rgb(var(--c-slate-750) / <alpha-value>)', 
           800: 'rgb(var(--c-slate-800) / <alpha-value>)',
+          850: 'rgb(var(--c-slate-850) / <alpha-value>)',
           900: 'rgb(var(--c-slate-900) / <alpha-value>)',
           950: 'rgb(var(--c-slate-950) / <alpha-value>)',
         },
@@ -27,17 +29,39 @@ export default {
         white: 'rgb(var(--c-white) / <alpha-value>)',
         black: 'rgb(var(--c-black) / <alpha-value>)',
         
-        // Add static colors for things that should NOT change (e.g. text on colored buttons)
-        static: {
-          white: '#ffffff',
-          black: '#000000',
+        // Map all primary semantic colors to CSS variables
+        emerald: {
+          400: 'rgb(var(--c-emerald-400) / <alpha-value>)',
+          500: 'rgb(var(--c-emerald-500) / <alpha-value>)',
+          600: 'rgb(var(--c-emerald-600) / <alpha-value>)',
+          900: 'rgb(var(--c-emerald-900) / <alpha-value>)',
         },
-        
-        gray: {
-          750: '#2d3748',
-          850: '#1a202c',
-          950: '#0d1117',
-        }
+        indigo: {
+          300: 'rgb(var(--c-indigo-300) / <alpha-value>)',
+          400: 'rgb(var(--c-indigo-400) / <alpha-value>)',
+          500: 'rgb(var(--c-indigo-500) / <alpha-value>)',
+          600: 'rgb(var(--c-indigo-600) / <alpha-value>)',
+          900: 'rgb(var(--c-indigo-900) / <alpha-value>)',
+        },
+        sky: {
+          300: 'rgb(var(--c-sky-300) / <alpha-value>)',
+          400: 'rgb(var(--c-sky-400) / <alpha-value>)',
+          500: 'rgb(var(--c-sky-500) / <alpha-value>)',
+          600: 'rgb(var(--c-sky-600) / <alpha-value>)',
+        },
+        amber: {
+          400: 'rgb(var(--c-amber-400) / <alpha-value>)',
+          500: 'rgb(var(--c-amber-500) / <alpha-value>)',
+          900: 'rgb(var(--c-amber-900) / <alpha-value>)',
+        },
+        yellow: {
+          400: 'rgb(var(--c-yellow-400) / <alpha-value>)',
+        },
+        red: {
+          400: 'rgb(var(--c-red-400) / <alpha-value>)',
+          500: 'rgb(var(--c-red-500) / <alpha-value>)',
+          900: 'rgb(var(--c-red-900) / <alpha-value>)',
+        },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

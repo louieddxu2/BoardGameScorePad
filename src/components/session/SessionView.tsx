@@ -87,7 +87,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     isImageUploadModalOpen,
     isScannerOpen,
     isTextureMapperOpen,
-    isGeneralCameraOpen,
     isGameSettingsOpen // [New]
   } = sessionState.uiState;
 
@@ -206,10 +205,10 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       />
 
       {/* [New] General Camera Overlay */}
-      {isGeneralCameraOpen && (
+      {media.isCameraOpen && (
         <CameraView
           onCapture={media.handleCameraBatchCapture}
-          onClose={() => setUiState(p => ({ ...p, isGeneralCameraOpen: false }))}
+          onClose={() => media.closeCamera()}
           singleShot={isScoreCameraMode} // [FIXED] Pass dynamic singleShot prop
         />
       )}

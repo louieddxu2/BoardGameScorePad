@@ -78,7 +78,7 @@ const AutoResizingTextarea = ({
 const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
   quickActions = [],
   buttonGridColumns = 1,
-  defaultColor = '#ffffff',
+  defaultColor = 'rgb(var(--c-white))',
   showModifierToggle,
   onChange,
 }) => {

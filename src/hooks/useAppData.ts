@@ -66,9 +66,14 @@ export const useAppData = () => {
     });
 
     // --- 3. LocalStorage Settings & Global Actions ---
-    const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() =>
-        (localStorage.getItem('app_theme') as 'dark' | 'light') || 'dark'
-    );
+    const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
+        // [Temp Fix] Forcing dark mode due to high priority bug work
+        // const saved = localStorage.getItem('app_theme') as 'dark' | 'light' | null;
+        // if (saved) return saved;
+        // const systemPrefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+        // return systemPrefersLight ? 'light' : 'dark';
+        return 'dark';
+    });
 
     const [newBadgeIds, setNewBadgeIds] = useState<string[]>(() => {
         try { return JSON.parse(localStorage.getItem('sm_new_badge_ids') || '[]'); } catch { return []; }
@@ -95,8 +100,10 @@ export const useAppData = () => {
     }, [isVoiceEnabled]);
 
     const toggleTheme = () => {
-        setThemeMode(prev => prev === 'dark' ? 'light' : 'dark');
-        markSystemDirty();
+        // [Temp Disable] Prevent toggling to light mode
+        // setThemeMode(prev => prev === 'dark' ? 'light' : 'dark');
+        // markSystemDirty();
+        console.log("Theme toggle is temporarily disabled");
     };
 
     const clearNewBadges = () => {
@@ -299,10 +306,10 @@ export const useAppData = () => {
         try {
             if (settings.preferences) {
                 const { theme, pinnedIds, newBadgeIds, zoomLevel, isEditMode } = settings.preferences;
-                if (theme) {
-                    setThemeMode(theme);
-                    localStorage.setItem('app_theme', theme);
-                }
+                // if (theme) {
+                //     setThemeMode(theme);
+                //     localStorage.setItem('app_theme', theme);
+                // }
                 if (pinnedIds) {
                     setPinnedIds(pinnedIds);
                     localStorage.setItem('sm_pinned_ids', JSON.stringify(pinnedIds));

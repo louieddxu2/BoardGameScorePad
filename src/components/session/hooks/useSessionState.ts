@@ -49,7 +49,7 @@ export interface UIState {
   scannerInitialImage: string | null;
   scannerFixedRatio?: number;
 
-  isGeneralCameraOpen: boolean; // [New] Camera for photo gallery
+
 
   isTextureMapperOpen: boolean; // [New] Grid Editor State
 
@@ -95,7 +95,7 @@ export const useSessionState = (props: SessionViewProps) => {
       isImageUploadModalOpen: false,
       isScannerOpen: false,
       scannerInitialImage: null,
-      isGeneralCameraOpen: false, // Default false
+
       isTextureMapperOpen: false, // Default closed
       isToolboxOpen: false, // [New] Default closed
       advanceDirection: savedDirection || 'vertical', // Default to vertical if no preference saved

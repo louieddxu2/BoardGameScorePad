@@ -262,7 +262,7 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
 
                 {processedColumns.map((col, index) => {
                     const isAlt = index % 2 !== 0;
-                    const headerBgClass = isAlt ? 'bg-[#2e3b4e]' : 'bg-slate-800';
+                    const headerBgClass = isAlt ? 'bg-slate-900/40' : 'bg-slate-800';
 
                     // [Fix] In simple mode without background, use standard min-height (4rem)
                     // This component block is only rendered if !baseImage.

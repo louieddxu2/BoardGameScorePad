@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Player, SavedListItem } from '../../../types';
 import { Settings2, Ban, Flag } from 'lucide-react';
 import { COLORS } from '../../../colors';
-import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
+import { isColorDark, ENHANCED_TEXT_SHADOW, getContrastTextShadow } from '../../../utils/ui';
 import { searchService } from '../../../services/searchService';
 import { useSessionTranslation } from '../../../i18n/session';
 
@@ -101,7 +101,7 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
                       key={c}
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => onUpdatePlayerColor(c)}
-                      className={`w-8 h-8 rounded-full shadow-lg border-2 transition-transform active:scale-95 flex items-center justify-center relative ${player.color === c ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'} ${isDark ? 'ring-1 ring-white/50' : ''}`}
+                      className={`w-8 h-8 rounded-full shadow-lg border-2 transition-transform active:scale-95 flex items-center justify-center relative ${player.color === c ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'} ${isColorDark(c) ? 'ring-1 ring-white/50' : 'ring-1 ring-black/10'}`}
                       style={{ backgroundColor: isTransparent ? 'transparent' : c }}
                       title={isTransparent ? t('player_color_none') : c}
                     >

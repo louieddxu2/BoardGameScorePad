@@ -40,7 +40,7 @@ const TeamTool: React.FC<TeamToolProps> = ({ players }) => {
                 <button
                     onClick={generateTeams}
                     disabled={players.length < 2}
-                    className="p-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {teams ? <RefreshCw size={14} /> : <Shuffle size={14} />}
                 </button>

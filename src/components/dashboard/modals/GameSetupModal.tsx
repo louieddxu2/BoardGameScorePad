@@ -96,16 +96,16 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                 {/* Main Card Container */}
                 {/* We handle menu closing here by catching clicks on the card background */}
                 <div
-                    className="bg-slate-900 w-[95vw] max-w-sm rounded-2xl shadow-2xl border border-slate-800 flex flex-col"
+                    className="modal-container"
                     onClick={(e) => {
                         e.stopPropagation();
                         setShowRuleMenu(false);
                     }}
                 >
 
-                    {/* Header: Added rounded-t-2xl explicitly */}
-                    <div className="flex-none px-2 py-1.5 border-b border-slate-800 flex justify-between items-center bg-slate-800/50 rounded-t-2xl">
-                        <h3 className="text-base font-bold text-white truncate pr-2 pl-1">{template.name}</h3>
+                    {/* Header */}
+                    <div className="modal-header">
+                        <h3 className="modal-title">{template.name}</h3>
                         <button onClick={onClose} className="text-slate-500 hover:text-white shrink-0 p-1"><X size={20} /></button>
                     </div>
 
@@ -115,7 +115,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                             <div className="grid grid-cols-3 grid-rows-[auto_auto_1fr] h-auto max-h-[70vh]">
 
                                 {/* Top Left: Info (2/3) */}
-                                <div className="col-span-2 row-span-1 p-1.5 border-r border-b border-slate-700 bg-slate-800/20 overflow-y-auto no-scrollbar h-32 sm:h-36">
+                                <div className="col-span-2 row-span-1 p-2 border-r border-b modal-section-bg rounded-none overflow-y-auto no-scrollbar h-32 sm:h-36">
                                     <div className="flex items-center gap-2 mb-1 text-xs text-slate-400">
                                         <History size={12} className="text-emerald-500" />
                                         <span>
@@ -134,7 +134,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                 </div>
 
                                 {/* Top Right: Resume Button (1/3) */}
-                                <div className="col-span-1 row-span-1 border-b border-slate-700 bg-slate-800/20 p-0.5">
+                                <div className="col-span-1 row-span-1 border-b modal-section-bg rounded-none p-0.5">
                                     <button
                                         onClick={onResume}
                                         className="w-full h-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-lg flex flex-col items-center justify-center gap-1 shadow-inner active:scale-95 transition-all"
@@ -162,15 +162,15 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                                 value={startTimeStr}
                                                 onClick={handleTimeClick}
                                                 onChange={(e) => setStartTimeStr(e.target.value)}
-                                                className="bg-transparent text-white font-mono font-bold text-sm outline-none w-full text-center cursor-pointer p-0 border-none"
+                                                className="bg-transparent modal-title font-mono font-bold text-sm outline-none w-full text-center cursor-pointer p-0 border-none"
                                             />
                                         </div>
 
                                         {/* Custom Dropdown Trigger (Compact Mode) */}
-                                        <div className="flex-1 bg-slate-800 rounded-lg p-0.5 border border-slate-700 flex items-center relative min-w-0" title={t('setup_rule')}>
+                                        <div className="flex-1 modal-section-bg p-0.5 flex items-center relative min-w-0" title={t('setup_rule')}>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); setShowRuleMenu(!showRuleMenu); }}
-                                                className="w-full flex items-center justify-between px-1 py-0.5 text-xs font-bold text-white hover:bg-slate-700/50 rounded transition-colors"
+                                                className="w-full flex items-center justify-between px-1 py-0.5 text-xs font-bold modal-title hover:bg-slate-700/50 rounded transition-colors"
                                             >
                                                 <span className="truncate">{currentRuleLabel}</span>
                                                 <ChevronDown size={12} className="text-slate-500 shrink-0 ml-0.5" />
@@ -178,7 +178,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
 
                                             {/* Dropdown Menu (Opens Upwards) - Using reversedOptions */}
                                             {showRuleMenu && (
-                                                <div className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-[70] overflow-hidden min-w-[140px] -right-4 animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="absolute bottom-full left-0 right-0 mb-1 modal-container shadow-xl z-[70] overflow-hidden min-w-[140px] -right-4 animate-in fade-in zoom-in-95 duration-200">
                                                     {reversedOptions.map(opt => (
                                                         <button
                                                             key={opt.value}
@@ -187,7 +187,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                                                 setScoringRule(opt.value as any);
                                                                 setShowRuleMenu(false);
                                                             }}
-                                                            className={`w-full text-left px-3 py-2.5 text-xs font-bold border-b border-slate-700/50 last:border-0 hover:bg-slate-700 flex items-center justify-between ${scoringRule === opt.value ? 'text-emerald-400 bg-emerald-900/10' : 'text-slate-200'}`}
+                                                            className={`w-full text-left px-3 py-2.5 text-xs font-bold border-b border-slate-700/50 last:border-0 hover:bg-slate-700 flex items-center justify-between ${scoringRule === opt.value ? 'text-emerald-400 bg-emerald-900/10' : 'modal-text-secondary'}`}
                                                         >
                                                             {opt.label}
                                                             {scoringRule === opt.value && <Check size={12} />}
@@ -209,7 +209,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                         </button>
 
                                         <div className="min-w-[2rem] flex flex-col items-center justify-center">
-                                            <span className="text-3xl font-black font-mono text-white leading-none tracking-tighter drop-shadow-lg">{playerCount}</span>
+                                            <span className="text-3xl font-black font-mono modal-title leading-none tracking-tighter drop-shadow-sm">{playerCount}</span>
                                             <span className="text-[9px] text-slate-500 uppercase font-bold">{t('player_unit')}</span>
                                         </div>
 
@@ -248,13 +248,13 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                             <Clock size={12} /> {t('setup_time')}
                                         </div>
                                         {/* Reduced input padding py-1.5 -> py-1 */}
-                                        <div className="bg-slate-800 rounded-lg border border-slate-700 px-2 py-1 w-full flex items-center justify-center hover:border-slate-600 cursor-pointer h-[38px]">
+                                        <div className="modal-section-bg px-2 py-1 w-full flex items-center justify-center hover:border-slate-400 cursor-pointer h-[38px]">
                                             <input
                                                 type="time"
                                                 value={startTimeStr}
                                                 onClick={handleTimeClick}
                                                 onChange={(e) => setStartTimeStr(e.target.value)}
-                                                className="bg-transparent text-white font-mono font-bold text-sm outline-none w-full text-center cursor-pointer p-0 border-none appearance-none"
+                                                className="bg-transparent modal-title font-mono font-bold text-sm outline-none w-full text-center cursor-pointer p-0 border-none appearance-none"
                                             />
                                         </div>
                                     </div>
@@ -264,18 +264,18 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                         <div className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1 pl-1">
                                             <Trophy size={12} /> {t('setup_rule')}
                                         </div>
-                                        <div className="bg-slate-800 rounded-lg border border-slate-700 px-2 py-1 w-full flex items-center relative hover:border-slate-600 h-[38px]">
+                                        <div className="modal-section-bg px-2 py-1 w-full flex items-center relative hover:border-slate-400 h-[38px]">
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); setShowRuleMenu(!showRuleMenu); }}
                                                 className="w-full flex items-center justify-between text-left h-full"
                                             >
-                                                <span className="text-white text-xs font-bold truncate">{currentRuleLabel}</span>
+                                                <span className="modal-title text-xs font-bold truncate">{currentRuleLabel}</span>
                                                 <ChevronDown size={12} className="text-slate-500 pointer-events-none shrink-0" />
                                             </button>
 
                                             {/* Dropdown Menu (Opened UPWARDS for New Game Layout as well) - Using reversedOptions */}
                                             {showRuleMenu && (
-                                                <div className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-[70] overflow-hidden min-w-[160px] -right-2 animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="absolute bottom-full left-0 right-0 mb-1 modal-container shadow-xl z-[70] overflow-hidden min-w-[160px] -right-2 animate-in fade-in zoom-in-95 duration-200">
                                                     {reversedOptions.map(opt => (
                                                         <button
                                                             key={opt.value}
@@ -284,7 +284,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                                                 setScoringRule(opt.value as any);
                                                                 setShowRuleMenu(false);
                                                             }}
-                                                            className={`w-full text-left px-3 py-3 text-xs font-bold border-b border-slate-700/50 last:border-0 hover:bg-slate-700 flex items-center justify-between ${scoringRule === opt.value ? 'text-emerald-400 bg-emerald-900/10' : 'text-slate-200'}`}
+                                                            className={`w-full text-left px-3 py-3 text-xs font-bold border-b border-slate-700/50 last:border-0 hover:bg-slate-700 flex items-center justify-between ${scoringRule === opt.value ? 'text-emerald-400 bg-emerald-900/10' : 'modal-text-secondary'}`}
                                                         >
                                                             {opt.label}
                                                             {scoringRule === opt.value && <Check size={14} />}
@@ -300,7 +300,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                 <div className="w-full max-w-[200px] flex flex-col items-center gap-1 z-10">
                                     <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">{t('setup_players')}</span>
                                     {/* Reduced padding p-1.5 -> p-1 */}
-                                    <div className="flex items-center justify-between w-full bg-slate-800 p-1 rounded-xl border border-slate-700 shadow-inner">
+                                    <div className="flex items-center justify-between w-full modal-section-bg p-1 shadow-inner">
                                         <button
                                             disabled={playerCount <= 1}
                                             onClick={() => setPlayerCount(c => Math.max(1, c - 1))}
@@ -308,7 +308,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                         >
                                             <Minus size={20} />
                                         </button>
-                                        <span className="text-3xl font-black font-mono text-white leading-none">{playerCount}</span>
+                                        <span className="text-3xl font-black font-mono modal-title leading-none">{playerCount}</span>
                                         <button
                                             disabled={playerCount >= 12}
                                             onClick={() => setPlayerCount(c => Math.min(12, c + 1))}

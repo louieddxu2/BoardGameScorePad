@@ -99,14 +99,14 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
   return (
     <div
       id="live-totals-bar"
-      className={`absolute left-0 right-0 border-t border-slate-700 flex z-30 overflow-hidden shadow-[0_-4px_10px_rgba(0,0,0,0.5)] transition-all duration-300 ease-in-out ${isPanelOpen ? 'bg-slate-900/75 backdrop-blur' : 'bg-slate-900'} ${isHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'} ${isTextureMode ? 'min-h-0' : 'min-h-[2.5rem]'}`}
+      className={`absolute left-0 right-0 border-t border-slate-700/50 flex z-30 overflow-hidden shadow-sm transition-all duration-300 ease-in-out ${isPanelOpen ? 'bg-slate-900/95 backdrop-blur' : 'bg-slate-900'} ${isHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'} ${isTextureMode ? 'min-h-0' : 'min-h-[2.5rem]'}`}
       style={{ bottom: panelHeight }}
     >
       <TexturedBlock
         baseImage={baseImage}
         rect={template?.globalVisuals?.totalLabelRect}
-        fallbackContent={<span className="font-black text-emerald-400 text-sm">{t('grid_total_score')}</span>}
-        className={`bg-slate-800 border-r border-slate-700 flex items-center justify-center shrink-0 z-40 relative border-t-2 ${isTextureMode ? 'p-0 border-transparent' : 'p-2 border-slate-700'}`}
+        fallbackContent={<span className="font-black text-emerald-500 text-xs uppercase tracking-wider">{t('grid_total_score')}</span>}
+        className={`bg-slate-800 border-r border-slate-700/50 flex items-center justify-center shrink-0 z-40 relative ${isTextureMode ? 'p-0 border-transparent' : 'p-2'}`}
         style={itemColStyle}
       />
       <div className="flex-1 overflow-hidden" ref={scrollRef}>

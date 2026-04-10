@@ -363,17 +363,17 @@ const InfoMapping: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypad
                     }
 
                     return (
-                        <div key={idx} ref={isMatch ? activeRuleRef : null} className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded border transition-colors ${isMatch ? 'bg-indigo-900/50 border-indigo-500/50' : 'bg-slate-800 border-slate-700/50'}`}>
-                            <div className={`flex-1 text-right ${isMatch ? 'text-indigo-200 font-bold' : 'text-slate-400 font-medium'}`}>{labelNode}</div>
-                            <div className={`shrink-0 px-1 ${isMatch ? 'text-indigo-400' : 'text-slate-600'}`}><ArrowRight size={12} /></div>
+                        <div key={idx} ref={isMatch ? activeRuleRef : null} className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded border transition-colors ${isMatch ? 'bg-emerald-900/30 border-emerald-500/50' : 'bg-slate-800 border-slate-700/50'}`}>
+                            <div className={`flex-1 text-right ${isMatch ? 'text-emerald-100 font-bold' : 'text-slate-400 font-medium'}`}>{labelNode}</div>
+                            <div className={`shrink-0 px-1 ${isMatch ? 'text-emerald-500' : 'text-slate-600'}`}><ArrowRight size={12} /></div>
                             <div className={`flex-1 text-left font-mono ${isMatch ? 'text-white' : 'text-slate-400'}`}>{scoreNode}</div>
                         </div>
                     );
                 })}
             </div>
             <div className="mt-2 shrink-0">
-                <div className="bg-slate-900 rounded-lg border border-indigo-500/40 p-2 shadow-sm flex flex-col gap-1">
-                    <div className="flex justify-between items-center border-b border-indigo-500/20 pb-2 mb-0.5">
+                <div className="bg-slate-900 rounded-lg border border-slate-800 p-2 shadow-sm flex flex-col gap-1">
+                    <div className="flex justify-between items-center border-b border-slate-800 pb-2 mb-0.5">
                         <div className="bg-emerald-900/30 border border-emerald-500 rounded px-2 py-0.5 shadow-[0_0_10px_rgba(16,185,129,0.1)] flex items-baseline gap-1">
                             <span className="font-mono font-bold text-white text-sm leading-none">{displayVal}</span>
                         </div>

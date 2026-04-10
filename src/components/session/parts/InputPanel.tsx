@@ -11,9 +11,9 @@ import AutoScorePanel from './AutoScorePanel';
 import InputPanelLayout from './InputPanelLayout';
 import SmartSpacer from './SmartSpacer';
 import { Eraser, ArrowRight, ArrowDown, Edit, Plus, ArrowUpToLine, ListPlus, Calculator, Scale, X, Check, MousePointerClick } from 'lucide-react';
-import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
+import { isColorDark, ENHANCED_TEXT_SHADOW, getContrastTextShadow } from '../../../utils/ui';
 import { getScoreHistory, getRawValue, syncPartsFromIds } from '../../../utils/scoring';
-import { useVisualViewportOffset } from '../../../hooks/useVisualViewportOffset';
+import { useKeyboardStatus } from '../../../hooks/useVisualViewportOffset';
 import { useSessionTranslation } from '../../../i18n/session';
 import { getEffectiveIds } from '../../../utils/scoreDisplay';
 
@@ -58,9 +58,9 @@ const PanelHeader: React.FC<{
 
     // Handle transparent color fallback
     const isTransparent = player.color === 'transparent';
-    const displayColor = isTransparent ? '#e2e8f0' : player.color; // Slate 200 for text
-    const bgColor = isTransparent ? '#1e293b' : `${player.color}20`; // Slate 800 for bg if transparent
-    const borderColor = isTransparent ? '#334155' : `${player.color}40`; // Slate 700 for border
+    const displayColor = isTransparent ? 'rgb(var(--c-slate-200))' : player.color; // Theme-aware fallback
+    const bgColor = isTransparent ? 'rgb(var(--c-slate-800))' : `${player.color}20`;
+    const borderColor = isTransparent ? 'rgb(var(--c-slate-700))' : `${player.color}40`;
 
     // Auto columns cannot be cleared manually
     const isAuto = col?.inputType === 'auto';
@@ -91,11 +91,11 @@ const PanelHeader: React.FC<{
                         <span className="text-[10px] shrink-0 font-bold opacity-70 uppercase tracking-tighter" style={{ color: displayColor }}>
                             {t('input_edit_player')}
                         </span>
-                        <div className="w-px h-3 bg-white/10 shrink-0" />
+                        <div className="w-px h-3 bg-[rgba(var(--c-white)/0.1)] shrink-0" />
                         <span
                             key={player.id}
                             className="text-sm font-bold truncate animate-slide-in-right-shallow"
-                            style={{ color: displayColor, ...(isColorDark(displayColor) && { textShadow: ENHANCED_TEXT_SHADOW }) }}
+                            style={{ color: displayColor, ...(getContrastTextShadow(displayColor) && { textShadow: getContrastTextShadow(displayColor) }) }}
                         >
                             {player.name}
                         </span>
@@ -105,11 +105,11 @@ const PanelHeader: React.FC<{
                         <span
                             key={player.id}
                             className="text-sm font-bold truncate animate-slide-in-right-shallow max-w-[40%]"
-                            style={{ color: displayColor, ...(isColorDark(displayColor) && { textShadow: ENHANCED_TEXT_SHADOW }) }}
+                            style={{ color: displayColor, ...(getContrastTextShadow(displayColor) && { textShadow: getContrastTextShadow(displayColor) }) }}
                         >
                             {player.name}
                         </span>
-                        <div className="w-px h-3 bg-white/10 shrink-0" />
+                        <div className="w-px h-3 bg-[rgba(var(--c-white)/0.1)] shrink-0" />
                         <span className="text-xs font-bold opacity-70 truncate" style={{ color: displayColor }}>
                             {isTotalMode ? t('input_total_adjust') : injectSoftHyphens(col?.name || '')}
                         </span>
@@ -125,7 +125,7 @@ const PanelHeader: React.FC<{
                     onClick={onToggleVoice}
                     className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all border shrink-0 ${isVoiceEnabled 
                         ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
-                        : 'bg-slate-800 border-slate-600 text-slate-400'}`}
+                        : 'bg-slate-800 border-slate-600 text-slate-400 hover:text-slate-300'}`}
                     title={isVoiceEnabled ? t('input_voice_on') : t('input_voice_off')}
                 >
                     {isVoiceEnabled ? (
@@ -181,7 +181,7 @@ const TotalAdjustmentSidebar: React.FC<{
     const { t } = useSessionTranslation();
     return (
         <div className="flex flex-col h-full p-2 gap-2">
-            <div className="text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 flex items-center justify-center gap-1 shrink-0">
+            <div className="text-[10px] text-slate-200 font-bold uppercase pb-1 border-b border-slate-100/50 flex items-center justify-center gap-1 shrink-0">
                 {t('input_total_adjust')}
             </div>
             <div className="flex-1 flex flex-col gap-2 overflow-y-auto no-scrollbar pt-1">
@@ -224,7 +224,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue, isEditingTitle, isToolboxOpen } = uiState;
     const { t } = useSessionTranslation();
 
-    const visualViewportOffset = useVisualViewportOffset();
+    const { offset } = useKeyboardStatus();
     const [activeFactorIdx, setActiveFactorIdx] = useState<0 | 1>(0);
     const [showSwipeHint, setShowSwipeHint] = useState(false);
 
@@ -900,8 +900,8 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
     return (
         <div
-            className={`fixed left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-sm border-t border-slate-700/50 shadow-[0_-8px_30px_rgba(0,0,0,0.5)] transition-all ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'} ${isInputFocused ? 'duration-0' : 'duration-300'}`}
-            style={{ height: panelHeight, bottom: visualViewportOffset }}
+            className={`fixed left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-sm border-t border-slate-700/50 shadow-[0_-8px_30px_rgba(var(--c-black)/0.5)] transition-all ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'} ${isInputFocused ? 'duration-0' : 'duration-300'}`}
+            style={{ height: panelHeight, bottom: offset }}
             // [Added] Joystick Touch Handlers
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
