@@ -35,9 +35,9 @@ const InfoProduct: React.FC<ScoreInfoPanelProps> = ({ column, value, activeFacto
     // [Update] Use localKeypadValue for display if available
     const factors = getFactors(localKeypadValue || value);
 
-    const unitA = column.subUnits?.[0] || t('score_info_unit_qty');
-    const unitB = column.subUnits?.[1] || t('score_info_unit_price');
-    const unitTotal = column.unit || t('score_info_unit_score');
+    const unitA = column.subUnits?.[0] || '';
+    const unitB = column.subUnits?.[1] || '';
+    const unitTotal = column.unit || '';
     const n1 = parseFloat(String(factors[0])) || 0;
     const n2 = parseFloat(String(factors[1])) || 1;
     let total = n1 * n2;
@@ -399,7 +399,7 @@ const InfoStandard: React.FC<ScoreInfoPanelProps> = ({ column }) => {
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 py-2">
                 <div className="bg-slate-800 rounded p-2 border border-slate-700 text-center">
                     <div className="flex items-center justify-center gap-0.5 whitespace-nowrap">
-                        <span className="text-base font-bold text-slate-200 leading-none">{unit || t('score_info_unit_score')}</span>
+                        <span className="text-base font-bold text-slate-200 leading-none">{unit}</span>
                         {column.formula === 'a1×c1' ? (
                             <><span className="text-slate-500 text-xs leading-none">×</span><span className="text-xl font-bold text-emerald-400 font-mono leading-none">{column.constants?.c1 ?? 1}</span></>
                         ) : null}
