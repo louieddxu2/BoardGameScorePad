@@ -149,15 +149,33 @@
     /* #fed7aa */
 
     /* --- Modal System (Dark Mode) --- */
-    --c-modal-bg: var(--c-slate-900);
-    --c-modal-border: var(--c-slate-800);
-    --c-modal-backdrop: var(--c-slate-950) / 0.6;
-    --c-modal-text-title: var(--c-white);
-    --c-modal-text-body: var(--c-slate-400);
-    --c-modal-btn-sec-bg: var(--c-slate-700);
-    --c-modal-btn-sec-text: var(--c-white);
     --c-modal-divider: var(--c-slate-800);
     --c-modal-input-bg: transparent;
+
+    /* --- Semantic Architecture Mappings (Dark Mode) --- */
+    --c-app-bg: 15 23 42;          /* slate-900 */
+    --c-app-bg-deep: 2 6 23;       /* slate-950 */
+    --c-txt-primary: 248 250 252;  /* slate-50 */
+    --c-txt-secondary: 148 163 184; /* slate-400 */
+    --c-txt-muted: 100 116 139;    /* slate-500 */
+    --c-surface-bg: 30 41 59;      /* slate-800 */
+    --c-surface-bg-alt: 23 31 45;  /* slate-850 */
+    --c-surface-border: 51 65 85;  /* slate-700 */
+    --c-brand-primary: 16 185 129; /* emerald-500 */
+    --c-brand-secondary: 99 102 241; /* indigo-500 */
+    --c-status-warning: 251 191 36; /* amber-400 */
+    --c-status-danger: 248 113 113; /* red-400 */
+    --c-status-success: 52 211 153; /* emerald-400 */
+    --c-status-info: 129 140 248;   /* indigo-400 */
+
+    /* --- Legacy Compatibility: Modal System (Mapped to Semantic) --- */
+    --c-modal-bg: var(--c-surface-bg);
+    --c-modal-border: var(--c-surface-border);
+    --c-modal-backdrop: var(--c-app-bg-deep) / 0.6;
+    --c-modal-text-title: var(--c-white);
+    --c-modal-text-body: var(--c-txt-secondary);
+    --c-modal-btn-sec-bg: var(--c-slate-700);
+    --c-modal-btn-sec-text: var(--c-white);
   }
 
   /* 
@@ -308,25 +326,35 @@
     --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
     --shadow-pro: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
 
-    /* --- Modal System (Light Mode Refinement) --- */
-    --c-modal-bg: 255 255 255;
-    /* Pure White */
-    --c-modal-border: var(--c-slate-700);
-    /* Gray 200 equivalent */
-    --c-modal-backdrop: 15 23 42 / 0.4;
-    /* Gray 900 / 40% */
-    --c-modal-text-title: var(--c-slate-100);
-    /* Gray 900 */
-    --c-modal-text-body: var(--c-slate-200);
-    /* Gray 600 */
-    --c-modal-btn-sec-bg: 243 244 246;
-    /* Gray 100 */
-    --c-modal-btn-sec-text: 55 65 81;
-    /* Gray 700 */
     --c-modal-divider: 243 244 246;
     /* Gray 100 */
     --c-modal-input-bg: 243 244 246;
     /* Gray 100 for better depth */
+
+    /* --- Semantic Architecture Mappings (Light Mode) --- */
+    --c-app-bg: 248 250 252;       /* slate-50 */
+    --c-app-bg-deep: 241 245 249;  /* slate-100 */
+    --c-txt-primary: 15 23 42;     /* slate-900 */
+    --c-txt-secondary: 71 85 105;  /* slate-600 */
+    --c-txt-muted: 148 163 184;    /* slate-400 */
+    --c-surface-bg: 255 255 255;   /* white */
+    --c-surface-bg-alt: 248 250 252; /* slate-50 */
+    --c-surface-border: 226 232 240; /* slate-200 */
+    --c-brand-primary: 16 185 129; /* emerald-500 */
+    --c-brand-secondary: 79 70 229; /* indigo-600 */
+    --c-status-warning: 245 158 11; /* amber-500 */
+    --c-status-danger: 239 68 68;   /* red-500 */
+    --c-status-success: 16 185 129; /* emerald-500 */
+    --c-status-info: 99 102 241;    /* indigo-500 */
+
+    /* --- Legacy Compatibility: Modal System (Mapped to Semantic) --- */
+    --c-modal-bg: var(--c-surface-bg);
+    --c-modal-border: var(--c-surface-border);
+    --c-modal-backdrop: 15 23 42 / 0.4;
+    --c-modal-text-title: var(--c-slate-100);
+    --c-modal-text-body: var(--c-txt-secondary);
+    --c-modal-btn-sec-bg: 243 244 246;
+    --c-modal-btn-sec-text: 55 65 81;
 
     /* 確保深色文字在淺色背景上不帶陰影以提升清晰度 */
     .player-count-val {

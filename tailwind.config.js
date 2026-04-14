@@ -62,6 +62,36 @@ export default {
           500: 'rgb(var(--c-red-500) / <alpha-value>)',
           900: 'rgb(var(--c-red-900) / <alpha-value>)',
         },
+
+        // --- Semantic Tokens (The "Alias" Layer) ---
+        app: {
+          bg: 'rgb(var(--c-app-bg) / <alpha-value>)',
+          deep: 'rgb(var(--c-app-bg-deep) / <alpha-value>)',
+        },
+        txt: {
+          primary: 'rgb(var(--c-txt-primary) / <alpha-value>)',
+          secondary: 'rgb(var(--c-txt-secondary) / <alpha-value>)',
+          muted: 'rgb(var(--c-txt-muted) / <alpha-value>)',
+        },
+        surface: {
+          bg: 'rgb(var(--c-surface-bg) / <alpha-value>)',
+          alt: 'rgb(var(--c-surface-bg-alt) / <alpha-value>)',
+          border: 'rgb(var(--c-surface-border) / <alpha-value>)',
+        },
+        brand: {
+          primary: 'rgb(var(--c-brand-primary) / <alpha-value>)',
+          secondary: 'rgb(var(--c-brand-secondary) / <alpha-value>)',
+        },
+        status: {
+          success: 'rgb(var(--c-brand-primary) / <alpha-value>)',
+          info: 'rgb(var(--c-sky-500) / <alpha-value>)',
+          warning: 'rgb(var(--c-amber-500) / <alpha-value>)',
+          danger: 'rgb(var(--c-red-500) / <alpha-value>)',
+        },
+      },
+      boxShadow: {
+        'ui-soft': 'var(--shadow-soft)',
+        'ui-floating': 'var(--shadow-floating)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

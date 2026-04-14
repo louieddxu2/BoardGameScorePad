@@ -172,7 +172,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
   return (
     <header
-      className="flex flex-col bg-slate-900/95 backdrop-blur-md border-b border-slate-700 sticky top-0 z-30 transition-all duration-300 shadow-sm"
+      className="flex flex-col bg-app-bg/95 backdrop-blur-md border-b border-surface-border sticky top-0 z-30 transition-all duration-300 shadow-sm"
       onClick={handleHeaderClick}
     >
       <div className="p-2.5 flex items-center gap-2 h-[58px]">
@@ -191,7 +191,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               autoFocus
-              className="w-full bg-transparent text-slate-50 focus:outline-none placeholder-slate-400 font-medium"
+              className="w-full bg-transparent text-txt-primary focus:outline-none placeholder-txt-muted font-medium"
             />
             <button onClick={() => { setIsSearchActive(false); setSearchQuery(''); }} className="text-slate-400 hover:text-slate-50 p-2">
               <X size={20} />
@@ -203,7 +203,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
               {/* Logo: Toggle Theme */}
               <div
-                className="bg-slate-700 p-1.5 rounded-lg border border-slate-600 shrink-0 cursor-pointer active:scale-90 transition-transform shadow-sm"
+                className="bg-surface-alt p-1.5 rounded-lg border border-surface-border shrink-0 cursor-pointer active:scale-90 transition-transform shadow-sm"
                 onClick={(e) => { e.stopPropagation(); onToggleTheme(); }}
                 role="button"
                 title={themeMode === 'dark' ? 'Light Mode' : 'Dark Mode'}
@@ -215,7 +215,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               </div>
               {/* Title: Toggle Language */}
               <h1
-                className="text-lg sm:text-xl font-bold tracking-tight text-slate-50 truncate select-none cursor-pointer active:opacity-50 transition-opacity"
+                className="text-lg sm:text-xl font-bold tracking-tight text-txt-primary truncate select-none cursor-pointer active:opacity-50 transition-opacity"
                 onClick={toggleLanguage}
                 role="button"
                 title={tDash('dash_switch_language')}
@@ -226,7 +226,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               {/* Unified Toggle Button - Width 56px, tight padding */}
               <button
                 onClick={toggleView}
-                className="relative h-9 w-[56px] bg-slate-800 border border-slate-700 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-750 transition-colors shrink-0 group active:scale-95 shadow-inner"
+                className="relative h-9 w-[56px] bg-surface-alt border border-surface-border rounded-xl flex items-center justify-center cursor-pointer hover:bg-surface-alt/80 transition-colors shrink-0 group active:scale-95 shadow-inner"
                 title={viewMode === 'library' ? tCloud('cloud_tab_history') : tCloud('cloud_tab_templates')}
               >
                 {/* Central Slash (Background) */}

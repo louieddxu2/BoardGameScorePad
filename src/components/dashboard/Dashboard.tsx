@@ -237,7 +237,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-slate-900 transition-colors duration-300 overflow-hidden relative">
+    <div className="flex-1 flex flex-col min-h-0 bg-app-bg transition-colors duration-300 overflow-hidden relative">
       <DashboardHeader
         isSearchActive={isSearchActive}
         setIsSearchActive={(active) => {

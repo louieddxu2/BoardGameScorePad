@@ -566,7 +566,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="h-full bg-slate-900 text-slate-50 font-sans overflow-hidden transition-colors duration-300 relative">
+    <div className="h-full bg-app-bg text-txt-primary font-sans overflow-hidden transition-colors duration-300 relative">
 
       {isCloudImporting && (
         <div className="modal-backdrop z-[10000] animate-in fade-in duration-300">
