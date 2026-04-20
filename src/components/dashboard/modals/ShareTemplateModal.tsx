@@ -208,7 +208,7 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
                         <FileCode size={14} />
                         {t('share_modal_local_title')}
                     </div>
-                    <div className="modal-section-bg rounded-xl p-4 border border-surface-border">
+                    <div className="modal-bg-elevated rounded-xl p-4 border border-surface-border">
                         <p className="text-xs text-txt-muted mb-4">{t('share_modal_local_desc')}</p>
                         <button
                             onClick={handleCopyJSON}
@@ -227,7 +227,7 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
                         {t('share_modal_cloud_title')}
                     </div>
 
-                    <div className="modal-section-bg rounded-xl p-4 border border-brand-primary/20 space-y-4">
+                    <div className="modal-bg-elevated rounded-xl p-4 border border-brand-primary/20 space-y-4">
                         {!shareUrl && !isLoading && (
                             <>
                                 <div className="flex flex-col gap-2">
@@ -260,7 +260,7 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
 
                         {shareUrl && (
                             <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-4">
-                                <div className="modal-section-deep border border-surface-border rounded-lg p-3 flex items-center gap-2">
+                                <div className="modal-bg-recessed border border-surface-border rounded-lg p-3 flex items-center gap-2">
                                     <LinkIcon size={14} className="text-brand-primary shrink-0" />
                                     <input type="text" readOnly value={shareUrl} className="bg-transparent text-xs text-txt-secondary flex-1 outline-none" />
                                 </div>

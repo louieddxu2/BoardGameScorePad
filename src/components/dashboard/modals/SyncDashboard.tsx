@@ -43,7 +43,7 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
 
     if (syncStatus === 'processing') {
         return (
-            <div className="absolute inset-0 z-50 bg-modal-bg flex flex-col items-center justify-center p-8 animate-in fade-in duration-300">
+            <div className="modal-body absolute inset-0 z-50 flex flex-col items-center justify-center p-8 animate-in fade-in duration-300">
                 <div className="relative mb-6">
                     <div className="absolute inset-0 bg-status-success/20 blur-xl rounded-full animate-pulse"></div>
                     <Loader2 size={64} className="text-status-success animate-spin relative z-10" />
@@ -54,7 +54,7 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
                 <p className="text-txt-secondary text-sm font-mono mb-4">
                     {syncResult.current} / {syncResult.total}
                 </p>
-                <div className="w-full max-w-xs h-2 bg-modal-bg-alt rounded-full overflow-hidden border border-surface-border mb-2">
+                <div className="w-full max-w-xs h-2 modal-bg-elevated rounded-full overflow-hidden border border-surface-border mb-2">
                     <div
                         className="h-full bg-status-success transition-all duration-300 ease-out"
                         style={{ width: `${syncResult.total > 0 ? (syncResult.current / syncResult.total) * 100 : 0}%` }}

@@ -20,8 +20,8 @@ interface HistoryViewProps {
 const TruncationFooter: React.FC<{ displayed: number, total: number, label: string }> = ({ displayed, total, label }) => {
     if (displayed >= total) return null;
     return (
-        <div className="col-span-2 py-4 flex flex-col items-center justify-center text-slate-500 opacity-70">
-            <div className="w-12 h-1 bg-slate-700/50 rounded-full mb-2"></div>
+        <div className="col-span-2 py-4 flex flex-col items-center justify-center text-txt-muted opacity-70">
+            <div className="w-12 h-1 bg-surface-border/50 rounded-full mb-2"></div>
             <span className="text-[10px] font-mono">{label}</span>
         </div>
     );
@@ -44,7 +44,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             <div className="flex gap-2 mb-2 overflow-x-auto no-scrollbar animate-in fade-in slide-in-from-top-1">
                 <button
                     onClick={onOpenBgStats}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-indigo-400 font-bold text-xs rounded-xl border border-slate-700/50 shadow-sm transition-colors whitespace-nowrap"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-surface-bg hover:filter hover:brightness-110 text-brand-secondary font-bold text-xs rounded-xl border border-surface-border shadow-sm transition-colors whitespace-nowrap"
                 >
                     <FileJson size={14} />
                     {tIntegration('btn_bgstats_open')}
@@ -52,7 +52,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 
                 <button
                     onClick={onOpenBggImport}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-indigo-400 font-bold text-xs rounded-xl border border-slate-700/50 shadow-sm transition-colors whitespace-nowrap"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-surface-bg hover:filter hover:brightness-110 text-brand-secondary font-bold text-xs rounded-xl border border-surface-border shadow-sm transition-colors whitespace-nowrap"
                 >
                     <Database size={14} />
                     {tIntegration('btn_bgg_open')}
@@ -60,14 +60,14 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             </div>
 
             {searchQuery.trim().length > 0 && (
-                <div className="flex justify-end items-center bg-slate-800/50 p-2 rounded-xl border border-slate-700/50 animate-in fade-in slide-in-from-top-1">
+                <div className="flex justify-end items-center bg-surface-bg/50 p-2 rounded-xl border border-surface-border animate-in fade-in slide-in-from-top-1">
                     <div className="flex items-center gap-2 px-2">
-                        <Search size={14} className="text-emerald-500" />
-                        <span className="text-sm font-bold text-slate-300">
+                        <Search size={14} className="text-brand-primary" />
+                        <span className="text-sm font-bold text-txt-secondary">
                             {t('dash_search_result_count', { count: totalCount || 0 })}
                         </span>
                         {totalCount > 100 && (
-                            <span className="text-xs text-slate-500 border-l border-slate-600 pl-2 ml-1">
+                            <span className="text-xs text-txt-muted border-l border-surface-border pl-2 ml-1">
                                 {t('dash_search_result_limit')}
                             </span>
                         )}

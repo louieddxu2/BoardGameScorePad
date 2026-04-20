@@ -21,31 +21,31 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ record, onDelete, onClick }) 
     return (
         <div
             onClick={onClick}
-            className="bg-slate-800 rounded-xl border border-slate-700 shadow-md p-4 relative group hover:bg-slate-750 transition-colors w-full cursor-pointer hover:border-slate-600"
+            className="bg-surface-bg-alt rounded-xl border border-surface-border shadow-md p-4 relative group hover:bg-surface-bg transition-colors w-full cursor-pointer"
         >
             {/* Header: Date & Title */}
             <div className="flex justify-between items-start mb-3">
                 <div className="flex flex-col gap-1.5 overflow-hidden">
-                    <div className="flex flex-wrap items-center gap-y-1 gap-x-2 text-xs text-slate-500 font-mono">
+                    <div className="flex flex-wrap items-center gap-y-1 gap-x-2 text-xs text-txt-muted font-mono">
                         <div className="flex items-center gap-1.5">
                             <Calendar size={12} />
                             <span>{dateStr}</span>
-                            <span className="w-1 h-1 rounded-full bg-slate-600"></span>
+                            <span className="w-1 h-1 rounded-full bg-surface-border"></span>
                             <span>{timeStr}</span>
                         </div>
                         {record.location && (
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-sky-900/15 border border-sky-500/50 text-sky-400 shadow-sky-500/10">
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-status-info/10 border border-status-info/30 text-status-info shadow-sm">
                                 <MapPin size={10} />
                                 <span className="truncate max-w-[100px] sm:max-w-[150px]">{record.location}</span>
                             </div>
                         )}
                     </div>
-                    <h3 className="text-lg font-bold text-slate-50 leading-tight truncate pr-2">{record.gameName}</h3>
+                    <h3 className="text-lg font-bold text-txt-primary leading-tight truncate pr-2">{record.gameName}</h3>
                 </div>
 
                 <button
                     onClick={(e) => { e.stopPropagation(); if (record.id) onDelete(record.id); }}
-                    className="p-2 text-slate-600 hover:text-red-400 hover:bg-slate-700/50 rounded-lg transition-colors -mr-2 -mt-2 shrink-0"
+                    className="p-2 text-txt-muted hover:text-status-danger hover:bg-surface-bg rounded-lg transition-colors -mr-2 -mt-2 shrink-0"
                 >
                     <Trash2 size={16} />
                 </button>
@@ -68,14 +68,14 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ record, onDelete, onClick }) 
                         };
 
                     return (
-                        <div key={p.id} className={`flex items-center justify-between text-sm ${isWinner ? 'bg-amber-900/20 -mx-2 px-2 py-1 rounded-lg border border-amber-500/20' : ''}`}>
+                        <div key={p.id} className={`flex items-center justify-between text-sm ${isWinner ? 'bg-status-warning/10 -mx-2 px-2 py-1 rounded-lg border border-status-warning/20' : ''}`}>
                             <div className="flex items-center gap-2 overflow-hidden">
-                                {isWinner && <Crown size={14} className="text-yellow-400 shrink-0" fill="currentColor" />}
-                                <span className={`truncate font-medium ${isWinner ? 'text-amber-500' : 'text-slate-300'}`} style={isWinner ? {} : colorStyle}>
+                                {isWinner && <Crown size={14} className="text-status-warning shrink-0" fill="currentColor" />}
+                                <span className={`truncate font-medium ${isWinner ? 'text-status-warning' : 'text-txt-secondary'}`} style={isWinner ? {} : colorStyle}>
                                     {p.name}
                                 </span>
                             </div>
-                            <span className={`font-mono font-bold ${isWinner ? 'text-amber-500 text-base' : 'text-slate-400'}`}>
+                            <span className={`font-mono font-bold ${isWinner ? 'text-status-warning text-base' : 'text-txt-muted'}`}>
                                 {p.totalScore}
                             </span>
                         </div>

@@ -100,13 +100,13 @@
   --c-brand-secondary: 99 102 241; /* indigo-500 */
 
   /* Modal System */
-  --c-modal-bg: var(--c-surface-bg);
-  --c-modal-bg-alt: var(--c-app-bg);      /* slate-900: Inner cards */
-  --c-modal-bg-deep: var(--c-app-bg-deep); /* slate-950: Divided parts */
+  --c-modal-bg: var(--c-app-bg);              /* slate-900: 容器底色 */
+  --c-modal-bg-elevated: var(--c-surface-bg); /* slate-800: 浮起的互動表面 */
+  --c-modal-bg-recessed: var(--c-slate-850);  /* slate-850: 凹陷的容納區域 */
   --c-modal-border: var(--c-surface-border);
   --c-modal-divider: var(--c-slate-800);
-  --c-modal-input-bg: transparent;
-  --c-modal-backdrop: 2 6 23 / 0.6;
+  --c-modal-input-bg: var(--c-surface-bg);
+  --c-modal-backdrop: 2 6 23 / 0.65;
   --c-modal-text-title: 255 255 255;
   --c-modal-text-body: var(--c-txt-secondary);
   --c-modal-btn-sec-bg: 51 65 85; /* slate-700 */
@@ -144,8 +144,8 @@ html[data-theme='light'] {
 
   /* Modal System */
   --c-modal-bg: var(--c-surface-bg);
-  --c-modal-bg-alt: var(--c-slate-100);    /* slate-100: Inner cards */
-  --c-modal-bg-deep: var(--c-slate-200);   /* slate-200: Divided parts */
+  --c-modal-bg-elevated: var(--c-slate-100);  /* slate-100: 浮起的互動表面 */
+  --c-modal-bg-recessed: var(--c-slate-200);  /* slate-200: 凹陷的容納區域 */
   --c-modal-border: var(--c-surface-border);
   --c-modal-divider: 243 244 246; /* gray-100 */
   --c-modal-input-bg: 243 244 246;
@@ -299,13 +299,13 @@ html[data-theme='light'] {
     filter: brightness(0.95);
   }
 
-  .modal-section-bg {
-    background-color: rgb(var(--c-modal-bg-alt));
+  .modal-bg-elevated {
+    background-color: rgb(var(--c-modal-bg-elevated));
     @apply transition-colors;
   }
 
-  .modal-section-deep {
-    background-color: rgb(var(--c-modal-bg-deep));
+  .modal-bg-recessed {
+    background-color: rgb(var(--c-modal-bg-recessed));
     @apply transition-colors;
   }
 }

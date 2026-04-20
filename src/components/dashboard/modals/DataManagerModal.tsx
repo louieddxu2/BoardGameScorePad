@@ -202,20 +202,20 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
       }}
     >
       <div className="modal-container w-full max-w-md flex flex-col h-[600px] max-h-[85vh] animate-in zoom-in-95 duration-200">
-        <div className="flex-none bg-surface-bg-alt rounded-t-2xl">
+        <div className="flex-none modal-bg-elevated rounded-t-2xl">
           <div className="flex items-center justify-between p-4 border-b border-surface-border">
             <h3 className="text-lg font-bold text-txt-primary flex items-center gap-2">
-              <Library size={20} className="text-brand-primary" /> {t('data_mgr_title')}
+              <Library size={20} className="text-status-success" /> {t('data_mgr_title')}
             </h3>
             <button onClick={onClose} disabled={isProcessing} className="text-txt-muted hover:text-txt-primary disabled:opacity-50 transition-colors"><X size={24} /></button>
           </div>
           <div className="flex">
-            <button onClick={() => setActiveTab('import')} disabled={isProcessing} className={`flex-1 py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'import' ? 'border-brand-primary text-brand-primary bg-modal-bg-alt/50' : 'border-transparent text-txt-muted hover:bg-surface-bg-alt'}`}>{t('data_import_tab')}</button>
-            <button onClick={() => setActiveTab('export')} disabled={isProcessing} className={`flex-1 py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'export' ? 'border-brand-primary text-brand-primary bg-modal-bg-alt/50' : 'border-transparent text-txt-muted hover:bg-surface-bg-alt'}`}>{t('data_export_tab')}</button>
+            <button onClick={() => setActiveTab('import')} disabled={isProcessing} className={`flex-1 py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'import' ? 'border-status-success text-status-success bg-surface-border/50' : 'border-transparent text-txt-muted hover:bg-modal-bg-elevated'}`}>{t('data_import_tab')}</button>
+            <button onClick={() => setActiveTab('export')} disabled={isProcessing} className={`flex-1 py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'export' ? 'border-status-success text-status-success bg-surface-border/50' : 'border-transparent text-txt-muted hover:bg-modal-bg-elevated'}`}>{t('data_export_tab')}</button>
           </div>
         </div>
 
-        <div className="flex-1 p-4 overflow-hidden flex flex-col h-full min-h-0 bg-modal-bg">
+        <div className="modal-body flex-1 p-4 overflow-hidden flex flex-col h-full min-h-0">
           {activeTab === 'import' && (
             <div className="flex flex-col h-full gap-4">
               <p className="text-sm text-txt-muted flex-none">{t('data_import_ph')}</p>
@@ -224,7 +224,7 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
                 onChange={e => setImportJson(e.target.value)}
                 disabled={isProcessing}
                 placeholder='[{"name":"Catan", ...}]'
-                className="flex-1 w-full bg-surface-bg-alt border border-surface-border rounded-xl p-3 text-xs font-mono text-txt-secondary focus:border-brand-primary outline-none resize-none disabled:opacity-50 transition-colors"
+                className="flex-1 w-full modal-bg-elevated border border-surface-border rounded-xl p-3 text-xs font-mono text-txt-secondary focus:border-status-success outline-none resize-none disabled:opacity-50 transition-colors"
               />
 
               <div className="flex-none space-y-3">
@@ -269,12 +269,12 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
             <div className="flex flex-col h-full gap-2">
               <p className="text-sm text-txt-muted flex-none">{t('data_export_hint')}</p>
 
-              <div className="flex-1 bg-app-bg-deep/30 rounded-xl border border-surface-border overflow-y-auto no-scrollbar p-2 space-y-1 min-h-0">
+              <div className="flex-1 modal-bg-recessed rounded-xl border border-surface-border overflow-y-auto no-scrollbar p-2 space-y-1 min-h-0">
                 {allExportableTemplates.length === 0 && <p className="text-center text-xs text-txt-muted py-8">{t('data_export_empty')}</p>}
 
                 {allExportableTemplates.map((t: any) => {
                   return (
-                    <div key={t.id} onClick={() => toggleExportSelection(t.id)} className={`flex items-center justify-between p-2 rounded-lg cursor-pointer border transition-colors ${exportSelectedIds.includes(t.id) ? 'bg-brand-secondary/20 border-brand-secondary/50' : 'bg-surface-bg-alt border-surface-border hover:filter hover:brightness-110'}`}>
+                    <div key={t.id} onClick={() => toggleExportSelection(t.id)} className={`flex items-center justify-between p-2 rounded-lg cursor-pointer border transition-colors ${exportSelectedIds.includes(t.id) ? 'bg-brand-secondary/20 border-brand-secondary/50' : 'bg-modal-bg-elevated border-surface-border hover:filter hover:brightness-110'}`}>
                       <div className="flex items-center gap-2 overflow-hidden">
                         <span className={`text-sm truncate ${exportSelectedIds.includes(t.id) ? 'text-brand-secondary font-bold' : 'text-txt-secondary'}`}>{t.name}</span>
                       </div>

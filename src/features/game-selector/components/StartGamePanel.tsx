@@ -262,7 +262,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                     </>
                                 ) : (
                                     <>
-                                        {isRecommended && <ThumbsUp size={10} className="text-emerald-500 mb-0.5" strokeWidth={2.5} />}
+                                        {isRecommended && <ThumbsUp size={10} className="text-status-success mb-0.5" strokeWidth={2.5} />}
                                         <span className="truncate">{metaString || t('selector_meta_not_set')}</span>
                                     </>
                                 )}
@@ -278,7 +278,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                 className={`
                                     flex flex-col items-center justify-center gap-0.5 w-8 my-1 rounded-md border transition-all group/pin z-20 shrink-0
                                     ${option.isPinned
-                                        ? 'bg-yellow-900/20 border-yellow-500/50 text-yellow-500'
+                                        ? 'bg-status-warning/10 border-status-warning/30 text-status-warning'
                                         : 'bg-surface-bg border-surface-border text-txt-muted hover:border-txt-secondary hover:text-txt-primary hover:bg-surface-bg-alt'
                                     }
                                 `}

@@ -65,8 +65,10 @@ export default {
 
         // --- Semantic Tokens (The "Alias" Layer) ---
         app: {
-          bg: 'rgb(var(--c-app-bg) / <alpha-value>)',
-          deep: 'rgb(var(--c-app-bg-deep) / <alpha-value>)',
+          bg: {
+            DEFAULT: 'rgb(var(--c-app-bg) / <alpha-value>)',
+            deep: 'rgb(var(--c-app-bg-deep) / <alpha-value>)',
+          },
         },
         txt: {
           primary: 'rgb(var(--c-txt-primary) / <alpha-value>)',
@@ -78,15 +80,23 @@ export default {
           alt: 'rgb(var(--c-surface-bg-alt) / <alpha-value>)',
           border: 'rgb(var(--c-surface-border) / <alpha-value>)',
         },
+        modal: {
+          bg: {
+            DEFAULT: 'rgb(var(--c-modal-bg) / <alpha-value>)',
+            elevated: 'rgb(var(--c-modal-bg-elevated) / <alpha-value>)',
+            recessed: 'rgb(var(--c-modal-bg-recessed) / <alpha-value>)',
+          },
+          border: 'rgb(var(--c-modal-border) / <alpha-value>)',
+        },
         brand: {
           primary: 'rgb(var(--c-brand-primary) / <alpha-value>)',
           secondary: 'rgb(var(--c-brand-secondary) / <alpha-value>)',
         },
         status: {
-          success: 'rgb(var(--c-brand-primary) / <alpha-value>)',
-          info: 'rgb(var(--c-sky-500) / <alpha-value>)',
-          warning: 'rgb(var(--c-amber-500) / <alpha-value>)',
-          danger: 'rgb(var(--c-red-500) / <alpha-value>)',
+          success: 'rgb(var(--c-status-success) / <alpha-value>)',
+          info: 'rgb(var(--c-status-info) / <alpha-value>)',
+          warning: 'rgb(var(--c-status-warning) / <alpha-value>)',
+          danger: 'rgb(var(--c-status-danger) / <alpha-value>)',
         },
       },
       boxShadow: {

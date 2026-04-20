@@ -114,8 +114,8 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                             // Scenario A: Resume Available - Grid Layout (2x2 ish)
                             <div className="grid grid-cols-3 grid-rows-[auto_auto_1fr] h-auto max-h-[70vh]">
 
-                                {/* Top Left: Info (2/3) - Now uses modal-section-bg */}
-                                <div className="col-span-2 row-span-1 p-2 border-r border-b border-surface-border modal-section-bg rounded-none overflow-y-auto no-scrollbar h-32 sm:h-36">
+                                {/* Top Left: Info (2/3) - Now uses modal-bg-elevated */}
+                                <div className="col-span-2 row-span-1 p-2 border-r border-b border-surface-border modal-bg-elevated rounded-none overflow-y-auto no-scrollbar h-32 sm:h-36">
                                     <div className="flex items-center gap-2 mb-1 text-xs text-txt-muted">
                                         <History size={12} className="text-brand-primary" />
                                         <span>
@@ -134,7 +134,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                 </div>
 
                                 {/* Top Right: Resume Button (1/3) */}
-                                <div className="col-span-1 row-span-1 border-b border-surface-border modal-section-bg rounded-none p-0.5">
+                                <div className="col-span-1 row-span-1 border-b border-surface-border modal-bg-elevated rounded-none p-0.5">
                                     <button
                                         onClick={onResume}
                                         className="w-full h-full bg-brand-primary hover:filter hover:brightness-110 active:brightness-90 text-white rounded-lg flex flex-col items-center justify-center gap-1 shadow-inner active:scale-95 transition-all"
@@ -145,7 +145,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                 </div>
 
                                 {/* Divider Header */}
-                                <div className="col-span-3 row-span-1 modal-section-deep border-b border-surface-border py-0.5 px-3 flex items-center gap-2">
+                                <div className="col-span-3 row-span-1 modal-bg-recessed border-b border-surface-border py-0.5 px-3 flex items-center gap-2">
                                     <div className="h-px bg-surface-border/50 flex-1"></div>
                                     <span className="text-[10px] font-bold text-txt-muted uppercase tracking-wider">{t('setup_or_new')}</span>
                                     <div className="h-px bg-surface-border/50 flex-1"></div>
@@ -167,7 +167,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                         </div>
 
                                         {/* Custom Dropdown Trigger (Compact Mode) */}
-                                        <div className="flex-1 modal-section-bg p-0.5 flex items-center relative min-w-0" title={t('setup_rule')}>
+                                        <div className="flex-1 modal-bg-elevated p-0.5 flex items-center relative min-w-0" title={t('setup_rule')}>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); setShowRuleMenu(!showRuleMenu); }}
                                                 className="w-full flex items-center justify-between px-1 py-0.5 text-xs font-bold modal-title hover:bg-surface-bg transition-colors rounded"
@@ -224,7 +224,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                 </div>
 
                                 {/* Bottom Right: New Game Button (1/3) - Added rounded-br-2xl */}
-                                <div className="col-span-1 row-span-1 p-1.5 flex flex-col items-center justify-center modal-section-deep gap-1.5 rounded-br-2xl">
+                                <div className="col-span-1 row-span-1 p-1.5 flex flex-col items-center justify-center modal-bg-recessed gap-1.5 rounded-br-2xl">
                                     <span className="text-sm font-black text-status-danger leading-none tracking-tight">{t('setup_reset_record')}</span>
                                     <span className="text-[10px] text-txt-muted leading-none">{t('setup_and')}</span>
                                     <button
@@ -246,7 +246,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                         <div className="text-[10px] font-bold text-txt-muted uppercase flex items-center gap-1 pl-1">
                                             <Clock size={12} /> {t('setup_time')}
                                         </div>
-                                        <div className="modal-section-bg px-2 py-1 w-full border border-surface-border rounded-lg flex items-center justify-center hover:border-brand-primary cursor-pointer h-[38px] transition-colors">
+                                        <div className="modal-bg-elevated px-2 py-1 w-full border border-surface-border rounded-lg flex items-center justify-center hover:border-brand-primary cursor-pointer h-[38px] transition-colors">
                                             <input
                                                 type="time"
                                                 value={startTimeStr}
@@ -262,7 +262,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                         <div className="text-[10px] font-bold text-txt-muted uppercase flex items-center gap-1 pl-1">
                                             <Trophy size={12} /> {t('setup_rule')}
                                         </div>
-                                        <div className="modal-section-bg px-2 py-1 w-full border border-surface-border rounded-lg flex items-center relative hover:border-brand-primary h-[38px] transition-colors">
+                                        <div className="modal-bg-elevated px-2 py-1 w-full border border-surface-border rounded-lg flex items-center relative hover:border-brand-primary h-[38px] transition-colors">
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); setShowRuleMenu(!showRuleMenu); }}
                                                 className="w-full flex items-center justify-between text-left h-full"
@@ -297,7 +297,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                 {/* Player Count */}
                                 <div className="w-full max-w-[200px] flex flex-col items-center gap-1 z-10">
                                     <span className="text-xs text-txt-muted font-bold uppercase tracking-widest">{t('setup_players')}</span>
-                                    <div className="flex items-center justify-between w-full modal-section-bg p-1 shadow-inner border border-surface-border rounded-xl">
+                                    <div className="flex items-center justify-between w-full modal-bg-elevated p-1 shadow-inner border border-surface-border rounded-xl">
                                         <button
                                             disabled={playerCount <= 1}
                                             onClick={() => setPlayerCount(c => Math.max(1, c - 1))}
