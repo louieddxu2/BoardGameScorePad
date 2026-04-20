@@ -2,588 +2,226 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
+/* ============================================================
+   DESIGN SYSTEM: Primitive Tokens (RGB Channels)
+   ============================================================ */
 
-  /* 定義全域色彩變數 (使用 RGB 通道值以支援 Tailwind Opacity) */
-  :root {
-    /* =========================================
-       預設模式 (Dark Mode) - 原生配色
-       ========================================= */
+:root {
+  /* Slate Scale Mapping */
+  --c-slate-50: 248 250 252;
+  --c-slate-100: 241 245 249;
+  --c-slate-200: 226 232 240;
+  --c-slate-300: 203 213 225;
+  --c-slate-400: 148 163 184;
+  --c-slate-500: 100 116 139;
+  --c-slate-600: 71 85 105;
+  --c-slate-700: 51 65 85;
+  --c-slate-750: 38 48 64;
+  --c-slate-800: 30 41 59;
+  --c-slate-850: 23 31 45;
+  --c-slate-900: 15 23 42;
+  --c-slate-950: 2 6 23;
 
-    /* Slate Scale Mapping (RGB Channels) */
-    --c-slate-50: 248 250 252;
-    /* #f8fafc */
-    --c-slate-100: 241 245 249;
-    /* #f1f5f9 */
-    --c-slate-200: 226 232 240;
-    /* #e2e8f0 */
-    --c-slate-300: 203 213 225;
-    /* #cbd5e1 */
-    --c-slate-400: 148 163 184;
-    /* #94a3b8 */
-    --c-slate-500: 100 116 139;
-    /* #64748b */
-    --c-slate-600: 71 85 105;
-    /* #475569 */
-    --c-slate-700: 51 65 85;
-    --c-slate-750: 38 48 64;
-    /* Intermediate */
-    --c-slate-800: 30 41 59;
-    --c-slate-850: 23 31 45;
-    /* Darker Surface */
-    --c-slate-900: 15 23 42;
-    /* #0f172a */
-    --c-slate-950: 2 6 23;
-    /* #020617 */
+  /* Base Colors */
+  --c-white: 255 255 255;
+  --c-black: 0 0 0;
 
-    /* Base Colors (RGB Channels) */
-    --c-white: 255 255 255;
-    /* #ffffff */
-    --c-black: 0 0 0;
-    /* #000000 */
+  /* Semantic Palettes */
+  --c-emerald-400: 52 211 153;
+  --c-emerald-500: 16 185 129;
+  --c-emerald-600: 5 150 105;
+  --c-emerald-900: 6 78 59;
 
-    /* Semantic Colors (Default = Tailwind Standard) */
-    /* Emerald (Success/Main Action) */
-    --c-emerald-400: 52 211 153;
-    /* 亮綠 (文字用) */
-    --c-emerald-500: 16 185 129;
-    /* 標準綠 (按鈕背景) */
-    --c-emerald-600: 5 150 105;
-    /* 深綠 (按鈕Hover) */
-    --c-emerald-900: 49 46 129;
-    /* [FIX] Use original Deep Indigo/Emerald mapping for compatibility */
-    --c-emerald-900: 6 78 59;
+  --c-indigo-300: 165 180 252;
+  --c-indigo-400: 129 140 248;
+  --c-indigo-500: 99 102 241;
+  --c-indigo-600: 79 70 229;
+  --c-indigo-900: 49 46 129;
 
-    /* Indigo (Primary/Info) */
-    --c-indigo-300: 165 180 252;
-    --c-indigo-400: 129 140 248;
-    /* 亮靛 (文字用) */
-    --c-indigo-500: 99 102 241;
-    /* 標準靛 */
-    --c-indigo-600: 79 70 229;
-    --c-indigo-900: 49 46 129;
-    /* 深靛 (背景Tint) */
+  --c-sky-300: 125 211 252;
+  --c-sky-400: 56 189 248;
+  --c-sky-500: 14 165 233;
+  --c-sky-600: 2 132 199;
 
-    /* Sky (Info/Secondary) */
-    --c-sky-300: 125 211 252;
-    --c-sky-400: 56 189 248;
-    --c-sky-500: 14 165 233;
-    --c-sky-600: 2 132 199;
+  --c-yellow-400: 250 204 21;
+  --c-amber-400: 251 191 36;
+  --c-amber-500: 245 158 11;
 
-    /* Yellow/Amber (Warning/Highlight) */
-    --c-yellow-400: 250 204 21;
-    /* 亮黃 */
-    --c-amber-400: 251 191 36;
-    --c-amber-500: 245 158 11;
+  --c-red-400: 248 113 113;
+  --c-red-500: 239 68 68;
+  --c-red-600: 220 38 38;
+  --c-red-900: 127 29 29;
 
-    /* Red (Danger) */
-    --c-red-400: 248 113 113;
-    /* 亮紅 */
-    --c-red-500: 239 68 68;
-    --c-red-900: 127 29 29;
+  /* Accent & Shared UI Tokens */
+  --c-accent-emerald: 16 185 129;
+  --c-btn-primary-bg: var(--c-accent-emerald);
+  --c-btn-primary-text: 255 255 255;
+  --btn-shadow-active: 0 8px 25px -4px rgba(var(--c-accent-emerald), 0.3);
+  --btn-border-primary: var(--c-accent-emerald) / 0.3;
+  --c-icon-active: var(--c-accent-emerald);
+  --filter-icon-active: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
 
-    /* Helper for inline styles */
-    --border-slate-700: rgb(var(--c-slate-700));
-
-    /* --- Unified Accent Marking (The Core of Consistency) --- */
-    --c-accent-emerald: 16 185 129;
-    /* Emerald 500 (Standard UI Green for Dark) */
-    --c-accent-emerald-dark: 20 184 166;
-    /* Teal 500 */
-
-    /* --- Functional Tokens: Dashboard Buttons --- */
-    --c-btn-primary-bg: var(--c-accent-emerald);
-    --c-btn-primary-text: 255 255 255;
-    --btn-shadow-active: 0 8px 25px -4px rgba(var(--c-accent-emerald), 0.3);
-    --btn-border-primary: var(--c-accent-emerald) / 0.3;
-
-    --c-icon-active: var(--c-accent-emerald);
-    --filter-icon-active: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
-
-    --c-btn-cloud-bg: 23 31 45;
-    /* Slate 850 */
-    --c-btn-cloud-border: 14 165 233 / 0.5;
-    /* Sky 500 */
-    --c-btn-cloud-text: 56 189 248;
-    /* Sky 400 */
-    --shadow-cloud-connected: 0 0 15px rgba(14, 165, 233, 0.2);
-
-    --c-btn-ghost-hover: 51 65 85;
-    /* Slate 700 */
-
-    /* --- Player Palette (Source of Truth) --- */
-    /* Used by src/colors.ts via CSS Variables */
-    --c-p-emerald: 16 185 129;
-    /* #10b981 */
-    --c-p-blue: 59 130 246;
-    /* #3b82f6 */
-    --c-p-yellow: 250 204 21;
-    /* #facc15 */
-    --c-p-red: 239 68 68;
-    /* #ef4444 */
-    --c-p-orange: 249 115 22;
-    /* #f97316 */
-    --c-p-violet: 139 92 246;
-    /* #8b5cf6 */
-    --c-p-black: 31 41 55;
-    /* #1f2937 */
-    --c-p-white: 255 255 255;
-    /* #ffffff */
-    --c-p-pink: 236 72 153;
-    /* #ec4899 */
-    --c-p-cyan: 6 182 212;
-    /* #06b6d4 */
-    --c-p-lime: 132 204 22;
-    /* #84cc16 */
-    --c-p-amber: 245 158 11;
-    /* #f59e0b */
-    --c-p-indigo: 99 102 241;
-    /* #6366f1 */
-    --c-p-teal: 20 184 166;
-    /* #14b8a6 */
-    --c-p-brown: 161 98 7;
-    /* #a16207 */
-    --c-p-gray: 107 114 128;
-    /* #6b7280 */
-    --c-p-skin: 254 215 170;
-    /* #fed7aa */
-
-    /* --- Modal System (Dark Mode) --- */
-    --c-modal-divider: var(--c-slate-800);
-    --c-modal-input-bg: transparent;
-
-    /* --- Semantic Architecture Mappings (Dark Mode) --- */
-    --c-app-bg: 15 23 42;          /* slate-900 */
-    --c-app-bg-deep: 2 6 23;       /* slate-950 */
-    --c-txt-primary: 248 250 252;  /* slate-50 */
-    --c-txt-secondary: 148 163 184; /* slate-400 */
-    --c-txt-muted: 100 116 139;    /* slate-500 */
-    --c-surface-bg: 30 41 59;      /* slate-800 */
-    --c-surface-bg-alt: 23 31 45;  /* slate-850 */
-    --c-surface-border: 51 65 85;  /* slate-700 */
-    --c-brand-primary: 16 185 129; /* emerald-500 */
-    --c-brand-secondary: 99 102 241; /* indigo-500 */
-    --c-status-warning: 251 191 36; /* amber-400 */
-    --c-status-danger: 248 113 113; /* red-400 */
-    --c-status-success: 52 211 153; /* emerald-400 */
-    --c-status-info: 129 140 248;   /* indigo-400 */
-
-    /* --- Legacy Compatibility: Modal System (Mapped to Semantic) --- */
-    --c-modal-bg: var(--c-surface-bg);
-    --c-modal-border: var(--c-surface-border);
-    --c-modal-backdrop: var(--c-app-bg-deep) / 0.6;
-    --c-modal-text-title: var(--c-white);
-    --c-modal-text-body: var(--c-txt-secondary);
-    --c-modal-btn-sec-bg: var(--c-slate-700);
-    --c-modal-btn-sec-text: var(--c-white);
-  }
-
-  /* 
-     使用 html[data-theme='light'] 確保優先權高於 :root
-     同時兼容 [data-theme='light'] 
-  */
-  html[data-theme='light'] {
-    /* =========================================
-       [Light Mode] - Clean Studio Edition (V3 Refined)
-       Studio Clarity / Paper Texture / Pro Accents
-       ========================================= */
-
-    /* --- Grayscale Mapping (Studio Textures - Reverted) --- */
-
-    /* 900 (Canvas): Neutral Warm Studio Background */
-    --c-slate-900: 248 249 250;
-    /* #f8f9fa */
-
-    /* 950 (Backdrop): Pure White */
-    --c-slate-950: 255 255 255;
-    /* #ffffff */
-
-    /* 800 (Surfaces): Brilliant White */
-    --c-slate-800: 255 255 255;
-    /* #ffffff */
-
-    /* 750 (Surface Subtle): Ultra light neutral gray */
-    --c-slate-750: 248 248 248;
-
-    /* 850 (Sub-Backdrop): Muted focus background */
-    --c-slate-850: 236 236 236;
-
-    /* 700 (Dividers): Solid Light Gray (Gray 200 equivalent) */
-    --c-slate-700: 229 231 235;
-
-    /* 600 (Lines/Watermarks): Solid Medium-Light Gray (Gray 300 equivalent) */
-    --c-slate-600: 209 213 219;
-
-    /* --- Text colors (Deep, Readable Neutrals) --- */
-    --c-slate-50: 15 23 42;
-    /* #0f172a */
-    --c-slate-100: 17 24 39;
-    /* #111827 */
-    --c-slate-200: 75 85 99;
-    /* #4b5563 */
-    --c-slate-300: 107 114 128;
-    /* #6b7280 */
-
-    /* Elite Multi-Layered Shadows (The Core of "Studio" Quality) */
-    /* Soft: Ambient lift */
-    --shadow-soft:
-      0 2px 4px rgba(0, 0, 0, 0.02),
-      0 1px 2px rgba(0, 0, 0, 0.01),
-      0 0 1px rgba(0, 0, 0, 0.05);
-
-    /* Pro: Elevated element */
-    --shadow-pro:
-      0 10px 20px -5px rgba(0, 0, 0, 0.05),
-      0 6px 10px -5px rgba(0, 0, 0, 0.02),
-      0 0 1px rgba(0, 0, 0, 0.05);
-
-    /* Floating: Stronger hover/modal state */
-    --shadow-floating:
-      0 10px 15px -3px rgba(0, 0, 0, 0.08),
-      0 4px 6px -2px rgba(0, 0, 0, 0.04);
-
-    /* Base Colors Mapping */
-    --c-white: 255 255 255;
-    --c-black: 0 0 0;
-
-    /* --- Semantic Color Mapping (Sophisticated Studio Accents) --- */
-
-    /* Emerald (Clean Success) */
-    --c-emerald-400: 16 185 129;
-    --c-emerald-500: 5 150 105;
-    /* Emerald 600 */
-    --c-emerald-600: 4 120 87;
-    /* Emerald 700 */
-    --c-emerald-900: 236 253 245;
-    /* Emerald 50 (Tint) */
-
-    /* Indigo (Pro Primary Blue) */
-    --c-indigo-300: 79 70 229;
-    /* Indigo 600 */
-    --c-indigo-400: 67 56 202;
-    /* Indigo 700 */
-    --c-indigo-500: 55 48 163;
-    /* Indigo 800 */
-    --c-indigo-600: 49 46 129;
-    /* Indigo 900 */
-    --c-indigo-900: 238 242 255;
-    /* Indigo 50 (Tint) */
-
-    /* Sky */
-    --c-sky-300: 2 132 199;
-    --c-sky-400: 3 105 161;
-    --c-sky-500: 14 165 233;
-    --c-sky-600: 12 74 110;
-    --c-sky-900: 224 242 254;
-    /* Sky 100 (Tint) */
-
-    /* Yellow/Amber */
-    --c-yellow-400: 202 138 4;
-    /* Yellow 600 */
-    --c-amber-400: 217 119 6;
-    /* Amber 600 */
-    --c-amber-500: 245 158 11;
-    --c-amber-900: 254 243 199;
-    /* Amber 100 (Tint) */
-
-    /* Red (Error/Danger) */
-    --c-red-400: 220 38 38;
-    /* Red 600 */
-    --c-red-500: 239 68 68;
-    --c-red-900: 254 242 242;
-    /* Red 50 (Tint) */
-
-    /* Generic Utility */
-    --c-white: 255 255 255;
-    --c-black: 0 0 0;
-
-    /* --- Unified Accent Marking (The Core of Consistency) --- */
-    --c-accent-emerald: 5 150 105;
-    /* Emerald 600 (Solid UI Green for Light) */
-
-    /* --- Functional Tokens: Dashboard Buttons --- */
-    --c-btn-primary-bg: var(--c-accent-emerald);
-    --c-btn-primary-text: 255 255 255;
-    --btn-shadow-active: var(--shadow-pro);
-    --btn-border-primary: var(--c-accent-emerald) / 0.3;
-
-    --c-icon-active: var(--c-accent-emerald);
-    --filter-icon-active: none;
-
-    --c-btn-cloud-bg: 240 249 255;
-    /* Sky 50 */
-    --c-btn-cloud-border: 186 230 253;
-    /* Sky 200 */
-    --c-btn-cloud-text: 3 105 161;
-    /* Sky 700 */
-    --shadow-cloud-connected: none;
-
-    --c-btn-ghost-hover: 236 236 236;
-    /* Slate 850 */
-    --border-slate-700: rgb(var(--c-slate-700));
-    --c-vignette: 249 250 251;
-    /* Same as background */
-    --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
-    --shadow-pro: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
-
-    --c-modal-divider: 243 244 246;
-    /* Gray 100 */
-    --c-modal-input-bg: 243 244 246;
-    /* Gray 100 for better depth */
-
-    /* --- Semantic Architecture Mappings (Light Mode) --- */
-    --c-app-bg: 248 250 252;       /* slate-50 */
-    --c-app-bg-deep: 241 245 249;  /* slate-100 */
-    --c-txt-primary: 15 23 42;     /* slate-900 */
-    --c-txt-secondary: 71 85 105;  /* slate-600 */
-    --c-txt-muted: 148 163 184;    /* slate-400 */
-    --c-surface-bg: 255 255 255;   /* white */
-    --c-surface-bg-alt: 248 250 252; /* slate-50 */
-    --c-surface-border: 226 232 240; /* slate-200 */
-    --c-brand-primary: 16 185 129; /* emerald-500 */
-    --c-brand-secondary: 79 70 229; /* indigo-600 */
-    --c-status-warning: 245 158 11; /* amber-500 */
-    --c-status-danger: 239 68 68;   /* red-500 */
-    --c-status-success: 16 185 129; /* emerald-500 */
-    --c-status-info: 99 102 241;    /* indigo-500 */
-
-    /* --- Legacy Compatibility: Modal System (Mapped to Semantic) --- */
-    --c-modal-bg: var(--c-surface-bg);
-    --c-modal-border: var(--c-surface-border);
-    --c-modal-backdrop: 15 23 42 / 0.4;
-    --c-modal-text-title: var(--c-slate-100);
-    --c-modal-text-body: var(--c-txt-secondary);
-    --c-modal-btn-sec-bg: 243 244 246;
-    --c-modal-btn-sec-text: 55 65 81;
-
-    /* 確保深色文字在淺色背景上不帶陰影以提升清晰度 */
-    .player-count-val {
-      filter: none !important;
-    }
-  }
+  /* Player Palette (Source of Truth) */
+  --c-p-emerald: 16 185 129;
+  --c-p-blue: 59 130 246;
+  --c-p-yellow: 250 204 21;
+  --c-p-red: 239 68 68;
+  --c-p-orange: 249 115 22;
+  --c-p-violet: 139 92 246;
+  --c-p-black: 31 41 55;
+  --c-p-white: 255 255 255;
+  --c-p-pink: 236 72 153;
+  --c-p-cyan: 6 182 212;
+  --c-p-lime: 132 204 22;
+  --c-p-amber: 245 158 11;
+  --c-p-indigo: 99 102 241;
+  --c-p-teal: 20 184 166;
+  --c-p-brown: 161 98 7;
+  --c-p-gray: 107 114 128;
+  --c-p-skin: 254 215 170;
 }
 
-/* 關鍵修復：使用 dvh (Dynamic Viewport Height) 確保在網址列伸縮時高度正確 */
-html,
-body,
-#root {
-  height: 100%;
-  /* Fallback for older browsers */
-  height: 100dvh;
-  /* Modern mobile viewport fix */
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  /* 禁止 Body 層級的捲動，強制讓捲動發生在 App 內部的容器 */
-  overflow: hidden;
-  overscroll-behavior-y: contain;
+/* ============================================================
+   THEME MAPPING: Mirrored Semantic Tokens
+   ============================================================ */
+
+/* DEFAULT/DARK MODE */
+:root {
+  /* Common Surface Mappings */
+  --c-app-bg: 15 23 42;          /* slate-900 */
+  --c-app-bg-deep: 2 6 23;       /* slate-950 */
+  --c-txt-primary: 248 250 252;  /* slate-50 */
+  --c-txt-secondary: 148 163 184; /* slate-400 */
+  --c-txt-muted: 100 116 139;    /* slate-500 */
+  --c-surface-bg: 30 41 59;      /* slate-800 */
+  --c-surface-bg-alt: 23 31 45;  /* slate-850 */
+  --c-surface-border: 51 65 85;  /* slate-700 */
+  --c-brand-primary: 16 185 129; /* emerald-500 */
+  --c-brand-secondary: 99 102 241; /* indigo-500 */
+
+  /* Modal System */
+  --c-modal-bg: var(--c-surface-bg);
+  --c-modal-bg-alt: var(--c-app-bg);      /* slate-900: Inner cards */
+  --c-modal-bg-deep: var(--c-app-bg-deep); /* slate-950: Divided parts */
+  --c-modal-border: var(--c-surface-border);
+  --c-modal-divider: var(--c-slate-800);
+  --c-modal-input-bg: transparent;
+  --c-modal-backdrop: 2 6 23 / 0.6;
+  --c-modal-text-title: 255 255 255;
+  --c-modal-text-body: var(--c-txt-secondary);
+  --c-modal-btn-sec-bg: 51 65 85; /* slate-700 */
+  --c-modal-btn-sec-text: 255 255 255;
+
+  /* Status Tokens */
+  --c-status-danger: var(--c-red-500);
+  --c-status-warning: var(--c-amber-400);
+  --c-status-success: var(--c-brand-primary);
+  --c-status-info: var(--c-sky-400);
+
+  /* Button Overrides */
+  --c-btn-ghost-hover: 51 65 85; /* slate-700 */
+  --c-btn-cloud-bg: 23 31 45;    /* slate-850 */
+  --c-btn-cloud-border: 14 165 233 / 0.5;
+  --c-btn-cloud-text: 56 189 248;
+
+  /* Shadows */
+  --shadow-floating: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+  --shadow-cloud-connected: 0 0 15px rgba(14, 165, 233, 0.2);
 }
 
-body {
-  /* 使用變數，讓背景色自動切換 */
-  background-color: rgb(var(--c-slate-900));
-  color: rgb(var(--c-slate-50));
-  -webkit-tap-highlight-color: transparent;
+/* LIGHT MODE MAPPING (Mirrored) */
+html[data-theme='light'] {
+  --c-app-bg: 248 250 252;       /* slate-50 */
+  --c-app-bg-deep: 241 245 249;  /* slate-100 */
+  --c-txt-primary: 15 23 42;     /* slate-900 */
+  --c-txt-secondary: 71 85 105;  /* slate-600 */
+  --c-txt-muted: 148 163 184;    /* slate-400 */
+  --c-surface-bg: 255 255 255;   /* white */
+  --c-surface-bg-alt: 248 250 252; /* slate-50 */
+  --c-surface-border: 226 232 240; /* slate-200 */
+  --c-brand-primary: 16 185 129; /* emerald-500 */
+  --c-brand-secondary: 79 70 229; /* indigo-600 */
+
+  /* Modal System */
+  --c-modal-bg: var(--c-surface-bg);
+  --c-modal-bg-alt: var(--c-slate-100);    /* slate-100: Inner cards */
+  --c-modal-bg-deep: var(--c-slate-200);   /* slate-200: Divided parts */
+  --c-modal-border: var(--c-surface-border);
+  --c-modal-divider: 243 244 246; /* gray-100 */
+  --c-modal-input-bg: 243 244 246;
+  --c-modal-backdrop: 15 23 42 / 0.4;
+  --c-modal-text-title: 17 24 39;  /* gray-900 */
+  --c-modal-text-body: var(--c-txt-secondary);
+  --c-modal-btn-sec-bg: 243 244 246; /* gray-100 */
+  --c-modal-btn-sec-text: 55 65 81;  /* gray-700 */
+
+  /* Status Tokens (Higher Contrast for Light Mode) */
+  --c-status-danger: var(--c-red-600);
+  --c-status-warning: var(--c-amber-500);
+  --c-status-success: var(--c-brand-primary);
+  --c-status-info: var(--c-sky-600);
+
+  /* Button Overrides */
+  --c-btn-ghost-hover: 241 245 249; /* slate-100 */
+  --c-btn-cloud-bg: 240 249 255;    /* sky-50 */
+  --c-btn-cloud-border: 186 230 253; /* sky-200 */
+  --c-btn-cloud-text: 3 105 161;    /* sky-700 */
+
+  /* Shadows */
+  --shadow-floating: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  --shadow-cloud-connected: none;
 }
 
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* 隱藏搜尋框的原生清除按鈕與裝飾 (讓 type="search" 看起來像一般輸入框) */
-input[type="search"]::-webkit-search-decoration,
-input[type="search"]::-webkit-search-cancel-button,
-input[type="search"]::-webkit-search-results-button,
-input[type="search"]::-webkit-search-results-decoration {
-  -webkit-appearance: none;
-}
-
-/* Scoped Toast Animations */
-@keyframes toast-fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes toast-fadeOut {
-  from {
-    opacity: 1;
-  }
-
-  to {
-    opacity: 0;
-  }
-}
-
-@keyframes toast-slideInFromTop {
-  from {
-    transform: translateY(-1rem);
-  }
-
-  to {
-    transform: translateY(0);
-  }
-}
-
-@keyframes toast-slideOutToTop {
-  from {
-    transform: translateY(0);
-  }
-
-  to {
-    transform: translateY(-1rem);
-  }
-}
-
-.toast-enter-active {
-  animation: toast-fadeIn 0.3s ease-out, toast-slideInFromTop 0.3s ease-out;
-}
-
-.toast-exit-active {
-  animation: toast-fadeOut 0.3s ease-in forwards, toast-slideOutToTop 0.3s ease-in forwards;
-}
-
-@keyframes rotate-phone {
-
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-
-  50% {
-    transform: rotate(-90deg);
-  }
-}
-
-.animate-rotate-phone {
-  animation: rotate-phone 2s ease-in-out infinite;
-}
-
-/* Panel Header Slide Animation */
-@keyframes slide-in-right-shallow {
-  0% {
-    opacity: 0;
-    transform: translateX(10px);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.animate-slide-in-right-shallow {
-  animation: slide-in-right-shallow 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Swipe Hint Arrow Animations */
-@keyframes swipe-hint-left {
-
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-
-  50% {
-    transform: translateX(-6px);
-  }
-}
-
-@keyframes swipe-hint-right {
-
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-
-  50% {
-    transform: translateX(6px);
-  }
-}
-
-@keyframes swipe-hint-fade-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes swipe-hint-fade-out {
-  from {
-    opacity: 1;
-  }
-
-  to {
-    opacity: 0;
-  }
-}
-
-.animate-swipe-hint-left {
-  animation: swipe-hint-left 1.2s ease-in-out infinite;
-}
-
-.animate-swipe-hint-right {
-  animation: swipe-hint-right 1.2s ease-in-out infinite;
-}
-
-.animate-swipe-hint-enter {
-  animation: swipe-hint-fade-in 0.3s ease-out forwards;
-}
-
-.animate-swipe-hint-exit {
-  animation: swipe-hint-fade-out 0.5s ease-in forwards;
-}
+/* ============================================================
+   LAYER: BASE (HTML Resets & Mobile Adjustments)
+   ============================================================ */
 
 @layer base {
-
-  html,
-  body,
-  #root {
+  html, body, #root {
     @apply h-full w-full overflow-hidden select-none touch-none;
-    background-color: rgb(var(--c-slate-900));
-    /* Solid background, no halos */
+    /* Use fixed height modern viewport fix */
+    height: 100dvh; 
+    margin: 0;
+    padding: 0;
+    overscroll-behavior-y: contain;
+    background-color: rgb(var(--c-app-bg));
+    color: rgb(var(--c-txt-primary));
+    -webkit-tap-highlight-color: transparent;
   }
 
-  /* Force solid background for the main utility class to avoid unexpected gradients */
+  /* Typography reset */
+  input, button, textarea, select {
+    font-family: inherit;
+  }
+
+  /* Force solid background for standard slate utilities to prevent legacy conflicts */
   .bg-slate-900 {
     background-color: rgb(var(--c-slate-900)) !important;
   }
 }
 
-@layer components {
+/* ============================================================
+   LAYER: COMPONENTS (UI Abstractions & @apply)
+   ============================================================ */
 
-  /* Primary Action Button (e.g., + Add New) */
+@layer components {
+  /* Action Buttons */
   .btn-action-primary {
     @apply flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg transition-all duration-200 active:scale-95 focus:outline-none border;
     background-color: rgb(var(--c-btn-primary-bg));
     color: rgb(var(--c-btn-primary-text));
-    box-shadow: var(--btn-shadow-active);
     border-color: rgba(var(--btn-border-primary));
+    box-shadow: var(--btn-shadow-active);
   }
 
   .btn-action-primary:hover {
     filter: brightness(1.15);
-    /* Get naturally lighter in dark mode */
   }
 
   html[data-theme='light'] .btn-action-primary:hover {
-    filter: brightness(0.9);
-    /* Get naturally darker in light mode */
+    filter: brightness(0.95);
   }
 
-  /* Shared Logic for Floating Action Button */
   .btn-fab-primary {
     background-color: rgb(var(--c-btn-primary-bg));
     box-shadow: var(--btn-shadow-active);
@@ -593,29 +231,23 @@ input[type="search"]::-webkit-search-results-decoration {
     filter: brightness(1.15);
   }
 
-  html[data-theme='light'] .btn-fab-primary:hover {
-    filter: brightness(0.9);
-  }
-
-  /* Ghost/Secondary Action Button (e.g., Import/Export) */
   .btn-ghost-action {
     @apply p-1.5 rounded-lg transition-colors focus:outline-none;
     color: rgb(var(--c-accent-emerald));
-    /* Unified Accent icon */
   }
 
   .btn-ghost-action:hover {
     background-color: rgb(var(--c-btn-ghost-hover));
   }
 
-  /* Active State for Toggle Icons (Calculator/History) */
+  /* Interaction Feedbacks */
   .icon-toggle-active {
     @apply z-20 transition-all duration-200;
     color: rgb(var(--c-icon-active));
     filter: var(--filter-icon-active);
   }
 
-  /* Cloud Status Button */
+  /* Cloud & Connectivity */
   .btn-cloud-status {
     @apply h-9 w-9 flex items-center justify-center rounded-xl border transition-all shrink-0 active:scale-95;
   }
@@ -628,10 +260,15 @@ input[type="search"]::-webkit-search-results-decoration {
   }
 
   .btn-cloud-status.disconnected {
-    @apply bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300;
+    @apply border-surface-border text-txt-muted;
+    background-color: rgb(var(--c-surface-bg-alt));
   }
 
-  /* --- Modal Semantic Components --- */
+  .btn-cloud-status.disconnected:hover {
+    @apply text-txt-primary;
+  }
+
+  /* --- Unified Modal System --- */
   .modal-container {
     @apply w-full max-w-sm rounded-2xl flex flex-col overflow-hidden transition-all duration-300;
     background-color: rgb(var(--c-modal-bg));
@@ -640,53 +277,52 @@ input[type="search"]::-webkit-search-results-decoration {
   }
 
   .modal-header {
-    @apply flex-none px-4 py-3 border-b flex justify-between items-center transition-colors;
+    @apply flex-none px-4 py-3 border-b border-surface-border flex justify-between items-center transition-colors;
     background-color: rgba(var(--c-modal-divider) / 0.1);
-    border-color: rgb(var(--c-modal-divider));
   }
 
   .modal-title {
-    @apply text-base font-bold truncate transition-colors;
-    color: rgb(var(--c-modal-text-title));
+    @apply text-base font-bold truncate transition-colors text-txt-primary;
   }
 
   .modal-body {
-    @apply flex-1 p-4 overflow-y-auto no-scrollbar transition-colors;
+    @apply flex-1 p-4 overflow-y-auto no-scrollbar transition-colors text-txt-secondary;
     background-color: rgb(var(--c-modal-bg));
-    color: rgb(var(--c-modal-text-body));
-  }
-
-  .modal-section-bg {
-    @apply rounded-xl border transition-all;
-    background-color: rgb(var(--c-modal-input-bg));
-    border-color: rgb(var(--c-modal-divider));
-  }
-
-  .modal-text-secondary {
-    @apply text-sm transition-colors;
-    color: rgb(var(--c-modal-text-body));
   }
 
   .btn-modal-secondary {
-    @apply flex-1 py-3 rounded-xl font-medium transition-all active:scale-95;
+    @apply flex-1 py-3 rounded-xl font-medium transition-all active:scale-95 text-txt-primary;
     background-color: rgb(var(--c-modal-btn-sec-bg));
-    color: rgb(var(--c-modal-btn-sec-text));
   }
 
   .btn-modal-secondary:hover {
     filter: brightness(0.95);
   }
+
+  .modal-section-bg {
+    background-color: rgb(var(--c-modal-bg-alt));
+    @apply transition-colors;
+  }
+
+  .modal-section-deep {
+    background-color: rgb(var(--c-modal-bg-deep));
+    @apply transition-colors;
+  }
 }
 
+/* ============================================================
+   LAYER: UTILITIES (Custom Utilities & Animations)
+   ============================================================ */
+
 @layer utilities {
+  /* Specialized UI Utilities */
   .modal-backdrop {
     @apply fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300;
     background-color: rgba(var(--c-modal-backdrop));
   }
 
-  .modal-container {
-    @apply bg-slate-900 w-[95vw] max-w-sm rounded-2xl shadow-2xl border border-slate-800 flex flex-col overflow-hidden;
-  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
   .hyphenate {
     overflow-wrap: break-word;
@@ -696,4 +332,41 @@ input[type="search"]::-webkit-search-results-decoration {
     -ms-hyphens: auto;
     hyphens: auto;
   }
+
+  /* Search Input Resets */
+  input[type="search"]::-webkit-search-decoration,
+  input[type="search"]::-webkit-search-cancel-button,
+  input[type="search"]::-webkit-search-results-button,
+  input[type="search"]::-webkit-search-results-decoration {
+    -webkit-appearance: none;
+  }
+
+  /* Toast & Global Animations */
+  @keyframes toast-fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes toast-fadeOut { from { opacity: 1; } to { opacity: 0; } }
+  @keyframes toast-slideInFromTop { from { transform: translateY(-1rem); } to { transform: translateY(0); } }
+  @keyframes toast-slideOutToTop { from { transform: translateY(0); } to { transform: translateY(-1rem); } }
+
+  .toast-enter-active { animation: toast-fadeIn 0.3s ease-out, toast-slideInFromTop 0.3s ease-out; }
+  .toast-exit-active { animation: toast-fadeOut 0.3s ease-in forwards, toast-slideOutToTop 0.3s ease-in forwards; }
+
+  @keyframes rotate-phone { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-90deg); } }
+  .animate-rotate-phone { animation: rotate-phone 2s ease-in-out infinite; }
+
+  @keyframes slide-in-right-shallow {
+    0% { opacity: 0; transform: translateX(10px); }
+    100% { opacity: 1; transform: translateX(0); }
+  }
+  .animate-slide-in-right-shallow { animation: slide-in-right-shallow 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+  /* Swipe Hints */
+  @keyframes swipe-hint-left { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-6px); } }
+  @keyframes swipe-hint-right { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(6px); } }
+  @keyframes swipe-hint-fade-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes swipe-hint-fade-out { from { opacity: 1; } to { opacity: 0; } }
+
+  .animate-swipe-hint-left { animation: swipe-hint-left 1.2s ease-in-out infinite; }
+  .animate-swipe-hint-right { animation: swipe-hint-right 1.2s ease-in-out infinite; }
+  .animate-swipe-hint-enter { animation: swipe-hint-fade-in 0.3s ease-out forwards; }
+  .animate-swipe-hint-exit { animation: swipe-hint-fade-out 0.5s ease-in forwards; }
 }

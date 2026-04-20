@@ -246,11 +246,11 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                             handleOptionClick(option);
                         }
                     }}
-                    className={`absolute inset-0 w-full px-4 text-left cursor-pointer transition-all ${isSelected ? 'bg-slate-800 z-10' : 'bg-transparent text-slate-400 hover:bg-slate-800/50'}`}
+                    className={`absolute inset-0 w-full px-4 text-left cursor-pointer transition-all ${isSelected ? 'bg-surface-bg z-10' : 'bg-transparent text-txt-secondary hover:bg-surface-bg/50'}`}
                 >
                     <div className="flex items-stretch w-full h-full gap-3">
                         <div className="min-w-0 flex-1 flex flex-col justify-center gap-0.5 py-1">
-                            <div className={`text-sm font-bold truncate ${isSelected ? 'text-slate-50' : ''} ${isVirtual ? 'text-emerald-400' : ''}`}>
+                            <div className={`text-sm font-bold truncate ${isSelected ? 'text-txt-primary' : ''} ${isVirtual ? 'text-brand-primary' : ''}`}>
                                 {isVirtual ? t('selector_create_and_score', { name: option.displayName }) : option.displayName}
                             </div>
 
@@ -279,7 +279,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                     flex flex-col items-center justify-center gap-0.5 w-8 my-1 rounded-md border transition-all group/pin z-20 shrink-0
                                     ${option.isPinned
                                         ? 'bg-yellow-900/20 border-yellow-500/50 text-yellow-500'
-                                        : 'bg-slate-800 border-slate-700 text-slate-500 hover:border-slate-500 hover:text-slate-200 hover:bg-slate-700'
+                                        : 'bg-surface-bg border-surface-border text-txt-muted hover:border-txt-secondary hover:text-txt-primary hover:bg-surface-bg-alt'
                                     }
                                 `}
                                 title={option.isPinned ? t('selector_unpin_hint') : t('selector_pin_hint')}
@@ -290,7 +290,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                         )}
                     </div>
                 </div>
-                {!isDocked && <div className="absolute bottom-0 left-4 right-4 h-px bg-slate-800 pointer-events-none"></div>}
+                {!isDocked && <div className="absolute bottom-0 left-4 right-4 h-px bg-surface-border/50 pointer-events-none"></div>}
             </div>
         );
     };
@@ -299,13 +299,13 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
         <div ref={ref} className="fixed bottom-0 left-0 right-0 z-40 flex flex-row items-end pointer-events-none animate-in slide-in-from-bottom-full duration-300">
 
             {/* --- LEFT: Game List (Fixed Height Base) --- */}
-            <div className="flex-1 flex flex-col bg-slate-900 h-[220px] min-h-0 border-t border-slate-700 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] pointer-events-auto relative">
+            <div className="flex-1 flex flex-col bg-app-bg h-[220px] min-h-0 border-t border-surface-border shadow-ui-floating pointer-events-auto relative">
                 <div className="absolute top-0 left-0 right-0 p-1 text-center pointer-events-none z-10 opacity-30">
-                    <ChevronUp size={12} className="text-slate-500 mx-auto" />
+                    <ChevronUp size={12} className="text-txt-muted mx-auto" />
                 </div>
 
                 {processedOptions.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-600 opacity-50 pb-10">
+                    <div className="h-full flex flex-col items-center justify-center text-txt-muted opacity-50 pb-10">
                         <Search size={32} />
                         <span className="text-xs mt-2">{t('selector_no_results')}</span>
                     </div>
@@ -316,11 +316,11 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                             <div className="h-2 shrink-0"></div>
                         </div>
 
-                        <div className={`flex-none ${BOTTOM_ROW_HEIGHT_CLASS} relative z-30 border-t border-slate-800 bg-slate-900 shadow-[0_-4px_15px_rgba(0,0,0,0.3)]`}>
+                        <div className={`flex-none ${BOTTOM_ROW_HEIGHT_CLASS} relative z-30 border-t border-surface-border bg-app-bg shadow-sm`}>
                             {dockedItem ? (
                                 renderItem(dockedItem, true)
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs italic opacity-70">
+                                <div className="w-full h-full flex items-center justify-center text-txt-muted text-xs italic opacity-70">
                                     {t('selector_placeholder_choice')}
                                 </div>
                             )}
@@ -330,19 +330,19 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
             </div>
 
             {/* --- RIGHT: Controls (Chimney - Grows Upwards) --- */}
-            <div className={`${RIGHT_PANEL_WIDTH} flex flex-col bg-slate-950 shrink-0 relative z-50 pointer-events-auto rounded-t-2xl shadow-2xl border-t border-l border-slate-700 ml-[-1px]`}>
+            <div className={`${RIGHT_PANEL_WIDTH} flex flex-col bg-app-bg-deep shrink-0 relative z-50 pointer-events-auto rounded-t-2xl shadow-ui-floating border-t border-l border-surface-border ml-[-1px]`}>
 
                 <div className="flex flex-col justify-end p-2 gap-2 pb-2 min-h-[160px]">
 
                     {/* 1. Time */}
                     <div className="shrink-0">
-                        <div className="relative w-full bg-slate-900 border border-slate-700 rounded-lg p-2 flex items-center justify-center">
+                        <div className="relative w-full bg-app-bg border border-surface-border rounded-lg p-2 flex items-center justify-center">
                             <input
                                 type="time"
                                 value={startTimeStr}
                                 onClick={handleTimeClick}
                                 onChange={(e) => setStartTimeStr(e.target.value)}
-                                className="bg-transparent text-slate-50 font-mono font-bold text-sm outline-none w-full text-center p-0 border-none appearance-none"
+                                className="bg-transparent text-txt-primary font-mono font-bold text-sm outline-none w-full text-center p-0 border-none appearance-none"
                             />
                         </div>
                     </div>
@@ -351,14 +351,14 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                     <div className="shrink-0 relative">
                         <button
                             onClick={(e) => openMenu('mode', e)}
-                            className={`w-full bg-slate-900 border border-slate-700 rounded-lg p-2 flex items-center justify-between text-slate-50 hover:border-slate-600 transition-colors
-                          ${activeMenu?.type === 'mode' ? 'border-emerald-500 text-emerald-400 bg-emerald-900/40' : ''}
+                            className={`w-full bg-app-bg border border-surface-border rounded-lg p-2 flex items-center justify-between text-txt-primary hover:border-txt-secondary transition-colors
+                          ${activeMenu?.type === 'mode' ? 'border-brand-primary text-brand-primary bg-brand-primary/10' : ''}
                       `}
                         >
                             <div className="flex-1 flex items-center overflow-hidden">
                                 <span className="text-sm font-bold truncate">{currentModeLabel}</span>
                             </div>
-                            <ChevronUp size={14} className={`text-slate-500 shrink-0 transition-transform ${activeMenu?.type === 'mode' ? 'rotate-180 text-emerald-500' : ''}`} />
+                            <ChevronUp size={14} className={`text-txt-muted shrink-0 transition-transform ${activeMenu?.type === 'mode' ? 'rotate-180 text-brand-primary' : ''}`} />
                         </button>
                     </div>
 
@@ -377,14 +377,14 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                     value={location}
                                     onChange={(e) => handleLocationChange(e.target.value)}
                                     placeholder={t('selector_placeholder_location')}
-                                    className={`w-full bg-slate-900 border rounded-lg p-2 pr-7 text-sm text-slate-50 focus:border-emerald-500 outline-none placeholder-slate-400 transition-colors
-                                  ${isLocationManual ? 'border-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.15)]' : 'border-slate-700'}
+                                    className={`w-full bg-app-bg border rounded-lg p-2 pr-7 text-sm text-txt-primary focus:border-brand-primary outline-none placeholder-txt-muted transition-colors
+                                  ${isLocationManual ? 'border-brand-primary shadow-[0_0_8px_rgba(var(--c-brand-primary),0.15)]' : 'border-surface-border'}
                               `}
                                 />
                                 {hasLocationHistory && (
                                     <button
                                         onClick={switchToList}
-                                        className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-emerald-400 transition-colors"
+                                        className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-txt-muted hover:text-brand-primary transition-colors"
                                         title={t('selector_history_location_hint')}
                                     >
                                         <List size={14} />
@@ -402,10 +402,10 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                             openMenu('location', e);
                                         }
                                     }}
-                                    className={`w-full flex items-center justify-between bg-slate-900 border rounded-lg p-2 text-sm outline-none transition-colors text-left
+                                    className={`w-full flex items-center justify-between bg-app-bg border rounded-lg p-2 text-sm outline-none transition-colors text-left
                                   ${activeMenu?.type === 'location'
-                                            ? 'border-emerald-500 text-emerald-400 bg-emerald-900/40 relative z-20'
-                                            : (isLocationManual ? 'border-emerald-500 text-slate-50 shadow-[0_0_8px_rgba(16,185,129,0.15)]' : 'border-slate-700 hover:border-slate-600 text-slate-50')
+                                            ? 'border-brand-primary text-brand-primary bg-brand-primary/10 relative z-20'
+                                            : (isLocationManual ? 'border-brand-primary text-txt-primary shadow-[0_0_8px_rgba(var(--c-brand-primary),0.15)]' : 'border-surface-border hover:border-txt-secondary text-txt-primary')
                                         }
                               `}
                                 >
@@ -415,14 +415,14 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                             {t('selector_new_location')}
                                         </span>
                                     ) : (
-                                        <span className={`truncate ${!location ? 'text-slate-400' : ''}`}>
+                                        <span className={`truncate ${!location ? 'text-txt-muted' : ''}`}>
                                             {location || t('selector_placeholder_location_select')}
                                         </span>
                                     )}
 
                                     <ChevronUp
                                         size={14}
-                                        className={`shrink-0 ml-1 transition-transform duration-200 ${activeMenu?.type === 'location' ? 'rotate-180 text-emerald-500' : (isLocationManual ? 'text-emerald-500/80' : 'text-slate-500')}`}
+                                        className={`shrink-0 ml-1 transition-transform duration-200 ${activeMenu?.type === 'location' ? 'rotate-180 text-brand-primary' : (isLocationManual ? 'text-brand-primary/80' : 'text-txt-muted')}`}
                                     />
                                 </button>
                             </div>
@@ -432,27 +432,27 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                     {/* 4. Player Count */}
                     <div className="shrink-0 flex flex-col justify-center items-center py-1">
                         <div
-                            className={`flex items-center justify-between w-full bg-slate-900 rounded-xl p-1.5 border relative overflow-hidden transition-all duration-300 ${isPlayerCountManual ? 'border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'border-slate-700'}`}
+                            className={`flex items-center justify-between w-full bg-app-bg rounded-xl p-1.5 border relative overflow-hidden transition-all duration-300 ${isPlayerCountManual ? 'border-brand-primary shadow-[0_0_10px_rgba(var(--c-brand-primary),0.2)]' : 'border-surface-border'}`}
                         >
                             <button
                                 onClick={() => setPlayerCount(Math.max(1, playerCount - 1))}
-                                className={`w-9 h-9 flex items-center justify-center bg-slate-800 text-slate-400 rounded-lg active:scale-90 transition-transform hover:bg-slate-700 relative z-10 shrink-0 ${isPlayerCountManual ? 'opacity-80' : ''}`}
+                                className={`w-9 h-9 flex items-center justify-center bg-surface-bg text-txt-muted rounded-lg active:scale-95 transition-transform hover:bg-surface-bg-alt relative z-10 shrink-0 ${isPlayerCountManual ? 'opacity-80' : ''}`}
                             >
                                 <Minus size={16} />
                             </button>
 
                             <div className="flex-1 relative h-9 flex items-center justify-center">
                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-                                    <Users size={24} className="transition-colors text-slate-600" />
+                                    <Users size={24} className="transition-colors text-txt-muted opacity-40" />
                                 </div>
-                                <span className={`text-xl font-black font-mono relative z-10 drop-shadow-md transition-colors ${isPlayerCountManual ? 'text-emerald-400' : 'text-slate-50'}`}>
+                                <span className={`text-xl font-black font-mono relative z-10 drop-shadow-md transition-colors ${isPlayerCountManual ? 'text-brand-primary' : 'text-txt-primary'}`}>
                                     {playerCount}
                                 </span>
                             </div>
 
                             <button
                                 onClick={() => setPlayerCount(Math.min(20, playerCount + 1))}
-                                className={`w-9 h-9 flex items-center justify-center bg-emerald-900/30 text-emerald-400 rounded-lg active:scale-90 transition-transform border border-emerald-500/30 hover:bg-emerald-900/50 relative z-10 shrink-0 ${isPlayerCountManual ? 'opacity-80' : ''}`}
+                                className={`w-9 h-9 flex items-center justify-center bg-brand-primary/10 text-brand-primary rounded-lg active:scale-95 transition-transform border border-brand-primary/20 hover:bg-brand-primary/20 relative z-10 shrink-0 ${isPlayerCountManual ? 'opacity-80' : ''}`}
                             >
                                 <Plus size={16} />
                             </button>
@@ -462,10 +462,10 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                 </div>
 
                 {/* 5. Bottom Actions */}
-                <div className={`flex-none ${BOTTOM_ROW_HEIGHT_CLASS} flex border-t border-slate-800 z-10 bg-slate-950`}>
+                <div className={`flex-none ${BOTTOM_ROW_HEIGHT_CLASS} flex border-t border-surface-border z-10 bg-app-bg-deep`}>
                     <button
                         onClick={onSearchClick}
-                        className="w-[50px] h-full flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-emerald-500 transition-colors active:brightness-90 border-r border-slate-800"
+                        className="w-[50px] h-full flex items-center justify-center bg-app-bg hover:bg-surface-bg text-brand-primary transition-colors active:brightness-90 border-r border-surface-border"
                         title={t('selector_search_more')}
                     >
                         <Search size={22} strokeWidth={2.5} />
@@ -477,8 +477,8 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                         className={`
                       w-[90px] h-full flex flex-col items-center justify-center transition-all active:brightness-90
                       ${dockedItem
-                                ? (dockedItem.uid === '__CREATE_NEW__' ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-emerald-600 hover:bg-emerald-500 text-white')
-                                : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                                ? 'bg-brand-primary hover:filter hover:brightness-110 text-white'
+                                : 'bg-surface-bg text-txt-muted cursor-not-allowed'
                             }
                   `}
                     >
@@ -500,7 +500,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                     />
                     <div
                         ref={listRef}
-                        className="fixed bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-[70] overflow-hidden max-h-[50vh] overflow-y-auto no-scrollbar flex flex-col animate-in zoom-in-95 slide-in-from-bottom-2 duration-200 pointer-events-auto"
+                        className="fixed bg-surface-bg border border-surface-border rounded-xl shadow-ui-floating z-[70] overflow-hidden max-h-[50vh] overflow-y-auto no-scrollbar flex flex-col animate-in zoom-in-95 slide-in-from-bottom-2 duration-200 pointer-events-auto"
                         style={{
                             bottom: `${activeMenu.bottom + 8}px`,
                             left: `${activeMenu.left}px`,
@@ -512,7 +512,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                             <button
                                 key={opt.value}
                                 onClick={() => { setScoringRule(opt.value); setActiveMenu(null); }}
-                                className={`w-full text-left px-3 py-2.5 text-xs font-bold border-b border-slate-700/50 last:border-0 hover:bg-slate-700 flex items-center justify-between ${scoringRule === opt.value ? 'text-emerald-400 bg-emerald-900/10' : 'text-slate-200'}`}
+                                className={`w-full text-left px-3 py-2.5 text-xs font-bold border-b border-surface-border/50 last:border-0 hover:bg-surface-bg-alt flex items-center justify-between ${scoringRule === opt.value ? 'text-brand-primary bg-brand-primary/10' : 'text-txt-primary'}`}
                             >
                                 {opt.label}
                                 {scoringRule === opt.value && <Check size={12} />}
@@ -525,7 +525,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                     <button
                                         key={loc.id}
                                         onClick={() => handleLocationSelect(loc)}
-                                        className="w-full text-left px-3 py-3 text-xs text-slate-300 hover:bg-slate-700 hover:text-slate-50 border-b border-slate-700/50 last:border-0 truncate font-medium shrink-0 leading-normal block"
+                                        className="w-full text-left px-3 py-3 text-xs text-txt-secondary hover:bg-surface-bg-alt hover:text-txt-primary border-b border-surface-border/50 last:border-0 truncate font-medium shrink-0 leading-normal block"
                                     >
                                         {loc.name}
                                     </button>

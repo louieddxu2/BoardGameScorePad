@@ -7,9 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run --exclude src/components/session/SessionUI.test.tsx",
-    "test:core": "vitest run --exclude src/components/session/SessionUI.test.tsx",
-    "test:release": "vitest run"
+    "test": "vitest run --exclude src/components/session/SessionUI.test.tsx --exclude src/utils/ui-consistency.test.ts",
+    "test:core": "vitest run --exclude src/components/session/SessionUI.test.tsx --exclude src/utils/ui-consistency.test.ts",
+    "test:release": "vitest run",
+    "test:ui": "vitest run src/utils/ui-consistency.test.ts"
   },
   "dependencies": {
     "dexie": "^3.2.4",

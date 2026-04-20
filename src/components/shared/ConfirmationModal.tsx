@@ -45,32 +45,32 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       }}
     >
       <div
-        className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6 w-full max-w-sm"
+        className="modal-container p-6 relative"
         onClick={(e) => e.stopPropagation()} // Prevent click propagation from content
       >
         <div className="flex flex-col items-center text-center gap-3 mb-6">
           {isDangerous && (
-            <div className="bg-red-900/20 p-3 rounded-full text-red-500">
+            <div className="bg-status-danger/20 p-3 rounded-full text-status-danger">
               <AlertTriangle size={32} />
             </div>
           )}
-          <h3 className="text-xl font-bold text-white">{title}</h3>
-          <p className="text-slate-400 text-sm whitespace-pre-wrap">{message}</p>
+          <h3 className="text-xl font-bold text-txt-primary">{title}</h3>
+          <p className="text-txt-secondary text-sm whitespace-pre-wrap">{message}</p>
         </div>
         <div className="flex gap-3">
           {!hideCancel && (
             <button
               onClick={onCancel}
-              className="flex-1 py-3 rounded-xl bg-slate-700 text-white font-medium hover:bg-slate-600 transition-colors"
+              className="btn-modal-secondary"
             >
               {effectiveCancelText}
             </button>
           )}
           <button
             onClick={onConfirm}
-            className={`flex-1 py-3 rounded-xl text-white font-bold shadow-lg transition-colors ${isDangerous
-              ? 'bg-red-600 hover:bg-red-500 shadow-red-900/50'
-              : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/50'
+            className={`flex-1 py-3 rounded-xl text-white font-bold shadow-lg transition-all active:scale-95 ${isDangerous
+                ? 'bg-status-danger hover:brightness-110'
+                : 'bg-brand-primary hover:brightness-110'
               }`}
           >
             {effectiveConfirmText}

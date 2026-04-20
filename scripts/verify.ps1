@@ -53,7 +53,7 @@ else {
 # Step 4: Unit tests
 Write-Host ""
 Write-Host "[4/4] Running unit tests (vitest)..." -ForegroundColor White
-$testOutput = cmd /c "npx vitest run --no-color 2>&1" | Out-String
+$testOutput = cmd /c "npx vitest run --no-color --exclude src/utils/ui-consistency.test.ts 2>&1" | Out-String
 $testExitCode = $LASTEXITCODE
 
 if ($testExitCode -ne 0) {

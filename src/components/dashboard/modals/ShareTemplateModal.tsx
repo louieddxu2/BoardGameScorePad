@@ -183,38 +183,38 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
             }}
         >
             <div
-                className="bg-slate-900 w-full max-w-sm rounded-2xl shadow-2xl border border-slate-800 p-6 relative animate-in zoom-in-95 duration-200 flex flex-col gap-6"
+                className="modal-container p-6 animate-in zoom-in-95 duration-200"
                 onMouseDown={e => e.stopPropagation()}
                 onClick={e => e.stopPropagation()}
             >
-                <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Share size={20} className="text-emerald-500" />
+                <div className="flex items-center justify-between mb-2">
+                    <h3 className="modal-title flex items-center gap-2">
+                        <Share size={20} className="text-brand-primary" />
                         {t('share_modal_title')}
                     </h3>
                     <button
                         onClick={onClose}
-                        className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors focus:ring-0"
+                        className="p-1.5 text-txt-muted hover:text-txt-primary hover:bg-surface-bg-alt rounded-full transition-colors focus:ring-0"
                     >
                         <X size={20} />
                     </button>
                 </div>
 
-                <div className="text-sm text-slate-400 -mt-2 truncate">{template.name}</div>
+                <div className="text-sm text-txt-muted mb-6 truncate">{template.name}</div>
 
                 {/* Local JSON Section */}
-                <div className="space-y-3">
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                <div className="space-y-3 mb-6">
+                    <div className="text-xs font-bold text-txt-muted uppercase tracking-wider flex items-center gap-2">
                         <FileCode size={14} />
                         {t('share_modal_local_title')}
                     </div>
-                    <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-800">
-                        <p className="text-xs text-slate-400 mb-4">{t('share_modal_local_desc')}</p>
+                    <div className="modal-section-bg rounded-xl p-4 border border-surface-border">
+                        <p className="text-xs text-txt-muted mb-4">{t('share_modal_local_desc')}</p>
                         <button
                             onClick={handleCopyJSON}
-                            className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-bold transition-all"
+                            className="w-full flex items-center justify-center gap-2 py-2.5 btn-modal-secondary rounded-lg font-bold transition-all shadow-sm"
                         >
-                            {isJsonCopied ? <Check size={18} className="text-emerald-500" /> : <Copy size={18} />}
+                            {isJsonCopied ? <Check size={18} className="text-brand-primary" /> : <Copy size={18} />}
                             {tCommon('copy')} JSON
                         </button>
                     </div>
@@ -222,28 +222,28 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
 
                 {/* Cloud Upload Section */}
                 <div className="space-y-3">
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                    <div className="text-xs font-bold text-txt-muted uppercase tracking-wider flex items-center gap-2">
                         <UploadCloud size={14} />
                         {t('share_modal_cloud_title')}
                     </div>
 
-                    <div className="bg-emerald-500/5 rounded-xl p-4 border border-emerald-500/20 space-y-4">
+                    <div className="modal-section-bg rounded-xl p-4 border border-brand-primary/20 space-y-4">
                         {!shareUrl && !isLoading && (
                             <>
                                 <div className="flex flex-col gap-2">
-                                    <div className="flex gap-3 text-amber-500/80">
+                                    <div className="flex gap-3 text-status-warning">
                                         <AlertCircle size={16} className="shrink-0 mt-0.5" />
                                         <p className="text-xs leading-relaxed">{t('share_modal_cloud_warning')}</p>
                                     </div>
-                                    <div className="flex gap-3 text-blue-400/80">
+                                    <div className="flex gap-3 text-status-info">
                                         <Check size={16} className="shrink-0 mt-0.5" />
                                         <p className="text-xs leading-relaxed italic">{t('share_modal_recruitment')}</p>
                                     </div>
                                 </div>
-                                {hasBgImage && <p className="text-[10px] text-slate-500 italic pl-7">{t('share_modal_img_note')}</p>}
+                                {hasBgImage && <p className="text-[10px] text-txt-muted italic pl-7">{t('share_modal_img_note')}</p>}
                                 <button
                                     onClick={handleUploadToCloud}
-                                    className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg active:scale-95"
+                                    className="w-full flex items-center justify-center gap-2 py-3 bg-brand-primary hover:filter hover:brightness-110 text-white rounded-xl font-bold shadow-lg active:scale-95 transition-all"
                                 >
                                     <UploadCloud size={18} />
                                     {t('share_modal_cloud_btn')}
@@ -253,24 +253,24 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
 
                         {isLoading && (
                             <div className="flex flex-col items-center gap-3 py-4">
-                                <Loader2 size={32} className="text-emerald-500 animate-spin" />
-                                <p className="text-sm text-slate-400">{t('share_modal_uploading')}</p>
+                                <Loader2 size={32} className="text-brand-primary animate-spin" />
+                                <p className="text-sm text-txt-secondary">{t('share_modal_uploading')}</p>
                             </div>
                         )}
 
                         {shareUrl && (
                             <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-4">
-                                <div className="bg-black/40 border border-slate-800 rounded-lg p-3 flex items-center gap-2">
-                                    <LinkIcon size={14} className="text-emerald-500 shrink-0" />
-                                    <input type="text" readOnly value={shareUrl} className="bg-transparent text-xs text-slate-300 flex-1 outline-none" />
+                                <div className="modal-section-deep border border-surface-border rounded-lg p-3 flex items-center gap-2">
+                                    <LinkIcon size={14} className="text-brand-primary shrink-0" />
+                                    <input type="text" readOnly value={shareUrl} className="bg-transparent text-xs text-txt-secondary flex-1 outline-none" />
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
-                                    <button onClick={handleCopyLink} className="flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold active:scale-95">
+                                    <button onClick={handleCopyLink} className="flex items-center justify-center gap-2 py-3 bg-brand-primary hover:filter hover:brightness-110 text-white rounded-xl font-bold active:scale-95 transition-all">
                                         {isCopied ? <Check size={18} /> : <Copy size={18} />}
                                         {tCommon('copy')}
                                     </button>
-                                    <button onClick={handleNativeShare} className="flex items-center justify-center gap-2 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold active:scale-95">
-                                        <Share size={18} className="text-sky-400" />
+                                    <button onClick={handleNativeShare} className="btn-modal-secondary flex items-center justify-center gap-2 py-3 rounded-xl font-bold active:scale-95 shadow-sm">
+                                        <Share size={18} className="text-status-info" />
                                         {tCommon('share')}
                                     </button>
                                 </div>

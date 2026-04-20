@@ -131,7 +131,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   };
 
   const toggleLanguage = (e: React.MouseEvent) => {
-    e.stopPropagation(); // [Fix] 阻止事件冒泡，避免觸發 Header 的除錯點擊偵測
+    e.stopPropagation(); // [Fix] ?�止事件?�泡，避?�觸??Header ?�除?��??�偵�?
     setLanguage(language === 'zh-TW' ? 'en' : 'zh-TW');
   };
 
@@ -193,7 +193,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               autoFocus
               className="w-full bg-transparent text-txt-primary focus:outline-none placeholder-txt-muted font-medium"
             />
-            <button onClick={() => { setIsSearchActive(false); setSearchQuery(''); }} className="text-slate-400 hover:text-slate-50 p-2">
+            <button onClick={() => { setIsSearchActive(false); setSearchQuery(''); }} className="text-txt-muted hover:text-txt-primary p-2">
               <X size={20} />
             </button>
           </div>
@@ -231,13 +231,13 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               >
                 {/* Central Slash (Background) */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-                  <span className="text-slate-700 font-bold text-sm -rotate-12 select-none">/</span>
+                  <span className="text-txt-muted/20 font-bold text-sm -rotate-12 select-none">/</span>
                 </div>
 
                 {/* Icon Container - Library (Calculator) */}
                 <div
                   className={`absolute flex items-center justify-center left-2.5 
-                        ${viewMode === 'library' ? 'icon-toggle-active' : 'z-10 text-slate-600'}
+                        ${viewMode === 'library' ? 'icon-toggle-active' : 'z-10 text-txt-muted'}
                     `}
                 >
                   <Calculator size={20} strokeWidth={viewMode === 'library' ? 2.5 : 2} />
@@ -246,7 +246,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 {/* Icon Container - History (History Clock) */}
                 <div
                   className={`absolute flex items-center justify-center right-2.5
-                        ${viewMode === 'history' ? 'icon-toggle-active' : 'z-10 text-slate-600'}
+                        ${viewMode === 'history' ? 'icon-toggle-active' : 'z-10 text-txt-muted'}
                     `}
                 >
                   <History size={20} strokeWidth={viewMode === 'history' ? 2.5 : 2} />
@@ -257,7 +257,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               <button
                 onClick={onCloudClick}
                 disabled={isSyncing}
-                className={`btn-cloud-status ${isSyncing ? 'bg-slate-800 border-slate-700 cursor-wait' :
+                className={`btn-cloud-status ${isSyncing ? 'bg-surface-bg-alt border-surface-border cursor-wait' :
                   isConnected ? 'connected' : 'disconnected'
                   }`}
                 // [Update] Display storage size in tooltip
@@ -270,7 +270,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-1 shrink-0 ml-1">
-              <button onClick={() => setIsSearchActive(true)} className="p-2 text-slate-400 hover:text-slate-50 hover:bg-slate-750 rounded-lg transition-colors">
+              <button onClick={() => setIsSearchActive(true)} className="p-2 text-txt-muted hover:text-txt-primary hover:bg-surface-bg-alt rounded-lg transition-colors">
                 <Search size={20} />
               </button>
 
