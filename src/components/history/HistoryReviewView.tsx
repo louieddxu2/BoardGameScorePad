@@ -116,7 +116,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
 
                         if (folderId) {
                             const { updatedRecord } = await googleDriveService.backupHistoryRecord(record, folderId);
-                            
+
                             if (updatedRecord.photoCloudIds && Object.keys(updatedRecord.photoCloudIds).length > 0) {
                                 await db.history.update(record.id, { photoCloudIds: updatedRecord.photoCloudIds });
                             }

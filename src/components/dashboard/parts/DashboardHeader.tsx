@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+﻿import React, { useRef, useEffect, useState } from 'react';
 import { Dice5, Search, X, Download, HelpCircle, Calculator, History, Cloud, CloudOff, Loader2, Sun, Moon } from 'lucide-react';
 import { useTranslation } from '../../../i18n'; // Keep for language context
 import { useCommonTranslation } from '../../../i18n/common';
@@ -131,7 +131,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   };
 
   const toggleLanguage = (e: React.MouseEvent) => {
-    e.stopPropagation(); // [Fix] ?�止事件?�泡，避?�觸??Header ?�除?��??�偵�?
+    e.stopPropagation(); // [Fix] ?餅迫鈭辣?部嚗?孛??Header ??舫??皜?
     setLanguage(language === 'zh-TW' ? 'en' : 'zh-TW');
   };
 
@@ -280,7 +280,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 <button
                   className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all text-white shadow-lg ${canInstall 
                     ? 'btn-action-primary' 
-                    : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}`}
+                    : 'bg-surface-bg-alt hover:bg-surface-bg-hover border border-surface-border text-txt-secondary hover:text-txt-primary'}`}
                   onClick={canInstall ? onInstallClick : onShowInstallGuide}
                 >
                   <div className="relative">
@@ -303,3 +303,4 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 };
 
 export default DashboardHeader;
+

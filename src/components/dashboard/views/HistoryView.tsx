@@ -44,7 +44,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             <div className="flex gap-2 mb-2 overflow-x-auto no-scrollbar animate-in fade-in slide-in-from-top-1">
                 <button
                     onClick={onOpenBgStats}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-surface-bg hover:filter hover:brightness-110 text-brand-secondary font-bold text-xs rounded-xl border border-surface-border shadow-sm transition-colors whitespace-nowrap"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-surface-bg-alt hover:bg-surface-bg text-brand-secondary font-bold text-xs rounded-xl border border-surface-border shadow-sm transition-all active:scale-95 whitespace-nowrap"
                 >
                     <FileJson size={14} />
                     {tIntegration('btn_bgstats_open')}
@@ -52,7 +52,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 
                 <button
                     onClick={onOpenBggImport}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-surface-bg hover:filter hover:brightness-110 text-brand-secondary font-bold text-xs rounded-xl border border-surface-border shadow-sm transition-colors whitespace-nowrap"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-surface-bg-alt hover:bg-surface-bg text-brand-secondary font-bold text-xs rounded-xl border border-surface-border shadow-sm transition-all active:scale-95 whitespace-nowrap"
                 >
                     <Database size={14} />
                     {tIntegration('btn_bgg_open')}
@@ -60,7 +60,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             </div>
 
             {searchQuery.trim().length > 0 && (
-                <div className="flex justify-end items-center bg-surface-bg/50 p-2 rounded-xl border border-surface-border animate-in fade-in slide-in-from-top-1">
+                <div className="flex justify-end items-center modal-bg-recessed/50 p-2 rounded-xl border border-surface-border animate-in fade-in slide-in-from-top-1">
                     <div className="flex items-center gap-2 px-2">
                         <Search size={14} className="text-brand-primary" />
                         <span className="text-sm font-bold text-txt-secondary">

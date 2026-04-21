@@ -98,6 +98,9 @@
   --c-surface-border: 51 65 85;  /* slate-700 */
   --c-brand-primary: 16 185 129; /* emerald-500 */
   --c-brand-secondary: 99 102 241; /* indigo-500 */
+  --c-surface-hover: 38 48 64;         /* slate-750 */
+  --c-surface-border-hover: 71 85 105; /* slate-600 */
+  --c-card-txt-hover: 255 255 255;     /* white */
 
   /* Modal System */
   --c-modal-bg: var(--c-app-bg);              /* slate-900: 容器底色 */
@@ -141,6 +144,9 @@ html[data-theme='light'] {
   --c-surface-border: 226 232 240; /* slate-200 */
   --c-brand-primary: 16 185 129; /* emerald-500 */
   --c-brand-secondary: 79 70 229; /* indigo-600 */
+  --c-surface-hover: 241 245 249;      /* slate-100 */
+  --c-surface-border-hover: 203 213 225; /* slate-300 */
+  --c-card-txt-hover: 15 23 42;        /* slate-900 */
 
   /* Modal System */
   --c-modal-bg: var(--c-surface-bg);

@@ -80,15 +80,15 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
                     </h3>
 
                     <div className="grid grid-cols-3 gap-4 w-full max-w-sm mb-8">
-                        <div className="bg-surface-bg-alt p-4 rounded-xl text-center border border-surface-border">
+                        <div className="modal-bg-elevated p-4 rounded-xl text-center border border-surface-border">
                             <div className="text-2xl font-black text-status-success">{syncResult.success}</div>
                             <div className="text-xs text-txt-muted font-bold uppercase mt-1">{tCloud('sync_status_success')}</div>
                         </div>
-                        <div className="bg-surface-bg-alt p-4 rounded-xl text-center border border-surface-border">
+                        <div className="modal-bg-elevated p-4 rounded-xl text-center border border-surface-border">
                             <div className="text-2xl font-black text-status-info">{syncResult.skipped}</div>
                             <div className="text-xs text-txt-muted font-bold uppercase mt-1">{tCloud('sync_status_skipped')}</div>
                         </div>
-                        <div className="bg-surface-bg-alt p-4 rounded-xl text-center border border-surface-border">
+                        <div className="modal-bg-elevated p-4 rounded-xl text-center border border-surface-border">
                             <div className={`text-2xl font-black ${syncResult.failed.length > 0 ? 'text-status-danger' : 'text-txt-muted'}`}>{syncResult.failed.length}</div>
                             <div className="text-xs text-txt-muted font-bold uppercase mt-1">{tCloud('sync_status_failed')}</div>
                         </div>
@@ -115,14 +115,14 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
 
     // --- Stats Block Helper ---
     const renderStats = (type: 'upload' | 'download') => {
-        if (!scanStats || isScanning) return <div className="h-24 flex items-center justify-center text-txt-muted text-xs gap-2 bg-app-bg-deep/30 rounded-xl border border-surface-border/50 mt-4"><Loader2 size={16} className="animate-spin" /> {tCloud('sync_scanning')}</div>;
+        if (!scanStats || isScanning) return <div className="h-24 flex items-center justify-center text-txt-muted text-xs gap-2 modal-bg-recessed/30 rounded-xl border border-surface-border/50 mt-4"><Loader2 size={16} className="animate-spin" /> {tCloud('sync_scanning')}</div>;
 
         const data = type === 'upload' ? scanStats.upload : scanStats.download;
         const includeSessions = type === 'upload';
         const total = data.templates + (includeSessions ? data.sessions : 0) + data.history;
         const hasData = total > 0;
 
-        const boxClass = `p-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-colors ${hasData ? 'bg-surface-bg-alt border-surface-border' : 'bg-modal-bg border-surface-border opacity-60'}`;
+        const boxClass = `p-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-colors ${hasData ? 'modal-bg-elevated border-surface-border' : 'bg-modal-bg border-surface-border opacity-60'}`;
         const numberClass = `text-2xl font-black ${hasData ? 'text-txt-primary' : 'text-txt-muted/50'}`;
         const labelClass = "text-xs text-txt-muted uppercase flex justify-center items-center gap-1.5 font-bold";
 
@@ -160,7 +160,7 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
     return (
         <div className="absolute inset-0 z-50 bg-modal-bg/95 flex flex-col animate-in slide-in-from-right-4 duration-300">
             {/* Header */}
-            <div className="flex-none p-4 border-b border-surface-border flex items-center justify-between bg-surface-bg-alt">
+            <div className="flex-none p-4 border-b border-surface-border flex items-center justify-between modal-bg-elevated">
                 <h2 className="text-lg font-bold text-txt-primary flex items-center gap-2">
                     <Database size={20} className="text-brand-secondary" />
                     {tCloud('sync_title')}
@@ -195,7 +195,7 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
 
                     {confirmMode === 'upload' && (
                         <div className="px-5 pb-5 animate-in slide-in-from-top-2 duration-200 border-t border-surface-border/50 pt-4 mt-2">
-                            <div className="bg-app-bg-deep/50 rounded-xl p-3 text-xs text-txt-muted mb-4 space-y-2 border border-surface-border">
+                            <div className="modal-bg-recessed/50 rounded-xl p-3 text-xs text-txt-muted mb-4 space-y-2 border border-surface-border">
                                 <div className="flex items-start gap-2">
                                     <span className="text-status-success shrink-0 mt-0.5">●</span>
                                     <span>{tCloud('sync_msg_limit')}</span>

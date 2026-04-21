@@ -19,7 +19,7 @@ export default {
           500: 'rgb(var(--c-slate-500) / <alpha-value>)',
           600: 'rgb(var(--c-slate-600) / <alpha-value>)',
           700: 'rgb(var(--c-slate-700) / <alpha-value>)',
-          750: 'rgb(var(--c-slate-750) / <alpha-value>)', 
+          750: 'rgb(var(--c-slate-750) / <alpha-value>)',
           800: 'rgb(var(--c-slate-800) / <alpha-value>)',
           850: 'rgb(var(--c-slate-850) / <alpha-value>)',
           900: 'rgb(var(--c-slate-900) / <alpha-value>)',
@@ -28,7 +28,7 @@ export default {
         // Override basic White/Black to flip in light mode
         white: 'rgb(var(--c-white) / <alpha-value>)',
         black: 'rgb(var(--c-black) / <alpha-value>)',
-        
+
         // Map all primary semantic colors to CSS variables
         emerald: {
           400: 'rgb(var(--c-emerald-400) / <alpha-value>)',
@@ -74,11 +74,14 @@ export default {
           primary: 'rgb(var(--c-txt-primary) / <alpha-value>)',
           secondary: 'rgb(var(--c-txt-secondary) / <alpha-value>)',
           muted: 'rgb(var(--c-txt-muted) / <alpha-value>)',
+          'card-hover': 'rgb(var(--c-card-txt-hover) / <alpha-value>)',
         },
         surface: {
           bg: 'rgb(var(--c-surface-bg) / <alpha-value>)',
+          hover: 'rgb(var(--c-surface-hover) / <alpha-value>)',
           alt: 'rgb(var(--c-surface-bg-alt) / <alpha-value>)',
           border: 'rgb(var(--c-surface-border) / <alpha-value>)',
+          'border-hover': 'rgb(var(--c-surface-border-hover) / <alpha-value>)',
         },
         modal: {
           bg: {

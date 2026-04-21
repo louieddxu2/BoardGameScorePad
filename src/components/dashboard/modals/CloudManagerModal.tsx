@@ -461,7 +461,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                     />
                 )}
 
-                <div className="flex-none bg-surface-bg-alt rounded-t-2xl px-4 py-3 border-b border-surface-border space-y-3">
+                <div className="flex-none modal-bg-elevated rounded-t-2xl px-4 py-3 border-b border-surface-border space-y-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             {isConnected && (
@@ -497,29 +497,29 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                         <button
                             onClick={() => handleSwitchCategory('templates')}
                             disabled={!isConnected}
-                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 ${category === 'templates' ? 'bg-brand-primary text-white shadow-md' : 'bg-surface-bg-alt border border-surface-border text-txt-muted hover:text-txt-secondary'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 ${category === 'templates' ? 'bg-brand-primary text-white shadow-md' : 'modal-bg-elevated border border-surface-border text-txt-muted hover:text-txt-secondary'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             <LayoutGrid size={14} /> {tCloud('cloud_tab_templates')}
                         </button>
                         <button
                             onClick={() => handleSwitchCategory('sessions')}
                             disabled={!isConnected}
-                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 ${category === 'sessions' ? 'bg-brand-primary text-white shadow-md' : 'bg-surface-bg-alt border border-surface-border text-txt-muted hover:text-txt-secondary'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 ${category === 'sessions' ? 'bg-brand-primary text-white shadow-md' : 'modal-bg-elevated border border-surface-border text-txt-muted hover:text-txt-secondary'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             <Activity size={14} /> {tCloud('cloud_tab_active')}
                         </button>
                         <button
                             onClick={() => handleSwitchCategory('history')}
                             disabled={!isConnected}
-                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 ${category === 'history' ? 'bg-brand-primary text-white shadow-md' : 'bg-surface-bg-alt border border-surface-border text-txt-muted hover:text-txt-secondary'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 ${category === 'history' ? 'bg-brand-primary text-white shadow-md' : 'modal-bg-elevated border border-surface-border text-txt-muted hover:text-txt-secondary'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             <History size={14} /> {tCloud('cloud_tab_history')}
                         </button>
                     </div>
 
-                    <div className="flex gap-2 bg-app-bg-deep p-1 rounded-lg border border-surface-border">
-                        <button onClick={() => handleSwitchMode('active')} disabled={!isConnected} className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-95 ${viewMode === 'active' ? 'bg-status-info text-white shadow-sm' : 'text-txt-muted hover:text-txt-secondary hover:bg-surface-bg-alt'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}><FolderOpen size={14} /> {tCloud('cloud_tab_files')}</button>
-                        <button onClick={() => handleSwitchMode('trash')} disabled={!isConnected} className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-95 ${viewMode === 'trash' ? 'bg-status-danger/20 text-status-danger shadow-sm border border-status-danger/30' : 'text-txt-muted hover:text-txt-secondary hover:bg-surface-bg-alt'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}><Trash2 size={14} /> {tCloud('cloud_tab_trash')}</button>
+                    <div className="flex gap-2 modal-bg-recessed p-1 rounded-lg border border-surface-border">
+                        <button onClick={() => handleSwitchMode('active')} disabled={!isConnected} className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-95 ${viewMode === 'active' ? 'bg-status-info text-white shadow-sm' : 'text-txt-muted hover:text-txt-secondary hover:modal-bg-elevated'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}><FolderOpen size={14} /> {tCloud('cloud_tab_files')}</button>
+                        <button onClick={() => handleSwitchMode('trash')} disabled={!isConnected} className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-95 ${viewMode === 'trash' ? 'bg-status-danger/20 text-status-danger shadow-sm border border-status-danger/30' : 'text-txt-muted hover:text-txt-secondary hover:modal-bg-elevated'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}><Trash2 size={14} /> {tCloud('cloud_tab_trash')}</button>
                     </div>
                 </div>
 
@@ -530,7 +530,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                         <div className="flex flex-col items-center justify-between h-full gap-4 animate-in fade-in zoom-in-95 duration-300">
 
                             {/* Letter Container */}
-                            <div className="w-full bg-surface-bg-alt/60 p-5 rounded-2xl border border-surface-border text-txt-secondary text-sm leading-relaxed space-y-3 shadow-inner">
+                            <div className="w-full modal-bg-recessed/60 p-5 rounded-2xl border border-surface-border text-txt-secondary text-sm leading-relaxed space-y-3 shadow-inner">
                                 <h4 className="text-txt-primary font-bold text-lg mb-1">{tCloud('greeting')}</h4>
                                 <p>{tCloud('p1')}</p>
                                 <p>{tCloud('p2')}</p>
@@ -561,7 +561,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                             ) : (
                                 <div className="space-y-2">
                                     {cloudFiles.map(file => (
-                                        <div key={file.id} className={`w-full bg-surface-bg-alt border border-surface-border p-3 rounded-xl flex items-center justify-between group transition-all`}>
+                                        <div key={file.id} className={`w-full modal-bg-elevated border border-surface-border p-3 rounded-xl flex items-center justify-between group transition-all`}>
 
                                             <div className="shrink-0 mr-3">
                                                 <button
@@ -593,7 +593,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                                                 ) : (
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleRestoreFromTrash(file); }}
-                                                        className="p-2 text-status-success hover:text-white bg-app-bg-deep hover:bg-status-success border border-surface-border hover:border-status-success rounded-lg transition-colors"
+                                                        className="p-2 text-status-success hover:text-white modal-bg-recessed hover:bg-status-success border border-surface-border hover:border-status-success rounded-lg transition-colors"
                                                         title={tCloud('cloud_restore')}
                                                     >
                                                         <RefreshCcw size={18} />
@@ -607,7 +607,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                         </>
                     )}
                 </div>
-                {viewMode === 'trash' && cloudFiles.length > 0 && isConnected && (<div className="flex-none p-3 bg-surface-bg-alt border-t border-surface-border"><button onClick={handleEmptyTrash} className="w-full py-2 bg-status-danger/10 hover:bg-status-danger/20 border border-status-danger/30 text-status-danger text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2"><Trash2 size={16} /> {tCloud('cloud_empty_trash')}</button></div>)}
+                {viewMode === 'trash' && cloudFiles.length > 0 && isConnected && (<div className="flex-none p-3 modal-bg-elevated border-t border-surface-border"><button onClick={handleEmptyTrash} className="w-full py-2 bg-status-danger/10 hover:bg-status-danger/20 border border-status-danger/30 text-status-danger text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2"><Trash2 size={16} /> {tCloud('cloud_empty_trash')}</button></div>)}
             </div>
         </div>
     );

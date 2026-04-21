@@ -20,7 +20,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ records, onDelete, onSelect }
     if (!records || records.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center h-64 text-txt-muted gap-4">
-                <div className="w-20 h-20 bg-surface-bg-alt rounded-full flex items-center justify-center border-4 border-surface-border">
+                <div className="w-20 h-20 modal-bg-recessed rounded-full flex items-center justify-center border-4 border-surface-border shadow-inner">
                     <HistoryIcon size={40} className="opacity-50" />
                 </div>
                 <p className="text-sm font-bold">{t('dash_no_records')}</p>

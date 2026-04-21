@@ -21,7 +21,7 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ record, onDelete, onClick }) 
     return (
         <div
             onClick={onClick}
-            className="bg-surface-bg-alt rounded-xl border border-surface-border shadow-md p-4 relative group hover:bg-surface-bg transition-colors w-full cursor-pointer"
+            className="bg-surface-bg rounded-xl border border-surface-border shadow-md p-4 relative group hover:bg-surface-hover hover:border-surface-border-hover transition-all duration-200 w-full cursor-pointer"
         >
             {/* Header: Date & Title */}
             <div className="flex justify-between items-start mb-3">
@@ -40,12 +40,12 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ record, onDelete, onClick }) 
                             </div>
                         )}
                     </div>
-                    <h3 className="text-lg font-bold text-txt-primary leading-tight truncate pr-2">{record.gameName}</h3>
+                    <h3 className="text-lg font-bold text-txt-primary leading-tight truncate pr-2 group-hover:text-txt-card-hover transition-colors">{record.gameName}</h3>
                 </div>
 
                 <button
                     onClick={(e) => { e.stopPropagation(); if (record.id) onDelete(record.id); }}
-                    className="p-2 text-txt-muted hover:text-status-danger hover:bg-surface-bg rounded-lg transition-colors -mr-2 -mt-2 shrink-0"
+                    className="p-2 text-txt-muted hover:text-status-danger hover:bg-status-danger/10 rounded-lg transition-colors -mr-2 -mt-2 shrink-0"
                 >
                     <Trash2 size={16} />
                 </button>
@@ -54,7 +54,6 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ record, onDelete, onClick }) 
             {/* Players Grid */}
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-2">
                 {record.players.map(p => {
-                    // [Update] Check if player is winner using linkedPlayerId (New Data) or ID (Old Data/Fallback)
                     const isWinner = (p.linkedPlayerId && record.winnerIds.includes(p.linkedPlayerId)) || record.winnerIds.includes(p.id);
 
                     const isTransparent = p.color === 'transparent';
@@ -68,10 +67,10 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ record, onDelete, onClick }) 
                         };
 
                     return (
-                        <div key={p.id} className={`flex items-center justify-between text-sm ${isWinner ? 'bg-status-warning/10 -mx-2 px-2 py-1 rounded-lg border border-status-warning/20' : ''}`}>
+                        <div key={p.id} className={`flex items-center justify-between text-sm ${isWinner ? 'bg-status-warning/10 -mx-2 px-2 py-1 rounded-lg border border-status-warning/30 shadow-sm' : ''}`}>
                             <div className="flex items-center gap-2 overflow-hidden">
                                 {isWinner && <Crown size={14} className="text-status-warning shrink-0" fill="currentColor" />}
-                                <span className={`truncate font-medium ${isWinner ? 'text-status-warning' : 'text-txt-secondary'}`} style={isWinner ? {} : colorStyle}>
+                                <span className={`truncate font-medium ${isWinner ? 'text-status-warning brightness-125' : 'text-txt-secondary'}`} style={isWinner ? {} : colorStyle}>
                                     {p.name}
                                 </span>
                             </div>
