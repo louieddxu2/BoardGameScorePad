@@ -24,40 +24,40 @@ const ScannerControls: React.FC<ScannerControlsProps> = ({
 }) => {
     const { t } = useScannerTranslation();
     return (
-        <footer className="p-4 bg-slate-900 border-t border-slate-800 flex items-center justify-between flex-none z-50">
+        <footer className="p-4 modal-bg-elevated border-t border-surface-border flex items-center justify-between flex-none z-50">
             <div className="flex items-center gap-4">
                 <button
                     onClick={onToggleSnap}
-                    className={`flex flex-col items-center gap-1 text-xs font-bold ${isSnapping ? 'text-emerald-400' : 'text-slate-500'}`}
+                    className={`flex flex-col items-center gap-1 text-xs font-bold transition-all active:scale-95 ${isSnapping ? 'text-brand-primary' : 'text-txt-muted'}`}
                 >
-                    <div className={`p-3 rounded-xl ${isSnapping ? 'bg-emerald-900/30' : 'bg-slate-800'}`}>
+                    <div className={`p-3 rounded-xl transition-colors ${isSnapping ? 'bg-brand-primary/10' : 'bg-modal-bg-recessed'}`}>
                         <Magnet size={20} />
                     </div>
                     {t('scan_btn_snap')}
                 </button>
                 <button
                     onClick={onCenter}
-                    className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"
+                    className="flex flex-col items-center gap-1 text-xs font-bold text-txt-muted hover:text-txt-primary transition-all active:scale-95"
                 >
-                    <div className="p-3 rounded-xl bg-slate-800">
+                    <div className="p-3 rounded-xl bg-modal-bg-recessed">
                         <Focus size={20} />
                     </div>
                     {t('scan_btn_center')}
                 </button>
                 <button
                     onClick={onRetake}
-                    className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"
+                    className="flex flex-col items-center gap-1 text-xs font-bold text-txt-muted hover:text-txt-primary transition-all active:scale-95"
                 >
-                    <div className="p-3 rounded-xl bg-slate-800">
+                    <div className="p-3 rounded-xl bg-modal-bg-recessed">
                         <Camera size={20} />
                     </div>
                     {t('scan_btn_retake')}
                 </button>
                 <button
                     onClick={onRotate}
-                    className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"
+                    className="flex flex-col items-center gap-1 text-xs font-bold text-txt-muted hover:text-txt-primary transition-all active:scale-95"
                 >
-                    <div className="p-3 rounded-xl bg-slate-800">
+                    <div className="p-3 rounded-xl bg-modal-bg-recessed">
                         <RotateCw size={20} />
                     </div>
                     {t('scan_btn_rotate')}
@@ -66,7 +66,7 @@ const ScannerControls: React.FC<ScannerControlsProps> = ({
             <button
                 onClick={onConfirm}
                 disabled={!canConfirm}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 disabled:bg-slate-700 disabled:text-slate-500"
+                className="bg-brand-primary hover:filter hover:brightness-110 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 active:scale-95 transition-all disabled:bg-surface-bg-alt disabled:text-txt-muted disabled:shadow-none disabled:active:scale-100"
             >
                 <ArrowRight size={24} />
             </button>

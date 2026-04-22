@@ -184,10 +184,10 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
     }
 
     return (
-        <div className="flex flex-col h-full bg-slate-900 text-slate-100 relative overflow-hidden">
+        <div className="flex flex-col h-full bg-app-bg text-txt-primary relative overflow-hidden transition-colors duration-300">
             {/* Header */}
-            <div className="flex-none bg-slate-800 p-4 shadow-md flex items-center justify-between border-b border-slate-700">
-                <button onClick={onCancel} className="p-2 hover:bg-slate-700 rounded-full text-slate-400">
+            <div className="flex-none modal-bg-elevated p-4 shadow-sm flex items-center justify-between border-b border-surface-border">
+                <button onClick={onCancel} className="p-2 hover:modal-bg-recessed rounded-full text-txt-muted transition-colors">
                     <ArrowLeft size={24} />
                 </button>
                 <h2 className="text-xl font-bold">{initialTemplate ? t('tmpl_edit_title') : t('tmpl_new_title')}</h2>
@@ -201,7 +201,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
 
                         {/* Common Input: Name */}
                         <div className="space-y-2">
-                            <label className="block text-sm font-bold text-slate-400 uppercase tracking-wider">
+                            <label className="block text-sm font-bold text-txt-muted uppercase tracking-wider">
                                 {t('tmpl_name_label')}
                             </label>
                             <input
@@ -210,7 +210,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
                                 onChange={(e) => setName(e.target.value)}
                                 onFocus={(e) => e.target.select()}
                                 placeholder={t('tmpl_name_ph')}
-                                className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-xl font-bold text-white focus:border-emerald-500 focus:outline-none placeholder-slate-600 transition-colors"
+                                className="w-full modal-bg-elevated border-2 border-surface-border rounded-xl p-4 text-xl font-bold text-txt-primary focus:border-brand-primary focus:outline-none placeholder-txt-muted transition-all"
                                 autoFocus
                             />
                         </div>
@@ -218,55 +218,55 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
                         {/* Manual Mode Content */}
                         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                             <div className="space-y-2">
-                                <label className="block text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                                    {t('tmpl_col_count_label')} <span className="text-xs font-normal text-slate-500">{t('tmpl_no_total')}</span>
+                                <label className="block text-sm font-bold text-txt-muted uppercase tracking-wider flex items-center gap-2">
+                                    {t('tmpl_col_count_label')} <span className="text-xs font-normal opacity-50">{t('tmpl_no_total')}</span>
                                 </label>
 
-                                <div className="flex items-center gap-4 bg-slate-800 p-3 rounded-xl border border-slate-700">
+                                <div className="flex items-center gap-4 modal-bg-elevated p-3 rounded-xl border border-surface-border shadow-inner">
                                     <button
                                         onClick={() => adjustCount(-1)}
-                                        className="w-14 h-14 rounded-lg bg-slate-700 hover:bg-slate-600 active:scale-95 transition-all flex items-center justify-center text-white border border-slate-600"
+                                        className="w-14 h-14 rounded-lg modal-bg-recessed hover:modal-bg-elevated active:scale-95 transition-all flex items-center justify-center text-txt-primary border border-surface-border"
                                     >
                                         <Minus size={24} />
                                     </button>
 
                                     <div className="flex-1 flex flex-col items-center justify-center">
-                                        <span className="text-4xl font-black font-mono text-emerald-400">{columnCount}</span>
-                                        <span className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                                        <span className="text-4xl font-black font-mono text-brand-primary">{columnCount}</span>
+                                        <span className="text-xs text-txt-muted mt-1 flex items-center gap-1">
                                             <Layers size={12} /> {t('tmpl_col_unit')}
                                         </span>
                                     </div>
 
                                     <button
                                         onClick={() => adjustCount(1)}
-                                        className="w-14 h-14 rounded-lg bg-slate-700 hover:bg-slate-600 active:scale-95 transition-all flex items-center justify-center text-white border border-slate-600"
+                                        className="w-14 h-14 rounded-lg modal-bg-recessed hover:modal-bg-elevated active:scale-95 transition-all flex items-center justify-center text-txt-primary border border-surface-border"
                                     >
                                         <Plus size={24} />
                                     </button>
                                 </div>
                                 {columnCount === 0 && (
-                                    <p className="text-center text-xs text-emerald-400 mt-1">
+                                    <p className="text-center text-xs text-brand-primary mt-1 font-bold">
                                         {t('tmpl_simple_mode')}
                                     </p>
                                 )}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-800">
+                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-surface-border">
                                 <button
                                     onClick={handleCreateImageBoard}
-                                    className="w-full py-4 bg-sky-800 hover:bg-sky-700 text-white text-base font-bold rounded-xl shadow-lg shadow-sky-900/50 flex flex-col items-center justify-center gap-2 transition-transform active:scale-95"
+                                    className="w-full py-4 bg-status-info hover:filter hover:brightness-110 text-white text-base font-bold rounded-xl shadow-lg active:scale-95 transition-all flex flex-col items-center justify-center gap-2"
                                 >
                                     <ImageIcon size={24} /> {t('tmpl_btn_img')}
                                 </button>
                                 <button
                                     onClick={handleSave}
-                                    className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white text-base font-bold rounded-xl shadow-lg shadow-emerald-900/50 flex flex-col items-center justify-center gap-2 transition-transform active:scale-95"
+                                    className="w-full py-4 bg-brand-primary hover:filter hover:brightness-110 text-white text-base font-bold rounded-xl shadow-lg active:scale-95 transition-all flex flex-col items-center justify-center gap-2"
                                 >
                                     <LayoutTemplate size={24} /> {t('tmpl_btn_std')}
                                 </button>
                             </div>
 
-                            <p className="text-center text-xs text-slate-500">
+                            <p className="text-center text-xs text-txt-muted">
                                 {t('tmpl_hint')}
                             </p>
                         </div>

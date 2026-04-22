@@ -437,7 +437,7 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
 
   return (
     <TextureMapperContext.Provider value={contextValue}>
-      <div className="fixed inset-0 z-[80] bg-slate-950 flex flex-col overflow-hidden">
+      <div className="fixed inset-0 z-[80] bg-app-bg flex flex-col overflow-hidden transition-colors duration-300">
         {draggedItem && importedTemplate && (
           <div
             style={{
@@ -449,10 +449,10 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
               zIndex: 9999,
             }}
           >
-            <div className="w-28 flex items-center gap-1.5 p-1.5 rounded-lg border bg-slate-600 border-slate-500 shadow-lg">
-              <GripVertical size={12} className="shrink-0 text-slate-400" />
+            <div className="w-28 flex items-center gap-1.5 p-1.5 rounded-lg border modal-bg-elevated border-surface-border shadow-lg">
+              <GripVertical size={12} className="shrink-0 text-txt-muted" />
               <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium text-slate-200 truncate block">
+                <span className="text-sm font-medium text-txt-primary truncate block">
                   {importedTemplate.columns.find(c => c.id === draggedItem.colId)?.name}
                 </span>
               </div>
@@ -461,17 +461,17 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
         )}
 
         {showImportModal && <ImportTemplateModal allTemplates={allTemplates} onSelect={handleTemplateSelect} onClose={() => setShowImportModal(false)} />}
-        <header className="flex-none bg-slate-900 border-b border-slate-800 p-2 flex items-center justify-between z-50 shadow-md">
-          <button onClick={onCancel} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors shrink-0"><ArrowLeft size={20} /></button>
+        <header className="flex-none modal-bg-elevated border-b border-surface-border p-2 flex items-center justify-between z-50 shadow-sm">
+          <button onClick={onCancel} className="p-2 text-txt-muted hover:text-txt-primary hover:modal-bg-recessed rounded-lg transition-all active:scale-90 shrink-0"><ArrowLeft size={20} /></button>
           <div className="flex-1 px-3 flex flex-col items-center justify-center overflow-hidden">
-            <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">{phase === 'grid' ? t('mapper_step_1') : t('mapper_step_2')}</span>
-            <p className="text-xs text-slate-300 text-center truncate w-full">{phase === 'grid' ? t('mapper_grid_desc') : isMappingMode ? t('mapper_structure_desc') : t('mapper_structure_desc_no_template')}</p>
+            <span className="text-[10px] font-bold text-brand-primary uppercase tracking-wider">{phase === 'grid' ? t('mapper_step_1') : t('mapper_step_2')}</span>
+            <p className="text-xs text-txt-secondary text-center truncate w-full">{phase === 'grid' ? t('mapper_grid_desc') : isMappingMode ? t('mapper_structure_desc') : t('mapper_structure_desc_no_template')}</p>
           </div>
           <div className="w-[36px] shrink-0"></div>
         </header>
 
-        <main className="flex-1 relative bg-slate-900 overflow-hidden touch-none select-none" ref={containerRef} onMouseDown={(e) => handlePointerDown(e, 'bg')} onTouchStart={(e) => handlePointerDown(e, 'bg')} onWheel={handleWheel}>
-          <div className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/60 backdrop-blur text-white text-xs rounded-full pointer-events-none flex items-center gap-2 z-40 opacity-70">
+        <main className="flex-1 relative bg-app-bg overflow-hidden touch-none select-none" ref={containerRef} onMouseDown={(e) => handlePointerDown(e, 'bg')} onTouchStart={(e) => handlePointerDown(e, 'bg')} onWheel={handleWheel}>
+          <div className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 modal-bg-elevated/60 backdrop-blur text-txt-primary text-xs rounded-full pointer-events-none flex items-center gap-2 z-40 border border-surface-border/50 shadow-lg">
             <Move size={12} /> {t('mapper_interaction_hint')}
           </div>
 
@@ -488,29 +488,29 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
           </div>
         </main>
 
-        <footer className="flex-none p-4 bg-slate-900 border-t border-slate-800 flex items-center justify-between z-50">
+        <footer className="flex-none p-4 modal-bg-elevated border-t border-surface-border flex items-center justify-between z-50">
           {phase === 'grid' ? (
             <>
               <div className="flex items-center gap-4">
-                <button onClick={resetView} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"><div className="p-3 rounded-xl bg-slate-800"><ZoomIn size={20} /></div>{t('mapper_btn_reset_view')}</button>
-                <button onClick={(e) => { e.stopPropagation(); addLine('h'); }} className="flex flex-col items-center gap-1 text-xs font-bold text-slate-500 hover:text-white"><div className="p-3 rounded-xl bg-slate-800"><Plus size={20} /></div>{t('mapper_btn_add_line', { n: hLines.length })}</button>
+                <button onClick={resetView} className="flex flex-col items-center gap-1 text-xs font-bold text-txt-muted hover:text-txt-primary active:scale-95 transition-all"><div className="p-3 rounded-xl bg-modal-bg-recessed"><ZoomIn size={20} /></div>{t('mapper_btn_reset_view')}</button>
+                <button onClick={(e) => { e.stopPropagation(); addLine('h'); }} className="flex flex-col items-center gap-1 text-xs font-bold text-txt-muted hover:text-txt-primary active:scale-95 transition-all"><div className="p-3 rounded-xl bg-modal-bg-recessed"><Plus size={20} /></div>{t('mapper_btn_add_line', { n: hLines.length })}</button>
               </div>
-              <button onClick={() => setPhase('structure')} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2">{t('mapper_btn_next')} <ArrowRight size={16} /></button>
+              <button onClick={() => setPhase('structure')} className="bg-brand-primary hover:filter hover:brightness-110 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 active:scale-95 transition-all">{t('mapper_btn_next')} <ArrowRight size={16} /></button>
             </>
           ) : (
             <>
               <div className="flex items-center gap-2">
                 {!isMappingMode ? (
-                  <button onClick={() => setPhase('grid')} className="bg-slate-800 text-slate-300 px-4 py-3 rounded-lg text-sm font-bold shadow flex items-center gap-2 border border-slate-700"><Settings2 size={16} /> {t('mapper_btn_back_grid')}</button>
+                  <button onClick={() => setPhase('grid')} className="modal-bg-recessed hover:modal-bg-elevated text-txt-primary px-4 py-3 rounded-lg text-sm font-bold shadow flex items-center gap-2 border border-surface-border active:scale-95 transition-all"><Settings2 size={16} /> {t('mapper_btn_back_grid')}</button>
                 ) : (
-                  <button onClick={() => setImportedTemplate(null)} className="bg-slate-800 text-slate-300 px-4 py-3 rounded-lg text-sm font-bold shadow flex items-center gap-2 border border-slate-700"><CopyPlus size={16} /> {t('mapper_btn_cancel_import')}</button>
+                  <button onClick={() => setImportedTemplate(null)} className="modal-bg-recessed hover:modal-bg-elevated text-txt-primary px-4 py-3 rounded-lg text-sm font-bold shadow flex items-center gap-2 border border-surface-border active:scale-95 transition-all"><CopyPlus size={16} /> {t('mapper_btn_cancel_import')}</button>
                 )}
                 {/* Hide import button if already pre-populated from initialColumns (edit mode) */}
                 {(!initialColumns || initialColumns.length === 0) && (
-                  <button onClick={() => setShowImportModal(true)} className="bg-sky-800 text-sky-300 px-4 py-3 rounded-lg text-sm font-bold shadow flex items-center gap-2 border border-sky-700"><CopyPlus size={16} /> {t('mapper_btn_import')}</button>
+                  <button onClick={() => setShowImportModal(true)} className="bg-status-info/10 text-status-info px-4 py-3 rounded-lg text-sm font-bold shadow flex items-center gap-2 border border-status-info/20 active:scale-95 transition-all"><CopyPlus size={16} /> {t('mapper_btn_import')}</button>
                 )}
               </div>
-              <button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2"><Check size={18} /> {t('mapper_btn_finish')}</button>
+              <button onClick={handleSave} className="bg-brand-secondary hover:filter hover:brightness-110 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 active:scale-95 transition-all"><Check size={18} /> {t('mapper_btn_finish')}</button>
             </>
           )}
         </footer>

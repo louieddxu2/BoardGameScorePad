@@ -440,7 +440,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
 
     return (
         <div
-            className="modal-backdrop z-50 animate-in fade-in duration-200"
+            className="modal-backdrop z-50 animate-in fade-in duration-300"
             onClick={(e) => {
                 if (e.target === e.currentTarget && (syncStatus === 'idle' || syncStatus === 'scanning')) onClose();
             }}
@@ -523,20 +523,20 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                     </div>
                 </div>
 
-                <div className="flex-1 p-4 overflow-y-auto no-scrollbar bg-modal-bg relative">
+                <div className="flex-1 p-4 overflow-y-auto no-scrollbar bg-modal-bg relative transition-colors">
 
                     {!isConnected ? (
                         // Offline State with Letter-Style
                         <div className="flex flex-col items-center justify-between h-full gap-4 animate-in fade-in zoom-in-95 duration-300">
 
                             {/* Letter Container */}
-                            <div className="w-full modal-bg-recessed/60 p-5 rounded-2xl border border-surface-border text-txt-secondary text-sm leading-relaxed space-y-3 shadow-inner">
-                                <h4 className="text-txt-primary font-bold text-lg mb-1">{tCloud('greeting')}</h4>
+                            <div className="w-full modal-bg-recessed p-6 rounded-2xl border border-surface-border text-txt-secondary text-sm leading-relaxed space-y-4 shadow-inner animate-in slide-in-from-bottom-4 duration-500">
+                                <h4 className="text-txt-primary font-bold text-xl mb-1">{tCloud('greeting')}</h4>
                                 <p>{tCloud('p1')}</p>
                                 <p>{tCloud('p2')}</p>
 
-                                <div className="w-full flex justify-end mt-4">
-                                    <span className="font-hand font-bold text-txt-primary text-lg transform -rotate-2 origin-center">
+                                <div className="w-full flex justify-end mt-6">
+                                    <span className="font-hand font-bold text-txt-primary text-xl transform -rotate-2 origin-center opacity-80">
                                         {tCloud('signature')}
                                     </span>
                                 </div>
@@ -561,7 +561,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                             ) : (
                                 <div className="space-y-2">
                                     {cloudFiles.map(file => (
-                                        <div key={file.id} className={`w-full modal-bg-elevated border border-surface-border p-3 rounded-xl flex items-center justify-between group transition-all`}>
+                                        <div key={file.id} className="w-full modal-bg-elevated border border-surface-border p-3 rounded-xl flex items-center justify-between group transition-all hover:bg-surface-bg-alt hover:border-surface-border-hover shadow-sm">
 
                                             <div className="shrink-0 mr-3">
                                                 <button

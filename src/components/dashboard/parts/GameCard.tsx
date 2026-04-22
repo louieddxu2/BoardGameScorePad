@@ -70,18 +70,18 @@ const GameCard: React.FC<GameCardProps> = ({
     }
   };
 
-  const baseClasses = "bg-surface-bg rounded-xl p-3 shadow-ui-soft hover:bg-surface-alt transition-all cursor-pointer relative flex flex-col h-20 group";
+  const baseClasses = "bg-surface-bg rounded-xl border border-surface-border p-3 shadow-ui-soft hover:bg-surface-hover transition-all cursor-pointer relative flex flex-col h-20 group";
 
   if (mode === 'active') {
     return (
-      <div onClick={onClick} className={`${baseClasses} border border-brand-primary/30`}>
+      <div onClick={onClick} className={`${baseClasses} border-brand-primary/40 hover:border-surface-border-hover`}>
         <div className="flex items-start justify-between gap-1 pr-10">
-          <h3 className="text-sm font-bold text-txt-primary leading-tight line-clamp-2">{template.name}</h3>
+          <h3 className="text-sm font-bold text-txt-primary leading-tight line-clamp-2 group-hover:text-txt-card-hover transition-colors">{template.name}</h3>
         </div>
         <div className="absolute top-1/2 right-3 -translate-y-1/2 text-brand-primary/80">
           <PlayCircle size={36} strokeWidth={1.5} />
         </div>
-        <button onClick={onDelete} className="absolute bottom-1 left-1 p-1.5 text-txt-muted hover:text-status-danger hover:bg-surface-alt rounded-md transition-colors">
+        <button onClick={onDelete} className="absolute bottom-1 left-1 p-1.5 text-txt-muted hover:text-status-danger hover:bg-surface-hover rounded-md transition-colors">
           <Trash2 size={16} />
         </button>
       </div>
@@ -92,17 +92,17 @@ const GameCard: React.FC<GameCardProps> = ({
   return (
     <div 
       onClick={onClick} 
-      className={`${baseClasses} hover:shadow-ui-floating hover:-translate-y-0.5 active:scale-[0.98] ${mode === 'system' ? 'hover:border-brand-secondary/10' : 'hover:border-brand-primary/10'}`}
+      className={`${baseClasses} hover:border-surface-border-hover hover:shadow-ui-floating hover:-translate-y-0.5 active:scale-[0.98] ${mode === 'system' ? 'hover:border-brand-secondary/20' : 'hover:border-brand-primary/20'}`}
     >
       <div className="flex items-start justify-between gap-1 pr-7">
-        <h3 className={`text-sm font-bold leading-tight line-clamp-2 ${mode === 'system' ? 'text-txt-primary pr-2 opacity-90' : 'text-txt-primary'}`}>{template.name}</h3>
+        <h3 className={`text-sm font-bold leading-tight line-clamp-2 group-hover:text-txt-card-hover transition-colors ${mode === 'system' ? 'text-txt-primary pr-2 opacity-90' : 'text-txt-primary'}`}>{template.name}</h3>
       </div>
 
       {/* Pin Button */}
       {onPin && (
         <button
           onClick={onPin}
-          className={`absolute top-1 right-1 p-1.5 rounded-md transition-colors ${mode === 'pinned' ? 'text-status-warning bg-surface-alt/50 hover:bg-surface-alt' : 'text-txt-muted hover:text-status-warning hover:bg-surface-alt'}`}
+          className={`absolute top-1 right-1 p-1.5 rounded-md transition-colors ${mode === 'pinned' ? 'text-status-warning bg-surface-hover/50 hover:bg-surface-hover' : 'text-txt-muted hover:text-status-warning hover:bg-surface-hover'}`}
         >
           <Pin size={16} fill={mode === 'pinned' ? "currentColor" : "none"} />
         </button>
@@ -111,7 +111,7 @@ const GameCard: React.FC<GameCardProps> = ({
       {/* Bottom Actions (Left) */}
       <div className="absolute bottom-1 left-1 flex gap-1 items-center">
         {onDelete && (
-          <button onClick={onDelete} className="p-1.5 text-txt-muted hover:text-status-danger hover:bg-surface-alt rounded-md transition-colors">
+          <button onClick={onDelete} className="p-1.5 text-txt-muted hover:text-status-danger hover:bg-surface-hover rounded-md transition-colors">
             <Trash2 size={16} />
           </button>
         )}
@@ -123,7 +123,7 @@ const GameCard: React.FC<GameCardProps> = ({
               <RefreshCw size={8} /> {t('card_restore_builtin')}
             </button>
           ) : (
-            <button onClick={onSystemCopy} className="flex items-center gap-1 text-[10px] text-txt-primary font-bold bg-surface-alt/50 hover:bg-surface-alt px-1.5 py-1 rounded-md">
+            <button onClick={onSystemCopy} className="flex items-center gap-1 text-[10px] text-txt-primary font-bold bg-surface-hover/50 hover:bg-surface-hover px-1.5 py-1 rounded-md">
               <Copy size={11} /> {t('card_create_copy')}
             </button>
           )
@@ -143,7 +143,7 @@ const GameCard: React.FC<GameCardProps> = ({
         {onCloudBackup && isAutoConnectEnabled && isConnected && !isSynced && (
           <button
             onClick={(e) => { e.stopPropagation(); onCloudBackup(e); }}
-            className="p-1.5 text-status-warning/80 hover:text-status-warning hover:bg-surface-alt rounded transition-colors"
+            className="p-1.5 text-status-warning/80 hover:text-status-warning hover:bg-surface-hover rounded transition-colors"
             title={t('card_backup_hint')}
           >
             <UploadCloud size={14} />

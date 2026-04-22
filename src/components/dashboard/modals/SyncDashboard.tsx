@@ -173,7 +173,7 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
 
                 {/* Upload Section */}
-                <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${confirmMode === 'upload' ? 'bg-brand-secondary/5 border-brand-secondary ring-1 ring-brand-secondary/20' : 'bg-modal-bg border-surface-border hover:border-txt-muted'}`}>
+                <div className={`rounded-2xl border transition-all duration-300 overflow-hidden active:scale-[0.98] ${confirmMode === 'upload' ? 'bg-brand-secondary/5 border-brand-secondary ring-1 ring-brand-secondary/20 shadow-lg' : 'bg-modal-bg border-surface-border hover:border-surface-border-hover shadow-sm'}`}>
                     <div
                         className="p-5 cursor-pointer flex flex-col"
                         onClick={() => setConfirmMode(confirmMode === 'upload' ? null : 'upload')}
@@ -216,7 +216,7 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
                 </div>
 
                 {/* Download Section */}
-                <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${confirmMode === 'download' ? 'bg-status-info/5 border-status-info ring-1 ring-status-info/20' : 'bg-modal-bg border-surface-border hover:border-txt-muted'}`}>
+                <div className={`rounded-2xl border transition-all duration-300 overflow-hidden active:scale-[0.98] ${confirmMode === 'download' ? 'bg-status-info/5 border-status-info ring-1 ring-status-info/20 shadow-lg' : 'bg-modal-bg border-surface-border hover:border-surface-border-hover shadow-sm'}`}>
                     <div
                         className="p-5 cursor-pointer flex flex-col"
                         onClick={() => setConfirmMode(confirmMode === 'download' ? null : 'download')}
