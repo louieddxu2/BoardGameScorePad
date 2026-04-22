@@ -34,12 +34,12 @@ const TimeInspector = () => {
             <button
                 key={item.id}
                 onClick={() => setSelectedId(item.id)}
-                className={`w-full text-left p-2 rounded-lg text-xs transition-all flex justify-between items-center ${isSelected ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100'}`}
+                className={`w-full text-left p-2 rounded-lg text-xs transition-all flex justify-between items-center active:scale-[0.98] ${isSelected ? 'bg-brand-primary text-white shadow-md' : 'modal-bg-elevated text-txt-secondary border border-surface-border/50 hover:modal-bg-recessed hover:text-txt-primary'}`}
             >
                 <span className="truncate font-bold flex items-center gap-1.5">
                     {label}
                 </span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded ${isSelected ? 'bg-indigo-500 text-indigo-100' : 'bg-slate-700 text-slate-500'}`}>{item.usageCount || 0}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded ${isSelected ? 'bg-white/20 text-white' : 'bg-surface-border/50 text-txt-muted'}`}>{item.usageCount || 0}</span>
             </button>
         );
     };
@@ -47,10 +47,10 @@ const TimeInspector = () => {
     return (
         <div className="flex flex-1 min-h-0">
             {/* Left Sidebar (Split Top/Bottom) */}
-            <div className="w-1/3 border-r border-slate-700 flex flex-col bg-slate-900/50">
-                <div className="flex-1 overflow-y-auto no-scrollbar border-b border-slate-700 flex flex-col min-h-0">
-                    <div className="p-2 sticky top-0 bg-slate-900 border-b border-slate-700 z-10 flex justify-between items-center backdrop-blur-sm bg-opacity-90">
-                        <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
+            <div className="w-1/3 border-r border-surface-border flex flex-col modal-bg-recessed/30">
+                <div className="flex-1 overflow-y-auto no-scrollbar border-b border-surface-border flex flex-col min-h-0">
+                    <div className="p-2 sticky top-0 modal-bg-elevated border-b border-surface-border z-10 flex justify-between items-center backdrop-blur-sm">
+                        <span className="text-xs font-bold text-txt-muted flex items-center gap-1">
                             <Clock size={12} /> {t('list_weekdays')}
                         </span>
                     </div>
@@ -59,8 +59,8 @@ const TimeInspector = () => {
                     </div>
                 </div>
                 <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col min-h-0">
-                    <div className="p-2 sticky top-0 bg-slate-900 border-b border-slate-700 z-10 flex justify-between items-center backdrop-blur-sm bg-opacity-90">
-                        <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
+                    <div className="p-2 sticky top-0 modal-bg-elevated border-b border-surface-border z-10 flex justify-between items-center backdrop-blur-sm">
+                        <span className="text-xs font-bold text-txt-muted flex items-center gap-1">
                             <Clock size={12} /> {t('list_timeslots')}
                         </span>
                     </div>

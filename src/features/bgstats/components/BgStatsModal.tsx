@@ -154,7 +154,7 @@ const BgStatsModal: React.FC<BgStatsModalProps> = ({ isOpen, onClose, onImport }
     // [UX Improvement] If in staging mode, render full-screen
     if (importState === 'staging' && analysisReport) {
         return (
-            <div className="fixed inset-0 z-[60] bg-slate-900 flex flex-col animate-in fade-in duration-200">
+            <div className="fixed inset-0 z-[60] bg-app-bg flex flex-col animate-in fade-in duration-200">
                 <ImportStagingView
                     report={analysisReport}
                     onConfirm={handleStagingConfirm}
@@ -168,35 +168,35 @@ const BgStatsModal: React.FC<BgStatsModalProps> = ({ isOpen, onClose, onImport }
     // Default Modal Layout for other states
     return (
         <div
-            className="fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+            className="fixed inset-0 z-[60] bg-modal-backdrop backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
             onClick={onClose}
         >
             <div
-                className="bg-slate-900 w-full max-w-sm rounded-2xl shadow-2xl border border-slate-800 flex flex-col overflow-hidden h-[600px] max-h-[85vh]"
+                className="modal-container w-full max-w-sm flex flex-col overflow-hidden h-[600px] max-h-[85vh] animate-in zoom-in-95 duration-200"
                 onClick={e => e.stopPropagation()}
             >
                 {importState === 'importing' ? (
-                    <div className="flex flex-col items-center justify-center h-full gap-4">
-                        <Loader2 size={48} className="animate-spin text-emerald-500" />
-                        <span className="text-white font-bold">{t('bgstats_state_importing')}</span>
-                        <span className="text-xs text-slate-500">{t('bgstats_warn_keep_open')}</span>
+                    <div className="flex flex-col items-center justify-center h-full gap-4 modal-bg-elevated">
+                        <Loader2 size={48} className="animate-spin text-brand-primary" />
+                        <span className="text-txt-primary font-bold">{t('bgstats_state_importing')}</span>
+                        <span className="text-xs text-txt-muted">{t('bgstats_warn_keep_open')}</span>
                     </div>
                 ) : (
                     <>
-                        <div className="bg-slate-800 p-4 border-b border-slate-700 flex items-center justify-between flex-none">
-                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                <FileJson size={20} className="text-indigo-400" />
+                        <div className="modal-bg-elevated p-4 border-b border-surface-border flex items-center justify-between flex-none">
+                            <h3 className="text-lg font-bold text-txt-primary flex items-center gap-2">
+                                <FileJson size={20} className="text-brand-secondary" />
                                 {t('bgstats_title')}
                             </h3>
-                            <button onClick={onClose} className="text-slate-500 hover:text-white">
+                            <button onClick={onClose} className="text-txt-muted hover:text-txt-primary transition-colors">
                                 <X size={24} />
                             </button>
                         </div>
 
-                        <div className="p-6 space-y-6 flex-1 overflow-y-auto">
-                            <div className="bg-indigo-900/20 border border-indigo-500/30 rounded-xl p-4 text-sm text-indigo-200 leading-relaxed">
+                        <div className="p-6 space-y-6 flex-1 overflow-y-auto modal-body">
+                            <div className="bg-brand-secondary/10 border border-brand-secondary/30 rounded-xl p-4 text-sm text-brand-secondary leading-relaxed">
                                 <p className="flex items-start gap-2">
-                                    <AlertTriangle size={16} className="text-indigo-400 shrink-0 mt-0.5" />
+                                    <AlertTriangle size={16} className="text-brand-secondary shrink-0 mt-0.5" />
                                     {t('bgstats_desc')}
                                 </p>
                             </div>
@@ -205,7 +205,7 @@ const BgStatsModal: React.FC<BgStatsModalProps> = ({ isOpen, onClose, onImport }
                                 <button
                                     onClick={() => fileInputRef.current?.click()}
                                     disabled={importState === 'analyzing' || exportState === 'processing'}
-                                    className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/50 flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
+                                    className="w-full py-4 bg-brand-primary hover:filter hover:brightness-110 text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
                                 >
                                     {importState === 'analyzing' ? (
                                         <Loader2 size={24} className="animate-spin" />
@@ -230,19 +230,19 @@ const BgStatsModal: React.FC<BgStatsModalProps> = ({ isOpen, onClose, onImport }
                                     className={`
                                 w-full py-4 rounded-xl font-bold border flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed group
                                 ${exportState === 'ready'
-                                            ? 'bg-sky-600 hover:bg-sky-500 text-white border-sky-500 shadow-lg shadow-sky-900/50'
-                                            : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                                            ? 'bg-status-info hover:filter hover:brightness-110 text-white border-white/10 shadow-lg'
+                                            : 'modal-bg-recessed hover:modal-bg-elevated text-txt-primary border-surface-border'
                                         }
                             `}
                                 >
                                     {exportState === 'processing' ? (
-                                        <Loader2 size={24} className="animate-spin text-sky-400" />
+                                        <Loader2 size={24} className="animate-spin text-status-info" />
                                     ) : exportState === 'ready' ? (
                                         <div className="flex items-center gap-2">
                                             <Share2 size={24} className="group-hover:scale-110 transition-transform" />
                                         </div>
                                     ) : (
-                                        <Download size={24} className="text-sky-400 group-hover:scale-110 transition-transform" />
+                                        <Download size={24} className="text-status-info group-hover:scale-110 transition-transform" />
                                     )}
 
                                     <span>
@@ -251,13 +251,13 @@ const BgStatsModal: React.FC<BgStatsModalProps> = ({ isOpen, onClose, onImport }
                                         {exportState === 'ready' && t('bgstats_btn_export_ready')}
                                     </span>
 
-                                    {exportState === 'idle' && <span className="text-[10px] font-normal text-slate-500">{t('bgstats_btn_export_sub')}</span>}
+                                    {exportState === 'idle' && <span className="text-[10px] font-normal text-txt-muted">{t('bgstats_btn_export_sub')}</span>}
                                 </button>
                             </div>
                         </div>
 
-                        <div className="p-4 bg-slate-800/50 border-t border-slate-800 text-center flex-none">
-                            <p className="text-[10px] text-slate-500">
+                        <div className="p-4 modal-bg-recessed/50 border-t border-surface-border text-center flex-none">
+                            <p className="text-[10px] text-txt-muted">
                                 {t('bgstats_footer')}
                             </p>
                         </div>

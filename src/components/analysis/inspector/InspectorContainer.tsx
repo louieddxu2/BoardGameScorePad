@@ -73,17 +73,17 @@ const InspectorContainer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     ];
 
     return createPortal(
-        <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] bg-app-bg flex flex-col animate-in fade-in duration-200">
 
             {/* Header */}
-            <div className="flex-none bg-slate-900 p-3 border-b border-slate-800 flex justify-between items-center shadow-md z-20">
+            <div className="flex-none modal-bg-elevated p-3 border-b border-surface-border flex justify-between items-center shadow-md z-20">
                 <div className="flex items-center gap-3">
-                    <div className="bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
-                        <Database size={18} className="text-emerald-500" />
+                    <div className="bg-brand-primary/10 p-2 rounded-lg border border-brand-primary/20">
+                        <Database size={18} className="text-brand-primary" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-white leading-tight">{t('title')}</h3>
-                        <span className="text-[10px] text-slate-500 block">{t('subtitle')}</span>
+                        <h3 className="font-bold text-txt-primary leading-tight">{t('title')}</h3>
+                        <span className="text-[10px] text-txt-muted block">{t('subtitle')}</span>
                     </div>
                 </div>
 
@@ -91,7 +91,7 @@ const InspectorContainer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     <button
                         onClick={handleResetStats}
                         disabled={isProcessing}
-                        className="p-2 hover:bg-slate-800 rounded-lg text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+                        className="p-2 hover:modal-bg-recessed rounded-lg text-status-danger hover:brightness-110 transition-colors disabled:opacity-50"
                         title={t('tooltip_reset')}
                     >
                         <Trash2 size={20} />
@@ -99,32 +99,32 @@ const InspectorContainer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     <button
                         onClick={handleReprocessHistory}
                         disabled={isProcessing}
-                        className="p-2 hover:bg-slate-800 rounded-lg text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-50 relative overflow-hidden"
+                        className="p-2 hover:modal-bg-recessed rounded-lg text-brand-secondary hover:brightness-110 transition-colors disabled:opacity-50 relative overflow-hidden"
                         title={t('tooltip_reprocess')}
                     >
                         {isProcessing ? (
                             <>
-                                <div className="absolute inset-0 bg-indigo-500/20" style={{ width: `${progress}%` }}></div>
+                                <div className="absolute inset-0 bg-brand-secondary/20" style={{ width: `${progress}%` }}></div>
                                 <span className="relative text-[10px] font-bold">{progress}%</span>
                             </>
                         ) : (
                             <RefreshCw size={20} />
                         )}
                     </button>
-                    <div className="w-px h-6 bg-slate-800 mx-1"></div>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">
+                    <div className="w-px h-6 bg-surface-border mx-1"></div>
+                    <button onClick={onClose} className="p-2 hover:modal-bg-recessed rounded-lg text-txt-muted hover:text-txt-primary transition-colors">
                         <X size={20} />
                     </button>
                 </div>
             </div>
 
             {/* Tabs */}
-            <div className="flex-none bg-slate-900 border-b border-slate-800 flex px-2 overflow-x-auto no-scrollbar">
+            <div className="flex-none modal-bg-elevated border-b border-surface-border flex px-2 overflow-x-auto no-scrollbar">
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as any)}
-                        className={`px-4 py-3 text-xs font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id ? 'border-emerald-500 text-emerald-400 bg-slate-800/50' : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'}`}
+                        className={`px-4 py-3 text-xs font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id ? 'border-brand-primary text-brand-primary bg-surface-border/30' : 'border-transparent text-txt-muted hover:text-txt-primary hover:bg-surface-border/20'}`}
                     >
                         <tab.icon size={14} />
                         {tab.label}
@@ -133,7 +133,7 @@ const InspectorContainer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 min-h-0 flex flex-col bg-black relative">
+            <div className="flex-1 min-h-0 flex flex-col bg-app-bg relative">
                 {activeTab === 'games' && <DataList title={t('list_games')} table={db.savedGames} icon={LayoutGrid} />}
                 {activeTab === 'players' && <DataList title={t('list_players')} table={db.savedPlayers} icon={Users} />}
                 {activeTab === 'locations' && <DataList title={t('list_locations')} table={db.savedLocations} icon={MapPin} />}
