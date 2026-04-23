@@ -13,10 +13,32 @@ export const getTouchDistance = (touches: { length: number; [index: number]: { c
 // --- Color Luminance Helpers ---
 
 /**
- * Parses a hex color string to RGB components (0-255).
+ * Parses a hex or rgb/rgba color string to RGB components (0-255).
+ * Supports CSS variables like rgb(var(--c-p-emerald)) by reading computed styles.
  */
 const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
     if (!hex) return null;
+
+    // Handle rgb(var(--xyz)) or rgba(var(--xyz) / a)
+    if (hex.includes('var(')) {
+        // Extract the variable name
+        const match = hex.match(/var\((--[a-zA-Z0-9-]+)\)/);
+        if (match && match[1]) {
+            const varName = match[1];
+            // Get computed style
+            if (typeof document !== 'undefined') {
+                const val = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+                if (val) {
+                    // val is expected to be space-separated numbers like "16 185 129"
+                    const parts = val.split(/\s+/).map(Number);
+                    if (parts.length >= 3) {
+                        return { r: parts[0], g: parts[1], b: parts[2] };
+                    }
+                }
+            }
+        }
+    }
+
     if (hex.startsWith('rgb')) {
         const match = hex.match(/\d+/g);
         if (match && match.length >= 3) {
@@ -45,11 +67,11 @@ const getPerceivedLuminance = (hex: string): number => {
 
 /**
  * Determines if a (text) color is dark, requiring a light halo for contrast on dark backgrounds.
- * Threshold: luminance < 80 (e.g. #1f2937, #a16207, #0f172a)
+ * Threshold: luminance < 115 (Includes Black, Brown, Gray, Slate 900)
  */
 export const isColorDark = (hex: string): boolean => {
     if (!hex) return false;
-    return getPerceivedLuminance(hex) < 80;
+    return getPerceivedLuminance(hex) < 115;
 };
 
 /**
@@ -79,10 +101,10 @@ export const isColorTooLight = (hex: string): boolean => {
 // --- Theme-Aware Contrast System ---
 
 /** White halo for dark text on dark backgrounds. */
-export const ENHANCED_TEXT_SHADOW = '1px 0 1px rgba(var(--c-white) / 0.5), -1px 0 1px rgba(var(--c-white) / 0.5), 0 1px 1px rgba(var(--c-white) / 0.5), 0 -1px 1px rgba(var(--c-white) / 0.5)';
+export const ENHANCED_TEXT_SHADOW = '0 0 2px rgba(255, 255, 255, 0.9), 0 0 4px rgba(255, 255, 255, 0.6), 0 0 8px rgba(255, 255, 255, 0.4)';
 
 /** Dark shadow for light text on light backgrounds. */
-export const DARK_TEXT_SHADOW = '1px 0 1px rgba(var(--c-black) / 0.3), -1px 0 1px rgba(var(--c-black) / 0.3), 0 1px 1px rgba(var(--c-black) / 0.3), 0 -1px 1px rgba(var(--c-black) / 0.3)';
+export const DARK_TEXT_SHADOW = '0 0 2px rgba(0, 0, 0, 0.8), 0 0 4px rgba(0, 0, 0, 0.5), 0 0 8px rgba(0, 0, 0, 0.3)';
 
 /**
  * Reads the current theme from the DOM. Zero-cost since it's a simple attribute read.
