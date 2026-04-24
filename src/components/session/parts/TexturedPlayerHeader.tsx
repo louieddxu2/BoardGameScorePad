@@ -95,14 +95,14 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
       onClick={onClick}
       // [CRITICAL CHANGE] Always enforce min-width 3.375rem (approx 54px).
       // Even in textured mode, if columns get too thin, we want scrolling, not illegible text.
-      className={`relative flex-auto w-auto min-w-[3.375rem] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${isEditing ? 'z-20 ring-2 ring-inset ring-white/50' : ''} ${!bgUrl ? 'border-r border-b border-slate-700' : ''} ${baseImage ? 'p-0' : 'p-2'} ${className}`}
+      className={`relative flex-auto w-auto min-w-[3.375rem] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${isEditing ? 'z-20 ring-2 ring-inset ring-[rgb(var(--c-grid-active-ring))] shadow-lg' : ''} ${!bgUrl ? 'border-r border-b border-surface-border' : ''} ${baseImage ? 'p-0' : 'p-2'} ${className}`}
       style={containerStyle}
     >
       <SmartTextureLayer bgUrl={bgUrl} rect={rect} />
 
       <ContrastText 
         className="text-sm font-bold whitespace-nowrap z-10" 
-        color={bgUrl ? 'rgb(var(--c-slate-50))' : (isTransparent ? 'rgb(var(--c-slate-200))' : effectiveColor)}
+        color={bgUrl ? 'rgb(var(--c-slate-50))' : (isTransparent ? 'rgb(var(--c-txt-muted))' : effectiveColor)}
         style={bgUrl ? inkStyle : {}}
         isTextureMode={!!bgUrl}
       >

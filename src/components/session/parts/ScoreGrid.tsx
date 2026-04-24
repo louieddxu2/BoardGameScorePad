@@ -208,16 +208,22 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
         {/* Player Headers */}
         <div
           id="live-player-header-row"
-          className="flex sticky top-0 z-20 modal-bg-elevated shadow-sm transition-all duration-200"
-          style={{ width: typeof headerRowWidth === 'number' ? `${headerRowWidth}px` : headerRowWidth }}
+          className="flex sticky top-0 z-20 shadow-sm transition-all duration-200"
+          style={{ 
+            width: typeof headerRowWidth === 'number' ? `${headerRowWidth}px` : headerRowWidth,
+            backgroundColor: 'rgb(var(--c-grid-cell-bg))'
+          }}
         >
           <TexturedBlock
             baseImage={baseImage}
             rect={template.globalVisuals?.playerLabelRect}
             fallbackContent={<span className="font-bold text-sm text-txt-muted">{t('grid_player')}</span>}
             onClick={isEditMode && onOpenSettings ? onOpenSettings : undefined}
-            className={`sticky left-0 modal-bg-elevated border-r border-b border-surface-border flex items-center justify-center z-30 shadow-sm shrink-0 overflow-hidden ${isTextureMode ? 'p-0' : 'p-2'} ${isEditMode ? 'cursor-pointer hover:bg-surface-hover' : ''}`}
-            style={itemColStyle}
+            className={`sticky left-0 border-r border-b border-surface-border flex items-center justify-center z-30 shadow-sm shrink-0 overflow-hidden ${isTextureMode ? 'p-0' : 'p-2'} ${isEditMode ? 'cursor-pointer hover:bg-surface-hover' : ''}`}
+            style={{ 
+                ...itemColStyle,
+                backgroundColor: 'rgb(var(--c-grid-cell-bg))'
+            }}
           >
             {/* Gear Icon: Visual Cue for Settings */}
             {isEditMode && (
@@ -266,9 +272,9 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           const rowHiddenClass = (isEditMode && displayMode === 'hidden') ? 'opacity-70 bg-app-bg/50' : '';
           const hiddenStyleClass = (isEditMode && isHidden) ? 'ring-2 ring-status-warning/50 ring-inset bg-status-warning/20' : '';
 
-          const headerBgClass = isEditMode && isDragging
-            ? 'bg-surface-hover'
-            : (isAlt && !isTextureMode ? 'bg-surface-bg-alt/50' : 'modal-bg-elevated');
+          const headerBg = isEditMode && isDragging
+            ? 'rgb(var(--c-surface-hover))'
+            : (isAlt && !isTextureMode ? 'rgba(var(--c-grid-cell-bg-alt))' : 'rgb(var(--c-grid-cell-bg))');
 
           return (
             <div
@@ -287,9 +293,10 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 rect={col.visuals?.headerRect}
                 onClick={(e: any) => onColumnHeaderClick(e, col)}
                 {...getDragHandlers(col.id)}
-                className={`sticky left-0 ${headerBgClass} ${hiddenStyleClass} border-r-2 border-b border-surface-border flex flex-col justify-center transition-colors z-20 group select-none shrink-0 overflow-hidden ${isEditMode ? (isDragging ? 'cursor-grabbing' : 'cursor-grab hover:bg-surface-hover') : 'cursor-default'} ${isTextureMode ? 'p-0' : 'p-2'} `}
+                className={`sticky left-0 border-r-2 border-b border-surface-border flex flex-col justify-center transition-colors z-20 group select-none shrink-0 overflow-hidden ${isEditMode ? (isDragging ? 'cursor-grabbing' : 'cursor-grab hover:bg-surface-hover') : 'cursor-default'} ${isTextureMode ? 'p-0' : 'p-2'} `}
                 style={{
                   ...itemColStyle,
+                  backgroundColor: headerBg,
                   borderRightColor: col.color || 'var(--c-surface-border)'
                 }}
                 fallbackContent={
