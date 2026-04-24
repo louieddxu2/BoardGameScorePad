@@ -274,7 +274,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
 
           const headerBg = isEditMode && isDragging
             ? 'rgb(var(--c-surface-hover))'
-            : (isAlt && !isTextureMode ? 'rgba(var(--c-grid-cell-bg-alt))' : 'rgb(var(--c-grid-cell-bg))');
+            : (isAlt && !isTextureMode ? 'rgb(var(--c-grid-cell-bg-alt))' : 'rgb(var(--c-grid-cell-bg))');
 
           return (
             <div
@@ -554,7 +554,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           data-row-id={lastColId}
           onDragOver={(e) => { if (isEditMode && lastColId) dnd.handleDragOver(e, lastColId); }}
           onDrop={(e) => { if (isEditMode && lastColId) dnd.handleDrop(e, lastColId); }}
-          className={`w-full ${(editingCell || editingPlayerId || (!baseImage && template.columns.length < 5) || isToolboxOpen) ? 'h-[40vh]' : 'h-24'}`}
+          className={`w-full bg-app-bg ${(editingCell || editingPlayerId || (!baseImage && template.columns.length < 5) || isToolboxOpen) ? 'h-[40vh]' : 'h-24'}`}
         />
       </div>
     </div>
