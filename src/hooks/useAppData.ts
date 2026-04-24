@@ -66,12 +66,7 @@ export const useAppData = () => {
     });
 
     // --- 3. LocalStorage Settings & Global Actions ---
-    const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
-        const saved = localStorage.getItem('app_theme') as 'dark' | 'light' | null;
-        if (saved) return saved;
-        // Default to dark mode as requested
-        return 'dark';
-    });
+    const [themeMode, setThemeMode] = useState<'dark' | 'light'>('dark');
 
     const [newBadgeIds, setNewBadgeIds] = useState<string[]>(() => {
         try { return JSON.parse(localStorage.getItem('sm_new_badge_ids') || '[]'); } catch { return []; }
@@ -89,7 +84,6 @@ export const useAppData = () => {
     }, [pinnedIds]);
 
     useEffect(() => {
-        localStorage.setItem('app_theme', themeMode);
         document.documentElement.setAttribute('data-theme', themeMode);
     }, [themeMode]);
 
@@ -304,7 +298,6 @@ export const useAppData = () => {
                 const { theme, pinnedIds, newBadgeIds, zoomLevel, isEditMode } = settings.preferences;
                 if (theme) {
                     setThemeMode(theme);
-                    localStorage.setItem('app_theme', theme);
                 }
                 if (pinnedIds) {
                     setPinnedIds(pinnedIds);
