@@ -6,7 +6,8 @@ import ScoreCell from './ScoreCell';
 import TexturedPlayerHeader from './TexturedPlayerHeader';
 import TexturedTotalCell from './TexturedTotalCell';
 import TexturedBlock from './TexturedBlock';
-import { isColorDark, ENHANCED_TEXT_SHADOW, getContrastTextShadow } from '../../../utils/ui';
+import { getContrastTextStyles } from '../../../utils/ui';
+import { ContrastText } from '../../shared/ContrastText';
 import { calculateWinners } from '../../../utils/templateUtils';
 import { useSessionTranslation } from '../../../i18n/session';
 import { injectSoftHyphens } from '../../../utils/text';
@@ -224,12 +225,12 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                                         style={{ ...itemColStyle }}
                                         fallbackContent={
                                             <div className="flex flex-col items-center justify-center w-full h-full p-2 border-r border-b border-slate-700 bg-slate-800">
-                                                <span
+                                                <ContrastText
                                                     className="text-sm font-bold text-slate-300 w-full leading-tight block break-words whitespace-pre-wrap hyphenate"
-                                                    style={{ ...(col.color && { color: col.color, ...(getContrastTextShadow(col.color) && { textShadow: getContrastTextShadow(col.color) }) }) }}
+                                                    color={col.color || 'inherit'}
                                                 >
                                                     {injectSoftHyphens(col.name)}
-                                                </span>
+                                                </ContrastText>
                                             </div>
                                         }
                                     />

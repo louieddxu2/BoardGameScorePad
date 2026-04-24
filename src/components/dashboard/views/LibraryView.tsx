@@ -41,8 +41,8 @@ interface LibraryViewProps {
 const TruncationFooter: React.FC<{ displayed: number, total: number, label: string }> = ({ displayed, total, label }) => {
     if (displayed >= total) return null;
     return (
-        <div className="col-span-2 py-4 flex flex-col items-center justify-center text-slate-500 opacity-70">
-            <div className="w-12 h-1 bg-slate-700/50 rounded-full mb-2"></div>
+        <div className="col-span-2 py-4 flex flex-col items-center justify-center text-txt-muted opacity-70">
+            <div className="w-12 h-1 bg-surface-alt/50 rounded-full mb-2"></div>
             <span className="text-[10px] font-mono">{label}</span>
         </div>
     );
@@ -95,11 +95,11 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                     title={t('dash_active_sessions')}
                     icon={<Activity size={18} />}
                     count={activeSessions.length}
-                    iconColorClass="text-emerald-400"
+                    iconColorClass="text-brand-primary"
                     isOpen={isActiveLibOpen}
                     onToggle={() => setIsActiveLibOpen(!isActiveLibOpen)}
                     actionButton={
-                        <button onClick={(e) => { e.stopPropagation(); onClearAllSessions(); }} className="text-xs text-slate-500 hover:text-red-400 px-2 py-1">
+                        <button onClick={(e) => { e.stopPropagation(); onClearAllSessions(); }} className="text-xs text-txt-muted hover:text-status-danger px-2 py-1">
                             {t('dash_clear_all')}
                         </button>
                     }
@@ -126,7 +126,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 title={t('dash_pinned')}
                 icon={<Pin size={18} />}
                 count={pinnedTemplates.length}
-                iconColorClass="text-yellow-400"
+                iconColorClass="text-status-warning"
                 isOpen={isPinnedLibOpen}
                 onToggle={() => setIsPinnedLibOpen(!isPinnedLibOpen)}
             >
@@ -151,7 +151,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 title={t('dash_my_library')}
                 icon={<LayoutGrid size={18} />}
                 count={userTemplatesTotal}
-                iconColorClass="text-emerald-500"
+                iconColorClass="text-brand-primary"
                 isOpen={isUserLibOpen}
                 onToggle={() => setIsUserLibOpen(!isUserLibOpen)}
                 actionButton={
@@ -196,13 +196,13 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 title={t('dash_builtin_library')}
                 icon={<Library size={18} />}
                 count={systemTemplatesTotal}
-                iconColorClass="text-indigo-400"
+                iconColorClass="text-brand-secondary"
                 isOpen={isSystemLibOpen}
                 onToggle={() => setIsSystemLibOpen(!isSystemLibOpen)}
                 highlight={newSystemTemplatesCount > 0 && !searchQuery}
                 actionButton={
                     newSystemTemplatesCount > 0 && !searchQuery ? (
-                        <button onClick={(e) => { e.stopPropagation(); onClearNewBadges(); setIsSystemLibOpen(true); }} className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg">
+                        <button onClick={(e) => { e.stopPropagation(); onClearNewBadges(); setIsSystemLibOpen(true); }} className="flex items-center gap-1 bg-brand-secondary hover:bg-brand-secondary/80 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-ui-floating">
                             <Sparkles size={14} /> {t('dash_new_games_found', { count: newSystemTemplatesCount })}
                         </button>
                     ) : undefined
@@ -214,7 +214,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                         return (
                             <div key={tData.id} className="relative">
                                 {isNew && (
-                                    <div className="absolute -top-1 -right-1 z-10 w-3 h-3 bg-red-500 rounded-full border-2 border-slate-900 shadow-md animate-bounce" />
+                                    <div className="absolute -top-1 -right-1 z-10 w-3 h-3 bg-red-500 rounded-full border-2 border-app-bg shadow-md animate-bounce" />
                                 )}
                                 <GameCard
                                     template={tData}

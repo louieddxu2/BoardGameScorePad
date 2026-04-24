@@ -4,7 +4,8 @@ import { Player, ScoreColumn, ScoreValue } from '../../../types';
 import { calculateColumnScore, getAutoColumnError, resolveSelectedOptions } from '../../../utils/scoring';
 import TexturedScoreCell from './TexturedScoreCell';
 import { Link2Off, AlertTriangle } from 'lucide-react';
-import { isColorDark, ENHANCED_TEXT_SHADOW, getContrastTextShadow, getCurrentTheme } from '../../../utils/ui';
+import { getContrastTextStyles, getCurrentTheme } from '../../../utils/ui';
+import { ContrastText } from '../../shared/ContrastText';
 import { calculateDynamicFontSize } from '../../../utils/dynamicLayout';
 import {
     formatDisplayNumber,
@@ -81,16 +82,13 @@ const CellContentSelect: React.FC<CellContentProps> = ({ scoreValue, displayScor
                     const labelColor = opt.color || column.color || (screenshotMode ? 'rgb(var(--c-emerald-500))' : 'rgb(var(--c-emerald-400))');
                     const lines = opt.label.split(/\r\n|\r|\n/);
                     return lines.map((line, lineIdx) => (
-                        <span
+                        <ContrastText
                             key={`${optIdx}-${lineIdx}`}
                             className="text-xl font-bold text-center break-words w-full hyphenate px-1"
-                            style={{ 
-                                color: labelColor,
-                                textShadow: getContrastTextShadow(labelColor)
-                            }}
+                            color={labelColor}
                         >
                             {injectSoftHyphens(line)}
-                        </span>
+                        </ContrastText>
                     ));
                 })}
             </div>
@@ -109,15 +107,12 @@ const CellContentSelect: React.FC<CellContentProps> = ({ scoreValue, displayScor
                 {/* Floating label at bottom-right (Doesn't affect center position) */}
                 {renderMode === 'standard' && !simpleMode && options.length > 0 && (
                     <div className="absolute bottom-1 right-1 flex flex-col items-end leading-[1.1] max-w-[85%] pointer-events-none pr-0.5">
-                        <span
+                        <ContrastText
                             className="text-sm font-bold text-right truncate max-w-full drop-shadow-sm"
-                            style={{ 
-                                color: options[0].color || column.color || (screenshotMode ? 'rgb(var(--c-emerald-500))' : 'rgb(var(--c-emerald-400))'),
-                                textShadow: getContrastTextShadow(options[0].color || column.color || '')
-                            }}
+                            color={options[0].color || column.color || (screenshotMode ? 'rgb(var(--c-emerald-500))' : 'rgb(var(--c-emerald-400))')}
                         >
                             {injectSoftHyphens(options[0].label)}
-                        </span>
+                        </ContrastText>
                     </div>
                 )}
             </div>
@@ -142,16 +137,13 @@ const CellContentSelect: React.FC<CellContentProps> = ({ scoreValue, displayScor
                             {options.map((opt, optIdx) => {
                                 const labelColor = opt.color || column.color || (screenshotMode ? 'rgb(var(--c-emerald-500))' : 'rgb(var(--c-emerald-400))');
                                 return (
-                                    <span
+                                    <ContrastText
                                         key={optIdx}
                                         className="text-sm font-bold text-right truncate max-w-full"
-                                        style={{ 
-                                            color: labelColor,
-                                            textShadow: getContrastTextShadow(labelColor)
-                                        }}
+                                        color={labelColor}
                                     >
                                         {injectSoftHyphens(opt.label)}
-                                    </span>
+                                    </ContrastText>
                                 );
                             })}
                         </div>
@@ -170,12 +162,12 @@ const CellContentProduct: React.FC<CellContentProps> = ({ parts, displayScore, h
     const ub = column.subUnits?.[1] || '';
 
     const productUI = hasInput ? (
-        <span className={`absolute bottom-1 right-1 flex items-baseline px-1 rounded max-w-full overflow-hidden ${screenshotMode ? '' : 'bg-slate-900/80 border border-slate-800/50'}`}>
-            <span className="text-sm font-bold font-mono text-emerald-400 leading-none truncate">{displayA}</span>
-            <span className="text-xs text-emerald-400/80 ml-[1px] leading-none">{ua}</span>
-            <span className="text-sm text-slate-600 mx-[2px] leading-none">×</span>
-            <span className="text-sm font-bold font-mono text-emerald-400 leading-none truncate">{displayB}</span>
-            <span className="text-xs text-emerald-400/80 ml-[1px] leading-none">{ub}</span>
+        <span className={`absolute bottom-1 right-1 flex items-baseline px-1 rounded max-w-full overflow-hidden ${screenshotMode ? '' : 'bg-surface-bg-alt/80 border border-surface-border'}`}>
+            <span className="text-sm font-bold font-mono text-brand-primary leading-none truncate">{displayA}</span>
+            <span className="text-xs text-brand-primary/80 ml-[1px] leading-none">{ua}</span>
+            <span className="text-sm text-txt-muted mx-[2px] leading-none">×</span>
+            <span className="text-sm font-bold font-mono text-brand-primary leading-none truncate">{displayB}</span>
+            <span className="text-xs text-brand-primary/80 ml-[1px] leading-none">{ub}</span>
         </span>
     ) : null;
 
@@ -261,8 +253,8 @@ const CellContentSum: React.FC<CellContentProps> = ({ parts, displayScore, hasIn
                         <div className="flex flex-col items-end font-mono leading-tight">
                             {parts.map((part, i) => (
                                 <div key={i} className="flex items-baseline text-sm max-w-full justify-end">
-                                    <span className="text-emerald-400 font-bold truncate">{formatDisplayNumber(part)}</span>
-                                    {column.unit && <span className="text-emerald-400/80 text-xs ml-0.5 truncate">{column.unit}</span>}
+                                    <span className="text-brand-primary font-bold truncate">{formatDisplayNumber(part)}</span>
+                                    {column.unit && <span className="text-brand-primary/80 text-xs ml-0.5 truncate">{column.unit}</span>}
                                 </div>
                             ))}
                             {/* Invisible Spacer */}
@@ -319,8 +311,8 @@ const CellContentStandard: React.FC<CellContentProps> = ({ parts, displayScore, 
 
             {shouldShowBottomRight && (
                 <span className="absolute bottom-1 right-1 text-sm font-mono flex items-baseline max-w-full px-1">
-                    <span className="text-emerald-400 font-bold truncate">{displayRawStr}</span>
-                    {hasUnit && <span className="text-emerald-400/80 text-xs ml-0.5 truncate">{column.unit}</span>}
+                    <span className="text-brand-primary font-bold truncate">{displayRawStr}</span>
+                    {hasUnit && <span className="text-brand-primary/80 text-xs ml-0.5 truncate">{column.unit}</span>}
                 </span>
             )}
         </>
@@ -365,40 +357,78 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
     const containerStyle: React.CSSProperties = forceWidth ? { width: forceWidth, minWidth: forceWidth } : {};
 
     const isStandardAuto = !baseImage && column.isAuto;
+    let visualStyles: React.CSSProperties = {};
     let visualClasses = '';
 
     if (screenshotMode) {
         if (baseImage) visualClasses = `bg-transparent h-full`;
-        else if (isStandardAuto) visualClasses = `bg-emerald-500/10 border-emerald-500/20 h-full`;
+        else if (isStandardAuto) {
+            visualClasses = `h-full border-[rgba(var(--c-grid-auto-bg))]`;
+            visualStyles = { backgroundColor: 'rgba(var(--c-grid-auto-bg))' };
+        }
         else {
-            const bg = isAlt ? 'bg-slate-800/50' : 'bg-transparent';
-            visualClasses = `${bg} border-slate-700 h-full`;
+            const bg = isAlt ? 'rgba(var(--c-grid-cell-bg-alt))' : 'transparent';
+            visualClasses = `h-full border-[rgba(var(--c-grid-cell-border))]`;
+            visualStyles = { backgroundColor: bg };
         }
     } else {
-        let bgClass = 'bg-slate-900 hover:bg-slate-800';
+        // Standard Grid View
+        let bg = 'rgb(var(--c-grid-cell-bg))';
+        let border = baseImage ? 'transparent' : 'rgba(var(--c-grid-cell-border))';
+        let hoverBg = 'rgb(var(--c-surface-hover))';
+
         if (!baseImage && !isStandardAuto && isAlt) {
-            bgClass = 'bg-slate-800/50 hover:bg-slate-700';
+            bg = 'rgba(var(--c-grid-cell-bg-alt))';
         }
 
-        let borderClass = baseImage ? 'border-transparent' : 'border-slate-800';
         if (isStandardAuto) {
-            bgClass = 'bg-emerald-500/10 hover:bg-emerald-500/20';
-            borderClass = 'border-emerald-500/20';
+            bg = 'rgba(var(--c-grid-auto-bg))';
+            border = 'rgba(var(--c-grid-auto-bg))';
+            hoverBg = 'rgba(var(--c-grid-auto-bg))'; // Keep it stable or slightly brighter?
         }
+
+        visualClasses = `${minHeightClass}`;
+        visualStyles = { 
+            backgroundColor: bg,
+            borderColor: border,
+            '--hover-bg': hoverBg 
+        } as any;
+
         if (isActive && !hasLayout) {
-            visualClasses = `${minHeightClass} ring-2 ring-inset ring-emerald-500 z-10 ${bgClass}`;
-        } else {
-            visualClasses = `${minHeightClass} ${bgClass} ${borderClass}`;
+            visualClasses += ` ring-2 ring-inset ring-[rgb(var(--c-grid-active-ring))] z-10`;
         }
     }
 
-    const textStyle = {
-        color: autoError ? 'rgb(var(--c-rose-500))' : (hasInput ? (displayScore < 0 ? 'rgb(var(--c-red-400))' : 'rgb(var(--c-slate-50))') : 'rgb(var(--c-slate-400))'),
+    // --- Contrast Decision Logic ---
+    const cellColor = autoError 
+        ? 'rgb(var(--c-status-danger))' 
+        : (hasInput 
+            ? (displayScore < 0 ? 'rgb(var(--c-status-danger))' : 'rgb(var(--c-txt-primary))') 
+            : 'rgb(var(--c-txt-muted))'
+          );
+
+    // Apply centralized contrast styles (shadows/protection) to the base text style
+    const textStyle = { 
+        ...getContrastTextStyles(cellColor, undefined, { isTextureMode: !!baseImage }),
+        color: cellColor 
     };
 
     // --- Render Selection ---
     const renderContent = () => {
-        const commonProps = { parts, scoreValue: scoreData, displayScore, hasInput, column, simpleMode: props.simpleMode || false, forceHeight, screenshotMode, textStyle, autoError, previewValue, isActive };
+        const commonProps = { 
+            parts, 
+            scoreValue: scoreData, 
+            displayScore, 
+            hasInput, 
+            column, 
+            simpleMode: props.simpleMode || false, 
+            forceHeight, 
+            screenshotMode, 
+            textStyle, 
+            autoError, 
+            previewValue, 
+            isActive 
+        };
 
         if (column.isAuto) return <CellContentAuto {...commonProps} />;
         if (column.inputType === 'clicker' && !column.formula.includes('+next')) return <CellContentSelect {...commonProps} />;
@@ -416,8 +446,8 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
             absolute flex items-center justify-center 
             ${!screenshotMode ? 'border-2 rounded-md cursor-pointer transition-all pointer-events-auto' : ''}
             ${!screenshotMode && isActive
-                    ? 'border-emerald-500 bg-emerald-500/20 ring-1 ring-emerald-500'
-                    : (!screenshotMode ? 'border-dashed border-white/20 hover:border-white/50 hover:bg-white/5' : '')
+                    ? 'border-[rgb(var(--c-grid-active-ring))] bg-[rgba(var(--c-grid-active-ring)/0.2)] ring-1 ring-[rgb(var(--c-grid-active-ring))]'
+                    : (!screenshotMode ? 'border-dashed border-[rgba(var(--c-txt-primary)/0.2)] hover:border-[rgba(var(--c-txt-primary)/0.5)] hover:bg-[rgba(var(--c-txt-primary)/0.05)]' : '')
                 }
         `}
             style={{
@@ -476,13 +506,14 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
                                 const labelColor = opt.color || column.color || (screenshotMode ? 'rgb(var(--c-emerald-500))' : 'rgb(var(--c-emerald-400))');
                                 const lines = opt.label.split(/\r\n|\r|\n/);
                                 return lines.map((line, lineIdx) => (
-                                    <span
+                                    <ContrastText
                                         key={`${optIdx}-${lineIdx}`}
                                         className="font-bold text-center break-words whitespace-pre-wrap w-full hyphenate"
-                                        style={{ color: labelColor, fontSize: dynamicFontSize, textShadow: getContrastTextShadow(labelColor) }}
+                                        color={labelColor}
+                                        style={{ fontSize: dynamicFontSize }}
                                     >
                                         {injectSoftHyphens(line)}
-                                    </span>
+                                    </ContrastText>
                                 ));
                             })}
                         </div>
@@ -490,16 +521,24 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
                 }
 
                 return (
-                    <span className={`font-bold tracking-tight w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={{ ...textStyle, fontSize: dynamicFontSize }}>
+                    <ContrastText 
+                        className={`font-bold tracking-tight w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} 
+                        color={column.color || 'inherit'}
+                        style={{ fontSize: dynamicFontSize }}
+                    >
                         {hasInput ? (autoError ? 'ERR' : formatDisplayNumber(displayScore)) : ''}
-                    </span>
+                    </ContrastText>
                 );
             })()}
         </div>
     ) : renderContent();
 
     return (
-        <div onClick={hasLayout ? undefined : onClick} className={`${baseContainerClasses} ${visualClasses}`} style={containerStyle}>
+        <div 
+            onClick={hasLayout ? undefined : onClick} 
+            className={`${baseContainerClasses} ${visualClasses}`} 
+            style={{ ...containerStyle, ...visualStyles }}
+        >
             {finalContent}
         </div>
     );

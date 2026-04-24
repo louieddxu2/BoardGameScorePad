@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Player, SavedListItem } from '../../../types';
 import { Settings2, Ban, Flag } from 'lucide-react';
 import { COLORS } from '../../../colors';
-import { isColorDark, ENHANCED_TEXT_SHADOW, getContrastTextShadow } from '../../../utils/ui';
+import { isColorDark } from '../../../utils/ui';
 import { searchService } from '../../../services/searchService';
 import { useSessionTranslation } from '../../../i18n/session';
 

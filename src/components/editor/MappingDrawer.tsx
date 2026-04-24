@@ -35,19 +35,19 @@ const MappingDrawer: React.FC<MappingDrawerProps> = ({ template, assignedIds }) 
         key={colId}
         className={`relative flex items-center gap-1.5 p-1.5 rounded-lg border transition-all h-10 select-none
                 ${isAssigned
-            ? 'bg-slate-800 border-slate-700 opacity-50'
-            : 'bg-slate-700 border-slate-600'
+            ? 'modal-bg-recessed border-surface-border opacity-40'
+            : 'modal-bg-elevated border-surface-border shadow-sm'
           }
             `}
       >
-        {isAssigned && <Link2 size={12} className="shrink-0 text-slate-500 absolute left-1.5" />}
+        {isAssigned && <Link2 size={12} className="shrink-0 text-brand-primary absolute left-1.5" />}
         <div className={`flex-1 min-w-0 transition-all ${isAssigned ? 'pl-5' : ''}`}>
-          <span className="text-sm font-medium text-slate-300 truncate block">{col.name}</span>
+          <span className={`text-sm font-medium truncate block ${isAssigned ? 'text-txt-muted' : 'text-txt-primary'}`}>{col.name}</span>
         </div>
         <div
           onMouseDown={(e) => handleDragInitiate(e, col.id)}
           onTouchStart={(e) => handleDragInitiate(e, col.id)}
-          className="p-1 cursor-grab text-slate-500 hover:bg-slate-600 rounded touch-none"
+          className="p-1 cursor-grab text-txt-muted hover:text-txt-primary hover:modal-bg-recessed rounded transition-colors touch-none"
         >
           <GripVertical size={16} className="shrink-0" />
         </div>
@@ -57,12 +57,12 @@ const MappingDrawer: React.FC<MappingDrawerProps> = ({ template, assignedIds }) 
 
   return (
     <div
-      className="absolute top-4 left-4 bottom-4 w-28 bg-slate-900/70 backdrop-blur-md rounded-2xl border border-slate-700/80 z-40 flex flex-col shadow-2xl animate-in fade-in slide-in-from-left-4 duration-300"
+      className="absolute top-4 left-4 bottom-4 w-28 modal-bg-elevated/70 backdrop-blur-md rounded-2xl border border-surface-border/50 z-40 flex flex-col shadow-2xl animate-in fade-in slide-in-from-left-4 duration-300"
       onMouseDown={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
     >
-      <div className="p-2 text-center text-xs font-bold text-slate-300 border-b border-slate-800 shrink-0 flex items-center justify-center gap-1.5">
-        <Download size={12} className="text-sky-400 shrink-0" />
+      <div className="p-2 text-center text-xs font-bold text-txt-muted border-b border-surface-border shrink-0 flex items-center justify-center gap-1.5">
+        <Download size={12} className="text-status-info shrink-0" />
         <span className="truncate">{t('mapper_source_label', { name: template.name })}</span>
       </div>
       <div

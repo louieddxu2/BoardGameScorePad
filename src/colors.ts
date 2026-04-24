@@ -23,3 +23,33 @@ export const COLORS = [
   'rgb(var(--c-p-gray))',    // Gray (灰) - 石頭/銀幣/鐵
   'rgb(var(--c-p-skin))',    // Skin (膚色) - 人類/工人
 ];
+
+/**
+ * [Color Tone Registry]
+ * Manually defines which player colors are "dark" or "light" to guide contrast protection.
+ * This is more reliable than pure calculation for specific board game palettes.
+ */
+export const COLOR_TONES: Record<string, 'dark' | 'light' | 'neutral'> = {
+  // Dark Tones (Needs white contrast in dark mode)
+  '--c-p-black': 'dark',
+  '--c-p-brown': 'dark',
+  '--c-p-gray': 'dark',
+  '--c-p-indigo': 'dark',
+
+  // Light Tones (Needs dark contrast in light mode)
+  '--c-p-white': 'light',
+  '--c-p-yellow': 'light',
+  '--c-p-skin': 'light',
+
+  // Neutral / Mid-tones
+  '--c-p-emerald': 'neutral',
+  '--c-p-blue': 'neutral',
+  '--c-p-red': 'neutral',
+  '--c-p-orange': 'neutral',
+  '--c-p-violet': 'neutral',
+  '--c-p-pink': 'neutral',
+  '--c-p-teal': 'neutral',
+  '--c-p-amber': 'neutral',
+  '--c-p-lime': 'neutral',
+  '--c-p-cyan': 'neutral',
+};

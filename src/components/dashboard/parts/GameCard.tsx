@@ -57,31 +57,31 @@ const GameCard: React.FC<GameCardProps> = ({
     // Size 16 matches the Trash icon size
     if (isLocalImageReady) {
       return (
-        <div title={t('card_img_ready')} className="p-1.5 text-sky-400 opacity-90">
+        <div title={t('card_img_ready')} className="p-1.5 text-brand-primary opacity-90">
           <ImageIcon size={16} />
         </div>
       );
     } else {
       return (
-        <div title={t('card_img_missing')} className="p-1.5 text-slate-600 opacity-60">
+        <div title={t('card_img_missing')} className="p-1.5 text-txt-muted opacity-60">
           <ImageIcon size={16} />
         </div>
       );
     }
   };
 
-  const baseClasses = "bg-slate-800 rounded-xl p-3 shadow-soft hover:bg-slate-750 transition-all cursor-pointer relative flex flex-col h-20 group";
+  const baseClasses = "bg-surface-bg rounded-xl border border-surface-border p-3 shadow-ui-soft hover:bg-surface-hover transition-all cursor-pointer relative flex flex-col h-20 group";
 
   if (mode === 'active') {
     return (
-      <div onClick={onClick} className={`${baseClasses} border border-emerald-500/30`}>
+      <div onClick={onClick} className={`${baseClasses} border-brand-primary/40 hover:border-surface-border-hover`}>
         <div className="flex items-start justify-between gap-1 pr-10">
-          <h3 className="text-sm font-bold text-slate-50 leading-tight line-clamp-2">{template.name}</h3>
+          <h3 className="text-sm font-bold text-txt-primary leading-tight line-clamp-2 group-hover:text-txt-card-hover transition-colors">{template.name}</h3>
         </div>
-        <div className="absolute top-1/2 right-3 -translate-y-1/2 text-emerald-500/80">
+        <div className="absolute top-1/2 right-3 -translate-y-1/2 text-brand-primary/80">
           <PlayCircle size={36} strokeWidth={1.5} />
         </div>
-        <button onClick={onDelete} className="absolute bottom-1 left-1 p-1.5 text-slate-600 hover:text-red-400 hover:bg-slate-700 rounded-md transition-colors">
+        <button onClick={onDelete} className="absolute bottom-1 left-1 p-1.5 text-txt-muted hover:text-status-danger hover:bg-surface-hover rounded-md transition-colors">
           <Trash2 size={16} />
         </button>
       </div>
@@ -92,17 +92,17 @@ const GameCard: React.FC<GameCardProps> = ({
   return (
     <div 
       onClick={onClick} 
-      className={`${baseClasses} hover:shadow-pro hover:-translate-y-0.5 active:scale-[0.98] ${mode === 'system' ? 'hover:border-indigo-500/10' : 'hover:border-emerald-500/10'}`}
+      className={`${baseClasses} hover:border-surface-border-hover hover:shadow-ui-floating hover:-translate-y-0.5 active:scale-[0.98] ${mode === 'system' ? 'hover:border-brand-secondary/20' : 'hover:border-brand-primary/20'}`}
     >
       <div className="flex items-start justify-between gap-1 pr-7">
-        <h3 className={`text-sm font-bold leading-tight line-clamp-2 ${mode === 'system' ? 'text-slate-50 pr-2 opacity-90' : 'text-slate-50'}`}>{template.name}</h3>
+        <h3 className={`text-sm font-bold leading-tight line-clamp-2 group-hover:text-txt-card-hover transition-colors ${mode === 'system' ? 'text-txt-primary pr-2 opacity-90' : 'text-txt-primary'}`}>{template.name}</h3>
       </div>
 
       {/* Pin Button */}
       {onPin && (
         <button
           onClick={onPin}
-          className={`absolute top-1 right-1 p-1.5 rounded-md transition-colors ${mode === 'pinned' ? 'text-yellow-400 bg-slate-700/50 hover:bg-slate-700' : 'text-slate-600 hover:text-yellow-400 hover:bg-slate-700'}`}
+          className={`absolute top-1 right-1 p-1.5 rounded-md transition-colors ${mode === 'pinned' ? 'text-status-warning bg-surface-hover/50 hover:bg-surface-hover' : 'text-txt-muted hover:text-status-warning hover:bg-surface-hover'}`}
         >
           <Pin size={16} fill={mode === 'pinned' ? "currentColor" : "none"} />
         </button>
@@ -111,7 +111,7 @@ const GameCard: React.FC<GameCardProps> = ({
       {/* Bottom Actions (Left) */}
       <div className="absolute bottom-1 left-1 flex gap-1 items-center">
         {onDelete && (
-          <button onClick={onDelete} className="p-1.5 text-slate-600 hover:text-red-400 hover:bg-slate-700 rounded-md transition-colors">
+          <button onClick={onDelete} className="p-1.5 text-txt-muted hover:text-status-danger hover:bg-surface-hover rounded-md transition-colors">
             <Trash2 size={16} />
           </button>
         )}
@@ -119,11 +119,11 @@ const GameCard: React.FC<GameCardProps> = ({
         {/* System Specific Actions */}
         {mode === 'system' && (
           systemOverride ? (
-            <button onClick={onSystemRestore} className="flex items-center gap-1 text-[9px] text-yellow-500 font-normal border border-yellow-500/30 px-1.5 py-0.5 rounded hover:bg-yellow-900/20">
+            <button onClick={onSystemRestore} className="flex items-center gap-1 text-[9px] text-status-warning font-normal border border-status-warning/30 px-1.5 py-0.5 rounded hover:bg-status-warning/10">
               <RefreshCw size={8} /> {t('card_restore_builtin')}
             </button>
           ) : (
-            <button onClick={onSystemCopy} className="flex items-center gap-1 text-[10px] text-slate-300 font-bold bg-slate-700/50 hover:bg-slate-700 px-1.5 py-1 rounded-md">
+            <button onClick={onSystemCopy} className="flex items-center gap-1 text-[10px] text-txt-primary font-bold bg-surface-hover/50 hover:bg-surface-hover px-1.5 py-1 rounded-md">
               <Copy size={11} /> {t('card_create_copy')}
             </button>
           )
@@ -131,7 +131,7 @@ const GameCard: React.FC<GameCardProps> = ({
 
         {/* Image Status Indicator - Placed here for better visibility and layout balance */}
         {template.hasImage && (
-          <div className="p-1.5 rounded-lg border border-amber-500/30 bg-amber-900/20 text-amber-400 flex items-center justify-center shadow-amber-500/30 backdrop-blur-[2px] transition-all group-hover:bg-amber-900/40 group-hover:scale-110 active:scale-95" title={t('card_img_ready')}>
+          <div className="p-1.5 rounded-lg border border-status-warning/30 bg-status-warning/20 text-status-warning flex items-center justify-center shadow-ui-soft backdrop-blur-[2px] transition-all group-hover:bg-status-warning/40 group-hover:scale-110 active:scale-95" title={t('card_img_ready')}>
             <ImageIcon size={14} strokeWidth={2.5} />
           </div>
         )}
@@ -143,7 +143,7 @@ const GameCard: React.FC<GameCardProps> = ({
         {onCloudBackup && isAutoConnectEnabled && isConnected && !isSynced && (
           <button
             onClick={(e) => { e.stopPropagation(); onCloudBackup(e); }}
-            className="p-1.5 text-amber-400/80 hover:text-amber-300 hover:bg-slate-700 rounded transition-colors"
+            className="p-1.5 text-status-warning/80 hover:text-status-warning hover:bg-surface-hover rounded transition-colors"
             title={t('card_backup_hint')}
           >
             <UploadCloud size={14} />
@@ -152,17 +152,17 @@ const GameCard: React.FC<GameCardProps> = ({
         {onCopyLink ? (
           <button
             onClick={(e) => { e.stopPropagation(); onCopyLink(e); }}
-            className="p-1.5 text-slate-600 hover:text-emerald-400 rounded transition-colors"
+            className="p-1.5 text-txt-muted hover:text-brand-primary rounded transition-colors"
             title={t('card_copy_share_link')}
           >
-            {isCopied ? <Check size={14} className="text-emerald-500" /> : <Link2 size={14} />}
+            {isCopied ? <Check size={14} className="text-brand-primary" /> : <Link2 size={14} />}
           </button>
         ) : onCopyJSON ? (
           <button
             onClick={(e) => { e.stopPropagation(); onCopyJSON(e); }}
-            className="p-1.5 text-slate-600 hover:text-emerald-400 rounded transition-colors"
+            className="p-1.5 text-txt-muted hover:text-brand-primary rounded transition-colors"
           >
-            {isCopied ? <Check size={14} className="text-emerald-500" /> : <Code size={14} />}
+            {isCopied ? <Check size={14} className="text-brand-primary" /> : <Code size={14} />}
           </button>
         ) : null}
       </div>

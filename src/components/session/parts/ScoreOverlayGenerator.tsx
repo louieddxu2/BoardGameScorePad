@@ -2,7 +2,8 @@
 import React, { forwardRef } from 'react';
 import { Player } from '../../../types';
 import { Crown, Calendar, Trophy } from 'lucide-react';
-import { isColorDark, ENHANCED_TEXT_SHADOW, getContrastTextShadow } from '../../../utils/ui';
+import { isColorDark, getContrastTextStyles } from '../../../utils/ui';
+import { ContrastText } from '../../shared/ContrastText';
 import StickerElement from './StickerElement';
 import { useSessionTranslation } from '../../../i18n/session';
 
@@ -123,17 +124,16 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                     {p.isAnonymous ? (
                                         <StickerElement id={p.id} color={playerColor} />
                                     ) : (
-                                        <span
+                                        <ContrastText
                                             className="text-3xl font-black w-full text-center"
+                                            color={playerColor}
                                             style={{
-                                                color: playerColor,
-                                                textShadow: getContrastTextShadow(playerColor) || 'none',
                                                 wordBreak: 'break-word',
                                                 lineHeight: '1.2'
                                             }}
                                         >
                                             {p.name}
-                                        </span>
+                                        </ContrastText>
                                     )}
                                 </div>
 

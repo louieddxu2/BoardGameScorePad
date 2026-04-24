@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { Player } from '../../../types';
 import { getSmartTextureUrl } from '../../../utils/imageProcessing';
-import { isColorDark, ENHANCED_TEXT_SHADOW, getContrastTextShadow } from '../../../utils/ui';
+import { getContrastTextStyles } from '../../../utils/ui';
+import { ContrastText } from '../../shared/ContrastText';
 import SmartTextureLayer from './SmartTextureLayer';
 import { COLORS } from '../../../colors'; // Import colors for fallback
 import { useSessionTranslation } from '../../../i18n/session';
@@ -82,14 +83,10 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
 
   const inkStyle: React.CSSProperties = bgUrl ? {
     fontFamily: '"Kalam", "Caveat", cursive',
-    color: 'rgb(var(--c-slate-50))',
     transform: `rotate(${((player.id.charCodeAt(0)) % 5) - 2}deg)`,
     mixBlendMode: 'multiply',
     textShadow: 'none',
-  } : {
-    color: isTransparent ? 'rgb(var(--c-slate-200))' : effectiveColor,
-    ...((isTransparent || getContrastTextShadow(effectiveColor)) && { textShadow: isTransparent ? ENHANCED_TEXT_SHADOW : getContrastTextShadow(effectiveColor)! })
-  };
+  } : {};
 
   return (
     <div
@@ -98,14 +95,19 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
       onClick={onClick}
       // [CRITICAL CHANGE] Always enforce min-width 3.375rem (approx 54px).
       // Even in textured mode, if columns get too thin, we want scrolling, not illegible text.
-      className={`relative flex-auto w-auto min-w-[3.375rem] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${isEditing ? 'z-20 ring-2 ring-inset ring-white/50' : ''} ${!bgUrl ? 'border-r border-b border-slate-700' : ''} ${baseImage ? 'p-0' : 'p-2'} ${className}`}
+      className={`relative flex-auto w-auto min-w-[3.375rem] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${isEditing ? 'z-20 ring-2 ring-inset ring-[rgb(var(--c-grid-active-ring))] shadow-lg' : ''} ${!bgUrl ? 'border-r border-b border-surface-border' : ''} ${baseImage ? 'p-0' : 'p-2'} ${className}`}
       style={containerStyle}
     >
       <SmartTextureLayer bgUrl={bgUrl} rect={rect} />
 
-      <span className="text-sm font-bold whitespace-nowrap z-10" style={inkStyle}>
+      <ContrastText 
+        className="text-sm font-bold whitespace-nowrap z-10" 
+        color={bgUrl ? 'rgb(var(--c-slate-50))' : (isTransparent ? 'rgb(var(--c-txt-muted))' : effectiveColor)}
+        style={bgUrl ? inkStyle : {}}
+        isTextureMode={!!bgUrl}
+      >
         {player.name}
-      </span>
+      </ContrastText>
 
       {/* Starting Player Icon - High Visibility Sticker Style */}
       {player.isStarter && (

@@ -62,10 +62,10 @@ const InfoProduct: React.FC<ScoreInfoPanelProps> = ({ column, value, activeFacto
                         setOverwrite?.(true);
                     }}
                 >
-                    <div className={`flex-1 px-2 py-0.5 rounded-md border transition-all overflow-x-auto no-scrollbar flex items-center ${isFactorAActive ? 'bg-emerald-900/30 border-emerald-500' : 'bg-slate-900 border-slate-700 group-hover:border-slate-600'}`}>
-                        <span className={`text-xl font-bold font-mono text-right w-full whitespace-nowrap leading-tight ${isFactorAActive ? 'text-white' : 'text-slate-400'}`}>{String(factors[0])}</span>
+                    <div className={`flex-1 px-2 py-0.5 rounded-md border transition-all overflow-x-auto no-scrollbar flex items-center ${isFactorAActive ? 'bg-status-success/10 border-status-success' : 'bg-[rgb(var(--c-input-bg))] border-[rgb(var(--c-input-border))] group-hover:border-txt-muted'}`}>
+                        <span className={`text-xl font-bold font-mono text-right w-full whitespace-nowrap leading-tight ${isFactorAActive ? 'text-txt-primary' : 'text-txt-muted'}`}>{String(factors[0])}</span>
                     </div>
-                    <span className={`shrink-0 text-xs uppercase text-right ${isFactorAActive ? 'text-emerald-400 font-bold' : 'text-slate-500'}`}>{unitA}</span>
+                    <span className={`shrink-0 text-xs uppercase text-right ${isFactorAActive ? 'text-status-success font-bold' : 'text-txt-muted'}`}>{unitA}</span>
                 </div>
                 <div className="flex items-center justify-center text-slate-600"><X size={12} /></div>
                 <div
@@ -75,10 +75,10 @@ const InfoProduct: React.FC<ScoreInfoPanelProps> = ({ column, value, activeFacto
                         setOverwrite?.(true);
                     }}
                 >
-                    <div className={`flex-1 px-2 py-0.5 rounded-md border transition-all overflow-x-auto no-scrollbar flex items-center ${isFactorBActive ? 'bg-emerald-900/30 border-emerald-500' : 'bg-slate-900 border-slate-700 group-hover:border-slate-600'}`}>
-                        <span className={`text-xl font-bold font-mono text-right w-full whitespace-nowrap leading-tight ${isFactorBActive ? 'text-white' : 'text-slate-400'}`}>{String(factors[1])}</span>
+                    <div className={`flex-1 px-2 py-0.5 rounded-md border transition-all overflow-x-auto no-scrollbar flex items-center ${isFactorBActive ? 'bg-status-success/10 border-status-success' : 'bg-[rgb(var(--c-input-bg))] border-[rgb(var(--c-input-border))] group-hover:border-txt-muted'}`}>
+                        <span className={`text-xl font-bold font-mono text-right w-full whitespace-nowrap leading-tight ${isFactorBActive ? 'text-txt-primary' : 'text-txt-muted'}`}>{String(factors[1])}</span>
                     </div>
-                    <span className={`shrink-0 text-xs uppercase text-right ${isFactorBActive ? 'text-emerald-400 font-bold' : 'text-slate-500'}`}>{unitB}</span>
+                    <span className={`shrink-0 text-xs uppercase text-right ${isFactorBActive ? 'text-status-success font-bold' : 'text-txt-muted'}`}>{unitB}</span>
                 </div>
                 <div className="pt-1 border-t border-slate-800 flex justify-between items-center px-1">
                     <span className="text-lg text-slate-600">=</span>
@@ -151,8 +151,8 @@ const InfoSumParts: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypa
                                         <button onClick={onDeleteLastPart} className="w-5 h-5 rounded-full bg-red-500 hover:bg-red-400 text-white flex items-center justify-center shadow-md border border-red-900 transition-transform active:scale-95" title={t('input_clear')}><X size={12} strokeWidth={3} /></button>
                                     )}
                                     <div className="flex-1 text-right">
-                                        <div className="inline-block bg-white/5 px-2 py-0.5 rounded border border-white/10">
-                                            <span className="text-lg font-bold text-white font-mono leading-none tracking-tight">{displayVal}</span>
+                                        <div className="inline-block bg-status-success/5 px-2 py-0.5 rounded border border-status-success/20">
+                                            <span className="text-lg font-bold text-txt-primary font-mono leading-none tracking-tight">{displayVal}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -203,8 +203,8 @@ const InfoSumParts: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypa
                         </div>
                     ) : (
                         // Single Input
-                        <div className="bg-emerald-900/30 border border-emerald-500 rounded-md px-2 py-0.5 text-right shadow-[0_0_10px_rgba(16,185,129,0.1)]">
-                            <span className="text-2xl font-bold text-white font-mono leading-tight">{currentInputStr}</span>
+                        <div className="bg-status-success/10 border border-status-success/50 rounded-md px-2 py-0.5 text-right shadow-sm">
+                            <span className="text-2xl font-bold text-txt-primary font-mono leading-tight">{currentInputStr}</span>
                         </div>
                     )}
                 </div>
@@ -363,22 +363,22 @@ const InfoMapping: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypad
                     }
 
                     return (
-                        <div key={idx} ref={isMatch ? activeRuleRef : null} className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded border transition-colors ${isMatch ? 'bg-emerald-900/30 border-emerald-500/50' : 'bg-slate-800 border-slate-700/50'}`}>
-                            <div className={`flex-1 text-right ${isMatch ? 'text-emerald-100 font-bold' : 'text-slate-400 font-medium'}`}>{labelNode}</div>
-                            <div className={`shrink-0 px-1 ${isMatch ? 'text-emerald-500' : 'text-slate-600'}`}><ArrowRight size={12} /></div>
-                            <div className={`flex-1 text-left font-mono ${isMatch ? 'text-white' : 'text-slate-400'}`}>{scoreNode}</div>
+                        <div key={idx} ref={isMatch ? activeRuleRef : null} className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded border transition-colors ${isMatch ? 'bg-status-success/10 border-status-success/50' : 'bg-[rgb(var(--c-input-header-bg))] border-[rgb(var(--c-input-border))]'}`}>
+                            <div className={`flex-1 text-right ${isMatch ? 'text-status-success font-bold' : 'text-txt-muted font-medium'}`}>{labelNode}</div>
+                            <div className={`shrink-0 px-1 ${isMatch ? 'text-status-success' : 'text-txt-muted'}`}><ArrowRight size={12} /></div>
+                            <div className={`flex-1 text-left font-mono ${isMatch ? 'text-txt-primary' : 'text-txt-muted'}`}>{scoreNode}</div>
                         </div>
                     );
                 })}
             </div>
             <div className="mt-2 shrink-0">
-                <div className="bg-slate-900 rounded-lg border border-slate-800 p-2 shadow-sm flex flex-col gap-1">
-                    <div className="flex justify-between items-center border-b border-slate-800 pb-2 mb-0.5">
-                        <div className="bg-emerald-900/30 border border-emerald-500 rounded px-2 py-0.5 shadow-[0_0_10px_rgba(16,185,129,0.1)] flex items-baseline gap-1">
-                            <span className="font-mono font-bold text-white text-sm leading-none">{displayVal}</span>
+                <div className="bg-[rgb(var(--c-input-bg))] rounded-lg border border-[rgb(var(--c-input-border))] p-2 shadow-sm flex flex-col gap-1">
+                    <div className="flex justify-between items-center border-b border-[rgb(var(--c-input-border))] pb-2 mb-0.5">
+                        <div className="bg-status-success/10 border border-status-success/50 rounded px-2 py-0.5 shadow-sm flex items-baseline gap-1">
+                            <span className="font-mono font-bold text-txt-primary text-sm leading-none">{displayVal}</span>
                         </div>
-                        <ArrowRight size={12} className="text-slate-500" />
-                        <div className="flex items-center"><span className="text-emerald-400 font-bold text-sm">{finalScore}</span></div>
+                        <ArrowRight size={12} className="text-txt-muted" />
+                        <div className="flex items-center"><span className="text-status-success font-bold text-sm">{finalScore}</span></div>
                     </div>
                     <div className="flex justify-end min-h-[12px]">{footerCalculationNode}</div>
                 </div>
@@ -397,16 +397,16 @@ const InfoStandard: React.FC<ScoreInfoPanelProps> = ({ column }) => {
         <div className="flex flex-col gap-2 h-full p-2">
             <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0"><Calculator size={12} /> {t('input_calc_mode')}</div>
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 py-2">
-                <div className="bg-slate-800 rounded p-2 border border-slate-700 text-center">
+                <div className="bg-[rgb(var(--c-input-header-bg))] rounded p-2 border border-[rgb(var(--c-input-border))] text-center">
                     <div className="flex items-center justify-center gap-0.5 whitespace-nowrap">
-                        <span className="text-base font-bold text-slate-200 leading-none">{unit}</span>
+                        <span className="text-base font-bold text-txt-primary leading-none">{unit}</span>
                         {column.formula === 'a1×c1' ? (
-                            <><span className="text-slate-500 text-xs leading-none">×</span><span className="text-xl font-bold text-emerald-400 font-mono leading-none">{column.constants?.c1 ?? 1}</span></>
+                            <><span className="text-txt-muted text-xs leading-none">×</span><span className="text-xl font-bold text-status-success font-mono leading-none">{column.constants?.c1 ?? 1}</span></>
                         ) : null}
                     </div>
                 </div>
-                {roundingText && (<div className="bg-slate-800 rounded p-2 border border-slate-700"><div className="text-[10px] text-slate-500 mb-1">{t('input_rounding')}</div><div className="flex items-center gap-2 text-indigo-300 font-medium text-sm"><Hash size={14} /> {roundingText}</div></div>)}
-                {!column.isScoring && (<div className="bg-slate-800/50 rounded p-2 border border-slate-700/50 text-center"><span className="text-xs text-slate-500 italic">{t('input_not_scored')}</span></div>)}
+                {roundingText && (<div className="bg-[rgb(var(--c-input-header-bg))] rounded p-2 border border-[rgb(var(--c-input-border))]"><div className="text-[10px] text-txt-muted mb-1">{t('input_rounding')}</div><div className="flex items-center gap-2 text-brand-secondary font-medium text-sm"><Hash size={14} /> {roundingText}</div></div>)}
+                {!column.isScoring && (<div className="bg-[rgb(var(--c-input-header-bg)/0.5)] rounded p-2 border border-[rgb(var(--c-input-border)/0.5)] text-center"><span className="text-xs text-txt-muted italic">{t('input_not_scored')}</span></div>)}
             </div>
         </div>
     );

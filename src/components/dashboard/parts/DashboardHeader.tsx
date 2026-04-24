@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+﻿import React, { useRef, useEffect, useState } from 'react';
 import { Dice5, Search, X, Download, HelpCircle, Calculator, History, Cloud, CloudOff, Loader2, Sun, Moon } from 'lucide-react';
 import { useTranslation } from '../../../i18n'; // Keep for language context
 import { useCommonTranslation } from '../../../i18n/common';
@@ -131,7 +131,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   };
 
   const toggleLanguage = (e: React.MouseEvent) => {
-    e.stopPropagation(); // [Fix] 阻止事件冒泡，避免觸發 Header 的除錯點擊偵測
+    e.stopPropagation(); // [Fix] ?餅迫鈭辣?部嚗?孛??Header ??舫??皜?
     setLanguage(language === 'zh-TW' ? 'en' : 'zh-TW');
   };
 
@@ -172,7 +172,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
   return (
     <header
-      className="flex flex-col bg-slate-900/95 backdrop-blur-md border-b border-slate-700 sticky top-0 z-30 transition-all duration-300 shadow-sm"
+      className="flex flex-col bg-app-bg/95 backdrop-blur-md border-b border-surface-border sticky top-0 z-30 transition-all duration-300 shadow-sm"
       onClick={handleHeaderClick}
     >
       <div className="p-2.5 flex items-center gap-2 h-[58px]">
@@ -191,9 +191,9 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               autoFocus
-              className="w-full bg-transparent text-slate-50 focus:outline-none placeholder-slate-400 font-medium"
+              className="w-full bg-transparent text-txt-primary focus:outline-none placeholder-txt-muted font-medium"
             />
-            <button onClick={() => { setIsSearchActive(false); setSearchQuery(''); }} className="text-slate-400 hover:text-slate-50 p-2">
+            <button onClick={() => { setIsSearchActive(false); setSearchQuery(''); }} className="text-txt-muted hover:text-txt-primary p-2">
               <X size={20} />
             </button>
           </div>
@@ -203,7 +203,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
               {/* Logo: Toggle Theme */}
               <div
-                className="bg-slate-700 p-1.5 rounded-lg border border-slate-600 shrink-0 cursor-pointer active:scale-90 transition-transform shadow-sm"
+                className="bg-surface-alt p-1.5 rounded-lg border border-surface-border shrink-0 cursor-pointer active:scale-90 transition-transform shadow-sm"
                 onClick={(e) => { e.stopPropagation(); onToggleTheme(); }}
                 role="button"
                 title={themeMode === 'dark' ? 'Light Mode' : 'Dark Mode'}
@@ -215,7 +215,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               </div>
               {/* Title: Toggle Language */}
               <h1
-                className="text-lg sm:text-xl font-bold tracking-tight text-slate-50 truncate select-none cursor-pointer active:opacity-50 transition-opacity"
+                className="text-lg sm:text-xl font-bold tracking-tight text-txt-primary truncate select-none cursor-pointer active:opacity-50 transition-opacity"
                 onClick={toggleLanguage}
                 role="button"
                 title={tDash('dash_switch_language')}
@@ -226,18 +226,18 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               {/* Unified Toggle Button - Width 56px, tight padding */}
               <button
                 onClick={toggleView}
-                className="relative h-9 w-[56px] bg-slate-800 border border-slate-700 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-750 transition-colors shrink-0 group active:scale-95 shadow-inner"
+                className="relative h-9 w-[56px] bg-surface-alt border border-surface-border rounded-xl flex items-center justify-center cursor-pointer hover:bg-surface-alt/80 transition-colors shrink-0 group active:scale-95 shadow-inner"
                 title={viewMode === 'library' ? tCloud('cloud_tab_history') : tCloud('cloud_tab_templates')}
               >
                 {/* Central Slash (Background) */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-                  <span className="text-slate-700 font-bold text-sm -rotate-12 select-none">/</span>
+                  <span className="text-txt-muted/20 font-bold text-sm -rotate-12 select-none">/</span>
                 </div>
 
                 {/* Icon Container - Library (Calculator) */}
                 <div
                   className={`absolute flex items-center justify-center left-2.5 
-                        ${viewMode === 'library' ? 'icon-toggle-active' : 'z-10 text-slate-600'}
+                        ${viewMode === 'library' ? 'icon-toggle-active' : 'z-10 text-txt-muted'}
                     `}
                 >
                   <Calculator size={20} strokeWidth={viewMode === 'library' ? 2.5 : 2} />
@@ -246,7 +246,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 {/* Icon Container - History (History Clock) */}
                 <div
                   className={`absolute flex items-center justify-center right-2.5
-                        ${viewMode === 'history' ? 'icon-toggle-active' : 'z-10 text-slate-600'}
+                        ${viewMode === 'history' ? 'icon-toggle-active' : 'z-10 text-txt-muted'}
                     `}
                 >
                   <History size={20} strokeWidth={viewMode === 'history' ? 2.5 : 2} />
@@ -257,7 +257,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               <button
                 onClick={onCloudClick}
                 disabled={isSyncing}
-                className={`btn-cloud-status ${isSyncing ? 'bg-slate-800 border-slate-700 cursor-wait' :
+                className={`btn-cloud-status ${isSyncing ? 'bg-surface-bg-alt border-surface-border cursor-wait' :
                   isConnected ? 'connected' : 'disconnected'
                   }`}
                 // [Update] Display storage size in tooltip
@@ -270,7 +270,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-1 shrink-0 ml-1">
-              <button onClick={() => setIsSearchActive(true)} className="p-2 text-slate-400 hover:text-slate-50 hover:bg-slate-750 rounded-lg transition-colors">
+              <button onClick={() => setIsSearchActive(true)} className="p-2 text-txt-muted hover:text-txt-primary hover:bg-surface-bg-alt rounded-lg transition-colors">
                 <Search size={20} />
               </button>
 
@@ -280,7 +280,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 <button
                   className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all text-white shadow-lg ${canInstall 
                     ? 'btn-action-primary' 
-                    : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}`}
+                    : 'bg-surface-bg-alt hover:bg-surface-bg-hover border border-surface-border text-txt-secondary hover:text-txt-primary'}`}
                   onClick={canInstall ? onInstallClick : onShowInstallGuide}
                 >
                   <div className="relative">
@@ -303,3 +303,4 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 };
 
 export default DashboardHeader;
+

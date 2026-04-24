@@ -178,7 +178,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const isScoreCameraMode = sessionState.uiState.galleryParams?.mode === 'lightbox_overlay';
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 text-slate-100 overflow-hidden relative">
+    <div className="flex flex-col h-full bg-app-bg text-txt-primary overflow-hidden relative">
       {/* --- Modals --- */}
 
       {/* Exit Modal */}

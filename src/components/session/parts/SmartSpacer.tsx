@@ -24,7 +24,7 @@ const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, onTakePhoto, onScree
     return (
         <div className="absolute inset-0 flex flex-col p-4 overflow-y-auto no-scrollbar">
             {/* Hint Text */}
-            <div className="flex items-center justify-center gap-2 text-slate-600 mb-6 mt-2 opacity-50 select-none">
+            <div className="flex items-center justify-center gap-2 text-txt-muted mb-6 mt-2 opacity-70 select-none">
                 <MousePointerClick size={16} className="animate-bounce" />
                 <span className="text-xs font-bold">{t('smart_spacer_hint')}</span>
             </div>
@@ -37,8 +37,8 @@ const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, onTakePhoto, onScree
                     <MediaTool onTakePhoto={onTakePhoto} onScreenshot={onScreenshot} />
                 </div>
 
-                <div className="col-span-4 h-px bg-slate-800/50 my-1 flex items-center justify-center">
-                    <span className="bg-slate-900 px-2 text-[10px] text-slate-600 font-bold uppercase tracking-widest flex items-center gap-1">
+                <div className="col-span-4 h-px bg-[rgb(var(--c-input-border)/0.5)] my-1 flex items-center justify-center">
+                    <span className="bg-[rgb(var(--c-input-bg))] px-2 text-[10px] text-txt-muted font-bold uppercase tracking-widest flex items-center gap-1">
                         <Wrench size={10} /> {t('smart_spacer_tools_title')}
                     </span>
                 </div>

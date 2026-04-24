@@ -8,7 +8,8 @@ import TexturedBlock from './TexturedBlock';
 import GridFooter from './GridFooter';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useColumnDragAndDrop } from '../hooks/useColumnDragAndDrop';
-import { isColorDark, ENHANCED_TEXT_SHADOW, getContrastTextShadow, getCurrentTheme } from '../../../utils/ui';
+import { getContrastTextStyles, getCurrentTheme } from '../../../utils/ui';
+import { ContrastText } from '../../shared/ContrastText';
 import { usePlayerWidthSync } from '../../../hooks/usePlayerWidthSync';
 import { calculateColumnScore, resolveSelectOption } from '../../../utils/scoring';
 import { calculateDynamicFontSize } from '../../../utils/dynamicLayout';
@@ -184,11 +185,11 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
     return (
       <>
         <div className="absolute top-0.5 right-0.5 flex gap-0.5 z-20">
-          {isHidden && <div className="bg-[rgba(var(--c-black)/0.6)] rounded p-0.5 text-amber-500 backdrop-blur-sm border border-amber-500/30" title={t('grid_hidden')}><EyeOff size={10} /></div>}
-          {isOverlay && <div className="bg-[rgba(var(--c-black)/0.6)] rounded p-0.5 text-sky-400 backdrop-blur-sm border border-sky-500/30" title={t('grid_overlay')}><Layers size={10} /></div>}
+          {isHidden && <div className="bg-[rgba(var(--c-black)/0.6)] rounded p-0.5 text-status-warning backdrop-blur-sm border border-status-warning/30" title={t('grid_hidden')}><EyeOff size={10} /></div>}
+          {isOverlay && <div className="bg-[rgba(var(--c-black)/0.6)] rounded p-0.5 text-status-info backdrop-blur-sm border border-status-info/30" title={t('grid_overlay')}><Layers size={10} /></div>}
         </div>
-        {!col.isScoring && <div className="absolute bottom-0.5 left-0.5 z-20 bg-[rgba(var(--c-black)/0.6)] rounded p-0.5 backdrop-blur-sm border border-amber-500/30" title={t('input_not_scored')}><div className="relative w-2.5 h-2.5 flex items-center justify-center"><Sigma size={10} className="text-slate-400 opacity-50" /><X size={8} className="absolute -bottom-0.5 -right-0.5 text-amber-500" strokeWidth={3} /></div></div>}
-        <div className="absolute bottom-0.5 right-0.5 z-20 flex gap-0.5">{col.isAuto && <div className="bg-[rgba(var(--c-black)/0.6)] rounded p-0.5 text-indigo-400 backdrop-blur-sm border border-indigo-500/30" title={t('input_auto_calc')}><Sparkles size={10} /></div>}</div>
+        {!col.isScoring && <div className="absolute bottom-0.5 left-0.5 z-20 bg-[rgba(var(--c-black)/0.6)] rounded p-0.5 backdrop-blur-sm border border-status-warning/30" title={t('input_not_scored')}><div className="relative w-2.5 h-2.5 flex items-center justify-center"><Sigma size={10} className="text-txt-muted opacity-50" /><X size={8} className="absolute -bottom-0.5 -right-0.5 text-status-warning" strokeWidth={3} /></div></div>}
+        <div className="absolute bottom-0.5 right-0.5 z-20 flex gap-0.5">{col.isAuto && <div className="bg-[rgba(var(--c-black)/0.6)] rounded p-0.5 text-brand-secondary backdrop-blur-sm border border-brand-secondary/30" title={t('input_auto_calc')}><Sparkles size={10} /></div>}</div>
       </>
     );
   };
@@ -198,7 +199,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   const headerRowWidth = containerWidth ? Math.max(containerWidth, requiredRowWidth) : '100%';
 
   return (
-    <div className="absolute inset-0 z-0 overflow-auto bg-slate-900 no-scrollbar pb-32" ref={scrollContainerRef}>
+    <div className="absolute inset-0 z-0 overflow-auto bg-app-bg no-scrollbar pb-32" ref={scrollContainerRef}>
       <div
         id="live-grid-container"
         className="min-w-full w-fit relative"
@@ -207,20 +208,26 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
         {/* Player Headers */}
         <div
           id="live-player-header-row"
-          className="flex sticky top-0 z-20 bg-slate-800 shadow-sm transition-all duration-200"
-          style={{ width: typeof headerRowWidth === 'number' ? `${headerRowWidth}px` : headerRowWidth }}
+          className="flex sticky top-0 z-20 shadow-sm transition-all duration-200"
+          style={{ 
+            width: typeof headerRowWidth === 'number' ? `${headerRowWidth}px` : headerRowWidth,
+            backgroundColor: 'rgb(var(--c-grid-cell-bg))'
+          }}
         >
           <TexturedBlock
             baseImage={baseImage}
             rect={template.globalVisuals?.playerLabelRect}
-            fallbackContent={<span className="font-bold text-sm text-slate-400">{t('grid_player')}</span>}
+            fallbackContent={<span className="font-bold text-sm text-txt-muted">{t('grid_player')}</span>}
             onClick={isEditMode && onOpenSettings ? onOpenSettings : undefined}
-            className={`sticky left-0 bg-slate-800 border-r border-b border-slate-700 flex items-center justify-center z-30 shadow-sm shrink-0 overflow-hidden ${isTextureMode ? 'p-0' : 'p-2'} ${isEditMode ? 'cursor-pointer hover:bg-slate-700' : ''}`}
-            style={itemColStyle}
+            className={`sticky left-0 border-r border-b border-surface-border flex items-center justify-center z-30 shadow-sm shrink-0 overflow-hidden ${isTextureMode ? 'p-0' : 'p-2'} ${isEditMode ? 'cursor-pointer hover:bg-surface-hover' : ''}`}
+            style={{ 
+                ...itemColStyle,
+                backgroundColor: 'rgb(var(--c-grid-cell-bg))'
+            }}
           >
             {/* Gear Icon: Visual Cue for Settings */}
             {isEditMode && (
-              <div className="absolute top-1 left-1 text-yellow-400 z-50 pointer-events-none drop-shadow-md">
+              <div className="absolute top-1 left-1 text-status-warning z-50 pointer-events-none drop-shadow-md">
                 <Settings size={14} />
               </div>
             )}
@@ -254,26 +261,20 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
 
           if (isEditMode && dnd.draggingId && isDropTarget) {
             if (isDragging) {
-              indicator = (
-                <div className="absolute inset-0 z-50 pointer-events-none border-2 border-dashed border-slate-400/50 bg-[rgba(var(--c-slate-500)/0.05)]" />
-              );
+                <div className="absolute inset-0 z-50 pointer-events-none border-2 border-dashed border-txt-muted/50 bg-txt-muted/5" />
             } else if (dragIndex < template.columns.findIndex(c => c.id === col.id)) {
-              indicator = (
-                <div className="absolute bottom-0 left-0 right-0 h-[4px] bg-emerald-400 shadow-[0_0_8px_rgba(var(--c-emerald-500)/0.8)] z-50 pointer-events-none rounded-full translate-y-1/2" />
-              );
+                <div className="absolute bottom-0 left-0 right-0 h-[4px] bg-brand-primary shadow-[0_0_8px_rgba(var(--c-brand-primary)/0.8)] z-50 pointer-events-none rounded-full translate-y-1/2" />
             } else {
-              indicator = (
-                <div className="absolute top-0 left-0 right-0 h-[4px] bg-emerald-400 shadow-[0_0_8px_rgba(var(--c-emerald-500)/0.8)] z-50 pointer-events-none rounded-full -translate-y-1/2" />
-              );
+                <div className="absolute top-0 left-0 right-0 h-[4px] bg-brand-primary shadow-[0_0_8px_rgba(var(--c-brand-primary)/0.8)] z-50 pointer-events-none rounded-full -translate-y-1/2" />
             }
           }
 
-          const rowHiddenClass = (isEditMode && displayMode === 'hidden') ? 'opacity-70 bg-slate-900/50' : '';
-          const hiddenStyleClass = (isEditMode && isHidden) ? 'ring-2 ring-amber-500/50 ring-inset bg-amber-900/20' : '';
+          const rowHiddenClass = (isEditMode && displayMode === 'hidden') ? 'opacity-70 bg-app-bg/50' : '';
+          const hiddenStyleClass = (isEditMode && isHidden) ? 'ring-2 ring-status-warning/50 ring-inset bg-status-warning/20' : '';
 
-          const headerBgClass = isEditMode && isDragging
-            ? 'bg-slate-700'
-            : (isAlt && !isTextureMode ? 'bg-[rgb(var(--c-slate-800)/0.5)]' : 'bg-slate-800');
+          const headerBg = isEditMode && isDragging
+            ? 'rgb(var(--c-surface-hover))'
+            : (isAlt && !isTextureMode ? 'rgb(var(--c-grid-cell-bg-alt))' : 'rgb(var(--c-grid-cell-bg))');
 
           return (
             <div
@@ -292,22 +293,26 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 rect={col.visuals?.headerRect}
                 onClick={(e: any) => onColumnHeaderClick(e, col)}
                 {...getDragHandlers(col.id)}
-                className={`sticky left-0 ${headerBgClass} ${hiddenStyleClass} border-r-2 border-b border-slate-700 flex flex-col justify-center transition-colors z-20 group select-none shrink-0 overflow-hidden ${isEditMode ? (isDragging ? 'cursor-grabbing' : 'cursor-grab hover:bg-slate-700') : 'cursor-default'} ${isTextureMode ? 'p-0' : 'p-2'} `}
+                className={`sticky left-0 border-r-2 border-b border-surface-border flex flex-col justify-center transition-colors z-20 group select-none shrink-0 overflow-hidden ${isEditMode ? (isDragging ? 'cursor-grabbing' : 'cursor-grab hover:bg-surface-hover') : 'cursor-default'} ${isTextureMode ? 'p-0' : 'p-2'} `}
                 style={{
                   ...itemColStyle,
-                  borderRightColor: col.color || 'var(--border-slate-700)'
+                  backgroundColor: headerBg,
+                  borderRightColor: col.color || 'var(--c-surface-border)'
                 }}
                 fallbackContent={
                   <>
-                    <span className="text-sm font-bold text-slate-300 w-full text-center break-words whitespace-pre-wrap leading-tight hyphenate" style={{ ...(col.color && { color: col.color, ...(getContrastTextShadow(col.color) && { textShadow: getContrastTextShadow(col.color) }) }) }}>
+                    <ContrastText
+                      className="text-sm font-bold text-txt-secondary w-full text-center break-words whitespace-pre-wrap leading-tight hyphenate"
+                      color={col.color || 'inherit'}
+                    >
                       {injectSoftHyphens(col.name)}
-                    </span>
+                    </ContrastText>
                     {col.isScoring && (
-                      <div className="text-[10px] text-slate-400 mt-1 flex flex-col items-center justify-center w-full leading-none">
+                      <div className="text-[10px] text-txt-muted mt-1 flex flex-col items-center justify-center w-full leading-none">
                         {(() => {
-                          if (col.formula.includes('a1×a2') && col.subUnits) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span>{col.subUnits[0]}</span><span className="text-slate-400 text-[11px] mx-0.5">×</span><span>{col.subUnits[1]}</span></div>;
+                          if (col.formula.includes('a1×a2') && col.subUnits) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span>{col.subUnits[0]}</span><span className="text-txt-muted text-[11px] mx-0.5">×</span><span>{col.subUnits[1]}</span></div>;
                           if (col.inputType === 'clicker' && !col.formula.includes('+next')) return <div className="flex items-center justify-center gap-1 flex-wrap w-full"><Settings size={10} />{col.unit && <span className="text-[11px] break-words text-center">{col.unit}</span>}</div>;
-                          if (col.formula?.includes('×c1')) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="break-words text-center">{col.unit}</span><span className="text-slate-400 text-[11px] mx-0.5">×</span><span className="text-emerald-500 font-bold font-mono">{col.constants?.c1 ?? 1}</span></div>;
+                          if (col.formula?.includes('×c1')) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="break-words text-center">{col.unit}</span><span className="text-txt-muted text-[11px] mx-0.5">×</span><span className="text-brand-primary font-bold font-mono">{col.constants?.c1 ?? 1}</span></div>;
                           if (col.unit) return <span className="text-[11px] break-words w-full text-center">{col.unit}</span>;
                           return null;
                         })()}
@@ -385,20 +390,9 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                       }
 
                       const dynamicFontSize = calculateDynamicFontSize([displayText]);
-                      const defaultTextColor = isTextureMode ? 'rgba(var(--c-slate-900)/0.9)' : 'rgb(var(--c-white))';
+                      const defaultTextColor = isTextureMode ? 'rgba(var(--c-black)/0.9)' : 'rgb(var(--c-txt-primary))';
                       const displayColor = (isEditMode && overlayCol.color) ? overlayCol.color : defaultTextColor;
 
-                      const textStyle: React.CSSProperties = {
-                        color: hasInput ? (displayScore < 0 ? 'rgb(var(--c-red-400))' : displayColor) : 'rgb(var(--c-slate-600))',
-                        fontSize: dynamicFontSize,
-                        ...(isEditMode && overlayCol.color && isColorDark(overlayCol.color) && { textShadow: ENHANCED_TEXT_SHADOW }),
-                        ...(isTextureMode && {
-                          fontFamily: '"Kalam", "Caveat", cursive',
-                          transform: `rotate(${((session.players[0].id.charCodeAt(0) + overlayCol.id.charCodeAt(0)) % 5) - 2}deg)`,
-                          mixBlendMode: 'multiply',
-                          textShadow: 'none',
-                        })
-                      };
 
                       // 如果沒有設定框選區域，我們依然允許它渲染，只是寬高預設為 100% (真的重疊上去)
 
@@ -410,11 +404,11 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                                           absolute flex items-center justify-center 
                                           border-2 rounded-md cursor-pointer transition-all pointer-events-auto
                                           ${isOverlayActive
-                                ? 'border-emerald-500 bg-emerald-500/20 ring-1 ring-emerald-500'
+                                ? 'border-brand-primary bg-brand-primary/20 ring-1 ring-brand-primary'
                                 : (isEditMode
-                                  ? 'border-dashed border-white/40 hover:border-white/60 hover:bg-white/5'
+                                  ? 'border-dashed border-txt-primary/40 hover:border-txt-primary/60 hover:bg-txt-primary/5'
                                   : (!isTextureMode
-                                    ? 'border-dashed border-white/20 hover:border-white/40 hover:bg-white/5'
+                                    ? 'border-dashed border-txt-primary/20 hover:border-txt-primary/40 hover:bg-txt-primary/5'
                                     : 'border-transparent hover:border-black/10 hover:bg-black/5')
                                 )
                               }
@@ -428,9 +422,14 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                               containerType: 'size',
                             } as React.CSSProperties}
                           >
-                            <span className="font-bold tracking-tight w-full text-center truncate px-1" style={textStyle}>
+                            <ContrastText 
+                              className="font-bold tracking-tight w-full text-center truncate px-1" 
+                              color={hasInput ? (displayScore < 0 ? 'rgb(var(--c-status-danger))' : displayColor) : 'rgb(var(--c-txt-muted))'}
+                              style={{ fontSize: dynamicFontSize }}
+                              isTextureMode={isTextureMode}
+                            >
                               {displayText}
-                            </span>
+                            </ContrastText>
                           </div>
                         </div>
                       );
@@ -489,20 +488,9 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
 
                         const dynamicFontSize = calculateDynamicFontSize([displayText]);
 
-                        const defaultTextColor = isTextureMode ? 'rgba(var(--c-slate-900)/0.9)' : (getCurrentTheme() === 'light' ? 'rgb(var(--c-slate-900))' : 'rgb(var(--c-white))');
+                        const defaultTextColor = isTextureMode ? 'rgba(var(--c-black)/0.9)' : 'rgb(var(--c-txt-primary))';
                         const displayColor = (isEditMode && overlayCol.color) ? overlayCol.color : defaultTextColor;
 
-                        const textStyle: React.CSSProperties = {
-                          color: hasInput ? (displayScore < 0 ? 'rgb(var(--c-red-400))' : displayColor) : 'rgb(var(--c-slate-600))',
-                          fontSize: dynamicFontSize,
-                          ...(isEditMode && overlayCol.color && getContrastTextShadow(overlayCol.color) && { textShadow: getContrastTextShadow(overlayCol.color) }),
-                          ...(isTextureMode && {
-                            fontFamily: '"Kalam", "Caveat", cursive',
-                            transform: `rotate(${((p.id.charCodeAt(0) + overlayCol.id.charCodeAt(0)) % 5) - 2}deg)`,
-                            mixBlendMode: 'multiply',
-                            textShadow: 'none',
-                          })
-                        };
 
                         // 如果沒有設定框選區域，我們依然允許它渲染，只是寬高預設為 100% (真的重疊上去)
 
@@ -514,11 +502,11 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                                           absolute flex items-center justify-center 
                                           border-2 rounded-md cursor-pointer transition-all pointer-events-auto
                                           ${isOverlayActive
-                                  ? 'border-emerald-500 bg-emerald-500/20 ring-1 ring-emerald-500'
+                                  ? 'border-brand-primary bg-brand-primary/20 ring-1 ring-brand-primary'
                                   : (isEditMode
-                                    ? 'border-dashed border-[rgba(var(--c-white)/0.4)] hover:border-[rgba(var(--c-white)/0.6)] hover:bg-[rgba(var(--c-white)/0.05)]'
+                                    ? 'border-dashed border-[rgba(var(--c-txt-primary)/0.4)] hover:border-[rgba(var(--c-txt-primary)/0.6)] hover:bg-[rgba(var(--c-txt-primary)/0.05)]'
                                     : (!isTextureMode
-                                      ? 'border-dashed border-[rgba(var(--c-white)/0.2)] hover:border-[rgba(var(--c-white)/0.4)] hover:bg-[rgba(var(--c-white)/0.05)]'
+                                      ? 'border-dashed border-[rgba(var(--c-txt-primary)/0.2)] hover:border-[rgba(var(--c-txt-primary)/0.4)] hover:bg-[rgba(var(--c-txt-primary)/0.05)]'
                                       : 'border-transparent hover:border-[rgba(var(--c-black)/0.1)] hover:bg-[rgba(var(--c-black)/0.05)]')
                                   )
                                 }
@@ -532,9 +520,14 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                                 containerType: 'size',
                               } as React.CSSProperties}
                             >
-                              <span className="font-bold tracking-tight w-full text-center truncate px-1" style={textStyle}>
+                              <ContrastText 
+                                className="font-bold tracking-tight w-full text-center truncate px-1" 
+                                color={hasInput ? (displayScore < 0 ? 'rgb(var(--c-status-danger))' : displayColor) : 'rgb(var(--c-txt-muted))'}
+                                style={{ fontSize: dynamicFontSize }}
+                                isTextureMode={isTextureMode}
+                              >
                                 {displayText}
-                              </span>
+                              </ContrastText>
                             </div>
                           </div>
                         );
@@ -561,7 +554,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           data-row-id={lastColId}
           onDragOver={(e) => { if (isEditMode && lastColId) dnd.handleDragOver(e, lastColId); }}
           onDrop={(e) => { if (isEditMode && lastColId) dnd.handleDrop(e, lastColId); }}
-          className={`w-full ${(editingCell || editingPlayerId || (!baseImage && template.columns.length < 5) || isToolboxOpen) ? 'h-[40vh]' : 'h-24'}`}
+          className={`w-full bg-app-bg ${(editingCell || editingPlayerId || (!baseImage && template.columns.length < 5) || isToolboxOpen) ? 'h-[40vh]' : 'h-24'}`}
         />
       </div>
     </div>

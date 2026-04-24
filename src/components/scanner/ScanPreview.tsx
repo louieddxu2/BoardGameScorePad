@@ -131,13 +131,13 @@ const ScanPreview: React.FC<ScanPreviewProps> = ({ imageSrc, template, onBack, o
     };
 
     return (
-        <div className="fixed inset-0 z-[70] bg-slate-950 flex flex-col">
-            <header className="flex-none p-4 bg-slate-900 border-b border-slate-800 flex justify-center items-center z-50">
-                <h2 className="text-white font-bold">{t('scan_preview_title')}</h2>
+        <div className="fixed inset-0 z-[70] bg-app-bg flex flex-col">
+            <header className="flex-none p-4 modal-bg-elevated border-b border-surface-border flex justify-center items-center z-50 shadow-sm">
+                <h2 className="text-txt-primary font-bold">{t('scan_preview_title')}</h2>
             </header>
 
             <main
-                className="flex-1 w-full h-full relative overflow-hidden bg-[rgba(var(--c-black)/0.5)] touch-none select-none"
+                className="flex-1 w-full h-full relative overflow-hidden bg-app-bg touch-none select-none"
                 ref={containerRef}
                 onMouseDown={panZoomHandlers.onMouseDown}
                 onTouchStart={panZoomHandlers.onTouchStart}
@@ -162,20 +162,20 @@ const ScanPreview: React.FC<ScanPreviewProps> = ({ imageSrc, template, onBack, o
                 </div>
             </main>
 
-            <footer className="flex-none w-full p-4 bg-slate-900 border-t border-slate-800 flex items-center justify-between z-50">
-                <button onClick={onBack} className="px-4 py-3 bg-slate-800 text-white rounded-xl border border-slate-700 font-bold text-sm">{t('scan_btn_back')}</button>
+            <footer className="flex-none w-full p-4 modal-bg-elevated border-t border-surface-border flex items-center justify-between z-50">
+                <button onClick={onBack} className="px-4 py-3 modal-bg-recessed hover:modal-bg-elevated text-txt-primary rounded-xl border border-surface-border font-bold text-sm active:scale-95 transition-all">{t('scan_btn_back')}</button>
 
                 <div className="flex items-center gap-2">
-                    <button onClick={handleSaveToDevice} className="px-3 py-3 bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-slate-700 font-bold text-sm" title={t('scan_btn_save_device_title')}>
+                    <button onClick={handleSaveToDevice} className="px-3 py-3 modal-bg-recessed hover:modal-bg-elevated text-txt-muted hover:text-txt-primary rounded-xl border border-surface-border font-bold text-sm active:scale-95 transition-all" title={t('scan_btn_save_device_title')}>
                         <Download size={20} />
                     </button>
 
                     {template && (
-                        <button onClick={() => onConfirm('edit_grid')} className="px-4 py-3 bg-sky-700 hover:bg-sky-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 text-sm border border-sky-600">
+                        <button onClick={() => onConfirm('edit_grid')} className="px-4 py-3 bg-status-info hover:filter hover:brightness-110 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 text-sm border border-white/10 active:scale-95 transition-all">
                             <Edit3 size={18} /> {t('scan_btn_edit_grid')}
                         </button>
                     )}
-                    <button onClick={() => onConfirm('save')} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg flex items-center gap-2">
+                    <button onClick={() => onConfirm('save')} className="px-6 py-3 bg-brand-primary hover:filter hover:brightness-110 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 active:scale-95 transition-all">
                         <Check size={24} />
                     </button>
                 </div>

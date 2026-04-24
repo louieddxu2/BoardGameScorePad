@@ -566,17 +566,17 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="h-full bg-slate-900 text-slate-50 font-sans overflow-hidden transition-colors duration-300 relative">
+    <div className="h-full bg-app-bg text-txt-primary font-sans overflow-hidden transition-colors duration-300 relative">
 
       {isCloudImporting && (
         <div className="modal-backdrop z-[10000] animate-in fade-in duration-300">
-          <div className="modal-container items-center justify-center p-8 text-center bg-slate-900 border-none shadow-none">
-            <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 mb-6 animate-bounce">
+          <div className="modal-container items-center justify-center p-8 text-center border-none shadow-none bg-transparent">
+            <div className="w-16 h-16 bg-brand-primary/10 rounded-2xl flex items-center justify-center text-brand-primary mb-6 animate-bounce">
               <Smartphone size={32} />
             </div>
             <div className="flex flex-col items-center gap-4">
-              <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
-              <p className="text-lg font-bold text-white tracking-wide">{tApp('msg_loading_cloud_data')}</p>
+              <Loader2 className="w-8 h-8 text-brand-primary animate-spin" />
+              <p className="text-lg font-bold text-txt-primary tracking-wide">{tApp('msg_loading_cloud_data')}</p>
             </div>
           </div>
         </div>
@@ -584,13 +584,13 @@ const App: React.FC = () => {
 
       <div
         id="landscape-overlay"
-        className={`fixed inset-0 z-[9999] bg-slate-950 flex-col items-center justify-center text-center p-10 ${showLandscapeOverlay ? 'flex' : 'hidden'}`}
+        className={`fixed inset-0 z-[9999] bg-app-bg flex-col items-center justify-center text-center p-10 ${showLandscapeOverlay ? 'flex' : 'hidden'}`}
       >
-        <div className="animate-rotate-phone mb-4 text-emerald-500">
+        <div className="animate-rotate-phone mb-4 text-brand-primary">
           <Smartphone size={64} strokeWidth={1.5} className="rotate-90" />
         </div>
-        <h2 className="text-xl font-bold text-white mb-2">{tApp('rotate_device')}</h2>
-        <p className="text-slate-400 text-sm">{tApp('rotate_device_desc')}</p>
+        <h2 className="text-xl font-bold text-txt-primary mb-2">{tApp('rotate_device')}</h2>
+        <p className="text-txt-muted text-sm">{tApp('rotate_device_desc')}</p>
       </div>
 
       <div className={`absolute inset-0 z-0 flex flex-col ${view !== AppView.DASHBOARD ? 'invisible pointer-events-none' : ''}`}>
@@ -647,7 +647,7 @@ const App: React.FC = () => {
       </div>
 
       {view === AppView.TEMPLATE_CREATOR && (
-        <div className="absolute inset-0 z-50 bg-slate-900">
+        <div className="absolute inset-0 z-50 bg-app-bg">
           <TemplateEditor
             onSave={handleTemplateSave}
             onCancel={() => {
@@ -661,7 +661,7 @@ const App: React.FC = () => {
       )}
 
       {view === AppView.ACTIVE_SESSION && appData.currentSession && appData.activeTemplate && (
-        <div className="absolute inset-0 z-40 bg-slate-900 animate-in fade-in duration-300">
+        <div className="absolute inset-0 z-40 bg-app-bg animate-in fade-in duration-300">
           <SessionView
             key={appData.currentSession.id}
             session={appData.currentSession}
@@ -685,7 +685,7 @@ const App: React.FC = () => {
       )}
 
       {view === AppView.HISTORY_REVIEW && appData.viewingHistoryRecord && (
-        <div className="absolute inset-0 z-40 bg-slate-900 animate-in fade-in duration-300">
+        <div className="absolute inset-0 z-40 bg-app-bg animate-in fade-in duration-300">
           <HistoryReviewView
             record={appData.viewingHistoryRecord}
             onExit={handleHistoryExit}

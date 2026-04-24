@@ -63,20 +63,20 @@ const PullActionIsland: React.FC<PullActionIslandProps> = ({ pullY, pullX, activ
 
         {/* 背景膠囊軌道 (The Track) */}
         {/* w-[200px] = 100px center. px-8 = 32px padding */}
-        <div className="relative bg-slate-800/90 backdrop-blur-md rounded-full px-8 py-2.5 flex items-center justify-between w-[200px] border border-slate-700/50 shadow-xl box-border">
+        <div className="relative bg-surface-bg/90 backdrop-blur-md rounded-full px-8 py-2.5 flex items-center justify-between w-[200px] border border-surface-border shadow-xl box-border">
 
           {/* 左錨點：雲端 */}
-          <div className={`transition-all duration-300 transform flex flex-col items-center justify-center w-6 h-6 ${isCloudActive ? 'scale-125 text-sky-400' : 'text-slate-500 scale-100'}`}>
+          <div className={`transition-all duration-300 transform flex flex-col items-center justify-center w-6 h-6 ${isCloudActive ? 'scale-125 text-sky-400' : 'text-txt-muted scale-100'}`}>
             <Cloud size={20} strokeWidth={isCloudActive ? 2.5 : 2} />
           </div>
 
           {/* 中錨點：原點 */}
-          <div className={`transition-all duration-300 transform ${activeState === 'neutral' ? 'scale-100 text-slate-400' : 'scale-50 text-slate-600'}`}>
+          <div className={`transition-all duration-300 transform ${activeState === 'neutral' ? 'scale-100 text-txt-muted/60' : 'scale-50 text-txt-muted/30'}`}>
             <div className="w-1.5 h-1.5 bg-current rounded-full" />
           </div>
 
           {/* 右錨點：搜尋 */}
-          <div className={`transition-all duration-300 transform flex flex-col items-center justify-center w-6 h-6 ${isSearchActive ? 'scale-125 text-emerald-400' : 'text-slate-500 scale-100'}`}>
+          <div className={`transition-all duration-300 transform flex flex-col items-center justify-center w-6 h-6 ${isSearchActive ? 'scale-125 text-brand-primary' : 'text-txt-muted scale-100'}`}>
             <Search size={20} strokeWidth={isSearchActive ? 2.5 : 2} />
           </div>
 
@@ -84,8 +84,8 @@ const PullActionIsland: React.FC<PullActionIslandProps> = ({ pullY, pullX, activ
           <div
             className={`absolute top-1/2 left-1/2 -ml-6 -mt-6 w-12 h-12 rounded-full border-[3px] pointer-events-none
                     ${isCloudActive ? 'border-sky-400 bg-sky-400/20 shadow-[0_0_15px_rgba(var(--c-sky-400)/0.5)]' :
-                isSearchActive ? 'border-emerald-400 bg-emerald-400/20 shadow-[0_0_15px_rgba(var(--c-emerald-400)/0.5)]' :
-                  'border-slate-400/30 w-10 h-10 -ml-5 -mt-5' // Neutral 狀態稍微小一點
+                isSearchActive ? 'border-brand-primary bg-brand-primary/20 shadow-[0_0_15px_rgba(var(--c-brand-primary),0.5)]' :
+                  'border-surface-border w-10 h-10 -ml-5 -mt-5' // Neutral 狀態稍微小一點
               }
                 `}
             style={{
@@ -104,7 +104,7 @@ const PullActionIsland: React.FC<PullActionIslandProps> = ({ pullY, pullX, activ
             transform: activeState !== 'neutral' ? 'translateY(0)' : 'translateY(4px)'
           }}
         >
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-900/90 backdrop-blur-sm border border-slate-700 shadow-lg ${isCloudActive ? 'text-sky-400' : 'text-emerald-400'}`}>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full bg-app-bg-deep/90 backdrop-blur-sm border border-surface-border shadow-lg ${isCloudActive ? 'text-sky-400' : 'text-brand-primary'}`}>
             {isCloudActive ? t('dash_pull_release_cloud') : t('dash_pull_release_search')}
           </span>
         </div>

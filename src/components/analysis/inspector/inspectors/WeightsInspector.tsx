@@ -36,19 +36,19 @@ const EngineWeightSection: React.FC<{
 
     const renderCompactRow = (key: string, value: number) => {
         const percentage = Math.min(100, (value / 5.0) * 100);
-        let colorClass = 'bg-slate-500';
-        let textColor = 'text-slate-400';
+        let colorClass = 'bg-txt-muted';
+        let textColor = 'text-txt-muted';
 
-        if (value >= 3.0) { colorClass = 'bg-emerald-500'; textColor = 'text-emerald-400'; }
-        else if (value >= 1.5) { colorClass = 'bg-sky-500'; textColor = 'text-sky-400'; }
-        else if (value < 0.8) { colorClass = 'bg-rose-500'; textColor = 'text-rose-400'; }
+        if (value >= 3.0) { colorClass = 'bg-status-success'; textColor = 'text-status-success'; }
+        else if (value >= 1.5) { colorClass = 'bg-brand-secondary'; textColor = 'text-brand-secondary'; }
+        else if (value < 0.8) { colorClass = 'bg-status-danger'; textColor = 'text-status-danger'; }
 
         return (
-            <div key={key} className="flex items-center gap-3 py-2 border-b border-slate-800/50 last:border-0">
-                <div className="w-24 text-xs font-bold text-slate-300 truncate">
+            <div key={key} className="flex items-center gap-3 py-2 border-b border-surface-border/30 last:border-0">
+                <div className="w-24 text-xs font-bold text-txt-secondary truncate">
                     {getFactorLabel(key)}
                 </div>
-                <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div className="flex-1 h-1.5 modal-bg-recessed rounded-full overflow-hidden">
                     <div
                         className={`h-full ${colorClass} transition-all duration-500`}
                         style={{ width: `${percentage}%` }}
@@ -61,18 +61,18 @@ const EngineWeightSection: React.FC<{
         );
     };
 
-    let themeClass = 'indigo';
-    if (colorTheme === 'amber') themeClass = 'amber';
-    if (colorTheme === 'rose') themeClass = 'rose';
-    if (colorTheme === 'pink') themeClass = 'pink';
+    let semanticColor = 'brand-primary';
+    if (colorTheme === 'amber') semanticColor = 'status-warning';
+    if (colorTheme === 'rose') semanticColor = 'status-danger';
+    if (colorTheme === 'pink') semanticColor = 'brand-secondary';
 
-    const bgHeaderClass = `bg-${themeClass}-900/20 border-b border-${themeClass}-500/20`;
-    const iconBgClass = `bg-${themeClass}-500/20 text-${themeClass}-400`;
-    const titleClass = `text-${themeClass}-200`;
-    const descClass = `text-${themeClass}-300/60`;
+    const bgHeaderClass = `bg-${semanticColor}/10 border-b border-${semanticColor}/20`;
+    const iconBgClass = `bg-${semanticColor}/20 text-${semanticColor}`;
+    const titleClass = `text-${semanticColor}`;
+    const descClass = `text-txt-muted`;
 
     return (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div className="modal-bg-elevated border border-surface-border rounded-xl overflow-hidden shadow-sm">
             <div className={`${bgHeaderClass} p-3 flex items-start gap-3`}>
                 <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${iconBgClass}`}>
                     {icon}
@@ -82,7 +82,7 @@ const EngineWeightSection: React.FC<{
                         <h3 className={`font-bold text-sm ${titleClass}`}>{title}</h3>
                         <button
                             onClick={onReset}
-                            className="text-[10px] flex items-center gap-1 text-slate-500 hover:text-white bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded transition-colors border border-slate-700"
+                            className="text-[10px] flex items-center gap-1 text-txt-muted hover:text-txt-primary modal-bg-recessed hover:filter hover:brightness-110 px-2 py-1 rounded transition-all border border-surface-border active:scale-95"
                         >
                             <RotateCcw size={10} />
                             {t('btn_reset_weights')}
@@ -95,12 +95,12 @@ const EngineWeightSection: React.FC<{
             </div>
 
             <div className="p-3">
-                <div className="flex justify-between text-[10px] text-slate-600 uppercase font-bold mb-2 px-1">
+                <div className="flex justify-between text-[10px] text-txt-muted/60 uppercase font-bold mb-2 px-1">
                     <span>{t('weight_factor')}</span>
                     <span>{t('weight_value')} (0.2~5.0)</span>
                 </div>
 
-                <div className="bg-slate-950/50 rounded-lg border border-slate-800/50 px-3">
+                <div className="modal-bg-recessed/30 rounded-lg border border-surface-border/50 px-3">
                     {weights && Object.entries(weights).map(([key, val]) => (
                         renderCompactRow(key, val as number)
                     ))}
@@ -170,13 +170,13 @@ const WeightsInspector: React.FC = () => {
     };
 
     return (
-        <div className="flex-1 overflow-y-auto p-4 bg-slate-950">
+        <div className="flex-1 overflow-y-auto p-4 bg-app-bg">
             <div className="max-w-2xl mx-auto space-y-6">
                 <div className="flex items-center gap-2 mb-4">
-                    <Scale size={20} className="text-emerald-500" />
+                    <Scale size={20} className="text-brand-primary" />
                     <div>
-                        <h2 className="text-lg font-bold text-white leading-none">{t('weights_title')}</h2>
-                        <span className="text-xs text-slate-500">{t('weights_subtitle')}</span>
+                        <h2 className="text-lg font-bold text-txt-primary leading-none">{t('weights_title')}</h2>
+                        <span className="text-xs text-txt-muted">{t('weights_subtitle')}</span>
                     </div>
                 </div>
 

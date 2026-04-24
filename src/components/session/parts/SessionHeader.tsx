@@ -79,7 +79,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   };
 
   return (
-    <div className="flex-none bg-slate-800 p-2 flex items-center justify-between border-b border-slate-700 shadow-md z-20">
+    <div className="flex-none modal-bg-elevated p-2 flex items-center justify-between border-b border-surface-border shadow-md z-20 transition-colors">
       <div className="flex items-center gap-2 flex-1 min-w-0 mr-2">
         <button
           onMouseDown={preventBlur}
@@ -96,7 +96,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
             // 若不在編輯狀態，則執行正常的退出流程
             onExit();
           }}
-          className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 shrink-0"
+          className="p-2 hover:bg-surface-hover rounded-lg text-txt-muted hover:text-txt-primary shrink-0 transition-colors"
         >
           <ArrowLeft size={20} />
         </button>
@@ -109,15 +109,15 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
             onBlur={handleTitleBlur}
             onKeyDown={handleKeyDown}
             onFocus={(e) => e.target.select()}
-            className="bg-slate-900 text-slate-50 font-bold text-lg px-2 py-1 rounded border border-emerald-500 w-full outline-none"
+            className="bg-app-bg text-txt-primary font-bold text-lg px-2 py-1 rounded border border-brand-primary w-full outline-none"
           />
         ) : (
           <div
             onClick={handleTitleClick}
-            className={`font-bold text-lg truncate flex items-center gap-2 px-2 py-1 rounded transition-colors group ${isEditMode ? 'cursor-pointer hover:bg-slate-850' : 'text-slate-50'}`}
+            className={`font-bold text-lg truncate flex items-center gap-2 px-2 py-1 rounded transition-colors group ${isEditMode ? 'cursor-pointer hover:bg-surface-hover' : 'text-txt-primary'}`}
           >
             {templateName}
-            {isEditMode && <Edit2 size={14} className="text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />}
+            {isEditMode && <Edit2 size={14} className="text-txt-muted opacity-0 group-hover:opacity-100 transition-opacity" />}
           </div>
         )}
       </div>
@@ -127,7 +127,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
           <button
             onMouseDown={preventBlur}
             onClick={onCloudDownload}
-            className="p-2 rounded-lg transition-colors border border-sky-500/30 bg-sky-900/20 text-sky-400 animate-pulse hover:bg-sky-900/40"
+            className="p-2 rounded-lg transition-colors border border-status-info/30 bg-status-info/10 text-status-info animate-pulse hover:bg-status-info/20"
             title={t('session_download_bg')}
           >
             <DownloadCloud size={20} />
@@ -137,7 +137,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
         <button
           onMouseDown={preventBlur}
           onClick={onToggleEditMode}
-          className={`p-2 rounded-lg transition-colors border ${isEditMode ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-900/50' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'}`}
+          className={`p-2 rounded-lg transition-colors border ${isEditMode ? 'bg-brand-secondary border-brand-secondary text-white shadow-lg' : 'modal-bg-elevated border-surface-border text-txt-muted hover:text-txt-primary'}`}
           title={isEditMode ? t('session_lock_edit') : t('session_unlock_edit')}
         >
           {isEditMode ? <Unlock size={20} /> : <Lock size={20} />}
@@ -148,7 +148,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
           <button
             onMouseDown={preventBlur}
             onClick={onAddColumn}
-            className="p-2 hover:bg-slate-700 hover:text-emerald-400 rounded-lg text-slate-400"
+            className="p-2 hover:bg-surface-hover hover:text-brand-primary rounded-lg text-txt-muted transition-colors"
           >
             <ListPlus size={20} />
           </button>
@@ -160,16 +160,16 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
             if (isEditingTitle) onEditTitleToggle(false);
             onReset();
           }}
-          className="p-2 hover:bg-slate-700 hover:text-red-400 rounded-lg text-slate-400"
+          className="p-2 hover:bg-surface-hover hover:text-status-danger rounded-lg text-txt-muted transition-colors"
         >
           <RotateCcw size={20} />
         </button>
 
-        <div className="w-px h-6 bg-slate-700 mx-1"></div>
+        <div className="w-px h-6 bg-surface-border mx-1"></div>
         <button
           onMouseDown={preventBlur}
           onClick={() => onShareMenuToggle(!showShareMenu)}
-          className="p-2 hover:bg-slate-700 hover:text-indigo-400 rounded-lg text-slate-400"
+          className="p-2 hover:bg-surface-hover hover:text-brand-secondary rounded-lg text-txt-muted transition-colors"
         >
           <Share2 size={20} />
         </button>

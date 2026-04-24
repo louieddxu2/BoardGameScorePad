@@ -113,7 +113,7 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
 
                 // 2. Trigger Relationship Service (Background)
                 relationshipService.processGameEnd(finalRecord).catch(console.error);
-                
+
                 onClose();
             } catch (error) {
                 console.error("Save failed in Settings Modal:", error);
