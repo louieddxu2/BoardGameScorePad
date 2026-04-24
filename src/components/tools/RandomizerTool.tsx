@@ -71,26 +71,26 @@ const RandomizerTool: React.FC = () => {
     const btnClass = (type: RandomType) => `
         flex flex-col items-center justify-center p-1 rounded-lg border transition-all active:scale-90 h-12 relative
         ${activeType === type && isRolling
-            ? 'bg-indigo-600 text-white border-indigo-500 shadow-inner'
-            : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+            ? 'bg-status-success/20 text-status-success border-status-success/50 shadow-inner'
+            : 'bg-[rgb(var(--c-input-header-bg))] border-[rgb(var(--c-input-border))] text-txt-muted hover:bg-surface-hover hover:text-txt-primary'
         }
     `;
 
     return (
-        <div className="w-full bg-slate-900/30 rounded-2xl border border-slate-800 p-2 flex flex-col gap-2 min-h-[140px]">
+        <div className="w-full bg-[rgb(var(--c-input-bg))] rounded-2xl border border-[rgb(var(--c-input-border))] p-2 flex flex-col gap-2 min-h-[140px]">
             {/* Display Area */}
-            <div className="flex-1 bg-slate-800/50 rounded-xl border border-slate-700/30 flex flex-col items-center justify-center min-h-[60px] relative overflow-hidden">
+            <div className="flex-1 bg-[rgb(var(--c-input-header-bg)/0.5)] rounded-xl border border-[rgb(var(--c-input-border)/0.3)] flex flex-col items-center justify-center min-h-[60px] relative overflow-hidden">
                 {!displayVal ? (
                     <div className="flex flex-col items-center opacity-40">
-                        <Dices size={24} className="mb-1" />
-                        <span className="text-[10px] font-bold">{t('random_hint')}</span>
+                        <Dices size={24} className="mb-1 text-txt-muted" />
+                        <span className="text-[10px] font-bold text-txt-muted">{t('random_hint')}</span>
                     </div>
                 ) : (
                     <>
-                        <span className={`font-black text-slate-200 transition-all ${typeof displayVal === 'string' ? 'text-3xl' : 'text-5xl'} ${isRolling ? 'blur-[1px] opacity-70' : 'scale-110'}`}>
+                        <span className={`font-black text-txt-primary transition-all ${typeof displayVal === 'string' ? 'text-3xl' : 'text-5xl'} ${isRolling ? 'blur-[1px] opacity-70' : 'scale-110'}`}>
                             {displayVal}
                         </span>
-                        <span className="absolute bottom-1 right-2 text-[10px] text-slate-500 font-mono">
+                        <span className="absolute bottom-1 right-2 text-[10px] text-txt-muted font-mono">
                             {subLabel}
                         </span>
                     </>

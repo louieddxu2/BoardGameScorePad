@@ -138,6 +138,14 @@
   --c-grid-cell-border: 30 41 59;      /* slate-800 */
   --c-grid-auto-bg: 16 185 129 / 0.1;  /* emerald-500/10 */
   --c-grid-active-ring: 16 185 129;    /* emerald-500 */
+
+  /* --- Input System Tokens --- */
+  --c-input-bg: 15 23 42;          /* slate-900 */
+  --c-input-header-bg: 30 41 59;   /* slate-800 */
+  --c-input-border: 51 65 85;      /* slate-700 */
+  --c-keypad-btn-bg: 30 41 59;     /* slate-800 */
+  --c-keypad-btn-text: 248 250 252; /* slate-50 */
+  --c-keypad-btn-active: 79 70 229; /* indigo-600 */
 }
 
 /* LIGHT MODE MAPPING (Mirrored) */
@@ -192,6 +200,14 @@ html[data-theme='light'] {
   --c-grid-cell-border: 226 232 240;   /* slate-200 */
   --c-grid-auto-bg: 16 185 129 / 0.05; /* emerald-500/5% (Softer for light) */
   --c-grid-active-ring: 16 185 129;    /* emerald-500 */
+
+  /* --- Input System Tokens --- */
+  --c-input-bg: 248 250 252;       /* slate-50 */
+  --c-input-header-bg: 241 245 249; /* slate-100 */
+  --c-input-border: 226 232 240;   /* slate-200 */
+  --c-keypad-btn-bg: 255 255 255;  /* white */
+  --c-keypad-btn-text: 15 23 42;   /* slate-900 */
+  --c-keypad-btn-active: 99 102 241; /* indigo-500 (Softer for light) */
 }
 
 /* ============================================================

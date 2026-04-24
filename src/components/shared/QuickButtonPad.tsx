@@ -44,7 +44,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
                     gridAutoRows: `minmax(${minRowHeight}, auto)`
                 }}
             >
-                <div className="absolute inset-0 bg-[rgba(var(--c-black)/0.15)] pointer-events-none z-0"></div>
+                <div className="absolute inset-0 bg-[rgba(var(--c-black)/0.05)] dark:bg-[rgba(var(--c-black)/0.15)] pointer-events-none z-0"></div>
 
                 {actions.map(action => {
                     const bg = action.color || column.color || 'rgb(var(--c-white))';
@@ -57,7 +57,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
                     // --- New Dynamic Style Logic ---
 
                     // 1. Text Color (for both label and badge number)
-                    const textColor = isLightBg ? 'rgb(var(--c-slate-900))' : 'rgb(var(--c-slate-50))';
+                    const textColor = isLightBg ? 'rgb(var(--c-txt-primary))' : 'rgb(var(--c-surface-bg))';
 
                     // 2. Modifier Border Style
                     const borderClass = isModifier
@@ -77,7 +77,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
                     rounded-xl flex items-center p-2 shadow-sm transition-all relative h-full 
                     ${isListMode ? 'flex-row justify-between px-4' : 'flex-col justify-center'} 
                     ${borderClass}
-                    ${isSelected ? 'ring-2 ring-[rgb(var(--c-white))] ring-offset-2 ring-offset-[rgb(var(--c-slate-900))] z-10 scale-[1.02]' : 'active:scale-95 z-10'}
+                    ${isSelected ? 'ring-2 ring-[rgb(var(--c-txt-primary))] ring-offset-2 ring-offset-[rgb(var(--c-surface-bg))] z-10 scale-[1.02]' : 'active:scale-95 z-10'}
                 `}
                             style={{ backgroundColor: bg }}
                         >

@@ -36,15 +36,15 @@ const MemoTool: React.FC<MemoToolProps> = ({ session, onUpdateSession }) => {
     };
 
     return (
-        <div className="w-full h-full bg-yellow-100/5 rounded-2xl border border-yellow-500/20 p-3 flex flex-col min-h-[140px] relative group">
+        <div className="w-full h-full bg-[rgb(var(--c-input-bg))] rounded-2xl border border-[rgb(var(--c-input-border))] p-3 flex flex-col min-h-[140px] relative group shadow-sm">
             <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] font-bold text-yellow-500/70 uppercase flex items-center gap-1">
+                <span className="text-[10px] font-bold text-brand-primary uppercase flex items-center gap-1 opacity-80">
                     <PenLine size={12} /> {t('memo_title')}
                 </span>
                 {text && (
                     <button
                         onClick={handleClear}
-                        className="text-slate-500 hover:text-red-400 transition-colors p-1"
+                        className="text-txt-muted hover:text-status-danger transition-colors p-1"
                     >
                         <Eraser size={12} />
                     </button>
@@ -55,12 +55,12 @@ const MemoTool: React.FC<MemoToolProps> = ({ session, onUpdateSession }) => {
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder={t('memo_placeholder')}
-                className="flex-1 bg-transparent border-none outline-none resize-none text-sm text-yellow-100/90 placeholder-yellow-500/30 leading-relaxed scrollbar-thin"
+                className="flex-1 bg-transparent border-none outline-none resize-none text-sm text-txt-primary placeholder-txt-muted/50 leading-relaxed no-scrollbar"
                 spellCheck={false}
             />
 
-            {/* Visual Corner Fold */}
-            <div className="absolute bottom-0 right-0 w-4 h-4 bg-gradient-to-tl from-slate-900 to-transparent opacity-50 rounded-tl-lg pointer-events-none"></div>
+            {/* Visual Corner Fold - Adjusted for theme */}
+            <div className="absolute bottom-0 right-0 w-4 h-4 bg-gradient-to-tl from-[rgb(var(--c-input-border))] to-transparent opacity-30 rounded-tl-lg pointer-events-none"></div>
         </div>
     );
 };

@@ -29,10 +29,10 @@ const InputPanelLayout: React.FC<InputPanelLayoutProps> = ({
         onMouseDown={(e) => e.preventDefault()}
         onClick={onNext}
         className={`
-            bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white 
+            bg-status-success hover:opacity-90 active:opacity-80 text-white 
             flex flex-col items-center justify-center 
-            shadow-lg shadow-emerald-900/50 touch-manipulation transition-all active:scale-95 
-            border-slate-800 relative
+            shadow-lg shadow-status-success/20 touch-manipulation transition-all active:scale-95 
+            border-[rgb(var(--c-input-border))] relative
             ${mode === 'compact' 
                 // Compact: Fixed height (h-14) to match input, full rounded corners, border
                 ? 'w-[80px] h-14 shrink-0 rounded-xl border' 
@@ -48,7 +48,7 @@ const InputPanelLayout: React.FC<InputPanelLayoutProps> = ({
   // Compact Mode (Focused Input): Simple Flex Row
   if (isCompact) {
       return (
-        <div className="flex items-start gap-2 p-2 bg-slate-900 select-none">
+        <div className="flex items-start gap-2 p-2 bg-[rgb(var(--c-input-bg))] select-none">
             {/* Main Content (Input) takes all space */}
             <div className="flex-1 min-w-0">
                 {children}
@@ -61,14 +61,14 @@ const InputPanelLayout: React.FC<InputPanelLayoutProps> = ({
 
   // Full Mode: 4x4 Grid
   return (
-    <div className="grid grid-cols-4 grid-rows-4 gap-2 p-2 select-none bg-slate-900 h-full">
+    <div className="grid grid-cols-4 grid-rows-4 gap-2 p-2 select-none bg-[rgb(var(--c-input-bg))] h-full">
       {/* Main content area (Left 3 columns, all 4 rows) */}
       <div className="col-span-3 row-span-4 h-full min-h-0">
         {children}
       </div>
 
       {/* Sidebar (Top 3 rows of the last column) */}
-      <div className="col-start-4 row-start-1 row-span-3 overflow-hidden rounded-t-xl rounded-b-none bg-slate-800/20 border-l border-t border-r border-slate-800 min-h-0">
+      <div className="col-start-4 row-start-1 row-span-3 overflow-hidden rounded-t-xl rounded-b-none bg-[rgb(var(--c-input-header-bg)/0.3)] border-l border-t border-r border-[rgb(var(--c-input-border))] min-h-0">
         {sidebarContent}
       </div>
 

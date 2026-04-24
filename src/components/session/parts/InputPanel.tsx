@@ -59,9 +59,9 @@ const PanelHeader: React.FC<{
 
     // Handle transparent color fallback
     const isTransparent = player.color === 'transparent';
-    const displayColor = isTransparent ? 'rgb(var(--c-slate-200))' : player.color; // Theme-aware fallback
-    const bgColor = isTransparent ? 'rgb(var(--c-slate-800))' : `${player.color}20`;
-    const borderColor = isTransparent ? 'rgb(var(--c-slate-700))' : `${player.color}40`;
+    const displayColor = isTransparent ? 'rgb(var(--c-txt-muted))' : player.color; // Theme-aware fallback
+    const bgColor = isTransparent ? 'rgb(var(--c-input-header-bg))' : `${player.color}20`;
+    const borderColor = isTransparent ? 'rgb(var(--c-input-border))' : `${player.color}40`;
 
     // Auto columns cannot be cleared manually
     const isAuto = col?.inputType === 'auto';
@@ -74,7 +74,7 @@ const PanelHeader: React.FC<{
         >
             {/* Swipe Hint Overlay */}
             {showSwipeHint && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-slate-900/90 animate-swipe-hint-enter">
+                <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-[rgb(var(--c-input-bg)/0.9)] animate-swipe-hint-enter">
                     <span className="text-xs font-bold text-emerald-400 flex items-center gap-2">
                         <span className="animate-swipe-hint-left">←</span>
                         <span>{t('input_swipe_hint')}</span>
@@ -125,8 +125,8 @@ const PanelHeader: React.FC<{
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={onToggleVoice}
                     className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all border shrink-0 ${isVoiceEnabled 
-                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
-                        : 'bg-slate-800 border-slate-600 text-slate-400 hover:text-slate-300'}`}
+                        ? 'bg-status-success/20 border-status-success/50 text-status-success' 
+                        : 'bg-[rgb(var(--c-input-header-bg))] border-[rgb(var(--c-input-border))] text-txt-muted hover:text-txt-primary'}`}
                     title={isVoiceEnabled ? t('input_voice_on') : t('input_voice_off')}
                 >
                     {isVoiceEnabled ? (
@@ -149,7 +149,7 @@ const PanelHeader: React.FC<{
                     <button
                         onMouseDown={(e) => e.preventDefault()} // Keep focus on input
                         onClick={onClear}
-                        className="bg-red-900/30 text-red-400 h-8 px-2.5 rounded-lg border border-red-500/30 hover:bg-red-900/50 flex items-center gap-1 shrink-0 transition-colors"
+                        className="bg-status-danger/10 text-status-danger h-8 px-2.5 rounded-lg border border-status-danger/30 hover:bg-status-danger/20 flex items-center gap-1 shrink-0 transition-colors"
                     >
                         <Eraser size={14} />
                         <span className="text-xs font-bold hidden xs:inline">{isTotalMode ? t('input_reset') : t('input_clear')}</span>
@@ -159,13 +159,13 @@ const PanelHeader: React.FC<{
                 <button
                     onMouseDown={(e) => e.preventDefault()} // Keep focus on input
                     onClick={onDirectionToggle}
-                    className="bg-slate-700/50 hover:bg-slate-700 text-slate-300 h-8 px-3 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition-colors shrink-0 border border-slate-600 shadow-sm"
+                    className="bg-[rgb(var(--c-input-header-bg))] hover:bg-surface-hover text-txt-secondary h-8 px-3 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition-colors shrink-0 border border-[rgb(var(--c-input-border))] shadow-sm"
                 >
-                    <span className="text-emerald-400 hidden xs:inline">{t('input_next')}</span>
+                    <span className="text-status-success hidden xs:inline">{t('input_next')}</span>
                     <div className="flex font-mono text-[10px] items-center">
-                        <span className={`transition-colors ${direction === 'vertical' ? 'text-emerald-400 scale-125' : 'text-slate-600'}`}>↓</span>
+                        <span className={`transition-colors ${direction === 'vertical' ? 'text-status-success scale-125' : 'text-txt-muted'}`}>↓</span>
                         <span className={`mx-0.5 opacity-20`}>/</span>
-                        <span className={`transition-colors ${direction === 'horizontal' ? 'text-emerald-400 scale-125' : 'text-slate-600'}`}>→</span>
+                        <span className={`transition-colors ${direction === 'horizontal' ? 'text-status-success scale-125' : 'text-txt-muted'}`}>→</span>
                     </div>
                 </button>
             </div>
@@ -901,7 +901,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
     return (
         <div
-            className={`fixed left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-sm border-t border-slate-700/50 shadow-[0_-8px_30px_rgba(var(--c-black)/0.5)] transition-all ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'} ${isInputFocused ? 'duration-0' : 'duration-300'}`}
+            className={`fixed left-0 right-0 z-50 bg-[rgb(var(--c-input-bg))] backdrop-blur-sm border-t border-[rgb(var(--c-input-border))] shadow-[0_-8px_30px_rgba(var(--c-black)/0.15)] transition-all ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'} ${isInputFocused ? 'duration-0' : 'duration-300'}`}
             style={{ height: panelHeight, bottom: offset }}
             // [Added] Joystick Touch Handlers
             onTouchStart={handleTouchStart}
@@ -923,7 +923,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                 />
             )}
 
-            <div className="flex-1 min-h-0 bg-slate-900 relative">
+            <div className="flex-1 min-h-0 bg-[rgb(var(--c-input-bg))] relative">
                 {mainContentNode && !isPlaceholderMode && (
                     <InputPanelLayout onNext={onNextAction} nextButtonDirection={advanceDirection} sidebarContent={sidebarContentNode} nextButtonContent={nextButtonContent} isCompact={isInputFocused}>
                         {mainContentNode}

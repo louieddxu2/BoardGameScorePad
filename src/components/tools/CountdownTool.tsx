@@ -139,14 +139,14 @@ const CountdownTool: React.FC = () => {
     const isWarning = isRunning && warningThreshold > 0 && timeLeft <= warningThreshold;
 
     const btnBase = "flex flex-col items-center justify-center p-2 rounded-xl active:scale-95 transition-all text-xs font-bold border";
-    const btnAdd = `${btnBase} bg-emerald-900/20 border-emerald-500/30 text-emerald-400 hover:bg-emerald-900/40`;
-    const btnSub = `${btnBase} bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-300`;
+    const btnAdd = `${btnBase} bg-status-success/10 border-status-success/30 text-status-success hover:bg-status-success/20`;
+    const btnSub = `${btnBase} bg-[rgb(var(--c-input-header-bg))] border-[rgb(var(--c-input-border))] text-txt-muted hover:bg-surface-hover hover:text-txt-primary`;
 
     return (
-        <div className="w-full bg-slate-900/30 rounded-2xl border border-slate-800 p-3 flex flex-col gap-3 min-h-[160px]">
+        <div className="w-full bg-[rgb(var(--c-input-bg))] rounded-2xl border border-[rgb(var(--c-input-border))] p-3 flex flex-col gap-3 min-h-[160px]">
             {/* Header */}
-            <div className="flex justify-between items-center pb-2 border-b border-slate-800/50">
-                <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+            <div className="flex justify-between items-center pb-2 border-b border-[rgb(var(--c-input-border)/0.5)]">
+                <span className="text-[10px] font-bold text-txt-muted uppercase flex items-center gap-1">
                     <Hourglass size={12} /> {t('timer_label')}
                 </span>
 
@@ -156,8 +156,8 @@ const CountdownTool: React.FC = () => {
                         onClick={toggleWarning}
                         className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-colors border
                             ${warningThreshold > 0
-                                ? 'bg-amber-900/20 text-amber-500 border-amber-500/30'
-                                : 'bg-slate-800 text-slate-500 border-transparent hover:bg-slate-700'
+                                ? 'bg-amber-500/10 text-amber-600 border-amber-500/30'
+                                : 'bg-[rgb(var(--c-input-header-bg))] text-txt-muted border-transparent hover:bg-surface-hover'
                             }`}
                         title={t('timer_warning_hint')}
                     >
@@ -176,7 +176,7 @@ const CountdownTool: React.FC = () => {
 
                     <button
                         onClick={reset}
-                        className="p-1 text-slate-500 hover:text-white rounded hover:bg-slate-700 transition-colors"
+                        className="p-1 text-txt-muted hover:text-txt-primary rounded hover:bg-surface-hover transition-colors"
                         title={t('timer_reset')}
                     >
                         <RotateCcw size={14} />
@@ -188,9 +188,9 @@ const CountdownTool: React.FC = () => {
                 {/* Left: Display & Play Control */}
                 <div className="flex-1 flex flex-col items-center justify-center gap-2">
                     <div className={`text-4xl font-black font-mono tracking-wider transition-colors 
-                        ${isTimeUp ? 'text-red-500 animate-pulse' :
-                            isWarning ? 'text-amber-400 animate-pulse' :
-                                (isRunning ? 'text-emerald-400' : 'text-slate-200')
+                        ${isTimeUp ? 'text-status-danger animate-pulse' :
+                            isWarning ? 'text-amber-500 animate-pulse' :
+                                (isRunning ? 'text-status-success' : 'text-txt-primary')
                         }`}
                     >
                         {timeStr}
@@ -201,8 +201,8 @@ const CountdownTool: React.FC = () => {
                         disabled={timeLeft === 0}
                         className={`w-full py-2 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition-all active:scale-95 shadow-sm
                             ${isRunning
-                                ? 'bg-amber-900/30 text-amber-500 border border-amber-500/30'
-                                : (timeLeft === 0 ? 'bg-slate-800 text-slate-600 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-500')
+                                ? 'bg-amber-500/20 text-amber-600 border border-amber-500/30'
+                                : (timeLeft === 0 ? 'bg-[rgb(var(--c-input-header-bg))] text-txt-muted opacity-50 cursor-not-allowed' : 'bg-status-success text-white hover:opacity-90')
                             }
                         `}
                     >

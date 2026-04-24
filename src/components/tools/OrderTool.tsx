@@ -37,9 +37,9 @@ const OrderTool: React.FC<OrderToolProps> = ({ session, onUpdateSession }) => {
     return (
         <button
             onClick={handleShuffle}
-            className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl border border-slate-700 transition-all active:scale-95 flex items-center justify-center gap-2 group shadow-sm"
+            className="w-full py-4 bg-[rgb(var(--c-input-header-bg))] hover:bg-surface-hover text-txt-primary rounded-2xl border border-[rgb(var(--c-input-border))] transition-all active:scale-95 flex items-center justify-center gap-2 group shadow-sm"
         >
-            <Shuffle size={18} className="text-indigo-400 group-hover:scale-110 transition-transform" />
+            <Shuffle size={18} className="text-brand-secondary group-hover:scale-110 transition-transform" />
             <span className="font-bold text-sm">{t('order_title')}</span>
         </button>
     );
