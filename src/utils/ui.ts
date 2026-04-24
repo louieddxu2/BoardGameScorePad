@@ -62,7 +62,8 @@ const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
  * Example: "rgb(var(--c-p-black))" -> "--c-p-black"
  */
 const extractVarName = (colorStr: string): string | null => {
-    const match = colorStr.match(/--c-p-[a-z-]+/);
+    // Support player colors (--c-p-), text colors (--c-txt-), and status colors (--c-status-)
+    const match = colorStr.match(/--(c-p|c-txt|c-status)-[a-z-]+/);
     return match ? match[0] : null;
 };
 
@@ -72,7 +73,7 @@ const extractVarName = (colorStr: string): string | null => {
  */
 export const getPerceivedLuminance = (hex: string): number => {
     const rgb = hexToRgb(hex);
-    if (!rgb) return 255; // Default to bright if unparseable
+    if (!rgb) return 128; // Default to neutral (middle) if unparseable to avoid false positives
     // Standard relative luminance formula
     return (rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114);
 };
@@ -87,6 +88,9 @@ export const isColorDark = (hex: string): boolean => {
     if (varName && COLOR_TONES[varName]) {
         return COLOR_TONES[varName] === 'dark';
     }
+    // Explicit check for system text colors which are always dark in light theme (but logic here is general)
+    if (varName?.includes('txt-primary') || varName?.includes('txt-secondary')) return true;
+    
     return getPerceivedLuminance(hex) < 115;
 };
 
@@ -154,9 +158,9 @@ export const getContrastTextStyles = (
     // --- Dark UI Environment (Dark Theme or Texture Mode) ---
     if (resolvedTheme === 'dark' || isTextureMode) {
         // High-Precision Outline for registered dark colors or calculated deep tones
-        const shouldProtect = tone === 'dark' || (!tone && getPerceivedLuminance(textColorHex) < 60);
+        const shouldProtectDark = tone === 'dark' || (!tone && getPerceivedLuminance(textColorHex) < 60);
 
-        if (shouldProtect) {
+        if (shouldProtectDark) {
             return {
                 ...styles,
                 textShadow: `
@@ -175,14 +179,29 @@ export const getContrastTextStyles = (
         };
     }
 
-    // --- Light UI Environment ---
-    // Protection for light-toned text on light backgrounds
-    const shouldProtectLight = tone === 'light' || (!tone && getPerceivedLuminance(textColorHex) > 170);
+    // --- Light UI Environment (Clean Mode) ---
+    if (resolvedTheme === 'light') {
+        // [Symmetric Protection] For light-toned text (e.g., White/Yellow) on White Background
+        const isSystemText = varName?.includes('txt-primary') || varName?.includes('txt-secondary');
+        const shouldProtectLight = !isSystemText && (tone === 'light' || (!tone && getPerceivedLuminance(textColorHex) > 170));
 
-    if (resolvedTheme === 'light' && shouldProtectLight) {
+        if (shouldProtectLight) {
+            // Apply Black Outline (The symmetric opposite of the dark mode white frame)
+            return {
+                ...styles,
+                textShadow: `
+                    1px 1px 0 rgba(0,0,0,0.6),
+                    -1px 1px 0 rgba(0,0,0,0.6),
+                    1px -1px 0 rgba(0,0,0,0.6),
+                    -1px -1px 0 rgba(0,0,0,0.6)
+                `
+            };
+        }
+
+        // Standard dark text on light background: no heavy protection needed, maybe a tiny lift
         return {
             ...styles,
-            textShadow: '0 1px 1px rgba(0,0,0,0.15), 0 0 1px rgba(0,0,0,0.1)'
+            textShadow: '0 0.5px 1px rgba(0,0,0,0.05)'
         };
     }
 

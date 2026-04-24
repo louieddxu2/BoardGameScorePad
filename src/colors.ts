@@ -40,8 +40,6 @@ export const COLOR_TONES: Record<string, 'dark' | 'light' | 'neutral'> = {
   '--c-p-white': 'light',
   '--c-p-yellow': 'light',
   '--c-p-skin': 'light',
-  '--c-p-lime': 'light',
-  '--c-p-cyan': 'light',
 
   // Neutral / Mid-tones
   '--c-p-emerald': 'neutral',
@@ -52,4 +50,6 @@ export const COLOR_TONES: Record<string, 'dark' | 'light' | 'neutral'> = {
   '--c-p-pink': 'neutral',
   '--c-p-teal': 'neutral',
   '--c-p-amber': 'neutral',
+  '--c-p-lime': 'neutral',
+  '--c-p-cyan': 'neutral',
 };

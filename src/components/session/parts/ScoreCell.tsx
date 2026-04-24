@@ -407,7 +407,11 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
             : 'rgb(var(--c-txt-muted))'
           );
 
-    const textStyle = { color: cellColor };
+    // Apply centralized contrast styles (shadows/protection) to the base text style
+    const textStyle = { 
+        ...getContrastTextStyles(cellColor, undefined, { isTextureMode: !!baseImage }),
+        color: cellColor 
+    };
 
     // --- Render Selection ---
     const renderContent = () => {

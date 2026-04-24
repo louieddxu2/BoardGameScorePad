@@ -187,7 +187,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
   const uiColor = isTransparent ? COLORS[playerIndex % COLORS.length] : effectiveColor;
 
   const containerStyle: React.CSSProperties = {
-      backgroundColor: bgUrl ? 'transparent' : (isTransparent ? 'transparent' : 'rgb(var(--c-slate-800))'),
+      backgroundColor: bgUrl ? 'transparent' : (isTransparent ? 'transparent' : 'rgb(var(--c-grid-cell-bg))'),
       borderTopColor: isTransparent ? 'transparent' : effectiveColor,
       borderTopWidth: isTransparent || hasTexture ? '0px' : '4px',
       // [Fix]: Set minHeight to 0px if texture is successfully loaded.
@@ -234,18 +234,18 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
       key={player.id}
       ref={cellRef}
       className={`player-col-${player.id} flex-none min-w-[3.375rem] flex flex-col items-center justify-center relative overflow-visible group 
-        ${!bgUrl ? 'border-r border-slate-700/50' : ''} 
-        ${onClick ? 'cursor-pointer hover:bg-slate-950/5' : ''} 
+        ${!bgUrl ? 'border-r border-surface-border' : ''} 
+        ${onClick ? 'cursor-pointer hover:bg-surface-hover/10' : ''} 
         ${className}`}
       style={containerStyle}
       onClick={onClick}
     >
       {/* Active Indicator */}
-      {!hasTexture && isActive && <div className="absolute inset-0 ring-2 ring-inset ring-emerald-500 z-30 pointer-events-none"></div>}
+      {!hasTexture && isActive && <div className="absolute inset-0 ring-2 ring-inset ring-[rgb(var(--c-grid-active-ring))] z-30 pointer-events-none"></div>}
       
       {/* Empty State Hint */}
       {showClickHint && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 border-2 border-dashed border-slate-500/30 rounded-lg pointer-events-none group-hover:border-slate-500/50 transition-colors"></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 border-2 border-dashed border-txt-muted/30 rounded-lg pointer-events-none group-hover:border-txt-muted/50 transition-colors"></div>
       )}
 
       <SmartTextureLayer bgUrl={bgUrl} rect={rect} />
@@ -256,7 +256,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
 
       <ContrastText 
         className="font-black text-2xl leading-none w-full text-center truncate px-1 z-10" 
-        color={bgUrl ? (visualForceLost ? 'rgba(var(--c-slate-500)/0.5)' : 'rgb(var(--c-slate-50))') : (visualForceLost ? 'rgb(var(--c-slate-500))' : (isTransparent ? 'rgb(var(--c-slate-200))' : effectiveColor))}
+        color={bgUrl ? (visualForceLost ? 'rgba(var(--c-slate-500)/0.5)' : 'rgb(var(--c-slate-50))') : (visualForceLost ? 'rgb(var(--c-status-danger))' : (isTransparent ? 'rgb(var(--c-txt-muted))' : effectiveColor))}
         style={bgUrl ? inkStyle : { opacity: visualForceLost ? 0.5 : 1 }}
         isTextureMode={!!bgUrl}
       >
