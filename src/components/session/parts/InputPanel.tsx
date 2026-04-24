@@ -11,7 +11,8 @@ import AutoScorePanel from './AutoScorePanel';
 import InputPanelLayout from './InputPanelLayout';
 import SmartSpacer from './SmartSpacer';
 import { Eraser, ArrowRight, ArrowDown, Edit, Plus, ArrowUpToLine, ListPlus, Calculator, Scale, X, Check, MousePointerClick } from 'lucide-react';
-import { isColorDark, ENHANCED_TEXT_SHADOW, getContrastTextShadow } from '../../../utils/ui';
+import { isColorDark, getContrastTextStyles } from '../../../utils/ui';
+import { ContrastText } from '../../shared/ContrastText';
 import { getScoreHistory, getRawValue, syncPartsFromIds } from '../../../utils/scoring';
 import { useKeyboardStatus } from '../../../hooks/useVisualViewportOffset';
 import { useSessionTranslation } from '../../../i18n/session';
@@ -92,23 +93,23 @@ const PanelHeader: React.FC<{
                             {t('input_edit_player')}
                         </span>
                         <div className="w-px h-3 bg-[rgba(var(--c-white)/0.1)] shrink-0" />
-                        <span
+                        <ContrastText
                             key={player.id}
                             className="text-sm font-bold truncate animate-slide-in-right-shallow"
-                            style={{ color: displayColor, ...(getContrastTextShadow(displayColor) && { textShadow: getContrastTextShadow(displayColor) }) }}
+                            color={displayColor}
                         >
                             {player.name}
-                        </span>
+                        </ContrastText>
                     </>
                 ) : (
                     <>
-                        <span
+                        <ContrastText
                             key={player.id}
                             className="text-sm font-bold truncate animate-slide-in-right-shallow max-w-[40%]"
-                            style={{ color: displayColor, ...(getContrastTextShadow(displayColor) && { textShadow: getContrastTextShadow(displayColor) }) }}
+                            color={displayColor}
                         >
                             {player.name}
-                        </span>
+                        </ContrastText>
                         <div className="w-px h-3 bg-[rgba(var(--c-white)/0.1)] shrink-0" />
                         <span className="text-xs font-bold opacity-70 truncate" style={{ color: displayColor }}>
                             {isTotalMode ? t('input_total_adjust') : injectSoftHyphens(col?.name || '')}

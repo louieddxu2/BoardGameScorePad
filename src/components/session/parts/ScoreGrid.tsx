@@ -8,7 +8,8 @@ import TexturedBlock from './TexturedBlock';
 import GridFooter from './GridFooter';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useColumnDragAndDrop } from '../hooks/useColumnDragAndDrop';
-import { isColorDark, ENHANCED_TEXT_SHADOW, getContrastTextShadow, getCurrentTheme } from '../../../utils/ui';
+import { getContrastTextStyles, getCurrentTheme } from '../../../utils/ui';
+import { ContrastText } from '../../shared/ContrastText';
 import { usePlayerWidthSync } from '../../../hooks/usePlayerWidthSync';
 import { calculateColumnScore, resolveSelectOption } from '../../../utils/scoring';
 import { calculateDynamicFontSize } from '../../../utils/dynamicLayout';
@@ -293,9 +294,12 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 }}
                 fallbackContent={
                   <>
-                    <span className="text-sm font-bold text-txt-secondary w-full text-center break-words whitespace-pre-wrap leading-tight hyphenate" style={{ ...(col.color && { color: col.color, ...(getContrastTextShadow(col.color) && { textShadow: getContrastTextShadow(col.color) }) }) }}>
+                    <ContrastText
+                      className="text-sm font-bold text-txt-secondary w-full text-center break-words whitespace-pre-wrap leading-tight hyphenate"
+                      color={col.color || 'inherit'}
+                    >
                       {injectSoftHyphens(col.name)}
-                    </span>
+                    </ContrastText>
                     {col.isScoring && (
                       <div className="text-[10px] text-txt-muted mt-1 flex flex-col items-center justify-center w-full leading-none">
                         {(() => {
@@ -382,17 +386,6 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                       const defaultTextColor = isTextureMode ? 'rgba(var(--c-black)/0.9)' : 'rgb(var(--c-txt-primary))';
                       const displayColor = (isEditMode && overlayCol.color) ? overlayCol.color : defaultTextColor;
 
-                      const textStyle: React.CSSProperties = {
-                        color: hasInput ? (displayScore < 0 ? 'rgb(var(--c-status-danger))' : displayColor) : 'rgb(var(--c-txt-muted))',
-                        fontSize: dynamicFontSize,
-                        ...(isEditMode && overlayCol.color && isColorDark(overlayCol.color) && { textShadow: ENHANCED_TEXT_SHADOW }),
-                        ...(isTextureMode && {
-                          fontFamily: '"Kalam", "Caveat", cursive',
-                          transform: `rotate(${((session.players[0].id.charCodeAt(0) + overlayCol.id.charCodeAt(0)) % 5) - 2}deg)`,
-                          mixBlendMode: 'multiply',
-                          textShadow: 'none',
-                        })
-                      };
 
                       // 如果沒有設定框選區域，我們依然允許它渲染，只是寬高預設為 100% (真的重疊上去)
 
@@ -422,9 +415,14 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                               containerType: 'size',
                             } as React.CSSProperties}
                           >
-                            <span className="font-bold tracking-tight w-full text-center truncate px-1" style={textStyle}>
+                            <ContrastText 
+                              className="font-bold tracking-tight w-full text-center truncate px-1" 
+                              color={hasInput ? (displayScore < 0 ? 'rgb(var(--c-status-danger))' : displayColor) : 'rgb(var(--c-txt-muted))'}
+                              style={{ fontSize: dynamicFontSize }}
+                              isTextureMode={isTextureMode}
+                            >
                               {displayText}
-                            </span>
+                            </ContrastText>
                           </div>
                         </div>
                       );
@@ -486,17 +484,6 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         const defaultTextColor = isTextureMode ? 'rgba(var(--c-black)/0.9)' : 'rgb(var(--c-txt-primary))';
                         const displayColor = (isEditMode && overlayCol.color) ? overlayCol.color : defaultTextColor;
 
-                        const textStyle: React.CSSProperties = {
-                          color: hasInput ? (displayScore < 0 ? 'rgb(var(--c-status-danger))' : displayColor) : 'rgb(var(--c-txt-muted))',
-                          fontSize: dynamicFontSize,
-                          ...(isEditMode && overlayCol.color && isColorDark(overlayCol.color) && { textShadow: ENHANCED_TEXT_SHADOW }),
-                          ...(isTextureMode && {
-                            fontFamily: '"Kalam", "Caveat", cursive',
-                            transform: `rotate(${((p.id.charCodeAt(0) + overlayCol.id.charCodeAt(0)) % 5) - 2}deg)`,
-                            mixBlendMode: 'multiply',
-                            textShadow: 'none',
-                          })
-                        };
 
                         // 如果沒有設定框選區域，我們依然允許它渲染，只是寬高預設為 100% (真的重疊上去)
 
@@ -526,9 +513,14 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                                 containerType: 'size',
                               } as React.CSSProperties}
                             >
-                              <span className="font-bold tracking-tight w-full text-center truncate px-1" style={textStyle}>
+                              <ContrastText 
+                                className="font-bold tracking-tight w-full text-center truncate px-1" 
+                                color={hasInput ? (displayScore < 0 ? 'rgb(var(--c-status-danger))' : displayColor) : 'rgb(var(--c-txt-muted))'}
+                                style={{ fontSize: dynamicFontSize }}
+                                isTextureMode={isTextureMode}
+                              >
                                 {displayText}
-                              </span>
+                              </ContrastText>
                             </div>
                           </div>
                         );

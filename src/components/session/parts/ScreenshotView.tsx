@@ -3,7 +3,8 @@ import React, { useMemo } from 'react';
 import { GameSession, GameTemplate, ScoreColumn } from '../../../types';
 import { Trophy } from 'lucide-react';
 import ScoreCell from './ScoreCell';
-import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
+import { getContrastTextStyles } from '../../../utils/ui';
+import { ContrastText } from '../../shared/ContrastText';
 import TexturedPlayerHeader from './TexturedPlayerHeader';
 import TexturedTotalCell from './TexturedTotalCell';
 import { cropImageToDataUrl } from '../../../utils/imageProcessing';
@@ -39,17 +40,17 @@ const ScreenshotHeaderCell: React.FC<{ col: any; baseImage?: string; children?: 
     return (
         <div className={props.className} style={style}>
             <div className="flex flex-col items-center justify-center w-full h-full">
-                <span
+                <ContrastText
                     className="text-sm font-bold text-slate-300 w-full leading-tight hyphenate"
+                    color={props.col.color || 'inherit'}
                     style={{
                         whiteSpace: 'pre-wrap',
                         wordBreak: 'break-word',
                         display: 'block',
-                        ...(props.col.color && { color: props.col.color, ...(isColorDark(props.col.color) && { textShadow: ENHANCED_TEXT_SHADOW }) })
                     }}
                 >
                     {injectSoftHyphens(props.col.name)}
-                </span>
+                </ContrastText>
                 {props.col.isScoring && (
                     <div className="text-xs text-slate-500 mt-1 flex flex-col items-center justify-center w-full leading-none">
                         {(() => {

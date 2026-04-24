@@ -1,3 +1,5 @@
+import { COLOR_TONES } from '../colors';
+
 /**
  * Calculates the Euclidean distance between two touch points.
  * Used for pinch-to-zoom logic.
@@ -56,30 +58,48 @@ const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
 };
 
 /**
- * Calculates perceived luminance (0-255) using the standard luminosity formula.
- * Higher values = brighter color.
+ * Extracts the CSS variable name from a color string if present.
+ * Example: "rgb(var(--c-p-black))" -> "--c-p-black"
  */
-const getPerceivedLuminance = (hex: string): number => {
-    const rgb = hexToRgb(hex);
-    if (!rgb) return 128; // Default to mid-range (neutral)
-    return 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+const extractVarName = (colorStr: string): string | null => {
+    const match = colorStr.match(/--c-p-[a-z-]+/);
+    return match ? match[0] : null;
 };
 
 /**
- * Determines if a (text) color is dark, requiring a light halo for contrast on dark backgrounds.
- * Threshold: luminance < 115 (Includes Black, Brown, Gray, Slate 900)
+ * Calculates perceived luminance (0-255) using the standard luminosity formula.
+ * Higher values = brighter color.
+ */
+export const getPerceivedLuminance = (hex: string): number => {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return 255; // Default to bright if unparseable
+    // Standard relative luminance formula
+    return (rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114);
+};
+
+/**
+ * Determines if a color is dark enough to be perceived as "dark" on dark backgrounds.
+ * Prioritizes COLOR_TONES registry for core palette, fallbacks to calculation.
  */
 export const isColorDark = (hex: string): boolean => {
     if (!hex) return false;
+    const varName = extractVarName(hex);
+    if (varName && COLOR_TONES[varName]) {
+        return COLOR_TONES[varName] === 'dark';
+    }
     return getPerceivedLuminance(hex) < 115;
 };
 
 /**
  * Determines if a (text) color is light, requiring a dark shadow for contrast on light backgrounds.
- * Threshold: luminance > 200 (e.g. #ffffff, #facc15, #fed7aa)
+ * Prioritizes COLOR_TONES registry for core palette, fallbacks to calculation.
  */
 export const isColorLight = (hex: string): boolean => {
     if (!hex) return false;
+    const varName = extractVarName(hex);
+    if (varName && COLOR_TONES[varName]) {
+        return COLOR_TONES[varName] === 'light';
+    }
     return getPerceivedLuminance(hex) > 200;
 };
 
@@ -100,34 +120,71 @@ export const isColorTooLight = (hex: string): boolean => {
 
 // --- Theme-Aware Contrast System ---
 
-/** White halo for dark text on dark backgrounds. */
-export const ENHANCED_TEXT_SHADOW = '0 0 2px rgba(255, 255, 255, 0.9), 0 0 4px rgba(255, 255, 255, 0.6), 0 0 8px rgba(255, 255, 255, 0.4)';
 
-/** Dark shadow for light text on light backgrounds. */
-export const DARK_TEXT_SHADOW = '0 0 2px rgba(0, 0, 0, 0.8), 0 0 4px rgba(0, 0, 0, 0.5), 0 0 8px rgba(0, 0, 0, 0.3)';
 
 /**
  * Reads the current theme from the DOM. Zero-cost since it's a simple attribute read.
  */
 export const getCurrentTheme = (): 'dark' | 'light' => {
+    if (typeof document === 'undefined') return 'dark';
     return (document.documentElement.getAttribute('data-theme') as 'dark' | 'light') || 'dark';
 };
 
 /**
- * Returns the appropriate text-shadow for a given text color in the current theme.
- * - Dark text on dark background → white halo
- * - Light text on light background → dark shadow
- * - Neutral (saturated) colors → no shadow needed (returns undefined)
+ * Returns a complete style object for high-contrast text rendering.
+ * Implementation: Solution K (Precision Outline) using refined layered shadows.
  */
-export const getContrastTextShadow = (textColorHex: string, theme?: 'dark' | 'light'): string | undefined => {
-    if (!textColorHex) return undefined;
+export const getContrastTextStyles = (
+    textColorHex: string,
+    theme?: 'dark' | 'light',
+    options: { isTextureMode?: boolean } = {}
+): React.CSSProperties => {
+    if (!textColorHex) return {};
     const resolvedTheme = theme ?? getCurrentTheme();
+    const { isTextureMode } = options;
 
-    if (resolvedTheme === 'dark' && isColorDark(textColorHex)) {
-        return ENHANCED_TEXT_SHADOW;
+    const styles: React.CSSProperties = {
+        transition: 'color 0.3s, text-shadow 0.3s'
+    };
+
+    // --- Contrast Decision Logic ---
+    const varName = extractVarName(textColorHex);
+    const tone = varName ? COLOR_TONES[varName] : null;
+
+    // --- Dark UI Environment (Dark Theme or Texture Mode) ---
+    if (resolvedTheme === 'dark' || isTextureMode) {
+        // High-Precision Outline for registered dark colors or calculated deep tones
+        const shouldProtect = tone === 'dark' || (!tone && getPerceivedLuminance(textColorHex) < 60);
+
+        if (shouldProtect) {
+            return {
+                ...styles,
+                textShadow: `
+                    1px 1px 0 rgba(255,255,255,0.7),
+                    -1px 1px 0 rgba(255,255,255,0.7),
+                    1px -1px 0 rgba(255,255,255,0.7),
+                    -1px -1px 0 rgba(255,255,255,0.7),
+                    0 1.5px 3px rgba(0,0,0,0.8)
+                `
+            };
+        }
+        // Standard colors: simple dark shadow for separation
+        return {
+            ...styles,
+            textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+        };
     }
-    if (resolvedTheme === 'light' && isColorLight(textColorHex)) {
-        return DARK_TEXT_SHADOW;
+
+    // --- Light UI Environment ---
+    // Protection for light-toned text on light backgrounds
+    const shouldProtectLight = tone === 'light' || (!tone && getPerceivedLuminance(textColorHex) > 170);
+
+    if (resolvedTheme === 'light' && shouldProtectLight) {
+        return {
+            ...styles,
+            textShadow: '0 1px 1px rgba(0,0,0,0.15), 0 0 1px rgba(0,0,0,0.1)'
+        };
     }
-    return undefined; // Neutral colors: no treatment needed
+
+    return styles;
 };

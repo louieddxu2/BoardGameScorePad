@@ -3,7 +3,8 @@ import React, { useEffect, useState, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Player } from '../../../types';
 import { getSmartTextureUrl } from '../../../utils/imageProcessing';
-import { isColorDark, ENHANCED_TEXT_SHADOW, getContrastTextShadow } from '../../../utils/ui';
+import { getContrastTextStyles } from '../../../utils/ui';
+import { ContrastText } from '../../shared/ContrastText';
 import { Crown, X } from 'lucide-react';
 import SmartTextureLayer from './SmartTextureLayer';
 import { COLORS } from '../../../colors';
@@ -206,15 +207,10 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
 
   const inkStyle: React.CSSProperties = bgUrl ? {
       fontFamily: '"Kalam", "Caveat", cursive',
-      color: visualForceLost ? 'rgba(var(--c-slate-500)/0.5)' : 'rgb(var(--c-slate-50))',
       transform: `rotate(${((player.id.charCodeAt(0)) % 5) - 2}deg)`,
       mixBlendMode: 'multiply',
       textShadow: 'none',
-  } : {
-      color: visualForceLost ? 'rgb(var(--c-slate-500))' : (isTransparent ? 'rgb(var(--c-slate-200))' : effectiveColor),
-      opacity: visualForceLost ? 0.5 : 1,
-      ...((isTransparent || getContrastTextShadow(effectiveColor)) && { textShadow: isTransparent ? ENHANCED_TEXT_SHADOW : getContrastTextShadow(effectiveColor)! })
-  };
+  } : {};
 
   // --- Display Value Logic for Bubble ---
   let bubbleDisplay: string | number = '';
@@ -258,9 +254,14 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
       {/* Condition: Show if there is a bonus score AND not force lost AND NOT cleanMode */}
       {!cleanMode && hasBonus && !isForceLost && <AnnotationArrow />}
 
-      <span className="font-black text-2xl leading-none w-full text-center truncate px-1 z-10" style={inkStyle}>
+      <ContrastText 
+        className="font-black text-2xl leading-none w-full text-center truncate px-1 z-10" 
+        color={bgUrl ? (visualForceLost ? 'rgba(var(--c-slate-500)/0.5)' : 'rgb(var(--c-slate-50))') : (visualForceLost ? 'rgb(var(--c-slate-500))' : (isTransparent ? 'rgb(var(--c-slate-200))' : effectiveColor))}
+        style={bgUrl ? inkStyle : { opacity: visualForceLost ? 0.5 : 1 }}
+        isTextureMode={!!bgUrl}
+      >
         {player.totalScore}
-      </span>
+      </ContrastText>
 
       {/* Force Loss Marker - Hidden in Clean Mode */}
       {!cleanMode && isForceLost && (

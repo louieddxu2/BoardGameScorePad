@@ -4,7 +4,8 @@ import { Player, ScoreColumn, ScoreValue } from '../../../types';
 import { calculateColumnScore, getAutoColumnError, resolveSelectedOptions } from '../../../utils/scoring';
 import TexturedScoreCell from './TexturedScoreCell';
 import { Link2Off, AlertTriangle } from 'lucide-react';
-import { isColorDark, ENHANCED_TEXT_SHADOW, getContrastTextShadow, getCurrentTheme } from '../../../utils/ui';
+import { getContrastTextStyles, getCurrentTheme } from '../../../utils/ui';
+import { ContrastText } from '../../shared/ContrastText';
 import { calculateDynamicFontSize } from '../../../utils/dynamicLayout';
 import {
     formatDisplayNumber,
@@ -81,16 +82,13 @@ const CellContentSelect: React.FC<CellContentProps> = ({ scoreValue, displayScor
                     const labelColor = opt.color || column.color || (screenshotMode ? 'rgb(var(--c-emerald-500))' : 'rgb(var(--c-emerald-400))');
                     const lines = opt.label.split(/\r\n|\r|\n/);
                     return lines.map((line, lineIdx) => (
-                        <span
+                        <ContrastText
                             key={`${optIdx}-${lineIdx}`}
                             className="text-xl font-bold text-center break-words w-full hyphenate px-1"
-                            style={{ 
-                                color: labelColor,
-                                textShadow: getContrastTextShadow(labelColor)
-                            }}
+                            color={labelColor}
                         >
                             {injectSoftHyphens(line)}
-                        </span>
+                        </ContrastText>
                     ));
                 })}
             </div>
@@ -109,15 +107,12 @@ const CellContentSelect: React.FC<CellContentProps> = ({ scoreValue, displayScor
                 {/* Floating label at bottom-right (Doesn't affect center position) */}
                 {renderMode === 'standard' && !simpleMode && options.length > 0 && (
                     <div className="absolute bottom-1 right-1 flex flex-col items-end leading-[1.1] max-w-[85%] pointer-events-none pr-0.5">
-                        <span
+                        <ContrastText
                             className="text-sm font-bold text-right truncate max-w-full drop-shadow-sm"
-                            style={{ 
-                                color: options[0].color || column.color || (screenshotMode ? 'rgb(var(--c-emerald-500))' : 'rgb(var(--c-emerald-400))'),
-                                textShadow: getContrastTextShadow(options[0].color || column.color || '')
-                            }}
+                            color={options[0].color || column.color || (screenshotMode ? 'rgb(var(--c-emerald-500))' : 'rgb(var(--c-emerald-400))')}
                         >
                             {injectSoftHyphens(options[0].label)}
-                        </span>
+                        </ContrastText>
                     </div>
                 )}
             </div>
@@ -142,16 +137,13 @@ const CellContentSelect: React.FC<CellContentProps> = ({ scoreValue, displayScor
                             {options.map((opt, optIdx) => {
                                 const labelColor = opt.color || column.color || (screenshotMode ? 'rgb(var(--c-emerald-500))' : 'rgb(var(--c-emerald-400))');
                                 return (
-                                    <span
+                                    <ContrastText
                                         key={optIdx}
                                         className="text-sm font-bold text-right truncate max-w-full"
-                                        style={{ 
-                                            color: labelColor,
-                                            textShadow: getContrastTextShadow(labelColor)
-                                        }}
+                                        color={labelColor}
                                     >
                                         {injectSoftHyphens(opt.label)}
-                                    </span>
+                                    </ContrastText>
                                 );
                             })}
                         </div>
@@ -476,13 +468,14 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
                                 const labelColor = opt.color || column.color || (screenshotMode ? 'rgb(var(--c-emerald-500))' : 'rgb(var(--c-emerald-400))');
                                 const lines = opt.label.split(/\r\n|\r|\n/);
                                 return lines.map((line, lineIdx) => (
-                                    <span
+                                    <ContrastText
                                         key={`${optIdx}-${lineIdx}`}
                                         className="font-bold text-center break-words whitespace-pre-wrap w-full hyphenate"
-                                        style={{ color: labelColor, fontSize: dynamicFontSize, textShadow: getContrastTextShadow(labelColor) }}
+                                        color={labelColor}
+                                        style={{ fontSize: dynamicFontSize }}
                                     >
                                         {injectSoftHyphens(line)}
-                                    </span>
+                                    </ContrastText>
                                 ));
                             })}
                         </div>
@@ -490,9 +483,13 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
                 }
 
                 return (
-                    <span className={`font-bold tracking-tight w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} style={{ ...textStyle, fontSize: dynamicFontSize }}>
+                    <ContrastText 
+                        className={`font-bold tracking-tight w-full text-center truncate px-1 ${forceHeight ? 'leading-none' : ''}`} 
+                        color={column.color || 'inherit'}
+                        style={{ fontSize: dynamicFontSize }}
+                    >
                         {hasInput ? (autoError ? 'ERR' : formatDisplayNumber(displayScore)) : ''}
-                    </span>
+                    </ContrastText>
                 );
             })()}
         </div>

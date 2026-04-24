@@ -1,9 +1,8 @@
 
-import React from 'react';
 import { HistoryRecord } from '../../../types';
 import { HistorySummary } from '../../../utils/extractDataSummaries';
 import { Crown, Calendar, Trash2, MapPin } from 'lucide-react';
-import { isColorDark, ENHANCED_TEXT_SHADOW } from '../../../utils/ui';
+import { ContrastText } from '../../shared/ContrastText';
 import { useCommonTranslation } from '../../../i18n/common';
 
 interface HistoryCardProps {
@@ -57,22 +56,17 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ record, onDelete, onClick }) 
                     const isWinner = (p.linkedPlayerId && record.winnerIds.includes(p.linkedPlayerId)) || record.winnerIds.includes(p.id);
 
                     const isTransparent = p.color === 'transparent';
-                    const isDark = !isTransparent && isColorDark(p.color);
-
-                    const colorStyle: React.CSSProperties = isTransparent
-                        ? {}
-                        : {
-                            color: p.color,
-                            textShadow: isDark ? ENHANCED_TEXT_SHADOW : undefined
-                        };
 
                     return (
                         <div key={p.id} className={`flex items-center justify-between text-sm ${isWinner ? 'bg-status-warning/10 -mx-2 px-2 py-1 rounded-lg border border-status-warning/30 shadow-sm' : ''}`}>
                             <div className="flex items-center gap-2 overflow-hidden">
                                 {isWinner && <Crown size={14} className="text-status-warning shrink-0" fill="currentColor" />}
-                                <span className={`truncate font-medium ${isWinner ? 'text-status-warning brightness-125' : 'text-txt-secondary'}`} style={isWinner ? {} : colorStyle}>
+                                <ContrastText
+                                    className={`truncate font-medium ${isWinner ? 'text-status-warning brightness-125' : 'text-txt-secondary'}`}
+                                    color={isWinner ? 'rgb(var(--c-status-warning))' : (isTransparent ? 'rgb(var(--c-txt-secondary))' : p.color)}
+                                >
                                     {p.name}
-                                </span>
+                                </ContrastText>
                             </div>
                             <span className={`font-mono font-bold ${isWinner ? 'text-status-warning text-base' : 'text-txt-muted'}`}>
                                 {p.totalScore}
