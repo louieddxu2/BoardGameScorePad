@@ -84,13 +84,13 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
             }}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
             placeholder={t('player_editor_placeholder')}
-            className="w-full h-full bg-slate-800 border border-slate-600 rounded-xl px-4 text-xl font-bold text-white outline-none focus:border-emerald-500 placeholder-slate-500 transition-all"
+            className="w-full h-full bg-surface-recessed border border-surface-border rounded-xl px-4 text-xl font-bold text-txt-title outline-none focus:border-brand-primary placeholder-txt-muted transition-all"
           />
         </div>
         {!isInputFocused && (
           <div className="flex-1 flex gap-2 min-h-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
             {/* Color Palette - Restored to 1/3 width */}
-            <div className="w-1/3 bg-slate-800/50 rounded-xl p-2 overflow-y-auto no-scrollbar border border-slate-700/50">
+            <div className="w-1/3 bg-surface-recessed/50 rounded-xl p-2 overflow-y-auto no-scrollbar border border-surface-border">
               <div className="grid grid-cols-1 gap-2 justify-items-center">
                 {sortedColors.map(c => {
                   const isTransparent = c === 'transparent';
@@ -106,8 +106,8 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
                       title={isTransparent ? t('player_color_none') : c}
                     >
                       {isTransparent && (
-                        <div className="w-full h-full rounded-full border border-slate-600 flex items-center justify-center bg-slate-800/50">
-                          <Ban size={14} className="text-slate-400" />
+                        <div className="w-full h-full rounded-full border border-surface-border flex items-center justify-center bg-surface-recessed/50">
+                          <Ban size={14} className="text-txt-muted" />
                         </div>
                       )}
                     </button>
@@ -117,7 +117,7 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
             </div>
 
             {/* History - Restored to remaining 2/3 width */}
-            <div className="flex-1 bg-slate-800/50 rounded-xl border border-slate-700/50 flex flex-col min-w-0">
+            <div className="flex-1 bg-surface-recessed/50 rounded-xl border border-surface-border flex flex-col min-w-0">
               <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-1">
                 {displayedPlayers.slice(0, 20).map((item, i) => (
                   <button
@@ -129,13 +129,13 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
                       const linkedId = item.meta?.uuid;
                       onNameSubmit(player.id, item.name, false, linkedId);
                     }}
-                    className="w-full text-left px-2 py-1.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-emerald-900/30 hover:text-emerald-400 transition-colors truncate active:scale-95 bg-slate-800 border border-slate-700/50"
+                    className="w-full text-left px-2 py-1.5 rounded-lg text-sm font-medium text-txt-primary hover:bg-brand-primary/20 hover:text-brand-primary transition-colors truncate active:scale-95 bg-surface-recessed border border-surface-border"
                   >
                     {item.name}
                   </button>
                 ))}
                 {displayedPlayers.length === 0 && (
-                  <div className="text-center text-xs text-slate-600 py-4">
+                  <div className="text-center text-xs text-txt-muted py-4">
                     {tempName ? t('player_editor_no_results') : t('player_editor_no_history')}
                   </div>
                 )}
@@ -152,7 +152,7 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
 const PlayerSettingsPanel: React.FC<{ player: Player, onToggleStarter: (id: string) => void }> = ({ player, onToggleStarter }) => {
   const { t } = useSessionTranslation();
   return (
-    <div className="flex flex-col h-full text-slate-400 text-xs">
+    <div className="flex flex-col h-full text-txt-secondary text-xs">
       <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-2 text-center flex flex-col justify-center">
 
         {/* Starter Button - Compact size */}
@@ -161,8 +161,8 @@ const PlayerSettingsPanel: React.FC<{ player: Player, onToggleStarter: (id: stri
           onClick={() => onToggleStarter(player.id)}
           className={`w-full h-16 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all active:scale-95
                     ${player.isStarter
-              ? 'bg-amber-900/30 border-amber-500 text-amber-200 shadow-lg shadow-amber-900/20'
-              : 'bg-slate-800 border-slate-700 text-slate-500 hover:border-slate-600 hover:text-slate-300'
+              ? 'bg-status-warning/20 border-status-warning text-status-warning shadow-lg shadow-status-warning/20'
+              : 'bg-surface-recessed border-surface-border text-txt-muted hover:border-surface-border-hover hover:text-txt-secondary'
             }
                 `}
           title={t('player_editor_set_starter')}
