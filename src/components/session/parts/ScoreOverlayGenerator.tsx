@@ -73,8 +73,8 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
             </div>
 
             {/* Body: The Original Photo */}
-            {/* object-contain 確保圖片完整顯示，不裁切。bg-black 填補可能的空隙 */}
-            <div className="bg-black relative flex justify-center items-center min-h-[500px]">
+            {/* object-contain 確保圖片完整顯示，不裁切。bg-app-bg-deep 填補可能的空隙 */}
+            <div className="bg-app-bg-deep relative flex justify-center items-center min-h-[500px]">
                 <img
                     src={imageSrc}
                     alt="Original"

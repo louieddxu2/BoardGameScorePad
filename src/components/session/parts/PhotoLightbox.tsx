@@ -266,7 +266,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
     const currentDisplayImage = (showOverlay && composedImageUrl) ? composedImageUrl : currentImage.url;
 
     return (
-        <div className="fixed inset-0 z-[100] bg-black flex flex-col animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[100] bg-app-bg flex flex-col animate-in fade-in duration-300">
 
             {/* Hidden Generator */}
             {showOverlay && displayOverlayData && (
@@ -301,10 +301,9 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                 </div>
             </div>
 
-            {/* Main Viewer */}
             <div
                 ref={containerRef}
-                className="flex-1 w-full min-h-0 overflow-hidden touch-none flex items-center justify-center bg-black relative"
+                className="flex-1 w-full min-h-0 overflow-hidden touch-none flex items-center justify-center bg-app-bg-deep relative"
                 onMouseDown={handlePointerDown}
                 onTouchStart={handlePointerDown}
                 onMouseMove={handlePointerMove}
@@ -339,12 +338,12 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
 
                 {/* Navigation Arrows */}
                 {currentIndex > 0 && transform.scale <= 1.05 && (
-                    <button onClick={handlePrev} className="absolute left-2 top-1/2 -translate-y-1/2 p-3 bg-black/30 hover:bg-black/60 text-white rounded-full backdrop-blur-sm z-20 hidden sm:block">
+                    <button onClick={handlePrev} className="absolute left-2 top-1/2 -translate-y-1/2 p-3 bg-surface-recessed/30 hover:bg-surface-recessed/60 text-txt-primary rounded-full backdrop-blur-sm z-20 hidden sm:block">
                         <ChevronLeft size={32} />
                     </button>
                 )}
                 {currentIndex < images.length - 1 && transform.scale <= 1.05 && (
-                    <button onClick={handleNext} className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-black/30 hover:bg-black/60 text-white rounded-full backdrop-blur-sm z-20 hidden sm:block">
+                    <button onClick={handleNext} className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-surface-recessed/30 hover:bg-surface-recessed/60 text-txt-primary rounded-full backdrop-blur-sm z-20 hidden sm:block">
                         <ChevronRight size={32} />
                     </button>
                 )}
@@ -360,7 +359,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                     <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
                         {overlayData.players.map((p, i) => {
                             const isHidden = anonymousPlayerIds.has(p.id);
-                            const playerColor = p.color === 'transparent' ? 'rgb(var(--c-slate-400))' : p.color;
+                            const playerColor = p.color === 'transparent' ? 'var(--c-txt-muted)' : p.color;
                             const isDark = isColorDark(playerColor);
 
                             return (
