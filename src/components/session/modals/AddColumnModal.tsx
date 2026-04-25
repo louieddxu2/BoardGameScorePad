@@ -87,7 +87,7 @@ const AddColumnModal: React.FC<AddColumnModalProps> = ({ isOpen, columns, onClos
           </div>
 
           {/* Copy Action */}
-          <button onClick={handleCopy} disabled={selectedColumnIds.length === 0} className={`flex-none w-full py-3 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 ${selectedColumnIds.length > 0 ? 'bg-brand-primary-deep hover:bg-brand-primary text-white' : 'bg-surface-border text-txt-muted cursor-not-allowed'}`}>
+          <button onClick={handleCopy} disabled={selectedColumnIds.length === 0} className={`flex-none w-full py-3 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 ${selectedColumnIds.length > 0 ? 'bg-brand-primary hover:bg-brand-primary-deep text-white' : 'bg-surface-recessed text-txt-muted cursor-not-allowed'}`}>
             <CopyPlus size={18} /> {t('modal_copy_count', { count: selectedColumnIds.length })}
           </button>
 
