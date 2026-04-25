@@ -86,7 +86,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                     try {
                         const blob = await toBlob(generatorRef.current, {
                             pixelRatio: 1,
-                            backgroundColor: 'rgb(var(--c-slate-900))',
+                            backgroundColor: 'rgb(var(--c-app-bg))',
                             skipFonts: true
                         });
                         if (blob) {
@@ -280,22 +280,22 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
             )}
 
             {/* Header Toolbar */}
-            <div className="flex-none flex justify-between items-center p-4 bg-slate-900 border-b border-slate-800 z-10 h-16">
-                <button onClick={onClose} className="p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white border border-slate-700 transition-colors">
+            <div className="flex-none flex justify-between items-center p-4 bg-surface-recessed border-b border-surface-border z-10 h-16">
+                <button onClick={onClose} className="p-2 bg-surface-recessed rounded-full text-txt-muted hover:text-txt-title border border-surface-border transition-colors">
                     <X size={24} />
                 </button>
 
                 {images.length > 1 && (
-                    <div className="text-white text-sm font-bold bg-slate-800/80 px-3 py-1 rounded-full border border-slate-700">
+                    <div className="text-txt-title text-sm font-bold bg-surface-recessed/80 px-3 py-1 rounded-full border border-surface-border">
                         {currentIndex + 1} / {images.length}
                     </div>
                 )}
 
                 <div className="flex items-center gap-2">
-                    <button onClick={() => onDelete(currentImage.id)} className="p-2 bg-slate-800 rounded-full text-red-400 hover:text-red-200 border border-slate-700 transition-colors active:scale-95">
+                    <button onClick={() => onDelete(currentImage.id)} className="p-2 bg-surface-recessed rounded-full text-status-danger hover:text-status-danger/80 border border-surface-border transition-colors active:scale-95">
                         <Trash2 size={24} />
                     </button>
-                    <button onClick={handleShare} disabled={isGenerating} className="p-2 bg-slate-800 rounded-full text-sky-400 hover:text-sky-200 border border-slate-700 transition-colors active:scale-95">
+                    <button onClick={handleShare} disabled={isGenerating} className="p-2 bg-surface-recessed rounded-full text-brand-secondary hover:text-brand-secondary/80 border border-surface-border transition-colors active:scale-95">
                         {typeof navigator.share === 'function' ? <Share2 size={24} /> : <Download size={24} />}
                     </button>
                 </div>
@@ -315,7 +315,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                 onWheel={handleWheel}
             >
                 {isGenerating ? (
-                    <div className="flex flex-col items-center gap-3 text-emerald-500 z-20">
+                    <div className="flex flex-col items-center gap-3 text-brand-primary z-20">
                         <Loader2 size={48} className="animate-spin" />
                         <span className="text-sm font-bold animate-pulse">{t('lightbox_generating')}</span>
                     </div>
@@ -352,10 +352,10 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
 
             {/* Anonymous Settings Panel (Floating) */}
             {isAnonPanelOpen && overlayData && (
-                <div className="absolute bottom-24 left-4 right-4 bg-slate-800/95 backdrop-blur-md border border-slate-700 rounded-2xl p-4 z-30 shadow-2xl animate-in slide-in-from-bottom-5">
+                <div className="absolute bottom-24 left-4 right-4 bg-modal-bg-elevated/95 backdrop-blur-md border border-surface-border rounded-2xl p-4 z-30 shadow-2xl animate-in slide-in-from-bottom-5">
                     <div className="flex justify-between items-center mb-3">
-                        <span className="text-xs font-bold text-slate-400 uppercase">{t('lightbox_anon_hint')}</span>
-                        <button onClick={() => setIsAnonPanelOpen(false)} className="p-1 bg-slate-700 rounded-full text-slate-300"><X size={14} /></button>
+                        <span className="text-xs font-bold text-txt-muted uppercase">{t('lightbox_anon_hint')}</span>
+                        <button onClick={() => setIsAnonPanelOpen(false)} className="p-1 bg-surface-recessed rounded-full text-txt-secondary"><X size={14} /></button>
                     </div>
                     <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
                         {overlayData.players.map((p, i) => {
@@ -370,7 +370,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                                     className={`
                                   flex items-center gap-2 px-3 py-2 rounded-lg border transition-all shrink-0 min-w-[100px]
                                   ${isHidden
-                                            ? 'bg-slate-900 border-slate-700 text-slate-500 opacity-70'
+                                            ? 'bg-surface-recessed border-surface-border text-txt-muted opacity-70'
                                             : 'border-transparent shadow-md'
                                         }
                               `}
@@ -388,7 +388,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
             )}
 
             {/* Footer Controls - Reorganized */}
-            <div className="flex-none px-4 py-3 bg-slate-900 border-t border-slate-800 z-20 flex items-center justify-between h-20 gap-4">
+            <div className="flex-none px-4 py-3 bg-surface-recessed border-t border-surface-border z-20 flex items-center justify-between h-20 gap-4">
 
                 {/* Left Group: Config & Show */}
                 <div className="flex items-center gap-2">
@@ -397,7 +397,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                             <button
                                 onClick={() => setIsAnonPanelOpen(!isAnonPanelOpen)}
                                 disabled={isGenerating}
-                                className={`p-3 rounded-xl border transition-all active:scale-95 ${isAnonPanelOpen ? 'bg-slate-700 border-slate-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}
+                                className={`p-3 rounded-xl border transition-all active:scale-95 ${isAnonPanelOpen ? 'bg-surface-recessed-hover border-brand-primary text-txt-title' : 'bg-surface-recessed border-surface-border text-txt-muted'}`}
                                 title={t('lightbox_anon_setting')}
                             >
                                 <VenetianMask size={20} />
@@ -408,8 +408,8 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                                 disabled={isGenerating}
                                 className={`flex items-center gap-2 px-4 py-3 rounded-xl border transition-all active:scale-95 font-bold text-sm min-w-[110px] justify-center
                             ${showOverlay
-                                        ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-900/50'
-                                        : 'bg-slate-800 text-emerald-400 border-slate-700 hover:bg-slate-700'
+                                        ? 'bg-brand-primary text-txt-on-dark border-brand-primary shadow-lg shadow-brand-primary/20'
+                                        : 'bg-surface-recessed text-brand-primary border-surface-border hover:bg-surface-recessed-hover'
                                     }`}
                             >
                                 {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <ReceiptText size={18} />}
@@ -423,7 +423,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                 <div className="flex-1 flex justify-center">
                     <button
                         onClick={() => setTransform({ x: 0, y: 0, scale: 1 })}
-                        className="p-3 rounded-full bg-slate-800 text-slate-400 border border-slate-700 active:scale-95 hover:text-white"
+                        className="p-3 rounded-full bg-surface-recessed text-txt-muted border border-surface-border active:scale-95 hover:text-txt-title"
                         title={t('lightbox_view_reset')}
                     >
                         <Maximize size={20} />

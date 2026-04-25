@@ -50,25 +50,25 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
         <div
             ref={ref}
             style={{ width: GENERATOR_WIDTH }}
-            className="bg-slate-900 text-white flex flex-col items-stretch overflow-hidden"
+            className="bg-app-bg text-txt-primary flex flex-col items-stretch overflow-hidden"
         >
             {/* Header: Game Info */}
             <div
-                className="bg-slate-800 border-b border-slate-700 flex justify-between items-center shadow-md z-10 relative"
+                className="bg-surface-recessed border-b border-surface-border flex justify-between items-center shadow-md z-10 relative"
                 style={{ padding: PADDING_PX }}
             >
                 <div>
-                    <h2 className="text-5xl font-black text-white mb-3 flex items-center gap-4">
-                        <Trophy size={48} className="text-emerald-500" />
+                    <h2 className="text-5xl font-black text-txt-title mb-3 flex items-center gap-4">
+                        <Trophy size={48} className="text-brand-primary" />
                         {data.gameName}
                     </h2>
-                    <div className="flex items-center gap-4 text-slate-400 text-2xl font-mono font-bold">
+                    <div className="flex items-center gap-4 text-txt-muted text-2xl font-mono font-bold">
                         <Calendar size={28} />
                         <span>{dateStr} {timeStr}</span>
                     </div>
                 </div>
                 <div className="absolute top-6 right-8 opacity-40">
-                    <span className="text-slate-500 text-3xl font-black tracking-widest">{t('ss_app_title')}</span>
+                    <span className="text-txt-muted/30 text-3xl font-black tracking-widest">{t('ss_app_title')}</span>
                 </div>
             </div>
 
@@ -85,7 +85,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
 
             {/* Footer: Player Scores */}
             <div
-                className="bg-slate-900 border-t border-slate-700"
+                className="bg-app-bg border-t border-surface-border"
                 style={{ padding: PADDING_PX }}
             >
                 <div
@@ -95,13 +95,13 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                     {data.players.map(p => {
                         const isWinner = data.winners.includes(p.id);
                         // Fallback color if transparent
-                        const playerColor = p.color === 'transparent' ? '#64748b' : p.color;
+                        const playerColor = p.color === 'transparent' ? 'var(--c-txt-muted)' : p.color;
                         const isDark = isColorDark(playerColor);
 
                         return (
                             <div
                                 key={p.id}
-                                className="relative flex flex-col items-center justify-center bg-slate-800 rounded-2xl shadow-xl border border-slate-700 overflow-hidden"
+                                className="relative flex flex-col items-center justify-center bg-surface-recessed rounded-2xl shadow-xl border border-surface-border overflow-hidden"
                                 style={{
                                     width: `${cardWidth}px`,
                                     minWidth: '200px' // 保持最小寬度
@@ -109,14 +109,14 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                             >
                                 {/* Winner Crown (Floating Badge) - Adjusted position for new layout */}
                                 {isWinner && (
-                                    <div className="absolute -top-2 -right-2 bg-slate-900 rounded-full p-2 border-2 border-yellow-500 shadow-lg z-20 transform rotate-12">
-                                        <Crown size={28} className="text-yellow-400 fill-current" />
+                                    <div className="absolute -top-2 -right-2 bg-app-bg rounded-full p-2 border-2 border-status-warning shadow-lg z-20 transform rotate-12">
+                                        <Crown size={28} className="text-status-warning fill-current" />
                                     </div>
                                 )}
 
                                 {/* Name Header Section */}
                                 <div
-                                    className="w-full py-3 px-4 flex items-center justify-center border-b border-slate-700/50"
+                                    className="w-full py-3 px-4 flex items-center justify-center border-b border-surface-border/50"
                                     style={{
                                         backgroundColor: `${playerColor}26` // Add ~15% opacity to the background
                                     }}
@@ -139,7 +139,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
 
                                 {/* Score Section */}
                                 <div className="p-5 flex items-center justify-center w-full">
-                                    <span className="text-7xl font-black font-mono leading-none tracking-tight text-white drop-shadow-md">
+                                    <span className="text-7xl font-black font-mono leading-none tracking-tight text-txt-title drop-shadow-md">
                                         {p.totalScore}
                                     </span>
                                 </div>
