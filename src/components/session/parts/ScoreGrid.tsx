@@ -185,11 +185,11 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
     return (
       <>
         <div className="absolute top-0.5 right-0.5 flex gap-0.5 z-20">
-          {isHidden && <div className="bg-[rgba(var(--c-black)/0.6)] rounded p-0.5 text-status-warning backdrop-blur-sm border border-status-warning/30" title={t('grid_hidden')}><EyeOff size={10} /></div>}
-          {isOverlay && <div className="bg-[rgba(var(--c-black)/0.6)] rounded p-0.5 text-status-info backdrop-blur-sm border border-status-info/30" title={t('grid_overlay')}><Layers size={10} /></div>}
+          {isHidden && <div className="bg-modal-backdrop/60 rounded p-0.5 text-status-warning backdrop-blur-sm border border-status-warning/30" title={t('grid_hidden')}><EyeOff size={10} /></div>}
+          {isOverlay && <div className="bg-modal-backdrop/60 rounded p-0.5 text-status-info backdrop-blur-sm border border-status-info/30" title={t('grid_overlay')}><Layers size={10} /></div>}
         </div>
-        {!col.isScoring && <div className="absolute bottom-0.5 left-0.5 z-20 bg-[rgba(var(--c-black)/0.6)] rounded p-0.5 backdrop-blur-sm border border-status-warning/30" title={t('input_not_scored')}><div className="relative w-2.5 h-2.5 flex items-center justify-center"><Sigma size={10} className="text-txt-muted opacity-50" /><X size={8} className="absolute -bottom-0.5 -right-0.5 text-status-warning" strokeWidth={3} /></div></div>}
-        <div className="absolute bottom-0.5 right-0.5 z-20 flex gap-0.5">{col.isAuto && <div className="bg-[rgba(var(--c-black)/0.6)] rounded p-0.5 text-brand-secondary backdrop-blur-sm border border-brand-secondary/30" title={t('input_auto_calc')}><Sparkles size={10} /></div>}</div>
+        {!col.isScoring && <div className="absolute bottom-0.5 left-0.5 z-20 bg-modal-backdrop/60 rounded p-0.5 backdrop-blur-sm border border-status-warning/30" title={t('input_not_scored')}><div className="relative w-2.5 h-2.5 flex items-center justify-center"><Sigma size={10} className="text-txt-muted opacity-50" /><X size={8} className="absolute -bottom-0.5 -right-0.5 text-status-warning" strokeWidth={3} /></div></div>}
+        <div className="absolute bottom-0.5 right-0.5 z-20 flex gap-0.5">{col.isAuto && <div className="bg-modal-backdrop/60 rounded p-0.5 text-brand-secondary backdrop-blur-sm border border-brand-secondary/30" title={t('input_auto_calc')}><Sparkles size={10} /></div>}</div>
       </>
     );
   };

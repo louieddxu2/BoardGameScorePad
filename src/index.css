@@ -105,6 +105,7 @@
   /* Modal System */
   --c-modal-bg: var(--c-app-bg);              /* slate-900: 容器底色 */
   --c-modal-bg-elevated: var(--c-surface-bg); /* slate-800: 浮起的互動表面 */
+  --c-modal-backdrop: 0 0 0;                  /* 純黑遮罩底色 */
   --c-modal-bg-recessed: var(--c-slate-850);  /* slate-850: 凹陷的容納區域 */
   --c-modal-border: var(--c-surface-border);
   --c-modal-divider: var(--c-slate-800);

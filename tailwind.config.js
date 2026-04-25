@@ -90,6 +90,7 @@ export default {
             recessed: 'rgb(var(--c-modal-bg-recessed) / <alpha-value>)',
           },
           border: 'rgb(var(--c-modal-border) / <alpha-value>)',
+          backdrop: 'rgb(var(--c-modal-backdrop) / <alpha-value>)',
         },
         brand: {
           primary: 'rgb(var(--c-brand-primary) / <alpha-value>)',

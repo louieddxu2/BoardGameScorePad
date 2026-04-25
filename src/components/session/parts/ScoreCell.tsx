@@ -58,7 +58,7 @@ const CellContentAuto: React.FC<CellContentProps> = ({ displayScore, forceHeight
     return (
         <>
             {autoError && (
-                <div className="absolute top-1 left-1 text-rose-500 z-20" title={autoError === 'missing_dependency' ? t('error_ref_lost') : t('error_calc_div_zero')}>
+                <div className="absolute top-1 left-1 text-status-danger z-20" title={autoError === 'missing_dependency' ? t('error_ref_lost') : t('error_calc_div_zero')}>
                     {autoError === 'missing_dependency' ? <Link2Off size={14} /> : <AlertTriangle size={14} />}
                 </div>
             )}
@@ -209,7 +209,7 @@ const CellContentSum: React.FC<CellContentProps> = ({ parts, displayScore, hasIn
                     {hasInput ? formatDisplayNumber(displayScore) : ''}
                 </span>
                 {hasPreview && (
-                    <span className="absolute bottom-1 right-1 text-sm font-bold text-amber-400 italic animate-pulse whitespace-nowrap">
+                    <span className="absolute bottom-1 right-1 text-sm font-bold text-status-warning italic animate-pulse whitespace-nowrap">
                         {preview.labelNode}
                     </span>
                 )}
@@ -229,7 +229,7 @@ const CellContentSum: React.FC<CellContentProps> = ({ parts, displayScore, hasIn
                 ))}
                 {hasPreview && (
                     <div className={`${fontSizeClass} font-bold font-mono leading-tight w-full text-center flex justify-center`}>
-                        <span className="text-amber-400 italic animate-pulse whitespace-nowrap">
+                        <span className="text-status-warning italic animate-pulse whitespace-nowrap">
                             {preview.labelNode}
                         </span>
                     </div>
@@ -269,7 +269,7 @@ const CellContentSum: React.FC<CellContentProps> = ({ parts, displayScore, hasIn
             {/* Absolute Preview Overlay */}
             {hasPreview && (
                 <div className="absolute bottom-1 right-1 pointer-events-none">
-                    <span className="text-amber-400 font-bold italic animate-pulse text-sm whitespace-nowrap">
+                    <span className="text-status-warning font-bold italic animate-pulse text-sm whitespace-nowrap">
                         {preview.labelNode}
                     </span>
                 </div>
@@ -459,7 +459,7 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
             } as React.CSSProperties}
         >
             {column.isAuto && autoError && (
-                <div className="absolute top-0 right-0 text-rose-500 z-20 translate-x-1/3 -translate-y-1/3 drop-shadow-md" title={autoError === 'missing_dependency' ? t('error_ref_lost') : t('error_calc_div_zero')}>
+                <div className="absolute top-0 right-0 text-status-danger z-20 translate-x-1/3 -translate-y-1/3 drop-shadow-md" title={autoError === 'missing_dependency' ? t('error_ref_lost') : t('error_calc_div_zero')}>
                     {autoError === 'missing_dependency' ? <Link2Off size={16} /> : <AlertTriangle size={16} />}
                 </div>
             )}
