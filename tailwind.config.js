@@ -71,8 +71,10 @@ export default {
           },
         },
         txt: {
+          title: 'rgb(var(--c-txt-title) / <alpha-value>)',
           primary: 'rgb(var(--c-txt-primary) / <alpha-value>)',
           secondary: 'rgb(var(--c-txt-secondary) / <alpha-value>)',
+          tertiary: 'rgb(var(--c-txt-tertiary) / <alpha-value>)',
           muted: 'rgb(var(--c-txt-muted) / <alpha-value>)',
           'card-hover': 'rgb(var(--c-card-txt-hover) / <alpha-value>)',
         },
@@ -94,6 +96,7 @@ export default {
         },
         brand: {
           primary: 'rgb(var(--c-brand-primary) / <alpha-value>)',
+          'primary-deep': 'rgb(var(--c-brand-primary-deep) / <alpha-value>)',
           secondary: 'rgb(var(--c-brand-secondary) / <alpha-value>)',
         },
         status: {
