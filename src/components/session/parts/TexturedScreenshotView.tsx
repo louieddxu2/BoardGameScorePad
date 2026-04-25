@@ -46,7 +46,7 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
         winners = calculateWinners(session.players, rule);
     }
 
-    const headerIconBoxClass = 'bg-emerald-500/10 border border-emerald-500/20';
+    const headerIconBoxClass = 'bg-brand-primary/10 border border-brand-primary/20';
 
     const itemColWidth = layout ? layout.itemWidth : 70;
     const itemColStyle = { width: `${itemColWidth}px`, flexShrink: 0 };
@@ -147,19 +147,19 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                 display: 'inline-flex',
                 flexDirection: 'column',
                 width: 'max-content',
-                color: 'rgb(var(--c-slate-50))',
+                color: 'rgb(var(--c-txt-on-dark))',
                 boxSizing: 'border-box',
                 ...style
             }}
         >
             {showAppHeader && (
-                <div id={`ss-header-${mode}`} className="p-4 flex items-center gap-2 bg-slate-900 rounded-none border-b border-slate-800 shadow-sm w-full box-border">
+                <div id={`ss-header-${mode}`} className="p-4 flex items-center gap-2 bg-surface-recessed rounded-none border-b border-surface-border shadow-sm w-full box-border">
                     <div className={`p-2 rounded ${headerIconBoxClass}`}>
-                        <Trophy className="text-emerald-500" />
+                        <Trophy className="text-brand-primary" />
                     </div>
                     <div>
                         <h2 className="text-2xl font-bold">{template.name}</h2>
-                        <p className="text-slate-500 text-xs">{t('ss_app_title')} • {new Date().toLocaleDateString()}</p>
+                        <p className="text-txt-muted text-xs">{t('ss_app_title')} • {new Date().toLocaleDateString()}</p>
                     </div>
                 </div>
             )}
@@ -185,7 +185,7 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                             <TexturedBlock
                                 baseImage={baseImage}
                                 rect={template.globalVisuals?.playerLabelRect}
-                                fallbackContent={<span className="font-bold text-sm text-slate-400 hyphenate">{injectSoftHyphens(t('ss_player_label'))}</span>}
+                                fallbackContent={<span className="font-bold text-sm text-txt-secondary hyphenate">{injectSoftHyphens(t('ss_player_label'))}</span>}
                                 className="flex items-center justify-center"
                                 style={itemColStyle}
                             />
@@ -224,9 +224,9 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                                         className={`text-center flex flex-col justify-center`}
                                         style={{ ...itemColStyle }}
                                         fallbackContent={
-                                            <div className="flex flex-col items-center justify-center w-full h-full p-2 border-r border-b border-slate-700 bg-slate-800">
+                                            <div className="flex flex-col items-center justify-center w-full h-full p-2 border-r border-b border-surface-border bg-surface-recessed">
                                                 <ContrastText
-                                                    className="text-sm font-bold text-slate-300 w-full leading-tight block break-words whitespace-pre-wrap hyphenate"
+                                                    className="text-sm font-bold text-txt-primary w-full leading-tight block break-words whitespace-pre-wrap hyphenate"
                                                     color={col.color || 'inherit'}
                                                 >
                                                     {injectSoftHyphens(col.name)}
@@ -290,7 +290,7 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                             <TexturedBlock
                                 baseImage={baseImage}
                                 rect={template.globalVisuals?.totalLabelRect}
-                                fallbackContent={<span className="font-black text-[rgb(var(--c-emerald-400))] text-sm hyphenate">{injectSoftHyphens(t('ss_total_label'))}</span>}
+                                fallbackContent={<span className="font-black text-brand-primary text-sm hyphenate">{injectSoftHyphens(t('ss_total_label'))}</span>}
                                 className="flex items-center justify-center"
                                 style={itemColStyle}
                             />

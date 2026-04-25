@@ -99,7 +99,7 @@ const ScreenshotTotalLabel: React.FC<{ template: GameTemplate, baseImage?: strin
 
     return (
         <div className={className + " hyphenate"} style={finalStyle}>
-            {!hasTexture && <span className="font-black text-emerald-400 text-sm">{injectSoftHyphens(t('ss_total_label'))}</span>}
+            {!hasTexture && <span className="font-black text-brand-primary text-sm">{injectSoftHyphens(t('ss_total_label'))}</span>}
         </div>
     );
 }
