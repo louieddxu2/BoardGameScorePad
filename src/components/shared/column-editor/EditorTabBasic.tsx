@@ -27,7 +27,7 @@ const SumPartsSubSettings: React.FC<{
     isProductMode?: boolean
 }> = ({ column, onChange, themeColor = 'emerald', isProductMode = false }) => {
     const { t } = useColumnEditorTranslation(); // Use New Hook
-    const activeSwitchClass = themeColor === 'emerald' ? 'bg-emerald-500' : 'bg-indigo-500';
+    const activeSwitchClass = themeColor === 'emerald' ? 'bg-brand-primary' : 'bg-brand-secondary';
 
     // Normalize logic for undefined (default is true)
     const currentMode = column.showPartsInGrid === undefined ? true : column.showPartsInGrid;
