@@ -292,7 +292,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-900 text-slate-100 overflow-hidden relative animate-in fade-in duration-300">
+        <div className="flex flex-col h-full bg-app-bg text-txt-primary overflow-hidden relative animate-in fade-in duration-300">
 
             <input ref={photos.photoInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={photos.handlePhotoSelect} />
             <input ref={photos.galleryInputRef} type="file" accept="image/*" className="hidden" onChange={photos.handlePhotoSelect} />
@@ -306,30 +306,30 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
             )}
 
             {/* --- Header --- */}
-            <div className="flex-none bg-slate-800 p-2 flex items-center justify-between border-b border-slate-700 shadow-md z-20">
+            <div className="flex-none bg-app-bg p-2 flex items-center justify-between border-b border-surface-border shadow-md z-20">
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => window.history.back()}
-                        className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 shrink-0"
+                        className="p-2 hover:bg-surface-hover rounded-lg text-txt-secondary shrink-0"
                     >
                         <ArrowLeft size={20} />
                     </button>
-                    <div className="font-bold text-lg px-2 py-1 text-white truncate max-w-[200px]">
-                        {record.gameName} <span className="text-xs text-slate-500 font-normal ml-2 hidden sm:inline">{t('history_review_subtitle')}</span>
+                    <div className="font-bold text-lg px-2 py-1 text-txt-title truncate max-w-[200px]">
+                        {record.gameName} <span className="text-xs text-txt-muted font-normal ml-2 hidden sm:inline">{t('history_review_subtitle')}</span>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-1 relative">
                     <button
                         onClick={() => setShowSettingsModal(true)}
-                        className="p-2 hover:bg-slate-700 hover:text-sky-400 rounded-lg text-slate-400"
+                        className="p-2 hover:bg-surface-hover hover:text-brand-secondary rounded-lg text-txt-secondary"
                         title={t('history_edit_info')}
                     >
                         <Settings size={20} />
                     </button>
                     <button
                         onClick={() => setShowShareMenu(!showShareMenu)}
-                        className="p-2 hover:bg-slate-700 hover:text-indigo-400 rounded-lg text-slate-400"
+                        className="p-2 hover:bg-surface-hover hover:text-brand-secondary rounded-lg text-txt-secondary"
                         title={t('history_share_photo')}
                     >
                         <Share2 size={20} />

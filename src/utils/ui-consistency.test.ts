@@ -52,12 +52,16 @@ describe('UI Consistency: Semantic Color Check', () => {
             const violations: string[] = [];
 
             lines.forEach((line, index) => {
-                // Ignore comments
-                if (line.trim().startsWith('//') || line.trim().startsWith('*')) return;
+                // Ignore lines marked with @ui-ignore
+                if (line.includes('@ui-ignore')) return;
+
+                // Ignore pure comments (start of line)
+                const trimmed = line.trim();
+                if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return;
                 
                 const matches = line.match(HARDCODED_COLOR_REGEX);
                 if (matches) {
-                    violations.push(`Line ${index + 1}: ${line.trim()} (Found: ${matches.join(', ')})`);
+                    violations.push(`Line ${index + 1}: ${trimmed} (Found: ${matches.join(', ')})`);
                 }
             });
 

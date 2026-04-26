@@ -78,7 +78,7 @@ const StructurePhase: React.FC = () => {
           return (
             <div
               key={`h-line-struct-${i}`}
-              className="absolute h-[2px] bg-sky-400/80 z-10"
+              className="absolute h-[2px] bg-status-info/80 z-10"
               style={{
                 top: `${y}%`,
                 left: `${leftBound}%`,
@@ -104,14 +104,14 @@ const StructurePhase: React.FC = () => {
           <span className="text-white/70 font-bold tracking-widest uppercase origin-center bg-[rgba(var(--c-black)/0.5)] px-2 rounded" style={inverseScaleStyle}>{t('mapper_player_name')}</span>
         </div>
         <div
-          className="absolute bottom-0 bg-[rgba(var(--c-red-900)/0.5)] flex items-center justify-center"
+          className="absolute bottom-0 bg-status-danger/30 flex items-center justify-center"
           style={{
             top: `${sortedHLines[totalSepIdx]}%`,
             left: `${leftBound}%`,
             width: `${widthPercent}%`
           }}
         >
-          <span className="text-amber-500 font-bold tracking-widest uppercase origin-center bg-[rgba(var(--c-black)/0.5)] px-2 rounded" style={inverseScaleStyle}>{t('mapper_total_score')}</span>
+          <span className="text-status-warning font-bold tracking-widest uppercase origin-center bg-black/50 px-2 rounded" style={inverseScaleStyle}>{t('mapper_total_score')}</span>
         </div>
       </div>
 

@@ -95,7 +95,7 @@ const GridPhase: React.FC = () => {
 
       {/* Top Bound */}
       <div
-        className="absolute left-0 right-0 h-[2px] group bg-emerald-500 cursor-row-resize z-40"
+        className="absolute left-0 right-0 h-[2px] group bg-brand-primary cursor-row-resize z-40"
         style={{ top: `${gridBounds.top}%`, ...inverseScaleYStyle }}
         onMouseDown={(e) => handlePointerDown(e, 'line', { type: 'bound', boundType: 'top' })}
         onTouchStart={(e) => handlePointerDown(e, 'line', { type: 'bound', boundType: 'top' })}
@@ -106,7 +106,7 @@ const GridPhase: React.FC = () => {
           className="absolute right-[100%] top-[50%] mr-4 flex items-center justify-end"
           style={hLabelStyle}
         >
-          <div className="bg-emerald-600 text-white px-2 py-1 rounded text-xs font-bold shadow flex items-center gap-1 border border-emerald-400">
+          <div className="bg-brand-primary-deep text-white px-2 py-1 rounded text-xs font-bold shadow flex items-center gap-1 border border-brand-primary">
             <ScanLine size={12} /> {t('mapper_grid_top')}
           </div>
         </div>
@@ -114,7 +114,7 @@ const GridPhase: React.FC = () => {
 
       {/* Bottom Bound */}
       <div
-        className="absolute left-0 right-0 h-[2px] group bg-emerald-500 cursor-row-resize z-40"
+        className="absolute left-0 right-0 h-[2px] group bg-brand-primary cursor-row-resize z-40"
         style={{ top: `${gridBounds.bottom}%`, ...inverseScaleYStyle }}
         onMouseDown={(e) => handlePointerDown(e, 'line', { type: 'bound', boundType: 'bottom' })}
         onTouchStart={(e) => handlePointerDown(e, 'line', { type: 'bound', boundType: 'bottom' })}
