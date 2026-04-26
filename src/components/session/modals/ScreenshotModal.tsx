@@ -377,7 +377,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
     return (
         <div
-            className="fixed inset-0 bg-app-bg-deep/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+            className="modal-backdrop flex items-center justify-center p-4 animate-in fade-in duration-200"
             style={{ zIndex }}
             onClick={onClose}
         >

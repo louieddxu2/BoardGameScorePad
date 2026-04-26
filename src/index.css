@@ -173,8 +173,8 @@ html[data-theme='light'] {
 
   /* Modal System */
   --c-modal-bg: var(--c-surface-bg);
-  --c-modal-bg-elevated: var(--c-slate-100);  /* slate-100: 浮起的互動表面 */
-  --c-modal-bg-recessed: var(--c-slate-200);  /* slate-200: 凹陷的容納區域 */
+  --c-modal-bg-elevated: 255 255 255;          /* 改為純白，使其從淺灰背景浮起 */
+  --c-modal-bg-recessed: 241 245 249;          /* slate-100: 凹陷感更明確 */
   --c-modal-border: var(--c-surface-border);
   --c-modal-divider: 243 244 246; /* gray-100 */
   --c-modal-input-bg: 243 244 246;

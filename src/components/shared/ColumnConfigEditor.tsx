@@ -43,19 +43,27 @@ const TabButton = ({ id, activeTab, setActiveTab, label, icon: Icon, isSpecial }
     label: string,
     icon: any,
     isSpecial?: boolean
-}) => (
-    <button
-        onClick={() => setActiveTab(id)}
-        className={`${isSpecial ? 'flex-1' : 'flex-[2]'} py-3 flex flex-col items-center justify-center gap-1 text-xs font-bold transition-colors border-b-2 cursor-pointer
-        ${activeTab === id
-                ? (isSpecial ? 'border-indigo-500 text-indigo-400 bg-slate-800' : 'border-emerald-500 text-emerald-400 bg-slate-800')
-                : 'border-transparent text-slate-500 hover:text-slate-300'
-            }
-    `}
-    >
-        <Icon size={18} />{label}
-    </button>
-);
+}) => {
+    const isActive = activeTab === id;
+    const colorClass = isSpecial ? 'text-brand-secondary' : 'text-brand-primary';
+    const borderClass = isSpecial ? 'border-brand-secondary' : 'border-brand-primary';
+
+    return (
+        <button
+            onClick={() => setActiveTab(id)}
+            className={`
+                flex-1 py-2.5 flex flex-col items-center justify-center gap-1 transition-all border-b-2 
+                ${isActive 
+                    ? `bg-modal-bg-recessed ${colorClass} ${borderClass} font-black` 
+                    : 'bg-transparent text-txt-muted border-transparent hover:text-txt-primary'
+                }
+            `}
+        >
+            <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+            <span className="text-[10px] font-bold uppercase tracking-tight">{label}</span>
+        </button>
+    );
+};
 
 const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColumns = [], onSave, onDelete, onClose, baseImage }) => {
     const { t } = useColumnEditorTranslation(); // Use New Hook
@@ -342,20 +350,20 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
     const displayMode = editedCol.displayMode || 'row';
     let DisplayIcon = LayoutList;
     let displayLabelKey = 'col_display_row';
-    let displayClass = 'text-slate-400 border-slate-700 bg-slate-900 hover:text-white';
+    let displayClass = 'text-txt-secondary border-surface-border bg-modal-bg hover:text-txt-title';
 
     if (displayMode === 'overlay') {
         DisplayIcon = Layers;
         displayLabelKey = 'col_display_overlay';
-        displayClass = 'text-indigo-400 border-indigo-500/50 bg-indigo-900/20';
+        displayClass = 'text-brand-secondary border-brand-secondary/50 bg-brand-secondary/20';
     } else if (displayMode === 'hidden') {
         DisplayIcon = EyeOff;
         displayLabelKey = 'col_display_hidden';
-        displayClass = 'text-amber-400 border-amber-500/50 bg-amber-900/20';
+        displayClass = 'text-status-warning border-status-warning/50 bg-status-warning/20';
     }
 
     return (
-        <div className="fixed inset-0 z-[70] bg-slate-950/95 flex flex-col animate-in slide-in-from-bottom-5" style={{ paddingBottom: offset }}>
+        <div className="fixed inset-0 z-[70] bg-app-bg-deep flex flex-col animate-in slide-in-from-bottom-5" style={{ paddingBottom: offset }}>
 
 
             {showLayoutEditor && (
@@ -373,54 +381,54 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                 />
             )}
 
-            {/* Header: Simplified */}
-            <header className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 flex-none z-20">
-                <div className="flex items-center gap-2">
-                    <div className="bg-slate-800 p-2 rounded text-emerald-500"><Settings size={20} /></div>
-                    <div><h2 className="text-white font-bold text-lg">{t('col_edit_title')}</h2><p className="text-xs text-slate-500">{t('col_edit_subtitle')}</p></div>
+            {/* Header: Redesigned for better airiness */}
+            <header className="flex items-center justify-between px-5 py-6 bg-app-bg-deep flex-none z-20">
+                <div className="flex items-center gap-3">
+                    <div className="bg-modal-bg-elevated p-2.5 rounded-xl shadow-sm text-brand-primary border border-surface-border"><Settings size={22} /></div>
+                    <div><h2 className="text-txt-primary font-black text-xl leading-tight">{t('col_edit_title')}</h2><p className="text-[10px] font-bold text-txt-muted uppercase tracking-wider">{t('col_edit_subtitle')}</p></div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-400 bg-slate-800 rounded-lg border border-slate-700 hover:border-red-900/50" title={tCommon('delete')}><Trash2 size={20} /></button>
-                    <button onClick={handleAttemptClose} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-lg border border-slate-700"><X size={20} /></button>
+                    <button onClick={onDelete} className="w-10 h-10 flex items-center justify-center text-txt-secondary hover:text-status-danger bg-modal-bg-elevated rounded-xl border border-surface-border hover:border-status-danger/40 shadow-sm transition-all active:scale-90" title={tCommon('delete')}><Trash2 size={20} /></button>
+                    <button onClick={handleAttemptClose} className="w-10 h-10 flex items-center justify-center text-txt-secondary hover:text-txt-title bg-modal-bg-elevated rounded-xl border border-surface-border shadow-sm transition-all active:scale-90"><X size={24} /></button>
                 </div>
             </header>
 
-            <main className="flex-1 overflow-y-auto no-scrollbar">
-                <section className="p-4 bg-slate-900/50 space-y-4">
+            <main className="flex-1 overflow-y-auto no-scrollbar bg-app-bg-deep">
+                <section className="p-4 space-y-4">
 
                     {/* Name & Advanced Toggle */}
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('col_name')}</label>
-                        <div className="flex gap-2 items-start">
+                        <label className="block text-xs font-bold text-txt-secondary uppercase mb-1">{t('col_name')}</label>
+                        <div className="flex gap-2 items-start bg-modal-bg-elevated p-3 rounded-2xl border border-surface-border shadow-sm">
                             <textarea
                                 ref={nameTextareaRef}
                                 rows={1}
                                 value={editedCol.name}
                                 onChange={e => setEditedCol({ ...editedCol, name: e.target.value })}
                                 onFocus={e => e.target.select()}
-                                className="flex-[2] bg-slate-800 border border-slate-700 rounded-xl p-3 text-white focus:border-emerald-500 outline-none resize-none overflow-hidden text-base font-bold min-h-[50px]"
+                                className="flex-[2] bg-modal-bg-recessed border border-surface-border rounded-xl p-3 text-txt-primary focus:border-brand-primary outline-none resize-none overflow-hidden text-base font-black min-h-[50px] transition-all"
                             />
                             <button
                                 onClick={() => setShowAdvanced(!showAdvanced)}
-                                className={`flex-1 min-h-[50px] flex flex-col items-center justify-center gap-1 rounded-xl border transition-all active:scale-95 ${showAdvanced ? 'bg-slate-700 border-slate-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-300'}`}
+                                className={`flex-1 min-h-[50px] flex flex-col items-center justify-center gap-1 rounded-xl border transition-all active:scale-95 ${showAdvanced ? 'bg-brand-primary/10 border-brand-primary/40 text-brand-primary' : 'bg-modal-bg-recessed border-surface-border text-txt-muted hover:text-txt-primary'}`}
                             >
                                 <Settings2 size={18} />
-                                <span className="text-[10px] font-bold">{t('col_advanced')}</span>
+                                <span className="text-[10px] font-black uppercase tracking-tight">{t('col_advanced')}</span>
                             </button>
                         </div>
 
                         {/* Advanced Settings Panel */}
                         {showAdvanced && (
-                            <div className="mt-2 bg-slate-800 rounded-xl p-2 border border-slate-700 animate-in fade-in slide-in-from-top-1">
+                            <div className="mt-2 bg-modal-bg-elevated rounded-xl p-2 border border-surface-border animate-in fade-in slide-in-from-top-1">
                                 <div className="grid grid-cols-4 gap-2 mb-2">
                                     {/* Scoring Toggle */}
                                     <button
                                         onClick={toggleScoring}
-                                        className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${!editedCol.isScoring ? 'text-amber-400 border-amber-500/50 bg-amber-900/20' : 'text-slate-400 border-slate-700 bg-slate-900 hover:text-white'}`}
+                                        className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${!editedCol.isScoring ? 'text-status-warning border-status-warning/50 bg-status-warning/20' : 'text-txt-secondary border-surface-border bg-modal-bg hover:text-txt-title'}`}
                                     >
                                         <div className="relative">
                                             <Sigma size={20} className={!editedCol.isScoring ? "opacity-30" : ""} />
-                                            {!editedCol.isScoring && <X size={12} className="absolute -bottom-1 -right-1 text-amber-500 stroke-[3]" />}
+                                            {!editedCol.isScoring && <X size={12} className="absolute -bottom-1 -right-1 text-status-warning stroke-[3]" />}
                                         </div>
                                         <span className="text-[10px]">{!editedCol.isScoring ? t('col_scoring_off') : t('col_scoring_on')}</span>
                                     </button>
@@ -428,7 +436,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                                     {/* Layout Crop */}
                                     <button
                                         onClick={() => { setShowLayoutEditor(true); setHelpText('col_help_crop'); }}
-                                        className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${editedCol.contentLayout ? 'text-sky-400 border-sky-500/50 bg-sky-900/20' : 'text-slate-400 border-slate-700 bg-slate-900 hover:text-white'}`}
+                                        className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${editedCol.contentLayout ? 'text-status-info border-status-info/50 bg-status-info/20' : 'text-txt-secondary border-surface-border bg-modal-bg hover:text-txt-title'}`}
                                     >
                                         <Crop size={20} />
                                         <span className="text-[10px]">{editedCol.contentLayout ? t('col_cropped') : t('col_crop')}</span>
@@ -446,13 +454,13 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                                     {/* Shared Variable Toggle */}
                                     <button
                                         onClick={toggleShared}
-                                        className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${editedCol.isShared ? 'text-emerald-400 border-emerald-500/50 bg-emerald-900/20' : 'text-slate-400 border-slate-700 bg-slate-900 hover:text-white'}`}
+                                        className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${editedCol.isShared ? 'text-brand-primary border-brand-primary/50 bg-brand-primary/20' : 'text-txt-secondary border-surface-border bg-modal-bg hover:text-txt-title'}`}
                                     >
                                         <Users size={20} />
                                         <span className="text-[10px]">{t('col_shared_var' as any)}</span>
                                     </button>
                                 </div>
-                                <div className="bg-slate-900/50 rounded py-1 px-2 text-center text-[10px] text-slate-400 border border-slate-800/50 flex items-center justify-center gap-1">
+                                <div className="bg-modal-bg/50 rounded py-1 px-2 text-center text-[10px] text-txt-secondary border border-surface-border/50 flex items-center justify-center gap-1">
                                     <Info size={10} /> {t(helpText as any)}
                                 </div>
                             </div>
@@ -460,17 +468,17 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('col_color')}</label>
+                        <label className="block text-xs font-bold text-txt-secondary uppercase mb-2">{t('col_color')}</label>
                         <div className="flex items-center gap-2 flex-wrap">
                             {COLORS.map(c => (
                                 <button key={c} onClick={() => setEditedCol({ ...editedCol, color: c })} className={`w-8 h-8 rounded-full shadow-lg border-2 transition-transform active:scale-90 ${editedCol.color === c ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'} ${isColorDark(c) ? 'ring-1 ring-white/50' : ''}`} style={{ backgroundColor: c }} />
                             ))}
-                            <button onClick={() => setEditedCol({ ...editedCol, color: undefined })} className={`w-8 h-8 rounded-full shadow-lg border-2 flex items-center justify-center bg-slate-700 text-slate-400 transition-transform active:scale-90 ${!editedCol.color ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'}`}><X size={16} /></button>
+                            <button onClick={() => setEditedCol({ ...editedCol, color: undefined })} className={`w-8 h-8 rounded-full shadow-lg border-2 flex items-center justify-center bg-modal-bg-elevated text-txt-secondary transition-transform active:scale-90 ${!editedCol.color ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'}`}><X size={16} /></button>
                         </div>
                     </div>
                 </section>
 
-                <div className="sticky top-0 z-10 flex border-y border-slate-800 bg-slate-900 shadow-lg">
+                <div className="sticky top-0 z-10 flex border-y border-surface-border bg-modal-bg shadow-lg">
                     <TabButton id="basic" activeTab={activeTab} setActiveTab={setActiveTab} label={t('col_tab_basic')} icon={Calculator} />
                     <TabButton id="select" activeTab={activeTab} setActiveTab={setActiveTab} label={t('col_tab_select')} icon={ListPlus} />
                     <TabButton id="mapping" activeTab={activeTab} setActiveTab={setActiveTab} label={t('col_tab_mapping')} icon={Ruler} />
@@ -479,8 +487,8 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                 <div className="p-4 pb-4">{renderTabContent()}</div>
             </main>
             {!isKeyboardOpen && (
-                <footer className="flex-none p-4 bg-slate-900/80 backdrop-blur-sm border-t border-slate-800" style={{ paddingBottom: `calc(1rem + ${offset}px)` }}>
-                    <button onClick={handleSave} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2"><Save size={20} /> {t('col_btn_save')}</button>
+                <footer className="flex-none p-4 bg-modal-bg/80 backdrop-blur-sm border-t border-surface-border" style={{ paddingBottom: `calc(1rem + ${offset}px)` }}>
+                    <button onClick={handleSave} className="w-full py-3 bg-brand-primary-deep hover:bg-brand-primary text-white font-bold rounded-xl shadow-lg shadow-brand-primary/50 flex items-center justify-center gap-2"><Save size={20} /> {t('col_btn_save')}</button>
                 </footer>
             )}
         </div>

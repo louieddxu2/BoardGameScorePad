@@ -35,30 +35,30 @@ const SumPartsSubSettings: React.FC<{
     return (
         <>
             <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('col_display_in_grid')}</label>
-                <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
-                    <button onClick={() => onChange({ showPartsInGrid: true })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentMode === true ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
+                <label className="block text-xs font-bold text-txt-muted uppercase mb-2">{t('col_display_in_grid')}</label>
+                <div className="flex bg-modal-bg-elevated rounded-lg p-1 border border-surface-border">
+                    <button onClick={() => onChange({ showPartsInGrid: true })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentMode === true ? 'bg-brand-secondary text-white shadow-sm' : 'text-txt-secondary hover:text-txt-primary'}`}>
                         {t('col_display_std')}
                     </button>
-                    <button onClick={() => onChange({ showPartsInGrid: false })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentMode === false ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
+                    <button onClick={() => onChange({ showPartsInGrid: false })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentMode === false ? 'bg-brand-secondary text-white shadow-sm' : 'text-txt-secondary hover:text-txt-primary'}`}>
                         {t('col_display_total')}
                     </button>
-                    <button onClick={() => onChange({ showPartsInGrid: 'parts_only' })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentMode === 'parts_only' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
+                    <button onClick={() => onChange({ showPartsInGrid: 'parts_only' })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentMode === 'parts_only' ? 'bg-brand-secondary text-white shadow-sm' : 'text-txt-secondary hover:text-txt-primary'}`}>
                         {t('col_display_parts')}
                     </button>
                 </div>
             </div>
 
             <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('col_input_method')}</label>
-                <div className={`flex items-center justify-between bg-slate-800 p-3 rounded-xl border border-slate-700 cursor-pointer hover:bg-slate-750 transition-colors`} onClick={() => onChange({ inputType: column.inputType === 'clicker' ? 'keypad' : 'clicker' })}>
-                    <span className="text-sm font-bold text-slate-300">{t('col_use_pad')}</span>
-                    <div className={`w-12 h-6 rounded-full relative transition-colors ${column.inputType === 'clicker' ? activeSwitchClass : 'bg-slate-600'}`}>
+                <label className="block text-xs font-bold text-txt-muted uppercase mb-2">{t('col_input_method')}</label>
+                <div className={`flex items-center justify-between bg-modal-bg-elevated p-3 rounded-xl border border-surface-border cursor-pointer hover:bg-surface-hover transition-colors`} onClick={() => onChange({ inputType: column.inputType === 'clicker' ? 'keypad' : 'clicker' })}>
+                    <span className="text-sm font-bold text-txt-primary">{t('col_use_pad')}</span>
+                    <div className={`w-12 h-6 rounded-full relative transition-colors ${column.inputType === 'clicker' ? activeSwitchClass : 'bg-modal-bg-recessed'}`}>
                         <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow transition-transform ${column.inputType === 'clicker' ? 'translate-x-6' : 'translate-x-0'}`} />
                     </div>
                 </div>
                 {column.inputType === 'clicker' && (
-                    <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700 space-y-4 mt-2">
+                    <div className="bg-modal-bg/50 p-4 rounded-xl border border-surface-border space-y-4 mt-2">
                         <QuickActionsEditor
                             quickActions={column.quickActions || []}
                             buttonGridColumns={column.buttonGridColumns}
@@ -74,9 +74,9 @@ const SumPartsSubSettings: React.FC<{
 };
 
 const ToggleSwitch = ({ checked, onChange, label, themeColor = 'emerald' }: { checked: boolean, onChange: () => void, label: string, themeColor?: 'emerald' | 'indigo' }) => {
-    const activeClass = themeColor === 'emerald' ? 'bg-emerald-900/30 border-emerald-500' : 'bg-indigo-900/30 border-indigo-500';
-    const activeTextClass = themeColor === 'emerald' ? 'text-emerald-100' : 'text-indigo-100';
-    const activeKnobClass = themeColor === 'emerald' ? 'bg-emerald-500' : 'bg-indigo-500';
+    const activeClass = themeColor === 'emerald' ? 'bg-brand-primary/10 border-brand-primary/40 shadow-sm' : 'bg-brand-secondary/10 border-brand-secondary/40 shadow-sm';
+    const activeTextClass = themeColor === 'emerald' ? 'text-brand-primary' : 'text-brand-secondary';
+    const activeKnobClass = themeColor === 'emerald' ? 'bg-brand-primary' : 'bg-brand-secondary';
 
     return (
         <div
@@ -84,10 +84,10 @@ const ToggleSwitch = ({ checked, onChange, label, themeColor = 'emerald' }: { ch
                 e.stopPropagation();
                 onChange();
             }}
-            className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all duration-300 ${checked ? activeClass : 'bg-slate-800 border-slate-700 hover:bg-slate-750'}`}
+            className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all duration-300 ${checked ? activeClass : 'bg-modal-bg-elevated border-surface-border hover:bg-surface-hover'}`}
         >
-            <span className={`text-sm font-bold transition-colors ${checked ? activeTextClass : 'text-slate-300'}`}>{label}</span>
-            <div className={`w-12 h-6 rounded-full relative transition-colors ${checked ? activeKnobClass : 'bg-slate-600'}`}>
+            <span className={`text-sm font-bold transition-colors ${checked ? activeTextClass : 'text-txt-primary'}`}>{label}</span>
+            <div className={`w-12 h-6 rounded-full relative transition-colors ${checked ? activeKnobClass : 'bg-modal-bg-recessed'}`}>
                 <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow transition-transform duration-300 ${checked ? 'translate-x-6' : 'translate-x-0'}`} />
             </div>
         </div>
@@ -255,16 +255,16 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
         <div className="space-y-6 animate-in fade-in duration-200 pb-10">
             {/* Mode Switcher */}
             <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('input_calc_mode')}</label>
+                <label className="block text-xs font-bold text-txt-muted uppercase mb-2">{t('input_calc_mode')}</label>
                 <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => setCalculationMode('standard')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${currentCalcMode === 'standard' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400 shadow-[0_0_15px_rgba(var(--c-emerald-500)/0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}>
+                    <button onClick={() => setCalculationMode('standard')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${currentCalcMode === 'standard' ? 'bg-brand-primary/20 border-brand-primary text-brand-primary shadow-[0_0_15px_rgba(var(--c-brand-primary)/0.2)]' : 'bg-modal-bg-elevated border-surface-border text-txt-secondary hover:bg-surface-hover'}`}>
                         <Calculator size={24} />
                         <div className="leading-tight text-center">
                             <div className="text-xs font-bold uppercase">{t('col_mode_std')}</div>
                             <div className="text-[10px] opacity-70">{t('col_mode_std_desc')}</div>
                         </div>
                     </button>
-                    <button onClick={() => setCalculationMode('product')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${currentCalcMode === 'product' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-400 shadow-[0_0_15px_rgba(var(--c-indigo-500)/0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}>
+                    <button onClick={() => setCalculationMode('product')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${currentCalcMode === 'product' ? 'bg-brand-secondary/20 border-brand-secondary text-brand-secondary shadow-[0_0_15px_rgba(var(--c-brand-secondary)/0.2)]' : 'bg-modal-bg-elevated border-surface-border text-txt-secondary hover:bg-surface-hover'}`}>
                         <div className="flex items-center gap-0.5 h-[24px]">
                             <Square size={16} strokeWidth={2.5} />
                             <Multiply size={10} strokeWidth={3} />
@@ -280,9 +280,9 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
 
             {/* Base Config Block - Content Depends on Mode */}
             {currentCalcMode === 'standard' && (
-                <div className="p-4 rounded-xl border bg-emerald-900/10 border-emerald-500/20 space-y-4">
+                <div className="p-5 rounded-2xl border border-surface-border bg-modal-bg-elevated shadow-sm space-y-4 border-l-4 border-l-brand-primary">
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('col_unit')}</label>
+                        <label className="block text-xs font-bold text-txt-muted uppercase mb-1">{t('col_unit')}</label>
                         <input
                             type="text"
                             value={column.unit || ''}
@@ -291,39 +291,39 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                             }}
                             onFocus={e => e.target.select()}
                             placeholder={t('col_unit')}
-                            className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white focus:border-emerald-500 outline-none"
+                            className="w-full bg-modal-bg-recessed border border-surface-border rounded-xl p-3 text-txt-primary font-bold focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 outline-none transition-all placeholder-txt-muted"
                         />
                     </div>
-                    <div className="bg-slate-900 border border-slate-700 p-4 rounded-xl flex items-center justify-center gap-3">
-                        <span className="text-slate-400 text-sm">{t('col_input_val')}</span>
-                        <span className="text-slate-600">×</span>
+                    <div className="bg-modal-bg border border-surface-border p-4 rounded-xl flex items-center justify-center gap-3">
+                        <span className="text-txt-secondary text-sm">{t('col_input_val')}</span>
+                        <span className="text-txt-muted">×</span>
                         <input
                             type="text"
                             inputMode="decimal"
                             value={column.constants?.c1 ?? 1}
                             onChange={e => updateMultiplier(e.target.value)}
                             onFocus={e => e.target.select()}
-                            className="w-20 bg-slate-800 border border-emerald-500/50 text-emerald-400 text-center font-bold p-2 rounded outline-none focus:border-emerald-500"
+                            className="w-20 bg-modal-bg-recessed border border-brand-primary/40 text-brand-primary text-center font-black p-2 rounded-lg outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all"
                         />
                         {isSumPartsEnabled ? (
                             <>
-                                <span className="text-slate-600 font-bold px-1"><Plus size={14} /></span>
-                                <span className="text-slate-400 text-sm">...</span>
+                                <span className="text-txt-muted font-bold px-1"><Plus size={14} /></span>
+                                <span className="text-txt-secondary text-sm">...</span>
                             </>
                         ) : null}
-                        <span className="text-slate-600">=</span>
-                        <span className="text-white font-bold">{t('col_score')}</span>
+                        <span className="text-txt-muted">=</span>
+                        <span className="text-txt-primary font-bold">{t('col_score')}</span>
                     </div>
                 </div>
             )}
 
             {currentCalcMode === 'product' && (
-                <div className="p-4 rounded-xl border bg-indigo-900/10 border-indigo-500/20 space-y-4">
+                <div className="p-5 rounded-2xl border border-surface-border bg-modal-bg-elevated shadow-sm space-y-4 border-l-4 border-l-brand-secondary">
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('col_prod_unit_title')}</label>
+                        <label className="block text-xs font-bold text-txt-muted uppercase mb-2">{t('col_prod_unit_title')}</label>
                         <div className="flex items-end gap-2">
                             <div className="flex-1 min-w-0">
-                                <label className="block text-[10px] text-slate-400 mb-1 truncate" title={t('col_prod_unit_a')}> {t('col_prod_unit_a')}</label>
+                                <label className="block text-[10px] text-txt-secondary mb-1 truncate" title={t('col_prod_unit_a')}> {t('col_prod_unit_a')}</label>
                                 <input
                                     type="text"
                                     value={column.subUnits?.[0] || ''}
@@ -331,16 +331,16 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                                         onChange({ subUnits: [e.target.value, column.subUnits?.[1] || ''] });
                                     }}
                                     onFocus={e => e.target.select()}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white text-center focus:border-indigo-500 outline-none"
+                                    className="w-full bg-modal-bg-elevated border border-surface-border rounded p-2 text-txt-primary text-center focus:border-brand-secondary outline-none placeholder-txt-muted"
                                 />
                             </div>
 
                             {isSumPartsEnabled && (
-                                <div className="pb-2 text-slate-500 font-bold">×</div>
+                                <div className="pb-2 text-txt-muted font-bold">×</div>
                             )}
 
                             <div className="flex-1 min-w-0">
-                                <label className="block text-[10px] text-slate-400 mb-1 truncate" title={t('col_prod_unit_b')}> {t('col_prod_unit_b')}</label>
+                                <label className="block text-[10px] text-txt-secondary mb-1 truncate" title={t('col_prod_unit_b')}> {t('col_prod_unit_b')}</label>
                                 <input
                                     type="text"
                                     value={column.subUnits?.[1] || ''}
@@ -348,21 +348,21 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                                         onChange({ subUnits: [column.subUnits?.[0] || '', e.target.value] });
                                     }}
                                     onFocus={e => e.target.select()}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white text-center focus:border-indigo-500 outline-none"
+                                    className="w-full bg-modal-bg-elevated border border-surface-border rounded p-2 text-txt-primary text-center focus:border-brand-secondary outline-none placeholder-txt-muted"
                                 />
                             </div>
 
                             {isSumPartsEnabled && (
                                 <>
-                                    <div className="pb-2 text-slate-500 font-bold">=</div>
+                                    <div className="pb-2 text-txt-muted font-bold">=</div>
                                     <div className="flex-1 min-w-0">
-                                        <label className="block text-[10px] text-slate-400 mb-1 truncate" title={t('col_unit')}> {t('col_unit')}</label>
+                                        <label className="block text-[10px] text-txt-secondary mb-1 truncate" title={t('col_unit')}> {t('col_unit')}</label>
                                         <input
                                             type="text"
                                             value={column.unit || ''}
                                             onChange={e => onChange({ unit: e.target.value })}
                                             onFocus={e => e.target.select()}
-                                            className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white text-center focus:border-indigo-500 outline-none"
+                                            className="w-full bg-modal-bg-elevated border border-surface-border rounded p-2 text-txt-primary text-center focus:border-brand-secondary outline-none placeholder-txt-muted"
                                         />
                                     </div>
                                 </>
@@ -370,18 +370,18 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                         </div>
                     </div>
 
-                    <div className="bg-slate-900 border border-slate-700 p-4 rounded-xl flex items-center justify-center gap-2">
-                        <span className="text-slate-400 text-sm">A</span>
-                        <span className="text-emerald-500 font-bold"><Multiply size={10} /></span>
-                        <span className="text-slate-400 text-sm">B</span>
+                    <div className="bg-modal-bg border border-surface-border p-4 rounded-xl flex items-center justify-center gap-2">
+                        <span className="text-txt-secondary text-sm">A</span>
+                        <span className="text-brand-primary font-bold"><Multiply size={10} /></span>
+                        <span className="text-txt-secondary text-sm">B</span>
                         {isSumPartsEnabled && (
                             <>
-                                <span className="text-slate-600 font-bold px-1"><Plus size={14} /></span>
-                                <span className="text-slate-400 text-sm">...</span>
+                                <span className="text-txt-muted font-bold px-1"><Plus size={14} /></span>
+                                <span className="text-txt-secondary text-sm">...</span>
                             </>
                         )}
-                        <span className="text-slate-600">=</span>
-                        <span className="text-white font-bold">{t('col_score')}</span>
+                        <span className="text-txt-muted">=</span>
+                        <span className="text-txt-primary font-bold">{t('col_score')}</span>
                     </div>
                 </div>
             )}
@@ -396,7 +396,7 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                 />
 
                 {isSumPartsEnabled && (
-                    <div className={`pt-4 pl-4 ml-4 border-l-2 space-y-4 animate-in fade-in slide-in-from-top-2 ${currentCalcMode === 'product' ? 'border-indigo-500' : 'border-emerald-500'}`}>
+                    <div className={`pt-4 pl-4 ml-4 border-l-2 space-y-4 animate-in fade-in slide-in-from-top-2 ${currentCalcMode === 'product' ? 'border-brand-secondary' : 'border-brand-primary'}`}>
                         <SumPartsSubSettings
                             column={column}
                             onChange={handleSubSettingsChange}
@@ -408,7 +408,7 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
             </div>
 
             {/* Rounding Options */}
-            <div className="space-y-2 pt-4 border-t border-slate-800">
+            <div className="space-y-2 pt-4 border-t border-surface-border">
                 <ToggleSwitch
                     checked={isRoundingEnabled}
                     onChange={toggleRounding}
@@ -416,10 +416,10 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                     themeColor="indigo"
                 />
                 {isRoundingEnabled && (
-                    <div className="animate-in fade-in slide-in-from-top-2 pt-4 pl-4 border-l-2 border-indigo-500 ml-4">
+                    <div className="animate-in fade-in slide-in-from-top-2 pt-4 pl-4 border-l-2 border-brand-secondary ml-4">
                         <div className="grid grid-cols-3 gap-2">
                             {(['floor', 'ceil', 'round'] as const).map(mode => (
-                                <button key={mode} onClick={() => onChange({ rounding: mode })} className={`py-2 px-1 rounded-lg border text-xs font-bold ${column.rounding === mode ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
+                                <button key={mode} onClick={() => onChange({ rounding: mode })} className={`py-2 px-1 rounded-lg border text-xs font-bold ${column.rounding === mode ? 'bg-brand-secondary border-brand-secondary text-white' : 'bg-modal-bg-elevated border-surface-border text-txt-secondary'}`}>
                                     {mode === 'floor' ? t('col_round_floor') : mode === 'ceil' ? t('col_round_ceil') : t('col_round_round')}
                                 </button>
                             ))}

@@ -141,7 +141,7 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
 
     return (
         <div 
-            className="fixed inset-0 bg-black/90 sm:bg-modal-backdrop/95 backdrop-blur-md flex flex-col animate-in fade-in duration-200"
+            className="fixed inset-0 bg-app-bg-deep flex flex-col animate-in fade-in duration-200"
             style={{ zIndex }}
         >
             {initialIndex !== null && images.length > 0 && (

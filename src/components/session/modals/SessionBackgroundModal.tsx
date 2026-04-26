@@ -35,7 +35,7 @@ const SessionBackgroundModal: React.FC<SessionBackgroundModalProps> = ({
 
     return (
         <div 
-            className="fixed inset-0 bg-modal-backdrop/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center"
+            className="modal-backdrop flex flex-col items-center justify-center p-6 text-center"
             style={{ zIndex }}
             onClick={onClose}
         >
