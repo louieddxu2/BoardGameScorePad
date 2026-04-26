@@ -140,12 +140,12 @@ const CountdownTool: React.FC = () => {
 
     const btnBase = "flex flex-col items-center justify-center p-2 rounded-xl active:scale-95 transition-all text-xs font-bold border";
     const btnAdd = `${btnBase} bg-status-success/10 border-status-success/30 text-status-success hover:bg-status-success/20`;
-    const btnSub = `${btnBase} bg-[rgb(var(--c-input-header-bg))] border-[rgb(var(--c-input-border))] text-txt-muted hover:bg-surface-hover hover:text-txt-primary`;
+    const btnSub = `${btnBase} bg-input-header border-input-border text-txt-muted hover:bg-surface-hover hover:text-txt-primary`;
 
     return (
-        <div className="w-full bg-[rgb(var(--c-input-bg))] rounded-2xl border border-[rgb(var(--c-input-border))] p-3 flex flex-col gap-3 min-h-[160px]">
+        <div className="w-full bg-input-bg rounded-2xl border border-input-border/50 p-3 flex flex-col gap-3 min-h-[160px]">
             {/* Header */}
-            <div className="flex justify-between items-center pb-2 border-b border-[rgb(var(--c-input-border)/0.5)]">
+            <div className="flex justify-between items-center pb-2 border-b border-input-border/30">
                 <span className="text-[10px] font-bold text-txt-muted uppercase flex items-center gap-1">
                     <Hourglass size={12} /> {t('timer_label')}
                 </span>
@@ -156,8 +156,8 @@ const CountdownTool: React.FC = () => {
                         onClick={toggleWarning}
                         className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-colors border
                             ${warningThreshold > 0
-                                ? 'bg-amber-500/10 text-amber-600 border-amber-500/30'
-                                : 'bg-[rgb(var(--c-input-header-bg))] text-txt-muted border-transparent hover:bg-surface-hover'
+                                ? 'bg-status-warning/10 text-status-warning border-status-warning/30'
+                                : 'bg-input-header text-txt-muted border-transparent hover:bg-surface-hover'
                             }`}
                         title={t('timer_warning_hint')}
                     >
@@ -189,7 +189,7 @@ const CountdownTool: React.FC = () => {
                 <div className="flex-1 flex flex-col items-center justify-center gap-2">
                     <div className={`text-4xl font-black font-mono tracking-wider transition-colors 
                         ${isTimeUp ? 'text-status-danger animate-pulse' :
-                            isWarning ? 'text-amber-500 animate-pulse' :
+                            isWarning ? 'text-status-warning animate-pulse' :
                                 (isRunning ? 'text-status-success' : 'text-txt-primary')
                         }`}
                     >
@@ -201,8 +201,8 @@ const CountdownTool: React.FC = () => {
                         disabled={timeLeft === 0}
                         className={`w-full py-2 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition-all active:scale-95 shadow-sm
                             ${isRunning
-                                ? 'bg-amber-500/20 text-amber-600 border border-amber-500/30'
-                                : (timeLeft === 0 ? 'bg-[rgb(var(--c-input-header-bg))] text-txt-muted opacity-50 cursor-not-allowed' : 'bg-status-success text-white hover:opacity-90')
+                                ? 'bg-status-warning/20 text-status-warning border border-status-warning/30'
+                                : (timeLeft === 0 ? 'bg-input-header text-txt-muted opacity-50 cursor-not-allowed' : 'bg-status-success text-white hover:opacity-90')
                             }
                         `}
                     >

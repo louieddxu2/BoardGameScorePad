@@ -107,6 +107,8 @@ export default {
         },
         input: {
           border: 'rgb(var(--c-input-border) / <alpha-value>)',
+          bg: 'rgb(var(--c-input-bg) / <alpha-value>)',
+          header: 'rgb(var(--c-input-header-bg) / <alpha-value>)',
         },
         keypad: {
           bg: 'rgb(var(--c-keypad-btn-bg) / <alpha-value>)',
