@@ -40,25 +40,16 @@ export const useKeyboardStatus = (): KeyboardStatus => {
 
     const handler = () => {
       const vv = window.visualViewport!;
-      // 使用 documentElement.clientHeight 通常比 window.innerHeight 更穩定反映 Layout Viewport 高度
       const layoutHeight = document.documentElement.clientHeight;
       const visualHeight = vv.height;
       const visualTop = vv.offsetTop;
 
-      // 計算公式：
-      // 偏移量 = 版面總高度 - (可視高度 + 目前捲動位置)
-      // 這代表了「螢幕底部」被遮擋(或捲動出視線)的高度
       const raw = Math.max(0, layoutHeight - (visualHeight + visualTop));
-
-      // 設定一個小門檻 (5px) 避免因為瀏覽器網址列伸縮造成的微小抖動
       setOffset(Math.abs(raw) < 5 ? 0 : raw);
     };
 
-    // 監聽 resize (鍵盤彈出) 與 scroll (使用者移動畫面)
     window.visualViewport.addEventListener('resize', handler);
     window.visualViewport.addEventListener('scroll', handler);
-
-    // 初始化執行一次
     handler();
 
     return () => {
@@ -67,12 +58,25 @@ export const useKeyboardStatus = (): KeyboardStatus => {
     };
   }, []);
 
-  // innerHeight resize 監聯 (主要用於 Android)
+  // innerHeight resize 監聽 (主要用於 Android)
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    
+    // 桌面端偵測：如果有滑鼠指標且不支援觸控，則視為桌面端，不啟用 Resize 判定
+    const isProbablyDesktop = window.matchMedia('(pointer: fine)').matches && !('ontouchstart' in window);
+    if (isProbablyDesktop) return;
+
     const initialHeight = window.innerHeight;
-    const handleResize = () =>
-      setIsResizedByKeyboard(initialHeight - window.innerHeight > RESIZE_THRESHOLD);
+    const initialWidth = window.innerWidth;
+
+    const handleResize = () => {
+      // 只有當寬度沒變，但高度大幅縮減時，才判定為鍵盤彈出 (排除桌面縮放)
+      const heightDiff = initialHeight - window.innerHeight;
+      const widthDiff = Math.abs(initialWidth - window.innerWidth);
+      
+      setIsResizedByKeyboard(heightDiff > RESIZE_THRESHOLD && widthDiff < 20);
+    };
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);

@@ -257,22 +257,22 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
             <div>
                 <label className="block text-xs font-bold text-txt-muted uppercase mb-2">{t('input_calc_mode')}</label>
                 <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => setCalculationMode('standard')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${currentCalcMode === 'standard' ? 'bg-brand-primary/20 border-brand-primary text-brand-primary shadow-[0_0_15px_rgba(var(--c-brand-primary)/0.2)]' : 'bg-modal-bg-elevated border-surface-border text-txt-secondary hover:bg-surface-hover'}`}>
+                    <button onClick={() => setCalculationMode('standard')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all active:scale-95 ${currentCalcMode === 'standard' ? 'bg-brand-primary/10 border-brand-primary/50 text-brand-primary shadow-sm' : 'bg-modal-bg-elevated border-surface-border text-txt-secondary hover:bg-surface-hover hover:border-surface-border-hover'}`}>
                         <Calculator size={24} />
                         <div className="leading-tight text-center">
-                            <div className="text-xs font-bold uppercase">{t('col_mode_std')}</div>
-                            <div className="text-[10px] opacity-70">{t('col_mode_std_desc')}</div>
+                            <div className="text-xs font-black uppercase">{t('col_mode_std')}</div>
+                            <div className="text-[10px] font-bold opacity-60">{t('col_mode_std_desc')}</div>
                         </div>
                     </button>
-                    <button onClick={() => setCalculationMode('product')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${currentCalcMode === 'product' ? 'bg-brand-secondary/20 border-brand-secondary text-brand-secondary shadow-[0_0_15px_rgba(var(--c-brand-secondary)/0.2)]' : 'bg-modal-bg-elevated border-surface-border text-txt-secondary hover:bg-surface-hover'}`}>
+                    <button onClick={() => setCalculationMode('product')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all active:scale-95 ${currentCalcMode === 'product' ? 'bg-brand-secondary/10 border-brand-secondary/50 text-brand-secondary shadow-sm' : 'bg-modal-bg-elevated border-surface-border text-txt-secondary hover:bg-surface-hover hover:border-surface-border-hover'}`}>
                         <div className="flex items-center gap-0.5 h-[24px]">
                             <Square size={16} strokeWidth={2.5} />
                             <Multiply size={10} strokeWidth={3} />
                             <Square size={16} strokeWidth={2.5} />
                         </div>
                         <div className="leading-tight text-center">
-                            <div className="text-xs font-bold uppercase">{t('col_mode_prod')}</div>
-                            <div className="text-[10px] opacity-70"> {t('col_mode_prod_desc')}</div>
+                            <div className="text-xs font-black uppercase">{t('col_mode_prod')}</div>
+                            <div className="text-[10px] font-bold opacity-60"> {t('col_mode_prod_desc')}</div>
                         </div>
                     </button>
                 </div>
@@ -291,10 +291,10 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                             }}
                             onFocus={e => e.target.select()}
                             placeholder={t('col_unit')}
-                            className="w-full bg-modal-bg-recessed border border-surface-border rounded-xl p-3 text-txt-primary font-bold focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 outline-none transition-all placeholder-txt-muted"
+                            className="w-full bg-modal-bg border border-surface-border rounded-xl p-3 text-txt-primary font-black focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all placeholder-txt-muted/50 shadow-sm"
                         />
                     </div>
-                    <div className="bg-modal-bg border border-surface-border p-4 rounded-xl flex items-center justify-center gap-3">
+                    <div className="bg-modal-bg border border-surface-border/50 p-4 rounded-xl flex items-center justify-center gap-3 shadow-inner">
                         <span className="text-txt-secondary text-sm">{t('col_input_val')}</span>
                         <span className="text-txt-muted">×</span>
                         <input
@@ -303,7 +303,7 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                             value={column.constants?.c1 ?? 1}
                             onChange={e => updateMultiplier(e.target.value)}
                             onFocus={e => e.target.select()}
-                            className="w-20 bg-modal-bg-recessed border border-brand-primary/40 text-brand-primary text-center font-black p-2 rounded-lg outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all"
+                            className="w-20 bg-modal-bg border-2 border-brand-primary text-brand-primary text-center font-black p-2 rounded-lg outline-none shadow-sm shadow-brand-primary/10 focus:ring-4 focus:ring-brand-primary/10 transition-all"
                         />
                         {isSumPartsEnabled ? (
                             <>
@@ -331,7 +331,7 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                                         onChange({ subUnits: [e.target.value, column.subUnits?.[1] || ''] });
                                     }}
                                     onFocus={e => e.target.select()}
-                                    className="w-full bg-modal-bg-elevated border border-surface-border rounded p-2 text-txt-primary text-center focus:border-brand-secondary outline-none placeholder-txt-muted"
+                                    className="w-full bg-modal-bg border border-surface-border rounded-xl p-3 text-txt-primary font-black text-center focus:border-brand-secondary focus:ring-4 focus:ring-brand-secondary/10 outline-none transition-all placeholder:text-txt-muted/50 shadow-sm"
                                 />
                             </div>
 
@@ -348,7 +348,7 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                                         onChange({ subUnits: [column.subUnits?.[0] || '', e.target.value] });
                                     }}
                                     onFocus={e => e.target.select()}
-                                    className="w-full bg-modal-bg-elevated border border-surface-border rounded p-2 text-txt-primary text-center focus:border-brand-secondary outline-none placeholder-txt-muted"
+                                    className="w-full bg-modal-bg-recessed border border-surface-border rounded-xl p-3 text-txt-primary font-black text-center focus:border-brand-secondary focus:ring-4 focus:ring-brand-secondary/10 outline-none transition-all placeholder:text-txt-muted/50"
                                 />
                             </div>
 
@@ -362,7 +362,7 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                                             value={column.unit || ''}
                                             onChange={e => onChange({ unit: e.target.value })}
                                             onFocus={e => e.target.select()}
-                                            className="w-full bg-modal-bg-elevated border border-surface-border rounded p-2 text-txt-primary text-center focus:border-brand-secondary outline-none placeholder-txt-muted"
+                                            className="w-full bg-modal-bg-recessed border border-surface-border rounded-xl p-3 text-txt-primary font-black text-center focus:border-brand-secondary focus:ring-4 focus:ring-brand-secondary/10 outline-none transition-all placeholder:text-txt-muted/50"
                                         />
                                     </div>
                                 </>

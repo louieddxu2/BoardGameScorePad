@@ -382,7 +382,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
             )}
 
             {/* Header: Redesigned for better airiness */}
-            <header className="flex items-center justify-between px-5 py-6 bg-app-bg-deep flex-none z-20">
+            <header className="flex items-center justify-between px-5 py-6 bg-modal-bg flex-none z-20">
                 <div className="flex items-center gap-3">
                     <div className="bg-modal-bg-elevated p-2.5 rounded-xl shadow-sm text-brand-primary border border-surface-border"><Settings size={22} /></div>
                     <div><h2 className="text-txt-primary font-black text-xl leading-tight">{t('col_edit_title')}</h2><p className="text-[10px] font-bold text-txt-muted uppercase tracking-wider">{t('col_edit_subtitle')}</p></div>
@@ -406,11 +406,11 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                                 value={editedCol.name}
                                 onChange={e => setEditedCol({ ...editedCol, name: e.target.value })}
                                 onFocus={e => e.target.select()}
-                                className="flex-[2] bg-modal-bg-recessed border border-surface-border rounded-xl p-3 text-txt-primary focus:border-brand-primary outline-none resize-none overflow-hidden text-base font-black min-h-[50px] transition-all"
+                                className="flex-[2] bg-modal-bg border border-surface-border rounded-xl p-3 text-txt-primary focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 outline-none resize-none overflow-hidden text-base font-black min-h-[50px] transition-all shadow-sm"
                             />
                             <button
                                 onClick={() => setShowAdvanced(!showAdvanced)}
-                                className={`flex-1 min-h-[50px] flex flex-col items-center justify-center gap-1 rounded-xl border transition-all active:scale-95 ${showAdvanced ? 'bg-brand-primary/10 border-brand-primary/40 text-brand-primary' : 'bg-modal-bg-recessed border-surface-border text-txt-muted hover:text-txt-primary'}`}
+                                className={`flex-1 min-h-[50px] flex flex-col items-center justify-center gap-1 rounded-xl border transition-all active:scale-95 ${showAdvanced ? 'bg-brand-primary/10 border-brand-primary/40 text-brand-primary' : 'bg-modal-bg border-surface-border text-txt-muted hover:text-txt-primary shadow-sm'}`}
                             >
                                 <Settings2 size={18} />
                                 <span className="text-[10px] font-black uppercase tracking-tight">{t('col_advanced')}</span>
