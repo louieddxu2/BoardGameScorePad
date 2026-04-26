@@ -139,7 +139,7 @@ const StructurePhase: React.FC = () => {
               >
                 {/* Drop Highlight Indicator */}
                 {isHighlighted && (
-                  <div className="absolute inset-0 bg-emerald-500/30 border-2 border-dashed border-emerald-400 pointer-events-none animate-in fade-in duration-100" />
+                  <div className="absolute inset-0 bg-brand-primary/30 border-2 border-dashed border-brand-primary/50 pointer-events-none animate-in fade-in duration-100" />
                 )}
 
                 {/* CONDITIONAL RENDER: Items vs Empty state */}
@@ -163,13 +163,13 @@ const StructurePhase: React.FC = () => {
                         return (
                           <div
                             key={colId}
-                            className="relative inline-flex items-center pr-5 pl-1.5 py-0.5 bg-slate-100/40 backdrop-blur-sm rounded border border-slate-200/50 shadow-lg group/item"
+                            className="relative inline-flex items-center pr-5 pl-1.5 py-0.5 bg-surface-bg/60 backdrop-blur-sm rounded border border-surface-border shadow-lg group/item"
                             style={{ ...inverseScaleStyle, transformOrigin: 'center', fontSize: '10px' }}
                           >
-                            <span className="font-bold text-slate-900 truncate" style={{ textShadow: '0 1px 1px rgba(var(--c-white) / 0.5)' }}>{sourceCol.name}</span>
+                            <span className="font-bold text-txt-primary truncate" style={{ textShadow: '0 1px 1px rgba(var(--c-white) / 0.5)' }}>{sourceCol.name}</span>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleRemoveItemFromRow(i, colId); }}
-                              className="absolute top-1/2 right-0.5 -translate-y-1/2 w-4 h-4 rounded-full bg-slate-700/60 hover:bg-red-600/80 text-slate-200 hover:text-white flex items-center justify-center transition-colors pointer-events-auto"
+                              className="absolute top-1/2 right-0.5 -translate-y-1/2 w-4 h-4 rounded-full bg-surface-hover/80 hover:bg-status-danger text-txt-primary hover:text-white flex items-center justify-center transition-colors pointer-events-auto"
                             >
                               <X size={8} strokeWidth={3} />
                             </button>
@@ -189,10 +189,10 @@ const StructurePhase: React.FC = () => {
                   >
                     <div className="w-full h-full flex items-center justify-center">
                       <div
-                        className="inline-flex items-center px-2 py-1 bg-[rgba(var(--c-slate-800)/0.5)] backdrop-blur-sm rounded-md border border-dashed border-slate-500/50"
+                        className="inline-flex items-center px-2 py-1 bg-surface-bg/50 backdrop-blur-sm rounded-md border border-dashed border-surface-border/50"
                         style={{ ...inverseScaleStyle, transformOrigin: 'center', fontSize: '10px' }}
                       >
-                        <span className="font-bold text-slate-400 italic">{t('mapper_empty_row')}</span>
+                        <span className="font-bold text-txt-muted italic">{t('mapper_empty_row')}</span>
                       </div>
                     </div>
                   </div>
@@ -205,7 +205,7 @@ const StructurePhase: React.FC = () => {
                       e.stopPropagation();
                       handleClearRow(i);
                     }}
-                    className="absolute right-[100%] mr-2 top-1/2 z-10 p-1.5 bg-slate-200/30 hover:bg-red-500/50 backdrop-blur-sm border border-white/20 text-red-100 hover:text-white rounded-full transition-all opacity-50 group-hover:opacity-100"
+                    className="absolute right-[100%] mr-2 top-1/2 z-10 p-1.5 bg-surface-bg/30 hover:bg-status-danger/50 backdrop-blur-sm border border-white/20 text-txt-secondary hover:text-white rounded-full transition-all opacity-50 group-hover:opacity-100"
                     style={{
                       transform: `translateY(-50%) scale(${1 / transform.scale})`,
                       transformOrigin: 'center'
