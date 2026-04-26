@@ -155,21 +155,21 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
         >
             {/* Fixed Height Modal */}
             <div
-                className="bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl border border-slate-700 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 h-[85vh]"
+                className="bg-modal-bg w-full max-w-lg rounded-2xl shadow-2xl border border-modal-border flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 h-[85vh]"
                 onClick={(e) => e.stopPropagation()}
             >
 
-                <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900 shrink-0">
-                    <h3 className="text-white font-bold flex items-center gap-2">
-                        <MousePointerClick size={20} className="text-emerald-500" />
+                <div className="p-4 border-b border-surface-border flex justify-between items-center bg-modal-bg shrink-0">
+                    <h3 className="text-txt-title font-bold flex items-center gap-2">
+                        <MousePointerClick size={20} className="text-brand-primary" />
                         {t('layout_title')}
                     </h3>
-                    <button onClick={onCancel} className="p-2 text-slate-400 hover:text-white rounded-lg transition-colors"><X size={24} /></button>
+                    <button onClick={onCancel} className="p-2 text-txt-muted hover:text-txt-title rounded-lg transition-colors"><X size={24} /></button>
                 </div>
 
-                <div className="flex-1 min-h-0 flex flex-col bg-slate-800/50 relative">
+                <div className="flex-1 min-h-0 flex flex-col bg-modal-bg-elevated/50 relative">
                     <div className="flex-none p-4 pb-0 text-center z-10">
-                        <p className="text-sm text-slate-400">
+                        <p className="text-sm text-txt-muted">
                             {t('layout_desc')}<br />
                             <span className="text-xs opacity-70">{t('layout_hint')}</span>
                         </p>
@@ -194,7 +194,7 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
                 */}
                         <div
                             ref={containerRef}
-                            className="relative shadow-inner border-4 border-slate-700 rounded-lg overflow-hidden"
+                            className="relative shadow-inner border-4 border-modal-border rounded-lg overflow-hidden"
                             style={{
                                 width: 'fit-content',
                                 height: 'fit-content',
@@ -225,14 +225,14 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
                                     <div className="absolute inset-0 opacity-10 pointer-events-none"
                                         style={{ backgroundImage: 'linear-gradient(rgba(var(--c-black)/0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--c-black)/0.5) 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
                                     </div>
-                                    <span className="text-slate-300 opacity-50 font-bold text-4xl">123</span>
+                                    <span className="text-txt-tertiary opacity-50 font-bold text-4xl">123</span>
                                 </div>
                             )}
 
                             {/* Overlay: Selection Box */}
                             {rect ? (
                                 <div
-                                    className="absolute bg-emerald-500/20 border-2 border-emerald-600 flex items-center justify-center shadow-[0_0_10px_rgba(var(--c-emerald-500)/0.5)] z-20"
+                                    className="absolute bg-brand-primary/20 border-2 border-brand-primary-deep flex items-center justify-center shadow-[0_0_10px_rgba(var(--c-brand-primary)/0.5)] z-20"
                                     style={{
                                         left: `${rect.x}%`,
                                         top: `${rect.y}%`,
@@ -242,7 +242,7 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
                                     } as React.CSSProperties}
                                 >
                                     <span
-                                        className="text-emerald-500 font-bold select-none drop-shadow-md"
+                                        className="text-brand-primary font-bold select-none drop-shadow-md"
                                         style={{
                                             fontSize: dynamicFontSize, // [Dynamic Layout] Apply calculated size
                                             textShadow: '0 1px 2px rgba(var(--c-black) / 0.8)'
@@ -250,7 +250,7 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
                                     >
                                         {previewText}
                                     </span>
-                                    <div className="absolute -bottom-6 left-0 bg-slate-800 text-white text-[10px] px-1 rounded whitespace-nowrap z-10 pointer-events-none">
+                                    <div className="absolute -bottom-6 left-0 bg-modal-bg-elevated text-txt-primary text-[10px] px-1 rounded whitespace-nowrap z-10 pointer-events-none">
                                         {Math.round(rect.width)}% x {Math.round(rect.height)}%
                                     </div>
                                 </div>
@@ -258,20 +258,20 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
                                 // Overlay: Full Coverage Hint
                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                                     {/* Only show "123" here if image exists, to show context */}
-                                    {bgUrl && <span className="font-bold text-4xl select-none text-slate-900/50">123</span>}
+                                    {bgUrl && <span className="font-bold text-4xl select-none text-txt-title/30">123</span>}
                                 </div>
                             )}
                         </div>
                     </div>
                 </div>
 
-                <div className="p-4 bg-slate-900 border-t border-slate-800 flex justify-between items-center shrink-0">
-                    <button onClick={handleReset} className="flex items-center gap-2 px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors text-sm font-medium">
+                <div className="p-4 bg-modal-bg border-t border-surface-border flex justify-between items-center shrink-0">
+                    <button onClick={handleReset} className="flex items-center gap-2 px-4 py-2 rounded-lg text-txt-muted hover:text-txt-title hover:bg-modal-bg-elevated transition-colors text-sm font-medium">
                         <RotateCcw size={16} /> {t('layout_reset')}
                     </button>
                     <div className="flex gap-3">
-                        <button onClick={onCancel} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition-colors font-bold">{t('layout_cancel')}</button>
-                        <button onClick={() => onSave(rect || undefined)} className="px-6 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/20 flex items-center gap-2">
+                        <button onClick={onCancel} className="px-4 py-2 rounded-lg text-txt-tertiary hover:bg-modal-bg-elevated transition-colors font-bold">{t('layout_cancel')}</button>
+                        <button onClick={() => onSave(rect || undefined)} className="px-6 py-2 rounded-lg bg-brand-primary-deep hover:bg-brand-primary text-white font-bold shadow-lg shadow-brand-primary/20 flex items-center gap-2">
                             {t('layout_save')}
                         </button>
                     </div>

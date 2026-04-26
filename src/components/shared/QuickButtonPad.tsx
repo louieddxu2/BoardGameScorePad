@@ -25,7 +25,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
 
     if (actions.length === 0) {
         return (
-            <div className="h-full flex items-center justify-center text-slate-500 text-sm italic">
+            <div className="h-full flex items-center justify-center text-txt-muted text-sm italic">
                 {t('quick_button_empty')}
             </div>
         );
@@ -83,7 +83,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
                         >
                             {/* Selection Indicator Icon */}
                             {isSelected && (
-                                <div className="absolute -top-1.5 -right-1.5 bg-[rgb(var(--c-white))] text-emerald-600 rounded-full p-0.5 shadow-md animate-in zoom-in duration-200 z-20">
+                                <div className="absolute -top-1.5 -right-1.5 bg-white text-status-success rounded-full p-0.5 shadow-md animate-in zoom-in duration-200 z-20">
                                     <Check strokeWidth={4} size={12} />
                                 </div>
                             )}

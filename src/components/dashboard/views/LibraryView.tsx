@@ -214,7 +214,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                         return (
                             <div key={tData.id} className="relative">
                                 {isNew && (
-                                    <div className="absolute -top-1 -right-1 z-10 w-3 h-3 bg-red-500 rounded-full border-2 border-app-bg shadow-md animate-bounce" />
+                                    <div className="absolute -top-1 -right-1 z-10 w-3 h-3 bg-status-danger rounded-full border-2 border-app-bg shadow-md animate-bounce" />
                                 )}
                                 <GameCard
                                     template={tData}

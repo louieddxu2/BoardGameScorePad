@@ -37,14 +37,14 @@ else {
     Write-Host "[2/3] OK" -ForegroundColor Green
 }
 
-# Step 3: Unit tests
+# Step 3: Full Test Suite (vitest: Unit + UI + Tokens)
 Write-Host ""
-Write-Host "[3/3] Running unit tests (vitest)..." -ForegroundColor White
-$testOutput = cmd /c "npx vitest run --no-color --exclude src/utils/ui-consistency.test.ts 2>&1" | Out-String
+Write-Host "[3/3] Running full test suite (vitest)..." -ForegroundColor White
+$testOutput = cmd /c "npx vitest run --no-color 2>&1" | Out-String
 $testExitCode = $LASTEXITCODE
 
 if ($testExitCode -ne 0) {
-    Write-Host "Unit tests failed:" -ForegroundColor Yellow
+    Write-Host "Tests failed:" -ForegroundColor Yellow
     Write-Host $testOutput -ForegroundColor Gray
     Write-Host "[3/3] FAIL" -ForegroundColor Red
     $allPassed = $false

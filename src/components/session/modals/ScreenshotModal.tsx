@@ -377,7 +377,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
     return (
         <div
-            className="fixed inset-0 bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+            className="modal-backdrop flex items-center justify-center p-4 animate-in fade-in duration-200"
             style={{ zIndex }}
             onClick={onClose}
         >
@@ -411,49 +411,49 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
             {/* Main Modal Container */}
             <div
-                className="bg-slate-900 w-[95vw] h-[90vh] max-w-6xl rounded-2xl shadow-2xl border border-slate-800 flex flex-col relative"
+                className="bg-modal-bg w-[95vw] h-[90vh] max-w-6xl rounded-2xl shadow-2xl border border-modal-border flex flex-col relative"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex-none bg-slate-800 px-4 py-3 rounded-t-2xl border-b border-slate-700 flex items-center justify-between z-10">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                        <Share size={20} className="text-emerald-500" /> {t('photo_modal_title')}
+                <div className="flex-none bg-modal-bg-elevated px-4 py-3 rounded-t-2xl border-b border-surface-border flex items-center justify-between z-10">
+                    <h3 className="text-lg font-bold text-txt-title flex items-center gap-2">
+                        <Share size={20} className="text-brand-primary" /> {t('photo_modal_title')}
                     </h3>
 
-                    <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700">
+                    <div className="flex bg-modal-bg-recessed rounded-lg p-1 border border-surface-border">
                         <button
                             onClick={() => setActiveMode('full')}
                             disabled={showLoading}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${activeMode === 'full' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${activeMode === 'full' ? 'bg-brand-primary-deep text-white shadow-sm' : 'text-txt-muted hover:text-txt-primary'}`}
                         >
                             <ImageIcon size={14} /> {t('photo_mode_full')}
                         </button>
                         <button
                             onClick={() => setActiveMode('simple')}
                             disabled={showLoading}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${activeMode === 'simple' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${activeMode === 'simple' ? 'bg-status-info text-white shadow-sm' : 'text-txt-muted hover:text-txt-primary'}`}
                         >
                             <LayoutPanelLeft size={14} /> {t('photo_mode_simple')}
                         </button>
                     </div>
 
-                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-white bg-slate-700/50 hover:bg-slate-600 rounded-full transition-colors"><X size={20} /></button>
+                    <button onClick={onClose} className="p-2 text-txt-secondary hover:text-txt-title bg-surface-hover/50 hover:bg-surface-border-hover rounded-full transition-colors"><X size={20} /></button>
                 </div>
 
                 {/* Preview Area */}
-                <div className="flex-1 min-h-0 bg-slate-950 relative flex flex-col z-0 overflow-hidden">
+                <div className="flex-1 min-h-0 bg-app-bg-deep relative flex flex-col z-0 overflow-hidden">
                     <div
                         ref={containerRef}
-                        className="flex-1 w-full h-full relative overflow-hidden bg-[radial-gradient(rgba(var(--c-slate-800)/1)_1px,transparent_1px)] [background-size:16px_16px] touch-none cursor-grab active:cursor-grabbing"
+                        className="flex-1 w-full h-full relative overflow-hidden bg-[radial-gradient(rgba(var(--c-surface-border)/0.5)_1px,transparent_1px)] [background-size:16px_16px] touch-none cursor-grab active:cursor-grabbing"
                         onMouseDown={handlePointerDown}
                         onTouchStart={handlePointerDown}
                         onWheel={handleWheel}
                         onDoubleClick={() => fitToScreen()}
                     >
                         {showLoading && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-emerald-500 animate-in fade-in zoom-in duration-300 pointer-events-none">
+                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-brand-primary animate-in fade-in zoom-in duration-300 pointer-events-none">
                                 <div className="relative">
-                                    <div className="absolute inset-0 bg-[rgba(var(--c-emerald-500)/0.2)] blur-xl rounded-full animate-pulse"></div>
+                                    <div className="absolute inset-0 bg-brand-primary/20 blur-xl rounded-full animate-pulse"></div>
                                     <Loader2 size={48} className="animate-spin relative z-10" />
                                 </div>
                                 <span className="text-sm font-bold animate-pulse tracking-wider">{t('photo_msg_generating')}</span>
@@ -483,25 +483,25 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
                         {showError && (
                             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none">
-                                <span className="text-red-400 text-sm border border-red-900/50 bg-red-900/10 px-4 py-2 rounded-lg">{t('photo_msg_preview_fail')}</span>
-                                <button onClick={() => { setSnapshots(p => ({ ...p, [activeMode]: { url: null, blob: null } })); setActiveMode(m => m); }} className="text-xs text-slate-500 underline pointer-events-auto">{tCommon('retry')}</button>
+                                <span className="text-status-danger text-sm border border-status-danger/30 bg-status-danger/10 px-4 py-2 rounded-lg">{t('photo_msg_preview_fail')}</span>
+                                <button onClick={() => { setSnapshots(p => ({ ...p, [activeMode]: { url: null, blob: null } })); setActiveMode(m => m); }} className="text-xs text-txt-muted underline pointer-events-auto">{tCommon('retry')}</button>
                             </div>
                         )}
                     </div>
                 </div>
 
                 {/* Actions Footer */}
-                <div className="flex-none p-4 bg-slate-800 rounded-b-2xl border-t border-slate-700 flex justify-center gap-4 z-10">
-                    <button onClick={handleCopy} disabled={showLoading} className="flex-1 max-w-[200px] flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                        <Copy size={18} className="text-emerald-400" />
+                <div className="flex-none p-4 bg-modal-bg-elevated rounded-b-2xl border-t border-surface-border flex justify-center gap-4 z-10">
+                    <button onClick={handleCopy} disabled={showLoading} className="flex-1 max-w-[200px] flex items-center justify-center gap-2 py-3 rounded-xl bg-surface-border hover:bg-surface-border-hover text-txt-title active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                        <Copy size={18} className="text-brand-primary" />
                         <span className="font-bold">{tCommon('copy')}</span>
                     </button>
-                    <button onClick={handleDownload} disabled={showLoading} className="flex-1 max-w-[200px] flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                        <Download size={18} className="text-sky-400" />
+                    <button onClick={handleDownload} disabled={showLoading} className="flex-1 max-w-[200px] flex items-center justify-center gap-2 py-3 rounded-xl bg-surface-border hover:bg-surface-border-hover text-txt-title active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                        <Download size={18} className="text-status-info" />
                         <span className="font-bold">{tCommon('download')}</span>
                     </button>
-                    <button onClick={handleShare} disabled={showLoading} className="flex-1 max-w-[200px] flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                        <Share size={18} className="text-indigo-400" />
+                    <button onClick={handleShare} disabled={showLoading} className="flex-1 max-w-[200px] flex items-center justify-center gap-2 py-3 rounded-xl bg-surface-border hover:bg-surface-border-hover text-txt-title active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                        <Share size={18} className="text-brand-secondary" />
                         <span className="font-bold">{tCommon('share')}</span>
                     </button>
                 </div>

@@ -34,20 +34,20 @@ const AutoScorePanel: React.FC<AutoScorePanelProps> = ({ column, player, allColu
     const finalScore = calculateColumnScore(column, [], context);
 
     return (
-        <div className="flex flex-col h-full w-full bg-slate-900 text-slate-300 select-text p-[6px]">
+        <div className="flex flex-col h-full w-full bg-surface-recessed text-txt-primary select-text p-[6px]">
             {/* Header Info - Use a more robust grid layout: auto for ends, 1fr for the flexible middle */}
-            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-[8px] pb-[6px] border-b border-slate-800 mb-[6px] shrink-0">
+            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-[8px] pb-[6px] border-b border-surface-border mb-[6px] shrink-0">
 
                 {/* Icon - Sizes to its content */}
-                <div className="p-[8px] bg-indigo-900/30 text-indigo-400 rounded-[8px] shrink-0 flex items-center justify-center">
+                <div className="p-[8px] bg-brand-secondary/20 text-brand-secondary rounded-[8px] shrink-0 flex items-center justify-center">
                     <Calculator size="1.125em" />
                 </div>
 
                 {/* Formula - Fills remaining space */}
                 <div className="min-w-0">
-                    <div className="text-[10px] uppercase font-bold text-slate-500">{t('auto_panel_title')}</div>
-                    <div className="overflow-x-auto no-scrollbar bg-black/20 rounded-[4px] py-[4px] border border-slate-700">
-                        <div className="text-sm font-mono text-white font-bold whitespace-nowrap tracking-wide px-[8px]">
+                    <div className="text-[10px] uppercase font-bold text-txt-muted">{t('auto_panel_title')}</div>
+                    <div className="overflow-x-auto no-scrollbar bg-black/20 rounded-[4px] py-[4px] border border-surface-border">
+                        <div className="text-sm font-mono text-txt-title font-bold whitespace-nowrap tracking-wide px-[8px]">
                             {column.formula}
                         </div>
                     </div>
@@ -55,20 +55,20 @@ const AutoScorePanel: React.FC<AutoScorePanelProps> = ({ column, player, allColu
 
                 {/* Result - Sizes to its content */}
                 <div className="text-right shrink-0">
-                    <div className="text-[10px] uppercase font-bold text-slate-500">{t('auto_panel_result')}</div>
-                    <div className="text-xl font-bold text-emerald-400">{formatScore(finalScore)}</div>
+                    <div className="text-[10px] uppercase font-bold text-txt-muted">{t('auto_panel_result')}</div>
+                    <div className="text-xl font-bold text-brand-primary">{formatScore(finalScore)}</div>
                 </div>
             </div>
 
             {/* Variables List */}
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-[6px]">
                 {variables.length === 0 ? (
-                    <div className="text-center py-[32px] text-slate-500 text-xs italic">
+                    <div className="text-center py-[32px] text-txt-muted text-xs italic">
                         {t('auto_panel_no_vars')}
                     </div>
                 ) : (
                     <div className="space-y-[4px]">
-                        <div className="text-[10px] uppercase font-bold text-slate-500 pl-[4px] mb-[4px] flex items-center gap-[4px]">
+                        <div className="text-[10px] uppercase font-bold text-txt-muted pl-[4px] mb-[4px] flex items-center gap-[4px]">
                             <Variable size="1em" /> {t('auto_panel_vars_detail')}
                         </div>
                         {variables.map(([varName, targetRef]) => {
@@ -126,23 +126,23 @@ const AutoScorePanel: React.FC<AutoScorePanelProps> = ({ column, player, allColu
                             }
 
                             return (
-                                <div key={varName} className="flex items-center gap-[12px] bg-slate-800/50 p-[8px] rounded-[8px] border border-slate-700/50">
-                                    <div className="w-[32px] h-[32px] flex items-center justify-center bg-slate-800 rounded-[4px] font-mono font-bold text-indigo-300 text-sm border border-slate-700">
+                                <div key={varName} className="flex items-center gap-[12px] bg-surface-recessed/50 p-[8px] rounded-[8px] border border-surface-border">
+                                    <div className="w-[32px] h-[32px] flex items-center justify-center bg-surface-recessed rounded-[4px] font-mono font-bold text-brand-secondary text-sm border border-surface-border">
                                         {varName}
                                     </div>
                                     <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                        <span className={`text-xs truncate ${isPlayerCount ? 'text-indigo-300 font-bold' : 'text-slate-400'}`}>
+                                        <span className={`text-xs truncate ${isPlayerCount ? 'text-brand-secondary font-bold' : 'text-txt-secondary'}`}>
                                             {isPlayerCount ? t('auto_panel_player_count') : targetRef.name}
                                         </span>
-                                        {notFound && <span className="text-[10px] text-red-400">{t('auto_panel_not_found')}</span>}
+                                        {notFound && <span className="text-[10px] text-status-danger">{t('auto_panel_not_found')}</span>}
                                         {targetRef.mode && targetRef.mode !== 'value' && !isPlayerCount && (
-                                            <span className="text-[9px] text-amber-500/70">
+                                            <span className="text-[9px] text-status-warning/70">
                                                 ({targetRef.mode === 'rank_score' ? t('auto_panel_mode_rank_score') : targetRef.mode === 'rank_player' ? t('auto_panel_mode_rank_player') : targetRef.mode === 'sum_all' ? t('auto_panel_mode_sum_all') : t('auto_panel_mode_tie_count')})
                                             </span>
                                         )}
                                     </div>
-                                    <ArrowRight size="0.875em" className="text-slate-600 shrink-0" />
-                                    <div className="bg-slate-900 px-[12px] py-[4px] rounded-[4px] text-white font-mono font-bold text-sm w-[48px] text-center border border-slate-700">
+                                    <ArrowRight size="0.875em" className="text-txt-muted shrink-0" />
+                                    <div className="bg-surface-recessed px-[12px] py-[4px] rounded-[4px] text-txt-primary font-mono font-bold text-sm w-[48px] text-center border border-surface-border">
                                         {formatScore(value)}
                                     </div>
                                 </div>
@@ -153,7 +153,7 @@ const AutoScorePanel: React.FC<AutoScorePanelProps> = ({ column, player, allColu
             </div>
 
             {/* Footer Hint */}
-            <div className="shrink-0 pt-[6px] border-t border-slate-800 text-[10px] text-slate-500 text-center flex items-center justify-center gap-[4px]">
+            <div className="shrink-0 pt-[6px] border-t border-surface-border text-[10px] text-txt-muted text-center flex items-center justify-center gap-[4px]">
                 <Sigma size="1em" />
                 {t('auto_panel_footer_hint')}
             </div>

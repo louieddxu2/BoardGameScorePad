@@ -47,8 +47,8 @@ const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
       <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${width} ${height}`} style={{ zIndex: 10 }}>
         <polygon
           points={polygonPoints}
-          fill="rgba(var(--c-sky-500) / 0.2)"
-          stroke="rgb(var(--c-sky-400))"
+          fill="rgba(var(--c-status-info) / 0.2)"
+          stroke="rgb(var(--c-status-info))"
           strokeWidth={strokeWidth}
           vectorEffect="non-scaling-stroke"
         />
@@ -62,7 +62,7 @@ const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
               key={`guide-${idx}`}
               x1={p.x - dx} y1={p.y - dy}
               x2={p.x + dx} y2={p.y + dy}
-              stroke={snapType === 'line' ? 'rgb(var(--c-yellow-400))' : 'rgb(var(--c-emerald-400))'}
+              stroke={snapType === 'line' ? 'rgb(var(--c-status-warning))' : 'rgb(var(--c-brand-primary))'}
               strokeWidth={strokeWidth}
               strokeDasharray={snapType === 'line' ? '' : '8,8'}
               opacity="0.8"
@@ -81,8 +81,8 @@ const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
             transform: `scale(${ghostScale})`
           }}
         >
-          <div className="w-full h-full border-2 border-dashed border-sky-400 rounded-full"></div>
-          <div className="w-1.5 h-1.5 bg-sky-400 rounded-full absolute"></div>
+          <div className="w-full h-full border-2 border-dashed border-status-info rounded-full"></div>
+          <div className="w-1.5 h-1.5 bg-status-info rounded-full absolute"></div>
         </div>
       )}
 
@@ -98,15 +98,15 @@ const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
             transform: `scale(${ghostScale})`
           }}
         >
-          <div className={`w-5 h-5 rounded-full border-[3px] shadow-[0_0_2px_rgba(var(--c-black)/0.8)] transition-transform ${activePointIdx === i ? 'border-sky-300 scale-125' : 'border-sky-500'}`}></div>
+          <div className={`w-5 h-5 rounded-full border-[3px] shadow-[0_0_2px_rgba(var(--c-black)/0.8)] transition-transform ${activePointIdx === i ? 'border-status-info scale-125' : 'border-status-info/80'}`}></div>
           {activePointIdx === i && isSnapping && (
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur text-white text-[10px] px-2 py-1 rounded border border-slate-700 whitespace-nowrap pointer-events-none flex items-center gap-1 shadow-lg">
+            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-modal-bg/80 backdrop-blur text-white text-[10px] px-2 py-1 rounded border border-surface-border whitespace-nowrap pointer-events-none flex items-center gap-1 shadow-lg">
               {geometricGhost && Math.sqrt(Math.pow(p.x - geometricGhost.x, 2) + Math.pow(p.y - geometricGhost.y, 2)) < (40 / scale) ? (
-                <><BoxSelect size={10} className="text-sky-400" /> {t('scan_snap_geo')}</>
+                <><BoxSelect size={10} className="text-status-info" /> {t('scan_snap_geo')}</>
               ) : snapType === 'line' ? (
-                <><ScanLine size={10} className="text-yellow-400" /> {t('scan_snap_line')}</>
+                <><ScanLine size={10} className="text-status-warning" /> {t('scan_snap_line')}</>
               ) : (
-                <><Magnet size={10} className="text-slate-400" /> {t('scan_snap_free')}</>
+                <><Magnet size={10} className="text-txt-secondary" /> {t('scan_snap_free')}</>
               )}
             </div>
           )}

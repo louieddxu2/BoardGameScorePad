@@ -41,7 +41,7 @@ const ScreenshotHeaderCell: React.FC<{ col: any; baseImage?: string; children?: 
         <div className={props.className} style={style}>
             <div className="flex flex-col items-center justify-center w-full h-full">
                 <ContrastText
-                    className="text-sm font-bold text-slate-300 w-full leading-tight hyphenate"
+                    className="text-sm font-bold text-txt-secondary w-full leading-tight hyphenate"
                     color={props.col.color || 'inherit'}
                     style={{
                         whiteSpace: 'pre-wrap',
@@ -52,13 +52,13 @@ const ScreenshotHeaderCell: React.FC<{ col: any; baseImage?: string; children?: 
                     {injectSoftHyphens(props.col.name)}
                 </ContrastText>
                 {props.col.isScoring && (
-                    <div className="text-xs text-slate-500 mt-1 flex flex-col items-center justify-center w-full leading-none">
+                    <div className="text-xs text-txt-muted mt-1 flex flex-col items-center justify-center w-full leading-none">
                         {(() => {
-                            if (props.col.formula.includes('a1×a2') && props.col.subUnits) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="">{props.col.subUnits[0]}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="">{props.col.subUnits[1]}</span></div>;
+                            if (props.col.formula.includes('a1×a2') && props.col.subUnits) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="">{props.col.subUnits[0]}</span><span className="text-txt-muted text-[11px] mx-0.5">×</span><span className="">{props.col.subUnits[1]}</span></div>;
                             if (props.col.inputType === 'clicker' && !props.col.formula.includes('+next')) return <div className="flex items-center gap-1">{props.col.unit && <span className="text-xs">{props.col.unit}</span>}</div>;
 
                             // Check for any formula involving multiplication by c1 (e.g. a1xc1, (a1+next)xc1)
-                            if (props.col.formula?.includes('×c1')) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="">{props.col.unit}</span><span className="text-slate-600 text-[11px] mx-0.5">×</span><span className="text-emerald-500 font-bold font-mono">{props.col.constants?.c1 ?? 1}</span></div>;
+                            if (props.col.formula?.includes('×c1')) return <div className="flex items-center justify-center gap-0.5 flex-wrap w-full"><span className="">{props.col.unit}</span><span className="text-txt-muted text-[11px] mx-0.5">×</span><span className="text-brand-primary font-bold font-mono">{props.col.constants?.c1 ?? 1}</span></div>;
 
                             if (props.col.unit) return <span className="text-xs">{props.col.unit}</span>;
                             return null;
@@ -99,7 +99,7 @@ const ScreenshotTotalLabel: React.FC<{ template: GameTemplate, baseImage?: strin
 
     return (
         <div className={className + " hyphenate"} style={finalStyle}>
-            {!hasTexture && <span className="font-black text-emerald-400 text-sm">{injectSoftHyphens(t('ss_total_label'))}</span>}
+            {!hasTexture && <span className="font-black text-brand-primary text-sm">{injectSoftHyphens(t('ss_total_label'))}</span>}
         </div>
     );
 }
@@ -133,7 +133,7 @@ const ScreenshotPlayerLabelCorner: React.FC<{ template: GameTemplate, baseImage?
 
     return (
         <div className={className + " hyphenate"} style={finalStyle}>
-            {!hasTexture && <span className="font-bold text-sm text-slate-400">{injectSoftHyphens(t('ss_player_label'))}</span>}
+            {!hasTexture && <span className="font-bold text-sm text-txt-secondary">{injectSoftHyphens(t('ss_player_label'))}</span>}
         </div>
     );
 }
@@ -197,15 +197,15 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
         winners = calculateWinners(session.players, rule);
     }
 
-    const containerClass = 'bg-slate-900';
-    const headerIconBoxClass = 'bg-emerald-500/10 border border-emerald-500/20';
-    const getColumnBorderRight = (color: string | undefined) => (color || 'var(--border-slate-700)');
+    const containerClass = 'bg-app-bg';
+    const headerIconBoxClass = 'bg-brand-primary/10 border border-brand-primary/20';
+    const getColumnBorderRight = (color: string | undefined) => (color || 'rgb(var(--c-surface-border))');
 
-    const rowBorderClass = 'border-slate-700';
+    const rowBorderClass = 'border-surface-border';
     const borderRightClass = 'border-r';
     const borderBottomClass = 'border-b';
     const borderRight2Class = 'border-r-2';
-    const rowBgClass = 'bg-slate-800';
+    const rowBgClass = 'bg-surface-bg';
 
     const itemColWidth = layout ? layout.itemWidth : 70;
     const itemColStyle = { width: `${itemColWidth}px`, flexShrink: 0 };
@@ -222,7 +222,7 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
     return (
         <div
             id={id}
-            className={`text-slate-100 ${containerClass} ${className || ''}`}
+            className={`text-txt-primary ${containerClass} ${className || ''}`}
             style={{
                 fontSize: `${16 * zoomLevel}px`,
                 fontFamily: 'Inter, sans-serif',
@@ -230,13 +230,13 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                 ...style
             }}
         >
-            <div id={`ss-header-${mode}`} className="p-4 flex items-center gap-2 bg-slate-900 rounded-b-xl mb-1 shadow-sm">
+            <div id={`ss-header-${mode}`} className="p-4 flex items-center gap-2 bg-app-bg rounded-b-xl mb-1 shadow-sm">
                 <div className={`p-2 rounded ${headerIconBoxClass}`}>
-                    <Trophy className="text-emerald-500" />
+                    <Trophy className="text-brand-primary" />
                 </div>
                 <div>
                     <h2 className="text-2xl font-bold">{template.name}</h2>
-                    <p className="text-slate-500 text-xs">{t('ss_app_title')} • {new Date().toLocaleDateString()}</p>
+                    <p className="text-txt-muted text-xs">{t('ss_app_title')} • {new Date().toLocaleDateString()}</p>
                 </div>
             </div>
 
@@ -263,7 +263,7 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
 
                 {processedColumns.map((col, index) => {
                     const isAlt = index % 2 !== 0;
-                    const headerBgClass = isAlt ? 'bg-slate-900/40' : 'bg-slate-800';
+                    const headerBgClass = isAlt ? 'bg-app-bg' : 'bg-surface-bg';
 
                     // [Fix] In simple mode without background, use standard min-height (4rem)
                     // This component block is only rendered if !baseImage.
@@ -274,7 +274,7 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                         <div
                             key={col.id}
                             id={`ss-row-${mode}-${col.id}`}
-                            className={`flex ${rowClass}`}
+                            className={`flex ${rowClass} ${isAlt ? 'bg-app-bg' : 'bg-surface-bg'}`}
                             style={{ height: (applyHeight && layout?.rowHeights[col.id]) ? `${layout.rowHeights[col.id]}px` : undefined }}
                         >
                             <ScreenshotHeaderCell
@@ -290,8 +290,8 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                                     style={{
                                         // 優先使用 layout 來計算精確的玩家總寬度，若無則使用簡單估算 fallback
                                         ...(layout ? { width: `${session.players.reduce((sum, p) => sum + (layout.playerWidths[p.id] || 0), 0)}px` } : { flex: '1 1 0%', width: `${session.players.length * itemColWidth}px` }),
-                                        borderRight: '1px solid var(--border-slate-700)',
-                                        borderBottom: '1px solid var(--border-slate-700)'
+                                        borderRight: '1px solid rgb(var(--c-surface-border))',
+                                        borderBottom: '1px solid rgb(var(--c-surface-border))'
                                     }}
                                 >
                                     <ScoreCell
@@ -386,10 +386,10 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                     );
                 })}
 
-                <div id={`ss-totals-row-${mode}`} className={`flex items-stretch min-h-[2.5rem] border-t ${rowBorderClass} bg-slate-900`}>
+                <div id={`ss-totals-row-${mode}`} className={`flex items-stretch min-h-[2.5rem] border-t ${rowBorderClass} bg-app-bg`}>
                     <ScreenshotTotalLabel
                         template={template}
-                        className={`${borderRightClass} ${rowBorderClass} p-2 flex items-center justify-center bg-slate-800`}
+                        className={`${borderRightClass} ${rowBorderClass} p-2 flex items-center justify-center bg-surface-bg`}
                         style={itemColStyle}
                     />
                     {session.players.map((p, index) => (

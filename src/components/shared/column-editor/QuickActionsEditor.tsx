@@ -117,14 +117,14 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
     <>
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-slate-400 uppercase">{t('col_btn_cols')}</label>
-          <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+          <label className="text-xs font-bold text-txt-muted uppercase">{t('col_btn_cols')}</label>
+          <div className="flex bg-modal-bg-recessed rounded-xl p-1 border border-surface-border">
             {[1, 2, 3, 4].map((cols) => (
               <button
                 key={cols}
                 onClick={() => handleColumnsChange(cols)}
-                className={`w-8 h-8 rounded flex items-center justify-center text-xs font-bold transition-colors ${
-                  buttonGridColumns === cols ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-slate-300'
+                className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black transition-all ${
+                  buttonGridColumns === cols ? 'bg-modal-bg text-brand-primary shadow-sm' : 'text-txt-secondary hover:text-txt-primary'
                 }`}
               >
                 {cols}
@@ -132,19 +132,19 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
             ))}
           </div>
         </div>
-        <div className="text-[10px] text-slate-500">
+        <div className="text-[10px] font-bold text-txt-muted/70 px-1">
           {buttonGridColumns === 1
             ? t('col_btn_mode_list_hint')
             : t('col_btn_mode_grid_hint')}
         </div>
       </div>
 
-      <div className="border-t border-slate-700/50 pt-4 space-y-2">
-        <label className="text-xs font-bold text-slate-400 uppercase">{t('col_buttons')}</label>
+      <div className="border-t border-surface-border/50 pt-4 space-y-2">
+        <label className="text-xs font-bold text-txt-muted uppercase px-1">{t('col_buttons')}</label>
         {quickActions.map((action, idx) => (
           <div
             key={action.id}
-            className="bg-slate-800 p-2 rounded-lg border border-slate-700 transition-colors"
+            className="bg-modal-bg-elevated p-2 rounded-xl border border-surface-border shadow-sm transition-all hover:shadow-md"
           >
             <div className="flex items-start gap-2">
               {showModifierToggle && (
@@ -152,8 +152,8 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
                   onClick={() => handleUpdate(idx, 'isModifier', !action.isModifier)}
                   className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center transition-all ${
                     action.isModifier
-                      ? 'border-2 border-dashed border-indigo-400 bg-indigo-500/10 text-indigo-400'
-                      : 'border border-slate-600 bg-slate-900 text-slate-500 hover:border-slate-500 hover:text-slate-400'
+                      ? 'border-2 border-dashed border-brand-secondary/50 bg-brand-secondary/10 text-brand-secondary'
+                      : 'border border-surface-border bg-modal-bg-recessed text-txt-muted hover:text-txt-primary'
                   }`}
                   title={t('col_btn_modifier_hint')}
                 >
@@ -162,7 +162,7 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
               )}
               <button
                 onClick={() => setColorPickerIdx(colorPickerIdx === idx ? null : idx)}
-                className="w-9 h-9 shrink-0 rounded-lg border border-slate-600 flex items-center justify-center shadow-sm relative overflow-hidden"
+                className="w-9 h-9 shrink-0 rounded-lg border border-surface-border flex items-center justify-center shadow-sm relative overflow-hidden active:scale-95 transition-transform"
                 style={{ backgroundColor: action.color || defaultColor }}
                 title={t('col_btn_color_hint')}
               >
@@ -179,7 +179,7 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
                   value={action.label}
                   onChange={(e) => handleUpdate(idx, 'label', e.target.value)}
                   style={{ minHeight: '38px', resize: 'none', overflow: 'hidden' }}
-                  className="flex-1 min-w-[40px] bg-slate-900 border border-slate-600 rounded p-2 text-white placeholder-slate-600 text-sm outline-none focus:border-emerald-500 leading-tight"
+                  className="flex-1 min-w-[40px] bg-modal-bg border border-surface-border rounded-lg p-2 text-txt-primary placeholder:text-txt-muted/50 text-sm font-bold outline-none focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 transition-all leading-tight"
                 />
                 <div className="relative w-14 shrink-0">
                   <input
@@ -204,19 +204,19 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
                       }
                     }}
                     onFocus={(e) => e.target.select()}
-                    className="w-full h-[38px] bg-slate-900 border border-emerald-500/50 text-emerald-400 font-mono font-bold rounded p-2 pl-2 text-right text-sm outline-none focus:border-emerald-500"
+                    className="w-full h-[38px] bg-modal-bg border-2 border-brand-primary/30 text-brand-primary font-mono font-black rounded-lg p-2 text-right text-sm outline-none focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 transition-all"
                   />
                 </div>
               </div>
               <button
                 onClick={() => handleRemove(idx)}
-                className="p-2 text-slate-500 hover:text-red-400 shrink-0 h-[38px] flex items-center justify-center"
+                className="p-2 text-txt-muted hover:text-status-danger shrink-0 h-[38px] flex items-center justify-center transition-colors"
               >
                 <Trash2 size={18} />
               </button>
             </div>
             {colorPickerIdx === idx && (
-              <div className="mt-2 p-2 bg-slate-900 rounded-lg border border-slate-700 animate-in fade-in slide-in-from-top-1">
+              <div className="mt-2 p-3 bg-modal-bg-recessed rounded-xl border border-surface-border animate-in fade-in slide-in-from-top-1">
                 <div className="flex flex-wrap gap-2 justify-start">
                   {COLORS.map((c) => (
                     <button
@@ -225,7 +225,7 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
                         handleUpdate(idx, 'color', c);
                         setColorPickerIdx(null);
                       }}
-                      className={`w-6 h-6 rounded-full shadow-sm border ${
+                      className={`w-6 h-6 rounded-full shadow-sm border transition-transform active:scale-90 ${
                         action.color === c
                           ? 'border-white scale-110'
                           : 'border-transparent opacity-80 hover:opacity-100'
@@ -238,8 +238,8 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
                       handleUpdate(idx, 'color', undefined);
                       setColorPickerIdx(null);
                     }}
-                    className={`w-6 h-6 rounded-full shadow-sm border flex items-center justify-center bg-slate-800 ${
-                      !action.color ? 'border-white scale-110' : 'border-slate-600 text-slate-500'
+                    className={`w-6 h-6 rounded-full shadow-sm border flex items-center justify-center bg-modal-bg ${
+                      !action.color ? 'border-white scale-110' : 'border-surface-border text-txt-muted'
                     }`}
                     title={t('col_btn_reset_color')}
                   >
@@ -253,9 +253,9 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
       </div>
       <button
         onClick={handleAdd}
-        className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-dashed border-slate-600 flex items-center justify-center gap-2 text-sm"
+        className="w-full py-3 bg-modal-bg-recessed hover:bg-modal-bg hover:border-brand-primary/30 text-txt-secondary hover:text-brand-primary rounded-xl border border-dashed border-surface-border flex items-center justify-center gap-2 text-sm font-bold transition-all active:scale-[0.98]"
       >
-        <Plus size={16} /> {t('col_btn_add')}
+        <Plus size={18} /> {t('col_btn_add')}
       </button>
     </>
   );

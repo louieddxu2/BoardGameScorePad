@@ -1,0 +1,317 @@
+﻿
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\App.deeplink.test.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\App.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\analysis\inspector\InspectorContainer.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\analysis\inspector\inspectors\DatabaseInspector.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\analysis\inspector\inspectors\ImageInspector.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\analysis\inspector\inspectors\TimeInspector.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\analysis\inspector\inspectors\WeightsInspector.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\analysis\inspector\shared\InspectorCommon.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\analysis\InspectorShared.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\analysis\MetaFriendlyView.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\analysis\SystemDataInspector.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\dashboard\Dashboard.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\dashboard\HistoryList.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\dashboard\modals\CloudManagerModal.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\dashboard\modals\DataManagerModal.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\dashboard\modals\GameSetupModal.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\dashboard\modals\ShareTemplateModal.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\dashboard\modals\SyncDashboard.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\dashboard\parts\DashboardFAB.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\dashboard\parts\DashboardHeader.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\dashboard\parts\DashboardModals.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\dashboard\parts\DashboardSection.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\dashboard\parts\GameCard.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\dashboard\parts\HistoryCard.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\dashboard\parts\PullActionIsland.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\dashboard\parts\SearchEmptyState.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\dashboard\views\HistoryView.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\dashboard\views\LibraryView.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\editor\GridPhase.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\editor\ImportTemplateModal.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\editor\MappingDrawer.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\editor\StructurePhase.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\editor\TemplateEditor.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\editor\TextureMapper.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\editor\TextureMapperContext.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\history\HistoryReviewView.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\history\modals\HistorySettingsModal.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\modals\InstallGuideModal.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\scanner\CameraView.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\scanner\Magnifier.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\scanner\PhotoScanner.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\scanner\ScannerControls.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\scanner\ScannerOverlay.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\scanner\ScannerSourceSelector.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\scanner\ScanPreview.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\modals\AddColumnModal.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\modals\PhotoGalleryModal.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\modals\ScreenshotModal.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\modals\SessionBackgroundModal.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\modals\SessionExitModal.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\modals\ShareMenu.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\AutoScorePanel.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\GridFooter.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\InputPanel.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\InputPanelLayout.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\PhotoLightbox.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\PlayerEditor.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\ScoreCell.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\ScoreGrid.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\ScoreInfoPanel.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\ScoreOverlayGenerator.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\ScreenshotView.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\SelectOptionInput.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\SessionHeader.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\SmartSpacer.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\SmartTextureLayer.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\StickerElement.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\TexturedBlock.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\TexturedPlayerHeader.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\TexturedScoreCell.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\TexturedScreenshotView.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\TexturedTotalCell.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\parts\TotalsBar.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\SessionImageFlow.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\SessionUI.test.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\session\SessionView.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\shared\column-editor\EditorTabAuto.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\shared\column-editor\EditorTabBasic.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\shared\column-editor\EditorTabMapping.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\shared\column-editor\EditorTabSelection.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\shared\column-editor\QuickActionsEditor.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\shared\ColumnConfigEditor.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\shared\ConfirmationModal.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\shared\ContrastText.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\shared\ErrorBoundary.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\shared\GameSettingsEditor.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\shared\LayoutEditor.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\shared\NumericKeypad.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\shared\QuickButtonPad.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\shared\Toast.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\shared\ToastContainer.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\tools\CalculatorTool.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\tools\CoinTool.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\tools\CountdownTool.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\tools\CounterTool.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\tools\DiceTool.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\tools\MediaTool.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\tools\MemoTool.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\tools\OrderTool.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\tools\PickerTool.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\tools\RandomizerTool.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\tools\RulerTool.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\tools\SoundTool.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\tools\TeamTool.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\components\tools\TimerTool.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\features\bgg\components\BggImportModal.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\features\bgstats\components\BgStatsModal.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\features\bgstats\components\ImportStagingView.tsx
+ [31m×[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\features\bgstats\components\LinkerList.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\features\game-selector\components\StartGamePanel.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\hooks\useConfirm.test.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\hooks\useConfirm.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\hooks\useToast.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\i18n\hooks.test.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\i18n\index.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\i18n\integration.test.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\i18n\session.test.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\i18n\tools.test.tsx
+ [32m✓[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not hav
+e hardcoded colors in src\utils\scoreDisplay.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\analysis\InspectorShared.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\analysis\MetaFriendlyView.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\dashboard\parts\DashboardHeader.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\dashboard\parts\DashboardSection.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\dashboard\parts\PullActionIsland.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\dashboard\views\LibraryView.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\editor\GridPhase.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\editor\ImportTemplateModal.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\editor\StructurePhase.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\history\HistoryReviewView.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\history\modals\HistorySettingsModal.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\scanner\CameraView.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\scanner\Magnifier.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\scanner\ScannerOverlay.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\shared\column-editor\EditorTabAuto.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\shared\column-editor\EditorTabBasic.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\shared\column-editor\EditorTabMapping.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\shared\column-editor\EditorTabSelection.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\shared\column-editor\QuickActionsEditor.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\shared\ColumnConfigEditor.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\shared\ErrorBoundary.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\shared\GameSettingsEditor.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\shared\LayoutEditor.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\shared\NumericKeypad.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\shared\QuickButtonPad.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\shared\Toast.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\tools\CalculatorTool.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\tools\CoinTool.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\tools\CountdownTool.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\tools\CounterTool.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\tools\DiceTool.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\tools\PickerTool.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\tools\RulerTool.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\tools\SoundTool.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\tools\TeamTool.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\components\tools\TimerTool.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\features\bgstats\components\ImportStagingView.tsx
+[31m[1m[7m FAIL [27m[22m[39m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m
+ > [22mshould not have hardcoded colors in src\features\bgstats\components\LinkerList.tsx
+
+

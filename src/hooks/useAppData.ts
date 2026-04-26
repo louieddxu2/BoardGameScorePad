@@ -66,7 +66,9 @@ export const useAppData = () => {
     });
 
     // --- 3. LocalStorage Settings & Global Actions ---
-    const [themeMode, setThemeMode] = useState<'dark' | 'light'>('dark');
+    const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
+        return (localStorage.getItem('app_theme_mode') as 'dark' | 'light') || 'dark';
+    });
 
     const [newBadgeIds, setNewBadgeIds] = useState<string[]>(() => {
         try { return JSON.parse(localStorage.getItem('sm_new_badge_ids') || '[]'); } catch { return []; }
@@ -85,6 +87,7 @@ export const useAppData = () => {
 
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', themeMode);
+        localStorage.setItem('app_theme_mode', themeMode);
     }, [themeMode]);
 
     useEffect(() => {

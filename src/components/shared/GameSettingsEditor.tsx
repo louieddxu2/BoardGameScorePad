@@ -64,19 +64,19 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ isOpen, templat
 
     return (
         <div 
-            className="fixed inset-0 bg-slate-950 flex flex-col animate-in slide-in-from-bottom-5"
+            className="fixed inset-0 bg-app-bg-deep flex flex-col animate-in slide-in-from-bottom-5"
             style={{ zIndex }}
         >
             {/* Header */}
-            <header className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 flex-none z-20">
+            <header className="flex items-center justify-between p-4 bg-app-bg border-b border-surface-border flex-none z-20">
                 <div className="flex items-center gap-2">
-                    <div className="bg-slate-800 p-2 rounded text-emerald-500"><Settings size={20} /></div>
+                    <div className="bg-surface-bg p-2 rounded text-brand-primary"><Settings size={20} /></div>
                     <div>
-                        <h2 className="text-white font-bold text-lg">{t('title')}</h2>
-                        <p className="text-xs text-slate-500">{t('subtitle')}</p>
+                        <h2 className="text-txt-title font-bold text-lg">{t('title')}</h2>
+                        <p className="text-xs text-txt-muted">{t('subtitle')}</p>
                     </div>
                 </div>
-                <button onClick={onClose} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-lg border border-slate-700">
+                <button onClick={onClose} className="p-2 text-txt-secondary hover:text-txt-title bg-surface-bg rounded-lg border border-surface-border">
                     <X size={20} />
                 </button>
             </header>
@@ -87,20 +87,20 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ isOpen, templat
 
                     {/* General Info Section */}
                     <div className="space-y-4">
-                        <div className="flex items-start gap-3 bg-slate-800 p-3 rounded-xl border border-slate-700">
-                            <div className="p-2 bg-slate-700 rounded-lg text-slate-400 shrink-0"><Hash size={24} /></div>
+                        <div className="flex items-start gap-3 bg-surface-bg p-3 rounded-xl border border-surface-border">
+                            <div className="p-2 bg-surface-hover rounded-lg text-txt-secondary shrink-0"><Hash size={24} /></div>
                             <div className="flex-1">
-                                <h3 className="font-bold text-slate-200 text-sm">{t('general_section')}</h3>
+                                <h3 className="font-bold text-txt-primary text-sm">{t('general_section')}</h3>
 
                                 <div className="mt-3">
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('bgg_id_label')}</label>
+                                    <label className="block text-xs font-bold text-txt-muted uppercase mb-1">{t('bgg_id_label')}</label>
                                     <input
                                         type="text"
                                         inputMode="numeric"
                                         value={bggId}
                                         onChange={(e) => setBggId(e.target.value)}
                                         placeholder="e.g. 13"
-                                        className="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 text-white font-mono text-sm focus:border-emerald-500 outline-none"
+                                        className="w-full bg-app-bg-deep border border-surface-border rounded-lg p-2 text-txt-primary font-mono text-sm focus:border-brand-primary outline-none"
                                     />
                                 </div>
                             </div>
@@ -109,11 +109,11 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ isOpen, templat
 
                     {/* Colors Section */}
                     <div className="space-y-4">
-                        <div className="flex items-start gap-3 bg-indigo-900/20 p-3 rounded-xl border border-indigo-500/30">
-                            <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400 shrink-0"><Palette size={24} /></div>
+                        <div className="flex items-start gap-3 bg-brand-secondary/10 p-3 rounded-xl border border-brand-secondary/30">
+                            <div className="p-2 bg-brand-secondary/20 rounded-lg text-brand-secondary shrink-0"><Palette size={24} /></div>
                             <div>
-                                <h3 className="font-bold text-indigo-200 text-sm">{t('colors_section')}</h3>
-                                <p className="text-xs text-indigo-300/70 mt-1 leading-relaxed whitespace-pre-wrap">
+                                <h3 className="font-bold text-brand-secondary text-sm">{t('colors_section')}</h3>
+                                <p className="text-xs text-txt-secondary mt-1 leading-relaxed whitespace-pre-wrap">
                                     {t('colors_desc')}
                                 </p>
                             </div>
@@ -122,19 +122,19 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ isOpen, templat
                         {/* Preview Area (Selected Order) */}
                         <div>
                             <div className="flex justify-between items-center mb-2">
-                                <label className="block text-xs font-bold text-slate-500 uppercase">{t('colors_selected')}</label>
+                                <label className="block text-xs font-bold text-txt-muted uppercase">{t('colors_selected')}</label>
                                 {supportedColors.length > 0 && (
                                     <button
                                         onClick={handleResetColorsClick}
-                                        className="text-[10px] flex items-center gap-1 text-slate-500 hover:text-slate-300 bg-slate-800 px-2 py-1 rounded-full border border-slate-700 transition-colors"
+                                        className="text-[10px] flex items-center gap-1 text-txt-muted hover:text-txt-primary bg-surface-bg px-2 py-1 rounded-full border border-surface-border transition-colors"
                                     >
                                         <RotateCcw size={10} /> {t('reset_default')}
                                     </button>
                                 )}
                             </div>
-                            <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 min-h-[80px] flex flex-wrap gap-3 items-center">
+                            <div className="bg-app-bg-deep border border-surface-border rounded-xl p-4 min-h-[80px] flex flex-wrap gap-3 items-center">
                                 {supportedColors.length === 0 && (
-                                    <span className="text-sm text-slate-600 italic w-full text-center py-2">
+                                    <span className="text-sm text-txt-muted italic w-full text-center py-2">
                                         {t('reset_default')} {t('colors_auto_assign')}
                                     </span>
                                 )}
@@ -158,9 +158,9 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ isOpen, templat
 
                         {/* Palette Area */}
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('colors_palette')}</label>
+                            <label className="block text-xs font-bold text-txt-muted uppercase mb-2">{t('colors_palette')}</label>
 
-                            <div className="grid grid-cols-6 sm:grid-cols-8 gap-3 justify-items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                            <div className="grid grid-cols-6 sm:grid-cols-8 gap-3 justify-items-center bg-app-bg-deep/50 p-4 rounded-xl border border-surface-border">
                                 {COLORS.map(c => {
                                     const isSelected = supportedColors.includes(c);
                                     const selectedIndex = supportedColors.indexOf(c) + 1;
@@ -172,7 +172,7 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ isOpen, templat
                                             onClick={() => toggleColor(c)}
                                             className={`w-10 h-10 rounded-full shadow-sm border-2 transition-all flex items-center justify-center relative
                                           ${isSelected
-                                                    ? 'border-white ring-2 ring-emerald-500/50 opacity-40 scale-90 grayscale-[0.5]'
+                                                    ? 'border-white ring-2 ring-brand-primary/50 opacity-40 scale-90 grayscale-[0.5]'
                                                     : 'border-transparent opacity-100 hover:scale-110 active:scale-95'
                                                 }
                                           ${isDark && !isSelected ? 'ring-1 ring-white/10' : ''}
@@ -195,10 +195,10 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ isOpen, templat
             </main>
 
             {/* Footer */}
-            <footer className="p-4 bg-slate-900 border-t border-slate-800 flex-none mt-auto">
+            <footer className="p-4 bg-app-bg border-t border-surface-border flex-none mt-auto">
                 <button
                     onClick={handleSave}
-                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2 transition-transform active:scale-95"
+                    className="w-full py-3 bg-brand-primary-deep hover:bg-brand-primary text-white font-bold rounded-xl shadow-lg shadow-brand-primary/30 flex items-center justify-center gap-2 transition-transform active:scale-95"
                 >
                     <Save size={20} />
                     {t('btn_save')}

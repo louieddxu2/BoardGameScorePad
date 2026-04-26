@@ -66,7 +66,7 @@ const PullActionIsland: React.FC<PullActionIslandProps> = ({ pullY, pullX, activ
         <div className="relative bg-surface-bg/90 backdrop-blur-md rounded-full px-8 py-2.5 flex items-center justify-between w-[200px] border border-surface-border shadow-xl box-border">
 
           {/* 左錨點：雲端 */}
-          <div className={`transition-all duration-300 transform flex flex-col items-center justify-center w-6 h-6 ${isCloudActive ? 'scale-125 text-sky-400' : 'text-txt-muted scale-100'}`}>
+          <div className={`transition-all duration-300 transform flex flex-col items-center justify-center w-6 h-6 ${isCloudActive ? 'scale-125 text-status-info' : 'text-txt-muted scale-100'}`}>
             <Cloud size={20} strokeWidth={isCloudActive ? 2.5 : 2} />
           </div>
 
@@ -83,8 +83,8 @@ const PullActionIsland: React.FC<PullActionIslandProps> = ({ pullY, pullX, activ
           {/* 焦點光環 (The Focus Ring / Cursor) */}
           <div
             className={`absolute top-1/2 left-1/2 -ml-6 -mt-6 w-12 h-12 rounded-full border-[3px] pointer-events-none
-                    ${isCloudActive ? 'border-sky-400 bg-sky-400/20 shadow-[0_0_15px_rgba(var(--c-sky-400)/0.5)]' :
-                isSearchActive ? 'border-brand-primary bg-brand-primary/20 shadow-[0_0_15px_rgba(var(--c-brand-primary),0.5)]' :
+                    ${isCloudActive ? 'border-status-info bg-status-info/20 shadow-[0_0_15px_rgba(var(--c-status-info)/0.5)]' :
+                isSearchActive ? 'border-brand-primary bg-brand-primary/20 shadow-[0_0_15px_rgba(var(--c-brand-primary)/0.5)]' :
                   'border-surface-border w-10 h-10 -ml-5 -mt-5' // Neutral 狀態稍微小一點
               }
                 `}
@@ -104,7 +104,7 @@ const PullActionIsland: React.FC<PullActionIslandProps> = ({ pullY, pullX, activ
             transform: activeState !== 'neutral' ? 'translateY(0)' : 'translateY(4px)'
           }}
         >
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full bg-app-bg-deep/90 backdrop-blur-sm border border-surface-border shadow-lg ${isCloudActive ? 'text-sky-400' : 'text-brand-primary'}`}>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full bg-app-bg-deep/90 backdrop-blur-sm border border-surface-border shadow-lg ${isCloudActive ? 'text-status-info' : 'text-brand-primary'}`}>
             {isCloudActive ? t('dash_pull_release_cloud') : t('dash_pull_release_search')}
           </span>
         </div>

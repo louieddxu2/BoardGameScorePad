@@ -64,22 +64,22 @@ class ErrorBoundary extends React.Component<Props, State> {
     if (this.state.hasError) {
       const strings = getErrorStrings();
       return (
-        <div className="flex flex-col items-center justify-center min-h-[100dvh] bg-slate-900 text-slate-100 p-6 text-center">
-          <div className="bg-red-500/10 p-4 rounded-full mb-4">
-            <AlertTriangle size={48} className="text-red-500" />
+        <div className="flex flex-col items-center justify-center min-h-[100dvh] bg-app text-txt-primary p-6 text-center">
+          <div className="bg-status-danger/10 p-4 rounded-full mb-4">
+            <AlertTriangle size={48} className="text-status-danger" />
           </div>
           <h1 className="text-xl font-bold mb-2">{strings.title}</h1>
-          <p className="text-slate-400 text-sm mb-6 max-w-xs mx-auto">
+          <p className="text-txt-muted text-sm mb-6 max-w-xs mx-auto">
             {strings.desc}
           </p>
 
-          <div className="bg-slate-800 p-3 rounded-lg border border-slate-700 mb-6 text-xs font-mono text-left w-full max-w-xs overflow-auto max-h-32 opacity-70">
+          <div className="bg-surface-bg p-3 rounded-lg border border-surface-border mb-6 text-xs font-mono text-left w-full max-w-xs overflow-auto max-h-32 opacity-70">
             {this.state.error?.toString()}
           </div>
 
           <button
             onClick={this.handleReload}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-emerald-900/50 transition-all active:scale-95"
+            className="flex items-center gap-2 bg-brand-primary-deep hover:bg-brand-primary text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-brand-primary/30 transition-all active:scale-95"
           >
             <RefreshCw size={20} />
             {strings.btn}

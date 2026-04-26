@@ -90,13 +90,16 @@
   /* Common Surface Mappings */
   --c-app-bg: 15 23 42;          /* slate-900 */
   --c-app-bg-deep: 2 6 23;       /* slate-950 */
+  --c-txt-title: 255 255 255;    /* pure white */
   --c-txt-primary: 248 250 252;  /* slate-50 */
   --c-txt-secondary: 148 163 184; /* slate-400 */
+  --c-txt-tertiary: 203 213 225; /* slate-300 */
   --c-txt-muted: 100 116 139;    /* slate-500 */
   --c-surface-bg: 30 41 59;      /* slate-800 */
   --c-surface-bg-alt: 23 31 45;  /* slate-850 */
   --c-surface-border: 51 65 85;  /* slate-700 */
   --c-brand-primary: 16 185 129; /* emerald-500 */
+  --c-brand-primary-deep: 5 150 105; /* emerald-600 */
   --c-brand-secondary: 99 102 241; /* indigo-500 */
   --c-surface-hover: 38 48 64;         /* slate-750 */
   --c-surface-border-hover: 71 85 105; /* slate-600 */
@@ -105,6 +108,7 @@
   /* Modal System */
   --c-modal-bg: var(--c-app-bg);              /* slate-900: 容器底色 */
   --c-modal-bg-elevated: var(--c-surface-bg); /* slate-800: 浮起的互動表面 */
+  --c-modal-backdrop: 0 0 0;                  /* 純黑遮罩底色 */
   --c-modal-bg-recessed: var(--c-slate-850);  /* slate-850: 凹陷的容納區域 */
   --c-modal-border: var(--c-surface-border);
   --c-modal-divider: var(--c-slate-800);
@@ -152,13 +156,16 @@
 html[data-theme='light'] {
   --c-app-bg: 248 250 252;       /* slate-50 */
   --c-app-bg-deep: 241 245 249;  /* slate-100 */
+  --c-txt-title: 15 23 42;       /* slate-900 */
   --c-txt-primary: 15 23 42;     /* slate-900 */
   --c-txt-secondary: 71 85 105;  /* slate-600 */
+  --c-txt-tertiary: 51 65 85;    /* slate-700 */
   --c-txt-muted: 148 163 184;    /* slate-400 */
   --c-surface-bg: 255 255 255;   /* white */
   --c-surface-bg-alt: 248 250 252; /* slate-50 */
   --c-surface-border: 226 232 240; /* slate-200 */
   --c-brand-primary: 16 185 129; /* emerald-500 */
+  --c-brand-primary-deep: 5 150 105; /* emerald-600 */
   --c-brand-secondary: 79 70 229; /* indigo-600 */
   --c-surface-hover: 241 245 249;      /* slate-100 */
   --c-surface-border-hover: 203 213 225; /* slate-300 */
@@ -166,8 +173,8 @@ html[data-theme='light'] {
 
   /* Modal System */
   --c-modal-bg: var(--c-surface-bg);
-  --c-modal-bg-elevated: var(--c-slate-100);  /* slate-100: 浮起的互動表面 */
-  --c-modal-bg-recessed: var(--c-slate-200);  /* slate-200: 凹陷的容納區域 */
+  --c-modal-bg-elevated: 255 255 255;          /* 改為純白，使其從淺灰背景浮起 */
+  --c-modal-bg-recessed: 241 245 249;          /* slate-100: 凹陷感更明確 */
   --c-modal-border: var(--c-surface-border);
   --c-modal-divider: 243 244 246; /* gray-100 */
   --c-modal-input-bg: 243 244 246;

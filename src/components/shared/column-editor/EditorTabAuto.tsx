@@ -219,22 +219,22 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300 pb-12">
-            <div className="flex items-start gap-3 bg-indigo-900/20 p-3 rounded-xl border border-indigo-500/30">
-                <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400 shrink-0"><Sparkles size={24} /></div>
+            <div className="flex items-start gap-3 bg-brand-secondary/10 p-3 rounded-xl border border-brand-secondary/20">
+                <div className="p-2 bg-brand-secondary/20 rounded-lg text-brand-secondary shrink-0"><Sparkles size={24} /></div>
                 <div>
-                    <h3 className="font-bold text-indigo-200 text-sm">{t('col_auto_title')}</h3>
-                    <p className="text-xs text-indigo-300/70 mt-1 leading-relaxed">
+                    <h3 className="font-black text-brand-secondary text-sm uppercase">{t('col_auto_title')}</h3>
+                    <p className="text-xs text-txt-secondary mt-1 leading-relaxed font-bold">
                         {t('col_auto_desc')}
                         <br />
-                        {t('col_auto_example')}<code>f1(x1) + f2(x2) * 5</code>
+                        {t('col_auto_example')}<code className="bg-modal-bg-recessed px-1 rounded mx-1">f1(x1) + f2(x2) * 5</code>
                     </p>
                 </div>
             </div>
 
             <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold text-slate-500 uppercase">{t('col_auto_formula')}</label>
-                    {parseError && !isLocked && <span className="text-[10px] text-amber-400 flex items-center gap-1 animate-pulse"><AlertCircle size={10} /> {parseError}</span>}
+                    <label className="text-xs font-bold text-txt-muted uppercase">{t('col_auto_formula')}</label>
+                    {parseError && !isLocked && <span className="text-[10px] text-status-warning flex items-center gap-1 animate-pulse font-black"><AlertCircle size={10} /> {parseError}</span>}
                 </div>
                 <div className="flex items-stretch gap-2">
                     <input
@@ -251,14 +251,14 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                         }}
                         placeholder="f1(x1) + f2(x2)"
                         disabled={isLocked}
-                        className={`flex-1 min-w-0 border rounded-xl p-4 font-mono text-lg font-bold tracking-wide outline-none transition-all shadow-inner ${isLocked ? 'bg-slate-900/50 border-slate-700 text-slate-400' : 'bg-slate-900 border-indigo-500/50 text-white focus:ring-1 focus:ring-indigo-500'}`}
+                        className={`flex-1 min-w-0 border-2 rounded-xl p-4 font-mono text-lg font-black tracking-wide outline-none transition-all shadow-inner ${isLocked ? 'bg-modal-bg-recessed border-surface-border text-txt-muted' : 'bg-modal-bg border-brand-secondary/30 text-brand-secondary focus:border-brand-secondary focus:ring-4 focus:ring-brand-secondary/10'}`}
                     />
                     {isLocked ?
-                        <button onClick={() => setIsLocked(false)} className="px-4 bg-slate-800 text-slate-400 rounded-xl border border-slate-600 flex items-center justify-center">
+                        <button onClick={() => setIsLocked(false)} className="px-4 bg-modal-bg-elevated text-txt-muted rounded-xl border border-surface-border flex items-center justify-center shadow-sm active:scale-95 transition-all">
                             <Unlock size={24} />
                         </button>
                         :
-                        <button onClick={handleLock} className="px-4 bg-emerald-600 text-white rounded-xl shadow-lg flex items-center justify-center">
+                        <button onClick={handleLock} className="px-4 bg-brand-primary text-white rounded-xl shadow-lg shadow-brand-primary/20 flex items-center justify-center active:scale-95 transition-all">
                             <Check size={24} />
                         </button>
                     }
@@ -268,30 +268,30 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                     <div className="space-y-2">
                         {/* 運算符號 */}
                         <div className="grid grid-cols-8 gap-1">
-                            {['+', '-', '×', '/', '(', ')', ','].map(op => <button key={op} onMouseDown={e => e.preventDefault()} onClick={() => insertToken(op)} className="bg-slate-800 rounded-lg border border-slate-700 text-slate-300 font-mono py-2 text-sm hover:bg-slate-700 active:bg-slate-600">{op}</button>)}
+                            {['+', '-', '×', '/', '(', ')', ','].map(op => <button key={op} onMouseDown={e => e.preventDefault()} onClick={() => insertToken(op)} className="bg-modal-bg-elevated rounded-lg border border-surface-border text-txt-primary font-black py-2 text-sm hover:bg-surface-hover active:scale-90 transition-all">{op}</button>)}
                             <button onMouseDown={e => e.preventDefault()} onClick={() => {
                                 const newVal = localFormula.slice(0, -1);
                                 setLocalFormula(newVal);
                                 onChange({ formula: newVal });
-                            }} className="bg-slate-800 text-red-400 rounded-lg border border-slate-700 py-2 flex items-center justify-center hover:bg-red-900/20"><Delete size={16} /></button>
+                            }} className="bg-modal-bg-elevated text-status-danger rounded-lg border border-surface-border py-2 flex items-center justify-center hover:bg-status-danger/10 active:scale-90 transition-all"><Delete size={16} /></button>
                         </div>
 
                         {/* 變數與函數快捷鍵 */}
                         <div className="flex gap-1 overflow-x-auto no-scrollbar py-1">
                             {/* 已存在的變數 */}
-                            {existingXVars.map(v => <button key={v} onMouseDown={e => e.preventDefault()} onClick={() => insertToken(v)} className="px-3 py-2 bg-indigo-900/30 border border-indigo-500/30 text-indigo-300 font-mono rounded-lg text-xs">{v}</button>)}
+                            {existingXVars.map(v => <button key={v} onMouseDown={e => e.preventDefault()} onClick={() => insertToken(v)} className="px-3 py-2 bg-brand-secondary/10 border border-brand-secondary/20 text-brand-secondary font-mono rounded-lg text-xs font-black shadow-sm">{v}</button>)}
 
                             {/* 新增變數 */}
                             <button onMouseDown={e => e.preventDefault()} onClick={() => {
                                 const nextId = existingXVars.length > 0 ? Math.max(...existingXVars.map(v => parseInt(v.substring(1)))) + 1 : 1;
                                 insertToken(`x${nextId}`);
-                            }} className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-md border border-indigo-400/50">xi</button>
+                            }} className="px-3 py-2 bg-brand-secondary text-white font-black rounded-lg text-xs flex items-center gap-1 shadow-lg shadow-brand-secondary/20 border border-brand-secondary/30 active:scale-95 transition-all">xi</button>
 
-                            <div className="w-px h-6 bg-slate-700 mx-2" />
+                            <div className="w-px h-6 bg-surface-border mx-2" />
 
                             {/* 已存在的函數 */}
                             {existingFuncs.map(f => (
-                                <button key={f} onMouseDown={e => e.preventDefault()} onClick={() => insertToken(`${f}()`, -1)} className="px-3 py-2 bg-purple-900/30 border border-purple-500/30 text-purple-300 font-mono rounded-lg text-xs">
+                                <button key={f} onMouseDown={e => e.preventDefault()} onClick={() => insertToken(`${f}()`, -1)} className="px-3 py-2 bg-status-info/10 border border-status-info/20 text-status-info font-mono rounded-lg text-xs font-black shadow-sm">
                                     {f}()
                                 </button>
                             ))}
@@ -300,7 +300,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                             <button onMouseDown={e => e.preventDefault()} onClick={() => {
                                 const nextId = existingFuncs.length > 0 ? Math.max(...existingFuncs.map(f => parseInt(f.substring(1)))) + 1 : 1;
                                 insertToken(`f${nextId}()`, -1);
-                            }} className="px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-md border border-purple-500/50">fi()</button>
+                            }} className="px-3 py-2 bg-status-info text-white font-black rounded-lg text-xs flex items-center gap-1 shadow-lg shadow-status-info/20 border border-status-info/30 active:scale-95 transition-all">fi()</button>
                         </div>
                     </div>
                 )}
@@ -310,20 +310,20 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
                     {/* 1. 變數設定區塊 */}
                     <div className="space-y-3">
-                        <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                            <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><Calculator size={12} /> {t('col_auto_vars')}</label>
+                        <div className="flex justify-between items-center border-b border-surface-border pb-2">
+                            <label className="text-xs font-bold text-txt-muted uppercase flex items-center gap-1"><Calculator size={12} /> {t('col_auto_vars')}</label>
                         </div>
                         <div className="space-y-2">
-                            {variableList.length === 0 && <div className="text-center py-4 text-xs text-slate-500 italic bg-slate-900/30 rounded-lg">{t('col_auto_no_vars')}</div>}
+                            {variableList.length === 0 && <div className="text-center py-4 text-xs text-txt-muted italic bg-modal-bg-recessed rounded-xl">{t('col_auto_no_vars')}</div>}
                             {variableList.map(([key, mapObj]) => {
                                 const currentMode = mapObj.mode || 'value';
                                 const isPlayerCount = mapObj.id === PLAYER_COUNT_ID;
 
                                 return (
-                                    <div key={key} className="flex flex-col gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
+                                    <div key={key} className="flex flex-col gap-2 bg-modal-bg-elevated p-2 rounded-xl border border-surface-border shadow-sm">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-10 h-10 flex items-center justify-center bg-indigo-900/30 text-indigo-300 font-mono font-bold rounded-md border border-indigo-500/30 shrink-0">{key}</div>
-                                            <ArrowRight size={14} className="text-slate-600 shrink-0" />
+                                            <div className="w-10 h-10 flex items-center justify-center bg-brand-secondary/10 text-brand-secondary font-mono font-black rounded-lg border border-brand-secondary/20 shrink-0">{key}</div>
+                                            <ArrowRight size={14} className="text-txt-muted shrink-0" />
                                             <div className="flex-1 min-w-0">
                                                 <select
                                                     value={mapObj.id}
@@ -336,9 +336,9 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                                                             if (targetCol) onChange({ variableMap: { ...variableMap, [key]: { ...mapObj, id: targetCol.id, name: targetCol.name } } });
                                                         }
                                                     }}
-                                                    className="w-full bg-slate-900 text-slate-200 text-sm border border-slate-600 rounded p-2 outline-none"
+                                                    className="w-full bg-modal-bg text-txt-primary text-sm font-bold border border-surface-border rounded-lg p-2 outline-none focus:border-brand-secondary transition-all"
                                                 >
-                                                    <option value={PLAYER_COUNT_ID} className="text-indigo-400 font-bold">
+                                                    <option value={PLAYER_COUNT_ID} className="text-brand-secondary font-bold">
                                                         {t('col_auto_player_count')}
                                                     </option>
                                                     <optgroup label={t('col_auto_score_items')}>
@@ -351,16 +351,16 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                                         {/* Mode Selection - 隱藏當變數為玩家人數時 */}
                                         {!isPlayerCount && (
                                             <div className="flex items-center gap-2 pl-12">
-                                                <span className="text-[10px] text-slate-500 shrink-0 uppercase">{t('col_auto_mode')}:</span>
+                                                <span className="text-[10px] text-txt-muted shrink-0 uppercase font-bold">{t('col_auto_mode')}:</span>
                                                 <select
                                                     value={currentMode}
                                                     onChange={(e) => {
                                                         const newMode = e.target.value as any;
                                                         onChange({ variableMap: { ...variableMap, [key]: { ...mapObj, mode: newMode } } });
                                                     }}
-                                                    className={`flex-1 text-xs border rounded p-1.5 outline-none font-bold ${currentMode === 'value'
-                                                            ? 'bg-slate-900 text-slate-400 border-slate-700'
-                                                            : 'bg-slate-900 text-amber-500 border-amber-900'
+                                                    className={`flex-1 text-xs border rounded-lg p-1.5 outline-none font-black transition-all ${currentMode === 'value'
+                                                            ? 'bg-modal-bg text-txt-secondary border-surface-border'
+                                                            : 'bg-modal-bg text-status-warning border-status-warning/30'
                                                         }`}
                                                 >
                                                     <option value="value">{t('col_auto_mode_val')}</option>
@@ -372,7 +372,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                                             </div>
                                         )}
                                         {!isPlayerCount && currentMode !== 'value' && (
-                                            <div className="pl-12 text-[10px] text-amber-600/80 flex items-center gap-1">
+                                            <div className="pl-12 text-[10px] text-status-warning font-bold flex items-center gap-1">
                                                 {currentMode === 'tie_count' ? <Hash size={10} /> : currentMode === 'sum_all' ? <Sigma size={10} /> : <Trophy size={10} />}
                                                 {currentMode === 'rank_score' && t('col_auto_rank_score_desc')}
                                                 {currentMode === 'rank_player' && t('col_auto_rank_player_desc')}
@@ -388,26 +388,26 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
 
                     {/* 2. 函數設定區塊 */}
                     <div className="space-y-3">
-                        <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                            <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><Ruler size={12} /> {t('col_auto_funcs')}</label>
+                        <div className="flex justify-between items-center border-b border-surface-border pb-2">
+                            <label className="text-xs font-bold text-txt-muted uppercase flex items-center gap-1"><Ruler size={12} /> {t('col_auto_funcs')}</label>
                         </div>
 
                         <div className="space-y-2">
-                            {Object.keys(functions).length === 0 && <div className="text-center py-4 text-xs text-slate-500 italic bg-slate-900/30 rounded-lg">{t('col_auto_no_funcs')}</div>}
+                            {Object.keys(functions).length === 0 && <div className="text-center py-4 text-xs text-txt-muted italic bg-modal-bg-recessed rounded-xl">{t('col_auto_no_funcs')}</div>}
 
                             {Object.keys(functions).sort().map(fKey => (
-                                <div key={fKey} className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden transition-all">
-                                    <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-800" onClick={() => setExpandedFunc(expandedFunc === fKey ? null : fKey)}>
+                                <div key={fKey} className="bg-modal-bg-elevated rounded-xl border border-surface-border overflow-hidden transition-all shadow-sm">
+                                    <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-surface-hover" onClick={() => setExpandedFunc(expandedFunc === fKey ? null : fKey)}>
                                         <div className="flex items-center gap-2">
-                                            <div className="w-8 h-8 bg-purple-900/30 text-purple-400 font-mono font-bold rounded flex items-center justify-center border border-purple-500/30">{fKey}</div>
-                                            <span className="text-sm font-bold text-slate-300">
+                                            <div className="w-8 h-8 bg-status-info/10 text-status-info font-mono font-black rounded-lg flex items-center justify-center border border-status-info/20">{fKey}</div>
+                                            <span className="text-sm font-black text-txt-primary">
                                                 {functions[fKey].length} {t('col_auto_rules_count')}
                                             </span>
                                         </div>
-                                        {expandedFunc === fKey ? <ChevronUp size={20} className="text-slate-500" /> : <ChevronDown size={20} className="text-slate-500" />}
+                                        {expandedFunc === fKey ? <ChevronUp size={20} className="text-txt-muted" /> : <ChevronDown size={20} className="text-txt-muted" />}
                                     </div>
                                     {expandedFunc === fKey && (
-                                        <div className="p-3 bg-slate-900/30 border-t border-slate-700 animate-in slide-in-from-top-2">
+                                        <div className="p-3 bg-modal-bg-recessed border-t border-surface-border animate-in slide-in-from-top-2">
                                             <EditorTabMapping
                                                 column={{ ...column, f1: functions[fKey] } as any}
                                                 onChange={(updates) => {
@@ -425,21 +425,21 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                     </div>
 
                     {/* 3. Rounding Section */}
-                    <div className="space-y-2 pt-6 border-t border-slate-800">
+                    <div className="space-y-2 pt-6 border-t border-surface-border">
                         <div
                             onClick={toggleRounding}
-                            className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all duration-300 ${isRoundingEnabled ? 'bg-indigo-900/30 border-indigo-500' : 'bg-slate-800 border-slate-700 hover:bg-slate-750'}`}
+                            className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all duration-300 active:scale-[0.98] ${isRoundingEnabled ? 'bg-brand-secondary/10 border-brand-secondary/50 shadow-sm' : 'bg-modal-bg-elevated border-surface-border hover:bg-surface-hover'}`}
                         >
-                            <span className={`text-sm font-bold transition-colors ${isRoundingEnabled ? 'text-indigo-100' : 'text-slate-300'}`}>{t('col_rounding_enable')}</span>
-                            <div className={`w-12 h-6 rounded-full relative transition-colors ${isRoundingEnabled ? 'bg-indigo-500' : 'bg-slate-600'}`}>
+                            <span className={`text-sm font-black transition-colors ${isRoundingEnabled ? 'text-brand-secondary' : 'text-txt-secondary'}`}>{t('col_rounding_enable')}</span>
+                            <div className={`w-12 h-6 rounded-full relative transition-colors ${isRoundingEnabled ? 'bg-brand-secondary' : 'bg-surface-border'}`}>
                                 <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow transition-transform duration-300 ${isRoundingEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
                             </div>
                         </div>
                         {isRoundingEnabled && (
-                            <div className="animate-in fade-in slide-in-from-top-2 pt-4 pl-4 border-l-2 border-indigo-500 ml-4">
+                            <div className="animate-in fade-in slide-in-from-top-2 pt-4 pl-4 border-l-2 border-brand-secondary/30 ml-4">
                                 <div className="grid grid-cols-3 gap-2">
                                     {(['floor', 'ceil', 'round'] as const).map(mode => (
-                                        <button key={mode} onClick={() => onChange({ rounding: mode })} className={`py-2 px-1 rounded-lg border text-xs font-bold ${column.rounding === mode ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
+                                        <button key={mode} onClick={() => onChange({ rounding: mode })} className={`py-2 px-1 rounded-lg border text-xs font-black transition-all active:scale-95 ${column.rounding === mode ? 'bg-brand-secondary border-brand-secondary/50 text-white shadow-lg shadow-brand-secondary/20' : 'bg-modal-bg border-surface-border text-txt-muted'}`}>
                                             {mode === 'floor' ? t('col_round_floor') : mode === 'ceil' ? t('col_round_ceil') : t('col_round_round')}
                                         </button>
                                     ))}

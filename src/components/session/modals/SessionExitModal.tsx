@@ -72,12 +72,12 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
     return (
         <>
             <div
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200"
+                className="fixed inset-0 bg-modal-backdrop/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200"
                 style={{ zIndex }}
                 onClick={onClose}
             >
                 <div
-                    className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-5 w-full max-w-sm flex flex-col gap-5 relative"
+                    className="bg-modal-bg rounded-2xl border border-modal-border shadow-2xl p-5 w-full max-w-sm flex flex-col gap-5 relative"
                     onClick={(e) => { e.stopPropagation(); setShowLocationMenu(false); }}
                 >
                     {/* 1. Header (Navigation Style) */}
@@ -85,20 +85,20 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
                         {onDiscard ? (
                             <button
                                 onClick={handleDiscardClick}
-                                className="text-red-400 hover:text-red-300 text-sm font-bold px-2 py-1 -ml-2 rounded transition-colors"
+                                className="text-status-danger hover:opacity-80 text-sm font-bold px-2 py-1 -ml-2 rounded transition-colors"
                             >
                                 {t('exit_btn_discard')}
                             </button>
                         ) : <div className="w-10"></div>}
 
                         <div className="flex flex-col items-center">
-                            <h3 className="text-lg font-bold text-white leading-tight">{t('exit_title')}</h3>
-                            <span className="text-[10px] text-slate-400">{t('exit_msg')}</span>
+                            <h3 className="text-lg font-bold text-txt-title leading-tight">{t('exit_title')}</h3>
+                            <span className="text-[10px] text-txt-secondary">{t('exit_msg')}</span>
                         </div>
 
                         <button
                             onClick={onClose}
-                            className="text-slate-500 hover:text-white p-2 -mr-2 rounded-full hover:bg-slate-800 transition-colors"
+                            className="text-txt-muted hover:text-txt-title p-2 -mr-2 rounded-full hover:bg-modal-bg-elevated transition-colors"
                         >
                             <X size={20} />
                         </button>
@@ -106,8 +106,8 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
 
                     {/* 2. Body (Location Input) */}
                     <div className="relative z-10">
-                        <div className="flex items-center bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all">
-                            <div className="pl-3 pr-2 text-indigo-400 shrink-0">
+                        <div className="flex items-center bg-modal-bg-elevated/50 border border-surface-border rounded-xl overflow-hidden focus-within:border-brand-secondary focus-within:ring-1 focus-within:ring-brand-secondary/50 transition-all">
+                            <div className="pl-3 pr-2 text-brand-secondary shrink-0">
                                 <MapPin size={18} />
                             </div>
                             <input
@@ -115,13 +115,13 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
                                 value={location}
                                 onChange={(e) => setLocation(e.target.value)}
                                 placeholder={t('exit_location_ph')}
-                                className="flex-1 bg-transparent h-12 text-white placeholder-slate-500 text-sm outline-none font-bold min-w-0"
+                                className="flex-1 bg-transparent h-12 text-txt-title placeholder-txt-muted text-sm outline-none font-bold min-w-0"
                             />
                             {/* Dropdown Trigger */}
                             {sortedLocations.length > 0 && (
                                 <button
                                     onClick={(e) => { e.stopPropagation(); setShowLocationMenu(!showLocationMenu); }}
-                                    className="h-12 px-3 border-l border-slate-700 text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors shrink-0"
+                                    className="h-12 px-3 border-l border-surface-border text-txt-secondary hover:text-txt-title hover:bg-surface-hover/50 transition-colors shrink-0"
                                 >
                                     <ChevronDown size={16} />
                                 </button>
@@ -132,13 +132,13 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
                         {showLocationMenu && (
                             <div
                                 ref={listRef}
-                                className="absolute bottom-full left-0 right-0 mb-2 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto no-scrollbar z-20 animate-in fade-in slide-in-from-bottom-1"
+                                className="absolute bottom-full left-0 right-0 mb-2 bg-modal-bg-elevated border border-surface-border rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto no-scrollbar z-20 animate-in fade-in slide-in-from-bottom-1"
                             >
                                 {sortedLocations.map(loc => (
                                     <button
                                         key={loc.id}
                                         onClick={() => { setLocation(loc.name); setShowLocationMenu(false); }}
-                                        className="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700/50 hover:text-white border-b border-slate-700/50 last:border-0 truncate font-medium"
+                                        className="w-full text-left px-4 py-3 text-sm text-txt-tertiary hover:bg-surface-hover/50 hover:text-txt-title border-b border-surface-border/50 last:border-0 truncate font-medium"
                                     >
                                         {loc.name}
                                     </button>
@@ -151,18 +151,18 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
                     <div className="grid grid-cols-2 gap-3">
                         <button
                             onClick={() => onSaveActive(location)}
-                            className="flex flex-col items-center justify-center gap-0.5 py-3 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 transition-colors active:scale-95"
+                            className="flex flex-col items-center justify-center gap-0.5 py-3 rounded-xl bg-modal-bg-elevated border border-surface-border hover:bg-surface-hover text-txt-tertiary transition-colors active:scale-95"
                         >
                             <span className="text-sm font-bold">{t('exit_btn_draft')}</span>
-                            <span className="text-[10px] text-slate-500">{t('exit_btn_draft_sub')}</span>
+                            <span className="text-[10px] text-txt-muted">{t('exit_btn_draft_sub')}</span>
                         </button>
 
                         <button
                             onClick={() => onSaveHistory(location)}
-                            className="flex flex-col items-center justify-center gap-0.5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/50 transition-transform active:scale-95"
+                            className="flex flex-col items-center justify-center gap-0.5 py-3 rounded-xl bg-brand-primary-deep hover:bg-brand-primary text-white shadow-lg transition-transform active:scale-95"
                         >
                             <span className="text-sm font-bold">{t('exit_btn_finish')}</span>
-                            <span className="text-[10px] text-emerald-100/60 font-medium">{t('exit_btn_finish_sub')}</span>
+                            <span className="text-[10px] text-white/60 font-medium">{t('exit_btn_finish_sub')}</span>
                         </button>
                     </div>
                 </div>

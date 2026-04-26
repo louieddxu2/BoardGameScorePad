@@ -141,7 +141,7 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
 
     return (
         <div 
-            className="fixed inset-0 bg-slate-950/90 backdrop-blur-sm flex flex-col animate-in fade-in duration-200"
+            className="fixed inset-0 bg-app-bg-deep flex flex-col animate-in fade-in duration-200"
             style={{ zIndex }}
         >
             {initialIndex !== null && images.length > 0 && (
@@ -156,31 +156,31 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
             )}
 
             {/* Header */}
-            <div className="flex-none bg-slate-900 p-3 border-b border-slate-800 flex items-center justify-between z-10 gap-2">
+            <div className="flex-none bg-modal-bg p-3 border-b border-modal-border flex items-center justify-between z-10 gap-2">
                 <div className="flex items-center gap-2 overflow-hidden">
-                    <div className="p-2 bg-indigo-500/10 rounded-lg shrink-0">
-                        <ImageIcon size={20} className="text-indigo-400" />
+                    <div className="p-2 bg-brand-secondary/10 rounded-lg shrink-0">
+                        <ImageIcon size={20} className="text-brand-secondary" />
                     </div>
                     <div className="flex flex-col min-w-0">
-                        <h3 className="text-base font-bold text-white truncate">{t('gallery_title')}</h3>
-                        <span className="text-[10px] text-slate-500">{t('share_photo_count', { count: photoIds.length })}</span>
+                        <h3 className="text-base font-bold text-txt-title truncate">{t('gallery_title')}</h3>
+                        <span className="text-[10px] text-txt-muted">{t('share_photo_count', { count: photoIds.length })}</span>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-2">
                     <button
                         onClick={onUploadPhoto}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold border border-slate-700 transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-2 bg-modal-bg-elevated hover:bg-surface-hover text-txt-primary rounded-lg text-xs font-bold border border-surface-border transition-colors"
                     >
                         <Upload size={14} /> <span className="hidden sm:inline">{t('gallery_upload')}</span>
                     </button>
                     <button
                         onClick={onTakePhoto}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-md transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-2 bg-brand-primary hover:bg-brand-primary-deep text-white rounded-lg text-xs font-bold shadow-md transition-colors"
                     >
                         <Camera size={14} /> <span className="hidden sm:inline">{t('gallery_camera')}</span>
                     </button>
-                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-800 rounded-full transition-colors ml-1">
+                    <button onClick={onClose} className="p-2 text-txt-secondary hover:text-txt-title bg-modal-bg-elevated/50 hover:bg-modal-bg-elevated rounded-full transition-colors ml-1">
                         <X size={20} />
                     </button>
                 </div>
@@ -189,8 +189,8 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
             {/* Grid Content */}
             <div className="flex-1 overflow-y-auto p-4">
                 {loading && images.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-64 text-slate-500 gap-2">
-                        <Loader2 size={32} className="animate-spin text-indigo-500" />
+                    <div className="flex flex-col items-center justify-center h-64 text-txt-muted gap-2">
+                        <Loader2 size={32} className="animate-spin text-brand-secondary" />
                         <span className="text-sm">{tCommon('loading')}</span>
                     </div>
                 ) : (
@@ -200,18 +200,18 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
                             <div
                                 key={img.id}
                                 onClick={() => setInitialIndex(idx)}
-                                className="aspect-square bg-black rounded-lg overflow-hidden relative cursor-pointer group active:scale-95 transition-transform border border-slate-800"
+                                className="aspect-square bg-surface-recessed rounded-lg overflow-hidden relative cursor-pointer group active:scale-95 transition-transform border border-surface-border"
                             >
                                 <img src={img.url} className="w-full h-full object-cover" alt="Session Photo" loading="lazy" />
-                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                                <div className="absolute inset-0 bg-txt-primary/0 group-hover:bg-txt-primary/5 transition-colors" />
                             </div>
                         ))}
                     </div>
                 )}
 
                 {images.length === 0 && !loading && (
-                    <div className="flex flex-col items-center justify-center h-64 text-slate-500 gap-4">
-                        <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center">
+                    <div className="flex flex-col items-center justify-center h-64 text-txt-muted gap-4">
+                        <div className="w-16 h-16 rounded-full bg-surface-recessed flex items-center justify-center">
                             <ImageIcon size={32} className="opacity-50" />
                         </div>
                         <p className="text-sm">{t('gallery_empty')}</p>

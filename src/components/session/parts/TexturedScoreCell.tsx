@@ -80,7 +80,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
     // Ink Styles
     const inkStyle: React.CSSProperties = {
         fontFamily: '"Kalam", "Caveat", cursive',
-        color: autoError ? 'rgb(var(--c-rose-500))' : 'rgb(var(--c-slate-50))', // Red on error
+        color: autoError ? 'rgb(var(--c-status-danger))' : 'rgb(var(--c-txt-on-dark))', // Theme-aware color on dark texture
         transform: hasInput ? `rotate(${((player.id.charCodeAt(0) + column.id.charCodeAt(0)) % 5) - 2}deg)` : 'none',
         textShadow: 'none',
         mixBlendMode: 'multiply',
@@ -129,7 +129,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
 
         if (hasInput) {
             if (autoError) {
-                layoutContent = <span className="font-bold text-rose-500" style={{ fontSize: dynamicFontSize }}>ERR</span>;
+                layoutContent = <span className="font-bold text-status-danger" style={{ fontSize: dynamicFontSize }}>ERR</span>;
             } else if (isPartsOnly) {
                 // Parts Only Mode (List)
                 layoutContent = (
@@ -144,7 +144,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
             } else if (isLabelOnly) {
                 // Label Only Mode
                 const options = resolveSelectedOptions(column, scoreValue);
-                const labelColorBase = column.color || 'rgb(var(--c-slate-50))';
+                const labelColorBase = column.color || 'rgb(var(--c-txt-on-dark))';
                 layoutContent = (
                     <div className="flex flex-col items-center justify-center w-full h-full leading-tight overflow-hidden">
                         {options.map((opt, optIdx) => {
@@ -177,7 +177,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                 onClick={undefined}
                 className={`w-full h-full relative cursor-default select-none overflow-hidden transition-all pointer-events-none`}
                 style={{
-                    backgroundColor: skipTextureRendering ? 'transparent' : 'rgb(var(--c-slate-200))',
+                    backgroundColor: skipTextureRendering ? 'transparent' : 'rgb(var(--c-surface-recessed))',
                     minHeight: effectiveMinHeight,
                 }}
             >
@@ -188,9 +188,9 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                     className={`
                     absolute flex items-center justify-center z-10 border-2 rounded-md cursor-pointer transition-all pointer-events-auto
                     ${isActive
-                            ? 'border-emerald-500 bg-emerald-500/20 ring-1 ring-emerald-500' // Active Style
+                            ? 'border-brand-primary bg-brand-primary/20 ring-1 ring-brand-primary' // Active Style
                             : (isEditMode
-                                ? 'border-dashed border-slate-500/30 hover:border-slate-600/60 hover:bg-black/5'
+                                ? 'border-dashed border-surface-border hover:border-surface-border-hover hover:bg-black/5'
                                 : 'border-transparent hover:border-black/10 hover:bg-black/5') // Inactive Style
                         }
                 `}
@@ -203,7 +203,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                     } as React.CSSProperties}
                 >
                     {column.isAuto && autoError && (
-                        <div className="absolute -top-3 -right-3 text-rose-500 z-20 drop-shadow-md" title={autoError === 'missing_dependency' ? t('error_ref_lost') : t('error_calc_general')}>
+                        <div className="absolute -top-3 -right-3 text-status-danger z-20 drop-shadow-md" title={autoError === 'missing_dependency' ? t('error_ref_lost') : t('error_calc_general')}>
                             {autoError === 'missing_dependency' ? <Link2Off size={16} /> : <AlertTriangle size={16} />}
                         </div>
                     )}
@@ -225,7 +225,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
             return (
                 <div className="relative z-10 w-full h-full flex items-center justify-center">
                     {autoError && (
-                        <div className="absolute top-1 right-1 text-rose-500 z-20 opacity-80" title={autoError === 'missing_dependency' ? t('error_ref_lost') : t('error_calc_general')}>
+                        <div className="absolute top-1 right-1 text-status-danger z-20 opacity-80" title={autoError === 'missing_dependency' ? t('error_ref_lost') : t('error_calc_general')}>
                             {autoError === 'missing_dependency' ? <Link2Off size={14} /> : <AlertTriangle size={14} />}
                         </div>
                     )}
@@ -248,7 +248,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
             const renderMode = column.renderMode || 'standard';
 
             if (renderMode === 'label_only') {
-                const labelColorBase = column.color || 'rgb(var(--c-slate-50))';
+                const labelColorBase = column.color || 'rgb(var(--c-txt-on-dark))';
                 const totalLines = options.reduce((acc, opt) => acc + opt.label.split(/\r\n|\r|\n/).length, 0);
                 
                 return (
@@ -360,11 +360,11 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
             onClick={onClick}
             className={`w-full h-full relative cursor-pointer select-none overflow-hidden transition-all ${isActive ? '' : 'hover:brightness-95'}`}
             style={{
-                backgroundColor: skipTextureRendering ? 'transparent' : 'rgb(var(--c-slate-200))',
+                backgroundColor: skipTextureRendering ? 'transparent' : 'rgb(var(--c-surface-recessed))',
                 minHeight: effectiveMinHeight,
             }}
         >
-            {isActive && <div className="absolute inset-0 ring-2 ring-inset ring-emerald-500 z-30 pointer-events-none"></div>}
+            {isActive && <div className="absolute inset-0 ring-2 ring-inset ring-brand-primary z-30 pointer-events-none"></div>}
             {!skipTextureRendering && <SmartTextureLayer bgUrl={bgUrl} rect={rect} />}
             {renderContent()}
             {!skipTextureRendering && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(var(--c-black)/0.05)] pointer-events-none z-10" />}

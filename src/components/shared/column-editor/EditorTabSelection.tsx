@@ -22,55 +22,55 @@ const EditorTabSelection: React.FC<EditorTabSelectionProps> = ({ column, onChang
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
       {/* Selection Mode Switcher */}
       <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('col_select_mode')}</label>
+          <label className="block text-xs font-bold text-txt-muted uppercase mb-2">{t('col_select_mode')}</label>
           <div className="grid grid-cols-2 gap-3">
               <button 
                   onClick={() => onChange({ isMultiSelect: false })} 
-                  className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${!column.isMultiSelect ? 'bg-sky-600/20 border-sky-500 text-sky-400 shadow-[0_0_15px_rgba(var(--c-sky-500)/0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}
+                  className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all active:scale-95 ${!column.isMultiSelect ? 'bg-status-info/10 border-status-info/50 text-status-info shadow-sm' : 'bg-modal-bg-elevated border-surface-border text-txt-secondary hover:bg-surface-hover'}`}
               >
                   <div className="h-[24px] flex items-center justify-center">
                     <CircleDot size={22} />
                   </div>
                   <div className="leading-tight text-center">
-                      <div className="text-xs font-bold uppercase">{t('col_select_single')}</div>
-                      <div className="text-[10px] opacity-70 truncate">{t('col_select_single_desc')}</div>
+                      <div className="text-xs font-black uppercase">{t('col_select_single')}</div>
+                      <div className="text-[10px] font-bold opacity-60 truncate">{t('col_select_single_desc')}</div>
                   </div>
               </button>
               <button 
                   onClick={() => onChange({ isMultiSelect: true })} 
-                  className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${column.isMultiSelect ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400 shadow-[0_0_15px_rgba(var(--c-emerald-500)/0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}
+                  className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all active:scale-95 ${column.isMultiSelect ? 'bg-brand-primary/10 border-brand-primary/50 text-brand-primary shadow-sm' : 'bg-modal-bg-elevated border-surface-border text-txt-secondary hover:bg-surface-hover'}`}
               >
                   <div className="grid grid-cols-2 gap-1 h-[24px] items-center justify-center">
-                    <CheckSquare size={11} strokeWidth={3} className={column.isMultiSelect ? 'text-emerald-400' : 'text-slate-500'} />
+                    <CheckSquare size={11} strokeWidth={3} className={column.isMultiSelect ? 'text-brand-primary' : 'text-txt-muted'} />
                     <Square size={11} className="opacity-40" />
                     <Square size={11} className="opacity-40" />
-                    <CheckSquare size={11} strokeWidth={3} className={column.isMultiSelect ? 'text-emerald-400' : 'text-slate-500'} />
+                    <CheckSquare size={11} strokeWidth={3} className={column.isMultiSelect ? 'text-brand-primary' : 'text-txt-muted'} />
                   </div>
                   <div className="leading-tight text-center">
-                      <div className="text-xs font-bold uppercase">{t('col_select_multi')}</div>
-                      <div className="text-[10px] opacity-70 truncate">{t('col_select_multi_desc')}</div>
+                      <div className="text-xs font-black uppercase">{t('col_select_multi')}</div>
+                      <div className="text-[10px] font-bold opacity-60 truncate">{t('col_select_multi_desc')}</div>
                   </div>
               </button>
           </div>
       </div>
 
       <div className="space-y-2 pt-2">
-          <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('col_render_mode')}</label>
-          <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
-              <button onClick={() => onChange({ renderMode: 'standard' })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentRenderMode === 'standard' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
+          <label className="block text-xs font-bold text-txt-muted uppercase mb-2">{t('col_render_mode')}</label>
+          <div className="flex bg-modal-bg-recessed rounded-xl p-1 border border-surface-border">
+              <button onClick={() => onChange({ renderMode: 'standard' })} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${currentRenderMode === 'standard' ? 'bg-modal-bg text-status-info shadow-sm' : 'text-txt-secondary hover:text-txt-primary'}`}>
                   {t('col_render_std')}
               </button>
-              <button onClick={() => onChange({ renderMode: 'value_only' })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentRenderMode === 'value_only' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
+              <button onClick={() => onChange({ renderMode: 'value_only' })} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${currentRenderMode === 'value_only' ? 'bg-modal-bg text-status-info shadow-sm' : 'text-txt-secondary hover:text-txt-primary'}`}>
                   {t('col_render_val')}
               </button>
-              <button onClick={() => onChange({ renderMode: 'label_only' })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentRenderMode === 'label_only' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
+              <button onClick={() => onChange({ renderMode: 'label_only' })} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${currentRenderMode === 'label_only' ? 'bg-modal-bg text-status-info shadow-sm' : 'text-txt-secondary hover:text-txt-primary'}`}>
                   {t('col_render_label')}
               </button>
           </div>
       </div>
 
-      <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 space-y-4">
-        <p className="text-sm text-slate-400">{t('col_select_desc')}</p>
+      <div className="bg-modal-bg-recessed p-4 rounded-xl border border-surface-border/50 space-y-4">
+        <p className="text-sm text-txt-secondary">{t('col_select_desc')}</p>
         <QuickActionsEditor
           quickActions={column.quickActions || []}
           buttonGridColumns={column.buttonGridColumns}

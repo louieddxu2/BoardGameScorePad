@@ -173,16 +173,16 @@ const NumericKeypad: React.FC<NumericKeypadContentProps> = (props) => {
   return (
       <div className="grid grid-cols-3 grid-rows-4 gap-2 h-full">
         {[7, 8, 9, 4, 5, 6, 1, 2, 3].map(num => (
-          <button key={num} onClick={() => handleNumClick(num)} className={`text-[32px] leading-none font-bold rounded-xl shadow-sm transition-all touch-manipulation active:scale-95 h-full ${overwrite ? 'bg-[rgb(var(--c-keypad-btn-active))] text-white shadow-indigo-500/20 hover:opacity-90' : 'bg-[rgb(var(--c-keypad-btn-bg))] text-[rgb(var(--c-keypad-btn-text))] hover:bg-surface-hover border border-[rgb(var(--c-input-border))]'}`}>{num}</button>
+          <button key={num} onClick={() => handleNumClick(num)} className={`text-[32px] leading-none font-bold rounded-xl shadow-sm transition-all touch-manipulation active:scale-95 h-full ${overwrite ? 'bg-keypad-active text-white shadow-brand-secondary/20 hover:opacity-90' : 'bg-keypad-bg text-keypad-text hover:bg-surface-hover border border-input-border'}`}>{num}</button>
         ))}
-        <div className="bg-[rgb(var(--c-keypad-btn-bg))] rounded-xl border border-[rgb(var(--c-input-border))] grid grid-rows-2 h-full overflow-hidden shadow-sm">
+        <div className="bg-keypad-bg rounded-xl border border-input-border grid grid-rows-2 h-full overflow-hidden shadow-sm">
             <button onClick={handleToggleSign} className={`hover:bg-surface-hover text-txt-muted flex items-center justify-center transition-colors active:scale-95 touch-manipulation font-bold ${!isToggleMode ? 'font-mono text-[28px] leading-none' : 'text-xl'}`}>
               {isToggleMode ? '+/-' : '-'}
             </button>
-            <button onClick={handleDecimal} className="border-t border-[rgb(var(--c-input-border))] hover:bg-surface-hover text-[rgb(var(--c-keypad-btn-text))] font-bold flex items-center justify-center transition-colors active:scale-95 touch-manipulation"><Dot size={32} /></button>
+            <button onClick={handleDecimal} className="border-t border-input-border hover:bg-surface-hover text-keypad-text font-bold flex items-center justify-center transition-colors active:scale-95 touch-manipulation"><Dot size={32} /></button>
         </div>
-        <button onClick={() => handleNumClick(0)} className={`text-[32px] leading-none font-bold rounded-xl touch-manipulation active:scale-95 transition-all h-full ${overwrite ? 'bg-[rgb(var(--c-keypad-btn-active))] text-white shadow-indigo-500/20' : 'bg-[rgb(var(--c-keypad-btn-bg))] text-[rgb(var(--c-keypad-btn-text))] border border-[rgb(var(--c-input-border))] hover:bg-surface-hover'}`}>0</button>
-        <button onClick={handleBackspace} className="bg-[rgb(var(--c-keypad-btn-bg))] hover:bg-status-danger/10 text-status-danger rounded-xl flex items-center justify-center border border-[rgb(var(--c-input-border))] active:scale-95 transition-transform h-full"><Delete size={32} /></button>
+        <button onClick={() => handleNumClick(0)} className={`text-[32px] leading-none font-bold rounded-xl touch-manipulation active:scale-95 transition-all h-full ${overwrite ? 'bg-keypad-active text-white shadow-brand-secondary/20' : 'bg-keypad-bg text-keypad-text border border-input-border hover:bg-surface-hover'}`}>0</button>
+        <button onClick={handleBackspace} className="bg-keypad-bg hover:bg-status-danger/10 text-status-danger rounded-xl flex items-center justify-center border border-input-border active:scale-95 transition-transform h-full"><Delete size={32} /></button>
       </div>
   );
 };

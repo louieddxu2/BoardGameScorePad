@@ -71,8 +71,10 @@ export default {
           },
         },
         txt: {
+          title: 'rgb(var(--c-txt-title) / <alpha-value>)',
           primary: 'rgb(var(--c-txt-primary) / <alpha-value>)',
           secondary: 'rgb(var(--c-txt-secondary) / <alpha-value>)',
+          tertiary: 'rgb(var(--c-txt-tertiary) / <alpha-value>)',
           muted: 'rgb(var(--c-txt-muted) / <alpha-value>)',
           'card-hover': 'rgb(var(--c-card-txt-hover) / <alpha-value>)',
         },
@@ -90,9 +92,11 @@ export default {
             recessed: 'rgb(var(--c-modal-bg-recessed) / <alpha-value>)',
           },
           border: 'rgb(var(--c-modal-border) / <alpha-value>)',
+          backdrop: 'rgb(var(--c-modal-backdrop) / <alpha-value>)',
         },
         brand: {
           primary: 'rgb(var(--c-brand-primary) / <alpha-value>)',
+          'primary-deep': 'rgb(var(--c-brand-primary-deep) / <alpha-value>)',
           secondary: 'rgb(var(--c-brand-secondary) / <alpha-value>)',
         },
         status: {
@@ -100,6 +104,16 @@ export default {
           info: 'rgb(var(--c-status-info) / <alpha-value>)',
           warning: 'rgb(var(--c-status-warning) / <alpha-value>)',
           danger: 'rgb(var(--c-status-danger) / <alpha-value>)',
+        },
+        input: {
+          border: 'rgb(var(--c-input-border) / <alpha-value>)',
+          bg: 'rgb(var(--c-input-bg) / <alpha-value>)',
+          header: 'rgb(var(--c-input-header-bg) / <alpha-value>)',
+        },
+        keypad: {
+          bg: 'rgb(var(--c-keypad-btn-bg) / <alpha-value>)',
+          text: 'rgb(var(--c-keypad-btn-text) / <alpha-value>)',
+          active: 'rgb(var(--c-keypad-btn-active) / <alpha-value>)',
         },
       },
       boxShadow: {

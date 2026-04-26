@@ -70,7 +70,7 @@ const FloatingBubble: React.FC<{
             }}
         >
             <div 
-                className="px-3 py-1.5 rounded-xl shadow-xl bg-slate-900 border-2 text-base font-black font-mono animate-in zoom-in-95 duration-200"
+                className="px-3 py-1.5 rounded-xl shadow-xl bg-modal-bg-elevated border-2 text-base font-black font-mono animate-in zoom-in-95 duration-200"
                 style={{ 
                     borderColor: color, 
                     color: color,
@@ -112,7 +112,7 @@ interface TexturedTotalCellProps {
 const AnnotationArrow: React.FC = () => (
     <svg 
         viewBox="0 0 100 100" 
-        className="absolute top-0 left-0 w-[20%] h-full pointer-events-none text-indigo-400 opacity-80"
+        className="absolute top-0 left-0 w-[20%] h-full pointer-events-none text-brand-secondary opacity-80"
         style={{ zIndex: 15 }}
     >
         {/* Dots moved higher (y=15) to increase gap from line */}
@@ -256,7 +256,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
 
       <ContrastText 
         className="font-black text-2xl leading-none w-full text-center truncate px-1 z-10" 
-        color={bgUrl ? (visualForceLost ? 'rgba(var(--c-slate-500)/0.5)' : 'rgb(var(--c-slate-50))') : (visualForceLost ? 'rgb(var(--c-status-danger))' : (isTransparent ? 'rgb(var(--c-txt-muted))' : effectiveColor))}
+        color={bgUrl ? (visualForceLost ? 'rgba(var(--c-slate-500)/0.5)' : 'rgb(var(--c-txt-on-dark))') : (visualForceLost ? 'rgb(var(--c-status-danger))' : (isTransparent ? 'rgb(var(--c-txt-muted))' : effectiveColor))}
         style={bgUrl ? inkStyle : { opacity: visualForceLost ? 0.5 : 1 }}
         isTextureMode={!!bgUrl}
       >
@@ -266,13 +266,13 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
       {/* Force Loss Marker - Hidden in Clean Mode */}
       {!cleanMode && isForceLost && (
           <div className="absolute top-0.5 right-0.5 z-20 pointer-events-none drop-shadow-md">
-              <X className="text-red-500/80" size={16} strokeWidth={3} />
+              <X className="text-status-danger/80" size={16} strokeWidth={3} />
           </div>
       )}
 
       {/* Winner Crown - Hidden in Clean Mode */}
       {!cleanMode && !hideCrown && isWinner && hasMultiplePlayers && !isForceLost && (
-        <Crown size={14} className="text-yellow-400 absolute top-0.5 right-0.5 z-20 shadow-sm" fill="currentColor" />
+        <Crown size={14} className="text-status-warning absolute top-0.5 right-0.5 z-20 shadow-sm" fill="currentColor" />
       )}
 
       {/* Floating Preview Bubble (Anchored Portal) */}

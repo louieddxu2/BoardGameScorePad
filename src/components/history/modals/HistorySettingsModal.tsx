@@ -156,20 +156,20 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
             <div className="space-y-4">
                 {/* Game Name */}
                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
+                    <label className="text-xs font-bold text-txt-muted uppercase flex items-center gap-1">
                         <Trophy size={12} /> {t('history_game_name')}
                     </label>
                     <input
                         type="text"
                         value={formData.gameName}
                         onChange={(e) => handleFieldChange('gameName', e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white focus:border-emerald-500 outline-none font-bold"
+                        className="w-full bg-modal-bg-elevated border border-modal-border rounded-xl p-3 text-txt-primary focus:border-brand-primary outline-none font-bold"
                     />
                 </div>
 
                 {/* BGG ID (New Requirement) */}
                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
+                    <label className="text-xs font-bold text-txt-muted uppercase flex items-center gap-1">
                         <Hash size={12} /> {t('history_bgg_id_label')}
                     </label>
                     <input
@@ -177,40 +177,40 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
                         value={formData.bggId || ''}
                         onChange={(e) => handleFieldChange('bggId', e.target.value)}
                         placeholder={t('history_bgg_id_ph')}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white focus:border-emerald-500 outline-none font-mono"
+                        className="w-full bg-modal-bg-elevated border border-modal-border rounded-xl p-3 text-txt-primary focus:border-brand-primary outline-none font-mono"
                     />
-                    <p className="text-[10px] text-slate-500 px-1">{t('history_bgg_id_note')}</p>
+                    <p className="text-[10px] text-txt-muted px-1">{t('history_bgg_id_note')}</p>
                 </div>
 
                 {/* Time Section */}
                 <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
+                        <label className="text-xs font-bold text-txt-muted uppercase flex items-center gap-1">
                             <Clock size={12} /> {t('history_start_time')}
                         </label>
                         <input
                             type="datetime-local"
                             value={toDatetimeInput(formData.startTime)}
                             onChange={(e) => handleFieldChange('startTime', fromDatetimeInput(e.target.value))}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-sm text-white focus:border-emerald-500 outline-none"
+                            className="w-full bg-modal-bg-elevated border border-modal-border rounded-xl p-2 text-sm text-txt-primary focus:border-brand-primary outline-none"
                         />
                     </div>
                     <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
+                        <label className="text-xs font-bold text-txt-muted uppercase flex items-center gap-1">
                             <Clock size={12} /> {t('history_end_time')}
                         </label>
                         <input
                             type="datetime-local"
                             value={toDatetimeInput(formData.endTime)}
                             onChange={(e) => handleFieldChange('endTime', fromDatetimeInput(e.target.value))}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-sm text-white focus:border-emerald-500 outline-none"
+                            className="w-full bg-modal-bg-elevated border border-modal-border rounded-xl p-2 text-sm text-txt-primary focus:border-brand-primary outline-none"
                         />
                     </div>
                 </div>
 
                 {/* Location */}
                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
+                    <label className="text-xs font-bold text-txt-muted uppercase flex items-center gap-1">
                         <MapPin size={12} /> {t('history_location')}
                     </label>
                     <input
@@ -219,7 +219,7 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
                         onChange={(e) => handleFieldChange('location', e.target.value)}
                         placeholder={t('history_location_ph')}
                         list="location-list" // Link to datalist
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white focus:border-emerald-500 outline-none"
+                        className="w-full bg-modal-bg-elevated border border-modal-border rounded-xl p-3 text-txt-primary focus:border-brand-primary outline-none"
                     />
                     <datalist id="location-list">
                         {locationHistory.map((loc, i) => (
@@ -230,24 +230,24 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
 
                 {/* Scoring Rule (Top-level) */}
                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
+                    <label className="text-xs font-bold text-txt-muted uppercase flex items-center gap-1">
                         <Settings size={12} /> {t('history_rule')}
                     </label>
                     <select
                         value={formData.scoringRule}
                         onChange={(e) => handleFieldChange('scoringRule', e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white focus:border-emerald-500 outline-none appearance-none"
+                        className="w-full bg-modal-bg-elevated border border-modal-border rounded-xl p-3 text-txt-primary focus:border-brand-primary outline-none appearance-none"
                     >
                         {SCORING_OPTIONS.map(opt => (
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                     </select>
-                    <p className="text-[10px] text-slate-500 px-1">{t('history_rule_warn')}</p>
+                    <p className="text-[10px] text-txt-muted px-1">{t('history_rule_warn')}</p>
                 </div>
 
                 {/* Note */}
                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
+                    <label className="text-xs font-bold text-txt-muted uppercase flex items-center gap-1">
                         <FileText size={12} /> {t('history_note')}
                     </label>
                     <textarea
@@ -255,7 +255,7 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
                         onChange={(e) => handleFieldChange('note', e.target.value)}
                         placeholder={t('history_note_ph')}
                         rows={4}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white focus:border-emerald-500 outline-none resize-none"
+                        className="w-full bg-modal-bg-elevated border border-modal-border rounded-xl p-3 text-txt-primary focus:border-brand-primary outline-none resize-none"
                     />
                 </div>
 
@@ -268,14 +268,14 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
                     if (type === 'string' || type === 'number') {
                         return (
                             <div key={key} className="space-y-1 animate-in fade-in">
-                                <label className="text-xs font-bold text-indigo-400 uppercase flex items-center gap-1">
+                                <label className="text-xs font-bold text-brand-secondary uppercase flex items-center gap-1">
                                     <Database size={12} /> {key} (Auto-Detected)
                                 </label>
                                 <input
                                     type={type === 'number' ? 'number' : 'text'}
                                     value={val}
                                     onChange={(e) => handleFieldChange(key as keyof HistoryRecord, type === 'number' ? parseFloat(e.target.value) : e.target.value)}
-                                    className="w-full bg-slate-800 border border-indigo-500/30 rounded-xl p-3 text-white focus:border-indigo-500 outline-none"
+                                    className="w-full bg-modal-bg-elevated border border-brand-secondary/30 rounded-xl p-3 text-txt-primary focus:border-brand-secondary outline-none"
                                 />
                             </div>
                         );
@@ -295,16 +295,16 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
             }}
         >
             <div
-                className="bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl border border-slate-800 flex flex-col max-h-[90vh]"
+                className="bg-modal-bg w-full max-w-lg rounded-2xl shadow-2xl border border-modal-border flex flex-col max-h-[90vh]"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex-none bg-slate-800 p-4 border-b border-slate-700 flex items-center justify-between rounded-t-2xl">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                        <Settings size={20} className="text-emerald-500" />
+                <div className="flex-none bg-modal-header p-4 border-b border-modal-border flex items-center justify-between rounded-t-2xl">
+                    <h3 className="text-lg font-bold text-txt-title flex items-center gap-2">
+                        <Settings size={20} className="text-brand-primary" />
                         {t('history_settings_title')}
                     </h3>
-                    <button onClick={onClose} className="text-slate-500 hover:text-white p-1 rounded-lg hover:bg-slate-700">
+                    <button onClick={onClose} className="text-txt-muted hover:text-txt-primary p-1 rounded-lg hover:bg-surface-hover">
                         <X size={20} />
                     </button>
                 </div>
@@ -314,18 +314,18 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
                     {renderDynamicFields()}
 
                     {/* Raw Data Toggle */}
-                    <div className="mt-8 pt-4 border-t border-slate-800">
+                    <div className="mt-8 pt-4 border-t border-modal-border">
                         <button
                             onClick={() => setShowRawInspector(!showRawInspector)}
-                            className="flex items-center gap-2 text-xs text-slate-500 hover:text-slate-300 transition-colors w-full justify-center py-2"
+                            className="flex items-center gap-2 text-xs text-txt-muted hover:text-txt-primary transition-colors w-full justify-center py-2"
                         >
                             <Database size={12} />
                             {showRawInspector ? t('history_hide_raw') : t('history_raw_data')}
                         </button>
 
                         {showRawInspector && (
-                            <div className="mt-2 bg-black/30 p-3 rounded-lg border border-slate-700 overflow-x-auto">
-                                <pre className="text-[10px] text-slate-400 font-mono leading-relaxed">
+                            <div className="mt-2 bg-black/30 p-3 rounded-lg border border-modal-border overflow-x-auto">
+                                <pre className="text-[10px] text-txt-muted font-mono leading-relaxed">
                                     {JSON.stringify(formData, null, 2)}
                                 </pre>
                             </div>
@@ -333,28 +333,28 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
                     </div>
 
                     {/* Restore Section (Moved to Bottom of Content) */}
-                    <div className="mt-4 pt-4 border-t border-slate-800">
-                        <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-1">
+                    <div className="mt-4 pt-4 border-t border-modal-border">
+                        <h4 className="text-xs font-bold text-txt-muted uppercase mb-2 flex items-center gap-1">
                             {t('history_advanced_ops')}
                         </h4>
                         <button
                             onClick={handleRestore}
-                            className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-sky-400 font-bold rounded-xl border border-slate-700 flex items-center justify-center gap-2 transition-all active:scale-95 group"
+                            className="w-full py-3 bg-modal-bg-elevated hover:bg-surface-hover text-brand-secondary font-bold rounded-xl border border-modal-border flex items-center justify-center gap-2 transition-all active:scale-95 group"
                         >
                             <CopyPlus size={18} className="group-hover:scale-110 transition-transform" />
                             {t('history_restore_btn')}
                         </button>
-                        <p className="text-[10px] text-slate-500 mt-2 text-center">
+                        <p className="text-[10px] text-txt-muted mt-2 text-center">
                             {t('history_restore_note')}
                         </p>
                     </div>
                 </div>
 
                 {/* Footer - Only Save Button */}
-                <div className="flex-none p-4 bg-slate-800 border-t border-slate-700 rounded-b-2xl">
+                <div className="flex-none p-4 bg-modal-footer border-t border-modal-border rounded-b-2xl">
                     <button
                         onClick={handleSave}
-                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2 transition-transform active:scale-95"
+                        className="w-full py-3 bg-brand-primary-deep hover:bg-brand-primary text-white font-bold rounded-xl shadow-lg shadow-brand-primary/30 flex items-center justify-center gap-2 transition-transform active:scale-95"
                     >
                         <Save size={18} />
                         {t('history_save_btn')}

@@ -295,7 +295,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
                                 <div className="w-full h-full rounded-lg overflow-hidden border-2 border-white/50" style={iconStyle}>
                                     <img src={lastThumbnail} className="w-full h-full object-cover" alt="Last capture" />
                                 </div>
-                                <div className="absolute -top-2 -right-2 bg-emerald-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-black z-10">
+                                <div className="absolute -top-2 -right-2 bg-brand-primary text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-black z-10">
                                     {captures.length}
                                 </div>
                             </div>
@@ -316,7 +316,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
                         <Loader2 size={32} className="animate-spin text-white" />
                     ) : (
                         <div className="w-16 h-16 bg-white rounded-full transition-all flex items-center justify-center">
-                            <Camera size={28} className="text-slate-400" style={iconStyle} />
+                            <Camera size={28} className="text-txt-secondary" style={iconStyle} />
                         </div>
                     )}
                 </button>
@@ -326,7 +326,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
                     {!singleShot && captures.length > 0 ? (
                         <button
                             onClick={handleDone}
-                            className="w-14 h-14 bg-emerald-600 rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition-all animate-in zoom-in duration-200"
+                            className="w-14 h-14 bg-brand-primary-deep rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition-all animate-in zoom-in duration-200"
                             style={iconStyle}
                         >
                             <Check size={28} strokeWidth={3} />

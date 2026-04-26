@@ -127,11 +127,11 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 space-y-4">
-        <p className="text-sm text-slate-400">{t('col_mapping_desc')}</p>
+      <div className="bg-modal-bg-recessed p-4 rounded-xl border border-surface-border/50 space-y-4">
+        <p className="text-sm text-txt-secondary">{t('col_mapping_desc')}</p>
         {!hideUnitInput && (
             <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('col_unit')}</label>
+            <label className="block text-xs font-bold text-txt-muted uppercase mb-1">{t('col_unit')}</label>
             <input
                 type="text"
                 value={column.unit || ''}
@@ -140,14 +140,14 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
                 }}
                 onFocus={e => e.target.select()}
                 placeholder={t('col_unit')}
-                className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-emerald-500 outline-none"
+                className="w-full bg-modal-bg border border-surface-border rounded-xl p-3 text-txt-primary font-bold focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 outline-none transition-all"
             />
             </div>
         )}
       </div>
       <div className="space-y-2">
         {rules.map((rule, idx) => (
-          <div key={idx} className="flex flex-col gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700 relative">
+          <div key={idx} className="flex flex-col gap-2 bg-modal-bg-elevated p-2 rounded-xl border border-surface-border shadow-sm relative">
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -165,12 +165,12 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
                 }}
                 onBlur={() => handleBlur(idx, 'min')}
                 onFocus={e => e.target.select()}
-                className="w-14 bg-slate-900 border border-slate-600 rounded p-2 text-center text-white text-sm outline-none focus:border-emerald-500"
+                className="w-14 bg-modal-bg border border-surface-border rounded-lg p-2 text-center text-txt-primary text-sm font-black outline-none focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 transition-all"
               />
-              <span className="text-slate-500">~</span>
+              <span className="text-txt-muted">~</span>
               <div className="relative w-14">
                 {rule.max === 'next' ? (
-                  <div className="w-full h-full bg-slate-800 border border-slate-700/50 rounded p-2 text-center flex items-center justify-center text-indigo-400 text-xs font-bold">{t('col_mapping_next')}</div>
+                  <div className="w-full h-full bg-modal-bg-recessed border border-surface-border/50 rounded-lg p-2 text-center flex items-center justify-center text-brand-secondary text-[10px] font-black uppercase">{t('col_mapping_next')}</div>
                 ) : (
                   <input
                     type="text"
@@ -190,11 +190,11 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
                     }}
                     onBlur={() => handleBlur(idx, 'max')}
                     onFocus={e => e.target.select()}
-                    className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-center text-white placeholder-slate-600 text-sm outline-none focus:border-emerald-500"
+                    className="w-full bg-modal-bg border border-surface-border rounded-lg p-2 text-center text-txt-primary placeholder:text-txt-muted/50 text-sm font-black outline-none focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 transition-all"
                   />
                 )}
                 {rule.max === undefined && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-500 text-lg leading-none pb-1 font-bold">
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-txt-muted text-lg leading-none pb-1 font-bold">
                     ∞
                   </div>
                 )}
@@ -202,26 +202,26 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
               <button
                 onClick={() => idx !== 0 && updateMappingRule(idx, 'isLinear', !rule.isLinear)}
                 disabled={idx === 0}
-                className={`w-8 h-[38px] flex flex-col items-center justify-center gap-0.5 rounded-md shrink-0 transition-colors ${idx === 0 ? 'bg-slate-900 border border-slate-700/50 cursor-not-allowed border-dashed' : 'bg-slate-800 border border-slate-600 active:bg-slate-700'}`}
+                className={`w-8 h-[38px] flex flex-col items-center justify-center gap-0.5 rounded-lg shrink-0 transition-all active:scale-95 ${idx === 0 ? 'bg-modal-bg-recessed border border-dashed border-surface-border text-txt-muted opacity-50' : 'bg-modal-bg border border-surface-border text-txt-secondary hover:text-txt-primary shadow-sm'}`}
                 title={idx === 0 ? t('col_mapping_lock_hint') : (rule.isLinear ? t('col_mapping_mode_linear') : t('col_mapping_mode_fixed'))}
               >
                 {idx === 0 ? (
                   <div className="flex flex-col items-center gap-0.5">
-                    <ArrowRightIcon size={12} className="text-emerald-400" />
-                    <Lock size={10} className="text-slate-600" />
+                    <ArrowRightIcon size={12} className="text-brand-primary" />
+                    <Lock size={10} className="text-txt-muted" />
                   </div>
                 ) : (
                   <>
-                    <ArrowRightIcon size={12} className={`transition-all ${!rule.isLinear ? 'text-emerald-400 opacity-100 scale-110' : 'text-slate-600 opacity-50'}`} />
-                    <TrendingUp size={12} className={`transition-all ${rule.isLinear ? 'text-emerald-400 opacity-100 scale-110' : 'text-slate-600 opacity-50'}`} />
+                    <ArrowRightIcon size={12} className={`transition-all ${!rule.isLinear ? 'text-brand-primary opacity-100 scale-110' : 'text-txt-muted opacity-50'}`} />
+                    <TrendingUp size={12} className={`transition-all ${rule.isLinear ? 'text-brand-primary opacity-100 scale-110' : 'text-txt-muted opacity-50'}`} />
                   </>
                 )}
               </button>
               <div className="flex-1 min-w-0">
                 {rule.isLinear ? (
                   <div className="grid grid-cols-2 gap-1 h-[38px]">
-                    <div className="relative bg-slate-900 border border-slate-600 rounded-md flex items-center overflow-hidden">
-                      <span className="absolute left-2 text-[10px] text-slate-500 font-bold z-10 pointer-events-none">{t('col_mapping_per')}</span>
+                    <div className="relative bg-modal-bg border border-surface-border rounded-lg flex items-center overflow-hidden focus-within:ring-4 focus-within:ring-brand-primary/10 transition-all shadow-sm">
+                      <span className="absolute left-2 text-[8px] text-txt-muted font-black z-10 pointer-events-none uppercase">{t('col_mapping_per')}</span>
                       <input
                         type="text"
                         inputMode="decimal"
@@ -237,11 +237,11 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
                         }}
                         onBlur={() => handleBlur(idx, 'unit')}
                         onFocus={e => e.target.select()}
-                        className="w-full h-full bg-transparent text-white text-center text-sm pl-4 pr-1 outline-none font-medium"
+                        className="w-full h-full bg-transparent text-txt-primary text-center text-sm pl-4 pr-1 outline-none font-black"
                       />
                     </div>
-                    <div className="relative bg-slate-900 border border-emerald-500/30 rounded-md flex items-center overflow-hidden">
-                      <span className="absolute left-2 text-[10px] text-emerald-500 font-bold z-10 pointer-events-none">{t('col_mapping_add')}</span>
+                    <div className="relative bg-modal-bg border-2 border-brand-primary/30 rounded-lg flex items-center overflow-hidden focus-within:ring-4 focus-within:ring-brand-primary/10 transition-all shadow-sm">
+                      <span className="absolute left-2 text-[8px] text-brand-primary font-black z-10 pointer-events-none uppercase">{t('col_mapping_add')}</span>
                       <input
                         type="text"
                         inputMode="decimal"
@@ -257,7 +257,7 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
                         }}
                         onBlur={() => handleBlur(idx, 'unitScore')}
                         onFocus={e => e.target.select()}
-                        className="w-full h-full bg-transparent text-emerald-400 font-bold text-center text-sm pl-4 pr-1 outline-none"
+                        className="w-full h-full bg-transparent text-brand-primary font-black text-center text-sm pl-4 pr-1 outline-none"
                       />
                     </div>
                   </div>
@@ -279,12 +279,12 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
                       }}
                       onBlur={() => handleBlur(idx, 'score')}
                       onFocus={e => e.target.select()}
-                      className="w-full h-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-bold rounded-md p-2 text-center text-sm outline-none focus:border-emerald-500"
+                      className="w-full h-full bg-modal-bg border-2 border-brand-primary/40 text-brand-primary font-black rounded-lg p-2 text-center text-sm outline-none focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 transition-all shadow-sm"
                     />
                   </div>
                 )}
               </div>
-              <button onClick={() => removeMappingRule(idx)} className="p-2 text-slate-500 hover:text-red-400">
+              <button onClick={() => removeMappingRule(idx)} className="p-2 text-txt-muted hover:text-status-danger transition-colors">
                 <Trash2 size={18} />
               </button>
             </div>
@@ -293,7 +293,7 @@ const EditorTabMapping: React.FC<EditorTabMappingProps> = ({ column, onChange, h
       </div>
       <button
         onClick={addMappingRule}
-        className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-dashed border-slate-600 flex items-center justify-center gap-2"
+        className="w-full py-3 bg-modal-bg-recessed hover:bg-modal-bg hover:text-brand-primary text-txt-secondary rounded-xl border border-dashed border-surface-border flex items-center justify-center gap-2 font-bold transition-all active:scale-[0.98]"
       >
         <Plus size={18} /> {t('col_add_interval')}
       </button>

@@ -106,7 +106,7 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
         baseImage={baseImage}
         rect={template?.globalVisuals?.totalLabelRect}
         fallbackContent={<span className="font-black text-brand-primary text-xs uppercase tracking-wider">{t('grid_total_score')}</span>}
-        className={`modal-bg-elevated border-r border-surface-border flex items-center justify-center shrink-0 z-40 relative ${isTextureMode ? 'p-0 border-transparent' : 'p-2'}`}
+        className={`bg-modal-bg-elevated border-r border-surface-border flex items-center justify-center shrink-0 z-40 relative ${isTextureMode ? 'p-0 border-transparent' : 'p-2'}`}
         style={itemColStyle}
       />
       <div className="flex-1 overflow-hidden" ref={scrollRef}>

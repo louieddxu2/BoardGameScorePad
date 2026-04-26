@@ -60,8 +60,8 @@ const PanelHeader: React.FC<{
     // Handle transparent color fallback
     const isTransparent = player.color === 'transparent';
     const displayColor = isTransparent ? 'rgb(var(--c-txt-muted))' : player.color; // Theme-aware fallback
-    const bgColor = isTransparent ? 'rgb(var(--c-input-header-bg))' : `${player.color}20`;
-    const borderColor = isTransparent ? 'rgb(var(--c-input-border))' : `${player.color}40`;
+    const bgColor = isTransparent ? 'rgb(var(--c-surface-recessed))' : `${player.color}20`;
+    const borderColor = isTransparent ? 'rgb(var(--c-surface-border))' : `${player.color}40`;
 
     // Auto columns cannot be cleared manually
     const isAuto = col?.inputType === 'auto';
@@ -69,19 +69,19 @@ const PanelHeader: React.FC<{
 
     return (
         <div
-            className="border-b h-10 flex items-center px-4 gap-2 shrink-0 transition-colors overflow-hidden relative"
+            className="border-b border-surface-border h-10 flex items-center px-4 gap-2 shrink-0 transition-colors overflow-hidden relative"
             style={{ backgroundColor: bgColor, borderColor: borderColor }}
         >
             {/* Swipe Hint Overlay */}
             {showSwipeHint && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-[rgb(var(--c-input-bg)/0.9)] animate-swipe-hint-enter">
-                    <span className="text-xs font-bold text-emerald-400 flex items-center gap-2">
+                <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-modal-backdrop/90 animate-swipe-hint-enter">
+                    <span className="text-xs font-bold text-brand-primary flex items-center gap-2">
                         <span className="animate-swipe-hint-left">←</span>
                         <span>{t('input_swipe_hint')}</span>
                         <span className="animate-swipe-hint-right">→</span>
                     </span>
                     {/* Downward chevron pointing to swipeable area */}
-                    <span className="text-emerald-400/60 text-[10px] leading-none mt-0.5">▼</span>
+                    <span className="text-brand-primary/60 text-[10px] leading-none mt-0.5">▼</span>
                 </div>
             )}
             {/* Left Section: Info (Flexible) */}
@@ -110,7 +110,7 @@ const PanelHeader: React.FC<{
                         >
                             {player.name}
                         </ContrastText>
-                        <div className="w-px h-3 bg-[rgba(var(--c-white)/0.1)] shrink-0" />
+                        <div className="w-px h-3 bg-surface-border shrink-0" />
                         <span className="text-xs font-bold opacity-70 truncate" style={{ color: displayColor }}>
                             {isTotalMode ? t('input_total_adjust') : injectSoftHyphens(col?.name || '')}
                         </span>
@@ -126,7 +126,7 @@ const PanelHeader: React.FC<{
                     onClick={onToggleVoice}
                     className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all border shrink-0 ${isVoiceEnabled 
                         ? 'bg-status-success/20 border-status-success/50 text-status-success' 
-                        : 'bg-[rgb(var(--c-input-header-bg))] border-[rgb(var(--c-input-border))] text-txt-muted hover:text-txt-primary'}`}
+                        : 'bg-surface-recessed border-surface-border text-txt-muted hover:text-txt-primary'}`}
                     title={isVoiceEnabled ? t('input_voice_on') : t('input_voice_off')}
                 >
                     {isVoiceEnabled ? (
@@ -159,7 +159,7 @@ const PanelHeader: React.FC<{
                 <button
                     onMouseDown={(e) => e.preventDefault()} // Keep focus on input
                     onClick={onDirectionToggle}
-                    className="bg-[rgb(var(--c-input-header-bg))] hover:bg-surface-hover text-txt-secondary h-8 px-3 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition-colors shrink-0 border border-[rgb(var(--c-input-border))] shadow-sm"
+                    className="bg-surface-recessed hover:bg-surface-hover text-txt-secondary h-8 px-3 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition-colors shrink-0 border border-surface-border shadow-sm"
                 >
                     <span className="text-status-success hidden xs:inline">{t('input_next')}</span>
                     <div className="flex font-mono text-[10px] items-center">
@@ -182,7 +182,7 @@ const TotalAdjustmentSidebar: React.FC<{
     const { t } = useSessionTranslation();
     return (
         <div className="flex flex-col h-full p-2 gap-2">
-            <div className="text-[10px] text-slate-200 font-bold uppercase pb-1 border-b border-slate-100/50 flex items-center justify-center gap-1 shrink-0">
+            <div className="text-[10px] text-txt-primary font-bold uppercase pb-1 border-b border-surface-border flex items-center justify-center gap-1 shrink-0">
                 {t('input_total_adjust')}
             </div>
             <div className="flex-1 flex flex-col gap-2 overflow-y-auto no-scrollbar pt-1">
@@ -191,8 +191,8 @@ const TotalAdjustmentSidebar: React.FC<{
                     onClick={() => onUpdatePlayer({ tieBreaker: !player.tieBreaker })}
                     className={`flex-1 rounded-xl border-2 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 p-1
                         ${player.tieBreaker
-                            ? 'bg-indigo-900/30 border-indigo-500 text-indigo-200 shadow-lg'
-                            : 'bg-slate-800 border-slate-700 text-slate-500 hover:border-slate-600 hover:text-slate-300'
+                            ? 'bg-brand-secondary/20 border-brand-secondary text-brand-secondary shadow-lg'
+                            : 'bg-surface-recessed border-surface-border text-txt-muted hover:border-surface-border-hover hover:text-txt-secondary'
                         }
                     `}
                 >
@@ -205,8 +205,8 @@ const TotalAdjustmentSidebar: React.FC<{
                     onClick={() => onUpdatePlayer({ isForceLost: !player.isForceLost })}
                     className={`flex-1 rounded-xl border-2 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 p-1
                         ${player.isForceLost
-                            ? 'bg-red-900/30 border-red-500 text-red-200 shadow-lg'
-                            : 'bg-slate-800 border-slate-700 text-slate-500 hover:border-slate-600 hover:text-slate-300'
+                            ? 'bg-status-danger/20 border-status-danger text-status-danger shadow-lg'
+                            : 'bg-surface-recessed border-surface-border text-txt-muted hover:border-surface-border-hover hover:text-txt-secondary'
                         }
                     `}
                 >
@@ -696,7 +696,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
                 if (activeColumn.inputType === 'auto') {
                     mainContentNode = (
-                        <div className="h-full flex items-center justify-center bg-slate-900/50 rounded-xl border border-slate-700 p-4">
+                        <div className="h-full flex items-center justify-center bg-surface-recessed/50 rounded-xl border border-surface-border p-4">
                             <AutoScorePanel
                                 column={activeColumn}
                                 player={activePlayer}
@@ -706,8 +706,8 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                         </div>
                     );
                     sidebarContentNode = (
-                        <div className="flex flex-col h-full p-2 text-slate-400 text-xs">
-                            <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0">
+                        <div className="flex flex-col h-full p-2 text-txt-secondary text-xs">
+                            <div className="flex items-center gap-1 text-[10px] text-txt-muted font-bold uppercase pb-1 border-b border-surface-border shrink-0">
                                 <Calculator size={12} /> {t('input_auto_calc')}
                             </div>
                             <div className="flex-1 overflow-y-auto pt-2 space-y-2">
@@ -742,7 +742,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     } else if (isSumPartsMode) {
                         sidebarContentNode = <ScoreInfoPanel column={activeColumn} value={cellScoreObject} onDeleteLastPart={handleDeleteLastPart} />;
                     } else {
-                        sidebarContentNode = (<div className="flex flex-col h-full p-2 text-slate-400 text-xs"><div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase pb-1 border-b border-slate-700/50 shrink-0"><ListPlus size={12} /> {t('input_list_menu')}</div><div className="flex-1"></div></div>);
+                        sidebarContentNode = (<div className="flex flex-col h-full p-2 text-txt-secondary text-xs"><div className="flex items-center gap-1 text-[10px] text-txt-muted font-bold uppercase pb-1 border-b border-surface-border shrink-0"><ListPlus size={12} /> {t('input_list_menu')}</div><div className="flex-1"></div></div>);
                     }
                 } else {
                     if (isSumPartsMode) {
@@ -901,7 +901,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
     return (
         <div
-            className={`fixed left-0 right-0 z-50 bg-[rgb(var(--c-input-bg))] backdrop-blur-sm border-t border-[rgb(var(--c-input-border))] shadow-[0_-8px_30px_rgba(var(--c-black)/0.15)] transition-all ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'} ${isInputFocused ? 'duration-0' : 'duration-300'}`}
+            className={`fixed left-0 right-0 z-50 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgba(var(--c-black)/0.2)] transition-all ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'} ${isInputFocused ? 'duration-0' : 'duration-300'}`}
             style={{ height: panelHeight, bottom: offset }}
             // [Added] Joystick Touch Handlers
             onTouchStart={handleTouchStart}
@@ -923,7 +923,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                 />
             )}
 
-            <div className="flex-1 min-h-0 bg-[rgb(var(--c-input-bg))] relative">
+            <div className="flex-1 min-h-0 bg-modal-bg relative">
                 {mainContentNode && !isPlaceholderMode && (
                     <InputPanelLayout onNext={onNextAction} nextButtonDirection={advanceDirection} sidebarContent={sidebarContentNode} nextButtonContent={nextButtonContent} isCompact={isInputFocused}>
                         {mainContentNode}

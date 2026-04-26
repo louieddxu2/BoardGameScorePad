@@ -9,7 +9,7 @@ interface DashboardSectionProps {
   isOpen: boolean;
   onToggle: () => void;
   titleColorClass?: string; // e.g. "text-white"
-  iconColorClass?: string; // e.g. "text-emerald-400"
+  iconColorClass?: string; // e.g. "text-brand-primary"
   actionButton?: React.ReactNode;
   children: React.ReactNode;
   highlight?: boolean; // For new badge logic
