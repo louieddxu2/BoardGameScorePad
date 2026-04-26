@@ -121,17 +121,17 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-900 overflow-hidden">
+        <div className="flex flex-col h-full bg-app overflow-hidden">
 
             {/* Header Summary */}
-            <div className="flex-none p-4 border-b border-slate-800 bg-slate-800/50">
+            <div className="flex-none p-4 border-b border-surface-border bg-surface-bg/50">
                 <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400 border border-emerald-500/20">
+                    <div className="p-2 bg-status-success/10 rounded-lg text-status-success border border-status-success/20">
                         <CheckCircle size={20} />
                     </div>
                     <div>
-                        <h3 className="text-white font-bold">{t('staging_analysis_done')}</h3>
-                        <p className="text-xs text-slate-400">
+                        <h3 className="text-txt-title font-bold">{t('staging_analysis_done')}</h3>
+                        <p className="text-xs text-txt-muted">
                             {t('staging_summary', {
                                 games: report.games.matchedCount,
                                 players: report.players.matchedCount,
@@ -140,7 +140,7 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
                         </p>
                     </div>
                 </div>
-                <div className="bg-amber-900/20 border border-amber-500/30 rounded-lg p-2 text-[11px] text-amber-200 flex items-start gap-2">
+                <div className="bg-status-warning/20 border border-status-warning/30 rounded-lg p-2 text-[11px] text-status-warning flex items-start gap-2">
                     <AlertTriangle size={14} className="shrink-0 mt-0.5" />
                     <span>{t('staging_hint')}</span>
                 </div>
@@ -148,7 +148,7 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
 
             {/* Tabs */}
             {tabs.length > 1 && (
-                <div className="flex-none flex border-b border-slate-800">
+                <div className="flex-none flex border-b border-surface-border">
                     {tabs.map(tab => {
                         // Count represents LOCAL items to process
                         const count = tab.data.localUnmatched.length;
@@ -157,12 +157,12 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`flex-1 py-3 text-xs font-bold flex flex-col items-center gap-1 border-b-2 transition-colors ${activeTab === tab.id ? 'border-emerald-500 text-emerald-400 bg-slate-800' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
+                                className={`flex-1 py-3 text-xs font-bold flex flex-col items-center gap-1 border-b-2 transition-colors ${activeTab === tab.id ? 'border-brand-primary text-brand-primary bg-surface-bg' : 'border-transparent text-txt-muted hover:text-txt-primary'}`}
                             >
                                 <div className="flex items-center gap-1.5">
                                     <Icon size={14} /> {tab.label}
                                 </div>
-                                {count > 0 && <span className="text-[9px] bg-slate-700 px-1.5 rounded-full">{t('staging_pending', { count })}</span>}
+                                {count > 0 && <span className="text-[9px] bg-surface-border px-1.5 rounded-full">{t('staging_pending', { count })}</span>}
                             </button>
                         );
                     })}
@@ -172,7 +172,7 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
             {/* Content (Two Columns) */}
             <div className="flex-1 flex min-h-0">
                 {/* Left: Local Unmatched (Target) */}
-                <div className="flex-1 border-r border-slate-800 flex flex-col min-w-0 bg-slate-900/50">
+                <div className="flex-1 border-r border-surface-border flex flex-col min-w-0 bg-app-bg-deep/50">
                     <LinkerList
                         items={localListItems}
                         title={<><Database size={12} /> {t('staging_local_db', { count: localListItems.length })}</>}
@@ -181,21 +181,21 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
                 </div>
 
                 {/* Right: Import Unmatched (Source) */}
-                <div className="flex-1 flex flex-col min-w-0 bg-slate-900">
+                <div className="flex-1 flex flex-col min-w-0 bg-app-bg">
                     {/* Search Bar */}
-                    <div className="p-2 border-b border-slate-800 flex-none">
+                    <div className="p-2 border-b border-surface-border flex-none">
                         <div className="relative">
-                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-muted pointer-events-none" />
                             <input
                                 ref={searchInputRef}
                                 type="text"
                                 value={activeHook.manualSearchQuery}
                                 onChange={(e) => activeHook.setManualSearchQuery(e.target.value)}
                                 placeholder={t('staging_search_placeholder')}
-                                className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-8 py-2 text-sm text-white focus:border-emerald-500 outline-none"
+                                className="w-full bg-surface-bg border border-surface-border rounded-lg pl-9 pr-8 py-2 text-sm text-txt-primary focus:border-brand-primary outline-none"
                             />
                             {activeHook.manualSearchQuery && (
-                                <button onClick={() => activeHook.setManualSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+                                <button onClick={() => activeHook.setManualSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-txt-muted hover:text-txt-title">
                                     <X size={16} />
                                 </button>
                             )}
@@ -217,18 +217,18 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
             </div>
 
             {/* Footer */}
-            <div className="flex-none p-4 border-t border-slate-800 bg-slate-800 flex justify-end gap-3">
+            <div className="flex-none p-4 border-t border-surface-border bg-surface-bg flex justify-end gap-3">
                 <button
                     onClick={onCancel}
                     disabled={isProcessing}
-                    className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 text-sm font-bold transition-colors"
+                    className="px-4 py-2 rounded-lg text-txt-tertiary hover:bg-surface-hover text-sm font-bold transition-colors"
                 >
                     {tCommon('cancel')}
                 </button>
                 <button
                     onClick={handleConfirmClick}
                     disabled={isProcessing}
-                    className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="px-6 py-2 bg-brand-primary-deep hover:bg-brand-primary text-white rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                     {t('staging_btn_confirm')} <ArrowRight size={16} />
                 </button>
