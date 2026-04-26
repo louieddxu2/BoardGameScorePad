@@ -43,7 +43,7 @@ const Magnifier: React.FC<MagnifierProps> = ({
     ctx.restore();
 
     // Draw Crosshair
-    ctx.strokeStyle = isLineSnapped ? 'rgb(var(--c-amber-500))' : 'rgb(var(--c-sky-500))'; 
+    ctx.strokeStyle = isLineSnapped ? 'rgb(var(--c-status-warning))' : 'rgb(var(--c-status-info))'; 
     ctx.lineWidth = isLineSnapped ? 2 : 1;
     
     ctx.beginPath();
@@ -62,7 +62,7 @@ const Magnifier: React.FC<MagnifierProps> = ({
 
   return (
     <div 
-        className={`fixed z-[100] w-[120px] h-[120px] rounded-full overflow-hidden shadow-2xl border-2 pointer-events-none transition-colors ${isLineSnapped ? 'border-amber-500' : 'border-slate-50'}`} 
+        className={`fixed z-[100] w-[120px] h-[120px] rounded-full overflow-hidden shadow-2xl border-2 pointer-events-none transition-colors ${isLineSnapped ? 'border-status-warning' : 'border-white'}`} 
         style={{ 
             top: screenY, 
             left: screenX, 
