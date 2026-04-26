@@ -1,4 +1,4 @@
-﻿import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Dice5, Search, X, Download, HelpCircle, Calculator, History, Cloud, CloudOff, Loader2, Sun, Moon } from 'lucide-react';
 import { useTranslation } from '../../../i18n'; // Keep for language context
 import { useCommonTranslation } from '../../../i18n/common';
@@ -178,7 +178,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       <div className="p-2.5 flex items-center gap-2 h-[58px]">
         {isSearchActive ? (
           <div ref={searchRef} className="flex items-center gap-2 w-full animate-in fade-in duration-300">
-            <Search size={20} className="text-emerald-500 shrink-0 ml-1" />
+            <Search size={20} className="text-brand-primary shrink-0 ml-1" />
             <input
               type="search"
               inputMode="search"
@@ -209,8 +209,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 title={themeMode === 'dark' ? 'Light Mode' : 'Dark Mode'}
               >
                 {themeMode === 'dark'
-                  ? <Dice5 size={24} className="text-emerald-500" />
-                  : <Sun size={24} className="text-amber-500" />
+                  ? <Dice5 size={24} className="text-brand-primary" />
+                  : <Sun size={24} className="text-status-warning" />
                 }
               </div>
               {/* Title: Toggle Language */}
@@ -286,8 +286,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                   <div className="relative">
                     <Download size={14} />
                     {!canInstall && (
-                      <div className="absolute -bottom-1 -right-1 bg-amber-900/50 rounded-full w-2.5 h-2.5 flex items-center justify-center border border-slate-700">
-                        <HelpCircle size={8} className="text-amber-500" strokeWidth={3} />
+                      <div className="absolute -bottom-1 -right-1 bg-status-warning/20 rounded-full w-2.5 h-2.5 flex items-center justify-center border border-surface-border">
+                        <HelpCircle size={8} className="text-status-warning" strokeWidth={3} />
                       </div>
                     )}
                   </div>
