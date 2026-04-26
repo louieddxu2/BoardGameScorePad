@@ -105,6 +105,14 @@ export default {
           warning: 'rgb(var(--c-status-warning) / <alpha-value>)',
           danger: 'rgb(var(--c-status-danger) / <alpha-value>)',
         },
+        input: {
+          border: 'rgb(var(--c-input-border) / <alpha-value>)',
+        },
+        keypad: {
+          bg: 'rgb(var(--c-keypad-btn-bg) / <alpha-value>)',
+          text: 'rgb(var(--c-keypad-btn-text) / <alpha-value>)',
+          active: 'rgb(var(--c-keypad-btn-active) / <alpha-value>)',
+        },
       },
       boxShadow: {
         'ui-soft': 'var(--shadow-soft)',
