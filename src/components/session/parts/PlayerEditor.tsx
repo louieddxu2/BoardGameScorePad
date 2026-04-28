@@ -35,6 +35,8 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
   const { t } = useSessionTranslation();
   const [showColorPicker, setShowColorPicker] = useState(false);
   const colorPickerAreaRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const ignoreNextBlur = useRef(false);
 
   // Click-outside handler: close color picker when tapping outside the strip area
   useEffect(() => {
@@ -71,15 +73,15 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
     // 1. 如果輸入為空，顯示完整歷史紀錄 (依最近使用排序)
     if (!trimmedInput) return savedPlayers;
 
-    // 2. 如果完全匹配現有玩家名稱，顯示完整歷史紀錄 (依照使用者需求)
+    // 2. 如果完全匹配現有玩家名稱且「非焦點狀態」，顯示完整歷史紀錄 (這通常是為了輔助自動填入後的修正)
     const hasExactMatch = savedPlayers.some(p => p.name.toLowerCase() === trimmedInput.toLowerCase());
-    if (hasExactMatch) {
+    if (hasExactMatch && !isInputFocused) {
       return savedPlayers;
     }
 
-    // 3. 否則，顯示模糊搜尋結果
+    // 3. 否則 (包含焦點狀態下)，顯示模糊搜尋結果
     return searchService.search(savedPlayers, trimmedInput, ['name']);
-  }, [savedPlayers, tempName, player.linkedPlayerId, player.name]);
+  }, [savedPlayers, tempName, player.linkedPlayerId, player.name, isInputFocused]);
 
   const isMainTransparent = player.color === 'transparent';
   const isMainDark = !isMainTransparent && isColorDark(player.color);
@@ -88,12 +90,13 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
   const colorBarStyle = isMainTransparent ? undefined : { borderLeftColor: player.color };
 
   return (
-    <div className="h-full overflow-y-auto no-scrollbar" onClick={e => e.stopPropagation()}>
-      <div className="flex flex-col gap-2 h-full p-2">
-        {/* Integrated Color-Name Strip: shared outer border, no overflow-hidden */}
-        <div ref={colorPickerAreaRef} className={`flex-none h-14 relative z-50 flex items-stretch rounded-xl border-2 transition-all ${showColorPicker ? 'border-brand-primary' : 'border-surface-border'}`}>
+    <div className="h-full" onClick={e => e.stopPropagation()}>
+      <div className="flex flex-col h-full p-2 gap-2">
+        {/* Integrated Color-Name Strip: Fixed height */}
+        <div ref={colorPickerAreaRef} className={`flex-none h-12 relative z-50 flex items-stretch rounded-xl border-2 transition-all ${showColorPicker ? 'border-brand-primary' : 'border-surface-border'}`}>
           {/* Input with color bar on the left */}
           <input
+            ref={inputRef}
             type="text"
             value={tempName}
             onChange={(e) => setTempName(e.target.value)}
@@ -103,7 +106,10 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
               setShowColorPicker(false);
             }}
             onBlur={() => {
-              onNameSubmit(player.id, tempName, false);
+              if (!ignoreNextBlur.current) {
+                onNameSubmit(player.id, tempName, false);
+              }
+              ignoreNextBlur.current = false;
               setIsInputFocused(false);
             }}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
@@ -137,10 +143,10 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
             )}
           </button>
 
-          {/* Color Picker Popover - positioned outside the strip, never clipped */}
+          {/* Color Picker Popover - positioned outside the strip, never clipped by siblings, but constrained by panel */}
           {showColorPicker && (
-            <div className="absolute right-0 top-full mt-2 w-[260px] max-h-64 overflow-y-auto no-scrollbar modal-bg-elevated border border-surface-border rounded-xl shadow-xl z-50 p-3 animate-in fade-in zoom-in-95 duration-200">
-              <div className="grid grid-cols-6 gap-2 justify-items-center">
+            <div className="absolute right-0 top-full mt-2 w-[260px] max-h-[140px] overflow-y-auto bg-modal-bg-elevated border border-surface-border rounded-xl shadow-xl z-50 p-3 animate-in fade-in zoom-in-95 duration-200 overscroll-behavior-contain">
+              <div className="grid grid-cols-6 gap-2 justify-items-center pb-10">
                 {sortedColors.map(c => {
                   const isTransparent = c === 'transparent';
                   const isDark = !isTransparent && isColorDark(c);
@@ -170,34 +176,37 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
           )}
         </div>
 
-        <div className={`flex-1 min-h-0 ${isInputFocused ? '' : 'animate-in fade-in slide-in-from-bottom-2 duration-300'}`}>
-            {/* History - Flow Layout */}
-            <div className="flex-1 min-h-[60px] bg-surface-alt/50 rounded-xl border border-surface-border flex flex-col min-w-0">
-              <div className="flex-1 overflow-y-auto no-scrollbar p-3">
-                <div className="flex flex-wrap gap-2">
-                  {displayedPlayers.slice(0, 20).map((item, i) => (
-                    <button
-                      key={item.id || i}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
-                        setTempName(item.name);
-                        const linkedId = item.meta?.uuid;
-                        onNameSubmit(player.id, item.name, false, linkedId);
-                      }}
-                      className="px-3 py-1.5 rounded-full text-sm font-medium text-txt-primary hover:bg-brand-primary/20 hover:text-brand-primary transition-colors active:scale-95 bg-surface-bg border border-surface-border whitespace-nowrap"
-                    >
-                      {item.name}
-                    </button>
-                  ))}
-                </div>
-                {displayedPlayers.length === 0 && (
-                  <div className="text-center text-xs text-txt-muted py-8">
-                    {tempName ? t('player_editor_no_results') : t('player_editor_no_history')}
-                  </div>
-                )}
+        <div className={`flex-1 overflow-hidden flex flex-col min-h-0 ${isInputFocused ? '' : 'animate-in fade-in slide-in-from-bottom-2 duration-300'}`}>
+          {/* History - Flow Layout */}
+          <div className="flex-1 min-h-[60px] bg-surface-alt/50 rounded-xl border border-surface-border flex flex-col min-w-0">
+            <div className="flex-1 overflow-y-auto no-scrollbar p-3">
+              <div className="flex flex-wrap gap-2">
+                {displayedPlayers.slice(0, 30).map((item, i) => (
+                  <button
+                    key={item.id || i}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      const finalName = item.name;
+                      const linkedId = item.meta?.uuid;
+                      ignoreNextBlur.current = true;
+                      setTempName(finalName);
+                      onNameSubmit(player.id, finalName, false, linkedId);
+                      inputRef.current?.blur();
+                    }}
+                    className="px-3 py-1.5 rounded-full text-sm font-medium text-txt-primary hover:bg-brand-primary/20 hover:text-brand-primary transition-colors active:scale-95 bg-surface-bg border border-surface-border whitespace-nowrap"
+                  >
+                    {item.name}
+                  </button>
+                ))}
               </div>
+              {displayedPlayers.length === 0 && (
+                <div className="text-center text-xs text-txt-muted py-8">
+                  {tempName ? t('player_editor_no_results') : t('player_editor_no_history')}
+                </div>
+              )}
             </div>
           </div>
+        </div>
       </div>
     </div>
   );

@@ -278,8 +278,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
               {!isInstalled && (
                 <button
-                  className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all text-white shadow-lg ${canInstall 
-                    ? 'btn-action-primary' 
+                  className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-lg ${canInstall 
+                    ? 'btn-action-primary text-white' 
                     : 'bg-surface-bg-alt hover:bg-surface-bg-hover border border-surface-border text-txt-secondary hover:text-txt-primary'}`}
                   onClick={canInstall ? onInstallClick : onShowInstallGuide}
                 >
