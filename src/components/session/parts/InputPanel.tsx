@@ -551,7 +551,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     supportedColors={template.supportedColors} // [New] Pass supportedColors
                 />
             );
-            sidebarContentNode = isInputFocused ? null : <PlayerSettingsPanel player={activePlayer} onToggleStarter={handleToggleStarter} />;
+            sidebarContentNode = <PlayerSettingsPanel player={activePlayer} onToggleStarter={handleToggleStarter} />;
             onNextAction = () => {
                 if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
                 eventHandlers.handlePlayerNameSubmit(activePlayer!.id, uiState.tempPlayerName, true);
@@ -901,7 +901,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
     return (
         <div
-            className={`fixed left-0 right-0 z-50 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgba(var(--c-black)/0.2)] transition-all ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'} ${isInputFocused ? 'duration-0' : 'duration-300'}`}
+            className={`fixed left-0 right-0 z-50 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgba(var(--c-black)/0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
             style={{ height: panelHeight, bottom: offset }}
             // [Added] Joystick Touch Handlers
             onTouchStart={handleTouchStart}

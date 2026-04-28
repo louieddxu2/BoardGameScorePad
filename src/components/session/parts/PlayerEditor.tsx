@@ -89,7 +89,7 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
 
   return (
     <div className="h-full overflow-y-auto no-scrollbar" onClick={e => e.stopPropagation()}>
-      <div className={`flex flex-col gap-2 h-full ${isInputFocused ? 'p-0' : 'p-2'}`}>
+      <div className="flex flex-col gap-2 h-full p-2">
         {/* Integrated Color-Name Strip: shared outer border, no overflow-hidden */}
         <div ref={colorPickerAreaRef} className={`flex-none h-14 relative z-50 flex items-stretch rounded-xl border-2 transition-all ${showColorPicker ? 'border-brand-primary' : 'border-surface-border'}`}>
           {/* Input with color bar on the left */}
@@ -108,6 +108,12 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
             }}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
             placeholder={t('player_editor_placeholder')}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            inputMode="text"
+            data-form-type="other"
             className={`flex-1 w-full h-full min-w-0 bg-surface-alt rounded-l-xl px-4 text-xl font-bold text-txt-title outline-none placeholder-txt-muted transition-all ${isMainTransparent ? '' : 'border-l-[6px]'}`}
             style={colorBarStyle}
           />
@@ -164,10 +170,9 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
           )}
         </div>
 
-        {!isInputFocused && (
-          <div className="flex-1 min-h-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <div className={`flex-1 min-h-0 ${isInputFocused ? '' : 'animate-in fade-in slide-in-from-bottom-2 duration-300'}`}>
             {/* History - Flow Layout */}
-            <div className="h-full bg-surface-alt/50 rounded-xl border border-surface-border flex flex-col min-w-0">
+            <div className="flex-1 min-h-[60px] bg-surface-alt/50 rounded-xl border border-surface-border flex flex-col min-w-0">
               <div className="flex-1 overflow-y-auto no-scrollbar p-3">
                 <div className="flex flex-wrap gap-2">
                   {displayedPlayers.slice(0, 20).map((item, i) => (
@@ -193,7 +198,6 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
               </div>
             </div>
           </div>
-        )}
       </div>
     </div>
   );

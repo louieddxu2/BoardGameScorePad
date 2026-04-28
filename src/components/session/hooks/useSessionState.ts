@@ -233,7 +233,7 @@ export const useSessionState = (props: SessionViewProps) => {
   // [Updated] If short list OR toolbox is open, force the panel space to be open (40vh) to push the Total Bar up.
   // This effectively centers the Total Bar and removes the gap.
   const panelHeight = (isPanelOpen || isShortList || uiState.isToolboxOpen)
-    ? (uiState.isInputFocused ? '112px' : '40vh')
+    ? (uiState.isInputFocused ? '220px' : '40vh')
     : '0px';
 
   return {

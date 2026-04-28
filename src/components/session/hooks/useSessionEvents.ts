@@ -269,8 +269,8 @@ export const useSessionEvents = (
       }
     }
 
-    setUiState(p => ({ ...p, isInputFocused: false }));
     if (moveNext) {
+      setUiState(p => ({ ...p, isInputFocused: false }));
       navigation.moveNext(playerId);
     }
   };

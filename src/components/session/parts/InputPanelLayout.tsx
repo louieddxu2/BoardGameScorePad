@@ -45,16 +45,28 @@ const InputPanelLayout: React.FC<InputPanelLayoutProps> = ({
     </button>
   );
 
-  // Compact Mode (Focused Input): Simple Flex Row
+  // Compact Mode (Focused Input): Explicit rows to prevent squashing
   if (isCompact) {
       return (
-        <div className="flex items-start gap-2 p-2 bg-[rgb(var(--c-input-bg))] select-none">
-            {/* Main Content (Input) takes all space */}
-            <div className="flex-1 min-w-0">
+        <div className="grid grid-cols-4 grid-rows-[1fr_56px] gap-2 p-2 select-none bg-[rgb(var(--c-input-bg))] h-full">
+            {/* Main content area (Left 3 columns, both rows) */}
+            <div className="col-span-3 row-span-2 h-full min-h-0">
                 {children}
             </div>
-            {/* Identical button style, just different dimensions/rounding */}
-            {renderNextButton('compact')}
+
+            {/* Sidebar (top area of last column - row 1) */}
+            <div className="col-start-4 row-start-1 overflow-hidden rounded-t-xl bg-[rgb(var(--c-input-header-bg)/0.3)] border-l border-t border-r border-[rgb(var(--c-input-border))] min-h-0">
+                {sidebarContent}
+            </div>
+
+            {/* Next button (bottom area of last column - row 2) */}
+            <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={onNext}
+                className="col-start-4 row-start-2 bg-status-success hover:opacity-90 active:opacity-80 text-white flex flex-col items-center justify-center shadow-lg shadow-status-success/20 touch-manipulation transition-all active:scale-95 border-l border-b border-r border-[rgb(var(--c-input-border))] rounded-b-xl rounded-t-none h-[56px] w-full relative"
+            >
+                {nextButtonContent ? nextButtonContent : <ButtonIcon size={24} />}
+            </button>
         </div>
       );
   }
