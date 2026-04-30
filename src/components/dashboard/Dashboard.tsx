@@ -340,6 +340,8 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           onPin={dashboardActions.handlePinGameOption}
           isSearching={searchQuery.trim().length > 0}
           searchQuery={searchQuery}
+          onOpenBgStats={() => modals.actions.setShowBgStatsModal(true)}
+          onOpenBggImport={() => modals.actions.setShowBggImportModal(true)}
         />
       )}
 
