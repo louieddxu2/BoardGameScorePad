@@ -50,6 +50,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
         rating: number | null;
         complexity: 'light' | 'mid' | 'heavy' | null;
         duration: number | null;
+        gameType: 'competitive' | 'cooperative' | null;
     }>(() => {
         const saved = localStorage.getItem('pref_search_filters');
         if (saved) {
@@ -60,7 +61,8 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
             bestOnly: false,
             rating: null,
             complexity: null,
-            duration: null
+            duration: null,
+            gameType: null
         };
     });
 
@@ -364,8 +366,8 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
         : "bottom-0 left-0 right-0 h-[220px]";
 
     return (
-        <div 
-            ref={ref} 
+        <div
+            ref={ref}
             className={`fixed z-40 flex flex-row items-end pointer-events-none transition-all duration-300 ease-in-out ${containerLayoutClass}`}
         >
 
@@ -445,36 +447,44 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                 <div className="flex flex-col p-2 gap-1.5 pb-2 min-h-[160px]">
                     {/* Advanced Filters Section (Upper Part - Grows Upwards) */}
                     {isAdvancedMode && (
-                        <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-2 py-1 border-b border-surface-border/30 mb-1 animate-in slide-in-from-bottom-4 duration-300">
+                        <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-1 py-1 border-b border-surface-border/30 mb-1 animate-in slide-in-from-bottom-4 duration-300">
+                            {/* 0. Type Filter (Competitive / Cooperative) - No Title, at the top */}
+                            <div className="grid grid-cols-2 gap-1.5 shrink-0 border-b border-surface-border/20 pb-1.5 mb-0.5">
+                                {(['competitive', 'cooperative'] as const).map(type => (
+                                    <button
+                                        key={type}
+                                        onClick={() => setSearchFilters(p => ({ ...p, gameType: p.gameType === type ? null : type }))}
+                                        className={`h-8 text-xs font-black rounded-lg border transition-all ${searchFilters.gameType === type ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-surface-bg/40 border-surface-border text-txt-primary hover:border-txt-primary'}`}
+                                    >
+                                        {type === 'competitive' ? t('selector_filter_type_competitive') : t('selector_filter_type_cooperative')}
+                                    </button>
+                                ))}
+                            </div>
+
                             {/* 1. Players Filter */}
-                            <div className={`p-2 rounded-lg border transition-all duration-300 ${searchFilters.playerCount !== null ? 'border-brand-primary bg-surface-bg shadow-sm' : 'border-surface-border bg-surface-bg/40'}`}>
-                                <div className="flex items-center justify-center relative mb-1.5 h-4">
-                                    <span className={`text-xs font-black uppercase tracking-wider ${searchFilters.playerCount !== null ? 'text-brand-primary' : 'text-txt-primary'}`}>{t('selector_filter_players')}</span>
-                                    {searchFilters.playerCount !== null && (
-                                        <button onClick={() => resetFilter('playerCount')} className="absolute right-0 p-0.5 text-brand-primary hover:opacity-70">
-                                            <X size={12} />
-                                        </button>
-                                    )}
+                            <div className="pb-1.5 border-b border-surface-border/20 mb-0.5">
+                                <div className="flex items-center justify-center relative mb-0.5 h-3">
+                                    <span className={`text-[10px] font-black uppercase tracking-widest ${searchFilters.playerCount !== null ? 'text-brand-primary' : 'text-txt-muted'}`}>{t('selector_filter_players')}</span>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    <div className="flex-1 flex items-center bg-app-bg-deep rounded-md border border-surface-border overflow-hidden h-9">
-                                        <button 
+                                    <div className="flex-1 flex items-center bg-app-bg-deep rounded-md border border-surface-border overflow-hidden h-8">
+                                        <button
                                             onClick={() => setSearchFilters(p => ({ ...p, playerCount: Math.max(1, (p.playerCount || 3) - 1) }))}
                                             className="px-2.5 h-full hover:bg-surface-bg-alt text-txt-primary"
                                         >
                                             <Minus size={12} />
                                         </button>
                                         <span className="flex-1 text-sm font-black font-mono text-txt-primary">{searchFilters.playerCount || '-'}</span>
-                                        <button 
+                                        <button
                                             onClick={() => setSearchFilters(p => ({ ...p, playerCount: Math.min(20, (p.playerCount || 3) + 1) }))}
                                             className="px-2.5 h-full hover:bg-surface-bg-alt text-txt-primary"
                                         >
                                             <Plus size={12} />
                                         </button>
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={() => setSearchFilters(p => ({ ...p, bestOnly: !p.bestOnly }))}
-                                        className={`w-9 h-9 flex items-center justify-center rounded-md border transition-all ${searchFilters.bestOnly ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-app-bg-deep border-surface-border text-txt-muted'}`}
+                                        className={`w-8 h-8 flex items-center justify-center rounded-md border transition-all ${searchFilters.bestOnly ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-app-bg-deep border-surface-border text-txt-muted'}`}
                                     >
                                         <Star size={12} fill={searchFilters.bestOnly ? "currentColor" : "none"} />
                                     </button>
@@ -482,21 +492,16 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                             </div>
 
                             {/* 2. Rating Filter */}
-                            <div className={`p-2 rounded-lg border transition-all duration-300 ${searchFilters.rating !== null ? 'border-brand-primary bg-surface-bg shadow-sm' : 'border-surface-border bg-surface-bg/40'}`}>
-                                <div className="flex items-center justify-center relative mb-1.5 h-4">
-                                    <span className={`text-xs font-black uppercase tracking-wider ${searchFilters.rating !== null ? 'text-brand-primary' : 'text-txt-primary'}`}>{t('selector_filter_rating')}</span>
-                                    {searchFilters.rating !== null && (
-                                        <button onClick={() => resetFilter('rating')} className="absolute right-0 p-0.5 text-brand-primary hover:opacity-70">
-                                            <X size={14} />
-                                        </button>
-                                    )}
+                            <div className="pb-1.5 border-b border-surface-border/20 mb-0.5">
+                                <div className="flex items-center justify-center relative mb-0.5 h-3">
+                                    <span className={`text-[10px] font-black uppercase tracking-widest ${searchFilters.rating !== null ? 'text-brand-primary' : 'text-txt-muted'}`}>{t('selector_filter_rating')}</span>
                                 </div>
                                 <div className="grid grid-cols-3 gap-1.5">
                                     {[7, 8, 9].map(r => (
                                         <button
                                             key={r}
                                             onClick={() => setSearchFilters(p => ({ ...p, rating: p.rating === r ? null : r }))}
-                                            className={`h-9 text-xs font-black rounded-md border transition-all ${searchFilters.rating === r ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-app-bg-deep border-surface-border text-txt-primary hover:border-txt-primary'}`}
+                                            className={`h-8 text-xs font-black rounded-md border transition-all ${searchFilters.rating === r ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-app-bg-deep border-surface-border text-txt-primary hover:border-txt-primary'}`}
                                         >
                                             {r}+
                                         </button>
@@ -505,46 +510,36 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                             </div>
 
                             {/* 3. Complexity Filter */}
-                            <div className={`p-2 rounded-lg border transition-all duration-300 ${searchFilters.complexity !== null ? 'border-brand-primary bg-surface-bg shadow-sm' : 'border-surface-border bg-surface-bg/40'}`}>
-                                <div className="flex items-center justify-center relative mb-1.5 h-4">
-                                    <span className={`text-xs font-black uppercase tracking-wider ${searchFilters.complexity !== null ? 'text-brand-primary' : 'text-txt-primary'}`}>{t('selector_filter_complexity')}</span>
-                                    {searchFilters.complexity !== null && (
-                                        <button onClick={() => resetFilter('complexity')} className="absolute right-0 p-0.5 text-brand-primary hover:opacity-70">
-                                            <X size={14} />
-                                        </button>
-                                    )}
+                            <div className="pb-1.5 border-b border-surface-border/20 mb-0.5">
+                                <div className="flex items-center justify-center relative mb-0.5 h-3">
+                                    <span className={`text-[10px] font-black uppercase tracking-widest ${searchFilters.complexity !== null ? 'text-brand-primary' : 'text-txt-muted'}`}>{t('selector_filter_complexity')}</span>
                                 </div>
                                 <div className="grid grid-cols-3 gap-1.5">
                                     {(['light', 'mid', 'heavy'] as const).map(c => (
                                         <button
                                             key={c}
                                             onClick={() => setSearchFilters(p => ({ ...p, complexity: p.complexity === c ? null : c }))}
-                                            className={`h-9 text-xs font-black rounded-md border transition-all ${searchFilters.complexity === c ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-app-bg-deep border-surface-border text-txt-primary hover:border-txt-primary'}`}
+                                            className={`h-8 text-xs font-black rounded-md border transition-all ${searchFilters.complexity === c ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-app-bg-deep border-surface-border text-txt-primary hover:border-txt-primary'}`}
                                         >
-                                            {c === 'light' ? 'L' : c === 'mid' ? 'M' : 'H'}
+                                            {c === 'light' ? t('selector_filter_complexity_light') : c === 'mid' ? t('selector_filter_complexity_mid') : t('selector_filter_complexity_heavy')}
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
-                            {/* 4. Duration Filter */}
-                            <div className={`p-2 rounded-lg border transition-all duration-300 ${searchFilters.duration !== null ? 'border-brand-primary bg-surface-bg shadow-sm' : 'border-surface-border bg-surface-bg/40'}`}>
-                                <div className="flex items-center justify-center relative mb-1.5 h-4">
-                                    <span className={`text-xs font-black uppercase tracking-wider ${searchFilters.duration !== null ? 'text-brand-primary' : 'text-txt-primary'}`}>{t('selector_filter_duration')}</span>
-                                    {searchFilters.duration !== null && (
-                                        <button onClick={() => resetFilter('duration')} className="absolute right-0 p-0.5 text-brand-primary hover:opacity-70">
-                                            <X size={14} />
-                                        </button>
-                                    )}
+                            {/* 5. Duration Filter */}
+                            <div className="pb-1.5 border-b border-surface-border/20 mb-0.5">
+                                <div className="flex items-center justify-center relative mb-0.5 h-3">
+                                    <span className={`text-[10px] font-black uppercase tracking-widest ${searchFilters.duration !== null ? 'text-brand-primary' : 'text-txt-muted'}`}>{t('selector_filter_duration')}</span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-1.5">
                                     {[30, 60, 90, 120].map(d => (
                                         <button
                                             key={d}
                                             onClick={() => setSearchFilters(p => ({ ...p, duration: p.duration === d ? null : d }))}
-                                            className={`h-9 text-xs font-black rounded-md border transition-all ${searchFilters.duration === d ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-app-bg-deep border-surface-border text-txt-primary hover:border-txt-primary'}`}
+                                            className={`h-8 text-xs font-black rounded-md border transition-all ${searchFilters.duration === d ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-app-bg-deep border-surface-border text-txt-primary hover:border-txt-primary'}`}
                                         >
-                                            {`<${d}m`}
+                                            {t('selector_filter_duration_unit').replace('{m}', `<${d}`)}
                                         </button>
                                     ))}
                                 </div>
@@ -556,8 +551,8 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                     <button
                         onClick={() => setIsAdvancedMode(!isAdvancedMode)}
                         className={`flex items-center justify-center gap-2 w-full transition-all active:scale-95 shrink-0 mb-1 rounded-lg border shadow-ui-floating z-10
-                            ${isAdvancedMode 
-                                ? 'bg-app-bg-deep text-brand-primary border-brand-primary h-7' 
+                            ${isAdvancedMode
+                                ? 'bg-app-bg-deep text-brand-primary border-brand-primary h-7'
                                 : 'bg-app-bg-deep text-txt-muted border-surface-border hover:border-txt-muted h-9'
                             }
                         `}

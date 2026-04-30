@@ -99,6 +99,13 @@ export const integrationTranslations = {
         selector_filter_rating: "評分",
         selector_filter_complexity: "重度",
         selector_filter_duration: "時長",
+        selector_filter_complexity_light: "輕",
+        selector_filter_complexity_mid: "中",
+        selector_filter_complexity_heavy: "重",
+        selector_filter_duration_unit: "{m}分",
+        selector_filter_type: "類型",
+        selector_filter_type_competitive: "競爭",
+        selector_filter_type_cooperative: "合作",
 
         // Common Integration
         external_link: "外部連結",
@@ -205,6 +212,13 @@ export const integrationTranslations = {
         selector_filter_rating: "Rating",
         selector_filter_complexity: "Weight",
         selector_filter_duration: "Duration",
+        selector_filter_complexity_light: "Lt.",
+        selector_filter_complexity_mid: "Md.",
+        selector_filter_complexity_heavy: "Hv.",
+        selector_filter_duration_unit: "{m}m",
+        selector_filter_type: "Type",
+        selector_filter_type_competitive: "Comp.",
+        selector_filter_type_cooperative: "Coop.",
 
         // Common Integration
         external_link: "External Link",
