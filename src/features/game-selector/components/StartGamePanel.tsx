@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { SavedListItem, ScoringRule } from '../../../types';
 import { GameOption } from '../types';
-import { Users, Minus, Plus, Play, ChevronUp, Search, PenLine, List, ThumbsUp, Pin, Check, ChevronDown, FileJson, Database } from 'lucide-react';
+import { Users, Minus, Plus, Play, ChevronUp, Search, PenLine, List, ThumbsUp, Pin, Check, ChevronDown, FileJson, Database, Maximize2, Minimize2, Star, X } from 'lucide-react';
 import { getRecommendations, getSearchResults } from '../utils/sortStrategies';
 import { useRecommendedGameSetup } from '../hooks/useRecommendedGameSetup';
 import { useIntegrationTranslation } from '../../../i18n/integration';
@@ -35,6 +35,45 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
 }, ref) => {
     const { t } = useIntegrationTranslation();
     const { t: tCommon } = useCommonTranslation();
+
+    const [isAdvancedMode, setIsAdvancedMode] = useState<boolean>(() => {
+        return localStorage.getItem('pref_search_advanced') === 'true';
+    });
+
+    useEffect(() => {
+        localStorage.setItem('pref_search_advanced', isAdvancedMode.toString());
+    }, [isAdvancedMode]);
+
+    const [searchFilters, setSearchFilters] = useState<{
+        playerCount: number | null;
+        bestOnly: boolean;
+        rating: number | null;
+        complexity: 'light' | 'mid' | 'heavy' | null;
+        duration: number | null;
+    }>(() => {
+        const saved = localStorage.getItem('pref_search_filters');
+        if (saved) {
+            try { return JSON.parse(saved); } catch (e) { }
+        }
+        return {
+            playerCount: null,
+            bestOnly: false,
+            rating: null,
+            complexity: null,
+            duration: null
+        };
+    });
+
+    useEffect(() => {
+        localStorage.setItem('pref_search_filters', JSON.stringify(searchFilters));
+    }, [searchFilters]);
+
+    const resetFilter = (key: keyof typeof searchFilters) => {
+        setSearchFilters(prev => ({
+            ...prev,
+            [key]: key === 'bestOnly' ? false : null
+        }));
+    };
 
     const SCORING_MODES: { value: ScoringRule, label: string }[] = [
         { value: 'HIGHEST_WINS', label: tCommon('rule_highest_wins') },
@@ -320,11 +359,18 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
         );
     };
 
-    return (
-        <div ref={ref} className="fixed bottom-0 left-0 right-0 z-40 flex flex-row items-end pointer-events-none animate-in slide-in-from-bottom-full duration-300">
+    const containerLayoutClass = isAdvancedMode
+        ? "inset-0 top-[56px]"
+        : "bottom-0 left-0 right-0 h-[220px]";
 
-            {/* --- LEFT: Game List (Fixed Height Base) --- */}
-            <div className="flex-1 flex flex-col bg-app-bg h-[220px] min-h-0 border-t border-surface-border shadow-ui-floating pointer-events-auto relative">
+    return (
+        <div 
+            ref={ref} 
+            className={`fixed z-40 flex flex-row items-end pointer-events-none transition-all duration-300 ease-in-out ${containerLayoutClass}`}
+        >
+
+            {/* --- LEFT: Game List --- */}
+            <div className={`flex-1 flex flex-col bg-app-bg border-t border-surface-border shadow-ui-floating pointer-events-auto relative transition-all duration-300 ${isAdvancedMode ? 'h-full' : 'h-full'}`}>
                 <div className="absolute top-0 left-0 right-0 p-1 text-center pointer-events-none z-10 opacity-30">
                     <ChevronUp size={12} className="text-txt-muted mx-auto" />
                 </div>
@@ -394,9 +440,133 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
             </div>
 
             {/* --- RIGHT: Controls (Chimney - Grows Upwards) --- */}
-            <div className={`${RIGHT_PANEL_WIDTH} flex flex-col bg-app-bg-deep shrink-0 relative z-50 pointer-events-auto rounded-t-2xl shadow-ui-floating border-t border-l border-surface-border ml-[-1px]`}>
+            <div className={`${RIGHT_PANEL_WIDTH} flex flex-col bg-app-bg-deep shrink-0 relative z-50 pointer-events-auto rounded-t-2xl shadow-ui-floating border-t border-l border-surface-border ml-[-1px] transition-all duration-300 ${isAdvancedMode ? 'h-full' : ''}`}>
 
-                <div className="flex flex-col justify-end p-2 gap-2 pb-2 min-h-[160px]">
+                <div className="flex flex-col p-2 gap-1.5 pb-2 min-h-[160px]">
+                    {/* Advanced Filters Section (Upper Part - Grows Upwards) */}
+                    {isAdvancedMode && (
+                        <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-2 py-1 border-b border-surface-border/30 mb-1 animate-in slide-in-from-bottom-4 duration-300">
+                            {/* 1. Players Filter */}
+                            <div className={`p-2 rounded-lg border transition-all duration-300 ${searchFilters.playerCount !== null ? 'border-brand-primary bg-surface-bg shadow-sm' : 'border-surface-border bg-surface-bg/40'}`}>
+                                <div className="flex items-center justify-center relative mb-1.5 h-4">
+                                    <span className={`text-xs font-black uppercase tracking-wider ${searchFilters.playerCount !== null ? 'text-brand-primary' : 'text-txt-primary'}`}>{t('selector_filter_players')}</span>
+                                    {searchFilters.playerCount !== null && (
+                                        <button onClick={() => resetFilter('playerCount')} className="absolute right-0 p-0.5 text-brand-primary hover:opacity-70">
+                                            <X size={12} />
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <div className="flex-1 flex items-center bg-app-bg-deep rounded-md border border-surface-border overflow-hidden h-9">
+                                        <button 
+                                            onClick={() => setSearchFilters(p => ({ ...p, playerCount: Math.max(1, (p.playerCount || 3) - 1) }))}
+                                            className="px-2.5 h-full hover:bg-surface-bg-alt text-txt-primary"
+                                        >
+                                            <Minus size={12} />
+                                        </button>
+                                        <span className="flex-1 text-sm font-black font-mono text-txt-primary">{searchFilters.playerCount || '-'}</span>
+                                        <button 
+                                            onClick={() => setSearchFilters(p => ({ ...p, playerCount: Math.min(20, (p.playerCount || 3) + 1) }))}
+                                            className="px-2.5 h-full hover:bg-surface-bg-alt text-txt-primary"
+                                        >
+                                            <Plus size={12} />
+                                        </button>
+                                    </div>
+                                    <button 
+                                        onClick={() => setSearchFilters(p => ({ ...p, bestOnly: !p.bestOnly }))}
+                                        className={`w-9 h-9 flex items-center justify-center rounded-md border transition-all ${searchFilters.bestOnly ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-app-bg-deep border-surface-border text-txt-muted'}`}
+                                    >
+                                        <Star size={12} fill={searchFilters.bestOnly ? "currentColor" : "none"} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* 2. Rating Filter */}
+                            <div className={`p-2 rounded-lg border transition-all duration-300 ${searchFilters.rating !== null ? 'border-brand-primary bg-surface-bg shadow-sm' : 'border-surface-border bg-surface-bg/40'}`}>
+                                <div className="flex items-center justify-center relative mb-1.5 h-4">
+                                    <span className={`text-xs font-black uppercase tracking-wider ${searchFilters.rating !== null ? 'text-brand-primary' : 'text-txt-primary'}`}>{t('selector_filter_rating')}</span>
+                                    {searchFilters.rating !== null && (
+                                        <button onClick={() => resetFilter('rating')} className="absolute right-0 p-0.5 text-brand-primary hover:opacity-70">
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-3 gap-1.5">
+                                    {[7, 8, 9].map(r => (
+                                        <button
+                                            key={r}
+                                            onClick={() => setSearchFilters(p => ({ ...p, rating: p.rating === r ? null : r }))}
+                                            className={`h-9 text-xs font-black rounded-md border transition-all ${searchFilters.rating === r ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-app-bg-deep border-surface-border text-txt-primary hover:border-txt-primary'}`}
+                                        >
+                                            {r}+
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* 3. Complexity Filter */}
+                            <div className={`p-2 rounded-lg border transition-all duration-300 ${searchFilters.complexity !== null ? 'border-brand-primary bg-surface-bg shadow-sm' : 'border-surface-border bg-surface-bg/40'}`}>
+                                <div className="flex items-center justify-center relative mb-1.5 h-4">
+                                    <span className={`text-xs font-black uppercase tracking-wider ${searchFilters.complexity !== null ? 'text-brand-primary' : 'text-txt-primary'}`}>{t('selector_filter_complexity')}</span>
+                                    {searchFilters.complexity !== null && (
+                                        <button onClick={() => resetFilter('complexity')} className="absolute right-0 p-0.5 text-brand-primary hover:opacity-70">
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-3 gap-1.5">
+                                    {(['light', 'mid', 'heavy'] as const).map(c => (
+                                        <button
+                                            key={c}
+                                            onClick={() => setSearchFilters(p => ({ ...p, complexity: p.complexity === c ? null : c }))}
+                                            className={`h-9 text-xs font-black rounded-md border transition-all ${searchFilters.complexity === c ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-app-bg-deep border-surface-border text-txt-primary hover:border-txt-primary'}`}
+                                        >
+                                            {c === 'light' ? 'L' : c === 'mid' ? 'M' : 'H'}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* 4. Duration Filter */}
+                            <div className={`p-2 rounded-lg border transition-all duration-300 ${searchFilters.duration !== null ? 'border-brand-primary bg-surface-bg shadow-sm' : 'border-surface-border bg-surface-bg/40'}`}>
+                                <div className="flex items-center justify-center relative mb-1.5 h-4">
+                                    <span className={`text-xs font-black uppercase tracking-wider ${searchFilters.duration !== null ? 'text-brand-primary' : 'text-txt-primary'}`}>{t('selector_filter_duration')}</span>
+                                    {searchFilters.duration !== null && (
+                                        <button onClick={() => resetFilter('duration')} className="absolute right-0 p-0.5 text-brand-primary hover:opacity-70">
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                    {[30, 60, 90, 120].map(d => (
+                                        <button
+                                            key={d}
+                                            onClick={() => setSearchFilters(p => ({ ...p, duration: p.duration === d ? null : d }))}
+                                            className={`h-9 text-xs font-black rounded-md border transition-all ${searchFilters.duration === d ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-app-bg-deep border-surface-border text-txt-primary hover:border-txt-primary'}`}
+                                        >
+                                            {`<${d}m`}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Mode Toggle - Anchored Handle */}
+                    <button
+                        onClick={() => setIsAdvancedMode(!isAdvancedMode)}
+                        className={`flex items-center justify-center gap-2 w-full transition-all active:scale-95 shrink-0 mb-1 rounded-lg border shadow-ui-floating z-10
+                            ${isAdvancedMode 
+                                ? 'bg-app-bg-deep text-brand-primary border-brand-primary h-7' 
+                                : 'bg-app-bg-deep text-txt-muted border-surface-border hover:border-txt-muted h-9'
+                            }
+                        `}
+                    >
+                        {isAdvancedMode ? <ChevronDown size={18} /> : <ChevronUp size={20} />}
+                        {!isAdvancedMode && <span className="text-[11px] font-black uppercase tracking-widest">{t('selector_mode_advanced')}</span>}
+                    </button>
+
+                    {/* Mode Toggle - TOP position in Lite Mode (Removed as integrated above) */}
 
                     {/* 1. Time */}
                     <div className="shrink-0">
@@ -523,6 +693,8 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
 
                         </div>
                     </div>
+
+                    {/* Mode Toggle - BOTTOM position in Advanced Mode (Integrated at top) */}
                 </div>
 
                 {/* 5. Bottom Actions */}

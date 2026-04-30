@@ -93,6 +93,12 @@ export const integrationTranslations = {
         selector_placeholder_location_select: "選擇地點...",
         selector_search_more: "搜尋更多",
         selector_import_hint: "可從 BG Stats 或 BGG 匯入更多遊戲",
+        selector_mode_lite: "收起",
+        selector_mode_advanced: "篩選搜尋",
+        selector_filter_players: "人數",
+        selector_filter_rating: "評分",
+        selector_filter_complexity: "重度",
+        selector_filter_duration: "時長",
 
         // Common Integration
         external_link: "外部連結",
@@ -193,6 +199,12 @@ export const integrationTranslations = {
         selector_placeholder_location_select: "Select Place...",
         selector_search_more: "Search More",
         selector_import_hint: "Import more games from BG Stats or BGG",
+        selector_mode_lite: "Collapse",
+        selector_mode_advanced: "Filter Search",
+        selector_filter_players: "Players",
+        selector_filter_rating: "Rating",
+        selector_filter_complexity: "Weight",
+        selector_filter_duration: "Duration",
 
         // Common Integration
         external_link: "External Link",
