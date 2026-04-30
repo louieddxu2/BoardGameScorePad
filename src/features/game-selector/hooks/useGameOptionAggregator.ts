@@ -70,7 +70,17 @@ export const useGameOptionAggregator = (
     });
 
     // --- 2. Overlay Layer: Templates (模板) ---
-    templates.forEach(t => {
+    // [Optimization] Sort templates by priority before processing:
+    // Priority 1: User templates (!id.startsWith('Built-in-')) > Built-in templates
+    // Priority 2: Newer updatedAt > Older updatedAt
+    const sortedTemplates = [...templates].sort((a, b) => {
+        const isAUser = !a.id.startsWith('Built-in-');
+        const isBUser = !b.id.startsWith('Built-in-');
+        if (isAUser !== isBUser) return isAUser ? 1 : -1;
+        return (a.updatedAt || 0) - (b.updatedAt || 0);
+    });
+
+    sortedTemplates.forEach(t => {
       const key = getKey(t.name);
       
       // Try find existing by ID first, then Name
@@ -87,6 +97,12 @@ export const useGameOptionAggregator = (
           
           existing.defaultPlayerCount = t.lastPlayerCount || 4;
           existing.defaultScoringRule = t.defaultScoringRule || 'HIGHEST_WINS';
+
+          // [Update] Update displayName if the template has a more specific name
+          // or if it's a high-priority match that should define the entry
+          if (!existing.savedGameId || !t.id.startsWith('Built-in-')) {
+             existing.displayName = t.name;
+          }
 
           if (t.bggId && !existing.bggId) {
              existing.bggId = t.bggId;

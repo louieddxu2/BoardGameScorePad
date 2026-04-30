@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PenLine, Eraser } from 'lucide-react';
 import { GameSession } from '../../types';
 import { useToolsTranslation } from '../../i18n/tools';
@@ -12,6 +12,13 @@ const MemoTool: React.FC<MemoToolProps> = ({ session, onUpdateSession }) => {
     const { t } = useToolsTranslation();
     // Initialize with session note if available
     const [text, setText] = useState(session?.note || '');
+    const onUpdateRef = useRef(onUpdateSession);
+    const sessionRef = useRef(session);
+    const textRef = useRef(text);
+    
+    onUpdateRef.current = onUpdateSession;
+    sessionRef.current = session;
+    textRef.current = text;
 
     // Sync from session if it changes externally (e.g. from DB load)
     useEffect(() => {
@@ -20,16 +27,20 @@ const MemoTool: React.FC<MemoToolProps> = ({ session, onUpdateSession }) => {
         }
     }, [session?.id]); // Only reset on session change to avoid cursor jumping
 
-    // Debounce updates to parent
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (session && onUpdateSession && text !== (session.note || '')) {
-                onUpdateSession({ ...session, note: text });
-            }
-        }, 500);
+    const flushUpdate = () => {
+        if (sessionRef.current && onUpdateRef.current && textRef.current !== (sessionRef.current.note || '')) {
+            onUpdateRef.current({ ...sessionRef.current, note: textRef.current });
+        }
+    };
 
-        return () => clearTimeout(timer);
-    }, [text, session, onUpdateSession]);
+    // Debounce updates to parent + Flush on unmount
+    useEffect(() => {
+        const timer = setTimeout(flushUpdate, 500);
+        return () => {
+            clearTimeout(timer);
+            flushUpdate(); // [Crucial] Force sync when tool is closed or session ends
+        };
+    }, [text]);
 
     const handleClear = () => {
         setText('');
@@ -54,6 +65,7 @@ const MemoTool: React.FC<MemoToolProps> = ({ session, onUpdateSession }) => {
             <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
+                onBlur={flushUpdate}
                 placeholder={t('memo_placeholder')}
                 className="flex-1 bg-transparent border-none outline-none resize-none text-sm text-txt-primary placeholder-txt-muted/50 leading-relaxed no-scrollbar"
                 spellCheck={false}

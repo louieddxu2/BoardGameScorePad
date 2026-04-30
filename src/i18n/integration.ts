@@ -92,6 +92,7 @@ export const integrationTranslations = {
         selector_new_location: "新地點",
         selector_placeholder_location_select: "選擇地點...",
         selector_search_more: "搜尋更多",
+        selector_import_hint: "可從 BG Stats 或 BGG 匯入更多遊戲",
 
         // Common Integration
         external_link: "外部連結",
@@ -191,6 +192,7 @@ export const integrationTranslations = {
         selector_new_location: "New Location",
         selector_placeholder_location_select: "Select Place...",
         selector_search_more: "Search More",
+        selector_import_hint: "Import more games from BG Stats or BGG",
 
         // Common Integration
         external_link: "External Link",

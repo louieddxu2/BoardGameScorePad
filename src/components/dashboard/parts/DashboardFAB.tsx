@@ -21,7 +21,7 @@ const DashboardFAB: React.FC<DashboardFABProps> = ({ onClick, isVisible }) => {
       // 為了讓圓形按鈕 (56x56) 的中心點與面板按鈕對齊：
       // Right: (90 - 56) / 2 = 17px
       // Bottom: (60 - 56) / 2 = 2px (視覺微調為 4px)
-      className="absolute text-white rounded-full flex items-center justify-center z-40 transition-all duration-200 active:scale-95 animate-in zoom-in btn-fab-primary"
+      className="absolute text-white rounded-full flex items-center justify-center z-40 transition-all duration-200 active:scale-95 animate-in zoom-in btn-fab-primary animate-guide-pulse"
       title={t('card_start_new')}
       style={{
         width: '56px',

@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { SavedListItem, ScoringRule } from '../../../types';
 import { GameOption } from '../types';
-import { Users, Minus, Plus, Play, ChevronUp, Search, PenLine, List, ThumbsUp, Pin, Check, ChevronDown } from 'lucide-react';
+import { Users, Minus, Plus, Play, ChevronUp, Search, PenLine, List, ThumbsUp, Pin, Check, ChevronDown, FileJson, Database } from 'lucide-react';
 import { getRecommendations, getSearchResults } from '../utils/sortStrategies';
 import { useRecommendedGameSetup } from '../hooks/useRecommendedGameSetup';
 import { useIntegrationTranslation } from '../../../i18n/integration';
@@ -16,6 +16,8 @@ interface StartGamePanelProps {
     onPin: (option: GameOption) => void;
     isSearching?: boolean;
     searchQuery?: string;
+    onOpenBgStats?: () => void;
+    onOpenBggImport?: () => void;
 }
 
 
@@ -27,7 +29,9 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     onSearchClick,
     onPin,
     isSearching = false,
-    searchQuery = ''
+    searchQuery = '',
+    onOpenBgStats,
+    onOpenBggImport
 }, ref) => {
     const { t } = useIntegrationTranslation();
     const { t: tCommon } = useCommonTranslation();
@@ -144,9 +148,30 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     }, [activeMenu]);
 
     const scrollableItems = useMemo(() => {
-        if (!dockedItem) return processedOptions;
-        return processedOptions.filter(t => t.uid !== dockedItem.uid);
-    }, [processedOptions, dockedItem]);
+        let items = processedOptions;
+        if (dockedItem) {
+            items = items.filter(t => t.uid !== dockedItem.uid);
+        }
+        if (!isSearching) {
+            items = items.filter(opt => opt.uid !== '__CREATE_NEW__');
+        }
+        return items;
+    }, [isSearching, processedOptions, dockedItem]);
+
+    const showImportHint = useMemo(() => {
+        if (!isSearching || !searchQuery) return false;
+
+        const len = [...searchQuery.trim()].reduce(
+            (sum, ch) => sum + (/[\u4e00-\u9fff\u3400-\u4dbf]/.test(ch) ? 2 : 1), 0
+        );
+        if (len < 4) return false;
+
+        if (!dockedItem || dockedItem.uid === '__CREATE_NEW__') return true;
+
+        return !(dockedItem.cleanName || dockedItem.displayName)
+            .toLowerCase()
+            .includes(searchQuery.trim().toLowerCase());
+    }, [isSearching, searchQuery, dockedItem]);
 
     const currentModeLabel = SCORING_MODES.find(m => m.value === scoringRule)?.label || t('selector_rule_label');
 
@@ -308,11 +333,50 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                     <div className="h-full flex flex-col items-center justify-center text-txt-muted opacity-50 pb-10">
                         <Search size={32} />
                         <span className="text-xs mt-2">{t('selector_no_results')}</span>
+                        {showImportHint && onOpenBgStats && onOpenBggImport && (
+                            <div className="flex flex-col items-center gap-2 mt-4 animate-in fade-in duration-300 pointer-events-auto">
+                                <span className="text-[11px] text-txt-muted">{t('selector_import_hint')}</span>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onOpenBgStats(); }}
+                                        className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-brand-secondary bg-surface-bg-alt hover:bg-surface-bg rounded-lg border border-surface-border transition-all active:scale-95 shadow-sm"
+                                    >
+                                        <FileJson size={12} />
+                                        {t('btn_bgstats_open')}
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onOpenBggImport(); }}
+                                        className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-brand-secondary bg-surface-bg-alt hover:bg-surface-bg rounded-lg border border-surface-border transition-all active:scale-95 shadow-sm"
+                                    >
+                                        <Database size={12} />
+                                        {t('btn_bgg_open')}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <>
                         <div className="flex-1 flex flex-col-reverse justify-start overflow-y-auto no-scrollbar">
                             {scrollableItems.map(opt => renderItem(opt, false))}
+                            {showImportHint && onOpenBgStats && onOpenBggImport && (
+                                <div className="shrink-0 px-3 py-2 mb-1 flex items-center gap-2 text-[11px] text-txt-muted animate-in fade-in duration-300">
+                                    <span>{t('selector_import_hint')}</span>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onOpenBgStats(); }}
+                                        className="text-brand-secondary font-bold hover:underline"
+                                    >
+                                        BG Stats
+                                    </button>
+                                    <span>|</span>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onOpenBggImport(); }}
+                                        className="text-brand-secondary font-bold hover:underline"
+                                    >
+                                        BGG
+                                    </button>
+                                </div>
+                            )}
                             <div className="h-2 shrink-0"></div>
                         </div>
 

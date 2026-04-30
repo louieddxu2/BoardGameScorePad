@@ -17,17 +17,21 @@ interface SmartSpacerProps {
     onTakePhoto?: () => void;
     onScreenshot?: () => void;
     onUpdateSession: (session: GameSession) => void;
+    mode?: 'session' | 'history'; // New prop
 }
 
-const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, onTakePhoto, onScreenshot, onUpdateSession }) => {
+const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, onTakePhoto, onScreenshot, onUpdateSession, mode = 'session' }) => {
     const { t } = useSessionTranslation();
+    const isHistory = mode === 'history';
     return (
         <div className="absolute inset-0 flex flex-col p-4 overflow-y-auto no-scrollbar">
             {/* Hint Text */}
-            <div className="flex items-center justify-center gap-2 text-txt-muted mb-6 mt-2 opacity-70 select-none">
-                <MousePointerClick size={16} className="animate-bounce" />
-                <span className="text-xs font-bold">{t('smart_spacer_hint')}</span>
-            </div>
+            {!isHistory && (
+                <div className="flex items-center justify-center gap-2 text-txt-muted mb-6 mt-2 opacity-70 select-none">
+                    <MousePointerClick size={16} className="animate-bounce" />
+                    <span className="text-xs font-bold">{t('smart_spacer_hint')}</span>
+                </div>
+            )}
 
             {/* Toolbox Grid - Masonry-ish Layout */}
             <div className="grid grid-cols-4 gap-3 w-full max-w-sm mx-auto pb-20">
@@ -44,19 +48,25 @@ const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, onTakePhoto, onScree
                 </div>
 
                 {/* Row 2: Order */}
-                <div className="col-span-4">
-                    <OrderTool session={session} onUpdateSession={onUpdateSession} />
-                </div>
+                {!isHistory && (
+                    <div className="col-span-4">
+                        <OrderTool session={session} onUpdateSession={onUpdateSession} />
+                    </div>
+                )}
 
                 {/* Row 3: Countdown */}
-                <div className="col-span-4">
-                    <CountdownTool />
-                </div>
+                {!isHistory && (
+                    <div className="col-span-4">
+                        <CountdownTool />
+                    </div>
+                )}
 
                 {/* Row 4: Randomizer (Coin + Dice) */}
-                <div className="col-span-4">
-                    <RandomizerTool />
-                </div>
+                {!isHistory && (
+                    <div className="col-span-4">
+                        <RandomizerTool />
+                    </div>
+                )}
 
                 {/* Row 5: Notes */}
                 <div className="col-span-4">

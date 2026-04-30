@@ -414,4 +414,28 @@ html[data-theme='light'] {
   .animate-swipe-hint-right { animation: swipe-hint-right 1.2s ease-in-out infinite; }
   .animate-swipe-hint-enter { animation: swipe-hint-fade-in 0.3s ease-out forwards; }
   .animate-swipe-hint-exit { animation: swipe-hint-fade-out 0.5s ease-in forwards; }
+
+  /* ============================================================
+     GUIDANCE SYSTEM — Reusable Emphasis Pulse
+     ============================================================
+     Usage:  Add class to any element needing attention guidance.
+             Outline auto-follows the element's border-radius.
+
+     Classes:
+       .animate-guide-pulse        — default (2.5s cycle)
+       .animate-guide-pulse-fast   — urgent  (1.5s cycle)
+       .animate-guide-pulse-slow   — ambient (4s cycle)
+
+     Example:
+       <button className="rounded-full animate-guide-pulse">...</button>
+       <div className="rounded-lg animate-guide-pulse-slow">...</div>
+     ============================================================ */
+  @keyframes guide-pulse-outline {
+    0%, 100% { outline: 3px solid rgb(var(--c-brand-primary) / 0.6); outline-offset: 0px; }
+    50% { outline: 3px solid rgb(var(--c-brand-primary) / 0); outline-offset: 6px; }
+  }
+
+  .animate-guide-pulse      { animation: guide-pulse-outline 2.5s ease-in-out infinite; }
+  .animate-guide-pulse-fast { animation: guide-pulse-outline 1.5s ease-in-out infinite; }
+  .animate-guide-pulse-slow { animation: guide-pulse-outline 4s   ease-in-out infinite; }
 }

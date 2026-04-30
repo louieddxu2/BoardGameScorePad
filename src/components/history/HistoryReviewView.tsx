@@ -18,6 +18,7 @@ import PhotoGalleryModal from '../session/modals/PhotoGalleryModal';
 import CameraView from '../scanner/CameraView';
 import { getRecordScoringRule, getRecordTemplate } from '../../utils/historyUtils';
 import { usePhotoManager } from '../../hooks/usePhotoManager';
+import SmartSpacer from '../session/parts/SmartSpacer';
 
 import { useHistoryTranslation } from '../../i18n/history';
 
@@ -48,7 +49,8 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
         startTime: record.startTime,
         players: record.players,
         status: 'completed',
-        scoringRule: getRecordScoringRule(record)
+        scoringRule: getRecordScoringRule(record),
+        note: record.note || ''
     }), [record]);
 
     // Use helper to safely get template (handles missing/empty snapshot via virtual template)
@@ -62,8 +64,14 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
     const [showSettingsModal, setShowSettingsModal] = useState(false);
     const [showShareMenu, setShowShareMenu] = useState(false);
     const [showPhotoGallery, setShowPhotoGallery] = useState(false);
-
     const [screenshotLayout, setScreenshotLayout] = useState<ScreenshotLayout | null>(null);
+    
+    // [Logic] Determine if the list is "Short" (auto-open toolbox)
+    const isShortList = useMemo(() => {
+        return !baseImage && template.columns.length < 5;
+    }, [baseImage, template.columns.length]);
+
+    const [isToolboxOpen, setIsToolboxOpen] = useState(isShortList);
     const { showToast } = useToast();
 
     // === 照片管理（與計分板共用 usePhotoManager） ===
@@ -93,6 +101,13 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
             }
         }
     });
+
+    const handleUpdateNote = async (updatedSession: GameSession) => {
+        const updated = { ...record, note: updatedSession.note || '', updatedAt: Date.now() };
+        await db.history.put(updated);
+        setRecord(updated);
+        isDirtyRef.current = true;
+    };
 
     // --- Exit Logic with Cloud Sync ---
     const handleExitAndSync = () => {
@@ -368,6 +383,8 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                     isEditMode={false}
                     zoomLevel={zoomLevel}
                     previewValue={0}
+                    onToggleToolbox={() => setIsToolboxOpen(!isToolboxOpen)}
+                    isToolboxOpen={isToolboxOpen}
                 />
             </div>
 
@@ -396,6 +413,26 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                 baseImage={baseImage || undefined}
                 customWinners={winners}
             />
+
+            {/* History Toolbox Drawer - No backdrop, matches Session InputPanel feel */}
+            <div
+                className={`fixed left-0 right-0 z-40 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgba(var(--c-black)/0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isToolboxOpen ? 'translate-y-0' : 'translate-y-full'}`}
+                style={{ height: '40vh', bottom: 0 }}
+            >
+                <div className="flex-1 min-h-0 bg-modal-bg relative">
+                    <SmartSpacer
+                        mode="history"
+                        session={fakeSession}
+                        template={template}
+                        onTakePhoto={photos.openCamera}
+                        onScreenshot={() => {
+                            setIsToolboxOpen(false);
+                            setShowScreenshotModal(true);
+                        }}
+                        onUpdateSession={handleUpdateNote}
+                    />
+                </div>
+            </div>
 
             <PhotoGalleryModal
                 isOpen={showPhotoGallery}
