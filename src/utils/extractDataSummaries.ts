@@ -150,6 +150,11 @@ export type BggGameSummary = BaseSummary<BggGameSearchIndex> & BggGameSearchInde
   playingTime?: number;
   complexity?: number;
   bestPlayers?: number[];
+
+  // Advanced Filtering Fields
+  mechanisms?: string[];
+  categories?: string[];
+  cooperative?: boolean;
 }
 
 
@@ -298,6 +303,11 @@ export const extractBggGameSummary = (
     playingTime: game.playingTime,
     complexity: game.complexity,
     bestPlayers: game.bestPlayers,
+
+    // Advanced Filtering
+    mechanisms: game.mechanisms,
+    categories: game.categories,
+    cooperative: game.cooperative,
 
     _searchName: searchName,
     _altNames: altNamesStr

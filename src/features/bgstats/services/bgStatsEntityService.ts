@@ -239,6 +239,9 @@ export class BgStatsEntityService {
           complexity: sourceGame.averageWeight || existing?.complexity,
           rank: sourceGame.rank || existing?.rank,
           bestPlayers: existing?.bestPlayers,
+          mechanisms: (sourceGame as any).mechanisms || existing?.mechanisms,
+          categories: (sourceGame as any).categories || existing?.categories,
+          cooperative: typeof sourceGame.cooperative === 'boolean' ? sourceGame.cooperative : existing?.cooperative,
           updatedAt: Date.now()
       };
       await db.bggGames.put(bggData);

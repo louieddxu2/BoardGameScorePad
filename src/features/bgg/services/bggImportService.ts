@@ -70,6 +70,8 @@ export const bggImportService = {
             weight: findIdx(['Weight', 'AverageWeight', 'Complexity', 'averageweight', '重度', '複雜度']),
             bestPlayers: findIdx(['Best Players', 'Recommended Players', 'BGGBestPlayers', '最佳人數', '推薦人數']),
             designers: findIdx(['Designers', 'Designer', '設計師']),
+            mechanisms: findIdx(['Mechanics', 'Mechanisms', '機制', '遊戲機制']),
+            categories: findIdx(['Categories', 'Category', '分類', '遊戲分類']),
         };
 
         if (idx.id === -1 || idx.name === -1) {
@@ -121,6 +123,16 @@ export const bggImportService = {
                 }
             }
 
+            // 解析機制與分類
+            const parseTags = (raw: string | undefined) => {
+                if (!raw) return [];
+                return raw.split(/[|,;]/).map(s => s.trim()).filter(Boolean);
+            };
+
+            const mechanisms = parseTags(getVal(idx.mechanisms));
+            const categories = parseTags(getVal(idx.categories));
+            const isCooperative = mechanisms.some(m => m.toLowerCase().includes('cooperative game'));
+
             const game: any = {
                 id: bggId,
                 uuid: `bgg:${bggId}`,
@@ -138,7 +150,9 @@ export const bggImportService = {
                 rank: getNum(idx.rank),
                 bestPlayers: bestPlayers,
                 modificationDate: new Date().toISOString(),
-                cooperative: false
+                cooperative: isCooperative,
+                mechanisms: mechanisms,
+                categories: categories
             };
 
             importGames.push(game);
@@ -326,6 +340,9 @@ export const bggImportService = {
                 rank: srcGame.rank,
                 complexity: srcGame.averageWeight,
                 bestPlayers: (srcGame as any).bestPlayers,
+                mechanisms: (srcGame as any).mechanisms,
+                categories: (srcGame as any).categories,
+                cooperative: (srcGame as any).cooperative,
                 updatedAt: Date.now()
             };
 
@@ -361,7 +378,10 @@ export const bggImportService = {
                             maxPlayers: newG.maxPlayers || oldG.maxPlayers,
                             playingTime: newG.playingTime || oldG.playingTime,
                             complexity: newG.complexity || oldG.complexity,
-                            bestPlayers: newG.bestPlayers || oldG.bestPlayers
+                            bestPlayers: newG.bestPlayers || oldG.bestPlayers,
+                            mechanisms: newG.mechanisms || oldG.mechanisms,
+                            categories: newG.categories || oldG.categories,
+                            cooperative: typeof newG.cooperative === 'boolean' ? newG.cooperative : oldG.cooperative
                         };
                     }
                     return newG;
