@@ -36,9 +36,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     const { t } = useIntegrationTranslation();
     const { t: tCommon } = useCommonTranslation();
 
-    const [isAdvancedMode, setIsAdvancedMode] = useState<boolean>(() => {
-        return localStorage.getItem('pref_search_advanced') === 'true';
-    });
+    const [isAdvancedMode, setIsAdvancedMode] = useState<boolean>(false);
 
     useEffect(() => {
         localStorage.setItem('pref_search_advanced', isAdvancedMode.toString());
@@ -545,10 +543,10 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                         </div>
                     )}
 
-                    {/* Mode Toggle - Anchored Handle */}
+                    {/* Mode Toggle - Temporarily hidden for production merge as feature is incomplete */}
                     <button
                         onClick={() => setIsAdvancedMode(!isAdvancedMode)}
-                        className={`flex items-center justify-center gap-2 w-full transition-all active:scale-95 shrink-0 mb-1 rounded-lg border shadow-ui-floating z-10
+                        className={`hidden items-center justify-center gap-2 w-full transition-all active:scale-95 shrink-0 mb-1 rounded-lg border shadow-ui-floating z-10
                             ${isAdvancedMode
                                 ? 'bg-app-bg-deep text-brand-primary border-brand-primary h-7'
                                 : 'bg-app-bg-deep text-txt-muted border-surface-border hover:border-txt-muted h-9'
