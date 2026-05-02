@@ -36,6 +36,22 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     const { t } = useIntegrationTranslation();
     const { t: tCommon } = useCommonTranslation();
 
+    // --- Derived Data ---
+    const uniqueLocations = useMemo(() => {
+        return [...locations].sort((a, b) => a.lastUsed - b.lastUsed);
+    }, [locations]);
+
+    const hasLocationHistory = uniqueLocations.length > 0;
+
+    // --- State & Refs ---
+    const [userSelectedUid, setUserSelectedUid] = useState<string | null>(null);
+    const [activeMenu, setActiveMenu] = useState<{ type: 'mode' | 'location', bottom: number, left: number, width: number } | null>(null);
+    const [isManualInput, setIsManualInput] = useState(!hasLocationHistory);
+    const [showRuleMenu, setShowRuleMenu] = useState(false); 
+
+    const inputRef = useRef<HTMLInputElement>(null);
+    const listRef = useRef<HTMLDivElement>(null);
+
     const [isAdvancedMode, setIsAdvancedMode] = useState<boolean>(() => {
         return localStorage.getItem('pref_search_advanced') === 'true';
     });
@@ -87,64 +103,56 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
         { value: 'COOP_NO_SCORE', label: tCommon('rule_coop_no_score') },
     ];
 
-    // --- Derived Data ---
-    const uniqueLocations = useMemo(() => {
-        return [...locations].sort((a, b) => a.lastUsed - b.lastUsed);
-    }, [locations]);
-
-    const hasLocationHistory = uniqueLocations.length > 0;
-
     // --- Logic: Process Options ---
-    const processedOptions = useMemo(() => {
-        if (isSearching) {
-            return getSearchResults(options, searchQuery);
-        } else {
-            return getRecommendations(options);
-        }
+
+    // 1. 搜尋匹配 (意圖)：系統根據搜尋字串找出最匹配的項目
+    const baseOptions = useMemo(() => {
+        if (isSearching) return getSearchResults(options, searchQuery);
+        return getRecommendations(options);
     }, [options, isSearching, searchQuery]);
 
-    // --- Local UI State (Selection & Menus) ---
-    const [userSelectedUid, setUserSelectedUid] = useState<string | null>(null);
-    const [activeMenu, setActiveMenu] = useState<{ type: 'mode' | 'location', bottom: number, left: number, width: number } | null>(null);
-    const [isManualInput, setIsManualInput] = useState(!hasLocationHistory);
-    const [showRuleMenu, setShowRuleMenu] = useState(false); // For compact dropdown
+    // 2. 確定預測對象：Hook 根據此對象來建議環境
+    const predictionTarget = useMemo(() => {
+        if (userSelectedUid) return options.find(t => t.uid === userSelectedUid) || null;
+        return baseOptions[0] || null;
+    }, [baseOptions, userSelectedUid, options]);
 
-    const inputRef = useRef<HTMLInputElement>(null);
-    const listRef = useRef<HTMLDivElement>(null);
-
-    // [New] 搜尋字串改變時，清空手動選取，回歸自動選取模式
+    // 搜尋字串改變時，清空手動選取
     useEffect(() => {
         setUserSelectedUid(null);
     }, [searchQuery]);
 
-
-    // Determine Docked Item
-    const dockedItem = useMemo(() => {
-        // 1. 優先使用使用者手動點選的項目 (若該項目目前仍在列表中)
-        if (userSelectedUid) {
-            const found = processedOptions.find(t => t.uid === userSelectedUid);
-            if (found) return found;
-        }
-
-        // 2. 否則，自動使用列表中的第一項 (搜尋結果第一名 或 推薦第一名)
-        if (processedOptions.length > 0) {
-            return processedOptions[0];
-        }
-
-        return null;
-    }, [processedOptions, userSelectedUid]);
-
-    // --- Hook: Setup State & Recommendations ---
-    // Passing dockedItem as the active context for recommendations
+    // 3. 環境預測 (Hook)
     const {
         playerCount, setPlayerCount,
         isPlayerCountManual,
         location, setLocation,
-        isLocationManual, // [New] Visual feedback state
+        isLocationManual,
         locationId, setLocationId,
         scoringRule, setScoringRule,
         startTimeStr, setStartTimeStr
-    } = useRecommendedGameSetup(dockedItem);
+    } = useRecommendedGameSetup(predictionTarget);
+
+    // [Lock] 當進入進階模式或開啟最佳人數時，自動上鎖 (變綠色)
+    useEffect(() => {
+        if ((isAdvancedMode || searchFilters.bestOnly) && !isPlayerCountManual) {
+            setPlayerCount(playerCount);
+        }
+    }, [isAdvancedMode, searchFilters.bestOnly, playerCount, isPlayerCountManual, setPlayerCount]);
+
+    // 4. 最終過濾結果：真正的搜尋結果，包含了人數篩選
+    const processedOptions = useMemo(() => {
+        if (searchFilters.bestOnly) {
+            return baseOptions.filter(opt => opt.bestPlayers?.includes(playerCount));
+        }
+        return baseOptions;
+    }, [baseOptions, searchFilters.bestOnly, playerCount]);
+
+    // 5. 決定底部項目 (Docked Item)
+    const dockedItem = useMemo(() => {
+        if (userSelectedUid) return processedOptions.find(t => t.uid === userSelectedUid) || null;
+        return processedOptions[0] || null;
+    }, [processedOptions, userSelectedUid]);
 
     // --- UI Effects ---
 
