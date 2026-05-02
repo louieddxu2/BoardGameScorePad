@@ -262,6 +262,11 @@ export interface BggGame {
   complexity?: number; // Weight (1-5)
   bestPlayers?: number[]; // Community voted best player counts
 
+  // [New Phase 3] Derived/Advanced Info
+  mechanisms?: string[]; // e.g. ["Cooperative Game", "Card Drafting"]
+  categories?: string[]; // e.g. ["Card Game", "Fantasy"]
+  cooperative?: boolean; // Direct flag for easier filtering
+
   updatedAt: number; // Last cache update
 }
 

@@ -9,6 +9,10 @@
 - [x] **階段二：國際化與狀態持久化**
     - 補齊中英文翻譯（含 Comp./Coop./Lt./Md./Hv. 等縮寫優化）。
     - 實作 `localStorage` 狀態記憶。
+- [x] **階段 2.5：資料結構擴充 (Backend Infrastructure)**
+    - 擴充 `BggGame` 型別，新增機制、分類與合作模式欄位。
+    - 支援 CSV 匯入自動判定合作模式與標籤解析。
+    - 補完 Summary 投影層，確保搜尋引擎可存取新欄位。
 - [ ] **階段三：搜尋引擎接線 (Logic Integration)**
     - 將 `searchFilters` 注入 `getSearchResults` 與 `getRecommendations`。
     - 實作 BGG 機制過濾（如合作遊戲 ID 2023 識別）。
@@ -35,3 +39,29 @@
 ### 數據連動 (預計)
 *   **重度轉換**：BGG 1.0~2.0 -> Light, 2.0~3.5 -> Mid, 3.5+ -> Heavy。
 *   **類型過濾**：檢查 `Mechanisms` 是否包含 "Cooperative Game"。
+
+---
+
+## 附錄：方案討論紀錄與邏輯建議 (待後續評估)
+
+此部分記錄了關於搜尋邏輯的深度討論，作為未來實作「階段三」時的參考方案。
+
+### 1. 衍生資料判定邏輯 (Feature Engineering)
+*   **合作/競爭模式**：透過 `mechanics` 欄位是否包含 "Cooperative Game" 來自動分類。
+*   **桌面佔用度預測 (Table Space Proxy)**：
+    *   **原則**：寧可錯誤包含 (False Positive)，也不要錯誤刪除。
+    *   **絕對小桌**：包含 Microgame, Travel, Roll/Write 等標籤。
+    *   **絕對大桌**：包含 Miniatures, Wargame 或符合 (重度 > 3.5 && 人數 >= 4) 之條件。
+    *   **中間地帶**：不符合上述條件者皆視為標準桌面，保持顯示。
+
+### 2. 搜尋體驗優化
+*   **即時響應 (Real-time Search)**：利用本地資料量小、Dexie.js 讀取快的優勢，實作「隨打即搜」，不使用 Submit 按鈕，追求毫秒級的反饋。
+*   **情境快捷鍵 (Scenario Chips)**：預計實作一鍵套用組合條件，例如：`🎉 派對破冰`、`🧠 老手策略`、`👶 新手入坑`。
+
+### 3. 欄位擴充建議
+*   **最佳人數 (Best Player Count)**：區分「可支援」與「最佳」，提供更精準的推薦。
+*   **出版年份 (Year Published)**：提供範圍選擇，區分「經典老遊戲」與「近三年新作」。
+
+### 4. 產品定位聯結
+*   將「搜尋篩選」定位為遊戲開局前的**導航大廳 (Windshield)**，解決 BGStats 在情境搜尋上的操作阻力（High Friction）與模糊搜尋缺口。
+

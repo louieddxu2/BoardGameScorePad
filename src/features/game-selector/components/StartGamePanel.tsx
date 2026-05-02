@@ -45,24 +45,26 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     }, [isAdvancedMode]);
 
     const [searchFilters, setSearchFilters] = useState<{
-        playerCount: number | null;
         bestOnly: boolean;
         rating: number | null;
         complexity: 'light' | 'mid' | 'heavy' | null;
         duration: number | null;
         gameType: 'competitive' | 'cooperative' | null;
+        smallTable: boolean;
+        recentOnly: boolean;
     }>(() => {
         const saved = localStorage.getItem('pref_search_filters');
         if (saved) {
             try { return JSON.parse(saved); } catch (e) { }
         }
         return {
-            playerCount: null,
             bestOnly: false,
             rating: null,
             complexity: null,
             duration: null,
-            gameType: null
+            gameType: null,
+            smallTable: false,
+            recentOnly: false
         };
     });
 
@@ -73,7 +75,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     const resetFilter = (key: keyof typeof searchFilters) => {
         setSearchFilters(prev => ({
             ...prev,
-            [key]: key === 'bestOnly' ? false : null
+            [key]: (key === 'bestOnly' || key === 'smallTable' || key === 'recentOnly') ? false : null
         }));
     };
 
@@ -445,10 +447,25 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
             <div className={`${RIGHT_PANEL_WIDTH} flex flex-col bg-app-bg-deep shrink-0 relative z-50 pointer-events-auto rounded-t-2xl shadow-ui-floating border-t border-l border-surface-border ml-[-1px] transition-all duration-300 ${isAdvancedMode ? 'h-full' : ''}`}>
 
                 <div className="flex flex-col p-2 gap-1.5 pb-2 min-h-[160px]">
-                    {/* Advanced Filters Section (Upper Part - Grows Upwards) */}
                     {isAdvancedMode && (
                         <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-1 py-1 border-b border-surface-border/30 mb-1 animate-in slide-in-from-bottom-4 duration-300">
-                            {/* 0. Type Filter (Competitive / Cooperative) - No Title, at the top */}
+                            {/* 0. Quick Scenario Filters (Small Table, Recent Only) */}
+                            <div className="grid grid-cols-2 gap-1.5 shrink-0 border-b border-surface-border/20 pb-1.5 mb-0.5">
+                                <button
+                                    onClick={() => setSearchFilters(p => ({ ...p, smallTable: !p.smallTable }))}
+                                    className={`h-8 text-[10px] font-black rounded-lg border transition-all ${searchFilters.smallTable ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-surface-bg/40 border-surface-border text-txt-primary hover:border-txt-primary'}`}
+                                >
+                                    {t('selector_filter_small_table')}
+                                </button>
+                                <button
+                                    onClick={() => setSearchFilters(p => ({ ...p, recentOnly: !p.recentOnly }))}
+                                    className={`h-8 text-[10px] font-black rounded-lg border transition-all ${searchFilters.recentOnly ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-surface-bg/40 border-surface-border text-txt-primary hover:border-txt-primary'}`}
+                                >
+                                    {t('selector_filter_recent_only')}
+                                </button>
+                            </div>
+
+                            {/* 1. Type Filter (Competitive / Cooperative) - No Title, at the top */}
                             <div className="grid grid-cols-2 gap-1.5 shrink-0 border-b border-surface-border/20 pb-1.5 mb-0.5">
                                 {(['competitive', 'cooperative'] as const).map(type => (
                                     <button
@@ -461,34 +478,15 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                 ))}
                             </div>
 
-                            {/* 1. Players Filter */}
+                            {/* 2. Players Filter (Single Toggle - Best Only) */}
                             <div className="pb-1.5 border-b border-surface-border/20 mb-0.5">
-                                <div className="flex items-center justify-center relative mb-0.5 h-3">
-                                    <span className={`text-[10px] font-black uppercase tracking-widest ${searchFilters.playerCount !== null ? 'text-brand-primary' : 'text-txt-muted'}`}>{t('selector_filter_players')}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <div className="flex-1 flex items-center bg-app-bg-deep rounded-md border border-surface-border overflow-hidden h-8">
-                                        <button
-                                            onClick={() => setSearchFilters(p => ({ ...p, playerCount: Math.max(1, (p.playerCount || 3) - 1) }))}
-                                            className="px-2.5 h-full hover:bg-surface-bg-alt text-txt-primary"
-                                        >
-                                            <Minus size={12} />
-                                        </button>
-                                        <span className="flex-1 text-sm font-black font-mono text-txt-primary">{searchFilters.playerCount || '-'}</span>
-                                        <button
-                                            onClick={() => setSearchFilters(p => ({ ...p, playerCount: Math.min(20, (p.playerCount || 3) + 1) }))}
-                                            className="px-2.5 h-full hover:bg-surface-bg-alt text-txt-primary"
-                                        >
-                                            <Plus size={12} />
-                                        </button>
-                                    </div>
-                                    <button
-                                        onClick={() => setSearchFilters(p => ({ ...p, bestOnly: !p.bestOnly }))}
-                                        className={`w-8 h-8 flex items-center justify-center rounded-md border transition-all ${searchFilters.bestOnly ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-app-bg-deep border-surface-border text-txt-muted'}`}
-                                    >
-                                        <Star size={12} fill={searchFilters.bestOnly ? "currentColor" : "none"} />
-                                    </button>
-                                </div>
+                                <button
+                                    onClick={() => setSearchFilters(p => ({ ...p, bestOnly: !p.bestOnly }))}
+                                    className={`w-full h-8 flex items-center justify-center gap-2 rounded-lg border transition-all ${searchFilters.bestOnly ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-surface-bg/40 border-surface-border text-txt-primary hover:border-txt-primary'}`}
+                                >
+                                    <Star size={12} fill={searchFilters.bestOnly ? "currentColor" : "none"} />
+                                    <span className="text-[11px] font-black">{t('selector_filter_players_best', { n: playerCount })}</span>
+                                </button>
                             </div>
 
                             {/* 2. Rating Filter */}

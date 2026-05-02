@@ -106,6 +106,10 @@ export const integrationTranslations = {
         selector_filter_type: "類型",
         selector_filter_type_competitive: "競爭",
         selector_filter_type_cooperative: "合作",
+        selector_filter_small_table: "小桌面",
+        selector_filter_recent_only: "近 2 年",
+        selector_filter_players_supported: "支援 {n} 人",
+        selector_filter_players_best: "最佳 {n} 人",
 
         // Common Integration
         external_link: "外部連結",
@@ -219,6 +223,10 @@ export const integrationTranslations = {
         selector_filter_type: "Type",
         selector_filter_type_competitive: "Comp.",
         selector_filter_type_cooperative: "Coop.",
+        selector_filter_small_table: "Small Table",
+        selector_filter_recent_only: "Recent 2y",
+        selector_filter_players_supported: "Supports {n}",
+        selector_filter_players_best: "{n} is Best",
 
         // Common Integration
         external_link: "External Link",
