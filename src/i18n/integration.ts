@@ -111,6 +111,14 @@ export const integrationTranslations = {
         selector_filter_players_supported: "支援 {n} 人",
         selector_filter_players_best: "最佳 {n} 人",
 
+        // In-App Browser Guide
+        guide_inapp_steps_header: "步驟",
+        guide_inapp_title: "建議使用瀏覽器開啟",
+        guide_inapp_desc: "支援完整拍照、分享與記錄功能。",
+        guide_inapp_step1: "1. 點擊邊緣選單 ( ...、⋮ 或分享圖示 )",
+        guide_inapp_step2: "2. 選擇「在瀏覽器中開啟」( 或 Safari / Chrome )",
+        guide_inapp_close: "暫時這樣就好",
+
         // Common Integration
         external_link: "外部連結",
         loading_data: "正在載入資料...",
@@ -227,6 +235,14 @@ export const integrationTranslations = {
         selector_filter_recent_only: "Recent 2y",
         selector_filter_players_supported: "Supports {n}",
         selector_filter_players_best: "{n} is Best",
+
+        // In-App Browser Guide
+        guide_inapp_steps_header: "Steps",
+        guide_inapp_title: "Open in System Browser",
+        guide_inapp_desc: "Supports full photo, sharing, and data features.",
+        guide_inapp_step1: "1. Click menu icon ( ... , ⋮ or Share )",
+        guide_inapp_step2: "2. Select 'Open in Browser' ( or Safari / Chrome )",
+        guide_inapp_close: "Continue anyway",
 
         // Common Integration
         external_link: "External Link",

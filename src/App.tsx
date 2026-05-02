@@ -18,6 +18,7 @@ import SessionView from './components/session/SessionView';
 import Dashboard from './components/dashboard/Dashboard';
 import GameSetupModal from './components/dashboard/modals/GameSetupModal';
 import HistoryReviewView from './components/history/HistoryReviewView';
+import { InAppBrowserGuide } from './components/modals/InAppBrowserGuide';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.DASHBOARD);
@@ -704,6 +705,8 @@ const App: React.FC = () => {
           onResume={handleResumeGame}
         />
       )}
+      
+      <InAppBrowserGuide />
     </div>
   );
 };

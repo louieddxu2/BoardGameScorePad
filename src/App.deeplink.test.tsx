@@ -84,6 +84,10 @@ vi.mock('./i18n/app', () => ({
   useAppTranslation: () => ({ t: (key: string) => key })
 }));
 
+vi.mock('./i18n/integration', () => ({
+  useIntegrationTranslation: () => ({ t: (key: string) => key })
+}));
+
 vi.mock('./services/templateShareService', () => ({
   fetchTemplateFromCloud: vi.fn(async () => null),
 }));
