@@ -15,7 +15,7 @@ export const InAppBrowserGuide: React.FC = () => {
     useEffect(() => {
         // 1. Detection logic
         const ua = navigator.userAgent || navigator.vendor || (window as any).opera;
-        const inAppKeywords = ['Line', 'FBAV', 'FBAN', 'Instagram', 'MicroMessenger', 'Threads'];
+        const inAppKeywords = ['Line', 'FBAV', 'FBAN', 'Instagram', 'MicroMessenger', 'Threads', 'TikTok', 'Twitter', 'Reddit', 'BoardGameGeek'];
 
         // Check if current browser is an in-app browser
         const isInApp = inAppKeywords.some(keyword => new RegExp(keyword, 'i').test(ua));
