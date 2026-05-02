@@ -36,7 +36,9 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     const { t } = useIntegrationTranslation();
     const { t: tCommon } = useCommonTranslation();
 
-    const [isAdvancedMode, setIsAdvancedMode] = useState<boolean>(false);
+    const [isAdvancedMode, setIsAdvancedMode] = useState<boolean>(() => {
+        return localStorage.getItem('pref_search_advanced') === 'true';
+    });
 
     useEffect(() => {
         localStorage.setItem('pref_search_advanced', isAdvancedMode.toString());
@@ -372,7 +374,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
         >
 
             {/* --- LEFT: Game List --- */}
-            <div className={`flex-1 flex flex-col bg-app-bg border-t border-surface-border shadow-ui-floating pointer-events-auto relative transition-all duration-300 ${isAdvancedMode ? 'h-full' : 'h-full'}`}>
+            <div className={`flex-1 flex flex-col bg-app-bg border-t border-surface-border shadow-ui-floating pointer-events-auto relative transition-all duration-300 h-full`}>
                 <div className="absolute top-0 left-0 right-0 p-1 text-center pointer-events-none z-10 opacity-30">
                     <ChevronUp size={12} className="text-txt-muted mx-auto" />
                 </div>
@@ -444,7 +446,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
             {/* --- RIGHT: Controls (Chimney - Grows Upwards) --- */}
             <div className={`${RIGHT_PANEL_WIDTH} flex flex-col bg-app-bg-deep shrink-0 relative z-50 pointer-events-auto rounded-t-2xl shadow-ui-floating border-t border-l border-surface-border ml-[-1px] transition-all duration-300 ${isAdvancedMode ? 'h-full' : ''}`}>
 
-                <div className="flex flex-col p-2 gap-1.5 pb-2 min-h-[160px]">
+                <div className={`flex flex-col p-2 gap-1.5 pb-2 min-h-[160px] ${isAdvancedMode ? 'flex-1' : ''}`}>
                     {isAdvancedMode && (
                         <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-1 py-1 border-b border-surface-border/30 mb-1 animate-in slide-in-from-bottom-4 duration-300">
                             {/* 0. Quick Scenario Filters (Small Table, Recent Only) */}
@@ -543,10 +545,10 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                         </div>
                     )}
 
-                    {/* Mode Toggle - Temporarily hidden for production merge as feature is incomplete */}
+                    {/* Mode Toggle - Anchored Handle */}
                     <button
                         onClick={() => setIsAdvancedMode(!isAdvancedMode)}
-                        className={`hidden items-center justify-center gap-2 w-full transition-all active:scale-95 shrink-0 mb-1 rounded-lg border shadow-ui-floating z-10
+                        className={`flex items-center justify-center gap-2 w-full transition-all active:scale-95 shrink-0 mb-1 rounded-lg border shadow-ui-floating z-10
                             ${isAdvancedMode
                                 ? 'bg-app-bg-deep text-brand-primary border-brand-primary h-7'
                                 : 'bg-app-bg-deep text-txt-muted border-surface-border hover:border-txt-muted h-9'
