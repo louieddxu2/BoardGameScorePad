@@ -19,6 +19,7 @@ import Dashboard from './components/dashboard/Dashboard';
 import GameSetupModal from './components/dashboard/modals/GameSetupModal';
 import HistoryReviewView from './components/history/HistoryReviewView';
 import { InAppBrowserGuide } from './components/modals/InAppBrowserGuide';
+import { IOSPwaGuide, shouldTriggerIOSPwaGuide } from './components/modals/IOSPwaGuide';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.DASHBOARD);
@@ -53,6 +54,7 @@ const App: React.FC = () => {
 
   // Landscape Detection State (JS Control)
   const [showLandscapeOverlay, setShowLandscapeOverlay] = useState(false);
+  const [isIOSPwaGuideVisible, setIsIOSPwaGuideVisible] = useState(false);
 
   // --- Session Preview Logic (for Modal) ---
   const pendingSessionPreview = useMemo(() => {
@@ -529,6 +531,11 @@ const App: React.FC = () => {
   const handleSaveToHistory = useCallback((location?: string) => {
     appData.saveToHistory(location);
     transitionToDashboard();
+    
+    // Trigger iOS PWA guide if applicable
+    if (shouldTriggerIOSPwaGuide()) {
+      setIsIOSPwaGuideVisible(true);
+    }
   }, [appData, transitionToDashboard]);
 
   const handleDiscard = useCallback(() => {
@@ -707,6 +714,7 @@ const App: React.FC = () => {
       )}
       
       <InAppBrowserGuide />
+      {isIOSPwaGuideVisible && <IOSPwaGuide onClose={() => setIsIOSPwaGuideVisible(false)} />}
     </div>
   );
 };

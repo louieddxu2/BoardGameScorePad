@@ -113,12 +113,16 @@ export const integrationTranslations = {
 
         // In-App Browser Guide
         guide_inapp_steps_header: "步驟",
-        guide_inapp_title: "建議使用瀏覽器開啟",
-        guide_inapp_desc: "支援完整拍照、分享與記錄功能。",
-        guide_inapp_step1: "1. 點擊邊緣選單 ( ...、⋮ 或分享圖示 )",
+        guide_inapp_title: "請用瀏覽器開啟以使用此 App",
+        guide_inapp_step1: "1. 點擊選單 ( ...、⋮ 或分享圖示 )",
         guide_inapp_step2: "2. 選擇「在瀏覽器中開啟」( 或 Safari / Chrome )",
-        guide_inapp_close: "暫時這樣就好",
-
+        
+        // iOS PWA Guide
+        guide_ios_pwa_title: "建議加入主畫面",
+        guide_ios_pwa_desc: "iOS 系統限制：若未加入主畫面，資料可能會在 7 天後被系統自動清除。建議現在就加入以永久保存您的算分紀錄。",
+        guide_ios_pwa_step1: "1. 點擊瀏覽器下方的「分享」圖示",
+        guide_ios_pwa_step2: "2. 選擇「加入主畫面」",
+        guide_ios_pwa_close: "我知道了",
         // Common Integration
         external_link: "外部連結",
         loading_data: "正在載入資料...",
@@ -238,12 +242,16 @@ export const integrationTranslations = {
 
         // In-App Browser Guide
         guide_inapp_steps_header: "Steps",
-        guide_inapp_title: "Open in System Browser",
-        guide_inapp_desc: "Supports full photo, sharing, and data features.",
-        guide_inapp_step1: "1. Click menu icon ( ... , ⋮ or Share )",
+        guide_inapp_title: "Please open in Browser to use this App",
+        guide_inapp_step1: "1. Click menu ( ... , ⋮ or Share )",
         guide_inapp_step2: "2. Select 'Open in Browser' ( or Safari / Chrome )",
-        guide_inapp_close: "Continue anyway",
 
+        // iOS PWA Guide
+        guide_ios_pwa_title: "Add to Home Screen",
+        guide_ios_pwa_desc: "iOS restriction: Data may be cleared after 7 days of inactivity if not added to home screen. Add now to preserve your history permanently.",
+        guide_ios_pwa_step1: "1. Click the 'Share' icon in browser",
+        guide_ios_pwa_step2: "2. Select 'Add to Home Screen'",
+        guide_ios_pwa_close: "Got it",
         // Common Integration
         external_link: "External Link",
         loading_data: "Loading data...",

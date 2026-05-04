@@ -36,6 +36,22 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     const { t } = useIntegrationTranslation();
     const { t: tCommon } = useCommonTranslation();
 
+    // --- Derived Data ---
+    const uniqueLocations = useMemo(() => {
+        return [...locations].sort((a, b) => a.lastUsed - b.lastUsed);
+    }, [locations]);
+
+    const hasLocationHistory = uniqueLocations.length > 0;
+
+    // --- State & Refs ---
+    const [userSelectedUid, setUserSelectedUid] = useState<string | null>(null);
+    const [activeMenu, setActiveMenu] = useState<{ type: 'mode' | 'location', bottom: number, left: number, width: number } | null>(null);
+    const [isManualInput, setIsManualInput] = useState(!hasLocationHistory);
+    const [showRuleMenu, setShowRuleMenu] = useState(false); 
+
+    const inputRef = useRef<HTMLInputElement>(null);
+    const listRef = useRef<HTMLDivElement>(null);
+
     const [isAdvancedMode, setIsAdvancedMode] = useState<boolean>(false);
 
     useEffect(() => {
@@ -85,64 +101,56 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
         { value: 'COOP_NO_SCORE', label: tCommon('rule_coop_no_score') },
     ];
 
-    // --- Derived Data ---
-    const uniqueLocations = useMemo(() => {
-        return [...locations].sort((a, b) => a.lastUsed - b.lastUsed);
-    }, [locations]);
-
-    const hasLocationHistory = uniqueLocations.length > 0;
-
     // --- Logic: Process Options ---
-    const processedOptions = useMemo(() => {
-        if (isSearching) {
-            return getSearchResults(options, searchQuery);
-        } else {
-            return getRecommendations(options);
-        }
+
+    // 1. 搜尋匹配 (意圖)：系統根據搜尋字串找出最匹配的項目
+    const baseOptions = useMemo(() => {
+        if (isSearching) return getSearchResults(options, searchQuery);
+        return getRecommendations(options);
     }, [options, isSearching, searchQuery]);
 
-    // --- Local UI State (Selection & Menus) ---
-    const [userSelectedUid, setUserSelectedUid] = useState<string | null>(null);
-    const [activeMenu, setActiveMenu] = useState<{ type: 'mode' | 'location', bottom: number, left: number, width: number } | null>(null);
-    const [isManualInput, setIsManualInput] = useState(!hasLocationHistory);
-    const [showRuleMenu, setShowRuleMenu] = useState(false); // For compact dropdown
+    // 2. 確定預測對象：Hook 根據此對象來建議環境
+    const predictionTarget = useMemo(() => {
+        if (userSelectedUid) return options.find(t => t.uid === userSelectedUid) || null;
+        return baseOptions[0] || null;
+    }, [baseOptions, userSelectedUid, options]);
 
-    const inputRef = useRef<HTMLInputElement>(null);
-    const listRef = useRef<HTMLDivElement>(null);
-
-    // [New] 搜尋字串改變時，清空手動選取，回歸自動選取模式
+    // 搜尋字串改變時，清空手動選取
     useEffect(() => {
         setUserSelectedUid(null);
     }, [searchQuery]);
 
-
-    // Determine Docked Item
-    const dockedItem = useMemo(() => {
-        // 1. 優先使用使用者手動點選的項目 (若該項目目前仍在列表中)
-        if (userSelectedUid) {
-            const found = processedOptions.find(t => t.uid === userSelectedUid);
-            if (found) return found;
-        }
-
-        // 2. 否則，自動使用列表中的第一項 (搜尋結果第一名 或 推薦第一名)
-        if (processedOptions.length > 0) {
-            return processedOptions[0];
-        }
-
-        return null;
-    }, [processedOptions, userSelectedUid]);
-
-    // --- Hook: Setup State & Recommendations ---
-    // Passing dockedItem as the active context for recommendations
+    // 3. 環境預測 (Hook)
     const {
         playerCount, setPlayerCount,
         isPlayerCountManual,
         location, setLocation,
-        isLocationManual, // [New] Visual feedback state
+        isLocationManual,
         locationId, setLocationId,
         scoringRule, setScoringRule,
         startTimeStr, setStartTimeStr
-    } = useRecommendedGameSetup(dockedItem);
+    } = useRecommendedGameSetup(predictionTarget);
+
+    // [Lock] 當進入進階模式或開啟最佳人數時，自動上鎖 (變綠色)
+    useEffect(() => {
+        if ((isAdvancedMode || searchFilters.bestOnly) && !isPlayerCountManual) {
+            setPlayerCount(playerCount);
+        }
+    }, [isAdvancedMode, searchFilters.bestOnly, playerCount, isPlayerCountManual, setPlayerCount]);
+
+    // 4. 最終過濾結果：真正的搜尋結果，包含了人數篩選
+    const processedOptions = useMemo(() => {
+        if (searchFilters.bestOnly) {
+            return baseOptions.filter(opt => opt.bestPlayers?.includes(playerCount));
+        }
+        return baseOptions;
+    }, [baseOptions, searchFilters.bestOnly, playerCount]);
+
+    // 5. 決定底部項目 (Docked Item)
+    const dockedItem = useMemo(() => {
+        if (userSelectedUid) return processedOptions.find(t => t.uid === userSelectedUid) || null;
+        return processedOptions[0] || null;
+    }, [processedOptions, userSelectedUid]);
 
     // --- UI Effects ---
 
@@ -372,7 +380,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
         >
 
             {/* --- LEFT: Game List --- */}
-            <div className={`flex-1 flex flex-col bg-app-bg border-t border-surface-border shadow-ui-floating pointer-events-auto relative transition-all duration-300 ${isAdvancedMode ? 'h-full' : 'h-full'}`}>
+            <div className={`flex-1 flex flex-col bg-app-bg border-t border-surface-border shadow-ui-floating pointer-events-auto relative transition-all duration-300 h-full`}>
                 <div className="absolute top-0 left-0 right-0 p-1 text-center pointer-events-none z-10 opacity-30">
                     <ChevronUp size={12} className="text-txt-muted mx-auto" />
                 </div>
@@ -444,7 +452,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
             {/* --- RIGHT: Controls (Chimney - Grows Upwards) --- */}
             <div className={`${RIGHT_PANEL_WIDTH} flex flex-col bg-app-bg-deep shrink-0 relative z-50 pointer-events-auto rounded-t-2xl shadow-ui-floating border-t border-l border-surface-border ml-[-1px] transition-all duration-300 ${isAdvancedMode ? 'h-full' : ''}`}>
 
-                <div className="flex flex-col p-2 gap-1.5 pb-2 min-h-[160px]">
+                <div className={`flex flex-col p-2 gap-1.5 pb-2 min-h-[160px] ${isAdvancedMode ? 'flex-1' : ''}`}>
                     {isAdvancedMode && (
                         <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-1 py-1 border-b border-surface-border/30 mb-1 animate-in slide-in-from-bottom-4 duration-300">
                             {/* 0. Quick Scenario Filters (Small Table, Recent Only) */}
@@ -543,10 +551,11 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                         </div>
                     )}
 
-                    {/* Mode Toggle - Temporarily hidden for production merge as feature is incomplete */}
+                    {/* Mode Toggle - Anchored Handle (Temporarily hidden) */}
+                    {/* 
                     <button
                         onClick={() => setIsAdvancedMode(!isAdvancedMode)}
-                        className={`hidden items-center justify-center gap-2 w-full transition-all active:scale-95 shrink-0 mb-1 rounded-lg border shadow-ui-floating z-10
+                        className={`flex items-center justify-center gap-2 w-full transition-all active:scale-95 shrink-0 mb-1 rounded-lg border shadow-ui-floating z-10
                             ${isAdvancedMode
                                 ? 'bg-app-bg-deep text-brand-primary border-brand-primary h-7'
                                 : 'bg-app-bg-deep text-txt-muted border-surface-border hover:border-txt-muted h-9'
@@ -556,6 +565,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                         {isAdvancedMode ? <ChevronDown size={18} /> : <ChevronUp size={20} />}
                         {!isAdvancedMode && <span className="text-[11px] font-black uppercase tracking-widest">{t('selector_mode_advanced')}</span>}
                     </button>
+                    */}
 
                     {/* Mode Toggle - TOP position in Lite Mode (Removed as integrated above) */}
 
