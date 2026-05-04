@@ -52,9 +52,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
 
-    const [isAdvancedMode, setIsAdvancedMode] = useState<boolean>(() => {
-        return localStorage.getItem('pref_search_advanced') === 'true';
-    });
+    const [isAdvancedMode, setIsAdvancedMode] = useState<boolean>(false);
 
     useEffect(() => {
         localStorage.setItem('pref_search_advanced', isAdvancedMode.toString());
@@ -553,7 +551,8 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                         </div>
                     )}
 
-                    {/* Mode Toggle - Anchored Handle */}
+                    {/* Mode Toggle - Anchored Handle (Temporarily hidden) */}
+                    {/* 
                     <button
                         onClick={() => setIsAdvancedMode(!isAdvancedMode)}
                         className={`flex items-center justify-center gap-2 w-full transition-all active:scale-95 shrink-0 mb-1 rounded-lg border shadow-ui-floating z-10
@@ -566,6 +565,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                         {isAdvancedMode ? <ChevronDown size={18} /> : <ChevronUp size={20} />}
                         {!isAdvancedMode && <span className="text-[11px] font-black uppercase tracking-widest">{t('selector_mode_advanced')}</span>}
                     </button>
+                    */}
 
                     {/* Mode Toggle - TOP position in Lite Mode (Removed as integrated above) */}
 
