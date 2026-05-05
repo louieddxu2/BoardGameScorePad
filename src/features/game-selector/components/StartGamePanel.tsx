@@ -140,13 +140,8 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
         }
     }, [isAdvancedMode, searchFilters.bestOnly, playerCount, isPlayerCountManual, setPlayerCount]);
 
-    // 4. 最終過濾結果：真正的搜尋結果，包含了人數篩選
-    const processedOptions = useMemo(() => {
-        if (searchFilters.bestOnly) {
-            return baseOptions.filter(opt => opt.bestPlayers?.includes(playerCount));
-        }
-        return baseOptions;
-    }, [baseOptions, searchFilters.bestOnly, playerCount]);
+    // 4. 處理結果 (目前直接傳遞，過濾邏輯待重構時統一實作)
+    const processedOptions = baseOptions;
 
     // 5. 決定底部項目 (Docked Item)
     const dockedItem = useMemo(() => {
