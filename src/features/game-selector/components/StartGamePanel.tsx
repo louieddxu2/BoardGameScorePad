@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { SavedListItem, ScoringRule } from '../../../types';
 import { GameOption } from '../types';
 import { Users, Minus, Plus, Play, ChevronUp, Search, PenLine, List, ThumbsUp, Pin, Check, ChevronDown, FileJson, Database, Maximize2, Minimize2, Star, X } from 'lucide-react';
-import { getRecommendations, getSearchResults } from '../utils/sortStrategies';
+import { useGameSelectorLogic } from '../hooks/useGameSelectorLogic';
 import { useRecommendedGameSetup } from '../hooks/useRecommendedGameSetup';
 import { useIntegrationTranslation } from '../../../i18n/integration';
 import { useCommonTranslation } from '../../../i18n/common';
@@ -52,77 +52,15 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
 
-    const [isAdvancedMode, setIsAdvancedMode] = useState<boolean>(() => {
-        return localStorage.getItem('pref_search_advanced') === 'true';
-    });
+    // --- 1. Logic Hub (Hook) ---
+    const {
+        isAdvancedMode, setIsAdvancedMode,
+        searchFilters, setSearchFilters, resetFilter,
+        processedOptions,
+        predictionTarget
+    } = useGameSelectorLogic(options, isSearching, searchQuery, userSelectedUid, setUserSelectedUid);
 
-    useEffect(() => {
-        localStorage.setItem('pref_search_advanced', isAdvancedMode.toString());
-    }, [isAdvancedMode]);
-
-    const [searchFilters, setSearchFilters] = useState<{
-        bestOnly: boolean;
-        rating: number | null;
-        complexity: 'light' | 'mid' | 'heavy' | null;
-        duration: number | null;
-        gameType: 'competitive' | 'cooperative' | null;
-        smallTable: boolean;
-        recentOnly: boolean;
-    }>(() => {
-        const saved = localStorage.getItem('pref_search_filters');
-        if (saved) {
-            try { return JSON.parse(saved); } catch (e) { }
-        }
-        return {
-            bestOnly: false,
-            rating: null,
-            complexity: null,
-            duration: null,
-            gameType: null,
-            smallTable: false,
-            recentOnly: false
-        };
-    });
-
-    useEffect(() => {
-        localStorage.setItem('pref_search_filters', JSON.stringify(searchFilters));
-    }, [searchFilters]);
-
-    const resetFilter = (key: keyof typeof searchFilters) => {
-        setSearchFilters(prev => ({
-            ...prev,
-            [key]: (key === 'bestOnly' || key === 'smallTable' || key === 'recentOnly') ? false : null
-        }));
-    };
-
-    const SCORING_MODES: { value: ScoringRule, label: string }[] = [
-        { value: 'HIGHEST_WINS', label: tCommon('rule_highest_wins') },
-        { value: 'LOWEST_WINS', label: tCommon('rule_lowest_wins') },
-        { value: 'COOP', label: tCommon('rule_coop') },
-        { value: 'COMPETITIVE_NO_SCORE', label: tCommon('rule_competitive_no_score') },
-        { value: 'COOP_NO_SCORE', label: tCommon('rule_coop_no_score') },
-    ];
-
-    // --- Logic: Process Options ---
-
-    // 1. 搜尋匹配 (意圖)：系統根據搜尋字串找出最匹配的項目
-    const baseOptions = useMemo(() => {
-        if (isSearching) return getSearchResults(options, searchQuery);
-        return getRecommendations(options);
-    }, [options, isSearching, searchQuery]);
-
-    // 2. 確定預測對象：Hook 根據此對象來建議環境
-    const predictionTarget = useMemo(() => {
-        if (userSelectedUid) return options.find(t => t.uid === userSelectedUid) || null;
-        return baseOptions[0] || null;
-    }, [baseOptions, userSelectedUid, options]);
-
-    // 搜尋字串改變時，清空手動選取
-    useEffect(() => {
-        setUserSelectedUid(null);
-    }, [searchQuery]);
-
-    // 3. 環境預測 (Hook)
+    // --- 2. Environment Setup (Hook) ---
     const {
         playerCount, setPlayerCount,
         isPlayerCountManual,
@@ -133,15 +71,22 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
         startTimeStr, setStartTimeStr
     } = useRecommendedGameSetup(predictionTarget);
 
-    // [Lock] 當進入進階模式或開啟最佳人數時，自動上鎖 (變綠色)
+    // --- Bridging Effect: Auto-Lock ---
+    // 當進入進階模式或開啟最佳人數時，自動上鎖 (變綠色)
+    // 此 effect 橋接兩個 Hook，因此留在組件層
     useEffect(() => {
         if ((isAdvancedMode || searchFilters.bestOnly) && !isPlayerCountManual) {
             setPlayerCount(playerCount);
         }
     }, [isAdvancedMode, searchFilters.bestOnly, playerCount, isPlayerCountManual, setPlayerCount]);
 
-    // 4. 處理結果 (目前直接傳遞，過濾邏輯待重構時統一實作)
-    const processedOptions = baseOptions;
+    const SCORING_MODES: { value: ScoringRule, label: string }[] = [
+        { value: 'HIGHEST_WINS', label: tCommon('rule_highest_wins') },
+        { value: 'LOWEST_WINS', label: tCommon('rule_lowest_wins') },
+        { value: 'COOP', label: tCommon('rule_coop') },
+        { value: 'COMPETITIVE_NO_SCORE', label: tCommon('rule_competitive_no_score') },
+        { value: 'COOP_NO_SCORE', label: tCommon('rule_coop_no_score') },
+    ];
 
     // 5. 決定底部項目 (Docked Item)
     const dockedItem = useMemo(() => {
