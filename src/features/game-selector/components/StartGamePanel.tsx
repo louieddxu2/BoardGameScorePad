@@ -72,13 +72,12 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     } = useRecommendedGameSetup(predictionTarget);
 
     // --- Bridging Effect: Auto-Lock ---
-    // 當進入進階模式或開啟最佳人數時，自動上鎖 (變綠色)
-    // 此 effect 橋接兩個 Hook，因此留在組件層
+    // 篩選面板展開時，自動上鎖人數 (變綠色)
     useEffect(() => {
-        if ((isAdvancedMode || searchFilters.bestOnly) && !isPlayerCountManual) {
+        if (isAdvancedMode && !isPlayerCountManual) {
             setPlayerCount(playerCount);
         }
-    }, [isAdvancedMode, searchFilters.bestOnly, playerCount, isPlayerCountManual, setPlayerCount]);
+    }, [isAdvancedMode, playerCount, isPlayerCountManual, setPlayerCount]);
 
     const SCORING_MODES: { value: ScoringRule, label: string }[] = [
         { value: 'HIGHEST_WINS', label: tCommon('rule_highest_wins') },
