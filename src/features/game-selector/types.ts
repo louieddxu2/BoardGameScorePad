@@ -72,7 +72,7 @@ export interface GameOption {
 }
 
 export interface SearchFilters {
-  bestOnly: boolean;
+  playerFilter: 'none' | 'playable' | 'best';
   rating: number | null;
   complexity: 'light' | 'mid' | 'heavy' | null;
   duration: number | null;
@@ -80,3 +80,4 @@ export interface SearchFilters {
   smallTable: boolean;
   recentOnly: boolean;
 }
+

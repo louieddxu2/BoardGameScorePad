@@ -33,7 +33,7 @@ export const useGameSelectorLogic = (
             try { return JSON.parse(saved); } catch (e) { }
         }
         return {
-            bestOnly: false,
+            playerFilter: 'none',
             rating: null,
             complexity: null,
             duration: null,
@@ -50,9 +50,10 @@ export const useGameSelectorLogic = (
     const resetFilter = (key: keyof typeof searchFilters) => {
         setSearchFilters(prev => ({
             ...prev,
-            [key]: (key === 'bestOnly' || key === 'smallTable' || key === 'recentOnly') ? false : null
+            [key]: (key === 'smallTable' || key === 'recentOnly') ? false : (key === 'playerFilter' ? 'none' : null)
         }));
     };
+
 
     // --- Derived: Search / Recommendations ---
     const baseOptions = useMemo(() => {

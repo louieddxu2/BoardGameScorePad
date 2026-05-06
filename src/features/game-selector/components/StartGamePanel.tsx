@@ -425,14 +425,36 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                 ))}
                             </div>
 
-                            {/* 2. Players Filter (Single Toggle - Best Only) */}
-                            <div className="pb-1.5 border-b border-surface-border/20 mb-0.5">
+                            {/* 2. Players Filter (Horizontal Three-Column Layout) */}
+                            <div className="grid grid-cols-3 gap-1.5 pb-1.5 border-b border-surface-border/20 mb-0.5">
+                                <div className="h-8 flex items-center justify-center bg-surface-bg/20 border border-surface-border/40 rounded-lg text-xs font-black text-brand-primary">
+                                    {playerCount} {t('selector_unit_player')}
+                                </div>
                                 <button
-                                    onClick={() => setSearchFilters(p => ({ ...p, bestOnly: !p.bestOnly }))}
-                                    className={`w-full h-8 flex items-center justify-center gap-2 rounded-lg border transition-all ${searchFilters.bestOnly ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-surface-bg/40 border-surface-border text-txt-primary hover:border-txt-primary'}`}
+                                    onClick={() => setSearchFilters(p => ({
+                                        ...p,
+                                        playerFilter: p.playerFilter === 'playable' ? 'none' : 'playable'
+                                    }))}
+                                    className={`h-8 text-xs font-black rounded-lg border transition-all ${
+                                        searchFilters.playerFilter === 'playable'
+                                            ? 'bg-brand-primary text-white border-brand-primary shadow-sm'
+                                            : 'bg-surface-bg/40 border-surface-border text-txt-primary hover:border-txt-primary'
+                                    }`}
                                 >
-                                    <Star size={12} fill={searchFilters.bestOnly ? "currentColor" : "none"} />
-                                    <span className="text-[11px] font-black">{t('selector_filter_players_best', { n: playerCount })}</span>
+                                    {t('selector_filter_players_playable')}
+                                </button>
+                                <button
+                                    onClick={() => setSearchFilters(p => ({
+                                        ...p,
+                                        playerFilter: p.playerFilter === 'best' ? 'none' : 'best'
+                                    }))}
+                                    className={`h-8 text-xs font-black rounded-lg border transition-all ${
+                                        searchFilters.playerFilter === 'best'
+                                            ? 'bg-brand-primary text-white border-brand-primary shadow-sm'
+                                            : 'bg-surface-bg/40 border-surface-border text-txt-primary hover:border-txt-primary'
+                                    }`}
+                                >
+                                    {t('selector_filter_players_best_btn')}
                                 </button>
                             </div>
 

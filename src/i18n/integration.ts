@@ -110,6 +110,9 @@ export const integrationTranslations = {
         selector_filter_recent_only: "近 2 年",
         selector_filter_players_supported: "支援 {n} 人",
         selector_filter_players_best: "最佳 {n} 人",
+        selector_filter_players_playable: "可玩",
+        selector_filter_players_best_btn: "最佳",
+
 
         // In-App Browser Guide
         guide_inapp_steps_header: "步驟",
@@ -239,6 +242,9 @@ export const integrationTranslations = {
         selector_filter_recent_only: "Recent 2y",
         selector_filter_players_supported: "Supports {n}",
         selector_filter_players_best: "{n} is Best",
+        selector_filter_players_playable: "OK",
+        selector_filter_players_best_btn: "Best",
+
 
         // In-App Browser Guide
         guide_inapp_steps_header: "Steps",
