@@ -70,3 +70,13 @@ export interface GameOption {
   /** 供 Fuse.js 搜尋，包含名稱、別名、ID */
   _searchTokens: string[];
 }
+
+export interface SearchFilters {
+  bestOnly: boolean;
+  rating: number | null;
+  complexity: 'light' | 'mid' | 'heavy' | null;
+  duration: number | null;
+  gameType: 'competitive' | 'cooperative' | null;
+  smallTable: boolean;
+  recentOnly: boolean;
+}

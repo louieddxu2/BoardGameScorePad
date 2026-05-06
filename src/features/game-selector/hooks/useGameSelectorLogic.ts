@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { GameOption } from '../types';
+import { GameOption, SearchFilters } from '../types';
 import { getSearchResults, getRecommendations } from '../utils/sortStrategies';
 
 /**
@@ -27,15 +27,7 @@ export const useGameSelectorLogic = (
     }, [isAdvancedMode]);
 
     // --- Search Filters ---
-    const [searchFilters, setSearchFilters] = useState<{
-        bestOnly: boolean;
-        rating: number | null;
-        complexity: 'light' | 'mid' | 'heavy' | null;
-        duration: number | null;
-        gameType: 'competitive' | 'cooperative' | null;
-        smallTable: boolean;
-        recentOnly: boolean;
-    }>(() => {
+    const [searchFilters, setSearchFilters] = useState<SearchFilters>(() => {
         const saved = localStorage.getItem('pref_search_filters');
         if (saved) {
             try { return JSON.parse(saved); } catch (e) { }
