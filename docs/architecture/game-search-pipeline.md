@@ -122,24 +122,29 @@
 後續進行維護或功能擴充時，請遵循以下模組分工：
 
 ### A. 資料結構與定義：[types.ts](file:///c:/board-game-score-pad/src/features/game-selector/types.ts)
-* `GameOption` 介面：新增 `year?: number`（出版年份）。
-* `SearchFilters` 介面：新增 `playableOnly: boolean`（人數可玩篩選開關）。
+* `GameOption` 介面：新增 `year?: number`（出版年份）、`cooperative?: boolean`（合作遊戲）、`rank?: number`（BGG 排名）。
+* `SearchFilters` 介面：定義了 8 大過濾維度狀態（`playerFilter: 'none' | 'playable' | 'best'`、`rating: number | null`、`complexity: 'light' | 'mid' | 'heavy' | null`、`duration: number | null`、`gameType: 'competitive' | 'cooperative' | null`、`smallTable: boolean`、`recentOnly: boolean`）。
 
 ### B. 資料聚合層：[useGameOptionAggregator.ts](file:///c:/board-game-score-pad/src/features/game-selector/hooks/useGameOptionAggregator.ts)
-* 負責將 `templates`、`savedGames` 與 `bggGames` 三個非關聯表依據 BGG ID 與 Name 進行高性能聚合，且將 `bgg.year` 寫入 `option.year`。
+* 負責將 `templates`、`savedGames` 與 `bggGames` 三個非關聯表依據 BGG ID 與 Name 進行高性能聚合，且將 `bgg.year` 寫入 `option.year`，`bgg.cooperative` 寫入 `option.cooperative`，`bgg.rank` 寫入 `option.rank`。
 
 ### C. 排序與過濾策略：[sortStrategies.ts](file:///c:/board-game-score-pad/src/features/game-selector/utils/sortStrategies.ts)
 * 存放所有的比較器 `Comparator`（如 `byYearPublished`、`byPinned`）以及進階過濾器 `filterOptionsByCriteria`：
   * **人數篩選邏輯優化**：
-    * 若 `playableOnly === true`：檢查 `playerCount >= minPlayers && playerCount <= maxPlayers`。
-    * 若 `bestOnly === true`：檢查 `opt.bestPlayers` 包含 `playerCount`（若此條件開啟，自動滿足並涵蓋 playableOnly）。
+    * 若 `playerFilter === 'playable'`：檢查 `playerCount >= minPlayers && playerCount <= maxPlayers`。
+    * 若 `playerFilter === 'best'`：檢查 `opt.bestPlayers` 包含 `playerCount`（若此條件開啟，自動滿足並涵蓋 playable）。
+  * **評分篩選智能降級**：
+    * 利用 `rank` 進行智能對比：`9+` 評分對應前 100 名，`8+` 對應前 1000 名，`7+` 對應前 5000 名。
+  * **自訂/本地模板防過濾保護**：
+    * 對於無 BGG Metadata 的純本地模板，採取人性化的預設放寬或保護，避免過濾器（如 Rating/Complexity/Duration）啟用時，本地 custom templates 被無差別隱藏。
 * 模糊搜尋 `getSearchResults` 亦在此實作，支援傳入 dynamic `limit` 參數以適應不同寬度介面，並保證虛擬建立選項 `__CREATE_NEW__` 正確追加。
 
 ### D. 狀態衍生與管線：[useGameSelectorLogic.ts](file:///c:/board-game-score-pad/src/features/game-selector/hooks/useGameSelectorLogic.ts)
-* 管理進階面板展開狀態、篩選器狀態（新增 `playableOnly` 的預設值與重置處理）。
-* 實作三階段過濾與搜尋管線的序列調度，向組件層提供 `processedOptions` 與 `predictionTarget`。
+* 管理進階面板展開狀態、篩選器狀態。
+* 實作三階段過濾與搜尋管線的序列調度，接受 `playerCount` 參數，向組件層提供 `processedOptions` 與 `predictionTarget`。
 
 ### E. UI 控制與同步橋接：[StartGamePanel.tsx](file:///c:/board-game-score-pad/src/features/game-selector/components/StartGamePanel.tsx)
 * 提供「開始遊戲」面板。
-* **雙按鈕 UI 設計**：將原本單一的「最佳 n 人」按鈕，替換為**並排（grid grid-cols-2）的雙按鈕**——**「n 人可玩」與「n 人最佳」**。
-* 負責解耦 `playerCount`（中介狀態傳遞），並在 `playableOnly` 或 `bestOnly` 被勾選時觸發自動人數鎖定。
+* **雙按鈕 UI 設計**：將原本單一的「最佳 n 人」按鈕，替換為**並排的雙按鈕**——**「n 人可玩」與「n 人最佳」**。
+* **循環依賴橋接 (`activePredictionTarget`)**：在組件中聲明 `activePredictionTarget` 狀態。先調用 `useRecommendedGameSetup(activePredictionTarget)`，再調用 `useGameSelectorLogic(..., playerCount)`，最後透過 `useEffect` 同步兩者，解決 React 語法作用域的循環參考問題。
+* **預測鎖定 (Decoupling)**：當 `playerFilter !== 'none'`（可玩或最佳篩選被啟用）時，自動觸發人數鎖定，制止多方投票預測，防範無窮更新死循環。

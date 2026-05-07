@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { GameOption, SearchFilters } from '../types';
-import { getSearchResults, getRecommendations } from '../utils/sortStrategies';
+import { getSearchResults, getRecommendations, applySort, byYearPublished, filterOptionsByCriteria, byMatchScore } from '../utils/sortStrategies';
 
 /**
  * useGameSelectorLogic
@@ -15,7 +15,8 @@ export const useGameSelectorLogic = (
     isSearching: boolean,
     searchQuery: string,
     userSelectedUid: string | null,
-    setUserSelectedUid: (uid: string | null) => void
+    setUserSelectedUid: (uid: string | null) => void,
+    playerCount: number = 4
 ) => {
     // --- Advanced Mode ---
     const [isAdvancedMode, setIsAdvancedMode] = useState<boolean>(() => {
@@ -55,25 +56,56 @@ export const useGameSelectorLogic = (
     };
 
 
-    // --- Derived: Search / Recommendations ---
-    const baseOptions = useMemo(() => {
-        if (isSearching) return getSearchResults(options, searchQuery);
-        return getRecommendations(options);
-    }, [options, isSearching, searchQuery]);
+    const displayLimit = isAdvancedMode ? 20 : 5;
+
+    // --- 三階段處理管線 (Three-Stage Data Pipeline) ---
+
+    // 階段一：進階篩選 (Filter Pipeline)
+    const filteredOptions = useMemo(() => {
+        if (!isAdvancedMode) return options;
+        return filterOptionsByCriteria(options, searchFilters, playerCount);
+    }, [options, isAdvancedMode, searchFilters, playerCount]);
+
+    // 階段二：情境分流與排序 (Scenario Split & Sort)
+    const sortedOptions = useMemo(() => {
+        if (isSearching) {
+            // 情境 B（有關鍵字）：模糊搜尋 ＋ 動態數量限制
+            return getSearchResults(filteredOptions, searchQuery, displayLimit);
+        }
+
+        if (isAdvancedMode) {
+            // 情境 C（無關鍵字 ＋ 篩選開啟）：符合優先，未知居後，再按遊戲出版年份排序 (最新優先)
+            return applySort(filteredOptions, byMatchScore(searchFilters, playerCount), byYearPublished);
+        }
+
+        // 情境 A（無關鍵字 ＋ 無篩選）：提取原有「智慧推薦」
+        return getRecommendations(filteredOptions);
+    }, [filteredOptions, isSearching, searchQuery, isAdvancedMode, displayLimit, searchFilters, playerCount]);
+
+    // 階段三：動態數量輸出 (Dynamic Limit Output)
+    const processedOptions = useMemo(() => {
+        if (isSearching) {
+            // 模糊搜尋內部已自行做過 limit 處理與 virtual 選項追加
+            return sortedOptions;
+        }
+        if (isAdvancedMode) {
+            // 限制輸出筆數為 20 筆
+            return sortedOptions.slice(0, displayLimit);
+        }
+        // 智慧推薦內部已限制為最多 5 筆
+        return sortedOptions;
+    }, [sortedOptions, isSearching, isAdvancedMode, displayLimit]);
 
     // --- Derived: Prediction Target ---
     const predictionTarget = useMemo(() => {
         if (userSelectedUid) return options.find(t => t.uid === userSelectedUid) || null;
-        return baseOptions[0] || null;
-    }, [baseOptions, userSelectedUid, options]);
+        return processedOptions[0] || null;
+    }, [processedOptions, userSelectedUid, options]);
 
     // 搜尋字串改變時，清空手動選取
     useEffect(() => {
         setUserSelectedUid(null);
     }, [searchQuery]);
-
-    // --- Final Results (Phase 1: passthrough) ---
-    const processedOptions = baseOptions;
 
     return {
         isAdvancedMode,

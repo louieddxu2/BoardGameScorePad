@@ -64,6 +64,9 @@ export interface GameOption {
   complexity?: number;
   /** BGG 投票的最佳人數列表 */
   bestPlayers?: number[];
+  year?: number;
+  cooperative?: boolean;
+  rank?: number;
 
   // --- 6. 搜尋索引 (Search Index) ---
 

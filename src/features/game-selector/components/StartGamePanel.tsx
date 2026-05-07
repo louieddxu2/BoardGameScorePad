@@ -48,19 +48,12 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     const [activeMenu, setActiveMenu] = useState<{ type: 'mode' | 'location', bottom: number, left: number, width: number } | null>(null);
     const [isManualInput, setIsManualInput] = useState(!hasLocationHistory);
     const [showRuleMenu, setShowRuleMenu] = useState(false);
+    const [activePredictionTarget, setActivePredictionTarget] = useState<GameOption | null>(null);
 
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
 
-    // --- 1. Logic Hub (Hook) ---
-    const {
-        isAdvancedMode, setIsAdvancedMode,
-        searchFilters, setSearchFilters, resetFilter,
-        processedOptions,
-        predictionTarget
-    } = useGameSelectorLogic(options, isSearching, searchQuery, userSelectedUid, setUserSelectedUid);
-
-    // --- 2. Environment Setup (Hook) ---
+    // --- 1. Environment Setup (Hook) ---
     const {
         playerCount, setPlayerCount,
         isPlayerCountManual,
@@ -69,7 +62,20 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
         locationId, setLocationId,
         scoringRule, setScoringRule,
         startTimeStr, setStartTimeStr
-    } = useRecommendedGameSetup(predictionTarget);
+    } = useRecommendedGameSetup(activePredictionTarget);
+
+    // --- 2. Logic Hub (Hook) ---
+    const {
+        isAdvancedMode, setIsAdvancedMode,
+        searchFilters, setSearchFilters, resetFilter,
+        processedOptions,
+        predictionTarget
+    } = useGameSelectorLogic(options, isSearching, searchQuery, userSelectedUid, setUserSelectedUid, playerCount);
+
+    // Sync prediction target to resolve circular hook dependency
+    useEffect(() => {
+        setActivePredictionTarget(predictionTarget);
+    }, [predictionTarget]);
 
     // --- Bridging Effect: Auto-Lock ---
     // 篩選面板展開且確實啟用人數篩選（OK 或 Best）時，才自動上鎖人數 (變綠色)
