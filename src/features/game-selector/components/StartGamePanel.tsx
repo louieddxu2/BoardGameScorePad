@@ -274,27 +274,27 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                     </div>
                                 ) : (
                                     <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 w-full">
-                                                                        {bestPlayersStr && (
-                                            <span className="inline-flex items-center bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/15 px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
-                                                <Star size={10} className="fill-amber-400 text-amber-500 mr-0.5 shrink-0" /> {/* @ui-ignore */}
+                                        {bestPlayersStr && (
+                                            <span className="inline-flex items-center bg-surface-bg-alt/80 text-txt-secondary border border-surface-border/30 px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
+                                                <Star size={10} className="fill-amber-400/20 text-amber-500/80 mr-0.5 shrink-0" /> {/* @ui-ignore */}
                                                 {bestPlayersStr}
                                             </span>
                                         )}
                                         {supportedPlayersStr && (
-                                            <span className="inline-flex items-center bg-sky-500/10 text-sky-700 dark:text-sky-400 border border-sky-500/15 px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
-                                                <Users size={10} className="text-sky-500 mr-0.5 shrink-0" /> {/* @ui-ignore */}
+                                            <span className="inline-flex items-center bg-surface-bg-alt/80 text-txt-secondary border border-surface-border/30 px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
+                                                <Users size={10} className="text-sky-500/80 mr-0.5 shrink-0" /> {/* @ui-ignore */}
                                                 {supportedPlayersStr}
                                             </span>
                                         )}
                                         {complexityVal && (
-                                            <span className="inline-flex items-center bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/15 px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
-                                                <Brain size={10} className="text-purple-500 mr-0.5 shrink-0" /> {/* @ui-ignore */}
+                                            <span className="inline-flex items-center bg-surface-bg-alt/80 text-txt-secondary border border-surface-border/30 px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
+                                                <Brain size={10} className="text-purple-500/80 mr-0.5 shrink-0" /> {/* @ui-ignore */}
                                                 {complexityVal}
                                             </span>
                                         )}
                                         {yearVal && (
-                                            <span className="inline-flex items-center bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/15 px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
-                                                <Calendar size={10} className="text-emerald-500 mr-0.5 shrink-0" /> {/* @ui-ignore */}
+                                            <span className="inline-flex items-center bg-surface-bg-alt/80 text-txt-secondary border border-surface-border/30 px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
+                                                <Calendar size={10} className="text-emerald-500/80 mr-0.5 shrink-0" /> {/* @ui-ignore */}
                                                 {yearVal}
                                             </span>
                                         )}
