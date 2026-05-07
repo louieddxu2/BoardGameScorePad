@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { SavedListItem, ScoringRule } from '../../../types';
 import { GameOption } from '../types';
-import { Users, Minus, Plus, Play, ChevronUp, Search, PenLine, List, ThumbsUp, Pin, Check, ChevronDown, FileJson, Database, Maximize2, Minimize2, Star, X } from 'lucide-react';
+import { Users, Minus, Plus, Play, ChevronUp, Search, PenLine, List, ThumbsUp, Pin, Check, ChevronDown, FileJson, Database, Maximize2, Minimize2, Star, X, Brain, Calendar } from 'lucide-react';
 import { useGameSelectorLogic } from '../hooks/useGameSelectorLogic';
 import { useRecommendedGameSetup } from '../hooks/useRecommendedGameSetup';
 import { useIntegrationTranslation } from '../../../i18n/integration';
@@ -230,30 +230,21 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
 
         const heightClass = isDocked ? BOTTOM_ROW_HEIGHT_CLASS : LIST_ITEM_HEIGHT;
 
-        const metaParts: string[] = [];
-
-        if (option.bestPlayers && option.bestPlayers.length > 0) {
-            metaParts.push(`${option.bestPlayers.join(', ')}${t('selector_unit_player')}`);
-        } else if (option.minPlayers) {
+        const bestPlayersStr = option.bestPlayers && option.bestPlayers.length > 0 ? `${option.bestPlayers.join(', ')}${t('selector_unit_player')}` : null;
+        
+        let supportedPlayersStr = null;
+        if (option.minPlayers) {
             if (option.maxPlayers && option.maxPlayers !== option.minPlayers) {
-                metaParts.push(`${option.minPlayers}-${option.maxPlayers}${t('selector_unit_player')}`);
+                supportedPlayersStr = `${option.minPlayers}-${option.maxPlayers}${t('selector_unit_player')}`;
             } else {
-                metaParts.push(`${option.minPlayers}${t('selector_unit_player')}`);
+                supportedPlayersStr = `${option.minPlayers}${t('selector_unit_player')}`;
             }
         } else if (option.defaultPlayerCount) {
-            metaParts.push(`${option.defaultPlayerCount}${t('selector_unit_player')}`);
+            supportedPlayersStr = `${option.defaultPlayerCount}${t('selector_unit_player')}`;
         }
 
-        if (option.playingTime) {
-            metaParts.push(`${option.playingTime}${t('selector_unit_minute')}`);
-        }
-
-        if (option.complexity && option.complexity > 0) {
-            metaParts.push(`${t('selector_meta_complexity')} ${Number(option.complexity).toFixed(1)}`);
-        }
-
-        const metaString = metaParts.join(' • ');
-        const isRecommended = !!(option.bestPlayers && option.bestPlayers.length > 0);
+        const complexityVal = option.complexity && option.complexity > 0 ? Number(option.complexity).toFixed(1) : null;
+        const yearVal = option.year ? `${option.year}${t('selector_unit_year')}` : null;
 
         return (
             <div key={option.uid} className={`${heightClass} w-full relative group shrink-0`}>
@@ -275,17 +266,42 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                 {isVirtual ? t('selector_create_and_score', { name: option.displayName }) : option.displayName}
                             </div>
 
-                            <div className="text-[10px] opacity-60 flex items-center gap-1 h-4">
+                            <div className="text-[10px] flex items-center h-5">
                                 {isVirtual ? (
-                                    <>
+                                    <div className="flex items-center gap-1 opacity-60">
                                         <Plus size={10} />
                                         <span>{t('selector_quick_start')}</span>
-                                    </>
+                                    </div>
                                 ) : (
-                                    <>
-                                        {isRecommended && <ThumbsUp size={10} className="text-status-success mb-0.5" strokeWidth={2.5} />}
-                                        <span className="truncate">{metaString || t('selector_meta_not_set')}</span>
-                                    </>
+                                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 w-full">
+                                                                        {bestPlayersStr && (
+                                            <span className="inline-flex items-center bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/15 px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
+                                                <Star size={10} className="fill-amber-400 text-amber-500 mr-0.5 shrink-0" /> {/* @ui-ignore */}
+                                                {bestPlayersStr}
+                                            </span>
+                                        )}
+                                        {supportedPlayersStr && (
+                                            <span className="inline-flex items-center bg-sky-500/10 text-sky-700 dark:text-sky-400 border border-sky-500/15 px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
+                                                <Users size={10} className="text-sky-500 mr-0.5 shrink-0" /> {/* @ui-ignore */}
+                                                {supportedPlayersStr}
+                                            </span>
+                                        )}
+                                        {complexityVal && (
+                                            <span className="inline-flex items-center bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/15 px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
+                                                <Brain size={10} className="text-purple-500 mr-0.5 shrink-0" /> {/* @ui-ignore */}
+                                                {complexityVal}
+                                            </span>
+                                        )}
+                                        {yearVal && (
+                                            <span className="inline-flex items-center bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/15 px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
+                                                <Calendar size={10} className="text-emerald-500 mr-0.5 shrink-0" /> {/* @ui-ignore */}
+                                                {yearVal}
+                                            </span>
+                                        )}
+                                        {!bestPlayersStr && !supportedPlayersStr && !complexityVal && !yearVal && (
+                                            <span className="text-[10px] text-txt-muted opacity-60">{t('selector_meta_not_set')}</span>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         </div>
