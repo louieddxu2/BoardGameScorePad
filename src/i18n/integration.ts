@@ -275,7 +275,7 @@ export const useIntegrationTranslation = () => {
     const { language } = useTranslation();
     const t = (key: IntegrationTranslationKey, params?: Record<string, string | number>): string => {
         const dict = (integrationTranslations[language] || integrationTranslations['zh-TW']) as any;
-        let text = dict[key] || key;
+        let text = dict[key] !== undefined ? dict[key] : key;
         if (params) {
             Object.entries(params).forEach(([k, v]) => {
                 text = text.replace(`{${k}}`, String(v));
