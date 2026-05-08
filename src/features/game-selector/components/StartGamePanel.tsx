@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { SavedListItem, ScoringRule } from '../../../types';
 import { GameOption } from '../types';
-import { Users, Minus, Plus, Play, ChevronUp, Search, PenLine, List, ThumbsUp, Pin, Check, ChevronDown, FileJson, Database, Maximize2, Minimize2, Star, X, Brain, Calendar } from 'lucide-react';
+import { Users, Minus, Plus, Play, ChevronUp, Search, PenLine, List, ThumbsUp, Pin, Check, ChevronDown, FileJson, Database, Maximize2, Minimize2, Star, X, Brain, Calendar, Mountain, Clock } from 'lucide-react';
 import { useGameSelectorLogic } from '../hooks/useGameSelectorLogic';
 import { useRecommendedGameSetup } from '../hooks/useRecommendedGameSetup';
 import { useIntegrationTranslation } from '../../../i18n/integration';
@@ -273,28 +273,28 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                         <span>{t('selector_quick_start')}</span>
                                     </div>
                                 ) : (
-                                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 w-full">
+                                    <div className="flex items-center gap-0.5 overflow-x-auto no-scrollbar py-0.5 w-full">
                                         {bestPlayersStr && (
-                                            <span className="inline-flex items-center bg-surface-bg-alt/80 text-txt-secondary border border-surface-border/30 px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
-                                                <Star size={10} className="fill-amber-400/20 text-amber-500/80 mr-0.5 shrink-0" /> {/* @ui-ignore */}
+                                            <span className="inline-flex items-center bg-surface-bg-alt/80 text-txt-secondary border border-surface-border/30 px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
+                                                <Star size={12} className="fill-amber-400/20 text-amber-500/80 mr-0.5 shrink-0" /> {/* @ui-ignore */}
                                                 {bestPlayersStr}
                                             </span>
                                         )}
                                         {supportedPlayersStr && (
-                                            <span className="inline-flex items-center bg-surface-bg-alt/80 text-txt-secondary border border-surface-border/30 px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
-                                                <Users size={10} className="text-sky-500/80 mr-0.5 shrink-0" /> {/* @ui-ignore */}
+                                            <span className="inline-flex items-center bg-surface-bg-alt/80 text-txt-secondary border border-surface-border/30 px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
+                                                <Users size={12} className="text-sky-500/80 mr-0.5 shrink-0" /> {/* @ui-ignore */}
                                                 {supportedPlayersStr}
                                             </span>
                                         )}
                                         {complexityVal && (
-                                            <span className="inline-flex items-center bg-surface-bg-alt/80 text-txt-secondary border border-surface-border/30 px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
-                                                <Brain size={10} className="text-purple-500/80 mr-0.5 shrink-0" /> {/* @ui-ignore */}
+                                            <span className="inline-flex items-center bg-surface-bg-alt/80 text-txt-secondary border border-surface-border/30 px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
+                                                <Mountain size={12} className="text-txt-primary/80 mr-0.5 shrink-0" /> {/* @ui-ignore */}
                                                 {complexityVal}
                                             </span>
                                         )}
                                         {yearVal && (
-                                            <span className="inline-flex items-center bg-surface-bg-alt/80 text-txt-secondary border border-surface-border/30 px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
-                                                <Calendar size={10} className="text-emerald-500/80 mr-0.5 shrink-0" /> {/* @ui-ignore */}
+                                            <span className="inline-flex items-center bg-surface-bg-alt/80 text-txt-secondary border border-surface-border/30 px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
+                                                <Calendar size={12} className="text-emerald-500/80 mr-0.5 shrink-0" /> {/* @ui-ignore */}
                                                 {yearVal}
                                             </span>
                                         )}
@@ -483,7 +483,10 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                             {/* 2. Rating Filter */}
                             <div className="pb-1.5 border-b border-surface-border/20 mb-0.5">
                                 <div className="flex items-center justify-center relative mb-0.5 h-3">
-                                    <span className={`text-[10px] font-black uppercase tracking-widest ${searchFilters.rating !== null ? 'text-brand-primary' : 'text-txt-muted'}`}>{t('selector_filter_rating')}</span>
+                                    <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest ${searchFilters.rating !== null ? 'text-brand-primary' : 'text-txt-muted'}`}>
+                                        <Star size={12} />
+                                        {t('selector_filter_rating')}
+                                    </span>
                                 </div>
                                 <div className="grid grid-cols-3 gap-1.5">
                                     {[7, 8, 9].map(r => (
@@ -501,7 +504,10 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                             {/* 3. Complexity Filter */}
                             <div className="pb-1.5 border-b border-surface-border/20 mb-0.5">
                                 <div className="flex items-center justify-center relative mb-0.5 h-3">
-                                    <span className={`text-[10px] font-black uppercase tracking-widest ${searchFilters.complexity !== null ? 'text-brand-primary' : 'text-txt-muted'}`}>{t('selector_filter_complexity')}</span>
+                                    <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest ${searchFilters.complexity !== null ? 'text-brand-primary' : 'text-txt-muted'}`}>
+                                        <Mountain size={12} />
+                                        {t('selector_filter_complexity')}
+                                    </span>
                                 </div>
                                 <div className="grid grid-cols-3 gap-1.5">
                                     {(['light', 'mid', 'heavy'] as const).map(c => (
@@ -519,7 +525,10 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                             {/* 5. Duration Filter */}
                             <div className="pb-1.5 border-b border-surface-border/20 mb-0.5">
                                 <div className="flex items-center justify-center relative mb-0.5 h-3">
-                                    <span className={`text-[10px] font-black uppercase tracking-widest ${searchFilters.duration !== null ? 'text-brand-primary' : 'text-txt-muted'}`}>{t('selector_filter_duration')}</span>
+                                    <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest ${searchFilters.duration !== null ? 'text-brand-primary' : 'text-txt-muted'}`}>
+                                        <Clock size={12} />
+                                        {t('selector_filter_duration')}
+                                    </span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-1.5">
                                     {[30, 60, 90, 120].map(d => (
