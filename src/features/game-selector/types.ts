@@ -81,6 +81,5 @@ export interface SearchFilters {
   duration: number | null;
   gameType: 'competitive' | 'cooperative' | null;
   smallTable: boolean;
-  recentOnly: boolean;
 }
 

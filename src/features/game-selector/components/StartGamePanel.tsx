@@ -231,7 +231,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
         const heightClass = isDocked ? BOTTOM_ROW_HEIGHT_CLASS : LIST_ITEM_HEIGHT;
 
         const bestPlayersStr = option.bestPlayers && option.bestPlayers.length > 0 ? `${option.bestPlayers.join(', ')}${t('selector_unit_player')}` : null;
-        
+
         let supportedPlayersStr = null;
         if (option.minPlayers) {
             if (option.maxPlayers && option.maxPlayers !== option.minPlayers) {
@@ -245,6 +245,17 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
 
         const complexityVal = option.complexity && option.complexity > 0 ? Number(option.complexity).toFixed(1) : null;
         const yearVal = option.year ? `${option.year}${t('selector_unit_year')}` : null;
+
+        // Dynamic Highlighting Logic
+        const isBestPlayersHighlighted = isAdvancedMode && searchFilters.playerFilter === 'best' && option.bestPlayers !== undefined && option.bestPlayers.includes(playerCount);
+        const isSupportedPlayersHighlighted = isAdvancedMode && searchFilters.playerFilter === 'playable' && option.minPlayers !== undefined && option.maxPlayers !== undefined && playerCount >= option.minPlayers && playerCount <= option.maxPlayers;
+        const isComplexityHighlighted = isAdvancedMode && searchFilters.complexity !== null && option.complexity !== undefined && (
+            (searchFilters.complexity === 'light' && option.complexity <= 2.0) ||
+            (searchFilters.complexity === 'mid' && option.complexity > 2.0 && option.complexity <= 3.5) ||
+            (searchFilters.complexity === 'heavy' && option.complexity > 3.5)
+        );
+        const isCoopHighlighted = isAdvancedMode && searchFilters.gameType === 'cooperative' && option.cooperative === true;
+        const isSmallTableHighlighted = isAdvancedMode && searchFilters.smallTable && option.complexity !== undefined && option.playingTime !== undefined && option.complexity <= 2.2 && option.playingTime <= 45;
 
         return (
             <div key={option.uid} className={`${heightClass} w-full relative group shrink-0`}>
@@ -274,21 +285,33 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                     </div>
                                 ) : (
                                     <div className="flex items-center gap-0.5 overflow-x-auto no-scrollbar py-0.5 w-full">
+                                        {/* Specific Filter Badges printed on the left */}
+                                        {isCoopHighlighted && (
+                                            <span className="inline-flex items-center bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-[0_0_6px_rgba(16,185,129,0.2)] px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-bold mr-0.5"> {/* @ui-ignore */}
+                                                🤝 {t('selector_filter_type_cooperative')}
+                                            </span>
+                                        )}
+                                        {isSmallTableHighlighted && (
+                                            <span className="inline-flex items-center bg-brand-primary/15 text-brand-primary border border-brand-primary/40 shadow-[0_0_6px_rgba(var(--c-brand-primary),0.2)] px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-bold mr-0.5"> {/* @ui-ignore */}
+                                                ⛺ {t('selector_filter_small_table')}
+                                            </span>
+                                        )}
+
                                         {bestPlayersStr && (
-                                            <span className="inline-flex items-center bg-surface-bg-alt/80 text-txt-secondary border border-surface-border/30 px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
-                                                <Star size={12} className="fill-amber-400/20 text-amber-500/80 mr-0.5 shrink-0" /> {/* @ui-ignore */}
+                                            <span className={`inline-flex items-center px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium border transition-colors ${isBestPlayersHighlighted ? 'bg-amber-500/10 text-amber-500 border-amber-500/40 shadow-[0_0_6px_rgba(245,158,11,0.2)]' : 'bg-surface-bg-alt/80 text-txt-secondary border-surface-border/30'}`}> {/* @ui-ignore */}
+                                                <Star size={12} className={`mr-0.5 shrink-0 transition-colors ${isBestPlayersHighlighted ? 'fill-amber-500/50 text-amber-500' : 'fill-amber-400/20 text-amber-500/80'}`} /> {/* @ui-ignore */}
                                                 {bestPlayersStr}
                                             </span>
                                         )}
                                         {supportedPlayersStr && (
-                                            <span className="inline-flex items-center bg-surface-bg-alt/80 text-txt-secondary border border-surface-border/30 px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
-                                                <Users size={12} className="text-sky-500/80 mr-0.5 shrink-0" /> {/* @ui-ignore */}
+                                            <span className={`inline-flex items-center px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium border transition-colors ${isSupportedPlayersHighlighted ? 'bg-sky-500/10 text-sky-500 border-sky-500/40 shadow-[0_0_6px_rgba(14,165,233,0.2)]' : 'bg-surface-bg-alt/80 text-txt-secondary border-surface-border/30'}`}> {/* @ui-ignore */}
+                                                <Users size={12} className={`mr-0.5 shrink-0 transition-colors ${isSupportedPlayersHighlighted ? 'text-sky-500' : 'text-sky-500/80'}`} /> {/* @ui-ignore */}
                                                 {supportedPlayersStr}
                                             </span>
                                         )}
                                         {complexityVal && (
-                                            <span className="inline-flex items-center bg-surface-bg-alt/80 text-txt-secondary border border-surface-border/30 px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
-                                                <Mountain size={12} className="text-txt-primary/80 mr-0.5 shrink-0" /> {/* @ui-ignore */}
+                                            <span className={`inline-flex items-center px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium border transition-colors ${isComplexityHighlighted ? 'bg-brand-primary/15 text-brand-primary border-brand-primary/40 shadow-[0_0_6px_rgba(var(--c-brand-primary),0.2)]' : 'bg-surface-bg-alt/80 text-txt-secondary border-surface-border/30'}`}> {/* @ui-ignore */}
+                                                <Mountain size={12} className={`mr-0.5 shrink-0 transition-colors ${isComplexityHighlighted ? 'text-brand-primary' : 'text-txt-primary/80'}`} /> {/* @ui-ignore */}
                                                 {complexityVal}
                                             </span>
                                         )}
@@ -298,7 +321,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                                 {yearVal}
                                             </span>
                                         )}
-                                        {!bestPlayersStr && !supportedPlayersStr && !complexityVal && !yearVal && (
+                                        {!bestPlayersStr && !supportedPlayersStr && !complexityVal && !yearVal && !isCoopHighlighted && !isSmallTableHighlighted && (
                                             <span className="text-[10px] text-txt-muted opacity-60">{t('selector_meta_not_set')}</span>
                                         )}
                                     </div>
@@ -418,19 +441,13 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                 <div className={`flex flex-col p-2 gap-1.5 pb-2 min-h-[160px] ${isAdvancedMode ? 'flex-1' : ''}`}>
                     {isAdvancedMode && (
                         <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-1 py-1 border-b border-surface-border/30 mb-1 animate-in slide-in-from-bottom-4 duration-300">
-                            {/* 0. Quick Scenario Filters (Small Table, Recent Only) */}
-                            <div className="grid grid-cols-2 gap-1.5 shrink-0 border-b border-surface-border/20 pb-1.5 mb-0.5">
+                            {/* 0. Quick Scenario Filters (Small Table) */}
+                            <div className="flex shrink-0 border-b border-surface-border/20 pb-1.5 mb-0.5">
                                 <button
                                     onClick={() => setSearchFilters(p => ({ ...p, smallTable: !p.smallTable }))}
-                                    className={`h-8 text-[10px] font-black rounded-lg border transition-all ${searchFilters.smallTable ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-surface-bg/40 border-surface-border text-txt-primary hover:border-txt-primary'}`}
+                                    className={`w-full h-8 text-[10px] font-black rounded-lg border transition-all ${searchFilters.smallTable ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-surface-bg/40 border-surface-border text-txt-primary hover:border-txt-primary'}`}
                                 >
                                     {t('selector_filter_small_table')}
-                                </button>
-                                <button
-                                    onClick={() => setSearchFilters(p => ({ ...p, recentOnly: !p.recentOnly }))}
-                                    className={`h-8 text-[10px] font-black rounded-lg border transition-all ${searchFilters.recentOnly ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-surface-bg/40 border-surface-border text-txt-primary hover:border-txt-primary'}`}
-                                >
-                                    {t('selector_filter_recent_only')}
                                 </button>
                             </div>
 
@@ -457,11 +474,10 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                         ...p,
                                         playerFilter: p.playerFilter === 'playable' ? 'none' : 'playable'
                                     }))}
-                                    className={`h-8 text-xs font-black rounded-lg border transition-all ${
-                                        searchFilters.playerFilter === 'playable'
+                                    className={`h-8 text-xs font-black rounded-lg border transition-all ${searchFilters.playerFilter === 'playable'
                                             ? 'bg-brand-primary text-white border-brand-primary shadow-sm'
                                             : 'bg-surface-bg/40 border-surface-border text-txt-primary hover:border-txt-primary'
-                                    }`}
+                                        }`}
                                 >
                                     {t('selector_filter_players_playable')}
                                 </button>
@@ -470,11 +486,10 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                                         ...p,
                                         playerFilter: p.playerFilter === 'best' ? 'none' : 'best'
                                     }))}
-                                    className={`h-8 text-xs font-black rounded-lg border transition-all ${
-                                        searchFilters.playerFilter === 'best'
+                                    className={`h-8 text-xs font-black rounded-lg border transition-all ${searchFilters.playerFilter === 'best'
                                             ? 'bg-brand-primary text-white border-brand-primary shadow-sm'
                                             : 'bg-surface-bg/40 border-surface-border text-txt-primary hover:border-txt-primary'
-                                    }`}
+                                        }`}
                                 >
                                     {t('selector_filter_players_best_btn')}
                                 </button>

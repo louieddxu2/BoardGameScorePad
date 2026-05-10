@@ -39,8 +39,7 @@ export const useGameSelectorLogic = (
             complexity: null,
             duration: null,
             gameType: null,
-            smallTable: false,
-            recentOnly: false
+            smallTable: false
         };
     });
 
@@ -51,7 +50,7 @@ export const useGameSelectorLogic = (
     const resetFilter = (key: keyof typeof searchFilters) => {
         setSearchFilters(prev => ({
             ...prev,
-            [key]: (key === 'smallTable' || key === 'recentOnly') ? false : (key === 'playerFilter' ? 'none' : null)
+            [key]: (key === 'smallTable') ? false : (key === 'playerFilter' ? 'none' : null)
         }));
     };
 

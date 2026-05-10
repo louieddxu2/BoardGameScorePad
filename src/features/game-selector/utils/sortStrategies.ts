@@ -194,17 +194,6 @@ export const getOptionFilterScore = (
     }
   }
 
-  // 7. 近期遊玩或新出版過濾 (recentOnly) - 遊玩過 (lastUsed > 0) 或 出版年份 >= 2020
-  if (filters.recentOnly) {
-    const lastUsed = opt.lastUsed ?? 0;
-    const year = opt.year;
-    if (lastUsed > 0 || (year !== undefined && year >= 2020)) {
-      matchScore += 1;
-    } else if (year !== undefined && year < 2020) {
-      isExplicitNo = true;
-    }
-  }
-
   return { isExplicitNo, matchScore };
 };
 
