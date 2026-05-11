@@ -61,8 +61,20 @@ export const GameOptionItem: React.FC<GameOptionItemProps> = ({
         (searchFilters.complexity === 'mid' && option.complexity > 2.0 && option.complexity <= 3.5) ||
         (searchFilters.complexity === 'heavy' && option.complexity > 3.5)
     );
-    const isCoopHighlighted = isAdvancedMode && searchFilters.gameType === 'cooperative' && option.cooperative === true;
-    const isSmallTableHighlighted = isAdvancedMode && searchFilters.smallTable && option.complexity !== undefined && option.playingTime !== undefined && option.complexity <= 2.2 && option.playingTime <= 45;
+    const isCoopHighlighted = isAdvancedMode && searchFilters.isCoop && option.cooperative === true;
+    const isPartyHighlighted = isAdvancedMode && searchFilters.isParty && [...(option.domains || []), ...(option.categories || [])].join(' ').toLowerCase().includes('party');
+    const isFamilyHighlighted = isAdvancedMode && searchFilters.isFamily && [...(option.domains || []), ...(option.categories || [])].join(' ').toLowerCase().includes('family');
+    
+    const isSmallTableHighlighted = (() => {
+        if (!isAdvancedMode || !searchFilters.smallTable) return false;
+        const combined = `${(option.families || []).join(' ')} ${(option.mechanisms || []).join(' ')} ${(option.categories || []).join(' ')}`.toLowerCase();
+        const isHeavy = option.complexity !== undefined && option.complexity > 3.8;
+        const isMap = combined.includes('map (continental') || combined.includes('map (national');
+        if (isHeavy || isMap) return false; // Absolute negative
+        const isQuick = option.complexity !== undefined && option.complexity <= 1.8 && option.playingTime !== undefined && option.playingTime <= 30;
+        const isTagged = combined.includes('pocket game') || combined.includes('small box') || combined.includes('compact') || combined.includes('traveller') || combined.includes('travel');
+        return isQuick || isTagged;
+    })();
     const isTimeHighlighted = isAdvancedMode && searchFilters.duration !== null;
     const isRatingHighlighted = isAdvancedMode && searchFilters.rating !== null;
 
@@ -109,7 +121,17 @@ export const GameOptionItem: React.FC<GameOptionItemProps> = ({
                                         ),
                                         isCoopHighlighted && (
                                             <span key="coop" className="inline-flex items-center bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-[0_0_6px_rgba(16,185,129,0.2)] px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-bold mr-0.5"> {/* @ui-ignore */}
-                                                🤝 {t('selector_filter_type_cooperative')}
+                                                🤝 {t('selector_filter_coop')}
+                                            </span>
+                                        ),
+                                        isPartyHighlighted && (
+                                            <span key="party" className="inline-flex items-center bg-fuchsia-500/15 text-fuchsia-400 border border-fuchsia-500/40 shadow-[0_0_6px_rgba(217,70,239,0.2)] px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-bold mr-0.5"> {/* @ui-ignore */}
+                                                🎉 {t('selector_filter_party')}
+                                            </span>
+                                        ),
+                                        isFamilyHighlighted && (
+                                            <span key="family" className="inline-flex items-center bg-amber-500/15 text-amber-400 border border-amber-500/40 shadow-[0_0_6px_rgba(245,158,11,0.2)] px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-bold mr-0.5"> {/* @ui-ignore */}
+                                                🏡 {t('selector_filter_family')}
                                             </span>
                                         ),
                                         isSmallTableHighlighted && (
@@ -158,7 +180,7 @@ export const GameOptionItem: React.FC<GameOptionItemProps> = ({
                                             .map(item => <React.Fragment key={item.key}>{item.node}</React.Fragment>)
                                     ].filter(Boolean)}
 
-                                    {!bestPlayersStr && !supportedPlayersStr && !complexityVal && !yearVal && !isCoopHighlighted && !isSmallTableHighlighted && !isTimeHighlighted && !isRatingHighlighted && (
+                                    {!bestPlayersStr && !supportedPlayersStr && !complexityVal && !yearVal && !isCoopHighlighted && !isPartyHighlighted && !isFamilyHighlighted && !isSmallTableHighlighted && !isTimeHighlighted && !isRatingHighlighted && (
                                         <span className="text-[10px] text-txt-muted opacity-60">{t('selector_meta_not_set')}</span>
                                     )}
                                 </div>

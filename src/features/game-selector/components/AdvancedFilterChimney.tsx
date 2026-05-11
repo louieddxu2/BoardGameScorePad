@@ -18,27 +18,27 @@ export const AdvancedFilterChimney: React.FC<AdvancedFilterChimneyProps> = ({
 
     return (
         <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-1 py-1 border-b border-surface-border/30 mb-1 animate-in slide-in-from-bottom-4 duration-300">
-            {/* 0. Quick Scenario Filters (Small Table) */}
-            <div className="flex shrink-0 border-b border-surface-border/20 pb-1.5 mb-0.5">
-                <button
-                    onClick={() => setSearchFilters(p => ({ ...p, smallTable: !p.smallTable }))}
-                    className={`w-full h-8 text-[10px] font-black rounded-lg border transition-all ${searchFilters.smallTable ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-surface-bg/40 border-surface-border text-txt-primary hover:border-txt-primary'}`}
-                >
-                    {t('selector_filter_small_table')}
-                </button>
-            </div>
-
-            {/* 1. Type Filter (Competitive / Cooperative) - No Title, at the top */}
+            {/* 0. Quick Scenario Filters (2x2 Grid) */}
             <div className="grid grid-cols-2 gap-1.5 shrink-0 border-b border-surface-border/20 pb-1.5 mb-0.5">
-                {(['competitive', 'cooperative'] as const).map(type => (
-                    <button
-                        key={type}
-                        onClick={() => setSearchFilters(p => ({ ...p, gameType: p.gameType === type ? null : type }))}
-                        className={`h-8 text-xs font-black rounded-lg border transition-all ${searchFilters.gameType === type ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-surface-bg/40 border-surface-border text-txt-primary hover:border-txt-primary'}`}
-                    >
-                        {type === 'competitive' ? t('selector_filter_type_competitive') : t('selector_filter_type_cooperative')}
-                    </button>
-                ))}
+                {[
+                    { id: 'smallTable', label: t('selector_filter_small_table'), key: 'smallTable' },
+                    { id: 'isParty', label: t('selector_filter_party'), key: 'isParty' },
+                    { id: 'isFamily', label: t('selector_filter_family'), key: 'isFamily' },
+                    { id: 'isCoop', label: t('selector_filter_coop'), key: 'isCoop' }
+                ].map((scenario) => {
+                    const isActive = searchFilters[scenario.key as keyof SearchFilters];
+                    return (
+                        <button
+                            key={scenario.id}
+                            onClick={() => setSearchFilters(p => ({ ...p, [scenario.key]: !isActive }))}
+                            className={`h-8 text-xs font-black rounded-lg border transition-all ${isActive 
+                                ? 'bg-brand-primary text-white border-brand-primary shadow-sm' 
+                                : 'bg-surface-bg/40 border-surface-border text-txt-primary hover:border-txt-primary'}`}
+                        >
+                            {scenario.label}
+                        </button>
+                    );
+                })}
             </div>
 
             {/* 2. Players Filter (Horizontal Three-Column Layout) */}

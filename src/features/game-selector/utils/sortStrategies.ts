@@ -115,7 +115,7 @@ export const byYearPublished: Comparator = (a, b) => {
  */
 export const getOptionFilterScore = (
   opt: GameOption,
-  filters: any,
+  filters: import('../types').SearchFilters,
   playerCount: number
 ): { isExplicitNo: boolean; matchScore: number } => {
   let isExplicitNo = false;
@@ -177,23 +177,63 @@ export const getOptionFilterScore = (
     }
   }
 
-  // 5. 遊戲類型過濾 (gameType) - competitive (cooperative !== true), cooperative (cooperative === true)
-  if (filters.gameType !== null) {
-    const isCoop = opt.cooperative;
-    if (isCoop !== undefined) {
-      if (filters.gameType === 'cooperative' && isCoop === true) matchScore += 1;
-      else if (filters.gameType === 'competitive' && isCoop === false) matchScore += 1;
-      else isExplicitNo = true;
-    }
+  // 5. 情境過濾組 (Scenarios) - 採獨立切換開關，互不相干
+  
+  // [5A] 合作 (isCoop)
+  if (filters.isCoop) {
+    if (opt.cooperative === true) matchScore += 1;
+    else isExplicitNo = true;
   }
 
-  // 6. 小桌子過濾 (smallTable) - 複雜度 <= 2.2 且 時長 <= 45 分鐘
+  // [5B] 派對 (isParty)
+  if (filters.isParty) {
+    // 合併檢索 Domain 與 Categories
+    const combinedTags = [...(opt.domains || []), ...(opt.categories || [])].join(' ').toLowerCase();
+    const isPartyGame = combinedTags.includes('party');
+    if (isPartyGame) matchScore += 1;
+    else isExplicitNo = true;
+  }
+
+  // [5C] 家庭 (isFamily)
+  if (filters.isFamily) {
+    const combinedTags = [...(opt.domains || []), ...(opt.categories || [])].join(' ').toLowerCase();
+    const isFamilyGame = combinedTags.includes('family');
+    if (isFamilyGame) matchScore += 1;
+    else isExplicitNo = true;
+  }
+
+  // [5D] 小桌子 (smallTable) V2 - 高寬容智慧物理演算法
   if (filters.smallTable) {
-    const comp = opt.complexity;
-    const time = opt.playingTime;
-    if (comp !== undefined && time !== undefined) {
-      if (comp <= 2.2 && time <= 45) matchScore += 1;
-      else isExplicitNo = true;
+    // 安全網檢查：如果有抓到配件清單、系列或機制
+    const rawFamilies = (opt.families || []).join(' ');
+    const rawMechanisms = (opt.mechanisms || []).join(' ');
+    const rawCategories = (opt.categories || []).join(' ');
+    
+    const combinedMeta = `${rawFamilies} ${rawMechanisms} ${rawCategories}`.toLowerCase();
+
+    // 🚫 絕對死刑區 (剃除)：只殺絕對巨無霸
+    const isMapGiant = combinedMeta.includes('map (continental') || combinedMeta.includes('map (national');
+    const isUltraHeavy = opt.complexity !== undefined && opt.complexity > 3.8;
+    
+    if (isMapGiant || isUltraHeavy) {
+      isExplicitNo = true; // 確定佔超大空間，剃除
+    } else {
+      // 沒死刑，就看有沒有黃金資格拿高亮勳章
+      
+      // ✨ 金牌小巨人 (高亮)：官方認證
+      const hasDirectTag = combinedMeta.includes('pocket game') || 
+                           combinedMeta.includes('small box') || 
+                           combinedMeta.includes('compact') || 
+                           combinedMeta.includes('traveller') ||
+                           rawCategories.toLowerCase().includes('travel');
+                           
+      // ✨ 極速微型 (高亮)：極輕極快
+      const isUltraFastMicro = opt.complexity !== undefined && opt.complexity <= 1.8 && opt.playingTime !== undefined && opt.playingTime <= 30;
+
+      if (hasDirectTag || isUltraFastMicro) {
+        matchScore += 1; // 獲得黃金 ⛺ 標章並置頂
+      }
+      // 其餘狀況 (不符合高亮但未達死刑)：保持原樣，不剃除也不標記
     }
   }
 
@@ -203,7 +243,7 @@ export const getOptionFilterScore = (
 /**
  * 依據匹配分數(matchScore)由高到低進行排序的比較器 (符合優先，未知居後)
  */
-export const byMatchScore = (filters: any, playerCount: number): Comparator => {
+export const byMatchScore = (filters: import('../types').SearchFilters, playerCount: number): Comparator => {
   return (a, b) => {
     const scoreA = getOptionFilterScore(a, filters, playerCount).matchScore;
     const scoreB = getOptionFilterScore(b, filters, playerCount).matchScore;
@@ -217,7 +257,7 @@ export const byMatchScore = (filters: any, playerCount: number): Comparator => {
  */
 export const filterOptionsByCriteria = (
   options: GameOption[],
-  filters: any,
+  filters: import('../types').SearchFilters,
   playerCount: number
 ): GameOption[] => {
   return options.filter(opt => {

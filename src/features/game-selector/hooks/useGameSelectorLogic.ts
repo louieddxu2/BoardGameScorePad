@@ -38,8 +38,10 @@ export const useGameSelectorLogic = (
             rating: null,
             complexity: null,
             duration: null,
-            gameType: null,
-            smallTable: false
+            smallTable: false,
+            isParty: false,
+            isFamily: false,
+            isCoop: false
         };
     });
 
@@ -47,11 +49,14 @@ export const useGameSelectorLogic = (
         localStorage.setItem('pref_search_filters', JSON.stringify(searchFilters));
     }, [searchFilters]);
 
-    const resetFilter = (key: keyof typeof searchFilters) => {
-        setSearchFilters(prev => ({
-            ...prev,
-            [key]: (key === 'smallTable') ? false : (key === 'playerFilter' ? 'none' : null)
-        }));
+    const resetFilter = (key: keyof SearchFilters) => {
+        setSearchFilters(prev => {
+            const isBooleanKey = ['smallTable', 'isParty', 'isFamily', 'isCoop'].includes(key);
+            return {
+                ...prev,
+                [key]: isBooleanKey ? false : (key === 'playerFilter' ? 'none' : null)
+            };
+        });
     };
 
 

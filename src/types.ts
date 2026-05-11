@@ -266,6 +266,8 @@ export interface BggGame {
   // [New Phase 3] Derived/Advanced Info
   mechanisms?: string[]; // e.g. ["Cooperative Game", "Card Drafting"]
   categories?: string[]; // e.g. ["Card Game", "Fantasy"]
+  domains?: string[]; // [New] e.g. ["Strategy Games", "Party Games"]
+  families?: string[]; // [New] e.g. ["Series: Pocket Games"]
   cooperative?: boolean; // Direct flag for easier filtering
 
   updatedAt: number; // Last cache update

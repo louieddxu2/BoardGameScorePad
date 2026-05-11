@@ -68,6 +68,12 @@ export interface GameOption {
   cooperative?: boolean;
   rank?: number;
   rating?: number;
+  
+  // [New] Rich categorization metadata for advanced filtering logic
+  domains?: string[];
+  families?: string[];
+  mechanisms?: string[];
+  categories?: string[];
 
   // --- 6. 搜尋索引 (Search Index) ---
 
@@ -80,7 +86,9 @@ export interface SearchFilters {
   rating: number | null;
   complexity: 'light' | 'mid' | 'heavy' | null;
   duration: number | null;
-  gameType: 'competitive' | 'cooperative' | null;
   smallTable: boolean;
+  isParty: boolean;
+  isFamily: boolean;
+  isCoop: boolean;
 }
 

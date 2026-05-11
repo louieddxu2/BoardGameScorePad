@@ -181,6 +181,12 @@ export const useGameOptionAggregator = (
             if (!existing.rank) existing.rank = bgg.rank;
             if (!existing.rating) existing.rating = bgg.rating;
             
+            // [New] Enrich rich metadata
+            if (!existing.domains) existing.domains = bgg.domains;
+            if (!existing.families) existing.families = bgg.families;
+            if (!existing.mechanisms) existing.mechanisms = bgg.mechanisms;
+            if (!existing.categories) existing.categories = bgg.categories;
+            
             // 將 BGG 的名稱與別名都加入搜尋索引
             if (!existing._searchTokens.includes(bgg.name)) existing._searchTokens.push(bgg.name);
             if (bgg.altNames) {
@@ -215,6 +221,10 @@ export const useGameOptionAggregator = (
                 cooperative: bgg.cooperative,
                 rank: bgg.rank,
                 rating: bgg.rating,
+                domains: bgg.domains,
+                families: bgg.families,
+                mechanisms: bgg.mechanisms,
+                categories: bgg.categories,
                 _searchTokens: searchTokens
             };
             
