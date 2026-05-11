@@ -104,7 +104,7 @@ export const bggImportService = {
 
             const getNum = (index: number) => {
                 const valStr = getVal(index);
-                return valStr ? parseFloat(valStr.replace(/[^0-9.]/g, '')) || 0 : 0;
+                return valStr ? parseFloat(valStr.replace(/[^-0-9.]/g, '')) || 0 : 0;
             };
 
             // 解析別名：支援 | 或 , 分隔
