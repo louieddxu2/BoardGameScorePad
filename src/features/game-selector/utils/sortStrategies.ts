@@ -143,13 +143,16 @@ export const getOptionFilterScore = (
     }
   }
 
-  // 2. 評分過濾 (rating) - 根據 BGG Rank 進行智能降級對應 (9+ 為前 100, 8+ 為前 1000, 7+ 為前 5000)
+  // 2. 評分過濾 (rating) - 優先使用真實 Rating，無 Rating 則回退至 Rank 智能降級 (8+ 為前 1000, 7+ 為前 5000, 6+ 為前 15000)
   if (filters.rating !== null) {
-    const rank = opt.rank;
-    if (rank !== undefined) {
-      if (filters.rating === 9 && rank <= 100) matchScore += 1;
-      else if (filters.rating === 8 && rank <= 1000) matchScore += 1;
+    if (opt.rating !== undefined) {
+      if (opt.rating >= filters.rating) matchScore += 1;
+      else isExplicitNo = true;
+    } else if (opt.rank !== undefined) {
+      const rank = opt.rank;
+      if (filters.rating === 8 && rank <= 1000) matchScore += 1;
       else if (filters.rating === 7 && rank <= 5000) matchScore += 1;
+      else if (filters.rating === 6 && rank <= 15000) matchScore += 1;
       else isExplicitNo = true;
     }
   }

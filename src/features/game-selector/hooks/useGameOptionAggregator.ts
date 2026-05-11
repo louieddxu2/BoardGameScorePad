@@ -179,6 +179,7 @@ export const useGameOptionAggregator = (
             if (!existing.year) existing.year = bgg.year;
             if (existing.cooperative === undefined) existing.cooperative = bgg.cooperative;
             if (!existing.rank) existing.rank = bgg.rank;
+            if (!existing.rating) existing.rating = bgg.rating;
             
             // 將 BGG 的名稱與別名都加入搜尋索引
             if (!existing._searchTokens.includes(bgg.name)) existing._searchTokens.push(bgg.name);
@@ -213,6 +214,7 @@ export const useGameOptionAggregator = (
                 year: bgg.year,
                 cooperative: bgg.cooperative,
                 rank: bgg.rank,
+                rating: bgg.rating,
                 _searchTokens: searchTokens
             };
             

@@ -156,6 +156,7 @@ export type BggGameSummary = BaseSummary<BggGameSearchIndex> & BggGameSearchInde
   categories?: string[];
   cooperative?: boolean;
   rank?: number;
+  rating?: number;
 }
 
 
@@ -310,6 +311,7 @@ export const extractBggGameSummary = (
     categories: game.categories,
     cooperative: game.cooperative,
     rank: game.rank,
+    rating: game.rating,
 
     _searchName: searchName,
     _altNames: altNamesStr

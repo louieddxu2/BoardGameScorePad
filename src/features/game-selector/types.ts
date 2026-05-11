@@ -67,6 +67,7 @@ export interface GameOption {
   year?: number;
   cooperative?: boolean;
   rank?: number;
+  rating?: number;
 
   // --- 6. 搜尋索引 (Search Index) ---
 

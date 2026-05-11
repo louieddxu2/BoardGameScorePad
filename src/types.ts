@@ -259,6 +259,7 @@ export interface BggGame {
 
   // Advanced Stats
   rank?: number; // BGG Rank
+  rating?: number; // [New] BGG Bayesian Average Rating
   complexity?: number; // Weight (1-5)
   bestPlayers?: number[]; // Community voted best player counts
 
