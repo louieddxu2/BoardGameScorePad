@@ -181,25 +181,32 @@ export const getOptionFilterScore = (
   
   // [5A] 合作 (isCoop)
   if (filters.isCoop) {
-    if (opt.cooperative === true) matchScore += 1;
-    else isExplicitNo = true;
+    if (opt.cooperative !== undefined) {
+      if (opt.cooperative === true) matchScore += 1;
+      else isExplicitNo = true;
+    }
+    // 若未知(undefined)，依據「未知即非否定」原則，不賦予 matchScore 但也不剃除，讓其沉到底部。
   }
 
   // [5B] 派對 (isParty)
   if (filters.isParty) {
-    // 合併檢索 Domain 與 Categories
-    const combinedTags = [...(opt.domains || []), ...(opt.categories || [])].join(' ').toLowerCase();
-    const isPartyGame = combinedTags.includes('party');
-    if (isPartyGame) matchScore += 1;
-    else isExplicitNo = true;
+    // 檢查是否有足夠的元資料可供比對
+    if (opt.domains !== undefined || opt.categories !== undefined) {
+      const combinedTags = [...(opt.domains || []), ...(opt.categories || [])].join(' ').toLowerCase();
+      const isPartyGame = combinedTags.includes('party');
+      if (isPartyGame) matchScore += 1;
+      else isExplicitNo = true;
+    }
   }
 
   // [5C] 家庭 (isFamily)
   if (filters.isFamily) {
-    const combinedTags = [...(opt.domains || []), ...(opt.categories || [])].join(' ').toLowerCase();
-    const isFamilyGame = combinedTags.includes('family');
-    if (isFamilyGame) matchScore += 1;
-    else isExplicitNo = true;
+    if (opt.domains !== undefined || opt.categories !== undefined) {
+      const combinedTags = [...(opt.domains || []), ...(opt.categories || [])].join(' ').toLowerCase();
+      const isFamilyGame = combinedTags.includes('family');
+      if (isFamilyGame) matchScore += 1;
+      else isExplicitNo = true;
+    }
   }
 
   // [5D] 小桌子 (smallTable) V2 - 高寬容智慧物理演算法
