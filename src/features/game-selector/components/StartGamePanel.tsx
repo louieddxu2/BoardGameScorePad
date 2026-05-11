@@ -3,8 +3,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { SavedListItem, ScoringRule } from '../../../types';
 import { GameOption } from '../types';
 import { Users, Minus, Plus, Play, ChevronUp, Search, PenLine, List, ThumbsUp, Pin, Check, ChevronDown, FileJson, Database, Maximize2, Minimize2, Star, X, Brain, Calendar, Mountain, Clock, Trophy } from 'lucide-react';
-import { useGameSelectorLogic } from '../hooks/useGameSelectorLogic';
-import { useRecommendedGameSetup } from '../hooks/useRecommendedGameSetup';
+import { useStartGamePanelController } from '../hooks/useStartGamePanelController';
 import { useIntegrationTranslation } from '../../../i18n/integration';
 import { useCommonTranslation } from '../../../i18n/common';
 import { GameOptionItem } from './GameOptionItem';
@@ -37,186 +36,34 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     const { t } = useIntegrationTranslation();
     const { t: tCommon } = useCommonTranslation();
 
-    // --- Derived Data ---
-    const uniqueLocations = useMemo(() => {
-        return [...locations].sort((a, b) => a.lastUsed - b.lastUsed);
-    }, [locations]);
-
-    const hasLocationHistory = uniqueLocations.length > 0;
-
-    // --- State & Refs ---
-    const [userSelectedUid, setUserSelectedUid] = useState<string | null>(null);
-    const [activeMenu, setActiveMenu] = useState<{ type: 'mode' | 'location', bottom: number, left: number, width: number } | null>(null);
-    const [isManualInput, setIsManualInput] = useState(!hasLocationHistory);
-    const [showRuleMenu, setShowRuleMenu] = useState(false);
-    const [activePredictionTarget, setActivePredictionTarget] = useState<GameOption | null>(null);
-
-    const inputRef = useRef<HTMLInputElement>(null);
-    const listRef = useRef<HTMLDivElement>(null);
-
-    // --- 1. Environment Setup (Hook) ---
     const {
-        playerCount, setPlayerCount,
-        isPlayerCountManual,
-        location, setLocation,
-        isLocationManual,
-        locationId, setLocationId,
+        // State
+        playerCount, setPlayerCount, isPlayerCountManual,
+        location, setLocation, isLocationManual, locationId,
         scoringRule, setScoringRule,
-        startTimeStr, setStartTimeStr
-    } = useRecommendedGameSetup(activePredictionTarget);
-
-    // --- 2. Logic Hub (Hook) ---
-    const {
+        startTimeStr, setStartTimeStr,
         isAdvancedMode, setIsAdvancedMode,
         searchFilters, setSearchFilters, resetFilter,
-        processedOptions,
-        predictionTarget
-    } = useGameSelectorLogic(options, isSearching, searchQuery, userSelectedUid, setUserSelectedUid, playerCount);
+        processedOptions, predictionTarget,
+        userSelectedUid, setUserSelectedUid,
+        activeMenu, setActiveMenu,
+        isManualInput, setIsManualInput,
+        
+        // Derived
+        uniqueLocations, hasLocationHistory,
+        dockedItem, scrollableItems, showImportHint,
+        SCORING_MODES, currentModeLabel,
 
-    // Sync prediction target to resolve circular hook dependency
-    useEffect(() => {
-        setActivePredictionTarget(predictionTarget);
-    }, [predictionTarget]);
+        // Refs
+        inputRef, listRef,
 
-    // --- Bridging Effect: Auto-Lock ---
-    // 篩選面板展開且確實啟用人數篩選（OK 或 Best）時，才自動上鎖人數 (變綠色)
-    useEffect(() => {
-        if (isAdvancedMode && searchFilters.playerFilter !== 'none' && !isPlayerCountManual) {
-            setPlayerCount(playerCount);
-        }
-    }, [isAdvancedMode, searchFilters.playerFilter, playerCount, isPlayerCountManual, setPlayerCount]);
-
-    const SCORING_MODES: { value: ScoringRule, label: string }[] = [
-        { value: 'HIGHEST_WINS', label: tCommon('rule_highest_wins') },
-        { value: 'LOWEST_WINS', label: tCommon('rule_lowest_wins') },
-        { value: 'COOP', label: tCommon('rule_coop') },
-        { value: 'COMPETITIVE_NO_SCORE', label: tCommon('rule_competitive_no_score') },
-        { value: 'COOP_NO_SCORE', label: tCommon('rule_coop_no_score') },
-    ];
-
-    // 5. 決定底部項目 (Docked Item)
-    const dockedItem = useMemo(() => {
-        if (userSelectedUid) return processedOptions.find(t => t.uid === userSelectedUid) || null;
-        return processedOptions[0] || null;
-    }, [processedOptions, userSelectedUid]);
-
-    // --- UI Effects ---
-
-    // Smart Focus Logic
-    useEffect(() => {
-        if (isManualInput && hasLocationHistory && inputRef.current) {
-            inputRef.current.focus();
-        }
-    }, [isManualInput, hasLocationHistory]);
-
-    // Reset manual mode if history becomes available
-    useEffect(() => {
-        if (uniqueLocations.length === 0) {
-            setIsManualInput(true);
-        } else {
-            if (!location) {
-                setIsManualInput(false);
-            }
-        }
-    }, [uniqueLocations.length]);
-
-    // Auto-scroll menu
-    useEffect(() => {
-        if (activeMenu?.type === 'location' && listRef.current) {
-            const scroll = () => {
-                if (listRef.current) {
-                    listRef.current.scrollTop = listRef.current.scrollHeight;
-                }
-            };
-            scroll();
-            const timer = setTimeout(scroll, 50);
-            return () => clearTimeout(timer);
-        }
-    }, [activeMenu]);
-
-    // Global click to close menu
-    useEffect(() => {
-        if (!activeMenu) return;
-        const handleClick = (e: MouseEvent) => {
-            // Handled by overlay
-        };
-        window.addEventListener('click', handleClick);
-        return () => window.removeEventListener('click', handleClick);
-    }, [activeMenu]);
-
-    const scrollableItems = useMemo(() => {
-        let items = processedOptions;
-        if (dockedItem) {
-            items = items.filter(t => t.uid !== dockedItem.uid);
-        }
-        if (!isSearching) {
-            items = items.filter(opt => opt.uid !== '__CREATE_NEW__');
-        }
-        return items;
-    }, [isSearching, processedOptions, dockedItem]);
-
-    const showImportHint = useMemo(() => {
-        if (!isSearching || !searchQuery) return false;
-
-        const len = [...searchQuery.trim()].reduce(
-            (sum, ch) => sum + (/[\u4e00-\u9fff\u3400-\u4dbf]/.test(ch) ? 2 : 1), 0
-        );
-        if (len < 4) return false;
-
-        if (!dockedItem || dockedItem.uid === '__CREATE_NEW__') return true;
-
-        return !(dockedItem.cleanName || dockedItem.displayName)
-            .toLowerCase()
-            .includes(searchQuery.trim().toLowerCase());
-    }, [isSearching, searchQuery, dockedItem]);
-
-    const currentModeLabel = SCORING_MODES.find(m => m.value === scoringRule)?.label || t('selector_rule_label');
-
-    // --- Handlers ---
-
-    const handleOptionClick = (t: GameOption) => {
-        setUserSelectedUid(t.uid);
-    };
-
-    const handleStart = () => {
-        if (dockedItem) {
-            onStart(dockedItem, playerCount, location, locationId, { startTimeStr, scoringRule });
-        }
-    };
-
-    const handleLocationSelect = (locItem: SavedListItem) => {
-        // [Update] Pass both name and ID to the unified setter
-        setLocation(locItem.name, locItem.id);
-        setActiveMenu(null);
-    };
-
-    const handleLocationChange = (val: string) => {
-        setLocation(val); // Clears ID implicitly in hook
-    }
-
-    const switchToList = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        setIsManualInput(false);
-    };
-
-    const openMenu = (type: 'mode' | 'location', e: React.MouseEvent) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const bottomSpace = window.innerHeight - rect.top;
-        setActiveMenu({
-            type,
-            bottom: bottomSpace,
-            left: rect.left,
-            width: rect.width
-        });
-    };
-
-    const handleTimeClick = (e: React.MouseEvent<HTMLInputElement>) => {
-        try {
-            if ('showPicker' in HTMLInputElement.prototype) {
-                e.currentTarget.showPicker();
-            }
-        } catch (error) { }
-    };
+        // Handlers
+        handleOptionClick, handleStart,
+        handleLocationSelect, handleLocationChange,
+        switchToList, openMenu, handleTimeClick
+    } = useStartGamePanelController({
+        options, locations, onStart, isSearching, searchQuery
+    });
 
     // Constants
     // [Fix] Use static class string for Tailwind compiler detection
