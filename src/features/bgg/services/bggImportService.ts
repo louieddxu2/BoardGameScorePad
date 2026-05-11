@@ -47,9 +47,17 @@ export const bggImportService = {
         console.log("[BGG Import] Detected Headers:", header);
 
         const findIdx = (candidates: string[]) => {
+            // 1. Strict cleaning match first
             for (const c of candidates) {
                 const cleanCand = c.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]/g, '');
                 const idx = header.indexOf(cleanCand);
+                if (idx !== -1) return idx;
+            }
+            // 2. Fuzzy contains match (Fallback)
+            for (const c of candidates) {
+                const cleanCand = c.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]/g, '');
+                if (cleanCand.length < 3) continue; // Avoid matching super short terms fuzzily
+                const idx = header.findIndex(h => h.includes(cleanCand));
                 if (idx !== -1) return idx;
             }
             return -1;
@@ -67,11 +75,14 @@ export const bggImportService = {
             maxDuration: findIdx(['Max Duration', 'MaxPlayTime', 'playingtime', 'duration', 'maxplaytime', '時間', '遊戲時間']),
             minAge: findIdx(['Min Age', 'age', 'minage', '年齡', '適用年齡']),
             rank: findIdx(['Rank', 'GameRank', 'rank', '排名']),
+            rating: findIdx(['BGG Rating', 'bayesaverage', 'Rating', '評分']),
             weight: findIdx(['Weight', 'AverageWeight', 'Complexity', 'averageweight', '重度', '複雜度']),
             bestPlayers: findIdx(['Best Players', 'Recommended Players', 'BGGBestPlayers', '最佳人數', '推薦人數']),
             designers: findIdx(['Designers', 'Designer', '設計師']),
             mechanisms: findIdx(['Mechanics', 'Mechanisms', '機制', '遊戲機制']),
             categories: findIdx(['Categories', 'Category', '分類', '遊戲分類']),
+            domains: findIdx(['Domain', 'Domains', '領域', '遊戲領域']),
+            families: findIdx(['Family', 'Families', '家族', '系列']),
         };
 
         if (idx.id === -1 || idx.name === -1) {
@@ -103,7 +114,7 @@ export const bggImportService = {
 
             const getNum = (index: number) => {
                 const valStr = getVal(index);
-                return valStr ? parseFloat(valStr.replace(/[^0-9.]/g, '')) || 0 : 0;
+                return valStr ? parseFloat(valStr.replace(/[^-0-9.]/g, '')) || 0 : 0;
             };
 
             // 解析別名：支援 | 或 , 分隔
@@ -124,13 +135,24 @@ export const bggImportService = {
             }
 
             // 解析機制與分類
-            const parseTags = (raw: string | undefined) => {
+            const parseTags = (raw: string | undefined, useSpaceFallback = false) => {
                 if (!raw) return [];
-                return raw.split(/[|,;]/).map(s => s.trim()).filter(Boolean);
+                // 若含有明確分隔符，優先使用
+                if (/[|,;]/.test(raw)) {
+                    return raw.split(/[|,;]/).map(s => s.trim()).filter(Boolean);
+                }
+                // 若沒有顯式分隔符，但設定了 space fallback (用於 Domain / Family)
+                if (useSpaceFallback) {
+                    return raw.split(/\s+/).map(s => s.trim()).filter(Boolean);
+                }
+                // 只有單一項目
+                return [raw.trim()].filter(Boolean);
             };
 
             const mechanisms = parseTags(getVal(idx.mechanisms));
             const categories = parseTags(getVal(idx.categories));
+            const domains = parseTags(getVal(idx.domains), true); // 空間分隔
+            const families = parseTags(getVal(idx.families), true); // 空間分隔
             const isCooperative = mechanisms.some(m => m.toLowerCase().includes('cooperative game'));
 
             const game: any = {
@@ -148,11 +170,14 @@ export const bggImportService = {
                 minAge: getNum(idx.minAge),
                 averageWeight: getNum(idx.weight),
                 rank: getNum(idx.rank),
+                rating: getNum(idx.rating),
                 bestPlayers: bestPlayers,
                 modificationDate: new Date().toISOString(),
                 cooperative: isCooperative,
                 mechanisms: mechanisms,
-                categories: categories
+                categories: categories,
+                domains: domains,
+                families: families
             };
 
             importGames.push(game);
@@ -338,10 +363,13 @@ export const bggImportService = {
                 playingTime: srcGame.maxPlayTime,
                 minAge: srcGame.minAge,
                 rank: srcGame.rank,
+                rating: (srcGame as any).rating,
                 complexity: srcGame.averageWeight,
                 bestPlayers: (srcGame as any).bestPlayers,
                 mechanisms: (srcGame as any).mechanisms,
                 categories: (srcGame as any).categories,
+                domains: (srcGame as any).domains,
+                families: (srcGame as any).families,
                 cooperative: (srcGame as any).cooperative,
                 updatedAt: Date.now()
             };
@@ -377,10 +405,13 @@ export const bggImportService = {
                             minPlayers: newG.minPlayers || oldG.minPlayers,
                             maxPlayers: newG.maxPlayers || oldG.maxPlayers,
                             playingTime: newG.playingTime || oldG.playingTime,
+                            rating: newG.rating || oldG.rating,
                             complexity: newG.complexity || oldG.complexity,
-                            bestPlayers: newG.bestPlayers || oldG.bestPlayers,
-                            mechanisms: newG.mechanisms || oldG.mechanisms,
-                            categories: newG.categories || oldG.categories,
+                            bestPlayers: newG.bestPlayers?.length ? newG.bestPlayers : oldG.bestPlayers,
+                            mechanisms: newG.mechanisms?.length ? newG.mechanisms : oldG.mechanisms,
+                            categories: newG.categories?.length ? newG.categories : oldG.categories,
+                            domains: newG.domains?.length ? newG.domains : oldG.domains,
+                            families: newG.families?.length ? newG.families : oldG.families,
                             cooperative: typeof newG.cooperative === 'boolean' ? newG.cooperative : oldG.cooperative
                         };
                     }

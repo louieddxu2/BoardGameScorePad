@@ -154,7 +154,11 @@ export type BggGameSummary = BaseSummary<BggGameSearchIndex> & BggGameSearchInde
   // Advanced Filtering Fields
   mechanisms?: string[];
   categories?: string[];
+  domains?: string[];
+  families?: string[];
   cooperative?: boolean;
+  rank?: number;
+  rating?: number;
 }
 
 
@@ -307,7 +311,11 @@ export const extractBggGameSummary = (
     // Advanced Filtering
     mechanisms: game.mechanisms,
     categories: game.categories,
+    domains: game.domains,
+    families: game.families,
     cooperative: game.cooperative,
+    rank: game.rank,
+    rating: game.rating,
 
     _searchName: searchName,
     _altNames: altNamesStr

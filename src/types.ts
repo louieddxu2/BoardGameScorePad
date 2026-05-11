@@ -259,12 +259,15 @@ export interface BggGame {
 
   // Advanced Stats
   rank?: number; // BGG Rank
+  rating?: number; // [New] BGG Bayesian Average Rating
   complexity?: number; // Weight (1-5)
   bestPlayers?: number[]; // Community voted best player counts
 
   // [New Phase 3] Derived/Advanced Info
   mechanisms?: string[]; // e.g. ["Cooperative Game", "Card Drafting"]
   categories?: string[]; // e.g. ["Card Game", "Fantasy"]
+  domains?: string[]; // [New] e.g. ["Strategy Games", "Party Games"]
+  families?: string[]; // [New] e.g. ["Series: Pocket Games"]
   cooperative?: boolean; // Direct flag for easier filtering
 
   updatedAt: number; // Last cache update

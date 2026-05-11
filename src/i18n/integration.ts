@@ -23,6 +23,7 @@ export const integrationTranslations = {
         bgg_btn_update: "更新",
         bgg_cooldown_hint: "資料庫冷卻中，請於 {time} 後再試",
         bgg_cloud_hint: "支援 Google Sheet 分享連結 (5分鐘/次)",
+        bgg_cloud_attribution: "上述雲端檔案源於BGG並添加別名：",
         bgg_btn_select_file: "選擇 CSV 檔案",
         bgg_file_hint: "手動上傳您的 BGG 匯出檔",
         bgg_footer: "支援從 BGG 網站匯出的標準 CSV 格式 (支援 Big5/UTF-8)",
@@ -80,6 +81,7 @@ export const integrationTranslations = {
         selector_rule_label: "規則",
         selector_unit_player: "人",
         selector_unit_minute: "分",
+        selector_unit_year: "年",
         selector_meta_complexity: "重度",
         selector_create_and_score: "建立並計分 \"{name}\"",
         selector_meta_not_set: "未設定",
@@ -103,13 +105,16 @@ export const integrationTranslations = {
         selector_filter_complexity_mid: "中",
         selector_filter_complexity_heavy: "重",
         selector_filter_duration_unit: "{m}分",
-        selector_filter_type: "類型",
-        selector_filter_type_competitive: "競爭",
-        selector_filter_type_cooperative: "合作",
-        selector_filter_small_table: "小桌面",
+        selector_filter_party: "派對",
+        selector_filter_family: "家庭",
+        selector_filter_coop: "合作",
+        selector_filter_small_table: "小桌子",
         selector_filter_recent_only: "近 2 年",
         selector_filter_players_supported: "支援 {n} 人",
         selector_filter_players_best: "最佳 {n} 人",
+        selector_filter_players_playable: "可玩",
+        selector_filter_players_best_btn: "最佳",
+
 
         // In-App Browser Guide
         guide_inapp_steps_header: "步驟",
@@ -152,6 +157,7 @@ export const integrationTranslations = {
         bgg_btn_update: "Update",
         bgg_cooldown_hint: "Database cooling down, try again in {time}",
         bgg_cloud_hint: "Supports Google Sheet links (once every 5 mins)",
+        bgg_cloud_attribution: "Contents include data sourced from:",
         bgg_btn_select_file: "Select CSV File",
         bgg_file_hint: "Manually upload your BGG export file",
         bgg_footer: "Supports standard CSV exported from BGG (Big5/UTF-8)",
@@ -209,6 +215,7 @@ export const integrationTranslations = {
         selector_rule_label: "Rule",
         selector_unit_player: "P",
         selector_unit_minute: "m",
+        selector_unit_year: "",
         selector_meta_complexity: "Weight",
         selector_create_and_score: "Create & Score \"{name}\"",
         selector_meta_not_set: "Not Set",
@@ -232,13 +239,16 @@ export const integrationTranslations = {
         selector_filter_complexity_mid: "Md.",
         selector_filter_complexity_heavy: "Hv.",
         selector_filter_duration_unit: "{m}m",
-        selector_filter_type: "Type",
-        selector_filter_type_competitive: "Comp.",
-        selector_filter_type_cooperative: "Coop.",
+        selector_filter_party: "Party",
+        selector_filter_family: "Family",
+        selector_filter_coop: "Coop",
         selector_filter_small_table: "Small Table",
         selector_filter_recent_only: "Recent 2y",
         selector_filter_players_supported: "Supports {n}",
         selector_filter_players_best: "{n} is Best",
+        selector_filter_players_playable: "OK",
+        selector_filter_players_best_btn: "Best",
+
 
         // In-App Browser Guide
         guide_inapp_steps_header: "Steps",
@@ -267,7 +277,7 @@ export const useIntegrationTranslation = () => {
     const { language } = useTranslation();
     const t = (key: IntegrationTranslationKey, params?: Record<string, string | number>): string => {
         const dict = (integrationTranslations[language] || integrationTranslations['zh-TW']) as any;
-        let text = dict[key] || key;
+        let text = dict[key] !== undefined ? dict[key] : key;
         if (params) {
             Object.entries(params).forEach(([k, v]) => {
                 text = text.replace(`{${k}}`, String(v));

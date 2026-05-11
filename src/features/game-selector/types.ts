@@ -64,9 +64,31 @@ export interface GameOption {
   complexity?: number;
   /** BGG 投票的最佳人數列表 */
   bestPlayers?: number[];
+  year?: number;
+  cooperative?: boolean;
+  rank?: number;
+  rating?: number;
+  
+  // [New] Rich categorization metadata for advanced filtering logic
+  domains?: string[];
+  families?: string[];
+  mechanisms?: string[];
+  categories?: string[];
 
   // --- 6. 搜尋索引 (Search Index) ---
 
   /** 供 Fuse.js 搜尋，包含名稱、別名、ID */
   _searchTokens: string[];
 }
+
+export interface SearchFilters {
+  playerFilter: 'none' | 'playable' | 'best';
+  rating: number | null;
+  complexity: 'light' | 'mid' | 'heavy' | null;
+  duration: number | null;
+  smallTable: boolean;
+  isParty: boolean;
+  isFamily: boolean;
+  isCoop: boolean;
+}
+

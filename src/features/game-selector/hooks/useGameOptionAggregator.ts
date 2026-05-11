@@ -104,6 +104,9 @@ export const useGameOptionAggregator = (
              existing.displayName = t.name;
           }
 
+          // Defensive: ensure this template's name is fully searchable even if not set as display name
+          if (!existing._searchTokens.includes(t.name)) existing._searchTokens.push(t.name);
+
           if (t.bggId && !existing.bggId) {
              existing.bggId = t.bggId;
              // Update ID map with new info
@@ -176,6 +179,16 @@ export const useGameOptionAggregator = (
             if (!existing.playingTime) existing.playingTime = bgg.playingTime;
             if (!existing.complexity) existing.complexity = bgg.complexity;
             if (!existing.bestPlayers) existing.bestPlayers = bgg.bestPlayers;
+            if (!existing.year) existing.year = bgg.year;
+            if (existing.cooperative === undefined) existing.cooperative = bgg.cooperative;
+            if (!existing.rank) existing.rank = bgg.rank;
+            if (!existing.rating) existing.rating = bgg.rating;
+            
+            // [New] Enrich rich metadata
+            if (!existing.domains) existing.domains = bgg.domains;
+            if (!existing.families) existing.families = bgg.families;
+            if (!existing.mechanisms) existing.mechanisms = bgg.mechanisms;
+            if (!existing.categories) existing.categories = bgg.categories;
             
             // 將 BGG 的名稱與別名都加入搜尋索引
             if (!existing._searchTokens.includes(bgg.name)) existing._searchTokens.push(bgg.name);
@@ -207,6 +220,14 @@ export const useGameOptionAggregator = (
                 playingTime: bgg.playingTime,
                 complexity: bgg.complexity,
                 bestPlayers: bgg.bestPlayers,
+                year: bgg.year,
+                cooperative: bgg.cooperative,
+                rank: bgg.rank,
+                rating: bgg.rating,
+                domains: bgg.domains,
+                families: bgg.families,
+                mechanisms: bgg.mechanisms,
+                categories: bgg.categories,
                 _searchTokens: searchTokens
             };
             
