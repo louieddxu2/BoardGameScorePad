@@ -343,7 +343,7 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity"
                             >
-                                <img src="/bgg-logo.png" alt="BGG Logo" className="h-5 w-auto object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
+                                <img src="/bgg-logo.svg" alt="BGG Logo" className="h-5 w-auto object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
                                 <span className="text-[10px] font-bold text-txt-muted tracking-wide">Powered by BoardGameGeek</span>
                             </a>
                             <p className="text-[9px] text-txt-muted/60">
