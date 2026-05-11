@@ -1,8 +1,8 @@
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React from 'react';
 import { SavedListItem, ScoringRule } from '../../../types';
 import { GameOption } from '../types';
-import { Users, Minus, Plus, Play, ChevronUp, Search, PenLine, List, ThumbsUp, Pin, Check, ChevronDown, FileJson, Database, Maximize2, Minimize2, Star, X, Brain, Calendar, Mountain, Clock, Trophy } from 'lucide-react';
+import { ChevronUp } from 'lucide-react';
 import { useStartGamePanelController } from '../hooks/useStartGamePanelController';
 import { useIntegrationTranslation } from '../../../i18n/integration';
 import { useCommonTranslation } from '../../../i18n/common';
@@ -10,6 +10,8 @@ import { GameOptionItem } from './GameOptionItem';
 import { AdvancedFilterChimney } from './AdvancedFilterChimney';
 import { GameLaunchDashboard } from './GameLaunchDashboard';
 import { GameListView } from './GameListView';
+import { GameLaunchActions } from './GameLaunchActions';
+import { StartGameOverlays } from './StartGameOverlays';
 
 interface StartGamePanelProps {
     options: GameOption[];
@@ -138,80 +140,24 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                     {/* Mode Toggle - BOTTOM position in Advanced Mode (Integrated at top) */}
                 </div>
 
-                {/* 5. Bottom Actions */}
-                <div className={`flex-none ${BOTTOM_ROW_HEIGHT_CLASS} flex border-t border-surface-border z-10 bg-app-bg-deep`}>
-                    <button
-                        onClick={onSearchClick}
-                        className="w-[50px] h-full flex items-center justify-center bg-app-bg hover:bg-surface-bg text-brand-primary transition-colors active:brightness-90 border-r border-surface-border"
-                        title={t('selector_search_more')}
-                    >
-                        <Search size={22} strokeWidth={2.5} />
-                    </button>
-
-                    <button
-                        onClick={handleStart}
-                        disabled={!dockedItem}
-                        className={`
-                      w-[90px] h-full flex flex-col items-center justify-center transition-all active:brightness-90
-                      ${dockedItem
-                                ? 'bg-brand-primary hover:filter hover:brightness-110 text-white'
-                                : 'bg-surface-bg text-txt-muted cursor-not-allowed'
-                            }
-                  `}
-                    >
-                        {dockedItem?.uid === '__CREATE_NEW__' ? <Plus size={28} /> : <Play size={28} fill="currentColor" />}
-                    </button>
-                </div>
+                <GameLaunchActions
+                    dockedItem={dockedItem}
+                    onSearchClick={onSearchClick}
+                    handleStart={handleStart}
+                />
             </div>
 
-            {/* Overflow Menus */}
-            {activeMenu && (
-                <>
-                    <div
-                        className="fixed inset-0 z-[60] pointer-events-auto"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            if (activeMenu.type === 'location') setIsManualInput(true);
-                            setActiveMenu(null);
-                        }}
-                    />
-                    <div
-                        ref={listRef}
-                        className="fixed bg-surface-bg border border-surface-border rounded-xl shadow-ui-floating z-[70] overflow-hidden max-h-[50vh] overflow-y-auto no-scrollbar flex flex-col animate-in zoom-in-95 slide-in-from-bottom-2 duration-200 pointer-events-auto"
-                        style={{
-                            bottom: `${activeMenu.bottom + 8}px`,
-                            left: `${activeMenu.left}px`,
-                            width: `${activeMenu.width}px`
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {activeMenu.type === 'mode' && [...SCORING_MODES].reverse().map(opt => (
-                            <button
-                                key={opt.value}
-                                onClick={() => { setScoringRule(opt.value); setActiveMenu(null); }}
-                                className={`w-full text-left px-3 py-2.5 text-xs font-bold border-b border-surface-border/50 last:border-0 hover:bg-surface-bg-alt flex items-center justify-between ${scoringRule === opt.value ? 'text-brand-primary bg-brand-primary/10' : 'text-txt-primary'}`}
-                            >
-                                {opt.label}
-                                {scoringRule === opt.value && <Check size={12} />}
-                            </button>
-                        ))}
-
-                        {activeMenu.type === 'location' && (
-                            <>
-                                {uniqueLocations.map((loc) => (
-                                    <button
-                                        key={loc.id}
-                                        onClick={() => handleLocationSelect(loc)}
-                                        className="w-full text-left px-3 py-3 text-xs text-txt-secondary hover:bg-surface-bg-alt hover:text-txt-primary border-b border-surface-border/50 last:border-0 truncate font-medium shrink-0 leading-normal block"
-                                    >
-                                        {loc.name}
-                                    </button>
-                                ))}
-                            </>
-                        )}
-                    </div>
-                </>
-            )}
+            <StartGameOverlays
+                activeMenu={activeMenu}
+                setActiveMenu={setActiveMenu}
+                setIsManualInput={setIsManualInput}
+                listRef={listRef}
+                SCORING_MODES={SCORING_MODES}
+                scoringRule={scoringRule}
+                setScoringRule={setScoringRule}
+                uniqueLocations={uniqueLocations}
+                handleLocationSelect={handleLocationSelect}
+            />
 
         </div>
     );
