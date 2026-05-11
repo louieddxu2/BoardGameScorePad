@@ -190,22 +190,31 @@ export const getOptionFilterScore = (
 
   // [5B] 派對 (isParty)
   if (filters.isParty) {
-    // 檢查是否有足夠的元資料可供比對
-    if (opt.domains !== undefined || opt.categories !== undefined) {
-      const combinedTags = [...(opt.domains || []), ...(opt.categories || [])].join(' ').toLowerCase();
-      const isPartyGame = combinedTags.includes('party');
-      if (isPartyGame) matchScore += 1;
-      else isExplicitNo = true;
+    // 寬容原則：只有在明確擁有 Domain 元資料，且確定不包含 party 時才剃除
+    // 若 metadata 陣列為空或 undefined，視為「未知」，不予標記但也不剃除 (允許沉到底部)
+    const hasDomains = Array.isArray(opt.domains) && opt.domains.length > 0;
+    const combinedTags = [...(opt.domains || []), ...(opt.categories || [])].join(' ').toLowerCase();
+    const isPartyGame = combinedTags.includes('party');
+
+    if (isPartyGame) {
+      matchScore += 1;
+    } else if (hasDomains) {
+      // 有 Domain 資料但裡面沒有派對 -> 確定不是
+      isExplicitNo = true;
     }
   }
 
   // [5C] 家庭 (isFamily)
   if (filters.isFamily) {
-    if (opt.domains !== undefined || opt.categories !== undefined) {
-      const combinedTags = [...(opt.domains || []), ...(opt.categories || [])].join(' ').toLowerCase();
-      const isFamilyGame = combinedTags.includes('family');
-      if (isFamilyGame) matchScore += 1;
-      else isExplicitNo = true;
+    const hasDomains = Array.isArray(opt.domains) && opt.domains.length > 0;
+    const combinedTags = [...(opt.domains || []), ...(opt.categories || [])].join(' ').toLowerCase();
+    const isFamilyGame = combinedTags.includes('family');
+
+    if (isFamilyGame) {
+      matchScore += 1;
+    } else if (hasDomains) {
+      // 有 Domain 資料但裡面沒有家庭 -> 確定不是
+      isExplicitNo = true;
     }
   }
 

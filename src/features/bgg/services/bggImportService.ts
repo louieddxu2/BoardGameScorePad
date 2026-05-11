@@ -47,9 +47,17 @@ export const bggImportService = {
         console.log("[BGG Import] Detected Headers:", header);
 
         const findIdx = (candidates: string[]) => {
+            // 1. Strict cleaning match first
             for (const c of candidates) {
                 const cleanCand = c.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]/g, '');
                 const idx = header.indexOf(cleanCand);
+                if (idx !== -1) return idx;
+            }
+            // 2. Fuzzy contains match (Fallback)
+            for (const c of candidates) {
+                const cleanCand = c.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]/g, '');
+                if (cleanCand.length < 3) continue; // Avoid matching super short terms fuzzily
+                const idx = header.findIndex(h => h.includes(cleanCand));
                 if (idx !== -1) return idx;
             }
             return -1;
@@ -399,11 +407,11 @@ export const bggImportService = {
                             playingTime: newG.playingTime || oldG.playingTime,
                             rating: newG.rating || oldG.rating,
                             complexity: newG.complexity || oldG.complexity,
-                            bestPlayers: newG.bestPlayers || oldG.bestPlayers,
-                            mechanisms: newG.mechanisms || oldG.mechanisms,
-                            categories: newG.categories || oldG.categories,
-                            domains: newG.domains || oldG.domains,
-                            families: newG.families || oldG.families,
+                            bestPlayers: newG.bestPlayers?.length ? newG.bestPlayers : oldG.bestPlayers,
+                            mechanisms: newG.mechanisms?.length ? newG.mechanisms : oldG.mechanisms,
+                            categories: newG.categories?.length ? newG.categories : oldG.categories,
+                            domains: newG.domains?.length ? newG.domains : oldG.domains,
+                            families: newG.families?.length ? newG.families : oldG.families,
                             cooperative: typeof newG.cooperative === 'boolean' ? newG.cooperative : oldG.cooperative
                         };
                     }

@@ -96,20 +96,23 @@ export const useTemplateQuery = (searchQuery: string, pinnedIds: string[]) => {
     const { t: tApp } = useAppTranslation();
 
     // --- TEMPLATES (Built-in) ---
-    const allBuiltinsData = useLiveQuery<TemplateSummary[]>(async () => {
+    const allBuiltinsRaw = useLiveQuery<TemplateSummary[]>(async () => {
         const raw = await db.builtins.toArray();
+        // Standardize Built-ins to TemplateSummary for consistent search architecture
+        return raw.map(t => extractTemplateSummary(t, new Set()));
+    }, []); // Load once from DB
+
+    const allBuiltinsData = useMemo<TemplateSummary[]>(() => {
+        if (!allBuiltinsRaw) return [];
         const lang = tApp('app_lang_code') || 'zh-TW';
         const isEn = lang.startsWith('en');
 
-        const filteredRawRaw = raw.filter(t => {
+        return allBuiltinsRaw.filter(t => {
              const isEnTemplate = t.id.startsWith('Built-in-EN-');
              return isEn ? isEnTemplate : !isEnTemplate;
         });
+    }, [allBuiltinsRaw, tApp]);
 
-        // Standardize Built-ins to TemplateSummary as well for consistent search architecture
-        // Pass empty Set for images as built-ins don't use local DB images
-        return filteredRawRaw.map(t => extractTemplateSummary(t, new Set()));
-    }, [tApp]);
 
     const getBuiltinTemplateByShortId = async (shortId: string): Promise<GameTemplate | null> => {
         // 1. Try direct lookup (fastest)

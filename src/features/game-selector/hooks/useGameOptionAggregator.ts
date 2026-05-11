@@ -104,6 +104,9 @@ export const useGameOptionAggregator = (
              existing.displayName = t.name;
           }
 
+          // Defensive: ensure this template's name is fully searchable even if not set as display name
+          if (!existing._searchTokens.includes(t.name)) existing._searchTokens.push(t.name);
+
           if (t.bggId && !existing.bggId) {
              existing.bggId = t.bggId;
              // Update ID map with new info

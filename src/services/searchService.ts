@@ -4,18 +4,7 @@ import Fuse, { FuseResult } from 'fuse.js';
 // 使用瀏覽器原生的 Intl.Segmenter 進行中文分詞
 const tokenize = (text: string): string[] => {
   if (!text) return [];
-
-  // 1. 嘗試使用 Intl.Segmenter (現代瀏覽器支援)
-  if (typeof Intl !== 'undefined' && (Intl as any).Segmenter) {
-    const segmenter = new (Intl as any).Segmenter('zh-TW', { granularity: 'word' });
-    const segments = Array.from(segmenter.segment(text));
-    // 過濾掉純標點符號或空白
-    return segments
-      .map((s: any) => s.segment)
-      .filter((s: string) => s.trim().length > 0);
-  }
-
-  // 2. Fallback: 簡單的空白切割 (相容舊環境)
+  // Only split by whitespace to support multi-word intersection while letting Fuse handle intra-string fuzzy matching
   return text.split(/\s+/).filter(t => t.trim().length > 0);
 };
 
@@ -30,7 +19,7 @@ export const searchService = {
 
     const isWeighted = keys.length > 0 && typeof keys[0] !== 'string';
     const queryLen = trimmedQuery.length;
-    const dynamicThreshold = queryLen <= 3 ? 0.5 : 0.3;
+    const dynamicThreshold = queryLen <= 3 ? 0.5 : 0.4;
 
     const tokens = tokenize(trimmedQuery);
     if (tokens.length === 0) return list.map((item, refIndex) => ({ item, refIndex }));
@@ -47,7 +36,7 @@ export const searchService = {
     });
 
     const finalQuery = {
-      $or: tokens.map(term => ({
+      $and: tokens.map(term => ({
         $or: isWeighted
           ? (keys as { name: string }[]).map(k => ({ [k.name]: term }))
           : (keys as string[]).map(k => ({ [k]: term }))

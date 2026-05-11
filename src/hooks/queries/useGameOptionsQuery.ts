@@ -61,7 +61,7 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[]) =>
       const tokenMatch = result.matches.find(m => m.key === '_searchTokens');
       if (tokenMatch && tokenMatch.value) {
         const matchedMatched = tokenMatch.value;
-        const originalName = result.item.bggName || result.item.displayName;
+        const originalName = result.item.displayName;
 
         // 如果命中的別名和原本的名字不同，則動態覆寫 displayName
         if (matchedMatched.toLowerCase() !== originalName.toLowerCase()) {
