@@ -1,5 +1,5 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Camera, Image as ImageIcon, Play, Loader2, AlertCircle, X, Sparkles } from 'lucide-react';
 import { useAiGenerator } from '../hooks/useAiGenerator';
 import { useAiGeneratorTranslation } from '../../../i18n/aiGenerator';
@@ -23,6 +23,9 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
     const { t } = useAiGeneratorTranslation();
     const { status, errorMessage, processAndGenerate, reset } = useAiGenerator();
     
+    // 引擎切換狀態，預設選取最新極速 Lite
+    const [selectedModel, setSelectedModel] = useState<'gemini-3.1-flash-lite' | 'gemini-3-flash-preview'>('gemini-3.1-flash-lite');
+    
     // Refs 用於觸發隱藏的 <input type="file">
     const cameraInputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -37,7 +40,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         // 轉為陣列
         const fileList = Array.from(files);
         
-        const result = await processAndGenerate(fileList, gameName);
+        const result = await processAndGenerate(fileList, gameName, selectedModel);
         
         if (result) {
             // 成功！延遲一下讓使用者看到成功打勾的狀態再進入下一步
@@ -156,9 +159,37 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                                 </span>
                             </div>
 
-                            <p className="text-txt-primary font-medium mb-6 text-[15px]">
+                            <p className="text-txt-primary font-medium mb-4 text-[15px]">
                                 {t('prompt_question')}
                             </p>
+
+                            {/* 引擎效能切換器 (Segmented Control) */}
+                            <div className="flex p-1 bg-surface-bg-alt rounded-xl border border-surface-border mb-5 gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedModel('gemini-3.1-flash-lite')}
+                                    className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-200 ${
+                                        selectedModel === 'gemini-3.1-flash-lite' 
+                                            ? 'bg-brand-primary text-white shadow-sm' 
+                                            : 'text-txt-muted hover:text-txt-primary hover:bg-surface-bg/50'
+                                    }`}
+                                >
+                                    <span className="text-sm">🏎️</span>
+                                    <span>極速 Lite</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedModel('gemini-3-flash-preview')}
+                                    className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-200 ${
+                                        selectedModel === 'gemini-3-flash-preview' 
+                                            ? 'bg-brand-primary text-white shadow-sm' 
+                                            : 'text-txt-muted hover:text-txt-primary hover:bg-surface-bg/50'
+                                    }`}
+                                >
+                                    <span className="text-sm">🧠</span>
+                                    <span>精準 Std</span>
+                                </button>
+                            </div>
 
                             {/* 隱私警告區塊 */}
                             <div className="flex gap-2 p-3 bg-surface-bg-alt rounded-lg border border-surface-border mb-6">

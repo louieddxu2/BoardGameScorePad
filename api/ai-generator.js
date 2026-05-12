@@ -24,6 +24,9 @@ export default async function handler(req) {
     const systemPrompt = formData.get('systemPrompt');
     const gameName = formData.get('gameName');
     const language = formData.get('language');
+    
+    // 動態取得使用者選擇的模型，預設為極速版 Lite，可由前端動態傳入
+    const requestedModel = formData.get('modelName') || 'gemini-3.1-flash-lite';
 
     // 2. 提取所有圖片檔案，並高效轉換為 Base64 供 Google API 使用
     const geminiParts = [];
@@ -65,8 +68,8 @@ export default async function handler(req) {
       }
     };
 
-    // 5. 呼叫 Google Gemini 最新 Flash 模型 (配合 2026 時代主流模型)
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+    // 5. 動態切換 Google Gemini 模型 API URL
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${requestedModel}:generateContent?key=${apiKey}`;
     
     const apiResponse = await fetch(geminiUrl, {
       method: 'POST',

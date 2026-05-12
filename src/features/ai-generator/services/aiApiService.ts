@@ -19,7 +19,8 @@ export interface AiGenerateResponse {
 export const callAiScoreboardApi = async (
     images: Blob[],
     gameName: string,
-    language: string
+    language: string,
+    modelName: string = 'gemini-3.1-flash-lite'
 ): Promise<Partial<GameTemplate>> => {
     const formData = new FormData();
 
@@ -31,6 +32,7 @@ export const callAiScoreboardApi = async (
     // 2. 附加動態變數與提示詞
     formData.append('gameName', gameName);
     formData.append('language', language);
+    formData.append('modelName', modelName);
     formData.append('systemPrompt', SYSTEM_PROMPT);
 
     try {

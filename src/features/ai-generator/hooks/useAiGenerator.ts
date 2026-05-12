@@ -12,7 +12,8 @@ export interface UseAiGeneratorResult {
     errorMessage: string | null;
     processAndGenerate: (
         files: File[],
-        gameName: string
+        gameName: string,
+        modelName?: string
     ) => Promise<Partial<GameTemplate> | null>;
     reset: () => void;
     isAiUnlocked: boolean;
@@ -39,7 +40,8 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
      */
     const processAndGenerate = useCallback(async (
         files: File[],
-        gameName: string
+        gameName: string,
+        modelName: string = 'gemini-3.1-flash-lite'
     ): Promise<Partial<GameTemplate> | null> => {
         if (files.length === 0) return null;
         
@@ -61,7 +63,8 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
             const result = await callAiScoreboardApi(
                 compressedBlobs,
                 gameName,
-                currentLang
+                currentLang,
+                modelName
             );
 
             setStatus('success');
