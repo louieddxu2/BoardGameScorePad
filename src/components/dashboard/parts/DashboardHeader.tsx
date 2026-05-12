@@ -158,6 +158,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     }
 
     if (debugClickCountRef.current >= 3) {
+      // 解鎖隱藏功能標記
+      localStorage.setItem('advance_user', 'true');
       onTriggerInspector();
       debugClickCountRef.current = 0;
       // Feedback (if vibrate is supported)

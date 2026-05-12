@@ -18,7 +18,8 @@ $excludeFileSubstrings = @(
     "\services\relationship\", # 底層 Regex 檢查名稱規則
     "\features\bgstats\services\historyBatchUtils.ts", # 歷史批次預設玩家名稱（寫入用，不在此翻譯）
     "\features\recommendation\SessionPlayerInitializer.ts", # 判斷預設名稱的正則表達式
-    "\utils\dataMigration.ts" # 歷史資料庫轉移用標籤
+    "\utils\dataMigration.ts", # 歷史資料庫轉移用標籤
+    "\features\ai-generator\aiSystemPrompt.ts" # AI 提示詞常數（非 UI 字串）
 )
 
 # Line-level exclusions: skip lines matching these patterns (comments, dev-only calls, etc.)

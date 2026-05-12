@@ -17,6 +17,7 @@ import { HistoryView } from './views/HistoryView';
 import { DashboardModals } from './parts/DashboardModals';
 import DashboardFAB from './parts/DashboardFAB';
 import ShareTemplateModal from './modals/ShareTemplateModal';
+import AiPromptModal from '../../features/ai-generator/components/AiPromptModal';
 
 // Hooks
 import { useDashboardData } from './hooks/useDashboardData';
@@ -150,7 +151,13 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
     getSessionPreview
   });
 
-  const { handlePanelStart } = useGameLauncher({
+  const { 
+    handlePanelStart,
+    pendingLaunch,
+    cancelAiLaunch,
+    confirmDirectLaunch,
+    confirmAiLaunch
+  } = useGameLauncher({
     allVisibleTemplates,
     onGetFullTemplate,
     onTemplateSave,
@@ -369,6 +376,15 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         onSystemBackup={dashboardActions.handleSystemBackupAction}
         onSystemRestore={dashboardActions.handleSystemRestoreAction}
         onGetLocalData={onGetLocalData}
+      />
+
+      {/* AI 生成計分板詢問彈窗 (攔截機制) */}
+      <AiPromptModal
+        isOpen={!!pendingLaunch}
+        gameName={pendingLaunch?.option.displayName || ''}
+        onClose={cancelAiLaunch}
+        onDirectStart={confirmDirectLaunch}
+        onAiSuccess={confirmAiLaunch}
       />
 
       {dashboardActions.sharingTemplate && (
