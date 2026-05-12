@@ -65,8 +65,8 @@ export default async function handler(req) {
       }
     };
 
-    // 5. 呼叫 Google Gemini 1.5 Flash API (使用穩定版 v1 避免 404)
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // 5. 呼叫 Google Gemini 最新 Flash 模型 (配合 2026 時代主流模型)
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
     
     const apiResponse = await fetch(geminiUrl, {
       method: 'POST',
