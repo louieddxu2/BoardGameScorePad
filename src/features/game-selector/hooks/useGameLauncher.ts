@@ -6,7 +6,6 @@ import { db } from '../../../db';
 import { generateId } from '../../../utils/idGenerator';
 import { useAppTranslation } from '../../../i18n/app';
 import { createTemplateFromOption } from '../../../utils/templateUtils';
-import { useAiGenerator } from '../../ai-generator/hooks/useAiGenerator';
 
 interface UseGameLauncherProps {
   allVisibleTemplates: GameTemplate[];
@@ -31,9 +30,6 @@ export const useGameLauncher = ({
 }: UseGameLauncherProps) => {
   const { showToast } = useToast();
   const { t } = useAppTranslation();
-  
-  // 取得 AI 解鎖狀態
-  const { isAiUnlocked } = useAiGenerator();
   
   // 暫存即將啟動的參數，用於觸發彈窗
   const [pendingLaunch, setPendingLaunch] = useState<PendingLaunchData | null>(null);
@@ -120,8 +116,11 @@ export const useGameLauncher = ({
 
     const currentPayload: PendingLaunchData = { option, playerCount, location, locationId, extra };
 
+    // 即時讀取解鎖狀態，確保無須重刷頁面也能秒生效
+    const isCurrentlyUnlocked = localStorage.getItem('advance_user') === 'true';
+
     // 攔截條件：解鎖進階使用者 && 是簡易遊戲
-    if (isAiUnlocked && isSimple) {
+    if (isCurrentlyUnlocked && isSimple) {
         // 暫緩啟動，觸發 UI 彈窗
         setPendingLaunch(currentPayload);
     } else {
