@@ -152,8 +152,53 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
     const renderSuccessResult = () => {
         if (!generatedTemplate) return null;
         
-        const columnCount = generatedTemplate.columns?.length || 0;
-        const actionCount = generatedTemplate.columns?.reduce((sum, col) => sum + (col.quickActions?.length || 0), 0) || 0;
+        const columns = generatedTemplate.columns || [];
+        const columnCount = columns.length;
+        
+        // ⚙️ 7 大公式黃金分類精算引擎
+        const stats = {
+            plain: 0,
+            rate: 0,
+            accum: 0,
+            product: 0,
+            prodAccum: 0,
+            lookup: 0,
+            list: 0,
+        };
+
+        columns.forEach((col: any) => {
+            const formula = col.formula || 'a1';
+            const inputType = col.inputType || 'keypad';
+
+            if (inputType === 'clicker') {
+                stats.list++;
+            } else if (formula === 'a1×c1') {
+                stats.rate++;
+            } else if (formula === 'a1+next') {
+                stats.accum++;
+            } else if (formula === 'a1×a2') {
+                stats.product++;
+            } else if (formula === '(a1×a2)+next') {
+                stats.prodAccum++;
+            } else if (formula.includes('f1') || col.functions) {
+                stats.lookup++;
+            } else {
+                stats.plain++;
+            }
+        });
+
+        // 輔助渲染小積木：一行流派分析項
+        const renderSchemeRow = (label: string, count: number, dotColorClass: string) => (
+            <div className="flex justify-between items-center py-1 text-[11px] border-b border-white/5 last:border-0 last:pb-0 animate-in fade-in duration-300">
+                <span className="text-txt-secondary flex items-center gap-2 font-medium">
+                    <span className={`w-1.5 h-1.5 rounded-full ${dotColorClass}`} />
+                    {label}
+                </span>
+                <span className="text-txt-muted font-bold font-mono text-xs">
+                    {t('scheme_count_suffix').replace('{count}', count.toString())}
+                </span>
+            </div>
+        );
         
         return (
             <div className="animate-in fade-in zoom-in-95 duration-500">
@@ -174,25 +219,27 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                 </div>
 
                 {/* 📦 分析成果卡片 */}
-                <div className="bg-surface-bg-alt border border-surface-border rounded-xl p-4 mb-5 flex flex-col gap-3 shadow-sm">
+                <div className="bg-surface-bg-alt border border-surface-border rounded-xl p-4 mb-5 flex flex-col gap-2 shadow-sm animate-in slide-in-from-bottom-2">
+                    {/* 頂級摘要 */}
                     <div className="flex justify-between items-center py-1 text-sm border-b border-surface-border/40 pb-2.5">
-                        <span className="text-txt-muted flex items-center gap-1.5 font-semibold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
+                        <span className="text-txt-muted flex items-center gap-1.5 font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
                             {t('label_column_count')}
                         </span>
-                        <span className="text-txt-primary font-bold flex items-center gap-1">
+                        <span className="text-txt-primary font-black flex items-center gap-1">
                             <span className="text-brand-primary text-base mr-0.5">{columnCount}</span>
                         </span>
                     </div>
 
-                    <div className="flex justify-between items-center py-1 text-sm">
-                        <span className="text-txt-muted flex items-center gap-1.5 font-semibold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-brand-secondary" />
-                            {t('label_quick_actions')}
-                        </span>
-                        <span className="text-txt-primary font-bold">
-                            {actionCount}
-                        </span>
+                    {/* 📊 7 大黃金流派大解構 */}
+                    <div className="py-1 space-y-0.5">
+                        {stats.plain > 0 && renderSchemeRow(t('scheme_plain'), stats.plain, 'bg-txt-muted/40')}
+                        {stats.rate > 0 && renderSchemeRow(t('scheme_rate'), stats.rate, 'bg-status-info')}
+                        {stats.accum > 0 && renderSchemeRow(t('scheme_accum'), stats.accum, 'bg-brand-secondary')}
+                        {stats.product > 0 && renderSchemeRow(t('scheme_product'), stats.product, 'bg-brand-primary')}
+                        {stats.prodAccum > 0 && renderSchemeRow(t('scheme_prod_accum'), stats.prodAccum, 'bg-brand-primary/60')}
+                        {stats.lookup > 0 && renderSchemeRow(t('scheme_lookup'), stats.lookup, 'bg-status-warning')}
+                        {stats.list > 0 && renderSchemeRow(t('scheme_list'), stats.list, 'bg-status-success')}
                     </div>
 
                     {/* Token 精密即時消耗表 (對齊 Google 官方 2026 牌價) */}
