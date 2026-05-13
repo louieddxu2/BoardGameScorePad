@@ -117,6 +117,41 @@ export const callAiScoreboardApi = async (
                 }
             }
 
+            // 3. 智慧查表函數膨脹：支援 AI 直寫扁平物件 { "0": 0, "1": 1, "4": 3 }，前端自動排序並補足 min/max 結構
+            let finalFunctions = col.functions;
+            if (finalFunctions && typeof finalFunctions === 'object') {
+                // 複製一份以避免改到原始 json
+                const processedFuncs = { ...finalFunctions };
+                let hasChanged = false;
+
+                for (const fKey of Object.keys(processedFuncs)) {
+                    const rule = processedFuncs[fKey];
+                    // 如果是極簡扁平物件而非陣列，觸發自動補完
+                    if (rule && typeof rule === 'object' && !Array.isArray(rule)) {
+                        const sortedKeys = Object.keys(rule)
+                            .map(k => parseFloat(k))
+                            .filter(n => !isNaN(n))
+                            .sort((a, b) => a - b);
+
+                        if (sortedKeys.length > 0) {
+                            processedFuncs[fKey] = sortedKeys.map((keyVal, idx) => {
+                                const isLast = idx === sortedKeys.length - 1;
+                                const score = (rule as any)[String(keyVal)];
+                                if (isLast) {
+                                    return { min: keyVal, score };
+                                } else {
+                                    return { min: keyVal, max: 'next', score };
+                                }
+                            });
+                            hasChanged = true;
+                        }
+                    }
+                }
+                if (hasChanged) {
+                    finalFunctions = processedFuncs;
+                }
+            }
+
             return {
                 ...col,
                 // 自動為欄位生成系統合規的 8 碼短 ID，消滅碰撞風險
@@ -127,6 +162,7 @@ export const callAiScoreboardApi = async (
                 constants: finalConstants,
                 color: finalColor,
                 unit: col.unit ?? '',
+                functions: finalFunctions,
                 // 若有按鈕，也自動幫按鈕配發系統 6 碼短 ID
                 quickActions: Array.isArray(col.quickActions)
                     ? col.quickActions.map((act: any) => ({
