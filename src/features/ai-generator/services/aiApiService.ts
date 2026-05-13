@@ -117,17 +117,59 @@ export const callAiScoreboardApi = async (
                 }
             }
 
-            // 3. 智慧查表函數膨脹：支援 AI 直寫扁平物件 { "0": 0, "1": 1, "4": 3 }，前端自動排序並補足 min/max 結構
+            // 3. 智慧查表函數膨脹：支援超頻字串簡寫 "[0,1,3,+]>[-1,1,2,2]"
             let finalFunctions = col.functions;
             if (finalFunctions && typeof finalFunctions === 'object') {
-                // 複製一份以避免改到原始 json
                 const processedFuncs = { ...finalFunctions };
                 let hasChanged = false;
 
                 for (const fKey of Object.keys(processedFuncs)) {
                     const rule = processedFuncs[fKey];
-                    // 如果是極簡扁平物件而非陣列，觸發自動補完
-                    if (rule && typeof rule === 'object' && !Array.isArray(rule)) {
+                    // 🎯 第一型態：超壓縮運算子 "[0,1,3,+]>[-1,1,2,2]"
+                    if (typeof rule === 'string' && rule.includes('>')) {
+                        const parts = rule.split('>');
+                        if (parts.length === 2) {
+                            const inList = parts[0].replace(/[\[\]]/g, '').split(',').map(s => s.trim());
+                            const outList = parts[1].replace(/[\[\]]/g, '').split(',').map(s => s.trim());
+                            
+                            if (inList.length > 0 && inList.length === outList.length) {
+                                const newRules: any[] = [];
+                                inList.forEach((inVal, idx) => {
+                                    const isPlus = inVal === '+' || inVal.toLowerCase() === 'next';
+                                    
+                                    if (isPlus) {
+                                        // 遇到結尾加號時，修正上一個節點的 max，使其成為無限終端節點
+                                        if (newRules.length > 0) {
+                                            const prev = newRules[newRules.length - 1];
+                                            delete prev.max;
+                                            // 用加號對應的 score 更新最末節點
+                                            prev.score = parseFloat(outList[idx]);
+                                            if (isNaN(prev.score)) prev.score = 0;
+                                        }
+                                    } else {
+                                        const minVal = parseFloat(inVal);
+                                        const scoreVal = parseFloat(outList[idx]);
+                                        newRules.push({
+                                            min: isNaN(minVal) ? 0 : minVal,
+                                            max: 'next', // 先假設有下一個
+                                            score: isNaN(scoreVal) ? 0 : scoreVal
+                                        });
+                                    }
+                                });
+
+                                // 雙重保險：如果結尾不是加號，則強行拔除最後一項的 max 使其符合 schema
+                                if (newRules.length > 0) {
+                                    const last = newRules[newRules.length - 1];
+                                    if (last.max) delete last.max;
+                                }
+
+                                processedFuncs[fKey] = newRules;
+                                hasChanged = true;
+                            }
+                        }
+                    } 
+                    // 🎯 第二型態：扁平平鋪物件 { "0": 1, "4": 2 }
+                    else if (rule && typeof rule === 'object' && !Array.isArray(rule)) {
                         const sortedKeys = Object.keys(rule)
                             .map(k => parseFloat(k))
                             .filter(n => !isNaN(n))
@@ -152,30 +194,50 @@ export const callAiScoreboardApi = async (
                 }
             }
 
+            // 4. 智慧按鈕清單膨脹：支援超頻字串簡寫 '["是","否"]>[10,0]'
+            let finalQuickActions = col.quickActions;
+            let finalInputType = col.inputType ?? 'keypad';
+
+            if (typeof finalQuickActions === 'string' && finalQuickActions.includes('>')) {
+                const parts = finalQuickActions.split('>');
+                if (parts.length === 2) {
+                    const labels = parts[0].replace(/[\[\]]/g, '').split(',').map(s => s.trim().replace(/['"]/g, ''));
+                    const values = parts[1].replace(/[\[\]]/g, '').split(',').map(s => parseFloat(s.trim()));
+                    
+                    if (labels.length > 0 && labels.length === values.length) {
+                        finalQuickActions = labels.map((lbl, idx) => ({
+                            id: generateId(6),
+                            label: lbl,
+                            value: isNaN(values[idx]) ? 0 : values[idx]
+                        }));
+                        finalInputType = 'clicker'; // 🎯 核心智慧：自動改寫為按鈕選單模式！
+                    }
+                }
+            } else if (Array.isArray(finalQuickActions)) {
+                // 傳統陣列相容性處理
+                finalQuickActions = finalQuickActions.map((act: any) => ({
+                    ...act,
+                    id: act.id ?? generateId(6)
+                }));
+            }
+
             return {
                 ...col,
-                // 自動為欄位生成系統合規的 8 碼短 ID，消滅碰撞風險
                 id: generateId(8),
                 isScoring: col.isScoring ?? true,
-                inputType: col.inputType ?? 'keypad',
+                inputType: finalInputType, // 使用膨脹後的 inputType
                 formula: finalFormula,
                 constants: finalConstants,
                 color: finalColor,
                 unit: col.unit ?? '',
                 functions: finalFunctions,
-                // 若有按鈕，也自動幫按鈕配發系統 6 碼短 ID
-                quickActions: Array.isArray(col.quickActions)
-                    ? col.quickActions.map((act: any) => ({
-                        ...act,
-                        id: generateId(6)
-                    }))
-                    : col.quickActions
+                quickActions: finalQuickActions // 使用膨脹後的 quickActions
             };
         });
 
         const finalTemplate: Partial<GameTemplate> = {
             ...result,
-            defaultScoringRule: result.defaultScoringRule || 'HIGHEST_WINS', // 系統自動保底預設模式
+            defaultScoringRule: result.defaultScoringRule || 'HIGHEST_WINS',
             columns: inflatedColumns
         };
 

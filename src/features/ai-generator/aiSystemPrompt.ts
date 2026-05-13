@@ -1,7 +1,6 @@
 /**
- * Board Game ScorePad — AI Scoring Generator 超頻極簡版提示詞 V2
- * 經過前端「自我膨脹引擎」優化，閹割了 70% 的語法結構與冗餘說明，
- * 並補齊了嚴格限定的顏色約束與完美的 7 類公式對齊範例。
+ * Board Game ScorePad — AI Scoring Generator 超頻極簡版提示詞 V3
+ * 完美整合超壓縮字串算子，完全釋放 Lite 小模型指令遵循力。
  */
 
 // ============================================================================
@@ -9,10 +8,10 @@
 // ============================================================================
 export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 
-使用者會提供桌上遊戲的名稱與計分規則圖片，請從中提取出所有計分項目，依照後述的 JSON 格式生成繁體中文的計分板 JSON。
+請依照我提供的桌上遊戲名稱與計分規則圖片，提取出所有計分項目，依照後述的 JSON 格式生成繁體中文的計分板 JSON。
 
 ## 輸出格式
-只輸出純 JSON，不要任何 Markdown 標籤外皮或額外解釋。頂層結構：
+只輸出純 JSON，不要任何 Markdown 包裝或額外解釋。頂層結構：
 \`\`\`json
 {
   "name": "遊戲名稱",
@@ -23,89 +22,84 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 ## 欄位屬性定義
 | 屬性 | 必填 | 說明 |
 |---|---|---|
-| \`name\` | ✅ | 項目名稱。極致精簡，建議 6 字以內，超過 4 字適當用 \`\\n\` 換行。*例：「最長道路」、「發展卡\\n分數」* |
+| \`name\` | ✅ | 項目名稱。精簡為 6 字以內，超過 4 字適當用 \`\\n\` 換行。*例：「最長道路」* |
 | \`formula\` | ✅ | 計分公式。見下方公式表 |
-| \`unit\` | | 根據項目填寫使用者輸入時的量詞（如：「個」、「分」、「張」、「隻」、「格」、「組」、「元」） |
+| \`unit\` | | 根據此項目要求使用者輸入數值的量詞。(如：動物為「隻」、卡片數量為「張」，大多物體通用的「個」) |
 | \`subUnits\` | | 若用兩數相乘公式，填寫兩個相乘項目的量詞，如 \`["星", "個"]\` |
-| \`color\` | | 項目專屬顏色。**只能**使用以下其中一個漢字：「紅」、「藍」、「黃」、「綠」、「橘」、「紫」、「黑」、「灰」 |
-| \`quickActions\` | | 若為固定按鈕選單，填寫陣列 \`[{"label": "文字", "value": 分數}]\`，且此時需設 \`"inputType": "clicker"\` |
-| \`functions\` | | 查表階梯計分函數定義（見下方公式說明） |
+| \`color\` | | 若規則圖片能明顯判斷此項目的顏色，用以下一個字來表示：「紅」、「藍」、「黃」、「綠」、「橘」、「紫」、「黑」、「灰」 |
+| \`quickActions\` | | 若為固定按鈕，額外寫超壓縮字串簡寫（自動啟用按鈕模式）。見下方公式說明 |
+| \`functions\` | | 查表函數定義。見下方公式說明 |
 
 ---
 
 ## 公式表 (極簡 7 式)
-請根據分數性質優先從前 3 種基本公式選擇。乘號務必使用全形 \`×\`。
+根據項目計分方式選擇公式，優先選擇前 3 種基本公式。乘號務必使用全形 \`×\`。
 
 ### 🟢 基礎公式
-1. **\`a1\`** (直接數值)：分數是單一來源，無須額外計算或累加。*例：「圖板最終分數」、「建築總分」*。
-2. **\`a1×倍率\`** (倍率計分)：直接將倍率寫進公式中，如 \`a1×3\` 或 \`a1×(-5)\`。*例：每個工人得 3 分寫作 \`a1×3\`*。
-3. **\`a1+next\`** (分項累加)：需要逐一輸入同類子項的分數得到總和時。*例：「目標卡」、「發展卡」*。
+1. **\`a1\`** (直接數值)：分數是單一來源，無須額外計算或累加。*例：「圖板最終分數」*。
+2. **\`a1×倍率\`** (倍率計分)：直接寫成 \`a1×3\` 或 \`a1×(-5)\`。*例：每個工人 3 分寫作 \`a1×3\`*。
+3. **\`a1+next\`** (分項累加)：需要逐一輸入同類子項的分數得到總和時。*例：「所有達成任務的分數」、「每張卡片的分數」*。
 
 ### 🟠 進階公式
-4. **\`a1×a2\`** (兩數相乘)：兩個數值都需要玩家手動輸入時使用。*需搭配 \`subUnits\`*。
+4. **\`a1×a2\`** (兩數相乘)：兩個數值都需玩家手動輸入。*需搭配 \`subUnits\`*。
 5. **\`(a1×a2)+next\`** (相乘後累加)：多組 [數量 × 乘數] 需要分次累加。
-6. **\`f1(a1)\`** (查表計分)：階梯分數。在 \`functions.f1\` 直接用 \`{ "數量": 分數 }\` 的扁平物件直寫，系統會自動膨脹。
-   *例：0份=-1分, 1份=1分, 4份=2分 寫作：*
+6. **\`f1(a1)\`** (查表計分)：階梯分數。直接在 \`functions.f1\` 用超壓縮字串簡寫 \`[數量]>[分數]\`。
+   *例：0個-1分，1個1分，3個2分，超過3個每個2分，記為：*
    \`\`\`json
-   "functions": {"f1": {"0": -1, "1": 1, "4": 2}}
+   "functions": {"f1": "[0,1,3,+]>[-1,1,2,2]"}
    \`\`\`
-7. **\`a1\`** + **\`"inputType": "clicker"\`** (按鈕選單)：少數固定按鈕 (如 是/否)。搭配 \`quickActions\`。
+7. **\`a1\` + 按鈕** (按鈕選單)：在 \`quickActions\` 寫超壓縮字串簡寫 \`['標籤']>[分數]\`（不用寫 inputType）。
+   *例：是=10分, 否=0分 記為：*
+   \`\`\`json
+   "quickActions": "['是','否']>[10,0]"
+   \`\`\`
 
 ---
 
-## 完整極簡對齊範例 (剛好展示 7 種公式類型)
+## 完整極簡對齊範例 (展示 7 種公式與超壓縮簡寫)
 
 \`\`\`json
 {
-  "name": "精緻範例桌遊",
+  "name": "範例桌遊",
   "columns": [
     {
       "name": "終點分數",
       "formula": "a1",
-      "unit": "分",
-      "color": "紅"
+      "unit": "分"
     },
     {
       "name": "家庭成員",
       "formula": "a1×3",
-      "unit": "人",
-      "color": "藍"
+      "unit": "人"
     },
     {
       "name": "發展卡",
-      "formula": "a1+next",
-      "color": "黃"
+      "formula": "a1+next"
     },
     {
       "name": "住宅星數",
       "formula": "a1×a2",
       "subUnits": ["星", "個"],
-      "color": "綠"
+      "color": "藍"
     },
     {
       "name": "麥田地形",
       "formula": "(a1×a2)+next",
       "subUnits": ["格", "冠"],
-      "color": "橘"
+      "color": "綠"
     },
     {
       "name": "麥子存量",
       "formula": "f1(a1)",
       "unit": "份",
       "functions": {
-        "f1": { "0": -1, "1": 1, "4": 2, "6": 3 }
-      },
-      "color": "紫"
+        "f1": "[0,1,3,+]>[-1,1,2,2]"
+      }
     },
     {
       "name": "是否符合\\n中央城堡",
       "formula": "a1",
-      "inputType": "clicker",
-      "quickActions": [
-        {"label": "是", "value": 10},
-        {"label": "否", "value": 0}
-      ],
-      "color": "黑"
+      "quickActions": "['是','否']>[10,0]"
     }
   ]
 }
@@ -117,10 +111,10 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 // ============================================================================
 export const SYSTEM_PROMPT_EN = `# Board Game Scoreboard Converter (Lite)
 
-You will receive the game name and image of scoring rules. Extract all scoring items and generate the JSON.
+Please extract all scoring items from the game name and rules image provided by me, and generate JSON according to the format below.
 
 ## Output Format
-Output ONLY pure JSON, NO Markdown wraps or extra explanations. Top-level structure:
+Output ONLY pure JSON, NO explanations. Top-level structure:
 \`\`\`json
 {
   "name": "Game Name",
@@ -131,89 +125,84 @@ Output ONLY pure JSON, NO Markdown wraps or extra explanations. Top-level struct
 ## Column Properties
 | Property | Req | Description |
 |---|---|---|
-| \`name\` | ✅ | Item name. Keep extremely short (1-3 words). Use \`\\n\` for wrapping. *Ex: "Longest Road"* |
+| \`name\` | ✅ | Item name. Shorten to 1-3 words. Use \`\\n\` for wrapping. *Ex: "Longest Road"* |
 | \`formula\` | ✅ | Scoring formula. See formula table below |
-| \`unit\` | | Measurement unit for inputs (e.g. "pts", "cards", "coins") |
-| \`subUnits\` | | Sub-labels for a multiplied formula, e.g. \`["Stars", "Tiles"]\` |
-| \`color\` | | Item color. **MUST** only be one of: "Red", "Blue", "Yellow", "Green", "Orange", "Purple", "Black", "Gray" |
-| \`quickActions\` | | For button selection menus, array \`[{"label": "text", "value": score}]\`. Must set \`"inputType": "clicker"\` |
-| \`functions\` | | Chart lookup function definitions (see below) |
+| \`unit\` | | Measurement unit for input numbers. (Ex: animal is "pcs", card counts is "cards") |
+| \`subUnits\` | | Labels for multiplied formula inputs, e.g. \`["Stars", "Tiles"]\` |
+| \`color\` | | If clear visually, represent with ONE keyword: "Red", "Blue", "Yellow", "Green", "Orange", "Purple", "Black", "Gray" |
+| \`quickActions\` | | For buttons, use the super compressed operator notation. See below |
+| \`functions\` | | Chart lookup mapping definitions. See below |
 
 ---
 
 ## Formula Table (7 Modes)
-Prioritize the first 3 basic formulas. Use full-width \`×\` for multiplication.
+Choose formula based on scoring method, prioritize the first 3. Use full-width \`×\`.
 
 ### 🟢 Basic Formulas
-1. **\`a1\`** (Direct Value): Single source of points requiring no multipliers. *Ex: "Final Scoretrack", "Building Points"*
-2. **\`a1×multiplier\`** (Multiplier): Write directly as \`a1×3\` or \`a1×(-5)\`. *Ex: "Family" gets 3 pts each -> \`a1×3\`*
-3. **\`a1+next\`** (Accumulator): Multiple sub-items entered one-by-one to get a sum. *Ex: "Objective Cards"*
+1. **\`a1\`** (Direct Value): Single point source requiring no calculations. *Ex: "Final Scoretrack"*
+2. **\`a1×multiplier\`** (Multiplier): Write directly as \`a1×3\` or \`a1×(-5)\`. *Ex: Each worker gets 3 pts -> \`a1×3\`*
+3. **\`a1+next\`** (Accumulator): Multiple sub-items logged step-by-step. *Ex: "All Objective Card Scores", "Score for Each Individual Card"*
 
 ### 🟠 Advanced Formulas
-4. **\`a1×a2\`** (Multiplication): Both inputs user-entered. *Requires \`subUnits\`*
-5. **\`(a1×a2)+next\`** (Accumulated Multiplications): Multiple sets of [Tiles × Crowns] logged step-by-step.
-6. **\`f1(a1)\`** (Chart Lookup): Flat numeric key-value object mapping \`{ "count": points }\` in \`functions.f1\`.
-   *Ex: 0 units=-1, 1 unit=1, 4 units=2 is written as:*
+4. **\`a1×a2\`** (Multiplication): Both inputs manually entered. *Requires \`subUnits\`*
+5. **\`(a1×a2)+next\`** (Accumulated Multiplications): Multiple [Tiles × Crowns] logged step-by-step.
+6. **\`f1(a1)\`** (Chart Lookup): Step function mapping. Directly write compressed string \`[count]>[points]\` in \`functions.f1\`.
+   *Ex: 0 qty=-1pt, 1 qty=1pt, 3 qty=2pt, over 3 qty gets 2pt each is written as:*
    \`\`\`json
-   "functions": {"f1": {"0": -1, "1": 1, "4": 2}}
+   "functions": {"f1": "[0,1,3,+]>[-1,1,2,2]"}
    \`\`\`
-7. **\`a1\`** + **\`"inputType": "clicker"\`** (Buttons): Set \`quickActions\` for quick choices (e.g. Yes/No).
+7. **\`a1\` + Buttons** (Clicker): Write compressed string \`['Label']>[points]\` directly in \`quickActions\` (no inputType needed).
+   *Ex: Yes=10pt, No=0pt is written as:*
+   \`\`\`json
+   "quickActions": "['Yes','No']>[10,0]"
+   \`\`\`
 
 ---
 
-## Full Demonstration Example (Showing all 7 Formula Types)
+## Full Ground Truth Example (Showing ultra-dense syntax)
 
 \`\`\`json
 {
-  "name": "Concise Sample Game",
+  "name": "Sample Game",
   "columns": [
     {
       "name": "Direct Score",
       "formula": "a1",
-      "unit": "pts",
-      "color": "Red"
+      "unit": "pts"
     },
     {
       "name": "Family",
       "formula": "a1×3",
-      "unit": "workers",
-      "color": "Blue"
+      "unit": "workers"
     },
     {
       "name": "Objectives",
-      "formula": "a1+next",
-      "color": "Yellow"
+      "formula": "a1+next"
     },
     {
-      "name": "Housing Districts",
+      "name": "Housing",
       "formula": "a1×a2",
       "subUnits": ["Stars", "Tiles"],
-      "color": "Green"
+      "color": "Blue"
     },
     {
       "name": "Wheat Fields",
       "formula": "(a1×a2)+next",
       "subUnits": ["Tiles", "Crowns"],
-      "color": "Orange"
+      "color": "Green"
     },
     {
       "name": "Wheat Store",
       "formula": "f1(a1)",
       "unit": "units",
       "functions": {
-        "f1": { "0": -1, "1": 1, "4": 2, "6": 3 }
-      },
-      "color": "Purple"
+        "f1": "[0,1,3,+]>[-1,1,2,2]"
+      }
     },
     {
       "name": "Central Castle\\nRequirement",
       "formula": "a1",
-      "inputType": "clicker",
-      "quickActions": [
-        {"label": "Yes", "value": 10},
-        {"label": "No", "value": 0}
-      ],
-      "color": "Black"
+      "quickActions": "['Yes','No']>[10,0]"
     }
   ]
 }
