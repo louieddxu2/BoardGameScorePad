@@ -89,7 +89,6 @@ export default async function handler(req) {
 
     const geminiResult = await apiResponse.json();
 
-    // 6. 取得 AI 生成的 JSON 字串並直接回拋給前端
     const generatedText = geminiResult.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!generatedText) {
@@ -99,11 +98,25 @@ export default async function handler(req) {
       });
     }
 
-    // 將 JSON 原封不動地傳回您的手機 App
-    return new Response(generatedText, {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    // 🌟 智慧升級：將文字轉譯為 JSON 物件，並連同 usageMetadata 包裝回拋給前端，激活 Token 牌價看板！
+    try {
+      const parsedData = JSON.parse(generatedText);
+      const usage = geminiResult.usageMetadata; // 包含 promptTokenCount, candidatesTokenCount, totalTokenCount
+      
+      return new Response(JSON.stringify({
+        data: parsedData,
+        usage: usage || undefined
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (parseError) {
+      // 🛡️ 絕對防禦：如果 JSON 轉換意外失敗，原封不動地回拋裸 JSON 以保持最大限度的相容性
+      return new Response(generatedText, {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
   } catch (error) {
     console.error('[Serverless API Error]', error);
