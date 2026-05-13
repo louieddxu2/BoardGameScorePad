@@ -138,13 +138,18 @@ export const callAiScoreboardApi = async (
                                     const isPlus = inVal === '+' || inVal.toLowerCase() === 'next';
                                     
                                     if (isPlus) {
-                                        // 遇到結尾加號時，修正上一個節點的 max，使其成為無限終端節點
+                                        // 🎯 終極進化：遇到結尾加號，自動將最末節點轉譯為「線性累加模式 (isLinear)」
+                                        // 這會對接 scoring.ts 的 baseScore + increments * unitScore 核心運算！
                                         if (newRules.length > 0) {
                                             const prev = newRules[newRules.length - 1];
                                             delete prev.max;
-                                            // 用加號對應的 score 更新最末節點
-                                            prev.score = parseFloat(outList[idx]);
-                                            if (isNaN(prev.score)) prev.score = 0;
+                                            
+                                            const stepScore = parseFloat(outList[idx]);
+                                            if (!isNaN(stepScore)) {
+                                                prev.isLinear = true;
+                                                prev.unitScore = stepScore;
+                                                prev.unit = 1; // 預設單位增量為 1
+                                            }
                                         }
                                     } else {
                                         const minVal = parseFloat(inVal);
