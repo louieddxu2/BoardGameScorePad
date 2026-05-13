@@ -16,6 +16,15 @@ export const aiGeneratorTranslations = {
         error_rate_limit: "系統現在太忙了 (429)，請過 1 分鐘後再試試！",
         error_generic: "辨識失敗，請確認網路連線或照片清晰度後重試。",
         error_invalid_json: "AI 解析出的結構不正確，請換個角度再試一次。",
+        model_lite: "🏎️ 極速 Lite",
+        model_standard: "🧠 精準 Std",
+        btn_clear_all: "全部清除",
+        btn_add_photo: "追加照片",
+        btn_add_from_album: "追加相簿照片",
+        status_selected_count: "已選取 {count} 張相片",
+        btn_analyze_count: "開始分析這 {count} 張相片",
+        status_token_cost: "💸 消耗 NT$ {cost} 元",
+        status_token_count: "({count} Tokens 消耗)",
     },
     'en': {
         title: "AI Scoreboard Generator",
@@ -31,6 +40,15 @@ export const aiGeneratorTranslations = {
         error_rate_limit: "System busy (429), please retry in a minute!",
         error_generic: "Analysis failed, please check photo clarity and retry.",
         error_invalid_json: "AI produced invalid structure, please try another angle.",
+        model_lite: "🏎️ Turbo Lite",
+        model_standard: "🧠 Precise Std",
+        btn_clear_all: "Clear All",
+        btn_add_photo: "Add Photo",
+        btn_add_from_album: "Add from Album",
+        status_selected_count: "Selected {count} photos",
+        btn_analyze_count: "Analyze {count} Photos",
+        status_token_cost: "💸 Cost NT$ {cost}",
+        status_token_count: "({count} Tokens Used)",
     }
 };
 

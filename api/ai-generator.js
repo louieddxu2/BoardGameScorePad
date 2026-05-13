@@ -13,7 +13,7 @@ export default async function handler(req) {
   }
 
   // 從 Vercel 環境變數中讀取 Key
-  const apiKey = process.env.GEMINI_API_KEY; 
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return new Response('Backend configuration missing: GEMINI_API_KEY', { status: 500 });
   }
@@ -24,13 +24,13 @@ export default async function handler(req) {
     const systemPrompt = formData.get('systemPrompt');
     const gameName = formData.get('gameName');
     const language = formData.get('language');
-    
+
     // 動態取得使用者選擇的模型，預設為極速版 Lite，可由前端動態傳入
     const requestedModel = formData.get('modelName') || 'gemini-3.1-flash-lite';
 
     // 2. 提取所有圖片檔案，並高效轉換為 Base64 供 Google API 使用
     const geminiParts = [];
-    
+
     for (const [key, value] of formData.entries()) {
       // 我們在前端是命名為 image_0, image_1...
       if (key.startsWith('image_') && value instanceof File) {
@@ -39,7 +39,7 @@ export default async function handler(req) {
         const base64 = btoa(
           new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
         );
-        
+
         geminiParts.push({
           inlineData: {
             mimeType: "image/jpeg",
@@ -70,7 +70,7 @@ export default async function handler(req) {
 
     // 5. 動態切換 Google Gemini 模型 API URL
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${requestedModel}:generateContent?key=${apiKey}`;
-    
+
     const apiResponse = await fetch(geminiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -91,11 +91,11 @@ export default async function handler(req) {
 
     // 6. 取得 AI 生成的 JSON 字串並直接回拋給前端
     const generatedText = geminiResult.candidates?.[0]?.content?.parts?.[0]?.text;
-    
+
     if (!generatedText) {
-      return new Response(JSON.stringify({ error: 'AI generated empty response' }), { 
-        status: 500, 
-        headers: { 'Content-Type': 'application/json' } 
+      return new Response(JSON.stringify({ error: 'AI generated empty response' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
@@ -107,9 +107,9 @@ export default async function handler(req) {
 
   } catch (error) {
     console.error('[Serverless API Error]', error);
-    return new Response(JSON.stringify({ error: error.message }), { 
-      status: 500, 
-      headers: { 'Content-Type': 'application/json' } 
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
     });
   }
 }

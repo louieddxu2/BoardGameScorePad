@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react';
 import { GameTemplate } from '../../../types';
 import { compressImageForAi } from '../utils/imageProcessor';
-import { callAiScoreboardApi } from '../services/aiApiService';
+import { callAiScoreboardApi, TokenUsageInfo } from '../services/aiApiService';
 import { useTranslation } from '../../../i18n';
 
 export type AiProcessStatus = 'idle' | 'compressing' | 'generating' | 'success' | 'error';
@@ -10,6 +10,7 @@ export type AiProcessStatus = 'idle' | 'compressing' | 'generating' | 'success' 
 export interface UseAiGeneratorResult {
     status: AiProcessStatus;
     errorMessage: string | null;
+    tokenUsage: TokenUsageInfo | null;
     processAndGenerate: (
         files: File[],
         gameName: string,
@@ -25,6 +26,7 @@ export interface UseAiGeneratorResult {
 export const useAiGenerator = (): UseAiGeneratorResult => {
     const [status, setStatus] = useState<AiProcessStatus>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [tokenUsage, setTokenUsage] = useState<TokenUsageInfo | null>(null);
     const { language } = useTranslation();
 
     // 檢查解鎖狀態 (改用 advance_user)
@@ -33,6 +35,7 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
     const reset = useCallback(() => {
         setStatus('idle');
         setErrorMessage(null);
+        setTokenUsage(null);
     }, []);
 
     /**
@@ -41,11 +44,12 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
     const processAndGenerate = useCallback(async (
         files: File[],
         gameName: string,
-        modelName: string = 'gemini-3.1-flash-lite'
+        modelName: string = 'gemini-2.5-flash-lite'
     ): Promise<Partial<GameTemplate> | null> => {
         if (files.length === 0) return null;
         
         setErrorMessage(null);
+        setTokenUsage(null);
         
         try {
             // 階段 1: 圖片高速壓縮
@@ -60,15 +64,19 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
             // 確定要傳遞給 AI 的語系字串
             const currentLang = language === 'zh-TW' ? '繁體中文 (zh-TW)' : '英文 (en)';
             
-            const result = await callAiScoreboardApi(
+            const { template, usage } = await callAiScoreboardApi(
                 compressedBlobs,
                 gameName,
                 currentLang,
                 modelName
             );
+            
+            if (usage) {
+                setTokenUsage(usage);
+            }
 
             setStatus('success');
-            return result;
+            return template;
 
         } catch (error: any) {
             console.error('[useAiGenerator] Process failed:', error);
@@ -83,6 +91,7 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
     return {
         status,
         errorMessage,
+        tokenUsage,
         processAndGenerate,
         reset,
         isAiUnlocked
