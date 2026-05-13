@@ -138,17 +138,20 @@ export const callAiScoreboardApi = async (
                                     const isPlus = inVal === '+' || inVal.toLowerCase() === 'next';
                                     
                                     if (isPlus) {
-                                        // 🎯 終極進化：遇到結尾加號，自動將最末節點轉譯為「線性累加模式 (isLinear)」
-                                        // 這會對接 scoring.ts 的 baseScore + increments * unitScore 核心運算！
+                                        // 🎯 終極收斂：遇到結尾加號，不在原地覆寫，而是自動新增一個「min = 前一節點 min + 1」的線性累加節點！
+                                        // 這能確保「前一節點」保持平鋪邊界，且線性疊加精準在 val >= prev.min + 1 時完美啟動！
                                         if (newRules.length > 0) {
                                             const prev = newRules[newRules.length - 1];
-                                            delete prev.max;
+                                            // 前一節點保留 max: 'next' 屬性，使其能鏈接到我們即將新增的下一個節點
                                             
                                             const stepScore = parseFloat(outList[idx]);
                                             if (!isNaN(stepScore)) {
-                                                prev.isLinear = true;
-                                                prev.unitScore = stepScore;
-                                                prev.unit = 1; // 預設單位增量為 1
+                                                newRules.push({
+                                                    min: prev.min + 1,
+                                                    isLinear: true,
+                                                    unitScore: stepScore,
+                                                    unit: 1 // 預設單位增量為 1
+                                                });
                                             }
                                         }
                                     } else {

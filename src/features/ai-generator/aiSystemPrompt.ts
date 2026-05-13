@@ -1,6 +1,6 @@
 /**
- * Board Game ScorePad — AI Scoring Generator 超頻極簡版提示詞 V4.1
- * 完美對齊累積線性累加數學邏輯，並落實元贅詞清洗與多樣性保留決策。
+ * Board Game ScorePad — AI Scoring Generator 超頻極簡版提示詞 V4.2
+ * 完美落地「節點平移線性累加」極限閉環數學模型，實現多重情境的終極多樣性對齊。
  */
 
 // ============================================================================
@@ -48,9 +48,9 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
    \`\`\`json
    "functions": {"f1": "[0,1,3,6]>[0,1,3,8]"}
    \`\`\`
-   *例 2：1~2個1分，3~5個3分，超過5個每個多2分（意即6個時為 3+2=5分，後續每多一個加2分），記為：*
+   *例 2：0個-1分，1~2個1分，3~5個3分，6個得6分，超過6個每個多2分，記為：*
    \`\`\`json
-   "functions": {"f1": "[0,1,3,6,+]>[0,1,3,5,2]"}
+   "functions": {"f1": "[0,1,3,6,+]>[-1,1,3,6,2]"}
    \`\`\`
 7. **\`a1\`** + 按鈕 (按鈕選單)：在 \`quickActions\` 寫 \`['標籤']>[分數]\`。
    *例：是=10分, 否=0分 記為：*
@@ -155,9 +155,9 @@ Choose formula based on scoring method, prioritize the first 3. Use full-width \
    \`\`\`json
    "functions": {"f1": "[0,1,3,6]>[0,1,3,8]"}
    \`\`\`
-   *Ex 2: 1-2 qty=1pt, 3-5 qty=3pt, over 5 qty are +2pt each (meaning 6 qty yields 3+2=5pt, each subsequent adds 2pt), is written as:*
+   *Ex 2: 0 qty=-1pt, 1-2 qty=1pt, 3-5 qty=3pt, 6 qty=6pt, over 6 qty are +2pt each, is written as:*
    \`\`\`json
-   "functions": {"f1": "[0,1,3,6,+]>[0,1,3,5,2]"}
+   "functions": {"f1": "[0,1,3,6,+]>[-1,1,3,6,2]"}
    \`\`\`
 7. **\`a1\`** + Buttons (Clicker): Write \`['Label']>[points]\` in \`quickActions\`.
    *Ex: Yes=10pt, No=0pt is written as:*
