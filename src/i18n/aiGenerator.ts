@@ -25,6 +25,11 @@ export const aiGeneratorTranslations = {
         btn_analyze_count: "開始分析這 {count} 張相片",
         status_token_cost: "💸 消耗 NT$ {cost} 元",
         status_token_count: "({count} Tokens 消耗)",
+        label_column_count: "欄位總數",
+        label_quick_actions: "快速操作項",
+        label_ai_ready: "🎉 AI 已經準備好您的遊戲記分板！",
+        btn_use_this_template: "🚀 使用此計分板開始遊戲",
+        btn_reanalyze: "重新辨識 / 返回上一步",
     },
     'en': {
         title: "AI Scoreboard Generator",
@@ -49,6 +54,11 @@ export const aiGeneratorTranslations = {
         btn_analyze_count: "Analyze {count} Photos",
         status_token_cost: "💸 Cost NT$ {cost}",
         status_token_count: "({count} Tokens Used)",
+        label_column_count: "Columns Count",
+        label_quick_actions: "Quick Actions",
+        label_ai_ready: "🎉 AI has prepared your scoreboard!",
+        btn_use_this_template: "🚀 Use this Board to Play",
+        btn_reanalyze: "Re-scan / Go Back",
     }
 };
 

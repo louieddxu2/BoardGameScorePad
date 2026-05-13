@@ -32,6 +32,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
     // 🌟 核心升級：檔案緩衝池與預覽 URL 緩存
     const [queuedFiles, setQueuedFiles] = useState<File[]>([]);
     const [previews, setPreviews] = useState<string[]>([]);
+    const [generatedTemplate, setGeneratedTemplate] = useState<Partial<GameTemplate> | null>(null);
     
     // 🌟 新增：控制沉浸式 WebRTC 相機遮罩的啟閉
     const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -86,11 +87,28 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         setQueuedFiles(prev => prev.filter((_, index) => index !== indexToRemove));
     };
 
-    // 台幣費率計算器 (基於 Gemini 2.5 官方牌價)
-    const calculateCost = (usage: { promptTokenCount: number; candidatesTokenCount: number }) => {
-        // 輸入 $0.30 / 1M, 輸出 $2.50 / 1M, 匯率 31.5 NTD
-        const usd = (usage.promptTokenCount * 0.3 + usage.candidatesTokenCount * 2.5) / 1000000;
-        const ntd = usd * 31.5;
+    // 台幣費率計算器 (精準對齊 Google AI Studio 官方 2026 牌價)
+    const calculateCost = (model: string, usage: { promptTokenCount: number; candidatesTokenCount: number }) => {
+        // 官方牌價 (每 100 萬個 Tokens 的美金價格)
+        let inputCostPer1M = 0.075;  // 預設 1.5 / 3.1 Flash 系列
+        let outputCostPer1M = 0.30;
+
+        if (model.includes('2.5')) {
+            if (model.includes('lite')) {
+                inputCostPer1M = 0.15;  // Lite 版本官方通常為 50% 折扣
+                outputCostPer1M = 1.25;
+            } else {
+                inputCostPer1M = 0.30;  // 2.5 推理主力
+                outputCostPer1M = 2.50;
+            }
+        } else if (model.includes('lite')) {
+            // 其他系列的 Lite 版本折半精算
+            inputCostPer1M = 0.0375;
+            outputCostPer1M = 0.15;
+        }
+
+        const usd = (usage.promptTokenCount * inputCostPer1M + usage.candidatesTokenCount * outputCostPer1M) / 1000000;
+        const ntd = usd * 31.5; // 美金台幣匯率
         return ntd < 0.0001 ? "0.0001" : ntd.toFixed(4);
     };
 
@@ -101,16 +119,12 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         const result = await processAndGenerate(queuedFiles, gameName, selectedModel);
         
         if (result) {
-            // 成功！延長停頓時間 (2200ms) 讓使用者有空看清台幣與 Token 結算面板
-            setTimeout(() => {
-                onAiSuccess(result);
-                reset();
-                setQueuedFiles([]);
-            }, 2200);
+            // 🚀 突破：直接緩存在 Modal 中，切換至「結算畫面」，不由系統自動關閉跳轉！
+            setGeneratedTemplate(result);
         }
     };
 
-    // 渲染進度指示器
+    // 渲染進度指示器 (專注呈現壓縮中、分析中的旋轉流程)
     const renderLoadingStatus = () => {
         let text = '';
         if (status === 'compressing') text = t('status_compressing');
@@ -130,18 +144,105 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                     </div>
                 </div>
                 <p className="text-txt-primary font-bold text-lg animate-pulse">{text}</p>
-                
-                {/* 🌟 新增：高尊榮感 Token 與台幣結算微光儀 */}
-                {status === 'success' && tokenUsage && (
-                    <div className="mt-5 px-4 py-2.5 bg-surface-bg-alt border border-brand-primary/20 rounded-xl flex flex-col items-center justify-center gap-1 shadow-lg shadow-brand-primary/5 animate-in slide-in-from-bottom-3 duration-500">
-                        <span className="text-xs font-black text-brand-primary tracking-wide flex items-center gap-1">
-                            {t('status_token_cost').replace('{cost}', calculateCost(tokenUsage))}
+            </div>
+        );
+    };
+
+    // 🌟 核心升級：開箱大吉！渲染 AI 成功產出報告面板
+    const renderSuccessResult = () => {
+        if (!generatedTemplate) return null;
+        
+        const columnCount = generatedTemplate.columns?.length || 0;
+        const actionCount = generatedTemplate.columns?.reduce((sum, col) => sum + (col.quickActions?.length || 0), 0) || 0;
+        
+        return (
+            <div className="animate-in fade-in zoom-in-95 duration-500">
+                {/* 頂部慶祝打勾區 */}
+                <div className="flex flex-col items-center justify-center py-4">
+                    <div className="relative mb-3">
+                        <div className="absolute inset-0 bg-status-success/20 rounded-full animate-ping scale-125"></div>
+                        <div className="relative bg-status-success/10 p-3.5 rounded-full text-status-success border border-status-success/30 shadow-lg">
+                            <Sparkles size={28} className="animate-pulse" />
+                        </div>
+                    </div>
+                    <h4 className="text-txt-primary font-black text-lg tracking-wide mb-1">
+                        {t('status_success')}
+                    </h4>
+                    <p className="text-xs text-txt-muted font-medium text-center px-4">
+                        {t('label_ai_ready')}
+                    </p>
+                </div>
+
+                {/* 📦 分析成果卡片 */}
+                <div className="bg-surface-bg-alt border border-surface-border rounded-xl p-4 mb-5 flex flex-col gap-3 shadow-sm">
+                    <div className="flex justify-between items-center py-1 text-sm border-b border-surface-border/40 pb-2.5">
+                        <span className="text-txt-muted flex items-center gap-1.5 font-semibold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
+                            {t('label_column_count')}
                         </span>
-                        <span className="text-[10px] font-mono text-txt-muted">
-                            {t('status_token_count').replace('{count}', tokenUsage.totalTokenCount.toLocaleString())}
+                        <span className="text-txt-primary font-bold flex items-center gap-1">
+                            <span className="text-brand-primary text-base mr-0.5">{columnCount}</span>
                         </span>
                     </div>
-                )}
+
+                    <div className="flex justify-between items-center py-1 text-sm">
+                        <span className="text-txt-muted flex items-center gap-1.5 font-semibold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-brand-secondary" />
+                            {t('label_quick_actions')}
+                        </span>
+                        <span className="text-txt-primary font-bold">
+                            {actionCount}
+                        </span>
+                    </div>
+
+                    {/* Token 精密即時消耗表 (對齊 Google 官方 2026 牌價) */}
+                    {tokenUsage && (
+                        <div className="mt-2 pt-3 border-t border-surface-border/60 flex flex-col gap-1 bg-black/20 -mx-4 px-4 py-2.5 rounded-b-xl border-t border-white/5">
+                            <div className="flex justify-between items-center text-xs">
+                                <span className="text-txt-muted font-mono text-[10px] tracking-tight">
+                                    🚀 {selectedModel}
+                                </span>
+                                <span className="text-brand-primary font-black tracking-wider">
+                                    NT$ {calculateCost(selectedModel, tokenUsage)}
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center text-[10px] font-mono text-txt-muted/70">
+                                <span>
+                                    In: {tokenUsage.promptTokenCount.toLocaleString()} / Out: {tokenUsage.candidatesTokenCount.toLocaleString()}
+                                </span>
+                                <span>
+                                    {tokenUsage.totalTokenCount.toLocaleString()} Tokens
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* 🎬 使用者主導操作區 */}
+                <div className="space-y-3">
+                    <button
+                        onClick={() => {
+                            onAiSuccess(generatedTemplate);
+                            reset();
+                            setQueuedFiles([]);
+                            setGeneratedTemplate(null);
+                        }}
+                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-brand-primary to-brand-secondary text-white rounded-xl font-black text-[15px] shadow-lg shadow-brand-primary/20 active:scale-98 transition-all hover:brightness-105"
+                    >
+                        <Play size={18} className="fill-current" />
+                        <span>{t('btn_use_this_template')}</span>
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            reset();
+                            setGeneratedTemplate(null);
+                        }}
+                        className="w-full py-2.5 text-txt-muted hover:text-txt-secondary font-bold rounded-xl bg-surface-bg hover:bg-surface-bg-alt border border-surface-border active:scale-95 transition-all text-xs flex items-center justify-center gap-1.5"
+                    >
+                        {t('btn_reanalyze')}
+                    </button>
+                </div>
             </div>
         );
     };
@@ -208,7 +309,9 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                     </div>
 
                     {/* Content Container */}
-                    {isProcessing ? (
+                    {generatedTemplate ? (
+                        renderSuccessResult()
+                    ) : isProcessing ? (
                         renderLoadingStatus()
                     ) : (
                         <>
