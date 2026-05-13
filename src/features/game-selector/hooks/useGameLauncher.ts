@@ -104,20 +104,15 @@ export const useGameLauncher = ({
     locationId?: string, 
     extra?: { startTimeStr?: string, scoringRule?: ScoringRule }
   ) => {
-    // 判斷是否為簡易遊戲
-    // 簡易遊戲定義：沒有 templateId，或是該 template 的 columns 為空
-    let isSimple = !option.templateId;
-    if (option.templateId) {
-        const found = allVisibleTemplates.find(t => t.id === option.templateId);
-        if (found && (!found.columns || found.columns.length === 0)) {
-            isSimple = true;
-        }
-    }
+    // 官方極簡判定契約：當 option.templateId 存在時，代表該遊戲已有「專屬計分板結構」，不該被當成簡易板！
+    const isVirtual = option.uid === '__CREATE_NEW__';
+    const isSimple = !option.templateId && !isVirtual;
 
     const currentPayload: PendingLaunchData = { option, playerCount, location, locationId, extra };
 
-    // 即時讀取解鎖狀態，確保無須重刷頁面也能秒生效
+    // 即時讀取解鎖狀態
     const isCurrentlyUnlocked = localStorage.getItem('advance_user') === 'true';
+
 
     // 攔截條件：解鎖進階使用者 && 是簡易遊戲
     if (isCurrentlyUnlocked && isSimple) {

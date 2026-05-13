@@ -26,7 +26,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
     const { status, errorMessage, tokenUsage, processAndGenerate, reset } = useAiGenerator();
     
     // 引擎切換狀態，預設選取穩定主力 gemini-2.5-flash-lite
-    type ModelType = 'gemini-2.5-flash-lite' | 'gemini-2.5-flash' | 'gemini-3.1-flash-lite' | 'gemini-3-flash-preview';
+    type ModelType = 'gemini-2.5-flash-lite' | 'gemini-2.5-flash' | 'gemini-3.1-flash-lite' | 'gemma-4-26b-a4b-it';
     const [selectedModel, setSelectedModel] = useState<ModelType>('gemini-2.5-flash-lite');
     
     // 🌟 核心升級：檔案緩衝池與預覽 URL 緩存
@@ -101,6 +101,9 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                 inputCostPer1M = 0.30;  // 2.5 推理主力
                 outputCostPer1M = 2.50;
             }
+        } else if (model.includes('gemma')) {
+            inputCostPer1M = 0.06;  // Gemma 4 極致佛系開放架構
+            outputCostPer1M = 0.30;
         } else if (model.includes('lite')) {
             // 其他系列的 Lite 版本折半精算
             inputCostPer1M = 0.0375;
@@ -374,7 +377,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                             </p>
                              {/* 引擎效能控制台 (2x2 高科技 Grid) */}
                              <div className="grid grid-cols-2 gap-2 mb-5 p-1.5 bg-surface-bg-alt/50 rounded-xl border border-surface-border/60">
-                                 {(['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-3.1-flash-lite', 'gemini-3-flash-preview'] as const).map((model) => {
+                                 {(['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-3.1-flash-lite', 'gemma-4-26b-a4b-it'] as const).map((model) => {
                                      const isSelected = selectedModel === model;
                                      return (
                                          <button
