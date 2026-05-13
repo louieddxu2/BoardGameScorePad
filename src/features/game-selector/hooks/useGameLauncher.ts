@@ -104,9 +104,9 @@ export const useGameLauncher = ({
     locationId?: string, 
     extra?: { startTimeStr?: string, scoringRule?: ScoringRule }
   ) => {
-    // 官方極簡判定契約：當 option.templateId 存在時，代表該遊戲已有「專屬計分板結構」，不該被當成簡易板！
-    const isVirtual = option.uid === '__CREATE_NEW__';
-    const isSimple = !option.templateId && !isVirtual;
+    // 官方最正統判定契約：只要沒有 templateId，它在資料庫中就沒有既定結構，必然是簡易板！
+    // (這包含使用者輸入全新名稱所觸發的 __CREATE_NEW__ 選項)
+    const isSimple = !option.templateId;
 
     const currentPayload: PendingLaunchData = { option, playerCount, location, locationId, extra };
 
