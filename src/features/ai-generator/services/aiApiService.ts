@@ -79,15 +79,53 @@ export const callAiScoreboardApi = async (
             throw new Error('ai_error_invalid_json');
         }
 
-        // 🌟 【前端膨脹大智慧模式】：將資料組裝的體力活推給瀏覽器，解放 AI 壓力
+        // 🌟 【前端自我膨脹引擎】：將資料與結構換算體力活推給瀏覽器，解放 AI 認知壓力
+        const colorMap: Record<string, string> = {
+            '\u7da0': '#10b981', '\u85cd': '#3b82f6', '\u9ec3': '#facc15', '\u7d05': '#ef4444', // 綠, 藍, 黃, 紅
+            '\u6a58': '#f97316', '\u6a59': '#f97316', '\u7d2b': '#8b5cf6', '\u9ed1': '#1f2937', // 橘, 橙, 紫, 黑
+            '\u7c89': '#ec4899', '\u9752': '#06b6d4', '\u7425': '#f59e0b', '\u677e': '#14b8a6', // 粉, 青, 琥, 松
+            '\u68d5': '#a16207', '\u8910': '#a16207', '\u7070': '#6b7280',                      // 棕, 褐, 灰
+            'green': '#10b981', 'blue': '#3b82f6', 'yellow': '#facc15', 'red': '#ef4444',
+            'orange': '#f97316', 'purple': '#8b5cf6', 'black': '#1f2937', 'pink': '#ec4899',
+            'cyan': '#06b6d4', 'amber': '#f59e0b', 'turquoise': '#14b8a6', 'brown': '#a16207', 'gray': '#6b7280', 'grey': '#6b7280'
+        };
+
         const inflatedColumns = result.columns.map((col: any) => {
+            let finalFormula = col.formula ?? 'a1';
+            let finalConstants = col.constants;
+
+            // 1. 智慧公式膨脹：偵測 "a1×3" 或 "a1*-2" 的直寫語法，自動轉譯為標準常數結構
+            if (typeof finalFormula === 'string') {
+                const multMatch = finalFormula.match(/a1\s*[×*xX]\s*(-?\d+(\.\d+)?)/);
+                if (multMatch) {
+                    const num = parseFloat(multMatch[1]);
+                    finalFormula = 'a1×c1';
+                    finalConstants = { c1: num };
+                }
+            }
+
+            // 2. 智慧顏色膨脹：將 "紅"、"藍色"、"blue" 等直覺字眼，膨脹回標準 Hex Code
+            let finalColor = col.color;
+            if (typeof finalColor === 'string' && !finalColor.startsWith('#')) {
+                const colorLower = finalColor.toLowerCase();
+                const matchKey = Object.keys(colorMap).find(key => colorLower.includes(key));
+                if (matchKey) {
+                    finalColor = colorMap[matchKey];
+                } else {
+                    // 無法識別則直接清空，避免髒資料污染 CSS
+                    finalColor = undefined;
+                }
+            }
+
             return {
                 ...col,
                 // 自動為欄位生成系統合規的 8 碼短 ID，消滅碰撞風險
                 id: generateId(8),
                 isScoring: col.isScoring ?? true,
                 inputType: col.inputType ?? 'keypad',
-                formula: col.formula ?? 'a1',
+                formula: finalFormula,
+                constants: finalConstants,
+                color: finalColor,
                 unit: col.unit ?? '',
                 // 若有按鈕，也自動幫按鈕配發系統 6 碼短 ID
                 quickActions: Array.isArray(col.quickActions)
@@ -101,6 +139,7 @@ export const callAiScoreboardApi = async (
 
         const finalTemplate: Partial<GameTemplate> = {
             ...result,
+            defaultScoringRule: result.defaultScoringRule || 'HIGHEST_WINS', // 系統自動保底預設模式
             columns: inflatedColumns
         };
 
