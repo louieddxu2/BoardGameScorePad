@@ -57,8 +57,8 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 > 範例：「家庭成員」每人 3 分、「守護者」每隻 5 分、「空地」每格 -1 分、「未滿房間」每間 -5 分
 
 **③ \`a1+next\` — 有多個同類項目，各自分數不同，需逐項輸入**
-當某個計分類別下有多個子項目（卡牌、板塊、建築等），每個分數不一樣，無法用單一倍率概括時，就用 \`a1+next\`。玩家會一個一個輸入每項分數，App 自動加總。
-> 範例：「發展卡」（每張卡分數不同，逐張輸入）、「建築物」（每棟分數不同）、「捐獻」（多筆不同金額）
+當某個計分類別下有多個子項目（卡牌、板塊、建築等），每個分數不一樣時，**必須優先合併為單一欄位**，使用 \`a1+next\`。**【強制規則】嚴禁將「卡牌 1、卡牌 2、卡牌 3」或多張目標卡拆成多個 \`a1\` 欄位浪費畫面！**
+> 範例：「發展卡」（每張卡分數不同，合併逐張輸入）、「目標卡」（多張卡不同分，合併逐項輸入）、「捐獻」（多筆不同金額）
 
 **如果用這三種都無法精確表達，再考慮以下四種進階公式。**
 
@@ -76,7 +76,7 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 > 農家樂「家庭成員」×3、貓島奇緣「未滿房間」×(-5)、超擠停車場「貨車」×4
 
 **3. \`a1+next\`** — 分項累加
-可用於有多筆不同數值需要分次累計時。
+可用於有多筆同類數值需要分次累計時。**【絕對禁令】嚴禁將多個同類卡牌/板塊拆成多個欄位佔版面，必須合併為單一的 \`a1+next\`！**
 > 農家樂「發展卡分數」：
 > \`\`\`json
 > {
@@ -125,11 +125,13 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 
 ---
 
-## \`name\` 命名規則
-- 只寫計分項目的**名稱本身**，不要包含公式、單位或倍率
-- ✅ \`"家庭成員"\` / ✅ \`"Family Members"\`
-- ❌ \`"家庭成員(×3分)"\` / ❌ \`"工人數量\\n(×3分)"\`
-- 名稱過長時用 \`\\n\` 換行：\`"發展卡\\n分數"\`
+## \`name\` 命名規則 (極度重要)
+- **【字數強制限制】項目名稱必須極度精簡，嚴禁照抄照片中的長句！理想長度為 2 至 4 個中文字，最多不得超過 6 個字。**
+- **【贅詞過濾規則】提煉核心名詞，去除「得分」、「加分」、「分數」、「結算」、「獎勵」等無效尾綴。**
+- ❌ 照抄冗長：\`"最長道路加分"\` / ❌ \`"持有資源數量結算得分"\` / ❌ \`"發展卡獎勵分"\`
+- ✅ 極簡核心：\`"最長道路"\` / ✅ \`"持有資源"\` / ✅ \`"發展卡"\`
+- **嚴禁**包含公式、單位或倍率（❌ \`"家庭成員(×3)"\`）
+- 名稱過長非要折行時才用 \`\\n\`：\`"發展卡\\n分數"\`
 
 ---
 
@@ -273,9 +275,9 @@ Use \`a1\` if the item represents a direct score already written on cards, the b
 Use \`a1×c1\` for fixed multipliers ("Each X gets Y points"). App automatically multiplies it. Use negative multiplier for penalties.
 > Examples: "Family Members" gets 3 pts each, "Empty spaces" loses -1 pt each.
 
-**③ \`a1+next\` — Multiple items of same category with different scores, to be entered one by one**
-Use \`a1+next\` if there are multiple sub-items (e.g., different buildings, cards) each scoring differently. App sums them up.
-> Examples: "Development Cards" (each card has different points), "Buildings".
+**③ \`a1+next\` — Multiple items of the same type with different scores, to be entered step-by-step**
+If there are multiple sub-items (e.g. 3 Objective Cards, various buildings), **DO NOT** create multiple \`a1\` columns. **MUST** combine them into a single \`a1+next\` column to save screen space.
+> Examples: "Development Cards" (each card scores differently, merged and entered one-by-one), "Objective Cards", "Buildings".
 
 **If none of these three can express it, then consider the 4 advanced formulas below.**
 
@@ -293,7 +295,7 @@ Multiply sign MUST use the full-width character \`×\`.
 > Agricola "Family Members" ×3, Isle of Cats "Empty Rooms" ×(-5).
 
 **3. \`a1+next\`** — Step-by-step accumulation
-Used when multiple different values need step-by-step logging.
+Used when multiple different values need step-by-step logging. **【MANDATORY MERGE】Never create multiple rows for similar cards; combine them into a single \`a1+next\`.**
 > Agricola "Development Cards":
 > \`\`\`json
 > {
@@ -342,11 +344,13 @@ Set \`"inputType": "clicker"\` and \`"quickActions": [{"label": "label", "value"
 
 ---
 
-## \`name\` Naming Rules
-- ONLY write the **name itself**, DO NOT include formulas, units, or multipliers
-- ✅ \`"Family Members"\`
-- ❌ \`"Family Members (x3)"\` / ❌ \`"Workers\\n(x3)"\`
-- Use \`\\n\` for wrapping long names.
+## \`name\` Naming Rules (CRITICAL)
+- **【Length Restriction】Keep names extremely short! Aim for 1 to 3 words. DO NOT copy long sentences from the photo/rules.**
+- **【Distillation Rule】Remove fluff words like "Bonus", "Points", "Scoring", "Total", "Reward". Focus purely on the core noun.**
+- ❌ Long text: \`"Longest Road Bonus Points"\` / ❌ \`"Resource Collection Total Scoring"\`
+- ✅ Distilled: \`"Longest Road"\` / ✅ \`"Resource Collection"\`
+- DO NOT include formulas, units, or multipliers.
+- Use \`\\n\` for wrapping if necessary.
 
 ---
 
