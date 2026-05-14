@@ -70,11 +70,11 @@ export const callAiScoreboardApi = async (
 
         const rawResponse = await response.json();
 
-        // 🌟 智慧診斷攔截：若後端回報解析失敗，將診斷資料打包拋出
-        if (rawResponse && rawResponse.error === 'json_parse_failed') {
+        // 🌟 智慧診斷攔截：若後端回報解析失敗或伺服器錯誤，將診斷資料打包拋出
+        if (rawResponse && (rawResponse.error === 'json_parse_failed' || rawResponse.error === 'server_error')) {
             const diagnosticInfo = JSON.stringify({
-                raw: rawResponse.rawResponse,
-                error: rawResponse.parseErrorMessage
+                raw: rawResponse.rawResponse || 'N/A',
+                error: rawResponse.parseErrorMessage || rawResponse.message || 'Unknown server error'
             });
             throw new Error(`ai_error_json_parse_failed|${diagnosticInfo}`);
         }

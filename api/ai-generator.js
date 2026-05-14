@@ -127,6 +127,11 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('[Serverless Node.js API Error]', error);
-    return res.status(500).json({ error: error.message });
+    // 🛡️ 最終診斷保障：即使後端崩潰，也將錯誤訊息打包回傳，讓前端診斷 UI 能捕捉
+    return res.status(200).json({ 
+      error: 'server_error', 
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 }
