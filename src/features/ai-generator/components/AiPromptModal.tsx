@@ -439,10 +439,10 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                         )}
                     </div>
 
-                    {/* Content Container */}
-                    {errorMessage && renderError()}
-                    
-                    {generatedTemplate ? (
+                    {/* Content Container: 獨佔式渲染判斷邏輯 */}
+                    {errorMessage ? (
+                        renderError()
+                    ) : generatedTemplate ? (
                         renderSuccessResult()
                     ) : isProcessing ? (
                         renderLoadingStatus()
