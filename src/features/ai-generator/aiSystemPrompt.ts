@@ -119,52 +119,52 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 // ============================================================================
 // 🧠 英文版 (SYSTEM_PROMPT_EN)
 // ============================================================================
-export const SYSTEM_PROMPT_EN = \`# Board Game Scoreboard Converter (Lite)
+export const SYSTEM_PROMPT_EN = `# Board Game Scoreboard Converter (Lite)
 
 Please extract all scoring items from the game name and rules image provided by me, and generate JSON according to the format below.
 
 ## Output Format
 Pure JSON, no extra explanation. Top-level structure:
-\\\`\\\`\\\`json
+\`\`\`json
 {
   "name": "Game Name",
   "columns": [ ... ]
 }
-\\\`\\\`\\\`
+\`\`\`
 
 ## Column Properties
 | Property | Req | Description |
 |---|---|---|
-| \\\`name\\\` | ✅ | Item name. Shorten to 1-3 words. Use \\\`\\\\n\\\` for wrapping. *Ex: "Longest Road"* |
-| \\\`explain\\\` | | Ultra-short logic, under 8 words |
-| \\\`formula\\\` | ✅ | Scoring formula. See formula table below |
-| \\\`unit\\\` | | Measurement unit for input numbers. (Ex: animal is "pcs", card counts is "cards") |
-| \\\`subUnits\\\` | | Labels for multiplied formula inputs |
-| \\\`color\\\` | | If clear visually, represent with ONE keyword: "Red", "Blue", "Yellow", "Green", "Orange", "Purple", "Black", "Gray", "Brown" |
-| \\\`quickActions\\\` | | For button menu, write label array and score array. See formula table |
-| \\\`functions\\\` | | Chart lookup mapping definitions. See below |
+| \`name\` | ✅ | Item name. Shorten to 1-3 words. Use \`\\n\` for wrapping. *Ex: "Longest Road"* |
+| \`explain\` | | Ultra-short logic, under 8 words |
+| \`formula\` | ✅ | Scoring formula. See formula table below |
+| \`unit\` | | Measurement unit for input numbers. (Ex: animal is "pcs", card counts is "cards") |
+| \`subUnits\` | | Labels for multiplied formula inputs |
+| \`color\` | | If clear visually, represent with ONE keyword: "Red", "Blue", "Yellow", "Green", "Orange", "Purple", "Black", "Gray", "Brown" |
+| \`quickActions\` | | For button menu, write label array and score array. See formula table |
+| \`functions\` | | Chart lookup mapping definitions. See below |
 
 ---
 
 ## Formula Table (7 Modes)
-Choose formula based on scoring method, prioritize the first 3. Use full-width \\\`×\\\`.
+Choose formula based on scoring method, prioritize the first 3. Use full-width \`×\`.
 
 ### 🟢 Basic Formulas
-1. **\\\`a1\\\`** (Direct Value): Single point source. *Ex: "Scoretrack Points"*
-2. **\\\`a1×multiplier\\\`** (Multiplier): *Ex: Each worker gets 3 pts -> \\\`a1×3\\\`*
-3. **\\\`a1+next\\\`** (Accumulator): For items requiring multiple entries. *Ex: "Score for each individual card"*
+1. **\`a1\`** (Direct Value): Single point source. *Ex: "Scoretrack Points"*
+2. **\`a1×multiplier\`** (Multiplier): *Ex: Each worker gets 3 pts -> \`a1×3\`*
+3. **\`a1+next\`** (Accumulator): For items requiring multiple entries. *Ex: "Score for each individual card"*
 
 ### 🟠 Advanced Formulas
-4. **\\\`a1×a2\\\`** (Multiplication): Both inputs manual. *Requires \\\`subUnits\\\`, e.g., \\\`["Pcs", "Stars"]\\\`*
-5. **\\\`(a1×a2)+next\\\`** (Accumulated Multiplications): Multiple [Tiles × Crowns] logged step-by-step.
-6. **\\\`f1(a1)\\\`** (Chart Lookup): Step function mapping. Write \\\`[count]>[points]\\\` in \\\`functions.f1\\\`.
-7. **\\\`a1\\\`** + Buttons (Button Menu): Write \\\`['Label']>[points]\\\` in \\\`quickActions\\\`.
+4. **\`a1×a2\`** (Multiplication): Both inputs manual. *Requires \`subUnits\`, e.g., \`["Pcs", "Stars"]\`*
+5. **\`(a1×a2)+next\`** (Accumulated Multiplications): Multiple [Tiles × Crowns] logged step-by-step.
+6. **\`f1(a1)\`** (Chart Lookup): Step function mapping. Write \`[count]>[points]\` in \`functions.f1\`.
+7. **\`a1\`** + Buttons (Button Menu): Write \`['Label']>[points]\` in \`quickActions\`.
 
 ---
 
 ## Full Ground Truth Example
 
-\\\`\\\`\\\`json
+\`\`\`json
 {
   "name": "Sample Game",
   "columns": [
@@ -208,11 +208,11 @@ Choose formula based on scoring method, prioritize the first 3. Use full-width \
       }
     },
     {
-      "name": "Central Castle\\\\nRequirement",
+      "name": "Central Castle\\nRequirement",
       "formula": "a1",
       "quickActions": "['Yes','No']>[10,0]"
     }
   ]
 }
-\\\`\\\`\\\`
-\`;
+\`\`\`
+`;
