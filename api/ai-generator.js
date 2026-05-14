@@ -100,8 +100,13 @@ export default async function handler(req, res) {
     const geminiResult = await apiResponse.json();
     const generatedText = geminiResult.candidates?.[0]?.content?.parts?.[0]?.text;
 
+    // 🌟 診斷強化：如果 AI 輸出為空（可能是被 Safety Filter 攔截），將完整結果打包回傳
     if (!generatedText) {
-      return res.status(500).json({ error: 'AI generated empty response' });
+      return res.status(200).json({ 
+        error: 'json_parse_failed', 
+        rawResponse: 'AI 回傳內容為空 (可能是被 Google 安全過濾器攔截)',
+        parseErrorMessage: `Full API Response: ${JSON.stringify(geminiResult)}`
+      });
     }
 
     // 🌟 診斷強化：清理 Markdown 標籤並嘗試解析
