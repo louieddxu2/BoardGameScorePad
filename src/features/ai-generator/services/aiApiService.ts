@@ -70,6 +70,15 @@ export const callAiScoreboardApi = async (
 
         const rawResponse = await response.json();
 
+        // 🌟 智慧診斷攔截：若後端回報解析失敗，將診斷資料打包拋出
+        if (rawResponse && rawResponse.error === 'json_parse_failed') {
+            const diagnosticInfo = JSON.stringify({
+                raw: rawResponse.rawResponse,
+                error: rawResponse.parseErrorMessage
+            });
+            throw new Error(`ai_error_json_parse_failed|${diagnosticInfo}`);
+        }
+
         // 🌟 智慧相容解析器：後端可能回傳 { data, usage }，也可能直拋裸 JSON
         const isWrapped = rawResponse && rawResponse.data !== undefined;
         const result = isWrapped ? rawResponse.data : rawResponse;

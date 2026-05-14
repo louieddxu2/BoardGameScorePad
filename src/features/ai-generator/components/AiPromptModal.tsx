@@ -50,6 +50,23 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         return () => objectUrls.forEach(url => URL.revokeObjectURL(url));
     }, [queuedFiles]);
 
+    const [elapsedTime, setElapsedTime] = useState<number>(0);
+    const [showDebug, setShowDebug] = useState<boolean>(false);
+
+    // 🕒 計時器：在生成期間啟動，讓使用者感知進度
+    useEffect(() => {
+        let interval: any;
+        if (status === 'generating') {
+            const startTime = Date.now();
+            interval = setInterval(() => {
+                setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+            }, 1000);
+        } else {
+            setElapsedTime(0);
+        }
+        return () => clearInterval(interval);
+    }, [status]);
+
     if (!isOpen) return null;
 
     // 處理圖片加入事件 (來自相簿多選)
@@ -118,6 +135,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
     // 🏁 最終集中提交大典禮
     const handleSubmit = async () => {
         if (queuedFiles.length === 0) return;
+        setShowDebug(false); // 重置除錯狀態
 
         const result = await processAndGenerate(queuedFiles, gameName, selectedModel);
         
@@ -135,18 +153,30 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         else if (status === 'success') text = t('status_success');
         
         return (
-            <div className="flex flex-col items-center justify-center py-8 animate-in fade-in zoom-in-95 duration-300">
-                <div className="relative mb-4">
+            <div className="flex flex-col items-center justify-center py-10 animate-in fade-in zoom-in-95 duration-300">
+                <div className="relative mb-6">
                     <div className="absolute inset-0 bg-brand-primary/20 rounded-full animate-ping scale-150"></div>
-                    <div className="relative bg-brand-primary/10 p-4 rounded-full text-brand-primary">
+                    <div className="relative bg-brand-primary/10 p-5 rounded-full text-brand-primary border border-brand-primary/20">
                         {status === 'success' ? (
-                            <Sparkles size={32} className="animate-bounce" />
+                            <Sparkles size={40} className="animate-bounce" />
                         ) : (
-                            <Loader2 size={32} className="animate-spin" />
+                            <Loader2 size={40} className="animate-spin" />
                         )}
                     </div>
                 </div>
-                <p className="text-txt-primary font-bold text-lg animate-pulse">{text}</p>
+                <div className="text-center space-y-2">
+                    <p className="text-txt-primary font-black text-xl tracking-tight">{text}</p>
+                    {status === 'generating' && (
+                        <div className="space-y-1">
+                            <p className="text-brand-primary font-mono text-sm font-bold bg-brand-primary/5 px-3 py-1 rounded-full border border-brand-primary/10 inline-block">
+                                {elapsedTime}s
+                            </p>
+                            <p className="text-txt-muted text-[11px] font-medium opacity-60">
+                                {selectedModel}
+                            </p>
+                        </div>
+                    )}
+                </div>
             </div>
         );
     };
@@ -297,22 +327,73 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         );
     };
 
-    // 渲染錯誤狀態
+    // 渲染錯誤狀態 (包含診斷模式)
     const renderError = () => {
-        // 將 API 回傳的 error key 對應到 i18n
         let displayError = t('error_generic');
+        let diagnostic: { raw: string; error: string } | null = null;
+
         if (errorMessage === 'ai_error_rate_limit') displayError = t('error_rate_limit');
-        if (errorMessage === 'ai_error_invalid_json') displayError = t('error_invalid_json');
+        else if (errorMessage === 'ai_error_invalid_json') displayError = t('error_invalid_json');
+        else if (errorMessage?.startsWith('ai_error_json_parse_failed|')) {
+            displayError = "AI 回傳格式解析失敗 (JSON Parse Error)";
+            try {
+                const jsonStr = errorMessage.split('|')[1];
+                diagnostic = JSON.parse(jsonStr);
+            } catch (e) {
+                console.error('Failed to parse diagnostic info');
+            }
+        }
 
         return (
-            <div className="bg-status-danger/10 border border-status-danger/20 rounded-xl p-4 mb-6 flex gap-3 items-start animate-in slide-in-from-top-2">
-                <AlertCircle size={20} className="text-status-danger shrink-0 mt-0.5" />
-                <div className="flex-1">
-                    <p className="text-sm font-medium text-status-danger leading-relaxed">{displayError}</p>
+            <div className="space-y-3 mb-6 animate-in slide-in-from-top-2 duration-300">
+                <div className="bg-status-danger/10 border border-status-danger/20 rounded-xl p-4 flex gap-3 items-start shadow-sm">
+                    <AlertCircle size={20} className="text-status-danger shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                        <p className="text-sm font-bold text-status-danger leading-relaxed">{displayError}</p>
+                        <p className="text-[11px] text-status-danger/70 mt-1">請嘗試再次生成，或更換模型測試。</p>
+                    </div>
+                    <button onClick={reset} className="text-txt-muted hover:text-txt-primary p-1 bg-white/5 rounded-full">
+                        <X size={16} />
+                    </button>
                 </div>
-                <button onClick={reset} className="text-txt-muted hover:text-txt-primary p-1">
-                    <X size={16} />
-                </button>
+
+                {/* 🔍 診斷報告區域：僅在解析失敗時顯示 */}
+                {diagnostic && (
+                    <div className="bg-surface-bg-alt border border-surface-border rounded-xl overflow-hidden shadow-sm">
+                        <button 
+                            onClick={() => setShowDebug(!showDebug)}
+                            className="w-full flex justify-between items-center px-4 py-2.5 text-[11px] font-bold text-txt-secondary hover:bg-black/10 transition-colors"
+                        >
+                            <span className="flex items-center gap-2">
+                                <Terminal size={14} />
+                                檢視 AI 原始回傳報告
+                            </span>
+                            <span className={`transition-transform duration-300 ${showDebug ? 'rotate-180' : ''}`}>
+                                <ChevronDown size={14} />
+                            </span>
+                        </button>
+                        
+                        {showDebug && (
+                            <div className="px-4 pb-4 space-y-3 animate-in slide-in-from-top-1 duration-200">
+                                <div className="space-y-1">
+                                    <span className="text-[10px] uppercase tracking-wider text-txt-muted font-black">Error Trace</span>
+                                    <div className="p-2 bg-black/40 rounded border border-white/5 font-mono text-[10px] text-status-danger/90 break-all leading-tight">
+                                        {diagnostic.error}
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-[10px] uppercase tracking-wider text-txt-muted font-black">Raw Response (AI 原始輸出)</span>
+                                    <div className="p-2 bg-black/40 rounded border border-white/5 font-mono text-[10px] text-txt-primary/80 max-h-48 overflow-y-auto whitespace-pre-wrap leading-normal scrollbar-thin">
+                                        {diagnostic.raw}
+                                    </div>
+                                </div>
+                                <p className="text-[10px] text-txt-muted italic">
+                                    * 提示：這通常是提示詞不夠嚴謹，導致模型輸出了非 JSON 的贅詞。
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         );
     };

@@ -104,9 +104,11 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'AI generated empty response' });
     }
 
-    // 🌟 智慧打包：將 AI JSON 與 Token Usage 一起傳回
+    // 🌟 診斷強化：清理 Markdown 標籤並嘗試解析
     try {
-      const parsedData = JSON.parse(generatedText);
+      // 移除 AI 可能夾帶的 ```json 或 ``` 標籤
+      const cleanJson = generatedText.replace(/```json\n?|```/g, '').trim();
+      const parsedData = JSON.parse(cleanJson);
       const usage = geminiResult.usageMetadata;
       
       return res.status(200).json({
@@ -114,8 +116,13 @@ export default async function handler(req, res) {
         usage: usage || undefined
       });
     } catch (parseError) {
-      // 若 JSON 格式異常，則直接噴出原始文字
-      return res.status(200).send(generatedText);
+      // 🛡️ 診斷透傳：如果解析失敗，回傳 200 並帶上原始文字，方便前端校稿
+      console.error('[JSON Parse Error]', parseError);
+      return res.status(200).json({
+        error: 'json_parse_failed',
+        rawResponse: generatedText,
+        parseErrorMessage: parseError.message
+      });
     }
 
   } catch (error) {
