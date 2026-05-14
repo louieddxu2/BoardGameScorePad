@@ -23,7 +23,7 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 | 屬性 | 必填 | 說明 |
 |---|---|---|
 | \`name\` | ✅ | 項目名稱。精簡為 6 字以內，超過 4 字適當用 \`\\n\` 換行。*例：「最長道路」* |
-| \`explain\` | | 先簡要解釋此項目在規則上的計分方式，作為推導公式的思考輔助 |
+| `explain` | | 計分邏輯極簡概述 (嚴格限 8 字內)，作為推導公式的思考輔助 |
 | \`formula\` | ✅ | 計分公式。見下方公式表 |
 | \`unit\` | | 根據此項目要求使用者輸入數值的量詞。(如：動物為「隻」、卡片數量為「張」，大多物體通用的「個」) |
 | \`subUnits\` | | 若用兩數相乘公式，填寫兩個相乘項目的量詞，如 \`["星", "個"]\` |
@@ -69,38 +69,36 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
   "columns": [
     {
       "name": "終點分數",
-      "explain": "遊戲結束時在地圖上的最終得分軌分數",
       "formula": "a1",
       "unit": "分"
     },
     {
       "name": "家庭成員",
-      "explain": "每擁有一名家庭成員可獲得3分",
       "formula": "a1×3",
       "unit": "人"
     },
     {
       "name": "發展卡",
-      "explain": "將持有的每張發展卡分數個別輸入並加總",
+      "explain": "分項輸入分數並加總",
       "formula": "a1+next"
     },
     {
       "name": "住宅",
-      "explain": "住宅的星級數乘以擁有的住宅數量",
+      "explain": "星級乘以住宅數量",
       "formula": "a1×a2",
       "subUnits": ["星", "個"],
       "color": "藍"
     },
     {
       "name": "麥田地形",
-      "explain": "每格麥田乘上皇冠的數量，不同麥田需分開計算並加總",
+      "explain": "格數乘皇冠並累加",
       "formula": "(a1×a2)+next",
       "subUnits": ["格", "冠"],
       "color": "綠"
     },
     {
       "name": "麥子存量",
-      "explain": "0個扣1分，1個到2個1分，3個到5個3分，超過5個每個多2分",
+      "explain": "階梯扣分與倍增",
       "formula": "f1(a1)",
       "unit": "份",
       "functions": {
@@ -109,7 +107,7 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
     },
     {
       "name": "是否符合\\n中央城堡",
-      "explain": "確認是否達成中央城堡的建設條件",
+      "explain": "檢查建設條件是否達成",
       "formula": "a1",
       "quickActions": "['是','否']>[10,0]"
     }
@@ -138,7 +136,7 @@ Output ONLY pure JSON, NO explanations. Top-level structure:
 | Property | Req | Description |
 |---|---|---|
 | \`name\` | ✅ | Item name. Shorten to 1-3 words. Use \`\\n\` for wrapping. *Ex: "Longest Road"* |
-| \`explain\` | | Briefly explain how this item scores according to the rules, as a thinking aid |
+| `explain` | | Ultra-short scoring logic (strictly < 10 words) as a thinking aid |
 | \`formula\` | ✅ | Scoring formula. See formula table below |
 | \`unit\` | | Measurement unit for input numbers. (Ex: animal is "pcs", card counts is "cards") |
 | \`subUnits\` | | Labels for multiplied formula inputs, e.g. \`["Stars", "Tiles"]\` |
@@ -194,24 +192,26 @@ Choose formula based on scoring method, prioritize the first 3. Use full-width \
     },
     {
       "name": "Objectives",
+      "explain": "Sum of objective scores",
       "formula": "a1+next"
     },
     {
       "name": "Housing",
+      "explain": "Stars multiplied by qty",
       "formula": "a1×a2",
       "subUnits": ["Stars", "Tiles"],
       "color": "Blue"
     },
     {
       "name": "Wheat Fields",
-      "explain": "Multiply the number of wheat tiles by crowns, sum up separately for each field",
+      "explain": "Tiles x Crowns, summed",
       "formula": "(a1×a2)+next",
       "subUnits": ["Tiles", "Crowns"],
       "color": "Green"
     },
     {
       "name": "Wheat Store",
-      "explain": "0 gives -1pt, 1-2 gives 1pt, 3-5 gives 3pt, over 5 adds 2pt each",
+      "explain": "Stepped penalty & bonus",
       "formula": "f1(a1)",
       "unit": "units",
       "functions": {
@@ -220,6 +220,7 @@ Choose formula based on scoring method, prioritize the first 3. Use full-width \
     },
     {
       "name": "Central Castle\\nRequirement",
+      "explain": "Check if criteria met",
       "formula": "a1",
       "quickActions": "['Yes','No']>[10,0]"
     }
