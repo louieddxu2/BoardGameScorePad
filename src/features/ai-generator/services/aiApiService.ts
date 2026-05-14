@@ -248,6 +248,7 @@ export const callAiScoreboardApi = async (
             const colId = generateId(8);
             
             // 5. 自動化變數對應 (Auto-Variable Mapping)：讓 a1 自動指向自己
+            // 這是讓計分引擎能運作的「靈魂」，必須確保 a1 綁定到正確的欄位 ID
             let finalVariableMap = col.variableMap;
             if (!finalVariableMap && (finalFormula.includes('a1') || (finalFunctions && finalFunctions.f1))) {
                 finalVariableMap = {
