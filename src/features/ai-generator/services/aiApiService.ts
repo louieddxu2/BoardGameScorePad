@@ -247,10 +247,21 @@ export const callAiScoreboardApi = async (
 
             const colId = generateId(8);
             
-            // 5. 自動化變數對應 (Auto-Variable Mapping)：讓 a1 自動指向自己
-            // 這是讓計分引擎能運作的「靈魂」，必須確保 a1 綁定到正確的欄位 ID
+            // 5. 結構正規化 (Structural Normalization)
+            // 將 f1 提升至最外層 (Legacy 相容性)，並補全 isLinear: false
+            let finalF1 = col.f1;
+            if (finalFunctions && finalFunctions.f1) {
+                finalF1 = (finalFunctions.f1 as any[]).map(r => ({
+                    ...r,
+                    isLinear: r.isLinear ?? false
+                }));
+                // 如果已經提升至外層，則從 functions 中移除以保持乾淨
+                delete finalFunctions.f1;
+            }
+
+            // 6. 自動化變數對應 (Auto-Variable Mapping)
             let finalVariableMap = col.variableMap;
-            if (!finalVariableMap && (finalFormula.includes('a1') || (finalFunctions && finalFunctions.f1))) {
+            if (!finalVariableMap && (finalFormula.includes('a1') || finalF1)) {
                 finalVariableMap = {
                     a1: { id: colId }
                 };
@@ -260,13 +271,14 @@ export const callAiScoreboardApi = async (
                 ...col,
                 id: colId,
                 isScoring: col.isScoring ?? true,
-                isAuto: !!finalFormula && finalFormula !== 'a1', // 有公式就設為自動計算
+                isAuto: !!finalFormula && finalFormula !== 'a1',
                 inputType: finalInputType,
                 formula: finalFormula,
                 variableMap: finalVariableMap,
                 constants: finalConstants,
                 color: finalColor,
                 unit: col.unit ?? '',
+                f1: finalF1, // 提升後的 f1
                 functions: finalFunctions,
                 quickActions: finalQuickActions
             };
