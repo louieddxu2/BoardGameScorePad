@@ -1,10 +1,7 @@
+// api/ai-generator.js (Vercel Node.js Serverless)
+// 升級為 Node.js Runtime 以支援 60 秒超長時限 (maxDuration)
 
-// api/ai-generator.js (Vercel Edge Runtime)
-// 這個檔案會自動被 Vercel 識別為後端 API 路由，對應路徑為 /api/ai-generator
-
-export const config = {
-  runtime: 'edge',
-};
+export const maxDuration = 60; // 🚀 關鍵：將超時上限提升至 60 秒 (Hobby 計畫上限)
 
 export default async function handler(req) {
   // 僅允許 POST 請求
@@ -19,26 +16,24 @@ export default async function handler(req) {
   }
 
   try {
-    // 1. 解析從瀏覽器前端傳來的 FormData
+    // 1. 解析從瀏覽器前端傳來的 FormData (Node.js 18+ 支援 Web Request API)
     const formData = await req.formData();
     const systemPrompt = formData.get('systemPrompt');
     const gameName = formData.get('gameName');
     const language = formData.get('language');
 
-    // 動態取得使用者選擇的模型，預設為極速版 Lite，可由前端動態傳入
-    const requestedModel = formData.get('modelName') || 'gemini-3.1-flash-lite';
+    // 動態取得使用者選擇的模型，預設為極速版 Lite
+    const requestedModel = formData.get('modelName') || 'gemini-2.5-flash-lite';
 
-    // 2. 提取所有圖片檔案，並高效轉換為 Base64 供 Google API 使用
+    // 2. 提取所有圖片檔案，並轉換為 Base64 (Node.js 優化版)
     const geminiParts = [];
 
     for (const [key, value] of formData.entries()) {
-      // 我們在前端是命名為 image_0, image_1...
       if (key.startsWith('image_') && value instanceof File) {
         const buffer = await value.arrayBuffer();
-        // 利用原生 Uint8Array 將二進位轉為 Base64 字串
-        const base64 = btoa(
-          new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-        );
+        
+        // ⚡ Node.js 效能優化：改用 Buffer 直接轉換，避免 Edge Runtime 的手動迴圈拼接
+        const base64 = Buffer.from(buffer).toString('base64');
 
         geminiParts.push({
           inlineData: {
