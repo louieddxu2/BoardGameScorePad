@@ -40,17 +40,17 @@ describe('aiApiService - callAiScoreboardApi Expansion Logic', () => {
     // 🚩 驗證 2: 對齊內建標準，自引用公式不應產生 variableMap
     expect(fieldCol.variableMap).toBeUndefined();
 
-    // 🚩 驗證 3: 自引用欄位不應該是 isAuto，且多餘屬性應被剪裁
+    // 🚩 驗證 3: 自引用欄位不應該是 isAuto (被剪除)，但基礎屬性應保留 (對齊內建顯式風格)
     expect(fieldCol.isAuto).toBeUndefined();
-    expect(fieldCol.rounding).toBeUndefined();
-    expect(fieldCol.displayMode).toBeUndefined();
+    expect(fieldCol.rounding).toBe('none');
+    expect(fieldCol.inputType).toBe('keypad');
 
-    // 🚩 驗證 4: 負數倍率膨脹，且因為是自引用，也不應有 variableMap
+    // 🚩 驗證 4: 負數倍率膨脹
     const spaceCol = template.columns![1];
     expect(spaceCol.formula).toBe('a1×c1');
     expect(spaceCol.constants?.c1).toBe(-1);
-    expect(spaceCol.variableMap).toBeUndefined();
     expect(spaceCol.isAuto).toBeUndefined();
+    expect(spaceCol.isScoring).toBe(true);
 
     vi.unstubAllGlobals();
   });

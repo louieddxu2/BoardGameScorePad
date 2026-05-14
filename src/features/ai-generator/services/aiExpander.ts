@@ -111,6 +111,14 @@ export const inflateScoringColumn = (col: any): any => {
         }
     }
 
+    // 1. 基礎屬性補全 (確保後續邏輯一致)
+    const finalRounding = col.rounding || 'none';
+    const finalDisplayMode = col.displayMode || 'row';
+    const finalUnit = col.unit || '';
+    const finalIsScoring = col.isScoring ?? true;
+
+    // 2. 名稱與 ID
+    const name = col.name || 'Unknown';
     const colId = col.id || generateId(8);
     
     // 5. 結構正規化：將 f1 提升至最外層，補全 isLinear
@@ -140,26 +148,26 @@ export const inflateScoringColumn = (col: any): any => {
     const result: any = {
         ...col,
         id: colId,
-        isScoring: col.isScoring ?? true,
+        isScoring: finalIsScoring,
         isAuto: finalIsAuto,
         inputType: finalInputType,
         formula: finalFormula,
         variableMap: finalVariableMap,
         constants: finalConstants,
         color: finalColor,
-        unit: col.unit ?? '',
+        unit: finalUnit,
+        rounding: finalRounding,
+        displayMode: finalDisplayMode,
         f1: finalF1,
         functions: cleanFunctions,
         quickActions: finalQuickActions
     };
 
-    // 🌟 屬性剪裁：移除多餘的預設值，讓 JSON 像內建模板一樣精簡
-    if (result.rounding === 'none') delete result.rounding;
+    // 🌟 屬性剪裁：僅移除「真正」多餘且內建模板不寫的預設值
+    // 註：isScoring, inputType, rounding 雖然有預設值，但內建模板傾向於顯式寫出，故保留。
     if (result.displayMode === 'row') delete result.displayMode;
     if (result.isAuto === false) delete result.isAuto;
     if (result.unit === '') delete result.unit;
-    if (result.isScoring === true) delete result.isScoring;
-    if (result.inputType === 'keypad') delete result.inputType;
 
     return result;
 };
