@@ -5,11 +5,7 @@ import fs from 'fs';
 
 export const maxDuration = 60;
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+export const config = { api: { bodyParser: false } };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
@@ -38,8 +34,7 @@ export default async function handler(req, res) {
       if (key.startsWith('image_')) {
         const file = Array.isArray(files[key]) ? files[key][0] : files[key];
         if (file && file.filepath) {
-          const buffer = fs.readFileSync(file.filepath);
-          const base64 = buffer.toString('base64');
+          const base64 = fs.readFileSync(file.filepath).toString('base64');
           geminiParts.push({ inlineData: { mimeType: file.mimetype || "image/jpeg", data: base64 } });
         }
       }
@@ -62,47 +57,58 @@ export default async function handler(req, res) {
       body: JSON.stringify(apiRequestBody)
     });
 
-    if (!apiResponse.ok) {
-      const errorBody = await apiResponse.text();
-      return res.status(apiResponse.status).send(`Gemini API error: ${errorBody}`);
-    }
+    if (!apiResponse.ok) return res.status(apiResponse.status).send(`Gemini Error: ${await apiResponse.text()}`);
 
     const geminiResult = await apiResponse.json();
     const generatedText = geminiResult.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    if (!generatedText) {
-      return res.status(200).json({ error: 'json_parse_failed', rawResponse: 'AI generated empty response' });
-    }
+    if (!generatedText) return res.status(200).json({ error: 'json_parse_failed' });
 
     try {
       const cleanJson = generatedText.replace(/```json\n?|```/g, '').trim();
       let parsedData = JSON.parse(cleanJson);
       
-      // 🌟 核心修正：回歸最簡化對齊邏輯
+      // 🚀 核心對齊邏輯 (Expansion to Frontend Engine)
       if (parsedData.columns) {
         parsedData.columns = parsedData.columns.map(col => {
           let formula = col.formula || 'a1';
           
-          // 1. 僅做符號轉換：將全形 × 轉為半形 *
-          formula = formula.replace(/×/g, '*');
+          // 1. 處理倍率計分 (對齊 calculateColumnScore 的 === 'a1×c1' 邏輯)
+          const multiMatch = formula.match(/[×\*]\(?(-?\d+(\.\d+)?)\)?/);
+          if (multiMatch) {
+            const val = multiMatch[1];
+            formula = 'a1×c1'; // 強制對齊全形字串
+            col.constants = { c1: parseFloat(val) };
+          }
 
-          // 2. 處理按鈕選單 (['標籤']>[數值] ➔ actions(a1, actions))
+          // 2. 處理查表計分 (對齊 col.f1 欄位預期)
+          if (col.functions && col.functions.f1) {
+            // 將 AI 產生的 Map 格式還原為前端的 MappingRule 陣列
+            // 由於 AI 是照樣版輸出的，這裡保持 formula 開頭為 f1 即可觸發引擎
+            col.f1 = col.functions.f1; 
+          }
+
+          // 3. 處理按鈕選單 (轉換為 actions 格式)
           if (col.quickActions && typeof col.quickActions === 'string' && col.quickActions.includes('>')) {
             try {
               const [labelsPart, valuesPart] = col.quickActions.split('>');
               const labels = JSON.parse(labelsPart.replace(/'/g, '"'));
               const values = JSON.parse(valuesPart);
-              col.actions = labels.map((label, idx) => ({ label, value: values[idx] }));
-              formula = `actions(a1, actions)`;
-              delete col.quickActions;
-            } catch (e) { /* ignore */ }
+              col.quickActions = labels.map((label, idx) => ({ 
+                id: `opt_${idx}`, 
+                label, 
+                value: values[idx] 
+              }));
+              formula = 'a1'; // 按鈕選單在前端引擎會被 detect 為 clicker 並處理
+              col.inputType = 'clicker';
+            } catch (e) {}
           }
           
           return { ...col, formula };
         });
       }
       
-      return res.status(200).json({ data: parsedData, usage: geminiResult.usageMetadata });
+      return res.status(200).json({ data: parsedData });
     } catch (parseError) {
       return res.status(200).json({ error: 'json_parse_failed', rawResponse: generatedText });
     }
