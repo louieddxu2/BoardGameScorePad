@@ -65,7 +65,13 @@ export const callAiScoreboardApi = async (
         if (!response.ok) {
             const errorText = await response.text();
             console.error(`[AI Service] HTTP ${response.status}: ${errorText}`);
-            throw new Error(`ai_error_server_${response.status}`);
+            
+            // 🛡️ 診斷升級：將 HTTP 500/400 等伺服器錯誤也打包成診斷格式
+            const diagnosticInfo = JSON.stringify({
+                raw: `HTTP ${response.status} Error`,
+                error: errorText
+            });
+            throw new Error(`ai_error_json_parse_failed|${diagnosticInfo}`);
         }
 
         const rawResponse = await response.json();
