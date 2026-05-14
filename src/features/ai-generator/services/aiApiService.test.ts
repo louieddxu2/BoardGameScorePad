@@ -2,39 +2,48 @@ import { describe, it, expect, vi } from 'vitest';
 import { callAiScoreboardApi } from './aiApiService';
 
 describe('aiApiService - callAiScoreboardApi Expansion Logic', () => {
-  it('should correctly expand AI response within callAiScoreboardApi', async () => {
-    // 1. 模擬 Fetch 回應，包含極簡 AI 數據
+  it('should correctly expand AI response to match built-in template standards', async () => {
+    // 模擬 AI 回傳極簡數據
     const mockAiData = {
-      name: 'Test Game',
+      name: 'Agricola Style',
       columns: [
-        { name: 'Mult', formula: 'a1×(-5)', color: '紅' },
-        { name: 'Chart', formula: 'f1(a1)', functions: { f1: '[0,1]>[10,20]' } },
-        { name: 'Btns', quickActions: '["A","B"]>[1,2]' }
+        {
+          name: '農田',
+          formula: 'f1(a1)',
+          functions: { f1: '[0,2,3,4,5]>[-1,1,2,3,4]' }
+        },
+        {
+          name: '未使用空間',
+          formula: 'a1×(-1)'
+        }
       ]
     };
 
     const mockResponse = {
       ok: true,
       status: 200,
-      json: async () => ({ data: mockAiData, usage: { totalTokenCount: 100 } })
+      json: async () => ({ data: mockAiData })
     };
 
-    // 攔截全域 fetch
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mockResponse));
 
-    // 2. 執行 API 呼叫 (帶入假資料)
-    const result = await callAiScoreboardApi([], 'Test', 'zh-TW');
+    const result = await callAiScoreboardApi([], 'Agricola', 'zh-TW');
     const template = result.template;
 
-    // 3. 驗證膨脹是否在內部正確發生
-    const multCol = template.columns![0];
-    expect(multCol.formula).toBe('a1×c1');
-    expect(multCol.constants?.c1).toBe(-5);
+    // 🚩 驗證 1: f1 應該被提升至根目錄 (與內建模板一致)
+    const fieldCol = template.columns![0];
+    expect(fieldCol.f1).toBeDefined();
+    expect(fieldCol.f1![0].isLinear).toBe(false); // 應該自動補完 isLinear
 
-    // 🚩 關鍵驗證：a1 必須被對應到本欄位 ID，否則計分引擎無法運作
-    // 如果這裡失敗，說明我們的膨脹引擎目前只有「外殼」，沒有「靈魂」
-    expect(multCol.variableMap).toBeDefined();
-    expect(multCol.variableMap?.a1?.id).toBe(multCol.id);
+    // 🚩 驗證 2: 應該自動產生 variableMap (靈魂對應)
+    expect(fieldCol.variableMap).toBeDefined();
+    expect(fieldCol.variableMap?.a1?.id).toBe(fieldCol.id);
+
+    // 🚩 驗證 3: 負數倍率膨脹且 variableMap 同步產生
+    const spaceCol = template.columns![1];
+    expect(spaceCol.formula).toBe('a1×c1');
+    expect(spaceCol.constants?.c1).toBe(-1);
+    expect(spaceCol.variableMap?.a1?.id).toBe(spaceCol.id);
 
     vi.unstubAllGlobals();
   });

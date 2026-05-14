@@ -1,0 +1,161 @@
+import { GameTemplate } from "../../../types";
+import { generateId } from "../../../utils/idGenerator";
+
+/**
+ * 🌟 【前端自我膨脹引擎】：單個欄位的膨脹邏輯
+ * 負責將 AI 的極簡寫法轉換為計分引擎可執行的標準格式
+ */
+export const inflateScoringColumn = (col: any): any => {
+    const colorMap: Record<string, string> = {
+        '\u7da0': '#10b981', '\u85cd': '#3b82f6', '\u9ec3': '#facc15', '\u7d05': '#ef4444', // 綠, 藍, 黃, 紅
+        '\u6a58': '#f97316', '\u6a59': '#f97316', '\u7d2b': '#8b5cf6', '\u9ed1': '#1f2937', // 橘, 橙, 紫, 黑
+        '\u7c89': '#ec4899', '\u9752': '#06b6d4', '\u7425': '#f59e0b', '\u677e': '#14b8a6', // 粉, 青, 琥, 松
+        '\u68d5': '#a16207', '\u8910': '#a16207', '\u7070': '#6b7280',                      // 棕, 褐, 灰
+        'green': '#10b981', 'blue': '#3b82f6', 'yellow': '#facc15', 'red': '#ef4444',
+        'orange': '#f97316', 'purple': '#8b5cf6', 'black': '#1f2937', 'pink': '#ec4899',
+        'cyan': '#06b6d4', 'amber': '#f59e0b', 'turquoise': '#14b8a6', 'brown': '#a16207', 'gray': '#6b7280', 'grey': '#6b7280'
+    };
+
+    let finalFormula = col.formula ?? 'a1';
+    let finalConstants = col.constants;
+    let finalColor = col.color;
+    let finalInputType = col.inputType ?? 'keypad';
+    let finalQuickActions = col.quickActions;
+    let finalFunctions = col.functions;
+
+    // 1. 公式膨脹
+    if (typeof finalFormula === 'string') {
+        const multiMatch = finalFormula.match(/[×\*xX]\(?(-?\d+(\.\d+)?)\)?/);
+        if (multiMatch) {
+            const val = parseFloat(multiMatch[1]);
+            if (!isNaN(val)) {
+                finalFormula = 'a1×c1';
+                finalConstants = { ...finalConstants, c1: val };
+            }
+        }
+    }
+
+    // 2. 顏色膨脹
+    if (typeof finalColor === 'string' && !finalColor.startsWith('#')) {
+        const colorLower = finalColor.toLowerCase();
+        const matchKey = Object.keys(colorMap).find(key => colorLower.includes(key));
+        if (matchKey) {
+            finalColor = colorMap[matchKey];
+        } else {
+            finalColor = undefined;
+        }
+    }
+
+    // 3. 查表函數膨脹
+    if (finalFunctions && typeof finalFunctions === 'object') {
+        const processedFuncs = { ...finalFunctions };
+        let hasChanged = false;
+        for (const fKey of Object.keys(processedFuncs)) {
+            const rule = processedFuncs[fKey];
+            if (typeof rule === 'string' && rule.includes('>')) {
+                const parts = rule.split('>');
+                if (parts.length === 2) {
+                    const inList = parts[0].replace(/[\[\]]/g, '').split(',').map(s => s.trim());
+                    const outList = parts[1].replace(/[\[\]]/g, '').split(',').map(s => s.trim());
+                    if (inList.length > 0 && inList.length === outList.length) {
+                        const newRules: any[] = [];
+                        inList.forEach((inVal, idx) => {
+                            const isPlus = inVal === '+' || inVal.toLowerCase() === 'next';
+                            if (isPlus) {
+                                if (newRules.length > 0) {
+                                    const prev = newRules[newRules.length - 1];
+                                    const stepScore = parseFloat(outList[idx]);
+                                    if (!isNaN(stepScore)) {
+                                        newRules.push({ min: prev.min + 1, isLinear: true, unitScore: stepScore, unit: 1 });
+                                    }
+                                }
+                            } else {
+                                const minVal = parseFloat(inVal);
+                                const scoreVal = parseFloat(outList[idx]);
+                                newRules.push({ min: isNaN(minVal) ? 0 : minVal, max: 'next', score: isNaN(scoreVal) ? 0 : scoreVal });
+                            }
+                        });
+                        if (newRules.length > 0) {
+                            const last = newRules[newRules.length - 1];
+                            if (last.max) delete last.max;
+                        }
+                        processedFuncs[fKey] = newRules;
+                        hasChanged = true;
+                    }
+                }
+            } else if (rule && typeof rule === 'object' && !Array.isArray(rule)) {
+                const sortedKeys = Object.keys(rule).map(k => parseFloat(k)).filter(n => !isNaN(n)).sort((a, b) => a - b);
+                if (sortedKeys.length > 0) {
+                    processedFuncs[fKey] = sortedKeys.map((keyVal, idx) => {
+                        const isLast = idx === sortedKeys.length - 1;
+                        const score = (rule as any)[String(keyVal)];
+                        return isLast ? { min: keyVal, score } : { min: keyVal, max: 'next', score };
+                    });
+                    hasChanged = true;
+                }
+            }
+        }
+        if (hasChanged) finalFunctions = processedFuncs;
+    }
+
+    // 4. 按鈕清單膨脹
+    if (typeof finalQuickActions === 'string' && finalQuickActions.includes('>')) {
+        const parts = finalQuickActions.split('>');
+        if (parts.length === 2) {
+            const labels = parts[0].replace(/[\[\]]/g, '').split(',').map(s => s.trim().replace(/['"]/g, ''));
+            const values = parts[1].replace(/[\[\]]/g, '').split(',').map(s => parseFloat(s.trim()));
+            if (labels.length > 0 && labels.length === values.length) {
+                finalInputType = 'clicker';
+                finalQuickActions = labels.map((label, idx) => ({ id: generateId(8), label, value: isNaN(values[idx]) ? 0 : values[idx], isModifier: false }));
+            }
+        }
+    }
+
+    const colId = col.id || generateId(8);
+    
+    // 5. 結構正規化：將 f1 提升至最外層，補全 isLinear
+    let finalF1 = col.f1;
+    if (finalFunctions && finalFunctions.f1) {
+        finalF1 = (finalFunctions.f1 as any[]).map(r => ({ ...r, isLinear: r.isLinear ?? false }));
+        delete finalFunctions.f1;
+    }
+
+    // 6. 自動化變數對應
+    let finalVariableMap = col.variableMap;
+    if (!finalVariableMap && (finalFormula.includes('a1') || finalF1)) {
+        finalVariableMap = { a1: { id: colId } };
+    }
+
+    return {
+        ...col,
+        id: colId,
+        isScoring: col.isScoring ?? true,
+        isAuto: !!finalFormula && finalFormula !== 'a1',
+        inputType: finalInputType,
+        formula: finalFormula,
+        variableMap: finalVariableMap,
+        constants: finalConstants,
+        color: finalColor,
+        unit: col.unit ?? '',
+        f1: finalF1,
+        functions: finalFunctions,
+        quickActions: finalQuickActions
+    };
+};
+
+/**
+ * 🌟 【前端自我膨脹引擎】：膨脹整個模板資料
+ */
+export const inflateGameTemplate = (result: any): Partial<GameTemplate> => {
+    if (!result || !result.columns || !Array.isArray(result.columns)) {
+        return result;
+    }
+
+    const inflatedColumns = result.columns.map((col: any) => inflateScoringColumn(col));
+
+    return {
+        ...result,
+        defaultScoringRule: result.defaultScoringRule || 'HIGHEST_WINS',
+        columns: inflatedColumns
+    };
+};
