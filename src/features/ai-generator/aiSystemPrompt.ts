@@ -23,7 +23,7 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 | 屬性 | 必填 | 說明 |
 |---|---|---|
 | \`name\` | ✅ | 項目名稱。精簡為 6 字以內，超過 4 字適當用 \`\\n\` 換行。*例：「最長道路」* |
-| `explain` | | 計分邏輯極簡概述 (嚴格限 8 字內)，作為推導公式的思考輔助 |
+| \`explain\` | | 計分邏輯極簡概述 (嚴格限 8 字內)，作為推導公式的思考輔助 |
 | \`formula\` | ✅ | 計分公式。見下方公式表 |
 | \`unit\` | | 根據此項目要求使用者輸入數值的量詞。(如：動物為「隻」、卡片數量為「張」，大多物體通用的「個」) |
 | \`subUnits\` | | 若用兩數相乘公式，填寫兩個相乘項目的量詞，如 \`["星", "個"]\` |
@@ -136,7 +136,7 @@ Output ONLY pure JSON, NO explanations. Top-level structure:
 | Property | Req | Description |
 |---|---|---|
 | \`name\` | ✅ | Item name. Shorten to 1-3 words. Use \`\\n\` for wrapping. *Ex: "Longest Road"* |
-| `explain` | | Ultra-short scoring logic (strictly < 10 words) as a thinking aid |
+| \`explain\` | | Ultra-short scoring logic (strictly < 10 words) as a thinking aid |
 | \`formula\` | ✅ | Scoring formula. See formula table below |
 | \`unit\` | | Measurement unit for input numbers. (Ex: animal is "pcs", card counts is "cards") |
 | \`subUnits\` | | Labels for multiplied formula inputs, e.g. \`["Stars", "Tiles"]\` |
