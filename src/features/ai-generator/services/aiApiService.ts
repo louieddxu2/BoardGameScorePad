@@ -132,7 +132,20 @@ export const callAiScoreboardApi = async (
                 }
             }
 
-            // 3. 智慧查表函數膨脹：支援超頻字串簡寫 "[0,1,3,+]>[-1,1,2,2]"
+            // 🎯 核心修正：加入倍率公式膨脹 (a1×3 或 a1×-5)
+            let finalFormula = col.formula || 'a1';
+            let finalConstants = col.constants;
+
+            const multiMatch = finalFormula.match(/[×\*]\(?(-?\d+(\.\d+)?)\)?/);
+            if (multiMatch) {
+                const val = parseFloat(multiMatch[1]);
+                if (!isNaN(val)) {
+                    finalFormula = 'a1×c1'; // 強制對齊前端引擎的全等於比對
+                    finalConstants = { ...finalConstants, c1: val };
+                }
+            }
+
+            // 3. 智慧查表函數膨脹：解析超頻簡寫 "[0,1,3]>[0,1,3]"
             let finalFunctions = col.functions;
             if (finalFunctions && typeof finalFunctions === 'object') {
                 const processedFuncs = { ...finalFunctions };
@@ -248,13 +261,13 @@ export const callAiScoreboardApi = async (
                 ...col,
                 id: generateId(8),
                 isScoring: col.isScoring ?? true,
-                inputType: finalInputType, // 使用膨脹後的 inputType
+                inputType: finalInputType,
                 formula: finalFormula,
                 constants: finalConstants,
                 color: finalColor,
                 unit: col.unit ?? '',
                 functions: finalFunctions,
-                quickActions: finalQuickActions // 使用膨脹後的 quickActions
+                quickActions: finalQuickActions
             };
         });
 
