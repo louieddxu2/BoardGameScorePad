@@ -1,6 +1,6 @@
 
 import React, { useRef, useState } from 'react';
-import { Camera, Image as ImageIcon, Play, Loader2, AlertCircle, X, Sparkles, Plus, Trash2 } from 'lucide-react';
+import { Camera, Image as ImageIcon, Play, Loader2, AlertCircle, X, Sparkles, Plus, Trash2, Terminal, ChevronDown } from 'lucide-react';
 import { useAiGenerator } from '../hooks/useAiGenerator';
 import { useAiGeneratorTranslation } from '../../../i18n/aiGenerator';
 import { GameTemplate } from '../../../types';
