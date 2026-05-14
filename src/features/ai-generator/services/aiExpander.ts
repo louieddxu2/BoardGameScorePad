@@ -137,7 +137,7 @@ export const inflateScoringColumn = (col: any): any => {
     // 清理空的 functions 物件
     const cleanFunctions = (finalFunctions && Object.keys(finalFunctions).length > 0) ? finalFunctions : undefined;
 
-    return {
+    const result: any = {
         ...col,
         id: colId,
         isScoring: col.isScoring ?? true,
@@ -152,6 +152,16 @@ export const inflateScoringColumn = (col: any): any => {
         functions: cleanFunctions,
         quickActions: finalQuickActions
     };
+
+    // 🌟 屬性剪裁：移除多餘的預設值，讓 JSON 像內建模板一樣精簡
+    if (result.rounding === 'none') delete result.rounding;
+    if (result.displayMode === 'row') delete result.displayMode;
+    if (result.isAuto === false) delete result.isAuto;
+    if (result.unit === '') delete result.unit;
+    if (result.isScoring === true) delete result.isScoring;
+    if (result.inputType === 'keypad') delete result.inputType;
+
+    return result;
 };
 
 /**
