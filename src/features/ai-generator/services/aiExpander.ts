@@ -120,20 +120,22 @@ export const inflateScoringColumn = (col: any): any => {
         delete finalFunctions.f1;
     }
 
-    // 6. 智慧變數對應與自動計算判定
+    // 6. 智慧變數對應與自動計算判定 (對齊內建模板邏輯)
     let finalVariableMap = col.variableMap;
-    let isReferencingSelf = false;
-
+    
+    // 如果公式中包含 a1 且沒有指定 variableMap
     if (!finalVariableMap && (finalFormula.includes('a1') || finalF1)) {
-        finalVariableMap = { a1: { id: colId } };
-        isReferencingSelf = true;
-    } else if (finalVariableMap && finalVariableMap.a1?.id === colId) {
-        isReferencingSelf = true;
+        // 內建標準 (如農家樂): f1(a1) 且 a1 指向自己時，不應產出 variableMap
+        // 引擎會自動隱含對應。手動補上反而會導致 isAuto 判斷混亂。
+        finalVariableMap = undefined;
     }
 
-    // 關鍵修正：如果公式引用的是「自己」，則這是一個「輸入型計算欄位」，不能設為 isAuto
-    // 只有引用「他人」或純公式（無 a1）的才是自動計算
-    const finalIsAuto = !!finalFormula && finalFormula !== 'a1' && !isReferencingSelf;
+    // 關鍵修正：isAuto 只有在「引用了別的欄位」時才是 true
+    // 如果沒有 variableMap，表示它是手動輸入欄位 (或是隱含自引用)
+    const finalIsAuto = !!finalVariableMap && Object.values(finalVariableMap).some((v: any) => v.id !== colId);
+
+    // 清理空的 functions 物件
+    const cleanFunctions = (finalFunctions && Object.keys(finalFunctions).length > 0) ? finalFunctions : undefined;
 
     return {
         ...col,
@@ -147,7 +149,7 @@ export const inflateScoringColumn = (col: any): any => {
         color: finalColor,
         unit: col.unit ?? '',
         f1: finalF1,
-        functions: finalFunctions,
+        functions: cleanFunctions,
         quickActions: finalQuickActions
     };
 };
