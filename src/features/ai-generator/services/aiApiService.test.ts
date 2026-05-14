@@ -43,7 +43,9 @@ describe('aiApiService - callAiScoreboardApi Expansion Logic', () => {
     const spaceCol = template.columns![1];
     expect(spaceCol.formula).toBe('a1×c1');
     expect(spaceCol.constants?.c1).toBe(-1);
-    expect(spaceCol.variableMap?.a1?.id).toBe(spaceCol.id);
+    // 🚩 驗證 4: 自引用欄位不應該是 isAuto (否則用戶無法輸入)
+    expect(fieldCol.isAuto).toBe(false);
+    expect(spaceCol.isAuto).toBe(false);
 
     vi.unstubAllGlobals();
   });

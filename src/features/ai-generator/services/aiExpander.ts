@@ -120,17 +120,26 @@ export const inflateScoringColumn = (col: any): any => {
         delete finalFunctions.f1;
     }
 
-    // 6. 自動化變數對應
+    // 6. 智慧變數對應與自動計算判定
     let finalVariableMap = col.variableMap;
+    let isReferencingSelf = false;
+
     if (!finalVariableMap && (finalFormula.includes('a1') || finalF1)) {
         finalVariableMap = { a1: { id: colId } };
+        isReferencingSelf = true;
+    } else if (finalVariableMap && finalVariableMap.a1?.id === colId) {
+        isReferencingSelf = true;
     }
+
+    // 關鍵修正：如果公式引用的是「自己」，則這是一個「輸入型計算欄位」，不能設為 isAuto
+    // 只有引用「他人」或純公式（無 a1）的才是自動計算
+    const finalIsAuto = !!finalFormula && finalFormula !== 'a1' && !isReferencingSelf;
 
     return {
         ...col,
         id: colId,
         isScoring: col.isScoring ?? true,
-        isAuto: !!finalFormula && finalFormula !== 'a1',
+        isAuto: finalIsAuto,
         inputType: finalInputType,
         formula: finalFormula,
         variableMap: finalVariableMap,
