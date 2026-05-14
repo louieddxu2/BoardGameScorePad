@@ -106,42 +106,34 @@ export const callAiScoreboardApi = async (
         };
 
         const inflatedColumns = result.columns.map((col: any) => {
+            // 🎯 核心膨脹器：統一變數宣告
             let finalFormula = col.formula ?? 'a1';
             let finalConstants = col.constants;
+            let finalColor = col.color;
+            let finalInputType = col.inputType ?? 'keypad';
+            let finalQuickActions = col.quickActions;
+            let finalFunctions = col.functions;
 
-            // 1. 智慧公式膨脹：偵測 "a1×3" 或 "a1*-2" 的直寫語法，自動轉譯為標準常數結構
+            // 1. 智慧公式膨脹：偵測 "a1×3" 或 "a1*(-2)"，自動轉譯為標準常數結構
             if (typeof finalFormula === 'string') {
-                const multMatch = finalFormula.match(/a1\s*[×*xX]\s*(-?\d+(\.\d+)?)/);
-                if (multMatch) {
-                    const num = parseFloat(multMatch[1]);
-                    finalFormula = 'a1×c1';
-                    finalConstants = { c1: num };
+                const multiMatch = finalFormula.match(/[×\*xX]\(?(-?\d+(\.\d+)?)\)?/);
+                if (multiMatch) {
+                    const val = parseFloat(multiMatch[1]);
+                    if (!isNaN(val)) {
+                        finalFormula = 'a1×c1'; // 強制對齊前端引擎的全等於比對
+                        finalConstants = { ...finalConstants, c1: val };
+                    }
                 }
             }
 
             // 2. 智慧顏色膨脹：將 "紅"、"藍色"、"blue" 等直覺字眼，膨脹回標準 Hex Code
-            let finalColor = col.color;
             if (typeof finalColor === 'string' && !finalColor.startsWith('#')) {
                 const colorLower = finalColor.toLowerCase();
                 const matchKey = Object.keys(colorMap).find(key => colorLower.includes(key));
                 if (matchKey) {
                     finalColor = colorMap[matchKey];
                 } else {
-                    // 無法識別則直接清空，避免髒資料污染 CSS
                     finalColor = undefined;
-                }
-            }
-
-            // 🎯 核心修正：加入倍率公式膨脹 (a1×3 或 a1×-5)
-            let finalFormula = col.formula || 'a1';
-            let finalConstants = col.constants;
-
-            const multiMatch = finalFormula.match(/[×\*]\(?(-?\d+(\.\d+)?)\)?/);
-            if (multiMatch) {
-                const val = parseFloat(multiMatch[1]);
-                if (!isNaN(val)) {
-                    finalFormula = 'a1×c1'; // 強制對齊前端引擎的全等於比對
-                    finalConstants = { ...finalConstants, c1: val };
                 }
             }
 
