@@ -16,6 +16,7 @@
   "dependencies": {
     "dexie": "^3.2.4",
     "dexie-react-hooks": "^1.1.7",
+    "formidable": "^3.5.4",
     "fuse.js": "^7.0.0",
     "html-to-image": "^1.11.11",
     "hyphenation.en-us": "^0.2.1",

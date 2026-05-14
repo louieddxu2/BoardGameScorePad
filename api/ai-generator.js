@@ -1,69 +1,85 @@
+
 // api/ai-generator.js (Vercel Node.js Serverless)
-// 升級為 Node.js Runtime 以支援 60 秒超長時限 (maxDuration)
+// 使用 formidable 確保在 Node.js 環境下穩定解析圖片上傳
+import { IncomingForm } from 'formidable';
+import fs from 'fs';
 
-export const maxDuration = 60; // 🚀 關鍵：將超時上限提升至 60 秒 (Hobby 計畫上限)
+export const maxDuration = 60; // 🚀 提升超時上限至 60 秒
 
-export default async function handler(req) {
+// 停用 Vercel 預設的 body parser，因為我們需要自行使用 formidable 解析 multipart/form-data
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+export default async function handler(req, res) {
   // 僅允許 POST 請求
   if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 });
+    return res.status(405).send('Method Not Allowed');
   }
 
-  // 從 Vercel 環境變數中讀取 Key
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return new Response('Backend configuration missing: GEMINI_API_KEY', { status: 500 });
+    return res.status(500).json({ error: 'Backend configuration missing: GEMINI_API_KEY' });
   }
 
+  // 1. 使用 formidable 解析上傳的資料與圖片
+  const form = new IncomingForm();
+  
   try {
-    // 1. 解析從瀏覽器前端傳來的 FormData (Node.js 18+ 支援 Web Request API)
-    const formData = await req.formData();
-    const systemPrompt = formData.get('systemPrompt');
-    const gameName = formData.get('gameName');
-    const language = formData.get('language');
+    const { fields, files } = await new Promise((resolve, reject) => {
+      form.parse(req, (err, fields, files) => {
+        if (err) reject(err);
+        resolve({ fields, files });
+      });
+    });
 
-    // 動態取得使用者選擇的模型，預設為極速版 Lite
-    const requestedModel = formData.get('modelName') || 'gemini-2.5-flash-lite';
+    // 提取文字欄位 (formidable v3 回傳可能是陣列)
+    const getFirst = (val) => Array.isArray(val) ? val[0] : val;
+    const systemPrompt = getFirst(fields.systemPrompt);
+    const gameName = getFirst(fields.gameName);
+    const language = getFirst(fields.language);
+    const requestedModel = getFirst(fields.modelName) || 'gemini-2.5-flash-lite';
 
-    // 2. 提取所有圖片檔案，並轉換為 Base64 (Node.js 優化版)
+    // 2. 處理圖片檔案
     const geminiParts = [];
+    
+    // 遍歷所有上傳的檔案
+    for (const key in files) {
+      if (key.startsWith('image_')) {
+        const file = Array.isArray(files[key]) ? files[key][0] : files[key];
+        if (file && file.filepath) {
+          const buffer = fs.readFileSync(file.filepath);
+          const base64 = buffer.toString('base64');
 
-    for (const [key, value] of formData.entries()) {
-      if (key.startsWith('image_') && value instanceof File) {
-        const buffer = await value.arrayBuffer();
-        
-        // ⚡ Node.js 效能優化：改用 Buffer 直接轉換，避免 Edge Runtime 的手動迴圈拼接
-        const base64 = Buffer.from(buffer).toString('base64');
-
-        geminiParts.push({
-          inlineData: {
-            mimeType: "image/jpeg",
-            data: base64
-          }
-        });
+          geminiParts.push({
+            inlineData: {
+              mimeType: file.mimetype || "image/jpeg",
+              data: base64
+            }
+          });
+        }
       }
     }
 
-    // 3. 加入最終文字指引，注入動態資訊
+    // 3. 加入最終文字指引
     geminiParts.push({
       text: `這是桌遊「${gameName}」的計分頁，請分析圖片並以「${language}」回傳計分板 JSON 結構。若圖片無關，請將 columns 欄位留空。`
     });
 
-    // 4. 組建標準 Gemini REST API Request
+    // 4. 組建 Gemini Request
     const apiRequestBody = {
       systemInstruction: {
         parts: [{ text: systemPrompt }]
       },
-      contents: [
-        { parts: geminiParts }
-      ],
+      contents: [{ parts: geminiParts }],
       generationConfig: {
-        responseMimeType: "application/json", // 🌟 絕對防禦：強迫 AI 只能吐出合法 JSON
-        temperature: 0.1 // 降低隨機性
+        responseMimeType: "application/json",
+        temperature: 0.1
       }
     };
 
-    // 5. 動態切換 Google Gemini 模型 API URL
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${requestedModel}:generateContent?key=${apiKey}`;
 
     const apiResponse = await fetch(geminiUrl, {
@@ -72,52 +88,38 @@ export default async function handler(req) {
       body: JSON.stringify(apiRequestBody)
     });
 
-    // 特判 429 (Rate Limit)，前端會接住並顯示溫馨提示
     if (apiResponse.status === 429) {
-      return new Response('Rate Limit Exceeded', { status: 429 });
+      return res.status(429).send('Rate Limit Exceeded');
     }
 
     if (!apiResponse.ok) {
       const errorBody = await apiResponse.text();
-      return new Response(`Gemini API error: ${errorBody}`, { status: apiResponse.status });
+      return res.status(apiResponse.status).send(`Gemini API error: ${errorBody}`);
     }
 
     const geminiResult = await apiResponse.json();
-
     const generatedText = geminiResult.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!generatedText) {
-      return new Response(JSON.stringify({ error: 'AI generated empty response' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return res.status(500).json({ error: 'AI generated empty response' });
     }
 
-    // 🌟 智慧升級：將文字轉譯為 JSON 物件，並連同 usageMetadata 包裝回拋給前端，激活 Token 牌價看板！
+    // 🌟 智慧打包：將 AI JSON 與 Token Usage 一起傳回
     try {
       const parsedData = JSON.parse(generatedText);
-      const usage = geminiResult.usageMetadata; // 包含 promptTokenCount, candidatesTokenCount, totalTokenCount
+      const usage = geminiResult.usageMetadata;
       
-      return new Response(JSON.stringify({
+      return res.status(200).json({
         data: parsedData,
         usage: usage || undefined
-      }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
       });
     } catch (parseError) {
-      // 🛡️ 絕對防禦：如果 JSON 轉換意外失敗，原封不動地回拋裸 JSON 以保持最大限度的相容性
-      return new Response(generatedText, {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      // 若 JSON 格式異常，則直接噴出原始文字
+      return res.status(200).send(generatedText);
     }
 
   } catch (error) {
-    console.error('[Serverless API Error]', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    console.error('[Serverless Node.js API Error]', error);
+    return res.status(500).json({ error: error.message });
   }
 }
