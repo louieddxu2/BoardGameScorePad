@@ -138,7 +138,6 @@ export const callAiScoreboardApi = async (
             }
 
             // 3. 智慧查表函數膨脹：解析超頻簡寫 "[0,1,3]>[0,1,3]"
-            let finalFunctions = col.functions;
             if (finalFunctions && typeof finalFunctions === 'object') {
                 const processedFuncs = { ...finalFunctions };
                 let hasChanged = false;
@@ -223,9 +222,6 @@ export const callAiScoreboardApi = async (
             }
 
             // 4. 智慧按鈕清單膨脹：支援超頻字串簡寫 '["是","否"]>[10,0]'
-            let finalQuickActions = col.quickActions;
-            let finalInputType = col.inputType ?? 'keypad';
-
             if (typeof finalQuickActions === 'string' && finalQuickActions.includes('>')) {
                 const parts = finalQuickActions.split('>');
                 if (parts.length === 2) {
