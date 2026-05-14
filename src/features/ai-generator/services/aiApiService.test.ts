@@ -20,7 +20,7 @@ describe('aiApiService - callAiScoreboardApi Expansion Logic', () => {
     };
 
     // 攔截全域 fetch
-    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as any);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mockResponse));
 
     // 2. 執行 API 呼叫 (帶入假資料)
     const result = await callAiScoreboardApi([], 'Test', 'zh-TW');
@@ -43,6 +43,6 @@ describe('aiApiService - callAiScoreboardApi Expansion Logic', () => {
     expect(template.columns![2].inputType).toBe('clicker');
     expect(template.columns![2].quickActions![0].label).toBe('A');
 
-    fetchSpy.mockRestore();
+    vi.unstubAllGlobals();
   });
 });
