@@ -11,7 +11,7 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 請依照我提供的桌上遊戲名稱與計分規則圖片，提取出所有計分項目，依照後述的 JSON 格式生成繁體中文的計分板 JSON。
 
 ## 輸出格式
-純 JSON，無須額外解釋。頂層結構：
+你可以先進行思考與分析，但最終必須在 ```json 區塊中輸出完整的計分板 JSON。頂層結構：
 \`\`\`json
 {
   "name": "遊戲名稱",
@@ -107,7 +107,7 @@ export const SYSTEM_PROMPT_EN = `# Board Game Scoreboard Converter (Lite)
 Please extract all scoring items from the game name and rules image provided by me, and generate JSON according to the format below.
 
 ## Output Format
-Pure JSON, no extra explanation. Top-level structure:
+You may think and analyze first, but ultimately you must output the complete scoreboard JSON within a ```json block. Top-level structure:
 \`\`\`json
 {
   "name": "Game Name",
