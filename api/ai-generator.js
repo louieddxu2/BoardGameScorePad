@@ -1,5 +1,7 @@
 // api/ai-generator.js (Vercel Edge Function)
-export const runtime = 'edge';
+export const config = {
+  runtime: 'edge',
+};
 
 // ArrayBuffer 轉 Base64 函數 (Edge runtime 適用，無相依套件)
 function arrayBufferToBase64(buffer) {
