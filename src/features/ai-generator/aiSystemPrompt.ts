@@ -23,45 +23,36 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 | 屬性 | 必填 | 說明 |
 |---|---|---|
 | \`name\` | ✅ | 項目名稱。精簡為 6 字以內，超過 4 字適當用 \`\\n\` 換行。*例：「最長道路」* |
-| \`explain\` | | 簡述計分邏輯，8 字內。 |
+| \`color\` | | 若規則圖片能明顯判斷此項目的顏色，用下列一種顏色表示：「紅」、「藍」、「黃」、「綠」、「橘」、「紫」、「黑」、「灰」、「褐」 |
 | \`formula\` | ✅ | 計分公式。見下方公式表 |
 | \`unit\` | | 根據此項目要求使用者輸入數值的量詞。(如：動物為「隻」、卡片數量為「張」，大多物體通用的「個」) |
 | \`subUnits\` | | 若用兩數相乘公式，可填寫兩個相乘項目的量詞 |
-| \`color\` | | 若規則圖片能明顯判斷此項目的顏色，用下列一種顏色表示：「紅」、「藍」、「黃」、「綠」、「橘」、「紫」、「黑」、「灰」、「褐」 |
-| \`quickActions\` | | 若為按鈕選單，寫按鈕標籤與對應數值。見下方公式說明 |
-| \`functions\` | | 查表函數定義。見下方公式說明 |
 
 ---
 
 ## 公式表 (極簡 7 式)
-根據項目計分方式選擇公式，優先選擇前 3 種基本公式。乘號務必使用全形 \`×\`。
+根據項目計分方式選擇公式，優先選擇前 3 種基本公式。
 
 ### 🟢 基礎公式
-1. **\`a1\`** (直接數值)：分數是單一來源，無須額外計算或累加。*例：「計分軌分數」*。
-2. **\`a1×倍率\`** (倍率計分)：寫作 \`a1×3\` 或 \`a1×(-5)\`。*例：每個工人 3 分寫作 \`a1×3\`*。
-3. **\`a1+next\`** (分項累加)：要多次輸入同類分數得出總和的。*例：「每張卡片的分數」*。
+1. **\`x\`** (直接數值)：分數是單一來源，無須額外計算或累加。*例：「計分軌分數」*。
+2. **\`3x\` / \`(1/2)x\`** (倍率計分)：*例：每個工人 3 分寫作 \`3x\`*。
+3. **\`x+next\`** (分項累加)：要多次輸入同類分數得出總和的。*例：「每張卡片的分數」*。
 
 ### 🟠 進階公式
-4. **\`a1×a2\`** (兩數相乘)：兩個數值都需玩家手動輸入。*需搭配 \`subUnits\`，如 \`["個", "星"]\`*。
-5. **\`(a1×a2)+next\`** (相乘後累加)：多組 [數量 × 乘數] 需要分次累加。
-6. **\`f1(a1)\`** (查表計分)：階梯分數。在 \`functions.f1\` 寫 \`[數量]>[分數]\`。
+4. **\`xy\`** (兩數相乘)：兩個數值都需玩家手動輸入。*需搭配 \`subUnits\`，如 \`["個", "星"]\`*。
+5. **\`xy+next\`** (相乘後累加)：多組 [數量 × 乘數] 需要分次累加。
+6. **\`lookup[...]\`** (查表計分)：階梯分數。將條件與分數相鄰寫入括號中。
    *例 1：1~2個1分，3~5個3分，6個以上固定8分，記為：*
-   \`\`\`json
-   "functions": {"f1": "[0,1,3,6]>[0,1,3,8]"}
-   \`\`\`
-   *例 2：0個-1分，1~2個1分，3~5個3分，6個得6分，超過6個每個多2分，記為：*
-   \`\`\`json
-   "functions": {"f1": "[0,1,3,6,+]>[-1,1,3,6,2]"}
-   \`\`\`
-7. **\`a1\`** + 按鈕 (按鈕選單)：在 \`quickActions\` 寫 \`['標籤']>[分數]\`。
+   \`lookup[1~2->1, 3~5->3, 6+->8]\`
+   *例 2：0個-1分，1~2個1分，3~5個3分，6個得6分，超過6個每多2個多5分，記為：*
+   \`lookup[0->-1, 1~2->1, 3~5->3, 6->6, +2->5]\`
+7. **\`buttons[...]\`** (按鈕選單)：將選項標籤用單引號包裝並指定分數。
    *例：是=10分, 否=0分 記為：*
-   \`\`\`json
-   "quickActions": "['是','否']>[10,0]"
-   \`\`\`
+   \`buttons['是'->10, '否'->0]\`
 
 ---
 
-## 完整極簡對齊範例
+## 完整範例
 
 \`\`\`json
 {
@@ -69,47 +60,39 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
   "columns": [
     {
       "name": "計分軌",
-      "formula": "a1",
+      "formula": "x",
       "unit": "分"
     },
     {
       "name": "家庭成員",
-      "explain": "每人 3 分",
-      "formula": "a1×3",
+      "formula": "3x",
       "unit": "人"
     },
     {
       "name": "發展卡",
-      "explain": "每張卡的分數加總",
-      "formula": "a1+next"
+      "formula": "x+next"
     },
     {
       "name": "住宅",
-      "explain": "住宅數量乘以星數",
-      "formula": "a1×a2",
+      "formula": "xy",
       "subUnits": ["個", "星"],
-      "color": "黃"
-    },
-    {
-      "name": "麥田地形",
-      "explain": "每塊的格數乘皇冠",
-      "formula": "(a1×a2)+next",
-      "subUnits": ["格", "冠"],
       "color": "綠"
     },
     {
+      "name": "麥田地形",
+      "formula": "xy+next",
+      "subUnits": ["格", "冠"],
+      "color": "黃"
+    },
+    {
       "name": "麥子存量",
-      "explain": "查表每逾 1 個 2 分",
-      "formula": "f1(a1)",
+      "formula": "lookup[0->-1, 1->1, 3->2, +1->2]",
       "unit": "份",
-      "functions": {
-        "f1": "[0,1,3,+]>[-1,1,2,2]"
-      }
+      "color": "黃"
     },
     {
       "name": "是否符合\\n中央城堡",
-      "formula": "a1",
-      "quickActions": "['是','否']>[10,0]"
+      "formula": "buttons['是'->10, '否'->0]"
     }
   ]
 }
@@ -136,33 +119,33 @@ Pure JSON, no extra explanation. Top-level structure:
 | Property | Req | Description |
 |---|---|---|
 | \`name\` | ✅ | Item name. Shorten to 1-3 words. Use \`\\n\` for wrapping. *Ex: "Longest Road"* |
-| \`explain\` | | Ultra-short logic, under 8 words |
+| \`color\` | | If clear visually, represent with ONE keyword: "Red", "Blue", "Yellow", "Green", "Orange", "Purple", "Black", "Gray", "Brown" |
 | \`formula\` | ✅ | Scoring formula. See formula table below |
 | \`unit\` | | Measurement unit for input numbers. (Ex: animal is "pcs", card counts is "cards") |
 | \`subUnits\` | | Labels for multiplied formula inputs |
-| \`color\` | | If clear visually, represent with ONE keyword: "Red", "Blue", "Yellow", "Green", "Orange", "Purple", "Black", "Gray", "Brown" |
-| \`quickActions\` | | For button menu, write label array and score array. See formula table |
-| \`functions\` | | Chart lookup mapping definitions. See below |
 
 ---
 
 ## Formula Table (7 Modes)
-Choose formula based on scoring method, prioritize the first 3. Use full-width \`×\`.
+Choose formula based on scoring method, prioritize the first 3.
 
 ### 🟢 Basic Formulas
-1. **\`a1\`** (Direct Value): Single point source. *Ex: "Scoretrack Points"*
-2. **\`a1×multiplier\`** (Multiplier): *Ex: Each worker gets 3 pts -> \`a1×3\`*
-3. **\`a1+next\`** (Accumulator): For items requiring multiple entries. *Ex: "Score for each individual card"*
+1. **\`x\`** (Direct Value): Single point source. *Ex: "Scoretrack Points"*
+2. **\`3x\` / \`(1/2)x\`** (Multiplier): *Ex: Each worker gets 3 pts -> \`3x\`*
+3. **\`x+next\`** (Accumulator): For items requiring multiple entries. *Ex: "Score for each individual card"*
 
 ### 🟠 Advanced Formulas
-4. **\`a1×a2\`** (Multiplication): Both inputs manual. *Requires \`subUnits\`, e.g., \`["Pcs", "Stars"]\`*
-5. **\`(a1×a2)+next\`** (Accumulated Multiplications): Multiple [Tiles × Crowns] logged step-by-step.
-6. **\`f1(a1)\`** (Chart Lookup): Step function mapping. Write \`[count]>[points]\` in \`functions.f1\`.
-7. **\`a1\`** + Buttons (Button Menu): Write \`['Label']>[points]\` in \`quickActions\`.
+4. **\`xy\`** (Multiplication): Both inputs manual. *Requires \`subUnits\`, e.g., \`["Pcs", "Stars"]\`*
+5. **\`xy+next\`** (Accumulated Multiplications): Multiple [Tiles × Crowns] logged step-by-step.
+6. **\`lookup[...]\`** (Chart Lookup): Step function mapping. Write range conditions and scores together.
+   *Ex 1: 1~2 is 1 pt, 3~5 is 3 pts, 6+ is 8 pts -> \`lookup[1~2->1, 3~5->3, 6+->8]\`*
+   *Ex 2: 0 is -1, 1~2 is 1, 3~5 is 3, each +2 is 5 pts -> \`lookup[0->-1, 1~2->1, 3~5->3, 6->6, +2->5]\`*
+7. **\`buttons[...]\`** (Button Menu): Wrap labels in single quotes and map to scores.
+   *Ex: Yes=10 pts, No=0 pts -> \`buttons['Yes'->10, 'No'->0]\`*
 
 ---
 
-## Full Ground Truth Example
+## Full Example
 
 \`\`\`json
 {
@@ -170,47 +153,39 @@ Choose formula based on scoring method, prioritize the first 3. Use full-width \
   "columns": [
     {
       "name": "Scoretrack",
-      "formula": "a1",
+      "formula": "x",
       "unit": "pts"
     },
     {
       "name": "Family",
-      "explain": "3 pts per person",
-      "formula": "a1×3",
+      "formula": "3x",
       "unit": "workers"
     },
     {
       "name": "Objectives",
-      "explain": "Sum of card scores",
-      "formula": "a1+next"
+      "formula": "x+next"
     },
     {
       "name": "Housing",
-      "explain": "Qty multiplied by Stars",
-      "formula": "a1×a2",
+      "formula": "xy",
       "subUnits": ["Pcs", "Stars"],
-      "color": "Yellow"
-    },
-    {
-      "name": "Wheat Fields",
-      "explain": "Tiles x Crowns, summed",
-      "formula": "(a1×a2)+next",
-      "subUnits": ["Tiles", "Crowns"],
       "color": "Green"
     },
     {
+      "name": "Wheat Fields",
+      "formula": "xy+next",
+      "subUnits": ["Tiles", "Crowns"],
+      "color": "Yellow"
+    },
+    {
       "name": "Wheat Store",
-      "explain": "Chart: 2 pts per extra",
-      "formula": "f1(a1)",
+      "formula": "lookup[0->-1, 1->1, 3->2, +1->2]",
       "unit": "units",
-      "functions": {
-        "f1": "[0,1,3,+]>[-1,1,2,2]"
-      }
+      "color": "Yellow"
     },
     {
       "name": "Central Castle\\nRequirement",
-      "formula": "a1",
-      "quickActions": "['Yes','No']>[10,0]"
+      "formula": "buttons['Yes'->10, 'No'->0]"
     }
   ]
 }

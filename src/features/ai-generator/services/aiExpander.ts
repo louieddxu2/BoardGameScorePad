@@ -23,10 +23,103 @@ export const inflateScoringColumn = (col: any): any => {
     let finalQuickActions = col.quickActions;
     let finalFunctions = col.functions;
 
-    // 1. 公式膨脹
+    // --- V7 Semantic Formula Parsing START ---
+    if (typeof finalFormula === 'string') {
+        const trimmedFormula = finalFormula.trim();
+        
+        // 1. Buttons Parsing: buttons['有'->10, "無"->0]
+        const buttonsMatch = trimmedFormula.match(/^buttons\[(.*)\]$/i);
+        if (buttonsMatch) {
+            const rules = buttonsMatch[1].split(',').map(s => s.trim());
+            const newQuickActions = [];
+            for (const rule of rules) {
+                const parts = rule.split('->');
+                if (parts.length === 2) {
+                    const labelMatch = parts[0].match(/['"]([^'"]+)['"]/);
+                    const label = labelMatch ? labelMatch[1] : parts[0].trim().replace(/['"]/g, '');
+                    const value = parseFloat(parts[1]);
+                    if (!isNaN(value)) {
+                        newQuickActions.push({ id: generateId(8), label, value, isModifier: false });
+                    }
+                }
+            }
+            if (newQuickActions.length > 0) {
+                finalInputType = 'clicker';
+                finalQuickActions = newQuickActions;
+                finalFormula = 'a1';
+            }
+        }
+        
+        // 2. Lookup Parsing: lookup[0->-1, 1~3->1, +3->5] or function[...]
+        const lookupMatch = trimmedFormula.match(/^(?:lookup|function)\[(.*)\]$/i);
+        if (lookupMatch) {
+            const rules = lookupMatch[1].split(',').map(s => s.trim());
+            const newF1: any[] = [];
+            let lastMin = 0;
+            for (let i = 0; i < rules.length; i++) {
+                const rule = rules[i];
+                const parts = rule.split('->');
+                if (parts.length === 2) {
+                    const left = parts[0].trim();
+                    const score = parseFloat(parts[1]);
+                    if (!isNaN(score)) {
+                        if (left.startsWith('+')) {
+                            const unit = parseFloat(left);
+                            if (!isNaN(unit)) {
+                                newF1.push({ min: lastMin + 1, isLinear: true, unitScore: score, unit });
+                            }
+                        } else {
+                            const min = parseFloat(left);
+                            if (!isNaN(min)) {
+                                newF1.push({ min, max: 'next', score, isLinear: false });
+                                lastMin = min;
+                            }
+                        }
+                    }
+                }
+            }
+            if (newF1.length > 0) {
+                const last = newF1[newF1.length - 1];
+                if (!last.isLinear && last.max) {
+                    delete last.max;
+                }
+                finalFunctions = { f1: newF1 };
+                finalFormula = 'f1(a1)';
+            }
+        }
+        
+        // 3. Pure Algebra Parsing
+        if (!buttonsMatch && !lookupMatch) {
+            if (trimmedFormula === 'x') {
+                finalFormula = 'a1';
+            } else if (trimmedFormula.endsWith('x') && trimmedFormula !== 'x') {
+                let coeffStr = trimmedFormula.slice(0, -1).trim();
+                let coeff = NaN;
+                const fracMatch = coeffStr.match(/^\((\d+)\/(\d+)\)$/);
+                if (fracMatch) {
+                    coeff = parseFloat(fracMatch[1]) / parseFloat(fracMatch[2]);
+                } else {
+                    coeff = parseFloat(coeffStr);
+                }
+                if (!isNaN(coeff)) {
+                    finalFormula = 'a1×c1';
+                    finalConstants = { ...finalConstants, c1: coeff };
+                }
+            } else if (trimmedFormula === 'xy') {
+                finalFormula = 'a1×a2';
+            } else if (trimmedFormula === 'x+next') {
+                finalFormula = 'a1+next';
+            } else if (trimmedFormula === 'xy+next') {
+                finalFormula = '(a1×a2)+next';
+            }
+        }
+    }
+    // --- V7 Semantic Formula Parsing END ---
+
+    // 1. 公式膨脹 (向下相容舊版 a1x3)
     if (typeof finalFormula === 'string') {
         const multiMatch = finalFormula.match(/[×\*xX]\(?(-?\d+(\.\d+)?)\)?/);
-        if (multiMatch) {
+        if (multiMatch && finalFormula.includes('a1')) { // 確保只處理包含 a1 的舊公式
             const val = parseFloat(multiMatch[1]);
             if (!isNaN(val)) {
                 finalFormula = 'a1×c1';
@@ -46,8 +139,8 @@ export const inflateScoringColumn = (col: any): any => {
         }
     }
 
-    // 3. 查表函數膨脹
-    if (finalFunctions && typeof finalFunctions === 'object') {
+    // 3. 查表函數膨脹 (向下相容舊版 [0,1]>[1,2])
+    if (finalFunctions && typeof finalFunctions === 'object' && !Array.isArray(finalFunctions.f1)) {
         const processedFuncs = { ...finalFunctions };
         let hasChanged = false;
         for (const fKey of Object.keys(processedFuncs)) {
@@ -98,8 +191,8 @@ export const inflateScoringColumn = (col: any): any => {
         if (hasChanged) finalFunctions = processedFuncs;
     }
 
-    // 4. 按鈕清單膨脹
-    if (typeof finalQuickActions === 'string' && finalQuickActions.includes('>')) {
+    // 4. 按鈕清單膨脹 (向下相容舊版)
+    if (typeof finalQuickActions === 'string' && finalQuickActions.includes('>') && !finalFormula.includes('buttons[')) {
         const parts = finalQuickActions.split('>');
         if (parts.length === 2) {
             const labels = parts[0].replace(/[\[\]]/g, '').split(',').map(s => s.trim().replace(/['"]/g, ''));
