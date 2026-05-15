@@ -19,13 +19,29 @@ describe('aiApiService - callAiScoreboardApi Expansion Logic', () => {
       ]
     };
 
+    const mockSseData = {
+      candidates: [
+        {
+          content: {
+            parts: [{ text: JSON.stringify(mockAiData) }]
+          }
+        }
+      ],
+      usageMetadata: { totalTokenCount: 100 }
+    };
+
+    const encoder = new TextEncoder();
+    const mockStream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode('data: ' + JSON.stringify(mockSseData) + '\n\n'));
+        controller.close();
+      }
+    });
+
     const mockResponse = {
       ok: true,
       status: 200,
-      json: async () => ({ 
-        data: mockAiData,
-        usage: { totalTokenCount: 100 }
-      })
+      body: mockStream,
     };
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mockResponse));

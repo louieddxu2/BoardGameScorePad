@@ -1,65 +1,56 @@
+// api/ai-generator.js (Vercel Edge Function)
+export const runtime = 'edge';
 
-// api/ai-generator.js (Vercel Node.js Serverless)
-// 使用 formidable 確保在 Node.js 環境下穩定解析圖片上傳
-import { IncomingForm } from 'formidable';
-import fs from 'fs';
+// ArrayBuffer 轉 Base64 函數 (Edge runtime 適用，無相依套件)
+function arrayBufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, chunk);
+  }
+  return btoa(binary);
+}
 
-export const maxDuration = 60; // 🚀 提升超時上限至 60 秒
-
-// 停用 Vercel 預設的 body parser，因為我們需要自行使用 formidable 解析 multipart/form-data
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
-export default async function handler(req, res) {
+export default async function handler(req) {
   // 僅允許 POST 請求
   if (req.method !== 'POST') {
-    return res.status(405).send('Method Not Allowed');
+    return new Response('Method Not Allowed', { status: 405 });
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'Backend configuration missing: GEMINI_API_KEY' });
+    return new Response(
+      JSON.stringify({ error: 'Backend configuration missing: GEMINI_API_KEY' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 
-  // 1. 使用 formidable 解析上傳的資料與圖片
-  const form = new IncomingForm();
-  
   try {
-    const { fields, files } = await new Promise((resolve, reject) => {
-      form.parse(req, (err, fields, files) => {
-        if (err) reject(err);
-        resolve({ fields, files });
-      });
-    });
-
-    // 提取文字欄位 (formidable v3 回傳可能是陣列)
-    const getFirst = (val) => Array.isArray(val) ? val[0] : val;
-    const systemPrompt = getFirst(fields.systemPrompt);
-    const gameName = getFirst(fields.gameName);
-    const language = getFirst(fields.language);
-    const requestedModel = getFirst(fields.modelName) || 'gemini-2.5-flash-lite';
+    // 1. 使用原生的 req.formData() 解析上傳的資料與圖片
+    const formData = await req.formData();
+    
+    const systemPrompt = formData.get('systemPrompt');
+    const gameName = formData.get('gameName');
+    const language = formData.get('language');
+    const requestedModel = formData.get('modelName') || 'gemini-2.5-flash-lite';
 
     // 2. 處理圖片檔案
     const geminiParts = [];
     
-    // 遍歷所有上傳的檔案
-    for (const key in files) {
-      if (key.startsWith('image_')) {
-        const file = Array.isArray(files[key]) ? files[key][0] : files[key];
-        if (file && file.filepath) {
-          const buffer = fs.readFileSync(file.filepath);
-          const base64 = buffer.toString('base64');
-
-          geminiParts.push({
-            inlineData: {
-              mimeType: file.mimetype || "image/jpeg",
-              data: base64
-            }
-          });
-        }
+    // 遍歷所有 FormData 中的 image_ 開頭欄位
+    for (const [key, value] of formData.entries()) {
+      if (key.startsWith('image_') && value instanceof File) {
+        const arrayBuffer = await value.arrayBuffer();
+        const base64 = arrayBufferToBase64(arrayBuffer);
+        
+        geminiParts.push({
+          inlineData: {
+            mimeType: value.type || "image/jpeg",
+            data: base64
+          }
+        });
       }
     }
 
@@ -80,7 +71,8 @@ export default async function handler(req, res) {
       }
     };
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${requestedModel}:generateContent?key=${apiKey}`;
+    // 🌟 改用 streamGenerateContent 串流端點
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${requestedModel}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
     const apiResponse = await fetch(geminiUrl, {
       method: 'POST',
@@ -89,54 +81,34 @@ export default async function handler(req, res) {
     });
 
     if (apiResponse.status === 429) {
-      return res.status(429).send('Rate Limit Exceeded');
+      return new Response('Rate Limit Exceeded', { status: 429 });
     }
 
     if (!apiResponse.ok) {
       const errorBody = await apiResponse.text();
-      return res.status(apiResponse.status).send(`Gemini API error: ${errorBody}`);
+      return new Response(`Gemini API error: ${errorBody}`, { status: apiResponse.status });
     }
 
-    const geminiResult = await apiResponse.json();
-    const generatedText = geminiResult.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    // 🌟 診斷強化：如果 AI 輸出為空（可能是被 Safety Filter 攔截），將完整結果打包回傳
-    if (!generatedText) {
-      return res.status(200).json({ 
-        error: 'json_parse_failed', 
-        rawResponse: 'AI 回傳內容為空 (可能是被 Google 安全過濾器攔截)',
-        parseErrorMessage: `Full API Response: ${JSON.stringify(geminiResult)}`
-      });
-    }
-
-    // 🌟 診斷強化：清理 Markdown 標籤並嘗試解析
-    try {
-      // 移除 AI 可能夾帶的 ```json 或 ``` 標籤
-      const cleanJson = generatedText.replace(/```json\n?|```/g, '').trim();
-      const parsedData = JSON.parse(cleanJson);
-      const usage = geminiResult.usageMetadata;
-      
-      return res.status(200).json({
-        data: parsedData,
-        usage: usage || undefined
-      });
-    } catch (parseError) {
-      // 🛡️ 診斷透傳：如果解析失敗，回傳 200 並帶上原始文字，方便前端校稿
-      console.error('[JSON Parse Error]', parseError);
-      return res.status(200).json({
-        error: 'json_parse_failed',
-        rawResponse: generatedText,
-        parseErrorMessage: parseError.message
-      });
-    }
+    // 🌟 將 Gemini 回傳的 EventStream 原封不動地 pipe 回前端
+    return new Response(apiResponse.body, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      }
+    });
 
   } catch (error) {
-    console.error('[Serverless Node.js API Error]', error);
-    // 🛡️ 最終診斷保障：即使後端崩潰，也將錯誤訊息打包回傳，讓前端診斷 UI 能捕捉
-    return res.status(200).json({ 
-      error: 'server_error', 
-      message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    console.error('[Edge API Error]', error);
+    // 🛡️ 錯誤診斷
+    return new Response(
+      JSON.stringify({ 
+        error: 'server_error', 
+        message: error.message,
+        stack: error.stack
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 }

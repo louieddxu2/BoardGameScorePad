@@ -33,7 +33,8 @@ export const callAiScoreboardApi = async (
     images: Blob[],
     gameName: string,
     language: string,
-    modelName: string = 'gemini-2.5-flash-lite'
+    modelName: string = 'gemini-2.5-flash-lite',
+    onStream?: (chunk: string) => void
 ): Promise<AiGenerationResult> => {
     const formData = new FormData();
 
@@ -75,28 +76,84 @@ export const callAiScoreboardApi = async (
             throw new Error(`ai_error_json_parse_failed|${diagnosticInfo}`);
         }
 
-        const rawResponse = await response.json();
+        // 🌟 SSE 解析邏輯
+        if (!response.body) throw new Error('ai_error_network');
 
-        // 🌟 智慧診斷攔截：若後端回報解析失敗或伺服器錯誤，將診斷資料打包拋出
-        if (rawResponse && (rawResponse.error === 'json_parse_failed' || rawResponse.error === 'server_error')) {
-            const diagnosticInfo = JSON.stringify({
-                raw: rawResponse.rawResponse || 'N/A',
-                error: rawResponse.parseErrorMessage || rawResponse.message || 'Unknown server error'
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let accumulatedText = "";
+        let usageData: TokenUsageInfo | undefined = undefined;
+
+        let done = false;
+        let buffer = ""; // 用來處理跨 chunk 被截斷的資料行
+
+        while (!done) {
+            const { value, done: isDone } = await reader.read();
+            done = isDone;
+            if (value) {
+                const chunk = decoder.decode(value, { stream: true });
+                buffer += chunk;
+                
+                // 依換行符號分割，保留最後一個可能不完整的行
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || "";
+                
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const dataStr = line.slice(6).trim();
+                        if (!dataStr) continue;
+                        
+                        try {
+                            const data = JSON.parse(dataStr);
+                            
+                            // 擷取 Token 使用量 (通常在最後一個 chunk 伴隨回傳)
+                            if (data.usageMetadata) {
+                                usageData = data.usageMetadata;
+                            }
+                            
+                            // 擷取文字碎片
+                            const textChunk = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                            if (textChunk) {
+                                accumulatedText += textChunk;
+                                if (onStream) onStream(accumulatedText);
+                            }
+                        } catch (e) {
+                            // 若因為 JSON 結構問題解析失敗，則忽略該行
+                            console.warn('[AI Stream] Failed to parse SSE data chunk:', dataStr);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 串流結束，處理累積的文字
+        if (!accumulatedText) {
+             const diagnosticInfo = JSON.stringify({
+                raw: 'N/A',
+                error: 'ai_error_empty_response'
             });
             throw new Error(`ai_error_json_parse_failed|${diagnosticInfo}`);
         }
 
-        // 🌟 智慧相容解析器：後端可能回傳 { data, usage }，也可能直拋裸 JSON
-        const isWrapped = rawResponse && rawResponse.data !== undefined;
-        const result = isWrapped ? rawResponse.data : rawResponse;
-        const usageData = isWrapped ? rawResponse.usage : undefined;
+        let parsedData;
+        try {
+            // 🌟 移除 Markdown 標記，僅保留 JSON 本體
+            const cleanJson = accumulatedText.replace(/```json\n?|```/g, '').trim();
+            parsedData = JSON.parse(cleanJson);
+        } catch (parseError: any) {
+            const diagnosticInfo = JSON.stringify({
+                raw: accumulatedText,
+                error: parseError.message
+            });
+            throw new Error(`ai_error_json_parse_failed|${diagnosticInfo}`);
+        }
 
-        if (!result || !result.columns || !Array.isArray(result.columns)) {
+        if (!parsedData || !parsedData.columns || !Array.isArray(parsedData.columns)) {
             throw new Error('ai_error_invalid_json');
         }
 
         // 🌟 【前端自我膨脹引擎】：調用獨立檔案裡的膨脹邏輯
-        const finalTemplate = inflateGameTemplate(result);
+        const finalTemplate = inflateGameTemplate(parsedData);
 
         return {
             template: finalTemplate as GameTemplate,

@@ -11,6 +11,7 @@ export interface UseAiGeneratorResult {
     status: AiProcessStatus;
     errorMessage: string | null;
     tokenUsage: TokenUsageInfo | null;
+    streamText: string;
     processAndGenerate: (
         files: File[],
         gameName: string,
@@ -27,6 +28,7 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
     const [status, setStatus] = useState<AiProcessStatus>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [tokenUsage, setTokenUsage] = useState<TokenUsageInfo | null>(null);
+    const [streamText, setStreamText] = useState<string>('');
     const { language } = useTranslation();
 
     // 檢查解鎖狀態 (改用 advance_user)
@@ -36,6 +38,7 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
         setStatus('idle');
         setErrorMessage(null);
         setTokenUsage(null);
+        setStreamText('');
     }, []);
 
     /**
@@ -50,6 +53,7 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
         
         setErrorMessage(null);
         setTokenUsage(null);
+        setStreamText('');
         
         try {
             // 階段 1: 圖片高速壓縮
@@ -68,7 +72,8 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
                 compressedBlobs,
                 gameName,
                 currentLang,
-                modelName
+                modelName,
+                (chunk) => setStreamText(chunk)
             );
             
             if (usage) {
@@ -92,6 +97,7 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
         status,
         errorMessage,
         tokenUsage,
+        streamText,
         processAndGenerate,
         reset,
         isAiUnlocked

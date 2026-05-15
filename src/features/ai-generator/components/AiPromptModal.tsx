@@ -23,7 +23,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
     onAiSuccess
 }) => {
     const { t } = useAiGeneratorTranslation();
-    const { status, errorMessage, tokenUsage, processAndGenerate, reset } = useAiGenerator();
+    const { status, errorMessage, tokenUsage, streamText, processAndGenerate, reset } = useAiGenerator();
     
     // 引擎切換狀態，預設選取穩定主力 gemini-2.5-flash-lite
     type ModelType = 'gemini-2.5-flash-lite' | 'gemini-2.5-flash' | 'gemini-3.1-flash-lite' | 'gemma-4-26b-a4b-it';
@@ -145,7 +145,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         }
     };
 
-    // 渲染進度指示器 (專注呈現壓縮中、分析中的旋轉流程)
+    // 渲染進度指示器 (專注呈現壓縮中、分析中的旋轉流程，並加入終端機字串流)
     const renderLoadingStatus = () => {
         let text = '';
         if (status === 'compressing') text = t('status_compressing');
@@ -153,10 +153,10 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         else if (status === 'success') text = t('status_success');
         
         return (
-            <div className="flex flex-col items-center justify-center py-10 animate-in fade-in zoom-in-95 duration-300">
+            <div className="flex flex-col items-center justify-center py-6 animate-in fade-in zoom-in-95 duration-300 w-full">
                 <div className="relative mb-6">
                     <div className="absolute inset-0 bg-brand-primary/20 rounded-full animate-ping scale-150"></div>
-                    <div className="relative bg-brand-primary/10 p-5 rounded-full text-brand-primary border border-brand-primary/20">
+                    <div className="relative bg-brand-primary/10 p-5 rounded-full text-brand-primary border border-brand-primary/20 shadow-lg">
                         {status === 'success' ? (
                             <Sparkles size={40} className="animate-bounce" />
                         ) : (
@@ -164,11 +164,11 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                         )}
                     </div>
                 </div>
-                <div className="text-center space-y-2">
+                <div className="text-center space-y-2 mb-6">
                     <p className="text-txt-primary font-black text-xl tracking-tight">{text}</p>
                     {status === 'generating' && (
                         <div className="space-y-1">
-                            <p className="text-brand-primary font-mono text-sm font-bold bg-brand-primary/5 px-3 py-1 rounded-full border border-brand-primary/10 inline-block">
+                            <p className="text-brand-primary font-mono text-sm font-bold bg-brand-primary/5 px-3 py-1 rounded-full border border-brand-primary/10 inline-block shadow-inner">
                                 {elapsedTime}s
                             </p>
                             <p className="text-txt-muted text-[11px] font-medium opacity-60">
@@ -177,6 +177,26 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                         </div>
                     )}
                 </div>
+                
+                {/* 🌟 終端機串流顯示區塊 */}
+                {status === 'generating' && streamText && (
+                    <div className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-left overflow-hidden shadow-inner flex flex-col">
+                        <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/5 shrink-0">
+                            <Terminal size={14} className="text-brand-primary/70" />
+                            <span className="text-[10px] font-mono tracking-wider text-txt-muted uppercase">
+                                {t('label_stream_output')}
+                            </span>
+                            <span className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
+                        </div>
+                        {/* 這裡使用 flex-1 和 overflow-y-auto 讓文字能夠自由生長但不會撐爆畫面 */}
+                        <div className="font-mono text-[11px] text-brand-primary/80 leading-relaxed max-h-[140px] overflow-y-auto whitespace-pre-wrap scrollbar-thin scrollbar-thumb-white/10 flex flex-col justify-end">
+                            <p className="break-all">
+                                {streamText}
+                                <span className="inline-block w-1 h-3 ml-0.5 align-middle bg-brand-primary animate-pulse" />
+                            </p>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     };
@@ -327,7 +347,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         );
     };
 
-    // 渲染錯誤狀態 (包含診斷模式)
+    // 統一重構的渲染錯誤狀態 (State Card 設計模式)
     const renderError = () => {
         let displayError = t('error_generic');
         let diagnostic: { raw: string; error: string } | null = null;
@@ -335,7 +355,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         if (errorMessage === 'ai_error_rate_limit') displayError = t('error_rate_limit');
         else if (errorMessage === 'ai_error_invalid_json') displayError = t('error_invalid_json');
         else if (errorMessage?.startsWith('ai_error_json_parse_failed|')) {
-            displayError = "AI 回傳格式解析失敗 (JSON Parse Error)";
+            displayError = t('error_json_parse_failed');
             try {
                 const jsonStr = errorMessage.split('|')[1];
                 diagnostic = JSON.parse(jsonStr);
@@ -345,28 +365,31 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         }
 
         return (
-            <div className="space-y-3 mb-6 animate-in slide-in-from-top-2 duration-300">
-                <div className="bg-status-danger/10 border border-status-danger/20 rounded-xl p-4 flex gap-3 items-start shadow-sm">
-                    <AlertCircle size={20} className="text-status-danger shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                        <p className="text-sm font-bold text-status-danger leading-relaxed">{displayError}</p>
-                        <p className="text-[11px] text-status-danger/70 mt-1">請嘗試再次生成，或更換模型測試。</p>
+            <div className="flex flex-col items-center justify-center py-4 animate-in fade-in zoom-in-95 duration-300 w-full">
+                <div className="relative mb-5">
+                    <div className="absolute inset-0 bg-status-danger/20 rounded-full animate-ping scale-125"></div>
+                    <div className="relative bg-status-danger/10 p-4 rounded-full text-status-danger border border-status-danger/30 shadow-lg">
+                        <AlertCircle size={32} className="animate-pulse" />
                     </div>
-                    <button onClick={reset} className="text-txt-muted hover:text-txt-primary p-1 bg-white/5 rounded-full">
-                        <X size={16} />
-                    </button>
                 </div>
+                
+                <h4 className="text-txt-primary font-black text-lg tracking-wide mb-1 text-center">
+                    {displayError}
+                </h4>
+                <p className="text-xs text-txt-muted font-medium text-center px-4 mb-6 leading-relaxed">
+                    {t('error_retry_suggest')}
+                </p>
 
                 {/* 🔍 診斷報告區域：僅在解析失敗時顯示 */}
                 {diagnostic && (
-                    <div className="bg-surface-bg-alt border border-surface-border rounded-xl overflow-hidden shadow-sm">
+                    <div className="w-full bg-surface-bg-alt border border-surface-border rounded-xl overflow-hidden shadow-sm mb-6 text-left">
                         <button 
                             onClick={() => setShowDebug(!showDebug)}
                             className="w-full flex justify-between items-center px-4 py-2.5 text-[11px] font-bold text-txt-secondary hover:bg-black/10 transition-colors"
                         >
                             <span className="flex items-center gap-2">
                                 <Terminal size={14} />
-                                檢視 AI 原始回傳報告
+                                {t('error_raw_report')}
                             </span>
                             <span className={`transition-transform duration-300 ${showDebug ? 'rotate-180' : ''}`}>
                                 <ChevronDown size={14} />
@@ -376,24 +399,33 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                         {showDebug && (
                             <div className="px-4 pb-4 space-y-3 animate-in slide-in-from-top-1 duration-200">
                                 <div className="space-y-1">
-                                    <span className="text-[10px] uppercase tracking-wider text-txt-muted font-black">Error Trace</span>
+                                    <span className="text-[10px] uppercase tracking-wider text-txt-muted font-black">{t('error_trace')}</span>
                                     <div className="p-2 bg-black/40 rounded border border-white/5 font-mono text-[10px] text-status-danger/90 break-all leading-tight">
                                         {diagnostic.error}
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <span className="text-[10px] uppercase tracking-wider text-txt-muted font-black">Raw Response (AI 原始輸出)</span>
-                                    <div className="p-2 bg-black/40 rounded border border-white/5 font-mono text-[10px] text-txt-primary/80 max-h-48 overflow-y-auto whitespace-pre-wrap leading-normal scrollbar-thin">
+                                    <span className="text-[10px] uppercase tracking-wider text-txt-muted font-black">{t('error_raw_response')}</span>
+                                    <div className="p-2 bg-black/40 rounded border border-white/5 font-mono text-[10px] text-txt-primary/80 max-h-32 overflow-y-auto whitespace-pre-wrap leading-normal scrollbar-thin">
                                         {diagnostic.raw}
                                     </div>
                                 </div>
                                 <p className="text-[10px] text-txt-muted italic">
-                                    * 提示：這通常是提示詞不夠嚴謹，導致模型輸出了非 JSON 的贅詞。
+                                    {t('error_tip')}
                                 </p>
                             </div>
                         )}
                     </div>
                 )}
+                
+                {/* 操作按鈕 */}
+                <button
+                    onClick={reset}
+                    className="w-full py-3.5 text-txt-primary hover:text-white font-bold rounded-xl bg-surface-bg border border-surface-border hover:bg-surface-border active:scale-95 transition-all text-sm flex items-center justify-center gap-2 shadow-sm"
+                >
+                    <X size={16} />
+                    {t('btn_return_retry')}
+                </button>
             </div>
         );
     };
