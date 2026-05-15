@@ -22,6 +22,7 @@ export interface TokenUsageInfo {
 
 export interface AiGenerationResult {
     template: Partial<GameTemplate>;
+    rawText: string;
     usage?: TokenUsageInfo;
 }
 
@@ -137,8 +138,23 @@ export const callAiScoreboardApi = async (
 
         let parsedData;
         try {
-            // 🌟 移除 Markdown 標記，僅保留 JSON 本體
-            const cleanJson = accumulatedText.replace(/```json\n?|```/g, '').trim();
+            // 🌟 更強大的 JSON 提取器，自動忽略 Gemma 4 的思考過程與雜訊
+            let cleanJson = accumulatedText;
+            const jsonMatch = accumulatedText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+            
+            if (jsonMatch && jsonMatch[1]) {
+                cleanJson = jsonMatch[1].trim();
+            } else {
+                // 🛡️ Fallback: 如果 AI 忘記包裝 markdown，強制尋找大括號區塊
+                const startIdx = accumulatedText.indexOf('{');
+                const endIdx = accumulatedText.lastIndexOf('}');
+                if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+                    cleanJson = accumulatedText.substring(startIdx, endIdx + 1);
+                } else {
+                    cleanJson = accumulatedText.trim();
+                }
+            }
+            
             parsedData = JSON.parse(cleanJson);
         } catch (parseError: any) {
             const diagnosticInfo = JSON.stringify({
@@ -157,6 +173,7 @@ export const callAiScoreboardApi = async (
 
         return {
             template: finalTemplate as GameTemplate,
+            rawText: accumulatedText,
             usage: usageData
         };
 

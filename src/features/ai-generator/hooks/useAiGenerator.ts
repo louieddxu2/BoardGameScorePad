@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react';
 import { GameTemplate } from '../../../types';
 import { compressImageForAi } from '../utils/imageProcessor';
-import { callAiScoreboardApi, TokenUsageInfo } from '../services/aiApiService';
+import { callAiScoreboardApi, TokenUsageInfo, AiGenerationResult } from '../services/aiApiService';
 import { useTranslation } from '../../../i18n';
 
 export type AiProcessStatus = 'idle' | 'compressing' | 'generating' | 'success' | 'error';
@@ -16,7 +16,7 @@ export interface UseAiGeneratorResult {
         files: File[],
         gameName: string,
         modelName?: string
-    ) => Promise<Partial<GameTemplate> | null>;
+    ) => Promise<AiGenerationResult | null>;
     reset: () => void;
     isAiUnlocked: boolean;
 }
@@ -48,7 +48,7 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
         files: File[],
         gameName: string,
         modelName: string = 'gemini-2.5-flash-lite'
-    ): Promise<Partial<GameTemplate> | null> => {
+    ): Promise<AiGenerationResult | null> => {
         if (files.length === 0) return null;
         
         setErrorMessage(null);
@@ -68,7 +68,7 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
             // 確定要傳遞給 AI 的語系字串
             const currentLang = language === 'zh-TW' ? '繁體中文 (zh-TW)' : '英文 (en)';
             
-            const { template, usage } = await callAiScoreboardApi(
+            const { template, usage, rawText } = await callAiScoreboardApi(
                 compressedBlobs,
                 gameName,
                 currentLang,
@@ -81,7 +81,7 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
             }
 
             setStatus('success');
-            return template;
+            return { template, rawText, usage };
 
         } catch (error: any) {
             console.error('[useAiGenerator] Process failed:', error);

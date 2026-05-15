@@ -4,6 +4,7 @@ import { Camera, Image as ImageIcon, Play, Loader2, AlertCircle, X, Sparkles, Pl
 import { useAiGenerator } from '../hooks/useAiGenerator';
 import { useAiGeneratorTranslation } from '../../../i18n/aiGenerator';
 import { GameTemplate } from '../../../types';
+import { AiGenerationResult } from '../services/aiApiService';
 import { useEffect } from 'react';
 import CameraView from '../../../components/scanner/CameraView';
 
@@ -32,7 +33,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
     // 🌟 核心升級：檔案緩衝池與預覽 URL 緩存
     const [queuedFiles, setQueuedFiles] = useState<File[]>([]);
     const [previews, setPreviews] = useState<string[]>([]);
-    const [generatedTemplate, setGeneratedTemplate] = useState<Partial<GameTemplate> | null>(null);
+    const [generatedResult, setGeneratedResult] = useState<AiGenerationResult | null>(null);
     
     // 🌟 新增：控制沉浸式 WebRTC 相機遮罩的啟閉
     const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -141,108 +142,34 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         
         if (result) {
             // 🚀 突破：直接緩存在 Modal 中，切換至「結算畫面」，不由系統自動關閉跳轉！
-            setGeneratedTemplate(result);
+            setGeneratedResult(result);
         }
     };
 
-    // 渲染進度指示器 (專注呈現壓縮中、分析中的旋轉流程，並加入終端機字串流)
-    const renderLoadingStatus = () => {
-        let text = '';
-        if (status === 'compressing') text = t('status_compressing');
-        else if (status === 'generating') text = t('status_generating');
-        else if (status === 'success') text = t('status_success');
-        
-        return (
-            <div className="flex flex-col items-center justify-center py-6 animate-in fade-in zoom-in-95 duration-300 w-full">
-                <div className="relative mb-6">
-                    <div className="absolute inset-0 bg-brand-primary/20 rounded-full animate-ping scale-150"></div>
-                    <div className="relative bg-brand-primary/10 p-5 rounded-full text-brand-primary border border-brand-primary/20 shadow-lg">
-                        {status === 'success' ? (
-                            <Sparkles size={40} className="animate-bounce" />
-                        ) : (
-                            <Loader2 size={40} className="animate-spin" />
-                        )}
-                    </div>
-                </div>
-                <div className="text-center space-y-2 mb-6">
-                    <p className="text-txt-primary font-black text-xl tracking-tight">{text}</p>
-                    {status === 'generating' && (
-                        <div className="space-y-1">
-                            <p className="text-brand-primary font-mono text-sm font-bold bg-brand-primary/5 px-3 py-1 rounded-full border border-brand-primary/10 inline-block shadow-inner">
-                                {elapsedTime}s
-                            </p>
-                            <p className="text-txt-muted text-[11px] font-medium opacity-60">
-                                {selectedModel}
-                            </p>
-                        </div>
-                    )}
-                </div>
-                
-                {/* 🌟 終端機串流顯示區塊 */}
-                {status === 'generating' && streamText && (
-                    <div className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-left overflow-hidden shadow-inner flex flex-col">
-                        <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/5 shrink-0">
-                            <Terminal size={14} className="text-brand-primary/70" />
-                            <span className="text-[10px] font-mono tracking-wider text-txt-muted uppercase">
-                                {t('label_stream_output')}
-                            </span>
-                            <span className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
-                        </div>
-                        {/* 這裡使用 flex-1 和 overflow-y-auto 讓文字能夠自由生長但不會撐爆畫面 */}
-                        <div className="font-mono text-[11px] text-brand-primary/80 leading-relaxed max-h-[140px] overflow-y-auto whitespace-pre-wrap scrollbar-thin scrollbar-thumb-white/10 flex flex-col justify-end">
-                            <p className="break-all">
-                                {streamText}
-                                <span className="inline-block w-1 h-3 ml-0.5 align-middle bg-brand-primary animate-pulse" />
-                            </p>
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    // 🌟 核心升級：開箱大吉！渲染 AI 成功產出報告面板
-    const renderSuccessResult = () => {
-        if (!generatedTemplate) return null;
-        
-        const columns = generatedTemplate.columns || [];
+        // 🌟 獨立的成功狀態統計區塊
+    const renderSuccessStats = (result: AiGenerationResult) => {
+        const columns = result.template.columns || [];
         const columnCount = columns.length;
         
-        // ⚙️ 7 大公式黃金分類精算引擎
         const stats = {
-            plain: 0,
-            rate: 0,
-            accum: 0,
-            product: 0,
-            prodAccum: 0,
-            lookup: 0,
-            list: 0,
+            plain: 0, rate: 0, accum: 0, product: 0, prodAccum: 0, lookup: 0, list: 0,
         };
 
         columns.forEach((col: any) => {
             const formula = col.formula || 'a1';
             const inputType = col.inputType || 'keypad';
 
-            if (inputType === 'clicker') {
-                stats.list++;
-            } else if (formula === 'a1×c1') {
-                stats.rate++;
-            } else if (formula === 'a1+next') {
-                stats.accum++;
-            } else if (formula === 'a1×a2') {
-                stats.product++;
-            } else if (formula === '(a1×a2)+next') {
-                stats.prodAccum++;
-            } else if (formula.includes('f1') || col.functions) {
-                stats.lookup++;
-            } else {
-                stats.plain++;
-            }
+            if (inputType === 'clicker') stats.list++;
+            else if (formula === 'a1×c1') stats.rate++;
+            else if (formula === 'a1+next') stats.accum++;
+            else if (formula === 'a1×a2') stats.product++;
+            else if (formula === '(a1×a2)+next') stats.prodAccum++;
+            else if (formula.includes('f1') || col.functions) stats.lookup++;
+            else stats.plain++;
         });
 
-        // 輔助渲染小積木：一行流派分析項
         const renderSchemeRow = (label: string, count: number, dotColorClass: string) => (
-            <div className="flex justify-between items-center py-1 text-[11px] border-b border-white/5 last:border-0 last:pb-0 animate-in fade-in duration-300">
+            <div className="flex justify-between items-center py-1 text-[11px] border-b border-white/5 last:border-0 last:pb-0">
                 <span className="text-txt-secondary flex items-center gap-2 font-medium">
                     <span className={`w-1.5 h-1.5 rounded-full ${dotColorClass}`} />
                     {label}
@@ -252,180 +179,188 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                 </span>
             </div>
         );
-        
+
         return (
-            <div className="animate-in fade-in zoom-in-95 duration-500">
-                {/* 頂部慶祝打勾區 */}
-                <div className="flex flex-col items-center justify-center py-4">
-                    <div className="relative mb-3">
-                        <div className="absolute inset-0 bg-status-success/20 rounded-full animate-ping scale-125"></div>
-                        <div className="relative bg-status-success/10 p-3.5 rounded-full text-status-success border border-status-success/30 shadow-lg">
-                            <Sparkles size={28} className="animate-pulse" />
+            <div className="bg-surface-bg-alt border border-surface-border rounded-xl p-4 mb-2 flex flex-col gap-2 shadow-sm">
+                <div className="flex justify-between items-center py-1 text-sm border-b border-surface-border/40 pb-2.5">
+                    <span className="text-txt-muted flex items-center gap-1.5 font-bold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
+                        {t('label_column_count')}
+                    </span>
+                    <span className="text-txt-primary font-black flex items-center gap-1">
+                        <span className="text-brand-primary text-base mr-0.5">{columnCount}</span>
+                    </span>
+                </div>
+                <div className="py-1 space-y-0.5">
+                    {stats.plain > 0 && renderSchemeRow(t('scheme_plain'), stats.plain, 'bg-txt-muted/40')}
+                    {stats.rate > 0 && renderSchemeRow(t('scheme_rate'), stats.rate, 'bg-status-info')}
+                    {stats.accum > 0 && renderSchemeRow(t('scheme_accum'), stats.accum, 'bg-brand-secondary')}
+                    {stats.product > 0 && renderSchemeRow(t('scheme_product'), stats.product, 'bg-brand-primary')}
+                    {stats.prodAccum > 0 && renderSchemeRow(t('scheme_prod_accum'), stats.prodAccum, 'bg-brand-primary/60')}
+                    {stats.lookup > 0 && renderSchemeRow(t('scheme_lookup'), stats.lookup, 'bg-status-warning')}
+                    {stats.list > 0 && renderSchemeRow(t('scheme_list'), stats.list, 'bg-status-success')}
+                </div>
+                {tokenUsage && (
+                    <div className="mt-2 pt-3 border-t border-surface-border/60 flex flex-col gap-1 bg-black/20 -mx-4 px-4 py-2.5 rounded-b-xl border-t border-white/5">
+                        <div className="flex justify-between items-center text-xs">
+                            <span className="text-txt-muted font-mono text-[10px] tracking-tight">
+                                🚀 {selectedModel}
+                            </span>
+                            <span className="text-brand-primary font-black tracking-wider">
+                                NT$ {calculateCost(selectedModel, tokenUsage)}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] font-mono text-txt-muted/70">
+                            <span>
+                                In: {tokenUsage.promptTokenCount.toLocaleString()} / Out: {tokenUsage.candidatesTokenCount.toLocaleString()}
+                            </span>
+                            <span>
+                                {tokenUsage.totalTokenCount.toLocaleString()} Tokens
+                            </span>
                         </div>
                     </div>
-                    <h4 className="text-txt-primary font-black text-lg tracking-wide mb-1">
-                        {t('status_success')}
-                    </h4>
-                    <p className="text-xs text-txt-muted font-medium text-center px-4">
-                        {t('label_ai_ready')}
-                    </p>
-                </div>
-
-                {/* 📦 分析成果卡片 */}
-                <div className="bg-surface-bg-alt border border-surface-border rounded-xl p-4 mb-5 flex flex-col gap-2 shadow-sm animate-in slide-in-from-bottom-2">
-                    {/* 頂級摘要 */}
-                    <div className="flex justify-between items-center py-1 text-sm border-b border-surface-border/40 pb-2.5">
-                        <span className="text-txt-muted flex items-center gap-1.5 font-bold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
-                            {t('label_column_count')}
-                        </span>
-                        <span className="text-txt-primary font-black flex items-center gap-1">
-                            <span className="text-brand-primary text-base mr-0.5">{columnCount}</span>
-                        </span>
-                    </div>
-
-                    {/* 📊 7 大黃金流派大解構 */}
-                    <div className="py-1 space-y-0.5">
-                        {stats.plain > 0 && renderSchemeRow(t('scheme_plain'), stats.plain, 'bg-txt-muted/40')}
-                        {stats.rate > 0 && renderSchemeRow(t('scheme_rate'), stats.rate, 'bg-status-info')}
-                        {stats.accum > 0 && renderSchemeRow(t('scheme_accum'), stats.accum, 'bg-brand-secondary')}
-                        {stats.product > 0 && renderSchemeRow(t('scheme_product'), stats.product, 'bg-brand-primary')}
-                        {stats.prodAccum > 0 && renderSchemeRow(t('scheme_prod_accum'), stats.prodAccum, 'bg-brand-primary/60')}
-                        {stats.lookup > 0 && renderSchemeRow(t('scheme_lookup'), stats.lookup, 'bg-status-warning')}
-                        {stats.list > 0 && renderSchemeRow(t('scheme_list'), stats.list, 'bg-status-success')}
-                    </div>
-
-                    {/* Token 精密即時消耗表 (對齊 Google 官方 2026 牌價) */}
-                    {tokenUsage && (
-                        <div className="mt-2 pt-3 border-t border-surface-border/60 flex flex-col gap-1 bg-black/20 -mx-4 px-4 py-2.5 rounded-b-xl border-t border-white/5">
-                            <div className="flex justify-between items-center text-xs">
-                                <span className="text-txt-muted font-mono text-[10px] tracking-tight">
-                                    🚀 {selectedModel}
-                                </span>
-                                <span className="text-brand-primary font-black tracking-wider">
-                                    NT$ {calculateCost(selectedModel, tokenUsage)}
-                                </span>
-                            </div>
-                            <div className="flex justify-between items-center text-[10px] font-mono text-txt-muted/70">
-                                <span>
-                                    In: {tokenUsage.promptTokenCount.toLocaleString()} / Out: {tokenUsage.candidatesTokenCount.toLocaleString()}
-                                </span>
-                                <span>
-                                    {tokenUsage.totalTokenCount.toLocaleString()} Tokens
-                                </span>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* 🎬 使用者主導操作區 */}
-                <div className="space-y-3">
-                    <button
-                        onClick={() => {
-                            onAiSuccess(generatedTemplate);
-                            reset();
-                            setQueuedFiles([]);
-                            setGeneratedTemplate(null);
-                        }}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-brand-primary to-brand-secondary text-white rounded-xl font-black text-[15px] shadow-lg shadow-brand-primary/20 active:scale-98 transition-all hover:brightness-105"
-                    >
-                        <Play size={18} className="fill-current" />
-                        <span>{t('btn_use_this_template')}</span>
-                    </button>
-
-                    <button
-                        onClick={() => {
-                            reset();
-                            setGeneratedTemplate(null);
-                        }}
-                        className="w-full py-2.5 text-txt-muted hover:text-txt-secondary font-bold rounded-xl bg-surface-bg hover:bg-surface-bg-alt border border-surface-border active:scale-95 transition-all text-xs flex items-center justify-center gap-1.5"
-                    >
-                        {t('btn_reanalyze')}
-                    </button>
-                </div>
+                )}
             </div>
         );
     };
 
-    // 統一重構的渲染錯誤狀態 (State Card 設計模式)
-    const renderError = () => {
-        let displayError = t('error_generic');
-        let diagnostic: { raw: string; error: string } | null = null;
+    // 🌟 核心統一視圖：處理中、成功、失敗皆使用此視圖
+    const renderActiveState = () => {
+        const isError = !!errorMessage;
+        const isSuccess = !!generatedResult;
+        
+        let headerIcon = <Loader2 size={40} className="animate-spin" />;
+        let headerColor = "brand-primary";
+        let headerTitle = t('status_generating');
+        let headerSubtitle = "";
 
-        if (errorMessage === 'ai_error_rate_limit') displayError = t('error_rate_limit');
-        else if (errorMessage === 'ai_error_invalid_json') displayError = t('error_invalid_json');
-        else if (errorMessage?.startsWith('ai_error_json_parse_failed|')) {
-            displayError = t('error_json_parse_failed');
+        if (status === 'compressing') {
+            headerTitle = t('status_compressing');
+        } else if (isSuccess || status === 'success') {
+            headerIcon = <Sparkles size={36} className="animate-pulse" />;
+            headerColor = "status-success";
+            headerTitle = t('status_success');
+            headerSubtitle = t('label_ai_ready');
+        } else if (isError) {
+            headerIcon = <AlertCircle size={36} className="animate-pulse" />;
+            headerColor = "status-danger";
+            
+            headerTitle = t('error_generic');
+            if (errorMessage === 'ai_error_rate_limit') headerTitle = t('error_rate_limit');
+            else if (errorMessage === 'ai_error_invalid_json') headerTitle = t('error_invalid_json');
+            else if (errorMessage?.startsWith('ai_error_json_parse_failed|')) headerTitle = t('error_json_parse_failed');
+            
+            headerSubtitle = t('error_retry_suggest');
+        }
+
+        let diagnostic: { raw: string; error: string } | null = null;
+        if (isError && errorMessage?.startsWith('ai_error_json_parse_failed|')) {
             try {
                 const jsonStr = errorMessage.split('|')[1];
                 diagnostic = JSON.parse(jsonStr);
-            } catch (e) {
-                console.error('Failed to parse diagnostic info');
-            }
+            } catch (e) {}
+        }
+
+        let terminalContent = "";
+        if (isError) {
+            terminalContent = diagnostic ? diagnostic.raw : "";
+        } else if (isSuccess && generatedResult) {
+            terminalContent = generatedResult.rawText;
+        } else {
+            terminalContent = streamText;
         }
 
         return (
-            <div className="flex flex-col items-center justify-center py-4 animate-in fade-in zoom-in-95 duration-300 w-full">
-                <div className="relative mb-5">
-                    <div className="absolute inset-0 bg-status-danger/20 rounded-full animate-ping scale-125"></div>
-                    <div className="relative bg-status-danger/10 p-4 rounded-full text-status-danger border border-status-danger/30 shadow-lg">
-                        <AlertCircle size={32} className="animate-pulse" />
+            <div className="flex flex-col animate-in fade-in zoom-in-95 duration-300 w-full">
+                <div className="flex flex-col items-center justify-center py-4">
+                    <div className="relative mb-3">
+                        <div className={`absolute inset-0 bg-${headerColor}/20 rounded-full animate-ping scale-125`}></div>
+                        <div className={`relative bg-${headerColor}/10 p-3.5 rounded-full text-${headerColor} border border-${headerColor}/30 shadow-lg`}>
+                            {headerIcon}
+                        </div>
                     </div>
+                    <h4 className="text-txt-primary font-black text-lg tracking-wide mb-1 text-center">
+                        {headerTitle}
+                    </h4>
+                    {headerSubtitle && (
+                        <p className="text-xs text-txt-muted font-medium text-center px-4 leading-relaxed">
+                            {headerSubtitle}
+                        </p>
+                    )}
+                    {status === 'generating' && !isError && !isSuccess && (
+                        <div className="mt-2 space-y-1 text-center">
+                            <p className="text-brand-primary font-mono text-sm font-bold bg-brand-primary/5 px-3 py-1 rounded-full border border-brand-primary/10 inline-block shadow-inner">
+                                {elapsedTime}s
+                            </p>
+                            <p className="text-txt-muted text-[11px] font-medium opacity-60">
+                                {selectedModel}
+                            </p>
+                        </div>
+                    )}
                 </div>
-                
-                <h4 className="text-txt-primary font-black text-lg tracking-wide mb-1 text-center">
-                    {displayError}
-                </h4>
-                <p className="text-xs text-txt-muted font-medium text-center px-4 mb-6 leading-relaxed">
-                    {t('error_retry_suggest')}
-                </p>
 
-                {/* 🔍 診斷報告區域：僅在解析失敗時顯示 */}
-                {diagnostic && (
-                    <div className="w-full bg-surface-bg-alt border border-surface-border rounded-xl overflow-hidden shadow-sm mb-6 text-left">
-                        <button 
-                            onClick={() => setShowDebug(!showDebug)}
-                            className="w-full flex justify-between items-center px-4 py-2.5 text-[11px] font-bold text-txt-secondary hover:bg-black/10 transition-colors"
-                        >
-                            <span className="flex items-center gap-2">
-                                <Terminal size={14} />
-                                {t('error_raw_report')}
-                            </span>
-                            <span className={`transition-transform duration-300 ${showDebug ? 'rotate-180' : ''}`}>
-                                <ChevronDown size={14} />
-                            </span>
-                        </button>
-                        
-                        {showDebug && (
-                            <div className="px-4 pb-4 space-y-3 animate-in slide-in-from-top-1 duration-200">
-                                <div className="space-y-1">
-                                    <span className="text-[10px] uppercase tracking-wider text-txt-muted font-black">{t('error_trace')}</span>
-                                    <div className="p-2 bg-black/40 rounded border border-white/5 font-mono text-[10px] text-status-danger/90 break-all leading-tight">
-                                        {diagnostic.error}
-                                    </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <span className="text-[10px] uppercase tracking-wider text-txt-muted font-black">{t('error_raw_response')}</span>
-                                    <div className="p-2 bg-black/40 rounded border border-white/5 font-mono text-[10px] text-txt-primary/80 max-h-32 overflow-y-auto whitespace-pre-wrap leading-normal scrollbar-thin">
-                                        {diagnostic.raw}
-                                    </div>
-                                </div>
-                                <p className="text-[10px] text-txt-muted italic">
-                                    {t('error_tip')}
-                                </p>
+                {(terminalContent || isError) && (
+                    <div className={`w-full bg-black/60 border ${isError ? 'border-status-danger/30' : 'border-white/10'} rounded-xl p-3 text-left overflow-hidden shadow-inner flex flex-col mb-4`}>
+                        <div className="flex items-center justify-between mb-2 pb-2 border-b border-white/5 shrink-0">
+                            <div className="flex items-center gap-2">
+                                <Terminal size={14} className={isError ? "text-status-danger" : "text-brand-primary/70"} />
+                                <span className="text-[10px] font-mono tracking-wider text-txt-muted uppercase">
+                                    {isError ? t('error_raw_report') : t('label_stream_output')}
+                                </span>
                             </div>
-                        )}
+                            {(!isError && !isSuccess) && <span className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />}
+                        </div>
+                        <div className="font-mono text-[11px] text-brand-primary/80 leading-relaxed max-h-[140px] overflow-y-auto whitespace-pre-wrap scrollbar-thin scrollbar-thumb-white/10 flex flex-col select-text cursor-text">
+                            <p className="break-all selection:bg-brand-primary/30 selection:text-white">
+                                {terminalContent}
+                                {(!isError && !isSuccess) && <span className="inline-block w-1 h-3 ml-0.5 align-middle bg-brand-primary animate-pulse" />}
+                            </p>
+                            {isError && diagnostic?.error && (
+                                <div className="mt-2 p-2 bg-status-danger/10 text-status-danger/90 rounded border border-status-danger/20">
+                                    {diagnostic.error}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
-                
-                {/* 操作按鈕 */}
-                <button
-                    onClick={reset}
-                    className="w-full py-3.5 text-txt-primary hover:text-white font-bold rounded-xl bg-surface-bg border border-surface-border hover:bg-surface-border active:scale-95 transition-all text-sm flex items-center justify-center gap-2 shadow-sm"
-                >
-                    <X size={16} />
-                    {t('btn_return_retry')}
-                </button>
+
+                {isSuccess && generatedResult && renderSuccessStats(generatedResult)}
+
+                <div className="space-y-3 mt-2">
+                    {isSuccess && generatedResult ? (
+                        <>
+                            <button
+                                onClick={() => {
+                                    onAiSuccess(generatedResult.template);
+                                    reset();
+                                    setQueuedFiles([]);
+                                    setGeneratedResult(null);
+                                }}
+                                className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-brand-primary to-brand-secondary text-white rounded-xl font-black text-[15px] shadow-lg shadow-brand-primary/20 active:scale-98 transition-all hover:brightness-105"
+                            >
+                                <Play size={18} className="fill-current" />
+                                <span>{t('btn_use_this_template')}</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    reset();
+                                    setGeneratedResult(null);
+                                }}
+                                className="w-full py-2.5 text-txt-muted hover:text-txt-secondary font-bold rounded-xl bg-surface-bg hover:bg-surface-bg-alt border border-surface-border active:scale-95 transition-all text-xs flex items-center justify-center gap-1.5"
+                            >
+                                {t('btn_reanalyze')}
+                            </button>
+                        </>
+                    ) : isError ? (
+                        <button
+                            onClick={reset}
+                            className="w-full py-3.5 text-txt-primary hover:text-white font-bold rounded-xl bg-surface-bg border border-surface-border hover:bg-surface-border active:scale-95 transition-all text-sm flex items-center justify-center gap-2 shadow-sm"
+                        >
+                            <X size={16} />
+                            {t('btn_return_retry')}
+                        </button>
+                    ) : null}
+                </div>
             </div>
         );
     };
@@ -472,12 +407,8 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                     </div>
 
                     {/* Content Container: 獨佔式渲染判斷邏輯 */}
-                    {errorMessage ? (
-                        renderError()
-                    ) : generatedTemplate ? (
-                        renderSuccessResult()
-                    ) : isProcessing ? (
-                        renderLoadingStatus()
+                    {errorMessage || generatedResult || isProcessing ? (
+                        renderActiveState()
                     ) : (
                         <>
                             {/* Game Name Badge */}
@@ -518,9 +449,6 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                                     {t('privacy_warning')}
                                 </p>
                             </div>
-
-                            {/* 錯誤提示 */}
-                            {status === 'error' && renderError()}
 
                             {/* 🌟 圖片預覽與新增區域 */}
                             {queuedFiles.length > 0 && (

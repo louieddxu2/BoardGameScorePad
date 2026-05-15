@@ -68,6 +68,9 @@ describe('aiApiService - callAiScoreboardApi Expansion Logic', () => {
     expect(spaceCol.isAuto).toBeUndefined();
     expect(spaceCol.isScoring).toBe(true);
 
+    // 🚩 驗證 5: 原始文字
+    expect(result.rawText).toBeDefined();
+
     vi.unstubAllGlobals();
   });
 });
