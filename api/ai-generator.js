@@ -68,6 +68,7 @@ export default async function handler(req) {
       },
       contents: [{ parts: geminiParts }],
       generationConfig: {
+        responseMimeType: "application/json",
         temperature: 0.1
       }
     };

@@ -9,9 +9,10 @@
 export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 
 請依照我提供的桌上遊戲名稱與計分規則圖片，提取出所有計分項目，依照後述的 JSON 格式生成繁體中文的計分板 JSON。
+提醒：若此遊戲在遊戲過程中會得到分數（例如跑分數軌或拿分數標記），第一個項目須為「當前分數」。
 
 ## 輸出格式
-寫出思考與分析的過程，最終在 \`\`\`json 區塊中輸出完整的計分板 JSON。頂層結構：
+純 JSON，無須額外解釋。頂層結構：
 \`\`\`json
 {
   "name": "遊戲名稱",
@@ -35,7 +36,7 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 
 ### 🟢 基礎公式
 1. **\`x\`** (直接數值)：分數是單一來源，無須額外計算或累加。*例：「計分軌分數」*。
-2. **\`3x\` / \`(1/2)x\`** (倍率計分)：*例：每個工人 3 分寫作 \`3x\`*。
+2. **\`3x\` / \`(1/2)x\`** (倍率計分)：*例：每個工人 3 分寫作 \`3x\`，每塊空地扣 1 分寫作 \`-1x\`*。
 3. **\`x+next\`** (分項累加)：要多次輸入同類分數得出總和的。*例：「每張卡片的分數」*。
 
 ### 🟠 進階公式
@@ -105,9 +106,10 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 export const SYSTEM_PROMPT_EN = `# Board Game Scoreboard Converter (Lite)
 
 Please extract all scoring items from the game name and rules image provided by me, and generate JSON according to the format below.
+Reminder: If this game involves gaining points during gameplay (e.g., scoring track or tokens), the first item must be "Current Score".
 
 ## Output Format
-Write down your thinking and analysis process, and ultimately output the complete scoreboard JSON within a \`\`\`json block. Top-level structure:
+Pure JSON, no extra explanation. Top-level structure:
 \`\`\`json
 {
   "name": "Game Name",
@@ -131,7 +133,7 @@ Choose formula based on scoring method, prioritize the first 3.
 
 ### 🟢 Basic Formulas
 1. **\`x\`** (Direct Value): Single point source. *Ex: "Scoretrack Points"*
-2. **\`3x\` / \`(1/2)x\`** (Multiplier): *Ex: Each worker gets 3 pts -> \`3x\`*
+2. **\`3x\` / \`(1/2)x\`** (Multiplier): *Ex: Each worker gets 3 pts -> \`3x\`, each empty space loses 1 pt -> \`-1x\`*
 3. **\`x+next\`** (Accumulator): For items requiring multiple entries. *Ex: "Score for each individual card"*
 
 ### 🟠 Advanced Formulas
