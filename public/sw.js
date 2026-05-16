@@ -1,4 +1,4 @@
-const CACHE_NAME = 'boardgame-scorepad-v48';
+const CACHE_NAME = 'boardgame-scorepad-v49';
 
 // 核心靜態資源
 const CORE_ASSETS = [

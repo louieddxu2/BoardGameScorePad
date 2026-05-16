@@ -174,6 +174,11 @@ export const callAiScoreboardApi = async (
         // 🌟 【前端自我膨脹引擎】：調用獨立檔案裡的膨脹邏輯
         const finalTemplate = inflateGameTemplate(Array.isArray(parsedData) ? { columns: parsedData } : parsedData);
 
+        // 🌟 核心修正：若 AI 返回純陣列（無 name），則自動補回原始輸入的遊戲名稱
+        if (!finalTemplate.name) {
+            finalTemplate.name = gameName;
+        }
+
         return {
             template: finalTemplate as GameTemplate,
             rawText: accumulatedText,
