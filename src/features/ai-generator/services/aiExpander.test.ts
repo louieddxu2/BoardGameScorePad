@@ -12,9 +12,9 @@ describe('aiExpander - inflateGameTemplate', () => {
 
         expect(result).toHaveProperty('columns');
         expect(Array.isArray(result.columns)).toBe(true);
-        expect(result.columns).toHaveLength(2);
-        expect(result.columns[1].formula).toBe('a1×c1');
-        expect(result.columns[1].constants).toEqual({ c1: 3 });
+        expect(result.columns!).toHaveLength(2);
+        expect(result.columns![1].formula).toBe('a1×c1');
+        expect(result.columns![1].constants).toEqual({ c1: 3 });
     });
 
     it('應該保留原有的物件結構 (向下相容)', () => {
@@ -28,7 +28,7 @@ describe('aiExpander - inflateGameTemplate', () => {
         const result = inflateGameTemplate(mockAiOutput);
 
         expect(result.name).toBe("舊格式測試");
-        expect(result.columns).toHaveLength(1);
+        expect(result.columns!).toHaveLength(1);
     });
 
     it('應該自動補全預設計分規則', () => {
