@@ -11,8 +11,11 @@ import path from 'path';
  * (e.g., bg-modal-bg) to ensure theme compatibility.
  */
 
-// Regex to detect direct palette color usage
+// Regex to detect direct palette color usage (e.g., bg-slate-900)
 const HARDCODED_COLOR_REGEX = /\b(bg|text|border|ring|shadow|from|to|via)-(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(\d+)\b/g;
+
+// Regex to detect legacy rgba(var(--c-...)) patterns that should be replaced with token/opacity
+const LEGACY_SEMANTIC_REGEX = /rgba\(var\(--c-[\w-]+\)\s*[\/,]\s*[\d\.]+\)/g;
 
 const EXCLUDE_PATHS = [
     'index.css',
@@ -60,8 +63,11 @@ describe('UI Consistency: Semantic Color Check', () => {
                 if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return;
                 
                 const matches = line.match(HARDCODED_COLOR_REGEX);
-                if (matches) {
-                    violations.push(`Line ${index + 1}: ${trimmed} (Found: ${matches.join(', ')})`);
+                const legacyMatches = line.match(LEGACY_SEMANTIC_REGEX);
+                
+                if (matches || legacyMatches) {
+                    const allFound = [...(matches || []), ...(legacyMatches || [])];
+                    violations.push(`Line ${index + 1}: ${trimmed} (Found: ${allFound.join(', ')})`);
                 }
             });
 

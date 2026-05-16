@@ -46,6 +46,8 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
    \`lookup[1~2->1, 3~5->3, 6+->8]\`
    *例 2：0個-1分，1~2個1分，3~5個3分，6個得6分，超過6個每多2個多5分，記為：*
    \`lookup[0->-1, 1~2->1, 3~5->3, 6->6, +2->5]\`
+   *例 3：每 2 個 3 分，記為：*
+   \`lookup[+2->3]\`
 7. **\`buttons[...]\`** (按鈕選單)：將選項標籤用單引號包裝並指定分數。
    *例：是=10分, 否=0分 記為：*
    \`buttons['是'->10, '否'->0]\`
@@ -142,6 +144,7 @@ Choose formula based on scoring method, prioritize the first 3.
 6. **\`lookup[...]\`** (Chart Lookup): Step function mapping. Write range conditions and scores together.
    *Ex 1: 1~2 is 1 pt, 3~5 is 3 pts, 6+ is 8 pts -> \`lookup[1~2->1, 3~5->3, 6+->8]\`*
    *Ex 2: 0 is -1, 1~2 is 1, 3~5 is 3, each +2 is 5 pts -> \`lookup[0->-1, 1~2->1, 3~5->3, 6->6, +2->5]\`*
+   *Ex 3: 3 pts for every 2 items -> \`lookup[+2->3]\`*
 7. **\`buttons[...]\`** (Button Menu): Wrap labels in single quotes and map to scores.
    *Ex: Yes=10 pts, No=0 pts -> \`buttons['Yes'->10, 'No'->0]\`*
 
