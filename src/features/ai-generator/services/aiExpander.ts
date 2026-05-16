@@ -268,8 +268,13 @@ export const inflateScoringColumn = (col: any): any => {
 /**
  * 🌟 【前端自我膨脹引擎】：膨脹整個模板資料
  */
-export const inflateGameTemplate = (result: any): Partial<GameTemplate> => {
-    if (!result || !result.columns || !Array.isArray(result.columns)) {
+export const inflateGameTemplate = (input: any): Partial<GameTemplate> => {
+    if (!input) return input;
+
+    // 🌟 自動膨脹：支援純陣列格式 [{}, {}] 或標準物件格式 { columns: [] }
+    const result = Array.isArray(input) ? { columns: input } : input;
+
+    if (!result.columns || !Array.isArray(result.columns)) {
         return result;
     }
 

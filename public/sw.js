@@ -44,10 +44,10 @@ self.addEventListener('fetch', (event) => {
 
   // [關鍵修正] 忽略開發工具、Vite 內部路徑與 Vercel 特殊路徑
   // 這能避免在開發環境中快取了 HMR 更新檔，導致瀏覽器卡在舊版
-  if (url.pathname.includes('__vercel') || 
-      url.pathname.startsWith('/@') || 
-      url.pathname.includes('node_modules') ||
-      url.pathname.includes('chrome-extension')) {
+  if (url.pathname.includes('__vercel') ||
+    url.pathname.startsWith('/@') ||
+    url.pathname.includes('node_modules') ||
+    url.pathname.includes('chrome-extension')) {
     return;
   }
 
@@ -60,7 +60,7 @@ self.addEventListener('fetch', (event) => {
         try {
           // 1. 先嘗試從快取讀取 (最快，且保證離線可用)
           const cachedResponse = await caches.match(event.request);
-          
+
           // 2. 設定一個背景更新的 Promise (不管快取有沒有，都去網路抓新的存起來)
           const networkUpdate = fetch(event.request).then((networkResponse) => {
             if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
@@ -71,7 +71,7 @@ self.addEventListener('fetch', (event) => {
             }
             return networkResponse;
           }).catch(() => {
-             // 網路失敗沒關係，反正我們有快取
+            // 網路失敗沒關係，反正我們有快取
           });
 
           // 3. 如果有快取，直接回傳快取 (使用者看到的是舊版，但保證能用)
