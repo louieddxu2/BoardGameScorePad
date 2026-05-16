@@ -11,12 +11,12 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 請依照我提供的桌上遊戲名稱與計分規則圖片，提取出所有計分項目，依照後述的 JSON 格式生成繁體中文的計分板 JSON。
 
 ## 輸出格式
-純 JSON，無須額外解釋。頂層結構：
+純 JSON 項目陣列 [ ... ]，無須額外解釋。結構如下：
 \`\`\`json
-{
-  "name": "遊戲名稱",
-  "columns": [ ... ]
-}
+[
+  { "name": "項目 1", "formula": "..." },
+  { "name": "項目 2", "formula": "..." }
+]
 \`\`\`
 
 ## 欄位屬性定義
@@ -32,23 +32,24 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 
 ## 公式表 (極簡 7 式)
 根據項目計分方式選擇公式，優先選擇前 3 種基本公式。
+公式中的 x、y 即使用者輸入的值，有 +next 表示此項目可多次輸入累加。
 
 ### 🟢 基礎公式
 1. **\`x\`** (直接數值)：分數是單一來源，無須額外計算或累加。*例：「計分軌分數」*。
-2. **\`3x\` / \`(1/2)x\`** (倍率計分)：*例：每個工人 3 分寫作 \`3x\`，每塊空地扣 1 分寫作 \`-1x\`*。
+2. **\`3x\`** (倍率計分)：*例：每個工人 3 分寫作 \`3x\`，每塊空地扣 1 分寫作 \`-1x\`*。
 3. **\`x+next\`** (分項累加)：要多次輸入同類分數得出總和的。*例：「每張卡片的分數」*。
 
 ### 🟠 進階公式
-4. **\`xy\`** (兩數相乘)：兩個數值都需玩家手動輸入。*需搭配 \`subUnits\`，如 \`["個", "星"]\`*。
-5. **\`xy+next\`** (相乘後累加)：多組 [數量 × 乘數] 需要分次累加。
-6. **\`lookup[...]\`** (查表計分)：階梯分數。將條件與分數相鄰寫入括號中。
+4. **\`xy\`** (兩數相乘)：玩家輸入兩數得到乘積。*需搭配 \`subUnits\`，如 \`["個", "星"]\`*。
+5. **\`xy+next\`** (相乘後累加)：多組兩數相乘需要分次累加。
+6. **\`lookup[...]\`**：
    *例 1：1~2個1分，3~5個3分，6個以上固定8分，記為：*
    \`lookup[1~2->1, 3~5->3, 6+->8]\`
    *例 2：0個-1分，1~2個1分，3~5個3分，6個得6分，超過6個每多2個多5分，記為：*
    \`lookup[0->-1, 1~2->1, 3~5->3, 6->6, +2->5]\`
    *例 3：每 2 個 3 分，記為：*
    \`lookup[+2->3]\`
-7. **\`buttons[...]\`** (按鈕選單)：將選項標籤用單引號包裝並指定分數。
+7. **\`buttons[...]\`** (單選按鈕)：按鈕對應分數。標籤用單引號包裝。
    *例：是=10分, 否=0分 記為：*
    \`buttons['是'->10, '否'->0]\`
 
@@ -59,9 +60,7 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 ## 完整範例
 
 \`\`\`json
-{
-  "name": "範例桌遊",
-  "columns": [
+[
     {
       "name": "當前分數",
       "formula": "x",
@@ -98,8 +97,7 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
       "name": "是否符合\\n中央城堡",
       "formula": "buttons['是'->10, '否'->0]"
     }
-  ]
-}
+]
 \`\`\`
 `;
 
@@ -111,12 +109,12 @@ export const SYSTEM_PROMPT_EN = `# Board Game Scoreboard Converter (Lite)
 Please extract all scoring items from the game name and rules image provided by me, and generate JSON according to the format below.
 
 ## Output Format
-Pure JSON, no extra explanation. Top-level structure:
+Pure JSON array [ ... ], no extra explanation. Structure:
 \`\`\`json
-{
-  "name": "Game Name",
-  "columns": [ ... ]
-}
+[
+  { "name": "Item 1", "formula": "..." },
+  { "name": "Item 2", "formula": "..." }
+]
 \`\`\`
 
 ## Column Properties
@@ -132,20 +130,21 @@ Pure JSON, no extra explanation. Top-level structure:
 
 ## Formula Table (7 Modes)
 Choose formula based on scoring method, prioritize the first 3.
+In formulas, x and y are user-entered values. +next means multiple entries can be accumulated.
 
 ### 🟢 Basic Formulas
 1. **\`x\`** (Direct Value): Single point source. *Ex: "Scoretrack Points"*
-2. **\`3x\` / \`(1/2)x\`** (Multiplier): *Ex: Each worker gets 3 pts -> \`3x\`, each empty space loses 1 pt -> \`-1x\`*
+2. **\`3x\`** (Multiplier): *Ex: Each worker gets 3 pts -> \`3x\`, each empty space loses 1 pt -> \`-1x\`*
 3. **\`x+next\`** (Accumulator): For items requiring multiple entries. *Ex: "Score for each individual card"*
 
 ### 🟠 Advanced Formulas
-4. **\`xy\`** (Multiplication): Both inputs manual. *Requires \`subUnits\`, e.g., \`["Pcs", "Stars"]\`*
-5. **\`xy+next\`** (Accumulated Multiplications): Multiple [Tiles × Crowns] logged step-by-step.
-6. **\`lookup[...]\`** (Chart Lookup): Step function mapping. Write range conditions and scores together.
+4. **\`xy\`** (Multiplication): User enters two numbers for product. *Requires \`subUnits\`, e.g., \`["Pcs", "Stars"]\`*
+5. **\`xy+next\`** (Accumulated Multiplications): Multiple multiplications need to be accumulated.
+6. **\`lookup[...]\`**:
    *Ex 1: 1~2 is 1 pt, 3~5 is 3 pts, 6+ is 8 pts -> \`lookup[1~2->1, 3~5->3, 6+->8]\`*
    *Ex 2: 0 is -1, 1~2 is 1, 3~5 is 3, each +2 is 5 pts -> \`lookup[0->-1, 1~2->1, 3~5->3, 6->6, +2->5]\`*
    *Ex 3: 3 pts for every 2 items -> \`lookup[+2->3]\`*
-7. **\`buttons[...]\`** (Button Menu): Wrap labels in single quotes and map to scores.
+7. **\`buttons[...]\`** (Radio Button): Corresponding score on button click. Wrap labels in single quotes.
    *Ex: Yes=10 pts, No=0 pts -> \`buttons['Yes'->10, 'No'->0]\`*
 
 ---
@@ -155,9 +154,7 @@ Reminder: If this game involves gaining points during gameplay (e.g., scoring tr
 ## Full Example
 
 \`\`\`json
-{
-  "name": "Sample Game",
-  "columns": [
+[
     {
       "name": "Current Score",
       "formula": "x",
@@ -194,7 +191,6 @@ Reminder: If this game involves gaining points during gameplay (e.g., scoring tr
       "name": "Central Castle\\nRequirement",
       "formula": "buttons['Yes'->10, 'No'->0]"
     }
-  ]
-}
+]
 \`\`\`
 `;

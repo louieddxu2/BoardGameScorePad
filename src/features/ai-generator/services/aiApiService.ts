@@ -164,12 +164,15 @@ export const callAiScoreboardApi = async (
             throw new Error(`ai_error_json_parse_failed|${diagnosticInfo}`);
         }
 
-        if (!parsedData || !parsedData.columns || !Array.isArray(parsedData.columns)) {
+        // 🌟 彈性解析：支援純陣列 [{}, {}] 或舊有的 { columns: [] } 結構
+        const rawColumns = Array.isArray(parsedData) ? parsedData : (parsedData.columns || []);
+        
+        if (!Array.isArray(rawColumns) || rawColumns.length === 0) {
             throw new Error('ai_error_invalid_json');
         }
 
         // 🌟 【前端自我膨脹引擎】：調用獨立檔案裡的膨脹邏輯
-        const finalTemplate = inflateGameTemplate(parsedData);
+        const finalTemplate = inflateGameTemplate(Array.isArray(parsedData) ? { columns: parsedData } : parsedData);
 
         return {
             template: finalTemplate as GameTemplate,
