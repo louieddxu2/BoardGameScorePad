@@ -27,7 +27,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
     const { status, errorMessage, tokenUsage, streamText, processAndGenerate, reset } = useAiGenerator();
     
     // 引擎切換狀態，預設選取穩定主力 gemini-2.5-flash-lite
-    type ModelType = 'gemini-2.5-flash-lite' | 'gemini-2.5-flash' | 'gemini-3.1-flash-lite' | 'gemma-4-26b-a4b-it';
+    type ModelType = 'gemini-2.5-flash-lite' | 'gemini-2.5-flash' | 'gemini-3.0-flash' | 'gemini-3.1-flash-lite' | 'gemma-4-26b-a4b-it' | 'gemma-4-31b-it';
     const [selectedModel, setSelectedModel] = useState<ModelType>('gemini-2.5-flash-lite');
     
     // 🌟 核心升級：檔案緩衝池與預覽 URL 緩存
@@ -119,6 +119,9 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                 inputCostPer1M = 0.30;  // 2.5 推理主力
                 outputCostPer1M = 2.50;
             }
+        } else if (model.includes('3.0')) {
+            inputCostPer1M = 0.10; // 3.0 系列中階牌價
+            outputCostPer1M = 0.40;
         } else if (model.includes('gemma')) {
             inputCostPer1M = 0.06;  // Gemma 4 極致佛系開放架構
             outputCostPer1M = 0.30;
@@ -272,14 +275,14 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
 
         return (
             <div className="flex flex-col animate-in fade-in zoom-in-95 duration-300 w-full">
-                <div className="flex flex-col items-center justify-center py-4">
-                    <div className="relative mb-3">
-                        <div className={`absolute inset-0 bg-${headerColor}/20 rounded-full animate-ping scale-125`}></div>
-                        <div className={`relative bg-${headerColor}/10 p-3.5 rounded-full text-${headerColor} border border-${headerColor}/30 shadow-lg`}>
+                <div className="flex flex-col items-center justify-center py-2">
+                    <div className="relative mb-2">
+                        <div className={`absolute inset-0 bg-${headerColor}/20 rounded-full animate-ping scale-110`}></div>
+                        <div className={`relative bg-${headerColor}/10 p-2.5 rounded-full text-${headerColor} border border-${headerColor}/30 shadow-md`}>
                             {headerIcon}
                         </div>
                     </div>
-                    <h4 className="text-txt-primary font-black text-lg tracking-wide mb-1 text-center">
+                    <h4 className="text-txt-primary font-black text-base tracking-wide mb-1 text-center">
                         {headerTitle}
                     </h4>
                     {headerSubtitle && (
@@ -300,7 +303,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                 </div>
 
                 {(terminalContent || isError) && (
-                    <div className={`w-full bg-black/60 border ${isError ? 'border-status-danger/30' : 'border-white/10'} rounded-xl p-3 text-left overflow-hidden shadow-inner flex flex-col mb-4`}>
+                    <div className={`w-full bg-black/60 border ${isError ? 'border-status-danger/30' : 'border-white/10'} rounded-xl p-3 text-left overflow-hidden shadow-inner flex flex-col mb-2`}>
                         <div className="flex items-center justify-between mb-2 pb-2 border-b border-white/5 shrink-0">
                             <div className="flex items-center gap-2">
                                 <Terminal size={14} className={isError ? "text-status-danger" : "text-brand-primary/70"} />
@@ -310,7 +313,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                             </div>
                             {(!isError && !isSuccess) && <span className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />}
                         </div>
-                        <div className="font-mono text-[11px] text-brand-primary/80 leading-relaxed max-h-[140px] overflow-y-auto whitespace-pre-wrap scrollbar-thin scrollbar-thumb-white/10 flex flex-col select-text cursor-text">
+                        <div className="font-mono text-[11px] text-brand-primary/80 leading-relaxed max-h-[80px] overflow-y-auto whitespace-pre-wrap scrollbar-thin scrollbar-thumb-white/10 flex flex-col select-text cursor-text">
                             <p className="break-all selection:bg-brand-primary/30 selection:text-white">
                                 {terminalContent}
                                 {(!isError && !isSuccess) && <span className="inline-block w-1 h-3 ml-0.5 align-middle bg-brand-primary animate-pulse" />}
@@ -386,13 +389,13 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
             />
 
             <div 
-                className="modal-container w-full max-w-sm bg-app-bg shadow-2xl relative overflow-hidden p-0 border border-white/10"
+                className="modal-container w-full max-w-sm bg-app-bg shadow-2xl relative overflow-hidden p-0 border border-white/10 max-h-[90vh] flex flex-col"
                 onClick={e => e.stopPropagation()}
             >
                 {/* 頂部裝飾色條 */}
                 <div className="h-1 w-full bg-brand-primary" />
 
-                <div className="p-6">
+                <div className="p-6 overflow-y-auto scrollbar-thin">
                     {/* Header */}
                     <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center gap-2 text-brand-primary">
@@ -423,7 +426,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                             </p>
                              {/* 引擎效能控制台 (2x2 高科技 Grid) */}
                              <div className="grid grid-cols-2 gap-2 mb-5 p-1.5 bg-surface-bg-alt/50 rounded-xl border border-surface-border/60">
-                                 {(['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-3.1-flash-lite', 'gemma-4-26b-a4b-it'] as const).map((model) => {
+                                 {(['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-3.0-flash', 'gemini-3.1-flash-lite', 'gemma-4-26b-a4b-it', 'gemma-4-31b-it'] as const).map((model) => {
                                      const isSelected = selectedModel === model;
                                      return (
                                          <button
