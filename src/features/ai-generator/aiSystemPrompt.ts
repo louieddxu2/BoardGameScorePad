@@ -9,7 +9,6 @@
 export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 
 請依照我提供的桌上遊戲名稱與計分規則圖片，提取出所有計分項目，依照後述的 JSON 格式生成繁體中文的計分板 JSON。
-提醒：若此遊戲在遊戲過程中會得到分數（例如跑分數軌或拿分數標記），第一個項目須為「當前分數」。
 
 ## 輸出格式
 純 JSON，無須額外解釋。頂層結構：
@@ -53,6 +52,8 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 
 ---
 
+提醒：若此遊戲在遊戲過程中會得到分數（例如跑分數軌或拿分數標記），第一個項目須為「當前分數」。
+
 ## 完整範例
 
 \`\`\`json
@@ -60,7 +61,7 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
   "name": "範例桌遊",
   "columns": [
     {
-      "name": "計分軌",
+      "name": "當前分數",
       "formula": "x",
       "unit": "分"
     },
@@ -106,7 +107,6 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 export const SYSTEM_PROMPT_EN = `# Board Game Scoreboard Converter (Lite)
 
 Please extract all scoring items from the game name and rules image provided by me, and generate JSON according to the format below.
-Reminder: If this game involves gaining points during gameplay (e.g., scoring track or tokens), the first item must be "Current Score".
 
 ## Output Format
 Pure JSON, no extra explanation. Top-level structure:
@@ -147,6 +147,8 @@ Choose formula based on scoring method, prioritize the first 3.
 
 ---
 
+Reminder: If this game involves gaining points during gameplay (e.g., scoring track or tokens), the first item must be "Current Score".
+
 ## Full Example
 
 \`\`\`json
@@ -154,7 +156,7 @@ Choose formula based on scoring method, prioritize the first 3.
   "name": "Sample Game",
   "columns": [
     {
-      "name": "Scoretrack",
+      "name": "Current Score",
       "formula": "x",
       "unit": "pts"
     },
