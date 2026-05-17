@@ -311,11 +311,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                             {headerSubtitle}
                         </p>
                     )}
-                    {status === 'generating' && !isError && !isSuccess && (
-                        <div className="mt-1 space-y-1 text-center h-4">
-                            {/* 秒數已移至動畫中心，模型名稱已移至頂部以保持簡潔 */}
-                        </div>
-                    )}
+
                 </div>
 
                 {(terminalContent || isError) && (
