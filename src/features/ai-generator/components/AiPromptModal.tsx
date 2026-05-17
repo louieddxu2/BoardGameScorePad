@@ -276,10 +276,20 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         return (
             <div className="flex flex-col animate-in fade-in zoom-in-95 duration-300 w-full">
                 <div className="flex flex-col items-center justify-center py-2">
-                    <div className="relative mb-2">
+                    <div className="relative mb-3 flex items-center justify-center">
                         <div className={`absolute inset-0 bg-${headerColor}/20 rounded-full animate-ping scale-110`}></div>
-                        <div className={`relative bg-${headerColor}/10 p-2.5 rounded-full text-${headerColor} border border-${headerColor}/30 shadow-md`}>
-                            {headerIcon}
+                        <div className={`relative bg-${headerColor}/10 rounded-full text-${headerColor} border border-${headerColor}/30 shadow-md flex items-center justify-center w-16 h-16`}>
+                            {/* Spinner or Icon */}
+                            <div className={status === 'generating' && !isError && !isSuccess ? "opacity-20" : ""}>
+                                {headerIcon}
+                            </div>
+                            
+                            {/* Centered Timer */}
+                            {status === 'generating' && !isError && !isSuccess && (
+                                <span className="absolute text-sm font-black font-mono tracking-tighter">
+                                    {elapsedTime}s
+                                </span>
+                            )}
                         </div>
                     </div>
                     <h4 className="text-txt-primary font-black text-base tracking-wide mb-1 text-center">
@@ -291,13 +301,8 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                         </p>
                     )}
                     {status === 'generating' && !isError && !isSuccess && (
-                        <div className="mt-2 space-y-1 text-center">
-                            <p className="text-brand-primary font-mono text-sm font-bold bg-brand-primary/5 px-3 py-1 rounded-full border border-brand-primary/10 inline-block shadow-inner">
-                                {elapsedTime}s
-                            </p>
-                            <p className="text-txt-muted text-[11px] font-medium opacity-60">
-                                {selectedModel}
-                            </p>
+                        <div className="mt-1 space-y-1 text-center h-4">
+                            {/* 秒數已移至動畫中心，模型名稱已移除以保持簡潔 */}
                         </div>
                     )}
                 </div>
@@ -389,15 +394,15 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
             />
 
             <div
-                className="modal-container w-full max-w-sm bg-app-bg shadow-2xl relative overflow-hidden p-0 border border-white/10 max-h-[90vh] flex flex-col"
+                className="modal-container w-[92vw] max-w-sm bg-app-bg shadow-2xl relative overflow-hidden p-0 border border-white/10 max-h-[85vh] flex flex-col"
                 onClick={e => e.stopPropagation()}
             >
                 {/* 頂部裝飾色條 */}
                 <div className="h-1 w-full bg-brand-primary" />
 
-                <div className="p-6 overflow-y-auto scrollbar-thin">
+                <div className="p-5 overflow-y-auto scrollbar-thin">
                     {/* Header */}
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-2 text-brand-primary">
                             <Sparkles size={20} />
                             <h3 className="font-black text-xl tracking-tight">{t('title')}</h3>
@@ -414,38 +419,34 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                         renderActiveState()
                     ) : (
                         <>
-                            {/* Game Name Badge */}
-                            <div className="inline-flex items-center px-3 py-1 bg-surface-bg border border-surface-border rounded-full mb-4">
-                                <span className="text-xs font-bold text-txt-secondary truncate max-w-[240px]">
-                                    {gameName}
-                                </span>
+                            {/* Game Name & AI Selector Row */}
+                            <div className="flex justify-between items-center mb-4 gap-2">
+                                <div className="inline-flex items-center px-3 py-1 bg-surface-bg border border-surface-border rounded-full flex-shrink">
+                                    <span className="text-[11px] font-bold text-txt-secondary truncate max-w-[140px]">
+                                        {gameName}
+                                    </span>
+                                </div>
+                                
+                                <select
+                                    value={selectedModel}
+                                    onChange={(e) => setSelectedModel(e.target.value as ModelType)}
+                                    className="bg-surface-bg-alt border border-surface-border text-brand-primary text-[10px] font-mono font-bold rounded-lg px-2 py-1.5 focus:outline-none focus:border-brand-primary/50 max-w-[160px] truncate"
+                                >
+                                    <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
+                                    <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                                    <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
+                                    <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite</option>
+                                    <option value="gemma-4-26b-a4b-it">gemma-4-26b-a4b-it</option>
+                                    <option value="gemma-4-31b-it">gemma-4-31b-it</option>
+                                </select>
                             </div>
 
-                            <p className="text-txt-primary font-medium mb-4 text-[15px]">
+                            <p className="text-txt-primary font-medium mb-3 text-sm">
                                 {t('prompt_question')}
                             </p>
-                            {/* 引擎效能控制台 (2x2 高科技 Grid) */}
-                            <div className="grid grid-cols-2 gap-2 mb-5 p-1.5 bg-surface-bg-alt/50 rounded-xl border border-surface-border/60">
-                                {(['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-3-flash-preview', 'gemini-3.1-flash-lite', 'gemma-4-26b-a4b-it', 'gemma-4-31b-it'] as const).map((model) => {
-                                    const isSelected = selectedModel === model;
-                                    return (
-                                        <button
-                                            key={model}
-                                            type="button"
-                                            onClick={() => setSelectedModel(model)}
-                                            className={`py-2 px-1 rounded-lg border font-mono transition-all duration-200 text-[10px] tracking-tighter active:scale-95 flex items-center justify-center ${isSelected
-                                                    ? 'bg-brand-primary/10 text-brand-primary border-brand-primary font-black shadow-sm shadow-brand-primary/5'
-                                                    : 'bg-surface-bg border-surface-border/70 text-txt-muted hover:text-txt-primary hover:border-surface-border-hover'
-                                                }`}
-                                        >
-                                            {model}
-                                        </button>
-                                    );
-                                })}
-                            </div>
 
                             {/* 隱私警告區塊 */}
-                            <div className="flex gap-2 p-3 bg-surface-bg-alt rounded-lg border border-surface-border mb-6">
+                            <div className="flex gap-2 p-2.5 bg-surface-bg-alt rounded-lg border border-surface-border mb-4">
                                 <AlertCircle size={16} className="text-status-warning shrink-0 mt-0.5" />
                                 <p className="text-xs text-txt-muted leading-relaxed">
                                     {t('privacy_warning')}
