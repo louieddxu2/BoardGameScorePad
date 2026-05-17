@@ -27,7 +27,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
     const { status, errorMessage, tokenUsage, streamText, processAndGenerate, reset } = useAiGenerator();
     
     // 引擎切換狀態，預設選取穩定主力 gemini-2.5-flash-lite
-    type ModelType = 'gemini-2.5-flash-lite' | 'gemini-2.5-flash' | 'gemini-3.0-flash' | 'gemini-3.1-flash-lite' | 'gemma-4-26b-a4b-it' | 'gemma-4-31b-it';
+    type ModelType = 'gemini-2.5-flash-lite' | 'gemini-2.5-flash' | 'gemini-3-flash' | 'gemini-3.1-flash-lite' | 'gemma-4-26b-a4b-it' | 'gemma-4-31b-it';
     const [selectedModel, setSelectedModel] = useState<ModelType>('gemini-2.5-flash-lite');
     
     // 🌟 核心升級：檔案緩衝池與預覽 URL 緩存
@@ -426,7 +426,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                             </p>
                              {/* 引擎效能控制台 (2x2 高科技 Grid) */}
                              <div className="grid grid-cols-2 gap-2 mb-5 p-1.5 bg-surface-bg-alt/50 rounded-xl border border-surface-border/60">
-                                 {(['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-3.0-flash', 'gemini-3.1-flash-lite', 'gemma-4-26b-a4b-it', 'gemma-4-31b-it'] as const).map((model) => {
+                                 {(['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-3-flash', 'gemini-3.1-flash-lite', 'gemma-4-26b-a4b-it', 'gemma-4-31b-it'] as const).map((model) => {
                                      const isSelected = selectedModel === model;
                                      return (
                                          <button
