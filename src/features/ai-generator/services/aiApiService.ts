@@ -145,11 +145,26 @@ export const callAiScoreboardApi = async (
             if (jsonMatch && jsonMatch[1]) {
                 cleanJson = jsonMatch[1].trim();
             } else {
-                // 🛡️ Fallback: 如果 AI 忘記包裝 markdown，強制尋找大括號區塊
-                const startIdx = accumulatedText.indexOf('{');
-                const endIdx = accumulatedText.lastIndexOf('}');
-                if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-                    cleanJson = accumulatedText.substring(startIdx, endIdx + 1);
+                // 🛡️ Fallback: 如果 AI 忘記包裝 markdown，強制尋找大括號或中括號區塊
+                const startObjIdx = accumulatedText.indexOf('{');
+                const startArrIdx = accumulatedText.indexOf('[');
+                const endObjIdx = accumulatedText.lastIndexOf('}');
+                const endArrIdx = accumulatedText.lastIndexOf(']');
+
+                // 找出最外層的括號
+                const hasObj = startObjIdx !== -1 && endObjIdx !== -1;
+                const hasArr = startArrIdx !== -1 && endArrIdx !== -1;
+
+                if (hasObj && hasArr) {
+                    if (startArrIdx < startObjIdx && endArrIdx > endObjIdx) {
+                        cleanJson = accumulatedText.substring(startArrIdx, endArrIdx + 1);
+                    } else {
+                        cleanJson = accumulatedText.substring(startObjIdx, endObjIdx + 1);
+                    }
+                } else if (hasArr && startArrIdx < endArrIdx) {
+                    cleanJson = accumulatedText.substring(startArrIdx, endArrIdx + 1);
+                } else if (hasObj && startObjIdx < endObjIdx) {
+                    cleanJson = accumulatedText.substring(startObjIdx, endObjIdx + 1);
                 } else {
                     cleanJson = accumulatedText.trim();
                 }
