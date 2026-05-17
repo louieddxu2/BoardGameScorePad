@@ -11,12 +11,14 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 請依照我提供的桌上遊戲名稱與計分規則圖片，提取出所有計分項目，依照後述的 JSON 格式生成繁體中文的計分板 JSON。
 
 ## 輸出格式
-純 JSON 項目陣列 [ ... ]，無須額外解釋。結構如下：
+純 JSON，無須額外解釋。結構如下：
 \`\`\`json
-[
-  { "name": "項目 1", "formula": "..." },
-  { "name": "項目 2", "formula": "..." }
-]
+{
+  "columns": [
+    { "name": "項目 1", "formula": "..." },
+    { "name": "項目 2", "formula": "..." }
+  ]
+}
 \`\`\`
 
 ## 欄位屬性定義
@@ -60,7 +62,8 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 ## 完整範例
 
 \`\`\`json
-[
+{
+  "columns": [
     {
       "name": "當前分數",
       "formula": "x",
@@ -97,7 +100,8 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
       "name": "是否符合\\n中央城堡",
       "formula": "buttons['是'->10, '否'->0]"
     }
-]
+  ]
+}
 \`\`\`
 `;
 
@@ -109,12 +113,14 @@ export const SYSTEM_PROMPT_EN = `# Board Game Scoreboard Converter (Lite)
 Please extract all scoring items from the game name and rules image provided by me, and generate JSON according to the format below.
 
 ## Output Format
-Pure JSON array [ ... ], no extra explanation. Structure:
+Pure JSON, no extra explanation. Structure:
 \`\`\`json
-[
-  { "name": "Item 1", "formula": "..." },
-  { "name": "Item 2", "formula": "..." }
-]
+{
+  "columns": [
+    { "name": "Item 1", "formula": "..." },
+    { "name": "Item 2", "formula": "..." }
+  ]
+}
 \`\`\`
 
 ## Column Properties
@@ -154,7 +160,8 @@ Reminder: If this game involves gaining points during gameplay (e.g., scoring tr
 ## Full Example
 
 \`\`\`json
-[
+{
+  "columns": [
     {
       "name": "Current Score",
       "formula": "x",
@@ -191,6 +198,7 @@ Reminder: If this game involves gaining points during gameplay (e.g., scoring tr
       "name": "Central Castle\\nRequirement",
       "formula": "buttons['Yes'->10, 'No'->0]"
     }
-]
+  ]
+}
 \`\`\`
 `;
