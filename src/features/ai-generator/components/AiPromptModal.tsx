@@ -287,10 +287,20 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                 )}
                 
                 <div className="flex flex-col items-center justify-center py-2">
-                    <div className="relative mb-2">
+                    <div className="relative mb-3 flex items-center justify-center">
                         <div className={`absolute inset-0 bg-${headerColor}/20 rounded-full animate-ping scale-110`}></div>
-                        <div className={`relative bg-${headerColor}/10 p-2.5 rounded-full text-${headerColor} border border-${headerColor}/30 shadow-md`}>
-                            {headerIcon}
+                        <div className={`relative bg-${headerColor}/10 rounded-full text-${headerColor} border border-${headerColor}/30 shadow-md flex items-center justify-center w-16 h-16`}>
+                            {/* Spinner or Icon */}
+                            <div className={status === 'generating' && !isError && !isSuccess ? "opacity-20" : ""}>
+                                {headerIcon}
+                            </div>
+                            
+                            {/* Centered Timer */}
+                            {status === 'generating' && !isError && !isSuccess && (
+                                <span className="absolute text-sm font-black font-mono tracking-tighter">
+                                    {elapsedTime}s
+                                </span>
+                            )}
                         </div>
                     </div>
                     <h4 className="text-txt-primary font-black text-base tracking-wide mb-1 text-center">
@@ -302,13 +312,8 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                         </p>
                     )}
                     {status === 'generating' && !isError && !isSuccess && (
-                        <div className="mt-2 space-y-1 text-center">
-                            <p className="text-brand-primary font-mono text-sm font-bold bg-brand-primary/5 px-3 py-1 rounded-full border border-brand-primary/10 inline-block shadow-inner">
-                                {elapsedTime}s
-                            </p>
-                            <p className="text-txt-muted text-[11px] font-medium opacity-60">
-                                {selectedModel}
-                            </p>
+                        <div className="mt-1 space-y-1 text-center h-4">
+                            {/* 秒數已移至動畫中心，模型名稱已移至頂部以保持簡潔 */}
                         </div>
                     )}
                 </div>
