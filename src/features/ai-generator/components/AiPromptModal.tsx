@@ -25,16 +25,16 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
 }) => {
     const { t } = useAiGeneratorTranslation();
     const { status, errorMessage, tokenUsage, streamText, processAndGenerate, reset } = useAiGenerator();
-    
+
     // 引擎切換狀態，預設選取穩定主力 gemini-2.5-flash-lite
-    type ModelType = 'gemini-2.5-flash-lite' | 'gemini-2.5-flash' | 'gemini-3-flash' | 'gemini-3.1-flash-lite' | 'gemma-4-26b-a4b-it' | 'gemma-4-31b-it';
+    type ModelType = 'gemini-2.5-flash-lite' | 'gemini-2.5-flash' | 'gemini-3-flash-preview' | 'gemini-3.1-flash-lite' | 'gemma-4-26b-a4b-it' | 'gemma-4-31b-it';
     const [selectedModel, setSelectedModel] = useState<ModelType>('gemini-2.5-flash-lite');
-    
+
     // 🌟 核心升級：檔案緩衝池與預覽 URL 緩存
     const [queuedFiles, setQueuedFiles] = useState<File[]>([]);
     const [previews, setPreviews] = useState<string[]>([]);
     const [generatedResult, setGeneratedResult] = useState<AiGenerationResult | null>(null);
-    
+
     // 🌟 新增：控制沉浸式 WebRTC 相機遮罩的啟閉
     const [isScannerOpen, setIsScannerOpen] = useState(false);
 
@@ -46,7 +46,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
     useEffect(() => {
         const objectUrls = queuedFiles.map(file => URL.createObjectURL(file));
         setPreviews(objectUrls);
-        
+
         // 清理函數：當檔案變更或元件卸載時釋放 URL
         return () => objectUrls.forEach(url => URL.revokeObjectURL(url));
     }, [queuedFiles]);
@@ -78,7 +78,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         const fileList = Array.from(files);
         // 向下追加，保留之前選好的照片
         setQueuedFiles(prev => [...prev, ...fileList]);
-        
+
         // 重置 input value 確保下次選取同一個檔名還能觸發 onChange
         e.target.value = '';
     };
@@ -88,10 +88,10 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         if (!blobs || blobs.length === 0) return;
 
         // 將二進位 Blob 轉化為標準 File 物件以對接既有流程
-        const newFiles = blobs.map((blob, index) => 
+        const newFiles = blobs.map((blob, index) =>
             new File(
-                [blob], 
-                `ai_scan_${Date.now()}_${index}.jpg`, 
+                [blob],
+                `ai_scan_${Date.now()}_${index}.jpg`,
                 { type: 'image/jpeg', lastModified: Date.now() }
             )
         );
@@ -142,18 +142,18 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         setShowDebug(false); // 重置除錯狀態
 
         const result = await processAndGenerate(queuedFiles, gameName, selectedModel);
-        
+
         if (result) {
             // 🚀 突破：直接緩存在 Modal 中，切換至「結算畫面」，不由系統自動關閉跳轉！
             setGeneratedResult(result);
         }
     };
 
-        // 🌟 獨立的成功狀態統計區塊
+    // 🌟 獨立的成功狀態統計區塊
     const renderSuccessStats = (result: AiGenerationResult) => {
         const columns = result.template.columns || [];
         const columnCount = columns.length;
-        
+
         const stats = {
             plain: 0, rate: 0, accum: 0, product: 0, prodAccum: 0, lookup: 0, list: 0,
         };
@@ -231,7 +231,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
     const renderActiveState = () => {
         const isError = !!errorMessage;
         const isSuccess = !!generatedResult;
-        
+
         let headerIcon = <Loader2 size={40} className="animate-spin" />;
         let headerColor = "brand-primary";
         let headerTitle = t('status_generating');
@@ -247,12 +247,12 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         } else if (isError) {
             headerIcon = <AlertCircle size={36} className="animate-pulse" />;
             headerColor = "status-danger";
-            
+
             headerTitle = t('error_generic');
             if (errorMessage === 'ai_error_rate_limit') headerTitle = t('error_rate_limit');
             else if (errorMessage === 'ai_error_invalid_json') headerTitle = t('error_invalid_json');
             else if (errorMessage?.startsWith('ai_error_json_parse_failed|')) headerTitle = t('error_json_parse_failed');
-            
+
             headerSubtitle = t('error_retry_suggest');
         }
 
@@ -261,7 +261,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
             try {
                 const jsonStr = errorMessage.split('|')[1];
                 diagnostic = JSON.parse(jsonStr);
-            } catch (e) {}
+            } catch (e) { }
         }
 
         let terminalContent = "";
@@ -371,7 +371,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
     const isProcessing = status === 'compressing' || status === 'generating' || status === 'success';
 
     return (
-        <div 
+        <div
             className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300"
             onClick={(e) => {
                 // 處理中不可關閉
@@ -379,16 +379,16 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
             }}
         >
             {/* 隱藏的 inputs - 拍照機制已遷往 CameraView，此處只需保留相簿 input */}
-            <input 
-                type="file" 
-                ref={fileInputRef} 
-                accept="image/*" 
-                multiple 
-                className="hidden" 
-                onChange={handleFileChange} 
+            <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleFileChange}
             />
 
-            <div 
+            <div
                 className="modal-container w-full max-w-sm bg-app-bg shadow-2xl relative overflow-hidden p-0 border border-white/10 max-h-[90vh] flex flex-col"
                 onClick={e => e.stopPropagation()}
             >
@@ -424,26 +424,25 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                             <p className="text-txt-primary font-medium mb-4 text-[15px]">
                                 {t('prompt_question')}
                             </p>
-                             {/* 引擎效能控制台 (2x2 高科技 Grid) */}
-                             <div className="grid grid-cols-2 gap-2 mb-5 p-1.5 bg-surface-bg-alt/50 rounded-xl border border-surface-border/60">
-                                 {(['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-3-flash', 'gemini-3.1-flash-lite', 'gemma-4-26b-a4b-it', 'gemma-4-31b-it'] as const).map((model) => {
-                                     const isSelected = selectedModel === model;
-                                     return (
-                                         <button
-                                             key={model}
-                                             type="button"
-                                             onClick={() => setSelectedModel(model)}
-                                             className={`py-2 px-1 rounded-lg border font-mono transition-all duration-200 text-[10px] tracking-tighter active:scale-95 flex items-center justify-center ${
-                                                 isSelected 
-                                                     ? 'bg-brand-primary/10 text-brand-primary border-brand-primary font-black shadow-sm shadow-brand-primary/5' 
-                                                     : 'bg-surface-bg border-surface-border/70 text-txt-muted hover:text-txt-primary hover:border-surface-border-hover'
-                                             }`}
-                                         >
-                                             {model}
-                                         </button>
-                                     );
-                                 })}
-                             </div>
+                            {/* 引擎效能控制台 (2x2 高科技 Grid) */}
+                            <div className="grid grid-cols-2 gap-2 mb-5 p-1.5 bg-surface-bg-alt/50 rounded-xl border border-surface-border/60">
+                                {(['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-3-flash-preview', 'gemini-3.1-flash-lite', 'gemma-4-26b-a4b-it', 'gemma-4-31b-it'] as const).map((model) => {
+                                    const isSelected = selectedModel === model;
+                                    return (
+                                        <button
+                                            key={model}
+                                            type="button"
+                                            onClick={() => setSelectedModel(model)}
+                                            className={`py-2 px-1 rounded-lg border font-mono transition-all duration-200 text-[10px] tracking-tighter active:scale-95 flex items-center justify-center ${isSelected
+                                                    ? 'bg-brand-primary/10 text-brand-primary border-brand-primary font-black shadow-sm shadow-brand-primary/5'
+                                                    : 'bg-surface-bg border-surface-border/70 text-txt-muted hover:text-txt-primary hover:border-surface-border-hover'
+                                                }`}
+                                        >
+                                            {model}
+                                        </button>
+                                    );
+                                })}
+                            </div>
 
                             {/* 隱私警告區塊 */}
                             <div className="flex gap-2 p-3 bg-surface-bg-alt rounded-lg border border-surface-border mb-6">
@@ -461,27 +460,27 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                                             <Sparkles size={12} />
                                             {t('status_selected_count').replace('{count}', queuedFiles.length.toString())}
                                         </span>
-                                        <button 
+                                        <button
                                             onClick={() => setQueuedFiles([])}
                                             className="text-xs text-txt-muted hover:text-status-danger transition-colors font-medium"
                                         >
                                             {t('btn_clear_all')}
                                         </button>
                                     </div>
-                                    
+
                                     {/* 水平滑動輸送帶 */}
                                     <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-none snap-x">
                                         {previews.map((url, index) => (
                                             <div key={index} className="relative group flex-shrink-0 snap-start">
                                                 <div className="w-20 h-20 rounded-xl overflow-hidden border border-white/10 bg-surface-bg-alt shadow-md">
-                                                    <img 
-                                                        src={url} 
-                                                        alt={`Preview ${index}`} 
+                                                    <img
+                                                        src={url}
+                                                        alt={`Preview ${index}`}
                                                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                                     />
                                                 </div>
                                                 {/* 懸浮 X 按鈕 */}
-                                                <button 
+                                                <button
                                                     onClick={() => handleRemoveFile(index)}
                                                     className="absolute -top-1.5 -right-1.5 bg-black/80 hover:bg-status-danger text-white p-1 rounded-full shadow-lg border border-white/20 transition-all duration-200 hover:scale-110 active:scale-90"
                                                 >
@@ -489,9 +488,9 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                                                 </button>
                                             </div>
                                         ))}
-                                        
+
                                         {/* 加號佔位符，觸發專用相機繼續拍 */}
-                                        <button 
+                                        <button
                                             onClick={() => setIsScannerOpen(true)}
                                             className="w-20 h-20 rounded-xl border-2 border-dashed border-brand-primary/20 hover:border-brand-primary/50 bg-brand-primary/5 hover:bg-brand-primary/10 flex flex-col items-center justify-center gap-1 text-brand-primary transition-all flex-shrink-0 group active:scale-95 snap-start"
                                         >
@@ -532,7 +531,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                                             <Sparkles size={20} className="animate-pulse" />
                                             <span>{t('btn_analyze_count').replace('{count}', queuedFiles.length.toString())}</span>
                                         </button>
-                                        
+
                                         {/* 小型輔助按鈕，方便追加相簿照片 */}
                                         <div className="flex gap-2">
                                             <button
@@ -559,10 +558,10 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                     )}
                 </div>
             </div>
-            
+
             {/* 🌟 全螢幕沉浸式相機遮罩 (Camera View) */}
             {isScannerOpen && (
-                <CameraView 
+                <CameraView
                     onCapture={handleCameraCapture}
                     onClose={() => setIsScannerOpen(false)}
                     singleShot={false} // 多選模式
