@@ -275,21 +275,22 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
 
         return (
             <div className="flex flex-col animate-in fade-in zoom-in-95 duration-300 w-full">
+                {status === 'generating' && !isError && !isSuccess && (
+                    <div className="flex justify-between items-center mb-4 w-full">
+                        <span className="text-[11px] font-bold text-txt-secondary truncate max-w-[180px] px-2 py-0.5 bg-surface-bg border border-surface-border rounded-full">
+                            {gameName}
+                        </span>
+                        <span className="text-[9px] font-mono font-bold text-txt-muted bg-surface-bg-alt px-1.5 py-0.5 rounded border border-surface-border">
+                            {selectedModel}
+                        </span>
+                    </div>
+                )}
+                
                 <div className="flex flex-col items-center justify-center py-2">
-                    <div className="relative mb-3 flex items-center justify-center">
+                    <div className="relative mb-2">
                         <div className={`absolute inset-0 bg-${headerColor}/20 rounded-full animate-ping scale-110`}></div>
-                        <div className={`relative bg-${headerColor}/10 rounded-full text-${headerColor} border border-${headerColor}/30 shadow-md flex items-center justify-center w-16 h-16`}>
-                            {/* Spinner or Icon */}
-                            <div className={status === 'generating' && !isError && !isSuccess ? "opacity-20" : ""}>
-                                {headerIcon}
-                            </div>
-                            
-                            {/* Centered Timer */}
-                            {status === 'generating' && !isError && !isSuccess && (
-                                <span className="absolute text-sm font-black font-mono tracking-tighter">
-                                    {elapsedTime}s
-                                </span>
-                            )}
+                        <div className={`relative bg-${headerColor}/10 p-2.5 rounded-full text-${headerColor} border border-${headerColor}/30 shadow-md`}>
+                            {headerIcon}
                         </div>
                     </div>
                     <h4 className="text-txt-primary font-black text-base tracking-wide mb-1 text-center">
@@ -301,25 +302,30 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                         </p>
                     )}
                     {status === 'generating' && !isError && !isSuccess && (
-                        <div className="mt-1 space-y-1 text-center h-4">
-                            {/* 秒數已移至動畫中心，模型名稱已移除以保持簡潔 */}
+                        <div className="mt-2 space-y-1 text-center">
+                            <p className="text-brand-primary font-mono text-sm font-bold bg-brand-primary/5 px-3 py-1 rounded-full border border-brand-primary/10 inline-block shadow-inner">
+                                {elapsedTime}s
+                            </p>
+                            <p className="text-txt-muted text-[11px] font-medium opacity-60">
+                                {selectedModel}
+                            </p>
                         </div>
                     )}
                 </div>
 
                 {(terminalContent || isError) && (
-                    <div className={`w-full bg-black/60 border ${isError ? 'border-status-danger/30' : 'border-white/10'} rounded-xl p-3 text-left overflow-hidden shadow-inner flex flex-col mb-2`}>
-                        <div className="flex items-center justify-between mb-2 pb-2 border-b border-white/5 shrink-0">
+                    <div className={`w-full bg-modal-bg-recessed border ${isError ? 'border-status-danger/30' : 'border-surface-border'} rounded-xl p-3 text-left overflow-hidden shadow-inner flex flex-col mb-2`}>
+                        <div className="flex items-center justify-between mb-2 pb-2 border-b border-surface-border/50 shrink-0">
                             <div className="flex items-center gap-2">
-                                <Terminal size={14} className={isError ? "text-status-danger" : "text-brand-primary/70"} />
+                                <Terminal size={14} className={isError ? "text-status-danger" : "text-brand-primary"} />
                                 <span className="text-[10px] font-mono tracking-wider text-txt-muted uppercase">
                                     {isError ? t('error_raw_report') : t('label_stream_output')}
                                 </span>
                             </div>
                             {(!isError && !isSuccess) && <span className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />}
                         </div>
-                        <div className="font-mono text-[11px] text-brand-primary/80 leading-relaxed max-h-[80px] overflow-y-auto whitespace-pre-wrap scrollbar-thin scrollbar-thumb-white/10 flex flex-col select-text cursor-text">
-                            <p className="break-all selection:bg-brand-primary/30 selection:text-white">
+                        <div className="font-mono text-[11px] text-txt-primary leading-relaxed max-h-[45vh] overflow-y-auto whitespace-pre-wrap scrollbar-thin scrollbar-thumb-surface-border flex flex-col select-text cursor-text">
+                            <p className="break-all selection:bg-brand-primary/30 selection:text-txt-title">
                                 {terminalContent}
                                 {(!isError && !isSuccess) && <span className="inline-block w-1 h-3 ml-0.5 align-middle bg-brand-primary animate-pulse" />}
                             </p>
@@ -394,7 +400,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
             />
 
             <div
-                className="modal-container w-[92vw] max-w-sm bg-app-bg shadow-2xl relative overflow-hidden p-0 border border-white/10 max-h-[85vh] flex flex-col"
+                className="modal-container w-[92vw] max-w-sm bg-app-bg shadow-2xl relative overflow-hidden p-0 border border-modal-border max-h-[85vh] flex flex-col"
                 onClick={e => e.stopPropagation()}
             >
                 {/* 頂部裝飾色條 */}
@@ -430,7 +436,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                                 <select
                                     value={selectedModel}
                                     onChange={(e) => setSelectedModel(e.target.value as ModelType)}
-                                    className="bg-surface-bg-alt border border-surface-border text-brand-primary text-[10px] font-mono font-bold rounded-lg px-2 py-1.5 focus:outline-none focus:border-brand-primary/50 max-w-[160px] truncate"
+                                    className="bg-surface-bg-alt border border-surface-border text-txt-primary text-[10px] font-mono font-bold rounded-lg px-2 py-1.5 focus:outline-none focus:border-brand-primary/50 max-w-[160px] truncate"
                                 >
                                     <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
                                     <option value="gemini-2.5-flash">gemini-2.5-flash</option>
