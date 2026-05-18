@@ -22,6 +22,7 @@ export const inflateScoringColumn = (col: any): any => {
     let finalInputType = col.inputType ?? 'keypad';
     let finalQuickActions = col.quickActions;
     let finalFunctions = col.functions;
+    let finalButtonGridColumns = col.buttonGridColumns;
 
     // --- V7 Semantic Formula Parsing START ---
     if (typeof finalFormula === 'string') {
@@ -56,6 +57,18 @@ export const inflateScoringColumn = (col: any): any => {
                 finalInputType = 'clicker';
                 finalQuickActions = newQuickActions;
                 finalFormula = isAccumulator ? 'a1+next' : 'a1';
+
+                // 🌟 智慧判定按鈕網格佈局欄數 (cols)
+                if (finalButtonGridColumns === undefined) {
+                    const btnCount = newQuickActions.length;
+                    if (btnCount <= 5) {
+                        finalButtonGridColumns = 1;
+                    } else if (btnCount >= 6 && btnCount <= 8) {
+                        finalButtonGridColumns = 2;
+                    } else {
+                        finalButtonGridColumns = 3;
+                    }
+                }
             }
         }
 
@@ -262,7 +275,8 @@ export const inflateScoringColumn = (col: any): any => {
         displayMode: finalDisplayMode,
         f1: finalF1,
         functions: cleanFunctions,
-        quickActions: finalQuickActions
+        quickActions: finalQuickActions,
+        buttonGridColumns: finalButtonGridColumns
     };
 
     // 🌟 屬性剪裁：僅移除「真正」多餘且內建模板不寫的預設值
@@ -270,6 +284,7 @@ export const inflateScoringColumn = (col: any): any => {
     if (result.displayMode === 'row') delete result.displayMode;
     if (result.isAuto === false) delete result.isAuto;
     if (result.unit === '') delete result.unit;
+    if (result.buttonGridColumns === undefined) delete result.buttonGridColumns;
 
     return result;
 };

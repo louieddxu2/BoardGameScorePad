@@ -88,4 +88,23 @@ describe('aiExpander - inflateGameTemplate', () => {
         expect(cols[1].quickActions![2].value).toBe(5);
         expect(cols[1].quickActions![2].isModifier).toBe(true);
     });
+
+    it('應該能依據按鈕個數智慧偵測按鈕欄數', () => {
+        const mockAiOutput = [
+            { name: "2按鈕預設", formula: "buttons['是'->10, '否'->0]" }, // <= 5 -> 1
+            { name: "5按鈕預設", formula: "buttons['A'->1, 'B'->2, 'C'->3, 'D'->4, 'E'->5]" }, // <= 5 -> 1
+            { name: "6按鈕預設", formula: "buttons['1'->1,'2'->2,'3'->3,'4'->4,'5'->5,'6'->6]" }, // 6..8 -> 2
+            { name: "8按鈕預設", formula: "buttons['1'->1,'2'->2,'3'->3,'4'->4,'5'->5,'6'->6,'7'->7,'8'->8]" }, // 6..8 -> 2
+            { name: "9按鈕預設", formula: "buttons['1'->1,'2'->2,'3'->3,'4'->4,'5'->5,'6'->6,'7'->7,'8'->8,'9'->9]" } // >= 9 -> 3
+        ];
+
+        const result = inflateGameTemplate(mockAiOutput);
+        const cols = result.columns!;
+
+        expect(cols[0].buttonGridColumns).toBe(1);
+        expect(cols[1].buttonGridColumns).toBe(1);
+        expect(cols[2].buttonGridColumns).toBe(2);
+        expect(cols[3].buttonGridColumns).toBe(2);
+        expect(cols[4].buttonGridColumns).toBe(3);
+    });
 });
