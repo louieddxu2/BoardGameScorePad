@@ -393,12 +393,13 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                 players={fakeSession.players}
                 winners={winners}
                 isPanelOpen={false}
-                panelHeight="0px"
+                panelHeight={isToolboxOpen ? "40vh" : "0px"}
                 scrollRef={totalBarScrollRef}
                 contentRef={totalContentRef}
                 template={template}
                 baseImage={baseImage || undefined}
                 zoomLevel={zoomLevel}
+                scoringRule={fakeSession.scoringRule}
             />
 
             {/* --- Modals --- */}

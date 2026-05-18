@@ -380,6 +380,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         previewValue={previewValue}
         onTotalClick={(playerId) => eventHandlers.handleCellClick(playerId, '__TOTAL__', { stopPropagation: () => { } } as any)}
         zoomLevel={zoomLevel}
+        scoringRule={session.scoringRule}
       />
 
       <InputPanel

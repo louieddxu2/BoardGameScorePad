@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { GameTemplate, Player } from '../../../types';
+import { GameTemplate, Player, ScoringRule } from '../../../types';
 import TexturedTotalCell from './TexturedTotalCell';
 import TexturedBlock from './TexturedBlock';
 import { useSessionTranslation } from '../../../i18n/session';
@@ -19,6 +19,7 @@ interface TotalsBarProps {
   previewValue?: any;
   onTotalClick?: (playerId: string) => void;
   zoomLevel?: number; // Added prop
+  scoringRule?: ScoringRule;
 }
 
 const TotalsBar: React.FC<TotalsBarProps> = ({
@@ -35,6 +36,7 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
   previewValue,
   onTotalClick,
   zoomLevel = 1, // Default to 1
+  scoringRule,
 }) => {
   const { t } = useSessionTranslation();
   const [imageDims, setImageDims] = useState<{ width: number, height: number } | null>(null);
@@ -127,6 +129,7 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
               isActive={editingCell?.colId === '__TOTAL__' && editingCell?.playerId === p.id}
               previewValue={editingCell?.colId === '__TOTAL__' && editingCell?.playerId === p.id ? previewValue : undefined}
               onClick={() => onTotalClick && onTotalClick(p.id)}
+              scoringRule={scoringRule}
             />
           ))}
         </div>
