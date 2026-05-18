@@ -60,7 +60,10 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 
 ---
 
-提醒：若此遊戲在遊戲過程中會得到分數（例如跑分數軌或拿分數標記），第一個項目須為「當前分數」。
+提醒：
+1. 若此遊戲在遊戲過程中會得到分數（例如跑分數軌或拿分數標記），第一個項目須為「當前分數」。
+2. 「3種東西一套5分」這種規則可使用倍率（例如 5x），使用者能輕易辨識自己有幾套。
+3. 過於糾結難以決定規則的項目，往往可使用分項累加（帶有 +next 的公式）。
 
 ## 完整範例
 
@@ -165,7 +168,10 @@ In formulas, x and y are user-entered values. +next means multiple entries can b
 
 ---
 
-Reminder: If this game involves gaining points during gameplay (e.g., scoring track or tokens), the first item must be "Current Score".
+Reminder:
+1. If this game involves gaining points during gameplay (e.g., scoring track or tokens), the first item must be "Current Score".
+2. Rules like "5 points for a set of 3 different items" can use multipliers (e.g., 5x), since users can easily determine how many sets they have.
+3. For items where it is too difficult or confusing to model complex rules, multi-part accumulation (+next formulas) can often be used.
 
 ## Full Example
 
