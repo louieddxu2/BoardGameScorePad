@@ -74,7 +74,7 @@ const FloatingBubble: React.FC<{
                 style={{ 
                     borderColor: color, 
                     color: color,
-                    boxShadow: `0 4px 12px rgba(var(--c-black)/0.5)` // @ui-ignore
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)'
                 }}
             >
                 {displayValue}
@@ -215,6 +215,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
       transform: `rotate(${((player.id.charCodeAt(0)) % 5) - 2}deg)`,
       mixBlendMode: 'multiply',
       textShadow: 'none',
+      opacity: visualForceLost ? 0.5 : 1,
   } : {};
 
   // --- Display Value Logic for Bubble ---
@@ -261,7 +262,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
 
       <ContrastText 
         className="font-black text-2xl leading-none w-full text-center truncate px-1 z-10" 
-        color={bgUrl ? (visualForceLost ? 'rgba(var(--c-slate-500)/0.5)' : 'rgb(var(--c-txt-on-dark))') : (visualForceLost ? 'rgb(var(--c-status-danger))' : (isTransparent ? 'rgb(var(--c-txt-muted))' : effectiveColor))} // @ui-ignore
+        color={bgUrl ? (visualForceLost ? 'rgb(var(--c-txt-muted))' : 'rgb(var(--c-txt-on-dark))') : (visualForceLost ? 'rgb(var(--c-status-danger))' : (isTransparent ? 'rgb(var(--c-txt-muted))' : effectiveColor))}
         style={bgUrl ? inkStyle : { opacity: visualForceLost ? 0.5 : 1 }}
         isTextureMode={!!bgUrl}
       >
@@ -290,7 +291,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
           />
       )}
 
-      {bgUrl && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(var(--c-black)/0.05)] pointer-events-none z-0" />} {/* @ui-ignore */}
+      {bgUrl && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(0,0,0,0.05)] pointer-events-none z-0" />}
     </div>
   );
 };
