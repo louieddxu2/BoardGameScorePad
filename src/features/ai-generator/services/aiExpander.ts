@@ -26,30 +26,39 @@ export const inflateScoringColumn = (col: any): any => {
     // --- V7 Semantic Formula Parsing START ---
     if (typeof finalFormula === 'string') {
         const trimmedFormula = finalFormula.trim();
-        
-        // 1. Buttons Parsing: buttons['有'->10, "無"->0]
+
+        // 1. Buttons Parsing: buttons['有'->10, "無"->0] and buttons[...]+next
+        const buttonsNextMatch = trimmedFormula.match(/^buttons\[(.*)\]\+next$/i);
         const buttonsMatch = trimmedFormula.match(/^buttons\[(.*)\]$/i);
-        if (buttonsMatch) {
-            const rules = buttonsMatch[1].split(',').map(s => s.trim());
+
+        if (buttonsNextMatch || buttonsMatch) {
+            const isAccumulator = !!buttonsNextMatch;
+            const rulesStr = isAccumulator ? buttonsNextMatch![1] : buttonsMatch![1];
+            const rules = rulesStr.split(',').map(s => s.trim());
             const newQuickActions = [];
             for (const rule of rules) {
                 const parts = rule.split('->');
                 if (parts.length === 2) {
                     const labelMatch = parts[0].match(/['"]([^'"]+)['"]/);
                     const label = labelMatch ? labelMatch[1] : parts[0].trim().replace(/['"]/g, '');
-                    const value = parseFloat(parts[1]);
+                    const rawValueStr = parts[1].trim();
+
+                    // 🌟 核心：如果分數以 '+' 開頭，即為增益微調按鈕 (isModifier: true)
+                    const isModifier = rawValueStr.startsWith('+');
+                    const value = parseFloat(rawValueStr);
+
                     if (!isNaN(value)) {
-                        newQuickActions.push({ id: generateId(8), label, value, isModifier: false });
+                        newQuickActions.push({ id: generateId(8), label, value, isModifier });
                     }
                 }
             }
             if (newQuickActions.length > 0) {
                 finalInputType = 'clicker';
                 finalQuickActions = newQuickActions;
-                finalFormula = 'a1';
+                finalFormula = isAccumulator ? 'a1+next' : 'a1';
             }
         }
-        
+
         // 2. Lookup Parsing: lookup[0->-1, 1~3->1, +3->5] or function[...]
         const lookupMatch = trimmedFormula.match(/^(?:lookup|function)\[(.*)\]$/i);
         if (lookupMatch) {
@@ -87,7 +96,7 @@ export const inflateScoringColumn = (col: any): any => {
                 finalFormula = 'f1(a1)';
             }
         }
-        
+
         // 3. Pure Algebra Parsing
         if (!buttonsMatch && !lookupMatch) {
             if (trimmedFormula === 'x') {
@@ -213,7 +222,7 @@ export const inflateScoringColumn = (col: any): any => {
     // 2. 名稱與 ID
     const name = col.name || 'Unknown';
     const colId = col.id || generateId(8);
-    
+
     // 5. 結構正規化：將 f1 提升至最外層，補全 isLinear
     let finalF1 = col.f1;
     if (finalFunctions && finalFunctions.f1) {
@@ -223,7 +232,7 @@ export const inflateScoringColumn = (col: any): any => {
 
     // 6. 智慧變數對應與自動計算判定 (對齊內建模板邏輯)
     let finalVariableMap = col.variableMap;
-    
+
     // 如果公式中包含 a1 且沒有指定 variableMap
     if (!finalVariableMap && (finalFormula.includes('a1') || finalF1)) {
         // 內建標準 (如農家樂): f1(a1) 且 a1 指向自己時，不應產出 variableMap

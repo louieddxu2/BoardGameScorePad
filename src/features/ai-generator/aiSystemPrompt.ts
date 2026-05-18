@@ -32,7 +32,7 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
 
 ---
 
-## 公式表 (極簡 7 式)
+## 公式表 (極簡 8 式)
 根據項目計分方式選擇公式，優先選擇前 3 種基本公式。
 公式中的 x、y 即使用者輸入的值，有 +next 表示此項目可多次輸入累加。
 
@@ -51,9 +51,12 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
    \`lookup[0->-1, 1~2->1, 3~5->3, 6->6, +2->5]\`
    *例 3：每 2 個 3 分，記為：*
    \`lookup[+2->3]\`
-7. **\`buttons[...]\`** (單選按鈕)：按鈕對應分數。標籤用單引號包裝。
+7. **\`buttons[...]\`** (單選按鈕)：按鈕對應分數。標籤用單引號包裝。提醒：按鈕標籤文字應限 6 個字以內。
    *例：是=10分, 否=0分 記為：*
    \`buttons['是'->10, '否'->0]\`
+8. **\`buttons[...]+next\`** (按鈕累加)：同時需要查表與分項累加的項目，將查表設計為按鈕，使用者可多次點擊按鈕來累加。
+   *例 1：每個標記根據其在軌道的第幾格獲得對應分數，記為：\`buttons['1~5'->0, '6~8'->1,'9~10'->3]+next\`*
+   *例 2：每個貓家族根據隻數獲得對應分數，超過4隻每隻5分，記為：\`buttons['3隻'->8,'4隻'->11,'4+?隻'->+5]+next\`*
 
 ---
 
@@ -99,6 +102,10 @@ export const SYSTEM_PROMPT_ZH = `# 桌遊計分板轉換器 (Lite)
     {
       "name": "是否符合\\n中央城堡",
       "formula": "buttons['是'->10, '否'->0]"
+    },
+    {
+      "name": "藍貓家族",
+      "formula": "buttons['3隻'->8,'4隻'->11,'4+?隻'->+5]+next"
     }
   ]
 }
@@ -134,7 +141,7 @@ Pure JSON, no extra explanation. Structure:
 
 ---
 
-## Formula Table (7 Modes)
+## Formula Table (8 Modes)
 Choose formula based on scoring method, prioritize the first 3.
 In formulas, x and y are user-entered values. +next means multiple entries can be accumulated.
 
@@ -150,8 +157,11 @@ In formulas, x and y are user-entered values. +next means multiple entries can b
    *Ex 1: 1~2 is 1 pt, 3~5 is 3 pts, 6+ is 8 pts -> \`lookup[1~2->1, 3~5->3, 6+->8]\`*
    *Ex 2: 0 is -1, 1~2 is 1, 3~5 is 3, each +2 is 5 pts -> \`lookup[0->-1, 1~2->1, 3~5->3, 6->6, +2->5]\`*
    *Ex 3: 3 pts for every 2 items -> \`lookup[+2->3]\`*
-7. **\`buttons[...]\`** (Radio Button): Corresponding score on button click. Wrap labels in single quotes.
+7. **\`buttons[...]\`** (Radio Button): Corresponding score on button click. Wrap labels in single quotes. Note: Button label text should be limited to 6 characters. Abbreviations can be used.
    *Ex: Yes=10 pts, No=0 pts -> \`buttons['Yes'->10, 'No'->0]\`*
+8. **\`buttons[...]+next\`** (Accumulated Buttons): For items requiring both lookup and multi-part accumulation. Scoring rules are modeled as buttons, allowing players to click multiple buttons to accumulate.
+   *Ex 1: Each token scores based on its track position: \`buttons['1~5'->0, '6~8'->1,'9~10'->3]+next\`*
+   *Ex 2: Each cat family scores based on size, with +5 pts for each cat beyond 4: \`buttons['3 cats'->8,'4 cats'->11,'4+? cats'->+5]+next\`*
 
 ---
 
@@ -197,6 +207,10 @@ Reminder: If this game involves gaining points during gameplay (e.g., scoring tr
     {
       "name": "Central Castle\\nRequirement",
       "formula": "buttons['Yes'->10, 'No'->0]"
+    },
+    {
+      "name": "Blue Cats",
+      "formula": "buttons['3 cats'->8,'4 cats'->11,'4+? cats'->+5]+next"
     }
   ]
 }

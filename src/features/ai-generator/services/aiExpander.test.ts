@@ -34,7 +34,7 @@ describe('aiExpander - inflateGameTemplate', () => {
     it('應該自動補全預設計分規則', () => {
         const mockAiOutput = [{ name: "測試", formula: "x" }];
         const result = inflateGameTemplate(mockAiOutput);
-        
+
         expect(result.defaultScoringRule).toBe('HIGHEST_WINS');
     });
 
@@ -61,5 +61,31 @@ describe('aiExpander - inflateGameTemplate', () => {
         expect(cols[2].inputType).toBe('clicker');
         expect(cols[2].quickActions).toHaveLength(2);
         expect(cols[2].quickActions![0].label).toBe('是');
+    });
+
+    it('應該能處理 Formula 8 buttons[...]+next 累加按鈕與增益微調按鈕', () => {
+        const mockAiOutput = [
+            { name: "累加按鈕", formula: "buttons['1~5'->0, '6~8'->1,'9~10'->3]+next" },
+            { name: "增益微調", formula: "buttons['3隻'->8,'4隻'->11,'4+?隻'->+5]+next" }
+        ];
+
+        const result = inflateGameTemplate(mockAiOutput);
+        const cols = result.columns!;
+
+        // 累加按鈕測試
+        expect(cols[0].inputType).toBe('clicker');
+        expect(cols[0].formula).toBe('a1+next');
+        expect(cols[0].quickActions).toHaveLength(3);
+        expect(cols[0].quickActions![0].label).toBe('1~5');
+        expect(cols[0].quickActions![0].value).toBe(0);
+        expect(cols[0].quickActions![0].isModifier).toBe(false);
+
+        // 增益微調測試
+        expect(cols[1].inputType).toBe('clicker');
+        expect(cols[1].formula).toBe('a1+next');
+        expect(cols[1].quickActions).toHaveLength(3);
+        expect(cols[1].quickActions![2].label).toBe('4+?隻');
+        expect(cols[1].quickActions![2].value).toBe(5);
+        expect(cols[1].quickActions![2].isModifier).toBe(true);
     });
 });
