@@ -96,7 +96,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                 {/* Main Card Container */}
                 {/* We handle menu closing here by catching clicks on the card background */}
                 <div
-                    className="modal-container"
+                    className="modal-container !overflow-visible"
                     onClick={(e) => {
                         e.stopPropagation();
                         setShowRuleMenu(false);

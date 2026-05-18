@@ -1,5 +1,4 @@
 import React from 'react';
-import { createPortal } from 'react-dom';
 import { Check } from 'lucide-react';
 import { ScoringRule, SavedListItem } from '../../../types';
 
@@ -27,9 +26,8 @@ export const StartGameOverlays: React.FC<StartGameOverlaysProps> = ({
     handleLocationSelect
 }) => {
     if (!activeMenu) return null;
-    if (typeof document === 'undefined') return null;
 
-    return createPortal(
+    return (
         <>
             <div
                 className="fixed inset-0 z-[60] pointer-events-auto"
@@ -74,7 +72,6 @@ export const StartGameOverlays: React.FC<StartGameOverlaysProps> = ({
                     </>
                 )}
             </div>
-        </>,
-        document.body
+        </>
     );
 };
