@@ -61,6 +61,8 @@ export default async function handler(req) {
       text: `這是桌遊「${gameName}」的計分頁，請分析圖片並以「${language}」回傳計分板 JSON 結構。若圖片無關，請將 columns 欄位留空。`
     });
 
+    const isGemma = requestedModel.toLowerCase().includes('gemma');
+
     // 4. 組建 Gemini Request
     const apiRequestBody = {
       systemInstruction: {
@@ -68,7 +70,7 @@ export default async function handler(req) {
       },
       contents: [{ parts: geminiParts }],
       generationConfig: {
-        responseMimeType: "application/json",
+        ...(isGemma ? {} : { responseMimeType: "application/json" }),
         temperature: 0.1
       }
     };
