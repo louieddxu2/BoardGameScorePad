@@ -294,7 +294,7 @@ const InfoMapping: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypad
             const stepScore = activeRule.unitScore !== undefined ? activeRule.unitScore : activeRule.score;
 
             footerCalculationNode = (
-                <div className="flex items-center justify-end w-full leading-none whitespace-nowrap text-txt-secondary font-mono text-[10px]">
+                <div className="flex items-center justify-center gap-0.5 leading-none whitespace-nowrap text-txt-secondary font-mono text-[10px]">
                     <span>{baseScore}</span>
                     <span className="opacity-50">+</span>
                     <span>{stepScore}</span>
@@ -303,15 +303,21 @@ const InfoMapping: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypad
                 </div>
             );
         } else {
-            footerCalculationNode = <div className="flex items-center justify-end w-full text-[10px] text-txt-muted italic">{t('score_info_fixed')}</div>;
+            footerCalculationNode = null;
         }
     } else {
-        footerCalculationNode = <span className="text-txt-muted text-[10px] italic">{t('score_info_no_rule')}</span>;
+        footerCalculationNode = <span className="text-txt-muted text-[10px] italic leading-none">{t('score_info_no_rule')}</span>;
     }
 
     return (
         <div className="flex flex-col h-full p-2 overflow-hidden">
-            <div className="flex items-center gap-1 text-[10px] text-txt-muted font-bold uppercase pb-1 border-b border-surface-border shrink-0"><Ruler size={12} /> {t('input_lookup_title')}</div>
+            {/* 1. & 3. 移除了「範圍查表」框，改為對齊下方箭頭的單位列 */}
+            <div className="flex items-center gap-1 text-[10px] text-txt-muted font-bold px-2 pb-1 border-b border-surface-border shrink-0">
+                <div className="flex-1 text-right">{unitStr}</div>
+                <div className="shrink-0 px-1 text-txt-muted/50"><ArrowRight size={12} /></div>
+                <div className="flex-1 text-left">{t('score_info_unit_score')}</div>
+            </div>
+
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-1 py-1">
                 {column.f1?.map((rule, idx) => {
                     // Display Logic for Label (Keep roughly using integer bounds for display "1~4")
@@ -345,25 +351,36 @@ const InfoMapping: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypad
                     let scoreNode: React.ReactNode;
 
                     if (rule.isLinear) {
-                        labelNode = <span>{minVal}+{unitStr}</span>;
+                        // 3. 移除左邊數值後重複的單位
+                        labelNode = <span>{minVal}+</span>;
                         const stepScore = rule.unitScore !== undefined ? rule.unitScore : rule.score;
-                        scoreNode = (
-                            <div className="flex flex-col items-end justify-center leading-tight">
-                                <span className="text-[10px] text-txt-muted">{t('score_info_per_unit', { unit: String(rule.unit || 1), suffix: unitStr })}</span>
-                                <span className="flex items-center">
-                                    <span className="text-[10px] text-txt-muted">{t('score_info_add')}</span>
-                                    <span className="font-bold text-brand-primary text-sm">{stepScore}</span>
-                                </span>
-                            </div>
-                        );
+                        const ruleUnit = rule.unit || 1;
+
+                        // 4. 線性規則縮寫與換行
+                        if (ruleUnit === 1) {
+                            scoreNode = (
+                                <span className="font-bold text-brand-primary text-sm">+{stepScore}</span>
+                            );
+                        } else {
+                            scoreNode = (
+                                <div className="flex flex-col items-start leading-tight">
+                                    <span className="text-[9px] text-txt-muted font-sans font-medium">
+                                        {t('score_info_every_n', { n: String(ruleUnit) })}
+                                    </span>
+                                    <span className="font-bold text-brand-primary text-sm">+{stepScore}</span>
+                                </div>
+                            );
+                        }
                     } else {
-                        let text = (displayMax === Infinity) ? `${minVal}+${unitStr}` : (minVal === displayMax) ? `${minVal}${unitStr}` : `${minVal}~${displayMax}${unitStr}`;
+                        // 3. 移除左邊數值後重複的單位
+                        let text = (displayMax === Infinity) ? `${minVal}+` : (minVal === displayMax) ? `${minVal}` : `${minVal}~${displayMax}`;
                         labelNode = <span>{text}</span>;
                         scoreNode = <span className="text-brand-primary font-bold">{rule.score}</span>;
                     }
 
                     return (
-                        <div key={idx} ref={isMatch ? activeRuleRef : null} className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded border transition-colors ${isMatch ? 'bg-status-success/10 border-status-success/50' : 'bg-surface-recessed border-surface-border'}`}>
+                        // 3. 卡片 Padding 縮減為 px-2 py-1，原本為 px-3 py-1.5
+                        <div key={idx} ref={isMatch ? activeRuleRef : null} className={`flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors ${isMatch ? 'bg-status-success/10 border-status-success/50' : 'bg-surface-recessed border-surface-border'}`}>
                             <div className={`flex-1 text-right ${isMatch ? 'text-status-success font-bold' : 'text-txt-muted font-medium'}`}>{labelNode}</div>
                             <div className={`shrink-0 px-1 ${isMatch ? 'text-status-success' : 'text-txt-muted'}`}><ArrowRight size={12} /></div>
                             <div className={`flex-1 text-left font-mono ${isMatch ? 'text-txt-primary' : 'text-txt-muted'}`}>{scoreNode}</div>
@@ -371,16 +388,33 @@ const InfoMapping: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypad
                     );
                 })}
             </div>
+            
+            {/* 2. 底部折疊，若為固定分數且無 footerCalculationNode 時自動隱藏邊界與橫列 */}
             <div className="mt-2 shrink-0">
-                <div className="bg-modal-bg rounded-lg border border-surface-border p-2 shadow-sm flex flex-col gap-1">
-                    <div className="flex justify-between items-center border-b border-surface-border pb-2 mb-0.5">
-                        <div className="bg-status-success/10 border border-status-success/50 rounded px-2 py-0.5 shadow-sm flex items-baseline gap-1">
-                            <span className="font-mono font-bold text-txt-primary text-sm leading-none">{displayVal}</span>
+                <div className="bg-modal-bg rounded-lg border border-surface-border p-1.5 shadow-sm flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1 text-xs px-2 py-0.5 rounded">
+                        {/* 左側當前值：還原 text-txt-primary 與 border-status-success/50 */}
+                        <div className="flex-1 flex justify-end items-center">
+                            <span className="bg-status-success/10 border border-status-success/50 rounded px-1.5 py-0.5 font-mono font-bold text-txt-primary text-sm leading-none">
+                                {displayVal}
+                            </span>
                         </div>
-                        <ArrowRight size={12} className="text-txt-muted" />
-                        <div className="flex items-center"><span className="text-status-success font-bold text-sm">{finalScore}</span></div>
+                        {/* 中間箭頭：還原 text-txt-muted */}
+                        <div className="shrink-0 px-1 text-txt-muted">
+                            <ArrowRight size={12} />
+                        </div>
+                        {/* 右側分數：還原 text-status-success 與 text-sm */}
+                        <div className="flex-1 text-left">
+                            <span className="text-status-success font-bold text-sm leading-none font-mono">
+                                {finalScore}
+                            </span>
+                        </div>
                     </div>
-                    <div className="flex justify-end min-h-[12px]">{footerCalculationNode}</div>
+                    {footerCalculationNode && (
+                        <div className="flex justify-center items-center text-xs px-2 pt-0.5 pb-0.5 w-full">
+                            {footerCalculationNode}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

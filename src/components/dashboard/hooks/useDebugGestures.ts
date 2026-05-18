@@ -53,6 +53,8 @@ export const useDebugGestures = ({
       if (deltaX < -100) {
           if (!debugTimerRef.current) {
               debugTimerRef.current = setTimeout(() => {
+                  // 解鎖隱藏功能標記
+                  localStorage.setItem('advance_user', 'true');
                   onTriggerInspector();
                   if (navigator.vibrate) navigator.vibrate([50, 50]);
                   debugTimerRef.current = null;

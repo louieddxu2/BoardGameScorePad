@@ -261,11 +261,11 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
 
           if (isEditMode && dnd.draggingId && isDropTarget) {
             if (isDragging) {
-                <div className="absolute inset-0 z-50 pointer-events-none border-2 border-dashed border-txt-muted/50 bg-txt-muted/5" />
+              indicator = <div className="absolute inset-0 z-50 pointer-events-none border-2 border-dashed border-txt-muted/50 bg-txt-muted/5" />;
             } else if (dragIndex < template.columns.findIndex(c => c.id === col.id)) {
-                <div className="absolute bottom-0 left-0 right-0 h-[4px] bg-brand-primary shadow-[0_0_8px_rgba(var(--c-brand-primary)/0.8)] z-50 pointer-events-none rounded-full translate-y-1/2" />
+              indicator = <div className="absolute bottom-0 left-0 right-0 h-[4px] bg-brand-primary shadow-[0_0_8px_theme(colors.brand.primary/80%)] z-50 pointer-events-none rounded-full translate-y-1/2" />;
             } else {
-                <div className="absolute top-0 left-0 right-0 h-[4px] bg-brand-primary shadow-[0_0_8px_rgba(var(--c-brand-primary)/0.8)] z-50 pointer-events-none rounded-full -translate-y-1/2" />
+              indicator = <div className="absolute top-0 left-0 right-0 h-[4px] bg-brand-primary shadow-[0_0_8px_theme(colors.brand.primary/80%)] z-50 pointer-events-none rounded-full -translate-y-1/2" />;
             }
           }
 
@@ -322,7 +322,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 }
               >
                 {renderIndicators(col, isHidden, isOverlay)}
-                {isEditMode && isTextureMode && <div className="absolute top-1/2 left-0.5 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-[rgba(var(--c-black)/0.4)] rounded p-0.5 text-[rgba(var(--c-white)/0.7)]"><GripVertical size={10} /></div>}
+                {isEditMode && isTextureMode && <div className="absolute top-1/2 left-0.5 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded p-0.5 text-white/70"><GripVertical size={10} /></div>}
               </TexturedBlock>
 
               {/* Normal Players Row OR Shared Player Row */}
@@ -390,7 +390,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                       }
 
                       const dynamicFontSize = calculateDynamicFontSize([displayText]);
-                      const defaultTextColor = isTextureMode ? 'rgba(var(--c-black)/0.9)' : 'rgb(var(--c-txt-primary))';
+                      const defaultTextColor = isTextureMode ? 'rgb(var(--c-black) / 0.9)' : 'rgb(var(--c-txt-primary))';
                       const displayColor = (isEditMode && overlayCol.color) ? overlayCol.color : defaultTextColor;
 
 
@@ -488,7 +488,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
 
                         const dynamicFontSize = calculateDynamicFontSize([displayText]);
 
-                        const defaultTextColor = isTextureMode ? 'rgba(var(--c-black)/0.9)' : 'rgb(var(--c-txt-primary))';
+                        const defaultTextColor = isTextureMode ? 'rgb(var(--c-black) / 0.9)' : 'rgb(var(--c-txt-primary))';
                         const displayColor = (isEditMode && overlayCol.color) ? overlayCol.color : defaultTextColor;
 
 
@@ -504,10 +504,10 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                                           ${isOverlayActive
                                   ? 'border-brand-primary bg-brand-primary/20 ring-1 ring-brand-primary'
                                   : (isEditMode
-                                    ? 'border-dashed border-[rgba(var(--c-txt-primary)/0.4)] hover:border-[rgba(var(--c-txt-primary)/0.6)] hover:bg-[rgba(var(--c-txt-primary)/0.05)]'
+                                    ? 'border-dashed border-txt-primary/40 hover:border-txt-primary/60 hover:bg-txt-primary/5'
                                     : (!isTextureMode
-                                      ? 'border-dashed border-[rgba(var(--c-txt-primary)/0.2)] hover:border-[rgba(var(--c-txt-primary)/0.4)] hover:bg-[rgba(var(--c-txt-primary)/0.05)]'
-                                      : 'border-transparent hover:border-[rgba(var(--c-black)/0.1)] hover:bg-[rgba(var(--c-black)/0.05)]')
+                                      ? 'border-dashed border-txt-primary/20 hover:border-txt-primary/40 hover:bg-txt-primary/5'
+                                      : 'border-transparent hover:border-black/10 hover:bg-black/5')
                                   )
                                 }
                                       `}

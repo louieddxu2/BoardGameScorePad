@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Player } from '../../../types';
+import { Player, ScoringRule } from '../../../types';
 import { getSmartTextureUrl } from '../../../utils/imageProcessing';
 import { getContrastTextStyles } from '../../../utils/ui';
 import { ContrastText } from '../../shared/ContrastText';
@@ -74,7 +74,7 @@ const FloatingBubble: React.FC<{
                 style={{ 
                     borderColor: color, 
                     color: color,
-                    boxShadow: `0 4px 12px rgba(var(--c-black)/0.5)`
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)'
                 }}
             >
                 {displayValue}
@@ -104,6 +104,7 @@ interface TexturedTotalCellProps {
   previewValue?: any;
   onClick?: () => void;
   cleanMode?: boolean; // [New] If true, hides all icons (crown, x, arrows) and ignores fading
+  scoringRule?: ScoringRule;
 }
 
 // RESTORED & ADJUSTED: Annotation Arrow Visual
@@ -156,10 +157,14 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
   isActive,
   previewValue,
   onClick,
-  cleanMode = false
+  cleanMode = false,
+  scoringRule
 }) => {
   const [bgUrl, setBgUrl] = useState<string | null>(null);
   const cellRef = useRef<HTMLDivElement>(null);
+
+  const isCoop = scoringRule === 'COOP' || scoringRule === 'COOP_NO_SCORE';
+  const shouldShowCrown = isWinner && (hasMultiplePlayers || isCoop);
 
   useEffect(() => {
     let isMounted = true;
@@ -210,6 +215,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
       transform: `rotate(${((player.id.charCodeAt(0)) % 5) - 2}deg)`,
       mixBlendMode: 'multiply',
       textShadow: 'none',
+      opacity: visualForceLost ? 0.5 : 1,
   } : {};
 
   // --- Display Value Logic for Bubble ---
@@ -256,7 +262,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
 
       <ContrastText 
         className="font-black text-2xl leading-none w-full text-center truncate px-1 z-10" 
-        color={bgUrl ? (visualForceLost ? 'rgba(var(--c-slate-500)/0.5)' : 'rgb(var(--c-txt-on-dark))') : (visualForceLost ? 'rgb(var(--c-status-danger))' : (isTransparent ? 'rgb(var(--c-txt-muted))' : effectiveColor))}
+        color={bgUrl ? (visualForceLost ? 'rgb(var(--c-txt-muted))' : 'rgb(var(--c-txt-on-dark))') : (visualForceLost ? 'rgb(var(--c-status-danger))' : (isTransparent ? 'rgb(var(--c-txt-muted))' : effectiveColor))}
         style={bgUrl ? inkStyle : { opacity: visualForceLost ? 0.5 : 1 }}
         isTextureMode={!!bgUrl}
       >
@@ -271,7 +277,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
       )}
 
       {/* Winner Crown - Hidden in Clean Mode */}
-      {!cleanMode && !hideCrown && isWinner && hasMultiplePlayers && !isForceLost && (
+      {!cleanMode && !hideCrown && shouldShowCrown && !isForceLost && (
         <Crown size={14} className="text-status-warning absolute top-0.5 right-0.5 z-20 shadow-sm" fill="currentColor" />
       )}
 
@@ -285,7 +291,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
           />
       )}
 
-      {bgUrl && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(var(--c-black)/0.05)] pointer-events-none z-0" />}
+      {bgUrl && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(0,0,0,0.05)] pointer-events-none z-0" />}
     </div>
   );
 };
