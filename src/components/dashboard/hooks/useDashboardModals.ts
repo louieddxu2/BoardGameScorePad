@@ -12,6 +12,7 @@ export const useDashboardModals = () => {
   const [showBgStatsModal, setShowBgStatsModal] = useState(false);
   const [showBggImportModal, setShowBggImportModal] = useState(false); // New
   const [showInspector, setShowInspector] = useState(false);
+  const [showCloudLibraryModal, setShowCloudLibraryModal] = useState(false); // Cloud Library Modal State
 
   // Back Button Handlers
   useModalBackHandler(showInstallGuide, () => setShowInstallGuide(false), 'install-guide');
@@ -20,6 +21,7 @@ export const useDashboardModals = () => {
   useModalBackHandler(showBgStatsModal, () => setShowBgStatsModal(false), 'bg-stats');
   useModalBackHandler(showBggImportModal, () => setShowBggImportModal(false), 'bgg-import'); // New
   useModalBackHandler(showCloudModal, () => setShowCloudModal(false), 'cloud-manager');
+  useModalBackHandler(showCloudLibraryModal, () => setShowCloudLibraryModal(false), 'cloud-library'); // Cloud Library Back Handler
 
   return {
     state: {
@@ -29,7 +31,8 @@ export const useDashboardModals = () => {
       showInstallGuide,
       showBgStatsModal,
       showBggImportModal, // New
-      showInspector
+      showInspector,
+      showCloudLibraryModal // Expose state
     },
     actions: {
       setShowDataModal,
@@ -38,7 +41,9 @@ export const useDashboardModals = () => {
       setShowInstallGuide,
       setShowBgStatsModal,
       setShowBggImportModal, // New
-      setShowInspector
+      setShowInspector,
+      setShowCloudLibraryModal // Expose action
     }
   };
 };
+

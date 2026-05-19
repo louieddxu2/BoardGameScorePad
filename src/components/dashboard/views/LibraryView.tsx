@@ -1,10 +1,11 @@
 
 import React, { useState } from 'react';
 import { GameTemplate, GameSession } from '../../../types';
-import { Activity, Pin, LayoutGrid, ArrowRightLeft, Plus, Library, Sparkles } from 'lucide-react';
+import { Activity, Pin, LayoutGrid, ArrowRightLeft, Plus, Library, Sparkles, Cloud } from 'lucide-react';
 import DashboardSection from '../parts/DashboardSection';
 import GameCard from '../parts/GameCard';
 import { useDashboardTranslation } from '../../../i18n/dashboard';
+import { useCloudLibraryTranslation } from '../../../i18n/cloud_library';
 
 interface LibraryViewProps {
     // Data
@@ -32,6 +33,7 @@ interface LibraryViewProps {
     onCopyShareLink: (template: GameTemplate, e: React.MouseEvent) => void;
     onCloudBackup: (template: GameTemplate, e: React.MouseEvent) => void;
     onOpenDataManager: () => void;
+    onOpenCloudLibrary?: () => void;
     onTemplateCreate: () => void;
     onClearNewBadges: () => void;
     onSystemCopy: (template: GameTemplate, e: React.MouseEvent) => void;
@@ -71,12 +73,14 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     onCopyShareLink,
     onCloudBackup,
     onOpenDataManager,
+    onOpenCloudLibrary,
     onTemplateCreate,
     onClearNewBadges,
     onSystemCopy,
     onSystemRestore
 }) => {
     const { t } = useDashboardTranslation();
+    const { t: tCloudLib } = useCloudLibraryTranslation();
 
     // Section Toggles
     const [isActiveLibOpen, setIsActiveLibOpen] = useState(true);
@@ -157,12 +161,21 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 actionButton={
                     <div className="flex items-center gap-2">
                         <button 
+                            onClick={(e) => { e.stopPropagation(); onOpenCloudLibrary?.(); }} 
+                            className="btn-ghost-action"
+                            title={tCloudLib('lib_title')}
+                        >
+                            <Cloud size={18} className="text-brand-primary" />
+                        </button>
+                        <button 
                             onClick={(e) => { e.stopPropagation(); onOpenDataManager(); }} 
                             className="btn-ghost-action"
                             title={t('dash_import_export')}
                         >
                             <ArrowRightLeft size={18} />
                         </button>
+
+
                         <button 
                             onClick={(e) => { e.stopPropagation(); onTemplateCreate(); }} 
                             className="btn-action-primary"

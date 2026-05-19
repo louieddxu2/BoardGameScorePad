@@ -1,0 +1,194 @@
+[
+  {
+    "id": "cloud-ark-nova",
+    "name": "方舟動物園 (Ark Nova)",
+    "createdAt": 1716124800000,
+    "downloadCount": 142,
+    "payload": {
+      "id": "cloud-ark-nova",
+      "name": "方舟動物園 (Ark Nova)",
+      "description": "熱門中重度策略遊戲。包含吸引力、生態值、贊助商與終局計分項目。",
+      "supportedColors": ["#2ecc71", "#3498db", "#e74c3c", "#f1c40f"],
+      "columns": [
+        {
+          "id": "ark-1",
+          "name": "吸引力",
+          "color": "#3b82f6",
+          "isScoring": true,
+          "formula": "a1",
+          "inputType": "keypad",
+          "unit": "分",
+          "rounding": "none"
+        },
+        {
+          "id": "ark-2",
+          "name": "生態值",
+          "color": "#10b981",
+          "isScoring": true,
+          "formula": "a1",
+          "inputType": "keypad",
+          "unit": "分",
+          "rounding": "none"
+        },
+        {
+          "id": "ark-3",
+          "name": "贊助商",
+          "color": "#f59e0b",
+          "isScoring": true,
+          "formula": "a1",
+          "inputType": "keypad",
+          "unit": "分",
+          "rounding": "none"
+        },
+        {
+          "id": "ark-4",
+          "name": "終局計分",
+          "color": "#ef4444",
+          "isScoring": true,
+          "formula": "a1",
+          "inputType": "keypad",
+          "unit": "分",
+          "rounding": "none"
+        }
+      ]
+    }
+  },
+  {
+    "id": "cloud-dorfromantik",
+    "name": "築夢頌 (Dorfromantik)",
+    "createdAt": 1716124810000,
+    "downloadCount": 98,
+    "payload": {
+      "id": "cloud-dorfromantik",
+      "name": "築夢頌 (Dorfromantik)",
+      "description": "經典拼圖合作遊戲。統計森林、穀物、村莊、鐵道與溪流任務的最長路徑計分。",
+      "supportedColors": ["#10b981", "#facc15", "#ef4444", "#a16207", "#3b82f6"],
+      "columns": [
+        {
+          "id": "dorf-1",
+          "name": "森林任務",
+          "color": "#10b981",
+          "isScoring": true,
+          "formula": "a1+next",
+          "inputType": "keypad",
+          "unit": "分",
+          "rounding": "none",
+          "displayMode": "row"
+        },
+        {
+          "id": "dorf-2",
+          "name": "穀物任務",
+          "color": "#facc15",
+          "isScoring": true,
+          "formula": "a1+next",
+          "inputType": "keypad",
+          "unit": "分",
+          "rounding": "none",
+          "displayMode": "row"
+        },
+        {
+          "id": "dorf-3",
+          "name": "村莊任務",
+          "color": "#ef4444",
+          "isScoring": true,
+          "formula": "a1+next",
+          "inputType": "keypad",
+          "unit": "分",
+          "rounding": "none",
+          "displayMode": "row"
+        },
+        {
+          "id": "dorf-4",
+          "name": "鐵道任務",
+          "color": "#a16207",
+          "isScoring": true,
+          "formula": "a1+next",
+          "inputType": "keypad",
+          "unit": "分",
+          "rounding": "none",
+          "displayMode": "row"
+        },
+        {
+          "id": "dorf-5",
+          "name": "溪流任務",
+          "color": "#3b82f6",
+          "isScoring": true,
+          "formula": "a1+next",
+          "inputType": "keypad",
+          "unit": "分",
+          "rounding": "none",
+          "displayMode": "row"
+        }
+      ]
+    }
+  },
+  {
+    "id": "cloud-cascadia",
+    "name": "卡斯卡迪亞 (Cascadia)",
+    "createdAt": 1716124820000,
+    "downloadCount": 215,
+    "payload": {
+      "id": "cloud-cascadia",
+      "name": "卡斯卡迪亞 (Cascadia)",
+      "description": "生態棲息地拼圖遊戲。包含熊、鹿、鮭魚、鷹、狐狸與五種地形多寡計分欄位。",
+      "supportedColors": ["#a16207", "#fed7aa", "#ec4899", "#3b82f6", "#f59e0b"],
+      "columns": [
+        {
+          "id": "casc-1",
+          "name": "熊",
+          "color": "#a16207",
+          "isScoring": true,
+          "formula": "a1+next",
+          "inputType": "keypad",
+          "unit": "分",
+          "rounding": "none",
+          "displayMode": "row"
+        },
+        {
+          "id": "casc-2",
+          "name": "鹿",
+          "color": "#fed7aa",
+          "isScoring": true,
+          "formula": "a1+next",
+          "inputType": "keypad",
+          "unit": "分",
+          "rounding": "none",
+          "displayMode": "row"
+        },
+        {
+          "id": "casc-3",
+          "name": "鮭魚",
+          "color": "#ec4899",
+          "isScoring": true,
+          "formula": "a1+next",
+          "inputType": "keypad",
+          "unit": "分",
+          "rounding": "none",
+          "displayMode": "row"
+        },
+        {
+          "id": "casc-4",
+          "name": "鷹",
+          "color": "#3b82f6",
+          "isScoring": true,
+          "formula": "a1+next",
+          "inputType": "keypad",
+          "unit": "分",
+          "rounding": "none",
+          "displayMode": "row"
+        },
+        {
+          "id": "casc-5",
+          "name": "狐狸",
+          "color": "#f59e0b",
+          "isScoring": true,
+          "formula": "a1+next",
+          "inputType": "keypad",
+          "unit": "分",
+          "rounding": "none",
+          "displayMode": "row"
+        }
+      ]
+    }
+  }
+]

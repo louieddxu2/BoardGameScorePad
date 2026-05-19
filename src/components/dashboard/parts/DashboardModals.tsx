@@ -4,6 +4,7 @@ import { GameTemplate, GameSession, HistoryRecord } from '../../../types';
 import InstallGuideModal from '../../modals/InstallGuideModal';
 import DataManagerModal from '../modals/DataManagerModal';
 import CloudManagerModal from '../modals/CloudManagerModal';
+import CloudLibraryModal from '../modals/CloudLibraryModal'; // Import CloudLibraryModal
 import BgStatsModal from '../../../features/bgstats/components/BgStatsModal';
 import BggImportModal from '../../../features/bgg/components/BggImportModal'; // New Import
 import SystemDataInspector from '../../analysis/SystemDataInspector';
@@ -19,6 +20,7 @@ interface DashboardModalsProps {
     showBgStatsModal: boolean;
     showBggImportModal: boolean; // New Prop
     showInspector: boolean;
+    showCloudLibraryModal: boolean; // New Prop
   };
   actions: {
     setShowDataModal: (show: boolean) => void;
@@ -27,6 +29,7 @@ interface DashboardModalsProps {
     setShowBgStatsModal: (show: boolean) => void;
     setShowBggImportModal: (show: boolean) => void; // New Action
     setShowInspector: (show: boolean) => void;
+    setShowCloudLibraryModal: (show: boolean) => void; // New Action
   };
 
   userTemplates: GameTemplate[];
@@ -116,6 +119,14 @@ export const DashboardModals: React.FC<DashboardModalsProps> = ({
         onClose={() => actions.setShowBggImportModal(false)}
       />
 
+      {/* Cloud Library Modal */}
+      <CloudLibraryModal
+        isOpen={state.showCloudLibraryModal}
+        onClose={() => actions.setShowCloudLibraryModal(false)}
+        userTemplates={userTemplates}
+        onImport={onBatchImport}
+      />
+
       <CloudManagerModal
         isOpen={state.showCloudModal}
         initialCategory={state.cloudModalCategory}
@@ -141,3 +152,4 @@ export const DashboardModals: React.FC<DashboardModalsProps> = ({
     </>
   );
 };
+

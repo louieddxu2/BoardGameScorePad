@@ -145,3 +145,26 @@ export const fetchTemplateFromCloud = async (cloudId: string): Promise<FetchResp
   }
   return response.json() as Promise<FetchResponse>;
 };
+
+export const fetchPublicTemplates = async (): Promise<FetchResponse[]> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 seconds timeout
+
+  try {
+    const response = await fetch(`${CLOUD_SHARE_BASE_URL}/api/public-templates`, {
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if (response.ok) {
+      return await response.json() as FetchResponse[];
+    }
+    throw new Error('cloud_api_failed');
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.warn('Cloud D1 API failed or not implemented yet. Falling back to local mock-cloud-templates.json', error);
+    const localResp = await fetch('/mock-cloud-templates.json');
+    if (!localResp.ok) throw new Error('mock_fallback_failed');
+    return await localResp.json() as FetchResponse[];
+  }
+};
+

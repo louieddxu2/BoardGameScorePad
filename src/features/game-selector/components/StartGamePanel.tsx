@@ -23,6 +23,7 @@ interface StartGamePanelProps {
     searchQuery?: string;
     onOpenBgStats?: () => void;
     onOpenBggImport?: () => void;
+    onOpenCloudLibrary?: () => void;
 }
 
 
@@ -36,7 +37,8 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     isSearching = false,
     searchQuery = '',
     onOpenBgStats,
-    onOpenBggImport
+    onOpenBggImport,
+    onOpenCloudLibrary
 }, ref) => {
     const { t } = useIntegrationTranslation();
     const { t: tCommon } = useCommonTranslation();
@@ -100,6 +102,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                 onPin={onPin}
                 onOpenBgStats={onOpenBgStats}
                 onOpenBggImport={onOpenBggImport}
+                onOpenCloudLibrary={onOpenCloudLibrary}
             />
 
             {/* --- RIGHT: Controls (Chimney - Grows Upwards) --- */}

@@ -320,6 +320,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
               onCopyShareLink={dashboardActions.handleCopyBuiltinShareLink}
               onCloudBackup={dashboardActions.handleCloudBackup}
               onOpenDataManager={() => modals.actions.setShowDataModal(true)}
+              onOpenCloudLibrary={() => modals.actions.setShowCloudLibraryModal(true)}
               onTemplateCreate={onTemplateCreate}
               onClearNewBadges={onClearNewBadges}
               onSystemCopy={dashboardActions.handleCopySystemTemplate}
@@ -349,6 +350,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           searchQuery={searchQuery}
           onOpenBgStats={() => modals.actions.setShowBgStatsModal(true)}
           onOpenBggImport={() => modals.actions.setShowBggImportModal(true)}
+          onOpenCloudLibrary={() => modals.actions.setShowCloudLibraryModal(true)}
         />
       )}
 

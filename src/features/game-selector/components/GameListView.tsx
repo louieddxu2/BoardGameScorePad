@@ -1,6 +1,7 @@
 import React from 'react';
-import { ChevronUp, Search, FileJson, Database } from 'lucide-react';
+import { ChevronUp, Search, FileJson, Database, Cloud } from 'lucide-react';
 import { useIntegrationTranslation } from '../../../i18n/integration';
+import { useCloudLibraryTranslation } from '../../../i18n/cloud_library';
 import { GameOption, SearchFilters } from '../types';
 import { GameOptionItem } from './GameOptionItem';
 
@@ -18,6 +19,7 @@ export interface GameListViewProps {
     onPin: (t: GameOption) => void;
     onOpenBgStats?: () => void;
     onOpenBggImport?: () => void;
+    onOpenCloudLibrary?: () => void;
 }
 
 const BOTTOM_ROW_HEIGHT_CLASS = "h-[60px]";
@@ -33,9 +35,11 @@ export const GameListView: React.FC<GameListViewProps> = ({
     onOptionClick,
     onPin,
     onOpenBgStats,
-    onOpenBggImport
+    onOpenBggImport,
+    onOpenCloudLibrary
 }) => {
     const { t } = useIntegrationTranslation();
+    const { t: tCloudLib } = useCloudLibraryTranslation();
 
     return (
         <div className={`flex-1 flex flex-col bg-app-bg border-t border-surface-border shadow-ui-floating pointer-events-auto relative transition-all duration-300 h-full`}>
@@ -50,7 +54,7 @@ export const GameListView: React.FC<GameListViewProps> = ({
                     {showImportHint && onOpenBgStats && onOpenBggImport && (
                         <div className="flex flex-col items-center gap-2 mt-4 animate-in fade-in duration-300 pointer-events-auto">
                             <span className="text-[11px] text-txt-muted">{t('selector_import_hint')}</span>
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap justify-center gap-2 max-w-[90%]">
                                 <button
                                     onClick={(e) => { e.stopPropagation(); onOpenBgStats(); }}
                                     className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-brand-secondary bg-surface-bg-alt hover:bg-surface-bg rounded-lg border border-surface-border transition-all active:scale-95 shadow-sm"
@@ -64,6 +68,13 @@ export const GameListView: React.FC<GameListViewProps> = ({
                                 >
                                     <Database size={12} />
                                     {t('btn_bgg_open')}
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onOpenCloudLibrary?.(); }}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-brand-primary bg-surface-bg-alt hover:bg-surface-bg rounded-lg border border-surface-border transition-all active:scale-95 shadow-sm animate-pulse"
+                                >
+                                    <Cloud size={12} />
+                                    {tCloudLib('lib_title')}
                                 </button>
                             </div>
                         </div>
@@ -85,7 +96,7 @@ export const GameListView: React.FC<GameListViewProps> = ({
                             />
                         ))}
                         {showImportHint && onOpenBgStats && onOpenBggImport && (
-                            <div className="shrink-0 px-3 py-2 mb-1 flex items-center gap-2 text-[11px] text-txt-muted animate-in fade-in duration-300">
+                            <div className="shrink-0 px-3 py-2 mb-1 flex items-center gap-1.5 flex-wrap text-[11px] text-txt-muted animate-in fade-in duration-300">
                                 <span>{t('selector_import_hint')}</span>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); onOpenBgStats(); }}
@@ -99,6 +110,13 @@ export const GameListView: React.FC<GameListViewProps> = ({
                                     className="text-brand-secondary font-bold hover:underline"
                                 >
                                     BGG
+                                </button>
+                                <span>|</span>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onOpenCloudLibrary?.(); }}
+                                    className="text-brand-primary font-bold hover:underline"
+                                >
+                                    {tCloudLib('lib_title')}
                                 </button>
                             </div>
                         )}
