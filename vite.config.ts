@@ -20,8 +20,8 @@ export default defineConfig(({ command }) => ({
     }
   ],
   build: {
-    // 提高警告門檻至 1000kB，避免因第三方套件過大而頻繁警告
-    chunkSizeWarningLimit: 1000, 
+    // 提高警告門檻至 1500kB，避免因第三方套件過大而頻繁警告
+    chunkSizeWarningLimit: 1500, 
     rollupOptions: {
       output: {
         manualChunks(id) {
