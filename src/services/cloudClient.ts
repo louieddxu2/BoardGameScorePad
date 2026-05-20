@@ -256,7 +256,20 @@ class SafeCloudClient {
       clearTimeout(timeoutId);
       if (response.ok) {
         this.commitDailyCallCount(); // 呼叫成功，正式寫入累加次數
-        return await response.json() as FetchResponse[];
+        const json = await response.json();
+        
+        // 智慧解析：相容標準陣列格式與 D1 原始 results/data 包裝格式
+        if (Array.isArray(json)) {
+          return json as FetchResponse[];
+        } else if (json && typeof json === 'object') {
+          if (Array.isArray((json as any).results)) {
+            return (json as any).results as FetchResponse[];
+          } else if (Array.isArray((json as any).data)) {
+            return (json as any).data as FetchResponse[];
+          }
+        }
+        
+        throw new Error('invalid_response_format');
       }
       throw new Error('cloud_api_failed');
     } catch (error) {
@@ -264,7 +277,14 @@ class SafeCloudClient {
       console.warn('Cloud D1 API failed or limit reached. Falling back to local mock-cloud-templates.json', error);
       const localResp = await fetch('/mock-cloud-templates.json');
       if (!localResp.ok) throw new Error('mock_fallback_failed');
-      return await localResp.json() as FetchResponse[];
+      
+      const localJson = await localResp.json();
+      if (Array.isArray(localJson)) {
+        return localJson as FetchResponse[];
+      } else if (localJson && typeof localJson === 'object' && Array.isArray((localJson as any).results)) {
+        return (localJson as any).results as FetchResponse[];
+      }
+      return localJson as FetchResponse[];
     }
   }
 
@@ -281,7 +301,15 @@ class SafeCloudClient {
     }
     
     this.commitDailyCallCount(); // 呼叫成功，正式寫入累加次數
-    return response.json() as Promise<FetchResponse>;
+    const json = await response.json();
+    
+    // 智慧解析：相容單筆可能包裹於 results 陣列的情形
+    if (json && typeof json === 'object') {
+      if (Array.isArray((json as any).results)) {
+        return ((json as any).results[0] as FetchResponse) || null;
+      }
+    }
+    return json as FetchResponse;
   }
 
   private async uploadTemplateToCloudRaw(template: GameTemplate, lang?: string): Promise<UploadResponse> {
