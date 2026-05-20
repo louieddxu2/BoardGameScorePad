@@ -114,11 +114,27 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
             const currentUpdatedAt = templateToShare.updatedAt || templateToShare.createdAt || 0;
             const cached = await db.templateShareCache.get(templateToShare.id);
 
+            // 獲取該範本關聯的 BGG 官方資訊
+            let bggId: string | undefined = undefined;
+            let bggName: string | undefined = undefined;
+            if (templateToShare.bggId) {
+                const bgg = await db.bggGames.get(templateToShare.bggId);
+                if (bgg) {
+                    bggId = bgg.id;
+                    bggName = bgg.name;
+                }
+            }
+
             let cloudId: string;
             if (cached && cached.templateUpdatedAt === currentUpdatedAt) {
                 cloudId = cached.cloudId;
             } else {
-                const uploaded = await uploadTemplateToCloud(templateToShare, (t as any).language);
+                const uploaded = await uploadTemplateToCloud(
+                    templateToShare,
+                    (t as any).language,
+                    bggId,
+                    bggName
+                );
                 cloudId = uploaded.id;
                 await db.templateShareCache.put({
                     templateId: templateToShare.id,

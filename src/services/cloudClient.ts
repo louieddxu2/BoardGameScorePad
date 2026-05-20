@@ -218,7 +218,12 @@ class SafeCloudClient {
   /**
    * 上傳範本 (並發鎖定 + 每日500次上限，不需冷卻)
    */
-  async uploadTemplateToCloud(template: GameTemplate, lang?: string): Promise<UploadResponse> {
+  async uploadTemplateToCloud(
+    template: GameTemplate,
+    lang?: string,
+    bggId?: string,
+    bggName?: string
+  ): Promise<UploadResponse> {
     const cacheKey = `upload-${template.id || 'new'}`;
 
     if (this.activeRequests[cacheKey]) {
@@ -228,7 +233,7 @@ class SafeCloudClient {
 
     const requestPromise = (async () => {
       try {
-        return await this.uploadTemplateToCloudRaw(template, lang);
+        return await this.uploadTemplateToCloudRaw(template, lang, bggId, bggName);
       } finally {
         delete this.activeRequests[cacheKey];
       }
@@ -312,7 +317,12 @@ class SafeCloudClient {
     return json as FetchResponse;
   }
 
-  private async uploadTemplateToCloudRaw(template: GameTemplate, lang?: string): Promise<UploadResponse> {
+  private async uploadTemplateToCloudRaw(
+    template: GameTemplate,
+    lang?: string,
+    bggId?: string,
+    bggName?: string
+  ): Promise<UploadResponse> {
     if (!this.checkAndIncrementDailyLimit()) {
       throw new Error('daily_limit_exceeded');
     }
@@ -327,14 +337,24 @@ class SafeCloudClient {
       ...sanitizedTemplate
     } = template;
 
+    // 將 bggId 與 bggName 寫入 payload 內層，並同時作為頂層參數送出，使後端能智慧提取並相容
+    const finalBggId = bggId || sanitizedTemplate.bggId;
+    const payloadWithBgg = {
+      ...sanitizedTemplate,
+      bggId: finalBggId,
+      bggName: bggName || undefined,
+    };
+
     const token = await getTurnstileToken();
     const response = await fetch(`${CLOUD_SHARE_BASE_URL}/api/template/upload`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         name: sanitizedTemplate.name,
-        payload: sanitizedTemplate,
+        payload: payloadWithBgg,
         lang,
+        bggId: finalBggId,
+        bggName,
         turnstileToken: token,
       }),
     });

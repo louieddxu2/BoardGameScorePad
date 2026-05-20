@@ -9,8 +9,13 @@ export const buildCloudShareUrl = (cloudId: string, englishName?: string): strin
   return `${origin}${pathname}${search}${hash}`;
 };
 
-export const uploadTemplateToCloud = (template: GameTemplate, lang?: string): Promise<UploadResponse> => {
-  return cloudClient.uploadTemplateToCloud(template, lang);
+export const uploadTemplateToCloud = (
+  template: GameTemplate,
+  lang?: string,
+  bggId?: string,
+  bggName?: string
+): Promise<UploadResponse> => {
+  return cloudClient.uploadTemplateToCloud(template, lang, bggId, bggName);
 };
 
 export const fetchTemplateFromCloud = (cloudId: string): Promise<FetchResponse | null> => {
