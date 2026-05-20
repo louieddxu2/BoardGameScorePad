@@ -39,7 +39,9 @@
 
 ## 🚫 專案禁區
 
-（原 `src/constants.ts` 內容已移至 `src/data/templates.ts` 與 `src/data/templates-en.ts`。在此目錄下的樣板資料應視為準正式環境資料，非必要請勿隨意更動）
+- （原 `src/constants.ts` 內容已移至 `src/data/templates.ts` 與 `src/data/templates-en.ts`。在此目錄下的樣板資料應視為準正式環境資料，非必要請勿隨意更動）
+- **雲端安全防線 (Cloud D1 API) 唯一出口**：嚴禁在 `src/services/cloudClient.ts` 之外的任何地方直接呼叫 `fetch` 發送請求到雲端 API（即含有 `VITE_TEMPLATE_SHARE_API_BASE_URL` 或 `scoreboard-api.louieddxu2` 的網路請求）。所有與範本分享、下載、上傳的通訊必須統一使用 `cloudClient` 單例。否則 `scripts/verify.ps1` 的靜態掃描會阻斷編譯。
+
 
 ## 🔧 驗證指令
 
