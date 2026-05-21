@@ -3,8 +3,8 @@ import { useTranslation } from './index';
 export const sessionTranslations = {
   'zh-TW': {
     // --- Session View ---
-    session_simple_promo_arrow_hint: "點擊左上角「加號」手動新增欄位，或",
-    session_simple_promo_btn: "探索雲端或 AI 生成範本",
+    session_simple_promo_arrow_hint: "點擊「加號」手動新增欄位，或",
+    session_simple_promo_btn: "探索雲端 / AI生成計分板",
     session_edit_title_placeholder: "輸入標題",
     session_lock_edit: "鎖定編輯 (切換至使用模式)",
     session_unlock_edit: "解鎖編輯 (切換至編輯模式)",
@@ -239,8 +239,8 @@ export const sessionTranslations = {
   },
   'en': {
     // --- Session View ---
-    session_simple_promo_arrow_hint: "Click the top-left '+' to manually add score items, or",
-    session_simple_promo_btn: "Explore Cloud or AI Templates",
+    session_simple_promo_arrow_hint: "Click '+' to manually add score items, or",
+    session_simple_promo_btn: "Explore Cloud / AI ScorePad",
     session_edit_title_placeholder: "Enter Title",
     session_lock_edit: "Lock Edit (Switch to Play Mode)",
     session_unlock_edit: "Unlock Edit (Switch to Edit Mode)",

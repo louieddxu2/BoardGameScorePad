@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { GameSession, GameTemplate, Player, ScoreColumn } from '../../../types';
-import { GripVertical, EyeOff, Layers, Sparkles, Settings, Sigma, X, Camera, ArrowUpLeft } from 'lucide-react';
+import { GripVertical, EyeOff, Layers, Sparkles, Settings, Sigma, X, Camera, ArrowUp } from 'lucide-react';
 import ScoreCell from './ScoreCell';
 import TexturedPlayerHeader from './TexturedPlayerHeader';
 import TexturedBlock from './TexturedBlock';
@@ -571,7 +571,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           <div className="mx-6 my-4 z-10 flex flex-col items-center p-4 rounded-xl border border-brand-primary/20 bg-brand-primary/5 backdrop-blur-sm shadow-sm relative animate-fade-in">
             {/* Pointer to the '+' button in GridFooter */}
             <div className="flex items-start gap-1.5 text-txt-secondary text-xs mb-3 text-left w-full">
-              <ArrowUpLeft className="w-4 h-4 text-brand-primary shrink-0 animate-pulse mt-0.5" />
+              <ArrowUp className="w-4 h-4 text-brand-primary shrink-0 animate-bounce mt-0.5" />
               <span className="leading-relaxed font-medium">
                 {t('session_simple_promo_arrow_hint')}
               </span>
