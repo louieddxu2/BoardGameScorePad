@@ -29,7 +29,6 @@ import SearchTemplateOnlineModal from '../dashboard/modals/SearchTemplateOnlineM
 import AiPromptModal from '../../features/ai-generator/components/AiPromptModal';
 import { uploadTemplateToCloud } from '../../services/templateShareService';
 import { db } from '../../db';
-import { Sparkles, Camera } from 'lucide-react';
 
 interface SessionViewProps {
   session: GameSession;
@@ -103,18 +102,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   // Winners Logic - Use pre-calculated winners from session to stabilize references
   const winners = useMemo(() => session.winnerIds || [], [session.winnerIds]);
 
-  // 判定是否為分數全空的初始簡易計分狀態
-  const isScoresEmpty = useMemo(() => {
-    return session.players.every(p => {
-      if (!p.scores) return true;
-      return Object.values(p.scores).every(scoreData => {
-        if (!scoreData) return true;
-        return !scoreData.parts || scoreData.parts.length === 0;
-      });
-    });
-  }, [session.players]);
 
-  const isInitialSimpleScorepad = template.columns.length === 0 && isScoresEmpty;
 
   // 安全套用社群範本 (重置分數格，更新 columns，安全原地刷新)
   const handleApplyTemplate = useCallback((fetched: any) => {
@@ -315,16 +303,21 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       <SearchTemplateOnlineModal
         isOpen={isOnlineSearchOpen}
         onClose={() => setIsOnlineSearchOpen(false)}
-        playerCount={session.players.length}
         gameName={session.name || template.name}
-        onApplyTemplate={handleApplyTemplate}
+        onDirectStart={() => setIsOnlineSearchOpen(false)}
+        onAiClick={() => {
+          setIsOnlineSearchOpen(false);
+          setIsAiPromptOpen(true);
+        }}
+        onSelectTemplate={handleApplyTemplate}
       />
 
       {/* AI Prompt Scan Modal */}
       <AiPromptModal
         isOpen={isAiPromptOpen}
         onClose={() => setIsAiPromptOpen(false)}
-        onSuccess={handleAiSuccess}
+        onDirectStart={() => setIsAiPromptOpen(false)}
+        onAiSuccess={handleAiSuccess}
         gameName={session.name || template.name}
       />
 
@@ -510,43 +503,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           isEditMode={isEditMode}
           zoomLevel={zoomLevel}
           previewValue={previewValue}
+          onOpenOnlineSearch={() => setIsOnlineSearchOpen(true)}
+          onOpenAiPrompt={() => setIsAiPromptOpen(true)}
         />
-
-        {isInitialSimpleScorepad && (
-          <div className="mx-6 my-4 z-10 flex flex-col items-center justify-center p-6 rounded-2xl border border-dashed border-brand-primary/30 bg-surface-card/65 backdrop-blur-md text-center shadow-lg transition-all duration-300 hover:border-brand-primary/50 hover:shadow-brand-primary/5 animate-fade-in relative">
-            <div className="w-12 h-12 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary mb-3">
-              <Sparkles className="w-6 h-6 animate-pulse" />
-            </div>
-            <h3 className="text-base font-semibold text-txt-primary mb-1">
-              {tSession('session_simple_promo_title')}
-            </h3>
-            <p className="text-xs text-txt-secondary max-w-[280px] mb-5 leading-relaxed">
-              {tSession('session_simple_promo_desc')}
-            </p>
-            <div className="grid grid-cols-2 gap-3 w-full max-w-[280px]">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsAiPromptOpen(true);
-                }}
-                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-surface-bg border border-surface-border text-xs font-medium text-txt-primary hover:bg-surface-hover active:scale-95 transition-all"
-              >
-                <Camera className="w-3.5 h-3.5 text-brand-primary" />
-                <span>📸 AI 拍照</span>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsOnlineSearchOpen(true);
-                }}
-                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-gradient-to-r from-brand-primary to-brand-secondary text-xs font-medium text-white hover:opacity-90 active:scale-95 transition-all shadow-md shadow-brand-primary/10"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>✨ 探索範本</span>
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       <TotalsBar

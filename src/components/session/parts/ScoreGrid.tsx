@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { GameSession, GameTemplate, Player, ScoreColumn } from '../../../types';
-import { GripVertical, EyeOff, Layers, Sparkles, Settings, Sigma, X } from 'lucide-react';
+import { GripVertical, EyeOff, Layers, Sparkles, Settings, Sigma, X, Camera } from 'lucide-react';
 import ScoreCell from './ScoreCell';
 import TexturedPlayerHeader from './TexturedPlayerHeader';
 import TexturedBlock from './TexturedBlock';
@@ -36,6 +36,8 @@ interface ScoreGridProps {
   // [New Props]
   onToggleToolbox?: () => void;
   isToolboxOpen?: boolean;
+  onOpenOnlineSearch?: () => void;
+  onOpenAiPrompt?: () => void;
 }
 
 const ScoreGrid: React.FC<ScoreGridProps> = ({
@@ -57,9 +59,24 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   isEditMode,
   zoomLevel,
   previewValue,
+  onOpenOnlineSearch,
+  onOpenAiPrompt,
 }) => {
   const { t } = useSessionTranslation();
   const dnd = useColumnDragAndDrop({ template, onUpdateTemplate, scrollRef: scrollContainerRef });
+
+  const isScoresEmpty = useMemo(() => {
+    return session.players.every(p => {
+      if (!p.scores) return true;
+      return Object.values(p.scores).every(scoreData => {
+        if (!scoreData) return true;
+        return !scoreData.parts || scoreData.parts.length === 0;
+      });
+    });
+  }, [session.players]);
+
+  const isInitialSimpleScorepad = template.columns.length === 0 && isScoresEmpty;
+
   const [imageDims, setImageDims] = useState<{ width: number, height: number } | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
@@ -549,6 +566,42 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           isToolboxOpen={!!isToolboxOpen}      // [New]
           onToggleToolbox={onToggleToolbox || (() => { })} // [New]
         />
+
+        {isInitialSimpleScorepad && (
+          <div className="mx-6 my-4 z-10 flex flex-col items-center justify-center p-6 rounded-2xl border border-dashed border-brand-primary/30 bg-surface-card/65 backdrop-blur-md text-center shadow-lg transition-all duration-300 hover:border-brand-primary/50 hover:shadow-brand-primary/5 animate-fade-in relative">
+            <div className="w-12 h-12 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary mb-3">
+              <Sparkles className="w-6 h-6 animate-pulse" />
+            </div>
+            <h3 className="text-base font-semibold text-txt-primary mb-1">
+              {t('session_simple_promo_title')}
+            </h3>
+            <p className="text-xs text-txt-secondary max-w-[280px] mb-5 leading-relaxed">
+              {t('session_simple_promo_desc')}
+            </p>
+            <div className="grid grid-cols-2 gap-3 w-full max-w-[280px]">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenAiPrompt?.();
+                }}
+                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-surface-bg border border-surface-border text-xs font-medium text-txt-primary hover:bg-surface-hover active:scale-95 transition-all"
+              >
+                <Camera className="w-3.5 h-3.5 text-brand-primary" />
+                <span>📸 AI 拍照</span>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenOnlineSearch?.();
+                }}
+                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-gradient-to-r from-brand-primary to-brand-secondary text-xs font-medium text-white hover:opacity-90 active:scale-95 transition-all shadow-md shadow-brand-primary/10"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>✨ 探索範本</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         <div
           data-row-id={lastColId}
