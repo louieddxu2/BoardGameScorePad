@@ -173,3 +173,124 @@ export const prepareTemplateForSave = async (
     // 一般模板 -> 直接回傳
     return migratedTemplate;
 };
+
+export interface FormulaClassification {
+    formulaKey: string;
+    bgClass: string;
+    textClass: string;
+}
+
+/**
+ * 高精度正規公式判定純函式 (High Precision Formula Classifier)
+ * 依據膨脹後 Suggestions 的真實欄位結構特徵進行高精度分類判定，並對齊為 11 種項目編輯器命名。
+ */
+export const classifyColumnFormula = (col: any): FormulaClassification => {
+    const inputType = col.inputType ?? 'keypad';
+    const formula = col.formula ?? 'a1';
+    const constants = col.constants ?? {};
+    const isMultiSelect = !!col.isMultiSelect;
+    const isAuto = !!col.isAuto;
+
+    // 1. 自動計算: isAuto === true 且欄位引用了其他欄位
+    if (isAuto) {
+        return {
+            formulaKey: 'formula_label_auto',
+            bgClass: 'bg-violet-500/10 border-violet-500/20',
+            textClass: 'text-violet-500'
+        };
+    }
+
+    // 2. 按鈕多選: inputType === 'clicker' 且 isMultiSelect === true
+    if (inputType === 'clicker' && isMultiSelect) {
+        return {
+            formulaKey: 'formula_label_button_multi',
+            bgClass: 'bg-purple-500/10 border-purple-500/20',
+            textClass: 'text-purple-500'
+        };
+    }
+
+    // 3. 按鈕累加: inputType === 'clicker' 且 !isMultiSelect 且 formula 包含 'next'
+    if (inputType === 'clicker' && !isMultiSelect && String(formula).includes('next')) {
+        return {
+            formulaKey: 'formula_label_button_addition',
+            bgClass: 'bg-fuchsia-500/10 border-fuchsia-500/20',
+            textClass: 'text-fuchsia-500'
+        };
+    }
+
+    // 4. 按鈕單選: inputType === 'clicker' 且 !isMultiSelect 且 formula 不含 'next'
+    if (inputType === 'clicker' && !isMultiSelect && !String(formula).includes('next')) {
+        return {
+            formulaKey: 'formula_label_button',
+            bgClass: 'bg-sky-500/10 border-sky-500/20',
+            textClass: 'text-sky-500'
+        };
+    }
+
+    // 5. 範圍查表: formula 包含 'f1'，或有 f1 陣列或 functions 屬性
+    const formulaStr = String(formula);
+    const hasFunction = formulaStr.includes('f1') || formulaStr.includes('f2') || (col.f1 && col.f1.length > 0) || (col.functions && Object.keys(col.functions).length > 0);
+    if (hasFunction) {
+        return {
+            formulaKey: 'formula_label_table',
+            bgClass: 'bg-amber-500/10 border-amber-500/20',
+            textClass: 'text-amber-500'
+        };
+    }
+
+    // 6. 倍率扣分: constants.c1 < 0 或公式內含負號（排除 '->' 箭頭）
+    const hasNegative = (constants.c1 !== undefined && constants.c1 < 0) || 
+        (formulaStr.includes('-') && !formulaStr.includes('->'));
+    if (hasNegative) {
+        return {
+            formulaKey: 'formula_label_subtraction',
+            bgClass: 'bg-red-500/10 border-red-500/20',
+            textClass: 'text-red-500'
+        };
+    }
+
+    // 7. 相乘累加: 公式中同時包含變數 a1 與 a2，且公式內含 'next'
+    if (formulaStr.includes('a1') && formulaStr.includes('a2') && formulaStr.includes('next')) {
+        return {
+            formulaKey: 'formula_label_product_addition',
+            bgClass: 'bg-indigo-500/10 border-indigo-500/20',
+            textClass: 'text-indigo-500'
+        };
+    }
+
+    // 8. 兩數相乘: 公式中同時包含變數 a1 與 a2，且不含 'next'
+    if (formulaStr.includes('a1') && formulaStr.includes('a2') && !formulaStr.includes('next')) {
+        return {
+            formulaKey: 'formula_label_product',
+            bgClass: 'bg-purple-500/10 border-purple-500/20',
+            textClass: 'text-purple-500'
+        };
+    }
+
+    // 9. 分項累加: 非 clicker 類型，且公式包含 'next' 或是 '+'
+    if (formulaStr.includes('next') || formulaStr.includes('+')) {
+        return {
+            formulaKey: 'formula_label_addition',
+            bgClass: 'bg-emerald-500/10 border-emerald-500/20',
+            textClass: 'text-emerald-500'
+        };
+    }
+
+    // 10. 固定倍率: 公式含有相乘（'×' 或 '*'），且不包含 a2
+    const hasMultiply = formulaStr.includes('×') || formulaStr.includes('*');
+    if (hasMultiply && !formulaStr.includes('a2')) {
+        return {
+            formulaKey: 'formula_label_multiplier',
+            bgClass: 'bg-cyan-500/10 border-cyan-500/20',
+            textClass: 'text-cyan-500'
+        };
+    }
+
+    // 11. 直接輸入: 其他所有類型
+    return {
+        formulaKey: 'formula_label_plain',
+        bgClass: 'bg-slate-500/10 border-slate-500/20',
+        textClass: 'text-txt-secondary'
+    };
+};
+

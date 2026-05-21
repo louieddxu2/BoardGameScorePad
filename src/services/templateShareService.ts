@@ -22,8 +22,8 @@ export const fetchTemplateFromCloud = (cloudId: string): Promise<FetchResponse |
   return cloudClient.fetchTemplateFromCloud(cloudId);
 };
 
-export const fetchPublicTemplates = (): Promise<FetchResponse[]> => {
-  return cloudClient.fetchPublicTemplates();
+export const fetchPublicTemplates = (options?: { bggId?: string; query?: string }): Promise<FetchResponse[]> => {
+  return cloudClient.fetchPublicTemplates(options);
 };
 
 

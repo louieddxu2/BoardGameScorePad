@@ -104,24 +104,14 @@ export const useGameLauncher = ({
     locationId?: string, 
     extra?: { startTimeStr?: string, scoringRule?: ScoringRule }
   ) => {
-    // 官方最正統判定契約：只要沒有 templateId，它在資料庫中就沒有既定結構，必然是簡易板！
-    // (這包含使用者輸入全新名稱所觸發的 __CREATE_NEW__ 選項)
     const isSimple = !option.templateId;
-
     const currentPayload: PendingLaunchData = { option, playerCount, location, locationId, extra };
 
-    // 即時讀取解鎖狀態
-    const isCurrentlyUnlocked = localStorage.getItem('advance_user') === 'true';
+    // 離線防線：若處於離線狀態，直接靜默進入簡易計分板，不彈出智能面板
+    const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
 
-
-    // 攔截條件：解鎖進階使用者 && 是簡易遊戲
-    if (isCurrentlyUnlocked && isSimple) {
-        // 暫緩啟動，觸發 UI 彈窗
-        setPendingLaunch(currentPayload);
-    } else {
-        // 無解鎖或已有結構，直接啟動
-        await executeLaunch(currentPayload);
-    }
+    // 直接啟動，完全無阻礙，一秒開局！
+    await executeLaunch(currentPayload);
   };
 
   return { 

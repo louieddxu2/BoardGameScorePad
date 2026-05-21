@@ -151,8 +151,13 @@ class SafeCloudClient {
   /**
    * 讀取雲端範本庫 (並發鎖定 + 5秒冷卻 + 每日500次上限)
    */
-  async fetchPublicTemplates(): Promise<FetchResponse[]> {
-    const cacheKey = 'public-templates';
+  /**
+   * 讀取雲端範本庫 (並發鎖定 + 5秒冷卻 + 每日500次上限)
+   */
+  async fetchPublicTemplates(options?: { bggId?: string; query?: string }): Promise<FetchResponse[]> {
+    const cacheKey = options 
+      ? `public-templates-${options.bggId || ''}-${options.query || ''}`
+      : 'public-templates';
     const now = Date.now();
 
     // 1. 並發重用：若有相同請求正在發送，直接重用 Promise
@@ -170,7 +175,7 @@ class SafeCloudClient {
     // 3. 發送真實 API 請求
     const requestPromise = (async () => {
       try {
-        const data = await this.fetchPublicTemplatesRaw();
+        const data = await this.fetchPublicTemplatesRaw(options);
         this.cache[cacheKey] = data;
         this.lastFetchTime[cacheKey] = Date.now();
         return data;
@@ -245,7 +250,7 @@ class SafeCloudClient {
 
   // ==================== 底層網路實體 Fetch (私有) ====================
 
-  private async fetchPublicTemplatesRaw(): Promise<FetchResponse[]> {
+  private async fetchPublicTemplatesRaw(options?: { bggId?: string; query?: string }): Promise<FetchResponse[]> {
     // 檢查每日 500 次配額防線
     if (!this.checkAndIncrementDailyLimit()) {
       throw new Error('daily_limit_exceeded');
@@ -254,8 +259,21 @@ class SafeCloudClient {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 秒超時
 
+    // 安全拼接查詢參數
+    let url = `${CLOUD_SHARE_BASE_URL}/api/public-templates`;
+    const params: string[] = [];
+    if (options?.bggId) {
+      params.push(`bggId=${encodeURIComponent(options.bggId)}`);
+    }
+    if (options?.query) {
+      params.push(`query=${encodeURIComponent(options.query)}`);
+    }
+    if (params.length > 0) {
+      url += `?${params.join('&')}`;
+    }
+
     try {
-      const response = await fetch(`${CLOUD_SHARE_BASE_URL}/api/public-templates`, {
+      const response = await fetch(url, {
         signal: controller.signal
       });
       clearTimeout(timeoutId);
@@ -263,33 +281,71 @@ class SafeCloudClient {
         this.commitDailyCallCount(); // 呼叫成功，正式寫入累加次數
         const json = await response.json();
         
+        let templates: FetchResponse[] = [];
         // 智慧解析：相容標準陣列格式與 D1 原始 results/data 包裝格式
         if (Array.isArray(json)) {
-          return json as FetchResponse[];
+          templates = json as FetchResponse[];
         } else if (json && typeof json === 'object') {
           if (Array.isArray((json as any).results)) {
-            return (json as any).results as FetchResponse[];
+            templates = (json as any).results as FetchResponse[];
           } else if (Array.isArray((json as any).data)) {
-            return (json as any).data as FetchResponse[];
+            templates = (json as any).data as FetchResponse[];
           }
+        } else {
+          throw new Error('invalid_response_format');
         }
-        
-        throw new Error('invalid_response_format');
+        return templates;
       }
       throw new Error('cloud_api_failed');
     } catch (error) {
       clearTimeout(timeoutId);
-      console.warn('Cloud D1 API failed or limit reached. Falling back to local mock-cloud-templates.json', error);
-      const localResp = await fetch('/mock-cloud-templates.json');
-      if (!localResp.ok) throw new Error('mock_fallback_failed');
       
-      const localJson = await localResp.json();
-      if (Array.isArray(localJson)) {
-        return localJson as FetchResponse[];
-      } else if (localJson && typeof localJson === 'object' && Array.isArray((localJson as any).results)) {
-        return (localJson as any).results as FetchResponse[];
+      // 只有在單元測試環境中 (MODE === 'test')，才允許加載 mock 資料作為測試 fallback
+      if (import.meta.env.MODE === 'test') {
+        console.warn('Cloud D1 API failed in test environment. Falling back to local mock-cloud-templates.json', error);
+        try {
+          const localResp = await fetch('/mock-cloud-templates.json');
+          if (!localResp.ok) throw new Error('mock_fallback_failed');
+          
+          const localJson = await localResp.json();
+          let templates: FetchResponse[] = [];
+          if (Array.isArray(localJson)) {
+            templates = localJson as FetchResponse[];
+          } else if (localJson && typeof localJson === 'object' && Array.isArray((localJson as any).results)) {
+            templates = (localJson as any).results as FetchResponse[];
+          } else {
+            templates = localJson as FetchResponse[];
+          }
+
+          // Mock 資料前端智慧過濾：相容測試環境的聯合查詢 (BGG ID OR query 聯集過濾)
+          templates = templates.filter(t => {
+            const payload: any = typeof t.payload === 'string' ? JSON.parse(t.payload) : t.payload;
+            const matchBggId = options?.bggId && (t.id === options.bggId || payload?.bggId === options.bggId);
+            const matchQuery = options?.query && (
+              t.name.toLowerCase().includes(options.query.toLowerCase()) || 
+              payload?.gameName?.toLowerCase()?.includes(options.query.toLowerCase())
+            );
+
+            if (options?.bggId && options?.query) {
+              return !!(matchBggId || matchQuery);
+            }
+            if (options?.bggId) {
+              return !!matchBggId;
+            }
+            if (options?.query) {
+              return !!matchQuery;
+            }
+            return true;
+          });
+          return templates;
+        } catch (mockError) {
+          throw new Error('mock_fallback_failed');
+        }
       }
-      return localJson as FetchResponse[];
+
+      // 實際環境 (Dev/Prod) 發生 API 錯誤時，直接向外拋出錯誤，拒絕用 Mock 混淆使用者
+      console.error('[SafeCloudClient] Cloud API request failed:', error);
+      throw error;
     }
   }
 

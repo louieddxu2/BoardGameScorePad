@@ -25,6 +25,11 @@ import SessionBackgroundModal from './modals/SessionBackgroundModal';
 import SessionImageFlow from './SessionImageFlow';
 import CameraView from '../scanner/CameraView';
 import GameSettingsEditor from '../shared/GameSettingsEditor';
+import SearchTemplateOnlineModal from '../dashboard/modals/SearchTemplateOnlineModal';
+import AiPromptModal from '../../features/ai-generator/components/AiPromptModal';
+import { uploadTemplateToCloud } from '../../services/templateShareService';
+import { db } from '../../db';
+import { Sparkles, Camera } from 'lucide-react';
 
 interface SessionViewProps {
   session: GameSession;
@@ -49,6 +54,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const { session, template, zoomLevel, baseImage, onUpdateTemplate } = props;
   const { t: tSession } = useSessionTranslation();
   const { t: tCommon } = useCommonTranslation();
+
+  const [isOnlineSearchOpen, setIsOnlineSearchOpen] = React.useState(false);
+  const [isAiPromptOpen, setIsAiPromptOpen] = React.useState(false);
 
   const sessionState = useSessionState(props);
   const { setUiState } = sessionState;
@@ -94,6 +102,128 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   // Winners Logic - Use pre-calculated winners from session to stabilize references
   const winners = useMemo(() => session.winnerIds || [], [session.winnerIds]);
+
+  // 判定是否為分數全空的初始簡易計分狀態
+  const isScoresEmpty = useMemo(() => {
+    return session.players.every(p => {
+      if (!p.scores) return true;
+      return Object.values(p.scores).every(scoreData => {
+        if (!scoreData) return true;
+        return !scoreData.parts || scoreData.parts.length === 0;
+      });
+    });
+  }, [session.players]);
+
+  const isInitialSimpleScorepad = template.columns.length === 0 && isScoresEmpty;
+
+  // 安全套用社群範本 (重置分數格，更新 columns，安全原地刷新)
+  const handleApplyTemplate = useCallback((fetched: any) => {
+    let payloadObj: any = null;
+    try {
+      payloadObj = typeof fetched.payload === 'string'
+        ? JSON.parse(fetched.payload)
+        : fetched.payload;
+    } catch (e) {
+      console.error("Failed to parse template payload", e);
+      return;
+    }
+
+    if (!payloadObj) return;
+
+    // 1. 複製玩家並清空所有輸入分數 (原地清空)
+    const newPlayers = session.players.map(p => ({
+      ...p,
+      scores: {}
+    }));
+
+    // 2. 原地覆寫模板屬性
+    const updatedTemplate: GameTemplate = {
+      ...template,
+      columns: payloadObj.columns || [],
+      defaultScoringRule: payloadObj.defaultScoringRule || template.defaultScoringRule,
+      supportedColors: payloadObj.supportedColors || template.supportedColors,
+      globalVisuals: payloadObj.globalVisuals || template.globalVisuals,
+      imageId: payloadObj.imageId || template.imageId,
+      cloudImageId: payloadObj.cloudImageId || template.cloudImageId,
+      hasImage: payloadObj.hasImage !== undefined ? payloadObj.hasImage : template.hasImage,
+      description: payloadObj.description || template.description,
+      updatedAt: Date.now()
+    };
+
+    // 3. 重新建立會話物件，並重設 winners
+    const updatedSession: GameSession = {
+      ...session,
+      players: newPlayers,
+      winnerIds: [], // 清空 winners
+      scoringRule: updatedTemplate.defaultScoringRule,
+    };
+
+    // 4. 原地驅動 React 狀態流更新（IndexedDB 寫入由上層 onUpdate 自動非同步完成）
+    props.onUpdateTemplate(updatedTemplate);
+    props.onUpdateSession(updatedSession);
+
+    // 5. 標記偏好，記錄此範本以防止重覆推薦
+    try {
+      db.templatePrefs.put({
+        templateId: updatedTemplate.id,
+        lastPlayerCount: session.players.length,
+        updatedAt: Date.now()
+      });
+    } catch (e) {
+      console.error("Failed to record prefs", e);
+    }
+
+    // 6. 關閉彈窗並彈出提示
+    setIsOnlineSearchOpen(false);
+    showToast({ message: tSession('toast_apply_template_success'), type: 'success' });
+  }, [session, template, props.onUpdateTemplate, props.onUpdateSession, showToast, tSession]);
+
+  // 安全套用 AI 產生之範本
+  const handleAiSuccess = useCallback((result: Partial<GameTemplate>) => {
+    if (!result.columns || result.columns.length === 0) return;
+
+    // 1. 複製玩家並清空所有輸入分數 (原地清空)
+    const newPlayers = session.players.map(p => ({
+      ...p,
+      scores: {}
+    }));
+
+    // 2. 原地覆寫模板欄位
+    const updatedTemplate: GameTemplate = {
+      ...template,
+      columns: result.columns,
+      defaultScoringRule: result.defaultScoringRule || template.defaultScoringRule,
+      updatedAt: Date.now()
+    };
+
+    // 3. 重新建立會話物件，並重設 winners
+    const updatedSession: GameSession = {
+      ...session,
+      players: newPlayers,
+      winnerIds: [],
+      scoringRule: updatedTemplate.defaultScoringRule,
+    };
+
+    // 4. 原地驅動 React 狀態更新
+    props.onUpdateTemplate(updatedTemplate);
+    props.onUpdateSession(updatedSession);
+
+    // 5. 背景靜默上傳至 D1 雲端（不阻斷，不打擾使用者，若欄位大於等於 3）
+    if (result.columns.length >= 3 && template.name) {
+      const uploadPayload = {
+        ...updatedTemplate,
+        name: template.name
+      };
+      uploadTemplateToCloud(uploadPayload)
+        .then(() => console.log("[Cloud] AI template successfully auto-uploaded to D1 in background"))
+        .catch(err => console.warn("[Cloud] Background silent upload failed:", err));
+    }
+
+    // 6. 關閉彈窗與拍照介面，彈出提示
+    setIsAiPromptOpen(false);
+    setIsOnlineSearchOpen(false);
+    showToast({ message: tSession('toast_ai_apply_success'), type: 'success' });
+  }, [session, template, props.onUpdateTemplate, props.onUpdateSession, showToast, tSession]);
 
   // Prepare Overlay Data for Photo Gallery
   const overlayData = useMemo(() => ({
@@ -180,6 +310,23 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   return (
     <div className="flex flex-col h-full bg-app-bg text-txt-primary overflow-hidden relative">
       {/* --- Modals --- */}
+
+      {/* Search Template Online Modal */}
+      <SearchTemplateOnlineModal
+        isOpen={isOnlineSearchOpen}
+        onClose={() => setIsOnlineSearchOpen(false)}
+        playerCount={session.players.length}
+        gameName={session.name || template.name}
+        onApplyTemplate={handleApplyTemplate}
+      />
+
+      {/* AI Prompt Scan Modal */}
+      <AiPromptModal
+        isOpen={isAiPromptOpen}
+        onClose={() => setIsAiPromptOpen(false)}
+        onSuccess={handleAiSuccess}
+        gameName={session.name || template.name}
+      />
 
       {/* Exit Modal */}
       <SessionExitModal
@@ -364,6 +511,42 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           zoomLevel={zoomLevel}
           previewValue={previewValue}
         />
+
+        {isInitialSimpleScorepad && (
+          <div className="mx-6 my-4 z-10 flex flex-col items-center justify-center p-6 rounded-2xl border border-dashed border-brand-primary/30 bg-surface-card/65 backdrop-blur-md text-center shadow-lg transition-all duration-300 hover:border-brand-primary/50 hover:shadow-brand-primary/5 animate-fade-in relative">
+            <div className="w-12 h-12 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary mb-3">
+              <Sparkles className="w-6 h-6 animate-pulse" />
+            </div>
+            <h3 className="text-base font-semibold text-txt-primary mb-1">
+              {tSession('session_simple_promo_title')}
+            </h3>
+            <p className="text-xs text-txt-secondary max-w-[280px] mb-5 leading-relaxed">
+              {tSession('session_simple_promo_desc')}
+            </p>
+            <div className="grid grid-cols-2 gap-3 w-full max-w-[280px]">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsAiPromptOpen(true);
+                }}
+                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-surface-bg border border-surface-border text-xs font-medium text-txt-primary hover:bg-surface-hover active:scale-95 transition-all"
+              >
+                <Camera className="w-3.5 h-3.5 text-brand-primary" />
+                <span>📸 AI 拍照</span>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsOnlineSearchOpen(true);
+                }}
+                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-gradient-to-r from-brand-primary to-brand-secondary text-xs font-medium text-white hover:opacity-90 active:scale-95 transition-all shadow-md shadow-brand-primary/10"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>✨ 探索範本</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <TotalsBar

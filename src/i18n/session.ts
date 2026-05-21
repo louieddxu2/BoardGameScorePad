@@ -3,6 +3,9 @@ import { useTranslation } from './index';
 export const sessionTranslations = {
   'zh-TW': {
     // --- Session View ---
+    session_simple_promo_title: "✨ 發現此遊戲的社群計分板！",
+    session_simple_promo_desc: "一鍵套用社群專用欄位公式，或用 AI 拍照掃描。",
+    session_simple_promo_btn: "探索 / AI 掃描",
     session_edit_title_placeholder: "輸入標題",
     session_lock_edit: "鎖定編輯 (切換至使用模式)",
     session_unlock_edit: "解鎖編輯 (切換至編輯模式)",
@@ -170,6 +173,8 @@ export const sessionTranslations = {
     col_name_with_index: "項目 {n}",
     col_default_unit_qty: "個",
     col_default_unit_pts: "分",
+    toast_apply_template_success: "✨ 成功套用社群計分板！已為您清空舊有分數。",
+    toast_ai_apply_success: "✨ AI 掃描並產生項目成功！已為您套用計分欄位。",
     toast_add_column_success: "已新增空白項目",
     toast_copy_columns_success: "已複製 {count} 個項目",
     toast_sync_bgg_success: "已同步更新 {count} 筆歷史紀錄的連結",
@@ -235,6 +240,9 @@ export const sessionTranslations = {
   },
   'en': {
     // --- Session View ---
+    session_simple_promo_title: "✨ Community Templates Available!",
+    session_simple_promo_desc: "One-click to apply custom scoring formulas, or scan with AI.",
+    session_simple_promo_btn: "Explore / AI Scan",
     session_edit_title_placeholder: "Enter Title",
     session_lock_edit: "Lock Edit (Switch to Play Mode)",
     session_unlock_edit: "Unlock Edit (Switch to Edit Mode)",
@@ -402,6 +410,8 @@ export const sessionTranslations = {
     col_name_with_index: "Item {n}",
     col_default_unit_qty: "qty",
     col_default_unit_pts: "pts",
+    toast_apply_template_success: "✨ Community template applied successfully! Old scores cleared.",
+    toast_ai_apply_success: "✨ AI scanned & columns generated successfully! Applied.",
     toast_add_column_success: "Added blank item",
     toast_copy_columns_success: "Copied {count} items",
     toast_sync_bgg_success: "Synced {count} history records",

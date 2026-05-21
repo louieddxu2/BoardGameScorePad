@@ -18,6 +18,9 @@ import { DashboardModals } from './parts/DashboardModals';
 import DashboardFAB from './parts/DashboardFAB';
 import ShareTemplateModal from './modals/ShareTemplateModal';
 import AiPromptModal from '../../features/ai-generator/components/AiPromptModal';
+import SearchTemplateOnlineModal from './modals/SearchTemplateOnlineModal';
+import { db } from '../../db';
+import { uploadTemplateToCloud } from '../../services/templateShareService';
 
 // Hooks
 import { useDashboardData } from './hooks/useDashboardData';
@@ -125,6 +128,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [isSetupMode, setIsSetupMode] = useState(false);
   const [viewMode, setViewMode] = useState<'library' | 'history'>('library');
+  const [isAiPromptOpen, setIsAiPromptOpen] = useState(false);
 
   useEffect(() => {
     if (!isVisible) {
@@ -380,14 +384,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         onGetLocalData={onGetLocalData}
       />
 
-      {/* AI 生成計分板詢問彈窗 (攔截機制) */}
-      <AiPromptModal
-        isOpen={!!pendingLaunch}
-        gameName={pendingLaunch?.option.displayName || ''}
-        onClose={cancelAiLaunch}
-        onDirectStart={confirmDirectLaunch}
-        onAiSuccess={confirmAiLaunch}
-      />
+      {/* 智能啟動已移至計分板內 (SessionView) 作為驚喜探索區 */}
 
       {dashboardActions.sharingTemplate && (
         <ShareTemplateModal
