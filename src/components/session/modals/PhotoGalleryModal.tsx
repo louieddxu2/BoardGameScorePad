@@ -179,7 +179,7 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
                     >
                         <Camera size={14} /> <span className="hidden sm:inline">{t('gallery_camera')}</span>
                     </button>
-                    <button onClick={() => triggerClose()} className="p-2 text-txt-secondary hover:text-txt-title bg-modal-bg-elevated/50 hover:bg-modal-bg-elevated rounded-full transition-colors ml-1">
+                    <button onClick={onClose} className="p-2 text-txt-secondary hover:text-txt-title bg-modal-bg-elevated/50 hover:bg-modal-bg-elevated rounded-full transition-colors ml-1">
                         <X size={20} />
                     </button>
                 </div>

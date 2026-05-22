@@ -157,11 +157,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                 }
             }
         } else {
-            if (triggerCloseEditor) {
-                triggerCloseEditor(1);
-            } else {
-                onClose();
-            }
+            onClose();
         }
     };
 

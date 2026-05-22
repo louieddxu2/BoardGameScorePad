@@ -283,7 +283,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
 
             {/* Header Toolbar */}
             <div className="flex-none flex justify-between items-center p-4 bg-surface-recessed border-b border-surface-border z-10 h-16">
-                <button onClick={() => triggerClose()} className="p-2 bg-surface-recessed rounded-full text-txt-muted hover:text-txt-title border border-surface-border transition-colors">
+                <button onClick={onClose} className="p-2 bg-surface-recessed rounded-full text-txt-muted hover:text-txt-title border border-surface-border transition-colors">
                     <X size={24} />
                 </button>
 
