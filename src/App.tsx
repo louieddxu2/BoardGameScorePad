@@ -1,14 +1,15 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { AppView, GameTemplate, ScoringRule } from './types';
-import { getTouchDistance } from './utils/ui';
 import { useAppData } from './hooks/useAppData';
+import { useMobileZoom } from './hooks/useMobileZoom';
+import { useLandscapeOrientation } from './hooks/useLandscapeOrientation';
+import { usePwaInstall } from './hooks/usePwaInstall';
 import { Smartphone, Loader2 } from 'lucide-react';
 import { getTargetHistoryDepth } from './config/historyStrategy'; // Import Strategy
 import { hasActiveModals } from './hooks/useModalBackHandler'; // Modal 歷史協調
 import { useToast } from './hooks/useToast';
 import { useAppTranslation } from './i18n/app';
-import { useConfirm } from './hooks/useConfirm';
 import { useAiTemplateShareConfirm } from './hooks/useAiTemplateShareConfirm';
 import { parseDeepLinkFromHash } from './utils/deepLink';
 import { fetchTemplateFromCloud } from './services/templateShareService';
@@ -33,7 +34,6 @@ const App: React.FC = () => {
 
   const { showToast } = useToast();
   const { t: tApp } = useAppTranslation();
-  const { confirm } = useConfirm();
 
   // Hook for encapsulated AI Template Sharing confirmation
   const { captureAiTemplateForSharing } = useAiTemplateShareConfirm(view);
@@ -44,23 +44,15 @@ const App: React.FC = () => {
   // For "Create from Search" flow
   const [editorInitialName, setEditorInitialName] = useState<string | undefined>(undefined);
 
-  // PWA Install
-  const [installPromptEvent, setInstallPromptEvent] = useState<any | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-
-  // Mobile Zoom
-  const [zoomLevel, setZoomLevel] = useState(1.0);
-  const zoomLevelRef = useRef(1.0);
-  const touchStartDist = useRef(0);
-  const initialZoomRef = useRef(1.0);
-  const isZooming = useRef(false);
-
   // Ref to ignore popstates triggered by our own history manipulation (pruning)
   const ignorePopstateRef = useRef(false);
   const deepLinkHandledRef = useRef(false);
 
-  // Landscape Detection State (JS Control)
-  const [showLandscapeOverlay, setShowLandscapeOverlay] = useState(false);
+  // Hardware & Environment Side Effects Hooks
+  const zoomLevel = useMobileZoom();
+  const showLandscapeOverlay = useLandscapeOrientation();
+  const { isInstalled, canInstall, handleInstallClick } = usePwaInstall();
+
   const [isIOSPwaGuideVisible, setIsIOSPwaGuideVisible] = useState(false);
 
   // --- Session Preview Logic (for Modal) ---
@@ -68,153 +60,6 @@ const App: React.FC = () => {
     if (!pendingTemplate || !appData.activeSessionIds.includes(pendingTemplate.id)) return null;
     return appData.getSessionPreview(pendingTemplate.id);
   }, [pendingTemplate, appData.activeSessionIds]);
-
-  // --- Zoom Logic ---
-  useEffect(() => {
-    const savedZoom = localStorage.getItem('app_zoom_level');
-    if (savedZoom) {
-      const z = parseFloat(savedZoom);
-      setZoomLevel(z);
-      zoomLevelRef.current = z;
-    }
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.style.fontSize = `${16 * zoomLevel}px`;
-    localStorage.setItem('app_zoom_level', String(zoomLevel));
-    zoomLevelRef.current = zoomLevel;
-  }, [zoomLevel]);
-
-  useEffect(() => {
-    const handleTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 2) {
-        isZooming.current = true;
-        e.preventDefault();
-        touchStartDist.current = getTouchDistance(e.touches);
-        initialZoomRef.current = zoomLevelRef.current;
-      } else {
-        isZooming.current = false;
-      }
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      if (isZooming.current && e.touches.length === 2) {
-        e.preventDefault();
-        if (touchStartDist.current > 0) {
-          const currentDist = getTouchDistance(e.touches);
-          const scale = currentDist / touchStartDist.current;
-          setZoomLevel(Math.max(0.75, Math.min(1.3, initialZoomRef.current * scale)));
-        }
-      }
-    };
-
-    const handleTouchEnd = () => {
-      isZooming.current = false;
-      touchStartDist.current = 0;
-    };
-
-    window.addEventListener('touchstart', handleTouchStart, { passive: false });
-    window.addEventListener('touchmove', handleTouchMove, { passive: false });
-    window.addEventListener('touchend', handleTouchEnd);
-    window.addEventListener('touchcancel', handleTouchEnd);
-
-    return () => {
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
-      window.removeEventListener('touchcancel', handleTouchEnd);
-    };
-  }, []);
-
-  // --- Landscape Detection Logic (JS) ---
-  useEffect(() => {
-    const checkOrientation = () => {
-      // 1. Only enforce on Touch Devices (Mobile/Tablet)
-      const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
-
-      // 2. Allow large screens (Tablets/Desktops) to rotate freely
-      const smallestDimension = Math.min(window.innerWidth, window.innerHeight);
-      const isTabletOrDesktop = smallestDimension >= 600;
-
-      if (!isTouchDevice || isTabletOrDesktop) {
-        setShowLandscapeOverlay(false);
-        return;
-      }
-
-      // 3. Use Modern API if available (Screen Orientation)
-      if (window.screen && window.screen.orientation && window.screen.orientation.type) {
-        const type = window.screen.orientation.type;
-        const isLandscape = type.includes('landscape');
-        setShowLandscapeOverlay(isLandscape);
-        return;
-      }
-
-      // 4. Fallback for iOS (older versions) which relies on window.orientation
-      if (typeof (window as any).orientation === 'number') {
-        const orientation = (window as any).orientation;
-        setShowLandscapeOverlay(Math.abs(orientation) === 90);
-        return;
-      }
-
-      // 5. Last Resort: Aspect Ratio Check
-      const activeTag = document.activeElement?.tagName;
-      const isKeyboardLikelyOpen = activeTag === 'INPUT' || activeTag === 'TEXTAREA';
-
-      if (isKeyboardLikelyOpen) {
-        setShowLandscapeOverlay(false);
-      } else {
-        setShowLandscapeOverlay(window.innerWidth > window.innerHeight);
-      }
-    };
-
-    window.addEventListener('resize', checkOrientation);
-    window.addEventListener('orientationchange', checkOrientation); // For iOS
-    if (window.screen?.orientation) {
-      window.screen.orientation.addEventListener('change', checkOrientation);
-    }
-
-    // Initial Check
-    checkOrientation();
-
-    return () => {
-      window.removeEventListener('resize', checkOrientation);
-      window.removeEventListener('orientationchange', checkOrientation);
-      if (window.screen?.orientation) {
-        window.screen.orientation.removeEventListener('change', checkOrientation);
-      }
-    };
-  }, []);
-
-  // --- PWA Logic ---
-  useEffect(() => {
-    const pwaInstalled = localStorage.getItem('pwa_installed') === 'true';
-    if (pwaInstalled || window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true);
-      return;
-    }
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setInstallPromptEvent(e);
-    };
-    const handleAppInstalled = () => {
-      localStorage.setItem('pwa_installed', 'true');
-      setIsInstalled(true);
-      setInstallPromptEvent(null);
-    };
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('appinstalled', handleAppInstalled);
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
-    };
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (!installPromptEvent) return;
-    installPromptEvent.prompt();
-    await installPromptEvent.userChoice;
-    setInstallPromptEvent(null);
-  };
 
   // --- Restore View State ---
   useEffect(() => {
@@ -648,7 +493,7 @@ const App: React.FC = () => {
           onDeleteHistory={appData.deleteHistoryRecord}
           onHistorySelect={handleHistorySelect}
           isInstalled={isInstalled}
-          canInstall={!!installPromptEvent}
+          canInstall={canInstall}
           onInstallClick={handleInstallClick}
           onImportSession={appData.importSession}
           onImportHistory={appData.importHistoryRecord}
