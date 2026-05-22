@@ -221,20 +221,26 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     showToast({ message: tSession('toast_ai_apply_success'), type: 'success' });
   }, [session, template, props.onUpdateTemplate, props.onUpdateSession, showToast, tSession]);
 
-  // 背景 AI 智慧建立成功/失敗監聽
+  // 背景 AI 智慧建立成功/失敗監聽：嚴格隔離情況 A（背景自動套用）與情況 B（前台手動確認）
   React.useEffect(() => {
-    if (aiGenerator.status === 'success' && !isAiPromptOpen && aiGenerator.generatedResult) {
-      handleAiSuccess(aiGenerator.generatedResult.template);
-      aiGenerator.reset();
+    if (aiGenerator.status === 'success') {
+      if (!isAiPromptOpen && aiGenerator.generatedResult) {
+        handleAiSuccess(aiGenerator.generatedResult.template);
+        aiGenerator.reset();
+      }
     }
-  }, [aiGenerator.status, isAiPromptOpen, aiGenerator.generatedResult, handleAiSuccess, aiGenerator.reset]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiGenerator.status, aiGenerator.generatedResult, handleAiSuccess, aiGenerator.reset]);
 
   React.useEffect(() => {
-    if (aiGenerator.status === 'error' && !isAiPromptOpen) {
-      showToast({ message: tSession('toast_ai_generation_failed') || 'AI generation failed, please try again.', type: 'error' });
-      aiGenerator.reset();
+    if (aiGenerator.status === 'error') {
+      if (!isAiPromptOpen) {
+        showToast({ message: tSession('toast_ai_generation_failed') || 'AI generation failed, please try again.', type: 'error' });
+        aiGenerator.reset();
+      }
     }
-  }, [aiGenerator.status, isAiPromptOpen, showToast, tSession, aiGenerator.reset]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiGenerator.status, showToast, tSession, aiGenerator.reset]);
 
   const handleCellClickSafe = useCallback((playerId: string, colId: string, e: React.MouseEvent) => {
     if (aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') {

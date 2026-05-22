@@ -313,7 +313,10 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
               <TexturedBlock
                 baseImage={baseImage}
                 rect={col.visuals?.headerRect}
-                onClick={(e: any) => onColumnHeaderClick(e, col)}
+                onClick={(e: any) => {
+                  if (aiStatus === 'compressing' || aiStatus === 'generating') return;
+                  onColumnHeaderClick(e, col);
+                }}
                 {...getDragHandlers(col.id)}
                 className={`sticky left-0 border-r-2 border-b border-surface-border flex flex-col justify-center transition-colors z-20 group select-none shrink-0 overflow-hidden ${isEditMode ? (isDragging ? 'cursor-grabbing' : 'cursor-grab hover:bg-surface-hover') : 'cursor-default'} ${isTextureMode ? 'p-0' : 'p-2'} `}
                 style={{
@@ -372,7 +375,10 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                       allPlayers={session.players}
                       baseImage={baseImage}
                       isActive={editingCell?.colId === col.id} // 只要此 column 處於編輯中就一起亮起來
-                      onClick={(e) => onCellClick(session.players[0].id, col.id, e)} // 點下去還是當作點 Player 0，InputPanel 也會認得這個 col 是 shared
+                      onClick={(e) => {
+                        if (aiStatus === 'compressing' || aiStatus === 'generating') return;
+                        onCellClick(session.players[0].id, col.id, e);
+                      }} // 點下去還是當作點 Player 0，InputPanel 也會認得這個 col 是 shared
                       isEditMode={isEditMode}
                       limitX={template.globalVisuals?.rightMaskRect?.x}
                       isAlt={isAlt}
@@ -472,7 +478,10 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         allPlayers={session.players}
                         baseImage={baseImage}
                         isActive={isActive}
-                        onClick={(e) => onCellClick(p.id, col.id, e)}
+                        onClick={(e) => {
+                          if (aiStatus === 'compressing' || aiStatus === 'generating') return;
+                          onCellClick(p.id, col.id, e);
+                        }}
                         isEditMode={isEditMode}
                         limitX={template.globalVisuals?.rightMaskRect?.x}
                         isAlt={isAlt}
@@ -564,7 +573,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
 
         {/* Footer Area */}
         <GridFooter
-          isEditMode={isEditMode}
+          isEditMode={isEditMode && aiStatus !== 'compressing' && aiStatus !== 'generating'}
           onAddColumn={onAddColumn}
           itemColStyle={itemColStyle}
           showToolboxButton={showToolboxButton} // [New]
@@ -572,7 +581,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           onToggleToolbox={onToggleToolbox || (() => { })} // [New]
         />
 
-        {(aiStatus === 'compressing' || aiStatus === 'generating') ? (
+        {(aiStatus === 'compressing' || aiStatus === 'generating') && template.columns.length > 0 ? (
           <div 
             className="mx-6 my-4 z-10 flex flex-col items-center p-6 rounded-xl border border-brand-primary/20 bg-brand-primary/5 backdrop-blur-sm shadow-md relative overflow-hidden select-none animate-in fade-in duration-300"
             style={template.columns.length > 0 ? { marginLeft: `${leftColWidth + 16}px`, marginRight: '16px' } : undefined}
@@ -613,6 +622,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
             isInitialSimpleScorepad={isInitialSimpleScorepad}
             leftColWidth={leftColWidth}
             onOpenOnlineSearch={onOpenOnlineSearch}
+            aiStatus={aiStatus}
+            elapsedTime={elapsedTime}
           />
         )}
 
