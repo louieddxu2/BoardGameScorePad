@@ -149,16 +149,21 @@ class SafeCloudClient {
   }
 
   /**
-   * 讀取雲端範本庫 (並發鎖定 + 5秒冷卻 + 每日500次上限)
+   * 清除記憶體快取 (在離開計分板畫面回到 Dashboard 時呼叫)
    */
+  clearCache(): void {
+    this.cache = {};
+    this.lastFetchTime = {};
+    console.log('[SafeCloudClient] 離開計分板，雲端快取已徹底清除。');
+  }
+
   /**
-   * 讀取雲端範本庫 (並發鎖定 + 5秒冷卻 + 每日500次上限)
+   * 讀取雲端範本庫 (並發鎖定 + 生命週期快取 + 每日500次上限)
    */
   async fetchPublicTemplates(options?: { bggId?: string; query?: string }): Promise<FetchResponse[]> {
     const cacheKey = options 
       ? `public-templates-${options.bggId || ''}-${options.query || ''}`
       : 'public-templates';
-    const now = Date.now();
 
     // 1. 並發重用：若有相同請求正在發送，直接重用 Promise
     if (this.activeRequests[cacheKey]) {
@@ -166,9 +171,9 @@ class SafeCloudClient {
       return this.activeRequests[cacheKey];
     }
 
-    // 2. 冷卻熔斷：若在冷卻時間內且有快取，直接回傳記憶體快取
-    if (this.cache[cacheKey] && (now - (this.lastFetchTime[cacheKey] || 0) < this.cooldownMs)) {
-      console.log('[SafeCloudClient] 觸發 5 秒冷卻熔斷，回傳記憶體快取公用範本');
+    // 2. 生命週期快取：只要快取有值且未被 clearCache 移除，直接回傳記憶體快取
+    if (this.cache[cacheKey]) {
+      console.log('[SafeCloudClient] 回傳記憶體快取公用範本 (計分板畫面內快取)');
       return this.cache[cacheKey];
     }
 
@@ -189,19 +194,19 @@ class SafeCloudClient {
   }
 
   /**
-   * 讀取單一雲端範本 (並發鎖定 + 5秒冷卻 + 每日500次上限)
+   * 讀取單一雲端範本 (並發鎖定 + 生命週期快取 + 每日500次上限)
    */
   async fetchTemplateFromCloud(cloudId: string): Promise<FetchResponse | null> {
     const cacheKey = `template-${cloudId}`;
-    const now = Date.now();
 
     if (this.activeRequests[cacheKey]) {
       console.warn(`[SafeCloudClient] 偵測到並發讀取雲端範本 [${cloudId}]，重用進行中的請求`);
       return this.activeRequests[cacheKey];
     }
 
-    if (this.cache[cacheKey] !== undefined && (now - (this.lastFetchTime[cacheKey] || 0) < this.cooldownMs)) {
-      console.log(`[SafeCloudClient] 觸發 5 秒冷卻熔斷，回傳記憶體快取 [${cloudId}]`);
+    // 生命週期快取：只要快取有值且未被 clearCache 移除，直接回傳記憶體快取
+    if (this.cache[cacheKey] !== undefined) {
+      console.log(`[SafeCloudClient] 回傳記憶體快取 [${cloudId}] (計分板畫面內快取)`);
       return this.cache[cacheKey];
     }
 

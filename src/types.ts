@@ -181,6 +181,8 @@ export interface GameTemplate extends GameIdentity {
 
   // [New Phase 1] Fork Mechanism
   sourceTemplateId?: string;
+
+  isAiGenerated?: boolean; // 標記是否最初由 AI 掃描生成
 }
 
 export interface GameSession extends GameIdentity {

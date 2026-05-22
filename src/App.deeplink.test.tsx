@@ -88,6 +88,12 @@ vi.mock('./i18n/integration', () => ({
   useIntegrationTranslation: () => ({ t: (key: string) => key })
 }));
 
+vi.mock('./hooks/useAiTemplateShareConfirm', () => ({
+  useAiTemplateShareConfirm: () => ({
+    captureAiTemplateForSharing: vi.fn()
+  })
+}));
+
 vi.mock('./services/templateShareService', () => ({
   fetchTemplateFromCloud: vi.fn(async () => null),
 }));

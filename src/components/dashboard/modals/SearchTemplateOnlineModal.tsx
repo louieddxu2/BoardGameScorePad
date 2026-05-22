@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, Sparkles, Play, Search } from 'lucide-react';
 import { useSearchTemplateOnlineTranslation } from '../../../i18n/search_template_online';
-import { useCloudTemplateSuggestion } from '../../../features/game-selector/hooks/useCloudTemplateSuggestion';
+import { useCloudTemplateSuggestion, CloudSuggestionItem } from '../../../features/game-selector/hooks/useCloudTemplateSuggestion';
 import { FetchResponse } from '../../../services/cloudClient';
 import { classifyColumnFormula } from '../../../utils/templateUtils';
 
@@ -12,7 +12,7 @@ export interface SearchTemplateOnlineModalProps {
     onClose: () => void;
     onDirectStart: () => void;
     onAiClick: () => void;
-    onSelectTemplate?: (template: FetchResponse) => void;
+    onSelectTemplate?: (template: CloudSuggestionItem) => void;
 }
 
 const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
@@ -169,7 +169,11 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                                         onClick={() => onSelectTemplate && onSelectTemplate(currentSuggestion)}
                                         className="w-full py-2 bg-brand-primary text-white hover:brightness-110 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-brand-primary/10 active:scale-98"
                                     >
-                                        <span>{t('search_online_btn_download')}</span>
+                                        <span>
+                                            {currentSuggestion.isDownloaded 
+                                                ? t('search_online_btn_downloaded') 
+                                                : t('search_online_btn_download')}
+                                        </span>
                                     </button>
                                 </div>
                             ) : (
@@ -204,8 +208,13 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                                                     )}
 
                                                     <div className="flex flex-col gap-1">
-                                                        <span className="font-bold text-txt-primary text-xs line-clamp-1 group-hover:text-brand-primary transition-colors">
+                                                        <span className="font-bold text-txt-primary text-xs line-clamp-1 group-hover:text-brand-primary transition-colors flex items-center gap-1">
                                                             {tpl.name}
+                                                            {tpl.isDownloaded && (
+                                                                <span className="inline-flex items-center bg-green-500/10 text-green-500 border border-green-500/20 px-1 py-0.25 rounded text-[8px] font-black shrink-0">
+                                                                    {t('search_online_badge_owned')}
+                                                                </span>
+                                                            )}
                                                         </span>
                                                         <span className="text-[9px] text-txt-muted flex items-center gap-1 font-medium">
                                                             📊 {colCount} {t('search_online_columns_suffix')}

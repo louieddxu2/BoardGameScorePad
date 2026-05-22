@@ -3,13 +3,17 @@ import { db } from '../../../db';
 import { FetchResponse } from '../../../services/cloudClient';
 import { fetchPublicTemplates } from '../../../services/templateShareService';
 
+export interface CloudSuggestionItem extends FetchResponse {
+  isDownloaded: boolean;
+}
+
 export const useCloudTemplateSuggestion = (
   gameName: string,
   bggId?: string,
   isOpen?: boolean
 ) => {
   const [loading, setLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState<FetchResponse[]>([]);
+  const [suggestions, setSuggestions] = useState<CloudSuggestionItem[]>([]);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
@@ -34,17 +38,20 @@ export const useCloudTemplateSuggestion = (
 
         if (!isMounted) return;
 
-        // 3. 讀取本地端已下載快取 (templateShareCache)，排除已經下載過的雲端範本，防止重複推薦
+        // 3. 讀取本地端已下載快取 (templateShareCache)，標記已經下載過的雲端範本，不再進行排除
         const downloadedCaches = await db.templateShareCache.toArray();
         const downloadedCloudIds = new Set(downloadedCaches.map(c => c.cloudId));
 
-        const filtered = results.filter(r => !downloadedCloudIds.has(r.id));
+        const mapped: CloudSuggestionItem[] = results.map(r => ({
+          ...r,
+          isDownloaded: downloadedCloudIds.has(r.id)
+        }));
 
         // 4. 下載次數高到低排序 (為 Phase 3 鋪路)
-        filtered.sort((a, b) => (b.downloadCount || 0) - (a.downloadCount || 0));
+        mapped.sort((a, b) => (b.downloadCount || 0) - (a.downloadCount || 0));
 
         if (isMounted) {
-          setSuggestions(filtered);
+          setSuggestions(mapped);
         }
       } catch (err: any) {
         console.error('[useCloudTemplateSuggestion] Background fetch public templates failed', err);

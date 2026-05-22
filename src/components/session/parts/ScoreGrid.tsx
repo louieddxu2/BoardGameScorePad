@@ -1,12 +1,13 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { GameSession, GameTemplate, Player, ScoreColumn } from '../../../types';
-import { GripVertical, EyeOff, Layers, Sparkles, Settings, Sigma, X, Camera, ArrowUp } from 'lucide-react';
+import { GripVertical, EyeOff, Layers, Sparkles, Settings, Sigma, X, Camera } from 'lucide-react';
 import ScoreCell from './ScoreCell';
 import TexturedPlayerHeader from './TexturedPlayerHeader';
 import TexturedBlock from './TexturedBlock';
 import GridFooter from './GridFooter';
 import { useSessionTranslation } from '../../../i18n/session';
+import SimpleScorepadPromo from './SimpleScorepadPromo';
 import { useColumnDragAndDrop } from '../hooks/useColumnDragAndDrop';
 import { getContrastTextStyles, getCurrentTheme } from '../../../utils/ui';
 import { ContrastText } from '../../shared/ContrastText';
@@ -567,29 +568,11 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           onToggleToolbox={onToggleToolbox || (() => { })} // [New]
         />
 
-        {isInitialSimpleScorepad && (
-          <div className="mx-6 my-4 z-10 flex flex-col items-center p-4 rounded-xl border border-brand-primary/20 bg-brand-primary/5 backdrop-blur-sm shadow-sm relative animate-fade-in">
-            {/* Pointer to the '+' button in GridFooter */}
-            <div className="flex items-start gap-1.5 text-txt-secondary text-xs mb-3 text-left w-full">
-              <ArrowUp className="w-4 h-4 text-brand-primary shrink-0 animate-bounce mt-0.5" />
-              <span className="leading-relaxed font-medium">
-                {t('session_simple_promo_arrow_hint')}
-              </span>
-            </div>
-
-            {/* Combined exploration/AI scan button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenOnlineSearch?.();
-              }}
-              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-brand-primary to-brand-secondary text-xs font-semibold text-white hover:opacity-95 active:scale-[0.98] transition-all shadow-md shadow-brand-primary/10 flex items-center justify-center gap-2"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>{t('session_simple_promo_btn')}</span>
-            </button>
-          </div>
-        )}
+        <SimpleScorepadPromo
+          isInitialSimpleScorepad={isInitialSimpleScorepad}
+          leftColWidth={leftColWidth}
+          onOpenOnlineSearch={onOpenOnlineSearch}
+        />
 
         <div
           data-row-id={lastColId}

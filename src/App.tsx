@@ -8,8 +8,11 @@ import { getTargetHistoryDepth } from './config/historyStrategy'; // Import Stra
 import { hasActiveModals } from './hooks/useModalBackHandler'; // Modal 歷史協調
 import { useToast } from './hooks/useToast';
 import { useAppTranslation } from './i18n/app';
+import { useConfirm } from './hooks/useConfirm';
+import { useAiTemplateShareConfirm } from './hooks/useAiTemplateShareConfirm';
 import { parseDeepLinkFromHash } from './utils/deepLink';
 import { fetchTemplateFromCloud } from './services/templateShareService';
+import { cloudClient } from './services/cloudClient';
 import { db } from './db';
 
 // Components
@@ -30,6 +33,10 @@ const App: React.FC = () => {
 
   const { showToast } = useToast();
   const { t: tApp } = useAppTranslation();
+  const { confirm } = useConfirm();
+
+  // Hook for encapsulated AI Template Sharing confirmation
+  const { captureAiTemplateForSharing } = useAiTemplateShareConfirm(view);
 
   // Local UI State
   const [pendingTemplate, setPendingTemplate] = useState<GameTemplate | null>(null);
@@ -386,6 +393,7 @@ const App: React.FC = () => {
       }, 100);
     }
     setView(AppView.DASHBOARD);
+    cloudClient.clearCache(); // 清除雲端檢索快取！
   }, []);
 
   useEffect(() => {
@@ -529,6 +537,7 @@ const App: React.FC = () => {
   }, [appData, transitionToDashboard]);
 
   const handleSaveToHistory = useCallback((location?: string) => {
+    captureAiTemplateForSharing(appData.activeTemplate);
     appData.saveToHistory(location);
     transitionToDashboard();
     
@@ -536,7 +545,7 @@ const App: React.FC = () => {
     if (shouldTriggerIOSPwaGuide()) {
       setIsIOSPwaGuideVisible(true);
     }
-  }, [appData, transitionToDashboard]);
+  }, [appData, transitionToDashboard, captureAiTemplateForSharing]);
 
   const handleDiscard = useCallback(() => {
     if (appData.activeTemplate) {

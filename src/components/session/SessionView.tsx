@@ -27,7 +27,6 @@ import CameraView from '../scanner/CameraView';
 import GameSettingsEditor from '../shared/GameSettingsEditor';
 import SearchTemplateOnlineModal from '../dashboard/modals/SearchTemplateOnlineModal';
 import AiPromptModal from '../../features/ai-generator/components/AiPromptModal';
-import { uploadTemplateToCloud } from '../../services/templateShareService';
 import { db } from '../../db';
 
 interface SessionViewProps {
@@ -176,12 +175,13 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       scores: {}
     }));
 
-    // 2. 原地覆寫模板欄位
+    // 2. 原地覆寫模板欄位 (並標記 isAiGenerated: true)
     const updatedTemplate: GameTemplate = {
       ...template,
       columns: result.columns,
       defaultScoringRule: result.defaultScoringRule || template.defaultScoringRule,
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+      isAiGenerated: true // 標記為 AI 生成，待儲存回到 Dashboard 時詢問分享！
     };
 
     // 3. 重新建立會話物件，並重設 winners
@@ -196,18 +196,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     props.onUpdateTemplate(updatedTemplate);
     props.onUpdateSession(updatedSession);
 
-    // 5. 背景靜默上傳至 D1 雲端（不阻斷，不打擾使用者，若欄位大於等於 3）
-    if (result.columns.length >= 3 && template.name) {
-      const uploadPayload = {
-        ...updatedTemplate,
-        name: template.name
-      };
-      uploadTemplateToCloud(uploadPayload)
-        .then(() => console.log("[Cloud] AI template successfully auto-uploaded to D1 in background"))
-        .catch(err => console.warn("[Cloud] Background silent upload failed:", err));
-    }
-
-    // 6. 關閉彈窗與拍照介面，彈出提示
+    // 5. 關閉彈窗與拍照介面，彈出提示 (移除背景自動上傳，改至離開 Dashboard 時詢問)
     setIsAiPromptOpen(false);
     setIsOnlineSearchOpen(false);
     showToast({ message: tSession('toast_ai_apply_success'), type: 'success' });
