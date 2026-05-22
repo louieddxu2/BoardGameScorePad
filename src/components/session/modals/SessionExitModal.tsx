@@ -29,7 +29,7 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
     const { t } = useGameFlowTranslation(); // Use new hook
     const { t: tCommon } = useCommonTranslation();
     const { confirm } = useConfirm();
-    const { zIndex } = useModalBackHandler(isOpen, onClose, 'session-exit');
+    const { zIndex, triggerClose } = useModalBackHandler(isOpen, onClose, 'session-exit');
     const [location, setLocation] = useState(initialLocation);
     const [showLocationMenu, setShowLocationMenu] = useState(false);
     const listRef = useRef<HTMLDivElement>(null);
@@ -65,7 +65,7 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
 
         if (isConfirmed) {
             if (onDiscard) onDiscard();
-            onClose();
+            triggerClose(2); // 連帶關閉確認框和自己，退回 2 步
         }
     };
 
@@ -74,7 +74,7 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
             <div
                 className="fixed inset-0 bg-modal-backdrop/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200"
                 style={{ zIndex }}
-                onClick={onClose}
+                onClick={() => triggerClose()}
             >
                 <div
                     className="bg-modal-bg rounded-2xl border border-modal-border shadow-2xl p-5 w-full max-w-sm flex flex-col gap-5 relative"
@@ -97,7 +97,7 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
                         </div>
 
                         <button
-                            onClick={onClose}
+                            onClick={() => triggerClose()}
                             className="text-txt-muted hover:text-txt-title p-2 -mr-2 rounded-full hover:bg-modal-bg-elevated transition-colors"
                         >
                             <X size={20} />

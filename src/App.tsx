@@ -249,12 +249,22 @@ const App: React.FC = () => {
       replenishWall();
     };
 
+    const handleModalStackChange = () => {
+      // Proactively replenish the history wall immediately when all modals are closed,
+      // without relying on the user's manual physical click/touch interaction.
+      if (!hasActiveModals()) {
+        replenishWall();
+      }
+    };
+
     window.addEventListener('click', handleInteraction, { capture: true });
     window.addEventListener('touchstart', handleInteraction, { capture: true });
+    window.addEventListener('modal-stack-changed', handleModalStackChange);
 
     return () => {
       window.removeEventListener('click', handleInteraction, { capture: true });
       window.removeEventListener('touchstart', handleInteraction, { capture: true });
+      window.removeEventListener('modal-stack-changed', handleModalStackChange);
     };
   }, [replenishWall]);
 

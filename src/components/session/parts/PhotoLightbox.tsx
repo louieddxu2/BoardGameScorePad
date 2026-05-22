@@ -7,18 +7,20 @@ import { toBlob } from 'html-to-image';
 import ScoreOverlayGenerator, { OverlayData } from './ScoreOverlayGenerator';
 import { LoadedImage } from '../modals/PhotoGalleryModal';
 import { useSessionTranslation } from '../../../i18n/session';
+import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 
 interface PhotoLightboxProps {
     images: LoadedImage[];
     initialIndex: number;
     onClose: () => void;
-    onDelete: (id: string) => void;
+    onDelete: (id: string, triggerCloseLightbox?: (steps?: number) => void) => void;
     overlayData?: OverlayData;
     initialShowOverlay?: boolean;
 }
 
 const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onClose, onDelete, overlayData, initialShowOverlay = false }) => {
     const { t } = useSessionTranslation();
+    const { triggerClose } = useModalBackHandler(true, onClose, 'photo-lightbox');
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
     const [showOverlay, setShowOverlay] = useState(initialShowOverlay);
@@ -281,7 +283,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
 
             {/* Header Toolbar */}
             <div className="flex-none flex justify-between items-center p-4 bg-surface-recessed border-b border-surface-border z-10 h-16">
-                <button onClick={onClose} className="p-2 bg-surface-recessed rounded-full text-txt-muted hover:text-txt-title border border-surface-border transition-colors">
+                <button onClick={() => triggerClose()} className="p-2 bg-surface-recessed rounded-full text-txt-muted hover:text-txt-title border border-surface-border transition-colors">
                     <X size={24} />
                 </button>
 
@@ -292,7 +294,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                 )}
 
                 <div className="flex items-center gap-2">
-                    <button onClick={() => onDelete(currentImage.id)} className="p-2 bg-surface-recessed rounded-full text-status-danger hover:text-status-danger/80 border border-surface-border transition-colors active:scale-95">
+                    <button onClick={() => onDelete(currentImage.id, triggerClose)} className="p-2 bg-surface-recessed rounded-full text-status-danger hover:text-status-danger/80 border border-surface-border transition-colors active:scale-95">
                         <Trash2 size={24} />
                     </button>
                     <button onClick={handleShare} disabled={isGenerating} className="p-2 bg-surface-recessed rounded-full text-brand-secondary hover:text-brand-secondary/80 border border-surface-border transition-colors active:scale-95">

@@ -31,6 +31,29 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
     onCloseRef.current = onClose;
   }, [onClose]);
 
+  // [Coordinated Close] Support dynamic steps back and stack synchronization
+  const triggerClose = useRef((steps: number = 1) => {
+    const stack = getModalStack();
+    const startIdx = Math.max(0, stack.length - steps);
+    const newStack = stack.slice(0, startIdx);
+    setModalStack(newStack);
+    
+    // Notify App that the modal stack has changed
+    window.dispatchEvent(new CustomEvent('modal-stack-changed'));
+
+    (window as any).__silentBack = ((window as any).__silentBack || 0) + 1;
+
+    if (steps === 1) {
+      window.history.back();
+    } else {
+      window.history.go(-steps);
+    }
+
+    setTimeout(() => {
+      (window as any).__silentBack = Math.max(0, ((window as any).__silentBack || 0) - 1);
+    }, steps * 100);
+  }).current;
+
   useEffect(() => {
     if (isOpen) {
       isPoppedRef.current = false;
@@ -42,6 +65,7 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
         const newStack = [...currentStack, modalId];
         setModalStack(newStack);
         setOrder(newStack.length);
+        window.dispatchEvent(new CustomEvent('modal-stack-changed'));
       } else {
         setOrder(currentStack.indexOf(modalId) + 1);
       }
@@ -57,19 +81,23 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
         setIsReady(false);
         setOrder(0);
 
+        // [Auto Detection] If ourselves already removed from stack, it means
+        // we are part of triggerClose(steps) coordinated unmount -> skip history.back() 100%!
+        const stack = getModalStack();
+        const isRemovedByCoordinator = !stack.includes(modalId);
+
         const cleanupStack = () => {
-          const stack = getModalStack();
-          setModalStack(stack.filter(id => id !== modalId));
+          const s = getModalStack();
+          setModalStack(s.filter(id => id !== modalId));
+          window.dispatchEvent(new CustomEvent('modal-stack-changed'));
         };
 
-        if (isPoppedRef.current) {
-          // [Popstate 觸發] 延遲清理確保同一個事件循環的其他監聽器能看到 stack
+        if (isPoppedRef.current || isRemovedByCoordinator) {
+          // [Popstate or Coordinated UI triggered] skip back, just clean memory
           setTimeout(cleanupStack, 0);
         } else {
-          // [UI 觸發] 立即清理並執行 history.back()
+          // [Passive/Direct Single UI triggered] Clean memory and back
           cleanupStack();
-          // [Reference Counter] 使用計數器而非 boolean，
-          // 確保同一渲染週期內多個 Modal 同時卸載時，所有 silent back popstate 都被正確忽略。
           (window as any).__silentBack = ((window as any).__silentBack || 0) + 1;
           window.history.back();
           setTimeout(() => {
@@ -104,6 +132,7 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
 
   return {
     order,
-    zIndex: isOpen ? (order > 0 ? 100 + (order * 10) : 101) : 0
+    zIndex: isOpen ? (order > 0 ? 100 + (order * 10) : 101) : 0,
+    triggerClose
   };
 };

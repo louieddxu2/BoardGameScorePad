@@ -140,7 +140,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
 
     const hasUnsavedChanges = () => JSON.stringify(editedCol) !== initialStringifiedRef.current;
 
-    const handleAttemptClose = async () => {
+    const handleAttemptClose = async (triggerCloseEditor?: (steps?: number) => void) => {
         if (hasUnsavedChanges()) {
             const agreed = await confirm({
                 title: t('col_discard_title'),
@@ -149,9 +149,19 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                 cancelText: t('col_discard_cancel'),
                 isDangerous: true
             });
-            if (agreed) onClose();
+            if (agreed) {
+                if (triggerCloseEditor) {
+                    triggerCloseEditor(2); // 連帶關閉確認框和自己，退回 2 步
+                } else {
+                    onClose();
+                }
+            }
         } else {
-            onClose();
+            if (triggerCloseEditor) {
+                triggerCloseEditor(1);
+            } else {
+                onClose();
+            }
         }
     };
 
@@ -167,11 +177,11 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
         }
     }, [column]);
 
-    useModalBackHandler(isHandlerActive, () => {
+    const { triggerClose } = useModalBackHandler(isHandlerActive, () => {
         if (showLayoutEditor) {
             setShowLayoutEditor(false);
         } else {
-            handleAttemptClose();
+            handleAttemptClose(triggerClose);
         }
     }, 'col-config-editor');
 
@@ -389,7 +399,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                 </div>
                 <div className="flex items-center gap-2">
                     <button onClick={onDelete} className="w-10 h-10 flex items-center justify-center text-txt-secondary hover:text-status-danger bg-modal-bg-elevated rounded-xl border border-surface-border hover:border-status-danger/40 shadow-sm transition-all active:scale-90" title={tCommon('delete')}><Trash2 size={20} /></button>
-                    <button onClick={handleAttemptClose} className="w-10 h-10 flex items-center justify-center text-txt-secondary hover:text-txt-title bg-modal-bg-elevated rounded-xl border border-surface-border shadow-sm transition-all active:scale-90"><X size={24} /></button>
+                    <button onClick={() => handleAttemptClose(triggerClose)} className="w-10 h-10 flex items-center justify-center text-txt-secondary hover:text-txt-title bg-modal-bg-elevated rounded-xl border border-surface-border shadow-sm transition-all active:scale-90"><X size={24} /></button>
                 </div>
             </header>
 

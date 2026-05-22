@@ -105,16 +105,10 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
     }, [autoEnterMode, onClose]);
 
     // [Refactored] Unified Back Button Interception
-    // One modal = One history entry. Manage sub-states (Lightbox) internally.
-    const { zIndex } = useModalBackHandler(isOpen, () => {
-        if (initialIndex !== null) {
-            handleCloseLightbox();
-        } else {
-            onClose();
-        }
-    }, 'photo-gallery');
+    // Now photo-lightbox handles its own history entry, so photo-gallery only manages its own close logic.
+    const { zIndex, triggerClose } = useModalBackHandler(isOpen, onClose, 'photo-gallery');
 
-    const handleDeletePhotoClick = async (id: string) => {
+    const handleDeletePhotoClick = async (id: string, triggerCloseLightbox?: (steps?: number) => void) => {
         const isConfirmed = await confirm({
             title: t('gallery_delete_confirm_title'),
             message: t('gallery_delete_confirm_msg'),
@@ -123,9 +117,14 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
         });
 
         if (isConfirmed) {
-            // [Stable Sequence] Revert to album view first, then delete.
-            // Since we consolidated the hooks, changing initialIndex no longer calls history.back().
-            // So there's no collision with the confirm modal's history action.
+            if (triggerCloseLightbox) {
+                // 連帶關閉確認框和大圖，一步到位退回 2 步，若在 single-shot 模式則退回 3 步以連帶關閉相簿
+                if (autoEnterMode === 'lightbox_overlay') {
+                    triggerCloseLightbox(3);
+                } else {
+                    triggerCloseLightbox(2);
+                }
+            }
             setInitialIndex(null);
             onDeletePhoto(id);
 
@@ -180,7 +179,7 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
                     >
                         <Camera size={14} /> <span className="hidden sm:inline">{t('gallery_camera')}</span>
                     </button>
-                    <button onClick={onClose} className="p-2 text-txt-secondary hover:text-txt-title bg-modal-bg-elevated/50 hover:bg-modal-bg-elevated rounded-full transition-colors ml-1">
+                    <button onClick={() => triggerClose()} className="p-2 text-txt-secondary hover:text-txt-title bg-modal-bg-elevated/50 hover:bg-modal-bg-elevated rounded-full transition-colors ml-1">
                         <X size={20} />
                     </button>
                 </div>
