@@ -27,7 +27,7 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
     const { showToast } = useToast();
 
     // [Migrated] 返回鍵關閉分享彈窗
-    useModalBackHandler(isOpen, onClose, 'share-template');
+    const { zIndex } = useModalBackHandler(isOpen, onClose, 'share-template');
 
     const [isLoading, setIsLoading] = useState(false);
     const [shareUrl, setShareUrl] = useState('');
@@ -193,7 +193,8 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
 
     return (
         <div
-            className="modal-backdrop z-[110] animate-in fade-in duration-200"
+            style={{ zIndex }}
+            className="modal-backdrop animate-in fade-in duration-200"
             onMouseDown={(e) => {
                 if (e.target === e.currentTarget) onClose();
             }}

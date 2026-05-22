@@ -39,6 +39,8 @@ interface ScoreGridProps {
   isToolboxOpen?: boolean;
   onOpenOnlineSearch?: () => void;
   onOpenAiPrompt?: () => void;
+  aiStatus?: string;
+  elapsedTime?: number;
 }
 
 const ScoreGrid: React.FC<ScoreGridProps> = ({
@@ -62,6 +64,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   previewValue,
   onOpenOnlineSearch,
   onOpenAiPrompt,
+  aiStatus,
+  elapsedTime,
 }) => {
   const { t } = useSessionTranslation();
   const dnd = useColumnDragAndDrop({ template, onUpdateTemplate, scrollRef: scrollContainerRef });
@@ -568,11 +572,49 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           onToggleToolbox={onToggleToolbox || (() => { })} // [New]
         />
 
-        <SimpleScorepadPromo
-          isInitialSimpleScorepad={isInitialSimpleScorepad}
-          leftColWidth={leftColWidth}
-          onOpenOnlineSearch={onOpenOnlineSearch}
-        />
+        {(aiStatus === 'compressing' || aiStatus === 'generating') ? (
+          <div 
+            className="mx-6 my-4 z-10 flex flex-col items-center p-6 rounded-xl border border-brand-primary/20 bg-brand-primary/5 backdrop-blur-sm shadow-md relative overflow-hidden select-none animate-in fade-in duration-300"
+            style={template.columns.length > 0 ? { marginLeft: `${leftColWidth + 16}px`, marginRight: '16px' } : undefined}
+          >
+            {/* 流光裝飾背景 */}
+            <div className="absolute inset-0 bg-gradient-to-r from-brand-primary/5 via-brand-secondary/5 to-brand-primary/5 animate-pulse pointer-events-none" />
+            
+            {/* Gemini 霓虹流光條 */}
+            <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand-primary via-brand-secondary to-brand-primary animate-pulse" />
+            
+            <div className="relative flex flex-col items-center gap-4 text-center z-10">
+              <div className="relative flex items-center justify-center">
+                <div className="absolute inset-0 bg-brand-primary/20 rounded-full animate-ping scale-110" />
+                <div className="relative bg-brand-primary/10 rounded-full text-brand-primary border border-brand-primary/30 shadow-md flex items-center justify-center w-14 h-14">
+                  <Sparkles size={24} className="animate-pulse" />
+                </div>
+              </div>
+              
+              <div className="space-y-1.5">
+                <h4 className="text-txt-primary font-black text-sm tracking-wide flex items-center justify-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-ping" />
+                  {t('session_ai_waiting_status') || 'AI score grid generating...'}
+                </h4>
+                <p className="text-[11px] text-txt-muted leading-relaxed font-mono font-medium max-w-[280px]">
+                  {(t('session_ai_waiting_timer') || 'Analyzing, elapsed {seconds}s...').replace('{seconds}', (elapsedTime || 0).toString())}
+                </p>
+              </div>
+
+              <div className="flex gap-1.5 items-center justify-center py-1 bg-black/10 rounded-full px-3 border border-white/5">
+                <div className="w-1 h-1 rounded-full bg-brand-primary animate-bounce delay-100" />
+                <div className="w-1 h-1 rounded-full bg-brand-secondary animate-bounce delay-200" />
+                <div className="w-1 h-1 rounded-full bg-brand-primary animate-bounce delay-300" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <SimpleScorepadPromo
+            isInitialSimpleScorepad={isInitialSimpleScorepad}
+            leftColWidth={leftColWidth}
+            onOpenOnlineSearch={onOpenOnlineSearch}
+          />
+        )}
 
         <div
           data-row-id={lastColId}

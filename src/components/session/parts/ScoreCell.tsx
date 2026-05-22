@@ -446,8 +446,8 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
             absolute flex items-center justify-center 
             ${!screenshotMode ? 'border-2 rounded-md cursor-pointer transition-all pointer-events-auto' : ''}
             ${!screenshotMode && isActive
-                    ? 'border-[rgb(var(--c-grid-active-ring))] bg-[rgba(var(--c-grid-active-ring)/0.2)] ring-1 ring-[rgb(var(--c-grid-active-ring))]'
-                    : (!screenshotMode ? 'border-dashed border-[rgba(var(--c-txt-primary)/0.2)] hover:border-[rgba(var(--c-txt-primary)/0.5)] hover:bg-[rgba(var(--c-txt-primary)/0.05)]' : '')
+                    ? 'border-[rgb(var(--c-grid-active-ring))] bg-[rgb(var(--c-grid-active-ring)_/_0.2)] ring-1 ring-[rgb(var(--c-grid-active-ring))]'
+                    : (!screenshotMode ? 'border-dashed border-[rgb(var(--c-txt-primary)_/_0.2)] hover:border-[rgb(var(--c-txt-primary)_/_0.5)] hover:bg-[rgb(var(--c-txt-primary)_/_0.05)]' : '')
                 }
         `}
             style={{

@@ -44,7 +44,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
                     gridAutoRows: `minmax(${minRowHeight}, auto)`
                 }}
             >
-                <div className="absolute inset-0 bg-[rgba(var(--c-black)/0.05)] dark:bg-[rgba(var(--c-black)/0.15)] pointer-events-none z-0"></div>
+                <div className="absolute inset-0 bg-[rgb(var(--c-black)_/_0.05)] dark:bg-[rgb(var(--c-black)_/_0.15)] pointer-events-none z-0"></div>
 
                 {actions.map(action => {
                     const bg = action.color || column.color || 'rgb(var(--c-white))';
@@ -61,13 +61,13 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
 
                     // 2. Modifier Border Style
                     const borderClass = isModifier
-                        ? `border-dashed border-2 ${isLightBg ? 'border-[rgba(var(--c-black)/0.4)]' : 'border-[rgba(var(--c-white)/0.5)]'}`
-                        : 'border border-[rgba(var(--c-black)/0.1)]';
+                        ? `border-dashed border-2 ${isLightBg ? 'border-[rgb(var(--c-black)_/_0.4)]' : 'border-[rgb(var(--c-white)_/_0.5)]'}`
+                        : 'border border-[rgb(var(--c-black)_/_0.1)]';
 
                     // 3. Badge Background Style
                     const badgeBgClass = isModifier
-                        ? (isLightBg ? 'bg-[rgba(var(--c-black)/0.3)]' : 'bg-[rgba(var(--c-white)/0.3)]')
-                        : 'bg-[rgba(var(--c-black)/0.2)]';
+                        ? (isLightBg ? 'bg-[rgb(var(--c-black)_/_0.3)]' : 'bg-[rgb(var(--c-white)_/_0.3)]')
+                        : 'bg-[rgb(var(--c-black)_/_0.2)]';
 
                     return (
                         <button

@@ -83,8 +83,8 @@ const PullActionIsland: React.FC<PullActionIslandProps> = ({ pullY, pullX, activ
           {/* 焦點光環 (The Focus Ring / Cursor) */}
           <div
             className={`absolute top-1/2 left-1/2 -ml-6 -mt-6 w-12 h-12 rounded-full border-[3px] pointer-events-none
-                    ${isCloudActive ? 'border-status-info bg-status-info/20 shadow-[0_0_15px_rgba(var(--c-status-info)/0.5)]' :
-                isSearchActive ? 'border-brand-primary bg-brand-primary/20 shadow-[0_0_15px_rgba(var(--c-brand-primary)/0.5)]' :
+                    ${isCloudActive ? 'border-status-info bg-status-info/20 shadow-[0_0_15px_rgb(var(--c-status-info)/0.5)]' :
+                isSearchActive ? 'border-brand-primary bg-brand-primary/20 shadow-[0_0_15px_rgb(var(--c-brand-primary)/0.5)]' :
                   'border-surface-border w-10 h-10 -ml-5 -mt-5' // Neutral 狀態稍微小一點
               }
                 `}

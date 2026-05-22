@@ -73,7 +73,7 @@ const ScanPreview: React.FC<ScanPreviewProps> = ({ imageSrc, template, onBack, o
                 width: toPct(r.width),
                 height: toPct(r.height),
                 border: `1px solid ${borderColor}`,
-                boxShadow: '0 0 2px rgba(var(--c-black) / 0.3)',
+                boxShadow: '0 0 2px rgb(var(--c-black) / 0.3)',
                 pointerEvents: 'none' as const,
                 opacity: opacity
             };
@@ -108,10 +108,10 @@ const ScanPreview: React.FC<ScanPreviewProps> = ({ imageSrc, template, onBack, o
                     return (
                         <React.Fragment key={`p-${i}`}>
                             {/* Player Header Area (Top Row) */}
-                            <div style={rectToStyle(visuals.playerHeaderRect, isFirst ? 'rgb(var(--c-yellow-400))' : 'rgba(var(--c-yellow-400) / 0.5)', xOffset, opacity)} />
+                            <div style={rectToStyle(visuals.playerHeaderRect, isFirst ? 'rgb(var(--c-yellow-400))' : 'rgb(var(--c-yellow-400) / 0.5)', xOffset, opacity)} />
 
                             {/* Total Score Area (Bottom Row) */}
-                            <div style={rectToStyle(visuals.totalRowRect, isFirst ? 'rgb(var(--c-yellow-400))' : 'rgba(var(--c-yellow-400) / 0.5)', xOffset, opacity)} />
+                            <div style={rectToStyle(visuals.totalRowRect, isFirst ? 'rgb(var(--c-yellow-400))' : 'rgb(var(--c-yellow-400) / 0.5)', xOffset, opacity)} />
 
                             {/* Data Cells (Green) */}
                             {columns.map((col, idx) => {
@@ -119,7 +119,7 @@ const ScanPreview: React.FC<ScanPreviewProps> = ({ imageSrc, template, onBack, o
                                 return (
                                     <div
                                         key={`cell-${i}-${idx}`}
-                                        style={rectToStyle(col.visuals?.cellRect, isFirst ? 'rgb(var(--c-emerald-400))' : 'rgba(var(--c-emerald-400) / 0.5)', xOffset, opacity)}
+                                        style={rectToStyle(col.visuals?.cellRect, isFirst ? 'rgb(var(--c-emerald-400))' : 'rgb(var(--c-emerald-400) / 0.5)', xOffset, opacity)}
                                     />
                                 );
                             })}

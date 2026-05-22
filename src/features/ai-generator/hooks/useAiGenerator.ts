@@ -12,6 +12,7 @@ export interface UseAiGeneratorResult {
     errorMessage: string | null;
     tokenUsage: TokenUsageInfo | null;
     streamText: string;
+    generatedResult: AiGenerationResult | null;
     processAndGenerate: (
         files: File[],
         gameName: string,
@@ -29,6 +30,7 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [tokenUsage, setTokenUsage] = useState<TokenUsageInfo | null>(null);
     const [streamText, setStreamText] = useState<string>('');
+    const [generatedResult, setGeneratedResult] = useState<AiGenerationResult | null>(null);
     const { language } = useTranslation();
 
     // 檢查解鎖狀態 (改用 advance_user)
@@ -39,6 +41,7 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
         setErrorMessage(null);
         setTokenUsage(null);
         setStreamText('');
+        setGeneratedResult(null);
     }, []);
 
     /**
@@ -66,7 +69,7 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
             setStatus('generating');
             
             // 確定要傳遞給 AI 的語系字串
-            const currentLang = language === 'zh-TW' ? '繁體中文 (zh-TW)' : '英文 (en)';
+            const currentLang = language === 'zh-TW' ? 'Traditional Chinese (zh-tw)' : 'English (en)';
             
             const { template, usage, rawText } = await callAiScoreboardApi(
                 compressedBlobs,
@@ -80,8 +83,10 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
                 setTokenUsage(usage);
             }
 
+            const result = { template, rawText, usage };
+            setGeneratedResult(result);
             setStatus('success');
-            return { template, rawText, usage };
+            return result;
 
         } catch (error: any) {
             console.error('[useAiGenerator] Process failed:', error);
@@ -98,6 +103,7 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
         errorMessage,
         tokenUsage,
         streamText,
+        generatedResult,
         processAndGenerate,
         reset,
         isAiUnlocked

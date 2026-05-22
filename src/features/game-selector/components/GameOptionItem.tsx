@@ -114,7 +114,7 @@ export const GameOptionItem: React.FC<GameOptionItemProps> = ({
                                             </span>
                                         ),
                                         isTimeHighlighted && durationVal && (
-                                            <span key="time" className="inline-flex items-center bg-brand-primary/15 text-brand-primary border border-brand-primary/40 shadow-[0_0_6px_rgba(var(--c-brand-primary),0.2)] px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium transition-colors">
+                                            <span key="time" className="inline-flex items-center bg-brand-primary/15 text-brand-primary border border-brand-primary/40 shadow-[0_0_6px_rgb(var(--c-brand-primary)_/_0.2)] px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium transition-colors">
                                                 <Clock size={12} className="mr-0.5 shrink-0 text-brand-primary" />
                                                 {durationVal}
                                             </span>
@@ -135,7 +135,7 @@ export const GameOptionItem: React.FC<GameOptionItemProps> = ({
                                             </span>
                                         ),
                                         isSmallTableHighlighted && (
-                                            <span key="smalltable" className="inline-flex items-center bg-brand-primary/15 text-brand-primary border border-brand-primary/40 shadow-[0_0_6px_rgba(var(--c-brand-primary),0.2)] px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-bold mr-0.5">
+                                            <span key="smalltable" className="inline-flex items-center bg-brand-primary/15 text-brand-primary border border-brand-primary/40 shadow-[0_0_6px_rgb(var(--c-brand-primary)_/_0.2)] px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-bold mr-0.5">
                                                 ⛺ {t('selector_filter_small_table')}
                                             </span>
                                         ),
@@ -160,7 +160,7 @@ export const GameOptionItem: React.FC<GameOptionItemProps> = ({
                                                 } : null,
                                                 complexityVal ? {
                                                     key: 'comp', highlighted: !!isComplexityHighlighted, node: (
-                                                        <span className={`inline-flex items-center px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium border transition-colors ${isComplexityHighlighted ? 'bg-brand-primary/15 text-brand-primary border-brand-primary/40 shadow-[0_0_6px_rgba(var(--c-brand-primary),0.2)]' : 'bg-surface-bg-alt/80 text-txt-secondary border-surface-border/30'}`}>
+                                                        <span className={`inline-flex items-center px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium border transition-colors ${isComplexityHighlighted ? 'bg-brand-primary/15 text-brand-primary border-brand-primary/40 shadow-[0_0_6px_rgb(var(--c-brand-primary)_/_0.2)]' : 'bg-surface-bg-alt/80 text-txt-secondary border-surface-border/30'}`}>
                                                             <Mountain size={12} className={`mr-0.5 shrink-0 transition-colors ${isComplexityHighlighted ? 'text-brand-primary' : 'text-txt-primary/80'}`} />
                                                             {complexityVal}
                                                         </span>

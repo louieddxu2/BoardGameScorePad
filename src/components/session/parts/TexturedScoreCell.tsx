@@ -90,7 +90,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
 
     const noteStyle: React.CSSProperties = {
         fontFamily: '"Kalam", cursive',
-        color: 'rgba(var(--c-slate-600)/0.9)',
+        color: 'rgb(var(--c-slate-600) / 0.9)',
         mixBlendMode: 'multiply',
         position: 'relative',
         zIndex: 10,
@@ -210,7 +210,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                     {/* Render the determined content directly */}
                     {layoutContent}
                 </div>
-                {!skipTextureRendering && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(var(--c-black)/0.05)] pointer-events-none z-10" />}
+                {!skipTextureRendering && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgb(var(--c-black)_/_0.05)] pointer-events-none z-10" />}
             </div>
         );
     }
@@ -290,7 +290,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                                     className="text-xs font-bold leading-[1.1] text-right whitespace-pre-wrap hyphenate truncate max-w-full"
                                     style={{
                                         fontFamily: '"Kalam", cursive',
-                                        color: opt.color || column.color || 'rgba(var(--c-slate-600)/0.9)',
+                                        color: opt.color || column.color || 'rgb(var(--c-slate-600) / 0.9)',
                                         mixBlendMode: 'multiply',
                                         fontSize: '12px',
                                         transform: `rotate(${((player.id.charCodeAt(0) + i) % 5) - 2}deg)`,
@@ -367,7 +367,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
             {isActive && <div className="absolute inset-0 ring-2 ring-inset ring-brand-primary z-30 pointer-events-none"></div>}
             {!skipTextureRendering && <SmartTextureLayer bgUrl={bgUrl} rect={rect} />}
             {renderContent()}
-            {!skipTextureRendering && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(var(--c-black)/0.05)] pointer-events-none z-10" />}
+            {!skipTextureRendering && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgb(var(--c-black)_/_0.05)] pointer-events-none z-10" />}
         </div>
     );
 };

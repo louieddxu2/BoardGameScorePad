@@ -1,12 +1,13 @@
 
 import React, { useRef, useState } from 'react';
 import { Camera, Image as ImageIcon, Play, Loader2, AlertCircle, X, Sparkles, Plus, Trash2, Terminal, ChevronDown } from 'lucide-react';
-import { useAiGenerator } from '../hooks/useAiGenerator';
+import { useAiGenerator, UseAiGeneratorResult } from '../hooks/useAiGenerator';
 import { useAiGeneratorTranslation } from '../../../i18n/aiGenerator';
 import { GameTemplate } from '../../../types';
 import { AiGenerationResult } from '../services/aiApiService';
 import { useEffect } from 'react';
 import CameraView from '../../../components/scanner/CameraView';
+import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 
 export interface AiPromptModalProps {
     isOpen: boolean;
@@ -14,6 +15,8 @@ export interface AiPromptModalProps {
     onClose: () => void;
     onDirectStart: () => void;
     onAiSuccess: (result: Partial<GameTemplate>) => void;
+    aiGenerator: UseAiGeneratorResult;
+    elapsedTime: number;
 }
 
 const AiPromptModal: React.FC<AiPromptModalProps> = ({
@@ -21,10 +24,14 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
     gameName,
     onClose,
     onDirectStart,
-    onAiSuccess
+    onAiSuccess,
+    aiGenerator,
+    elapsedTime
 }) => {
     const { t } = useAiGeneratorTranslation();
-    const { status, errorMessage, tokenUsage, streamText, processAndGenerate, reset } = useAiGenerator();
+    const { status, errorMessage, tokenUsage, streamText, processAndGenerate, reset, generatedResult } = aiGenerator;
+
+    const { zIndex } = useModalBackHandler(isOpen, onClose, 'ai-prompt-modal');
 
     // 引擎切換狀態，預設選取穩定主力 gemini-2.5-flash-lite
     type ModelType = 'gemini-2.5-flash-lite' | 'gemini-2.5-flash' | 'gemini-3-flash-preview' | 'gemini-3.1-flash-lite' | 'gemma-4-26b-a4b-it' | 'gemma-4-31b-it';
@@ -33,7 +40,6 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
     // 🌟 核心升級：檔案緩衝池與預覽 URL 緩存
     const [queuedFiles, setQueuedFiles] = useState<File[]>([]);
     const [previews, setPreviews] = useState<string[]>([]);
-    const [generatedResult, setGeneratedResult] = useState<AiGenerationResult | null>(null);
 
     // 🌟 新增：控制沉浸式 WebRTC 相機遮罩的啟閉
     const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -51,22 +57,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         return () => objectUrls.forEach(url => URL.revokeObjectURL(url));
     }, [queuedFiles]);
 
-    const [elapsedTime, setElapsedTime] = useState<number>(0);
     const [showDebug, setShowDebug] = useState<boolean>(false);
-
-    // 🕒 計時器：在生成期間啟動，讓使用者感知進度
-    useEffect(() => {
-        let interval: any;
-        if (status === 'generating') {
-            const startTime = Date.now();
-            interval = setInterval(() => {
-                setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
-            }, 1000);
-        } else {
-            setElapsedTime(0);
-        }
-        return () => clearInterval(interval);
-    }, [status]);
 
     if (!isOpen) return null;
 
@@ -141,12 +132,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         if (queuedFiles.length === 0) return;
         setShowDebug(false); // 重置除錯狀態
 
-        const result = await processAndGenerate(queuedFiles, gameName, selectedModel);
-
-        if (result) {
-            // 🚀 突破：直接緩存在 Modal 中，切換至「結算畫面」，不由系統自動關閉跳轉！
-            setGeneratedResult(result);
-        }
+        await processAndGenerate(queuedFiles, gameName, selectedModel);
     };
 
     // 🌟 獨立的成功狀態統計區塊
@@ -349,7 +335,6 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                                     onAiSuccess(generatedResult.template);
                                     reset();
                                     setQueuedFiles([]);
-                                    setGeneratedResult(null);
                                 }}
                                 className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-brand-primary to-brand-secondary text-white rounded-xl font-black text-[15px] shadow-lg shadow-brand-primary/20 active:scale-98 transition-all hover:brightness-105"
                             >
@@ -359,7 +344,6 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                             <button
                                 onClick={() => {
                                     reset();
-                                    setGeneratedResult(null);
                                 }}
                                 className="w-full py-2.5 text-txt-muted hover:text-txt-secondary font-bold rounded-xl bg-surface-bg hover:bg-surface-bg-alt border border-surface-border active:scale-95 transition-all text-xs flex items-center justify-center gap-1.5"
                             >
@@ -384,10 +368,10 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
 
     return (
         <div
-            className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300"
+            style={{ zIndex }}
             onClick={(e) => {
-                // 處理中不可關閉
-                if (e.target === e.currentTarget && !isProcessing) onClose();
+                if (e.target === e.currentTarget) onClose();
             }}
         >
             {/* 隱藏的 inputs - 拍照機制已遷往 CameraView，此處只需保留相簿 input */}
@@ -414,11 +398,9 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                             <Sparkles size={20} />
                             <h3 className="font-black text-xl tracking-tight">{t('title')}</h3>
                         </div>
-                        {!isProcessing && (
-                            <button onClick={onClose} className="p-1 text-txt-muted hover:text-txt-primary bg-surface-bg-alt rounded-lg transition-colors">
-                                <X size={20} />
-                            </button>
-                        )}
+                        <button onClick={onClose} className="p-1 text-txt-muted hover:text-txt-primary bg-surface-bg-alt rounded-lg transition-colors">
+                            <X size={20} />
+                        </button>
                     </div>
 
                     {/* Content Container: 獨佔式渲染判斷邏輯 */}

@@ -223,7 +223,7 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
                                 // Fallback Box (No Image)
                                 <div className="w-full h-full min-w-[200px] min-h-[100px] flex items-center justify-center">
                                     <div className="absolute inset-0 opacity-10 pointer-events-none"
-                                        style={{ backgroundImage: 'linear-gradient(rgba(var(--c-black)/0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--c-black)/0.5) 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
+                                        style={{ backgroundImage: 'linear-gradient(rgb(var(--c-black) / 0.5) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--c-black) / 0.5) 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
                                     </div>
                                     <span className="text-txt-tertiary opacity-50 font-bold text-4xl">123</span>
                                 </div>
@@ -232,7 +232,7 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
                             {/* Overlay: Selection Box */}
                             {rect ? (
                                 <div
-                                    className="absolute bg-brand-primary/20 border-2 border-brand-primary-deep flex items-center justify-center shadow-[0_0_10px_rgba(var(--c-brand-primary)/0.5)] z-20"
+                                    className="absolute bg-brand-primary/20 border-2 border-brand-primary-deep flex items-center justify-center shadow-[0_0_10px_rgb(var(--c-brand-primary)_/_0.5)] z-20"
                                     style={{
                                         left: `${rect.x}%`,
                                         top: `${rect.y}%`,
@@ -245,7 +245,7 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
                                         className="text-brand-primary font-bold select-none drop-shadow-md"
                                         style={{
                                             fontSize: dynamicFontSize, // [Dynamic Layout] Apply calculated size
-                                            textShadow: '0 1px 2px rgba(var(--c-black) / 0.8)'
+                                            textShadow: '0 1px 2px rgb(var(--c-black) / 0.8)'
                                         }}
                                     >
                                         {previewText}

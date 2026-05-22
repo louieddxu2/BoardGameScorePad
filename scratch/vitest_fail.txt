@@ -1,0 +1,81 @@
+﻿
+[7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mC:/board-game-score-pad[39m
+
+ [33m❯[39m src/utils/ui-consistency.test.ts [2m ([22m[2m123 tests[22m [2m|[22m [31m15 failed[39m[2m)[22m[90m 25[2mms[22m[39m
+[31m   [33m❯[31m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not have hardcoded colors in src\components\dashboard\modals\SearchTemplateOnlineModal.tsx[39m
+[31m     → Found 3 hardcoded color(s) in src\components\dashboard\modals\SearchTemplateOnlineModal.tsx:
+Line 115: <div className="bg-red-500/5 border border-dashed border-red-500/20 rounded-xl p-5 mb-4 flex flex-col items-center justify-center text-center gap-2"> (Found: bg-red-500, border-red-500)
+Line 117: <span className="text-xs font-bold text-red-500"> (Found: text-red-500)
+Line 218: <span className="inline-flex items-center bg-green-500/10 text-green-500 border border-green-500/20 px-1 py-0.25 rounded text-[8px] font-black shrink-0"> (Found: bg-green-500, text-green-500, border-green-500): expected 3 to be +0 // Object.is equality[39m
+[31m   [33m❯[31m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not have hardcoded colors in src\components\dashboard\parts\PullActionIsland.tsx[39m
+[31m     → Found 2 hardcoded color(s) in src\components\dashboard\parts\PullActionIsland.tsx:
+Line 86: ${isCloudActive ? 'border-status-info bg-status-info/20 shadow-[0_0_15px_rgba(var(--c-status-info)/0.5)]' : (Found: rgba(var(--c-status-info)/0.5))
+Line 87: isSearchActive ? 'border-brand-primary bg-brand-primary/20 shadow-[0_0_15px_rgba(var(--c-brand-primary)/0.5)]' : (Found: rgba(var(--c-brand-primary)/0.5)): expected 2 to be +0 // Object.is equality[39m
+[31m   [33m❯[31m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not have hardcoded colors in src\components\editor\StructurePhase.tsx[39m
+[31m     → Found 4 hardcoded color(s) in src\components\editor\StructurePhase.tsx:
+Line 37: const maskClass = "absolute bg-[rgba(var(--c-black)/0.5)] pointer-events-none z-0"; (Found: rgba(var(--c-black)/0.5))
+Line 97: className="absolute top-0 bg-[rgba(var(--c-black)/0.6)] flex items-center justify-center" (Found: rgba(var(--c-black)/0.6))
+Line 104: <span className="text-white/70 font-bold tracking-widest uppercase origin-center bg-[rgba(var(--c-black)/0.5)] px-2 rounded" style={inverseScaleStyle}>{t('mapper_player_name')}</span> (Found: rgba(var(--c-black)/0.5))
+Line 169: <span className="font-bold text-txt-primary truncate" style={{ textShadow: '0 1px 1px rgba(var(--c-white) / 0.5)' }}>{sourceCol.name}</span> (Found: rgba(var(--c-white) / 0.5)): expected 4 to be +0 // Object.is equality[39m
+[31m   [33m❯[31m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not have hardcoded colors in src\components\history\HistoryReviewView.tsx[39m
+[31m     → Found 1 hardcoded color(s) in src\components\history\HistoryReviewView.tsx:
+Line 420: className={`fixed left-0 right-0 z-40 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgba(var(--c-black)/0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isToolboxOpen ? 'translate-y-0' : 'translate-y-full'}`} (Found: rgba(var(--c-black)/0.2)): expected 1 to be +0 // Object.is equality[39m
+[31m   [33m❯[31m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not have hardcoded colors in src\components\scanner\ScannerOverlay.tsx[39m
+[31m     → Found 2 hardcoded color(s) in src\components\scanner\ScannerOverlay.tsx:
+Line 50: fill="rgba(var(--c-status-info) / 0.2)" (Found: rgba(var(--c-status-info) / 0.2))
+Line 101: <div className={`w-5 h-5 rounded-full border-[3px] shadow-[0_0_2px_rgba(var(--c-black)/0.8)] transition-transform ${activePointIdx === i ? 'border-status-info scale-125' : 'border-status-info/80'}`}></div> (Found: rgba(var(--c-black)/0.8)): expected 2 to be +0 // Object.is equality[39m
+[31m   [33m❯[31m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not have hardcoded colors in src\components\scanner\ScanPreview.tsx[39m
+[31m     → Found 4 hardcoded color(s) in src\components\scanner\ScanPreview.tsx:
+Line 76: boxShadow: '0 0 2px rgba(var(--c-black) / 0.3)', (Found: rgba(var(--c-black) / 0.3))
+Line 111: <div style={rectToStyle(visuals.playerHeaderRect, isFirst ? 'rgb(var(--c-yellow-400))' : 'rgba(var(--c-yellow-400) / 0.5)', xOffset, opacity)} /> (Found: rgba(var(--c-yellow-400) / 0.5))
+Line 114: <div style={rectToStyle(visuals.totalRowRect, isFirst ? 'rgb(var(--c-yellow-400))' : 'rgba(var(--c-yellow-400) / 0.5)', xOffset, opacity)} /> (Found: rgba(var(--c-yellow-400) / 0.5))
+Line 122: style={rectToStyle(col.visuals?.cellRect, isFirst ? 'rgb(var(--c-emerald-400))' : 'rgba(var(--c-emerald-400) / 0.5)', xOffset, opacity)} (Found: rgba(var(--c-emerald-400) / 0.5)): expected 4 to be +0 // Object.is equality[39m
+[31m   [33m❯[31m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not have hardcoded colors in src\components\session\modals\ScreenshotModal.tsx[39m
+[31m     → Found 1 hardcoded color(s) in src\components\session\modals\ScreenshotModal.tsx:
+Line 447: className="flex-1 w-full h-full relative overflow-hidden bg-[radial-gradient(rgba(var(--c-surface-border)/0.5)_1px,transparent_1px)] [background-size:16px_16px] touch-none cursor-grab active:cursor-grabbing" (Found: rgba(var(--c-surface-border)/0.5)): expected 1 to be +0 // Object.is equality[39m
+[31m   [33m❯[31m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not have hardcoded colors in src\components\session\parts\InputPanel.tsx[39m
+[31m     → Found 2 hardcoded color(s) in src\components\session\parts\InputPanel.tsx:
+Line 95: <div className="w-px h-3 bg-[rgba(var(--c-white)/0.1)] shrink-0" /> (Found: rgba(var(--c-white)/0.1))
+Line 904: className={`fixed left-0 right-0 z-50 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgba(var(--c-black)/0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'}`} (Found: rgba(var(--c-black)/0.2)): expected 2 to be +0 // Object.is equality[39m
+[31m   [33m❯[31m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not have hardcoded colors in src\components\session\parts\ScoreCell.tsx[39m
+[31m     → Found 2 hardcoded color(s) in src\components\session\parts\ScoreCell.tsx:
+Line 449: ? 'border-[rgb(var(--c-grid-active-ring))] bg-[rgba(var(--c-grid-active-ring)/0.2)] ring-1 ring-[rgb(var(--c-grid-active-ring))]' (Found: rgba(var(--c-grid-active-ring)/0.2))
+Line 450: : (!screenshotMode ? 'border-dashed border-[rgba(var(--c-txt-primary)/0.2)] hover:border-[rgba(var(--c-txt-primary)/0.5)] hover:bg-[rgba(var(--c-txt-primary)/0.05)]' : '') (Found: rgba(var(--c-txt-primary)/0.2), rgba(var(--c-txt-primary)/0.5), rgba(var(--c-txt-primary)/0.05)): expected 2 to be +0 // Object.is equality[39m
+[31m   [33m❯[31m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not have hardcoded colors in src\components\session\parts\TexturedPlayerHeader.tsx[39m
+[31m     → Found 2 hardcoded color(s) in src\components\session\parts\TexturedPlayerHeader.tsx:
+Line 118: <MeepleIcon className="w-5 h-5 drop-shadow-[0_2px_2px_rgba(var(--c-black)/0.5)]" /> (Found: rgba(var(--c-black)/0.5))
+Line 123: {bgUrl && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(var(--c-black)/0.05)] pointer-events-none z-0" />} (Found: rgba(var(--c-black)/0.05)): expected 2 to be +0 // Object.is equality[39m
+[31m   [33m❯[31m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not have hardcoded colors in src\components\session\parts\TexturedScoreCell.tsx[39m
+[31m     → Found 4 hardcoded color(s) in src\components\session\parts\TexturedScoreCell.tsx:
+Line 93: color: 'rgba(var(--c-slate-600)/0.9)', (Found: rgba(var(--c-slate-600)/0.9))
+Line 213: {!skipTextureRendering && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(var(--c-black)/0.05)] pointer-events-none z-10" />} (Found: rgba(var(--c-black)/0.05))
+Line 293: color: opt.color || column.color || 'rgba(var(--c-slate-600)/0.9)', (Found: rgba(var(--c-slate-600)/0.9))
+Line 370: {!skipTextureRendering && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(var(--c-black)/0.05)] pointer-events-none z-10" />} (Found: rgba(var(--c-black)/0.05)): expected 4 to be +0 // Object.is equality[39m
+[31m   [33m❯[31m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not have hardcoded colors in src\components\shared\LayoutEditor.tsx[39m
+[31m     → Found 3 hardcoded color(s) in src\components\shared\LayoutEditor.tsx:
+Line 226: style={{ backgroundImage: 'linear-gradient(rgba(var(--c-black)/0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--c-black)/0.5) 1px, transparent 1px)', backgroundSize: '20px 20px' }}> (Found: rgba(var(--c-black)/0.5), rgba(var(--c-black)/0.5))
+Line 235: className="absolute bg-brand-primary/20 border-2 border-brand-primary-deep flex items-center justify-center shadow-[0_0_10px_rgba(var(--c-brand-primary)/0.5)] z-20" (Found: rgba(var(--c-brand-primary)/0.5))
+Line 248: textShadow: '0 1px 2px rgba(var(--c-black) / 0.8)' (Found: rgba(var(--c-black) / 0.8)): expected 3 to be +0 // Object.is equality[39m
+[31m   [33m❯[31m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not have hardcoded colors in src\components\shared\QuickButtonPad.tsx[39m
+[31m     → Found 5 hardcoded color(s) in src\components\shared\QuickButtonPad.tsx:
+Line 47: <div className="absolute inset-0 bg-[rgba(var(--c-black)/0.05)] dark:bg-[rgba(var(--c-black)/0.15)] pointer-events-none z-0"></div> (Found: rgba(var(--c-black)/0.05), rgba(var(--c-black)/0.15))
+Line 64: ? `border-dashed border-2 ${isLightBg ? 'border-[rgba(var(--c-black)/0.4)]' : 'border-[rgba(var(--c-white)/0.5)]'}` (Found: rgba(var(--c-black)/0.4), rgba(var(--c-white)/0.5))
+Line 65: : 'border border-[rgba(var(--c-black)/0.1)]'; (Found: rgba(var(--c-black)/0.1))
+Line 69: ? (isLightBg ? 'bg-[rgba(var(--c-black)/0.3)]' : 'bg-[rgba(var(--c-white)/0.3)]') (Found: rgba(var(--c-black)/0.3), rgba(var(--c-white)/0.3))
+Line 70: : 'bg-[rgba(var(--c-black)/0.2)]'; (Found: rgba(var(--c-black)/0.2)): expected 5 to be +0 // Object.is equality[39m
+[31m   [33m❯[31m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not have hardcoded colors in src\features\game-selector\components\GameLaunchDashboard.tsx[39m
+[31m     → Found 3 hardcoded color(s) in src\features\game-selector\components\GameLaunchDashboard.tsx:
+Line 119: ${isLocationManual ? 'border-brand-primary shadow-[0_0_8px_rgba(var(--c-brand-primary),0.15)]' : 'border-surface-border'} (Found: rgba(var(--c-brand-primary),0.15))
+Line 146: : (isLocationManual ? 'border-brand-primary text-txt-primary shadow-[0_0_8px_rgba(var(--c-brand-primary),0.15)]' : 'border-surface-border hover:border-txt-secondary text-txt-primary') (Found: rgba(var(--c-brand-primary),0.15))
+Line 173: className={`flex items-center justify-between w-full bg-app-bg rounded-xl p-1.5 border relative overflow-hidden transition-all duration-300 ${isPlayerCountManual ? 'border-brand-primary shadow-[0_0_10px_rgba(var(--c-brand-primary),0.2)]' : 'border-surface-border'}`} (Found: rgba(var(--c-brand-primary),0.2)): expected 3 to be +0 // Object.is equality[39m
+[31m   [33m❯[31m src/utils/ui-consistency.test.ts[2m > [22mUI Consistency: Semantic Color Check[2m > [22mshould not have hardcoded colors in src\features\game-selector\components\GameOptionItem.tsx[39m
+[31m     → Found 3 hardcoded color(s) in src\features\game-selector\components\GameOptionItem.tsx:
+Line 117: <span key="time" className="inline-flex items-center bg-brand-primary/15 text-brand-primary border border-brand-primary/40 shadow-[0_0_6px_rgba(var(--c-brand-primary),0.2)] px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium transition-colors"> (Found: rgba(var(--c-brand-primary),0.2))
+Line 138: <span key="smalltable" className="inline-flex items-center bg-brand-primary/15 text-brand-primary border border-brand-primary/40 shadow-[0_0_6px_rgba(var(--c-brand-primary),0.2)] px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-bold mr-0.5"> (Found: rgba(var(--c-brand-primary),0.2))
+Line 163: <span className={`inline-flex items-center px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium border transition-colors ${isComplexityHighlighted ? 'bg-brand-primary/15 text-brand-primary border-brand-primary/40 shadow-[0_0_6px_rgba(var(--c-brand-primary),0.2)]' : 'bg-surface-bg-alt/80 text-txt-secondary border-surface-border/30'}`}> (Found: rgba(var(--c-brand-primary),0.2)): expected 3 to be +0 // Object.is equality[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m15 failed[39m[22m[2m | [22m[1m[32m108 passed[39m[22m[90m (123)[39m
+[2m   Start at [22m 02:31:25
+[2m   Duration [22m 634ms[2m (transform 21ms, setup 52ms, collect 14ms, tests 25ms, environment 241ms, prepare 53ms)[22m
+

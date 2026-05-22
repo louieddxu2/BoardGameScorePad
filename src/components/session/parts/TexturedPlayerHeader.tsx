@@ -115,12 +115,12 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
           className="absolute bottom-0.5 left-0.5 z-20 pointer-events-none drop-shadow-md filter"
           title={t('player_is_starter')}
         >
-          <MeepleIcon className="w-5 h-5 drop-shadow-[0_2px_2px_rgba(var(--c-black)/0.5)]" />
+          <MeepleIcon className="w-5 h-5 drop-shadow-[0_2px_2px_rgb(var(--c-black)_/_0.5)]" />
         </div>
       )}
 
       {/* Shadow Overlay */}
-      {bgUrl && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgba(var(--c-black)/0.05)] pointer-events-none z-0" />}
+      {bgUrl && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgb(var(--c-black)_/_0.05)] pointer-events-none z-0" />}
     </div>
   );
 };

@@ -34,7 +34,7 @@ const StructurePhase: React.FC = () => {
   const nameColStart = sortedVLines[0];
   const dataColStart = sortedVLines[1];
 
-  const maskClass = "absolute bg-[rgba(var(--c-black)/0.5)] pointer-events-none z-0";
+  const maskClass = "absolute bg-[rgb(var(--c-black)/0.5)] pointer-events-none z-0";
 
   return (
     <>
@@ -94,14 +94,14 @@ const StructurePhase: React.FC = () => {
       <div className="absolute inset-0 pointer-events-none">
         {/* Player & Total areas - Constrained to bounds */}
         <div
-          className="absolute top-0 bg-[rgba(var(--c-black)/0.6)] flex items-center justify-center"
+          className="absolute top-0 bg-[rgb(var(--c-black)/0.6)] flex items-center justify-center"
           style={{
             height: `${sortedHLines[headerSepIdx]}%`,
             left: `${leftBound}%`,
             width: `${widthPercent}%`
           }}
         >
-          <span className="text-white/70 font-bold tracking-widest uppercase origin-center bg-[rgba(var(--c-black)/0.5)] px-2 rounded" style={inverseScaleStyle}>{t('mapper_player_name')}</span>
+          <span className="text-white/70 font-bold tracking-widest uppercase origin-center bg-[rgb(var(--c-black)/0.5)] px-2 rounded" style={inverseScaleStyle}>{t('mapper_player_name')}</span>
         </div>
         <div
           className="absolute bottom-0 bg-status-danger/30 flex items-center justify-center"
@@ -166,7 +166,7 @@ const StructurePhase: React.FC = () => {
                             className="relative inline-flex items-center pr-5 pl-1.5 py-0.5 bg-surface-bg/60 backdrop-blur-sm rounded border border-surface-border shadow-lg group/item"
                             style={{ ...inverseScaleStyle, transformOrigin: 'center', fontSize: '10px' }}
                           >
-                            <span className="font-bold text-txt-primary truncate" style={{ textShadow: '0 1px 1px rgba(var(--c-white) / 0.5)' }}>{sourceCol.name}</span>
+                            <span className="font-bold text-txt-primary truncate" style={{ textShadow: '0 1px 1px rgb(var(--c-white) / 0.5)' }}>{sourceCol.name}</span>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleRemoveItemFromRow(i, colId); }}
                               className="absolute top-1/2 right-0.5 -translate-y-1/2 w-4 h-4 rounded-full bg-surface-hover/80 hover:bg-status-danger text-txt-primary hover:text-white flex items-center justify-center transition-colors pointer-events-auto"

@@ -444,7 +444,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                 <div className="flex-1 min-h-0 bg-app-bg-deep relative flex flex-col z-0 overflow-hidden">
                     <div
                         ref={containerRef}
-                        className="flex-1 w-full h-full relative overflow-hidden bg-[radial-gradient(rgba(var(--c-surface-border)/0.5)_1px,transparent_1px)] [background-size:16px_16px] touch-none cursor-grab active:cursor-grabbing"
+                        className="flex-1 w-full h-full relative overflow-hidden bg-[radial-gradient(rgb(var(--c-surface-border)_/_0.5)_1px,transparent_1px)] [background-size:16px_16px] touch-none cursor-grab active:cursor-grabbing"
                         onMouseDown={handlePointerDown}
                         onTouchStart={handlePointerDown}
                         onWheel={handleWheel}

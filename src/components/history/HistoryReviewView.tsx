@@ -417,7 +417,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
 
             {/* History Toolbox Drawer - No backdrop, matches Session InputPanel feel */}
             <div
-                className={`fixed left-0 right-0 z-40 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgba(var(--c-black)/0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isToolboxOpen ? 'translate-y-0' : 'translate-y-full'}`}
+                className={`fixed left-0 right-0 z-40 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgb(var(--c-black)_/_0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isToolboxOpen ? 'translate-y-0' : 'translate-y-full'}`}
                 style={{ height: '40vh', bottom: 0 }}
             >
                 <div className="flex-1 min-h-0 bg-modal-bg relative">

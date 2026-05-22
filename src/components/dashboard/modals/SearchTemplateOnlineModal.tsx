@@ -4,6 +4,7 @@ import { useSearchTemplateOnlineTranslation } from '../../../i18n/search_templat
 import { useCloudTemplateSuggestion, CloudSuggestionItem } from '../../../features/game-selector/hooks/useCloudTemplateSuggestion';
 import { FetchResponse } from '../../../services/cloudClient';
 import { classifyColumnFormula } from '../../../utils/templateUtils';
+import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 
 export interface SearchTemplateOnlineModalProps {
     isOpen: boolean;
@@ -27,6 +28,8 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
     const { t } = useSearchTemplateOnlineTranslation();
     const { loading, suggestions, error } = useCloudTemplateSuggestion(gameName, bggId, isOpen);
     
+    const { zIndex } = useModalBackHandler(isOpen, onClose, 'search-template-online');
+
     // 預覽與網格模式切換：'detail' (詳細預覽最佳範本) | 'grid' (2x2 目錄網格)
     const [viewMode, setViewMode] = React.useState<'detail' | 'grid'>('detail');
     const [selectedIdx, setSelectedIdx] = React.useState<number>(0);
@@ -58,7 +61,8 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
 
     return (
         <div
-            className="fixed inset-0 z-[150] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300"
+            style={{ zIndex }}
             onClick={(e) => {
                 if (e.target === e.currentTarget) onClose();
             }}
@@ -108,9 +112,9 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                             </div>
                         ) : error ? (
                             /* 真正的連線或 API 錯誤 */
-                            <div className="bg-red-500/5 border border-dashed border-red-500/20 rounded-xl p-5 mb-4 flex flex-col items-center justify-center text-center gap-2">
+                            <div className="bg-status-danger/5 border border-dashed border-status-danger/20 rounded-xl p-5 mb-4 flex flex-col items-center justify-center text-center gap-2">
                                 <span className="text-xl">⚠️</span>
-                                <span className="text-xs font-bold text-red-500">
+                                <span className="text-xs font-bold text-status-danger">
                                     {t('search_online_error_title')}
                                 </span>
                                 <span className="text-[10px] text-txt-muted max-w-[240px]">
@@ -133,7 +137,7 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                                             {currentSuggestion.name}
                                         </span>
                                         <span className="text-[10px] text-txt-muted font-bold whitespace-nowrap bg-surface-bg border border-surface-border px-1.5 py-0.5 rounded">
-                                            ⬇️ {currentSuggestion.downloadCount || 0}
+                                            {"\u2b07\ufe0f"} {currentSuggestion.downloadCount || 0}
                                         </span>
                                     </div>
                                     
@@ -211,7 +215,7 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                                                         <span className="font-bold text-txt-primary text-xs line-clamp-1 group-hover:text-brand-primary transition-colors flex items-center gap-1">
                                                             {tpl.name}
                                                             {tpl.isDownloaded && (
-                                                                <span className="inline-flex items-center bg-green-500/10 text-green-500 border border-green-500/20 px-1 py-0.25 rounded text-[8px] font-black shrink-0">
+                                                                <span className="inline-flex items-center bg-status-success/10 text-status-success border border-status-success/20 px-1 py-0.25 rounded text-[8px] font-black shrink-0">
                                                                     {t('search_online_badge_owned')}
                                                                 </span>
                                                             )}
@@ -220,7 +224,7 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                                                             📊 {colCount} {t('search_online_columns_suffix')}
                                                         </span>
                                                         <span className="text-[9px] text-txt-muted flex items-center gap-1 font-medium">
-                                                            ⬇️ {tpl.downloadCount || 0}
+                                                            {"\u2b07\ufe0f"} {tpl.downloadCount || 0}
                                                         </span>
                                                     </div>
                                                     

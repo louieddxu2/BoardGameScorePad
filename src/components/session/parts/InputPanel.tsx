@@ -92,7 +92,7 @@ const PanelHeader: React.FC<{
                         <span className="text-[10px] shrink-0 font-bold opacity-70 uppercase tracking-tighter" style={{ color: displayColor }}>
                             {t('input_edit_player')}
                         </span>
-                        <div className="w-px h-3 bg-[rgba(var(--c-white)/0.1)] shrink-0" />
+                        <div className="w-px h-3 bg-[rgb(var(--c-white)_/_0.1)] shrink-0" />
                         <ContrastText
                             key={player.id}
                             className="text-sm font-bold truncate animate-slide-in-right-shallow"
@@ -901,7 +901,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
     return (
         <div
-            className={`fixed left-0 right-0 z-50 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgba(var(--c-black)/0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
+            className={`fixed left-0 right-0 z-50 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgb(var(--c-black)_/_0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
             style={{ height: panelHeight, bottom: offset }}
             // [Added] Joystick Touch Handlers
             onTouchStart={handleTouchStart}

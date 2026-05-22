@@ -28,6 +28,7 @@ import GameSettingsEditor from '../shared/GameSettingsEditor';
 import SearchTemplateOnlineModal from '../dashboard/modals/SearchTemplateOnlineModal';
 import AiPromptModal from '../../features/ai-generator/components/AiPromptModal';
 import { db } from '../../db';
+import { useAiGenerator } from '../../features/ai-generator/hooks/useAiGenerator';
 
 interface SessionViewProps {
   session: GameSession;
@@ -55,6 +56,24 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   const [isOnlineSearchOpen, setIsOnlineSearchOpen] = React.useState(false);
   const [isAiPromptOpen, setIsAiPromptOpen] = React.useState(false);
+
+  // 狀態提升：全域 AI 生成器
+  const aiGenerator = useAiGenerator();
+  const [elapsedTime, setElapsedTime] = React.useState<number>(0);
+
+  // 全域同步計時器
+  React.useEffect(() => {
+    let interval: any;
+    if (aiGenerator.status === 'generating') {
+      const startTime = Date.now();
+      interval = setInterval(() => {
+        setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+      }, 1000);
+    } else {
+      setElapsedTime(0);
+    }
+    return () => clearInterval(interval);
+  }, [aiGenerator.status]);
 
   const sessionState = useSessionState(props);
   const { setUiState } = sessionState;
@@ -202,6 +221,35 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     showToast({ message: tSession('toast_ai_apply_success'), type: 'success' });
   }, [session, template, props.onUpdateTemplate, props.onUpdateSession, showToast, tSession]);
 
+  // 背景 AI 智慧建立成功/失敗監聽
+  React.useEffect(() => {
+    if (aiGenerator.status === 'success' && !isAiPromptOpen && aiGenerator.generatedResult) {
+      handleAiSuccess(aiGenerator.generatedResult.template);
+      aiGenerator.reset();
+    }
+  }, [aiGenerator.status, isAiPromptOpen, aiGenerator.generatedResult, handleAiSuccess, aiGenerator.reset]);
+
+  React.useEffect(() => {
+    if (aiGenerator.status === 'error' && !isAiPromptOpen) {
+      showToast({ message: tSession('toast_ai_generation_failed') || 'AI generation failed, please try again.', type: 'error' });
+      aiGenerator.reset();
+    }
+  }, [aiGenerator.status, isAiPromptOpen, showToast, tSession, aiGenerator.reset]);
+
+  const handleCellClickSafe = useCallback((playerId: string, colId: string, e: React.MouseEvent) => {
+    if (aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') {
+      return;
+    }
+    eventHandlers.handleCellClick(playerId, colId, e);
+  }, [aiGenerator.status, eventHandlers.handleCellClick]);
+
+  const handleColumnHeaderClickSafe = useCallback((e: React.MouseEvent, col: any) => {
+    if (aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') {
+      return;
+    }
+    eventHandlers.handleColumnHeaderClick(e, col);
+  }, [aiGenerator.status, eventHandlers.handleColumnHeaderClick]);
+
   // Prepare Overlay Data for Photo Gallery
   const overlayData = useMemo(() => ({
     gameName: session.name || template.name, // [Identity Upgrade] Use Session Name
@@ -308,6 +356,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onDirectStart={() => setIsAiPromptOpen(false)}
         onAiSuccess={handleAiSuccess}
         gameName={session.name || template.name}
+        aiGenerator={aiGenerator}
+        elapsedTime={elapsedTime}
       />
 
       {/* Exit Modal */}
@@ -430,8 +480,12 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           });
         }}
         onTitleSubmit={eventHandlers.handleTitleSubmit}
-        onAddColumn={() => setUiState(prev => ({ ...prev, isAddColumnModalOpen: true }))}
+        onAddColumn={() => {
+          if (aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') return;
+          setUiState(prev => ({ ...prev, isAddColumnModalOpen: true }));
+        }}
         onReset={async () => {
+          if (aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') return;
           if (await confirm({
             title: tSession('session_reset_confirm_title'),
             message: tSession('session_reset_confirm_msg'),
@@ -478,9 +532,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           template={template}
           editingCell={editingCell}
           editingPlayerId={editingPlayerId}
-          onCellClick={eventHandlers.handleCellClick}
+          onCellClick={handleCellClickSafe}
           onPlayerHeaderClick={eventHandlers.handlePlayerHeaderClick}
-          onColumnHeaderClick={eventHandlers.handleColumnHeaderClick}
+          onColumnHeaderClick={handleColumnHeaderClickSafe}
           onUpdateTemplate={onUpdateTemplate}
           onAddColumn={eventHandlers.handleAddBlankColumn} // Pass the handler
           onOpenSettings={eventHandlers.handleOpenGameSettings} // [New] Pass handler
@@ -494,6 +548,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           previewValue={previewValue}
           onOpenOnlineSearch={() => setIsOnlineSearchOpen(true)}
           onOpenAiPrompt={() => setIsAiPromptOpen(true)}
+          aiStatus={aiGenerator.status}
+          elapsedTime={elapsedTime}
         />
       </div>
 
@@ -509,7 +565,10 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         baseImage={baseImage || undefined}
         editingCell={editingCell}
         previewValue={previewValue}
-        onTotalClick={(playerId) => eventHandlers.handleCellClick(playerId, '__TOTAL__', { stopPropagation: () => { } } as any)}
+        onTotalClick={(playerId) => {
+          if (aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') return;
+          eventHandlers.handleCellClick(playerId, '__TOTAL__', { stopPropagation: () => { } } as any);
+        }}
         zoomLevel={zoomLevel}
         scoringRule={session.scoringRule}
       />

@@ -116,7 +116,7 @@ export const GameLaunchDashboard: React.FC<GameLaunchDashboardProps> = ({
                             onChange={(e) => handleLocationChange(e.target.value)}
                             placeholder={t('selector_placeholder_location')}
                             className={`w-full bg-app-bg border rounded-lg p-2 pr-7 text-sm text-txt-primary focus:border-brand-primary outline-none placeholder-txt-muted transition-colors
-                          ${isLocationManual ? 'border-brand-primary shadow-[0_0_8px_rgba(var(--c-brand-primary),0.15)]' : 'border-surface-border'}
+                          ${isLocationManual ? 'border-brand-primary shadow-[0_0_8px_rgb(var(--c-brand-primary)_/_0.15)]' : 'border-surface-border'}
                       `}
                         />
                         {hasLocationHistory && (
@@ -143,7 +143,7 @@ export const GameLaunchDashboard: React.FC<GameLaunchDashboardProps> = ({
                             className={`w-full flex items-center justify-between bg-app-bg border rounded-lg p-2 text-sm outline-none transition-colors text-left
                           ${activeMenu?.type === 'location'
                                     ? 'border-brand-primary text-brand-primary bg-brand-primary/10 relative z-20'
-                                    : (isLocationManual ? 'border-brand-primary text-txt-primary shadow-[0_0_8px_rgba(var(--c-brand-primary),0.15)]' : 'border-surface-border hover:border-txt-secondary text-txt-primary')
+                                    : (isLocationManual ? 'border-brand-primary text-txt-primary shadow-[0_0_8px_rgb(var(--c-brand-primary)_/_0.15)]' : 'border-surface-border hover:border-txt-secondary text-txt-primary')
                                 }
                       `}
                         >
@@ -170,7 +170,7 @@ export const GameLaunchDashboard: React.FC<GameLaunchDashboardProps> = ({
             {/* 4. Player Count */}
             <div className="shrink-0 flex flex-col justify-center items-center py-1">
                 <div
-                    className={`flex items-center justify-between w-full bg-app-bg rounded-xl p-1.5 border relative overflow-hidden transition-all duration-300 ${isPlayerCountManual ? 'border-brand-primary shadow-[0_0_10px_rgba(var(--c-brand-primary),0.2)]' : 'border-surface-border'}`}
+                    className={`flex items-center justify-between w-full bg-app-bg rounded-xl p-1.5 border relative overflow-hidden transition-all duration-300 ${isPlayerCountManual ? 'border-brand-primary shadow-[0_0_10px_rgb(var(--c-brand-primary)_/_0.2)]' : 'border-surface-border'}`}
                 >
                     <button
                         onClick={() => setPlayerCount(Math.max(1, playerCount - 1))}
