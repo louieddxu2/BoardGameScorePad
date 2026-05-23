@@ -242,6 +242,17 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aiGenerator.status, showToast, tSession, aiGenerator.reset]);
 
+  // 元件卸載監聽：AI 生成中若按「上一頁」回到 Dashboard 則彈出中斷提示 Toast 並重置 (0 歷史堆疊風險)
+  React.useEffect(() => {
+    return () => {
+      if (aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') {
+        showToast({ message: tSession('toast_ai_generation_interrupted') || '🔮 AI scoreboard generation aborted.', type: 'info' });
+        aiGenerator.reset();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiGenerator.status, aiGenerator.reset, showToast, tSession]);
+
   const handleCellClickSafe = useCallback((playerId: string, colId: string, e: React.MouseEvent) => {
     if (aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') {
       return;
@@ -559,25 +570,27 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         />
       </div>
 
-      <TotalsBar
-        players={session.players}
-        winners={winners}
-        isPanelOpen={isPanelOpen}
-        panelHeight={sessionState.panelHeight}
-        scrollRef={sessionState.totalBarScrollRef}
-        contentRef={sessionState.totalContentRef}
-        isHidden={isInputFocused || isEditingTitle} // [Modified] Also hide when editing title
-        template={template}
-        baseImage={baseImage || undefined}
-        editingCell={editingCell}
-        previewValue={previewValue}
-        onTotalClick={(playerId) => {
-          if (aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') return;
-          eventHandlers.handleCellClick(playerId, '__TOTAL__', { stopPropagation: () => { } } as any);
-        }}
-        zoomLevel={zoomLevel}
-        scoringRule={session.scoringRule}
-      />
+      <div className={(aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') ? "pointer-events-none opacity-50 select-none filter grayscale-[20%] transition-all duration-300" : ""}>
+        <TotalsBar
+          players={session.players}
+          winners={winners}
+          isPanelOpen={isPanelOpen}
+          panelHeight={sessionState.panelHeight}
+          scrollRef={sessionState.totalBarScrollRef}
+          contentRef={sessionState.totalContentRef}
+          isHidden={isInputFocused || isEditingTitle} // [Modified] Also hide when editing title
+          template={template}
+          baseImage={baseImage || undefined}
+          editingCell={editingCell}
+          previewValue={previewValue}
+          onTotalClick={(playerId) => {
+            if (aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') return;
+            eventHandlers.handleCellClick(playerId, '__TOTAL__', { stopPropagation: () => { } } as any);
+          }}
+          zoomLevel={zoomLevel}
+          scoringRule={session.scoringRule}
+        />
+      </div>
 
       <InputPanel
         sessionState={sessionState}

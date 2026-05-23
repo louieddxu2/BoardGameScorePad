@@ -11,6 +11,7 @@ interface GridFooterProps {
     showToolboxButton: boolean;
     isToolboxOpen: boolean;
     onToggleToolbox: () => void;
+    isGenerating?: boolean;
 }
 
 const GridFooter: React.FC<GridFooterProps> = ({
@@ -20,6 +21,7 @@ const GridFooter: React.FC<GridFooterProps> = ({
     showToolboxButton,
     isToolboxOpen,
     onToggleToolbox,
+    isGenerating,
 }) => {
     const { t } = useSessionTranslation();
     // 顯示條件：編輯模式開啟 OR 需要顯示工具箱按鈕
@@ -30,7 +32,7 @@ const GridFooter: React.FC<GridFooterProps> = ({
         <div className="flex relative z-10 animate-in fade-in slide-in-from-left-4 duration-300">
             {/* Left Side: Add Column OR Placeholder */}
             <div
-                className="sticky left-0 border-r border-b border-[rgb(var(--c-grid-cell-border))] flex items-center justify-center p-2 z-20 shrink-0"
+                className={`sticky left-0 border-r border-b border-[rgb(var(--c-grid-cell-border))] flex items-center justify-center p-2 z-20 shrink-0 ${isGenerating ? 'pointer-events-none opacity-50 filter grayscale' : ''}`}
                 style={{ ...itemColStyle, backgroundColor: 'rgb(var(--c-grid-cell-bg))' }}
             >
                 {isEditMode ? (

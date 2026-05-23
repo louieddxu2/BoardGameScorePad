@@ -85,17 +85,6 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
           )}
         </button>
       </div>
-
-      {/* 右側玩家區域置中總分輸入提示 */}
-      <div 
-        className="w-full flex justify-center items-center mt-1 mb-3 animate-fade-in text-txt-muted text-xs gap-1.5"
-        style={{ paddingLeft: `${leftColWidth}px` }}
-      >
-        <ArrowDown className="w-3.5 h-3.5 text-brand-primary shrink-0 animate-bounce" />
-        <span className="font-semibold text-[11px] tracking-wide">
-          {t('session_simple_promo_totals_hint')}
-        </span>
-      </div>
     </>
   );
 };

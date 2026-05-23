@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { GameSession, GameTemplate, Player, ScoreColumn } from '../../../types';
-import { GripVertical, EyeOff, Layers, Sparkles, Settings, Sigma, X, Camera } from 'lucide-react';
+import { GripVertical, EyeOff, Layers, Sparkles, Settings, Sigma, X, Camera, ArrowUp, ArrowDown } from 'lucide-react';
 import ScoreCell from './ScoreCell';
 import TexturedPlayerHeader from './TexturedPlayerHeader';
 import TexturedBlock from './TexturedBlock';
@@ -269,8 +269,18 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           ))}
         </div>
 
-        {/* Rows */}
-        {processedColumns.map((col, index) => {
+        {/* Rows and Hints Container (Grayscale/Disabled on AI generating) */}
+        <div className={(aiStatus === 'compressing' || aiStatus === 'generating') ? "pointer-events-none opacity-50 select-none filter grayscale-[20%] transition-all duration-300" : ""}>
+          {isInitialSimpleScorepad && (
+            <div className="mx-6 my-3 flex items-start gap-1.5 text-txt-secondary text-xs mb-3 text-left w-full select-none animate-in fade-in slide-in-from-top-2 duration-300">
+              <ArrowUp className="w-4 h-4 text-brand-primary shrink-0 animate-bounce mt-0.5" />
+              <span className="leading-relaxed font-semibold">
+                {t('session_simple_promo_arrow_hint')}
+              </span>
+            </div>
+          )}
+
+          {processedColumns.map((col, index) => {
           const isDragging = dnd.draggingId === col.id;
           const isDropTarget = dnd.dropTargetId === col.id;
           const displayMode = col.resolvedDisplayMode as 'row' | 'overlay' | 'hidden';
@@ -571,14 +581,28 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           );
         })}
 
+        {isInitialSimpleScorepad && (
+          <div 
+            className="w-full flex justify-center items-center mt-2 mb-3 animate-in fade-in slide-in-from-bottom-2 duration-300 text-txt-muted text-xs gap-1.5"
+            style={{ paddingLeft: `${leftColWidth}px` }}
+          >
+            <ArrowDown className="w-3.5 h-3.5 text-brand-primary shrink-0 animate-bounce" />
+            <span className="font-semibold text-[11px] tracking-wide">
+              {t('session_simple_promo_totals_hint')}
+            </span>
+          </div>
+        )}
+        </div>
+
         {/* Footer Area */}
         <GridFooter
-          isEditMode={isEditMode && aiStatus !== 'compressing' && aiStatus !== 'generating'}
+          isEditMode={isEditMode}
           onAddColumn={onAddColumn}
           itemColStyle={itemColStyle}
           showToolboxButton={showToolboxButton} // [New]
           isToolboxOpen={!!isToolboxOpen}      // [New]
           onToggleToolbox={onToggleToolbox || (() => { })} // [New]
+          isGenerating={aiStatus === 'compressing' || aiStatus === 'generating'}
         />
 
         {(aiStatus === 'compressing' || aiStatus === 'generating') && template.columns.length > 0 ? (
@@ -607,6 +631,9 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 </h4>
                 <p className="text-[11px] text-txt-muted leading-relaxed font-mono font-medium max-w-[280px]">
                   {(t('session_ai_waiting_timer') || 'Analyzing, elapsed {seconds}s...').replace('{seconds}', (elapsedTime || 0).toString())}
+                </p>
+                <p className="text-[10px] text-brand-primary font-semibold leading-relaxed max-w-[280px]">
+                  {t('session_ai_waiting_status_detail')}
                 </p>
               </div>
 
