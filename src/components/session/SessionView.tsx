@@ -242,16 +242,22 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aiGenerator.status, showToast, tSession, aiGenerator.reset]);
 
+  const aiStatusRef = React.useRef(aiGenerator.status);
+  React.useEffect(() => {
+    aiStatusRef.current = aiGenerator.status;
+  }, [aiGenerator.status]);
+
   // 元件卸載監聽：AI 生成中若按「上一頁」回到 Dashboard 則彈出中斷提示 Toast 並重置 (0 歷史堆疊風險)
   React.useEffect(() => {
+    const currentReset = aiGenerator.reset;
     return () => {
-      if (aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') {
+      if (aiStatusRef.current === 'compressing' || aiStatusRef.current === 'generating') {
         showToast({ message: tSession('toast_ai_generation_interrupted') || '🔮 AI scoreboard generation aborted.', type: 'info' });
-        aiGenerator.reset();
+        currentReset();
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aiGenerator.status, aiGenerator.reset, showToast, tSession]);
+  }, []);
 
   const handleCellClickSafe = useCallback((playerId: string, colId: string, e: React.MouseEvent) => {
     if (aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') {
