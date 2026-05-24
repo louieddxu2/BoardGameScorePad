@@ -618,7 +618,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
             (isPanelOpen || sessionState.uiState.isToolboxOpen) ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
           }`}
           style={{
-            bottom: `calc(${isPanelOpen ? sessionState.panelHeight : '0px'} + 48px + 8px)`,
+            bottom: `calc(${isPanelOpen ? `${sessionState.panelHeight}px` : '0px'} + 40px + 8px)`,
             paddingLeft: `${leftColWidth}px`,
             paddingRight: '16px'
           }}
