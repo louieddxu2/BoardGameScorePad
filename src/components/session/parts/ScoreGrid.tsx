@@ -221,10 +221,15 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   const headerRowWidth = containerWidth ? Math.max(containerWidth, requiredRowWidth) : '100%';
 
   return (
-    <div className="absolute inset-0 z-0 overflow-auto bg-app-bg no-scrollbar pb-32" ref={scrollContainerRef}>
+    <div 
+      className={`absolute inset-0 z-0 bg-app-bg no-scrollbar ${
+        isInitialSimpleScorepad ? 'h-full flex flex-col overflow-hidden pb-0' : 'overflow-auto pb-32'
+      }`} 
+      ref={scrollContainerRef}
+    >
       <div
         id="live-grid-container"
-        className="min-w-full w-fit relative"
+        className={`min-w-full w-fit relative ${isInitialSimpleScorepad ? 'h-full flex flex-col' : ''}`}
         ref={contentRef}
       >
         {/* Player Headers */}
@@ -636,12 +641,14 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           />
         )}
 
-        <div
-          data-row-id={lastColId}
-          onDragOver={(e) => { if (isEditMode && lastColId) dnd.handleDragOver(e, lastColId); }}
-          onDrop={(e) => { if (isEditMode && lastColId) dnd.handleDrop(e, lastColId); }}
-          className={`w-full bg-app-bg ${(editingCell || editingPlayerId || (!baseImage && template.columns.length < 5) || isToolboxOpen) ? 'h-[40vh]' : 'h-24'}`}
-        />
+        {!isInitialSimpleScorepad && (
+          <div
+            data-row-id={lastColId}
+            onDragOver={(e) => { if (isEditMode && lastColId) dnd.handleDragOver(e, lastColId); }}
+            onDrop={(e) => { if (isEditMode && lastColId) dnd.handleDrop(e, lastColId); }}
+            className={`w-full bg-app-bg ${(editingCell || editingPlayerId || (!baseImage && template.columns.length < 5) || isToolboxOpen) ? 'h-[40vh]' : 'h-24'}`}
+          />
+        )}
       </div>
     </div>
   );

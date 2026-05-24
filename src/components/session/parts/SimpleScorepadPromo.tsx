@@ -40,7 +40,7 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
   if (!isInitialSimpleScorepad) return null;
 
   return (
-    <div className="w-full h-[320px] flex flex-col justify-between items-stretch py-1 select-none animate-in fade-in duration-300">
+    <div className="w-full flex-1 min-h-0 flex flex-col justify-between items-stretch pt-2 pb-10 select-none animate-in fade-in duration-300">
       
       {/* 標籤框 1：手動新增指引 (置左，寬度與 + 號方格完全一致，精美折行) */}
       <div 
