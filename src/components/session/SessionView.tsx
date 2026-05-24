@@ -356,7 +356,13 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const isScoreCameraMode = sessionState.uiState.galleryParams?.mode === 'lightbox_overlay';
 
   return (
-    <div className="flex flex-col h-full bg-app-bg text-txt-primary overflow-hidden relative">
+    <div 
+      className="flex flex-col h-full bg-app-bg text-txt-primary overflow-hidden relative"
+      style={{
+        '--internal-panel-height': isPanelOpen ? `${sessionState.panelHeight}` : '0px',
+        '--totals-bar-height': '40px'
+      } as React.CSSProperties}
+    >
       {/* --- Modals --- */}
 
       {/* Search Template Online Modal */}

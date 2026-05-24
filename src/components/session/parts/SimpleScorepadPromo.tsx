@@ -40,11 +40,11 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
   if (!isInitialSimpleScorepad) return null;
 
   return (
-    <div className="w-full flex-1 min-h-0 flex flex-col justify-between items-stretch pt-2 pb-10 select-none animate-in fade-in duration-300">
+    <div className="w-full flex items-center gap-2 py-1 select-none animate-in fade-in duration-300">
       
       {/* 標籤框 1：手動新增指引 (置左，寬度與 + 號方格完全一致，精美折行) */}
       <div 
-        className="ml-0 p-1.5 rounded-xl border border-surface-border bg-surface-bg-alt/50 backdrop-blur-sm text-txt-secondary text-[9px] flex flex-col items-center gap-1 shadow-sm self-start text-center break-words leading-normal box-border overflow-hidden"
+        className="p-1.5 rounded-xl border border-surface-border bg-surface-bg-alt/50 backdrop-blur-sm text-txt-secondary text-[9px] flex flex-col items-center gap-1 shadow-sm shrink-0 text-center break-words leading-normal box-border overflow-hidden"
         style={{ width: `${leftColWidth}px` }}
       >
         <ArrowUp className="w-3.5 h-3.5 text-brand-primary shrink-0 animate-bounce" />
@@ -53,8 +53,8 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
         </span>
       </div>
 
-      {/* 標籤框 2：AI 智慧生成與探索主卡片 */}
-      <div className="mx-6 p-5 rounded-xl border border-brand-primary/20 bg-brand-primary/5 backdrop-blur-sm shadow-md relative overflow-hidden flex flex-col items-center gap-3">
+      {/* 標籤框 2：AI 智慧生成與探索窄卡片 */}
+      <div className="flex-1 p-2 rounded-xl border border-brand-primary/20 bg-brand-primary/5 backdrop-blur-sm shadow-md relative overflow-hidden flex items-center h-[46px] my-auto">
         {/* 流光裝飾背景 */}
         {isGenerating && (
           <>
@@ -63,7 +63,7 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
           </>
         )}
 
-        <div className="relative flex flex-col items-center gap-3 text-center z-10 w-full">
+        <div className="relative flex items-center z-10 w-full h-full">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -72,7 +72,7 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
               }
             }}
             disabled={!isOnline || isGenerating}
-            className={`w-full py-3.5 px-4 rounded-xl bg-gradient-to-r text-xs font-semibold text-white transition-all shadow-md flex items-center justify-center gap-2 ${
+            className={`w-full h-full rounded-lg bg-gradient-to-r text-xs font-semibold text-white transition-all shadow-sm flex items-center justify-center gap-1.5 ${
               isGenerating
                 ? 'from-brand-primary/10 via-brand-secondary/10 to-brand-primary/10 animate-pulse border border-brand-primary/30 text-brand-primary shadow-none cursor-wait'
                 : !isOnline 
@@ -87,32 +87,12 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4" />
+                <Sparkles className="w-3.5 h-3.5" />
                 <span>{isOnline ? t('session_simple_promo_btn') : t('session_simple_promo_btn_offline')}</span>
               </>
             )}
           </button>
-          
-          {/* AI 狀態詳細說明文字（即精簡後的 3 行中英文說明） */}
-          {isGenerating && (
-            <div className="flex flex-col gap-1 text-[11px] text-txt-muted mt-1 w-full text-center">
-              <p className="font-semibold text-brand-primary leading-relaxed">
-                {t('session_ai_waiting_status_detail') || '🔮 Grid and totals are locked during analysis.'}
-              </p>
-            </div>
-          )}
         </div>
-      </div>
-
-      {/* 標籤框 3：直接輸入總分指引 (置右，寬度與右側分數列完全一致) */}
-      <div 
-        className="mr-0 p-3.5 rounded-xl border border-surface-border bg-surface-bg-alt/50 backdrop-blur-sm text-txt-secondary text-xs flex items-center justify-center gap-2 shadow-sm self-end box-border"
-        style={{ width: `calc(100% - ${leftColWidth}px)` }}
-      >
-        <ArrowDown className="w-4 h-4 text-brand-primary shrink-0 animate-bounce" />
-        <span className="leading-relaxed font-semibold">
-          {t('session_simple_promo_totals_hint')}
-        </span>
       </div>
 
     </div>
