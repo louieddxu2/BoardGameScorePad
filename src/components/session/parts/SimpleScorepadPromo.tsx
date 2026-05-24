@@ -40,18 +40,21 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
   if (!isInitialSimpleScorepad) return null;
 
   return (
-    <div className="w-full flex flex-col items-center gap-4 py-5 select-none animate-in fade-in duration-300">
+    <div className="w-full flex flex-col items-stretch gap-4 py-5 select-none animate-in fade-in duration-300">
       
-      {/* 標籤框 1：手動新增指引 (緊貼上方加號) */}
-      <div className="w-[calc(100%-3rem)] mx-6 p-3.5 rounded-xl border border-surface-border bg-surface-bg-alt/50 backdrop-blur-sm text-txt-secondary text-xs flex items-center gap-2.5 shadow-sm">
-        <ArrowUp className="w-4 h-4 text-brand-primary shrink-0 animate-bounce mt-0.5" />
-        <span className="leading-relaxed font-semibold">
+      {/* 標籤框 1：手動新增指引 (置左，寬度為 + 號方格寬度，精美折行) */}
+      <div 
+        className="ml-6 p-2.5 rounded-xl border border-surface-border bg-surface-bg-alt/50 backdrop-blur-sm text-txt-secondary text-[10px] flex flex-col items-center gap-1.5 shadow-sm self-start text-center break-words leading-normal"
+        style={{ width: `${leftColWidth}px` }}
+      >
+        <ArrowUp className="w-3.5 h-3.5 text-brand-primary shrink-0 animate-bounce" />
+        <span className="font-bold">
           {t('session_simple_promo_arrow_hint')}
         </span>
       </div>
 
       {/* 標籤框 2：AI 智慧生成與探索主卡片 */}
-      <div className="w-[calc(100%-3rem)] mx-6 p-5 rounded-xl border border-brand-primary/20 bg-brand-primary/5 backdrop-blur-sm shadow-md relative overflow-hidden flex flex-col items-center gap-3">
+      <div className="mx-6 p-5 rounded-xl border border-brand-primary/20 bg-brand-primary/5 backdrop-blur-sm shadow-md relative overflow-hidden flex flex-col items-center gap-3">
         {/* 流光裝飾背景 */}
         {isGenerating && (
           <>
@@ -101,8 +104,11 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
         </div>
       </div>
 
-      {/* 標籤框 3：直接輸入總分指引 (緊貼下方總分行) */}
-      <div className="w-[calc(100%-3rem)] mx-6 p-3.5 rounded-xl border border-surface-border bg-surface-bg-alt/50 backdrop-blur-sm text-txt-secondary text-xs flex items-center justify-center gap-2.5 shadow-sm">
+      {/* 標籤框 3：直接輸入總分指引 (置右，寬度為 總分列扣除左側標籤總分格的寬度) */}
+      <div 
+        className="mr-6 p-3.5 rounded-xl border border-surface-border bg-surface-bg-alt/50 backdrop-blur-sm text-txt-secondary text-xs flex items-center justify-center gap-2 shadow-sm self-end"
+        style={{ width: `calc(100% - ${leftColWidth + 24}px)` }}
+      >
         <ArrowDown className="w-4 h-4 text-brand-primary shrink-0 animate-bounce" />
         <span className="leading-relaxed font-semibold">
           {t('session_simple_promo_totals_hint')}

@@ -3,10 +3,10 @@ import { useTranslation } from './index';
 export const sessionTranslations = {
   'zh-TW': {
     // --- Session View ---
-    session_simple_promo_arrow_hint: "點擊「加號」手動新增欄位，或",
+    session_simple_promo_arrow_hint: "點擊「加號」手動新增欄位",
     session_simple_promo_btn: "探索雲端 / AI生成計分板",
     session_simple_promo_btn_offline: "連網可探索雲端 / AI生成",
-    session_simple_promo_totals_hint: "可直接輸入總分",
+    session_simple_promo_totals_hint: "點按可直接輸入總分",
     toast_ai_generating: "🤖 AI 正在為您生成計分板欄位中...",
     toast_ai_generation_failed: "❌ AI 智慧建立失敗，請重試。",
     session_ai_waiting_status: "AI 正在生成中...",
@@ -255,10 +255,10 @@ export const sessionTranslations = {
   },
   'en': {
     // --- Session View ---
-    session_simple_promo_arrow_hint: "Click '+' to manually add score items, or",
+    session_simple_promo_arrow_hint: "Click '+' to manually add score items",
     session_simple_promo_btn: "Explore Cloud / AI ScorePad",
     session_simple_promo_btn_offline: "Explore Cloud / AI (Connect to use)",
-    session_simple_promo_totals_hint: "Enter totals directly",
+    session_simple_promo_totals_hint: "Tap to enter totals directly",
     toast_ai_generating: "🤖 AI is generating scoreboard columns for you...",
     toast_ai_generation_failed: "❌ AI generation failed. Please try again.",
     session_ai_waiting_status: "AI generating...",
