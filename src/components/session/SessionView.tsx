@@ -1,5 +1,6 @@
 
 import React, { useCallback, useRef, useMemo } from 'react';
+import { ArrowDown } from 'lucide-react';
 import { GameSession, GameTemplate, SavedListItem } from '../../types';
 import { useSessionState, ScreenshotLayout } from './hooks/useSessionState';
 import { useSessionEvents } from './hooks/useSessionEvents';
@@ -119,6 +120,35 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   // Winners Logic - Use pre-calculated winners from session to stabilize references
   const winners = useMemo(() => session.winnerIds || [], [session.winnerIds]);
+
+  const isScoresEmpty = useMemo(() => {
+    return session.players.every(p => {
+      if (!p.scores) return true;
+      return Object.values(p.scores).every(scoreData => {
+        if (!scoreData) return true;
+        return !scoreData.parts || scoreData.parts.length === 0;
+      });
+    });
+  }, [session.players]);
+
+  const isInitialSimpleScorepad = template.columns.length === 0 && isScoresEmpty;
+
+  const [containerWidth, setContainerWidth] = React.useState(0);
+  React.useEffect(() => {
+    const handleResize = () => {
+      setContainerWidth(window.innerWidth);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const leftColWidth = useMemo(() => {
+    if (containerWidth > 0) {
+      return Math.max(70, containerWidth / (session.players.length + 2));
+    }
+    return 70;
+  }, [containerWidth, session.players.length]);
 
 
 
@@ -581,6 +611,26 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           elapsedTime={elapsedTime}
         />
       </div>
+
+      {isInitialSimpleScorepad && (
+        <div 
+          className={`absolute left-0 right-0 z-40 pointer-events-none transition-all duration-300 ease-in-out ${
+            (isPanelOpen || sessionState.uiState.isToolboxOpen) ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+          }`}
+          style={{
+            bottom: `calc(${isPanelOpen ? sessionState.panelHeight : '0px'} + 48px + 8px)`,
+            paddingLeft: `${leftColWidth}px`,
+            paddingRight: '16px'
+          }}
+        >
+          <div className="w-full p-3 rounded-xl border border-surface-border bg-surface-bg-alt/80 backdrop-blur-sm text-txt-secondary text-xs flex items-center justify-center gap-2 shadow-sm box-border">
+            <ArrowDown className="w-4 h-4 text-brand-primary shrink-0 animate-bounce" />
+            <span className="leading-relaxed font-semibold">
+              {tSession('session_simple_promo_totals_hint')}
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className={(aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') ? "pointer-events-none opacity-50 select-none filter grayscale-[20%] transition-all duration-300" : ""}>
         <TotalsBar

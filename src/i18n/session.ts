@@ -3,7 +3,7 @@ import { useTranslation } from './index';
 export const sessionTranslations = {
   'zh-TW': {
     // --- Session View ---
-    session_simple_promo_arrow_hint: "點擊「加號」手動新增欄位",
+    session_simple_promo_arrow_hint: "點擊新增欄位",
     session_simple_promo_btn: "探索雲端 / AI生成計分板",
     session_simple_promo_btn_offline: "連網可探索雲端 / AI生成",
     session_simple_promo_totals_hint: "點按可直接輸入總分",
@@ -255,7 +255,7 @@ export const sessionTranslations = {
   },
   'en': {
     // --- Session View ---
-    session_simple_promo_arrow_hint: "Click '+' to manually add score items",
+    session_simple_promo_arrow_hint: "Click to add columns",
     session_simple_promo_btn: "Explore Cloud / AI ScorePad",
     session_simple_promo_btn_offline: "Explore Cloud / AI (Connect to use)",
     session_simple_promo_totals_hint: "Tap to enter totals directly",

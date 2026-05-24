@@ -641,27 +641,6 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           />
         )}
 
-        {isInitialSimpleScorepad && (
-          <div 
-            className={`totals-guide-label3 pointer-events-none transition-all duration-300 ease-in-out ${
-              (editingCell || editingPlayerId || isToolboxOpen) ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
-            }`}
-            style={{
-              position: 'absolute',
-              bottom: 'calc(var(--internal-panel-height) + var(--totals-bar-height) + 8px)',
-              right: '16px',
-              width: `calc(100% - ${leftColWidth}px)`,
-            }}
-          >
-            <div className="p-3 rounded-xl border border-surface-border bg-surface-bg-alt/80 backdrop-blur-sm text-txt-secondary text-xs flex items-center justify-center gap-2 shadow-sm self-end box-border">
-              <ArrowDown className="w-4 h-4 text-brand-primary shrink-0 animate-bounce" />
-              <span className="leading-relaxed font-semibold">
-                {t('session_simple_promo_totals_hint')}
-              </span>
-            </div>
-          </div>
-        )}
-
         {!isInitialSimpleScorepad && (
           <div
             data-row-id={lastColId}
