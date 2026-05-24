@@ -638,6 +638,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
             onOpenOnlineSearch={onOpenOnlineSearch}
             aiStatus={aiStatus}
             elapsedTime={elapsedTime}
+            zoomLevel={zoomLevel}
           />
         )}
 

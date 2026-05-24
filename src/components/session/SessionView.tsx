@@ -615,7 +615,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       {isScoresEmpty && (
         <div 
           className={`absolute left-0 right-0 z-40 pointer-events-none transition-all duration-300 ease-in-out ${
-            (isPanelOpen || sessionState.uiState.isToolboxOpen) ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+            (editingCell?.colId === '__TOTAL__' || sessionState.uiState.isToolboxOpen) ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
           }`}
           style={{
             bottom: `calc(${sessionState.panelHeight} + 40px + 8px)`,

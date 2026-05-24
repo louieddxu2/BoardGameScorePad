@@ -8,6 +8,7 @@ interface SimpleScorepadPromoProps {
   onOpenOnlineSearch?: () => void;
   aiStatus?: string;
   elapsedTime?: number;
+  zoomLevel?: number;
 }
 
 const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
@@ -16,6 +17,7 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
   onOpenOnlineSearch,
   aiStatus,
   elapsedTime,
+  zoomLevel = 1,
 }) => {
   const { t } = useSessionTranslation();
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
@@ -44,10 +46,19 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
       
       {/* 標籤框 1：手動新增指引 (置左，寬度與 + 號方格完全一致，左右並列，字體放大) */}
       <div 
-        className="p-1 rounded-xl border border-surface-border bg-surface-bg-alt/50 backdrop-blur-sm text-txt-secondary text-[10.5px] flex flex-row items-center justify-center gap-1 shadow-sm shrink-0 text-left break-words leading-tight box-border overflow-hidden"
-        style={{ width: `${leftColWidth}px` }}
+        className="p-1 rounded-xl border border-surface-border bg-surface-bg-alt/50 backdrop-blur-sm text-txt-secondary flex flex-row items-center justify-center gap-1 shadow-sm shrink-0 text-left break-words leading-tight box-border overflow-hidden"
+        style={{ 
+          width: `${leftColWidth}px`,
+          fontSize: `${11 * zoomLevel}px`
+        }}
       >
-        <ArrowUp className="w-3.5 h-3.5 text-brand-primary shrink-0 animate-bounce" />
+        <ArrowUp 
+          className="text-brand-primary shrink-0 animate-bounce" 
+          style={{
+            width: `${14 * zoomLevel}px`,
+            height: `${14 * zoomLevel}px`
+          }}
+        />
         <span className="font-black tracking-tighter">
           {t('session_simple_promo_arrow_hint')}
         </span>
