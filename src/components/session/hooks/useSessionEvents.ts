@@ -60,6 +60,9 @@ export const useSessionEvents = (
   // [Fix] Track onExit in a ref to prevent listener re-binding when parent re-renders
   const onExitRef = useRef(onExit);
 
+  useEffect(() => { uiStateRef.current = uiState; }, [uiState]);
+  useEffect(() => { sessionRef.current = session; }, [session]);
+  useEffect(() => { localUiStateRef.current = localUiState; }, [localUiState]);
   useEffect(() => { onExitRef.current = onExit; }, [onExit]);
 
   // --- Voice Feedback Logic ---
