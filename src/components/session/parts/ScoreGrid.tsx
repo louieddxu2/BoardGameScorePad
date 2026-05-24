@@ -271,14 +271,6 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
 
         {/* Rows and Hints Container (Grayscale/Disabled on AI generating) */}
         <div className={(aiStatus === 'compressing' || aiStatus === 'generating') ? "pointer-events-none opacity-50 select-none filter grayscale-[20%] transition-all duration-300" : ""}>
-          {isInitialSimpleScorepad && (
-            <div className="mx-6 my-3 flex items-start gap-1.5 text-txt-secondary text-xs mb-3 text-left w-full select-none animate-in fade-in slide-in-from-top-2 duration-300">
-              <ArrowUp className="w-4 h-4 text-brand-primary shrink-0 animate-bounce mt-0.5" />
-              <span className="leading-relaxed font-semibold">
-                {t('session_simple_promo_arrow_hint')}
-              </span>
-            </div>
-          )}
 
           {processedColumns.map((col, index) => {
           const isDragging = dnd.draggingId === col.id;
@@ -581,17 +573,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           );
         })}
 
-        {isInitialSimpleScorepad && (
-          <div 
-            className="w-full flex justify-center items-center mt-2 mb-3 animate-in fade-in slide-in-from-bottom-2 duration-300 text-txt-muted text-xs gap-1.5"
-            style={{ paddingLeft: `${leftColWidth}px` }}
-          >
-            <ArrowDown className="w-3.5 h-3.5 text-brand-primary shrink-0 animate-bounce" />
-            <span className="font-semibold text-[11px] tracking-wide">
-              {t('session_simple_promo_totals_hint')}
-            </span>
-          </div>
-        )}
+
         </div>
 
         {/* Footer Area */}
