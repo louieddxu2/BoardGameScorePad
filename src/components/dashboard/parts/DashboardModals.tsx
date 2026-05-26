@@ -34,6 +34,7 @@ interface DashboardModalsProps {
 
   userTemplates: GameTemplate[];
   isConnected: boolean;
+  userEmail?: string | null;
   isMockMode: boolean;
 
   onBatchImport: (templates: GameTemplate[]) => void;
@@ -70,6 +71,7 @@ export const DashboardModals: React.FC<DashboardModalsProps> = ({
   actions,
   userTemplates,
   isConnected,
+  userEmail,
   isMockMode,
   onBatchImport,
   onGetFullTemplate,
@@ -125,6 +127,7 @@ export const DashboardModals: React.FC<DashboardModalsProps> = ({
         onClose={() => actions.setShowCloudLibraryModal(false)}
         userTemplates={userTemplates}
         onImport={onBatchImport}
+        userEmail={userEmail}
       />
 
       <CloudManagerModal

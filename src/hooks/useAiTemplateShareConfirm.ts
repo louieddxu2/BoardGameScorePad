@@ -4,6 +4,7 @@ import { useConfirm } from './useConfirm';
 import { useToast } from './useToast';
 import { useSessionTranslation } from '../i18n/session';
 import { uploadTemplateToCloud } from '../services/templateShareService';
+import { hasPendingAiShare, consumePendingAiShare } from '../utils/pendingAiShare';
 
 /**
  * Custom hook to manage the confirmation modal and side-effects for uploading
@@ -41,7 +42,10 @@ export const useAiTemplateShareConfirm = (view: AppView) => {
   }, [view, pendingAiTemplateToShare, confirm, showToast, tSession]);
 
   const captureAiTemplateForSharing = (template: GameTemplate | null) => {
-    if (template?.isAiGenerated && template.columns.length >= 3) {
+    if (!template || template.columns.length < 3) return;
+
+    if (hasPendingAiShare(template.id)) {
+      consumePendingAiShare(template.id);
       setPendingAiTemplateToShare(template);
     }
   };

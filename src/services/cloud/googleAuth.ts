@@ -78,6 +78,29 @@ class GoogleAuthService {
     });
   }
 
+  private userEmail: string | null = null;
+
+  public async fetchUserEmail(): Promise<string | null> {
+    if (this.userEmail) return this.userEmail;
+    if (!this.accessToken) return null;
+    try {
+      const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${this.accessToken}` }
+      });
+      if (response.ok) {
+        const userInfo = await response.json();
+        this.userEmail = userInfo.email || null;
+        if (this.userEmail) {
+          localStorage.setItem('google_user_email', this.userEmail);
+        }
+        return this.userEmail;
+      }
+    } catch (e) {
+      console.warn('[GoogleAuthService] Failed to fetch user email:', e);
+    }
+    return localStorage.getItem('google_user_email');
+  }
+
   public async signOut(): Promise<void> {
       if (this.accessToken && window.google && window.google.accounts) {
           try {
@@ -90,6 +113,8 @@ class GoogleAuthService {
       }
       this.accessToken = null;
       this.tokenExpiration = 0;
+      this.userEmail = null;
+      localStorage.removeItem('google_user_email');
   }
 }
 

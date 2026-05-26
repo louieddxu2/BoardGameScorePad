@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { GameTemplate } from '../../../types';
-import { X, Cloud, Loader2, Download, Check, HelpCircle, Trophy } from 'lucide-react';
-import { fetchPublicTemplates } from '../../../services/templateShareService';
+import { X, Cloud, Loader2, Download, Check, HelpCircle, Trophy, Trash2 } from 'lucide-react';
+import { fetchPublicTemplates, deleteTemplateFromCloud } from '../../../services/templateShareService';
 import { useCloudLibraryTranslation } from '../../../i18n/cloud_library';
 import { useToast } from '../../../hooks/useToast';
 import { generateId } from '../../../utils/idGenerator';
 import { DATA_LIMITS } from '../../../dataLimits';
+import { googleAuth } from '../../../services/cloud/googleAuth';
 
 interface CloudLibraryModalProps {
   isOpen: boolean;
   onClose: () => void;
   userTemplates: GameTemplate[];
   onImport: (templates: GameTemplate[]) => void;
+  userEmail?: string | null;
 }
 
 interface CloudItem {
@@ -26,7 +28,8 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({
   isOpen,
   onClose,
   userTemplates,
-  onImport
+  onImport,
+  userEmail
 }) => {
   const { t } = useCloudLibraryTranslation();
   const { showToast } = useToast();
@@ -35,7 +38,31 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [cloudItems, setCloudItems] = useState<CloudItem[]>([]);
   const [importingId, setImportingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isImportingAll, setIsImportingAll] = useState<boolean>(false);
+
+  const handleDelete = async (itemId: string, name: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const confirmDelete = window.confirm(t('lib_delete_confirm', { name }));
+    if (!confirmDelete) return;
+
+    setDeletingId(itemId);
+    try {
+      const token = googleAuth.token;
+      if (!token) throw new Error('token_missing');
+      
+      await deleteTemplateFromCloud(itemId, token);
+
+      showToast({ message: t('lib_delete_success', { name }), type: 'success' });
+      setCloudItems(prev => prev.filter(item => item.id !== itemId));
+    } catch (err: any) {
+      console.error(err);
+      const errMsg = err.message || String(err);
+      showToast({ message: t('lib_delete_failed', { error: errMsg }), type: 'error' });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -261,9 +288,25 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({
                       }`}
                     >
                       {/* Badge / Download Count */}
-                      <div className="absolute top-2 right-2.5 flex items-center gap-1 text-[10px] text-txt-muted font-mono opacity-80 scale-90">
-                        <Trophy size={10} className="text-status-warning shrink-0" />
-                        <span>{t('lib_download_count', { count: item.downloadCount })}</span>
+                      <div className="absolute top-2 right-2.5 flex items-center gap-2 text-[10px] font-mono scale-90">
+                        <div className="flex items-center gap-1 text-txt-muted opacity-80">
+                          <Trophy size={10} className="text-status-warning shrink-0" />
+                          <span>{t('lib_download_count', { count: item.downloadCount })}</span>
+                        </div>
+                        {userEmail === 'louieddxu2@gmail.com' && (
+                          <button
+                            onClick={(e) => handleDelete(item.id, item.name, e)}
+                            disabled={!!deletingId || isImportingAll || !!importingId}
+                            className="p-1 rounded bg-status-danger/10 hover:bg-status-danger text-status-danger hover:text-white transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center"
+                            title={t('lib_btn_delete_tooltip')}
+                          >
+                            {deletingId === item.id ? (
+                              <Loader2 size={12} className="animate-spin text-status-danger" />
+                            ) : (
+                              <Trash2 size={12} />
+                            )}
+                          </button>
+                        )}
                       </div>
 
                       <div className="mb-4 pr-16">

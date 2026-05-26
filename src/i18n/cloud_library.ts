@@ -14,6 +14,10 @@ export const cloudLibraryTranslations = {
         lib_import_success: "成功匯入「{name}」計分板！",
         lib_import_all_success: "已成功匯入全部 {count} 個雲端計分板！",
         lib_import_already: "此模板已存在於您的本機中",
+        lib_delete_confirm: "確定要將「{name}」從雲端 D1 資料庫永久刪除嗎？此操作不可逆！",
+        lib_delete_success: "「{name}」已成功從雲端清除！",
+        lib_delete_failed: "清除失敗: {error}",
+        lib_btn_delete_tooltip: "從雲端永久清除此垃圾資料",
     },
     'en': {
         lib_title: "☁️ Cloud Library (Test)",
@@ -28,6 +32,10 @@ export const cloudLibraryTranslations = {
         lib_import_success: "Successfully imported \"{name}\"!",
         lib_import_all_success: "Successfully imported all {count} templates!",
         lib_import_already: "This template already exists in your library",
+        lib_delete_confirm: "Are you sure you want to permanently delete \"{name}\" from the Cloud D1 database? This action is irreversible!",
+        lib_delete_success: "Successfully deleted \"{name}\" from the cloud!",
+        lib_delete_failed: "Delete failed: {error}",
+        lib_btn_delete_tooltip: "Permanently delete this template from the cloud",
     }
 };
 

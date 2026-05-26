@@ -30,6 +30,7 @@ import SearchTemplateOnlineModal from '../dashboard/modals/SearchTemplateOnlineM
 import AiPromptModal from '../../features/ai-generator/components/AiPromptModal';
 import { db } from '../../db';
 import { useAiGenerator } from '../../features/ai-generator/hooks/useAiGenerator';
+import { markPendingAiShare } from '../../utils/pendingAiShare';
 
 interface SessionViewProps {
   session: GameSession;
@@ -224,13 +225,12 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       scores: {}
     }));
 
-    // 2. 原地覆寫模板欄位 (並標記 isAiGenerated: true)
+    // 2. 原地覆寫模板欄位
     const updatedTemplate: GameTemplate = {
       ...template,
       columns: result.columns,
       defaultScoringRule: result.defaultScoringRule || template.defaultScoringRule,
       updatedAt: Date.now(),
-      isAiGenerated: true // 標記為 AI 生成，待儲存回到 Dashboard 時詢問分享！
     };
 
     // 3. 重新建立會話物件，並重設 winners
@@ -245,7 +245,10 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     props.onUpdateTemplate(updatedTemplate);
     props.onUpdateSession(updatedSession);
 
-    // 5. 關閉彈窗與拍照介面，彈出提示 (移除背景自動上傳，改至離開 Dashboard 時詢問)
+    // 5. 記憶體標記：待首次結束遊戲 Save to History 時詢問分享
+    markPendingAiShare(template.id);
+
+    // 6. 關閉彈窗與拍照介面，彈出提示
     setIsAiPromptOpen(false);
     setIsOnlineSearchOpen(false);
     showToast({ message: tSession('toast_ai_apply_success'), type: 'success' });

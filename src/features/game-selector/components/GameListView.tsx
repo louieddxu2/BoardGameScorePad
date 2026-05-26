@@ -19,7 +19,6 @@ export interface GameListViewProps {
     onPin: (t: GameOption) => void;
     onOpenBgStats?: () => void;
     onOpenBggImport?: () => void;
-    onOpenCloudLibrary?: () => void;
 }
 
 const BOTTOM_ROW_HEIGHT_CLASS = "h-[60px]";
@@ -35,8 +34,7 @@ export const GameListView: React.FC<GameListViewProps> = ({
     onOptionClick,
     onPin,
     onOpenBgStats,
-    onOpenBggImport,
-    onOpenCloudLibrary
+    onOpenBggImport
 }) => {
     const { t } = useIntegrationTranslation();
     const { t: tCloudLib } = useCloudLibraryTranslation();
@@ -68,13 +66,6 @@ export const GameListView: React.FC<GameListViewProps> = ({
                                 >
                                     <Database size={12} />
                                     {t('btn_bgg_open')}
-                                </button>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); onOpenCloudLibrary?.(); }}
-                                    className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-brand-primary bg-surface-bg-alt hover:bg-surface-bg rounded-lg border border-surface-border transition-all active:scale-95 shadow-sm animate-pulse"
-                                >
-                                    <Cloud size={12} />
-                                    {tCloudLib('lib_title')}
                                 </button>
                             </div>
                         </div>
@@ -110,13 +101,6 @@ export const GameListView: React.FC<GameListViewProps> = ({
                                     className="text-brand-secondary font-bold hover:underline"
                                 >
                                     BGG
-                                </button>
-                                <span>|</span>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); onOpenCloudLibrary?.(); }}
-                                    className="text-brand-primary font-bold hover:underline"
-                                >
-                                    {tCloudLib('lib_title')}
                                 </button>
                             </div>
                         )}

@@ -34,6 +34,7 @@ interface LibraryViewProps {
     onCloudBackup: (template: GameTemplate, e: React.MouseEvent) => void;
     onOpenDataManager: () => void;
     onOpenCloudLibrary?: () => void;
+    userEmail?: string | null; // 管理員信箱
     onTemplateCreate: () => void;
     onClearNewBadges: () => void;
     onSystemCopy: (template: GameTemplate, e: React.MouseEvent) => void;
@@ -74,6 +75,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     onCloudBackup,
     onOpenDataManager,
     onOpenCloudLibrary,
+    userEmail,
     onTemplateCreate,
     onClearNewBadges,
     onSystemCopy,
@@ -160,13 +162,15 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 onToggle={() => setIsUserLibOpen(!isUserLibOpen)}
                 actionButton={
                     <div className="flex items-center gap-2">
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); onOpenCloudLibrary?.(); }} 
-                            className="btn-ghost-action"
-                            title={tCloudLib('lib_title')}
-                        >
-                            <Cloud size={18} className="text-brand-primary" />
-                        </button>
+                        {isConnected && userEmail === 'louieddxu2@gmail.com' && (
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onOpenCloudLibrary?.(); }} 
+                                className="btn-ghost-action animate-pulse"
+                                title={tCloudLib('lib_title')}
+                            >
+                                <Cloud size={18} className="text-brand-primary" />
+                            </button>
+                        )}
                         <button 
                             onClick={(e) => { e.stopPropagation(); onOpenDataManager(); }} 
                             className="btn-ghost-action"

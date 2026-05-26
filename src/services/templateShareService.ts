@@ -26,4 +26,8 @@ export const fetchPublicTemplates = (options?: { bggId?: string; query?: string 
   return cloudClient.fetchPublicTemplates(options);
 };
 
+export const deleteTemplateFromCloud = (id: string, token: string): Promise<{ success: boolean }> => {
+  return cloudClient.deleteTemplateFromCloud(id, token);
+};
+
 

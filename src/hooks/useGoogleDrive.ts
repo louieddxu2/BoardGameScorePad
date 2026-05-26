@@ -5,12 +5,14 @@ import { systemSyncService } from '../services/systemSyncService';
 import { useToast } from './useToast';
 import { useCloudTranslation } from '../i18n/cloud';
 import { GameTemplate, GameSession, HistoryRecord } from '../types';
+import { googleAuth } from '../services/cloud/googleAuth';
 import { isDisposableTemplate } from '../utils/templateUtils';
 import { db } from '../db';
 
 export const useGoogleDrive = () => {
     const [isSyncing, setIsSyncing] = useState(false);
     const [isConnected, setIsConnected] = useState(googleDriveService.isAuthorized);
+    const [userEmail, setUserEmail] = useState<string | null>(localStorage.getItem('google_user_email'));
 
     // [Standardized] Initialize from shared helper
     const [isAutoConnectEnabled, setIsAutoConnectEnabled] = useState(getAutoConnectPreference);
@@ -21,6 +23,16 @@ export const useGoogleDrive = () => {
     useEffect(() => {
         setIsConnected(googleDriveService.isAuthorized);
     }, []);
+
+    useEffect(() => {
+        if (isConnected) {
+            googleAuth.fetchUserEmail().then(email => {
+                setUserEmail(email);
+            });
+        } else {
+            setUserEmail(null);
+        }
+    }, [isConnected]);
 
     // [Modified] Explicit Connect Function
     const connectToCloud = useCallback(async () => {
@@ -651,6 +663,7 @@ export const useGoogleDrive = () => {
         disconnectFromCloud, // Exposed
         isSyncing,
         isConnected,
+        userEmail,           // Exposed userEmail
         isAutoConnectEnabled,
         silentSystemBackup,
         performFullBackup,

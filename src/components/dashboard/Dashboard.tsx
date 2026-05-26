@@ -170,7 +170,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
 
   const {
     fetchFileList, restoreBackup, restoreSessionBackup, restoreHistoryBackup, restoreFromTrash, deleteCloudFile, emptyTrash,
-    connectToCloud, disconnectFromCloud, isSyncing, isConnected, isAutoConnectEnabled, isMockMode
+    connectToCloud, disconnectFromCloud, isSyncing, isConnected, isAutoConnectEnabled, isMockMode, userEmail
   } = useGoogleDrive();
 
   // --- Handlers & Actions (Refactored) ---
@@ -312,6 +312,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
               searchQuery={searchQuery}
               copiedId={dashboardActions.copiedId}
               isConnected={isConnected}
+              userEmail={userEmail}
               isAutoConnectEnabled={isAutoConnectEnabled}
               onTemplateSelect={onTemplateSelect}
               onDirectResume={onDirectResume}
@@ -354,7 +355,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           searchQuery={searchQuery}
           onOpenBgStats={() => modals.actions.setShowBgStatsModal(true)}
           onOpenBggImport={() => modals.actions.setShowBggImportModal(true)}
-          onOpenCloudLibrary={() => modals.actions.setShowCloudLibraryModal(true)}
         />
       )}
 
@@ -363,6 +363,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         actions={modals.actions}
         userTemplates={userTemplates}
         isConnected={isConnected}
+        userEmail={userEmail}
         isMockMode={isMockMode}
         onBatchImport={onBatchImport}
         onGetFullTemplate={onGetFullTemplate}
