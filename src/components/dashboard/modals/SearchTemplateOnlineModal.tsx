@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Sparkles, Play, Search } from 'lucide-react';
+import { X, Sparkles } from 'lucide-react';
 import { useSearchTemplateOnlineTranslation } from '../../../i18n/search_template_online';
 import { useCloudTemplateSuggestion, CloudSuggestionItem } from '../../../features/game-selector/hooks/useCloudTemplateSuggestion';
 import { FetchResponse } from '../../../services/cloudClient';
@@ -79,13 +79,12 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                     {/* Header & Subtitle */}
                     <div className="flex justify-between items-start mb-4 shrink-0">
                         <div className="flex flex-col gap-0.5">
-                            <div className="flex items-center gap-2 text-brand-primary">
-                                <Search size={20} className="text-brand-primary" />
+                            <div className="flex items-center text-brand-primary">
                                 <h3 className="font-black text-xl tracking-tight text-txt-title">
                                     {t('search_online_title')}
                                 </h3>
                             </div>
-                            <span className="text-xs font-bold text-txt-secondary pl-7 flex items-center gap-1">
+                            <span className="text-xs font-bold text-txt-secondary pl-1 flex items-center gap-1">
                                 🎮 {gameName}
                             </span>
                         </div>
@@ -126,12 +125,6 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                             viewMode === 'detail' ? (
                                 /* 最佳推薦卡片預覽 */
                                 <div className="bg-surface-bg-alt/80 border border-brand-primary/20 rounded-xl p-4 mb-1 flex flex-col shadow-sm hover:border-brand-primary/40 transition-all duration-300 relative overflow-hidden group">
-                                    {/* 熱門標籤 */}
-                                    {selectedIdx === 0 && (
-                                        <div className="absolute top-0 right-0 bg-gradient-to-l from-brand-primary to-brand-secondary text-[9px] font-black text-white px-2 py-0.5 rounded-bl-lg uppercase tracking-wider animate-pulse">
-                                            HOT
-                                        </div>
-                                    )}
                                     
                                     <div className="flex justify-between items-start pr-8 mb-3">
                                         <span className="font-bold text-txt-primary text-[15px] truncate max-w-[200px]">
@@ -211,13 +204,6 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                                                         isSelected ? 'border-brand-primary bg-brand-primary/5' : 'border-surface-border'
                                                     }`}
                                                 >
-                                                    {/* 熱門標籤 */}
-                                                    {idx === 0 && (
-                                                        <div className="absolute top-0 right-0 bg-gradient-to-l from-brand-primary to-brand-secondary text-[8px] font-black text-white px-1.5 py-0.5 rounded-bl-lg uppercase tracking-wider">
-                                                            HOT
-                                                        </div>
-                                                    )}
-
                                                     <div className="flex flex-col gap-1">
                                                         <span className="font-bold text-txt-primary text-xs line-clamp-1 group-hover:text-brand-primary transition-colors flex items-center gap-1">
                                                             {tpl.name}
@@ -242,14 +228,6 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                                             );
                                         })}
                                     </div>
-                                    
-                                    {/* 返回按鈕 */}
-                                    <button
-                                        onClick={() => setViewMode('detail')}
-                                        className="w-full py-2 bg-surface-bg-alt border border-surface-border text-txt-secondary hover:text-txt-primary rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1"
-                                    >
-                                        <span>{t('search_online_btn_back')}</span>
-                                    </button>
                                 </div>
                             )
                         ) : (
@@ -264,36 +242,30 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                                 </span>
                             </div>
                         )}
-
-                        {/* 如果有多版本，顯示虛線看更多版本按鈕 */}
-                        {suggestions.length >= 2 && viewMode === 'detail' && !loading && !error && (
-                            <button
-                                onClick={() => setViewMode('grid')}
-                                className="w-full mt-3 py-2 border border-dashed border-brand-primary/30 hover:border-brand-primary/60 text-brand-primary rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1 bg-brand-primary/5 hover:bg-brand-primary/10 active:scale-98"
-                            >
-                                <span>{t('search_online_more_versions', { count: suggestions.length - 1 })}</span>
-                            </button>
-                        )}
                     </div>
 
                     {/* Action Buttons 合併 */}
                     <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-surface-border/30 shrink-0">
-                        {/* Option 1: AI Scanner */}
+                        {/* 左下角：查看目錄 / 返回推薦 */}
+                        <button
+                            onClick={() => setViewMode(viewMode === 'detail' ? 'grid' : 'detail')}
+                            disabled={viewMode === 'detail' && suggestions.length < 2}
+                            className="flex items-center justify-center gap-1.5 py-3 px-2 text-txt-secondary font-bold rounded-xl bg-surface-bg-alt hover:bg-surface-bg border border-surface-border active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            <span>
+                                {viewMode === 'detail'
+                                    ? t('search_online_btn_view_catalog')
+                                    : t('search_online_btn_back_detail')}
+                            </span>
+                        </button>
+
+                        {/* 右下角：AI 生成 */}
                         <button
                             onClick={onAiClick}
                             className="flex items-center justify-center gap-1.5 py-3 px-2 bg-gradient-to-r from-brand-primary to-brand-secondary text-white rounded-xl font-bold text-xs shadow-md shadow-brand-primary/10 active:scale-95 hover:brightness-110 transition-all"
                         >
                             <Sparkles size={13} className="animate-pulse" />
                             <span>{t('search_online_btn_ai')}</span>
-                        </button>
-
-                        {/* Option 2: Direct Simple Launch */}
-                        <button
-                            onClick={onDirectStart}
-                            className="flex items-center justify-center gap-1.5 py-3 px-2 text-txt-secondary font-bold rounded-xl bg-surface-bg-alt hover:bg-surface-bg border border-surface-border active:scale-95 transition-all"
-                        >
-                            <Play size={11} className="fill-current text-txt-secondary" />
-                            <span>{t('search_online_btn_direct')}</span>
                         </button>
                     </div>
                 </div>
