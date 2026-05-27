@@ -7,6 +7,7 @@ import { useToast } from '../../../hooks/useToast';
 import { generateId } from '../../../utils/idGenerator';
 import { DATA_LIMITS } from '../../../dataLimits';
 import { googleAuth } from '../../../services/cloud/googleAuth';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 interface CloudLibraryModalProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({
 }) => {
   const { t } = useCloudLibraryTranslation();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,12 +45,25 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({
 
   const handleDelete = async (itemId: string, name: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const confirmDelete = window.confirm(t('lib_delete_confirm', { name }));
+    
+    const confirmDelete = await confirm({
+      title: t('lib_delete_confirm_title'),
+      message: t('lib_delete_confirm', { name }),
+      confirmText: t('lib_btn_delete'),
+      cancelText: t('lib_btn_cancel'),
+      isDangerous: true,
+    });
     if (!confirmDelete) return;
 
     setDeletingId(itemId);
     try {
-      const token = googleAuth.token;
+      let token = googleAuth.token;
+      if (!token) {
+        // [Defensive Re-Auth] 如果刷新後 token 遺失，主動引導管理員重新登入授權
+        showToast({ message: t('lib_admin_reauth'), type: 'info' });
+        token = await googleAuth.signIn();
+      }
+      
       if (!token) throw new Error('token_missing');
       
       await deleteTemplateFromCloud(itemId, token);
