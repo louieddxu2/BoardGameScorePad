@@ -59,8 +59,7 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({
     try {
       let token = googleAuth.token;
       if (!token) {
-        // [Defensive Re-Auth] 如果刷新後 token 遺失，主動引導管理員重新登入授權
-        showToast({ message: t('lib_admin_reauth'), type: 'info' });
+        // [Silent Token Refresh] 如果刷新後 token 遺失，在背景靜默取得最新 Token，重用原有的 Google 登入機制
         token = await googleAuth.signIn();
       }
       
