@@ -5,6 +5,7 @@ import { useCloudTemplateSuggestion, CloudSuggestionItem } from '../../../featur
 import { FetchResponse } from '../../../services/cloudClient';
 import { classifyColumnFormula } from '../../../utils/templateUtils';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
+import { getContrastTextStyles } from '../../../utils/ui';
 
 export interface SearchTemplateOnlineModalProps {
     isOpen: boolean;
@@ -151,8 +152,14 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                                                         key={col.id || idx} 
                                                         className="flex justify-between items-center py-1 border-b border-surface-border/30 last:border-0"
                                                     >
-                                                        <span className="text-xs font-bold text-txt-primary flex items-center gap-1.5">
-                                                            <span className="opacity-40 text-[10px]">{idx + 1}.</span>
+                                                        <span 
+                                                            className="text-xs font-bold flex items-center gap-1.5 transition-colors"
+                                                            style={{
+                                                                color: col.color || 'var(--c-txt-primary)',
+                                                                ...getContrastTextStyles(col.color || '')
+                                                            }}
+                                                        >
+                                                            <span className="opacity-40 text-[10px]" style={{ color: 'var(--c-txt-muted)' }}>{idx + 1}.</span>
                                                             {col.name}
                                                         </span>
                                                         <span className={`inline-flex px-2 py-0.5 rounded-full border text-[10px] font-black ${bgClass} ${textClass} shrink-0`}>
