@@ -22,7 +22,7 @@ import SessionView from './components/session/SessionView';
 import Dashboard from './components/dashboard/Dashboard';
 import GameSetupModal from './components/dashboard/modals/GameSetupModal';
 import HistoryReviewView from './components/history/HistoryReviewView';
-import { InAppBrowserGuide } from './components/modals/InAppBrowserGuide';
+import { InAppBrowserGuide, isInAppBrowser } from './components/modals/InAppBrowserGuide';
 import { IOSPwaGuide, shouldTriggerIOSPwaGuide } from './components/modals/IOSPwaGuide';
 
 const App: React.FC = () => {
@@ -70,6 +70,8 @@ const App: React.FC = () => {
 
   // --- Deep Link (Built-in template -> Setup Modal) ---
   useEffect(() => {
+    if (isInAppBrowser()) return;
+
     if (deepLinkHandledRef.current || !appData.isDbReady) return;
 
     const parsed = parseDeepLinkFromHash(window.location.hash);

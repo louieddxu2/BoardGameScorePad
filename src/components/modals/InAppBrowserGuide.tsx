@@ -7,18 +7,18 @@ import { useIntegrationTranslation } from '../../i18n/integration';
  * Detects if the app is opened inside social media apps like LINE, FB, IG, etc.
  * Shows a friendly suggestion modal to open in system browser.
  */
+export const isInAppBrowser = (): boolean => {
+    const ua = navigator.userAgent || navigator.vendor || (window as any).opera;
+    const inAppKeywords = ['Line', 'FBAV', 'FBAN', 'Instagram', 'MicroMessenger', 'Threads', 'TikTok', 'Twitter', 'Reddit', 'BoardGameGeek'];
+    return inAppKeywords.some(keyword => new RegExp(keyword, 'i').test(ua));
+};
+
 export const InAppBrowserGuide: React.FC = () => {
     const { t } = useIntegrationTranslation();
     const [isInApp, setIsInApp] = useState(false);
 
     useEffect(() => {
-        // 1. Detection logic
-        const ua = navigator.userAgent || navigator.vendor || (window as any).opera;
-        const inAppKeywords = ['Line', 'FBAV', 'FBAN', 'Instagram', 'MicroMessenger', 'Threads', 'TikTok', 'Twitter', 'Reddit', 'BoardGameGeek'];
-
-        // Check if current browser is an in-app browser
-        const detected = inAppKeywords.some(keyword => new RegExp(keyword, 'i').test(ua));
-        setIsInApp(detected);
+        setIsInApp(isInAppBrowser());
     }, []);
 
     if (!isInApp) return null;
