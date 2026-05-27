@@ -10,19 +10,21 @@ describe('registerServiceWorker', () => {
   it('registers and updates service worker in PROD on window load', async () => {
     const update = vi.fn();
     const register = vi.fn(async () => ({ update }));
+    const swAddEventListener = vi.fn();
     const addEventListener = vi.fn((event: string, cb: () => void) => {
       if (event === 'load') cb();
     });
 
     registerServiceWorker({
       env: { DEV: false, PROD: true },
-      navigatorObj: { serviceWorker: { register } } as any,
+      navigatorObj: { serviceWorker: { register, addEventListener: swAddEventListener } } as any,
       windowObj: { addEventListener } as any,
     });
 
     await flush();
 
     expect(addEventListener).toHaveBeenCalledWith('load', expect.any(Function));
+    expect(swAddEventListener).toHaveBeenCalledWith('controllerchange', expect.any(Function));
     expect(register).toHaveBeenCalledWith('/sw.js');
     expect(update).toHaveBeenCalledTimes(1);
   });

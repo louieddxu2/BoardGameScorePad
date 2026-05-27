@@ -12,6 +12,16 @@ export function registerServiceWorker(runtime?: Partial<SwRuntime>) {
     const windowObj = runtime?.windowObj ?? window;
 
     if (env.PROD && 'serviceWorker' in navigatorObj) {
+        // 監聽 controllerchange 事件，當新的 Service Worker 取得控制權時自動重新整理
+        let refreshing = false;
+        if (typeof navigatorObj.serviceWorker.addEventListener === 'function') {
+            navigatorObj.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return;
+                refreshing = true;
+                windowObj.location.reload();
+            });
+        }
+
         windowObj.addEventListener('load', () => {
             navigatorObj.serviceWorker.register('/sw.js')
                 .then(registration => {
