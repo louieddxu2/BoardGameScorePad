@@ -152,9 +152,8 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
             if (agreed) {
                 if (triggerCloseEditor) {
                     triggerCloseEditor(2); // 連帶關閉確認框和自己，退回 2 步
-                } else {
-                    onClose();
                 }
+                onClose();
             }
         } else {
             onClose();
