@@ -152,7 +152,6 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                                                                 ...getContrastTextStyles(col.color || '')
                                                             }}
                                                         >
-                                                            <span className="opacity-40 text-[10px]" style={{ color: 'var(--c-txt-muted)' }}>{idx + 1}.</span>
                                                             {col.name}
                                                         </span>
                                                         <span className={`inline-flex px-2 py-0.5 rounded-full border text-[10px] font-black ${bgClass} ${textClass} shrink-0`}>
@@ -185,10 +184,10 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                                 <div className="flex flex-col gap-3">
                                     <div className="grid grid-cols-2 gap-2 max-h-[320px] overflow-y-auto scrollbar-thin pr-1 pb-2">
                                         {suggestions.map((tpl, idx) => {
-                                            let colCount = 0;
+                                            let gridCols: any[] = [];
                                             try {
                                                 const p = typeof tpl.payload === 'string' ? JSON.parse(tpl.payload) : tpl.payload;
-                                                colCount = p?.columns?.length || 0;
+                                                gridCols = p?.columns || [];
                                             } catch (e) {}
 
                                             const isSelected = selectedIdx === idx;
@@ -200,29 +199,45 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                                                         setSelectedIdx(idx);
                                                         setViewMode('detail');
                                                     }}
-                                                    className={`bg-surface-bg-alt/50 border rounded-xl p-3 flex flex-col justify-between hover:border-brand-primary/40 hover:shadow-sm hover:scale-[1.01] cursor-pointer active:scale-98 transition-all duration-300 relative group min-h-[105px] ${
+                                                    className={`bg-surface-bg-alt/50 border rounded-xl p-3 flex flex-col justify-between hover:border-brand-primary/40 hover:shadow-sm hover:scale-[1.01] cursor-pointer active:scale-98 transition-all duration-300 relative group min-h-[115px] ${
                                                         isSelected ? 'border-brand-primary bg-brand-primary/5' : 'border-surface-border'
                                                     }`}
                                                 >
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="font-bold text-txt-primary text-xs line-clamp-1 group-hover:text-brand-primary transition-colors flex items-center gap-1">
-                                                            {tpl.name}
-                                                            {tpl.isDownloaded && (
-                                                                <span className="inline-flex items-center bg-status-success/10 text-status-success border border-status-success/20 px-1 py-0.25 rounded text-[8px] font-black shrink-0">
-                                                                    {t('search_online_badge_owned')}
-                                                                </span>
+                                                    <div className="flex flex-col gap-2 flex-1">
+                                                        {/* 標題與下載數 */}
+                                                        <div className="flex justify-between items-start gap-1">
+                                                            <span className="font-bold text-txt-primary text-xs line-clamp-1 group-hover:text-brand-primary transition-colors flex items-center gap-0.5">
+                                                                {tpl.name}
+                                                                {tpl.isDownloaded && (
+                                                                    <span className="inline-flex items-center bg-status-success/10 text-status-success border border-status-success/20 px-0.5 py-0.1 rounded text-[7px] font-black shrink-0">
+                                                                        {t('search_online_badge_owned')}
+                                                                    </span>
+                                                                )}
+                                                            </span>
+                                                            <span className="text-[8px] text-txt-muted font-bold whitespace-nowrap bg-surface-bg border border-surface-border px-1 py-0.1 rounded shrink-0">
+                                                                {"\u2b07\ufe0f"} {tpl.downloadCount || 0}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* 項目預覽 (最多 4 個，不帶屬性與編號，支援文字主題對比色) */}
+                                                        <div className="flex flex-col gap-0.5 mt-0.5">
+                                                            {gridCols.slice(0, 4).map((col: any, cIdx: number) => (
+                                                                <div key={col.id || cIdx} className="flex items-center justify-between py-0.25">
+                                                                    <span 
+                                                                        className="text-[10px] font-bold truncate max-w-[125px] transition-colors"
+                                                                        style={{
+                                                                            color: col.color || 'var(--c-txt-primary)',
+                                                                            ...getContrastTextStyles(col.color || '')
+                                                                        }}
+                                                                    >
+                                                                        {col.name}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                            {gridCols.length > 4 && (
+                                                                <span className="text-[9px] text-txt-muted font-bold pl-0.5">...</span>
                                                             )}
-                                                        </span>
-                                                        <span className="text-[9px] text-txt-muted flex items-center gap-1 font-medium">
-                                                            📊 {colCount} {t('search_online_columns_suffix')}
-                                                        </span>
-                                                        <span className="text-[9px] text-txt-muted flex items-center gap-1 font-medium">
-                                                            {"\u2b07\ufe0f"} {tpl.downloadCount || 0}
-                                                        </span>
-                                                    </div>
-                                                    
-                                                    <div className="w-full mt-2 py-1 bg-surface-bg-alt border border-surface-border/50 group-hover:bg-brand-primary/10 group-hover:text-brand-primary group-hover:border-brand-primary/20 text-txt-muted rounded-lg font-bold text-[9px] transition-all flex items-center justify-center gap-1">
-                                                        <span>{t('search_online_btn_view_detail')}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             );
