@@ -56,6 +56,16 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
         setIsScannerOpen(false);
     };
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        const fileList = Array.from(files);
+        setQueuedFiles(prev => [...prev, ...fileList]);
+
+        e.target.value = '';
+    };
+
     const handleSubmit = async () => {
         if (queuedFiles.length === 0) return;
         await processAndGenerateSimple(queuedFiles, gameName);
@@ -124,7 +134,14 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
 
     return (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300" style={{ zIndex }} onClick={(e) => { if (e.target === e.currentTarget) { abortSimpleAll(); resetSimple(); onClose(); } }}>
-            <input type="file" ref={fileInputRef} accept="image/*" multiple className="hidden" onChange={(e) => { const files = e.target.files; if (files && files.length > 0) setQueuedFiles(prev => [...prev, ...Array.from(files)]); e.target.value = ''; }} />
+            <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleFileChange}
+            />
 
             <div className="modal-container w-[92vw] max-w-sm bg-app-bg shadow-2xl relative overflow-hidden p-0 border border-modal-border max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="h-1 w-full bg-brand-primary" />
