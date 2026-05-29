@@ -107,4 +107,32 @@ describe('aiExpander - inflateGameTemplate', () => {
         expect(cols[3].buttonGridColumns).toBe(2);
         expect(cols[4].buttonGridColumns).toBe(3);
     });
+
+    it('應該能防禦性地將錯誤的 lookup[]+next 公式自動熔煉並轉化為 buttons[]+next 累加按鈕', () => {
+        const mockAiOutput = [
+            { name: "地標卡片", formula: "lookup[1->1, 2->3, 3->6, +1->4]+next", unit: "張" }
+        ];
+
+        const result = inflateGameTemplate(mockAiOutput);
+        const cols = result.columns!;
+
+        // 驗證是否被完美轉寫並膨脹成 clicker (buttons+next) 格式
+        expect(cols[0].inputType).toBe('clicker');
+        expect(cols[0].formula).toBe('a1+next');
+        expect(cols[0].quickActions).toHaveLength(4);
+        
+        // 驗證一般的按鈕規則
+        expect(cols[0].quickActions![0].label).toBe('1');
+        expect(cols[0].quickActions![0].value).toBe(1);
+        expect(cols[0].quickActions![0].isModifier).toBe(false);
+
+        expect(cols[0].quickActions![2].label).toBe('3');
+        expect(cols[0].quickActions![2].value).toBe(6);
+        expect(cols[0].quickActions![2].isModifier).toBe(false);
+
+        // 驗證 +1->4 增量累加按鈕規則 (isModifier 應為 true)
+        expect(cols[0].quickActions![3].label).toBe('+1');
+        expect(cols[0].quickActions![3].value).toBe(4);
+        expect(cols[0].quickActions![3].isModifier).toBe(true);
+    });
 });

@@ -26,7 +26,15 @@ export const inflateScoringColumn = (col: any): any => {
 
     // --- V7 Semantic Formula Parsing START ---
     if (typeof finalFormula === 'string') {
-        const trimmedFormula = finalFormula.trim();
+        let trimmedFormula = finalFormula.trim();
+
+        // 🌟 0. D1/AI 容錯防線：自動將錯誤的 lookup[]+next 轉化為極致 UX 的 buttons[]+next
+        const lookupNextMatch = trimmedFormula.match(/^(?:lookup|function)\[(.*)\]\+next$/i);
+        if (lookupNextMatch) {
+            const rulesStr = lookupNextMatch[1];
+            trimmedFormula = `buttons[${rulesStr}]+next`;
+            finalFormula = trimmedFormula;
+        }
 
         // 1. Buttons Parsing: buttons['有'->10, "無"->0] and buttons[...]+next
         const buttonsNextMatch = trimmedFormula.match(/^buttons\[(.*)\]\+next$/i);
@@ -44,8 +52,8 @@ export const inflateScoringColumn = (col: any): any => {
                     const label = labelMatch ? labelMatch[1] : parts[0].trim().replace(/['"]/g, '');
                     const rawValueStr = parts[1].trim();
 
-                    // 🌟 核心：如果分數以 '+' 開頭，即為增益微調按鈕 (isModifier: true)
-                    const isModifier = rawValueStr.startsWith('+');
+                    // 🌟 核心：如果分數以 '+' 開頭，或標籤以 '+' 開頭 (相容 lookup 轉化)，即為增益微調按鈕 (isModifier: true)
+                    const isModifier = rawValueStr.startsWith('+') || parts[0].trim().startsWith('+');
                     const value = parseFloat(rawValueStr);
 
                     if (!isNaN(value)) {
