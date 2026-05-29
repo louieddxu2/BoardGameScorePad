@@ -28,7 +28,7 @@ interface ScannerState {
 const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initialTemplate, allTemplates, initialName }) => {
     const { t } = useTemplateEditorTranslation();
     const [name, setName] = useState(t('tmpl_default_name'));
-    const [columnCount, setColumnCount] = useState(5);
+    const [columnCount, setColumnCount] = useState(0);
 
     // State Machine for Scanner Flow
     // 'scanner' state is implicit if showScanner is true.
