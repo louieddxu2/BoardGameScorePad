@@ -66,6 +66,10 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
         e.target.value = '';
     };
 
+    const handleRemoveFile = (indexToRemove: number) => {
+        setQueuedFiles(prev => prev.filter((_, index) => index !== indexToRemove));
+    };
+
     const handleSubmit = async () => {
         if (queuedFiles.length === 0) return;
         await processAndGenerateSimple(queuedFiles, gameName);
@@ -210,7 +214,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                             </div>
                         </div>
                     ) : (
-                        <div className="flex flex-col flex-1 overflow-y-auto scrollbar-none">
+                        <div className="flex flex-col">
                             <div className="inline-flex items-center px-3 py-1 bg-surface-bg border border-surface-border rounded-full mb-3 shrink-0 self-start select-none">
                                 <span className="text-xs font-bold text-txt-secondary truncate max-w-[240px]">🎮 {gameName}</span>
                             </div>
@@ -218,37 +222,37 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
 
                             {/* 圖片選照佇列 */}
                             {queuedFiles.length > 0 && (
-                                <div className="mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300 flex-shrink-0 select-none">
+                                <div className="mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300 select-none">
                                     <div className="flex justify-between items-center mb-2">
                                         <span className="text-xs font-bold text-brand-primary flex items-center gap-1"><Sparkles size={12} />{t('status_selected_count').replace('{count}', queuedFiles.length.toString())}</span>
                                         <button onClick={() => setQueuedFiles([])} className="text-xs text-txt-muted hover:text-status-danger transition-colors font-medium">{t('btn_clear_all')}</button>
                                     </div>
-                                    <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none snap-x">
+                                    <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-none snap-x">
                                         {previews.map((url, idx) => (
                                             <div key={idx} className="relative group flex-shrink-0 snap-start">
-                                                <div className="w-16 h-16 rounded-xl overflow-hidden border border-white/10 bg-surface-bg-alt shadow-md"><img src={url} alt={`Preview ${idx}`} className="w-full h-full object-cover" /></div>
-                                                <button onClick={() => setQueuedFiles(prev => prev.filter((_, i) => i !== idx))} className="absolute -top-1.5 -right-1.5 bg-black/80 hover:bg-status-danger text-white p-1 rounded-full shadow-lg border border-white/20 transition-all duration-200"><X size={10} /></button>
+                                                <div className="w-20 h-20 rounded-xl overflow-hidden border border-white/10 bg-surface-bg-alt shadow-md"><img src={url} alt={`Preview ${idx}`} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" /></div>
+                                                <button onClick={() => handleRemoveFile(idx)} className="absolute -top-1.5 -right-1.5 bg-black/80 hover:bg-status-danger text-white p-1 rounded-full shadow-lg border border-white/20 transition-all duration-200 hover:scale-110 active:scale-90"><X size={12} /></button>
                                             </div>
                                         ))}
-                                        <button onClick={() => setIsScannerOpen(true)} className="w-16 h-16 rounded-xl border-2 border-dashed border-brand-primary/20 hover:border-brand-primary/50 bg-brand-primary/5 hover:bg-brand-primary/10 flex flex-col items-center justify-center gap-0.5 text-brand-primary transition-all flex-shrink-0 group active:scale-95 snap-start"><Camera size={18} className="group-hover:scale-110 transition-transform" /><span className="text-[9px] font-bold">{t('btn_add_photo')}</span></button>
+                                        <button onClick={() => setIsScannerOpen(true)} className="w-20 h-20 rounded-xl border-2 border-dashed border-brand-primary/20 hover:border-brand-primary/50 bg-brand-primary/5 hover:bg-brand-primary/10 flex flex-col items-center justify-center gap-1 text-brand-primary transition-all flex-shrink-0 group active:scale-95 snap-start"><Camera size={20} className="group-hover:scale-110 transition-transform" /><span className="text-[10px] font-bold">{t('btn_add_photo')}</span></button>
                                     </div>
                                 </div>
                             )}
 
                             {/* 按鈕群 */}
-                            <div className="space-y-3 shrink-0">
+                            <div className="space-y-3">
                                 {queuedFiles.length === 0 ? (
                                     <div className="grid grid-cols-2 gap-3">
-                                        <button onClick={() => setIsScannerOpen(true)} className="flex flex-col items-center justify-center gap-1.5 py-3.5 bg-brand-primary text-white rounded-xl font-bold shadow-md active:scale-95 transition-all hover:brightness-110 text-xs"><Camera size={20} /><span>{t('btn_take_photo')}</span></button>
-                                        <button type="button" onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center gap-1.5 py-3.5 bg-surface-bg text-brand-primary border border-brand-primary/30 rounded-xl font-bold active:scale-95 transition-all hover:bg-brand-primary/10 text-xs"><ImageIcon size={20} /><span>{t('btn_upload_image')}</span></button>
+                                        <button onClick={() => setIsScannerOpen(true)} className="flex flex-col items-center justify-center gap-2 py-4 bg-brand-primary text-white rounded-xl font-bold shadow-md active:scale-95 transition-all hover:brightness-110"><Camera size={24} /><span className="text-sm">{t('btn_take_photo')}</span></button>
+                                        <button type="button" onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center gap-2 py-4 bg-surface-bg text-brand-primary border border-brand-primary/30 rounded-xl font-bold active:scale-95 transition-all hover:bg-brand-primary/10"><ImageIcon size={24} /><span className="text-sm">{t('btn_upload_image')}</span></button>
                                     </div>
                                 ) : (
                                     <div className="space-y-3">
-                                        <button onClick={handleSubmit} className="w-full flex items-center justify-center gap-1.5 py-3.5 bg-gradient-to-r from-brand-primary to-brand-secondary text-white rounded-xl font-black text-sm shadow-lg shadow-brand-primary/20 active:scale-98 hover:brightness-110 transition-all animate-in zoom-in-95 duration-300"><Sparkles size={16} className="animate-pulse" /><span>{t('btn_generate_simple').replace('{count}', queuedFiles.length.toString())}</span></button>
-                                        <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-brand-primary bg-surface-bg hover:bg-brand-primary/5 border border-brand-primary/20 rounded-lg active:scale-95 transition-all"><ImageIcon size={12} /><span>{t('btn_add_from_album')}</span></button>
+                                        <button onClick={handleSubmit} className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-brand-primary to-brand-secondary text-white rounded-xl font-black text-base shadow-lg shadow-brand-primary/20 active:scale-98 hover:brightness-110 transition-all animate-in zoom-in-95 duration-300"><Sparkles size={20} className="animate-pulse" /><span>{t('btn_generate_simple').replace('{count}', queuedFiles.length.toString())}</span></button>
+                                        <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-brand-primary bg-surface-bg hover:bg-brand-primary/5 border border-brand-primary/20 rounded-lg active:scale-95 transition-all"><ImageIcon size={14} /><span>{t('btn_add_from_album')}</span></button>
                                     </div>
                                 )}
-                                <button onClick={onDirectStart} className="w-full flex items-center justify-center gap-1.5 py-2.5 text-txt-secondary font-medium rounded-xl bg-surface-bg-alt hover:bg-surface-bg border border-surface-border active:scale-95 transition-all text-xs"><Play size={14} className="fill-current" /><span>{t('btn_start_direct')}</span></button>
+                                <button onClick={onDirectStart} className="w-full flex items-center justify-center gap-2 py-3 text-txt-secondary font-medium rounded-xl bg-surface-bg-alt hover:bg-surface-bg border border-surface-border active:scale-95 transition-all mt-2"><Play size={16} className="fill-current" /><span className="text-sm">{t('btn_start_direct')}</span></button>
                             </div>
                         </div>
                     )}
