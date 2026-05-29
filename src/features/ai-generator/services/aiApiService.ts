@@ -35,7 +35,8 @@ export const callAiScoreboardApi = async (
     gameName: string,
     language: string,
     modelName: string = 'gemini-2.5-flash-lite',
-    onStream?: (chunk: string) => void
+    onStream?: (chunk: string) => void,
+    signal?: AbortSignal
 ): Promise<AiGenerationResult> => {
     const formData = new FormData();
 
@@ -57,7 +58,8 @@ export const callAiScoreboardApi = async (
         const response = await fetch(API_ENDPOINT, {
             method: 'POST',
             body: formData,
-            // 注意：Fetch 自動會設定正確的 multipart/form-data header 與 boundary，不需要手動加 Content-Type
+            signal,
+            // 注意：Fetch 自動會設定正確 of multipart/form-data header 與 boundary，不需要手動加 Content-Type
         });
 
         // 3. 特判 429 流量限制錯誤

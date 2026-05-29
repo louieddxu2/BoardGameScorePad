@@ -28,6 +28,8 @@ import CameraView from '../scanner/CameraView';
 import GameSettingsEditor from '../shared/GameSettingsEditor';
 import SearchTemplateOnlineModal from '../dashboard/modals/SearchTemplateOnlineModal';
 import AiPromptModal from '../../features/ai-generator/components/AiPromptModal';
+import AiSimplePromptModal from '../../features/ai-generator/components/AiSimplePromptModal';
+import { useAiSimpleGenerator } from '../../features/ai-generator/hooks/useAiSimpleGenerator';
 import { db } from '../../db';
 import { useAiGenerator } from '../../features/ai-generator/hooks/useAiGenerator';
 import { markPendingAiShare } from '../../utils/pendingAiShare';
@@ -58,10 +60,17 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   const [isOnlineSearchOpen, setIsOnlineSearchOpen] = React.useState(false);
   const [isAiPromptOpen, setIsAiPromptOpen] = React.useState(false);
+  const [isAdvancedAiOpen, setIsAdvancedAiOpen] = React.useState(false);
 
   // 狀態提升：全域 AI 生成器
   const aiGenerator = useAiGenerator();
+  const aiSimpleGenerator = useAiSimpleGenerator();
   const [elapsedTime, setElapsedTime] = React.useState<number>(0);
+
+  const isAiWorking = aiGenerator.status === 'compressing' || 
+                      aiGenerator.status === 'generating' || 
+                      aiSimpleGenerator.simpleStatus === 'compressing' || 
+                      aiSimpleGenerator.simpleStatus === 'generating';
 
   // 全域同步計時器
   React.useEffect(() => {
@@ -283,28 +292,30 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   // 元件卸載監聽：AI 生成中若按「上一頁」回到 Dashboard 則彈出中斷提示 Toast 並重置 (0 歷史堆疊風險)
   React.useEffect(() => {
     const currentReset = aiGenerator.reset;
+    const currentSimpleReset = aiSimpleGenerator.resetSimple;
     return () => {
       if (aiStatusRef.current === 'compressing' || aiStatusRef.current === 'generating') {
         showToast({ message: tSession('toast_ai_generation_interrupted') || '🔮 AI scoreboard generation aborted.', type: 'info' });
         currentReset();
       }
+      currentSimpleReset();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCellClickSafe = useCallback((playerId: string, colId: string, e: React.MouseEvent) => {
-    if (aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') {
+    if (isAiWorking) {
       return;
     }
     eventHandlers.handleCellClick(playerId, colId, e);
-  }, [aiGenerator.status, eventHandlers.handleCellClick]);
+  }, [isAiWorking, eventHandlers.handleCellClick]);
 
   const handleColumnHeaderClickSafe = useCallback((e: React.MouseEvent, col: any) => {
-    if (aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') {
+    if (isAiWorking) {
       return;
     }
     eventHandlers.handleColumnHeaderClick(e, col);
-  }, [aiGenerator.status, eventHandlers.handleColumnHeaderClick]);
+  }, [isAiWorking, eventHandlers.handleColumnHeaderClick]);
 
   // Prepare Overlay Data for Photo Gallery
   const overlayData = useMemo(() => ({
@@ -411,11 +422,27 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onSelectTemplate={handleApplyTemplate}
       />
 
-      {/* AI Prompt Scan Modal */}
-      <AiPromptModal
+      {/* AI Simple Prompt Scan Modal (全新新建獨立極簡彈窗) */}
+      <AiSimplePromptModal
         isOpen={isAiPromptOpen}
         onClose={() => setIsAiPromptOpen(false)}
         onDirectStart={() => setIsAiPromptOpen(false)}
+        onAiSuccess={handleAiSuccess}
+        gameName={session.name || template.name}
+        onSwitchToAdvanced={() => {
+          setIsAiPromptOpen(false);
+          // 🛡️ 延遲 200ms 開啟進階彈窗，結清前一個 modal 的非同步 history.back()，確保歷史紀錄堆疊 100% 穩定流暢
+          setTimeout(() => {
+            setIsAdvancedAiOpen(true);
+          }, 200);
+        }}
+      />
+
+      {/* AI Advanced Prompt Scan Modal (100% 原裝進階彈窗，不改動任何 props 屬性) */}
+      <AiPromptModal
+        isOpen={isAdvancedAiOpen}
+        onClose={() => setIsAdvancedAiOpen(false)}
+        onDirectStart={() => setIsAdvancedAiOpen(false)}
         onAiSuccess={handleAiSuccess}
         gameName={session.name || template.name}
         aiGenerator={aiGenerator}
@@ -543,11 +570,11 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         }}
         onTitleSubmit={eventHandlers.handleTitleSubmit}
         onAddColumn={() => {
-          if (aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') return;
+          if (isAiWorking) return;
           setUiState(prev => ({ ...prev, isAddColumnModalOpen: true }));
         }}
         onReset={async () => {
-          if (aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') return;
+          if (isAiWorking) return;
           if (await confirm({
             title: tSession('session_reset_confirm_title'),
             message: tSession('session_reset_confirm_msg'),
@@ -610,7 +637,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           previewValue={previewValue}
           onOpenOnlineSearch={() => setIsOnlineSearchOpen(true)}
           onOpenAiPrompt={() => setIsAiPromptOpen(true)}
-          aiStatus={aiGenerator.status}
+          aiStatus={aiSimpleGenerator.simpleStatus !== 'idle' ? (aiSimpleGenerator.simpleStatus as any) : aiGenerator.status}
           elapsedTime={elapsedTime}
         />
       </div>
@@ -635,7 +662,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         </div>
       )}
 
-      <div className={(aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') ? "pointer-events-none opacity-50 select-none filter grayscale-[20%] transition-all duration-300" : ""}>
+      <div className={isAiWorking ? "pointer-events-none opacity-50 select-none filter grayscale-[20%] transition-all duration-300" : ""}>
         <TotalsBar
           players={session.players}
           winners={winners}
@@ -649,7 +676,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           editingCell={editingCell}
           previewValue={previewValue}
           onTotalClick={(playerId) => {
-            if (aiGenerator.status === 'compressing' || aiGenerator.status === 'generating') return;
+            if (isAiWorking) return;
             eventHandlers.handleCellClick(playerId, '__TOTAL__', { stopPropagation: () => { } } as any);
           }}
           zoomLevel={zoomLevel}
