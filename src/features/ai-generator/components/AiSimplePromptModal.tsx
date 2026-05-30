@@ -90,7 +90,7 @@ export interface AiSimplePromptModalProps {
 }
 
 const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
-    isOpen, gameName, onClose, onDirectStart, onAiSuccess, onSwitchToAdvanced
+    isOpen, gameName, onClose, onAiSuccess, onSwitchToAdvanced
 }) => {
     const { t } = useAiGeneratorTranslation();
     const { t: tOnline } = useSearchTemplateOnlineTranslation();
@@ -344,7 +344,6 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                                         <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-brand-primary bg-surface-bg hover:bg-brand-primary/5 border border-brand-primary/20 rounded-lg active:scale-95 transition-all"><ImageIcon size={14} /><span>{t('btn_add_from_album')}</span></button>
                                     </div>
                                 )}
-                                <button onClick={onDirectStart} className="w-full flex items-center justify-center gap-2 py-3 text-txt-secondary font-medium rounded-xl bg-surface-bg-alt hover:bg-surface-bg border border-surface-border active:scale-95 transition-all mt-2"><Play size={16} className="fill-current" /><span className="text-sm">{t('btn_start_direct')}</span></button>
                             </div>
                         </div>
                     )}
