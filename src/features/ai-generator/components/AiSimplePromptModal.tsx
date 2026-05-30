@@ -7,6 +7,8 @@ import CameraView from '../../../components/scanner/CameraView';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 import { getContrastTextStyles } from '../../../utils/ui';
 import { AiGenerationResult } from '../services/aiApiService';
+import { classifyColumnFormula } from '../../../utils/templateUtils';
+import { useSearchTemplateOnlineTranslation } from '../../../i18n/search_template_online';
 interface TerminalWindowProps {
     title: string;
     streamText: string;
@@ -55,7 +57,7 @@ const TerminalWindow: React.FC<TerminalWindowProps> = ({
                 <div className="flex items-center gap-1.5 min-w-0">
                     <Terminal size={12} className={isError ? "text-status-danger" : (isSuccess ? "text-status-success" : "text-brand-primary")} />
                     <span className="text-[9px] font-mono tracking-wider text-txt-muted uppercase truncate">
-                        {title} {isGenerating && `(${elapsedTime}s)`}
+                        {title}
                     </span>
                 </div>
                 {isGenerating && <span className="w-1 h-1 rounded-full bg-brand-primary animate-pulse" />}
@@ -91,6 +93,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
     isOpen, gameName, onClose, onDirectStart, onAiSuccess, onSwitchToAdvanced
 }) => {
     const { t } = useAiGeneratorTranslation();
+    const { t: tOnline } = useSearchTemplateOnlineTranslation();
     const isAdvanceUser = localStorage.getItem('advance_user') === 'true';
 
     const aiSimple = useAiSimpleGenerator();
@@ -98,6 +101,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
         simpleStatus, gemmaStatus, flashStatus,
         gemmaResult, flashResult,
         flashStreamText, gemmaStreamText,
+        flashTryCount, gemmaTryCount,
         gemmaElapsedTime, flashElapsedTime,
         gemmaError, flashError,
         processAndGenerateSimple, resetSimple, abortSimpleAll
@@ -158,24 +162,20 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
         return (
             <div className="flex flex-col gap-1 max-h-[160px] overflow-y-auto pr-0.5 scrollbar-thin select-none flex-1 min-w-0 bg-surface-bg border border-surface-border rounded-xl p-2.5">
                 {result.template.columns.map((col: any, idx: number) => {
-                    const typeMap: Record<string, string> = {
-                        'a1+next': t('type_accum'),
-                        'a1×c1': t('type_rate'),
-                        'a1×a2': t('type_product'),
-                        '(a1×a2)+next': t('type_prod_accum')
-                    };
-                    let displayFormula = col.inputType === 'clicker' ? t('type_clicker') :
-                                         (col.formula && col.formula.includes('f1') ? t('type_lookup') :
-                                         (typeMap[col.formula || ''] || t('type_plain')));
-
+                    const { formulaKey, bgClass, textClass } = classifyColumnFormula(col);
                     return (
-                        <div key={col.id || idx} className="flex flex-col py-1 border-b border-surface-border/20 last:border-0 text-left">
-                            <span className="text-[11px] font-bold truncate max-w-full leading-tight" style={{ color: col.color || 'var(--c-txt-primary)', ...getContrastTextStyles(col.color || '') }}>
+                        <div key={col.id || idx} className="flex justify-between items-center py-1 border-b border-surface-border/20 last:border-0 text-left">
+                            <span 
+                                className="text-[11px] font-bold truncate pr-1 leading-tight" 
+                                style={{ 
+                                    color: col.color || 'var(--c-txt-primary)', 
+                                    ...getContrastTextStyles(col.color || '') 
+                                }}
+                            >
                                 {col.name}
                             </span>
-                            <span className="inline-flex text-[9px] font-bold px-1 py-0.2 border border-surface-border/40 bg-surface-bg-alt text-txt-secondary rounded-sm self-start mt-0.5 whitespace-nowrap">
-                                {displayFormula}
-                                {col.inputType === 'clicker' && ' [+]'}
+                            <span className={`inline-flex px-1.5 py-0.2 rounded-full border text-[8px] font-black ${bgClass} ${textClass} shrink-0 whitespace-nowrap`}>
+                                {tOnline(formulaKey as any)}
                             </span>
                         </div>
                     );
@@ -220,13 +220,50 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                     {/* Content Area */}
                     {simpleStatus !== 'idle' ? (
                         <div className="flex flex-col animate-in fade-in zoom-in-95 duration-300 w-full select-none">
+                            {/* 雙軌 Header (完整模型名稱與跑秒標示) */}
+                            <div className="grid grid-cols-2 gap-2 mt-1 mb-2 select-none text-left">
+                                {/* 左軌 Header */}
+                                <div className="flex flex-col gap-0.5 px-2 py-1.5 bg-surface-bg-alt/60 border border-surface-border rounded-xl">
+                                    <div className="flex items-center justify-between min-w-0">
+                                        <span className="text-[11px] font-black text-brand-primary truncate">
+                                            ⚡ {t('label_flash_version')}
+                                        </span>
+                                        {flashStatus === 'generating' && (
+                                            <span className="text-[9px] font-mono font-bold text-brand-primary shrink-0 animate-pulse">
+                                                ({flashElapsedTime}s)
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="text-[8px] font-mono text-txt-muted truncate leading-tight select-all">
+                                        {flashTryCount === 2 ? 'gemini-3.1-flash-lite' : 'gemini-3-flash-preview'}
+                                    </div>
+                                </div>
+
+                                {/* 右軌 Header */}
+                                <div className="flex flex-col gap-0.5 px-2 py-1.5 bg-surface-bg-alt/60 border border-surface-border rounded-xl">
+                                    <div className="flex items-center justify-between min-w-0">
+                                        <span className="text-[11px] font-black text-brand-secondary truncate">
+                                            🏆 {t('label_gemma_version')}
+                                        </span>
+                                        {gemmaStatus === 'generating' && (
+                                            <span className="text-[9px] font-mono font-bold text-brand-secondary shrink-0 animate-pulse">
+                                                ({gemmaElapsedTime}s)
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="text-[8px] font-mono text-txt-muted truncate leading-tight select-all">
+                                        {gemmaTryCount === 2 ? 'gemma-4-26b-a4b-it' : 'gemma-4-31b-it'}
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* 雙軌實時預覽板 (雙 Terminal 賽馬，成功時跳出結果) */}
-                            <div className="grid grid-cols-2 gap-2 mt-1 mb-4 p-1 rounded-xl shadow-inner min-h-[160px]">
+                            <div className="grid grid-cols-2 gap-2 mb-4 p-1 rounded-xl shadow-inner min-h-[160px]">
                                 {flashStatus === 'success' ? (
                                     renderColumnList(flashResult)
                                 ) : (
                                     <TerminalWindow
-                                        title={t('label_flash_version')}
+                                        title="STREAM LOG"
                                         streamText={flashStreamText}
                                         result={flashResult}
                                         statusStr={flashStatus}
@@ -239,7 +276,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                                     renderColumnList(gemmaResult)
                                 ) : (
                                     <TerminalWindow
-                                        title={t('label_gemma_version')}
+                                        title="STREAM LOG"
                                         streamText={gemmaStreamText}
                                         result={gemmaResult}
                                         statusStr={gemmaStatus}
