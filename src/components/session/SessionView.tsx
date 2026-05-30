@@ -263,17 +263,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     showToast({ message: tSession('toast_ai_apply_success'), type: 'success' });
   }, [session, template, props.onUpdateTemplate, props.onUpdateSession, showToast, tSession]);
 
-  // 背景 AI 智慧建立成功/失敗監聽：嚴格隔離情況 A（背景自動套用）與情況 B（前台手動確認）
-  React.useEffect(() => {
-    if (aiGenerator.status === 'success') {
-      if (!isAiPromptOpen && aiGenerator.generatedResult) {
-        handleAiSuccess(aiGenerator.generatedResult.template);
-        aiGenerator.reset();
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aiGenerator.status, aiGenerator.generatedResult, handleAiSuccess, aiGenerator.reset]);
-
   React.useEffect(() => {
     if (aiGenerator.status === 'error') {
       if (!isAiPromptOpen) {
