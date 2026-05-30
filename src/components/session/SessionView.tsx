@@ -75,7 +75,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   // 全域同步計時器
   React.useEffect(() => {
     let interval: any;
-    if (aiGenerator.status === 'generating') {
+    const isGenerating = aiGenerator.status === 'generating' || aiSimpleGenerator.simpleStatus === 'generating';
+    if (isGenerating) {
       const startTime = Date.now();
       interval = setInterval(() => {
         setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
@@ -83,7 +84,10 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     } else {
       setElapsedTime(0);
     }
-  }, [aiGenerator.status]);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [aiGenerator.status, aiSimpleGenerator.simpleStatus]);
 
   const handleOpenActiveAiPrompt = React.useCallback(() => {
     if (aiSimpleGenerator.simpleStatus !== 'idle') {
