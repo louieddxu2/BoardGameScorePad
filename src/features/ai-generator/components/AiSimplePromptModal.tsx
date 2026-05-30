@@ -312,6 +312,14 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                             </div>
                             <p className="text-txt-primary font-medium mb-3 text-[14px] leading-snug select-none">{t('simple_desc')}</p>
 
+                            {/* 隱私警告區塊 */}
+                            <div className="flex gap-2 p-3 bg-surface-bg-alt rounded-lg border border-surface-border mb-4 select-none">
+                                <AlertCircle size={16} className="text-status-warning shrink-0 mt-0.5" />
+                                <p className="text-[11px] text-txt-muted leading-relaxed">
+                                    {t('privacy_warning')}
+                                </p>
+                            </div>
+
                             {/* 圖片選照佇列 */}
                             {queuedFiles.length > 0 && (
                                 <div className="mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300 select-none">
