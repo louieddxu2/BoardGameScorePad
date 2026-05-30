@@ -427,6 +427,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onDirectStart={() => setIsAiPromptOpen(false)}
         onAiSuccess={handleAiSuccess}
         gameName={session.name || template.name}
+        aiSimpleGenerator={aiSimpleGenerator}
         onSwitchToAdvanced={() => {
           setIsAiPromptOpen(false);
           // 🛡️ 延遲 200ms 開啟進階彈窗，結清前一個 modal 的非同步 history.back()，確保歷史紀錄堆疊 100% 穩定流暢

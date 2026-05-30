@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Camera, Image as ImageIcon, Play, Loader2, AlertCircle, X, Sparkles, Terminal } from 'lucide-react';
-import { useAiSimpleGenerator, ModelRunStatus } from '../hooks/useAiSimpleGenerator';
+import { useAiSimpleGenerator, ModelRunStatus, UseAiSimpleGeneratorResult } from '../hooks/useAiSimpleGenerator';
 import { useAiGeneratorTranslation } from '../../../i18n/aiGenerator';
 import { GameTemplate } from '../../../types';
 import CameraView from '../../../components/scanner/CameraView';
@@ -87,16 +87,17 @@ export interface AiSimplePromptModalProps {
     onDirectStart: () => void;
     onAiSuccess: (result: Partial<GameTemplate>) => void;
     onSwitchToAdvanced: () => void;
+    aiSimpleGenerator: UseAiSimpleGeneratorResult;
 }
 
 const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
-    isOpen, gameName, onClose, onAiSuccess, onSwitchToAdvanced
+    isOpen, gameName, onClose, onAiSuccess, onSwitchToAdvanced, aiSimpleGenerator
 }) => {
     const { t } = useAiGeneratorTranslation();
     const { t: tOnline } = useSearchTemplateOnlineTranslation();
     const isAdvanceUser = localStorage.getItem('advance_user') === 'true';
 
-    const aiSimple = useAiSimpleGenerator();
+    const aiSimple = aiSimpleGenerator;
     const {
         simpleStatus, gemmaStatus, flashStatus,
         gemmaResult, flashResult,
@@ -119,12 +120,27 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
         return () => objectUrls.forEach(url => URL.revokeObjectURL(url));
     }, [queuedFiles]);
 
+    // 當彈窗關閉（隱藏）時，防禦性地重設相機，釋放硬體鏡頭資源
     useEffect(() => {
-        resetSimple();
-        setQueuedFiles([]);
-    }, [isOpen, resetSimple]);
+        if (!isOpen) {
+            setIsScannerOpen(false);
+        }
+    }, [isOpen]);
 
-    if (!isOpen) return null;
+    // 既提升 AI 狀態，又不銷毀組件的關閉行為協調函數
+    const handleCloseWithBackgroundKeep = () => {
+        const isGenerating = simpleStatus === 'compressing' || simpleStatus === 'generating';
+        const isSuccess = simpleStatus === 'success';
+        if (isGenerating || isSuccess) {
+            onClose();
+        } else {
+            // 只有在閒置或失敗時，關閉彈窗才進行徹底 reset 釋放
+            abortSimpleAll();
+            resetSimple();
+            setQueuedFiles([]);
+            onClose();
+        }
+    };
 
     const handleCameraCapture = (blobs: Blob[]) => {
         if (!blobs || blobs.length === 0) return;
@@ -188,7 +204,13 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
     const isProcessing = simpleStatus === 'compressing' || simpleStatus === 'generating' || simpleStatus === 'success';
 
     return (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300" style={{ zIndex }} onClick={(e) => { if (e.target === e.currentTarget) { abortSimpleAll(); resetSimple(); onClose(); } }}>
+        <div 
+            className={`fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 transition-all duration-300 ${
+                isOpen ? 'opacity-100 pointer-events-auto visible' : 'opacity-0 pointer-events-none invisible'
+            }`} 
+            style={{ zIndex }} 
+            onClick={(e) => { if (e.target === e.currentTarget) { handleCloseWithBackgroundKeep(); } }}
+        >
             <input
                 type="file"
                 ref={fileInputRef}
@@ -217,7 +239,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                                     {t('tab_advanced')} ➔
                                 </button>
                             )}
-                            <button onClick={() => { abortSimpleAll(); resetSimple(); onClose(); }} className="p-1 text-txt-muted hover:text-txt-primary bg-surface-bg-alt rounded-lg transition-colors"><X size={18} /></button>
+                            <button onClick={handleCloseWithBackgroundKeep} className="p-1 text-txt-muted hover:text-txt-primary bg-surface-bg-alt rounded-lg transition-colors"><X size={18} /></button>
                         </div>
                     </div>
 
