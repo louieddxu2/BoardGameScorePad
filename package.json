@@ -8,8 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "sync:data": "node scripts/sync_bgg_data.cjs",
-    "test": "vitest run --exclude src/components/session/SessionUI.test.tsx --exclude src/utils/ui-consistency.test.ts",
-    "test:core": "vitest run --exclude src/components/session/SessionUI.test.tsx --exclude src/utils/ui-consistency.test.ts",
+    "test": "vitest run --exclude \"{src/components/session/SessionUI.test.tsx,src/utils/ui-consistency.test.ts}\"",
+    "test:core": "vitest run --exclude \"{src/components/session/SessionUI.test.tsx,src/utils/ui-consistency.test.ts}\"",
     "test:release": "vitest run",
     "test:ui": "vitest run src/utils/ui-consistency.test.ts"
   },
