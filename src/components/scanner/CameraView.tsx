@@ -25,6 +25,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
     const [lastThumbnail, setLastThumbnail] = useState<string | null>(null);
     const [isFlashing, setIsFlashing] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const submitRef = useRef(false);
 
     // Rotation State (Sensor): 0 (Portrait), 90 (CCW Tilt/Right Icon), -90 (CW Tilt/Left Icon)
     // This tracks the PHYSICAL orientation of the device gravity.
@@ -162,7 +163,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
     }, [facingMode]);
 
     const handleShutter = () => {
-        if (!videoRef.current || !videoRef.current.videoWidth || isProcessing) return;
+        if (!videoRef.current || !videoRef.current.videoWidth || isProcessing || submitRef.current) return;
         const video = videoRef.current;
 
         // Immediate Feedback
@@ -202,6 +203,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
                 if (singleShot) {
                     // In single shot mode, we fire and forget (parent will unmount us)
                     // Keep isProcessing true to prevent double taps during transition
+                    submitRef.current = true;
                     onCapture([blob]);
                 } else {
                     setCaptures(prev => [...prev, blob]);
@@ -216,6 +218,9 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
     };
 
     const handleDone = () => {
+        if (submitRef.current) return;
+        submitRef.current = true;
+        setIsProcessing(true);
         if (captures.length > 0) {
             onCapture(captures);
         } else {
@@ -326,10 +331,15 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
                     {!singleShot && captures.length > 0 ? (
                         <button
                             onClick={handleDone}
-                            className="w-14 h-14 bg-brand-primary-deep rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition-all animate-in zoom-in duration-200"
+                            disabled={isProcessing}
+                            className="w-14 h-14 bg-brand-primary-deep rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition-all animate-in zoom-in duration-200 disabled:opacity-80 disabled:scale-95"
                             style={iconStyle}
                         >
-                            <Check size={28} strokeWidth={3} />
+                            {isProcessing ? (
+                                <Loader2 size={26} className="animate-spin" />
+                            ) : (
+                                <Check size={28} strokeWidth={3} />
+                            )}
                         </button>
                     ) : (
                         <div className="w-14 h-14" />

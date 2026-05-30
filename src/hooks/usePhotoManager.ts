@@ -38,6 +38,7 @@ export const usePhotoManager = ({
   const contextIdRef = useRef(contextId);
   const currentIdsRef = useRef(currentPhotoIds);
   const callbacksRef = useRef({ onPhotosAdded, onPhotoDeleted, onError });
+  const isSavingCameraBatchRef = useRef(false);
 
   useEffect(() => { contextIdRef.current = contextId; }, [contextId]);
   useEffect(() => { currentIdsRef.current = currentPhotoIds; }, [currentPhotoIds]);
@@ -55,35 +56,40 @@ export const usePhotoManager = ({
    * 壓縮每張照片 → 存入 IndexedDB → 呼叫 onPhotosAdded → 關閉相機。
    */
   const handleCameraBatchCapture = useCallback(async (blobs: Blob[]) => {
+    if (isSavingCameraBatchRef.current) return;
     if (blobs.length === 0) {
       setIsCameraOpen(false);
       return;
     }
 
+    isSavingCameraBatchRef.current = true;
     const newPhotoIds: string[] = [];
 
-    for (const blob of blobs) {
-      try {
-        const optimizedBlob = await compressAndResizeImage(blob, 1, 1920);
-        const savedImg = await imageService.saveImage(
-          optimizedBlob,
-          contextIdRef.current,
-          'session'
-        );
-        newPhotoIds.push(savedImg.id);
-      } catch (err) {
-        console.error('Failed to save camera capture', err);
+    try {
+      for (const blob of blobs) {
+        try {
+          const optimizedBlob = await compressAndResizeImage(blob, 1, 1920);
+          const savedImg = await imageService.saveImage(
+            optimizedBlob,
+            contextIdRef.current,
+            'session'
+          );
+          newPhotoIds.push(savedImg.id);
+        } catch (err) {
+          console.error('Failed to save camera capture', err);
+        }
       }
-    }
 
-    if (newPhotoIds.length > 0) {
-      callbacksRef.current.onPhotosAdded(
-        [...currentIdsRef.current, ...newPhotoIds],
-        'camera'
-      );
+      if (newPhotoIds.length > 0) {
+        callbacksRef.current.onPhotosAdded(
+          [...currentIdsRef.current, ...newPhotoIds],
+          'camera'
+        );
+      }
+    } finally {
+      isSavingCameraBatchRef.current = false;
+      setIsCameraOpen(false);
     }
-
-    setIsCameraOpen(false);
   }, []);
 
   /**
