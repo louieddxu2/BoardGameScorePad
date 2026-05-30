@@ -120,7 +120,8 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
     }, [queuedFiles]);
 
     useEffect(() => {
-        if (!isOpen) { resetSimple(); setQueuedFiles([]); }
+        resetSimple();
+        setQueuedFiles([]);
     }, [isOpen, resetSimple]);
 
     if (!isOpen) return null;
@@ -208,10 +209,13 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                         </div>
                         <div className="flex items-center shrink-0 select-none">
                             {isAdvanceUser && !isProcessing && (
-                                <div className="flex bg-surface-bg-alt border border-surface-border rounded-lg p-0.5 mr-2">
-                                    <button type="button" className="px-2 py-0.5 text-[10px] font-black rounded-md transition-all bg-brand-primary text-white shadow-sm">{t('tab_simple')}</button>
-                                    <button type="button" onClick={() => { resetSimple(); onSwitchToAdvanced(); }} className="px-2 py-0.5 text-[10px] font-black rounded-md transition-all text-txt-muted hover:text-txt-primary">{t('tab_advanced')}</button>
-                                </div>
+                                <button 
+                                    type="button" 
+                                    onClick={() => { resetSimple(); onSwitchToAdvanced(); }} 
+                                    className="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all border border-brand-primary/20 text-brand-primary bg-brand-primary/5 hover:bg-brand-primary/10 active:scale-95 mr-2 shrink-0 select-none"
+                                >
+                                    {t('tab_advanced')} ➔
+                                </button>
                             )}
                             <button onClick={() => { abortSimpleAll(); resetSimple(); onClose(); }} className="p-1 text-txt-muted hover:text-txt-primary bg-surface-bg-alt rounded-lg transition-colors"><X size={18} /></button>
                         </div>
@@ -226,7 +230,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                                 <div className="flex flex-col gap-0.5 px-2 py-1.5 bg-surface-bg-alt/60 border border-surface-border rounded-xl">
                                     <div className="flex items-center justify-between min-w-0">
                                         <span className="text-[11px] font-black text-brand-primary truncate">
-                                            ⚡ {t('label_flash_version')}
+                                            {t('label_flash_version')}
                                         </span>
                                         {flashStatus === 'generating' && (
                                             <span className="text-[9px] font-mono font-bold text-brand-primary shrink-0 animate-pulse">
@@ -243,7 +247,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                                 <div className="flex flex-col gap-0.5 px-2 py-1.5 bg-surface-bg-alt/60 border border-surface-border rounded-xl">
                                     <div className="flex items-center justify-between min-w-0">
                                         <span className="text-[11px] font-black text-brand-secondary truncate">
-                                            🏆 {t('label_gemma_version')}
+                                            {t('label_gemma_version')}
                                         </span>
                                         {gemmaStatus === 'generating' && (
                                             <span className="text-[9px] font-mono font-bold text-brand-secondary shrink-0 animate-pulse">
