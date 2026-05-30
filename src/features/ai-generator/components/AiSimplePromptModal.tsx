@@ -52,7 +52,7 @@ const TerminalWindow: React.FC<TerminalWindowProps> = ({
     }, [terminalContent]);
 
     return (
-        <div className={`flex flex-col bg-modal-bg-recessed border ${isError ? 'border-status-danger/30' : 'border-surface-border'} rounded-xl p-2.5 text-left overflow-hidden shadow-inner flex-1 min-w-0 min-h-[160px] max-h-[160px]`}>
+        <div className={`flex flex-col bg-modal-bg-recessed border ${isError ? 'border-status-danger/30' : 'border-surface-border'} rounded-xl p-2 text-left overflow-hidden shadow-inner flex-1 min-w-0 min-h-[220px] max-h-[220px]`}>
             <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-surface-border/50 shrink-0 select-none">
                 <div className="flex items-center gap-1.5 min-w-0">
                     <Terminal size={12} className={isError ? "text-status-danger" : (isSuccess ? "text-status-success" : "text-brand-primary")} />
@@ -154,14 +154,14 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
     const renderColumnList = (result: any) => {
         if (!result?.template?.columns) {
             return (
-                <div className="flex flex-col items-center justify-center py-6 text-txt-muted text-center px-1 select-none flex-1 min-h-[160px] max-h-[160px]">
+                <div className="flex flex-col items-center justify-center py-6 text-txt-muted text-center px-1 select-none flex-1 min-h-[220px] max-h-[220px]">
                     <span className="text-[10px]">{t('no_columns')}</span>
                 </div>
             );
         }
 
         return (
-            <div className="flex flex-col gap-1 max-h-[160px] overflow-y-auto pr-0.5 scrollbar-thin select-none flex-1 min-w-0 bg-surface-bg border border-surface-border rounded-xl p-2.5">
+            <div className="flex flex-col gap-1 max-h-[220px] overflow-y-auto pr-0.5 scrollbar-thin select-none flex-1 min-w-0 bg-surface-bg border border-surface-border rounded-xl p-2">
                 {result.template.columns.map((col: any, idx: number) => {
                     const { formulaKey, bgClass, textClass } = classifyColumnFormula(col);
                     return (
@@ -198,9 +198,9 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                 onChange={handleFileChange}
             />
 
-            <div className="modal-container w-[92vw] max-w-sm bg-app-bg shadow-2xl relative overflow-hidden p-0 border border-modal-border max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="modal-container w-[95vw] max-w-md bg-app-bg shadow-2xl relative overflow-hidden p-0 border border-modal-border max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="h-1 w-full bg-brand-primary" />
-                <div className="p-5 overflow-y-auto scrollbar-thin flex flex-col max-h-[calc(85vh-4px)]">
+                <div className="p-3.5 overflow-y-auto scrollbar-thin flex flex-col max-h-[calc(90vh-4px)]">
                     {/* Header */}
                     <div className="flex justify-between items-center mb-3 shrink-0">
                         <div className="flex items-center gap-1 text-brand-primary">
@@ -262,7 +262,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                             </div>
 
                             {/* 雙軌實時預覽板 (雙 Terminal 賽馬，成功時跳出結果) */}
-                            <div className="grid grid-cols-2 gap-2 mb-4 p-1 rounded-xl shadow-inner min-h-[160px]">
+                            <div className="grid grid-cols-2 gap-2 mb-4 p-1 rounded-xl shadow-inner min-h-[220px]">
                                 {flashStatus === 'success' ? (
                                     renderColumnList(flashResult)
                                 ) : (

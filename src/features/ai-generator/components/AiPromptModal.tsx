@@ -384,13 +384,13 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
             />
 
             <div
-                className="modal-container w-[92vw] max-w-sm bg-app-bg shadow-2xl relative overflow-hidden p-0 border border-modal-border max-h-[85vh] flex flex-col"
+                className="modal-container w-[95vw] max-w-md bg-app-bg shadow-2xl relative overflow-hidden p-0 border border-modal-border max-h-[90vh] flex flex-col"
                 onClick={e => e.stopPropagation()}
             >
                 {/* 頂部裝飾色條 */}
                 <div className="h-1 w-full bg-brand-primary" />
 
-                <div className="p-5 overflow-y-auto scrollbar-thin">
+                <div className="p-3.5 overflow-y-auto scrollbar-thin max-h-[calc(90vh-4px)] flex flex-col">
                     {/* Header */}
                     <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-2 text-brand-primary">
