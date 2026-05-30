@@ -30,6 +30,9 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
 
   const isGenerating = aiStatus === 'compressing' || aiStatus === 'generating';
   const isSuccess = aiStatus === 'success';
+  const isSimpleGeneration = 
+    (simpleFlashStatus && simpleFlashStatus !== 'idle') || 
+    (simpleGemmaStatus && simpleGemmaStatus !== 'idle');
 
   useEffect(() => {
     if (!isInitialSimpleScorepad) return;
@@ -104,8 +107,20 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
                 <>
                   <span className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-ping shrink-0" />
                   <span>
-                    {simpleFlashStatus && simpleFlashStatus !== 'idle' ? (
-                      `⚡ ${t('session_ai_track_express')}: ${simpleFlashStatus === 'success' ? t('session_ai_track_ready') : t('session_ai_track_running')} | 🧠 ${t('session_ai_track_thinking')}: ${simpleGemmaStatus === 'success' ? t('session_ai_track_ready') : t('session_ai_track_running')} (${elapsedTime || 0}s)`
+                    {isSimpleGeneration ? (
+                      `⚡ ${t('session_ai_track_express')}: ${
+                        simpleFlashStatus === 'success' 
+                          ? t('session_ai_track_ready') 
+                          : simpleFlashStatus === 'error' 
+                            ? t('session_ai_track_error') 
+                            : t('session_ai_track_running')
+                      } | 🧠 ${t('session_ai_track_thinking')}: ${
+                        simpleGemmaStatus === 'success' 
+                          ? t('session_ai_track_ready') 
+                          : simpleGemmaStatus === 'error' 
+                            ? t('session_ai_track_error') 
+                            : t('session_ai_track_running')
+                      } (${elapsedTime || 0}s)`
                     ) : (
                       `${t('session_ai_generating_with_timer').replace('{seconds}', (elapsedTime || 0).toString())}`
                     )}
@@ -114,7 +129,17 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
               ) : isSuccess ? (
                 <>
                   <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-                  <span>{t('session_ai_success_btn' as any) || '🎉 AI Generated Successfully! Click to View'}</span>
+                  <span>
+                    {isSimpleGeneration ? (
+                      `${t('session_ai_success_btn_simple')} (⚡:${
+                        simpleFlashStatus === 'success' ? '✅' : '❌'
+                      } | 🧠:${
+                        simpleGemmaStatus === 'success' ? '✅' : '❌'
+                      })`
+                    ) : (
+                      `${t('session_ai_success_btn' as any) || '🎉 AI Generated Successfully! Click to View'}`
+                    )}
+                  </span>
                 </>
               ) : (
                 <>
