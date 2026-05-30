@@ -13,11 +13,12 @@ interface TerminalWindowProps {
     result: AiGenerationResult | null;
     statusStr: ModelRunStatus;
     errStr: string | null;
+    elapsedTime: number;
     t: (key: any) => string;
 }
 
 const TerminalWindow: React.FC<TerminalWindowProps> = ({
-    title, streamText, result, statusStr, errStr, t
+    title, streamText, result, statusStr, errStr, elapsedTime, t
 }) => {
     const isError = statusStr === 'error';
     const isSuccess = statusStr === 'success';
@@ -54,7 +55,7 @@ const TerminalWindow: React.FC<TerminalWindowProps> = ({
                 <div className="flex items-center gap-1.5 min-w-0">
                     <Terminal size={12} className={isError ? "text-status-danger" : (isSuccess ? "text-status-success" : "text-brand-primary")} />
                     <span className="text-[9px] font-mono tracking-wider text-txt-muted uppercase truncate">
-                        {title}
+                        {title} {isGenerating && `(${elapsedTime}s)`}
                     </span>
                 </div>
                 {isGenerating && <span className="w-1 h-1 rounded-full bg-brand-primary animate-pulse" />}
@@ -145,9 +146,43 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
         if (queuedFiles.length === 0) return;
         await processAndGenerateSimple(queuedFiles, gameName);
     };
+    const renderColumnList = (result: any) => {
+        if (!result?.template?.columns) {
+            return (
+                <div className="flex flex-col items-center justify-center py-6 text-txt-muted text-center px-1 select-none flex-1 min-h-[160px] max-h-[160px]">
+                    <span className="text-[10px]">{t('no_columns')}</span>
+                </div>
+            );
+        }
 
+        return (
+            <div className="flex flex-col gap-1 max-h-[160px] overflow-y-auto pr-0.5 scrollbar-thin select-none flex-1 min-w-0 bg-surface-bg border border-surface-border rounded-xl p-2.5">
+                {result.template.columns.map((col: any, idx: number) => {
+                    const typeMap: Record<string, string> = {
+                        'a1+next': t('type_accum'),
+                        'a1×c1': t('type_rate'),
+                        'a1×a2': t('type_product'),
+                        '(a1×a2)+next': t('type_prod_accum')
+                    };
+                    let displayFormula = col.inputType === 'clicker' ? t('type_clicker') :
+                                         (col.formula && col.formula.includes('f1') ? t('type_lookup') :
+                                         (typeMap[col.formula || ''] || t('type_plain')));
 
-
+                    return (
+                        <div key={col.id || idx} className="flex flex-col py-1 border-b border-surface-border/20 last:border-0 text-left">
+                            <span className="text-[11px] font-bold truncate max-w-full leading-tight" style={{ color: col.color || 'var(--c-txt-primary)', ...getContrastTextStyles(col.color || '') }}>
+                                {col.name}
+                            </span>
+                            <span className="inline-flex text-[9px] font-bold px-1 py-0.2 border border-surface-border/40 bg-surface-bg-alt text-txt-secondary rounded-sm self-start mt-0.5 whitespace-nowrap">
+                                {displayFormula}
+                                {col.inputType === 'clicker' && ' [+]'}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
     const isBothDone = (flashStatus === 'success' || flashStatus === 'error') && (gemmaStatus === 'success' || gemmaStatus === 'error');
     const isProcessing = simpleStatus === 'compressing' || simpleStatus === 'generating' || simpleStatus === 'success';
 
@@ -185,41 +220,34 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                     {/* Content Area */}
                     {simpleStatus !== 'idle' ? (
                         <div className="flex flex-col animate-in fade-in zoom-in-95 duration-300 w-full select-none">
-                            <div className="grid grid-cols-2 gap-2 mb-3">
-                                {/* 左軌極速 */}
-                                <div className={`flex flex-col items-center justify-center p-2 rounded-lg border text-center transition-all ${flashStatus === 'success' ? 'bg-status-success/5 border-status-success/30 text-status-success' : flashStatus === 'error' ? 'bg-status-danger/5 border-status-danger/30 text-status-danger' : 'bg-surface-bg-alt border-surface-border text-txt-muted animate-pulse'}`}>
-                                    <span className="text-[10px] font-black tracking-tight">{t('label_flash_version')}</span>
-                                    <span className="text-[9px] font-mono font-medium mt-0.5 flex items-center gap-1">
-                                        {flashStatus === 'generating' ? <><Loader2 size={10} className="animate-spin text-brand-primary" /><span>{t('elapsed_seconds').replace('{count}', flashElapsedTime.toString())}</span></> : (flashStatus === 'success' ? t('status_done') : (flashStatus === 'error' ? t('status_failed') : t('status_queued')))}
-                                    </span>
-                                </div>
-                                {/* 右軌大師 */}
-                                <div className={`flex flex-col items-center justify-center p-2 rounded-lg border text-center transition-all ${gemmaStatus === 'success' ? 'bg-brand-primary/10 border-brand-primary/30 text-brand-primary' : gemmaStatus === 'error' ? 'bg-status-danger/5 border-status-danger/30 text-status-danger' : 'bg-surface-bg-alt border-surface-border text-txt-muted animate-pulse'}`}>
-                                    <span className="text-[10px] font-black tracking-tight">{t('label_gemma_version')}</span>
-                                    <span className="text-[9px] font-mono font-medium mt-0.5 flex items-center gap-1">
-                                        {gemmaStatus === 'generating' ? <><Loader2 size={10} className="animate-spin text-brand-secondary" /><span>{t('elapsed_seconds').replace('{count}', gemmaElapsedTime.toString())}</span></> : (gemmaStatus === 'success' ? t('status_done') : (gemmaStatus === 'error' ? t('status_failed') : t('status_queued')))}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* 雙軌實時預覽板 (雙 Terminal 賽馬) */}
+                            {/* 雙軌實時預覽板 (雙 Terminal 賽馬，成功時跳出結果) */}
                             <div className="grid grid-cols-2 gap-2 mt-1 mb-4 p-1 rounded-xl shadow-inner min-h-[160px]">
-                                <TerminalWindow
-                                    title={flashStatus === 'success' ? '⚡ Gemini 3.0' : t('label_flash_version')}
-                                    streamText={flashStreamText}
-                                    result={flashResult}
-                                    statusStr={flashStatus}
-                                    errStr={flashError}
-                                    t={t}
-                                />
-                                <TerminalWindow
-                                    title={gemmaStatus === 'success' ? '🏆 Gemma 4' : t('label_gemma_version')}
-                                    streamText={gemmaStreamText}
-                                    result={gemmaResult}
-                                    statusStr={gemmaStatus}
-                                    errStr={gemmaError}
-                                    t={t}
-                                />
+                                {flashStatus === 'success' ? (
+                                    renderColumnList(flashResult)
+                                ) : (
+                                    <TerminalWindow
+                                        title={t('label_flash_version')}
+                                        streamText={flashStreamText}
+                                        result={flashResult}
+                                        statusStr={flashStatus}
+                                        errStr={flashError}
+                                        elapsedTime={flashElapsedTime}
+                                        t={t}
+                                    />
+                                )}
+                                {gemmaStatus === 'success' ? (
+                                    renderColumnList(gemmaResult)
+                                ) : (
+                                    <TerminalWindow
+                                        title={t('label_gemma_version')}
+                                        streamText={gemmaStreamText}
+                                        result={gemmaResult}
+                                        statusStr={gemmaStatus}
+                                        errStr={gemmaError}
+                                        elapsedTime={gemmaElapsedTime}
+                                        t={t}
+                                    />
+                                )}
                             </div>
 
                             {/* 雙版本套用按鈕 */}
