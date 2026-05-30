@@ -86,7 +86,7 @@ export interface AiSimplePromptModalProps {
     onClose: () => void;
     onDirectStart: () => void;
     onAiSuccess: (result: Partial<GameTemplate>) => void;
-    onSwitchToAdvanced: () => void;
+    onSwitchToAdvanced: (files: File[]) => void;
     aiSimpleGenerator: UseAiSimpleGeneratorResult;
 }
 
@@ -233,7 +233,12 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                             {isAdvanceUser && !isProcessing && (
                                 <button 
                                     type="button" 
-                                    onClick={() => { resetSimple(); onSwitchToAdvanced(); }} 
+                                    onClick={() => {
+                                        const filesToTransfer = [...queuedFiles];
+                                        resetSimple();
+                                        setQueuedFiles([]);
+                                        onSwitchToAdvanced(filesToTransfer);
+                                    }} 
                                     className="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all border border-brand-primary/20 text-brand-primary bg-brand-primary/5 hover:bg-brand-primary/10 active:scale-95 mr-2 shrink-0 select-none"
                                 >
                                     {t('tab_advanced')} ➔

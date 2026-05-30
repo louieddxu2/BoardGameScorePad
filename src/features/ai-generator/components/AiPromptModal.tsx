@@ -17,6 +17,8 @@ export interface AiPromptModalProps {
     onAiSuccess: (result: Partial<GameTemplate>) => void;
     aiGenerator: UseAiGeneratorResult;
     elapsedTime: number;
+    initialFiles?: File[];
+    onInitialFilesConsumed?: () => void;
 }
 
 const AiPromptModal: React.FC<AiPromptModalProps> = ({
@@ -25,7 +27,9 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
     onClose,
     onAiSuccess,
     aiGenerator,
-    elapsedTime
+    elapsedTime,
+    initialFiles,
+    onInitialFilesConsumed
 }) => {
     const { t } = useAiGeneratorTranslation();
     const { status, errorMessage, tokenUsage, streamText, processAndGenerate, reset, generatedResult } = aiGenerator;
@@ -55,6 +59,12 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         // 清理函數：當檔案變更或元件卸載時釋放 URL
         return () => objectUrls.forEach(url => URL.revokeObjectURL(url));
     }, [queuedFiles]);
+
+    useEffect(() => {
+        if (!isOpen || !initialFiles?.length) return;
+        setQueuedFiles(prev => [...prev, ...initialFiles]);
+        onInitialFilesConsumed?.();
+    }, [isOpen, initialFiles, onInitialFilesConsumed]);
 
     const [showDebug, setShowDebug] = useState<boolean>(false);
 

@@ -61,6 +61,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const [isOnlineSearchOpen, setIsOnlineSearchOpen] = React.useState(false);
   const [isAiPromptOpen, setIsAiPromptOpen] = React.useState(false);
   const [isAdvancedAiOpen, setIsAdvancedAiOpen] = React.useState(false);
+  const [advancedInitialFiles, setAdvancedInitialFiles] = React.useState<File[]>([]);
 
   // 狀態提升：全域 AI 生成器
   const aiGenerator = useAiGenerator();
@@ -75,7 +76,11 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   // 全域同步計時器
   React.useEffect(() => {
     let interval: any;
-    const isGenerating = aiGenerator.status === 'generating' || aiSimpleGenerator.simpleStatus === 'generating';
+    const isGenerating =
+      aiGenerator.status === 'compressing' ||
+      aiGenerator.status === 'generating' ||
+      aiSimpleGenerator.simpleStatus === 'compressing' ||
+      aiSimpleGenerator.simpleStatus === 'generating';
     if (isGenerating) {
       const startTime = Date.now();
       interval = setInterval(() => {
@@ -432,7 +437,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onAiSuccess={handleAiSuccess}
         gameName={session.name || template.name}
         aiSimpleGenerator={aiSimpleGenerator}
-        onSwitchToAdvanced={() => {
+        onSwitchToAdvanced={(files) => {
+          setAdvancedInitialFiles(files);
           setIsAiPromptOpen(false);
           // 🛡️ 延遲 200ms 開啟進階彈窗，結清前一個 modal 的非同步 history.back()，確保歷史紀錄堆疊 100% 穩定流暢
           setTimeout(() => {
@@ -450,6 +456,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         gameName={session.name || template.name}
         aiGenerator={aiGenerator}
         elapsedTime={elapsedTime}
+        initialFiles={advancedInitialFiles}
+        onInitialFilesConsumed={() => setAdvancedInitialFiles([])}
       />
 
       {/* Exit Modal */}
