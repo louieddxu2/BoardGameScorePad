@@ -83,8 +83,17 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     } else {
       setElapsedTime(0);
     }
-    return () => clearInterval(interval);
   }, [aiGenerator.status]);
+
+  const handleOpenActiveAiPrompt = React.useCallback(() => {
+    if (aiSimpleGenerator.simpleStatus !== 'idle') {
+      setIsAiPromptOpen(true);
+    } else if (aiGenerator.status !== 'idle') {
+      setIsAdvancedAiOpen(true);
+    } else {
+      setIsAiPromptOpen(true);
+    }
+  }, [aiSimpleGenerator.simpleStatus, aiGenerator.status]);
 
   const sessionState = useSessionState(props);
   const { setUiState } = sessionState;
@@ -625,7 +634,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           zoomLevel={zoomLevel}
           previewValue={previewValue}
           onOpenOnlineSearch={() => setIsOnlineSearchOpen(true)}
-          onOpenAiPrompt={() => setIsAiPromptOpen(true)}
+          onOpenAiPrompt={handleOpenActiveAiPrompt}
           aiStatus={aiSimpleGenerator.simpleStatus !== 'idle' ? (aiSimpleGenerator.simpleStatus as any) : aiGenerator.status}
           elapsedTime={elapsedTime}
         />

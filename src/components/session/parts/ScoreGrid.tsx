@@ -592,43 +592,85 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           isGenerating={aiStatus === 'compressing' || aiStatus === 'generating'}
         />
 
-        {(aiStatus === 'compressing' || aiStatus === 'generating') && template.columns.length > 0 ? (
+        {(aiStatus === 'compressing' || aiStatus === 'generating' || aiStatus === 'success') && template.columns.length > 0 ? (
           <div 
-            className="mx-6 my-4 z-10 flex flex-col items-center p-6 rounded-xl border border-brand-primary/20 bg-brand-primary/5 backdrop-blur-sm shadow-md relative overflow-hidden select-none animate-in fade-in duration-300"
+            onClick={() => {
+              if (aiStatus === 'success') {
+                onOpenAiPrompt?.();
+              }
+            }}
+            className={`mx-6 my-4 z-10 flex flex-col items-center p-6 rounded-xl border relative overflow-hidden select-none animate-in fade-in duration-300 ${
+              aiStatus === 'success'
+                ? 'border-status-success/30 bg-status-success/5 shadow-md shadow-status-success/5 cursor-pointer hover:bg-status-success/10 active:scale-[0.99] transition-all'
+                : 'border-brand-primary/20 bg-brand-primary/5 backdrop-blur-sm shadow-md'
+            }`}
             style={template.columns.length > 0 ? { marginLeft: `${leftColWidth + 16}px`, marginRight: '16px' } : undefined}
           >
             {/* 流光裝飾背景 */}
-            <div className="absolute inset-0 bg-gradient-to-r from-brand-primary/5 via-brand-secondary/5 to-brand-primary/5 animate-pulse pointer-events-none" />
+            <div className={`absolute inset-0 animate-pulse pointer-events-none ${
+              aiStatus === 'success'
+                ? 'bg-gradient-to-r from-status-success/5 via-brand-secondary/5 to-status-success/5'
+                : 'bg-gradient-to-r from-brand-primary/5 via-brand-secondary/5 to-brand-primary/5'
+            }`} />
             
             {/* Gemini 霓虹流光條 */}
-            <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand-primary via-brand-secondary to-brand-primary animate-pulse" />
+            <div className={`absolute top-0 left-0 right-0 h-0.5 animate-pulse ${
+              aiStatus === 'success'
+                ? 'bg-gradient-to-r from-status-success via-brand-secondary to-status-success'
+                : 'bg-gradient-to-r from-brand-primary via-brand-secondary to-brand-primary'
+            }`} />
             
             <div className="relative flex flex-col items-center gap-4 text-center z-10">
               <div className="relative flex items-center justify-center">
-                <div className="absolute inset-0 bg-brand-primary/20 rounded-full animate-ping scale-110" />
-                <div className="relative bg-brand-primary/10 rounded-full text-brand-primary border border-brand-primary/30 shadow-md flex items-center justify-center w-14 h-14">
+                <div className={`absolute inset-0 rounded-full animate-ping scale-110 ${
+                  aiStatus === 'success' ? 'bg-status-success/20' : 'bg-brand-primary/20'
+                }`} />
+                <div className={`relative rounded-full border shadow-md flex items-center justify-center w-14 h-14 ${
+                  aiStatus === 'success'
+                    ? 'bg-status-success/10 text-status-success border-status-success/30'
+                    : 'bg-brand-primary/10 text-brand-primary border-brand-primary/30'
+                }`}>
                   <Sparkles size={24} className="animate-pulse" />
                 </div>
               </div>
               
               <div className="space-y-1.5">
                 <h4 className="text-txt-primary font-black text-sm tracking-wide flex items-center justify-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-ping" />
-                  {t('session_ai_waiting_status') || 'AI score grid generating...'}
+                  {aiStatus === 'success' ? (
+                    <>
+                      <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" />
+                      {t('session_ai_success_status' as any)}
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-ping" />
+                      {t('session_ai_waiting_status') || 'AI score grid generating...'}
+                    </>
+                  )}
                 </h4>
-                <p className="text-[11px] text-txt-muted leading-relaxed font-mono font-medium max-w-[280px]">
-                  {(t('session_ai_waiting_timer') || 'Analyzing, elapsed {seconds}s...').replace('{seconds}', (elapsedTime || 0).toString())}
-                </p>
-                <p className="text-[10px] text-brand-primary font-semibold leading-relaxed max-w-[280px]">
-                  {t('session_ai_waiting_status_detail')}
-                </p>
+                {aiStatus === 'success' ? (
+                  <p className="text-[11px] text-txt-muted leading-relaxed font-medium max-w-[280px]">
+                    {t('session_ai_success_status_detail' as any)}
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-[11px] text-txt-muted leading-relaxed font-mono font-medium max-w-[280px]">
+                      {(t('session_ai_waiting_timer') || 'Analyzing, elapsed {seconds}s...').replace('{seconds}', (elapsedTime || 0).toString())}
+                    </p>
+                    <p className="text-[10px] text-brand-primary font-semibold leading-relaxed max-w-[280px]">
+                      {t('session_ai_waiting_status_detail')}
+                    </p>
+                  </>
+                )}
               </div>
 
-              <div className="flex gap-1.5 items-center justify-center py-1 bg-black/10 rounded-full px-3 border border-white/5">
-                <div className="w-1 h-1 rounded-full bg-brand-primary animate-bounce delay-100" />
-                <div className="w-1 h-1 rounded-full bg-brand-secondary animate-bounce delay-200" />
-                <div className="w-1 h-1 rounded-full bg-brand-primary animate-bounce delay-300" />
-              </div>
+              {aiStatus !== 'success' && (
+                <div className="flex gap-1.5 items-center justify-center py-1 bg-black/10 rounded-full px-3 border border-white/5">
+                  <div className="w-1 h-1 rounded-full bg-brand-primary animate-bounce delay-100" />
+                  <div className="w-1 h-1 rounded-full bg-brand-secondary animate-bounce delay-200" />
+                  <div className="w-1 h-1 rounded-full bg-brand-primary animate-bounce delay-300" />
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -636,6 +678,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
             isInitialSimpleScorepad={isInitialSimpleScorepad}
             leftColWidth={leftColWidth}
             onOpenOnlineSearch={onOpenOnlineSearch}
+            onOpenAiPrompt={onOpenAiPrompt}
             aiStatus={aiStatus}
             elapsedTime={elapsedTime}
             zoomLevel={zoomLevel}
