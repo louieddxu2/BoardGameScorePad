@@ -122,4 +122,28 @@ describe('useAiSimpleGenerator Hook Racing and Safeguard Tests (Slim Version)', 
         expect(result.current.simpleStatus).toBe('idle');
         expect(result.current.flashElapsedTime).toBe(0);
     });
+
+    it('should update streamText states during streaming generation', async () => {
+        // 模擬串流：當 callAiScoreboardApi 被呼叫時，主動調用傳入的 onStream 回呼
+        vi.mocked(callAiScoreboardApi).mockImplementation(async (blobs, game, lang, model, onStream) => {
+            if (onStream) {
+                onStream('{"col');
+                onStream('{"columns": []}');
+            }
+            return mockResult;
+        });
+
+        const { result } = renderHook(() => useAiSimpleGenerator());
+
+        let promise: any;
+        act(() => {
+            promise = result.current.processAndGenerateSimple([new File([], 'test.jpg')], 'Racing Game');
+        });
+
+        await act(async () => {});
+        await act(async () => { await promise; });
+
+        expect(result.current.flashStreamText).toBe('{"columns": []}');
+        expect(result.current.gemmaStreamText).toBe('{"columns": []}');
+    });
 });

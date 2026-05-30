@@ -13,6 +13,8 @@ export interface UseAiSimpleGeneratorResult {
     gemmaStatus: ModelRunStatus;
     flashResult: AiGenerationResult | null;
     gemmaResult: AiGenerationResult | null;
+    flashStreamText: string;
+    gemmaStreamText: string;
     flashTryCount: number;
     gemmaTryCount: number;
     flashElapsedTime: number;
@@ -34,6 +36,9 @@ export const useAiSimpleGenerator = (): UseAiSimpleGeneratorResult => {
 
     const [flashResult, setFlashResult] = useState<AiGenerationResult | null>(null);
     const [gemmaResult, setGemmaResult] = useState<AiGenerationResult | null>(null);
+
+    const [flashStreamText, setFlashStreamText] = useState<string>('');
+    const [gemmaStreamText, setGemmaStreamText] = useState<string>('');
 
     const [flashTryCount, setFlashTryCount] = useState<number>(0);
     const [gemmaTryCount, setGemmaTryCount] = useState<number>(0);
@@ -70,6 +75,8 @@ export const useAiSimpleGenerator = (): UseAiSimpleGeneratorResult => {
         setGemmaStatus('idle');
         setFlashResult(null);
         setGemmaResult(null);
+        setFlashStreamText('');
+        setGemmaStreamText('');
         setFlashTryCount(0);
         setGemmaTryCount(0);
         setFlashElapsedTime(0);
@@ -124,7 +131,7 @@ export const useAiSimpleGenerator = (): UseAiSimpleGeneratorResult => {
         const runFlashTrack = async () => {
             try {
                 setFlashTryCount(1);
-                const res = await callAiScoreboardApi(compressedBlobs, gameName, currentLang, 'gemini-3-flash-preview', undefined, flashAbort.signal);
+                const res = await callAiScoreboardApi(compressedBlobs, gameName, currentLang, 'gemini-3-flash-preview', (stream) => setFlashStreamText(stream), flashAbort.signal);
                 if (flashTimerRef.current) clearInterval(flashTimerRef.current);
                 setFlashResult(res);
                 setFlashStatus('success');
@@ -135,7 +142,8 @@ export const useAiSimpleGenerator = (): UseAiSimpleGeneratorResult => {
                 if (flashAbort.signal.aborted) return null;
                 try {
                     setFlashTryCount(2);
-                    const resRetry = await callAiScoreboardApi(compressedBlobs, gameName, currentLang, 'gemini-3.1-flash-lite', undefined, flashAbort.signal);
+                    setFlashStreamText(''); // 降級重新嘗試前清空上一版串流
+                    const resRetry = await callAiScoreboardApi(compressedBlobs, gameName, currentLang, 'gemini-3.1-flash-lite', (stream) => setFlashStreamText(stream), flashAbort.signal);
                     if (flashTimerRef.current) clearInterval(flashTimerRef.current);
                     setFlashResult(resRetry);
                     setFlashStatus('success');
@@ -154,7 +162,7 @@ export const useAiSimpleGenerator = (): UseAiSimpleGeneratorResult => {
         const runGemmaTrack = async () => {
             try {
                 setGemmaTryCount(1);
-                const res = await callAiScoreboardApi(compressedBlobs, gameName, currentLang, 'gemma-4-31b-it', undefined, gemmaAbort.signal);
+                const res = await callAiScoreboardApi(compressedBlobs, gameName, currentLang, 'gemma-4-31b-it', (stream) => setGemmaStreamText(stream), gemmaAbort.signal);
                 if (gemmaTimerRef.current) clearInterval(gemmaTimerRef.current);
                 setGemmaResult(res);
                 setGemmaStatus('success');
@@ -165,7 +173,8 @@ export const useAiSimpleGenerator = (): UseAiSimpleGeneratorResult => {
                 if (gemmaAbort.signal.aborted) return null;
                 try {
                     setGemmaTryCount(2);
-                    const resRetry = await callAiScoreboardApi(compressedBlobs, gameName, currentLang, 'gemma-4-26b-a4b-it', undefined, gemmaAbort.signal);
+                    setGemmaStreamText(''); // 降級重新嘗試前清空上一版串流
+                    const resRetry = await callAiScoreboardApi(compressedBlobs, gameName, currentLang, 'gemma-4-26b-a4b-it', (stream) => setGemmaStreamText(stream), gemmaAbort.signal);
                     if (gemmaTimerRef.current) clearInterval(gemmaTimerRef.current);
                     setGemmaResult(resRetry);
                     setGemmaStatus('success');
@@ -191,6 +200,7 @@ export const useAiSimpleGenerator = (): UseAiSimpleGeneratorResult => {
     return {
         simpleStatus, flashStatus, gemmaStatus,
         flashResult, gemmaResult,
+        flashStreamText, gemmaStreamText,
         flashTryCount, gemmaTryCount,
         flashElapsedTime, gemmaElapsedTime,
         flashError, gemmaError,

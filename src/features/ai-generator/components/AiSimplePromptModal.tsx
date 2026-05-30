@@ -1,11 +1,81 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Camera, Image as ImageIcon, Play, Loader2, AlertCircle, X, Sparkles } from 'lucide-react';
-import { useAiSimpleGenerator } from '../hooks/useAiSimpleGenerator';
+import { Camera, Image as ImageIcon, Play, Loader2, AlertCircle, X, Sparkles, Terminal } from 'lucide-react';
+import { useAiSimpleGenerator, ModelRunStatus } from '../hooks/useAiSimpleGenerator';
 import { useAiGeneratorTranslation } from '../../../i18n/aiGenerator';
 import { GameTemplate } from '../../../types';
 import CameraView from '../../../components/scanner/CameraView';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 import { getContrastTextStyles } from '../../../utils/ui';
+import { AiGenerationResult } from '../services/aiApiService';
+interface TerminalWindowProps {
+    title: string;
+    streamText: string;
+    result: AiGenerationResult | null;
+    statusStr: ModelRunStatus;
+    errStr: string | null;
+    t: (key: any) => string;
+}
+
+const TerminalWindow: React.FC<TerminalWindowProps> = ({
+    title, streamText, result, statusStr, errStr, t
+}) => {
+    const isError = statusStr === 'error';
+    const isSuccess = statusStr === 'success';
+    const isGenerating = statusStr === 'generating';
+
+    let diagnostic: { raw: string; error: string } | null = null;
+    if (isError && errStr?.startsWith('ai_error_json_parse_failed|')) {
+        try {
+            const jsonStr = errStr.split('|')[1];
+            diagnostic = JSON.parse(jsonStr);
+        } catch (e) { }
+    }
+
+    let terminalContent = "";
+    if (isError) {
+        terminalContent = diagnostic ? diagnostic.raw : (errStr === 'ai_error_rate_limit' ? t('error_rate_limit') : t('error_generic'));
+    } else if (isSuccess && result) {
+        terminalContent = result.rawText;
+    } else {
+        terminalContent = streamText;
+    }
+
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (containerRef.current) {
+            containerRef.current.scrollTop = containerRef.current.scrollHeight;
+        }
+    }, [terminalContent]);
+
+    return (
+        <div className={`flex flex-col bg-modal-bg-recessed border ${isError ? 'border-status-danger/30' : 'border-surface-border'} rounded-xl p-2.5 text-left overflow-hidden shadow-inner flex-1 min-w-0 min-h-[160px] max-h-[160px]`}>
+            <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-surface-border/50 shrink-0 select-none">
+                <div className="flex items-center gap-1.5 min-w-0">
+                    <Terminal size={12} className={isError ? "text-status-danger" : (isSuccess ? "text-status-success" : "text-brand-primary")} />
+                    <span className="text-[9px] font-mono tracking-wider text-txt-muted uppercase truncate">
+                        {title}
+                    </span>
+                </div>
+                {isGenerating && <span className="w-1 h-1 rounded-full bg-brand-primary animate-pulse" />}
+            </div>
+            <div 
+                ref={containerRef}
+                className="font-mono text-[9px] text-txt-primary leading-normal overflow-y-auto whitespace-pre-wrap scrollbar-thin scrollbar-thumb-surface-border flex-1 pr-1"
+            >
+                <p className="break-all selection:bg-brand-primary/30 selection:text-txt-title select-text">
+                    {terminalContent}
+                    {isGenerating && <span className="inline-block w-1 h-2.5 ml-0.5 align-middle bg-brand-primary animate-pulse" />}
+                </p>
+                {isError && diagnostic?.error && (
+                    <div className="mt-1 p-1 bg-status-danger/10 text-status-danger/90 rounded border border-status-danger/20 text-[8px] leading-tight select-text">
+                        {diagnostic.error}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
 
 export interface AiSimplePromptModalProps {
     isOpen: boolean;
@@ -26,6 +96,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
     const {
         simpleStatus, gemmaStatus, flashStatus,
         gemmaResult, flashResult,
+        flashStreamText, gemmaStreamText,
         gemmaElapsedTime, flashElapsedTime,
         gemmaError, flashError,
         processAndGenerateSimple, resetSimple, abortSimpleAll
@@ -75,63 +146,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
         await processAndGenerateSimple(queuedFiles, gameName);
     };
 
-    const renderColumnList = (result: any, statusStr: string, errStr: string | null) => {
-        if (statusStr === 'generating') {
-            return (
-                <div className="flex flex-col items-center justify-center py-8 text-txt-muted gap-2 select-none">
-                    <Loader2 size={20} className="animate-spin text-brand-primary" />
-                    <span className="text-[10px] font-medium">{t('status_analyzing')}</span>
-                </div>
-            );
-        }
-        if (statusStr === 'error') {
-            return (
-                <div className="flex flex-col items-center justify-center py-6 text-status-danger text-center px-2 gap-1.5 bg-status-danger/5 rounded-xl border border-status-danger/10 select-none">
-                    <AlertCircle size={16} className="animate-pulse" />
-                    <span className="text-[10px] font-bold">{t('status_failed')}</span>
-                    <span className="text-[9px] text-txt-muted truncate max-w-full">
-                        {errStr === 'ai_error_rate_limit' ? t('error_rate_limit') : t('error_generic')}
-                    </span>
-                </div>
-            );
-        }
-        if (!result?.template?.columns) {
-            return (
-                <div className="flex flex-col items-center justify-center py-8 text-txt-muted text-center px-1 select-none">
-                    <span className="text-[10px]">{t('no_columns')}</span>
-                </div>
-            );
-        }
 
-        return (
-            <div className="flex flex-col gap-1 max-h-[220px] overflow-y-auto pr-0.5 scrollbar-thin select-none">
-                {result.template.columns.map((col: any, idx: number) => {
-                    // 精簡對照表
-                    const typeMap: Record<string, string> = {
-                        'a1+next': t('type_accum'),
-                        'a1×c1': t('type_rate'),
-                        'a1×a2': t('type_product'),
-                        '(a1×a2)+next': t('type_prod_accum')
-                    };
-                    let displayFormula = col.inputType === 'clicker' ? t('type_clicker') :
-                                         (col.formula && col.formula.includes('f1') ? t('type_lookup') :
-                                         (typeMap[col.formula || ''] || t('type_plain')));
-
-                    return (
-                        <div key={col.id || idx} className="flex flex-col py-1 border-b border-surface-border/20 last:border-0">
-                            <span className="text-[11px] font-bold truncate max-w-full leading-tight" style={{ color: col.color || 'var(--c-txt-primary)', ...getContrastTextStyles(col.color || '') }}>
-                                {col.name}
-                            </span>
-                            <span className="inline-flex text-[9px] font-bold px-1 py-0.2 border border-surface-border/40 bg-surface-bg-alt text-txt-secondary rounded-sm self-start mt-0.5 whitespace-nowrap">
-                                {displayFormula}
-                                {col.inputType === 'clicker' && ' [+]'}
-                            </span>
-                        </div>
-                    );
-                })}
-            </div>
-        );
-    };
 
     const isBothDone = (flashStatus === 'success' || flashStatus === 'error') && (gemmaStatus === 'success' || gemmaStatus === 'error');
     const isProcessing = simpleStatus === 'compressing' || simpleStatus === 'generating' || simpleStatus === 'success';
@@ -187,16 +202,24 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                                 </div>
                             </div>
 
-                            {/* 雙軌實時預覽板 */}
-                            <div className="grid grid-cols-2 gap-2 mt-1 mb-4 p-2 bg-modal-bg-recessed border border-surface-border rounded-xl shadow-inner min-h-[140px]">
-                                <div className="flex flex-col gap-1.5 p-1 border-r border-surface-border/40 pr-2">
-                                    <span className="text-[9px] font-bold text-txt-muted pb-1 border-b border-surface-border/30 mb-1 truncate">{flashStatus === 'success' ? '⚡ Gemini 3.0' : t('label_flash_version')}</span>
-                                    {renderColumnList(flashResult, flashStatus, flashError)}
-                                </div>
-                                <div className="flex flex-col gap-1.5 p-1 pl-2">
-                                    <span className="text-[9px] font-bold text-txt-muted pb-1 border-b border-surface-border/30 mb-1 truncate">{gemmaStatus === 'success' ? '🏆 Gemma 4' : t('label_gemma_version')}</span>
-                                    {renderColumnList(gemmaResult, gemmaStatus, gemmaError)}
-                                </div>
+                            {/* 雙軌實時預覽板 (雙 Terminal 賽馬) */}
+                            <div className="grid grid-cols-2 gap-2 mt-1 mb-4 p-1 rounded-xl shadow-inner min-h-[160px]">
+                                <TerminalWindow
+                                    title={flashStatus === 'success' ? '⚡ Gemini 3.0' : t('label_flash_version')}
+                                    streamText={flashStreamText}
+                                    result={flashResult}
+                                    statusStr={flashStatus}
+                                    errStr={flashError}
+                                    t={t}
+                                />
+                                <TerminalWindow
+                                    title={gemmaStatus === 'success' ? '🏆 Gemma 4' : t('label_gemma_version')}
+                                    streamText={gemmaStreamText}
+                                    result={gemmaResult}
+                                    statusStr={gemmaStatus}
+                                    errStr={gemmaError}
+                                    t={t}
+                                />
                             </div>
 
                             {/* 雙版本套用按鈕 */}
