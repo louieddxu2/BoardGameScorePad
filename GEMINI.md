@@ -50,3 +50,9 @@
 powershell -ExecutionPolicy Bypass -File "scripts\verify.ps1"
 ```
 （依序執行：掃描硬編碼中文 → tsc → vitest）
+
+
+## 🚀 CI/CD 節能部署規範
+
+- **本地驗證優先 (方案 A)**：為防止高頻率 `git push` 導致 Vercel CI/CD 部署佇列堵塞與免費 Build Hours 額度浪費，在連續的小微調與 Bug 修復期間，**一律僅在本地端進行 commit，並使用 `powershell -ExecutionPolicy Bypass -File "scripts\verify.ps1"` 進行完整驗證**。
+- **一次性 Push 釋放**：只有在完成一整個大階段的任務開發，或經使用者明確指示「請部署/請 push」時，才進行一次性 `git push origin [branchName]` 觸發 Vercel 部署。
