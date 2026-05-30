@@ -636,6 +636,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           onOpenOnlineSearch={() => setIsOnlineSearchOpen(true)}
           onOpenAiPrompt={handleOpenActiveAiPrompt}
           aiStatus={aiSimpleGenerator.simpleStatus !== 'idle' ? (aiSimpleGenerator.simpleStatus as any) : aiGenerator.status}
+          simpleFlashStatus={aiSimpleGenerator.flashStatus}
+          simpleGemmaStatus={aiSimpleGenerator.gemmaStatus}
           elapsedTime={elapsedTime}
         />
       </div>

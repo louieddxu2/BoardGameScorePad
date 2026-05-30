@@ -8,6 +8,8 @@ interface SimpleScorepadPromoProps {
   onOpenOnlineSearch?: () => void;
   onOpenAiPrompt?: () => void;
   aiStatus?: string;
+  simpleFlashStatus?: string;
+  simpleGemmaStatus?: string;
   elapsedTime?: number;
   zoomLevel?: number;
 }
@@ -18,6 +20,8 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
   onOpenOnlineSearch,
   onOpenAiPrompt,
   aiStatus,
+  simpleFlashStatus,
+  simpleGemmaStatus,
   elapsedTime,
   zoomLevel = 1,
 }) => {
@@ -99,7 +103,13 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
               {isGenerating ? (
                 <>
                   <span className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-ping shrink-0" />
-                  <span>{t('session_ai_generating_with_timer').replace('{seconds}', (elapsedTime || 0).toString())}</span>
+                  <span>
+                    {simpleFlashStatus && simpleFlashStatus !== 'idle' ? (
+                      `⚡ ${t('session_ai_track_express')}: ${simpleFlashStatus === 'success' ? t('session_ai_track_ready') : t('session_ai_track_running')} | 🧠 ${t('session_ai_track_thinking')}: ${simpleGemmaStatus === 'success' ? t('session_ai_track_ready') : t('session_ai_track_running')} (${elapsedTime || 0}s)`
+                    ) : (
+                      `${t('session_ai_generating_with_timer').replace('{seconds}', (elapsedTime || 0).toString())}`
+                    )}
+                  </span>
                 </>
               ) : isSuccess ? (
                 <>

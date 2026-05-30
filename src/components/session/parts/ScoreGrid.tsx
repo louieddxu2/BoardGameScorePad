@@ -40,6 +40,8 @@ interface ScoreGridProps {
   onOpenOnlineSearch?: () => void;
   onOpenAiPrompt?: () => void;
   aiStatus?: string;
+  simpleFlashStatus?: string;
+  simpleGemmaStatus?: string;
   elapsedTime?: number;
 }
 
@@ -65,6 +67,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   onOpenOnlineSearch,
   onOpenAiPrompt,
   aiStatus,
+  simpleFlashStatus,
+  simpleGemmaStatus,
   elapsedTime,
 }) => {
   const { t } = useSessionTranslation();
@@ -680,6 +684,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
             onOpenOnlineSearch={onOpenOnlineSearch}
             onOpenAiPrompt={onOpenAiPrompt}
             aiStatus={aiStatus}
+            simpleFlashStatus={simpleFlashStatus}
+            simpleGemmaStatus={simpleGemmaStatus}
             elapsedTime={elapsedTime}
             zoomLevel={zoomLevel}
           />
