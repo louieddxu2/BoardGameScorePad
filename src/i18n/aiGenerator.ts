@@ -52,7 +52,7 @@ export const aiGeneratorTranslations = {
         btn_generate_simple: "開始生成計分板 (共 {count} 張)",
         // Simple View Additions
         simple_title: "一鍵 AI 拍照生成",
-        simple_desc: "拍攝桌遊規則書的遊戲結束計分的頁面，由AI自動生成計分板。亦可額外拍攝計分紙、配件名稱的頁面以嘗試獲得更佳結果。極速模型通常會在1分鐘內得到結果；思考模型則可能要等候5分鐘。",
+        simple_desc: "拍攝桌遊規則書的遊戲結束計分頁面，由 AI 自動生成計分板。亦可額外拍攝計分紙、配件名稱頁面，以嘗試獲得更佳結果。\n\n極速模型通常會在 1 分鐘內得到結果；思考模型則可能需要等候 5 分鐘。\n\n經典的老遊戲通常極速模型就能取得不錯的結果；新遊戲或複雜的規則頁面解讀則通常需要使用思考模型。",
         tab_simple: "一般",
         tab_advanced: "進階",
         label_flash_version: "⚡ 極速模式",
@@ -126,7 +126,7 @@ export const aiGeneratorTranslations = {
         btn_generate_simple: "Generate Scoreboard ({count} Photos)",
         // Simple View Additions
         simple_title: "Quick AI Scan",
-        simple_desc: "Take photos of the game-end scoring pages in the rulebook, and AI will automatically generate the scoreboard. You can also take additional photos of score pads or component names to try for better results. The speed model usually yields results within 1 minute; the reasoning model may take up to 5 minutes.",
+        simple_desc: "Take photos of the game-end scoring pages in the rulebook, and AI will automatically generate the scoreboard. You can also add photos of score pads or component names to improve the result.\n\nThe speed model usually returns results within 1 minute; the reasoning model may take up to 5 minutes.\n\nClassic older games usually work well with the speed model. Newer games or complex rule pages usually need the reasoning model.",
         tab_simple: "Simple",
         tab_advanced: "Advanced",
         label_flash_version: "⚡ Speed Mode",

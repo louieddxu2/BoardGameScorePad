@@ -356,7 +356,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                             <div className="inline-flex items-center px-3 py-1 bg-surface-bg border border-surface-border rounded-full mb-3 shrink-0 self-start select-none">
                                 <span className="text-xs font-bold text-txt-secondary truncate max-w-[240px]">🎮 {gameName}</span>
                             </div>
-                            <p className="text-txt-primary font-medium mb-3 text-[14px] leading-snug select-none">{t('simple_desc')}</p>
+                            <p className="text-txt-primary font-medium mb-3 text-[14px] leading-snug whitespace-pre-line select-none">{t('simple_desc')}</p>
 
                             {/* 隱私警告區塊 */}
                             <div className="flex gap-2 p-3 bg-surface-bg-alt rounded-lg border border-surface-border mb-4 select-none">
