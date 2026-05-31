@@ -305,20 +305,18 @@ const InfoMapping: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypad
         } else {
             footerCalculationNode = null;
         }
-    } else {
-        footerCalculationNode = <span className="text-txt-muted text-[10px] italic leading-none">{t('score_info_no_rule')}</span>;
     }
 
     return (
-        <div className="flex flex-col h-full p-2 overflow-hidden">
+        <div className="flex flex-col h-full px-1.5 py-1 overflow-hidden">
             {/* 1. & 3. 移除了「範圍查表」框，改為對齊下方箭頭的單位列 */}
-            <div className="flex items-center gap-1 text-[10px] text-txt-muted font-bold px-2 pb-1 border-b border-surface-border shrink-0">
-                <div className="flex-1 text-right">{unitStr}</div>
-                <div className="shrink-0 px-1 text-txt-muted/50"><ArrowRight size={12} /></div>
-                <div className="flex-1 text-left">{t('score_info_unit_score')}</div>
+            <div className="flex items-center gap-0.5 text-[10px] text-txt-muted font-bold px-1.5 pb-0.5 border-b border-surface-border shrink-0">
+                <div className="flex-1 text-center">{unitStr}</div>
+                <div className="shrink-0 px-0.5 text-txt-muted/50"><ArrowRight size={11} /></div>
+                <div className="flex-1 text-center">{t('score_info_unit_score')}</div>
             </div>
 
-            <div className="flex-1 overflow-y-auto no-scrollbar space-y-1 py-1">
+            <div className="flex-1 overflow-y-auto no-scrollbar space-y-0.5 py-0.5">
                 {column.f1?.map((rule, idx) => {
                     // Display Logic for Label (Keep roughly using integer bounds for display "1~4")
                     let displayMax = Infinity;
@@ -380,31 +378,31 @@ const InfoMapping: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypad
 
                     return (
                         // 3. 卡片 Padding 縮減為 px-2 py-1，原本為 px-3 py-1.5
-                        <div key={idx} ref={isMatch ? activeRuleRef : null} className={`flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors ${isMatch ? 'bg-status-success/10 border-status-success/50' : 'bg-surface-recessed border-surface-border'}`}>
-                            <div className={`flex-1 text-right ${isMatch ? 'text-status-success font-bold' : 'text-txt-muted font-medium'}`}>{labelNode}</div>
-                            <div className={`shrink-0 px-1 ${isMatch ? 'text-status-success' : 'text-txt-muted'}`}><ArrowRight size={12} /></div>
-                            <div className={`flex-1 text-left font-mono ${isMatch ? 'text-txt-primary' : 'text-txt-muted'}`}>{scoreNode}</div>
+                        <div key={idx} ref={isMatch ? activeRuleRef : null} className={`flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded border transition-colors ${isMatch ? 'bg-status-success/10 border-status-success/50' : 'bg-surface-recessed border-surface-border'}`}>
+                            <div className={`flex-1 text-center ${isMatch ? 'text-status-success font-bold' : 'text-txt-muted font-medium'}`}>{labelNode}</div>
+                            <div className={`shrink-0 px-0.5 ${isMatch ? 'text-status-success' : 'text-txt-muted'}`}><ArrowRight size={11} /></div>
+                            <div className={`flex-1 text-center font-mono ${isMatch ? 'text-txt-primary' : 'text-txt-muted'}`}>{scoreNode}</div>
                         </div>
                     );
                 })}
             </div>
             
             {/* 2. 底部折疊，若為固定分數且無 footerCalculationNode 時自動隱藏邊界與橫列 */}
-            <div className="mt-2 shrink-0">
-                <div className="bg-modal-bg rounded-lg border border-surface-border p-1.5 shadow-sm flex flex-col gap-0.5">
-                    <div className="flex items-center gap-1 text-xs px-2 py-0.5 rounded">
+            <div className="mt-1 shrink-0">
+                <div className="bg-modal-bg rounded-lg border border-surface-border px-1 py-0.5 shadow-sm flex flex-col gap-0.5">
+                    <div className="flex items-center gap-0.5 text-xs px-1 py-0.5 rounded">
                         {/* 左側當前值：還原 text-txt-primary 與 border-status-success/50 */}
-                        <div className="flex-1 flex justify-end items-center">
-                            <span className="bg-status-success/10 border border-status-success/50 rounded px-1.5 py-0.5 font-mono font-bold text-txt-primary text-sm leading-none">
+                        <div className="flex-1 flex justify-center items-center">
+                            <span className="bg-status-success/10 border border-status-success/50 rounded px-1 py-0.5 font-mono font-bold text-txt-primary text-sm leading-none">
                                 {displayVal}
                             </span>
                         </div>
                         {/* 中間箭頭：還原 text-txt-muted */}
-                        <div className="shrink-0 px-1 text-txt-muted">
-                            <ArrowRight size={12} />
+                        <div className="shrink-0 px-0.5 text-txt-muted">
+                            <ArrowRight size={11} />
                         </div>
                         {/* 右側分數：還原 text-status-success 與 text-sm */}
-                        <div className="flex-1 text-left">
+                        <div className="flex-1 text-center">
                             <span className="text-status-success font-bold text-sm leading-none font-mono">
                                 {finalScore}
                             </span>
