@@ -16,6 +16,13 @@ const ALLOWED_MODELS = new Set([
 ]);
 const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 const TURNSTILE_AI_ACTION = 'ai_generate';
+const SAFE_TURNSTILE_ERROR_CODES = new Set([
+  'missing-input-response',
+  'invalid-input-response',
+  'timeout-or-duplicate',
+  'bad-request',
+  'internal-error',
+]);
 
 function resolveModel(modelName) {
   const requestedModel = typeof modelName === 'string' ? modelName : DEFAULT_MODEL;
@@ -37,9 +44,10 @@ async function verifyTurnstileToken(token) {
     return { ok: false, status: 403, message: 'Human verification token missing' };
   }
 
-  const body = new URLSearchParams();
+  const body = new FormData();
   body.set('secret', secretKey);
   body.set('response', token);
+  body.set('idempotency_key', crypto.randomUUID());
 
   const response = await fetch(TURNSTILE_VERIFY_URL, {
     method: 'POST',
@@ -47,12 +55,27 @@ async function verifyTurnstileToken(token) {
   });
 
   if (!response.ok) {
-    return { ok: false, status: 502, message: 'Human verification service unavailable' };
+    const detail = await response.text();
+    return {
+      ok: false,
+      status: 502,
+      message: `Human verification service unavailable (${response.status})`,
+      detail: detail.slice(0, 300),
+    };
   }
 
   const result = await response.json();
   if (!result.success || result.action !== TURNSTILE_AI_ACTION) {
-    return { ok: false, status: 403, message: 'Human verification failed' };
+    const errorCodes = Array.isArray(result['error-codes'])
+      ? result['error-codes'].filter(code => SAFE_TURNSTILE_ERROR_CODES.has(code))
+      : [];
+    return {
+      ok: false,
+      status: 403,
+      message: errorCodes.length > 0
+        ? `Human verification failed: ${errorCodes.join(', ')}`
+        : 'Human verification failed',
+    };
   }
 
   return { ok: true };
@@ -95,7 +118,11 @@ export default async function handler(req) {
     const verification = await verifyTurnstileToken(formData.get('turnstileToken'));
     if (!verification.ok) {
       return new Response(
-        JSON.stringify({ error: 'human_verification_failed', message: verification.message }),
+        JSON.stringify({
+          error: 'human_verification_failed',
+          message: verification.message,
+          ...(verification.detail ? { detail: verification.detail } : {}),
+        }),
         { status: verification.status, headers: { 'Content-Type': 'application/json' } }
       );
     }
