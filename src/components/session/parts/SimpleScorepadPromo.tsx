@@ -76,7 +76,7 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
 
       {/* 標籤框 2：AI 智慧生成與探索窄卡片 */}
       {(isOnline || isGenerating || isSuccess) && (
-        <div className={`flex-1 p-2 rounded-xl border border-brand-primary/20 bg-brand-primary/5 backdrop-blur-sm shadow-md relative overflow-hidden flex ${isGenerating ? 'flex-col justify-center min-h-[58px]' : 'items-center h-[46px]'} my-auto`}>
+        <div className={`flex-1 p-2 rounded-xl border border-brand-primary/20 bg-brand-primary/5 backdrop-blur-sm shadow-md relative overflow-hidden flex ${isGenerating ? 'items-stretch min-h-[64px]' : 'items-center h-[46px]'} my-auto`}>
           {/* 流光裝飾背景 */}
           {(isGenerating || isSuccess) && (
             <>
@@ -95,7 +95,7 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
                   onOpenOnlineSearch?.();
                 }
               }}
-              className={`w-full h-full rounded-lg bg-gradient-to-r text-xs font-semibold text-white transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`w-full h-full rounded-lg bg-gradient-to-r text-xs font-semibold text-white transition-all shadow-sm flex ${isGenerating ? 'flex-col items-center justify-center py-1.5 gap-0.5' : 'items-center justify-center gap-1.5'} cursor-pointer ${
                 isGenerating
                   ? 'from-brand-primary/10 via-brand-secondary/10 to-brand-primary/10 animate-pulse border border-brand-primary/30 text-brand-primary shadow-none hover:brightness-105 active:scale-[0.98]'
                   : isSuccess
@@ -105,8 +105,8 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
             >
               {isGenerating ? (
                 <>
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-ping shrink-0" />
-                  <span>
+                  <span className="flex items-center justify-center gap-1.5 leading-tight">
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-ping shrink-0" />
                     {isSimpleGeneration ? (
                       `⚡ ${t('session_ai_track_express')}: ${
                         simpleFlashStatus === 'success' 
@@ -124,6 +124,9 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
                     ) : (
                       `${t('session_ai_generating_with_timer').replace('{seconds}', (elapsedTime || 0).toString())}`
                     )}
+                  </span>
+                  <span className="text-[9px] leading-tight font-semibold text-status-warning text-center px-1">
+                    {t('session_ai_keep_awake_hint')}
                   </span>
                 </>
               ) : isSuccess ? (
@@ -149,11 +152,6 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
               )}
             </button>
           </div>
-          {isGenerating && (
-            <div className="relative z-10 mt-1 text-[9px] leading-tight font-semibold text-status-warning text-center px-1">
-              {t('session_ai_keep_awake_hint')}
-            </div>
-          )}
         </div>
       )}
 

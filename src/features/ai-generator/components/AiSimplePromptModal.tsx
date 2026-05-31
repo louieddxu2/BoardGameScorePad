@@ -58,7 +58,7 @@ const TerminalWindow: React.FC<TerminalWindowProps> = ({
     }, [terminalContent]);
 
     return (
-        <div className={`flex flex-col bg-modal-bg-recessed border ${isError ? 'border-status-danger/30' : 'border-surface-border'} rounded-xl p-2 text-left overflow-hidden shadow-inner flex-1 min-w-0 min-h-[220px] max-h-[220px]`}>
+        <div className={`flex flex-col bg-modal-bg-recessed border ${isError ? 'border-status-danger/30' : 'border-surface-border'} rounded-xl p-2 text-left overflow-hidden shadow-inner flex-1 min-w-0 min-h-[320px] max-h-[42vh]`}>
             <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-surface-border/50 shrink-0 select-none">
                 <div className="flex items-center gap-1.5 min-w-0">
                     <Terminal size={12} className={isError ? "text-status-danger" : (isSuccess ? "text-status-success" : "text-brand-primary")} />
@@ -176,14 +176,14 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
     const renderColumnList = (result: any) => {
         if (!result?.template?.columns) {
             return (
-                <div className="flex flex-col items-center justify-center py-6 text-txt-muted text-center px-1 select-none flex-1 min-h-[220px] max-h-[220px]">
+                <div className="flex flex-col items-center justify-center py-6 text-txt-muted text-center px-1 select-none flex-1 min-h-[320px] max-h-[42vh]">
                     <span className="text-[10px]">{t('no_columns')}</span>
                 </div>
             );
         }
 
         return (
-            <div className="flex flex-col gap-1 max-h-[220px] overflow-y-auto pr-0.5 scrollbar-thin select-none flex-1 min-w-0 bg-surface-bg border border-surface-border rounded-xl p-2">
+            <div className="flex flex-col gap-1 min-h-[320px] max-h-[42vh] overflow-y-auto pr-0.5 scrollbar-thin select-none flex-1 min-w-0 bg-surface-bg border border-surface-border rounded-xl p-2">
                 {result.template.columns.map((col: any, idx: number) => {
                     const { formulaKey, bgClass, textClass } = classifyColumnFormula(col);
                     return (
@@ -301,7 +301,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                             )}
 
                             {/* 雙軌實時預覽板 (雙 Terminal 賽馬，成功時跳出結果) */}
-                            <div className="grid grid-cols-2 gap-2 mb-4 p-1 rounded-xl shadow-inner min-h-[220px]">
+                            <div className="grid grid-cols-2 gap-2 mb-4 p-1 rounded-xl shadow-inner min-h-[320px]">
                                 {flashStatus === 'success' ? (
                                     renderColumnList(flashResult)
                                 ) : (
@@ -332,8 +332,8 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
 
                             {/* 雙版本套用按鈕 */}
                             <div className="grid grid-cols-2 gap-2 mt-2">
-                                <button onClick={() => { if (flashResult) { onAiSuccess(flashResult.template); resetSimple(); setQueuedFiles([]); onClose(); } }} disabled={!flashResult} className={`py-3 px-2 rounded-xl font-bold text-xs tracking-tight transition-all active:scale-97 shadow-sm border ${flashResult ? 'bg-surface-bg hover:bg-surface-bg-alt text-txt-primary border-surface-border' : 'bg-surface-bg/30 text-txt-muted/40 border-surface-border/20 cursor-not-allowed'}`}>{t('btn_apply_flash')}</button>
-                                <button onClick={() => { if (gemmaResult) { onAiSuccess(gemmaResult.template); resetSimple(); setQueuedFiles([]); onClose(); } }} disabled={!gemmaResult} className={`py-3 px-2 rounded-xl font-black text-xs tracking-tight transition-all active:scale-97 shadow-md ${gemmaResult ? 'bg-gradient-to-r from-brand-primary to-brand-secondary text-white hover:brightness-105' : 'bg-surface-bg/30 text-txt-muted/40 border border-surface-border/20 cursor-not-allowed'}`}>{t('btn_apply_gemma')}</button>
+                                <button onClick={() => { if (flashResult) { onAiSuccess(flashResult.template); resetSimple(); setQueuedFiles([]); onClose(); } }} disabled={!flashResult} className={`py-3 px-2 rounded-xl font-black text-xs tracking-tight transition-all active:scale-97 shadow-sm border ${flashResult ? 'bg-brand-primary/10 hover:bg-brand-primary/15 text-brand-primary border-brand-primary/30' : 'bg-surface-bg/30 text-txt-muted/40 border-surface-border/20 cursor-not-allowed'}`}>{t('btn_apply_flash')}</button>
+                                <button onClick={() => { if (gemmaResult) { onAiSuccess(gemmaResult.template); resetSimple(); setQueuedFiles([]); onClose(); } }} disabled={!gemmaResult} className={`py-3 px-2 rounded-xl font-black text-xs tracking-tight transition-all active:scale-97 shadow-sm border ${gemmaResult ? 'bg-brand-secondary/10 hover:bg-brand-secondary/15 text-brand-secondary border-brand-secondary/30' : 'bg-surface-bg/30 text-txt-muted/40 border-surface-border/20 cursor-not-allowed'}`}>{t('btn_apply_gemma')}</button>
                             </div>
 
                             <div className="mt-3">

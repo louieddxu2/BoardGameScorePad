@@ -158,7 +158,7 @@ export const useAiSimpleGenerator = (): UseAiSimpleGeneratorResult => {
             }
         };
 
-        // 👉 右大師平行軌道：Gemma 4-31b -> Gemma 4-26b
+        // 👉 右思考平行軌道：Gemma 4-31b -> Gemma 4-26b
         const runGemmaTrack = async () => {
             try {
                 setGemmaTryCount(1);
