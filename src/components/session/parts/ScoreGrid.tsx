@@ -664,6 +664,9 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                     <p className="text-[10px] text-brand-primary font-semibold leading-relaxed max-w-[280px]">
                       {t('session_ai_waiting_status_detail')}
                     </p>
+                    <p className="text-[10px] text-status-warning font-semibold leading-relaxed max-w-[280px]">
+                      {t('session_ai_keep_awake_hint')}
+                    </p>
                   </>
                 )}
               </div>

@@ -76,7 +76,7 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
 
       {/* 標籤框 2：AI 智慧生成與探索窄卡片 */}
       {(isOnline || isGenerating || isSuccess) && (
-        <div className="flex-1 p-2 rounded-xl border border-brand-primary/20 bg-brand-primary/5 backdrop-blur-sm shadow-md relative overflow-hidden flex items-center h-[46px] my-auto">
+        <div className={`flex-1 p-2 rounded-xl border border-brand-primary/20 bg-brand-primary/5 backdrop-blur-sm shadow-md relative overflow-hidden flex ${isGenerating ? 'flex-col justify-center min-h-[58px]' : 'items-center h-[46px]'} my-auto`}>
           {/* 流光裝飾背景 */}
           {(isGenerating || isSuccess) && (
             <>
@@ -149,6 +149,11 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
               )}
             </button>
           </div>
+          {isGenerating && (
+            <div className="relative z-10 mt-1 text-[9px] leading-tight font-semibold text-status-warning text-center px-1">
+              {t('session_ai_keep_awake_hint')}
+            </div>
+          )}
         </div>
       )}
 
