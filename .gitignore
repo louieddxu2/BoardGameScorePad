@@ -24,6 +24,7 @@ dist-ssr
 *.sw?
 
 # Temp / Debug files (AI-generated during debugging sessions)
+.codex-remote-attachments/
 err.txt
 err2.txt
 err3.txt
