@@ -48,6 +48,11 @@ describe('aiApiService - callAiScoreboardApi Expansion Logic', () => {
 
     const result = await callAiScoreboardApi([], 'Agricola', 'zh-TW');
     const template = result.template;
+    const fetchMock = vi.mocked(fetch);
+    const requestBody = fetchMock.mock.calls[0][1]?.body as FormData;
+
+    expect(requestBody.get('turnstileToken')).toBe('test-token-ai_generate');
+    expect(requestBody.get('systemPrompt')).toBeNull();
 
     // 🚩 驗證 1: f1 應該被提升至根目錄
     const fieldCol = template.columns![0];

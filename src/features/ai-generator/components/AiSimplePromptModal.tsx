@@ -36,7 +36,13 @@ const TerminalWindow: React.FC<TerminalWindowProps> = ({
 
     let terminalContent = "";
     if (isError) {
-        terminalContent = diagnostic ? diagnostic.raw : (errStr === 'ai_error_rate_limit' ? t('error_rate_limit') : t('error_generic'));
+        terminalContent = diagnostic
+            ? diagnostic.raw
+            : errStr === 'ai_error_rate_limit'
+                ? t('error_rate_limit')
+                : errStr === 'ai_error_human_verification'
+                    ? t('error_human_verification')
+                    : t('error_generic');
     } else if (isSuccess && result) {
         terminalContent = result.rawText;
     } else {

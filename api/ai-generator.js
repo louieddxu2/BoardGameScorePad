@@ -14,6 +14,8 @@ const ALLOWED_MODELS = new Set([
   'gemma-4-26b-a4b-it',
   'gemma-4-31b-it',
 ]);
+const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+const TURNSTILE_AI_ACTION = 'ai_generate';
 
 function resolveModel(modelName) {
   const requestedModel = typeof modelName === 'string' ? modelName : DEFAULT_MODEL;
@@ -23,6 +25,37 @@ function resolveModel(modelName) {
 function resolveSystemPrompt(language) {
   const requestedLanguage = typeof language === 'string' ? language : '';
   return requestedLanguage.toLowerCase().includes('zh') ? SYSTEM_PROMPT_ZH : SYSTEM_PROMPT_EN;
+}
+
+async function verifyTurnstileToken(token) {
+  const secretKey = process.env.TURNSTILE_SECRET_KEY;
+  if (!secretKey) {
+    return { ok: false, status: 500, message: 'Backend configuration missing: TURNSTILE_SECRET_KEY' };
+  }
+
+  if (typeof token !== 'string' || token.length === 0) {
+    return { ok: false, status: 403, message: 'Human verification token missing' };
+  }
+
+  const body = new URLSearchParams();
+  body.set('secret', secretKey);
+  body.set('response', token);
+
+  const response = await fetch(TURNSTILE_VERIFY_URL, {
+    method: 'POST',
+    body,
+  });
+
+  if (!response.ok) {
+    return { ok: false, status: 502, message: 'Human verification service unavailable' };
+  }
+
+  const result = await response.json();
+  if (!result.success || result.action !== TURNSTILE_AI_ACTION) {
+    return { ok: false, status: 403, message: 'Human verification failed' };
+  }
+
+  return { ok: true };
 }
 
 // ArrayBuffer 轉 Base64 函數 (Edge runtime 適用，無相依套件)
@@ -59,6 +92,13 @@ export default async function handler(req) {
     const language = formData.get('language');
     const requestedModel = resolveModel(formData.get('modelName'));
     const systemPrompt = resolveSystemPrompt(language);
+    const verification = await verifyTurnstileToken(formData.get('turnstileToken'));
+    if (!verification.ok) {
+      return new Response(
+        JSON.stringify({ error: 'human_verification_failed', message: verification.message }),
+        { status: verification.status, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
     // 2. 處理圖片檔案
     const geminiParts = [];

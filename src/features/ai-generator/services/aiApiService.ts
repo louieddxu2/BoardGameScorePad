@@ -1,5 +1,6 @@
 
 import { GameTemplate } from '../../../types';
+import { getTurnstileToken } from '../../../services/turnstile';
 import { generateId } from '../../../utils/idGenerator';
 import { inflateGameTemplate } from './aiExpander';
 
@@ -50,6 +51,9 @@ export const callAiScoreboardApi = async (
     formData.append('modelName', modelName);
 
     try {
+        const turnstileToken = await getTurnstileToken('ai_generate');
+        formData.append('turnstileToken', turnstileToken);
+
         const response = await fetch(API_ENDPOINT, {
             method: 'POST',
             body: formData,
@@ -60,6 +64,9 @@ export const callAiScoreboardApi = async (
         // 3. 特判 429 流量限制錯誤
         if (response.status === 429) {
             throw new Error('ai_error_rate_limit');
+        }
+        if (response.status === 403) {
+            throw new Error('ai_error_human_verification');
         }
 
         if (!response.ok) {
@@ -203,6 +210,9 @@ export const callAiScoreboardApi = async (
         // 向上拋出原錯誤訊息，以便 Hooks 能精準顯示對應的 i18n 文字
         if (error.message.startsWith('ai_error_')) {
             throw error;
+        }
+        if (error.message.startsWith('turnstile_')) {
+            throw new Error('ai_error_human_verification');
         }
 
         throw new Error('ai_error_network');

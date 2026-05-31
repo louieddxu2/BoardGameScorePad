@@ -1,99 +1,10 @@
 import { GameTemplate } from '../types';
+import { getTurnstileToken } from './turnstile';
 
 const CLOUD_SHARE_BASE_URL = import.meta.env.VITE_TEMPLATE_SHARE_API_BASE_URL || 'https://scoreboard-api.louieddxu2.workers.dev';
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
 
 type UploadResponse = { id: string; reused?: boolean };
 type FetchResponse = { id: string; name: string; payload: unknown; downloadCount?: number; createdAt: number };
-
-declare global {
-  interface Window {
-    turnstile?: {
-      render: (container: HTMLElement, options: Record<string, unknown>) => string;
-      remove: (widgetId: string) => void;
-      execute: (widgetId: string) => void;
-    };
-  }
-}
-
-let turnstileScriptPromise: Promise<void> | null = null;
-
-const loadTurnstileScript = (): Promise<void> => {
-  if (window.turnstile) return Promise.resolve();
-  if (turnstileScriptPromise) return turnstileScriptPromise;
-
-  turnstileScriptPromise = new Promise((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>('script[data-turnstile="true"]');
-    if (existing) {
-      existing.addEventListener('load', () => resolve(), { once: true });
-      existing.addEventListener('error', () => reject(new Error('turnstile_script_failed')), { once: true });
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-    script.async = true;
-    script.defer = true;
-    script.dataset.turnstile = 'true';
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('turnstile_script_failed'));
-    document.head.appendChild(script);
-  });
-
-  return turnstileScriptPromise;
-};
-
-const getTurnstileToken = async (): Promise<string> => {
-  if (!TURNSTILE_SITE_KEY) {
-    throw new Error('turnstile_site_key_missing');
-  }
-
-  await loadTurnstileScript();
-  if (!window.turnstile) {
-    throw new Error('turnstile_not_ready');
-  }
-
-  return new Promise((resolve, reject) => {
-    const container = document.createElement('div');
-    container.style.position = 'fixed';
-    container.style.left = '-10000px';
-    container.style.top = '0';
-    document.body.appendChild(container);
-
-    let settled = false;
-    let widgetId = '';
-
-    const cleanup = () => {
-      if (widgetId && window.turnstile) {
-        window.turnstile.remove(widgetId);
-      }
-      container.remove();
-    };
-
-    const fail = (message: string) => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      reject(new Error(message));
-    };
-
-    widgetId = window.turnstile!.render(container, {
-      sitekey: TURNSTILE_SITE_KEY,
-      action: 'template_share_upload',
-      execution: 'render', // Start as soon as rendered
-      callback: (token: string) => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        resolve(token);
-      },
-      'error-callback': () => fail('turnstile_failed'),
-      'expired-callback': () => fail('turnstile_expired'),
-    });
-
-    setTimeout(() => fail('turnstile_timeout'), 45000);
-  });
-};
 
 /**
  * SafeCloudClient
@@ -406,7 +317,7 @@ class SafeCloudClient {
       bggName: bggName || undefined,
     };
 
-    const token = await getTurnstileToken();
+    const token = await getTurnstileToken('template_share_upload');
     const response = await fetch(`${CLOUD_SHARE_BASE_URL}/api/template/upload`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
