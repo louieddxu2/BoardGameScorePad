@@ -9,6 +9,8 @@ import { useEffect } from 'react';
 import CameraView from '../../../components/scanner/CameraView';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 
+const MAX_AI_IMAGE_COUNT = 5;
+
 export interface AiPromptModalProps {
     isOpen: boolean;
     gameName: string;
@@ -62,7 +64,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
 
     useEffect(() => {
         if (!isOpen || !initialFiles?.length) return;
-        setQueuedFiles(prev => [...prev, ...initialFiles]);
+        setQueuedFiles(prev => [...prev, ...initialFiles].slice(0, MAX_AI_IMAGE_COUNT));
         onInitialFilesConsumed?.();
     }, [isOpen, initialFiles, onInitialFilesConsumed]);
 
@@ -77,7 +79,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
 
         const fileList = Array.from(files);
         // 向下追加，保留之前選好的照片
-        setQueuedFiles(prev => [...prev, ...fileList]);
+        setQueuedFiles(prev => [...prev, ...fileList].slice(0, MAX_AI_IMAGE_COUNT));
 
         // 重置 input value 確保下次選取同一個檔名還能觸發 onChange
         e.target.value = '';
@@ -96,7 +98,10 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
             )
         );
 
-        setQueuedFiles(prev => [...prev, ...newFiles]);
+        setQueuedFiles(prev => {
+            const remainingSlots = Math.max(0, MAX_AI_IMAGE_COUNT - prev.length);
+            return [...prev, ...newFiles.slice(0, remainingSlots)];
+        });
         setIsScannerOpen(false); // 拍完收工，關閉相機畫面
     };
 
@@ -381,6 +386,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
     };
 
     const isProcessing = status === 'compressing' || status === 'generating' || status === 'success';
+    const canAddMoreImages = queuedFiles.length < MAX_AI_IMAGE_COUNT;
 
     return (
         <div
@@ -500,13 +506,15 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                                         ))}
 
                                         {/* 加號佔位符，觸發專用相機繼續拍 */}
-                                        <button
-                                            onClick={() => setIsScannerOpen(true)}
-                                            className="w-20 h-20 rounded-xl border-2 border-dashed border-brand-primary/20 hover:border-brand-primary/50 bg-brand-primary/5 hover:bg-brand-primary/10 flex flex-col items-center justify-center gap-1 text-brand-primary transition-all flex-shrink-0 group active:scale-95 snap-start"
-                                        >
-                                            <Camera size={20} className="group-hover:scale-110 transition-transform" />
-                                            <span className="text-[10px] font-bold">{t('btn_add_photo')}</span>
-                                        </button>
+                                        {canAddMoreImages && (
+                                            <button
+                                                onClick={() => setIsScannerOpen(true)}
+                                                className="w-20 h-20 rounded-xl border-2 border-dashed border-brand-primary/20 hover:border-brand-primary/50 bg-brand-primary/5 hover:bg-brand-primary/10 flex flex-col items-center justify-center gap-1 text-brand-primary transition-all flex-shrink-0 group active:scale-95 snap-start"
+                                            >
+                                                <Camera size={20} className="group-hover:scale-110 transition-transform" />
+                                                <span className="text-[10px] font-bold">{t('btn_add_photo')}</span>
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -542,16 +550,17 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                                             <span>{t('btn_analyze_count').replace('{count}', queuedFiles.length.toString())}</span>
                                         </button>
 
-                                        {/* 小型輔助按鈕，方便追加相簿照片 */}
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => fileInputRef.current?.click()}
-                                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-brand-primary bg-surface-bg hover:bg-brand-primary/5 border border-brand-primary/20 rounded-lg active:scale-95 transition-all"
-                                            >
-                                                <ImageIcon size={14} />
-                                                <span>{t('btn_add_from_album')}</span>
-                                            </button>
-                                        </div>
+                                        {canAddMoreImages && (
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-brand-primary bg-surface-bg hover:bg-brand-primary/5 border border-brand-primary/20 rounded-lg active:scale-95 transition-all"
+                                                >
+                                                    <ImageIcon size={14} />
+                                                    <span>{t('btn_add_from_album')}</span>
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>

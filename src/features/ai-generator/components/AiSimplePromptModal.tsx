@@ -9,6 +9,9 @@ import { getContrastTextStyles } from '../../../utils/ui';
 import { AiGenerationResult } from '../services/aiApiService';
 import { classifyColumnFormula } from '../../../utils/templateUtils';
 import { useSearchTemplateOnlineTranslation } from '../../../i18n/search_template_online';
+
+const MAX_AI_IMAGE_COUNT = 5;
+
 interface TerminalWindowProps {
     title: string;
     streamText: string;
@@ -151,7 +154,10 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
     const handleCameraCapture = (blobs: Blob[]) => {
         if (!blobs || blobs.length === 0) return;
         const newFiles = blobs.map((blob, idx) => new File([blob], `scan_${Date.now()}_${idx}.jpg`, { type: 'image/jpeg' }));
-        setQueuedFiles(prev => [...prev, ...newFiles]);
+        setQueuedFiles(prev => {
+            const remainingSlots = Math.max(0, MAX_AI_IMAGE_COUNT - prev.length);
+            return [...prev, ...newFiles.slice(0, remainingSlots)];
+        });
         setIsScannerOpen(false);
     };
 
@@ -160,7 +166,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
         if (!files || files.length === 0) return;
 
         const fileList = Array.from(files);
-        setQueuedFiles(prev => [...prev, ...fileList]);
+        setQueuedFiles(prev => [...prev, ...fileList].slice(0, MAX_AI_IMAGE_COUNT));
 
         e.target.value = '';
     };
@@ -208,6 +214,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
     };
     const isBothDone = (flashStatus === 'success' || flashStatus === 'error') && (gemmaStatus === 'success' || gemmaStatus === 'error');
     const isProcessing = simpleStatus === 'compressing' || simpleStatus === 'generating' || simpleStatus === 'success';
+    const canAddMoreImages = queuedFiles.length < MAX_AI_IMAGE_COUNT;
 
     return (
         <div 
@@ -373,7 +380,9 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                                                 <button onClick={() => handleRemoveFile(idx)} className="absolute -top-1.5 -right-1.5 bg-black/80 hover:bg-status-danger text-white p-1 rounded-full shadow-lg border border-white/20 transition-all duration-200 hover:scale-110 active:scale-90"><X size={12} /></button>
                                             </div>
                                         ))}
-                                        <button onClick={() => setIsScannerOpen(true)} className="w-20 h-20 rounded-xl border-2 border-dashed border-brand-primary/20 hover:border-brand-primary/50 bg-brand-primary/5 hover:bg-brand-primary/10 flex flex-col items-center justify-center gap-1 text-brand-primary transition-all flex-shrink-0 group active:scale-95 snap-start"><Camera size={20} className="group-hover:scale-110 transition-transform" /><span className="text-[10px] font-bold">{t('btn_add_photo')}</span></button>
+                                        {canAddMoreImages && (
+                                            <button onClick={() => setIsScannerOpen(true)} className="w-20 h-20 rounded-xl border-2 border-dashed border-brand-primary/20 hover:border-brand-primary/50 bg-brand-primary/5 hover:bg-brand-primary/10 flex flex-col items-center justify-center gap-1 text-brand-primary transition-all flex-shrink-0 group active:scale-95 snap-start"><Camera size={20} className="group-hover:scale-110 transition-transform" /><span className="text-[10px] font-bold">{t('btn_add_photo')}</span></button>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -388,7 +397,9 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                                 ) : (
                                     <div className="space-y-3">
                                         <button onClick={handleSubmit} className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-brand-primary to-brand-secondary text-white rounded-xl font-black text-base shadow-lg shadow-brand-primary/20 active:scale-98 hover:brightness-110 transition-all animate-in zoom-in-95 duration-300"><Sparkles size={20} className="animate-pulse" /><span>{t('btn_generate_simple').replace('{count}', queuedFiles.length.toString())}</span></button>
-                                        <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-brand-primary bg-surface-bg hover:bg-brand-primary/5 border border-brand-primary/20 rounded-lg active:scale-95 transition-all"><ImageIcon size={14} /><span>{t('btn_add_from_album')}</span></button>
+                                        {canAddMoreImages && (
+                                            <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-brand-primary bg-surface-bg hover:bg-brand-primary/5 border border-brand-primary/20 rounded-lg active:scale-95 transition-all"><ImageIcon size={14} /><span>{t('btn_add_from_album')}</span></button>
+                                        )}
                                     </div>
                                 )}
                             </div>

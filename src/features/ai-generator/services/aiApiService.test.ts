@@ -46,13 +46,16 @@ describe('aiApiService - callAiScoreboardApi Expansion Logic', () => {
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mockResponse));
 
-    const result = await callAiScoreboardApi([], 'Agricola', 'zh-TW');
+    const images = Array.from({ length: 6 }, () => new Blob(['x'], { type: 'image/jpeg' }));
+    const result = await callAiScoreboardApi(images, 'Agricola', 'zh-TW');
     const template = result.template;
     const fetchMock = vi.mocked(fetch);
     const requestBody = fetchMock.mock.calls[0][1]?.body as FormData;
 
     expect(requestBody.get('turnstileToken')).toBe('test-token-ai_generate');
     expect(requestBody.get('systemPrompt')).toBeNull();
+    expect(requestBody.get('image_4')).toBeInstanceOf(File);
+    expect(requestBody.get('image_5')).toBeNull();
 
     // 🚩 驗證 1: f1 應該被提升至根目錄
     const fieldCol = template.columns![0];

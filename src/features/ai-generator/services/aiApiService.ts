@@ -6,6 +6,7 @@ import { inflateGameTemplate } from './aiExpander';
 
 // 預設 Vercel Serverless API 路徑
 const API_ENDPOINT = '/api/ai-generator';
+const MAX_AI_IMAGE_COUNT = 5;
 
 export interface AiGenerateResponse {
     success: boolean;
@@ -41,7 +42,7 @@ export const callAiScoreboardApi = async (
     const formData = new FormData();
 
     // 1. 附加多張圖片 (如果有兩頁的話)
-    images.forEach((blob, index) => {
+    images.slice(0, MAX_AI_IMAGE_COUNT).forEach((blob, index) => {
         formData.append(`image_${index}`, blob, `rulebook_${index}.jpg`);
     });
 
