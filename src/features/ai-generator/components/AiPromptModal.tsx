@@ -226,6 +226,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
     const renderActiveState = () => {
         const isError = !!errorMessage;
         const isSuccess = !!generatedResult;
+        const isWaiting = (status === 'compressing' || status === 'generating') && !isError && !isSuccess;
 
         let headerIcon = <Loader2 size={40} className="animate-spin" />;
         let headerColor = "brand-primary";
@@ -270,7 +271,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
 
         return (
             <div className="flex flex-col animate-in fade-in zoom-in-95 duration-300 w-full">
-                {status === 'generating' && !isError && !isSuccess && (
+                {isWaiting && (
                     <div className="flex justify-between items-center mb-4 w-full">
                         <span className="text-[11px] font-bold text-txt-secondary truncate max-w-[180px] px-2 py-0.5 bg-surface-bg border border-surface-border rounded-full">
                             {gameName}
@@ -286,12 +287,12 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                         <div className={`absolute inset-0 bg-${headerColor}/20 rounded-full animate-ping scale-110`}></div>
                         <div className={`relative bg-${headerColor}/10 rounded-full text-${headerColor} border border-${headerColor}/30 shadow-md flex items-center justify-center w-16 h-16`}>
                             {/* Spinner or Icon */}
-                            <div className={status === 'generating' && !isError && !isSuccess ? "opacity-20" : ""}>
+                            <div className={isWaiting ? "opacity-20" : ""}>
                                 {headerIcon}
                             </div>
                             
                             {/* Centered Timer */}
-                            {status === 'generating' && !isError && !isSuccess && (
+                            {isWaiting && (
                                 <span className="absolute text-sm font-black font-mono tracking-tighter">
                                     {elapsedTime}s
                                 </span>
@@ -301,6 +302,11 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                     <h4 className="text-txt-primary font-black text-base tracking-wide mb-1 text-center">
                         {headerTitle}
                     </h4>
+                    {isWaiting && (
+                        <p className="mt-1 text-[11px] text-status-warning font-semibold text-center px-4 leading-relaxed">
+                            {t('processing_keep_awake_hint')}
+                        </p>
+                    )}
                     {headerSubtitle && (
                         <p className="text-xs text-txt-muted font-medium text-center px-4 leading-relaxed">
                             {headerSubtitle}

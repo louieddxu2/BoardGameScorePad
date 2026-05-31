@@ -288,6 +288,12 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                                 </div>
                             </div>
 
+                            {!isBothDone && (
+                                <div className="mb-3 px-3 py-2 rounded-xl bg-status-warning/10 border border-status-warning/20 text-status-warning text-[10px] font-semibold leading-relaxed">
+                                    {t('processing_keep_awake_hint')}
+                                </div>
+                            )}
+
                             {/* 雙軌實時預覽板 (雙 Terminal 賽馬，成功時跳出結果) */}
                             <div className="grid grid-cols-2 gap-2 mb-4 p-1 rounded-xl shadow-inner min-h-[220px]">
                                 {flashStatus === 'success' ? (
