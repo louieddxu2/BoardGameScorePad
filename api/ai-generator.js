@@ -16,6 +16,12 @@ const ALLOWED_MODELS = new Set([
 ]);
 const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 const TURNSTILE_AI_ACTION = 'ai_generate';
+const SAFETY_SETTINGS = [
+  { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+  { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+  { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+  { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+];
 const SAFE_TURNSTILE_ERROR_CODES = new Set([
   'missing-input-response',
   'invalid-input-response',
@@ -158,6 +164,7 @@ export default async function handler(req) {
         parts: [{ text: systemPrompt }]
       },
       contents: [{ parts: geminiParts }],
+      safetySettings: SAFETY_SETTINGS,
       generationConfig: {
         ...(isGemma ? {} : { responseMimeType: "application/json" }),
         temperature: 0.1

@@ -89,6 +89,7 @@ export const callAiScoreboardApi = async (
         const decoder = new TextDecoder("utf-8");
         let accumulatedText = "";
         let usageData: TokenUsageInfo | undefined = undefined;
+        let safetyBlocked = false;
 
         let done = false;
         let buffer = ""; // 用來處理跨 chunk 被截斷的資料行
@@ -116,6 +117,12 @@ export const callAiScoreboardApi = async (
                             if (data.usageMetadata) {
                                 usageData = data.usageMetadata;
                             }
+
+                            const promptBlockReason = data.promptFeedback?.blockReason;
+                            const finishReason = data.candidates?.[0]?.finishReason;
+                            if (promptBlockReason || finishReason === 'SAFETY') {
+                                safetyBlocked = true;
+                            }
                             
                             // 擷取文字碎片
                             const textChunk = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -133,6 +140,10 @@ export const callAiScoreboardApi = async (
         }
 
         // 串流結束，處理累積的文字
+        if (safetyBlocked) {
+            throw new Error('ai_error_safety_blocked');
+        }
+
         if (!accumulatedText) {
              const diagnosticInfo = JSON.stringify({
                 raw: 'N/A',

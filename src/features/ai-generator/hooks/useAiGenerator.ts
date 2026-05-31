@@ -4,6 +4,7 @@ import { GameTemplate } from '../../../types';
 import { compressImageForAi } from '../utils/imageProcessor';
 import { callAiScoreboardApi, TokenUsageInfo, AiGenerationResult } from '../services/aiApiService';
 import { useTranslation } from '../../../i18n';
+import { recordAiGenerationAttempt } from '../services/aiUsageLimit';
 
 export type AiProcessStatus = 'idle' | 'compressing' | 'generating' | 'success' | 'error';
 
@@ -57,6 +58,12 @@ export const useAiGenerator = (): UseAiGeneratorResult => {
         setErrorMessage(null);
         setTokenUsage(null);
         setStreamText('');
+
+        if (!recordAiGenerationAttempt()) {
+            setStatus('error');
+            setErrorMessage('ai_error_local_rate_limit');
+            return null;
+        }
         
         try {
             // 階段 1: 圖片高速壓縮

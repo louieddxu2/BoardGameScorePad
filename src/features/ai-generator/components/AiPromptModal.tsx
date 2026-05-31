@@ -251,7 +251,9 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
 
             headerTitle = t('error_generic');
             if (errorMessage === 'ai_error_rate_limit') headerTitle = t('error_rate_limit');
+            else if (errorMessage === 'ai_error_local_rate_limit') headerTitle = t('error_local_rate_limit');
             else if (errorMessage === 'ai_error_human_verification') headerTitle = t('error_human_verification');
+            else if (errorMessage === 'ai_error_safety_blocked') headerTitle = t('error_safety_blocked');
             else if (errorMessage === 'ai_error_invalid_json') headerTitle = t('error_invalid_json');
             else if (errorMessage?.startsWith('ai_error_json_parse_failed|')) headerTitle = t('error_json_parse_failed');
 

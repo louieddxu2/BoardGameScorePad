@@ -43,9 +43,13 @@ const TerminalWindow: React.FC<TerminalWindowProps> = ({
             ? diagnostic.raw
             : errStr === 'ai_error_rate_limit'
                 ? t('error_rate_limit')
-                : errStr === 'ai_error_human_verification'
-                    ? t('error_human_verification')
-                    : t('error_generic');
+                : errStr === 'ai_error_local_rate_limit'
+                    ? t('error_local_rate_limit')
+                    : errStr === 'ai_error_human_verification'
+                        ? t('error_human_verification')
+                        : errStr === 'ai_error_safety_blocked'
+                            ? t('error_safety_blocked')
+                            : t('error_generic');
     } else if (isSuccess && result) {
         terminalContent = result.rawText;
     } else {

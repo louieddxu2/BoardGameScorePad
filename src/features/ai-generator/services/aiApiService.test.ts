@@ -1,7 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { callAiScoreboardApi } from './aiApiService';
 
 describe('aiApiService - callAiScoreboardApi Expansion Logic', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('should correctly expand AI response to match built-in template standards', async () => {
     // 模擬 AI 回傳極簡數據 (與農家樂結構相似)
     const mockAiData = {
@@ -78,7 +82,30 @@ describe('aiApiService - callAiScoreboardApi Expansion Logic', () => {
 
     // 🚩 驗證 5: 原始文字
     expect(result.rawText).toBeDefined();
+  });
 
-    vi.unstubAllGlobals();
+  it('should surface Gemini safety blocks as a user-facing error key', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const encoder = new TextEncoder();
+    const mockStream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode('data: ' + JSON.stringify({
+          promptFeedback: { blockReason: 'SAFETY' }
+        }) + '\n\n'));
+        controller.close();
+      }
+    });
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: mockStream,
+    }));
+
+    await expect(callAiScoreboardApi([new Blob(['x'], { type: 'image/jpeg' })], 'Game', 'zh-TW'))
+      .rejects
+      .toThrow('ai_error_safety_blocked');
+
+    consoleErrorSpy.mockRestore();
   });
 });

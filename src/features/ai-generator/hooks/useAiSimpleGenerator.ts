@@ -3,6 +3,7 @@ import { compressImageForAi } from '../utils/imageProcessor';
 import { useTranslation } from '../../../i18n';
 import { callAiScoreboardApi } from '../services/aiApiService';
 import { AiGenerationResult } from '../services/aiApiService';
+import { recordAiGenerationAttempt } from '../services/aiUsageLimit';
 
 export type SimpleProcessStatus = 'idle' | 'compressing' | 'generating' | 'success' | 'error';
 export type ModelRunStatus = 'idle' | 'generating' | 'success' | 'error';
@@ -100,6 +101,16 @@ export const useAiSimpleGenerator = (): UseAiSimpleGeneratorResult => {
         if (files.length === 0) return;
 
         resetSimple();
+
+        if (!recordAiGenerationAttempt()) {
+            setSimpleStatus('error');
+            setFlashStatus('error');
+            setGemmaStatus('error');
+            setFlashError('ai_error_local_rate_limit');
+            setGemmaError('ai_error_local_rate_limit');
+            return;
+        }
+
         setSimpleStatus('compressing');
 
         let compressedBlobs: Blob[] = [];
