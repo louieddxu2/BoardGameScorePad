@@ -47,6 +47,7 @@ const hoisted = vi.hoisted(() => {
     activeSessionIds: [],
     activeSessions: [],
     historyRecords: [],
+    historyStatsRecords: [],
     historyCount: 0,
     savedPlayers: [],
     savedLocations: [],

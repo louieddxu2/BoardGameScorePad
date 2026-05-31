@@ -54,11 +54,12 @@ export const useHistoryQuery = (searchQuery: string) => {
       results = searchService.search(results, searchQuery, searchKeys);
     }
 
-    return results.slice(0, DATA_LIMITS.QUERY.HISTORY_RECORDS);
+    return results;
   }, [allSummaries, searchQuery, isSearching, pendingDeleteIds]);
 
   return {
-    historyRecords: filteredSummaries,
+    historyRecords: filteredSummaries.slice(0, DATA_LIMITS.QUERY.HISTORY_RECORDS),
+    historyStatsRecords: filteredSummaries,
     historyCount: isSearching
       ? filteredSummaries.length
       : Math.max(0, (allSummaries?.length || 0) - pendingDeleteIds.length),

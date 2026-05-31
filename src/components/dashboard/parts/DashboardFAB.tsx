@@ -1,14 +1,16 @@
 
 import React from 'react';
-import { Play } from 'lucide-react';
+import { BarChart3, Play } from 'lucide-react';
 import { useDashboardTranslation } from '../../../i18n/dashboard';
 
 interface DashboardFABProps {
   onClick: () => void;
   isVisible: boolean;
+  mode?: 'play' | 'stats';
+  title?: string;
 }
 
-const DashboardFAB: React.FC<DashboardFABProps> = ({ onClick, isVisible }) => {
+const DashboardFAB: React.FC<DashboardFABProps> = ({ onClick, isVisible, mode = 'play', title }) => {
   const { t } = useDashboardTranslation();
   if (!isVisible) return null;
 
@@ -22,7 +24,7 @@ const DashboardFAB: React.FC<DashboardFABProps> = ({ onClick, isVisible }) => {
       // Right: (90 - 56) / 2 = 17px
       // Bottom: (60 - 56) / 2 = 2px (視覺微調為 4px)
       className="absolute text-white rounded-full flex items-center justify-center z-40 transition-all duration-200 active:scale-95 animate-in zoom-in btn-fab-primary animate-guide-pulse"
-      title={t('card_start_new')}
+      title={title || t('card_start_new')}
       style={{
         width: '56px',
         height: '56px',
@@ -31,7 +33,10 @@ const DashboardFAB: React.FC<DashboardFABProps> = ({ onClick, isVisible }) => {
         // 不使用 safe-area-inset，以確保與 fixed bottom-0 的面板按鈕在視覺上重疊
       }}
     >
-      <Play size={24} fill="currentColor" className="ml-1" />
+      {mode === 'stats'
+        ? <BarChart3 size={24} />
+        : <Play size={24} fill="currentColor" className="ml-1" />
+      }
     </button>
   );
 };

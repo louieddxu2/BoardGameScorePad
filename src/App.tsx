@@ -480,6 +480,7 @@ const App: React.FC = () => {
           activeSessionIds={appData.activeSessionIds}
           activeSessions={appData.activeSessions}
           historyRecords={appData.historyRecords}
+          historyStatsRecords={appData.historyStatsRecords}
           historyCount={appData.historyCount}
           searchQuery={appData.searchQuery}
           setSearchQuery={appData.setSearchQuery}

@@ -16,6 +16,7 @@ import { LibraryView } from './views/LibraryView';
 import { HistoryView } from './views/HistoryView';
 import { DashboardModals } from './parts/DashboardModals';
 import DashboardFAB from './parts/DashboardFAB';
+import HistoryStatsPanel from './HistoryStatsPanel';
 import ShareTemplateModal from './modals/ShareTemplateModal';
 import AiPromptModal from '../../features/ai-generator/components/AiPromptModal';
 import SearchTemplateOnlineModal from './modals/SearchTemplateOnlineModal';
@@ -41,6 +42,7 @@ interface DashboardProps {
   activeSessionIds: string[];
   activeSessions: GameSession[] | undefined;
   historyRecords?: HistorySummary[] | HistoryRecord[];
+  historyStatsRecords?: HistorySummary[];
   historyCount?: number;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -90,6 +92,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   activeSessionIds,
   activeSessions,
   historyRecords,
+  historyStatsRecords,
   historyCount,
   searchQuery,
   setSearchQuery,
@@ -127,6 +130,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
 }) => {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [isSetupMode, setIsSetupMode] = useState(false);
+  const [isStatsMode, setIsStatsMode] = useState(false);
   const [viewMode, setViewMode] = useState<'library' | 'history'>('library');
   const [isAiPromptOpen, setIsAiPromptOpen] = useState(false);
 
@@ -134,8 +138,15 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
     if (!isVisible) {
       setIsSearchActive(false);
       setSearchQuery('');
+      setIsSetupMode(false);
+      setIsStatsMode(false);
     }
   }, [isVisible, setSearchQuery]);
+
+  useEffect(() => {
+    setIsSetupMode(false);
+    setIsStatsMode(false);
+  }, [viewMode]);
 
   // --- Core Hooks ---
   const modals = useDashboardModals();
@@ -213,9 +224,14 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
     setSearchQuery('');
   }, 'setup-mode');
 
+  useModalBackHandler(isStatsMode, () => {
+    setIsStatsMode(false);
+  }, 'history-stats-mode');
+
   // Refs for UI
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const setupPanelRef = useRef<HTMLDivElement>(null);
+  const statsPanelRef = useRef<HTMLDivElement>(null);
 
   const handleHeaderCloudClick = async () => {
     if (viewMode === 'history') modals.actions.setCloudModalCategory('history');
@@ -269,7 +285,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         isSyncing={isSyncing}
         onCloudClick={handleHeaderCloudClick}
         onTriggerInspector={() => modals.actions.setShowInspector(true)}
-        interactionRefs={[setupPanelRef]}
+        interactionRefs={[setupPanelRef, statsPanelRef]}
         isOverlayOpen={isSetupModalOpen}
       />
 
@@ -336,8 +352,14 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
       </div>
 
       <DashboardFAB
-        isVisible={!isSetupMode}
+        isVisible={!isSetupMode && !isStatsMode}
+        mode={viewMode === 'history' ? 'stats' : 'play'}
+        title={viewMode === 'history' ? '統計' : undefined}
         onClick={() => {
+          if (viewMode === 'history') {
+            setIsStatsMode(true);
+            return;
+          }
           setIsSearchActive(true);
           setIsSetupMode(true);
         }}
@@ -356,6 +378,15 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           onOpenBgStats={() => modals.actions.setShowBgStatsModal(true)}
           onOpenBggImport={() => modals.actions.setShowBggImportModal(true)}
         />
+      )}
+
+      {isStatsMode && (
+        <div ref={statsPanelRef}>
+          <HistoryStatsPanel
+            records={historyStatsRecords || (historyRecords as HistorySummary[]) || []}
+            onSearchClick={handlePanelSearchFocus}
+          />
+        </div>
       )}
 
       <DashboardModals

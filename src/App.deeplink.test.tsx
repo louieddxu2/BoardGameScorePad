@@ -23,6 +23,7 @@ const hoisted = vi.hoisted(() => {
     activeSessionIds: [],
     activeSessions: [],
     historyRecords: [],
+    historyStatsRecords: [],
     historyCount: 0,
     searchQuery: '',
     setSearchQuery: vi.fn(),

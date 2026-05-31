@@ -1,0 +1,67 @@
+import { useTranslation } from './index';
+
+export const historyStatsTranslations = {
+  'zh-TW': {
+    stats_empty_date: '尚無紀錄',
+    stats_photo_grid_title: '九宮格照片回顧',
+    stats_photo_grid_subtitle: '最近 9 款',
+    stats_count_label: '次數',
+    stats_games_label: '遊戲',
+    stats_players_label: '玩家',
+    stats_latest_label: '最近',
+    stats_empty_records: '沒有可統計的歷史紀錄',
+    stats_no_players: '尚無玩家',
+    stats_filter_title: '篩選統計',
+    stats_all_time: '全部時間',
+    stats_all_rules: '全部規則',
+    stats_all_locations: '全部地點',
+    stats_search_history: '搜尋歷史',
+    grid_modal_title: '九宮格回顧',
+    grid_modal_subtitle: '最近不同遊戲的第一張照片',
+    grid_loading: '讀取照片中',
+    grid_empty_title: '還沒有可分享的歷史照片',
+    grid_empty_desc: '有照片的歷史紀錄會自動出現在這裡',
+    grid_share_title: '歷史九宮格',
+    grid_download_success: '九宮格已下載',
+    grid_export_failed: '九宮格產生失敗',
+    grid_exporting: '產生中',
+    grid_share_button: '分享九宮格',
+  },
+  'en': {
+    stats_empty_date: 'No records',
+    stats_photo_grid_title: 'Photo Grid Recap',
+    stats_photo_grid_subtitle: 'Recent 9 games',
+    stats_count_label: 'Plays',
+    stats_games_label: 'Games',
+    stats_players_label: 'Players',
+    stats_latest_label: 'Latest',
+    stats_empty_records: 'No history records to summarize',
+    stats_no_players: 'No players',
+    stats_filter_title: 'Filter Stats',
+    stats_all_time: 'All Time',
+    stats_all_rules: 'All Rules',
+    stats_all_locations: 'All Places',
+    stats_search_history: 'Search History',
+    grid_modal_title: 'Photo Grid Recap',
+    grid_modal_subtitle: 'First photo from recent different games',
+    grid_loading: 'Loading photos',
+    grid_empty_title: 'No history photos to share yet',
+    grid_empty_desc: 'History records with photos will appear here automatically',
+    grid_share_title: 'History Photo Grid',
+    grid_download_success: 'Grid downloaded',
+    grid_export_failed: 'Failed to generate grid',
+    grid_exporting: 'Generating',
+    grid_share_button: 'Share Grid',
+  }
+};
+
+export type HistoryStatsTranslationKey = keyof typeof historyStatsTranslations['zh-TW'];
+
+export const useHistoryStatsTranslation = () => {
+  const { language } = useTranslation();
+  const t = (key: HistoryStatsTranslationKey) => {
+    const dict = historyStatsTranslations[language] || historyStatsTranslations['zh-TW'];
+    return dict[key] || key;
+  };
+  return { t, language };
+};
