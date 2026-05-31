@@ -1,6 +1,5 @@
 
 import { GameTemplate } from '../../../types';
-import { SYSTEM_PROMPT_ZH, SYSTEM_PROMPT_EN } from '../aiSystemPrompt';
 import { generateId } from '../../../utils/idGenerator';
 import { inflateGameTemplate } from './aiExpander';
 
@@ -45,14 +44,10 @@ export const callAiScoreboardApi = async (
         formData.append(`image_${index}`, blob, `rulebook_${index}.jpg`);
     });
 
-    // 2. 根據使用者的前端語系，智慧分流最合適的超頻提示詞
-    const isChinese = language.toLowerCase().includes('zh');
-    const systemPrompt = isChinese ? SYSTEM_PROMPT_ZH : SYSTEM_PROMPT_EN;
-
+    // 2. 後端會依語言選擇系統提示詞，並驗證可使用的模型。
     formData.append('gameName', gameName);
     formData.append('language', language);
     formData.append('modelName', modelName);
-    formData.append('systemPrompt', systemPrompt);
 
     try {
         const response = await fetch(API_ENDPOINT, {

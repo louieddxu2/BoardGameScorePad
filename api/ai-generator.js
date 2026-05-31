@@ -1,7 +1,26 @@
 // api/ai-generator.js (Vercel Edge Function)
+import { SYSTEM_PROMPT_ZH, SYSTEM_PROMPT_EN } from './aiSystemPrompt.js';
+
 export const config = {
   runtime: 'edge',
 };
+
+const DEFAULT_MODEL = 'gemini-2.5-flash-lite';
+const ALLOWED_MODELS = new Set([
+  'gemini-2.5-flash-lite',
+  'gemini-2.5-flash',
+  'gemma-3-27b-it',
+]);
+
+function resolveModel(modelName) {
+  const requestedModel = typeof modelName === 'string' ? modelName : DEFAULT_MODEL;
+  return ALLOWED_MODELS.has(requestedModel) ? requestedModel : DEFAULT_MODEL;
+}
+
+function resolveSystemPrompt(language) {
+  const requestedLanguage = typeof language === 'string' ? language : '';
+  return requestedLanguage.toLowerCase().includes('zh') ? SYSTEM_PROMPT_ZH : SYSTEM_PROMPT_EN;
+}
 
 // ArrayBuffer 轉 Base64 函數 (Edge runtime 適用，無相依套件)
 function arrayBufferToBase64(buffer) {
@@ -33,10 +52,10 @@ export default async function handler(req) {
     // 1. 使用原生的 req.formData() 解析上傳的資料與圖片
     const formData = await req.formData();
     
-    const systemPrompt = formData.get('systemPrompt');
     const gameName = formData.get('gameName');
     const language = formData.get('language');
-    const requestedModel = formData.get('modelName') || 'gemini-2.5-flash-lite';
+    const requestedModel = resolveModel(formData.get('modelName'));
+    const systemPrompt = resolveSystemPrompt(language);
 
     // 2. 處理圖片檔案
     const geminiParts = [];
