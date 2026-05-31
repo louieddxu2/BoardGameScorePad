@@ -27,6 +27,18 @@ export interface UseAiSimpleGeneratorResult {
     abortSimpleAll: () => void;
 }
 
+const getAiErrorMessage = (err: any): string => err?.message || 'ai_error_generic';
+
+const isTerminalAiError = (err: any): boolean => {
+    const message = getAiErrorMessage(err);
+    return (
+        message === 'ai_error_human_verification' ||
+        message === 'ai_error_safety_blocked' ||
+        message === 'ai_error_rate_limit' ||
+        message === 'ai_error_local_rate_limit'
+    );
+};
+
 /**
  * AI 雙軌極簡生成器狀態管理控制器 (極致精簡型別安全版)
  */
@@ -149,6 +161,12 @@ export const useAiSimpleGenerator = (): UseAiSimpleGeneratorResult => {
                 return res;
             } catch (err: any) {
                 if (err.name === 'AbortError') return null;
+                if (isTerminalAiError(err)) {
+                    if (flashTimerRef.current) clearInterval(flashTimerRef.current);
+                    setFlashStatus('error');
+                    setFlashError(getAiErrorMessage(err));
+                    return null;
+                }
                 await new Promise(r => setTimeout(r, 500));
                 if (flashAbort.signal.aborted) return null;
                 try {
@@ -163,7 +181,7 @@ export const useAiSimpleGenerator = (): UseAiSimpleGeneratorResult => {
                     if (retryErr.name === 'AbortError') return null;
                     if (flashTimerRef.current) clearInterval(flashTimerRef.current);
                     setFlashStatus('error');
-                    setFlashError(retryErr.message || 'ai_error_generic');
+                    setFlashError(getAiErrorMessage(retryErr));
                     return null;
                 }
             }
@@ -180,6 +198,12 @@ export const useAiSimpleGenerator = (): UseAiSimpleGeneratorResult => {
                 return res;
             } catch (err: any) {
                 if (err.name === 'AbortError') return null;
+                if (isTerminalAiError(err)) {
+                    if (gemmaTimerRef.current) clearInterval(gemmaTimerRef.current);
+                    setGemmaStatus('error');
+                    setGemmaError(getAiErrorMessage(err));
+                    return null;
+                }
                 await new Promise(r => setTimeout(r, 500));
                 if (gemmaAbort.signal.aborted) return null;
                 try {
@@ -194,7 +218,7 @@ export const useAiSimpleGenerator = (): UseAiSimpleGeneratorResult => {
                     if (retryErr.name === 'AbortError') return null;
                     if (gemmaTimerRef.current) clearInterval(gemmaTimerRef.current);
                     setGemmaStatus('error');
-                    setGemmaError(retryErr.message || 'ai_error_generic');
+                    setGemmaError(getAiErrorMessage(retryErr));
                     return null;
                 }
             }
