@@ -4,6 +4,7 @@ export const historyStatsTranslations = {
   'zh-TW': {
     stats_empty_date: '尚無紀錄',
     stats_photo_grid_title: '九宮格照片回顧',
+    stats_photo_grid_short: '九宮格',
     stats_photo_grid_subtitle: '最近 9 款',
     stats_count_label: '次數',
     stats_games_label: '遊戲',
@@ -30,6 +31,7 @@ export const historyStatsTranslations = {
   'en': {
     stats_empty_date: 'No records',
     stats_photo_grid_title: 'Photo Grid Recap',
+    stats_photo_grid_short: 'Grid',
     stats_photo_grid_subtitle: 'Recent 9 games',
     stats_count_label: 'Plays',
     stats_games_label: 'Games',

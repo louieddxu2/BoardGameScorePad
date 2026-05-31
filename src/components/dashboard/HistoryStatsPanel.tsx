@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { BarChart3, CalendarDays, ChevronDown, ChevronUp, MapPin, Minus, Search, Share2, SlidersHorizontal, Trophy, Users, Plus } from 'lucide-react';
+import { BarChart3, CalendarDays, ChevronUp, MapPin, Minus, Search, Share2, SlidersHorizontal, Trophy, Users, Plus } from 'lucide-react';
 import { HistorySummary } from '../../utils/extractDataSummaries';
 import { buildHistoryStats } from '../../utils/historyStats';
 import HistoryPhotoGridShareModal from './HistoryPhotoGridShareModal';
@@ -11,7 +11,7 @@ interface HistoryStatsPanelProps {
 }
 
 const BOTTOM_ROW_HEIGHT_CLASS = 'h-[60px]';
-const RIGHT_PANEL_WIDTH = 'w-[140px]';
+const RIGHT_PANEL_WIDTH = 'w-[118px] sm:w-[140px]';
 
 const formatDate = (timestamp: number | undefined, emptyLabel: string) => {
   if (!timestamp) return emptyLabel;
@@ -20,48 +20,37 @@ const formatDate = (timestamp: number | undefined, emptyLabel: string) => {
 
 const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ records, onSearchClick }) => {
   const { t } = useHistoryStatsTranslation();
-  const [isAdvancedMode, setIsAdvancedMode] = useState(false);
   const [playerCount, setPlayerCount] = useState<number | null>(null);
   const [showPhotoGrid, setShowPhotoGrid] = useState(false);
   const stats = useMemo(() => buildHistoryStats(records), [records]);
 
   return (
     <>
-      <div className={`fixed z-40 flex flex-row items-end pointer-events-none transition-all duration-300 ease-in-out ${isAdvancedMode ? 'inset-0 top-[56px]' : 'bottom-0 left-0 right-0 h-[220px]'}`}>
+      <div
+        className="fixed z-40 bottom-0 left-0 right-0 flex flex-row items-end pointer-events-none transition-all duration-300 ease-in-out"
+        style={{ height: 'clamp(288px, 58dvh, 420px)' }}
+      >
         <div className="flex-1 flex flex-col bg-app-bg border-t border-surface-border shadow-ui-floating pointer-events-auto relative transition-all duration-300 h-full">
           <div className="absolute top-0 left-0 right-0 p-1 text-center pointer-events-none z-10 opacity-30">
             <ChevronUp size={12} className="text-txt-muted mx-auto" />
           </div>
 
-          <div className="flex-none p-3 border-b border-surface-border bg-app-bg-deep/40">
-            <button
-              onClick={() => setShowPhotoGrid(true)}
-              className="w-full flex items-center justify-between gap-3 rounded-xl border border-brand-primary/25 bg-brand-primary/10 text-brand-primary px-3 py-2 active:scale-[0.99] transition-all"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <Share2 size={16} className="shrink-0" />
-                <span className="text-sm font-black truncate">{t('stats_photo_grid_title')}</span>
-              </div>
-              <span className="text-[11px] font-bold text-brand-primary/80 shrink-0">{t('stats_photo_grid_subtitle')}</span>
-            </button>
-          </div>
-
-          <div className="flex-none grid grid-cols-4 gap-2 px-3 py-3 border-b border-surface-border bg-app-bg">
-            <div className="rounded-lg bg-surface-recessed border border-surface-border p-2">
-              <div className="text-[10px] text-txt-muted font-bold">{t('stats_count_label')}</div>
-              <div className="text-lg font-black text-txt-primary font-mono">{stats.playCount}</div>
+          <div className="flex-none grid grid-cols-4 gap-1.5 px-2 py-2 border-b border-surface-border bg-app-bg">
+            <div className="rounded-md bg-surface-recessed border border-surface-border px-2 py-1.5 min-w-0">
+              <div className="text-[9px] text-txt-muted font-bold truncate">{t('stats_count_label')}</div>
+              <div className="text-sm font-black text-txt-primary font-mono truncate">{stats.playCount}</div>
             </div>
-            <div className="rounded-lg bg-surface-recessed border border-surface-border p-2">
-              <div className="text-[10px] text-txt-muted font-bold">{t('stats_games_label')}</div>
-              <div className="text-lg font-black text-txt-primary font-mono">{stats.gameCount}</div>
+            <div className="rounded-md bg-surface-recessed border border-surface-border px-2 py-1.5 min-w-0">
+              <div className="text-[9px] text-txt-muted font-bold truncate">{t('stats_games_label')}</div>
+              <div className="text-sm font-black text-txt-primary font-mono truncate">{stats.gameCount}</div>
             </div>
-            <div className="rounded-lg bg-surface-recessed border border-surface-border p-2">
-              <div className="text-[10px] text-txt-muted font-bold">{t('stats_players_label')}</div>
-              <div className="text-lg font-black text-txt-primary font-mono">{stats.playerCount}</div>
+            <div className="rounded-md bg-surface-recessed border border-surface-border px-2 py-1.5 min-w-0">
+              <div className="text-[9px] text-txt-muted font-bold truncate">{t('stats_players_label')}</div>
+              <div className="text-sm font-black text-txt-primary font-mono truncate">{stats.playerCount}</div>
             </div>
-            <div className="rounded-lg bg-surface-recessed border border-surface-border p-2 min-w-0">
-              <div className="text-[10px] text-txt-muted font-bold">{t('stats_latest_label')}</div>
-              <div className="text-xs font-black text-txt-primary truncate">{formatDate(stats.latestPlayedAt, t('stats_empty_date'))}</div>
+            <div className="rounded-md bg-surface-recessed border border-surface-border px-2 py-1.5 min-w-0">
+              <div className="text-[9px] text-txt-muted font-bold truncate">{t('stats_latest_label')}</div>
+              <div className="text-[11px] font-black text-txt-primary truncate">{formatDate(stats.latestPlayedAt, t('stats_empty_date'))}</div>
             </div>
           </div>
 
@@ -74,15 +63,13 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ records, onSearch
             ) : (
               <div className="flex flex-col justify-start">
                 {stats.games.map(game => (
-                  <div key={game.key} className="min-h-[66px] px-4 py-2 border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors">
-                    <div className="flex items-center justify-between gap-3">
-                      <h3 className="text-sm font-black text-txt-primary truncate">{game.name}</h3>
-                      <div className="flex items-center gap-1 text-brand-primary font-mono font-black shrink-0">
+                  <div key={game.key} className="min-h-[46px] grid grid-cols-[minmax(0,1.35fr)_56px_minmax(0,1.65fr)] items-center gap-2 px-3 py-1.5 border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors">
+                    <h3 className="text-sm font-black text-txt-primary truncate">{game.name}</h3>
+                    <div className="flex items-center justify-end gap-1 text-brand-primary font-mono font-black shrink-0">
                         <Trophy size={13} />
                         <span>{game.playCount}</span>
-                      </div>
                     </div>
-                    <div className="mt-1 flex items-center gap-1.5 text-[11px] text-txt-muted overflow-hidden">
+                    <div className="flex items-center gap-1.5 text-[11px] text-txt-muted overflow-hidden min-w-0">
                       <Users size={12} className="shrink-0" />
                       <span className="truncate">
                         {game.players.length > 0
@@ -99,14 +86,14 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ records, onSearch
           </div>
         </div>
 
-        <div className={`${RIGHT_PANEL_WIDTH} flex flex-col bg-app-bg-deep shrink-0 relative z-50 pointer-events-auto rounded-t-2xl shadow-ui-floating border-t border-l border-surface-border ml-[-1px] transition-all duration-300 ${isAdvancedMode ? 'h-full' : ''}`}>
-          <div className={`flex flex-col p-2 gap-1.5 pb-2 min-h-[160px] ${isAdvancedMode ? 'flex-1' : ''}`}>
+        <div className={`${RIGHT_PANEL_WIDTH} h-full flex flex-col bg-app-bg-deep shrink-0 relative z-50 pointer-events-auto rounded-t-2xl shadow-ui-floating border-t border-l border-surface-border ml-[-1px] transition-all duration-300`}>
+          <div className="flex flex-col p-2 gap-1.5 pb-2 min-h-[160px] flex-1">
             <button
-              onClick={() => setIsAdvancedMode(!isAdvancedMode)}
-              className={`flex items-center justify-center gap-2 w-full transition-all active:scale-95 shrink-0 mb-1 rounded-lg border shadow-ui-floating z-10 ${isAdvancedMode ? 'bg-app-bg-deep text-brand-primary border-brand-primary h-7' : 'bg-app-bg-deep text-txt-muted border-surface-border hover:border-txt-muted h-9'}`}
+              onClick={() => setShowPhotoGrid(true)}
+              className="flex items-center justify-center gap-2 w-full transition-all active:scale-95 shrink-0 mb-1 rounded-lg border shadow-ui-floating z-10 bg-brand-primary/10 text-brand-primary border-brand-primary/30 hover:bg-brand-primary/15 h-9"
             >
-              {isAdvancedMode ? <ChevronDown size={18} /> : <ChevronUp size={20} />}
-              {!isAdvancedMode && <span className="text-[11px] font-black uppercase tracking-widest">{t('stats_filter_title')}</span>}
+              <Share2 size={15} />
+              <span className="text-[11px] font-black uppercase tracking-widest truncate">{t('stats_photo_grid_short')}</span>
             </button>
 
             <div className="relative w-full bg-app-bg border border-surface-border rounded-lg p-2 flex items-center gap-2">
