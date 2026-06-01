@@ -15,6 +15,11 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - `StartGamePanel` is the reference layout for bottom-docked dashboard panels: left scrollable content, right chimney controls, and a fixed bottom action row.
 - `HistoryStatsPanel` intentionally mirrors the StartGamePanel layout language; inspect the game selector panel before changing its dock height, chimney behavior, or bottom actions.
 
+## Data Aggregation Patterns
+- Game search uses `useGameOptionAggregator` to merge `savedGames`, `templates`, and `bggGames` into unique `GameOption` objects before filtering or rendering.
+- The game selector merge order is base saved game, overlay template, then BGG dictionary enrichment; matching prefers `bggId`, then normalized name or BGG aliases.
+- Keep search/sort/filter logic downstream of aggregation. UI components should consume merged options instead of resolving template/game/BGG compatibility themselves.
+
 ## Module Index (Auto-Maintained)
 
 ### Dashboard / Stats / Photo Grid
