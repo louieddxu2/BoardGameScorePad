@@ -27,7 +27,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ records, onSearch
   return (
     <>
       <div
-        className="fixed z-40 bottom-0 left-0 right-0 h-[220px] flex flex-row items-end pointer-events-none transition-all duration-300 ease-in-out"
+        className="fixed z-40 bottom-0 left-0 right-0 h-[45dvh] flex flex-row items-end pointer-events-none transition-all duration-300 ease-in-out"
       >
         <div className="flex-1 flex flex-col bg-app-bg border-t border-surface-border shadow-ui-floating pointer-events-auto relative transition-all duration-300 h-full">
           <div className="absolute top-0 left-0 right-0 p-1 text-center pointer-events-none z-10 opacity-30">
