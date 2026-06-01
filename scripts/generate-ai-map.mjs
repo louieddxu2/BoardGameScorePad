@@ -8,6 +8,7 @@ const srcDir = path.join(root, "src");
 
 const groupMatchers = [
   { name: "dashboard", test: (p) => p.includes("components/dashboard") || p.includes("utils/historyStats") },
+  { name: "game-selector", test: (p) => p.includes("features/game-selector") },
   { name: "session", test: (p) => p.includes("/session/") },
   { name: "template", test: (p) => p.includes("/template/") },
   { name: "history", test: (p) => p.includes("/history/") || p.includes("useHistory") },
@@ -111,4 +112,3 @@ console.log(
     ? `Updated docs/ai-map.md from ${changedSrcFiles.length} changed src files`
     : "Updated docs/ai-map.md from full src scan (no local diff)",
 );
-

@@ -11,6 +11,10 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 2. Read only relevant files.
 3. Avoid cross-layer edits unless required by evidence.
 
+## UI Layout Patterns
+- `StartGamePanel` is the reference layout for bottom-docked dashboard panels: left scrollable content, right chimney controls, and a fixed bottom action row.
+- `HistoryStatsPanel` intentionally mirrors the StartGamePanel layout language; inspect the game selector panel before changing its dock height, chimney behavior, or bottom actions.
+
 ## Module Index (Auto-Maintained)
 
 ### Dashboard / Stats / Photo Grid
@@ -44,6 +48,25 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - `src/utils/historyStats.test.ts`
 - `src/utils/historyStats.ts`
 <!-- AUTO:dashboard:end -->
+
+### Game Selector / Start Panel
+<!-- AUTO:game-selector:start -->
+- `src/features/game-selector/components/AdvancedFilterChimney.tsx`
+- `src/features/game-selector/components/GameLaunchActions.tsx`
+- `src/features/game-selector/components/GameLaunchDashboard.tsx`
+- `src/features/game-selector/components/GameListView.tsx`
+- `src/features/game-selector/components/GameOptionItem.tsx`
+- `src/features/game-selector/components/StartGameOverlays.tsx`
+- `src/features/game-selector/components/StartGamePanel.tsx`
+- `src/features/game-selector/hooks/useCloudTemplateSuggestion.ts`
+- `src/features/game-selector/hooks/useGameLauncher.ts`
+- `src/features/game-selector/hooks/useGameOptionAggregator.ts`
+- `src/features/game-selector/hooks/useGameSelectorLogic.ts`
+- `src/features/game-selector/hooks/useRecommendedGameSetup.ts`
+- `src/features/game-selector/hooks/useStartGamePanelController.ts`
+- `src/features/game-selector/types.ts`
+- `src/features/game-selector/utils/sortStrategies.ts`
+<!-- AUTO:game-selector:end -->
 
 ### Session
 <!-- AUTO:session:start -->
@@ -231,4 +254,3 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 1. Start with targeted files only.
 2. For UI tasks, inspect component-level layout before global styles.
 3. Report modified files and verification results in every task.
-
