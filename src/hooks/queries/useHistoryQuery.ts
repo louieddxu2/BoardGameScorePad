@@ -3,10 +3,11 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { DATA_LIMITS } from '../../dataLimits';
 import { searchService } from '../../services/searchService';
+import { SavedListItem } from '../../types';
 import { extractHistorySummary } from '../../utils/extractDataSummaries';
 import { buildHistoryGameEntries } from '../../utils/historyGameEntries';
 
-export const useHistoryQuery = (searchQuery: string) => {
+export const useHistoryQuery = (searchQuery: string, savedPlayers?: SavedListItem[]) => {
   const isSearching = searchQuery && searchQuery.trim().length > 0;
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
 
@@ -31,8 +32,8 @@ export const useHistoryQuery = (searchQuery: string) => {
   }, [allSummaries, pendingDeleteIds]);
 
   const historyGameEntries = useMemo(() => {
-    return buildHistoryGameEntries(activeSummaries);
-  }, [activeSummaries]);
+    return buildHistoryGameEntries(activeSummaries, { savedPlayers });
+  }, [activeSummaries, savedPlayers]);
 
   const filteredSummaries = useMemo(() => {
     let results = activeSummaries;

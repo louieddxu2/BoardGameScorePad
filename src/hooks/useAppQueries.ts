@@ -18,12 +18,12 @@ export const useAppQueries = (searchQuery: string, pinnedIds: string[]) => {
   // 1. Dashboard View Queries (Library & History)
   // 這些 Hook 內部已經實作了針對各自資料類型的搜尋過濾邏輯
   const templateData = useTemplateQuery(searchQuery, pinnedIds);
-  const historyData = useHistoryQuery(searchQuery);
   const savedGameData = useSavedGameQuery(searchQuery);
 
   // 2. Global / Context Queries (No search dependency)
   const sessionData = useSessionQuery();
   const libraryData = useLibraryQuery();
+  const historyData = useHistoryQuery(searchQuery, libraryData.savedPlayersAll);
 
   // 3. Start Game Panel Query (Merge then Search)
   // 這是一個專門的 Hook，負責處理「開始新遊戲」時的候選名單邏輯

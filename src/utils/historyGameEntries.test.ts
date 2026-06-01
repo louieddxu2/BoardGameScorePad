@@ -73,6 +73,36 @@ describe('historyGameEntries', () => {
     ]);
   });
 
+  it('uses saved players as the canonical player universe when provided', () => {
+    const entries = buildHistoryGameEntries([
+      record({
+        id: 'h1',
+        players: [
+          { id: 'slot_1', linkedPlayerId: 'p-a', name: 'Alice old', color: '#fff', totalScore: 1, scores: {} },
+          { id: 'slot_2', linkedPlayerId: 'stale-bob', name: 'Bob', color: '#000', totalScore: 2, scores: {} },
+          { id: 'slot_3', linkedPlayerId: 'orphan', name: 'Orphan', color: '#333', totalScore: 3, scores: {} }
+        ]
+      }),
+      record({
+        id: 'h2',
+        players: [
+          { id: 'slot_4', linkedPlayerId: 'p-a', name: 'Alice', color: '#fff', totalScore: 4, scores: {} },
+          { id: 'slot_5', name: 'bob', color: '#000', totalScore: 5, scores: {} }
+        ]
+      })
+    ], {
+      savedPlayers: [
+        { id: 'p-a', name: 'Alice' },
+        { id: 'p-b', name: 'Bob' }
+      ]
+    });
+
+    expect(entries[0].players.map(player => [player.key, player.name, player.playCount])).toEqual([
+      ['player:p-a', 'Alice', 2],
+      ['player:p-b', 'Bob', 2]
+    ]);
+  });
+
   it('keeps the most recent first photo for each merged game', () => {
     const entries = buildHistoryGameEntries([
       record({ id: 'h1', gameName: 'Game A', endTime: 1000, firstPhotoId: 'old-photo' }),

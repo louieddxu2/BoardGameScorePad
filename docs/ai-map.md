@@ -20,6 +20,7 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - The game selector merge order is base saved game, overlay template, then BGG dictionary enrichment; matching prefers `bggId`, then normalized name or BGG aliases.
 - Keep search/sort/filter logic downstream of aggregation. UI components should consume merged options instead of resolving template/game/BGG compatibility themselves.
 - History stats and photo grid should consume derived `HistoryGameEntry` objects from active, unsearched history summaries; dashboard search filters the visible history list, not the global stats aggregate.
+- History player stats use `savedPlayers` as the canonical player universe. History records are snapshots of appearances, but distinct player counts should resolve linked IDs or names back to the saved player master list and ignore orphan/stale identities that are not in that list.
 
 ## Module Index (Auto-Maintained)
 

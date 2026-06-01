@@ -1,3 +1,4 @@
+import { SavedListItem } from '../types';
 import { HistorySummary } from './extractDataSummaries';
 
 export interface HistoryGamePlayerEntry {
@@ -34,6 +35,10 @@ interface MutableHistoryGameEntry {
   photoCount: number;
 }
 
+export interface HistoryGameEntryOptions {
+  savedPlayers?: Pick<SavedListItem, 'id' | 'name'>[];
+}
+
 const normalizeName = (name: string | undefined): string => (name || '').trim().toLowerCase();
 
 const isDefaultPlayerName = (name: string | undefined): boolean => {
@@ -54,6 +59,43 @@ export const getHistoryPlayerKey = (player: HistorySummary['players'][number]): 
   return normalizedName ? `name:${normalizedName}` : null;
 };
 
+const createHistoryPlayerResolver = (options?: HistoryGameEntryOptions) => {
+  const savedPlayers = options?.savedPlayers;
+
+  if (!savedPlayers) {
+    return (player: HistorySummary['players'][number]): HistoryGamePlayerEntry | null => {
+      const key = getHistoryPlayerKey(player);
+      return key ? { key, name: player.name, playCount: 0 } : null;
+    };
+  }
+
+  const savedPlayerById = new Map(savedPlayers.map(player => [player.id, player]));
+  const savedPlayerByName = new Map<string, Pick<SavedListItem, 'id' | 'name'>>();
+
+  savedPlayers.forEach(player => {
+    const normalizedName = normalizeName(player.name);
+    if (normalizedName && !savedPlayerByName.has(normalizedName)) {
+      savedPlayerByName.set(normalizedName, player);
+    }
+  });
+
+  return (player: HistorySummary['players'][number]): HistoryGamePlayerEntry | null => {
+    if (isDefaultPlayerName(player.name)) return null;
+
+    const linkedPlayer = player.linkedPlayerId ? savedPlayerById.get(player.linkedPlayerId) : undefined;
+    if (linkedPlayer) {
+      return { key: `player:${linkedPlayer.id}`, name: linkedPlayer.name || player.name, playCount: 0 };
+    }
+
+    const nameMatchedPlayer = savedPlayerByName.get(normalizeName(player.name));
+    if (nameMatchedPlayer) {
+      return { key: `player:${nameMatchedPlayer.id}`, name: nameMatchedPlayer.name || player.name, playCount: 0 };
+    }
+
+    return null;
+  };
+};
+
 const sortByCountThenName = (a: HistoryGamePlayerEntry, b: HistoryGamePlayerEntry) => {
   if (b.playCount !== a.playCount) return b.playCount - a.playCount;
   return a.name.localeCompare(b.name);
@@ -64,8 +106,9 @@ const sortByCountThenRecent = (a: HistoryGameEntry, b: HistoryGameEntry) => {
   return b.latestPlayedAt - a.latestPlayedAt;
 };
 
-export const buildHistoryGameEntries = (records: HistorySummary[]): HistoryGameEntry[] => {
+export const buildHistoryGameEntries = (records: HistorySummary[], options?: HistoryGameEntryOptions): HistoryGameEntry[] => {
   const gameMap = new Map<string, MutableHistoryGameEntry>();
+  const resolveHistoryPlayer = createHistoryPlayerResolver(options);
 
   records.forEach(record => {
     const gameKey = getHistoryGameKey(record);
@@ -96,13 +139,13 @@ export const buildHistoryGameEntries = (records: HistorySummary[]): HistoryGameE
     if (record.templateId) currentGame.templateIds.add(record.templateId);
 
     record.players.forEach(player => {
-      const playerKey = getHistoryPlayerKey(player);
-      if (!playerKey) return;
+      const resolvedPlayer = resolveHistoryPlayer(player);
+      if (!resolvedPlayer) return;
 
-      const existingPlayer = currentGame.players.get(playerKey);
-      currentGame.players.set(playerKey, {
-        key: playerKey,
-        name: existingPlayer?.name || player.name,
+      const existingPlayer = currentGame.players.get(resolvedPlayer.key);
+      currentGame.players.set(resolvedPlayer.key, {
+        key: resolvedPlayer.key,
+        name: existingPlayer?.name || resolvedPlayer.name,
         playCount: (existingPlayer?.playCount || 0) + 1
       });
     });
