@@ -385,6 +385,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           <HistoryStatsPanel
             records={historyStatsRecords || (historyRecords as HistorySummary[]) || []}
             onSearchClick={handlePanelSearchFocus}
+            isSearchActive={isSearchActive}
           />
         </div>
       )}

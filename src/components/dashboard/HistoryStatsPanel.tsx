@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { BarChart3, CalendarDays, ChevronUp, Hash, MapPin, Minus, RotateCcw, Search, Share2, Users, Plus } from 'lucide-react';
+import { BarChart3, CalendarDays, ChevronDown, ChevronUp, Grid3X3, Hash, MapPin, Minus, Search, Users, Plus } from 'lucide-react';
 import { HistorySummary } from '../../utils/extractDataSummaries';
 import { buildHistoryStats } from '../../utils/historyStats';
 import HistoryPhotoGridShareModal from './HistoryPhotoGridShareModal';
@@ -8,6 +8,7 @@ import { useHistoryStatsTranslation } from '../../i18n/history_stats';
 interface HistoryStatsPanelProps {
   records: HistorySummary[];
   onSearchClick: () => void;
+  isSearchActive: boolean;
 }
 
 const BOTTOM_ROW_HEIGHT_CLASS = 'h-[60px]';
@@ -18,16 +19,20 @@ const formatDate = (timestamp: number | undefined, emptyLabel: string) => {
   return new Date(timestamp).toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' });
 };
 
-const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ records, onSearchClick }) => {
+const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ records, onSearchClick, isSearchActive }) => {
   const { t } = useHistoryStatsTranslation();
   const [playerCount, setPlayerCount] = useState<number | null>(null);
   const [showPhotoGrid, setShowPhotoGrid] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const stats = useMemo(() => buildHistoryStats(records), [records]);
+  const panelLayoutClass = isSearchActive
+    ? 'bottom-0 left-0 right-0 h-[220px]'
+    : (isExpanded ? 'inset-0 top-[56px]' : 'bottom-0 left-0 right-0 h-[45dvh]');
 
   return (
     <>
       <div
-        className="fixed z-40 bottom-0 left-0 right-0 h-[45dvh] flex flex-row items-end pointer-events-none transition-all duration-300 ease-in-out"
+        className={`fixed z-40 flex flex-row items-end pointer-events-none transition-all duration-300 ease-in-out ${panelLayoutClass}`}
       >
         <div className="flex-1 flex flex-col bg-app-bg border-t border-surface-border shadow-ui-floating pointer-events-auto relative transition-all duration-300 h-full">
           <div className="absolute top-0 left-0 right-0 p-1 text-center pointer-events-none z-10 opacity-30">
@@ -73,14 +78,18 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ records, onSearch
           </div>
         </div>
 
-        <div className={`${RIGHT_PANEL_WIDTH} flex flex-col bg-app-bg-deep shrink-0 relative z-50 pointer-events-auto rounded-t-2xl shadow-ui-floating border-t border-l border-surface-border ml-[-1px] transition-all duration-300`}>
-          <div className="flex flex-col p-2 gap-1.5 pb-2 min-h-[160px]">
+        <div className={`${RIGHT_PANEL_WIDTH} flex flex-col bg-app-bg-deep shrink-0 relative z-50 pointer-events-auto rounded-t-2xl shadow-ui-floating border-t border-l border-surface-border ml-[-1px] transition-all duration-300 ${isExpanded && !isSearchActive ? 'h-full' : ''}`}>
+          <div className={`flex flex-col p-2 gap-1.5 pb-2 min-h-[160px] ${isExpanded && !isSearchActive ? 'flex-1' : ''}`}>
             <button
-              onClick={() => setShowPhotoGrid(true)}
-              className="flex items-center justify-center gap-2 w-full transition-all active:scale-95 shrink-0 mb-1 rounded-lg border shadow-ui-floating z-10 bg-brand-primary/10 text-brand-primary border-brand-primary/30 hover:bg-brand-primary/15 h-9"
+              onClick={() => setIsExpanded(prev => !prev)}
+              className={`flex items-center justify-center gap-2 w-full transition-all active:scale-95 shrink-0 mb-1 rounded-lg border shadow-ui-floating z-10 h-9 ${
+                isExpanded && !isSearchActive
+                  ? 'bg-app-bg-deep text-brand-primary border-brand-primary'
+                  : 'bg-app-bg-deep text-txt-muted border-surface-border hover:border-txt-muted'
+              }`}
             >
-              <Share2 size={15} />
-              <span className="text-[11px] font-black uppercase tracking-widest truncate">{t('stats_photo_grid_short')}</span>
+              {isExpanded && !isSearchActive ? <ChevronDown size={18} /> : <ChevronUp size={20} />}
+              {(!isExpanded || isSearchActive) && <span className="text-[11px] font-black uppercase tracking-widest truncate">{t('stats_expand')}</span>}
             </button>
 
             <div className="relative w-full bg-app-bg border border-surface-border rounded-lg p-2 flex items-center gap-2">
@@ -139,16 +148,11 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ records, onSearch
             </button>
 
             <button
-              onClick={() => setPlayerCount(null)}
-              disabled={playerCount === null}
-              className={`w-[90px] h-full flex flex-col items-center justify-center transition-all active:brightness-90 ${
-                playerCount !== null
-                  ? 'bg-brand-primary hover:filter hover:brightness-110 text-white'
-                  : 'bg-surface-bg text-txt-muted cursor-not-allowed'
-              }`}
-              title={t('stats_reset_filters')}
+              onClick={() => setShowPhotoGrid(true)}
+              className="w-[90px] h-full flex flex-col items-center justify-center transition-all active:brightness-90 bg-brand-primary hover:filter hover:brightness-110 text-white"
+              title={t('stats_photo_grid_title')}
             >
-              <RotateCcw size={24} />
+              <Grid3X3 size={26} />
             </button>
           </div>
         </div>
