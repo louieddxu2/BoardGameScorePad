@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { BarChart3, CalendarDays, ChevronUp, MapPin, Minus, Search, Share2, SlidersHorizontal, Trophy, Users, Plus } from 'lucide-react';
+import { BarChart3, CalendarDays, ChevronUp, Hash, MapPin, Minus, RotateCcw, Search, Share2, Users, Plus } from 'lucide-react';
 import { HistorySummary } from '../../utils/extractDataSummaries';
 import { buildHistoryStats } from '../../utils/historyStats';
 import HistoryPhotoGridShareModal from './HistoryPhotoGridShareModal';
@@ -34,38 +34,26 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ records, onSearch
             <ChevronUp size={12} className="text-txt-muted mx-auto" />
           </div>
 
-          <div className="flex-none grid grid-cols-4 gap-1.5 px-2 py-2 border-b border-surface-border bg-app-bg">
-            <div className="rounded-md bg-surface-recessed border border-surface-border px-2 py-1.5 min-w-0">
-              <div className="text-[9px] text-txt-muted font-bold truncate">{t('stats_count_label')}</div>
-              <div className="text-sm font-black text-txt-primary font-mono truncate">{stats.playCount}</div>
-            </div>
-            <div className="rounded-md bg-surface-recessed border border-surface-border px-2 py-1.5 min-w-0">
-              <div className="text-[9px] text-txt-muted font-bold truncate">{t('stats_games_label')}</div>
-              <div className="text-sm font-black text-txt-primary font-mono truncate">{stats.gameCount}</div>
-            </div>
-            <div className="rounded-md bg-surface-recessed border border-surface-border px-2 py-1.5 min-w-0">
-              <div className="text-[9px] text-txt-muted font-bold truncate">{t('stats_players_label')}</div>
-              <div className="text-sm font-black text-txt-primary font-mono truncate">{stats.playerCount}</div>
-            </div>
-            <div className="rounded-md bg-surface-recessed border border-surface-border px-2 py-1.5 min-w-0">
-              <div className="text-[9px] text-txt-muted font-bold truncate">{t('stats_latest_label')}</div>
-              <div className="text-[11px] font-black text-txt-primary truncate">{formatDate(stats.latestPlayedAt, t('stats_empty_date'))}</div>
-            </div>
+          <div className="flex-none h-8 px-3 border-b border-surface-border bg-app-bg flex items-center gap-3 overflow-x-auto no-scrollbar text-[11px] font-bold text-txt-muted whitespace-nowrap">
+            <span><span className="text-txt-primary font-mono">{stats.playCount}</span> {t('stats_count_label')}</span>
+            <span><span className="text-txt-primary font-mono">{stats.gameCount}</span> {t('stats_games_label')}</span>
+            <span><span className="text-txt-primary font-mono">{stats.playerCount}</span> {t('stats_players_label')}</span>
+            <span>{t('stats_latest_label')} <span className="text-txt-primary">{formatDate(stats.latestPlayedAt, t('stats_empty_date'))}</span></span>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar pb-2">
+          <div className="flex-1 min-h-0 overflow-auto no-scrollbar pb-2">
             {stats.games.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-txt-muted opacity-70 gap-2">
                 <BarChart3 size={32} />
                 <span className="text-sm font-bold">{t('stats_empty_records')}</span>
               </div>
             ) : (
-              <div className="flex flex-col justify-start">
+              <div className="flex flex-col justify-start min-w-[520px]">
                 {stats.games.map(game => (
-                  <div key={game.key} className="min-h-[46px] grid grid-cols-[minmax(0,1.35fr)_56px_minmax(0,1.65fr)] items-center gap-2 px-3 py-1.5 border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors">
-                    <h3 className="text-sm font-black text-txt-primary truncate">{game.name}</h3>
+                  <div key={game.key} className="min-h-[46px] grid grid-cols-[168px_72px_minmax(260px,1fr)] items-center gap-2 pr-3 py-1.5 border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors">
+                    <h3 className="sticky left-0 z-10 bg-app-bg px-3 text-sm font-black text-txt-primary truncate">{game.name}</h3>
                     <div className="flex items-center justify-end gap-1 text-brand-primary font-mono font-black shrink-0">
-                        <Trophy size={13} />
+                        <Hash size={13} />
                         <span>{game.playCount}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-[11px] text-txt-muted overflow-hidden min-w-0">
@@ -85,8 +73,8 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ records, onSearch
           </div>
         </div>
 
-        <div className={`${RIGHT_PANEL_WIDTH} h-full flex flex-col bg-app-bg-deep shrink-0 relative z-50 pointer-events-auto rounded-t-2xl shadow-ui-floating border-t border-l border-surface-border ml-[-1px] transition-all duration-300`}>
-          <div className="flex flex-col p-2 gap-1.5 pb-2 min-h-[160px] flex-1">
+        <div className={`${RIGHT_PANEL_WIDTH} flex flex-col bg-app-bg-deep shrink-0 relative z-50 pointer-events-auto rounded-t-2xl shadow-ui-floating border-t border-l border-surface-border ml-[-1px] transition-all duration-300`}>
+          <div className="flex flex-col p-2 gap-1.5 pb-2 min-h-[160px]">
             <button
               onClick={() => setShowPhotoGrid(true)}
               className="flex items-center justify-center gap-2 w-full transition-all active:scale-95 shrink-0 mb-1 rounded-lg border shadow-ui-floating z-10 bg-brand-primary/10 text-brand-primary border-brand-primary/30 hover:bg-brand-primary/15 h-9"
@@ -150,8 +138,17 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ records, onSearch
               <Search size={22} strokeWidth={2.5} />
             </button>
 
-            <button className="w-[90px] h-full flex flex-col items-center justify-center transition-all active:brightness-90 bg-brand-primary hover:filter hover:brightness-110 text-white">
-              <SlidersHorizontal size={26} />
+            <button
+              onClick={() => setPlayerCount(null)}
+              disabled={playerCount === null}
+              className={`w-[90px] h-full flex flex-col items-center justify-center transition-all active:brightness-90 ${
+                playerCount !== null
+                  ? 'bg-brand-primary hover:filter hover:brightness-110 text-white'
+                  : 'bg-surface-bg text-txt-muted cursor-not-allowed'
+              }`}
+              title={t('stats_reset_filters')}
+            >
+              <RotateCcw size={24} />
             </button>
           </div>
         </div>
