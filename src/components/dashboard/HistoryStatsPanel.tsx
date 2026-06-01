@@ -53,17 +53,21 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ records, onSearch
                 <span className="text-sm font-bold">{t('stats_empty_records')}</span>
               </div>
             ) : (
-              <div className="flex flex-col justify-start min-w-[520px]">
+              <div className="flex flex-col justify-start min-w-[420px]">
                 {stats.games.map(game => (
-                  <div key={game.key} className="min-h-[46px] grid grid-cols-[168px_72px_minmax(260px,1fr)] items-center gap-2 pr-3 py-1.5 border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors">
-                    <h3 className="sticky left-0 z-10 bg-app-bg px-3 text-sm font-black text-txt-primary truncate">{game.name}</h3>
+                  <div
+                    key={game.key}
+                    className="min-h-[46px] grid items-center gap-2 pr-3 py-1.5 border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors"
+                    style={{ gridTemplateColumns: 'minmax(0, min(160px, 25vw)) 64px minmax(240px, 1fr)' }}
+                  >
+                    <h3 className="sticky left-0 z-10 bg-app-bg px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap">{game.name}</h3>
                     <div className="flex items-center justify-end gap-1 text-brand-primary font-mono font-black shrink-0">
                         <Hash size={13} />
                         <span>{game.playCount}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-[11px] text-txt-muted overflow-hidden min-w-0">
-                      <Users size={12} className="shrink-0" />
-                      <span className="truncate">
+                    <div className="flex items-center gap-1.5 text-[11px] text-txt-secondary overflow-hidden min-w-0">
+                      <Users size={12} className="shrink-0 text-brand-secondary" />
+                      <span className="truncate font-semibold">
                         {game.players.length > 0
                           ? game.players.slice(0, 6).map(player => player.name).join('、')
                           : t('stats_no_players')}
@@ -79,7 +83,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ records, onSearch
         </div>
 
         <div className={`${RIGHT_PANEL_WIDTH} flex flex-col bg-app-bg-deep shrink-0 relative z-50 pointer-events-auto rounded-t-2xl shadow-ui-floating border-t border-l border-surface-border ml-[-1px] transition-all duration-300 ${isExpanded && !isSearchActive ? 'h-full' : ''}`}>
-          <div className={`flex flex-col p-2 gap-1.5 pb-2 min-h-[160px] ${isExpanded && !isSearchActive ? 'flex-1' : ''}`}>
+          <div className={`flex flex-col justify-end p-2 gap-1.5 pb-2 min-h-[160px] ${isExpanded && !isSearchActive ? 'flex-1' : ''}`}>
             <button
               onClick={() => setIsExpanded(prev => !prev)}
               className={`flex items-center justify-center gap-2 w-full transition-all active:scale-95 shrink-0 mb-1 rounded-lg border shadow-ui-floating z-10 h-9 ${

@@ -34,6 +34,11 @@ const getGameKey = (record: HistorySummary): string => {
   return record.templateId || `name:${record.gameName.trim().toLowerCase()}`;
 };
 
+const getPhotoGridGameKey = (record: HistorySummary): string => {
+  const normalizedName = record.gameName.trim().toLowerCase();
+  return normalizedName ? `name:${normalizedName}` : getGameKey(record);
+};
+
 const getPlayerKey = (player: HistorySummary['players'][number]): string => {
   return player.linkedPlayerId || `name:${player.name.trim().toLowerCase()}`;
 };
@@ -112,9 +117,11 @@ export const selectHistoryPhotoGridItems = (records: HistorySummary[], limit = 9
   const seenGames = new Set<string>();
   const items: HistoryPhotoGridItem[] = [];
 
-  for (const record of records) {
+  const recentRecords = [...records].sort((a, b) => b.endTime - a.endTime);
+
+  for (const record of recentRecords) {
     if (!record.firstPhotoId) continue;
-    const gameKey = getGameKey(record);
+    const gameKey = getPhotoGridGameKey(record);
     if (seenGames.has(gameKey)) continue;
 
     seenGames.add(gameKey);
