@@ -36,13 +36,8 @@ interface MutableHistoryGameEntry {
 
 const normalizeName = (name: string | undefined): string => (name || '').trim().toLowerCase();
 
-const isPlaceholderPlayerId = (id: string | undefined): boolean => {
-  if (!id) return false;
-  return id.startsWith('slot_') || id.startsWith('player_') || id.startsWith('sys_');
-};
-
 const isDefaultPlayerName = (name: string | undefined): boolean => {
-  return /^(玩家|Player)\s?\d+$/i.test((name || '').trim());
+  return /^(\u73a9\u5bb6|Player)\s?\d+$/i.test((name || '').trim());
 };
 
 export const getHistoryGameKey = (record: HistorySummary): string => {
@@ -53,7 +48,6 @@ export const getHistoryGameKey = (record: HistorySummary): string => {
 
 export const getHistoryPlayerKey = (player: HistorySummary['players'][number]): string | null => {
   if (player.linkedPlayerId) return `player:${player.linkedPlayerId}`;
-  if (!isPlaceholderPlayerId(player.id)) return `player:${player.id}`;
   if (isDefaultPlayerName(player.name)) return null;
 
   const normalizedName = normalizeName(player.name);

@@ -47,14 +47,14 @@ describe('historyGameEntries', () => {
     expect(entries[0].playCount).toBe(2);
   });
 
-  it('deduplicates linked players and excludes default placeholders', () => {
+  it('deduplicates linked players, falls back to names, and excludes default placeholders', () => {
     const entries = buildHistoryGameEntries([
       record({
         id: 'h1',
         players: [
-          { id: 'slot_1', name: '玩家 1', color: '#fff', totalScore: 0, scores: {} },
+          { id: 'slot_1', name: '\u73a9\u5bb6 1', color: '#fff', totalScore: 0, scores: {} },
           { id: 'slot_2', linkedPlayerId: 'p-a', name: 'Alice', color: '#000', totalScore: 1, scores: {} },
-          { id: 'custom-bob', name: 'Bob', color: '#333', totalScore: 2, scores: {} }
+          { id: 'session-bob-a', name: 'Bob', color: '#333', totalScore: 2, scores: {} }
         ]
       }),
       record({
@@ -62,14 +62,14 @@ describe('historyGameEntries', () => {
         players: [
           { id: 'player_1', name: 'Player 1', color: '#fff', totalScore: 0, scores: {} },
           { id: 'another-slot', linkedPlayerId: 'p-a', name: 'Alice A.', color: '#000', totalScore: 3, scores: {} },
-          { id: 'custom-bob', name: 'Bob', color: '#333', totalScore: 4, scores: {} }
+          { id: 'session-bob-b', name: 'Bob', color: '#333', totalScore: 4, scores: {} }
         ]
       })
     ]);
 
     expect(entries[0].players.map(player => [player.key, player.playCount])).toEqual([
       ['player:p-a', 2],
-      ['player:custom-bob', 2]
+      ['name:bob', 2]
     ]);
   });
 

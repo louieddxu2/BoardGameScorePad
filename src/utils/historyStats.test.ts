@@ -43,7 +43,7 @@ describe('historyStats', () => {
       record({
         id: 'h1',
         players: [
-          { id: 'slot_1', name: '玩家 1', color: '#fff', totalScore: 0, scores: {} },
+          { id: 'slot_1', name: '\u73a9\u5bb6 1', color: '#fff', totalScore: 0, scores: {} },
           { id: 'slot-2', linkedPlayerId: 'p-a', name: 'Alice', color: '#fff', totalScore: 1, scores: {} },
           { id: 'slot_3', name: 'Bob', color: '#000', totalScore: 2, scores: {} }
         ]
