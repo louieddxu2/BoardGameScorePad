@@ -5,6 +5,7 @@ import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 import { usePullAction } from '../../hooks/usePullAction';
 import { useModalBackHandler } from '../../hooks/useModalBackHandler';
 import { HistorySummary } from '../../utils/extractDataSummaries';
+import { HistoryGameEntry } from '../../utils/historyGameEntries';
 import { BgStatsExport, ImportManualLinks } from '../../features/bgstats/types';
 import { GameOption } from '../../features/game-selector/types';
 
@@ -43,6 +44,7 @@ interface DashboardProps {
   activeSessions: GameSession[] | undefined;
   historyRecords?: HistorySummary[] | HistoryRecord[];
   historyStatsRecords?: HistorySummary[];
+  historyGameEntries?: HistoryGameEntry[];
   historyCount?: number;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -92,7 +94,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   activeSessionIds,
   activeSessions,
   historyRecords,
-  historyStatsRecords,
+  historyGameEntries,
   historyCount,
   searchQuery,
   setSearchQuery,
@@ -383,7 +385,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
       {isStatsMode && (
         <div ref={statsPanelRef}>
           <HistoryStatsPanel
-            records={historyStatsRecords || (historyRecords as HistorySummary[]) || []}
+            entries={historyGameEntries || []}
             onSearchClick={handlePanelSearchFocus}
             isSearchActive={isSearchActive}
           />

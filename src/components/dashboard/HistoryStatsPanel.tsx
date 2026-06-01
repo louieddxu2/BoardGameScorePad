@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { BarChart3, CalendarDays, ChevronDown, ChevronUp, Grid3X3, Hash, MapPin, Minus, Search, Users, Plus } from 'lucide-react';
-import { HistorySummary } from '../../utils/extractDataSummaries';
+import { HistoryGameEntry } from '../../utils/historyGameEntries';
 import { buildHistoryStats } from '../../utils/historyStats';
 import HistoryPhotoGridShareModal from './HistoryPhotoGridShareModal';
 import { useHistoryStatsTranslation } from '../../i18n/history_stats';
 
 interface HistoryStatsPanelProps {
-  records: HistorySummary[];
+  entries: HistoryGameEntry[];
   onSearchClick: () => void;
   isSearchActive: boolean;
 }
@@ -19,12 +19,12 @@ const formatDate = (timestamp: number | undefined, emptyLabel: string) => {
   return new Date(timestamp).toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' });
 };
 
-const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ records, onSearchClick, isSearchActive }) => {
+const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearchClick, isSearchActive }) => {
   const { t } = useHistoryStatsTranslation();
   const [playerCount, setPlayerCount] = useState<number | null>(null);
   const [showPhotoGrid, setShowPhotoGrid] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const stats = useMemo(() => buildHistoryStats(records), [records]);
+  const stats = useMemo(() => buildHistoryStats(entries), [entries]);
   const panelLayoutClass = isSearchActive
     ? 'bottom-0 left-0 right-0 h-[220px]'
     : (isExpanded ? 'inset-0 top-[56px]' : 'bottom-0 left-0 right-0 h-[45dvh]');
@@ -164,7 +164,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ records, onSearch
 
       <HistoryPhotoGridShareModal
         isOpen={showPhotoGrid}
-        records={records}
+        entries={entries}
         onClose={() => setShowPhotoGrid(false)}
       />
     </>

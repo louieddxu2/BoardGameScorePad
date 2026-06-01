@@ -88,7 +88,7 @@ export interface HistorySearchIndex extends BaseSearchIndex {
  * 歷史紀錄摘要 (View Model)
  * 使用 Type Alias 組合：基底結構 + 搜尋索引 + 原始資料的子集(Partial)
  */
-export type HistorySummary = BaseSummary<HistorySearchIndex> & HistorySearchIndex & Pick<HistoryRecord, 'templateId' | 'gameName' | 'endTime' | 'location' | 'winnerIds' | 'scoringRule'> & {
+export type HistorySummary = BaseSummary<HistorySearchIndex> & HistorySearchIndex & Pick<HistoryRecord, 'templateId' | 'gameName' | 'bggId' | 'endTime' | 'location' | 'winnerIds' | 'scoringRule'> & {
   players: {
     id: string;
     name: string;
@@ -241,6 +241,7 @@ export const extractHistorySummary = (
     id: record.id,
     templateId: record.templateId,
     gameName: record.gameName,
+    bggId: record.bggId,
     endTime: record.endTime,
     location: record.location,
     winnerIds: record.winnerIds,

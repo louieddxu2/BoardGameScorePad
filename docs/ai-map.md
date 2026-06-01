@@ -19,6 +19,7 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - Game search uses `useGameOptionAggregator` to merge `savedGames`, `templates`, and `bggGames` into unique `GameOption` objects before filtering or rendering.
 - The game selector merge order is base saved game, overlay template, then BGG dictionary enrichment; matching prefers `bggId`, then normalized name or BGG aliases.
 - Keep search/sort/filter logic downstream of aggregation. UI components should consume merged options instead of resolving template/game/BGG compatibility themselves.
+- History stats and photo grid should consume derived `HistoryGameEntry` objects from active, unsearched history summaries; dashboard search filters the visible history list, not the global stats aggregate.
 
 ## Module Index (Auto-Maintained)
 
@@ -50,6 +51,8 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - `src/components/dashboard/parts/SearchEmptyState.tsx`
 - `src/components/dashboard/views/HistoryView.tsx`
 - `src/components/dashboard/views/LibraryView.tsx`
+- `src/utils/historyGameEntries.test.ts`
+- `src/utils/historyGameEntries.ts`
 - `src/utils/historyStats.test.ts`
 - `src/utils/historyStats.ts`
 <!-- AUTO:dashboard:end -->

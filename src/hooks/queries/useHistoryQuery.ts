@@ -1,45 +1,41 @@
-
 import { useMemo, useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { DATA_LIMITS } from '../../dataLimits';
 import { searchService } from '../../services/searchService';
 import { extractHistorySummary } from '../../utils/extractDataSummaries';
+import { buildHistoryGameEntries } from '../../utils/historyGameEntries';
 
 export const useHistoryQuery = (searchQuery: string) => {
   const isSearching = searchQuery && searchQuery.trim().length > 0;
-
-  // [Optimistic UI] IDs currently being deleted — used to instantly hide items from UI
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
 
-  // --- HISTORY RECORDS (OPTIMIZED STRATEGY) ---
-
-  // 1. Fetch & Transform (One-pass operation)
-  // 直接讀取所有紀錄，並立即轉換為 HistorySummary。
-  // 這樣記憶體中只會保留輕量資料，不會持有巨大的 snapshotTemplate。
   const allSummaries = useLiveQuery(async () => {
     const records = await db.history.orderBy('endTime').reverse().toArray();
     return records.map(extractHistorySummary);
-  }, [], []); // Empty deps = runs only on DB change
+  }, [], []);
 
-  // 2. Cleanup: When DB confirms deletion (allSummaries updates),
-  // remove IDs that are no longer in DB from the pending list
   useEffect(() => {
     if (!allSummaries || pendingDeleteIds.length === 0) return;
 
     setPendingDeleteIds(prev => prev.filter(id =>
       allSummaries.some(record => record.id === id)
     ));
-  }, [allSummaries]);
+  }, [allSummaries, pendingDeleteIds.length]);
 
-  // 3. Search & Filter
-  const filteredSummaries = useMemo(() => {
+  const activeSummaries = useMemo(() => {
     if (!allSummaries) return [];
-
-    // Apply Optimistic Mask — instantly hide items marked for deletion
-    let results = pendingDeleteIds.length > 0
-      ? allSummaries.filter(r => !pendingDeleteIds.includes(r.id))
+    return pendingDeleteIds.length > 0
+      ? allSummaries.filter(record => !pendingDeleteIds.includes(record.id))
       : allSummaries;
+  }, [allSummaries, pendingDeleteIds]);
+
+  const historyGameEntries = useMemo(() => {
+    return buildHistoryGameEntries(activeSummaries);
+  }, [activeSummaries]);
+
+  const filteredSummaries = useMemo(() => {
+    let results = activeSummaries;
 
     if (isSearching) {
       const searchKeys = [
@@ -55,14 +51,13 @@ export const useHistoryQuery = (searchQuery: string) => {
     }
 
     return results;
-  }, [allSummaries, searchQuery, isSearching, pendingDeleteIds]);
+  }, [activeSummaries, searchQuery, isSearching]);
 
   return {
     historyRecords: filteredSummaries.slice(0, DATA_LIMITS.QUERY.HISTORY_RECORDS),
-    historyStatsRecords: filteredSummaries,
-    historyCount: isSearching
-      ? filteredSummaries.length
-      : Math.max(0, (allSummaries?.length || 0) - pendingDeleteIds.length),
+    historyStatsRecords: activeSummaries,
+    historyGameEntries,
+    historyCount: isSearching ? filteredSummaries.length : activeSummaries.length,
     setPendingDeleteHistoryIds: setPendingDeleteIds
   };
 };

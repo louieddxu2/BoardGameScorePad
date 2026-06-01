@@ -7,7 +7,7 @@ const mapFile = path.join(root, "docs", "ai-map.md");
 const srcDir = path.join(root, "src");
 
 const groupMatchers = [
-  { name: "dashboard", test: (p) => p.includes("components/dashboard") || p.includes("utils/historyStats") },
+  { name: "dashboard", test: (p) => p.includes("components/dashboard") || p.includes("utils/historyStats") || p.includes("utils/historyGameEntries") },
   { name: "game-selector", test: (p) => p.includes("features/game-selector") },
   { name: "session", test: (p) => p.includes("/session/") },
   { name: "template", test: (p) => p.includes("/template/") },
@@ -31,12 +31,17 @@ function walkFiles(dir, relBase = "") {
 
 function listChangedSrcFiles() {
   try {
-    const out = execSync("git diff --name-only HEAD", {
+    const changedOut = execSync("git diff --name-only HEAD", {
       cwd: root,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     });
-    return out
+    const untrackedOut = execSync("git ls-files --others --exclude-standard", {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    return `${changedOut}\n${untrackedOut}`
       .split(/\r?\n/)
       .map((s) => s.trim())
       .filter(Boolean)

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Download, Image as ImageIcon, Loader2, Share2, X } from 'lucide-react';
 import { toBlob } from 'html-to-image';
-import { HistorySummary } from '../../utils/extractDataSummaries';
+import { HistoryGameEntry } from '../../utils/historyGameEntries';
 import { selectHistoryPhotoGridItems } from '../../utils/historyStats';
 import { imageService } from '../../services/imageService';
 import { useModalBackHandler } from '../../hooks/useModalBackHandler';
@@ -16,11 +16,11 @@ interface LoadedGridImage {
 
 interface HistoryPhotoGridShareModalProps {
   isOpen: boolean;
-  records: HistorySummary[];
+  entries: HistoryGameEntry[];
   onClose: () => void;
 }
 
-const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({ isOpen, records, onClose }) => {
+const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({ isOpen, entries, onClose }) => {
   const { zIndex } = useModalBackHandler(isOpen, onClose, 'history-photo-grid-share');
   const { showToast } = useToast();
   const { t } = useHistoryStatsTranslation();
@@ -29,7 +29,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  const gridItems = useMemo(() => selectHistoryPhotoGridItems(records), [records]);
+  const gridItems = useMemo(() => selectHistoryPhotoGridItems(entries), [entries]);
 
   useEffect(() => {
     if (!isOpen) {
