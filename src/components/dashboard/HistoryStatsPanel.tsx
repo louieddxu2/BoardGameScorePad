@@ -8,7 +8,7 @@ import { useHistoryStatsTranslation } from '../../i18n/history_stats';
 interface HistoryStatsPanelProps {
   entries: HistoryGameEntry[];
   onSearchClick: () => void;
-  isSearchActive: boolean;
+  isSearchKeyboardOpen?: boolean;
 }
 
 const BOTTOM_ROW_HEIGHT_CLASS = 'h-[60px]';
@@ -19,13 +19,14 @@ const formatDate = (timestamp: number | undefined, emptyLabel: string) => {
   return new Date(timestamp).toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' });
 };
 
-const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearchClick, isSearchActive }) => {
+const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearchClick, isSearchKeyboardOpen = false }) => {
   const { t } = useHistoryStatsTranslation();
   const [playerCount, setPlayerCount] = useState<number | null>(null);
   const [showPhotoGrid, setShowPhotoGrid] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const stats = useMemo(() => buildHistoryStats(entries), [entries]);
-  const panelLayoutClass = isSearchActive
+  const isPanelExpanded = isExpanded && !isSearchKeyboardOpen;
+  const panelLayoutClass = isSearchKeyboardOpen
     ? 'bottom-0 left-0 right-0 h-[220px]'
     : (isExpanded ? 'inset-0 top-[56px]' : 'bottom-0 left-0 right-0 h-[45dvh]');
 
@@ -37,13 +38,13 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
         <button
           onClick={() => setIsExpanded(prev => !prev)}
           className={`fixed right-2 top-1/2 -translate-y-1/2 z-50 w-11 h-11 flex items-center justify-center rounded-xl border shadow-ui-floating pointer-events-auto transition-all active:scale-95 ${
-            isExpanded && !isSearchActive
+            isPanelExpanded
               ? 'bg-app-bg-deep text-brand-primary border-brand-primary'
               : 'bg-app-bg-deep/95 text-txt-muted border-surface-border hover:border-txt-muted'
           }`}
-          title={isExpanded && !isSearchActive ? t('stats_collapse') : t('stats_expand')}
+          title={isPanelExpanded ? t('stats_collapse') : t('stats_expand')}
         >
-          {isExpanded && !isSearchActive ? <ChevronDown size={22} /> : <ChevronUp size={22} />}
+          {isPanelExpanded ? <ChevronDown size={22} /> : <ChevronUp size={22} />}
         </button>
 
         <div className="flex-1 min-w-0 overflow-hidden flex flex-col bg-app-bg border-t border-surface-border shadow-ui-floating pointer-events-auto relative transition-all duration-300 h-full">

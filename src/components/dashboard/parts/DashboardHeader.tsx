@@ -28,6 +28,7 @@ interface DashboardHeaderProps {
   interactionRefs?: React.RefObject<HTMLElement | null>[];
   // [Fix] New prop to prevent background clicks when global modal is open
   isOverlayOpen?: boolean;
+  onSearchFocusChange?: (focused: boolean) => void;
 }
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({
@@ -48,7 +49,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   onCloudClick,
   onTriggerInspector,
   interactionRefs,
-  isOverlayOpen
+  isOverlayOpen,
+  onSearchFocusChange
 }) => {
 
   const searchRef = useRef<HTMLDivElement>(null);
@@ -192,6 +194,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               placeholder={viewMode === 'library' ? tDash('dash_search_placeholder') : tDash('dash_history_search_placeholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => onSearchFocusChange?.(true)}
+              onBlur={() => onSearchFocusChange?.(false)}
               autoFocus
               className="w-full bg-transparent text-txt-primary focus:outline-none placeholder-txt-muted font-medium"
             />

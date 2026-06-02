@@ -1,5 +1,8 @@
 ﻿# Board Game Score Pad 專案說明（Codex）
 
+## 0. Codex 操作規則
+- 不要主動開啟瀏覽器或啟動畫面驗證流程；只有在使用者明確要求瀏覽器/畫面驗證時才執行。
+
 ## 1. App 概述
 Board Game Score Pad 是一個以 **行動裝置為主、離線優先（PWA）** 的桌遊計分與紀錄 App。核心目標是：
 - 快速建立/使用遊戲計分板（Template）

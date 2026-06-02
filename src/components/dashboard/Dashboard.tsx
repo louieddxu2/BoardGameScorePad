@@ -4,6 +4,7 @@ import { GameTemplate, GameSession, HistoryRecord, SavedListItem, ScoringRule } 
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 import { usePullAction } from '../../hooks/usePullAction';
 import { useModalBackHandler } from '../../hooks/useModalBackHandler';
+import { useKeyboardStatus } from '../../hooks/useVisualViewportOffset';
 import { HistorySummary } from '../../utils/extractDataSummaries';
 import { HistoryGameEntry } from '../../utils/historyGameEntries';
 import { BgStatsExport, ImportManualLinks } from '../../features/bgstats/types';
@@ -135,10 +136,13 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   const [isStatsMode, setIsStatsMode] = useState(false);
   const [viewMode, setViewMode] = useState<'library' | 'history'>('library');
   const [isAiPromptOpen, setIsAiPromptOpen] = useState(false);
+  const [isSearchInputFocused, setIsSearchInputFocused] = useState(false);
+  const { isKeyboardOpen } = useKeyboardStatus();
 
   useEffect(() => {
     if (!isVisible) {
       setIsSearchActive(false);
+      setIsSearchInputFocused(false);
       setSearchQuery('');
       setIsSetupMode(false);
       setIsStatsMode(false);
@@ -148,6 +152,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   useEffect(() => {
     setIsSetupMode(false);
     setIsStatsMode(false);
+    setIsSearchInputFocused(false);
   }, [viewMode]);
 
   // --- Core Hooks ---
@@ -215,6 +220,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   // [Migrated] 搜尋介面返回鍵由 useModalBackHandler 統一管理
   useModalBackHandler(isSearchActive, () => {
     setIsSearchActive(false);
+    setIsSearchInputFocused(false);
     setIsSetupMode(false);
     setSearchQuery('');
   }, 'dashboard-search');
@@ -223,6 +229,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   useModalBackHandler(isSetupMode, () => {
     setIsSetupMode(false);
     setIsSearchActive(false);
+    setIsSearchInputFocused(false);
     setSearchQuery('');
   }, 'setup-mode');
 
@@ -271,8 +278,10 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         isSearchActive={isSearchActive}
         setIsSearchActive={(active) => {
           setIsSearchActive(active);
+          if (!active) setIsSearchInputFocused(false);
           setIsSetupMode(false);
         }}
+        onSearchFocusChange={setIsSearchInputFocused}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         isInstalled={isInstalled}
@@ -387,7 +396,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           <HistoryStatsPanel
             entries={historyGameEntries || []}
             onSearchClick={handlePanelSearchFocus}
-            isSearchActive={isSearchActive}
+            isSearchKeyboardOpen={isSearchActive && isSearchInputFocused && isKeyboardOpen}
           />
         </div>
       )}
