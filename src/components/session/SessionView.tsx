@@ -73,6 +73,10 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
                       aiSimpleGenerator.simpleStatus === 'compressing' || 
                       aiSimpleGenerator.simpleStatus === 'generating';
 
+  const toolboxAutoOpenedRef = useRef(false);
+  const toolboxBottomArmedRef = useRef(false);
+  const toolboxLastScrollTopRef = useRef(0);
+
   // 全域同步計時器
   React.useEffect(() => {
     let interval: any;
@@ -141,7 +145,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     isImageUploadModalOpen,
     isScannerOpen,
     isTextureMapperOpen,
-    isGameSettingsOpen // [New]
+    isGameSettingsOpen, // [New]
+    isToolboxOpen
   } = sessionState.uiState;
 
   const isPanelOpen = editingCell !== null || editingPlayerId !== null;
@@ -380,6 +385,99 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     grid.addEventListener('scroll', handleScroll, { passive: true });
     return () => grid.removeEventListener('scroll', handleScroll);
   }, [sessionState.tableContainerRef, sessionState.totalBarScrollRef]);
+
+  React.useEffect(() => {
+    if (!isToolboxOpen) {
+      toolboxAutoOpenedRef.current = false;
+    }
+  }, [isToolboxOpen]);
+
+  React.useEffect(() => {
+    const grid = sessionState.tableContainerRef.current;
+    if (!grid) return;
+
+    const bottomThreshold = 24;
+    const topThreshold = 8;
+    const minIntentDelta = 4;
+
+    const hasInputInterfaceOpen =
+      editingCell !== null ||
+      editingPlayerId !== null ||
+      editingColumn !== null ||
+      isEditingTitle ||
+      isInputFocused ||
+      isAddColumnModalOpen ||
+      isGameSettingsOpen ||
+      isImageUploadModalOpen ||
+      isPhotoGalleryOpen ||
+      isScannerOpen ||
+      isTextureMapperOpen ||
+      screenshotModal.isOpen ||
+      showShareMenu;
+
+    toolboxLastScrollTopRef.current = grid.scrollTop;
+
+    const handleScroll = () => {
+      const maxScrollTop = Math.max(0, grid.scrollHeight - grid.clientHeight);
+      if (maxScrollTop <= bottomThreshold) return;
+
+      const scrollTop = grid.scrollTop;
+      const delta = scrollTop - toolboxLastScrollTopRef.current;
+      const isAtBottom = scrollTop >= maxScrollTop - bottomThreshold;
+      const isAtTop = scrollTop <= topThreshold;
+
+      if (isAtBottom) {
+        toolboxBottomArmedRef.current = true;
+      }
+
+      if (
+        toolboxBottomArmedRef.current &&
+        delta < -minIntentDelta &&
+        !isToolboxOpen &&
+        !hasInputInterfaceOpen
+      ) {
+        toolboxAutoOpenedRef.current = true;
+        toolboxBottomArmedRef.current = false;
+        setUiState(prev => ({
+          ...prev,
+          isToolboxOpen: true,
+          editingCell: null,
+          editingPlayerId: null,
+          previewValue: 0
+        }));
+      }
+
+      if (isAtTop) {
+        toolboxBottomArmedRef.current = false;
+        if (toolboxAutoOpenedRef.current && isToolboxOpen && !hasInputInterfaceOpen) {
+          toolboxAutoOpenedRef.current = false;
+          setUiState(prev => ({ ...prev, isToolboxOpen: false }));
+        }
+      }
+
+      toolboxLastScrollTopRef.current = scrollTop;
+    };
+
+    grid.addEventListener('scroll', handleScroll, { passive: true });
+    return () => grid.removeEventListener('scroll', handleScroll);
+  }, [
+    editingCell,
+    editingPlayerId,
+    editingColumn,
+    isEditingTitle,
+    isInputFocused,
+    isAddColumnModalOpen,
+    isGameSettingsOpen,
+    isImageUploadModalOpen,
+    isPhotoGalleryOpen,
+    isScannerOpen,
+    isTextureMapperOpen,
+    isToolboxOpen,
+    screenshotModal.isOpen,
+    sessionState.tableContainerRef,
+    setUiState,
+    showShareMenu,
+  ]);
 
   React.useEffect(() => {
     const gridContent = sessionState.gridContentRef.current;
@@ -639,7 +737,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           onAddColumn={eventHandlers.handleAddBlankColumn} // Pass the handler
           onOpenSettings={eventHandlers.handleOpenGameSettings} // [New] Pass handler
           onToggleToolbox={eventHandlers.handleToggleToolbox} // [New Step 2]
-          isToolboxOpen={sessionState.uiState.isToolboxOpen} // [New Step 2]
+          isToolboxOpen={isToolboxOpen} // [New Step 2]
           scrollContainerRef={sessionState.tableContainerRef}
           contentRef={sessionState.gridContentRef}
           baseImage={baseImage || undefined}
@@ -658,7 +756,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       {isScoresEmpty && (
         <div 
           className={`absolute left-0 right-0 z-40 pointer-events-none transition-all duration-300 ease-in-out ${
-            (editingCell?.colId === '__TOTAL__' || sessionState.uiState.isToolboxOpen) ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+            (editingCell?.colId === '__TOTAL__' || isToolboxOpen) ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
           }`}
           style={{
             bottom: `calc(${sessionState.panelHeight} + 40px + 8px)`,
