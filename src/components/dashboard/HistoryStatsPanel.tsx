@@ -12,7 +12,7 @@ interface HistoryStatsPanelProps {
 }
 
 const BOTTOM_ROW_HEIGHT_CLASS = 'h-[60px]';
-const RIGHT_PANEL_WIDTH = 'w-[118px] sm:w-[140px]';
+const ACTION_ROW_WIDTH_CLASS = 'w-[118px] sm:w-[140px]';
 
 const formatDate = (timestamp: number | undefined, emptyLabel: string) => {
   if (!timestamp) return emptyLabel;
@@ -32,8 +32,20 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
   return (
     <>
       <div
-        className={`fixed z-40 flex flex-row items-end pointer-events-none transition-all duration-300 ease-in-out ${panelLayoutClass}`}
+        className={`fixed z-40 flex flex-col pointer-events-none transition-all duration-300 ease-in-out ${panelLayoutClass}`}
       >
+        <button
+          onClick={() => setIsExpanded(prev => !prev)}
+          className={`fixed right-2 top-1/2 -translate-y-1/2 z-50 w-11 h-11 flex items-center justify-center rounded-xl border shadow-ui-floating pointer-events-auto transition-all active:scale-95 ${
+            isExpanded && !isSearchActive
+              ? 'bg-app-bg-deep text-brand-primary border-brand-primary'
+              : 'bg-app-bg-deep/95 text-txt-muted border-surface-border hover:border-txt-muted'
+          }`}
+          title={isExpanded && !isSearchActive ? t('stats_collapse') : t('stats_expand')}
+        >
+          {isExpanded && !isSearchActive ? <ChevronDown size={22} /> : <ChevronUp size={22} />}
+        </button>
+
         <div className="flex-1 min-w-0 overflow-hidden flex flex-col bg-app-bg border-t border-surface-border shadow-ui-floating pointer-events-auto relative transition-all duration-300 h-full">
           <div className="absolute top-0 left-0 right-0 p-1 text-center pointer-events-none z-10 opacity-30">
             <ChevronUp size={12} className="text-txt-muted mx-auto" />
@@ -80,69 +92,52 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
               </div>
             )}
           </div>
-        </div>
 
-        <div className={`${RIGHT_PANEL_WIDTH} flex flex-col bg-app-bg-deep shrink-0 relative z-50 pointer-events-auto rounded-t-2xl shadow-ui-floating border-t border-l border-surface-border ml-[-1px] transition-all duration-300 ${isExpanded && !isSearchActive ? 'h-full' : ''}`}>
-          <div className={`flex flex-col justify-end p-2 gap-1.5 pb-2 min-h-[160px] ${isExpanded && !isSearchActive ? 'flex-1' : ''}`}>
-            <button
-              onClick={() => setIsExpanded(prev => !prev)}
-              className={`flex items-center justify-center gap-2 w-full transition-all active:scale-95 shrink-0 mb-1 rounded-lg border shadow-ui-floating z-10 h-9 ${
-                isExpanded && !isSearchActive
-                  ? 'bg-app-bg-deep text-brand-primary border-brand-primary'
-                  : 'bg-app-bg-deep text-txt-muted border-surface-border hover:border-txt-muted'
-              }`}
-            >
-              {isExpanded && !isSearchActive ? <ChevronDown size={18} /> : <ChevronUp size={20} />}
-              {(!isExpanded || isSearchActive) && <span className="text-[11px] font-black uppercase tracking-widest truncate">{t('stats_expand')}</span>}
-            </button>
+          <div className={`flex-none ${BOTTOM_ROW_HEIGHT_CLASS} flex border-t border-surface-border z-10 bg-app-bg-deep`}>
+            <div className={`min-w-0 flex-1 overflow-x-auto no-scrollbar flex items-center gap-2 px-2 pr-[126px] sm:pr-[148px] pointer-events-auto`}>
+              <div className="h-10 shrink-0 bg-app-bg border border-surface-border rounded-lg px-3 flex items-center gap-2">
+                <CalendarDays size={14} className="text-txt-muted shrink-0" />
+                <span className="text-sm font-bold text-txt-primary whitespace-nowrap">{t('stats_all_time')}</span>
+              </div>
 
-            <div className="relative w-full bg-app-bg border border-surface-border rounded-lg p-2 flex items-center gap-2">
-              <CalendarDays size={14} className="text-txt-muted shrink-0" />
-              <span className="text-sm font-bold text-txt-primary truncate">{t('stats_all_time')}</span>
-            </div>
+              <button className="h-10 shrink-0 bg-app-bg border border-surface-border rounded-lg px-3 flex items-center gap-2 text-txt-primary hover:border-txt-secondary transition-colors">
+                <span className="text-sm font-bold whitespace-nowrap">{t('stats_all_rules')}</span>
+                <ChevronUp size={14} className="text-txt-muted shrink-0" />
+              </button>
 
-            <button className="w-full bg-app-bg border border-surface-border rounded-lg p-2 flex items-center justify-between text-txt-primary hover:border-txt-secondary transition-colors">
-              <span className="text-sm font-bold truncate">{t('stats_all_rules')}</span>
-              <ChevronUp size={14} className="text-txt-muted shrink-0" />
-            </button>
-
-            <button className="w-full bg-app-bg border border-surface-border rounded-lg p-2 flex items-center justify-between text-txt-primary hover:border-txt-secondary transition-colors">
-              <span className="flex items-center gap-1.5 min-w-0">
+              <button className="h-10 shrink-0 bg-app-bg border border-surface-border rounded-lg px-3 flex items-center gap-2 text-txt-primary hover:border-txt-secondary transition-colors">
                 <MapPin size={13} className="text-txt-muted shrink-0" />
-                <span className="text-sm truncate">{t('stats_all_locations')}</span>
-              </span>
-              <ChevronUp size={14} className="text-txt-muted shrink-0" />
-            </button>
+                <span className="text-sm font-bold whitespace-nowrap">{t('stats_all_locations')}</span>
+                <ChevronUp size={14} className="text-txt-muted shrink-0" />
+              </button>
 
-            <div className="shrink-0 flex flex-col justify-center items-center py-1">
-              <div className="flex items-center justify-between w-full bg-app-bg rounded-xl p-1.5 border border-surface-border relative overflow-hidden transition-all duration-300">
+              <div className="h-10 w-[118px] shrink-0 flex items-center justify-between bg-app-bg rounded-xl p-1 border border-surface-border relative overflow-hidden transition-all duration-300">
                 <button
                   onClick={() => setPlayerCount(prev => prev === null || prev <= 1 ? null : prev - 1)}
-                  className="w-9 h-9 flex items-center justify-center bg-surface-bg text-txt-muted rounded-lg active:scale-95 transition-transform hover:bg-surface-bg-alt relative z-10 shrink-0"
+                  className="w-8 h-8 flex items-center justify-center bg-surface-bg text-txt-muted rounded-lg active:scale-95 transition-transform hover:bg-surface-bg-alt relative z-10 shrink-0"
                 >
                   <Minus size={16} />
                 </button>
 
-                <div className="flex-1 relative h-9 flex items-center justify-center">
+                <div className="flex-1 relative h-8 flex items-center justify-center">
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-                    <Users size={24} className="transition-colors text-txt-muted opacity-30" />
+                    <Users size={22} className="transition-colors text-txt-muted opacity-30" />
                   </div>
-                  <span className={`text-lg font-black font-mono relative z-10 drop-shadow-md transition-colors ${playerCount ? 'text-brand-primary' : 'text-txt-muted'}`}>
+                  <span className={`text-base font-black font-mono relative z-10 drop-shadow-md transition-colors ${playerCount ? 'text-brand-primary' : 'text-txt-muted'}`}>
                     {playerCount || '-'}
                   </span>
                 </div>
 
                 <button
                   onClick={() => setPlayerCount(prev => Math.min(20, (prev || 0) + 1))}
-                  className="w-9 h-9 flex items-center justify-center bg-brand-primary/10 text-brand-primary rounded-lg active:scale-95 transition-transform border border-brand-primary/20 hover:bg-brand-primary/20 relative z-10 shrink-0"
+                  className="w-8 h-8 flex items-center justify-center bg-brand-primary/10 text-brand-primary rounded-lg active:scale-95 transition-transform border border-brand-primary/20 hover:bg-brand-primary/20 relative z-10 shrink-0"
                 >
                   <Plus size={16} />
                 </button>
               </div>
             </div>
-          </div>
 
-          <div className={`flex-none ${BOTTOM_ROW_HEIGHT_CLASS} flex border-t border-surface-border z-10 bg-app-bg-deep`}>
+            <div className={`absolute bottom-0 right-0 ${ACTION_ROW_WIDTH_CLASS} ${BOTTOM_ROW_HEIGHT_CLASS} flex border-t border-l border-surface-border z-20 bg-app-bg-deep pointer-events-auto`}>
             <button
               onClick={onSearchClick}
               className="w-[50px] h-full flex items-center justify-center bg-app-bg hover:bg-surface-bg text-brand-primary transition-colors active:brightness-90 border-r border-surface-border"
@@ -158,6 +153,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
             >
               <Grid3X3 size={26} />
             </button>
+            </div>
           </div>
         </div>
       </div>
