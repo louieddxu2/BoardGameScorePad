@@ -11,6 +11,9 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 2. Read only relevant files.
 3. Avoid cross-layer edits unless required by evidence.
 
+## Fixed External Planning Sources
+- Google Doc `BoardGameScorePad維護紀錄`: `https://docs.google.com/document/d/1qBNkRjSoGYXHFTk-f3E3dzSle5_1TAITNnHy7CkbALQ`. Use this fixed doc for ongoing maintenance notes and history-stats-panel proposals instead of re-searching Drive each time.
+
 ## UI Layout Patterns
 - `StartGamePanel` is the reference layout for bottom-docked dashboard panels: left scrollable content, right chimney controls, and a fixed bottom action row.
 - `HistoryStatsPanel` intentionally mirrors the StartGamePanel layout language; inspect the game selector panel before changing its dock height, chimney behavior, or bottom actions.
