@@ -1,5 +1,17 @@
 import { HistoryGameEntry } from './historyGameEntries';
 
+export type HistoryStatsDateRange = 'all' | 'month' | 'quarter' | 'year';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export const HISTORY_STATS_DATE_RANGE_ORDER: HistoryStatsDateRange[] = ['all', 'month', 'quarter', 'year'];
+
+const HISTORY_STATS_DATE_RANGE_DAYS: Record<Exclude<HistoryStatsDateRange, 'all'>, number> = {
+  month: 30,
+  quarter: 90,
+  year: 365
+};
+
 export interface HistoryStatsPlayer {
   key: string;
   name: string;
@@ -29,6 +41,23 @@ export interface HistoryPhotoGridItem {
   endTime: number;
   photoId: string;
 }
+
+export const getNextHistoryStatsDateRange = (range: HistoryStatsDateRange): HistoryStatsDateRange => {
+  const index = HISTORY_STATS_DATE_RANGE_ORDER.indexOf(range);
+  return HISTORY_STATS_DATE_RANGE_ORDER[(index + 1) % HISTORY_STATS_DATE_RANGE_ORDER.length];
+};
+
+export const filterHistoryEntriesByDateRange = (
+  entries: HistoryGameEntry[],
+  range: HistoryStatsDateRange,
+  now = Date.now()
+): HistoryGameEntry[] => {
+  if (range === 'all') return entries;
+
+  const days = HISTORY_STATS_DATE_RANGE_DAYS[range];
+  const cutoff = now - days * DAY_MS;
+  return entries.filter(entry => entry.latestPlayedAt >= cutoff);
+};
 
 export const buildHistoryStats = (entries: HistoryGameEntry[]): HistoryStatsOverview => {
   const globalPlayers = new Map<string, HistoryStatsPlayer>();

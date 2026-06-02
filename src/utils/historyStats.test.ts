@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { HistorySummary } from './extractDataSummaries';
 import { buildHistoryGameEntries } from './historyGameEntries';
-import { buildHistoryStats, selectHistoryPhotoGridItems } from './historyStats';
+import { buildHistoryStats, filterHistoryEntriesByDateRange, getNextHistoryStatsDateRange, selectHistoryPhotoGridItems } from './historyStats';
 
 const record = (overrides: Partial<HistorySummary>): HistorySummary => ({
   id: overrides.id || 'h1',
@@ -77,5 +77,43 @@ describe('historyStats', () => {
     const items = selectHistoryPhotoGridItems(entries);
 
     expect(items.map(item => item.photoId)).toEqual(['photo-a-new', 'photo-b']);
+  });
+
+  it('cycles date ranges in display order', () => {
+    expect(getNextHistoryStatsDateRange('all')).toBe('month');
+    expect(getNextHistoryStatsDateRange('month')).toBe('quarter');
+    expect(getNextHistoryStatsDateRange('quarter')).toBe('year');
+    expect(getNextHistoryStatsDateRange('year')).toBe('all');
+  });
+
+  it('filters entries by recent date ranges', () => {
+    const now = Date.UTC(2026, 5, 2);
+    const entries = buildHistoryGameEntries([
+      record({ id: 'recent', gameName: 'Recent', endTime: now - 10 * 24 * 60 * 60 * 1000 }),
+      record({ id: 'quarter', gameName: 'Quarter', endTime: now - 60 * 24 * 60 * 60 * 1000 }),
+      record({ id: 'year', gameName: 'Year', endTime: now - 200 * 24 * 60 * 60 * 1000 }),
+      record({ id: 'old', gameName: 'Old', endTime: now - 500 * 24 * 60 * 60 * 1000 })
+    ]);
+
+    expect(filterHistoryEntriesByDateRange(entries, 'all', now).map(entry => entry.displayName)).toEqual([
+      'Recent',
+      'Quarter',
+      'Year',
+      'Old'
+    ]);
+    expect(filterHistoryEntriesByDateRange(entries, 'month', now).map(entry => entry.displayName)).toEqual(['Recent']);
+    expect(filterHistoryEntriesByDateRange(entries, 'quarter', now).map(entry => entry.displayName)).toEqual(['Recent', 'Quarter']);
+    expect(filterHistoryEntriesByDateRange(entries, 'year', now).map(entry => entry.displayName)).toEqual(['Recent', 'Quarter', 'Year']);
+  });
+
+  it('uses filtered entries as photo grid source', () => {
+    const now = Date.UTC(2026, 5, 2);
+    const entries = buildHistoryGameEntries([
+      record({ id: 'recent', gameName: 'Recent', endTime: now - 10 * 24 * 60 * 60 * 1000, firstPhotoId: 'recent-photo' }),
+      record({ id: 'old', gameName: 'Old', endTime: now - 500 * 24 * 60 * 60 * 1000, firstPhotoId: 'old-photo' })
+    ]);
+
+    const monthEntries = filterHistoryEntriesByDateRange(entries, 'month', now);
+    expect(selectHistoryPhotoGridItems(monthEntries).map(item => item.photoId)).toEqual(['recent-photo']);
   });
 });
