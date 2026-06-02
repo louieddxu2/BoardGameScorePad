@@ -37,6 +37,9 @@ export const historyStatsTranslations = {
     grid_export_failed: '九宮格產生失敗',
     grid_exporting: '產生中',
     grid_share_button: '分享九宮格',
+    grid_fit_cover: '裁切',
+    grid_fit_contain: '完整',
+    grid_reset_tile: '重置',
   },
   'en': {
     stats_empty_date: 'No records',
@@ -74,6 +77,9 @@ export const historyStatsTranslations = {
     grid_export_failed: 'Failed to generate grid',
     grid_exporting: 'Generating',
     grid_share_button: 'Share Grid',
+    grid_fit_cover: 'Crop',
+    grid_fit_contain: 'Fit',
+    grid_reset_tile: 'Reset',
   }
 };
 
