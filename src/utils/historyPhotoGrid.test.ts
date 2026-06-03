@@ -1,29 +1,61 @@
 import { describe, expect, it } from 'vitest';
 import {
-  clampHistoryPhotoGridOffset,
-  getDefaultHistoryPhotoGridFitMode,
-  getNextHistoryPhotoGridFitMode
+  clampHistoryPhotoGridCrop,
+  clampHistoryPhotoGridZoom,
+  getHistoryPhotoGridBaseSize,
+  getHistoryPhotoGridDisplaySize,
+  getInitialHistoryPhotoGridCrop,
+  getTopAlignedHistoryPhotoGridOffsetY
 } from './historyPhotoGrid';
 
 describe('historyPhotoGrid', () => {
-  it('defaults landscape photos to contain mode', () => {
-    expect(getDefaultHistoryPhotoGridFitMode(1600, 900)).toBe('contain');
+  it('fits landscape photos fully inside the crop frame at minimum zoom', () => {
+    expect(getHistoryPhotoGridBaseSize({ width: 1600, height: 800 })).toEqual({
+      width: 1,
+      height: 0.5
+    });
   });
 
-  it('defaults square and portrait photos to cover mode', () => {
-    expect(getDefaultHistoryPhotoGridFitMode(1000, 1000)).toBe('cover');
-    expect(getDefaultHistoryPhotoGridFitMode(900, 1600)).toBe('cover');
+  it('fits portrait photos fully inside the crop frame at minimum zoom', () => {
+    expect(getHistoryPhotoGridBaseSize({ width: 800, height: 1600 })).toEqual({
+      width: 0.5,
+      height: 1
+    });
   });
 
-  it('cycles fit modes', () => {
-    expect(getNextHistoryPhotoGridFitMode('cover')).toBe('contain');
-    expect(getNextHistoryPhotoGridFitMode('contain')).toBe('cover');
+  it('top-aligns the initial crop when the image leaves bottom whitespace', () => {
+    expect(getInitialHistoryPhotoGridCrop({ width: 1600, height: 800 })).toEqual({
+      zoom: 1,
+      offsetX: 0,
+      offsetY: -0.25
+    });
   });
 
-  it('clamps pan offsets', () => {
-    expect(clampHistoryPhotoGridOffset(90)).toBe(60);
-    expect(clampHistoryPhotoGridOffset(-90)).toBe(-60);
-    expect(clampHistoryPhotoGridOffset(12)).toBe(12);
-    expect(clampHistoryPhotoGridOffset(Number.NaN)).toBe(0);
+  it('keeps zoomed landscape images top-aligned', () => {
+    expect(getTopAlignedHistoryPhotoGridOffsetY({ width: 1600, height: 800 }, 2)).toBe(0);
+  });
+
+  it('limits zoom to the editable range', () => {
+    expect(clampHistoryPhotoGridZoom(0.4)).toBe(1);
+    expect(clampHistoryPhotoGridZoom(1.5)).toBe(1.5);
+    expect(clampHistoryPhotoGridZoom(3)).toBe(2);
+  });
+
+  it('calculates display size from minimum-fit zoom', () => {
+    expect(getHistoryPhotoGridDisplaySize({ width: 1600, height: 800 }, 2)).toEqual({
+      width: 2,
+      height: 1
+    });
+  });
+
+  it('clamps panning so image corners do not pass the crop center', () => {
+    expect(clampHistoryPhotoGridCrop(
+      { width: 1600, height: 800 },
+      { zoom: 2, offsetX: 3, offsetY: -3 }
+    )).toEqual({
+      zoom: 2,
+      offsetX: 1,
+      offsetY: -0.5
+    });
   });
 });
