@@ -43,6 +43,7 @@ interface ScoreGridProps {
   simpleFlashStatus?: string;
   simpleGemmaStatus?: string;
   elapsedTime?: number;
+  toolboxBottomSentinelRef?: React.RefObject<HTMLDivElement>;
 }
 
 const ScoreGrid: React.FC<ScoreGridProps> = ({
@@ -70,6 +71,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   simpleFlashStatus,
   simpleGemmaStatus,
   elapsedTime,
+  toolboxBottomSentinelRef,
 }) => {
   const { t } = useSessionTranslation();
   const dnd = useColumnDragAndDrop({ template, onUpdateTemplate, scrollRef: scrollContainerRef });
@@ -595,6 +597,10 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           onToggleToolbox={onToggleToolbox || (() => { })} // [New]
           isGenerating={aiStatus === 'compressing' || aiStatus === 'generating'}
         />
+
+        {showToolboxButton && (
+          <div ref={toolboxBottomSentinelRef} aria-hidden="true" className="h-px w-full" />
+        )}
 
         {(aiStatus === 'compressing' || aiStatus === 'generating' || aiStatus === 'success') && template.columns.length > 0 ? (
           <div 
