@@ -74,7 +74,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
                       aiSimpleGenerator.simpleStatus === 'generating';
 
   const toolboxAutoOpenedRef = useRef(false);
-  const toolboxBottomArmedRef = useRef(false);
   const toolboxLastScrollTopRef = useRef(0);
 
   // 全域同步計時器
@@ -398,7 +397,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
     const bottomThreshold = 24;
     const topThreshold = 8;
-    const minIntentDelta = 4;
+    const canAutoOpenToolbox = !!baseImage || template.columns.length >= 5;
 
     const hasInputInterfaceOpen =
       editingCell !== null ||
@@ -422,22 +421,16 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       if (maxScrollTop <= bottomThreshold) return;
 
       const scrollTop = grid.scrollTop;
-      const delta = scrollTop - toolboxLastScrollTopRef.current;
       const isAtBottom = scrollTop >= maxScrollTop - bottomThreshold;
       const isAtTop = scrollTop <= topThreshold;
 
-      if (isAtBottom) {
-        toolboxBottomArmedRef.current = true;
-      }
-
       if (
-        toolboxBottomArmedRef.current &&
-        delta < -minIntentDelta &&
+        isAtBottom &&
+        canAutoOpenToolbox &&
         !isToolboxOpen &&
         !hasInputInterfaceOpen
       ) {
         toolboxAutoOpenedRef.current = true;
-        toolboxBottomArmedRef.current = false;
         setUiState(prev => ({
           ...prev,
           isToolboxOpen: true,
@@ -448,7 +441,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       }
 
       if (isAtTop) {
-        toolboxBottomArmedRef.current = false;
         if (toolboxAutoOpenedRef.current && isToolboxOpen && !hasInputInterfaceOpen) {
           toolboxAutoOpenedRef.current = false;
           setUiState(prev => ({ ...prev, isToolboxOpen: false }));
@@ -473,10 +465,12 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     isScannerOpen,
     isTextureMapperOpen,
     isToolboxOpen,
+    baseImage,
     screenshotModal.isOpen,
     sessionState.tableContainerRef,
     setUiState,
     showShareMenu,
+    template.columns.length,
   ]);
 
   React.useEffect(() => {

@@ -149,12 +149,11 @@ describe('SessionView toolbox scroll behavior', () => {
     localStorage.setItem('app_language', 'en');
   });
 
-  it('opens the toolbox after reaching the bottom and scrolling upward', () => {
+  it('opens the toolbox when reaching the bottom', () => {
     renderSession();
     const scroller = getGridScroller();
 
     scrollTo(scroller, 700);
-    scrollTo(scroller, 660);
 
     expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
   });
@@ -165,7 +164,6 @@ describe('SessionView toolbox scroll behavior', () => {
 
     fireEvent.click(getFirstScoreCell());
     scrollTo(scroller, 700);
-    scrollTo(scroller, 660);
 
     expect(screen.queryByText('Game Toolbox')).not.toBeInTheDocument();
   });
@@ -175,7 +173,6 @@ describe('SessionView toolbox scroll behavior', () => {
     const scroller = getGridScroller();
 
     scrollTo(scroller, 700);
-    scrollTo(scroller, 660);
     expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
 
     scrollTo(scroller, 0);
