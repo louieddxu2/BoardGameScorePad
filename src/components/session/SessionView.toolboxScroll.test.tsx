@@ -236,4 +236,48 @@ describe('SessionView toolbox scroll behavior', () => {
 
     expect(screen.queryByText('Game Toolbox')).not.toBeInTheDocument();
   });
+
+  it('closes an auto-opened toolbox when a downward swipe cannot move the score grid up', () => {
+    renderSession();
+    const scroller = getGridScroller();
+
+    setScrollTop(scroller, 700);
+    swipeOn(scroller, { startY: 200, endY: 130 });
+    expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
+
+    setScrollTop(scroller, 0);
+    swipeOn(scroller, { startY: 130, endY: 200 });
+
+    expect(screen.queryByText('Game Toolbox')).not.toBeInTheDocument();
+  });
+
+  it('does not close a manually opened toolbox from a top-boundary downward swipe', () => {
+    renderSession();
+    const scroller = getGridScroller();
+
+    const toolboxButton = document.querySelector('[title="Toggle Toolbox"]') as HTMLButtonElement | null;
+    if (!toolboxButton) throw new Error('toolbox button not found');
+
+    fireEvent.click(toolboxButton);
+    expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
+
+    setScrollTop(scroller, 0);
+    swipeOn(scroller, { startY: 130, endY: 200 });
+
+    expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
+  });
+
+  it('does not close an auto-opened toolbox if the downward swipe successfully scrolls the score grid up', () => {
+    renderSession();
+    const scroller = getGridScroller();
+
+    setScrollTop(scroller, 700);
+    swipeOn(scroller, { startY: 200, endY: 130 });
+    expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
+
+    setScrollTop(scroller, 100);
+    swipeOn(scroller, { startY: 130, endY: 200, moveScrollTop: 70 });
+
+    expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
+  });
 });

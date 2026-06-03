@@ -78,6 +78,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     startX: number;
     startY: number;
     startScrollTop: number;
+    minScrollTop: number;
     maxScrollTop: number;
     axis: 'vertical' | 'horizontal' | null;
   } | null>(null);
@@ -436,7 +437,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     };
 
     const handleTouchStart = (event: TouchEvent) => {
-      if (event.touches.length !== 1 || !canAutoOpenToolbox || hasInputInterfaceOpen || isToolboxOpen) {
+      if (event.touches.length !== 1 || !canAutoOpenToolbox || hasInputInterfaceOpen) {
         toolboxTouchRef.current = null;
         return;
       }
@@ -446,6 +447,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         startX: touch.clientX,
         startY: touch.clientY,
         startScrollTop: grid.scrollTop,
+        minScrollTop: grid.scrollTop,
         maxScrollTop: grid.scrollTop,
         axis: null
       };
@@ -455,6 +457,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       const state = toolboxTouchRef.current;
       if (!state || event.touches.length !== 1) return;
 
+      state.minScrollTop = Math.min(state.minScrollTop, grid.scrollTop);
       state.maxScrollTop = Math.max(state.maxScrollTop, grid.scrollTop);
 
       const touch = event.touches[0];
@@ -476,16 +479,31 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       if (!state) return;
 
       state.maxScrollTop = Math.max(state.maxScrollTop, grid.scrollTop);
+      state.minScrollTop = Math.min(state.minScrollTop, grid.scrollTop);
 
       const changedTouch = event.changedTouches[0];
       if (!changedTouch) return;
 
       const totalDeltaY = changedTouch.clientY - state.startY;
       const fingerMovedUpEnough = totalDeltaY <= -minTriggerDistance;
+      const fingerMovedDownEnough = totalDeltaY >= minTriggerDistance;
       const didNotScrollDown = state.maxScrollTop <= state.startScrollTop + scrollMovementTolerance;
+      const didNotScrollUp = state.minScrollTop >= state.startScrollTop - scrollMovementTolerance;
 
       if (state.axis === 'vertical' && fingerMovedUpEnough && didNotScrollDown) {
         openAutoToolbox();
+      }
+
+      if (
+        state.axis === 'vertical' &&
+        fingerMovedDownEnough &&
+        didNotScrollUp &&
+        toolboxAutoOpenedRef.current &&
+        isToolboxOpen &&
+        !hasInputInterfaceOpen
+      ) {
+        toolboxAutoOpenedRef.current = false;
+        setUiState(prev => ({ ...prev, isToolboxOpen: false }));
       }
     };
 
