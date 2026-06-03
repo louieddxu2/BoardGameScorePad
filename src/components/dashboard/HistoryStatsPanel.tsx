@@ -13,6 +13,7 @@ interface HistoryStatsPanelProps {
 
 const BOTTOM_ROW_HEIGHT_CLASS = 'h-[60px]';
 const ACTION_ROW_WIDTH_CLASS = 'w-[118px] sm:w-[140px]';
+const MAX_VISIBLE_STATS_PLAYERS = 10;
 const DATE_RANGE_LABEL_KEYS: Record<HistoryStatsDateRange, 'stats_range_all' | 'stats_range_month' | 'stats_range_quarter' | 'stats_range_year'> = {
   all: 'stats_range_all',
   month: 'stats_range_month',
@@ -79,21 +80,21 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
                 {stats.games.map(game => (
                   <div
                     key={game.key}
-                    className="min-h-[46px] grid items-center gap-2 pr-3 py-1.5 border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors"
-                    style={{ gridTemplateColumns: 'minmax(0, min(150px, 25vw)) 48px minmax(240px, 1fr)' }}
+                    className="min-h-[46px] w-max min-w-full grid items-center gap-2 pr-3 py-1.5 border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors"
+                    style={{ gridTemplateColumns: 'minmax(0, min(150px, 25vw)) 48px max-content' }}
                   >
                     <h3 className="sticky left-0 z-10 bg-app-bg px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap">{game.name}</h3>
                     <div className="flex items-center justify-start gap-1 text-brand-primary font-mono font-black shrink-0">
                         <Hash size={13} />
                         <span>{game.playCount}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-[11px] text-txt-secondary overflow-hidden min-w-0">
+                    <div className="flex items-center gap-1.5 text-[11px] text-txt-secondary min-w-max whitespace-nowrap">
                       <Users size={12} className="shrink-0 text-brand-secondary" />
-                      <span className="truncate font-semibold">
+                      <span className="font-semibold whitespace-nowrap">
                         {game.players.length > 0
-                          ? game.players.slice(0, 10).map(player => player.name).join('、')
+                          ? game.players.slice(0, MAX_VISIBLE_STATS_PLAYERS).map(player => player.name).join('、')
                           : t('stats_no_players')}
-                        {game.players.length > 10 ? ` +${game.players.length - 10}` : ''}
+                        {game.players.length > MAX_VISIBLE_STATS_PLAYERS ? ` +${game.players.length - MAX_VISIBLE_STATS_PLAYERS}` : ''}
                       </span>
                     </div>
                   </div>
