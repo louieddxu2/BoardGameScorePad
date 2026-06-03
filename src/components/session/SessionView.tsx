@@ -74,10 +74,13 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
                       aiSimpleGenerator.simpleStatus === 'generating';
 
   const toolboxAutoOpenedRef = useRef(false);
-  const toolboxReachedBottomRef = useRef(false);
-  const toolboxLastScrollTopRef = useRef(0);
-  const toolboxTopSentinelRef = useRef<HTMLDivElement>(null);
-  const toolboxBottomSentinelRef = useRef<HTMLDivElement>(null);
+  const toolboxTouchRef = useRef<{
+    startX: number;
+    startY: number;
+    startScrollTop: number;
+    maxScrollTop: number;
+    axis: 'vertical' | 'horizontal' | null;
+  } | null>(null);
 
   // 全域同步計時器
   React.useEffect(() => {
@@ -398,7 +401,10 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     const grid = sessionState.tableContainerRef.current;
     if (!grid) return;
 
-    const minReturnScrollDelta = 4;
+    const minVerticalLockDistance = 24;
+    const verticalSlopeRatio = 1.5;
+    const minTriggerDistance = 48;
+    const scrollMovementTolerance = 1;
     const canAutoOpenToolbox = !!baseImage || template.columns.length >= 5;
 
     const hasInputInterfaceOpen =
@@ -429,54 +435,83 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       }));
     };
 
-    toolboxLastScrollTopRef.current = grid.scrollTop;
-
-    const handleScroll = () => {
-      const scrollTop = grid.scrollTop;
-      const isReturningFromBottom = scrollTop < toolboxLastScrollTopRef.current - minReturnScrollDelta;
-
-      if (toolboxReachedBottomRef.current && isReturningFromBottom) {
-        openAutoToolbox();
+    const handleTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1 || !canAutoOpenToolbox || hasInputInterfaceOpen || isToolboxOpen) {
+        toolboxTouchRef.current = null;
+        return;
       }
 
-      toolboxLastScrollTopRef.current = scrollTop;
+      const touch = event.touches[0];
+      toolboxTouchRef.current = {
+        startX: touch.clientX,
+        startY: touch.clientY,
+        startScrollTop: grid.scrollTop,
+        maxScrollTop: grid.scrollTop,
+        axis: null
+      };
     };
 
-    const topSentinel = toolboxTopSentinelRef.current;
-    const bottomSentinel = toolboxBottomSentinelRef.current;
-    const observer = typeof IntersectionObserver !== 'undefined'
-      ? new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (!entry.isIntersecting) return;
+    const handleTouchMove = (event: TouchEvent) => {
+      const state = toolboxTouchRef.current;
+      if (!state || event.touches.length !== 1) return;
 
-          if (entry.target === bottomSentinel) {
-            toolboxReachedBottomRef.current = true;
-          }
+      state.maxScrollTop = Math.max(state.maxScrollTop, grid.scrollTop);
 
-          if (entry.target === topSentinel) {
-            toolboxReachedBottomRef.current = false;
-            if (toolboxAutoOpenedRef.current && isToolboxOpen && !hasInputInterfaceOpen) {
-              toolboxAutoOpenedRef.current = false;
-              setUiState(prev => ({ ...prev, isToolboxOpen: false }));
-            }
-          }
-        });
-      }, {
-        root: grid,
-        threshold: 0.1
-      })
-      : null;
+      const touch = event.touches[0];
+      const deltaX = touch.clientX - state.startX;
+      const deltaY = touch.clientY - state.startY;
+      const absDeltaX = Math.abs(deltaX);
+      const absDeltaY = Math.abs(deltaY);
 
+      if (!state.axis && (absDeltaX >= minVerticalLockDistance || absDeltaY >= minVerticalLockDistance)) {
+        state.axis = absDeltaY >= minVerticalLockDistance && absDeltaY >= absDeltaX * verticalSlopeRatio
+          ? 'vertical'
+          : 'horizontal';
+      }
+    };
+
+    const handleTouchEnd = (event: TouchEvent) => {
+      const state = toolboxTouchRef.current;
+      toolboxTouchRef.current = null;
+      if (!state) return;
+
+      state.maxScrollTop = Math.max(state.maxScrollTop, grid.scrollTop);
+
+      const changedTouch = event.changedTouches[0];
+      if (!changedTouch) return;
+
+      const totalDeltaY = changedTouch.clientY - state.startY;
+      const fingerMovedUpEnough = totalDeltaY <= -minTriggerDistance;
+      const didNotScrollDown = state.maxScrollTop <= state.startScrollTop + scrollMovementTolerance;
+
+      if (state.axis === 'vertical' && fingerMovedUpEnough && didNotScrollDown) {
+        openAutoToolbox();
+      }
+    };
+
+    const handleScroll = () => {
+      if (toolboxAutoOpenedRef.current && isToolboxOpen && !hasInputInterfaceOpen && grid.scrollTop <= 1) {
+        toolboxAutoOpenedRef.current = false;
+        setUiState(prev => ({ ...prev, isToolboxOpen: false }));
+      }
+    };
+
+    const handleTouchCancel = () => {
+      toolboxTouchRef.current = null;
+    };
+
+    grid.addEventListener('touchstart', handleTouchStart, { passive: true });
+    grid.addEventListener('touchmove', handleTouchMove, { passive: true });
+    grid.addEventListener('touchend', handleTouchEnd);
+    grid.addEventListener('touchcancel', handleTouchCancel);
     grid.addEventListener('scroll', handleScroll, { passive: true });
 
-    if (observer) {
-      if (topSentinel) observer.observe(topSentinel);
-      if (bottomSentinel) observer.observe(bottomSentinel);
-    }
-
     return () => {
+      grid.removeEventListener('touchstart', handleTouchStart);
+      grid.removeEventListener('touchmove', handleTouchMove);
+      grid.removeEventListener('touchend', handleTouchEnd);
+      grid.removeEventListener('touchcancel', handleTouchCancel);
       grid.removeEventListener('scroll', handleScroll);
-      observer?.disconnect();
     };
   }, [
     editingCell,
@@ -760,8 +795,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           isToolboxOpen={isToolboxOpen} // [New Step 2]
           scrollContainerRef={sessionState.tableContainerRef}
           contentRef={sessionState.gridContentRef}
-          toolboxTopSentinelRef={toolboxTopSentinelRef}
-          toolboxBottomSentinelRef={toolboxBottomSentinelRef}
           baseImage={baseImage || undefined}
           isEditMode={isEditMode}
           zoomLevel={zoomLevel}

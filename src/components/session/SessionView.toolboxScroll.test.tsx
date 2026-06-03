@@ -7,42 +7,6 @@ import { ToastProvider } from '../../hooks/useToast';
 import { LanguageProvider } from '../../i18n';
 import { GameSession, GameTemplate } from '../../types';
 
-class MockIntersectionObserver {
-  static instances: MockIntersectionObserver[] = [];
-
-  private readonly callback: IntersectionObserverCallback;
-  readonly observed = new Set<Element>();
-
-  constructor(callback: IntersectionObserverCallback) {
-    this.callback = callback;
-    MockIntersectionObserver.instances.push(this);
-  }
-
-  observe = vi.fn((target: Element) => {
-    this.observed.add(target);
-  });
-
-  unobserve = vi.fn((target: Element) => {
-    this.observed.delete(target);
-  });
-
-  disconnect = vi.fn(() => {
-    this.observed.clear();
-  });
-
-  takeRecords = vi.fn((): IntersectionObserverEntry[] => []);
-
-  trigger(target: Element, isIntersecting: boolean) {
-    this.callback([
-      {
-        target,
-        isIntersecting,
-        intersectionRatio: isIntersecting ? 1 : 0,
-      } as IntersectionObserverEntry,
-    ], this as unknown as IntersectionObserver);
-  }
-}
-
 vi.mock('../../features/ai-generator/hooks/useAiGenerator', () => ({
   useAiGenerator: () => ({
     status: 'idle',
@@ -180,32 +144,65 @@ const scrollTo = (element: HTMLElement, value: number) => {
   });
 };
 
-const triggerSentinel = (testId: string) => {
-  const target = screen.getByTestId(testId);
-  const observer = MockIntersectionObserver.instances.find(instance => instance.observed.has(target));
-  if (!observer) throw new Error(`${testId} observer not found`);
-
+const swipeOn = (
+  element: HTMLElement,
+  {
+    startX = 120,
+    startY,
+    endX = startX,
+    endY,
+    moveScrollTop,
+  }: { startX?: number; startY: number; endX?: number; endY: number; moveScrollTop?: number }
+) => {
   act(() => {
-    observer.trigger(target, true);
+    fireEvent.touchStart(element, {
+      touches: [{ clientX: startX, clientY: startY }],
+    });
+    if (moveScrollTop !== undefined) {
+      setScrollTop(element, moveScrollTop);
+    }
+    fireEvent.touchMove(element, {
+      touches: [{ clientX: endX, clientY: endY }],
+    });
+    fireEvent.touchEnd(element, {
+      changedTouches: [{ clientX: endX, clientY: endY }],
+    });
   });
 };
 
 describe('SessionView toolbox scroll behavior', () => {
   beforeEach(() => {
     localStorage.setItem('app_language', 'en');
-    MockIntersectionObserver.instances = [];
-    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
   });
 
-  it('opens the toolbox after reaching the bottom and scrolling upward', () => {
+  it('opens the toolbox when an upward swipe cannot move the score grid down', () => {
     renderSession();
     const scroller = getGridScroller();
 
-    scrollTo(scroller, 700);
-    triggerSentinel('toolbox-bottom-sentinel');
-    scrollTo(scroller, 660);
+    setScrollTop(scroller, 700);
+    swipeOn(scroller, { startY: 200, endY: 130 });
 
     expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
+  });
+
+  it('does not open if the upward swipe successfully scrolls the score grid down', () => {
+    renderSession();
+    const scroller = getGridScroller();
+
+    setScrollTop(scroller, 500);
+    swipeOn(scroller, { startY: 200, endY: 130, moveScrollTop: 530 });
+
+    expect(screen.queryByText('Game Toolbox')).not.toBeInTheDocument();
+  });
+
+  it('does not open for horizontal or shallow diagonal swipes', () => {
+    renderSession();
+    const scroller = getGridScroller();
+
+    setScrollTop(scroller, 700);
+    swipeOn(scroller, { startX: 200, startY: 200, endX: 80, endY: 150 });
+
+    expect(screen.queryByText('Game Toolbox')).not.toBeInTheDocument();
   });
 
   it('does not auto-open while the score input panel is open', () => {
@@ -213,9 +210,16 @@ describe('SessionView toolbox scroll behavior', () => {
     const scroller = getGridScroller();
 
     fireEvent.click(getFirstScoreCell());
-    scrollTo(scroller, 700);
-    triggerSentinel('toolbox-bottom-sentinel');
-    scrollTo(scroller, 660);
+    setScrollTop(scroller, 700);
+    swipeOn(scroller, { startY: 200, endY: 130 });
+
+    expect(screen.queryByText('Game Toolbox')).not.toBeInTheDocument();
+  });
+
+  it('does not open when the same gesture happens outside the score grid', () => {
+    renderSession();
+
+    swipeOn(document.body, { startY: 200, endY: 130 });
 
     expect(screen.queryByText('Game Toolbox')).not.toBeInTheDocument();
   });
@@ -224,13 +228,11 @@ describe('SessionView toolbox scroll behavior', () => {
     renderSession();
     const scroller = getGridScroller();
 
-    scrollTo(scroller, 700);
-    triggerSentinel('toolbox-bottom-sentinel');
-    scrollTo(scroller, 660);
+    setScrollTop(scroller, 700);
+    swipeOn(scroller, { startY: 200, endY: 130 });
     expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
 
     scrollTo(scroller, 0);
-    triggerSentinel('toolbox-top-sentinel');
 
     expect(screen.queryByText('Game Toolbox')).not.toBeInTheDocument();
   });
