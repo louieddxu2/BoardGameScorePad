@@ -91,9 +91,9 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
                       <Users size={12} className="shrink-0 text-brand-secondary" />
                       <span className="truncate font-semibold">
                         {game.players.length > 0
-                          ? game.players.slice(0, 6).map(player => player.name).join('、')
+                          ? game.players.slice(0, 10).map(player => player.name).join('、')
                           : t('stats_no_players')}
-                        {game.players.length > 6 ? ` +${game.players.length - 6}` : ''}
+                        {game.players.length > 10 ? ` +${game.players.length - 10}` : ''}
                       </span>
                     </div>
                   </div>
