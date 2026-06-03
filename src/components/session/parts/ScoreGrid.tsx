@@ -43,6 +43,7 @@ interface ScoreGridProps {
   simpleFlashStatus?: string;
   simpleGemmaStatus?: string;
   elapsedTime?: number;
+  toolboxTopSentinelRef?: React.RefObject<HTMLDivElement>;
   toolboxBottomSentinelRef?: React.RefObject<HTMLDivElement>;
 }
 
@@ -71,6 +72,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   simpleFlashStatus,
   simpleGemmaStatus,
   elapsedTime,
+  toolboxTopSentinelRef,
   toolboxBottomSentinelRef,
 }) => {
   const { t } = useSessionTranslation();
@@ -232,12 +234,16 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
         isInitialSimpleScorepad ? 'h-full flex flex-col overflow-hidden pb-0' : 'overflow-auto pb-32'
       }`} 
       ref={scrollContainerRef}
-    >
-      <div
-        id="live-grid-container"
-        className={`min-w-full w-fit relative ${isInitialSimpleScorepad ? 'h-full flex flex-col' : ''}`}
-        ref={contentRef}
       >
+        <div
+          id="live-grid-container"
+          className={`min-w-full w-fit relative ${isInitialSimpleScorepad ? 'h-full flex flex-col' : ''}`}
+          ref={contentRef}
+        >
+        {showToolboxButton && (
+          <div ref={toolboxTopSentinelRef} data-testid="toolbox-top-sentinel" aria-hidden="true" className="h-px w-full" />
+        )}
+
         {/* Player Headers */}
         <div
           id="live-player-header-row"
@@ -599,7 +605,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
         />
 
         {showToolboxButton && (
-          <div ref={toolboxBottomSentinelRef} aria-hidden="true" className="h-px w-full" />
+          <div ref={toolboxBottomSentinelRef} data-testid="toolbox-bottom-sentinel" aria-hidden="true" className="h-px w-full" />
         )}
 
         {(aiStatus === 'compressing' || aiStatus === 'generating' || aiStatus === 'success') && template.columns.length > 0 ? (

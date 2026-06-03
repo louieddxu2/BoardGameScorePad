@@ -74,6 +74,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
                       aiSimpleGenerator.simpleStatus === 'generating';
 
   const toolboxAutoOpenedRef = useRef(false);
+  const toolboxReachedBottomRef = useRef(false);
+  const toolboxLastScrollTopRef = useRef(0);
+  const toolboxTopSentinelRef = useRef<HTMLDivElement>(null);
   const toolboxBottomSentinelRef = useRef<HTMLDivElement>(null);
 
   // 全域同步計時器
@@ -395,8 +398,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     const grid = sessionState.tableContainerRef.current;
     if (!grid) return;
 
-    const bottomThreshold = 24;
-    const topThreshold = 8;
+    const minReturnScrollDelta = 4;
     const canAutoOpenToolbox = !!baseImage || template.columns.length >= 5;
 
     const hasInputInterfaceOpen =
@@ -427,45 +429,49 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       }));
     };
 
+    toolboxLastScrollTopRef.current = grid.scrollTop;
+
     const handleScroll = () => {
-      const maxScrollTop = Math.max(0, grid.scrollHeight - grid.clientHeight);
-      if (maxScrollTop <= bottomThreshold) return;
-
       const scrollTop = grid.scrollTop;
-      const isAtBottom = scrollTop >= maxScrollTop - bottomThreshold;
-      const isAtTop = scrollTop <= topThreshold;
+      const isReturningFromBottom = scrollTop < toolboxLastScrollTopRef.current - minReturnScrollDelta;
 
-      if (
-        isAtBottom &&
-        canAutoOpenToolbox
-      ) {
+      if (toolboxReachedBottomRef.current && isReturningFromBottom) {
         openAutoToolbox();
       }
 
-      if (isAtTop) {
-        if (toolboxAutoOpenedRef.current && isToolboxOpen && !hasInputInterfaceOpen) {
-          toolboxAutoOpenedRef.current = false;
-          setUiState(prev => ({ ...prev, isToolboxOpen: false }));
-        }
-      }
+      toolboxLastScrollTopRef.current = scrollTop;
     };
 
-    grid.addEventListener('scroll', handleScroll, { passive: true });
-
-    const sentinel = toolboxBottomSentinelRef.current;
-    const observer = sentinel && typeof IntersectionObserver !== 'undefined'
+    const topSentinel = toolboxTopSentinelRef.current;
+    const bottomSentinel = toolboxBottomSentinelRef.current;
+    const observer = typeof IntersectionObserver !== 'undefined'
       ? new IntersectionObserver((entries) => {
-        if (entries.some(entry => entry.isIntersecting)) {
-          openAutoToolbox();
-        }
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+
+          if (entry.target === bottomSentinel) {
+            toolboxReachedBottomRef.current = true;
+          }
+
+          if (entry.target === topSentinel) {
+            toolboxReachedBottomRef.current = false;
+            if (toolboxAutoOpenedRef.current && isToolboxOpen && !hasInputInterfaceOpen) {
+              toolboxAutoOpenedRef.current = false;
+              setUiState(prev => ({ ...prev, isToolboxOpen: false }));
+            }
+          }
+        });
       }, {
         root: grid,
         threshold: 0.1
       })
       : null;
 
-    if (sentinel && observer) {
-      observer.observe(sentinel);
+    grid.addEventListener('scroll', handleScroll, { passive: true });
+
+    if (observer) {
+      if (topSentinel) observer.observe(topSentinel);
+      if (bottomSentinel) observer.observe(bottomSentinel);
     }
 
     return () => {
@@ -754,6 +760,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           isToolboxOpen={isToolboxOpen} // [New Step 2]
           scrollContainerRef={sessionState.tableContainerRef}
           contentRef={sessionState.gridContentRef}
+          toolboxTopSentinelRef={toolboxTopSentinelRef}
           toolboxBottomSentinelRef={toolboxBottomSentinelRef}
           baseImage={baseImage || undefined}
           isEditMode={isEditMode}

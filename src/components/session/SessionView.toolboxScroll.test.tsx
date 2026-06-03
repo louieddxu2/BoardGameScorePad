@@ -7,6 +7,42 @@ import { ToastProvider } from '../../hooks/useToast';
 import { LanguageProvider } from '../../i18n';
 import { GameSession, GameTemplate } from '../../types';
 
+class MockIntersectionObserver {
+  static instances: MockIntersectionObserver[] = [];
+
+  private readonly callback: IntersectionObserverCallback;
+  readonly observed = new Set<Element>();
+
+  constructor(callback: IntersectionObserverCallback) {
+    this.callback = callback;
+    MockIntersectionObserver.instances.push(this);
+  }
+
+  observe = vi.fn((target: Element) => {
+    this.observed.add(target);
+  });
+
+  unobserve = vi.fn((target: Element) => {
+    this.observed.delete(target);
+  });
+
+  disconnect = vi.fn(() => {
+    this.observed.clear();
+  });
+
+  takeRecords = vi.fn((): IntersectionObserverEntry[] => []);
+
+  trigger(target: Element, isIntersecting: boolean) {
+    this.callback([
+      {
+        target,
+        isIntersecting,
+        intersectionRatio: isIntersecting ? 1 : 0,
+      } as IntersectionObserverEntry,
+    ], this as unknown as IntersectionObserver);
+  }
+}
+
 vi.mock('../../features/ai-generator/hooks/useAiGenerator', () => ({
   useAiGenerator: () => ({
     status: 'idle',
@@ -144,16 +180,30 @@ const scrollTo = (element: HTMLElement, value: number) => {
   });
 };
 
+const triggerSentinel = (testId: string) => {
+  const target = screen.getByTestId(testId);
+  const observer = MockIntersectionObserver.instances.find(instance => instance.observed.has(target));
+  if (!observer) throw new Error(`${testId} observer not found`);
+
+  act(() => {
+    observer.trigger(target, true);
+  });
+};
+
 describe('SessionView toolbox scroll behavior', () => {
   beforeEach(() => {
     localStorage.setItem('app_language', 'en');
+    MockIntersectionObserver.instances = [];
+    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
   });
 
-  it('opens the toolbox when reaching the bottom', () => {
+  it('opens the toolbox after reaching the bottom and scrolling upward', () => {
     renderSession();
     const scroller = getGridScroller();
 
     scrollTo(scroller, 700);
+    triggerSentinel('toolbox-bottom-sentinel');
+    scrollTo(scroller, 660);
 
     expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
   });
@@ -164,6 +214,8 @@ describe('SessionView toolbox scroll behavior', () => {
 
     fireEvent.click(getFirstScoreCell());
     scrollTo(scroller, 700);
+    triggerSentinel('toolbox-bottom-sentinel');
+    scrollTo(scroller, 660);
 
     expect(screen.queryByText('Game Toolbox')).not.toBeInTheDocument();
   });
@@ -173,9 +225,12 @@ describe('SessionView toolbox scroll behavior', () => {
     const scroller = getGridScroller();
 
     scrollTo(scroller, 700);
+    triggerSentinel('toolbox-bottom-sentinel');
+    scrollTo(scroller, 660);
     expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
 
     scrollTo(scroller, 0);
+    triggerSentinel('toolbox-top-sentinel');
 
     expect(screen.queryByText('Game Toolbox')).not.toBeInTheDocument();
   });
