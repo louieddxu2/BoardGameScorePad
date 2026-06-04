@@ -58,6 +58,16 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
 
   const gridItems = useMemo(() => selectHistoryPhotoGridItems(entries, Number.MAX_SAFE_INTEGER), [entries]);
 
+  const stopCropGestureEvent = (event: {
+    preventDefault: () => void;
+    stopPropagation: () => void;
+    nativeEvent?: { stopPropagation?: () => void };
+  }) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.nativeEvent?.stopPropagation?.();
+  };
+
   useEffect(() => {
     if (!isOpen) {
       photoPool.forEach(photo => URL.revokeObjectURL(photo.url));
@@ -112,6 +122,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
 
     const preventGestureDefault = (event: Event) => {
       if (event.cancelable) event.preventDefault();
+      event.stopPropagation();
     };
 
     surface.addEventListener('touchmove', preventGestureDefault, { passive: false });
@@ -182,12 +193,12 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
   };
 
   const handleMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
-    event.preventDefault();
+    stopCropGestureEvent(event);
     handleDragStart(event.clientX, event.clientY);
   };
 
   const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
-    event.preventDefault();
+    stopCropGestureEvent(event);
     handleDragMove(event.clientX, event.clientY);
   };
 
@@ -196,8 +207,13 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
     pinchRef.current = null;
   };
 
+  const handleMouseEnd = (event: React.MouseEvent<HTMLDivElement>) => {
+    stopCropGestureEvent(event);
+    stopEditingGesture();
+  };
+
   const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
-    event.preventDefault();
+    stopCropGestureEvent(event);
     if (!cropDraft) return;
 
     if (event.touches.length === 2) {
@@ -213,7 +229,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
   };
 
   const handleTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
-    event.preventDefault();
+    stopCropGestureEvent(event);
     if (!cropDraft) return;
 
     if (event.touches.length === 2 && pinchRef.current) {
@@ -231,8 +247,13 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
     }
   };
 
+  const handleTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    stopCropGestureEvent(event);
+    stopEditingGesture();
+  };
+
   const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-    event.preventDefault();
+    stopCropGestureEvent(event);
     if (!cropDraft) return;
     const zoom = cropDraft.crop.zoom * (1 - event.deltaY * 0.001);
     updateDraftCrop({
@@ -304,12 +325,14 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
             className="flex-1 min-h-0 flex items-center justify-center p-4 bg-app-bg-deep touch-none overscroll-none overflow-hidden"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
-            onMouseUp={stopEditingGesture}
-            onMouseLeave={stopEditingGesture}
+            onMouseUp={handleMouseEnd}
+            onMouseLeave={handleMouseEnd}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
-            onTouchEnd={stopEditingGesture}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
             onWheel={handleWheel}
+            style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
           >
             <div ref={cropFrameRef} className="relative w-[min(82vw,54vh)] max-w-[520px] aspect-square rounded-xl overflow-visible">
               <PhotoImage tile={cropDraft} />
