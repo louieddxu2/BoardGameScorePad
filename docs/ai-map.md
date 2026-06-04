@@ -17,12 +17,17 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 ## UI Layout Patterns
 - `StartGamePanel` is the reference layout for bottom-docked dashboard panels: left scrollable content, right chimney controls, and a fixed bottom action row.
 - `HistoryStatsPanel` intentionally mirrors the StartGamePanel layout language; inspect the game selector panel before changing its dock height, chimney behavior, or bottom actions.
+- History stats keeps the right-side chimney actions in their collapsed positions when expanded; expansion adds working space without relocating the existing controls.
+- `HistoryPhotoGridShareModal` is a modal child of the stats panel, not a replacement for it. It should use modal/back-handler behavior like other dashboard modals and should block panel swipe navigation while open.
+- The photo-grid crop editor uses a two-zone flow: large crop surface above, horizontal photo thumbnails below. Image zoom/pan is implemented with uniform transform scaling so aspect ratio stays intact and the image may overflow the square crop frame.
 
 ## Data Aggregation Patterns
 - Game search uses `useGameOptionAggregator` to merge `savedGames`, `templates`, and `bggGames` into unique `GameOption` objects before filtering or rendering.
 - The game selector merge order is base saved game, overlay template, then BGG dictionary enrichment; matching prefers `bggId`, then normalized name or BGG aliases.
 - Keep search/sort/filter logic downstream of aggregation. UI components should consume merged options instead of resolving template/game/BGG compatibility themselves.
 - History stats and photo grid should consume derived `HistoryGameEntry` objects from active, unsearched history summaries; dashboard search filters the visible history list, not the global stats aggregate.
+- History stats aggregation is not the same as game search aggregation: search builds playable `GameOption` candidates from current game/template/BGG sources, while history stats summarizes already-played records and deduplicates by historical game identity before applying stats filters.
+- History stats date/rule/location filters affect the stats aggregate and photo-grid source, not the left-side raw history list until a full history filtering architecture is implemented.
 - History player stats use `savedPlayers` as the canonical player universe. History records are snapshots of appearances, but distinct player counts should resolve linked IDs or names back to the saved player master list and ignore orphan/stale identities that are not in that list.
 - The hidden/debug data inspector's player count is a raw `db.savedPlayers` table count. Treat that as the master-list count, not as a count of every player identity ever seen in history snapshots.
 
@@ -261,6 +266,7 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 ## Common Validation Commands
 - `npx tsc --noEmit`
 - `npx vitest run --exclude "{src/components/session/SessionUI.test.tsx,src/utils/ui-consistency.test.ts}"`
+- `powershell -ExecutionPolicy Bypass -File scripts\scan-hardcoded-chinese.ps1` (required for UI, i18n, visible text, modal, button-label, and dashboard panel changes)
 - `npx vitest run src/features/ai-generator/hooks/useAiSimpleGenerator.test.tsx` (AI simple generator tasks)
 
 ## Token-Saving Rules
