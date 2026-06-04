@@ -18,22 +18,6 @@ const ACTION_ROW_WIDTH_CLASS = 'w-[118px] sm:w-[140px]';
 const MAX_VISIBLE_STATS_PLAYERS = 10;
 const STATS_FILTER_ALL = '__all__';
 const SCORING_RULE_ORDER: ScoringRule[] = ['HIGHEST_WINS', 'LOWEST_WINS', 'COOP', 'COMPETITIVE_NO_SCORE', 'COOP_NO_SCORE'];
-const SCORING_RULE_LABELS: Record<'zh-TW' | 'en', Record<ScoringRule, string>> = {
-  'zh-TW': {
-    HIGHEST_WINS: '最高分',
-    LOWEST_WINS: '最低分',
-    COOP: '合作',
-    COMPETITIVE_NO_SCORE: '無計分',
-    COOP_NO_SCORE: '合作無分'
-  },
-  en: {
-    HIGHEST_WINS: 'High score',
-    LOWEST_WINS: 'Low score',
-    COOP: 'Co-op',
-    COMPETITIVE_NO_SCORE: 'No score',
-    COOP_NO_SCORE: 'Co-op no score'
-  }
-};
 const DATE_RANGE_LABEL_KEYS: Record<HistoryStatsDateRange, 'stats_range_all' | 'stats_range_month' | 'stats_range_quarter' | 'stats_range_year'> = {
   all: 'stats_range_all',
   month: 'stats_range_month',
@@ -79,7 +63,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
     : (isExpanded ? 'inset-0 top-[56px]' : 'bottom-0 left-0 right-0 h-[45dvh]');
   const dateRangeLabel = t(DATE_RANGE_LABEL_KEYS[dateRange]);
   const ruleLabel = activeScoringRuleFilter
-    ? SCORING_RULE_LABELS[language === 'en' ? 'en' : 'zh-TW'][activeScoringRuleFilter]
+    ? t(`rule_${activeScoringRuleFilter}` as any)
     : t('stats_rules_short');
   const locationLabel = activeLocationFilter || t('stats_locations_short');
   const allLabel = t('stats_filter_unlimited');
@@ -87,9 +71,9 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
     { value: STATS_FILTER_ALL, label: allLabel },
     ...scoringRuleOptions.map(rule => ({
       value: rule,
-      label: SCORING_RULE_LABELS[language === 'en' ? 'en' : 'zh-TW'][rule]
+      label: t(`rule_${rule}` as any)
     }))
-  ], [allLabel, language, scoringRuleOptions]);
+  ], [allLabel, scoringRuleOptions, t]);
   const locationMenuOptions = useMemo(() => [
     { value: STATS_FILTER_ALL, label: allLabel },
     ...locationOptions.map(location => ({ value: location, label: location }))

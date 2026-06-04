@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { GameTemplate, GameSession, HistoryRecord, SavedListItem, ScoringRule } from '../../types';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
@@ -22,6 +21,7 @@ import HistoryStatsPanel from './HistoryStatsPanel';
 import ShareTemplateModal from './modals/ShareTemplateModal';
 import AiPromptModal from '../../features/ai-generator/components/AiPromptModal';
 import SearchTemplateOnlineModal from './modals/SearchTemplateOnlineModal';
+import { useDashboardTranslation } from '../../i18n/dashboard';
 import { db } from '../../db';
 import { uploadTemplateToCloud } from '../../services/templateShareService';
 
@@ -131,6 +131,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   gameOptions,
   onQuickStart
 }) => {
+  const { t: tDashboard } = useDashboardTranslation();
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [isSetupMode, setIsSetupMode] = useState(false);
   const [isStatsMode, setIsStatsMode] = useState(false);
@@ -365,7 +366,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
       <DashboardFAB
         isVisible={!isSetupMode && !isStatsMode}
         mode={viewMode === 'history' ? 'stats' : 'play'}
-        title={viewMode === 'history' ? '統計' : undefined}
+        title={viewMode === 'history' ? tDashboard('dash_stats') : undefined}
         onClick={() => {
           if (viewMode === 'history') {
             setIsStatsMode(true);

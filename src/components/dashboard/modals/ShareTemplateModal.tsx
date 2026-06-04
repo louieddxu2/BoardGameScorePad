@@ -103,7 +103,7 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
 
             // Validation: Prevent upload of unfinished templates
             const hasNoColumns = !templateToShare.columns || templateToShare.columns.length === 0;
-            const hasDefaultNames = templateToShare.columns?.some(c => /^(項目|Item)\s*\d+$/i.test(c.name));
+            const hasDefaultNames = templateToShare.columns?.some(c => /^(\u9805\u76ee|Item)\s*\d+$/i.test(c.name));
 
             if (hasNoColumns || hasDefaultNames) {
                 showToast({ message: t('msg_cloud_share_unfinished'), type: 'error' });
