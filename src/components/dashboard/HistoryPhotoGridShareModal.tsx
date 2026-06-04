@@ -5,7 +5,7 @@ import { HistoryGameEntry } from '../../utils/historyGameEntries';
 import { selectHistoryPhotoGridItems } from '../../utils/historyStats';
 import {
   clampHistoryPhotoGridCrop,
-  getHistoryPhotoGridDisplaySize,
+  getHistoryPhotoGridBaseSize,
   getInitialHistoryPhotoGridCrop,
   getTopAlignedHistoryPhotoGridOffsetY,
   HistoryPhotoGridCrop,
@@ -437,7 +437,7 @@ const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>((
 PhotoGridCanvas.displayName = 'PhotoGridCanvas';
 
 const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
-  const display = getHistoryPhotoGridDisplaySize(tile.imageSize, tile.crop.zoom);
+  const base = getHistoryPhotoGridBaseSize(tile.imageSize);
   const isLandscape = tile.imageSize.width >= tile.imageSize.height;
   return (
     <img
@@ -448,9 +448,10 @@ const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
       style={{
         left: `${50 + tile.crop.offsetX * 100}%`,
         top: `${50 + tile.crop.offsetY * 100}%`,
-        width: isLandscape ? `${display.width * 100}%` : 'auto',
-        height: isLandscape ? 'auto' : `${display.height * 100}%`,
-        transform: 'translate(-50%, -50%)'
+        width: isLandscape ? `${base.width * 100}%` : 'auto',
+        height: isLandscape ? 'auto' : `${base.height * 100}%`,
+        transform: `translate(-50%, -50%) scale(${tile.crop.zoom})`,
+        transformOrigin: 'center center'
       }}
     />
   );
