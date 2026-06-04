@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { HistorySummary } from './extractDataSummaries';
 import { buildHistoryGameEntries } from './historyGameEntries';
-import { buildHistoryStats, filterHistoryEntriesByDateRange, getNextHistoryStatsDateRange, selectHistoryPhotoGridItems } from './historyStats';
+import { buildHistoryStats, filterHistoryEntriesByDateRange, filterHistoryEntriesByStatsFilters, getNextHistoryStatsDateRange, selectHistoryPhotoGridItems } from './historyStats';
 
 const record = (overrides: Partial<HistorySummary>): HistorySummary => ({
   id: overrides.id || 'h1',
@@ -115,5 +115,35 @@ describe('historyStats', () => {
 
     const monthEntries = filterHistoryEntriesByDateRange(entries, 'month', now);
     expect(selectHistoryPhotoGridItems(monthEntries).map(item => item.photoId)).toEqual(['recent-photo']);
+  });
+
+  it('filters entries by stats metadata', () => {
+    const entries = buildHistoryGameEntries([
+      record({
+        id: 'two-player-high-home',
+        gameName: 'Game A',
+        scoringRule: 'HIGHEST_WINS',
+        location: 'Home',
+        players: [
+          { id: 'p1', name: 'Alice', color: '#fff', totalScore: 0, scores: {} },
+          { id: 'p2', name: 'Bob', color: '#000', totalScore: 0, scores: {} }
+        ]
+      }),
+      record({
+        id: 'three-player-low-cafe',
+        gameName: 'Game B',
+        scoringRule: 'LOWEST_WINS',
+        location: 'Cafe',
+        players: [
+          { id: 'p1', name: 'Alice', color: '#fff', totalScore: 0, scores: {} },
+          { id: 'p2', name: 'Bob', color: '#000', totalScore: 0, scores: {} },
+          { id: 'p3', name: 'Carol', color: '#333', totalScore: 0, scores: {} }
+        ]
+      })
+    ]);
+
+    expect(filterHistoryEntriesByStatsFilters(entries, { playerCount: 2 }).map(entry => entry.displayName)).toEqual(['Game A']);
+    expect(filterHistoryEntriesByStatsFilters(entries, { scoringRule: 'LOWEST_WINS' }).map(entry => entry.displayName)).toEqual(['Game B']);
+    expect(filterHistoryEntriesByStatsFilters(entries, { location: 'Home' }).map(entry => entry.displayName)).toEqual(['Game A']);
   });
 });

@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { BarChart3, CalendarDays, ChevronDown, ChevronUp, Grid3X3, Hash, MapPin, Minus, Search, Users, Plus } from 'lucide-react';
 import { HistoryGameEntry } from '../../utils/historyGameEntries';
-import { buildHistoryStats, filterHistoryEntriesByDateRange, getNextHistoryStatsDateRange, HistoryStatsDateRange } from '../../utils/historyStats';
+import { buildHistoryStats, filterHistoryEntriesByDateRange, filterHistoryEntriesByStatsFilters, getNextHistoryStatsDateRange, HistoryStatsDateRange } from '../../utils/historyStats';
 import HistoryPhotoGridShareModal from './HistoryPhotoGridShareModal';
 import { useHistoryStatsTranslation } from '../../i18n/history_stats';
+import { ScoringRule } from '../../types';
 
 interface HistoryStatsPanelProps {
   entries: HistoryGameEntry[];
@@ -14,6 +15,23 @@ interface HistoryStatsPanelProps {
 const BOTTOM_ROW_HEIGHT_CLASS = 'h-[60px]';
 const ACTION_ROW_WIDTH_CLASS = 'w-[118px] sm:w-[140px]';
 const MAX_VISIBLE_STATS_PLAYERS = 10;
+const SCORING_RULE_ORDER: ScoringRule[] = ['HIGHEST_WINS', 'LOWEST_WINS', 'COOP', 'COMPETITIVE_NO_SCORE', 'COOP_NO_SCORE'];
+const SCORING_RULE_LABELS: Record<'zh-TW' | 'en', Record<ScoringRule, string>> = {
+  'zh-TW': {
+    HIGHEST_WINS: '最高分',
+    LOWEST_WINS: '最低分',
+    COOP: '合作',
+    COMPETITIVE_NO_SCORE: '無計分',
+    COOP_NO_SCORE: '合作無分'
+  },
+  en: {
+    HIGHEST_WINS: 'High score',
+    LOWEST_WINS: 'Low score',
+    COOP: 'Co-op',
+    COMPETITIVE_NO_SCORE: 'No score',
+    COOP_NO_SCORE: 'Co-op no score'
+  }
+};
 const DATE_RANGE_LABEL_KEYS: Record<HistoryStatsDateRange, 'stats_range_all' | 'stats_range_month' | 'stats_range_quarter' | 'stats_range_year'> = {
   all: 'stats_range_all',
   month: 'stats_range_month',
@@ -26,19 +44,49 @@ const formatDate = (timestamp: number | undefined, emptyLabel: string) => {
   return new Date(timestamp).toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' });
 };
 
+const cycleOption = <T,>(current: T | null, options: T[]): T | null => {
+  if (options.length === 0) return null;
+  if (!current) return options[0];
+
+  const index = options.indexOf(current);
+  if (index === -1) return options[0];
+  return index >= options.length - 1 ? null : options[index + 1];
+};
+
 const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearchClick, isSearchKeyboardOpen = false }) => {
-  const { t } = useHistoryStatsTranslation();
+  const { t, language } = useHistoryStatsTranslation();
   const [playerCount, setPlayerCount] = useState<number | null>(null);
   const [showPhotoGrid, setShowPhotoGrid] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [dateRange, setDateRange] = useState<HistoryStatsDateRange>('all');
-  const filteredEntries = useMemo(() => filterHistoryEntriesByDateRange(entries, dateRange), [entries, dateRange]);
+  const [scoringRuleFilter, setScoringRuleFilter] = useState<ScoringRule | null>(null);
+  const [locationFilter, setLocationFilter] = useState<string | null>(null);
+  const dateFilteredEntries = useMemo(() => filterHistoryEntriesByDateRange(entries, dateRange), [entries, dateRange]);
+  const scoringRuleOptions = useMemo(
+    () => SCORING_RULE_ORDER.filter(rule => dateFilteredEntries.some(entry => entry.scoringRules.includes(rule))),
+    [dateFilteredEntries]
+  );
+  const locationOptions = useMemo(
+    () => Array.from(new Set(dateFilteredEntries.flatMap(entry => entry.locations))).sort((a, b) => a.localeCompare(b)),
+    [dateFilteredEntries]
+  );
+  const activeScoringRuleFilter = scoringRuleFilter && scoringRuleOptions.includes(scoringRuleFilter) ? scoringRuleFilter : null;
+  const activeLocationFilter = locationFilter && locationOptions.includes(locationFilter) ? locationFilter : null;
+  const filteredEntries = useMemo(() => filterHistoryEntriesByStatsFilters(dateFilteredEntries, {
+    playerCount,
+    scoringRule: activeScoringRuleFilter,
+    location: activeLocationFilter
+  }), [dateFilteredEntries, playerCount, activeScoringRuleFilter, activeLocationFilter]);
   const stats = useMemo(() => buildHistoryStats(filteredEntries), [filteredEntries]);
   const isPanelExpanded = isExpanded && !isSearchKeyboardOpen;
   const panelLayoutClass = isSearchKeyboardOpen
     ? 'bottom-0 left-0 right-0 h-[220px]'
     : (isExpanded ? 'inset-0 top-[56px]' : 'bottom-0 left-0 right-0 h-[45dvh]');
   const dateRangeLabel = t(DATE_RANGE_LABEL_KEYS[dateRange]);
+  const ruleLabel = activeScoringRuleFilter
+    ? SCORING_RULE_LABELS[language === 'en' ? 'en' : 'zh-TW'][activeScoringRuleFilter]
+    : t('stats_rules_short');
+  const locationLabel = activeLocationFilter || t('stats_locations_short');
 
   return (
     <>
@@ -106,18 +154,32 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
 
           <div className={`flex-none ${BOTTOM_ROW_HEIGHT_CLASS} flex border-t border-surface-border z-10 bg-app-bg-deep`}>
             <div className={`min-w-0 flex-1 overflow-x-auto no-scrollbar flex items-center gap-1.5 px-2 pr-[126px] sm:pr-[148px] pointer-events-auto`}>
-              <button className="h-10 shrink-0 bg-app-bg border border-surface-border rounded-lg px-2.5 flex items-center gap-1 text-txt-primary hover:border-txt-secondary transition-colors">
-                <span className="text-sm font-bold whitespace-nowrap">{t('stats_rules_short')}</span>
+              <button
+                onClick={() => setScoringRuleFilter(prev => cycleOption(prev, scoringRuleOptions))}
+                className={`h-10 shrink-0 bg-app-bg border rounded-lg px-2.5 flex items-center gap-1 hover:border-txt-secondary transition-colors ${
+                  activeScoringRuleFilter ? 'border-brand-primary text-brand-primary bg-brand-primary/10' : 'border-surface-border text-txt-primary'
+                }`}
+                title={activeScoringRuleFilter ? ruleLabel : t('stats_all_rules')}
+              >
+                <span className="text-sm font-bold whitespace-nowrap max-w-[96px] truncate">{ruleLabel}</span>
                 <ChevronUp size={14} className="text-txt-muted shrink-0" />
               </button>
 
-              <button className="h-10 shrink-0 bg-app-bg border border-surface-border rounded-lg px-2.5 flex items-center gap-1 text-txt-primary hover:border-txt-secondary transition-colors">
+              <button
+                onClick={() => setLocationFilter(prev => cycleOption(prev, locationOptions))}
+                className={`h-10 shrink-0 bg-app-bg border rounded-lg px-2.5 flex items-center gap-1 hover:border-txt-secondary transition-colors ${
+                  activeLocationFilter ? 'border-brand-primary text-brand-primary bg-brand-primary/10' : 'border-surface-border text-txt-primary'
+                }`}
+                title={activeLocationFilter || t('stats_all_locations')}
+              >
                 <MapPin size={13} className="text-txt-muted shrink-0" />
-                <span className="text-sm font-bold whitespace-nowrap">{t('stats_locations_short')}</span>
+                <span className="text-sm font-bold whitespace-nowrap max-w-[96px] truncate">{locationLabel}</span>
                 <ChevronUp size={14} className="text-txt-muted shrink-0" />
               </button>
 
-              <div className="h-10 w-[104px] shrink-0 flex items-center justify-between bg-app-bg rounded-xl p-1 border border-surface-border relative overflow-hidden transition-all duration-300">
+              <div className={`h-10 w-[104px] shrink-0 flex items-center justify-between bg-app-bg rounded-xl p-1 border relative overflow-hidden transition-all duration-300 ${
+                playerCount ? 'border-brand-primary bg-brand-primary/10' : 'border-surface-border'
+              }`}>
                 <button
                   onClick={() => setPlayerCount(prev => prev === null || prev <= 1 ? null : prev - 1)}
                   className="w-8 h-8 flex items-center justify-center bg-surface-bg text-txt-muted rounded-lg active:scale-95 transition-transform hover:bg-surface-bg-alt relative z-10 shrink-0"

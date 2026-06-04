@@ -1,4 +1,5 @@
 import { HistoryGameEntry } from './historyGameEntries';
+import { ScoringRule } from '../types';
 
 export type HistoryStatsDateRange = 'all' | 'month' | 'quarter' | 'year';
 
@@ -34,6 +35,12 @@ export interface HistoryStatsOverview {
   games: HistoryStatsGame[];
 }
 
+export interface HistoryStatsFilters {
+  playerCount?: number | null;
+  scoringRule?: ScoringRule | null;
+  location?: string | null;
+}
+
 export interface HistoryPhotoGridItem {
   recordId: string;
   gameKey: string;
@@ -57,6 +64,20 @@ export const filterHistoryEntriesByDateRange = (
   const days = HISTORY_STATS_DATE_RANGE_DAYS[range];
   const cutoff = now - days * DAY_MS;
   return entries.filter(entry => entry.latestPlayedAt >= cutoff);
+};
+
+export const filterHistoryEntriesByStatsFilters = (
+  entries: HistoryGameEntry[],
+  filters: HistoryStatsFilters
+): HistoryGameEntry[] => {
+  const location = filters.location?.trim();
+
+  return entries.filter(entry => {
+    if (filters.playerCount && !entry.playerCounts.includes(filters.playerCount)) return false;
+    if (filters.scoringRule && !entry.scoringRules.includes(filters.scoringRule)) return false;
+    if (location && !entry.locations.includes(location)) return false;
+    return true;
+  });
 };
 
 export const buildHistoryStats = (entries: HistoryGameEntry[]): HistoryStatsOverview => {

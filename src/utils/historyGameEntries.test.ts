@@ -114,4 +114,34 @@ describe('historyGameEntries', () => {
     expect(entries[0].firstRecentPhotoId).toBe('new-photo');
     expect(entries[0].firstRecentPhotoRecordId).toBe('h2');
   });
+
+  it('collects filter metadata from merged history records', () => {
+    const entries = buildHistoryGameEntries([
+      record({
+        id: 'h1',
+        gameName: 'Game A',
+        location: 'Home',
+        scoringRule: 'HIGHEST_WINS',
+        players: [
+          { id: 'p1', name: 'Alice', color: '#fff', totalScore: 0, scores: {} },
+          { id: 'p2', name: 'Bob', color: '#000', totalScore: 0, scores: {} }
+        ]
+      }),
+      record({
+        id: 'h2',
+        gameName: 'Game A',
+        location: 'Cafe',
+        scoringRule: 'LOWEST_WINS',
+        players: [
+          { id: 'p1', name: 'Alice', color: '#fff', totalScore: 0, scores: {} },
+          { id: 'p2', name: 'Bob', color: '#000', totalScore: 0, scores: {} },
+          { id: 'p3', name: 'Carol', color: '#333', totalScore: 0, scores: {} }
+        ]
+      })
+    ]);
+
+    expect(entries[0].playerCounts).toEqual([2, 3]);
+    expect(entries[0].scoringRules).toEqual(['HIGHEST_WINS', 'LOWEST_WINS']);
+    expect(entries[0].locations).toEqual(['Cafe', 'Home']);
+  });
 });

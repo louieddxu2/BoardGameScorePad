@@ -1,4 +1,4 @@
-import { SavedListItem } from '../types';
+import { SavedListItem, ScoringRule } from '../types';
 import { HistorySummary } from './extractDataSummaries';
 
 export interface HistoryGamePlayerEntry {
@@ -15,6 +15,9 @@ export interface HistoryGameEntry {
   recordIds: string[];
   playCount: number;
   latestPlayedAt: number;
+  playerCounts: number[];
+  scoringRules: ScoringRule[];
+  locations: string[];
   players: HistoryGamePlayerEntry[];
   firstRecentPhotoId?: string;
   firstRecentPhotoRecordId?: string;
@@ -29,6 +32,9 @@ interface MutableHistoryGameEntry {
   recordIds: string[];
   playCount: number;
   latestPlayedAt: number;
+  playerCounts: Set<number>;
+  scoringRules: Set<ScoringRule>;
+  locations: Set<string>;
   players: Map<string, HistoryGamePlayerEntry>;
   firstRecentPhotoId?: string;
   firstRecentPhotoRecordId?: string;
@@ -120,6 +126,9 @@ export const buildHistoryGameEntries = (records: HistorySummary[], options?: His
       recordIds: [],
       playCount: 0,
       latestPlayedAt: 0,
+      playerCounts: new Set<number>(),
+      scoringRules: new Set<ScoringRule>(),
+      locations: new Set<string>(),
       players: new Map<string, HistoryGamePlayerEntry>(),
       photoCount: 0
     };
@@ -135,6 +144,9 @@ export const buildHistoryGameEntries = (records: HistorySummary[], options?: His
     currentGame.playCount += 1;
     currentGame.recordIds.push(record.id);
     currentGame.latestPlayedAt = Math.max(currentGame.latestPlayedAt, record.endTime);
+    currentGame.playerCounts.add(record.players.length);
+    if (record.scoringRule) currentGame.scoringRules.add(record.scoringRule);
+    if (record.location?.trim()) currentGame.locations.add(record.location.trim());
     if (record.bggId && !currentGame.bggId) currentGame.bggId = record.bggId;
     if (record.templateId) currentGame.templateIds.add(record.templateId);
 
@@ -161,6 +173,9 @@ export const buildHistoryGameEntries = (records: HistorySummary[], options?: His
     recordIds: game.recordIds,
     playCount: game.playCount,
     latestPlayedAt: game.latestPlayedAt,
+    playerCounts: Array.from(game.playerCounts).sort((a, b) => a - b),
+    scoringRules: Array.from(game.scoringRules),
+    locations: Array.from(game.locations).sort((a, b) => a.localeCompare(b)),
     players: Array.from(game.players.values()).sort(sortByCountThenName),
     firstRecentPhotoId: game.firstRecentPhotoId,
     firstRecentPhotoRecordId: game.firstRecentPhotoRecordId,
