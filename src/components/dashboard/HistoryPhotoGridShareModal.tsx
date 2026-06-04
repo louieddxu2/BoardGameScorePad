@@ -438,17 +438,18 @@ PhotoGridCanvas.displayName = 'PhotoGridCanvas';
 
 const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
   const display = getHistoryPhotoGridDisplaySize(tile.imageSize, tile.crop.zoom);
+  const isLandscape = tile.imageSize.width >= tile.imageSize.height;
   return (
     <img
       src={tile.url}
       alt={tile.gameName}
       draggable={false}
-      className="absolute select-none max-w-none"
+      className="absolute select-none max-w-none max-h-none"
       style={{
         left: `${50 + tile.crop.offsetX * 100}%`,
         top: `${50 + tile.crop.offsetY * 100}%`,
-        width: `${display.width * 100}%`,
-        height: `${display.height * 100}%`,
+        width: isLandscape ? `${display.width * 100}%` : 'auto',
+        height: isLandscape ? 'auto' : `${display.height * 100}%`,
         transform: 'translate(-50%, -50%)'
       }}
     />
