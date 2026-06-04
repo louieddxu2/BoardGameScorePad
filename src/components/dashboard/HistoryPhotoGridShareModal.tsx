@@ -46,9 +46,11 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
   const { t } = useHistoryStatsTranslation();
   const exportRef = useRef<HTMLDivElement>(null);
   const cropFrameRef = useRef<HTMLDivElement>(null);
+  const cropEditorSurfaceRef = useRef<HTMLDivElement>(null);
   const [photoPool, setPhotoPool] = useState<LoadedGridPhoto[]>([]);
   const [tiles, setTiles] = useState<EditableGridTile[]>([]);
   const [cropDraft, setCropDraft] = useState<CropDraft | null>(null);
+  useModalBackHandler(!!cropDraft, () => setCropDraft(null), 'history-photo-grid-crop');
   const dragRef = useRef<{ startX: number; startY: number; offsetX: number; offsetY: number } | null>(null);
   const pinchRef = useRef<{ distance: number; zoom: number } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -103,6 +105,27 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
       generatedUrls.forEach(url => URL.revokeObjectURL(url));
     };
   }, [isOpen, gridItems]);
+
+  useEffect(() => {
+    const surface = cropEditorSurfaceRef.current;
+    if (!cropDraft || !surface) return;
+
+    const preventGestureDefault = (event: Event) => {
+      if (event.cancelable) event.preventDefault();
+    };
+
+    surface.addEventListener('touchmove', preventGestureDefault, { passive: false });
+    surface.addEventListener('gesturestart', preventGestureDefault);
+    surface.addEventListener('gesturechange', preventGestureDefault);
+    surface.addEventListener('gestureend', preventGestureDefault);
+
+    return () => {
+      surface.removeEventListener('touchmove', preventGestureDefault);
+      surface.removeEventListener('gesturestart', preventGestureDefault);
+      surface.removeEventListener('gesturechange', preventGestureDefault);
+      surface.removeEventListener('gestureend', preventGestureDefault);
+    };
+  }, [cropDraft]);
 
   const openCropEditor = (tileIndex: number) => {
     const tile = tiles[tileIndex];
@@ -198,8 +221,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
       const zoom = pinchRef.current.zoom * (distance / pinchRef.current.distance);
       updateDraftCrop({
         ...cropDraft.crop,
-        zoom,
-        offsetY: getTopAlignedHistoryPhotoGridOffsetY(cropDraft.imageSize, zoom)
+        zoom
       });
       return;
     }
@@ -215,8 +237,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
     const zoom = cropDraft.crop.zoom * (1 - event.deltaY * 0.001);
     updateDraftCrop({
       ...cropDraft.crop,
-      zoom,
-      offsetY: getTopAlignedHistoryPhotoGridOffsetY(cropDraft.imageSize, zoom)
+      zoom
     });
   };
 
@@ -279,7 +300,8 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
       {cropDraft ? (
         <div className="flex-1 min-h-0 flex flex-col">
           <div
-            className="flex-1 min-h-0 flex items-center justify-center p-4 bg-app-bg-deep touch-none"
+            ref={cropEditorSurfaceRef}
+            className="flex-1 min-h-0 flex items-center justify-center p-4 bg-app-bg-deep touch-none overscroll-none overflow-hidden"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={stopEditingGesture}
@@ -289,9 +311,9 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
             onTouchEnd={stopEditingGesture}
             onWheel={handleWheel}
           >
-            <div ref={cropFrameRef} className="relative w-[min(82vw,54vh)] max-w-[520px] aspect-square rounded-xl border-2 border-brand-primary shadow-2xl overflow-hidden bg-app-bg">
-              <PhotoTile tile={cropDraft} />
-              <div className="absolute inset-0 pointer-events-none ring-1 ring-white/40" />
+            <div ref={cropFrameRef} className="relative w-[min(82vw,54vh)] max-w-[520px] aspect-square rounded-xl overflow-visible">
+              <PhotoImage tile={cropDraft} />
+              <div className="absolute inset-0 pointer-events-none rounded-xl border-2 border-brand-primary shadow-[0_0_0_9999px_rgba(15,23,42,0.34)] ring-1 ring-white/50" />
             </div>
           </div>
 
@@ -414,24 +436,29 @@ const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>((
 
 PhotoGridCanvas.displayName = 'PhotoGridCanvas';
 
-const PhotoTile: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
+const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
   const display = getHistoryPhotoGridDisplaySize(tile.imageSize, tile.crop.zoom);
   return (
+    <img
+      src={tile.url}
+      alt={tile.gameName}
+      draggable={false}
+      className="absolute select-none max-w-none"
+      style={{
+        left: `${50 + tile.crop.offsetX * 100}%`,
+        top: `${50 + tile.crop.offsetY * 100}%`,
+        width: `${display.width * 100}%`,
+        height: `${display.height * 100}%`,
+        transform: 'translate(-50%, -50%)'
+      }}
+    />
+  );
+};
+
+const PhotoTile: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
+  return (
     <>
-      <img
-        src={tile.url}
-        alt={tile.gameName}
-        draggable={false}
-        className="absolute select-none"
-        style={{
-          left: `${50 + tile.crop.offsetX * 100}%`,
-          top: `${50 + tile.crop.offsetY * 100}%`,
-          width: `${display.width * 100}%`,
-          height: `${display.height * 100}%`,
-          transform: 'translate(-50%, -50%)',
-          objectFit: 'fill'
-        }}
-      />
+      <PhotoImage tile={tile} />
       <div className="absolute inset-x-0 bottom-0 px-1.5 py-1 bg-app-bg-deep text-white text-[10px] font-bold truncate">
         {tile.gameName}
       </div>
