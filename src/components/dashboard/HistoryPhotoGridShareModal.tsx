@@ -137,24 +137,20 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
   }, [isOpen, gridItems]);
 
   useEffect(() => {
-    const surface = cropEditorSurfaceRef.current;
-    if (!cropDraft || !surface) return;
+    if (!cropDraft) return;
 
     const preventGestureDefault = (event: Event) => {
       if (event.cancelable) event.preventDefault();
-      event.stopPropagation();
     };
 
-    surface.addEventListener('touchmove', preventGestureDefault, { passive: false });
-    surface.addEventListener('gesturestart', preventGestureDefault);
-    surface.addEventListener('gesturechange', preventGestureDefault);
-    surface.addEventListener('gestureend', preventGestureDefault);
+    window.addEventListener('gesturestart', preventGestureDefault);
+    window.addEventListener('gesturechange', preventGestureDefault);
+    window.addEventListener('gestureend', preventGestureDefault);
 
     return () => {
-      surface.removeEventListener('touchmove', preventGestureDefault);
-      surface.removeEventListener('gesturestart', preventGestureDefault);
-      surface.removeEventListener('gesturechange', preventGestureDefault);
-      surface.removeEventListener('gestureend', preventGestureDefault);
+      window.removeEventListener('gesturestart', preventGestureDefault);
+      window.removeEventListener('gesturechange', preventGestureDefault);
+      window.removeEventListener('gestureend', preventGestureDefault);
     };
   }, [cropDraft]);
 
@@ -356,6 +352,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
             onTouchEnd={handleTouchEnd}
             onTouchCancel={handleTouchEnd}
             onWheel={handleWheel}
+            data-mobile-zoom-ignore="true"
             style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
           >
             <div ref={cropFrameRef} className="relative w-[min(86vw,64vh)] max-w-[560px] aspect-[4/3] rounded-xl overflow-visible">
@@ -492,8 +489,6 @@ PhotoGridCanvas.displayName = 'PhotoGridCanvas';
 
 const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
   const base = getHistoryPhotoGridBaseSize(tile.imageSize, PHOTO_GRID_IMAGE_FRAME_ASPECT);
-  const imageAspect = tile.imageSize.width / tile.imageSize.height;
-  const fillsByWidth = imageAspect >= PHOTO_GRID_IMAGE_FRAME_ASPECT;
   return (
     <img
       src={tile.url}
@@ -503,8 +498,8 @@ const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
       style={{
         left: `${50 + tile.crop.offsetX * 100}%`,
         top: `${50 + tile.crop.offsetY * 100}%`,
-        width: fillsByWidth ? `${base.width * 100}%` : 'auto',
-        height: fillsByWidth ? 'auto' : `${base.height * 100}%`,
+        width: `${base.width * 100}%`,
+        height: `${base.height * 100}%`,
         transform: `translate(-50%, -50%) scale(${tile.crop.zoom})`,
         transformOrigin: 'center center'
       }}

@@ -1,6 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { getTouchDistance } from '../utils/ui';
 
+const MOBILE_ZOOM_IGNORE_SELECTOR = '[data-mobile-zoom-ignore="true"]';
+
+const shouldIgnoreMobileZoomEvent = (event: TouchEvent): boolean => {
+  const target = event.target;
+  return target instanceof Element && Boolean(target.closest(MOBILE_ZOOM_IGNORE_SELECTOR));
+};
+
 /**
  * Custom Hook: 封裝行動裝置雙指縮放 (Zoom) 邏輯與 localStorage 狀態同步
  */
@@ -28,6 +35,12 @@ export const useMobileZoom = () => {
 
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
+      if (shouldIgnoreMobileZoomEvent(e)) {
+        isZooming.current = false;
+        touchStartDist.current = 0;
+        return;
+      }
+
       if (e.touches.length === 2) {
         isZooming.current = true;
         e.preventDefault();
@@ -39,6 +52,12 @@ export const useMobileZoom = () => {
     };
 
     const handleTouchMove = (e: TouchEvent) => {
+      if (shouldIgnoreMobileZoomEvent(e)) {
+        isZooming.current = false;
+        touchStartDist.current = 0;
+        return;
+      }
+
       if (isZooming.current && e.touches.length === 2) {
         e.preventDefault();
         if (touchStartDist.current > 0) {
