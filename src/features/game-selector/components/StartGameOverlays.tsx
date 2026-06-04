@@ -1,6 +1,6 @@
 import React from 'react';
-import { Check } from 'lucide-react';
 import { ScoringRule, SavedListItem } from '../../../types';
+import UpwardSelectMenu from '../../../components/shared/UpwardSelectMenu';
 
 export interface StartGameOverlaysProps {
     activeMenu: { type: 'mode' | 'location', bottom: number, left: number, width: number } | null;
@@ -27,51 +27,37 @@ export const StartGameOverlays: React.FC<StartGameOverlaysProps> = ({
 }) => {
     if (!activeMenu) return null;
 
+    const handleClose = () => {
+        if (activeMenu.type === 'location') setIsManualInput(true);
+        setActiveMenu(null);
+    };
+
     return (
         <>
-            <div
-                className="fixed inset-0 z-[60] pointer-events-auto"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    if (activeMenu.type === 'location') setIsManualInput(true);
-                    setActiveMenu(null);
-                }}
-            />
-            <div
-                ref={listRef}
-                className="fixed bg-surface-bg border border-surface-border rounded-xl shadow-ui-floating z-[70] overflow-hidden max-h-[50vh] overflow-y-auto no-scrollbar flex flex-col animate-in zoom-in-95 slide-in-from-bottom-2 duration-200 pointer-events-auto"
-                style={{
-                    bottom: `${activeMenu.bottom + 8}px`,
-                    left: `${activeMenu.left}px`,
-                    width: `${activeMenu.width}px`
-                }}
-                onClick={(e) => e.stopPropagation()}
-            >
-                {activeMenu.type === 'mode' && [...SCORING_MODES].reverse().map(opt => (
-                    <button
-                        key={opt.value}
-                        onClick={() => { setScoringRule(opt.value); setActiveMenu(null); }}
-                        className={`w-full text-left px-3 py-2.5 text-xs font-bold border-b border-surface-border/50 last:border-0 hover:bg-surface-bg-alt flex items-center justify-between ${scoringRule === opt.value ? 'text-brand-primary bg-brand-primary/10' : 'text-txt-primary'}`}
-                    >
-                        {opt.label}
-                        {scoringRule === opt.value && <Check size={12} />}
-                    </button>
-                ))}
+            {activeMenu.type === 'mode' && (
+                <UpwardSelectMenu
+                    anchor={activeMenu}
+                    options={[...SCORING_MODES].reverse()}
+                    selectedValue={scoringRule}
+                    onSelect={(value) => { setScoringRule(value); setActiveMenu(null); }}
+                    onClose={handleClose}
+                    listRef={listRef}
+                />
+            )}
 
-                {activeMenu.type === 'location' && (
-                    <>
-                        {uniqueLocations.map((loc) => (
-                            <button
-                                key={loc.id}
-                                onClick={() => handleLocationSelect(loc)}
-                                className="w-full text-left px-3 py-3 text-xs text-txt-secondary hover:bg-surface-bg-alt hover:text-txt-primary border-b border-surface-border/50 last:border-0 truncate font-medium shrink-0 leading-normal block"
-                            >
-                                {loc.name}
-                            </button>
-                        ))}
-                    </>
-                )}
-            </div>
+            {activeMenu.type === 'location' && (
+                <UpwardSelectMenu
+                    anchor={activeMenu}
+                    options={uniqueLocations.map(loc => ({ value: loc.id, label: loc.name }))}
+                    selectedValue=""
+                    onSelect={(value) => {
+                        const selected = uniqueLocations.find(loc => loc.id === value);
+                        if (selected) handleLocationSelect(selected);
+                    }}
+                    onClose={handleClose}
+                    listRef={listRef}
+                />
+            )}
         </>
     );
 };

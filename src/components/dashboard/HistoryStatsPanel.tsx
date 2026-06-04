@@ -1,10 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { BarChart3, CalendarDays, ChevronDown, ChevronUp, Grid3X3, Hash, MapPin, Minus, Search, Users, Plus } from 'lucide-react';
 import { HistoryGameEntry } from '../../utils/historyGameEntries';
 import { buildHistoryStats, filterHistoryEntriesByDateRange, filterHistoryEntriesByStatsFilters, getNextHistoryStatsDateRange, HistoryStatsDateRange } from '../../utils/historyStats';
 import HistoryPhotoGridShareModal from './HistoryPhotoGridShareModal';
 import { useHistoryStatsTranslation } from '../../i18n/history_stats';
 import { ScoringRule } from '../../types';
+import UpwardSelectMenu, { UpwardSelectMenuAnchor } from '../shared/UpwardSelectMenu';
 
 interface HistoryStatsPanelProps {
   entries: HistoryGameEntry[];
@@ -15,6 +16,7 @@ interface HistoryStatsPanelProps {
 const BOTTOM_ROW_HEIGHT_CLASS = 'h-[60px]';
 const ACTION_ROW_WIDTH_CLASS = 'w-[118px] sm:w-[140px]';
 const MAX_VISIBLE_STATS_PLAYERS = 10;
+const STATS_FILTER_ALL = '__all__';
 const SCORING_RULE_ORDER: ScoringRule[] = ['HIGHEST_WINS', 'LOWEST_WINS', 'COOP', 'COMPETITIVE_NO_SCORE', 'COOP_NO_SCORE'];
 const SCORING_RULE_LABELS: Record<'zh-TW' | 'en', Record<ScoringRule, string>> = {
   'zh-TW': {
@@ -44,15 +46,6 @@ const formatDate = (timestamp: number | undefined, emptyLabel: string) => {
   return new Date(timestamp).toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' });
 };
 
-const cycleOption = <T,>(current: T | null, options: T[]): T | null => {
-  if (options.length === 0) return null;
-  if (!current) return options[0];
-
-  const index = options.indexOf(current);
-  if (index === -1) return options[0];
-  return index >= options.length - 1 ? null : options[index + 1];
-};
-
 const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearchClick, isSearchKeyboardOpen = false }) => {
   const { t, language } = useHistoryStatsTranslation();
   const [playerCount, setPlayerCount] = useState<number | null>(null);
@@ -61,6 +54,8 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
   const [dateRange, setDateRange] = useState<HistoryStatsDateRange>('all');
   const [scoringRuleFilter, setScoringRuleFilter] = useState<ScoringRule | null>(null);
   const [locationFilter, setLocationFilter] = useState<string | null>(null);
+  const [activeMenu, setActiveMenu] = useState<({ type: 'rule' | 'location' } & UpwardSelectMenuAnchor) | null>(null);
+  const menuListRef = useRef<HTMLDivElement>(null);
   const dateFilteredEntries = useMemo(() => filterHistoryEntriesByDateRange(entries, dateRange), [entries, dateRange]);
   const scoringRuleOptions = useMemo(
     () => SCORING_RULE_ORDER.filter(rule => dateFilteredEntries.some(entry => entry.scoringRules.includes(rule))),
@@ -87,6 +82,30 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
     ? SCORING_RULE_LABELS[language === 'en' ? 'en' : 'zh-TW'][activeScoringRuleFilter]
     : t('stats_rules_short');
   const locationLabel = activeLocationFilter || t('stats_locations_short');
+  const allLabel = t('stats_filter_unlimited');
+  const scoringRuleMenuOptions = useMemo(() => [
+    { value: STATS_FILTER_ALL, label: allLabel },
+    ...scoringRuleOptions.map(rule => ({
+      value: rule,
+      label: SCORING_RULE_LABELS[language === 'en' ? 'en' : 'zh-TW'][rule]
+    }))
+  ], [allLabel, language, scoringRuleOptions]);
+  const locationMenuOptions = useMemo(() => [
+    { value: STATS_FILTER_ALL, label: allLabel },
+    ...locationOptions.map(location => ({ value: location, label: location }))
+  ], [allLabel, locationOptions]);
+
+  const openMenu = (type: 'rule' | 'location', event: React.MouseEvent) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const menuWidth = Math.max(rect.width, type === 'location' ? 180 : 150);
+    const viewportPadding = 8;
+    setActiveMenu({
+      type,
+      bottom: window.innerHeight - rect.top,
+      left: Math.min(Math.max(rect.left, viewportPadding), window.innerWidth - menuWidth - viewportPadding),
+      width: menuWidth
+    });
+  };
 
   return (
     <>
@@ -155,7 +174,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
           <div className={`flex-none ${BOTTOM_ROW_HEIGHT_CLASS} flex border-t border-surface-border z-10 bg-app-bg-deep`}>
             <div className={`min-w-0 flex-1 overflow-x-auto no-scrollbar flex items-center gap-1.5 px-2 pr-[126px] sm:pr-[148px] pointer-events-auto`}>
               <button
-                onClick={() => setScoringRuleFilter(prev => cycleOption(prev, scoringRuleOptions))}
+                onClick={(event) => openMenu('rule', event)}
                 className={`h-10 shrink-0 bg-app-bg border rounded-lg px-2.5 flex items-center gap-1 hover:border-txt-secondary transition-colors ${
                   activeScoringRuleFilter ? 'border-brand-primary text-brand-primary bg-brand-primary/10' : 'border-surface-border text-txt-primary'
                 }`}
@@ -166,7 +185,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
               </button>
 
               <button
-                onClick={() => setLocationFilter(prev => cycleOption(prev, locationOptions))}
+                onClick={(event) => openMenu('location', event)}
                 className={`h-10 shrink-0 bg-app-bg border rounded-lg px-2.5 flex items-center gap-1 hover:border-txt-secondary transition-colors ${
                   activeLocationFilter ? 'border-brand-primary text-brand-primary bg-brand-primary/10' : 'border-surface-border text-txt-primary'
                 }`}
@@ -240,6 +259,34 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
         entries={filteredEntries}
         onClose={() => setShowPhotoGrid(false)}
       />
+
+      {activeMenu?.type === 'rule' && (
+        <UpwardSelectMenu
+          anchor={activeMenu}
+          options={scoringRuleMenuOptions}
+          selectedValue={activeScoringRuleFilter || STATS_FILTER_ALL}
+          onSelect={(value) => {
+            setScoringRuleFilter(value === STATS_FILTER_ALL ? null : value as ScoringRule);
+            setActiveMenu(null);
+          }}
+          onClose={() => setActiveMenu(null)}
+          listRef={menuListRef}
+        />
+      )}
+
+      {activeMenu?.type === 'location' && (
+        <UpwardSelectMenu
+          anchor={activeMenu}
+          options={locationMenuOptions}
+          selectedValue={activeLocationFilter || STATS_FILTER_ALL}
+          onSelect={(value) => {
+            setLocationFilter(value === STATS_FILTER_ALL ? null : value);
+            setActiveMenu(null);
+          }}
+          onClose={() => setActiveMenu(null)}
+          listRef={menuListRef}
+        />
+      )}
     </>
   );
 };
