@@ -98,6 +98,7 @@ export type HistorySummary = BaseSummary<HistorySearchIndex> & HistorySearchInde
     scores?: any;
   }[];
   firstPhotoId?: string;
+  photoIds?: string[];
   snapshotTemplate?: undefined;
 };
 
@@ -247,6 +248,7 @@ export const extractHistorySummary = (
     winnerIds: record.winnerIds,
     scoringRule: record.scoringRule,
     firstPhotoId: record.photos?.[0],
+    photoIds: record.photos ? [...record.photos] : undefined,
 
     players: lightweightPlayers as any,
 

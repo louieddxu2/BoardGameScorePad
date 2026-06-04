@@ -19,7 +19,10 @@ import { useHistoryStatsTranslation } from '../../i18n/history_stats';
 
 interface LoadedGridPhoto {
   id: string;
+  recordId: string;
+  gameKey: string;
   gameName: string;
+  endTime: number;
   url: string;
   imageSize: HistoryPhotoGridImageSize;
 }
@@ -39,6 +42,7 @@ interface HistoryPhotoGridShareModalProps {
 }
 
 const EXPORT_GRID_WIDTH = 520;
+const PHOTO_GRID_IMAGE_FRAME_ASPECT = 4 / 3;
 
 const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({ isOpen, entries, onClose }) => {
   const { zIndex } = useModalBackHandler(isOpen, onClose, 'history-photo-grid-share');
@@ -82,25 +86,41 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
 
     const loadImages = async () => {
       setIsLoading(true);
-      const loaded: LoadedGridPhoto[] = [];
+      const loadedById = new Map<string, LoadedGridPhoto>();
 
       for (const item of gridItems) {
-        try {
-          const localImage = await imageService.getImage(item.photoId);
-          if (!localImage || !active) continue;
+        for (const candidate of item.candidatePhotos) {
+          if (loadedById.has(candidate.photoId)) continue;
 
-          const url = URL.createObjectURL(localImage.blob);
-          generatedUrls.push(url);
-          const imageSize = await getImageSize(url);
-          loaded.push({ id: item.photoId, gameName: item.gameName, url, imageSize });
-        } catch (error) {
-          console.warn('Failed to load history grid image', error);
+          try {
+            const localImage = await imageService.getImage(candidate.photoId);
+            if (!localImage || !active) continue;
+
+            const url = URL.createObjectURL(localImage.blob);
+            generatedUrls.push(url);
+            const imageSize = await getImageSize(url);
+            loadedById.set(candidate.photoId, {
+              id: candidate.photoId,
+              recordId: candidate.recordId,
+              gameKey: item.gameKey,
+              gameName: item.gameName,
+              endTime: candidate.endTime,
+              url,
+              imageSize
+            });
+          } catch (error) {
+            console.warn('Failed to load history grid image', error);
+          }
         }
       }
 
       if (active) {
+        const loaded = Array.from(loadedById.values());
         setPhotoPool(loaded);
-        setTiles(loaded.slice(0, 9).map(createTileFromPhoto));
+        setTiles(gridItems.slice(0, 9).flatMap(item => {
+          const photo = loadedById.get(item.photoId);
+          return photo ? [createTileFromPhoto(photo)] : [];
+        }));
         setCropDraft(null);
         setIsLoading(false);
       } else {
@@ -149,7 +169,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
       if (!prev) return prev;
       return {
         ...prev,
-        crop: clampHistoryPhotoGridCrop(prev.imageSize, nextCrop)
+        crop: clampHistoryPhotoGridCrop(prev.imageSize, nextCrop, PHOTO_GRID_IMAGE_FRAME_ASPECT)
       };
     });
   };
@@ -182,9 +202,9 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
 
   const handleDragMove = (clientX: number, clientY: number) => {
     if (!cropDraft || !dragRef.current || !cropFrameRef.current) return;
-    const frameSize = cropFrameRef.current.getBoundingClientRect().width || 1;
-    const dx = (clientX - dragRef.current.startX) / frameSize;
-    const dy = (clientY - dragRef.current.startY) / frameSize;
+    const frameRect = cropFrameRef.current.getBoundingClientRect();
+    const dx = (clientX - dragRef.current.startX) / (frameRect.width || 1);
+    const dy = (clientY - dragRef.current.startY) / (frameRect.height || 1);
     updateDraftCrop({
       ...cropDraft.crop,
       offsetX: dragRef.current.offsetX + dx,
@@ -301,6 +321,10 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
 
   if (!isOpen) return null;
 
+  const cropPhotoOptions = cropDraft
+    ? photoPool.filter(photo => photo.gameKey === cropDraft.gameKey)
+    : [];
+
   return (
     <div className="fixed inset-0 bg-app-bg-deep/95 backdrop-blur-sm flex flex-col animate-in fade-in duration-200" style={{ zIndex }}>
       <div className="flex-none h-16 px-4 border-b border-surface-border bg-modal-bg flex items-center justify-between">
@@ -334,7 +358,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
             onWheel={handleWheel}
             style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
           >
-            <div ref={cropFrameRef} className="relative w-[min(82vw,54vh)] max-w-[520px] aspect-square rounded-xl overflow-visible">
+            <div ref={cropFrameRef} className="relative w-[min(86vw,64vh)] max-w-[560px] aspect-[4/3] rounded-xl overflow-visible">
               <PhotoImage tile={cropDraft} />
               <div className="absolute inset-0 pointer-events-none rounded-xl border-2 border-brand-primary shadow-[0_0_0_9999px_rgba(15,23,42,0.34)] ring-1 ring-white/50" />
             </div>
@@ -342,11 +366,11 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
 
           <div className="flex-none border-t border-surface-border bg-modal-bg p-3 flex items-center gap-3">
             <div className="min-w-0 flex-1 overflow-x-auto no-scrollbar flex items-center gap-2">
-              {photoPool.map(photo => (
+              {cropPhotoOptions.map(photo => (
                 <button
                   key={photo.id}
                   onClick={() => replaceDraftPhoto(photo)}
-                  className={`w-14 h-14 rounded-lg overflow-hidden border shrink-0 ${cropDraft.id === photo.id ? 'border-brand-primary' : 'border-surface-border'}`}
+                  className={`w-20 h-14 rounded-lg overflow-hidden border shrink-0 ${cropDraft.id === photo.id ? 'border-brand-primary' : 'border-surface-border'}`}
                   title={photo.gameName}
                 >
                   <img src={photo.url} alt={photo.gameName} className="w-full h-full object-cover" />
@@ -415,14 +439,21 @@ const getImageSize = (url: string): Promise<HistoryPhotoGridImageSize> => {
   });
 };
 
+const formatGridDate = (timestamp: number): string => {
+  return new Date(timestamp).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' });
+};
+
 const createTileFromPhoto = (photo: LoadedGridPhoto): EditableGridTile => ({
   ...photo,
-  crop: getInitialHistoryPhotoGridCrop(photo.imageSize)
+  crop: getInitialHistoryPhotoGridCrop(photo.imageSize, PHOTO_GRID_IMAGE_FRAME_ASPECT)
 });
 
 const toTile = (draft: CropDraft): EditableGridTile => ({
   id: draft.id,
+  recordId: draft.recordId,
+  gameKey: draft.gameKey,
   gameName: draft.gameName,
+  endTime: draft.endTime,
   url: draft.url,
   imageSize: draft.imageSize,
   crop: draft.crop
@@ -442,7 +473,7 @@ const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>((
           key={`${tile?.id || 'empty'}-${index}`}
           onClick={() => tile && onSelect?.(index)}
           disabled={!tile || !onSelect}
-          className="relative bg-surface-recessed rounded-md overflow-hidden select-none disabled:cursor-default active:scale-[0.99] transition-transform"
+          className="bg-surface-recessed rounded-md overflow-hidden select-none disabled:cursor-default active:scale-[0.99] transition-transform flex flex-col"
         >
           {tile ? (
             <PhotoTile tile={tile} />
@@ -460,8 +491,9 @@ const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>((
 PhotoGridCanvas.displayName = 'PhotoGridCanvas';
 
 const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
-  const base = getHistoryPhotoGridBaseSize(tile.imageSize);
-  const isLandscape = tile.imageSize.width >= tile.imageSize.height;
+  const base = getHistoryPhotoGridBaseSize(tile.imageSize, PHOTO_GRID_IMAGE_FRAME_ASPECT);
+  const imageAspect = tile.imageSize.width / tile.imageSize.height;
+  const fillsByWidth = imageAspect >= PHOTO_GRID_IMAGE_FRAME_ASPECT;
   return (
     <img
       src={tile.url}
@@ -471,8 +503,8 @@ const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
       style={{
         left: `${50 + tile.crop.offsetX * 100}%`,
         top: `${50 + tile.crop.offsetY * 100}%`,
-        width: isLandscape ? `${base.width * 100}%` : 'auto',
-        height: isLandscape ? 'auto' : `${base.height * 100}%`,
+        width: fillsByWidth ? `${base.width * 100}%` : 'auto',
+        height: fillsByWidth ? 'auto' : `${base.height * 100}%`,
         transform: `translate(-50%, -50%) scale(${tile.crop.zoom})`,
         transformOrigin: 'center center'
       }}
@@ -483,9 +515,12 @@ const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
 const PhotoTile: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
   return (
     <>
-      <PhotoImage tile={tile} />
-      <div className="absolute inset-x-0 bottom-0 px-1.5 py-1 bg-app-bg-deep text-white text-[10px] font-bold truncate">
-        {tile.gameName}
+      <div className="relative flex-1 min-h-0 overflow-hidden bg-app-bg-deep">
+        <PhotoImage tile={tile} />
+      </div>
+      <div className="flex-none h-[26%] min-h-[24px] px-1.5 py-1 bg-app-bg-deep text-white flex flex-col justify-center">
+        <span className="text-[10px] leading-tight font-bold truncate">{tile.gameName}</span>
+        <span className="text-[8px] leading-tight text-white/60 font-mono">{formatGridDate(tile.endTime)}</span>
       </div>
     </>
   );

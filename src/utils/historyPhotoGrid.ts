@@ -20,14 +20,15 @@ export const HISTORY_PHOTO_GRID_MAX_ZOOM = 2;
 const isValidSize = (size: HistoryPhotoGridImageSize): boolean => size.width > 0 && size.height > 0;
 
 export const getHistoryPhotoGridBaseSize = (
-  size: HistoryPhotoGridImageSize
+  size: HistoryPhotoGridImageSize,
+  frameAspect = 1
 ): HistoryPhotoGridDisplaySize => {
-  if (!isValidSize(size)) return { width: 1, height: 1 };
+  if (!isValidSize(size) || frameAspect <= 0) return { width: 1, height: 1 };
 
   const aspect = size.width / size.height;
-  return aspect >= 1
-    ? { width: 1, height: 1 / aspect }
-    : { width: aspect, height: 1 };
+  return aspect >= frameAspect
+    ? { width: 1, height: frameAspect / aspect }
+    : { width: aspect / frameAspect, height: 1 };
 };
 
 export const clampHistoryPhotoGridZoom = (zoom: number): number => {
@@ -37,9 +38,10 @@ export const clampHistoryPhotoGridZoom = (zoom: number): number => {
 
 export const getHistoryPhotoGridDisplaySize = (
   size: HistoryPhotoGridImageSize,
-  zoom: number
+  zoom: number,
+  frameAspect = 1
 ): HistoryPhotoGridDisplaySize => {
-  const base = getHistoryPhotoGridBaseSize(size);
+  const base = getHistoryPhotoGridBaseSize(size, frameAspect);
   const clampedZoom = clampHistoryPhotoGridZoom(zoom);
   return {
     width: base.width * clampedZoom,
@@ -49,28 +51,31 @@ export const getHistoryPhotoGridDisplaySize = (
 
 export const getTopAlignedHistoryPhotoGridOffsetY = (
   size: HistoryPhotoGridImageSize,
-  zoom: number
+  zoom: number,
+  frameAspect = 1
 ): number => {
-  const display = getHistoryPhotoGridDisplaySize(size, zoom);
+  const display = getHistoryPhotoGridDisplaySize(size, zoom, frameAspect);
   return display.height / 2 - 0.5;
 };
 
 export const getInitialHistoryPhotoGridCrop = (
-  size: HistoryPhotoGridImageSize
+  size: HistoryPhotoGridImageSize,
+  frameAspect = 1
 ): HistoryPhotoGridCrop => {
   return {
     zoom: HISTORY_PHOTO_GRID_MIN_ZOOM,
     offsetX: 0,
-    offsetY: getTopAlignedHistoryPhotoGridOffsetY(size, HISTORY_PHOTO_GRID_MIN_ZOOM)
+    offsetY: getTopAlignedHistoryPhotoGridOffsetY(size, HISTORY_PHOTO_GRID_MIN_ZOOM, frameAspect)
   };
 };
 
 export const clampHistoryPhotoGridCrop = (
   size: HistoryPhotoGridImageSize,
-  crop: HistoryPhotoGridCrop
+  crop: HistoryPhotoGridCrop,
+  frameAspect = 1
 ): HistoryPhotoGridCrop => {
   const zoom = clampHistoryPhotoGridZoom(crop.zoom);
-  const display = getHistoryPhotoGridDisplaySize(size, zoom);
+  const display = getHistoryPhotoGridDisplaySize(size, zoom, frameAspect);
   const maxOffsetX = display.width / 2;
   const maxOffsetY = display.height / 2;
 

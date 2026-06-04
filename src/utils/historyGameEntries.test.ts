@@ -12,6 +12,7 @@ const record = (overrides: Partial<HistorySummary>): HistorySummary => ({
   winnerIds: [],
   scoringRule: overrides.scoringRule,
   firstPhotoId: overrides.firstPhotoId,
+  photoIds: overrides.photoIds,
   players: overrides.players || [],
   _playerNames: '',
   _dateStr: '',
@@ -105,14 +106,29 @@ describe('historyGameEntries', () => {
 
   it('keeps the most recent first photo for each merged game', () => {
     const entries = buildHistoryGameEntries([
-      record({ id: 'h1', gameName: 'Game A', endTime: 1000, firstPhotoId: 'old-photo' }),
-      record({ id: 'h2', gameName: 'Game A', endTime: 3000, firstPhotoId: 'new-photo' }),
+      record({ id: 'h1', gameName: 'Game A', endTime: 1000, firstPhotoId: 'old-photo', photoIds: ['old-photo'] }),
+      record({ id: 'h2', gameName: 'Game A', endTime: 3000, firstPhotoId: 'new-photo', photoIds: ['new-photo'] }),
       record({ id: 'h3', gameName: 'Game A', endTime: 2000 })
     ]);
 
     expect(entries[0].photoCount).toBe(2);
     expect(entries[0].firstRecentPhotoId).toBe('new-photo');
     expect(entries[0].firstRecentPhotoRecordId).toBe('h2');
+  });
+
+  it('collects same-game photo candidates from all merged history records', () => {
+    const entries = buildHistoryGameEntries([
+      record({ id: 'h1', gameName: 'Game A', endTime: 1000, firstPhotoId: 'a-old-1', photoIds: ['a-old-1', 'a-old-2'] }),
+      record({ id: 'h2', gameName: 'Game A', endTime: 3000, firstPhotoId: 'a-new-1', photoIds: ['a-new-1', 'a-new-2'] })
+    ]);
+
+    expect(entries[0].photoCount).toBe(4);
+    expect(entries[0].photos.map(photo => [photo.recordId, photo.photoId])).toEqual([
+      ['h2', 'a-new-1'],
+      ['h2', 'a-new-2'],
+      ['h1', 'a-old-1'],
+      ['h1', 'a-old-2']
+    ]);
   });
 
   it('collects filter metadata from merged history records', () => {

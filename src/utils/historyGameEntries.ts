@@ -7,6 +7,13 @@ export interface HistoryGamePlayerEntry {
   playCount: number;
 }
 
+export interface HistoryGamePhotoEntry {
+  recordId: string;
+  photoId: string;
+  endTime: number;
+  photoIndex: number;
+}
+
 export interface HistoryGameEntry {
   gameKey: string;
   displayName: string;
@@ -21,6 +28,7 @@ export interface HistoryGameEntry {
   players: HistoryGamePlayerEntry[];
   firstRecentPhotoId?: string;
   firstRecentPhotoRecordId?: string;
+  photos: HistoryGamePhotoEntry[];
   photoCount: number;
 }
 
@@ -38,6 +46,7 @@ interface MutableHistoryGameEntry {
   players: Map<string, HistoryGamePlayerEntry>;
   firstRecentPhotoId?: string;
   firstRecentPhotoRecordId?: string;
+  photos: HistoryGamePhotoEntry[];
   photoCount: number;
 }
 
@@ -112,6 +121,11 @@ const sortByCountThenRecent = (a: HistoryGameEntry, b: HistoryGameEntry) => {
   return b.latestPlayedAt - a.latestPlayedAt;
 };
 
+const sortPhotosByRecent = (a: HistoryGamePhotoEntry, b: HistoryGamePhotoEntry) => {
+  if (b.endTime !== a.endTime) return b.endTime - a.endTime;
+  return a.photoIndex - b.photoIndex;
+};
+
 export const buildHistoryGameEntries = (records: HistorySummary[], options?: HistoryGameEntryOptions): HistoryGameEntry[] => {
   const gameMap = new Map<string, MutableHistoryGameEntry>();
   const resolveHistoryPlayer = createHistoryPlayerResolver(options);
@@ -130,13 +144,24 @@ export const buildHistoryGameEntries = (records: HistorySummary[], options?: His
       scoringRules: new Set<ScoringRule>(),
       locations: new Set<string>(),
       players: new Map<string, HistoryGamePlayerEntry>(),
+      photos: [],
       photoCount: 0
     };
 
-    if (record.firstPhotoId) {
-      currentGame.photoCount += 1;
+    const photoIds = record.photoIds?.length ? record.photoIds : (record.firstPhotoId ? [record.firstPhotoId] : []);
+    photoIds.forEach((photoId, photoIndex) => {
+      currentGame.photos.push({
+        recordId: record.id,
+        photoId,
+        endTime: record.endTime,
+        photoIndex
+      });
+    });
+    currentGame.photoCount += photoIds.length;
+
+    if (photoIds[0]) {
       if (!currentGame.firstRecentPhotoId || record.endTime >= currentGame.latestPlayedAt) {
-        currentGame.firstRecentPhotoId = record.firstPhotoId;
+        currentGame.firstRecentPhotoId = photoIds[0];
         currentGame.firstRecentPhotoRecordId = record.id;
       }
     }
@@ -179,6 +204,7 @@ export const buildHistoryGameEntries = (records: HistorySummary[], options?: His
     players: Array.from(game.players.values()).sort(sortByCountThenName),
     firstRecentPhotoId: game.firstRecentPhotoId,
     firstRecentPhotoRecordId: game.firstRecentPhotoRecordId,
+    photos: [...game.photos].sort(sortPhotosByRecent),
     photoCount: game.photoCount
   })).sort(sortByCountThenRecent);
 };

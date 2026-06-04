@@ -16,6 +16,13 @@ describe('historyPhotoGrid', () => {
     });
   });
 
+  it('fits landscape photos inside a landscape crop frame', () => {
+    expect(getHistoryPhotoGridBaseSize({ width: 1600, height: 800 }, 4 / 3)).toEqual({
+      width: 1,
+      height: 2 / 3
+    });
+  });
+
   it('fits portrait photos fully inside the crop frame at minimum zoom', () => {
     expect(getHistoryPhotoGridBaseSize({ width: 800, height: 1600 })).toEqual({
       width: 0.5,

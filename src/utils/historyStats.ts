@@ -1,4 +1,4 @@
-import { HistoryGameEntry } from './historyGameEntries';
+import { HistoryGameEntry, HistoryGamePhotoEntry } from './historyGameEntries';
 import { ScoringRule } from '../types';
 
 export type HistoryStatsDateRange = 'all' | 'month' | 'quarter' | 'year';
@@ -47,6 +47,7 @@ export interface HistoryPhotoGridItem {
   gameName: string;
   endTime: number;
   photoId: string;
+  candidatePhotos: HistoryGamePhotoEntry[];
 }
 
 export const getNextHistoryStatsDateRange = (range: HistoryStatsDateRange): HistoryStatsDateRange => {
@@ -124,6 +125,7 @@ export const selectHistoryPhotoGridItems = (entries: HistoryGameEntry[], limit =
       gameKey: entry.gameKey,
       gameName: entry.displayName,
       endTime: entry.latestPlayedAt,
-      photoId: entry.firstRecentPhotoId!
+      photoId: entry.firstRecentPhotoId!,
+      candidatePhotos: entry.photos
     }));
 };

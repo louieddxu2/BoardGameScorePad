@@ -13,6 +13,7 @@ const record = (overrides: Partial<HistorySummary>): HistorySummary => ({
   winnerIds: [],
   scoringRule: overrides.scoringRule,
   firstPhotoId: overrides.firstPhotoId,
+  photoIds: overrides.photoIds,
   players: overrides.players || [],
   _playerNames: '',
   _dateStr: '',
@@ -68,15 +69,21 @@ describe('historyStats', () => {
 
   it('selects recent first photos from deduplicated game entries only', () => {
     const entries = buildHistoryGameEntries([
-      record({ id: 'h1', templateId: 'tpl-a', gameName: 'Game A', endTime: 3000, firstPhotoId: 'photo-a-new' }),
-      record({ id: 'h2', templateId: 'tpl-a', gameName: 'Game A', endTime: 2000, firstPhotoId: 'photo-a-old' }),
-      record({ id: 'h3', templateId: 'tpl-a-copy', gameName: 'Game A', endTime: 1500, firstPhotoId: 'photo-a-copy' }),
-      record({ id: 'h4', templateId: 'tpl-b', gameName: 'Game B', endTime: 1000, firstPhotoId: 'photo-b' }),
+      record({ id: 'h1', templateId: 'tpl-a', gameName: 'Game A', endTime: 3000, firstPhotoId: 'photo-a-new', photoIds: ['photo-a-new', 'photo-a-extra'] }),
+      record({ id: 'h2', templateId: 'tpl-a', gameName: 'Game A', endTime: 2000, firstPhotoId: 'photo-a-old', photoIds: ['photo-a-old'] }),
+      record({ id: 'h3', templateId: 'tpl-a-copy', gameName: 'Game A', endTime: 1500, firstPhotoId: 'photo-a-copy', photoIds: ['photo-a-copy'] }),
+      record({ id: 'h4', templateId: 'tpl-b', gameName: 'Game B', endTime: 1000, firstPhotoId: 'photo-b', photoIds: ['photo-b'] }),
       record({ id: 'h5', templateId: 'tpl-c', gameName: 'Game C', endTime: 900 })
     ]);
     const items = selectHistoryPhotoGridItems(entries);
 
     expect(items.map(item => item.photoId)).toEqual(['photo-a-new', 'photo-b']);
+    expect(items[0].candidatePhotos.map(photo => photo.photoId)).toEqual([
+      'photo-a-new',
+      'photo-a-extra',
+      'photo-a-old',
+      'photo-a-copy'
+    ]);
   });
 
   it('cycles date ranges in display order', () => {
