@@ -6,8 +6,8 @@ import { selectHistoryPhotoGridItems } from '../../utils/historyStats';
 import {
   clampHistoryPhotoGridCrop,
   getHistoryPhotoGridBaseSize,
+  getHistoryPhotoGridFrameAspect,
   getInitialHistoryPhotoGridCrop,
-  getTopAlignedHistoryPhotoGridOffsetY,
   HistoryPhotoGridCrop,
   HistoryPhotoGridImageSize
 } from '../../utils/historyPhotoGrid';
@@ -42,7 +42,9 @@ interface HistoryPhotoGridShareModalProps {
 }
 
 const EXPORT_GRID_WIDTH = 520;
-const PHOTO_GRID_IMAGE_FRAME_ASPECT = 4 / 3;
+const getTileFrameAspect = (tile: Pick<EditableGridTile, 'imageSize'>): number => (
+  getHistoryPhotoGridFrameAspect(tile.imageSize)
+);
 
 const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({ isOpen, entries, onClose }) => {
   const { zIndex } = useModalBackHandler(isOpen, onClose, 'history-photo-grid-share');
@@ -165,7 +167,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
       if (!prev) return prev;
       return {
         ...prev,
-        crop: clampHistoryPhotoGridCrop(prev.imageSize, nextCrop, PHOTO_GRID_IMAGE_FRAME_ASPECT)
+        crop: clampHistoryPhotoGridCrop(prev.imageSize, nextCrop, getTileFrameAspect(prev))
       };
     });
   };
@@ -355,7 +357,11 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
             data-mobile-zoom-ignore="true"
             style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
           >
-            <div ref={cropFrameRef} className="relative w-[min(86vw,64vh)] max-w-[560px] aspect-[4/3] rounded-xl overflow-visible">
+            <div
+              ref={cropFrameRef}
+              className="relative max-w-[560px] rounded-xl overflow-visible"
+              style={getCropFrameStyle(cropDraft)}
+            >
               <PhotoImage tile={cropDraft} />
               <div className="absolute inset-0 pointer-events-none rounded-xl border-2 border-brand-primary shadow-[0_0_0_9999px_rgba(15,23,42,0.34)] ring-1 ring-white/50" />
             </div>
@@ -436,13 +442,22 @@ const getImageSize = (url: string): Promise<HistoryPhotoGridImageSize> => {
   });
 };
 
+const getCropFrameStyle = (tile: EditableGridTile): React.CSSProperties => {
+  const aspect = getTileFrameAspect(tile);
+  const maxWidthByHeight = Number((64 * aspect).toFixed(4));
+  return {
+    aspectRatio: aspect,
+    width: `min(86vw, ${maxWidthByHeight}vh)`
+  };
+};
+
 const formatGridDate = (timestamp: number): string => {
   return new Date(timestamp).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' });
 };
 
 const createTileFromPhoto = (photo: LoadedGridPhoto): EditableGridTile => ({
   ...photo,
-  crop: getInitialHistoryPhotoGridCrop(photo.imageSize, PHOTO_GRID_IMAGE_FRAME_ASPECT)
+  crop: getInitialHistoryPhotoGridCrop(photo.imageSize, getHistoryPhotoGridFrameAspect(photo.imageSize))
 });
 
 const toTile = (draft: CropDraft): EditableGridTile => ({
@@ -488,7 +503,7 @@ const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>((
 PhotoGridCanvas.displayName = 'PhotoGridCanvas';
 
 const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
-  const base = getHistoryPhotoGridBaseSize(tile.imageSize, PHOTO_GRID_IMAGE_FRAME_ASPECT);
+  const base = getHistoryPhotoGridBaseSize(tile.imageSize, getTileFrameAspect(tile));
   return (
     <img
       src={tile.url}
@@ -510,10 +525,13 @@ const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
 const PhotoTile: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
   return (
     <>
-      <div className="relative flex-1 min-h-0 overflow-hidden bg-app-bg-deep">
+      <div
+        className="relative flex-none w-full overflow-hidden bg-app-bg-deep"
+        style={{ aspectRatio: getTileFrameAspect(tile) }}
+      >
         <PhotoImage tile={tile} />
       </div>
-      <div className="flex-none h-[26%] min-h-[24px] px-1.5 py-1 bg-app-bg-deep text-white flex flex-col justify-center">
+      <div className="flex-1 min-h-[24px] px-1.5 py-1 bg-app-bg-deep text-white flex flex-col justify-center">
         <span className="text-[10px] leading-tight font-bold truncate">{tile.gameName}</span>
         <span className="text-[8px] leading-tight text-white/60 font-mono">{formatGridDate(tile.endTime)}</span>
       </div>

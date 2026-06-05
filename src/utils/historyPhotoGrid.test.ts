@@ -4,6 +4,7 @@ import {
   clampHistoryPhotoGridZoom,
   getHistoryPhotoGridBaseSize,
   getHistoryPhotoGridDisplaySize,
+  getHistoryPhotoGridFrameAspect,
   getInitialHistoryPhotoGridCrop,
   getTopAlignedHistoryPhotoGridOffsetY
 } from './historyPhotoGrid';
@@ -21,6 +22,14 @@ describe('historyPhotoGrid', () => {
       width: 1,
       height: 2 / 3
     });
+  });
+
+  it('uses the original landscape photo aspect for the editable frame', () => {
+    expect(getHistoryPhotoGridFrameAspect({ width: 1920, height: 1080 })).toBeCloseTo(16 / 9);
+  });
+
+  it('keeps portrait frames square so the grid layout stays stable', () => {
+    expect(getHistoryPhotoGridFrameAspect({ width: 800, height: 1600 })).toBe(1);
   });
 
   it('fits portrait photos fully inside the crop frame at minimum zoom', () => {

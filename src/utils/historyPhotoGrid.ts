@@ -16,8 +16,20 @@ export interface HistoryPhotoGridDisplaySize {
 
 export const HISTORY_PHOTO_GRID_MIN_ZOOM = 1;
 export const HISTORY_PHOTO_GRID_MAX_ZOOM = 2;
+export const HISTORY_PHOTO_GRID_MIN_FRAME_ASPECT = 1;
+export const HISTORY_PHOTO_GRID_MAX_FRAME_ASPECT = 2;
 
 const isValidSize = (size: HistoryPhotoGridImageSize): boolean => size.width > 0 && size.height > 0;
+
+export const getHistoryPhotoGridFrameAspect = (size: HistoryPhotoGridImageSize): number => {
+  if (!isValidSize(size)) return HISTORY_PHOTO_GRID_MIN_FRAME_ASPECT;
+  const aspect = size.width / size.height;
+  if (!Number.isFinite(aspect)) return HISTORY_PHOTO_GRID_MIN_FRAME_ASPECT;
+  return Math.max(
+    HISTORY_PHOTO_GRID_MIN_FRAME_ASPECT,
+    Math.min(HISTORY_PHOTO_GRID_MAX_FRAME_ASPECT, aspect)
+  );
+};
 
 export const getHistoryPhotoGridBaseSize = (
   size: HistoryPhotoGridImageSize,
