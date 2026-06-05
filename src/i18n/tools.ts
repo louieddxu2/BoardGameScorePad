@@ -71,6 +71,16 @@ export const toolsTranslations = {
         coin_flip: "擲硬幣",
         coin_result_heads: "正面 (Heads)",
         coin_result_tails: "反面 (Tails)",
+
+        // Selector Prototype
+        order_visual_picker: "視覺起始決定器",
+        picker_prototype_title: "起始玩家決定器",
+        picker_prototype_empty: "按住螢幕，拖曳搖桿選擇身分",
+        picker_prototype_start_game: "開始遊戲",
+        picker_prototype_restart: "再來一次",
+        picker_prototype_close: "關閉",
+        picker_prototype_selected_players: "已選玩家",
+        picker_prototype_random_names: "亞瑟,梅林,史萊姆,哥布林,龍傲天,路人甲,巨石強森,哈利,妙麗,阿呆,胖虎,小夫,靜香,哆啦,勇者,魔王,精靈,矮人",
     },
     'en': {
         tools_title: "Tools",
@@ -137,6 +147,16 @@ export const toolsTranslations = {
         coin_flip: "Flip Coin",
         coin_result_heads: "Heads",
         coin_result_tails: "Tails",
+
+        // Selector Prototype
+        order_visual_picker: "Visual Selector",
+        picker_prototype_title: "First Player Selector",
+        picker_prototype_empty: "Hold screen and drag joystick to select player",
+        picker_prototype_start_game: "Start Game",
+        picker_prototype_restart: "Restart",
+        picker_prototype_close: "Close",
+        picker_prototype_selected_players: "Selected Players",
+        picker_prototype_random_names: "Arthur,Merlin,Slime,Goblin,Dragon,Passerby,Rock,Harry,Hermione,Dumb,Fatty,Sinyi,Shizuka,Dora,Hero,Demon,Elf,Dwarf",
     }
 };
 
