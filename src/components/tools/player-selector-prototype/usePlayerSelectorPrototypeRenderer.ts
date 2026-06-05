@@ -80,10 +80,25 @@ export const usePlayerSelectorPrototypeRenderer = ({
     const playersRef = useRef<PrototypePlayer[]>([]);
     const optionIdCounterRef = useRef(0);
     const animationFrameIdRef = useRef<number | null>(null);
+    const isRunningRef = useRef(false);
 
     // 用來追蹤前一次 SVG 的寬高以進行 resize 比例縮放
     const prevWidthRef = useRef<number>(0);
     const prevHeightRef = useRef<number>(0);
+
+    const clearRendererState = () => {
+        activeTouchesRef.current.clear();
+        optionsRef.current = [];
+        playersRef.current = [];
+        optionIdCounterRef.current = 0;
+        prevWidthRef.current = 0;
+        prevHeightRef.current = 0;
+
+        const svg = svgRef.current;
+        if (svg) {
+            svg.innerHTML = "";
+        }
+    };
 
     // 從當前 candidates 中為新 touch 挑選 4 個名字，不足則用隨機與預設補足
     const getFourCandidatesForTouch = (
@@ -178,15 +193,18 @@ export const usePlayerSelectorPrototypeRenderer = ({
 
     // 物理迴圈與渲染
     const physicsLoop = () => {
+        if (!isRunningRef.current) return;
+
         const svg = svgRef.current;
         if (!svg) {
-            animationFrameIdRef.current = requestAnimationFrame(physicsLoop);
             return;
         }
 
         const rect = svg.getBoundingClientRect();
         if (rect.width <= 0 || rect.height <= 0) {
-            animationFrameIdRef.current = requestAnimationFrame(physicsLoop);
+            if (isRunningRef.current) {
+                animationFrameIdRef.current = requestAnimationFrame(physicsLoop);
+            }
             return;
         }
 
@@ -731,7 +749,9 @@ export const usePlayerSelectorPrototypeRenderer = ({
             svg.appendChild(group);
         });
 
-        animationFrameIdRef.current = requestAnimationFrame(physicsLoop);
+        if (isRunningRef.current) {
+            animationFrameIdRef.current = requestAnimationFrame(physicsLoop);
+        }
     };
 
     // 事件判定與處理
@@ -878,9 +898,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
 
     // 公開重置與閃爍結算用的 API
     const resetEngine = () => {
-        activeTouchesRef.current.clear();
-        optionsRef.current = [];
-        playersRef.current = [];
+        clearRendererState();
         onPrototypePlayersChange([]);
     };
 
@@ -889,6 +907,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
         if (!svg) return;
 
         // 啟動物理與渲染 RAF Loop
+        isRunningRef.current = true;
         animationFrameIdRef.current = requestAnimationFrame(physicsLoop);
 
         // 綁定 touch 事件，包含阻擋 iOS 系統手勢
@@ -980,8 +999,10 @@ export const usePlayerSelectorPrototypeRenderer = ({
 
         // Cleanup 防線：防範 OOM 與監聽殘留
         return () => {
+            isRunningRef.current = false;
             if (animationFrameIdRef.current) {
                 cancelAnimationFrame(animationFrameIdRef.current);
+                animationFrameIdRef.current = null;
             }
             svg.removeEventListener("touchstart", onTouchStart);
             svg.removeEventListener("touchmove", onTouchMove);
@@ -990,6 +1011,9 @@ export const usePlayerSelectorPrototypeRenderer = ({
             svg.removeEventListener("mousedown", onMouseDown);
             svg.removeEventListener("mousemove", onMouseMove);
             window.removeEventListener("mouseup", onMouseUp);
+            clearRendererState();
+            svg.innerHTML = "";
+            onPrototypePlayersChange([]);
         };
     }, [candidates]);
 

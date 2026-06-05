@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Play, RefreshCw, Users } from 'lucide-react';
 import { useToolsTranslation } from '../../../i18n/tools';
@@ -15,6 +15,43 @@ interface PlayerSelectorPrototypeModalProps {
     onUpdateSession?: (session: GameSession) => void;
 }
 
+interface PlayerSelectorPrototypeSurfaceHandle {
+    resetEngine: () => void;
+    getSvg: () => SVGSVGElement | null;
+}
+
+interface PlayerSelectorPrototypeSurfaceProps {
+    candidates: Candidate[];
+    randomNames: string[];
+    onPrototypePlayersChange: (players: PrototypePlayer[]) => void;
+    onCandidateLocked: (candidate: Candidate) => void;
+}
+
+const PlayerSelectorPrototypeSurface = React.forwardRef<PlayerSelectorPrototypeSurfaceHandle, PlayerSelectorPrototypeSurfaceProps>(({
+    candidates,
+    randomNames,
+    onPrototypePlayersChange,
+    onCandidateLocked
+}, ref) => {
+    const svgRef = useRef<SVGSVGElement | null>(null);
+    const { resetEngine } = usePlayerSelectorPrototypeRenderer({
+        svgRef,
+        candidates,
+        randomNames,
+        onPrototypePlayersChange,
+        onCandidateLocked
+    });
+
+    useImperativeHandle(ref, () => ({
+        resetEngine,
+        getSvg: () => svgRef.current
+    }), [resetEngine]);
+
+    return <svg ref={svgRef} className="w-full h-full absolute inset-0"></svg>;
+});
+
+PlayerSelectorPrototypeSurface.displayName = 'PlayerSelectorPrototypeSurface';
+
 const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> = ({
     isOpen,
     onClose,
@@ -22,7 +59,7 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
     onUpdateSession
 }) => {
     const { t } = useToolsTranslation();
-    const svgRef = useRef<SVGSVGElement | null>(null);
+    const surfaceRef = useRef<PlayerSelectorPrototypeSurfaceHandle | null>(null);
     const [candidates, setCandidates] = useState<Candidate[]>([]);
     const [players, setPlayers] = useState<PrototypePlayer[]>([]);
     
@@ -78,28 +115,15 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
 
     const randomNames = t('picker_prototype_random_names').split(',');
 
-    // 初始化物理渲染 Engine
-    const { resetEngine } = usePlayerSelectorPrototypeRenderer({
-        svgRef,
-        candidates,
-        randomNames,
-        onPrototypePlayersChange: (updatedPlayers) => {
-            setPlayers(updatedPlayers);
-        },
-        onCandidateLocked: (candidate) => {
-            console.log("[Visual Selector] Candidate locked:", candidate);
-        }
-    });
-
     if (!isOpen) return null;
 
     const handleRestart = () => {
-        resetEngine();
+        surfaceRef.current?.resetEngine();
     };
 
     const handleConfirm = () => {
         // 座位順序 (Seat Order) 排序預覽
-        const svg = svgRef.current;
+        const svg = surfaceRef.current?.getSvg();
         if (svg && players.length > 0) {
             const rect = svg.getBoundingClientRect();
             const cx = rect.width / 2;
@@ -145,7 +169,15 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
 
             {/* Canvas Area */}
             <main className="flex-1 w-full relative bg-app-bg-deep overflow-hidden touch-none select-none">
-                <svg ref={svgRef} className="w-full h-full absolute inset-0"></svg>
+                <PlayerSelectorPrototypeSurface
+                    ref={surfaceRef}
+                    candidates={candidates}
+                    randomNames={randomNames}
+                    onPrototypePlayersChange={setPlayers}
+                    onCandidateLocked={(candidate) => {
+                        console.log("[Visual Selector] Candidate locked:", candidate);
+                    }}
+                />
                 
                 {/* Empty State Hint */}
                 {players.length === 0 && (

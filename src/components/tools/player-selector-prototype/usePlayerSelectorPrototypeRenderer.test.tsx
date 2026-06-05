@@ -60,14 +60,35 @@ const TestComponent: React.FC<TestComponentProps> = ({
 };
 
 describe('usePlayerSelectorPrototypeRenderer', () => {
+    let rafCallbacks: Map<number, FrameRequestCallback>;
+    let rafId: number;
+    let requestAnimationFrameSpy: any;
+    let cancelAnimationFrameSpy: any;
+
     beforeEach(() => {
-        vi.useFakeTimers();
+        rafCallbacks = new Map();
+        rafId = 0;
+        requestAnimationFrameSpy = vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation((callback: FrameRequestCallback) => {
+            const id = ++rafId;
+            rafCallbacks.set(id, callback);
+            return id;
+        });
+        cancelAnimationFrameSpy = vi.spyOn(globalThis, 'cancelAnimationFrame').mockImplementation((id: number) => {
+            rafCallbacks.delete(id);
+        });
     });
 
     afterEach(() => {
         vi.restoreAllMocks();
-        vi.useRealTimers();
     });
+
+    const runFrame = (id?: number) => {
+        const targetId = id ?? Math.max(...Array.from(rafCallbacks.keys()));
+        const callback = rafCallbacks.get(targetId);
+        if (!callback) return;
+        rafCallbacks.delete(targetId);
+        callback(16);
+    };
 
     it('should mount and unmount correctly without throwing errors', () => {
         const onPlayersChange = vi.fn();
@@ -85,6 +106,7 @@ describe('usePlayerSelectorPrototypeRenderer', () => {
         expect(onPlayersChange).not.toHaveBeenCalled();
 
         unmount();
+        expect(cancelAnimationFrameSpy).toHaveBeenCalled();
     });
 
     it('should handle invalid or zero SVG dimensions safely', () => {
@@ -98,11 +120,73 @@ describe('usePlayerSelectorPrototypeRenderer', () => {
             <TestComponent candidates={candidates} onPlayersChange={onPlayersChange} svgWidth={0} svgHeight={0} />
         );
 
-        // 物理 loop 應該在寬高為 0 時被跳過，不拋錯
-        vi.advanceTimersByTime(100);
+        // 物理 loop 應該在寬高為 0 時被跳過，不拋錯，且仍受 RAF 控制
+        runFrame();
         expect(onPlayersChange).not.toHaveBeenCalled();
 
         unmount();
+    });
+
+    it('should stop scheduling frames after unmount even if an old RAF callback fires', () => {
+        const onPlayersChange = vi.fn();
+        const candidates: Candidate[] = [
+            { id: 'c1', name: 'Alice' }
+        ];
+
+        const { unmount } = render(
+            <TestComponent candidates={candidates} onPlayersChange={onPlayersChange} />
+        );
+
+        const firstFrameId = Math.max(...Array.from(rafCallbacks.keys()));
+        expect(firstFrameId).toBeGreaterThan(0);
+
+        unmount();
+        expect(cancelAnimationFrameSpy).toHaveBeenCalledWith(firstFrameId);
+
+        const scheduledCallsAfterUnmount = requestAnimationFrameSpy.mock.calls.length;
+        const staleCallback = rafCallbacks.get(firstFrameId);
+        if (staleCallback) {
+            staleCallback(16);
+        }
+
+        expect(requestAnimationFrameSpy.mock.calls.length).toBe(scheduledCallsAfterUnmount);
+        expect(onPlayersChange).toHaveBeenLastCalledWith([]);
+    });
+
+    it('should not schedule RAF when the svg ref is unavailable', () => {
+        const NullRefComponent: React.FC = () => {
+            const svgRef = useRef<SVGSVGElement | null>(null);
+            usePlayerSelectorPrototypeRenderer({
+                svgRef,
+                candidates: [{ id: 'c1', name: 'Alice' }],
+                randomNames: [],
+                onPrototypePlayersChange: vi.fn(),
+                onCandidateLocked: vi.fn()
+            });
+            return null;
+        };
+
+        render(<NullRefComponent />);
+
+        expect(requestAnimationFrameSpy).not.toHaveBeenCalled();
+    });
+
+    it('should clear renderer-owned SVG content on unmount', () => {
+        const onPlayersChange = vi.fn();
+        const candidates: Candidate[] = [
+            { id: 'c1', name: 'Alice' }
+        ];
+
+        const { unmount } = render(
+            <TestComponent candidates={candidates} onPlayersChange={onPlayersChange} />
+        );
+
+        const svgElement = screen.getByTestId('test-svg');
+        svgElement.innerHTML = '<circle cx="1" cy="1" r="1"></circle>';
+
+        unmount();
+
+        expect(svgElement.innerHTML).toBe('');
     });
 
     it('should correctly trigger player changes and maintain prototype player properties', () => {
