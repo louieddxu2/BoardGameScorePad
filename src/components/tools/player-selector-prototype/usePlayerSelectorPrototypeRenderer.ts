@@ -8,7 +8,7 @@ import {
 } from './prototypeDisplay';
 import { OptionState, TouchState } from './prototypeEngineTypes';
 import { getFourCandidatesForTouch } from './prototypeCandidates';
-import { applyPaletteClick, applyPlayerClick, COLOR_PALETTE_RADIUS } from './prototypeHitTest';
+import { applyPaletteClick, applyPlayerClick, COLOR_PALETTE_RADIUS, shouldRenderPaletteColor } from './prototypeHitTest';
 import { makeSvgNode } from './prototypeSvg';
 
 const SPRING_K = 0.08;       
@@ -456,6 +456,8 @@ export const usePlayerSelectorPrototypeRenderer = ({
                 }));
 
                 PALETTE.forEach((color, i) => {
+                    if (!shouldRenderPaletteColor(i)) return;
+
                     const angle = (i * 45) * Math.PI / 180;
                     const dotX = displayPosition.x + Math.cos(angle) * COLOR_PALETTE_RADIUS;
                     const dotY = displayPosition.y + Math.sin(angle) * COLOR_PALETTE_RADIUS;
@@ -544,7 +546,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
             }
 
             if (p.state === 'COLOR_PICKING') {
-                const deleteGroup = makeSvgNode("g", { transform: "translate(0, 28)" });
+                const deleteGroup = makeSvgNode("g", { transform: "translate(0, -42)" });
                 deleteGroup.appendChild(makeSvgNode("rect", {
                     x: -22,
                     y: -9,
@@ -990,4 +992,5 @@ export const usePlayerSelectorPrototypeRenderer = ({
         closeAllPalettes
     };
 };
+
 

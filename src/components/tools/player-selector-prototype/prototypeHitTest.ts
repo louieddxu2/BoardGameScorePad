@@ -6,8 +6,9 @@ export const COLOR_PALETTE_RADIUS = 64;
 export const COLOR_PALETTE_HIT_RADIUS = 22;
 
 const DELETE_HIT_HALF_WIDTH = 26;
-const DELETE_HIT_TOP = 16;
-const DELETE_HIT_BOTTOM = 40;
+const DELETE_HIT_TOP = -54;
+const DELETE_HIT_BOTTOM = -30;
+const HIDDEN_PALETTE_COLOR_INDICES = new Set([6]);
 
 export interface Point {
     x: number;
@@ -40,6 +41,10 @@ export const isPlayerDeleteHit = (localPoint: Point): boolean => {
         localPoint.y <= DELETE_HIT_BOTTOM;
 };
 
+export const shouldRenderPaletteColor = (index: number): boolean => {
+    return !HIDDEN_PALETTE_COLOR_INDICES.has(index);
+};
+
 export const isPlayerBodyHit = (localPoint: Point): boolean => {
     return Math.abs(localPoint.x) <= PLAYER_BOX_HALF_WIDTH &&
         Math.abs(localPoint.y) <= PLAYER_BOX_HALF_HEIGHT;
@@ -47,6 +52,8 @@ export const isPlayerBodyHit = (localPoint: Point): boolean => {
 
 export const getPaletteColorAtLocalPoint = (localPoint: Point, palette: string[]): string | null => {
     for (let i = 0; i < palette.length; i++) {
+        if (!shouldRenderPaletteColor(i)) continue;
+
         const angle = (i * 45) * Math.PI / 180;
         const dotX = Math.cos(angle) * COLOR_PALETTE_RADIUS;
         const dotY = Math.sin(angle) * COLOR_PALETTE_RADIUS;
