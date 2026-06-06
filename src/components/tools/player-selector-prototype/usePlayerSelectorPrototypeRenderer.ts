@@ -1,5 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { Candidate, PrototypePlayer, PrototypeTurnOrderEntry } from './types';
+import {
+    closePrototypePlayerPalettes,
+    getBadgeTextRotation,
+    getRetreatedDisplayPosition
+} from './prototypeDisplay';
 
 // 常數定義
 const SPRING_K = 0.08;       
@@ -27,6 +32,8 @@ interface UsePlayerSelectorPrototypeRendererProps {
     turnOrder?: PrototypeTurnOrderEntry[];
     highlightedPlayerId?: string | null;
     starterPlayerId?: string | null;
+    shouldRetreatPlayers?: boolean;
+    isInteractionLocked?: boolean;
     onPrototypePlayersChange: (players: PrototypePlayer[]) => void;
     onCandidateLocked: (candidate: Candidate) => void;
 }
@@ -77,6 +84,8 @@ export const usePlayerSelectorPrototypeRenderer = ({
     turnOrder = [],
     highlightedPlayerId = null,
     starterPlayerId = null,
+    shouldRetreatPlayers = false,
+    isInteractionLocked = false,
     onPrototypePlayersChange,
     onCandidateLocked
 }: UsePlayerSelectorPrototypeRendererProps) => {
@@ -90,7 +99,9 @@ export const usePlayerSelectorPrototypeRenderer = ({
     const resultDisplayRef = useRef({
         turnOrder,
         highlightedPlayerId,
-        starterPlayerId
+        starterPlayerId,
+        shouldRetreatPlayers,
+        isInteractionLocked
     });
 
     // 用來追蹤前一次 SVG 的寬高以進行 resize 比例縮放
@@ -101,9 +112,11 @@ export const usePlayerSelectorPrototypeRenderer = ({
         resultDisplayRef.current = {
             turnOrder,
             highlightedPlayerId,
-            starterPlayerId
+            starterPlayerId,
+            shouldRetreatPlayers,
+            isInteractionLocked
         };
-    }, [turnOrder, highlightedPlayerId, starterPlayerId]);
+    }, [turnOrder, highlightedPlayerId, starterPlayerId, shouldRetreatPlayers, isInteractionLocked]);
 
     const clearRendererState = () => {
         activeTouchesRef.current.clear();
@@ -490,8 +503,9 @@ export const usePlayerSelectorPrototypeRenderer = ({
         // 渲染實體化玩家球
         playersRef.current.forEach(p => {
             const rotation = p.textRotationDeg;
-            const group = makeSvgNode("g", { transform: `translate(${p.x}, ${p.y}) rotate(${rotation})` });
             const display = resultDisplayRef.current;
+            const displayPosition = getRetreatedDisplayPosition(p, rect, display.shouldRetreatPlayers);
+            const group = makeSvgNode("g", { transform: `translate(${displayPosition.x}, ${displayPosition.y}) rotate(${rotation})` });
             const turnOrderEntry = display.turnOrder.find(entry => entry.prototypePlayerId === p.id);
             const isHighlighted = display.highlightedPlayerId === p.id;
             const isStarter = display.starterPlayerId === p.id;
@@ -504,8 +518,8 @@ export const usePlayerSelectorPrototypeRenderer = ({
 
             if (isHighlighted) {
                 svg.appendChild(makeSvgNode("circle", {
-                    cx: p.x,
-                    cy: p.y,
+                    cx: displayPosition.x,
+                    cy: displayPosition.y,
                     r: 68,
                     fill: "rgba(168,85,247,0.12)",
                     stroke: "#a855f7",
@@ -515,8 +529,8 @@ export const usePlayerSelectorPrototypeRenderer = ({
 
             if (turnOrderEntry && teamStroke) {
                 svg.appendChild(makeSvgNode("circle", {
-                    cx: p.x,
-                    cy: p.y,
+                    cx: displayPosition.x,
+                    cy: displayPosition.y,
                     r: 54,
                     fill: "none",
                     stroke: teamStroke,
@@ -530,8 +544,8 @@ export const usePlayerSelectorPrototypeRenderer = ({
                 const PICKER_RADIUS = 64;
                 // 色盤外環底圓
                 svg.appendChild(makeSvgNode("circle", {
-                    cx: p.x,
-                    cy: p.y,
+                    cx: displayPosition.x,
+                    cy: displayPosition.y,
                     r: PICKER_RADIUS,
                     fill: "rgba(15,23,42,0.6)",
                     stroke: "#334155",
@@ -540,8 +554,8 @@ export const usePlayerSelectorPrototypeRenderer = ({
 
                 PALETTE.forEach((color, i) => {
                     const angle = (i * 45) * Math.PI / 180;
-                    const dotX = p.x + Math.cos(angle) * PICKER_RADIUS;
-                    const dotY = p.y + Math.sin(angle) * PICKER_RADIUS;
+                    const dotX = displayPosition.x + Math.cos(angle) * PICKER_RADIUS;
+                    const dotY = displayPosition.y + Math.sin(angle) * PICKER_RADIUS;
                     const isSelected = (p.color === color);
 
                     // 調色盤的小圓球繪製在全局坐標
@@ -584,12 +598,12 @@ export const usePlayerSelectorPrototypeRenderer = ({
 
             if (turnOrderEntry) {
                 const badgePositions = [
-                    { x: 0, y: -35 },
-                    { x: 52, y: 0 },
-                    { x: 0, y: 35 },
-                    { x: -52, y: 0 }
+                    { x: 0, y: -35, screenRotation: 180 },
+                    { x: 52, y: 0, screenRotation: 90 },
+                    { x: 0, y: 35, screenRotation: 0 },
+                    { x: -52, y: 0, screenRotation: -90 }
                 ];
-                badgePositions.forEach(({ x, y }) => {
+                badgePositions.forEach(({ x, y, screenRotation }) => {
                     group.appendChild(makeSvgNode("circle", {
                         cx: x,
                         cy: y,
@@ -606,6 +620,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
                         "font-weight": "bold",
                         "text-anchor": "middle",
                         "dominant-baseline": "middle",
+                        transform: `rotate(${getBadgeTextRotation(rotation, screenRotation)} ${x} ${y})`,
                         "pointer-events": "none"
                     });
                     badgeText.textContent = String(turnOrderEntry.order);
@@ -628,13 +643,15 @@ export const usePlayerSelectorPrototypeRenderer = ({
                 group.appendChild(starterText);
             }
 
-            // 若在選色狀態，在氣泡球右上角繪製 ✕ 刪除按鈕
+            // 若在選色狀態，在氣泡球下方繪製 ✕ 刪除按鈕
             if (p.state === 'COLOR_PICKING') {
-                const deleteGroup = makeSvgNode("g", { transform: `translate(${boxW / 2}, ${-boxH / 2})` });
-                deleteGroup.appendChild(makeSvgNode("circle", {
-                    cx: 0,
-                    cy: 0,
-                    r: 10,
+                const deleteGroup = makeSvgNode("g", { transform: "translate(0, 28)" });
+                deleteGroup.appendChild(makeSvgNode("rect", {
+                    x: -22,
+                    y: -9,
+                    width: 44,
+                    height: 18,
+                    rx: 9,
                     fill: "#ef4444",
                     stroke: "#0f172a",
                     "stroke-width": 2
@@ -902,10 +919,9 @@ export const usePlayerSelectorPrototypeRenderer = ({
             const localX = dx * Math.cos(rad) - dy * Math.sin(rad);
             const localY = dx * Math.sin(rad) + dy * Math.cos(rad);
 
-            // 1. 檢查是否點中右上角的 ✕ 刪除按鈕
+            // 1. 檢查是否點中下方的 ✕ 刪除按鈕
             if (p.state === 'COLOR_PICKING') {
-                const distToDelete = Math.hypot(localX - 43, localY - (-17));
-                if (distToDelete <= 18) {
+                if (Math.abs(localX) <= 26 && localY >= 16 && localY <= 40) {
                     clickedSomething = true;
                     return null; // 標記刪除
                 }
@@ -992,6 +1008,12 @@ export const usePlayerSelectorPrototypeRenderer = ({
     };
 
     // 公開重置與閃爍結算用的 API
+    const closeAllPalettes = () => {
+        const nextPlayers = closePrototypePlayerPalettes(playersRef.current);
+        playersRef.current = nextPlayers;
+        onPrototypePlayersChange([...playersRef.current]);
+    };
+
     const resetEngine = () => {
         clearRendererState();
         onPrototypePlayersChange([]);
@@ -1008,6 +1030,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
         // 綁定 touch 事件，包含阻擋 iOS 系統手勢
         const onTouchStart = (e: TouchEvent) => {
             e.preventDefault();
+            if (resultDisplayRef.current.isInteractionLocked) return;
             for (const t of Array.from(e.changedTouches)) {
                 if (checkColorPaletteClick(t.clientX, t.clientY)) continue;
                 if (checkPlayerClick(t.clientX, t.clientY)) continue;
@@ -1061,6 +1084,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
 
         const onMouseDown = (e: MouseEvent) => {
             e.preventDefault();
+            if (resultDisplayRef.current.isInteractionLocked) return;
             if (checkColorPaletteClick(e.clientX, e.clientY)) return;
             if (checkPlayerClick(e.clientX, e.clientY)) return;
 
@@ -1113,6 +1137,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
     }, [candidates]);
 
     return {
-        resetEngine
+        resetEngine,
+        closeAllPalettes
     };
 };

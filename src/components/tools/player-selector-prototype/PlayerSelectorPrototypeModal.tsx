@@ -18,6 +18,7 @@ interface PlayerSelectorPrototypeModalProps {
 
 interface PlayerSelectorPrototypeSurfaceHandle {
     resetEngine: () => void;
+    closeAllPalettes: () => void;
     getSvg: () => SVGSVGElement | null;
 }
 
@@ -27,6 +28,8 @@ interface PlayerSelectorPrototypeSurfaceProps {
     turnOrder: PrototypeTurnOrderEntry[];
     highlightedPlayerId: string | null;
     starterPlayerId: string | null;
+    shouldRetreatPlayers: boolean;
+    isInteractionLocked: boolean;
     onPrototypePlayersChange: (players: PrototypePlayer[]) => void;
     onCandidateLocked: (candidate: Candidate) => void;
 }
@@ -37,25 +40,30 @@ const PlayerSelectorPrototypeSurface = React.forwardRef<PlayerSelectorPrototypeS
     turnOrder,
     highlightedPlayerId,
     starterPlayerId,
+    shouldRetreatPlayers,
+    isInteractionLocked,
     onPrototypePlayersChange,
     onCandidateLocked
 }, ref) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
-    const { resetEngine } = usePlayerSelectorPrototypeRenderer({
+    const { resetEngine, closeAllPalettes } = usePlayerSelectorPrototypeRenderer({
         svgRef,
         candidates,
         randomNames,
         turnOrder,
         highlightedPlayerId,
         starterPlayerId,
+        shouldRetreatPlayers,
+        isInteractionLocked,
         onPrototypePlayersChange,
         onCandidateLocked
     });
 
     useImperativeHandle(ref, () => ({
         resetEngine,
+        closeAllPalettes,
         getSvg: () => svgRef.current
-    }), [resetEngine]);
+    }), [resetEngine, closeAllPalettes]);
 
     return <svg ref={svgRef} className="w-full h-full absolute inset-0"></svg>;
 });
@@ -180,6 +188,7 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
         if (players.length === 0 || phase === 'drawing') return;
 
         stopDrawTimers();
+        surfaceRef.current?.closeAllPalettes();
         setPhase('drawing');
         setTurnOrder([]);
 
@@ -254,6 +263,8 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
                     turnOrder={turnOrder}
                     highlightedPlayerId={highlightedPlayerId}
                     starterPlayerId={starterPlayerId}
+                    shouldRetreatPlayers={phase === 'result'}
+                    isInteractionLocked={phase === 'drawing' || phase === 'result'}
                     onPrototypePlayersChange={handlePlayersChange}
                     onCandidateLocked={(candidate) => {
                         console.log("[Visual Selector] Candidate locked:", candidate);
@@ -287,7 +298,7 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
                     )}
 
                     {phase === 'result' && (
-                        <div className="pointer-events-auto grid grid-cols-2 gap-3 min-w-[260px] max-w-[min(360px,calc(100vw-32px))]">
+                        <div className="pointer-events-auto grid grid-cols-2 gap-3 min-w-[280px] max-w-[min(380px,calc(100vw-28px))] rounded-3xl bg-app-bg-deep/45 p-2 backdrop-blur-[2px]">
                             <button
                                 onClick={handleConfirm}
                                 className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-brand-primary-deep hover:bg-brand-primary text-white shadow-2xl transition-transform active:scale-95 text-sm font-bold border border-white/10"
