@@ -59,6 +59,16 @@ describe('prototypeHitTest', () => {
         expect(result.players[0].state).toBe('COLOR_PICKING');
     });
 
+    it('keeps the hidden palette gap above the rotated player name', () => {
+        const palette = ['#111111', '#222222', '#333333', '#444444', '#555555', '#666666', '#777777', '#888888'];
+        const players = [makePlayer({ state: 'COLOR_PICKING', textRotationDeg: 90, color: '#111111' })];
+
+        const result = applyPaletteClick(players, { x: 100 + COLOR_PALETTE_RADIUS, y: 100 }, palette);
+
+        expect(result.handled).toBe(false);
+        expect(result.players[0].state).toBe('COLOR_PICKING');
+    });
+
     it('deletes a color-picking player from the upper delete control', () => {
         const players = [
             makePlayer({ id: 'player-1', state: 'COLOR_PICKING' }),

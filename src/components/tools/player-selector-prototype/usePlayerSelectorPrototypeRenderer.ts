@@ -510,9 +510,9 @@ export const usePlayerSelectorPrototypeRenderer = ({
             }
 
             if (p.state === 'COLOR_PICKING') {
-                svg.appendChild(makeSvgNode("circle", {
-                    cx: displayPosition.x,
-                    cy: displayPosition.y,
+                group.appendChild(makeSvgNode("circle", {
+                    cx: 0,
+                    cy: 0,
                     r: COLOR_PALETTE_RADIUS,
                     fill: "rgba(15,23,42,0.6)",
                     stroke: "#334155",
@@ -523,11 +523,11 @@ export const usePlayerSelectorPrototypeRenderer = ({
                     if (!shouldRenderPaletteColor(i)) return;
 
                     const angle = (i * 45) * Math.PI / 180;
-                    const dotX = displayPosition.x + Math.cos(angle) * COLOR_PALETTE_RADIUS;
-                    const dotY = displayPosition.y + Math.sin(angle) * COLOR_PALETTE_RADIUS;
+                    const dotX = Math.cos(angle) * COLOR_PALETTE_RADIUS;
+                    const dotY = Math.sin(angle) * COLOR_PALETTE_RADIUS;
                     const isSelected = (p.color === color);
 
-                    svg.appendChild(makeSvgNode("circle", {
+                    group.appendChild(makeSvgNode("circle", {
                         cx: dotX,
                         cy: dotY,
                         r: 16,
