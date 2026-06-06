@@ -25,6 +25,9 @@ const WALL_REPULSION_FORCE = 1.0;
 
 const FREEZE_TIME_MS = 1000;    
 const LOCK_TIME_MS = 750;
+const STATIONARY_LOCK_TIME_MS = 3000;
+const ANONYMOUS_MOVE_THRESHOLD = 15;
+const ANONYMOUS_PLAYER_PREFIX = "\u73a9\u5bb6";
 
 const PALETTE = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#a855f7", "#ec4899", "#14b8a6"];
 const DEFAULT_COLOR = "#475569";
@@ -128,6 +131,37 @@ export const usePlayerSelectorPrototypeRenderer = ({
 
     const removeOptionsForTouch = (touchId: string | number) => {
         optionsRef.current = optionsRef.current.filter(o => o.touchId !== touchId);
+    };
+
+    const getNextAnonymousPlayerName = () => {
+        const usedNumbers = new Set<number>();
+        const collectNumber = (name: string) => {
+            const match = name.match(/^(?:\u73a9\u5bb6|Player)\s?(\d+)$/);
+            if (match) {
+                usedNumbers.add(Number(match[1]));
+            }
+        };
+
+        playersRef.current.forEach(player => collectNumber(player.text));
+        optionsRef.current.forEach(option => collectNumber(option.text));
+
+        let index = 1;
+        while (usedNumbers.has(index)) index++;
+        return `${ANONYMOUS_PLAYER_PREFIX} ${index}`;
+    };
+
+    const materializePlayer = (touch: TouchState, option: OptionState) => {
+        playersRef.current.push({
+            id: 'player_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+            linkedPlayerId: option.candidate.linkedPlayerId,
+            x: option.x + (touch.anchorX - option.x) / 2,
+            y: option.y + (touch.anchorY - option.y) / 2,
+            textRotationDeg: touch.textRotationDeg,
+            text: option.text,
+            color: option.color,
+            state: 'COLOR_PICKING'
+        });
+        onPrototypePlayersChange([...playersRef.current]);
     };
 
     const physicsLoop = () => {
@@ -244,7 +278,8 @@ export const usePlayerSelectorPrototypeRenderer = ({
                 const dy = touch.canvasY - touch.startY;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
-                if (dist > 15) {
+                if (dist > ANONYMOUS_MOVE_THRESHOLD) {
+                    touch.stationaryStartTime = now;
                     const joyAngle = Math.atan2(dy, dx);
                     let minDiff = Infinity;
                     let bestOptId: number | null = null;
@@ -286,7 +321,36 @@ export const usePlayerSelectorPrototypeRenderer = ({
                     }
                 } else {
                     touch.selectedOptionId = null;
-                    touch.progress = 0;
+                    touch.progress = (now - touch.stationaryStartTime) / STATIONARY_LOCK_TIME_MS;
+                    if (touch.progress >= 1.0) {
+                        const anonymousName = getNextAnonymousPlayerName();
+                        const anonymousCandidate = {
+                            id: `anonymous_${Date.now()}_${String(touchId)}`,
+                            name: anonymousName
+                        };
+
+                        touch.progress = 1.0;
+                        if (navigator.vibrate) navigator.vibrate(50);
+
+                        const anonymousOption: OptionState = {
+                            id: optionIdCounterRef.current++,
+                            touchId,
+                            idx: 0,
+                            x: touch.anchorX,
+                            y: touch.anchorY,
+                            vx: 0,
+                            vy: 0,
+                            frozenX: touch.anchorX,
+                            frozenY: touch.anchorY,
+                            text: anonymousName,
+                            color: PALETTE[Math.floor(Math.random() * PALETTE.length)],
+                            candidate: anonymousCandidate
+                        };
+
+                        materializePlayer(touch, anonymousOption);
+                        activeTouchesRef.current.delete(touchId);
+                        removeOptionsForTouch(touchId);
+                    }
                 }
             }
         });
@@ -637,6 +701,21 @@ export const usePlayerSelectorPrototypeRenderer = ({
                 "stroke-dasharray": "4 4"
             }));
 
+            if (touch.radiusX > 0 && touch.radiusY > 0) {
+                svg.appendChild(makeSvgNode("ellipse", {
+                    "data-role": "touch-contact-ellipse",
+                    cx: touch.canvasX,
+                    cy: touch.canvasY,
+                    rx: Math.max(touch.radiusX, 8),
+                    ry: Math.max(touch.radiusY, 8),
+                    transform: `rotate(${touch.rotationAngle} ${touch.canvasX} ${touch.canvasY})`,
+                    fill: "rgba(168, 85, 247, 0.16)",
+                    stroke: "rgba(216, 180, 254, 0.85)",
+                    "stroke-width": 2,
+                    "pointer-events": "none"
+                }));
+            }
+
             if (touch.state === 'CHOOSING') {
                 svg.appendChild(makeSvgNode("circle", {
                     cx: touch.anchorX,
@@ -646,6 +725,22 @@ export const usePlayerSelectorPrototypeRenderer = ({
                     stroke: "#475569",
                     "stroke-width": 2
                 }));
+                if (touch.selectedOptionId === null && touch.progress > 0) {
+                    const r = 34;
+                    const circumference = 2 * Math.PI * r;
+                    const offset = circumference * (1 - Math.min(touch.progress, 1));
+                    svg.appendChild(makeSvgNode("circle", {
+                        cx: touch.anchorX,
+                        cy: touch.anchorY,
+                        r,
+                        fill: "none",
+                        stroke: "#a855f7",
+                        "stroke-width": 4,
+                        "stroke-dasharray": circumference,
+                        "stroke-dashoffset": offset,
+                        transform: `rotate(-90 ${touch.anchorX} ${touch.anchorY})`
+                    }));
+                }
                 svg.appendChild(makeSvgNode("line", {
                     x1: touch.anchorX,
                     y1: touch.anchorY,
@@ -827,6 +922,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
             rotationAngle: t.rotationAngle || 0,
             state: 'CHOOSING',
             spawnTime: Date.now(),
+            stationaryStartTime: Date.now(),
             selectedOptionId: null,
             selectionStartTime: 0,
             optionsFrozen: false,
@@ -846,17 +942,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
         if (touch.state === 'LOCKED') {
             const finalOpt = optionsRef.current.find(o => o.touchId === id);
             if (finalOpt) {
-                playersRef.current.push({
-                    id: 'player_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-                    linkedPlayerId: finalOpt.candidate.linkedPlayerId,
-                    x: finalOpt.x + (touch.anchorX - finalOpt.x) / 2,
-                    y: finalOpt.y + (touch.anchorY - finalOpt.y) / 2,
-                    textRotationDeg: touch.textRotationDeg,
-                    text: finalOpt.text,
-                    color: finalOpt.color,
-                    state: 'COLOR_PICKING'
-                });
-                onPrototypePlayersChange([...playersRef.current]);
+                materializePlayer(touch, finalOpt);
             }
         }
         activeTouchesRef.current.delete(id);

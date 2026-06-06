@@ -15,6 +15,7 @@ export interface TouchState {
     rotationAngle: number;
     state: 'CHOOSING' | 'LOCKED';
     spawnTime: number;
+    stationaryStartTime: number;
     selectedOptionId: number | null;
     selectionStartTime: number;
     optionsFrozen: boolean;

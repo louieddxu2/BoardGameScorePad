@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React, { useRef, useEffect } from 'react';
 import { usePlayerSelectorPrototypeRenderer } from './usePlayerSelectorPrototypeRenderer';
 import { Candidate, PrototypePlayer } from './types';
@@ -88,6 +88,25 @@ describe('usePlayerSelectorPrototypeRenderer', () => {
         if (!callback) return;
         rafCallbacks.delete(targetId);
         callback(16);
+    };
+
+    const dispatchTouch = (
+        svg: SVGSVGElement,
+        type: 'touchstart' | 'touchmove' | 'touchend' | 'touchcancel',
+        touch: {
+            identifier: number;
+            clientX: number;
+            clientY: number;
+            radiusX?: number;
+            radiusY?: number;
+            rotationAngle?: number;
+        }
+    ) => {
+        const event = new Event(type, { bubbles: true, cancelable: true });
+        Object.defineProperty(event, 'changedTouches', {
+            value: [touch]
+        });
+        svg.dispatchEvent(event);
     };
 
     it('should mount and unmount correctly without throwing errors', () => {
@@ -187,6 +206,90 @@ describe('usePlayerSelectorPrototypeRenderer', () => {
         unmount();
 
         expect(svgElement.innerHTML).toBe('');
+    });
+
+    it('should render the reported touch contact ellipse', () => {
+        const onPlayersChange = vi.fn();
+        const candidates: Candidate[] = [
+            { id: 'c1', name: 'Alice' }
+        ];
+
+        render(
+            <TestComponent candidates={candidates} onPlayersChange={onPlayersChange} />
+        );
+
+        const svgElement = screen.getByTestId('test-svg') as unknown as SVGSVGElement;
+
+        act(() => {
+            dispatchTouch(svgElement, 'touchstart', {
+                identifier: 1,
+                clientX: 180,
+                clientY: 160,
+                radiusX: 24,
+                radiusY: 9,
+                rotationAngle: 32
+            });
+            runFrame();
+        });
+
+        const ellipse = svgElement.querySelector('[data-role="touch-contact-ellipse"]');
+        expect(ellipse).not.toBeNull();
+        expect(ellipse?.getAttribute('rx')).toBe('24');
+        expect(ellipse?.getAttribute('ry')).toBe('9');
+        expect(ellipse?.getAttribute('transform')).toContain('rotate(32');
+    });
+
+    it('should materialize an anonymous player after staying in place for three seconds', () => {
+        const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(1000);
+        const onPlayersChange = vi.fn();
+        const candidates: Candidate[] = [
+            { id: 'c1', name: 'Alice' },
+            { id: 'c2', name: 'Bob' }
+        ];
+
+        render(
+            <TestComponent candidates={candidates} onPlayersChange={onPlayersChange} />
+        );
+
+        const svgElement = screen.getByTestId('test-svg') as unknown as SVGSVGElement;
+
+        act(() => {
+            dispatchTouch(svgElement, 'touchstart', {
+                identifier: 1,
+                clientX: 220,
+                clientY: 180,
+                radiusX: 12,
+                radiusY: 8,
+                rotationAngle: 0
+            });
+            runFrame();
+        });
+
+        dateNowSpy.mockReturnValue(4101);
+
+        act(() => {
+            runFrame();
+        });
+
+        expect(onPlayersChange).toHaveBeenLastCalledWith([
+            expect.objectContaining({
+                text: '玩家 1',
+                linkedPlayerId: undefined,
+                state: 'COLOR_PICKING'
+            })
+        ]);
+
+        const playersAfterAutoLock = onPlayersChange.mock.calls.length;
+
+        act(() => {
+            dispatchTouch(svgElement, 'touchend', {
+                identifier: 1,
+                clientX: 220,
+                clientY: 180
+            });
+        });
+
+        expect(onPlayersChange.mock.calls.length).toBe(playersAfterAutoLock);
     });
 
     it('should correctly trigger player changes and maintain prototype player properties', () => {
