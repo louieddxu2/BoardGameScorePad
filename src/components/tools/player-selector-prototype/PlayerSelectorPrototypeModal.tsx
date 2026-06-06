@@ -169,6 +169,24 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
         };
     }, []);
 
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const preventSystemGesture = (event: Event) => {
+            if (event.cancelable) event.preventDefault();
+        };
+
+        window.addEventListener('gesturestart', preventSystemGesture, { passive: false });
+        window.addEventListener('gesturechange', preventSystemGesture, { passive: false });
+        window.addEventListener('gestureend', preventSystemGesture, { passive: false });
+
+        return () => {
+            window.removeEventListener('gesturestart', preventSystemGesture);
+            window.removeEventListener('gesturechange', preventSystemGesture);
+            window.removeEventListener('gestureend', preventSystemGesture);
+        };
+    }, [isOpen]);
+
     const handlePlayersChange = useCallback((updatedPlayers: PrototypePlayer[]) => {
         const nextPlayerIds = updatedPlayers.map(player => player.id).join('|');
         const didPlayerSetChange = nextPlayerIds !== playerIdsRef.current;
@@ -237,6 +255,7 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
     return createPortal(
         <div 
             className="fixed inset-0 bg-app-bg-deep flex flex-col animate-in fade-in duration-200 text-txt-primary select-none"
+            data-mobile-zoom-ignore="true"
             style={{ zIndex }}
         >
             {/* Header */}
@@ -255,7 +274,11 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
             </header>
 
             {/* Canvas Area */}
-            <main className="flex-1 w-full relative bg-app-bg-deep overflow-hidden touch-none select-none">
+            <main
+                className="flex-1 w-full relative bg-app-bg-deep overflow-hidden touch-none overscroll-none select-none"
+                data-testid="player-selector-prototype-surface"
+                style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
+            >
                 <PlayerSelectorPrototypeSurface
                     ref={surfaceRef}
                     candidates={candidates}
