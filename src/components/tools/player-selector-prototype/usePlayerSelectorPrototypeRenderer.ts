@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Candidate, PrototypePlayer } from './types';
+import { Candidate, PrototypePlayer, PrototypeTurnOrderEntry } from './types';
 
 // 常數定義
 const SPRING_K = 0.08;       
@@ -24,6 +24,9 @@ interface UsePlayerSelectorPrototypeRendererProps {
     svgRef: React.RefObject<SVGSVGElement | null>;
     candidates: Candidate[];
     randomNames: string[];
+    turnOrder?: PrototypeTurnOrderEntry[];
+    highlightedPlayerId?: string | null;
+    starterPlayerId?: string | null;
     onPrototypePlayersChange: (players: PrototypePlayer[]) => void;
     onCandidateLocked: (candidate: Candidate) => void;
 }
@@ -71,6 +74,9 @@ export const usePlayerSelectorPrototypeRenderer = ({
     svgRef,
     candidates,
     randomNames,
+    turnOrder = [],
+    highlightedPlayerId = null,
+    starterPlayerId = null,
     onPrototypePlayersChange,
     onCandidateLocked
 }: UsePlayerSelectorPrototypeRendererProps) => {
@@ -81,10 +87,23 @@ export const usePlayerSelectorPrototypeRenderer = ({
     const optionIdCounterRef = useRef(0);
     const animationFrameIdRef = useRef<number | null>(null);
     const isRunningRef = useRef(false);
+    const resultDisplayRef = useRef({
+        turnOrder,
+        highlightedPlayerId,
+        starterPlayerId
+    });
 
     // 用來追蹤前一次 SVG 的寬高以進行 resize 比例縮放
     const prevWidthRef = useRef<number>(0);
     const prevHeightRef = useRef<number>(0);
+
+    useEffect(() => {
+        resultDisplayRef.current = {
+            turnOrder,
+            highlightedPlayerId,
+            starterPlayerId
+        };
+    }, [turnOrder, highlightedPlayerId, starterPlayerId]);
 
     const clearRendererState = () => {
         activeTouchesRef.current.clear();
@@ -472,9 +491,39 @@ export const usePlayerSelectorPrototypeRenderer = ({
         playersRef.current.forEach(p => {
             const rotation = p.textRotationDeg;
             const group = makeSvgNode("g", { transform: `translate(${p.x}, ${p.y}) rotate(${rotation})` });
+            const display = resultDisplayRef.current;
+            const turnOrderEntry = display.turnOrder.find(entry => entry.prototypePlayerId === p.id);
+            const isHighlighted = display.highlightedPlayerId === p.id;
+            const isStarter = display.starterPlayerId === p.id;
+            const teamStroke = turnOrderEntry
+                ? (turnOrderEntry.order % 2 === 1 ? "#3b82f6" : "#f97316")
+                : null;
 
             const boxW = 86;
             const boxH = 34;
+
+            if (isHighlighted) {
+                svg.appendChild(makeSvgNode("circle", {
+                    cx: p.x,
+                    cy: p.y,
+                    r: 68,
+                    fill: "rgba(168,85,247,0.12)",
+                    stroke: "#a855f7",
+                    "stroke-width": 4
+                }));
+            }
+
+            if (turnOrderEntry && teamStroke) {
+                svg.appendChild(makeSvgNode("circle", {
+                    cx: p.x,
+                    cy: p.y,
+                    r: 54,
+                    fill: "none",
+                    stroke: teamStroke,
+                    "stroke-width": isStarter ? 5 : 3,
+                    "stroke-dasharray": isStarter ? "none" : "8 5"
+                }));
+            }
 
             // 若處於選色狀態，畫上周圍調色盤
             if (p.state === 'COLOR_PICKING') {
@@ -532,6 +581,52 @@ export const usePlayerSelectorPrototypeRenderer = ({
             });
             textNode.textContent = p.text;
             group.appendChild(textNode);
+
+            if (turnOrderEntry) {
+                const badgePositions = [
+                    { x: 0, y: -35 },
+                    { x: 52, y: 0 },
+                    { x: 0, y: 35 },
+                    { x: -52, y: 0 }
+                ];
+                badgePositions.forEach(({ x, y }) => {
+                    group.appendChild(makeSvgNode("circle", {
+                        cx: x,
+                        cy: y,
+                        r: 11,
+                        fill: "#0f172a",
+                        stroke: teamStroke || "#64748b",
+                        "stroke-width": 2
+                    }));
+                    const badgeText = makeSvgNode("text", {
+                        x,
+                        y: y + 1,
+                        fill: "#ffffff",
+                        "font-size": "11px",
+                        "font-weight": "bold",
+                        "text-anchor": "middle",
+                        "dominant-baseline": "middle",
+                        "pointer-events": "none"
+                    });
+                    badgeText.textContent = String(turnOrderEntry.order);
+                    group.appendChild(badgeText);
+                });
+            }
+
+            if (isStarter) {
+                const starterText = makeSvgNode("text", {
+                    x: 0,
+                    y: -54,
+                    fill: "#facc15",
+                    "font-size": "20px",
+                    "font-weight": "bold",
+                    "text-anchor": "middle",
+                    "dominant-baseline": "middle",
+                    "pointer-events": "none"
+                });
+                starterText.textContent = "◎";
+                group.appendChild(starterText);
+            }
 
             // 若在選色狀態，在氣泡球右上角繪製 ✕ 刪除按鈕
             if (p.state === 'COLOR_PICKING') {

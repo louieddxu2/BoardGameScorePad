@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Play, RefreshCw, Users } from 'lucide-react';
 import { useToolsTranslation } from '../../../i18n/tools';
 import { GameSession } from '../../../types';
-import { Candidate, PrototypePlayer } from './types';
+import { Candidate, PrototypePlayer, PrototypeTurnOrderEntry } from './types';
 import { usePlayerSelectorPrototypeRenderer } from './usePlayerSelectorPrototypeRenderer';
 import { recommendationService } from '../../../features/recommendation/RecommendationService';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
+import { drawTurnOrder, getStarterPrototypePlayerId } from './turnOrder';
 
 interface PlayerSelectorPrototypeModalProps {
     isOpen: boolean;
@@ -23,6 +24,9 @@ interface PlayerSelectorPrototypeSurfaceHandle {
 interface PlayerSelectorPrototypeSurfaceProps {
     candidates: Candidate[];
     randomNames: string[];
+    turnOrder: PrototypeTurnOrderEntry[];
+    highlightedPlayerId: string | null;
+    starterPlayerId: string | null;
     onPrototypePlayersChange: (players: PrototypePlayer[]) => void;
     onCandidateLocked: (candidate: Candidate) => void;
 }
@@ -30,6 +34,9 @@ interface PlayerSelectorPrototypeSurfaceProps {
 const PlayerSelectorPrototypeSurface = React.forwardRef<PlayerSelectorPrototypeSurfaceHandle, PlayerSelectorPrototypeSurfaceProps>(({
     candidates,
     randomNames,
+    turnOrder,
+    highlightedPlayerId,
+    starterPlayerId,
     onPrototypePlayersChange,
     onCandidateLocked
 }, ref) => {
@@ -38,6 +45,9 @@ const PlayerSelectorPrototypeSurface = React.forwardRef<PlayerSelectorPrototypeS
         svgRef,
         candidates,
         randomNames,
+        turnOrder,
+        highlightedPlayerId,
+        starterPlayerId,
         onPrototypePlayersChange,
         onCandidateLocked
     });
@@ -60,8 +70,14 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
 }) => {
     const { t } = useToolsTranslation();
     const surfaceRef = useRef<PlayerSelectorPrototypeSurfaceHandle | null>(null);
+    const drawIntervalRef = useRef<number | null>(null);
+    const drawTimeoutRef = useRef<number | null>(null);
+    const playerIdsRef = useRef<string>('');
     const [candidates, setCandidates] = useState<Candidate[]>([]);
     const [players, setPlayers] = useState<PrototypePlayer[]>([]);
+    const [phase, setPhase] = useState<'selecting' | 'drawing' | 'result'>('selecting');
+    const [turnOrder, setTurnOrder] = useState<PrototypeTurnOrderEntry[]>([]);
+    const [highlightedPlayerId, setHighlightedPlayerId] = useState<string | null>(null);
     
     // 實體返回鍵與 z-index 管理防線
     const { zIndex } = useModalBackHandler(isOpen, onClose, 'player-selector-prototype');
@@ -114,11 +130,73 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
     }, [isOpen, session]);
 
     const randomNames = t('picker_prototype_random_names').split(',');
+    const starterPlayerId = getStarterPrototypePlayerId(turnOrder) || null;
+    const hasEnoughPlayers = players.length >= session.players.length && session.players.length > 0;
+
+    const stopDrawTimers = () => {
+        if (drawIntervalRef.current !== null) {
+            window.clearInterval(drawIntervalRef.current);
+            drawIntervalRef.current = null;
+        }
+        if (drawTimeoutRef.current !== null) {
+            window.clearTimeout(drawTimeoutRef.current);
+            drawTimeoutRef.current = null;
+        }
+    };
+
+    useEffect(() => {
+        if (!isOpen) {
+            stopDrawTimers();
+            setPhase('selecting');
+            setTurnOrder([]);
+            setHighlightedPlayerId(null);
+            setPlayers([]);
+            playerIdsRef.current = '';
+        }
+    }, [isOpen]);
+
+    useEffect(() => {
+        return () => {
+            stopDrawTimers();
+        };
+    }, []);
+
+    const handlePlayersChange = useCallback((updatedPlayers: PrototypePlayer[]) => {
+        const nextPlayerIds = updatedPlayers.map(player => player.id).join('|');
+        const didPlayerSetChange = nextPlayerIds !== playerIdsRef.current;
+        playerIdsRef.current = nextPlayerIds;
+
+        setPlayers(updatedPlayers);
+        if (didPlayerSetChange) {
+            setTurnOrder([]);
+            setHighlightedPlayerId(null);
+            setPhase('selecting');
+        }
+    }, []);
 
     if (!isOpen) return null;
 
-    const handleRestart = () => {
-        surfaceRef.current?.resetEngine();
+    const startDraw = () => {
+        if (players.length === 0 || phase === 'drawing') return;
+
+        stopDrawTimers();
+        setPhase('drawing');
+        setTurnOrder([]);
+
+        let highlightIndex = 0;
+        setHighlightedPlayerId(players[highlightIndex % players.length].id);
+        drawIntervalRef.current = window.setInterval(() => {
+            highlightIndex += 1;
+            setHighlightedPlayerId(players[highlightIndex % players.length].id);
+        }, 120);
+
+        drawTimeoutRef.current = window.setTimeout(() => {
+            stopDrawTimers();
+            const result = drawTurnOrder(players);
+            setTurnOrder(result);
+            setHighlightedPlayerId(getStarterPrototypePlayerId(result) || null);
+            setPhase('result');
+        }, 2000);
     };
 
     const handleConfirm = () => {
@@ -173,7 +251,10 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
                     ref={surfaceRef}
                     candidates={candidates}
                     randomNames={randomNames}
-                    onPrototypePlayersChange={setPlayers}
+                    turnOrder={turnOrder}
+                    highlightedPlayerId={highlightedPlayerId}
+                    starterPlayerId={starterPlayerId}
+                    onPrototypePlayersChange={handlePlayersChange}
                     onCandidateLocked={(candidate) => {
                         console.log("[Visual Selector] Candidate locked:", candidate);
                     }}
@@ -187,10 +268,47 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
                         </span>
                     </div>
                 )}
+
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    {phase === 'selecting' && hasEnoughPlayers && (
+                        <button
+                            onClick={startDraw}
+                            className="pointer-events-auto flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-brand-primary-deep hover:bg-brand-primary text-white shadow-2xl transition-transform active:scale-95 text-sm font-bold border border-white/10"
+                        >
+                            <Play size={18} />
+                            <span>{t('picker_prototype_draw_order')}</span>
+                        </button>
+                    )}
+
+                    {phase === 'drawing' && (
+                        <div className="px-5 py-3 rounded-2xl bg-modal-bg/90 border border-brand-primary/40 text-brand-primary shadow-2xl text-sm font-bold">
+                            {t('picker_picking')}
+                        </div>
+                    )}
+
+                    {phase === 'result' && (
+                        <div className="pointer-events-auto grid grid-cols-2 gap-3 min-w-[260px] max-w-[min(360px,calc(100vw-32px))]">
+                            <button
+                                onClick={handleConfirm}
+                                className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-brand-primary-deep hover:bg-brand-primary text-white shadow-2xl transition-transform active:scale-95 text-sm font-bold border border-white/10"
+                            >
+                                <Play size={16} />
+                                <span>{t('picker_prototype_start_game')}</span>
+                            </button>
+                            <button
+                                onClick={startDraw}
+                                className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-modal-bg-elevated/95 border border-surface-border hover:bg-surface-hover text-txt-secondary shadow-2xl transition-transform active:scale-95 text-sm font-bold"
+                            >
+                                <RefreshCw size={16} />
+                                <span>{t('picker_prototype_restart')}</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
             </main>
 
             {/* Bottom Panel */}
-            <footer className="bg-modal-bg border-t border-modal-border p-4 flex flex-col gap-4 shrink-0">
+            <footer className="bg-modal-bg border-t border-modal-border p-4 flex flex-col gap-3 shrink-0">
                 {/* Selected Players list */}
                 {players.length > 0 && (
                     <div className="flex flex-col gap-2">
@@ -213,25 +331,6 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
                         </div>
                     </div>
                 )}
-
-                {/* Control Actions */}
-                <div className="grid grid-cols-2 gap-3">
-                    <button
-                        onClick={handleRestart}
-                        className="flex items-center justify-center gap-2 py-3 rounded-xl bg-modal-bg-elevated border border-surface-border hover:bg-surface-hover text-txt-secondary transition-colors active:scale-95 text-sm font-bold shadow-sm"
-                    >
-                        <RefreshCw size={16} />
-                        <span>{t('picker_prototype_restart')}</span>
-                    </button>
-
-                    <button
-                        onClick={handleConfirm}
-                        className="flex items-center justify-center gap-2 py-3 rounded-xl bg-brand-primary-deep hover:bg-brand-primary text-white shadow-lg transition-transform active:scale-95 text-sm font-bold"
-                    >
-                        <Play size={16} />
-                        <span>{t('picker_prototype_start_game')}</span>
-                    </button>
-                </div>
             </footer>
         </div>,
         document.body

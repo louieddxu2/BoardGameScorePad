@@ -15,3 +15,8 @@ export interface PrototypePlayer {
     color: string;
     state: 'COLOR_PICKING' | 'READY';
 }
+
+export interface PrototypeTurnOrderEntry {
+    prototypePlayerId: string;
+    order: number;
+}
