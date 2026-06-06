@@ -65,7 +65,7 @@ const PlayerSelectorPrototypeSurface = React.forwardRef<PlayerSelectorPrototypeS
         getSvg: () => svgRef.current
     }), [resetEngine, closeAllPalettes]);
 
-    return <svg ref={svgRef} className="w-full h-full absolute inset-0"></svg>;
+    return <svg ref={svgRef} className="w-full h-full absolute inset-0 touch-none select-none"></svg>;
 });
 
 PlayerSelectorPrototypeSurface.displayName = 'PlayerSelectorPrototypeSurface';

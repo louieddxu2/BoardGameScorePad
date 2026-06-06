@@ -225,8 +225,8 @@ export const usePlayerSelectorPrototypeRenderer = ({
             touch.anchorX = (touch.state === 'LOCKED') ? touch.canvasX : touch.startX;
             touch.anchorY = (touch.state === 'LOCKED') ? touch.canvasY : touch.startY;
 
-            const vecOutX = touch.anchorX - cx;
-            const vecOutY = touch.anchorY - cy;
+            const vecOutX = touch.canvasX - cx;
+            const vecOutY = touch.canvasY - cy;
             const outDist = Math.sqrt(vecOutX * vecOutX + vecOutY * vecOutY);
             const normOutX = outDist > 0 ? vecOutX / outDist : 0;
             const normOutY = outDist > 0 ? vecOutY / outDist : 1;
@@ -236,7 +236,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
             const edgeProximity = Math.min(outDist / maxPossibleDist, 1.0);
             const distanceTrustMultiplier = 1.0 - edgeProximity;
 
-            if (typeof touch.rotationAngle === "number" && (touch.radiusX > 1 || touch.radiusY > 1)) {
+            if (touch.radiusX > 0 && touch.radiusY > 0) {
                 let angleDeg = touch.rotationAngle;
                 if (touch.radiusY > touch.radiusX) angleDeg += 90;
                 const ellipseRad = angleDeg * Math.PI / 180;
