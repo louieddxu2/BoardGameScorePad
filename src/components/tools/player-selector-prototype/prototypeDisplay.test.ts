@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { PrototypePlayer } from './types';
 import {
     closePrototypePlayerPalettes,
+    getAnimatedDisplayPosition,
     getBadgeTextRotation,
     getRetreatedDisplayPosition
 } from './prototypeDisplay';
@@ -57,5 +58,23 @@ describe('prototypeDisplay', () => {
     it('counter-rotates badge text to the requested screen direction', () => {
         expect(getBadgeTextRotation(30, 180)).toBe(150);
         expect(getBadgeTextRotation(-45, 90)).toBe(135);
+    });
+
+    it('eases display position toward the retreat target without mutating the player seat', () => {
+        const player = makePlayer({ x: 100, y: 100 });
+        const next = getAnimatedDisplayPosition(player, { x: 200, y: 100 }, undefined, true);
+
+        expect(next.x).toBeCloseTo(118);
+        expect(next.y).toBe(100);
+        expect(player.x).toBe(100);
+    });
+
+    it('snaps animated display position when it is close enough to the target', () => {
+        const player = makePlayer({ x: 100, y: 100 });
+
+        expect(getAnimatedDisplayPosition(player, { x: 100.4, y: 100 }, { x: 100, y: 100 }, true)).toEqual({
+            x: 100.4,
+            y: 100
+        });
     });
 });

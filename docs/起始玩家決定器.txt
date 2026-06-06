@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>起始玩家與身分決定器</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@0.344.0"></script>
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%23a855f7'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#a855f7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <style>
+    ::-webkit-scrollbar { width: 0; background: transparent; }
+    body { 
+      -webkit-tap-highlight-color: transparent; 
+      overscroll-behavior-y: none; 
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <script>
+    /* 自動註冊規則 */
+    (function autoRegister() {
+      let appPath = window.location.pathname;
+      if (appPath.endsWith('index.html')) appPath = appPath.replace('index.html', '');
+      if (!appPath.endsWith('/')) appPath += '/';
+      if (appPath === '/') return;
+
+      try {
+        localStorage.setItem('myAppLauncherLastPath', appPath);
+        localStorage.setItem('myAppLauncherLastSeenAt', String(Date.now()));
+      } catch {}
+
+      const launcherPath = appPath.replace(/[^/]+\/$/, '');
+      const normalizedLauncherPath = launcherPath || '/';
+
+      function configureHomeLinkAndProbe() {
+        const homeLinks = Array.from(document.querySelectorAll('[data-home-link]'));
+        const homeHref = normalizedLauncherPath.includes('?') ? `${normalizedLauncherPath}&home=1` : `${normalizedLauncherPath}?home=1`;
+        homeLinks.forEach(el => el.setAttribute('href', homeHref));
+
+        if (window.location.protocol === 'file:') return;
+
+        const probeUrl = normalizedLauncherPath.endsWith('/') ? `${normalizedLauncherPath}index.html` : `${normalizedLauncherPath}/index.html`;
+        const revealHome = () => { homeLinks.forEach(el => el.classList.remove('invisible', 'pointer-events-none')); };
+
+        fetch(probeUrl, { method: 'HEAD' })
+          .then(res => {
+            if (res.ok) { revealHome(); return; }
+            if (res.status === 405) return fetch(probeUrl, { method: 'GET' }).then(r => { if (r.ok) revealHome(); });
+          }).catch(() => {});
+      }
+
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', configureHomeLinkAndProbe, { once: true });
+      else configureHomeLinkAndProbe();
+
+      const appMeta = {
+        id: 'player-selector',
+        name: '起始玩家決定器',
+        nameZh: '起始玩家決定器',
+        nameEn: 'Player Selector',
+        path: appPath,
+        icon: 'users',
+        color: 'purple'
+      };
+
+      const storageKey = 'myAppLauncherStorage';
+      const launcherData = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      const existingIndex = launcherData.findIndex(app => app.path === appMeta.path);
+      if (existingIndex === -1) launcherData.push(appMeta);
+      else launcherData[existingIndex] = { ...launcherData[existingIndex], ...appMeta };
+      localStorage.setItem(storageKey, JSON.stringify(launcherData));
+    })();
+  </script>
+
+  <header class="bg-purple-600 text-white p-4 shadow-md sticky top-0 z-20">
+    <div class="max-w-md mx-auto flex items-center justify-between">
+      <a href="/" data-home-link class="p-2 -ml-2 hover:bg-purple-700 rounded-full transition-colors invisible pointer-events-none" aria-label="返回目錄">
+        <i data-lucide="home" class="w-5 h-5"></i>
+      </a>
+      <h1 class="text-lg font-bold tracking-tight">身分與起始決定器</h1>
+      <div class="w-9"></div>
+    </div>
+  </header>
+
+  <main class="flex-grow w-full mx-auto flex flex-col h-[calc(100vh-68px)]">
+    <div id="canvas-container" class="flex-grow relative bg-slate-900 overflow-hidden touch-none select-none">
+      <svg id="canvas" class="w-full h-full absolute inset-0"></svg>
+      <div id="empty-state" class="absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-300">
+        <span class="text-slate-500 font-medium tracking-widest opacity-50">按住螢幕，拖曳搖桿選擇身分</span>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    lucide.createIcons();
+
+    const svg = document.getElementById("canvas");
+    const container = document.getElementById("canvas-container");
+    const emptyState = document.getElementById("empty-state");
+    
+    // --- 數據庫與常數 ---
+    const RANDOM_NAMES = ["亞瑟", "梅林", "史萊姆", "哥布林", "龍傲天", "路人甲", "巨石強森", "哈利", "妙麗", "阿呆", "胖虎", "小夫", "靜香", "哆啦", "勇者", "魔王", "精靈", "矮人"];
+    const PALETTE = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#a855f7", "#ec4899", "#14b8a6"];
+    const DEFAULT_COLOR = "#475569"; 
+
+    const activeTouches = new Map();
+    let options = []; 
+    let players = []; 
+    let optionIdCounter = 0;
+
+    // 物理常數
+    const SPRING_K = 0.08;       
+    const FRICTION = 0.82;       
+    const MAX_NORMAL_SPEED = 12; 
+    const ORBIT_RADIUS = 110;     
+    const BALL_RADIUS = 26;      
+    const REPULSION_DIST = 64;   
+    
+    // 禁區常數
+    const FINGER_EXCLUSION_RADIUS = 50; 
+    const OTHER_EXCLUSION_RADIUS = 110;      
+    const WALL_REPULSION_DIST = BALL_RADIUS + 5;  
+    const WALL_REPULSION_FORCE = 1.0; 
+    
+    const FREEZE_TIME_MS = 1000;    
+    const LOCK_TIME_MS = 750; // 極速鎖定      
+
+    function makeSvgNode(tag, attrs) {
+      const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      for (const [k, v] of Object.entries(attrs)) { el.setAttribute(k, v); }
+      return el;
+    }
+    function makeSvg(tag, attrs) {
+      const el = makeSvgNode(tag, attrs);
+      svg.appendChild(el);
+      return el;
+    }
+
+    function getFourRandomNames() {
+      let shuffled = [...RANDOM_NAMES].sort(() => 0.5 - Math.random());
+      return shuffled.slice(0, 4);
+    }
+
+    function spawnOptionsForTouch(touchId, x, y) {
+      const names = getFourRandomNames();
+      for (let i = 0; i < 4; i++) {
+        options.push({
+          id: optionIdCounter++,
+          touchId: touchId,
+          idx: i,
+          x: x, y: y,
+          vx: 0, vy: 0,
+          frozenX: null, frozenY: null,
+          text: names[i],
+          color: DEFAULT_COLOR
+        });
+      }
+    }
+
+    function removeOptionsForTouch(touchId) {
+      options = options.filter(o => o.touchId !== touchId);
+    }
+
+    // --- 主迴圈 ---
+    function physicsLoop() {
+      emptyState.style.opacity = (activeTouches.size > 0 || players.length > 0) ? '0' : '1';
+
+      const rect = svg.getBoundingClientRect();
+      const cx = rect.width / 2;
+      const cy = rect.height / 2;
+      const maxPossibleDist = Math.sqrt(cx * cx + cy * cy);
+      const now = Date.now();
+
+      // 1. 更新 Touch 狀態機
+      activeTouches.forEach((touch, touchId) => {
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        touch.canvasX = x; touch.canvasY = y;
+        
+        // 動態錨點：鎖定後錨點跟隨手指
+        touch.anchorX = (touch.state === 'LOCKED') ? touch.canvasX : touch.startX;
+        touch.anchorY = (touch.state === 'LOCKED') ? touch.canvasY : touch.startY;
+
+        const vecOutX = touch.anchorX - cx; 
+        const vecOutY = touch.anchorY - cy;
+        const outDist = Math.sqrt(vecOutX * vecOutX + vecOutY * vecOutY);
+        const normOutX = outDist > 0 ? vecOutX / outDist : 0;
+        const normOutY = outDist > 0 ? vecOutY / outDist : 1; 
+
+        let humanDirX = normOutX; let humanDirY = normOutY;
+        let edgeProximity = Math.min(outDist / maxPossibleDist, 1.0);
+        let distanceTrustMultiplier = 1.0 - edgeProximity;
+
+        if (typeof touch.rotationAngle === "number" && (touch.radiusX > 1 || touch.radiusY > 1)) {
+          let angleDeg = touch.rotationAngle;
+          if (touch.radiusY > touch.radiusX) angleDeg += 90;
+          const ellipseRad = angleDeg * Math.PI / 180;
+          
+          let ellipseDirX = Math.cos(ellipseRad); let ellipseDirY = Math.sin(ellipseRad);
+          if (ellipseDirX * normOutX + ellipseDirY * normOutY < 0) {
+            ellipseDirX = -ellipseDirX; ellipseDirY = -ellipseDirY;
+          }
+          const ratio = (Math.min(touch.radiusX, touch.radiusY) > 0) ? Math.max(touch.radiusX, touch.radiusY) / Math.min(touch.radiusX, touch.radiusY) : 1;
+
+          if (ratio > 1.1) {
+            let finalEllipseTrust = Math.min((ratio - 1.1) * 1.5, 0.85) * distanceTrustMultiplier;
+            humanDirX = ellipseDirX * finalEllipseTrust + normOutX * (1 - finalEllipseTrust);
+            humanDirY = ellipseDirY * finalEllipseTrust + normOutY * (1 - finalEllipseTrust);
+          }
+        }
+
+        const humanLen = Math.sqrt(humanDirX * humanDirX + humanDirY * humanDirY) || 1;
+        touch.humanAngleRad = Math.atan2(humanDirY / humanLen, humanDirX / humanLen);
+        
+        touch.forwardAngleRad = touch.humanAngleRad + Math.PI;
+        touch.textRotationDeg = (touch.humanAngleRad * 180 / Math.PI) - 90;
+
+        const timeAlive = now - touch.spawnTime;
+
+        if (touch.state === 'CHOOSING') {
+          if (timeAlive > FREEZE_TIME_MS && !touch.optionsFrozen) {
+            touch.optionsFrozen = true;
+            options.filter(o => o.touchId === touchId).forEach(o => {
+              o.frozenX = o.x; o.frozenY = o.y; 
+            });
+          }
+
+          const dx = touch.canvasX - touch.startX;
+          const dy = touch.canvasY - touch.startY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist > 15) { 
+            const joyAngle = Math.atan2(dy, dx);
+            let minDiff = Infinity;
+            let bestOptId = null;
+
+            const angleOffsets = [-Math.PI/2, -Math.PI/6, Math.PI/6, Math.PI/2];
+            options.filter(o => o.touchId === touchId).forEach(o => {
+              const targetAngle = touch.forwardAngleRad + angleOffsets[o.idx];
+              let dAngle = joyAngle - targetAngle;
+              dAngle = Math.atan2(Math.sin(dAngle), Math.cos(dAngle));
+              let diff = Math.abs(dAngle);
+              
+              if (diff < minDiff) { minDiff = diff; bestOptId = o.id; }
+            });
+
+            if (bestOptId !== touch.selectedOptionId) {
+              touch.selectedOptionId = bestOptId;
+              touch.selectionStartTime = now;
+              touch.progress = 0;
+            } else {
+              touch.progress = (now - touch.selectionStartTime) / LOCK_TIME_MS;
+              if (touch.progress >= 1.0) {
+                touch.state = 'LOCKED';
+                touch.progress = 1.0;
+                if (navigator.vibrate) navigator.vibrate(50); 
+                
+                options = options.filter(o => {
+                  if (o.touchId !== touchId) return true;
+                  if (o.id === touch.selectedOptionId) {
+                    o.color = PALETTE[Math.floor(Math.random() * PALETTE.length)]; 
+                    return true;
+                  }
+                  return false;
+                });
+              }
+            }
+          } else {
+            touch.selectedOptionId = null;
+            touch.progress = 0;
+          }
+        }
+      });
+
+      // 2. 第一階段物理位移與軟力
+      options.forEach(opt => {
+        const touch = activeTouches.get(opt.touchId);
+        if (!touch) return; 
+
+        if (touch.state === 'CHOOSING') {
+          if (touch.optionsFrozen) {
+            opt.vx += (opt.frozenX - opt.x) * (SPRING_K * 2.5);
+            opt.vy += (opt.frozenY - opt.y) * (SPRING_K * 2.5);
+          } else {
+            const angleOffsets = [-Math.PI/2, -Math.PI/6, Math.PI/6, Math.PI/2];
+            const targetAngle = touch.forwardAngleRad + angleOffsets[opt.idx];
+            const targetX = touch.anchorX + Math.cos(targetAngle) * ORBIT_RADIUS;
+            const targetY = touch.anchorY + Math.sin(targetAngle) * ORBIT_RADIUS;
+            opt.vx += (targetX - opt.x) * SPRING_K;
+            opt.vy += (targetY - opt.y) * SPRING_K;
+          }
+        } else if (touch.state === 'LOCKED') {
+          // 鎖定後，文字框吸附距離減半
+          const lockedRadius = ORBIT_RADIUS / 2;
+          opt.vx += (touch.anchorX + Math.cos(touch.forwardAngleRad) * lockedRadius - opt.x) * (SPRING_K * 2);
+          opt.vy += (touch.anchorY + Math.sin(touch.forwardAngleRad) * lockedRadius - opt.y) * (SPRING_K * 2);
+        }
+      });
+
+      // 選項間的互相排斥
+      for (let i = 0; i < options.length; i++) {
+        for (let j = i + 1; j < options.length; j++) {
+          const b1 = options[i]; const b2 = options[j];
+          const dx = b1.x - b2.x; const dy = b1.y - b2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < REPULSION_DIST && dist > 0.1) {
+            const force = (REPULSION_DIST - dist) * 0.4;
+            const nx = dx / dist; const ny = dy / dist;
+            b1.vx += nx * force; b1.vy += ny * force;
+            b2.vx -= nx * force; b2.vy -= ny * force;
+          }
+        }
+      }
+
+      // 3. 限速器
+      options.forEach(opt => {
+        const speed = Math.sqrt(opt.vx * opt.vx + opt.vy * opt.vy);
+        if (speed > MAX_NORMAL_SPEED) { 
+          opt.vx = (opt.vx / speed) * MAX_NORMAL_SPEED; 
+          opt.vy = (opt.vy / speed) * MAX_NORMAL_SPEED; 
+        }
+      });
+
+      // 4. 第二階段物理硬約束
+      options.forEach(opt => {
+        const touch = activeTouches.get(opt.touchId);
+        if (!touch) return;
+
+        const fVecX = touch.anchorX - cx;
+        const fVecY = touch.anchorY - cy;
+        const fLen = Math.sqrt(fVecX * fVecX + fVecY * fVecY);
+        
+        if (fLen > 0.1) {
+          const nx = fVecX / fLen;
+          const ny = fVecY / fLen;
+          const bx = opt.x - cx;
+          const by = opt.y - cy;
+          const d = bx * nx + by * ny;
+          
+          if (d < BALL_RADIUS + 2) {
+            const penetration = (BALL_RADIUS + 2) - d;
+            opt.vx += nx * penetration * 0.85;
+            opt.vy += ny * penetration * 0.85;
+          }
+        }
+
+        activeTouches.forEach((otherTouch, otherTouchId) => {
+          const isOwnBall = (opt.touchId === otherTouchId);
+          const baseExclusionRadius = isOwnBall ? FINGER_EXCLUSION_RADIUS : OTHER_EXCLUSION_RADIUS;
+          
+          const dx = opt.x - otherTouch.anchorX;
+          const dy = opt.y - otherTouch.anchorY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const minDist = baseExclusionRadius + BALL_RADIUS + 2; 
+          
+          if (dist < minDist && dist > 0.1) {
+            const penetration = minDist - dist;
+            const nx = dx / dist;
+            const ny = dy / dist;
+            opt.vx += nx * penetration * 0.85;
+            opt.vy += ny * penetration * 0.85;
+          }
+        });
+
+        if (opt.x < WALL_REPULSION_DIST) opt.vx += (WALL_REPULSION_DIST - opt.x) * WALL_REPULSION_FORCE;
+        if (opt.x > rect.width - WALL_REPULSION_DIST) opt.vx -= (opt.x - (rect.width - WALL_REPULSION_DIST)) * WALL_REPULSION_FORCE;
+        if (opt.y < WALL_REPULSION_DIST) opt.vy += (WALL_REPULSION_DIST - opt.y) * WALL_REPULSION_FORCE;
+        if (opt.y > rect.height - WALL_REPULSION_DIST) opt.vy -= (opt.y - (rect.height - WALL_REPULSION_DIST)) * WALL_REPULSION_FORCE;
+      });
+
+      // 5. 套用摩擦力並更新最終位置
+      options.forEach(opt => {
+        opt.vx *= FRICTION;
+        opt.vy *= FRICTION;
+        opt.x += opt.vx;
+        opt.y += opt.vy;
+      });
+
+
+      // --- 渲染階段 ---
+      svg.innerHTML = "";
+
+      players.forEach(p => {
+        const rotation = p.textRotationDeg;
+        const group = makeSvgNode("g", { transform: `translate(${p.x}, ${p.y}) rotate(${rotation})` });
+        
+        if (p.state === 'COLOR_PICKING') {
+          const PICKER_RADIUS = 64;
+          makeSvg("circle", { cx: p.x, cy: p.y, r: PICKER_RADIUS, fill: "rgba(15,23,42,0.6)", stroke: "#334155", "stroke-width": 1 });
+          PALETTE.forEach((color, i) => {
+            const angle = (i * 45) * Math.PI / 180;
+            const dotX = Math.cos(angle) * PICKER_RADIUS;
+            const dotY = Math.sin(angle) * PICKER_RADIUS;
+            const isSelected = (p.color === color);
+            group.appendChild(makeSvgNode("circle", { cx: dotX, cy: dotY, r: 16, fill: color, stroke: isSelected ? "#ffffff" : "#475569", "stroke-width": isSelected ? 3 : 1 }));
+          });
+        }
+
+        const boxW = 86; const boxH = 34;
+        group.appendChild(makeSvgNode("rect", { x: -boxW/2, y: -boxH/2, width: boxW, height: boxH, rx: boxH/2, fill: p.color, stroke: "#0f172a", "stroke-width": 3 }));
+        group.appendChild(makeSvgNode("text", { x: 0, y: 1, fill: "#ffffff", "font-size": "15px", "font-weight": "bold", "text-anchor": "middle", "dominant-baseline": "middle", "pointer-events": "none" }).appendChild(document.createTextNode(p.text)).parentNode);
+        
+        svg.appendChild(group);
+      });
+      
+      activeTouches.forEach((touch) => {
+        const fVecX = touch.anchorX - cx;
+        const fVecY = touch.anchorY - cy;
+        const fLen = Math.sqrt(fVecX * fVecX + fVecY * fVecY);
+        if (fLen > 0.1) {
+          const nx = fVecX / fLen;
+          const ny = fVecY / fLen;
+          const dirX = -ny; 
+          const dirY = nx;  
+          
+          const maxLen = Math.max(rect.width, rect.height);
+          const lX1 = cx - dirX * maxLen;
+          const lY1 = cy - dirY * maxLen;
+          const lX2 = cx + dirX * maxLen;
+          const lY2 = cy + dirY * maxLen;
+          makeSvg("line", { x1: lX1, y1: lY1, x2: lX2, y2: lY2, stroke: "rgba(255,255,255,0.2)", "stroke-width": 2, "stroke-dasharray": "8 8" });
+        }
+
+        const arcR = ORBIT_RADIUS + BALL_RADIUS;
+        const a1 = touch.humanAngleRad - Math.PI/3; 
+        const a2 = touch.humanAngleRad + Math.PI/3; 
+        
+        const p1x = touch.anchorX + Math.cos(a1) * arcR;
+        const p1y = touch.anchorY + Math.sin(a1) * arcR;
+        const p2x = touch.anchorX + Math.cos(a2) * arcR;
+        const p2y = touch.anchorY + Math.sin(a2) * arcR;
+        
+        const pathData = `M ${touch.anchorX} ${touch.anchorY} L ${p1x} ${p1y} A ${arcR} ${arcR} 0 0 1 ${p2x} ${p2y} Z`;
+        makeSvg("path", { d: pathData, fill: "rgba(239, 68, 68, 0.05)", stroke: "rgba(239, 68, 68, 0.2)", "stroke-width": 1, "stroke-dasharray": "4 4" });
+        
+        const fx = touch.anchorX + Math.cos(touch.forwardAngleRad) * arcR;
+        const fy = touch.anchorY + Math.sin(touch.forwardAngleRad) * arcR;
+        makeSvg("line", { x1: touch.anchorX, y1: touch.anchorY, x2: fx, y2: fy, stroke: "rgba(59, 130, 246, 0.3)", "stroke-width": 2, "stroke-dasharray": "4 4" });
+
+        if (touch.state === 'CHOOSING') {
+          makeSvg("circle", { cx: touch.anchorX, cy: touch.anchorY, r: 30, fill: "rgba(255,255,255,0.05)", stroke: "#475569", "stroke-width": 2 }); 
+          makeSvg("line", { x1: touch.anchorX, y1: touch.anchorY, x2: touch.canvasX, y2: touch.canvasY, stroke: "#a855f7", "stroke-width": 4, "stroke-linecap": "round" }); 
+          makeSvg("circle", { cx: touch.canvasX, cy: touch.canvasY, r: 12, fill: "#a855f7" }); 
+        } else if (touch.state === 'LOCKED') {
+          // 【巨大化法陣】：從 40px 開始擴散到 80px，徹底避開胖手指遮擋
+          const pulse = (now % 1000) / 1000; 
+          const pulseR = 40 + pulse * 40; 
+          const pulseAlpha = 1 - pulse;
+          
+          makeSvg("circle", { cx: touch.canvasX, cy: touch.canvasY, r: pulseR, fill: "none", stroke: `rgba(168, 85, 247, ${pulseAlpha})`, "stroke-width": 3 });
+          
+          // 加大半徑的魔法陣底圈 (半徑 35)，確保多數拇指蓋不住
+          makeSvg("circle", { cx: touch.canvasX, cy: touch.canvasY, r: 35, fill: "none", stroke: "rgba(168, 85, 247, 0.5)", "stroke-width": 2, "stroke-dasharray": "6 6" });
+          
+          // 保留極小的核心點以供定位參考
+          makeSvg("circle", { cx: touch.canvasX, cy: touch.canvasY, r: 4, fill: "#a855f7" });
+        }
+      });
+
+      options.forEach(opt => {
+        const touch = activeTouches.get(opt.touchId);
+        if (!touch) return;
+
+        const isSelected = (touch.state === 'CHOOSING' && touch.selectedOptionId === opt.id);
+        const boxW = 86; const boxH = 34;
+        
+        const group = makeSvgNode("g", { transform: `translate(${opt.x}, ${opt.y}) rotate(${touch.textRotationDeg})` });
+        
+        if (isSelected) {
+          const r = 52;
+          const circumference = 2 * Math.PI * r;
+          const offset = circumference * (1 - touch.progress);
+          group.appendChild(makeSvgNode("circle", { cx: 0, cy: 0, r: r, fill: "none", stroke: "rgba(255,255,255,0.1)", "stroke-width": 6 }));
+          group.appendChild(makeSvgNode("circle", { 
+            cx: 0, cy: 0, r: r, fill: "none", stroke: "#a855f7", "stroke-width": 6, 
+            "stroke-dasharray": circumference, "stroke-dashoffset": offset, transform: "rotate(-90)" 
+          }));
+        }
+
+        const scale = isSelected ? 'scale(1.15)' : 'scale(1.0)';
+        const innerGroup = makeSvgNode("g", { transform: scale, style: "transition: transform 0.1s" });
+
+        innerGroup.appendChild(makeSvgNode("rect", { 
+          x: -boxW/2, y: -boxH/2, width: boxW, height: boxH, rx: boxH/2, 
+          fill: opt.color, stroke: isSelected ? "#a855f7" : "#0f172a", "stroke-width": isSelected ? 4 : 3 
+        }));
+        
+        innerGroup.appendChild(makeSvgNode("text", {
+          x: 0, y: 1, fill: "#ffffff", "font-size": "15px", "font-weight": "bold", "text-anchor": "middle", "dominant-baseline": "middle", "pointer-events": "none"
+        }).appendChild(document.createTextNode(opt.text)).parentNode);
+
+        group.appendChild(innerGroup);
+        svg.appendChild(group);
+      });
+
+      requestAnimationFrame(physicsLoop);
+    }
+
+    requestAnimationFrame(physicsLoop);
+
+    // ==========================================
+    // 事件綁定 (包含調色盤判定)
+    // ==========================================
+    
+    function checkColorPaletteClick(clickX, clickY) {
+      const rect = svg.getBoundingClientRect();
+      const cx = clickX - rect.left;
+      const cy = clickY - rect.top;
+
+      for (let p of players) {
+        if (p.state !== 'COLOR_PICKING') continue;
+        
+        const rad = -p.textRotationDeg * Math.PI / 180;
+        const dx = cx - p.x; const dy = cy - p.y;
+        const localX = dx * Math.cos(rad) - dy * Math.sin(rad);
+        const localY = dx * Math.sin(rad) + dy * Math.cos(rad);
+
+        const PICKER_RADIUS = 64;
+        for (let i = 0; i < PALETTE.length; i++) {
+          const color = PALETTE[i];
+          const angle = (i * 45) * Math.PI / 180;
+          const dotX = Math.cos(angle) * PICKER_RADIUS;
+          const dotY = Math.sin(angle) * PICKER_RADIUS;
+          
+          if (Math.hypot(localX - dotX, localY - dotY) <= 22) { 
+            p.color = color;
+            p.state = 'READY'; 
+            return true; 
+          }
+        }
+      }
+      return false; 
+    }
+
+    function handleStart(t) {
+      const rect = svg.getBoundingClientRect();
+      const canvasX = t.clientX - rect.left;
+      const canvasY = t.clientY - rect.top;
+      
+      activeTouches.set(t.identifier, {
+        id: t.identifier, 
+        startX: canvasX, startY: canvasY, 
+        clientX: t.clientX, clientY: t.clientY, 
+        radiusX: t.radiusX || 0, radiusY: t.radiusY || 0, rotationAngle: t.rotationAngle || 0,
+        state: 'CHOOSING', spawnTime: Date.now(),
+        selectedOptionId: null, selectionStartTime: 0,
+        optionsFrozen: false, progress: 0
+      });
+      spawnOptionsForTouch(t.identifier, canvasX, canvasY);
+    }
+
+    function handleEnd(id) {
+      const touch = activeTouches.get(id);
+      if (!touch) return;
+      
+      if (touch.state === 'LOCKED') {
+        const finalOpt = options.find(o => o.touchId === id);
+        if (finalOpt) {
+          players.push({
+            id: 'player_' + Date.now() + '_' + Math.floor(Math.random()*1000),
+            x: finalOpt.x + (touch.anchorX - finalOpt.x) / 2, 
+            y: finalOpt.y + (touch.anchorY - finalOpt.y) / 2,
+            textRotationDeg: touch.textRotationDeg,
+            text: finalOpt.text,
+            color: finalOpt.color,
+            state: 'COLOR_PICKING' 
+          });
+        }
+      }
+      activeTouches.delete(id);
+      removeOptionsForTouch(id);
+    }
+
+    container.addEventListener("touchstart", e => {
+      e.preventDefault();
+      for (const t of e.changedTouches) {
+        if (checkColorPaletteClick(t.clientX, t.clientY)) continue; 
+        handleStart(t);
+      }
+    }, { passive: false });
+
+    container.addEventListener("touchmove", e => {
+      e.preventDefault();
+      for (const t of e.changedTouches) {
+        const touch = activeTouches.get(t.identifier);
+        if (touch) { 
+          touch.clientX = t.clientX; 
+          touch.clientY = t.clientY; 
+          touch.radiusX = t.radiusX || 0;
+          touch.radiusY = t.radiusY || 0;
+          touch.rotationAngle = t.rotationAngle || 0;
+        }
+      }
+    }, { passive: false });
+
+    container.addEventListener("touchend", e => {
+      e.preventDefault();
+      for (const t of e.changedTouches) handleEnd(t.identifier);
+    }, { passive: false });
+
+    container.addEventListener("touchcancel", e => {
+      e.preventDefault();
+      for (const t of e.changedTouches) handleEnd(t.identifier);
+    }, { passive: false });
+
+    // 滑鼠相容
+    let mouseIsDown = false; const MOUSE_ID = 'mouse';
+    container.addEventListener("mousedown", e => { 
+      e.preventDefault(); 
+      if (checkColorPaletteClick(e.clientX, e.clientY)) return; 
+      
+      mouseIsDown = true; 
+      handleStart({ identifier: MOUSE_ID, clientX: e.clientX, clientY: e.clientY }); 
+    });
+    
+    container.addEventListener("mousemove", e => {
+      if (!mouseIsDown) return; 
+      e.preventDefault();
+      const t = activeTouches.get(MOUSE_ID); 
+      if (t) { t.clientX = e.clientX; t.clientY = e.clientY; }
+    });
+    
+    window.addEventListener("mouseup", e => {
+      if (!mouseIsDown) return; 
+      mouseIsDown = false;
+      handleEnd(MOUSE_ID);
+    });
+
+  </script>
+</body>
+</html>

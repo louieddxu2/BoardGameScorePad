@@ -2,11 +2,15 @@ import { useEffect, useRef } from 'react';
 import { Candidate, PrototypePlayer, PrototypeTurnOrderEntry } from './types';
 import {
     closePrototypePlayerPalettes,
+    getAnimatedDisplayPosition,
     getBadgeTextRotation,
     getRetreatedDisplayPosition
 } from './prototypeDisplay';
+import { OptionState, TouchState } from './prototypeEngineTypes';
+import { getFourCandidatesForTouch } from './prototypeCandidates';
+import { applyPaletteClick, applyPlayerClick, COLOR_PALETTE_RADIUS } from './prototypeHitTest';
+import { makeSvgNode } from './prototypeSvg';
 
-// 常數定義
 const SPRING_K = 0.08;       
 const FRICTION = 0.82;       
 const MAX_NORMAL_SPEED = 12; 
@@ -24,8 +28,6 @@ const LOCK_TIME_MS = 750;
 
 const PALETTE = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#a855f7", "#ec4899", "#14b8a6"];
 const DEFAULT_COLOR = "#475569";
-const RETREAT_POSITION_EASE = 0.18;
-const RETREAT_POSITION_SNAP_DIST = 0.6;
 
 interface UsePlayerSelectorPrototypeRendererProps {
     svgRef: React.RefObject<SVGSVGElement | null>;
@@ -38,45 +40,6 @@ interface UsePlayerSelectorPrototypeRendererProps {
     isInteractionLocked?: boolean;
     onPrototypePlayersChange: (players: PrototypePlayer[]) => void;
     onCandidateLocked: (candidate: Candidate) => void;
-}
-
-interface TouchState {
-    id: string | number;
-    startX: number;
-    startY: number;
-    clientX: number;
-    clientY: number;
-    canvasX: number;
-    canvasY: number;
-    anchorX: number;
-    anchorY: number;
-    radiusX: number;
-    radiusY: number;
-    rotationAngle: number;
-    state: 'CHOOSING' | 'LOCKED';
-    spawnTime: number;
-    selectedOptionId: number | null;
-    selectionStartTime: number;
-    optionsFrozen: boolean;
-    progress: number;
-    forwardAngleRad: number;
-    humanAngleRad: number;
-    textRotationDeg: number;
-}
-
-interface OptionState {
-    id: number;
-    touchId: string | number;
-    idx: number;
-    x: number;
-    y: number;
-    vx: number;
-    vy: number;
-    frozenX: number | null;
-    frozenY: number | null;
-    text: string;
-    color: string;
-    candidate: Candidate;
 }
 
 export const usePlayerSelectorPrototypeRenderer = ({
@@ -107,7 +70,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
         isInteractionLocked
     });
 
-    // 用來追蹤前一次 SVG 的寬高以進行 resize 比例縮放
     const prevWidthRef = useRef<number>(0);
     const prevHeightRef = useRef<number>(0);
 
@@ -136,64 +98,14 @@ export const usePlayerSelectorPrototypeRenderer = ({
         }
     };
 
-    // 從當前 candidates 中為新 touch 挑選 4 個名字，不足則用隨機與預設補足
-    const getFourCandidatesForTouch = (
-        currentCandidates: Candidate[],
-        activeTouches: Map<string | number, TouchState>,
-        options: OptionState[],
-        players: PrototypePlayer[]
-    ): Candidate[] => {
-        const usedNamesInOptions = new Set(options.map(o => o.text));
-        const usedNamesInPlayers = new Set(players.map(p => p.text));
-
-        const available = currentCandidates.filter(
-            c => !usedNamesInOptions.has(c.name) && !usedNamesInPlayers.has(c.name)
-        );
-
-        const result: Candidate[] = [...available];
-
-        if (result.length < 4) {
-            const restCandidates = currentCandidates.filter(
-                c => !usedNamesInPlayers.has(c.name) && !result.some(r => r.name === c.name)
-            );
-            for (const c of restCandidates) {
-                if (result.length >= 4) break;
-                result.push(c);
-            }
-        }
-
-        let nameIndex = 0;
-        while (result.length < 4 && nameIndex < randomNames.length) {
-            const fallbackName = randomNames[nameIndex++];
-            if (
-                !usedNamesInOptions.has(fallbackName) &&
-                !usedNamesInPlayers.has(fallbackName) &&
-                !result.some(r => r.name === fallbackName)
-            ) {
-                result.push({
-                    id: `fallback_${fallbackName}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-                    name: fallbackName
-                });
-            }
-        }
-
-        let tempIdx = 1;
-        while (result.length < 4) {
-            result.push({
-                id: `temp_${tempIdx++}_${Date.now()}`,
-                name: `Player ${tempIdx}`
-            });
-        }
-
-        return result.slice(0, 4);
-    };
-
     const spawnOptionsForTouch = (touchId: string | number, x: number, y: number) => {
         const selectedCandidates = getFourCandidatesForTouch(
             candidates,
-            activeTouchesRef.current,
             optionsRef.current,
-            playersRef.current
+            playersRef.current,
+            randomNames,
+            (name) => `fallback_${name}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            (index) => `temp_${index}_${Date.now()}`
         );
 
         for (let i = 0; i < 4; i++) {
@@ -218,46 +130,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
         optionsRef.current = optionsRef.current.filter(o => o.touchId !== touchId);
     };
 
-    // 輔助 SVG 節點建立
-    const makeSvgNode = (tag: string, attrs: Record<string, any>): SVGElement => {
-        const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
-        for (const [k, v] of Object.entries(attrs)) {
-            el.setAttribute(k, String(v));
-        }
-        return el;
-    };
-
-    const getAnimatedDisplayPosition = (
-        player: PrototypePlayer,
-        targetPosition: { x: number; y: number },
-        shouldAnimate: boolean
-    ) => {
-        if (!shouldAnimate) {
-            displayPositionsRef.current.set(player.id, targetPosition);
-            return targetPosition;
-        }
-
-        const currentPosition = displayPositionsRef.current.get(player.id) || {
-            x: player.x,
-            y: player.y
-        };
-        const dx = targetPosition.x - currentPosition.x;
-        const dy = targetPosition.y - currentPosition.y;
-
-        if (Math.hypot(dx, dy) <= RETREAT_POSITION_SNAP_DIST) {
-            displayPositionsRef.current.set(player.id, targetPosition);
-            return targetPosition;
-        }
-
-        const nextPosition = {
-            x: currentPosition.x + dx * RETREAT_POSITION_EASE,
-            y: currentPosition.y + dy * RETREAT_POSITION_EASE
-        };
-        displayPositionsRef.current.set(player.id, nextPosition);
-        return nextPosition;
-    };
-
-    // 物理迴圈與渲染
     const physicsLoop = () => {
         if (!isRunningRef.current) return;
 
@@ -274,7 +146,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
             return;
         }
 
-        // 處理 Window Resize 響應式防線：按比例還原氣泡球位置
         if (prevWidthRef.current > 0 && prevHeightRef.current > 0 && 
             (prevWidthRef.current !== rect.width || prevHeightRef.current !== rect.height)) {
             const widthRatio = rect.width / prevWidthRef.current;
@@ -311,14 +182,12 @@ export const usePlayerSelectorPrototypeRenderer = ({
         const maxPossibleDist = Math.sqrt(cx * cx + cy * cy);
         const now = Date.now();
 
-        // 1. 更新 Touch 狀態機
         activeTouchesRef.current.forEach((touch, touchId) => {
             const x = touch.clientX - rect.left;
             const y = touch.clientY - rect.top;
             touch.canvasX = x;
             touch.canvasY = y;
 
-            // 動態錨點：鎖定後錨點跟隨手指
             touch.anchorX = (touch.state === 'LOCKED') ? touch.canvasX : touch.startX;
             touch.anchorY = (touch.state === 'LOCKED') ? touch.canvasY : touch.startY;
 
@@ -333,7 +202,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
             const edgeProximity = Math.min(outDist / maxPossibleDist, 1.0);
             const distanceTrustMultiplier = 1.0 - edgeProximity;
 
-            // 指尖朝向判斷
             if (typeof touch.rotationAngle === "number" && (touch.radiusX > 1 || touch.radiusY > 1)) {
                 let angleDeg = touch.rotationAngle;
                 if (touch.radiusY > touch.radiusX) angleDeg += 90;
@@ -405,7 +273,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
                             touch.progress = 1.0;
                             if (navigator.vibrate) navigator.vibrate(50);
 
-                            // 只保留被鎖定的選項，並隨機分配顏色
                             const lockedOpt = optionsRef.current.find(o => o.id === touch.selectedOptionId);
                             if (lockedOpt) {
                                 lockedOpt.color = PALETTE[Math.floor(Math.random() * PALETTE.length)];
@@ -413,7 +280,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
                                     if (o.touchId !== touchId) return true;
                                     return o.id === touch.selectedOptionId;
                                 });
-                                // 丟出 locked 事件以便後續擴充
                                 onCandidateLocked(lockedOpt.candidate);
                             }
                         }
@@ -425,7 +291,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
             }
         });
 
-        // 2. 第一階段物理位移與軟力
         optionsRef.current.forEach(opt => {
             const touch = activeTouchesRef.current.get(opt.touchId);
             if (!touch) return;
@@ -451,7 +316,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
             }
         });
 
-        // 選項間的互相排斥
         for (let i = 0; i < optionsRef.current.length; i++) {
             for (let j = i + 1; j < optionsRef.current.length; j++) {
                 const b1 = optionsRef.current[i];
@@ -471,7 +335,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
             }
         }
 
-        // 3. 限速器
         optionsRef.current.forEach(opt => {
             const speed = Math.sqrt(opt.vx * opt.vx + opt.vy * opt.vy);
             if (speed > MAX_NORMAL_SPEED) {
@@ -480,7 +343,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
             }
         });
 
-        // 4. 第二階段物理硬約束
         optionsRef.current.forEach(opt => {
             const touch = activeTouchesRef.current.get(opt.touchId);
             if (!touch) return;
@@ -527,7 +389,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
             if (opt.y > rect.height - WALL_REPULSION_DIST) opt.vy -= (opt.y - (rect.height - WALL_REPULSION_DIST)) * WALL_REPULSION_FORCE;
         });
 
-        // 5. 套用摩擦力並更新最終位置
         optionsRef.current.forEach(opt => {
             opt.vx *= FRICTION;
             opt.vy *= FRICTION;
@@ -535,17 +396,21 @@ export const usePlayerSelectorPrototypeRenderer = ({
             opt.y += opt.vy;
         });
 
-        // --- 渲染階段 ---
         svg.innerHTML = "";
 
-        // 渲染實體化玩家球
         const renderedPlayerIds = new Set<string>();
         playersRef.current.forEach(p => {
             renderedPlayerIds.add(p.id);
             const rotation = p.textRotationDeg;
             const display = resultDisplayRef.current;
             const targetDisplayPosition = getRetreatedDisplayPosition(p, rect, display.shouldRetreatPlayers);
-            const displayPosition = getAnimatedDisplayPosition(p, targetDisplayPosition, display.shouldRetreatPlayers);
+            const displayPosition = getAnimatedDisplayPosition(
+                p,
+                targetDisplayPosition,
+                displayPositionsRef.current.get(p.id),
+                display.shouldRetreatPlayers
+            );
+            displayPositionsRef.current.set(p.id, displayPosition);
             const group = makeSvgNode("g", { transform: `translate(${displayPosition.x}, ${displayPosition.y}) rotate(${rotation})` });
             const turnOrderEntry = display.turnOrder.find(entry => entry.prototypePlayerId === p.id);
             const isHighlighted = display.highlightedPlayerId === p.id;
@@ -580,14 +445,11 @@ export const usePlayerSelectorPrototypeRenderer = ({
                 }));
             }
 
-            // 若處於選色狀態，畫上周圍調色盤
             if (p.state === 'COLOR_PICKING') {
-                const PICKER_RADIUS = 64;
-                // 色盤外環底圓
                 svg.appendChild(makeSvgNode("circle", {
                     cx: displayPosition.x,
                     cy: displayPosition.y,
-                    r: PICKER_RADIUS,
+                    r: COLOR_PALETTE_RADIUS,
                     fill: "rgba(15,23,42,0.6)",
                     stroke: "#334155",
                     "stroke-width": 1
@@ -595,11 +457,10 @@ export const usePlayerSelectorPrototypeRenderer = ({
 
                 PALETTE.forEach((color, i) => {
                     const angle = (i * 45) * Math.PI / 180;
-                    const dotX = displayPosition.x + Math.cos(angle) * PICKER_RADIUS;
-                    const dotY = displayPosition.y + Math.sin(angle) * PICKER_RADIUS;
+                    const dotX = displayPosition.x + Math.cos(angle) * COLOR_PALETTE_RADIUS;
+                    const dotY = displayPosition.y + Math.sin(angle) * COLOR_PALETTE_RADIUS;
                     const isSelected = (p.color === color);
 
-                    // 調色盤的小圓球繪製在全局坐標
                     svg.appendChild(makeSvgNode("circle", {
                         cx: dotX,
                         cy: dotY,
@@ -611,7 +472,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
                 });
             }
 
-            // 繪製氣泡球本體
             group.appendChild(makeSvgNode("rect", {
                 x: -boxW / 2,
                 y: -boxH / 2,
@@ -623,7 +483,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
                 "stroke-width": 3
             }));
 
-            // 繪製姓名文字
             const textNode = makeSvgNode("text", {
                 x: 0,
                 y: 1,
@@ -684,7 +543,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
                 group.appendChild(starterText);
             }
 
-            // 若在選色狀態，在氣泡球下方繪製 ✕ 刪除按鈕
             if (p.state === 'COLOR_PICKING') {
                 const deleteGroup = makeSvgNode("g", { transform: "translate(0, 28)" });
                 deleteGroup.appendChild(makeSvgNode("rect", {
@@ -708,7 +566,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
                     "dominant-baseline": "middle",
                     "pointer-events": "none"
                 });
-                deleteText.textContent = "✕";
+                deleteText.textContent = "×";
                 deleteGroup.appendChild(deleteText);
                 group.appendChild(deleteGroup);
             }
@@ -721,7 +579,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
             }
         });
 
-        // 渲染 activeTouches 所產生的搖桿背景線與指針
         activeTouchesRef.current.forEach((touch) => {
             const fVecX = touch.anchorX - cx;
             const fVecY = touch.anchorY - cy;
@@ -803,7 +660,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
                     fill: "#a855f7"
                 }));
             } else if (touch.state === 'LOCKED') {
-                // 鎖定狀態的巨大化魔法陣
                 const pulse = (now % 1000) / 1000;
                 const pulseR = 40 + pulse * 40;
                 const pulseAlpha = 1 - pulse;
@@ -834,7 +690,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
             }
         });
 
-        // 渲染候選項 Options
         optionsRef.current.forEach(opt => {
             const touch = activeTouchesRef.current.get(opt.touchId);
             if (!touch) return;
@@ -847,7 +702,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
                 transform: `translate(${opt.x}, ${opt.y}) rotate(${touch.textRotationDeg})`
             });
 
-            // 繪製鎖定讀條
             if (isSelected) {
                 const r = 52;
                 const circumference = 2 * Math.PI * r;
@@ -912,40 +766,22 @@ export const usePlayerSelectorPrototypeRenderer = ({
         }
     };
 
-    // 事件判定與處理
     const checkColorPaletteClick = (clickX: number, clickY: number): boolean => {
         const svg = svgRef.current;
         if (!svg) return false;
 
         const rect = svg.getBoundingClientRect();
-        const cx = clickX - rect.left;
-        const cy = clickY - rect.top;
+        const result = applyPaletteClick(
+            playersRef.current,
+            { x: clickX - rect.left, y: clickY - rect.top },
+            PALETTE
+        );
 
-        for (const p of playersRef.current) {
-            if (p.state !== 'COLOR_PICKING') continue;
+        if (!result.handled) return false;
 
-            const rad = -p.textRotationDeg * Math.PI / 180;
-            const dx = cx - p.x;
-            const dy = cy - p.y;
-            const localX = dx * Math.cos(rad) - dy * Math.sin(rad);
-            const localY = dx * Math.sin(rad) + dy * Math.cos(rad);
-
-            const PICKER_RADIUS = 64;
-            for (let i = 0; i < PALETTE.length; i++) {
-                const color = PALETTE[i];
-                const angle = (i * 45) * Math.PI / 180;
-                const dotX = Math.cos(angle) * PICKER_RADIUS;
-                const dotY = Math.sin(angle) * PICKER_RADIUS;
-
-                if (Math.hypot(localX - dotX, localY - dotY) <= 22) {
-                    p.color = color;
-                    p.state = 'READY';
-                    onPrototypePlayersChange([...playersRef.current]);
-                    return true;
-                }
-            }
-        }
-        return false;
+        playersRef.current = result.players;
+        onPrototypePlayersChange([...playersRef.current]);
+        return true;
     };
 
     const checkPlayerClick = (clickX: number, clickY: number): boolean => {
@@ -953,45 +789,17 @@ export const usePlayerSelectorPrototypeRenderer = ({
         if (!svg) return false;
 
         const rect = svg.getBoundingClientRect();
-        const cx = clickX - rect.left;
-        const cy = clickY - rect.top;
+        const result = applyPlayerClick(
+            playersRef.current,
+            { x: clickX - rect.left, y: clickY - rect.top }
+        );
 
-        let clickedSomething = false;
+        if (!result.handled) return false;
 
-        const updatedPlayers = playersRef.current.map(p => {
-            const rad = -p.textRotationDeg * Math.PI / 180;
-            const dx = cx - p.x;
-            const dy = cy - p.y;
-            const localX = dx * Math.cos(rad) - dy * Math.sin(rad);
-            const localY = dx * Math.sin(rad) + dy * Math.cos(rad);
+        playersRef.current = result.players;
+        onPrototypePlayersChange([...playersRef.current]);
+        return true;
 
-            // 1. 檢查是否點中下方的 ✕ 刪除按鈕
-            if (p.state === 'COLOR_PICKING') {
-                if (Math.abs(localX) <= 26 && localY >= 16 && localY <= 40) {
-                    clickedSomething = true;
-                    return null; // 標記刪除
-                }
-            }
-
-            // 2. 檢查是否點中本體 (boxW=86, boxH=34)
-            if (Math.abs(localX) <= 43 && Math.abs(localY) <= 17) {
-                clickedSomething = true;
-                return {
-                    ...p,
-                    state: p.state === 'COLOR_PICKING' ? 'READY' : 'COLOR_PICKING' as const
-                };
-            }
-
-            return p;
-        }).filter((p): p is PrototypePlayer => p !== null);
-
-        if (clickedSomething) {
-            playersRef.current = updatedPlayers;
-            onPrototypePlayersChange([...playersRef.current]);
-            return true;
-        }
-
-        return false;
     };
 
     const handleStart = (t: { identifier: string | number; clientX: number; clientY: number; radiusX?: number; radiusY?: number; rotationAngle?: number }) => {
@@ -1053,7 +861,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
         removeOptionsForTouch(id);
     };
 
-    // 公開重置與閃爍結算用的 API
     const closeAllPalettes = () => {
         const nextPlayers = closePrototypePlayerPalettes(playersRef.current);
         playersRef.current = nextPlayers;
@@ -1069,11 +876,9 @@ export const usePlayerSelectorPrototypeRenderer = ({
         const svg = svgRef.current;
         if (!svg) return;
 
-        // 啟動物理與渲染 RAF Loop
         isRunningRef.current = true;
         animationFrameIdRef.current = requestAnimationFrame(physicsLoop);
 
-        // 綁定 touch 事件，包含阻擋 iOS 系統手勢
         const onTouchStart = (e: TouchEvent) => {
             e.preventDefault();
             if (resultDisplayRef.current.isInteractionLocked) return;
@@ -1124,7 +929,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
         svg.addEventListener("touchend", onTouchEnd, { passive: false });
         svg.addEventListener("touchcancel", onTouchCancel, { passive: false });
 
-        // 滑鼠 Fallback 邏輯
         let mouseIsDown = false;
         const MOUSE_ID = 'mouse';
 
@@ -1162,7 +966,6 @@ export const usePlayerSelectorPrototypeRenderer = ({
         svg.addEventListener("mousemove", onMouseMove);
         window.addEventListener("mouseup", onMouseUp);
 
-        // Cleanup 防線：防範 OOM 與監聽殘留
         return () => {
             isRunningRef.current = false;
             if (animationFrameIdRef.current) {
@@ -1187,3 +990,4 @@ export const usePlayerSelectorPrototypeRenderer = ({
         closeAllPalettes
     };
 };
+

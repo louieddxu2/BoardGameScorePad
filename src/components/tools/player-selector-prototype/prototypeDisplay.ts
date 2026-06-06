@@ -13,6 +13,8 @@ export interface DisplayPoint {
 const CENTER_CLEAR_RADIUS = 158;
 const CENTER_CLEAR_GUTTER = 22;
 const EDGE_MARGIN = 76;
+const RETREAT_POSITION_EASE = 0.18;
+const RETREAT_POSITION_SNAP_DIST = 0.6;
 
 export const closePrototypePlayerPalettes = (players: PrototypePlayer[]): PrototypePlayer[] => {
     return players.map(player => ({
@@ -53,4 +55,28 @@ export const getRetreatedDisplayPosition = (
 
 export const getBadgeTextRotation = (playerRotationDeg: number, desiredScreenRotationDeg: number): number => {
     return desiredScreenRotationDeg - playerRotationDeg;
+};
+
+export const getAnimatedDisplayPosition = (
+    player: PrototypePlayer,
+    targetPosition: DisplayPoint,
+    currentPosition: DisplayPoint | undefined,
+    shouldAnimate: boolean
+): DisplayPoint => {
+    if (!shouldAnimate) {
+        return targetPosition;
+    }
+
+    const origin = currentPosition || { x: player.x, y: player.y };
+    const dx = targetPosition.x - origin.x;
+    const dy = targetPosition.y - origin.y;
+
+    if (Math.hypot(dx, dy) <= RETREAT_POSITION_SNAP_DIST) {
+        return targetPosition;
+    }
+
+    return {
+        x: origin.x + dx * RETREAT_POSITION_EASE,
+        y: origin.y + dy * RETREAT_POSITION_EASE
+    };
 };
