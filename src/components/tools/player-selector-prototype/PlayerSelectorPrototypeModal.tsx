@@ -86,6 +86,7 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
     const [phase, setPhase] = useState<'selecting' | 'drawing' | 'result'>('selecting');
     const [turnOrder, setTurnOrder] = useState<PrototypeTurnOrderEntry[]>([]);
     const [highlightedPlayerId, setHighlightedPlayerId] = useState<string | null>(null);
+    const [shouldKeepRetreatedLayout, setShouldKeepRetreatedLayout] = useState(false);
     
     // 實體返回鍵與 z-index 管理防線
     const { zIndex } = useModalBackHandler(isOpen, onClose, 'player-selector-prototype');
@@ -159,6 +160,7 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
             setTurnOrder([]);
             setHighlightedPlayerId(null);
             setPlayers([]);
+            setShouldKeepRetreatedLayout(false);
             playerIdsRef.current = '';
         }
     }, [isOpen]);
@@ -196,6 +198,7 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
         if (didPlayerSetChange) {
             setTurnOrder([]);
             setHighlightedPlayerId(null);
+            setShouldKeepRetreatedLayout(false);
             setPhase('selecting');
         }
     }, []);
@@ -222,6 +225,7 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
             const result = drawTurnOrder(players);
             setTurnOrder(result);
             setHighlightedPlayerId(getStarterPrototypePlayerId(result) || null);
+            setShouldKeepRetreatedLayout(true);
             setPhase('result');
         }, 2000);
     };
@@ -286,7 +290,7 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
                     turnOrder={turnOrder}
                     highlightedPlayerId={highlightedPlayerId}
                     starterPlayerId={starterPlayerId}
-                    shouldRetreatPlayers={phase === 'result'}
+                    shouldRetreatPlayers={shouldKeepRetreatedLayout}
                     isInteractionLocked={phase === 'drawing' || phase === 'result'}
                     onPrototypePlayersChange={handlePlayersChange}
                     onCandidateLocked={(candidate) => {
@@ -321,22 +325,22 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
                     )}
 
                     {phase === 'result' && (
-                        <div className="pointer-events-auto grid grid-cols-2 gap-3 min-w-[280px] max-w-[min(380px,calc(100vw-28px))] rounded-3xl bg-app-bg-deep/45 p-2 backdrop-blur-[2px]">
-                            <button
-                                onClick={handleConfirm}
-                                className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-brand-primary-deep hover:bg-brand-primary text-white shadow-2xl transition-transform active:scale-95 text-sm font-bold border border-white/10"
-                            >
-                                <Play size={16} />
-                                <span>{t('picker_prototype_start_game')}</span>
-                            </button>
+                        <>
                             <button
                                 onClick={startDraw}
-                                className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-modal-bg-elevated/95 border border-surface-border hover:bg-surface-hover text-txt-secondary shadow-2xl transition-transform active:scale-95 text-sm font-bold"
+                                className="pointer-events-auto absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-[86px] items-center justify-center gap-2 rounded-full bg-modal-bg-elevated/95 border border-surface-border hover:bg-surface-hover text-txt-secondary shadow-xl transition-transform active:scale-95 px-4 py-2 text-xs font-bold"
                             >
-                                <RefreshCw size={16} />
+                                <RefreshCw size={14} />
                                 <span>{t('picker_prototype_restart')}</span>
                             </button>
-                        </div>
+                            <button
+                                onClick={handleConfirm}
+                                className="pointer-events-auto absolute left-1/2 top-1/2 flex min-w-[172px] -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-2 rounded-2xl bg-brand-primary-deep hover:bg-brand-primary text-white shadow-2xl transition-transform active:scale-95 px-7 py-4 text-base font-bold border border-white/10"
+                            >
+                                <Play size={18} />
+                                <span>{t('picker_prototype_start_game')}</span>
+                            </button>
+                        </>
                     )}
                 </div>
             </main>

@@ -24,6 +24,8 @@ const LOCK_TIME_MS = 750;
 
 const PALETTE = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#a855f7", "#ec4899", "#14b8a6"];
 const DEFAULT_COLOR = "#475569";
+const RETREAT_POSITION_EASE = 0.18;
+const RETREAT_POSITION_SNAP_DIST = 0.6;
 
 interface UsePlayerSelectorPrototypeRendererProps {
     svgRef: React.RefObject<SVGSVGElement | null>;
@@ -93,6 +95,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
     const activeTouchesRef = useRef<Map<string | number, TouchState>>(new Map());
     const optionsRef = useRef<OptionState[]>([]);
     const playersRef = useRef<PrototypePlayer[]>([]);
+    const displayPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
     const optionIdCounterRef = useRef(0);
     const animationFrameIdRef = useRef<number | null>(null);
     const isRunningRef = useRef(false);
@@ -122,6 +125,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
         activeTouchesRef.current.clear();
         optionsRef.current = [];
         playersRef.current = [];
+        displayPositionsRef.current.clear();
         optionIdCounterRef.current = 0;
         prevWidthRef.current = 0;
         prevHeightRef.current = 0;
@@ -223,6 +227,36 @@ export const usePlayerSelectorPrototypeRenderer = ({
         return el;
     };
 
+    const getAnimatedDisplayPosition = (
+        player: PrototypePlayer,
+        targetPosition: { x: number; y: number },
+        shouldAnimate: boolean
+    ) => {
+        if (!shouldAnimate) {
+            displayPositionsRef.current.set(player.id, targetPosition);
+            return targetPosition;
+        }
+
+        const currentPosition = displayPositionsRef.current.get(player.id) || {
+            x: player.x,
+            y: player.y
+        };
+        const dx = targetPosition.x - currentPosition.x;
+        const dy = targetPosition.y - currentPosition.y;
+
+        if (Math.hypot(dx, dy) <= RETREAT_POSITION_SNAP_DIST) {
+            displayPositionsRef.current.set(player.id, targetPosition);
+            return targetPosition;
+        }
+
+        const nextPosition = {
+            x: currentPosition.x + dx * RETREAT_POSITION_EASE,
+            y: currentPosition.y + dy * RETREAT_POSITION_EASE
+        };
+        displayPositionsRef.current.set(player.id, nextPosition);
+        return nextPosition;
+    };
+
     // 物理迴圈與渲染
     const physicsLoop = () => {
         if (!isRunningRef.current) return;
@@ -255,6 +289,10 @@ export const usePlayerSelectorPrototypeRenderer = ({
             playersRef.current.forEach(p => {
                 p.x *= widthRatio;
                 p.y *= heightRatio;
+            });
+            displayPositionsRef.current.forEach(position => {
+                position.x *= widthRatio;
+                position.y *= heightRatio;
             });
             activeTouchesRef.current.forEach(t => {
                 t.startX *= widthRatio;
@@ -501,10 +539,13 @@ export const usePlayerSelectorPrototypeRenderer = ({
         svg.innerHTML = "";
 
         // 渲染實體化玩家球
+        const renderedPlayerIds = new Set<string>();
         playersRef.current.forEach(p => {
+            renderedPlayerIds.add(p.id);
             const rotation = p.textRotationDeg;
             const display = resultDisplayRef.current;
-            const displayPosition = getRetreatedDisplayPosition(p, rect, display.shouldRetreatPlayers);
+            const targetDisplayPosition = getRetreatedDisplayPosition(p, rect, display.shouldRetreatPlayers);
+            const displayPosition = getAnimatedDisplayPosition(p, targetDisplayPosition, display.shouldRetreatPlayers);
             const group = makeSvgNode("g", { transform: `translate(${displayPosition.x}, ${displayPosition.y}) rotate(${rotation})` });
             const turnOrderEntry = display.turnOrder.find(entry => entry.prototypePlayerId === p.id);
             const isHighlighted = display.highlightedPlayerId === p.id;
@@ -673,6 +714,11 @@ export const usePlayerSelectorPrototypeRenderer = ({
             }
 
             svg.appendChild(group);
+        });
+        displayPositionsRef.current.forEach((_, playerId) => {
+            if (!renderedPlayerIds.has(playerId)) {
+                displayPositionsRef.current.delete(playerId);
+            }
         });
 
         // 渲染 activeTouches 所產生的搖桿背景線與指針
