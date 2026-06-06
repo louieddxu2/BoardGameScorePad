@@ -6,7 +6,7 @@ import {
     getBadgeTextRotation,
     getRetreatedDisplayPosition
 } from './prototypeDisplay';
-import { OptionState, TouchState } from './prototypeEngineTypes';
+import { OptionState, PrototypePointerInput, TouchState } from './prototypeEngineTypes';
 import { getFourCandidatesForTouch } from './prototypeCandidates';
 import { applyPaletteClick, applyPlayerClick, COLOR_PALETTE_RADIUS, shouldRenderPaletteColor } from './prototypeHitTest';
 import { makeSvgNode } from './prototypeSvg';
@@ -899,27 +899,27 @@ export const usePlayerSelectorPrototypeRenderer = ({
 
     };
 
-    const handleStart = (t: { identifier: string | number; clientX: number; clientY: number; radiusX?: number; radiusY?: number; rotationAngle?: number }) => {
+    const handleStart = (input: PrototypePointerInput) => {
         const svg = svgRef.current;
         if (!svg) return;
 
         const rect = svg.getBoundingClientRect();
-        const canvasX = t.clientX - rect.left;
-        const canvasY = t.clientY - rect.top;
+        const canvasX = input.clientX - rect.left;
+        const canvasY = input.clientY - rect.top;
 
-        activeTouchesRef.current.set(t.identifier, {
-            id: t.identifier,
+        activeTouchesRef.current.set(input.id, {
+            id: input.id,
             startX: canvasX,
             startY: canvasY,
-            clientX: t.clientX,
-            clientY: t.clientY,
+            clientX: input.clientX,
+            clientY: input.clientY,
             canvasX: canvasX,
             canvasY: canvasY,
             anchorX: canvasX,
             anchorY: canvasY,
-            radiusX: t.radiusX || 0,
-            radiusY: t.radiusY || 0,
-            rotationAngle: t.rotationAngle || 0,
+            radiusX: input.contactWidth / 2,
+            radiusY: input.contactHeight / 2,
+            rotationAngle: input.contactAngle,
             state: 'CHOOSING',
             spawnTime: Date.now(),
             stationaryStartTime: Date.now(),
@@ -932,7 +932,44 @@ export const usePlayerSelectorPrototypeRenderer = ({
             textRotationDeg: 0
         });
 
-        spawnOptionsForTouch(t.identifier, canvasX, canvasY);
+        spawnOptionsForTouch(input.id, canvasX, canvasY);
+    };
+
+    const handleMove = (input: PrototypePointerInput) => {
+        const touch = activeTouchesRef.current.get(input.id);
+        if (!touch) return;
+
+        touch.clientX = input.clientX;
+        touch.clientY = input.clientY;
+        touch.radiusX = input.contactWidth / 2;
+        touch.radiusY = input.contactHeight / 2;
+        touch.rotationAngle = input.contactAngle;
+    };
+
+    const getTouchInput = (touch: Touch): PrototypePointerInput => ({
+        id: touch.identifier,
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        contactWidth: (touch.radiusX || 0) * 2,
+        contactHeight: (touch.radiusY || 0) * 2,
+        contactAngle: touch.rotationAngle || 0,
+        source: 'touch'
+    });
+
+    const getPointerInput = (event: PointerEvent): PrototypePointerInput => {
+        const pointerType = event.pointerType || 'mouse';
+        const isContactPointer = pointerType === 'touch' || pointerType === 'pen';
+
+        return {
+            id: event.pointerId,
+            clientX: event.clientX,
+            clientY: event.clientY,
+            contactWidth: isContactPointer ? event.width || 0 : 0,
+            contactHeight: isContactPointer ? event.height || 0 : 0,
+            contactAngle: 0,
+            source: 'pointer',
+            pointerType
+        };
     };
 
     const handleEnd = (id: string | number) => {
@@ -973,28 +1010,14 @@ export const usePlayerSelectorPrototypeRenderer = ({
             for (const t of Array.from(e.changedTouches)) {
                 if (checkColorPaletteClick(t.clientX, t.clientY)) continue;
                 if (checkPlayerClick(t.clientX, t.clientY)) continue;
-                handleStart({
-                    identifier: t.identifier,
-                    clientX: t.clientX,
-                    clientY: t.clientY,
-                    radiusX: t.radiusX,
-                    radiusY: t.radiusY,
-                    rotationAngle: t.rotationAngle
-                });
+                handleStart(getTouchInput(t));
             }
         };
 
         const onTouchMove = (e: TouchEvent) => {
             e.preventDefault();
             for (const t of Array.from(e.changedTouches)) {
-                const touch = activeTouchesRef.current.get(t.identifier);
-                if (touch) {
-                    touch.clientX = t.clientX;
-                    touch.clientY = t.clientY;
-                    touch.radiusX = t.radiusX || 0;
-                    touch.radiusY = t.radiusY || 0;
-                    touch.rotationAngle = t.rotationAngle || 0;
-                }
+                handleMove(getTouchInput(t));
             }
         };
 
@@ -1012,10 +1035,42 @@ export const usePlayerSelectorPrototypeRenderer = ({
             }
         };
 
-        svg.addEventListener("touchstart", onTouchStart, { passive: false });
-        svg.addEventListener("touchmove", onTouchMove, { passive: false });
-        svg.addEventListener("touchend", onTouchEnd, { passive: false });
-        svg.addEventListener("touchcancel", onTouchCancel, { passive: false });
+        const onPointerDown = (e: PointerEvent) => {
+            e.preventDefault();
+            if (resultDisplayRef.current.isInteractionLocked) return;
+            if (checkColorPaletteClick(e.clientX, e.clientY)) return;
+            if (checkPlayerClick(e.clientX, e.clientY)) return;
+
+            if (typeof svg.setPointerCapture === 'function') {
+                try {
+                    svg.setPointerCapture(e.pointerId);
+                } catch {
+                    // Pointer capture can fail if the browser cancels the pointer immediately.
+                }
+            }
+
+            handleStart(getPointerInput(e));
+        };
+
+        const onPointerMove = (e: PointerEvent) => {
+            if (!activeTouchesRef.current.has(e.pointerId)) return;
+            e.preventDefault();
+            handleMove(getPointerInput(e));
+        };
+
+        const onPointerEnd = (e: PointerEvent) => {
+            e.preventDefault();
+            if (typeof svg.releasePointerCapture === 'function') {
+                try {
+                    svg.releasePointerCapture(e.pointerId);
+                } catch {
+                    // Pointer capture may already have been released by the browser.
+                }
+            }
+            handleEnd(e.pointerId);
+        };
+
+        const supportsPointerEvents = typeof window !== 'undefined' && typeof window.PointerEvent === 'function';
 
         let mouseIsDown = false;
         const MOUSE_ID = 'mouse';
@@ -1028,9 +1083,13 @@ export const usePlayerSelectorPrototypeRenderer = ({
 
             mouseIsDown = true;
             handleStart({
-                identifier: MOUSE_ID,
+                id: MOUSE_ID,
                 clientX: e.clientX,
-                clientY: e.clientY
+                clientY: e.clientY,
+                contactWidth: 0,
+                contactHeight: 0,
+                contactAngle: 0,
+                source: 'mouse'
             });
         };
 
@@ -1039,8 +1098,15 @@ export const usePlayerSelectorPrototypeRenderer = ({
             e.preventDefault();
             const t = activeTouchesRef.current.get(MOUSE_ID);
             if (t) {
-                t.clientX = e.clientX;
-                t.clientY = e.clientY;
+                handleMove({
+                    id: MOUSE_ID,
+                    clientX: e.clientX,
+                    clientY: e.clientY,
+                    contactWidth: 0,
+                    contactHeight: 0,
+                    contactAngle: 0,
+                    source: 'mouse'
+                });
             }
         };
 
@@ -1050,9 +1116,20 @@ export const usePlayerSelectorPrototypeRenderer = ({
             handleEnd(MOUSE_ID);
         };
 
-        svg.addEventListener("mousedown", onMouseDown);
-        svg.addEventListener("mousemove", onMouseMove);
-        window.addEventListener("mouseup", onMouseUp);
+        if (supportsPointerEvents) {
+            svg.addEventListener("pointerdown", onPointerDown);
+            svg.addEventListener("pointermove", onPointerMove);
+            svg.addEventListener("pointerup", onPointerEnd);
+            svg.addEventListener("pointercancel", onPointerEnd);
+        } else {
+            svg.addEventListener("touchstart", onTouchStart, { passive: false });
+            svg.addEventListener("touchmove", onTouchMove, { passive: false });
+            svg.addEventListener("touchend", onTouchEnd, { passive: false });
+            svg.addEventListener("touchcancel", onTouchCancel, { passive: false });
+            svg.addEventListener("mousedown", onMouseDown);
+            svg.addEventListener("mousemove", onMouseMove);
+            window.addEventListener("mouseup", onMouseUp);
+        }
 
         return () => {
             isRunningRef.current = false;
@@ -1060,13 +1137,20 @@ export const usePlayerSelectorPrototypeRenderer = ({
                 cancelAnimationFrame(animationFrameIdRef.current);
                 animationFrameIdRef.current = null;
             }
-            svg.removeEventListener("touchstart", onTouchStart);
-            svg.removeEventListener("touchmove", onTouchMove);
-            svg.removeEventListener("touchend", onTouchEnd);
-            svg.removeEventListener("touchcancel", onTouchCancel);
-            svg.removeEventListener("mousedown", onMouseDown);
-            svg.removeEventListener("mousemove", onMouseMove);
-            window.removeEventListener("mouseup", onMouseUp);
+            if (supportsPointerEvents) {
+                svg.removeEventListener("pointerdown", onPointerDown);
+                svg.removeEventListener("pointermove", onPointerMove);
+                svg.removeEventListener("pointerup", onPointerEnd);
+                svg.removeEventListener("pointercancel", onPointerEnd);
+            } else {
+                svg.removeEventListener("touchstart", onTouchStart);
+                svg.removeEventListener("touchmove", onTouchMove);
+                svg.removeEventListener("touchend", onTouchEnd);
+                svg.removeEventListener("touchcancel", onTouchCancel);
+                svg.removeEventListener("mousedown", onMouseDown);
+                svg.removeEventListener("mousemove", onMouseMove);
+                window.removeEventListener("mouseup", onMouseUp);
+            }
             clearRendererState();
             svg.innerHTML = "";
             onPrototypePlayersChange([]);

@@ -64,8 +64,14 @@ describe('usePlayerSelectorPrototypeRenderer', () => {
     let rafId: number;
     let requestAnimationFrameSpy: any;
     let cancelAnimationFrameSpy: any;
+    let originalPointerEvent: typeof window.PointerEvent | undefined;
 
     beforeEach(() => {
+        originalPointerEvent = window.PointerEvent;
+        Object.defineProperty(window, 'PointerEvent', {
+            configurable: true,
+            value: undefined
+        });
         rafCallbacks = new Map();
         rafId = 0;
         requestAnimationFrameSpy = vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation((callback: FrameRequestCallback) => {
@@ -79,6 +85,10 @@ describe('usePlayerSelectorPrototypeRenderer', () => {
     });
 
     afterEach(() => {
+        Object.defineProperty(window, 'PointerEvent', {
+            configurable: true,
+            value: originalPointerEvent
+        });
         vi.restoreAllMocks();
     });
 
@@ -105,6 +115,37 @@ describe('usePlayerSelectorPrototypeRenderer', () => {
         const event = new Event(type, { bubbles: true, cancelable: true });
         Object.defineProperty(event, 'changedTouches', {
             value: [touch]
+        });
+        svg.dispatchEvent(event);
+    };
+
+    const enablePointerEvents = () => {
+        Object.defineProperty(window, 'PointerEvent', {
+            configurable: true,
+            value: class PointerEvent extends Event {}
+        });
+    };
+
+    const dispatchPointer = (
+        svg: SVGSVGElement,
+        type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointercancel',
+        pointer: {
+            pointerId: number;
+            clientX: number;
+            clientY: number;
+            width?: number;
+            height?: number;
+            pointerType?: string;
+        }
+    ) => {
+        const event = new Event(type, { bubbles: true, cancelable: true });
+        Object.defineProperties(event, {
+            pointerId: { value: pointer.pointerId },
+            clientX: { value: pointer.clientX },
+            clientY: { value: pointer.clientY },
+            width: { value: pointer.width ?? 1 },
+            height: { value: pointer.height ?? 1 },
+            pointerType: { value: pointer.pointerType ?? 'touch' }
         });
         svg.dispatchEvent(event);
     };
@@ -237,6 +278,122 @@ describe('usePlayerSelectorPrototypeRenderer', () => {
         expect(ellipse?.getAttribute('rx')).toBe('24');
         expect(ellipse?.getAttribute('ry')).toBe('9');
         expect(ellipse?.getAttribute('transform')).toContain('rotate(32');
+    });
+
+    it('should render pointer contact width and height as an ellipse', () => {
+        enablePointerEvents();
+        const onPlayersChange = vi.fn();
+        const candidates: Candidate[] = [
+            { id: 'c1', name: 'Alice' }
+        ];
+
+        render(
+            <TestComponent candidates={candidates} onPlayersChange={onPlayersChange} />
+        );
+
+        const svgElement = screen.getByTestId('test-svg') as unknown as SVGSVGElement;
+        svgElement.setPointerCapture = vi.fn();
+        svgElement.releasePointerCapture = vi.fn();
+
+        act(() => {
+            dispatchPointer(svgElement, 'pointerdown', {
+                pointerId: 7,
+                clientX: 180,
+                clientY: 160,
+                width: 40,
+                height: 18
+            });
+            runFrame();
+        });
+
+        const ellipse = svgElement.querySelector('[data-role="touch-contact-ellipse"]');
+        expect(svgElement.setPointerCapture).toHaveBeenCalledWith(7);
+        expect(ellipse).not.toBeNull();
+        expect(ellipse?.getAttribute('rx')).toBe('20');
+        expect(ellipse?.getAttribute('ry')).toBe('9');
+    });
+
+    it('should update the pointer contact ellipse on pointer move', () => {
+        enablePointerEvents();
+        const onPlayersChange = vi.fn();
+        const candidates: Candidate[] = [
+            { id: 'c1', name: 'Alice' }
+        ];
+
+        render(
+            <TestComponent candidates={candidates} onPlayersChange={onPlayersChange} />
+        );
+
+        const svgElement = screen.getByTestId('test-svg') as unknown as SVGSVGElement;
+        svgElement.setPointerCapture = vi.fn();
+        svgElement.releasePointerCapture = vi.fn();
+
+        act(() => {
+            dispatchPointer(svgElement, 'pointerdown', {
+                pointerId: 7,
+                clientX: 180,
+                clientY: 160,
+                width: 30,
+                height: 12
+            });
+            runFrame();
+            dispatchPointer(svgElement, 'pointermove', {
+                pointerId: 7,
+                clientX: 210,
+                clientY: 190,
+                width: 50,
+                height: 22
+            });
+            runFrame();
+        });
+
+        const ellipse = svgElement.querySelector('[data-role="touch-contact-ellipse"]');
+        expect(ellipse).not.toBeNull();
+        expect(ellipse?.getAttribute('cx')).toBe('210');
+        expect(ellipse?.getAttribute('cy')).toBe('190');
+        expect(ellipse?.getAttribute('rx')).toBe('25');
+        expect(ellipse?.getAttribute('ry')).toBe('11');
+    });
+
+    it('should clean up pointer options on pointer cancel without creating a player', () => {
+        enablePointerEvents();
+        const onPlayersChange = vi.fn();
+        const candidates: Candidate[] = [
+            { id: 'c1', name: 'Alice' }
+        ];
+
+        render(
+            <TestComponent candidates={candidates} onPlayersChange={onPlayersChange} />
+        );
+
+        const svgElement = screen.getByTestId('test-svg') as unknown as SVGSVGElement;
+        svgElement.setPointerCapture = vi.fn();
+        svgElement.releasePointerCapture = vi.fn();
+
+        act(() => {
+            dispatchPointer(svgElement, 'pointerdown', {
+                pointerId: 7,
+                clientX: 180,
+                clientY: 160,
+                width: 40,
+                height: 18
+            });
+            runFrame();
+            dispatchPointer(svgElement, 'pointercancel', {
+                pointerId: 7,
+                clientX: 180,
+                clientY: 160,
+                width: 40,
+                height: 18
+            });
+            runFrame();
+        });
+
+        expect(svgElement.releasePointerCapture).toHaveBeenCalledWith(7);
+        expect(svgElement.querySelector('[data-role="touch-contact-ellipse"]')).toBeNull();
+        expect(onPlayersChange).not.toHaveBeenCalledWith([
+            expect.objectContaining({ text: 'Alice' })
+        ]);
     });
 
     it('should materialize an anonymous player after staying in place for three seconds', () => {

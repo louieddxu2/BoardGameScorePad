@@ -1,5 +1,16 @@
 import { Candidate } from './types';
 
+export interface PrototypePointerInput {
+    id: string | number;
+    clientX: number;
+    clientY: number;
+    contactWidth: number;
+    contactHeight: number;
+    contactAngle: number;
+    source: 'pointer' | 'touch' | 'mouse';
+    pointerType?: string;
+}
+
 export interface TouchState {
     id: string | number;
     startX: number;
