@@ -548,4 +548,52 @@ describe('usePlayerSelectorRenderer', () => {
 
         unmount();
     });
+
+    it('should prevent new touch inputs from spawning when player count has reached expected count', () => {
+        const onPlayersChange = vi.fn();
+        const candidates: Candidate[] = [
+            { id: 'c1', name: 'Alice' },
+            { id: 'c2', name: 'Bob' }
+        ];
+
+        render(
+            <TestComponent candidates={candidates} onPlayersChange={onPlayersChange} expectedPlayerCount={1} />
+        );
+
+        const svgElement = screen.getByTestId('test-svg') as unknown as SVGSVGElement;
+
+        // 1. 第一個玩家觸摸並鎖定
+        const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(1000);
+        act(() => {
+            dispatchTouch(svgElement, 'touchstart', {
+                identifier: 1,
+                clientX: 220,
+                clientY: 180
+            });
+            runFrame();
+        });
+
+        dateNowSpy.mockReturnValue(4101);
+        act(() => {
+            runFrame(); // 鎖定成功並立即 materialized
+        });
+
+        expect(onPlayersChange).toHaveBeenCalledWith([
+            expect.objectContaining({ text: '玩家 1' })
+        ]);
+
+        // 2. 第二個玩家在空白處觸摸，此時已達預期人數 (1)，應直接被忽略且不產生新觸控狀態
+        act(() => {
+            dispatchTouch(svgElement, 'touchstart', {
+                identifier: 2,
+                clientX: 300,
+                clientY: 300
+            });
+            runFrame();
+        });
+
+        // 驗證畫面上沒有 Player 2 相關的圓圈選項
+        expect(svgElement.textContent).not.toContain('Player 2');
+        expect(svgElement.textContent).not.toContain('Arthur');
+    });
 });

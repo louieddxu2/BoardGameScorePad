@@ -705,6 +705,13 @@ export const usePlayerSelectorRenderer = ({
                 if (checkColorPaletteClick(t.clientX, t.clientY)) continue;
                 if (checkPlayerClick(t.clientX, t.clientY)) continue;
                 if (resultDisplayRef.current.turnOrder && resultDisplayRef.current.turnOrder.length > 0) continue;
+
+                // 限制人數，大於等於預期人數時阻止新氣泡生成
+                const expected = expectedCountRef.current;
+                if (expected > 0 && (playersRef.current.length + activeTouchesRef.current.size) >= expected) {
+                    continue;
+                }
+
                 handleStart(getTouchInput(t));
             }
         };
@@ -736,6 +743,12 @@ export const usePlayerSelectorRenderer = ({
             if (checkColorPaletteClick(e.clientX, e.clientY)) return;
             if (checkPlayerClick(e.clientX, e.clientY)) return;
             if (resultDisplayRef.current.turnOrder && resultDisplayRef.current.turnOrder.length > 0) return;
+
+            // 限制人數，大於等於預期人數時阻止新氣泡生成
+            const expected = expectedCountRef.current;
+            if (expected > 0 && (playersRef.current.length + activeTouchesRef.current.size) >= expected) {
+                return;
+            }
 
             if (typeof svg.setPointerCapture === 'function') {
                 try {
@@ -777,6 +790,12 @@ export const usePlayerSelectorRenderer = ({
             if (checkColorPaletteClick(e.clientX, e.clientY)) return;
             if (checkPlayerClick(e.clientX, e.clientY)) return;
             if (resultDisplayRef.current.turnOrder && resultDisplayRef.current.turnOrder.length > 0) return;
+
+            // 限制人數，大於等於預期人數時阻止新氣泡生成
+            const expected = expectedCountRef.current;
+            if (expected > 0 && (playersRef.current.length + activeTouchesRef.current.size) >= expected) {
+                return;
+            }
 
             mouseIsDown = true;
             handleStart({
