@@ -328,12 +328,15 @@ export const usePlayerSelectorPrototypeRenderer = ({
                             id: `anonymous_${Date.now()}_${String(touchId)}`,
                             name: anonymousName
                         };
+                        const anonymousOptionId = optionIdCounterRef.current++;
 
+                        touch.state = 'LOCKED';
                         touch.progress = 1.0;
+                        touch.selectedOptionId = anonymousOptionId;
                         if (navigator.vibrate) navigator.vibrate(50);
 
                         const anonymousOption: OptionState = {
-                            id: optionIdCounterRef.current++,
+                            id: anonymousOptionId,
                             touchId,
                             idx: 0,
                             x: touch.anchorX,
@@ -347,9 +350,8 @@ export const usePlayerSelectorPrototypeRenderer = ({
                             candidate: anonymousCandidate
                         };
 
-                        materializePlayer(touch, anonymousOption);
-                        activeTouchesRef.current.delete(touchId);
-                        removeOptionsForTouch(touchId);
+                        optionsRef.current = optionsRef.current.filter(o => o.touchId !== touchId);
+                        optionsRef.current.push(anonymousOption);
                     }
                 }
             }

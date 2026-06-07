@@ -396,7 +396,7 @@ describe('usePlayerSelectorPrototypeRenderer', () => {
         ]);
     });
 
-    it('should materialize an anonymous player after staying in place for three seconds', () => {
+    it('should lock an anonymous option after three seconds and materialize it on release', () => {
         const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(1000);
         const onPlayersChange = vi.fn();
         const candidates: Candidate[] = [
@@ -428,6 +428,35 @@ describe('usePlayerSelectorPrototypeRenderer', () => {
             runFrame();
         });
 
+        expect(onPlayersChange).not.toHaveBeenCalledWith([
+            expect.objectContaining({ text: '玩家 1' })
+        ]);
+        expect(svgElement.textContent).toContain('玩家 1');
+
+        act(() => {
+            dispatchTouch(svgElement, 'touchmove', {
+                identifier: 1,
+                clientX: 250,
+                clientY: 210,
+                radiusX: 12,
+                radiusY: 8,
+                rotationAngle: 0
+            });
+            runFrame();
+        });
+
+        const anonymousGroup = Array.from(svgElement.querySelectorAll('g'))
+            .find(group => group.textContent?.includes('玩家 1'));
+        expect(anonymousGroup?.getAttribute('transform')).toContain('translate(');
+
+        act(() => {
+            dispatchTouch(svgElement, 'touchend', {
+                identifier: 1,
+                clientX: 250,
+                clientY: 210
+            });
+        });
+
         expect(onPlayersChange).toHaveBeenLastCalledWith([
             expect.objectContaining({
                 text: '玩家 1',
@@ -435,18 +464,6 @@ describe('usePlayerSelectorPrototypeRenderer', () => {
                 state: 'COLOR_PICKING'
             })
         ]);
-
-        const playersAfterAutoLock = onPlayersChange.mock.calls.length;
-
-        act(() => {
-            dispatchTouch(svgElement, 'touchend', {
-                identifier: 1,
-                clientX: 220,
-                clientY: 180
-            });
-        });
-
-        expect(onPlayersChange.mock.calls.length).toBe(playersAfterAutoLock);
     });
 
     it('should correctly trigger player changes and maintain prototype player properties', () => {
