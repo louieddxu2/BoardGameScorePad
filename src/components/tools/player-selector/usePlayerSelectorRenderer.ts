@@ -153,6 +153,11 @@ export const usePlayerSelectorRenderer = ({
     };
 
     const materializePlayer = (touch: TouchState, option: OptionState) => {
+        const expected = expectedCountRef.current;
+        if (expected > 0 && playersRef.current.length >= expected) {
+            return;
+        }
+
         playersRef.current.push({
             id: 'player_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
             linkedPlayerId: option.candidate.linkedPlayerId,
@@ -594,6 +599,11 @@ export const usePlayerSelectorRenderer = ({
     };
 
     const handleStart = (input: SelectorPointerInput) => {
+        const expected = expectedCountRef.current;
+        if (expected > 0 && (playersRef.current.length + activeTouchesRef.current.size) >= expected) {
+            return;
+        }
+
         const svg = svgRef.current;
         if (!svg) return;
 

@@ -596,4 +596,49 @@ describe('usePlayerSelectorRenderer', () => {
         expect(svgElement.textContent).not.toContain('Player 2');
         expect(svgElement.textContent).not.toContain('Arthur');
     });
+
+    it('should double-guard and prevent materialization in materializePlayer and handleStart when count limit is reached', () => {
+        const onPlayersChange = vi.fn();
+        const candidates: Candidate[] = [
+            { id: 'c1', name: 'Alice' },
+            { id: 'c2', name: 'Bob' }
+        ];
+
+        render(
+            <TestComponent candidates={candidates} onPlayersChange={onPlayersChange} expectedPlayerCount={1} />
+        );
+
+        const svgElement = screen.getByTestId('test-svg') as unknown as SVGSVGElement;
+
+        const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(1000);
+        act(() => {
+            dispatchTouch(svgElement, 'touchstart', {
+                identifier: 1,
+                clientX: 200,
+                clientY: 200
+            });
+            runFrame();
+        });
+
+        dateNowSpy.mockReturnValue(4101);
+        act(() => {
+            runFrame(); 
+        });
+
+        expect(onPlayersChange).toHaveBeenCalledWith([
+            expect.objectContaining({ text: '玩家 1' })
+        ]);
+
+        act(() => {
+            dispatchTouch(svgElement, 'touchstart', {
+                identifier: 2,
+                clientX: 300,
+                clientY: 300
+            });
+            runFrame();
+        });
+
+        expect(svgElement.textContent).not.toContain('Alice');
+        expect(svgElement.textContent).not.toContain('Bob');
+    });
 });
