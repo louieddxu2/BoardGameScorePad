@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Shuffle, Users } from 'lucide-react';
 import { GameSession } from '../../types';
 import { useToolsTranslation } from '../../i18n/tools';
-import PlayerSelectorPrototypeModal from './player-selector-prototype/PlayerSelectorPrototypeModal';
+import PlayerSelectorModal from './player-selector/PlayerSelectorModal';
 
 interface OrderToolProps {
     session: GameSession;
@@ -55,7 +55,7 @@ const OrderTool: React.FC<OrderToolProps> = ({ session, onUpdateSession }) => {
                 </button>
             </div>
 
-            <PlayerSelectorPrototypeModal
+            <PlayerSelectorModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 session={session}

@@ -1,11 +1,11 @@
-export interface Candidate {
+﻿export interface Candidate {
     id: string;
     name: string;
     linkedPlayerId?: string;
     suggestedColors?: string[];
 }
 
-export interface PrototypePlayer {
+export interface SelectorPlayer {
     id: string;
     text: string;
     linkedPlayerId?: string;
@@ -16,7 +16,7 @@ export interface PrototypePlayer {
     state: 'COLOR_PICKING' | 'READY';
 }
 
-export interface PrototypeTurnOrderEntry {
+export interface SelectorTurnOrderEntry {
     prototypePlayerId: string;
     order: number;
 }

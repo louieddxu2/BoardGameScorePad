@@ -1,40 +1,40 @@
-import React, { useState, useEffect, useRef, useImperativeHandle, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useImperativeHandle, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Play, RefreshCw, Users } from 'lucide-react';
 import { useToolsTranslation } from '../../../i18n/tools';
 import { GameSession } from '../../../types';
-import { Candidate, PrototypePlayer, PrototypeTurnOrderEntry } from './types';
-import { usePlayerSelectorPrototypeRenderer } from './usePlayerSelectorPrototypeRenderer';
+import { Candidate, SelectorPlayer, SelectorTurnOrderEntry } from './types';
+import { usePlayerSelectorRenderer } from './usePlayerSelectorRenderer';
 import { recommendationService } from '../../../features/recommendation/RecommendationService';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
-import { drawTurnOrder, getStarterPrototypePlayerId } from './turnOrder';
+import { drawTurnOrder, getStarterSelectorPlayerId } from './turnOrder';
 
-interface PlayerSelectorPrototypeModalProps {
+interface PlayerSelectorModalProps {
     isOpen: boolean;
     onClose: () => void;
     session: GameSession;
     onUpdateSession?: (session: GameSession) => void;
 }
 
-interface PlayerSelectorPrototypeSurfaceHandle {
+interface PlayerSelectorSurfaceHandle {
     resetEngine: () => void;
     closeAllPalettes: () => void;
     getSvg: () => SVGSVGElement | null;
 }
 
-interface PlayerSelectorPrototypeSurfaceProps {
+interface PlayerSelectorSurfaceProps {
     candidates: Candidate[];
     randomNames: string[];
-    turnOrder: PrototypeTurnOrderEntry[];
+    turnOrder: SelectorTurnOrderEntry[];
     highlightedPlayerId: string | null;
     starterPlayerId: string | null;
     shouldRetreatPlayers: boolean;
     isInteractionLocked: boolean;
-    onPrototypePlayersChange: (players: PrototypePlayer[]) => void;
+    onSelectorPlayersChange: (players: SelectorPlayer[]) => void;
     onCandidateLocked: (candidate: Candidate) => void;
 }
 
-const PlayerSelectorPrototypeSurface = React.forwardRef<PlayerSelectorPrototypeSurfaceHandle, PlayerSelectorPrototypeSurfaceProps>(({
+const PlayerSelectorSurface = React.forwardRef<PlayerSelectorSurfaceHandle, PlayerSelectorSurfaceProps>(({
     candidates,
     randomNames,
     turnOrder,
@@ -42,11 +42,11 @@ const PlayerSelectorPrototypeSurface = React.forwardRef<PlayerSelectorPrototypeS
     starterPlayerId,
     shouldRetreatPlayers,
     isInteractionLocked,
-    onPrototypePlayersChange,
+    onSelectorPlayersChange,
     onCandidateLocked
 }, ref) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
-    const { resetEngine, closeAllPalettes } = usePlayerSelectorPrototypeRenderer({
+    const { resetEngine, closeAllPalettes } = usePlayerSelectorRenderer({
         svgRef,
         candidates,
         randomNames,
@@ -55,7 +55,7 @@ const PlayerSelectorPrototypeSurface = React.forwardRef<PlayerSelectorPrototypeS
         starterPlayerId,
         shouldRetreatPlayers,
         isInteractionLocked,
-        onPrototypePlayersChange,
+        onSelectorPlayersChange,
         onCandidateLocked
     });
 
@@ -68,28 +68,28 @@ const PlayerSelectorPrototypeSurface = React.forwardRef<PlayerSelectorPrototypeS
     return <svg ref={svgRef} className="w-full h-full absolute inset-0 touch-none select-none"></svg>;
 });
 
-PlayerSelectorPrototypeSurface.displayName = 'PlayerSelectorPrototypeSurface';
+PlayerSelectorSurface.displayName = 'PlayerSelectorSurface';
 
-const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> = ({
+const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
     isOpen,
     onClose,
     session,
     onUpdateSession
 }) => {
     const { t } = useToolsTranslation();
-    const surfaceRef = useRef<PlayerSelectorPrototypeSurfaceHandle | null>(null);
+    const surfaceRef = useRef<PlayerSelectorSurfaceHandle | null>(null);
     const drawIntervalRef = useRef<number | null>(null);
     const drawTimeoutRef = useRef<number | null>(null);
     const playerIdsRef = useRef<string>('');
     const [candidates, setCandidates] = useState<Candidate[]>([]);
-    const [players, setPlayers] = useState<PrototypePlayer[]>([]);
+    const [players, setPlayers] = useState<SelectorPlayer[]>([]);
     const [phase, setPhase] = useState<'selecting' | 'drawing' | 'result'>('selecting');
-    const [turnOrder, setTurnOrder] = useState<PrototypeTurnOrderEntry[]>([]);
+    const [turnOrder, setTurnOrder] = useState<SelectorTurnOrderEntry[]>([]);
     const [highlightedPlayerId, setHighlightedPlayerId] = useState<string | null>(null);
     const [shouldKeepRetreatedLayout, setShouldKeepRetreatedLayout] = useState(false);
     
     // 實體返回鍵與 z-index 管理防線
-    const { zIndex } = useModalBackHandler(isOpen, onClose, 'player-selector-prototype');
+    const { zIndex } = useModalBackHandler(isOpen, onClose, 'player-selector');
 
     // 取得推薦候選人
     useEffect(() => {
@@ -139,7 +139,7 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
     }, [isOpen, session]);
 
     const randomNames = t('picker_prototype_random_names').split(',');
-    const starterPlayerId = getStarterPrototypePlayerId(turnOrder) || null;
+    const starterPlayerId = getStarterSelectorPlayerId(turnOrder) || null;
     const hasEnoughPlayers = players.length >= session.players.length && session.players.length > 0;
 
     const stopDrawTimers = () => {
@@ -189,7 +189,7 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
         };
     }, [isOpen]);
 
-    const handlePlayersChange = useCallback((updatedPlayers: PrototypePlayer[]) => {
+    const handlePlayersChange = useCallback((updatedPlayers: SelectorPlayer[]) => {
         const nextPlayerIds = updatedPlayers.map(player => player.id).join('|');
         const didPlayerSetChange = nextPlayerIds !== playerIdsRef.current;
         playerIdsRef.current = nextPlayerIds;
@@ -224,7 +224,7 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
             stopDrawTimers();
             const result = drawTurnOrder(players);
             setTurnOrder(result);
-            setHighlightedPlayerId(getStarterPrototypePlayerId(result) || null);
+            setHighlightedPlayerId(getStarterSelectorPlayerId(result) || null);
             setShouldKeepRetreatedLayout(true);
             setPhase('result');
         }, 2000);
@@ -280,10 +280,10 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
             {/* Canvas Area */}
             <main
                 className="flex-1 w-full relative bg-app-bg-deep overflow-hidden touch-none overscroll-none select-none"
-                data-testid="player-selector-prototype-surface"
+                data-testid="player-selector-surface"
                 style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
             >
-                <PlayerSelectorPrototypeSurface
+                <PlayerSelectorSurface
                     ref={surfaceRef}
                     candidates={candidates}
                     randomNames={randomNames}
@@ -292,7 +292,7 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
                     starterPlayerId={starterPlayerId}
                     shouldRetreatPlayers={shouldKeepRetreatedLayout}
                     isInteractionLocked={phase === 'drawing' || phase === 'result'}
-                    onPrototypePlayersChange={handlePlayersChange}
+                    onSelectorPlayersChange={handlePlayersChange}
                     onCandidateLocked={(candidate) => {
                         console.log("[Visual Selector] Candidate locked:", candidate);
                     }}
@@ -375,4 +375,4 @@ const PlayerSelectorPrototypeModal: React.FC<PlayerSelectorPrototypeModalProps> 
     );
 };
 
-export default PlayerSelectorPrototypeModal;
+export default PlayerSelectorModal;

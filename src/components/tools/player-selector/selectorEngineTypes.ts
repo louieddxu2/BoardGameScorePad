@@ -1,6 +1,6 @@
-import { Candidate } from './types';
+﻿import { Candidate } from './types';
 
-export interface PrototypePointerInput {
+export interface SelectorPointerInput {
     id: string | number;
     clientX: number;
     clientY: number;

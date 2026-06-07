@@ -1,13 +1,13 @@
-import { describe, expect, it } from 'vitest';
-import { PrototypePlayer } from './types';
+﻿import { describe, expect, it } from 'vitest';
+import { SelectorPlayer } from './types';
 import {
-    closePrototypePlayerPalettes,
+    closeSelectorPlayerPalettes,
     getAnimatedDisplayPosition,
     getBadgeTextRotation,
     getRetreatedDisplayPosition
-} from './prototypeDisplay';
+} from './selectorDisplay';
 
-const makePlayer = (overrides: Partial<PrototypePlayer> = {}): PrototypePlayer => ({
+const makePlayer = (overrides: Partial<SelectorPlayer> = {}): SelectorPlayer => ({
     id: 'player-1',
     linkedPlayerId: 'session-player-1',
     x: 200,
@@ -19,14 +19,14 @@ const makePlayer = (overrides: Partial<PrototypePlayer> = {}): PrototypePlayer =
     ...overrides
 });
 
-describe('prototypeDisplay', () => {
+describe('selectorDisplay', () => {
     it('closes every player palette without moving seats or changing colors', () => {
         const players = [
             makePlayer({ id: 'player-1', x: 120, y: 180, state: 'COLOR_PICKING', color: '#ef4444' }),
             makePlayer({ id: 'player-2', x: 320, y: 380, state: 'READY', color: '#3b82f6' })
         ];
 
-        const closedPlayers = closePrototypePlayerPalettes(players);
+        const closedPlayers = closeSelectorPlayerPalettes(players);
 
         expect(closedPlayers).toEqual([
             { ...players[0], state: 'READY' },

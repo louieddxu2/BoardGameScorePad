@@ -1,4 +1,4 @@
-import { PrototypePlayer } from './types';
+﻿import { SelectorPlayer } from './types';
 
 export interface DisplayBounds {
     width: number;
@@ -16,7 +16,7 @@ const EDGE_MARGIN = 76;
 const RETREAT_POSITION_EASE = 0.18;
 const RETREAT_POSITION_SNAP_DIST = 0.6;
 
-export const closePrototypePlayerPalettes = (players: PrototypePlayer[]): PrototypePlayer[] => {
+export const closeSelectorPlayerPalettes = (players: SelectorPlayer[]): SelectorPlayer[] => {
     return players.map(player => ({
         ...player,
         state: 'READY'
@@ -24,7 +24,7 @@ export const closePrototypePlayerPalettes = (players: PrototypePlayer[]): Protot
 };
 
 export const getRetreatedDisplayPosition = (
-    player: PrototypePlayer,
+    player: SelectorPlayer,
     bounds: DisplayBounds,
     shouldRetreat: boolean
 ): DisplayPoint => {
@@ -58,7 +58,7 @@ export const getBadgeTextRotation = (playerRotationDeg: number, desiredScreenRot
 };
 
 export const getAnimatedDisplayPosition = (
-    player: PrototypePlayer,
+    player: SelectorPlayer,
     targetPosition: DisplayPoint,
     currentPosition: DisplayPoint | undefined,
     shouldAnimate: boolean

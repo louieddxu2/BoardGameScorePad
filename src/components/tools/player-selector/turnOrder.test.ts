@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { PrototypePlayer } from './types';
-import { drawTurnOrder, getStarterPrototypePlayerId } from './turnOrder';
+﻿import { describe, expect, it } from 'vitest';
+import { SelectorPlayer } from './types';
+import { drawTurnOrder, getStarterSelectorPlayerId } from './turnOrder';
 
-const makePlayer = (id: string, x: number): PrototypePlayer => ({
+const makePlayer = (id: string, x: number): SelectorPlayer => ({
     id,
     text: id,
     linkedPlayerId: id,
@@ -21,7 +21,7 @@ describe('player selector prototype turn order', () => {
         expect(turnOrder).toHaveLength(players.length);
         expect(new Set(turnOrder.map(entry => entry.prototypePlayerId)).size).toBe(players.length);
         expect(turnOrder.map(entry => entry.order).sort()).toEqual([1, 2, 3]);
-        expect(getStarterPrototypePlayerId(turnOrder)).toBeDefined();
+        expect(getStarterSelectorPlayerId(turnOrder)).toBeDefined();
     });
 
     it('does not mutate player identity, color, or seat positions', () => {

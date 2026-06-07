@@ -1,10 +1,10 @@
-import { Candidate, PrototypePlayer } from './types';
-import { OptionState } from './prototypeEngineTypes';
+﻿import { Candidate, SelectorPlayer } from './types';
+import { OptionState } from './selectorEngineTypes';
 
 export const getFourCandidatesForTouch = (
     currentCandidates: Candidate[],
     options: OptionState[],
-    players: PrototypePlayer[],
+    players: SelectorPlayer[],
     randomNames: string[],
     createFallbackId: (name: string) => string,
     createTempId: (index: number) => string

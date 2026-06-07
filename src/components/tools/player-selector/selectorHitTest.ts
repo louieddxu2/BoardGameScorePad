@@ -1,4 +1,4 @@
-import { PrototypePlayer } from './types';
+﻿import { SelectorPlayer } from './types';
 
 export const PLAYER_BOX_HALF_WIDTH = 43;
 export const PLAYER_BOX_HALF_HEIGHT = 17;
@@ -17,14 +17,14 @@ export interface Point {
 
 export interface PlayerHitResult {
     handled: boolean;
-    players: PrototypePlayer[];
+    players: SelectorPlayer[];
 }
 
 export interface PaletteHitResult extends PlayerHitResult {
     color: string | null;
 }
 
-export const getPlayerLocalPoint = (player: PrototypePlayer, point: Point): Point => {
+export const getPlayerLocalPoint = (player: SelectorPlayer, point: Point): Point => {
     const rad = -player.textRotationDeg * Math.PI / 180;
     const dx = point.x - player.x;
     const dy = point.y - player.y;
@@ -67,7 +67,7 @@ export const getPaletteColorAtLocalPoint = (localPoint: Point, palette: string[]
 };
 
 export const applyPaletteClick = (
-    players: PrototypePlayer[],
+    players: SelectorPlayer[],
     point: Point,
     palette: string[]
 ): PaletteHitResult => {
@@ -91,7 +91,7 @@ export const applyPaletteClick = (
 };
 
 export const applyPlayerClick = (
-    players: PrototypePlayer[],
+    players: SelectorPlayer[],
     point: Point
 ): PlayerHitResult => {
     for (const player of players) {

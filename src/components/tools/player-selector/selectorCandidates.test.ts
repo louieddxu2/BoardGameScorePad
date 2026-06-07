@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { getFourCandidatesForTouch } from './prototypeCandidates';
-import { Candidate, PrototypePlayer } from './types';
-import { OptionState } from './prototypeEngineTypes';
+﻿import { describe, expect, it } from 'vitest';
+import { getFourCandidatesForTouch } from './selectorCandidates';
+import { Candidate, SelectorPlayer } from './types';
+import { OptionState } from './selectorEngineTypes';
 
-const makePlayer = (name: string): PrototypePlayer => ({
+const makePlayer = (name: string): SelectorPlayer => ({
     id: `player-${name}`,
     text: name,
     x: 0,
@@ -13,7 +13,7 @@ const makePlayer = (name: string): PrototypePlayer => ({
     state: 'READY'
 });
 
-describe('prototypeCandidates', () => {
+describe('selectorCandidates', () => {
     it('skips selected player names and backfills from recommendations before random names', () => {
         const candidates: Candidate[] = [
             { id: 'a', name: 'Alice' },

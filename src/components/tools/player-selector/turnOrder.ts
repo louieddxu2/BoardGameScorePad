@@ -1,11 +1,11 @@
-import { PrototypePlayer, PrototypeTurnOrderEntry } from './types';
+﻿import { SelectorPlayer, SelectorTurnOrderEntry } from './types';
 
 export type RandomSource = () => number;
 
 export const drawTurnOrder = (
-    players: PrototypePlayer[],
+    players: SelectorPlayer[],
     rng: RandomSource = Math.random
-): PrototypeTurnOrderEntry[] => {
+): SelectorTurnOrderEntry[] => {
     const shuffledIds = players.map(player => player.id);
 
     for (let i = shuffledIds.length - 1; i > 0; i--) {
@@ -19,7 +19,7 @@ export const drawTurnOrder = (
     }));
 };
 
-export const getStarterPrototypePlayerId = (
-    turnOrder: PrototypeTurnOrderEntry[]
+export const getStarterSelectorPlayerId = (
+    turnOrder: SelectorTurnOrderEntry[]
 ): string | undefined => turnOrder.find(entry => entry.order === 1)?.prototypePlayerId;
 

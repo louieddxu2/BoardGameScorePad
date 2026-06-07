@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import React, { useRef, useEffect } from 'react';
-import { usePlayerSelectorPrototypeRenderer } from './usePlayerSelectorPrototypeRenderer';
-import { Candidate, PrototypePlayer } from './types';
+import { usePlayerSelectorRenderer } from './usePlayerSelectorRenderer';
+import { Candidate, SelectorPlayer } from './types';
 
 // Mock Vibrate API
 if (typeof navigator !== 'undefined' && !navigator.vibrate) {
@@ -11,7 +11,7 @@ if (typeof navigator !== 'undefined' && !navigator.vibrate) {
 
 interface TestComponentProps {
     candidates: Candidate[];
-    onPlayersChange: (players: PrototypePlayer[]) => void;
+    onPlayersChange: (players: SelectorPlayer[]) => void;
     onLocked?: (candidate: Candidate) => void;
     svgWidth?: number;
     svgHeight?: number;
@@ -48,18 +48,18 @@ const TestComponent: React.FC<TestComponentProps> = ({
         }
     }, [svgWidth, svgHeight, mockSvgRef]);
 
-    usePlayerSelectorPrototypeRenderer({
+    usePlayerSelectorRenderer({
         svgRef,
         candidates,
         randomNames: ['Arthur', 'Merlin'],
-        onPrototypePlayersChange: onPlayersChange,
+        onSelectorPlayersChange: onPlayersChange,
         onCandidateLocked: onLocked
     });
 
     return <svg ref={svgRef} data-testid="test-svg" style={{ width: svgWidth, height: svgHeight }} />;
 };
 
-describe('usePlayerSelectorPrototypeRenderer', () => {
+describe('usePlayerSelectorRenderer', () => {
     let rafCallbacks: Map<number, FrameRequestCallback>;
     let rafId: number;
     let requestAnimationFrameSpy: any;
@@ -216,11 +216,11 @@ describe('usePlayerSelectorPrototypeRenderer', () => {
     it('should not schedule RAF when the svg ref is unavailable', () => {
         const NullRefComponent: React.FC = () => {
             const svgRef = useRef<SVGSVGElement | null>(null);
-            usePlayerSelectorPrototypeRenderer({
+            usePlayerSelectorRenderer({
                 svgRef,
                 candidates: [{ id: 'c1', name: 'Alice' }],
                 randomNames: [],
-                onPrototypePlayersChange: vi.fn(),
+                onSelectorPlayersChange: vi.fn(),
                 onCandidateLocked: vi.fn()
             });
             return null;
@@ -471,7 +471,7 @@ describe('usePlayerSelectorPrototypeRenderer', () => {
         const candidates: Candidate[] = [
             { id: 'p1', name: 'James', linkedPlayerId: 'p1', suggestedColors: ['#ef4444'] }
         ];
-        const playersList: PrototypePlayer[] = [];
+        const playersList: SelectorPlayer[] = [];
         const onPlayersChange = vi.fn((players) => {
             playersList.push(...players);
         });
@@ -491,7 +491,7 @@ describe('usePlayerSelectorPrototypeRenderer', () => {
         // 模擬觸碰並鎖定一個玩家以生成實體氣泡
         // 我們直接模擬把一個鎖定的玩家加入內部的 playersRef 中，並觸發 change 回呼
         // 這主要是驗證 Callback 傳回的資料欄位完整性
-        const mockPlayer: PrototypePlayer = {
+        const mockPlayer: SelectorPlayer = {
             id: 'player_12345',
             linkedPlayerId: 'p1',
             text: 'James',

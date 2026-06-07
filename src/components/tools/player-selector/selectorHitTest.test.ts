@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { PrototypePlayer } from './types';
+﻿import { describe, expect, it } from 'vitest';
+import { SelectorPlayer } from './types';
 import {
     applyPaletteClick,
     applyPlayerClick,
@@ -7,9 +7,9 @@ import {
     getPlayerLocalPoint,
     isPlayerBodyHit,
     isPlayerDeleteHit
-} from './prototypeHitTest';
+} from './selectorHitTest';
 
-const makePlayer = (overrides: Partial<PrototypePlayer> = {}): PrototypePlayer => ({
+const makePlayer = (overrides: Partial<SelectorPlayer> = {}): SelectorPlayer => ({
     id: 'player-1',
     text: 'Alice',
     x: 100,
@@ -20,7 +20,7 @@ const makePlayer = (overrides: Partial<PrototypePlayer> = {}): PrototypePlayer =
     ...overrides
 });
 
-describe('prototypeHitTest', () => {
+describe('selectorHitTest', () => {
     it('transforms a screen point into player-local coordinates', () => {
         const point = getPlayerLocalPoint(makePlayer({ textRotationDeg: 90 }), { x: 100, y: 120 });
 

@@ -1,7 +1,7 @@
-import React from 'react';
+﻿import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import PlayerSelectorPrototypeModal from './PlayerSelectorPrototypeModal';
+import PlayerSelectorModal from './PlayerSelectorModal';
 import { GameSession } from '../../../types';
 
 vi.mock('../../../i18n/tools', () => ({
@@ -20,8 +20,8 @@ vi.mock('../../../features/recommendation/RecommendationService', () => ({
     }
 }));
 
-vi.mock('./usePlayerSelectorPrototypeRenderer', () => ({
-    usePlayerSelectorPrototypeRenderer: () => ({
+vi.mock('./usePlayerSelectorRenderer', () => ({
+    usePlayerSelectorRenderer: () => ({
         resetEngine: vi.fn(),
         closeAllPalettes: vi.fn()
     })
@@ -36,10 +36,10 @@ const session: GameSession = {
     status: 'active'
 };
 
-describe('PlayerSelectorPrototypeModal gesture handling', () => {
+describe('PlayerSelectorModal gesture handling', () => {
     it('blocks app zoom detection and iOS system gestures while open', () => {
         const { unmount } = render(
-            <PlayerSelectorPrototypeModal
+            <PlayerSelectorModal
                 isOpen
                 onClose={vi.fn()}
                 session={session}
@@ -49,7 +49,7 @@ describe('PlayerSelectorPrototypeModal gesture handling', () => {
         const modal = document.querySelector('[data-mobile-zoom-ignore="true"]');
         expect(modal).toBeTruthy();
 
-        const surface = screen.getByTestId('player-selector-prototype-surface');
+        const surface = screen.getByTestId('player-selector-surface');
         expect(surface.style.touchAction).toBe('none');
         expect(surface.style.overscrollBehavior).toBe('contain');
 

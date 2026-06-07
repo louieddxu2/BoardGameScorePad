@@ -1,15 +1,15 @@
-import { useEffect, useRef } from 'react';
-import { Candidate, PrototypePlayer, PrototypeTurnOrderEntry } from './types';
+﻿import { useEffect, useRef } from 'react';
+import { Candidate, SelectorPlayer, SelectorTurnOrderEntry } from './types';
 import {
-    closePrototypePlayerPalettes,
+    closeSelectorPlayerPalettes,
     getAnimatedDisplayPosition,
     getBadgeTextRotation,
     getRetreatedDisplayPosition
-} from './prototypeDisplay';
-import { OptionState, PrototypePointerInput, TouchState } from './prototypeEngineTypes';
-import { getFourCandidatesForTouch } from './prototypeCandidates';
-import { applyPaletteClick, applyPlayerClick, COLOR_PALETTE_RADIUS, shouldRenderPaletteColor } from './prototypeHitTest';
-import { makeSvgNode } from './prototypeSvg';
+} from './selectorDisplay';
+import { OptionState, SelectorPointerInput, TouchState } from './selectorEngineTypes';
+import { getFourCandidatesForTouch } from './selectorCandidates';
+import { applyPaletteClick, applyPlayerClick, COLOR_PALETTE_RADIUS, shouldRenderPaletteColor } from './selectorHitTest';
+import { makeSvgNode } from './selectorSvg';
 
 const SPRING_K = 0.08;       
 const FRICTION = 0.82;       
@@ -36,16 +36,16 @@ interface UsePlayerSelectorPrototypeRendererProps {
     svgRef: React.RefObject<SVGSVGElement | null>;
     candidates: Candidate[];
     randomNames: string[];
-    turnOrder?: PrototypeTurnOrderEntry[];
+    turnOrder?: SelectorTurnOrderEntry[];
     highlightedPlayerId?: string | null;
     starterPlayerId?: string | null;
     shouldRetreatPlayers?: boolean;
     isInteractionLocked?: boolean;
-    onPrototypePlayersChange: (players: PrototypePlayer[]) => void;
+    onSelectorPlayersChange: (players: SelectorPlayer[]) => void;
     onCandidateLocked: (candidate: Candidate) => void;
 }
 
-export const usePlayerSelectorPrototypeRenderer = ({
+export const usePlayerSelectorRenderer = ({
     svgRef,
     candidates,
     randomNames,
@@ -54,13 +54,13 @@ export const usePlayerSelectorPrototypeRenderer = ({
     starterPlayerId = null,
     shouldRetreatPlayers = false,
     isInteractionLocked = false,
-    onPrototypePlayersChange,
+    onSelectorPlayersChange,
     onCandidateLocked
 }: UsePlayerSelectorPrototypeRendererProps) => {
 
     const activeTouchesRef = useRef<Map<string | number, TouchState>>(new Map());
     const optionsRef = useRef<OptionState[]>([]);
-    const playersRef = useRef<PrototypePlayer[]>([]);
+    const playersRef = useRef<SelectorPlayer[]>([]);
     const displayPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
     const optionIdCounterRef = useRef(0);
     const animationFrameIdRef = useRef<number | null>(null);
@@ -161,7 +161,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
             color: option.color,
             state: 'COLOR_PICKING'
         });
-        onPrototypePlayersChange([...playersRef.current]);
+        onSelectorPlayersChange([...playersRef.current]);
     };
 
     const physicsLoop = () => {
@@ -920,7 +920,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
         if (!result.handled) return false;
 
         playersRef.current = result.players;
-        onPrototypePlayersChange([...playersRef.current]);
+        onSelectorPlayersChange([...playersRef.current]);
         return true;
     };
 
@@ -937,12 +937,12 @@ export const usePlayerSelectorPrototypeRenderer = ({
         if (!result.handled) return false;
 
         playersRef.current = result.players;
-        onPrototypePlayersChange([...playersRef.current]);
+        onSelectorPlayersChange([...playersRef.current]);
         return true;
 
     };
 
-    const handleStart = (input: PrototypePointerInput) => {
+    const handleStart = (input: SelectorPointerInput) => {
         const svg = svgRef.current;
         if (!svg) return;
 
@@ -978,7 +978,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
         spawnOptionsForTouch(input.id, canvasX, canvasY);
     };
 
-    const handleMove = (input: PrototypePointerInput) => {
+    const handleMove = (input: SelectorPointerInput) => {
         const touch = activeTouchesRef.current.get(input.id);
         if (!touch) return;
 
@@ -989,7 +989,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
         touch.rotationAngle = input.contactAngle;
     };
 
-    const getTouchInput = (touch: Touch): PrototypePointerInput => ({
+    const getTouchInput = (touch: Touch): SelectorPointerInput => ({
         id: touch.identifier,
         clientX: touch.clientX,
         clientY: touch.clientY,
@@ -999,7 +999,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
         source: 'touch'
     });
 
-    const getPointerInput = (event: PointerEvent): PrototypePointerInput => {
+    const getPointerInput = (event: PointerEvent): SelectorPointerInput => {
         const pointerType = event.pointerType || 'mouse';
         const isContactPointer = pointerType === 'touch' || pointerType === 'pen';
 
@@ -1030,14 +1030,14 @@ export const usePlayerSelectorPrototypeRenderer = ({
     };
 
     const closeAllPalettes = () => {
-        const nextPlayers = closePrototypePlayerPalettes(playersRef.current);
+        const nextPlayers = closeSelectorPlayerPalettes(playersRef.current);
         playersRef.current = nextPlayers;
-        onPrototypePlayersChange([...playersRef.current]);
+        onSelectorPlayersChange([...playersRef.current]);
     };
 
     const resetEngine = () => {
         clearRendererState();
-        onPrototypePlayersChange([]);
+        onSelectorPlayersChange([]);
     };
 
     useEffect(() => {
@@ -1196,7 +1196,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
             }
             clearRendererState();
             svg.innerHTML = "";
-            onPrototypePlayersChange([]);
+            onSelectorPlayersChange([]);
         };
     }, [candidates]);
 
