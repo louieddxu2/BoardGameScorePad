@@ -34,6 +34,10 @@ export interface TouchState {
     forwardAngleRad: number;
     humanAngleRad: number;
     textRotationDeg: number;
+    displayAngle?: number;
+    displayRx?: number;
+    displayRy?: number;
+    hasDisplayEllipse?: boolean;
 }
 
 export interface OptionState {

@@ -236,6 +236,15 @@ export const usePlayerSelectorPrototypeRenderer = ({
             const edgeProximity = Math.min(outDist / maxPossibleDist, 1.0);
             const distanceTrustMultiplier = 1.0 - edgeProximity;
 
+            let bestDirX = normOutX;
+            let bestDirY = normOutY;
+            let bestTrust = 0;
+
+            let displayAngle = touch.rotationAngle;
+            let displayRx = touch.radiusX;
+            let displayRy = touch.radiusY;
+            let hasDisplayEllipse = touch.radiusX > 0 && touch.radiusY > 0;
+
             if (touch.radiusX > 0 && touch.radiusY > 0) {
                 let angleDeg = touch.rotationAngle;
                 if (touch.radiusY > touch.radiusX) angleDeg += 90;
@@ -252,11 +261,45 @@ export const usePlayerSelectorPrototypeRenderer = ({
                     : 1;
 
                 if (ratio > 1.1) {
-                    const finalEllipseTrust = Math.min((ratio - 1.1) * 1.5, 0.85) * distanceTrustMultiplier;
-                    humanDirX = ellipseDirX * finalEllipseTrust + normOutX * (1 - finalEllipseTrust);
-                    humanDirY = ellipseDirY * finalEllipseTrust + normOutY * (1 - finalEllipseTrust);
+                    bestDirX = ellipseDirX;
+                    bestDirY = ellipseDirY;
+                    bestTrust = Math.min((ratio - 1.1) * 1.5, 0.85);
                 }
             }
+
+            const moveDx = touch.canvasX - touch.startX;
+            const moveDy = touch.canvasY - touch.startY;
+            const moveDist = Math.sqrt(moveDx * moveDx + moveDy * moveDy);
+            if (moveDist > 1) {
+                let swipeDirX = moveDx / moveDist;
+                let swipeDirY = moveDy / moveDist;
+                if (swipeDirX * normOutX + swipeDirY * normOutY < 0) {
+                    swipeDirX = -swipeDirX;
+                    swipeDirY = -swipeDirY;
+                }
+                const swipeTrust = Math.min((moveDist - 1) * 0.1, 0.85);
+
+                if (swipeTrust > bestTrust) {
+                    bestDirX = swipeDirX;
+                    bestDirY = swipeDirY;
+                    bestTrust = swipeTrust;
+
+                    displayAngle = Math.atan2(moveDy, moveDx) * 180 / Math.PI;
+                    const t = swipeTrust / 0.85;
+                    displayRx = 16 + t * 16;
+                    displayRy = 16 - t * 4;
+                    hasDisplayEllipse = true;
+                }
+            }
+
+            const finalTrust = bestTrust * distanceTrustMultiplier;
+            humanDirX = bestDirX * finalTrust + normOutX * (1 - finalTrust);
+            humanDirY = bestDirY * finalTrust + normOutY * (1 - finalTrust);
+
+            touch.displayAngle = displayAngle;
+            touch.displayRx = displayRx;
+            touch.displayRy = displayRy;
+            touch.hasDisplayEllipse = hasDisplayEllipse;
 
             const humanLen = Math.sqrt(humanDirX * humanDirX + humanDirY * humanDirY) || 1;
             touch.humanAngleRad = Math.atan2(humanDirY / humanLen, humanDirX / humanLen);
@@ -703,36 +746,16 @@ export const usePlayerSelectorPrototypeRenderer = ({
                 "stroke-dasharray": "4 4"
             }));
 
-            if (touch.radiusX > 0 && touch.radiusY > 0) {
+            if (touch.hasDisplayEllipse && touch.displayRx !== undefined && touch.displayRy !== undefined && touch.displayAngle !== undefined) {
                 svg.appendChild(makeSvgNode("ellipse", {
                     "data-role": "touch-contact-ellipse",
                     cx: touch.canvasX,
                     cy: touch.canvasY,
-                    rx: Math.max(touch.radiusX, 8),
-                    ry: Math.max(touch.radiusY, 8),
-                    transform: `rotate(${touch.rotationAngle} ${touch.canvasX} ${touch.canvasY})`,
+                    rx: Math.max(touch.displayRx, 8),
+                    ry: Math.max(touch.displayRy, 8),
+                    transform: `rotate(${touch.displayAngle} ${touch.canvasX} ${touch.canvasY})`,
                     fill: "rgba(168, 85, 247, 0.16)",
                     stroke: "rgba(216, 180, 254, 0.85)",
-                    "stroke-width": 2,
-                    "pointer-events": "none"
-                }));
-            }
-
-            // 簡化版驗證：基於 1px 微位移軌跡繪製的「預測手指方向橢圓」
-            const moveDx = touch.canvasX - touch.startX;
-            const moveDy = touch.canvasY - touch.startY;
-            const moveDist = Math.sqrt(moveDx * moveDx + moveDy * moveDy);
-            if (moveDist > 1) {
-                const microSwipeAngleDeg = Math.atan2(moveDy, moveDx) * 180 / Math.PI;
-                svg.appendChild(makeSvgNode("ellipse", {
-                    "data-role": "micro-swipe-predicted-ellipse",
-                    cx: touch.canvasX,
-                    cy: touch.canvasY,
-                    rx: 35, // 長軸
-                    ry: 12, // 短軸
-                    transform: `rotate(${microSwipeAngleDeg} ${touch.canvasX} ${touch.canvasY})`,
-                    fill: "rgba(249, 115, 22, 0.25)", // 半透明橘色
-                    stroke: "rgba(251, 146, 60, 0.9)", // 橘色邊框
                     "stroke-width": 2,
                     "pointer-events": "none"
                 }));
