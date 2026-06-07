@@ -718,6 +718,27 @@ export const usePlayerSelectorPrototypeRenderer = ({
                 }));
             }
 
+            // 簡化版驗證：基於 1px 微位移軌跡繪製的「預測手指方向橢圓」
+            const moveDx = touch.canvasX - touch.startX;
+            const moveDy = touch.canvasY - touch.startY;
+            const moveDist = Math.sqrt(moveDx * moveDx + moveDy * moveDy);
+            if (moveDist > 1) {
+                const microSwipeAngleDeg = Math.atan2(moveDy, moveDx) * 180 / Math.PI;
+                svg.appendChild(makeSvgNode("ellipse", {
+                    "data-role": "micro-swipe-predicted-ellipse",
+                    cx: touch.canvasX,
+                    cy: touch.canvasY,
+                    rx: 35, // 長軸
+                    ry: 12, // 短軸
+                    transform: `rotate(${microSwipeAngleDeg} ${touch.canvasX} ${touch.canvasY})`,
+                    fill: "rgba(249, 115, 22, 0.25)", // 半透明橘色
+                    stroke: "rgba(251, 146, 60, 0.9)", // 橘色邊框
+                    "stroke-width": 2,
+                    "pointer-events": "none"
+                }));
+            }
+
+
             if (touch.state === 'CHOOSING') {
                 svg.appendChild(makeSvgNode("circle", {
                     cx: touch.anchorX,
