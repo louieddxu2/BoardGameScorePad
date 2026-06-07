@@ -205,7 +205,7 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
 
     if (!isOpen) return null;
 
-    const startDraw = () => {
+    const startDraw = useCallback(() => {
         if (players.length === 0 || phase === 'drawing') return;
 
         stopDrawTimers();
@@ -228,7 +228,19 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
             setShouldKeepRetreatedLayout(true);
             setPhase('result');
         }, 2000);
-    };
+    }, [players, phase]);
+
+    // 當人數恰好達到預期人數時，自動觸發隨機抽起始玩家
+    useEffect(() => {
+        if (
+            phase === 'selecting' &&
+            session.players.length > 0 &&
+            players.length === session.players.length
+        ) {
+            startDraw();
+        }
+    }, [players.length, session.players.length, phase, startDraw]);
+
 
     const handleConfirm = () => {
         const svg = surfaceRef.current?.getSvg();
