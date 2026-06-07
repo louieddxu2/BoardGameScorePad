@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useImperativeHandle, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Play, RefreshCw, Users } from 'lucide-react';
+import { Play, RefreshCw } from 'lucide-react';
 import { useToolsTranslation } from '../../../i18n/tools';
 import { GameSession } from '../../../types';
 import { Candidate, SelectorPlayer, SelectorTurnOrderEntry } from './types';
@@ -81,6 +81,8 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
     const drawIntervalRef = useRef<number | null>(null);
     const drawTimeoutRef = useRef<number | null>(null);
     const playerIdsRef = useRef<string>('');
+    const lastClickTimeRef = useRef<number>(0);
+    const clickCountRef = useRef<number>(0);
     const [candidates, setCandidates] = useState<Candidate[]>([]);
     const [players, setPlayers] = useState<SelectorPlayer[]>([]);
     const [phase, setPhase] = useState<'selecting' | 'drawing' | 'result'>('selecting');
@@ -88,6 +90,60 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
     const [highlightedPlayerId, setHighlightedPlayerId] = useState<string | null>(null);
     const [shouldKeepRetreatedLayout, setShouldKeepRetreatedLayout] = useState(false);
     
+    // 全螢幕切換防線
+    useEffect(() => {
+        if (isOpen) {
+            try {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log("Fullscreen request was rejected/failed:", err);
+                });
+            } catch (e) {
+                console.log("Fullscreen not supported:", e);
+            }
+        }
+        return () => {
+            if (document.fullscreenElement) {
+                try {
+                    document.exitFullscreen().catch(err => {
+                        console.log("Exit fullscreen failed:", err);
+                    });
+                } catch (e) {
+                    console.log("Exit fullscreen not supported:", e);
+                }
+            }
+        };
+    }, [isOpen]);
+
+    // 鍵盤 Esc 退出監聽
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isOpen, onClose]);
+
+    // 連點三次退出處理
+    const handleCenterClick = () => {
+        const now = Date.now();
+        if (now - lastClickTimeRef.current < 400) {
+            clickCountRef.current += 1;
+        } else {
+            clickCountRef.current = 1;
+        }
+        lastClickTimeRef.current = now;
+
+        if (clickCountRef.current >= 3) {
+            clickCountRef.current = 0;
+            onClose();
+        }
+    };
+
     // 實體返回鍵與 z-index 管理防線
     const { zIndex } = useModalBackHandler(isOpen, onClose, 'player-selector');
 
@@ -315,21 +371,6 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
             data-mobile-zoom-ignore="true"
             style={{ zIndex }}
         >
-            {/* Header */}
-            <header className="bg-modal-bg border-b border-modal-border text-txt-title p-4 shadow-md sticky top-0 z-20 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-brand-secondary" />
-                    <h1 className="text-lg font-bold tracking-tight">{t('picker_prototype_title')}</h1>
-                </div>
-                <button
-                    onClick={onClose}
-                    className="p-2 -mr-2 text-txt-muted hover:text-txt-title hover:bg-modal-bg-elevated rounded-full transition-colors"
-                    aria-label={t('picker_prototype_close')}
-                >
-                    <X className="w-5 h-5" />
-                </button>
-            </header>
-
             {/* Canvas Area */}
             <main
                 className="flex-1 w-full relative bg-app-bg-deep overflow-hidden touch-none overscroll-none select-none"
@@ -354,9 +395,17 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                 {/* Empty State Hint */}
                 {players.length === 0 && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-300">
-                        <span className="text-txt-muted font-medium text-sm md:text-base tracking-widest opacity-60 px-6 text-center">
-                            {t('picker_prototype_empty')}
-                        </span>
+                        <div 
+                            className="pointer-events-auto flex flex-col items-center justify-center gap-3 px-6 text-center cursor-pointer select-none"
+                            onClick={handleCenterClick}
+                        >
+                            <span className="text-brand-secondary font-bold text-lg md:text-xl tracking-widest drop-shadow-[0_0_10px_rgba(249,115,22,0.4)] animate-pulse">
+                                {t('picker_prototype_empty')}
+                            </span>
+                            <span className="text-txt-muted text-xs md:text-sm font-medium opacity-50 tracking-wider">
+                                {t('picker_prototype_exit_hint')}
+                            </span>
+                        </div>
                     </div>
                 )}
 
@@ -397,35 +446,10 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                     )}
                 </div>
             </main>
-
-            {/* Bottom Panel */}
-            <footer className="bg-modal-bg border-t border-modal-border p-4 flex flex-col gap-3 shrink-0">
-                {/* Selected Players list */}
-                {players.length > 0 && (
-                    <div className="flex flex-col gap-2">
-                        <span className="text-xs font-semibold text-txt-secondary tracking-wider">
-                            {t('picker_prototype_selected_players')} ({players.length})
-                        </span>
-                        <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto no-scrollbar">
-                            {players.map((p) => (
-                                <div
-                                    key={p.id}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-modal-bg-elevated rounded-full border border-surface-border text-xs font-bold transition-all shadow-sm"
-                                >
-                                    <div
-                                        className="w-2.5 h-2.5 rounded-full"
-                                        style={{ backgroundColor: p.color }}
-                                    ></div>
-                                    <span>{p.text}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </footer>
         </div>,
         document.body
     );
 };
 
 export default PlayerSelectorModal;
+

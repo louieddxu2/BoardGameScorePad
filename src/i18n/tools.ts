@@ -75,7 +75,8 @@ export const toolsTranslations = {
         // Selector Prototype
         order_visual_picker: "視覺起始決定器",
         picker_prototype_title: "起始玩家決定器",
-        picker_prototype_empty: "按住螢幕，拖曳搖桿選擇身分",
+        picker_prototype_empty: "按住螢幕抽選起始玩家",
+        picker_prototype_exit_hint: "連點此處三次來退出",
         picker_prototype_start_game: "開始遊戲",
         picker_prototype_restart: "再來一次",
         picker_prototype_draw_order: "抽順位",
@@ -152,7 +153,8 @@ export const toolsTranslations = {
         // Selector Prototype
         order_visual_picker: "Visual Selector",
         picker_prototype_title: "First Player Selector",
-        picker_prototype_empty: "Hold screen and drag joystick to select player",
+        picker_prototype_empty: "Press and hold screen to select starter",
+        picker_prototype_exit_hint: "Triple tap here to exit",
         picker_prototype_start_game: "Start Game",
         picker_prototype_restart: "Restart",
         picker_prototype_draw_order: "Draw Order",
