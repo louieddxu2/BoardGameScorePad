@@ -351,7 +351,10 @@ export const usePlayerSelectorRenderer = ({
                                     return o.id === touch.selectedOptionId;
                                 });
                                 onCandidateLocked(lockedOpt.candidate);
+                                materializePlayer(touch, lockedOpt);
                             }
+                            activeTouchesRef.current.delete(touchId);
+                            removeOptionsForTouch(touchId);
                         }
                     }
                 } else {
@@ -387,6 +390,10 @@ export const usePlayerSelectorRenderer = ({
 
                         optionsRef.current = optionsRef.current.filter(o => o.touchId !== touchId);
                         optionsRef.current.push(anonymousOption);
+
+                        materializePlayer(touch, anonymousOption);
+                        activeTouchesRef.current.delete(touchId);
+                        removeOptionsForTouch(touchId);
                     }
                 }
             }
@@ -662,6 +669,7 @@ export const usePlayerSelectorRenderer = ({
             for (const t of Array.from(e.changedTouches)) {
                 if (checkColorPaletteClick(t.clientX, t.clientY)) continue;
                 if (checkPlayerClick(t.clientX, t.clientY)) continue;
+                if (resultDisplayRef.current.turnOrder && resultDisplayRef.current.turnOrder.length > 0) continue;
                 handleStart(getTouchInput(t));
             }
         };
@@ -692,6 +700,7 @@ export const usePlayerSelectorRenderer = ({
             if (resultDisplayRef.current.isInteractionLocked) return;
             if (checkColorPaletteClick(e.clientX, e.clientY)) return;
             if (checkPlayerClick(e.clientX, e.clientY)) return;
+            if (resultDisplayRef.current.turnOrder && resultDisplayRef.current.turnOrder.length > 0) return;
 
             if (typeof svg.setPointerCapture === 'function') {
                 try {
@@ -732,6 +741,7 @@ export const usePlayerSelectorRenderer = ({
             if (resultDisplayRef.current.isInteractionLocked) return;
             if (checkColorPaletteClick(e.clientX, e.clientY)) return;
             if (checkPlayerClick(e.clientX, e.clientY)) return;
+            if (resultDisplayRef.current.turnOrder && resultDisplayRef.current.turnOrder.length > 0) return;
 
             mouseIsDown = true;
             handleStart({

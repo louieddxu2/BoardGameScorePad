@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import React, { useRef, useEffect } from 'react';
 import { usePlayerSelectorRenderer } from './usePlayerSelectorRenderer';
@@ -396,7 +396,7 @@ describe('usePlayerSelectorRenderer', () => {
         ]);
     });
 
-    it('should lock an anonymous option after three seconds and materialize it on release', () => {
+    it('should lock an anonymous option after three seconds and materialize it immediately', () => {
         const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(1000);
         const onPlayersChange = vi.fn();
         const candidates: Candidate[] = [
@@ -428,42 +428,15 @@ describe('usePlayerSelectorRenderer', () => {
             runFrame();
         });
 
-        expect(onPlayersChange).not.toHaveBeenCalledWith([
-            expect.objectContaining({ text: '玩家 1' })
-        ]);
-        expect(svgElement.textContent).toContain('玩家 1');
-
-        act(() => {
-            dispatchTouch(svgElement, 'touchmove', {
-                identifier: 1,
-                clientX: 250,
-                clientY: 210,
-                radiusX: 12,
-                radiusY: 8,
-                rotationAngle: 0
-            });
-            runFrame();
-        });
-
-        const anonymousGroup = Array.from(svgElement.querySelectorAll('g'))
-            .find(group => group.textContent?.includes('玩家 1'));
-        expect(anonymousGroup?.getAttribute('transform')).toContain('translate(');
-
-        act(() => {
-            dispatchTouch(svgElement, 'touchend', {
-                identifier: 1,
-                clientX: 250,
-                clientY: 210
-            });
-        });
-
-        expect(onPlayersChange).toHaveBeenLastCalledWith([
+        // 鎖定瞬間應該已經 materialized 並呼叫 onPlayersChange，不用等到放開手指
+        expect(onPlayersChange).toHaveBeenCalledWith([
             expect.objectContaining({
                 text: '玩家 1',
                 linkedPlayerId: undefined,
                 state: 'COLOR_PICKING'
             })
         ]);
+        expect(svgElement.textContent).toContain('玩家 1');
     });
 
     it('should correctly trigger player changes and maintain prototype player properties', () => {

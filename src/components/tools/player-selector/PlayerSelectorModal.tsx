@@ -385,7 +385,7 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                     highlightedPlayerId={highlightedPlayerId}
                     starterPlayerId={starterPlayerId}
                     shouldRetreatPlayers={shouldKeepRetreatedLayout}
-                    isInteractionLocked={phase === 'drawing' || phase === 'result'}
+                    isInteractionLocked={phase === 'drawing'}
                     onSelectorPlayersChange={handlePlayersChange}
                     onCandidateLocked={(candidate) => {
                         console.log("[Visual Selector] Candidate locked:", candidate);
