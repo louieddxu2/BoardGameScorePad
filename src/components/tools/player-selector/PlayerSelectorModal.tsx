@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useImperativeHandle, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Play, RefreshCw, Users } from 'lucide-react';
 import { useToolsTranslation } from '../../../i18n/tools';
@@ -231,26 +231,67 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
     };
 
     const handleConfirm = () => {
-        // 座位順序 (Seat Order) 排序預覽
         const svg = surfaceRef.current?.getSvg();
         if (svg && players.length > 0) {
             const rect = svg.getBoundingClientRect();
             const cx = rect.width / 2;
             const cy = rect.height / 2;
 
-            // 計算相對於幾何中心的物理角度
-            const playersWithAngle = players.map(p => {
+            // 1. 找出最早加入的玩家 (players[0]) 作為座位排序起點 (Anchor)
+            const anchorPlayer = players[0];
+            const anchorAngle = Math.atan2(anchorPlayer.y - cy, anchorPlayer.x - cx);
+
+            // 2. 計算每位玩家相對於 Anchor 的順時針相對角度並排序
+            const playersWithRelativeAngle = players.map(p => {
                 const dx = p.x - cx;
                 const dy = p.y - cy;
                 const angle = Math.atan2(dy, dx); // -PI to PI
-                return { ...p, angle };
+                let relativeAngle = angle - anchorAngle;
+                if (relativeAngle < 0) {
+                    relativeAngle += 2 * Math.PI;
+                }
+                return { ...p, relativeAngle };
             });
 
-            // 依順時針方向排序
-            const sortedBySeat = [...playersWithAngle].sort((a, b) => a.angle - b.angle);
-            console.log("[Visual Selector] Prototype players sorted by clockwise seat order:", sortedBySeat);
-        } else {
-            console.log("[Visual Selector] No players selected or SVG ref is empty.");
+            const sortedBySeat = [...playersWithRelativeAngle].sort((a, b) => a.relativeAngle - b.relativeAngle);
+
+            // 3. 安全更新計分板 GameSession (保留歷史分數，僅調整座位與 Starter)
+            if (onUpdateSession) {
+                const updatedPlayers = sortedBySeat.map(sp => {
+                    // 比對 linkedPlayerId 或 name，尋找原本已在計分板中的玩家
+                    const existingPlayer = session.players.find(p => 
+                        (sp.linkedPlayerId && p.id === sp.linkedPlayerId) || 
+                        p.id === sp.id || 
+                        p.name === sp.text
+                    );
+
+                    const isStarter = sp.id === starterPlayerId;
+
+                    if (existingPlayer) {
+                        return {
+                            ...existingPlayer,
+                            color: sp.color,
+                            isStarter
+                        };
+                    } else {
+                        // 新鎖定加入的玩家
+                        return {
+                            id: sp.linkedPlayerId || sp.id,
+                            name: sp.text,
+                            color: sp.color,
+                            scores: {},
+                            totalScore: 0,
+                            isStarter,
+                            linkedPlayerId: sp.linkedPlayerId
+                        };
+                    }
+                });
+
+                onUpdateSession({
+                    ...session,
+                    players: updatedPlayers
+                });
+            }
         }
 
         onClose();
