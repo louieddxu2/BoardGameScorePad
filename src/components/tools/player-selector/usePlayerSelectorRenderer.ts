@@ -36,6 +36,7 @@ interface UsePlayerSelectorPrototypeRendererProps {
     starterPlayerId?: string | null;
     shouldRetreatPlayers?: boolean;
     isInteractionLocked?: boolean;
+    expectedPlayerCount?: number;
     onSelectorPlayersChange: (players: SelectorPlayer[]) => void;
     onCandidateLocked: (candidate: Candidate) => void;
 }
@@ -49,6 +50,7 @@ export const usePlayerSelectorRenderer = ({
     starterPlayerId = null,
     shouldRetreatPlayers = false,
     isInteractionLocked = false,
+    expectedPlayerCount = 0,
     onSelectorPlayersChange,
     onCandidateLocked
 }: UsePlayerSelectorPrototypeRendererProps) => {
@@ -67,6 +69,11 @@ export const usePlayerSelectorRenderer = ({
         shouldRetreatPlayers,
         isInteractionLocked
     });
+
+    const expectedCountRef = useRef(expectedPlayerCount);
+    useEffect(() => {
+        expectedCountRef.current = expectedPlayerCount;
+    }, [expectedPlayerCount]);
 
     const prevWidthRef = useRef<number>(0);
     const prevHeightRef = useRef<number>(0);
@@ -211,6 +218,38 @@ export const usePlayerSelectorRenderer = ({
         const maxPossibleDist = Math.sqrt(cx * cx + cy * cy);
         const now = Date.now();
 
+        const checkAndMaterializeAllLockedIfFull = () => {
+            const expected = expectedCountRef.current;
+            if (expected <= 0) return;
+
+            let lockedTouchesCount = 0;
+            activeTouchesRef.current.forEach(t => {
+                if (t.state === 'LOCKED') {
+                    lockedTouchesCount++;
+                }
+            });
+
+            const totalLocked = playersRef.current.length + lockedTouchesCount;
+            if (totalLocked >= expected) {
+                const lockedTouchIds: (string | number)[] = [];
+                activeTouchesRef.current.forEach((t, id) => {
+                    if (t.state === 'LOCKED') {
+                        const finalOpt = optionsRef.current.find(o => o.touchId === id);
+                        if (finalOpt) {
+                            materializePlayer(t, finalOpt);
+                        }
+                        lockedTouchIds.push(id);
+                    }
+                });
+
+                lockedTouchIds.forEach(id => {
+                    activeTouchesRef.current.delete(id);
+                    removeOptionsForTouch(id);
+                });
+            }
+        };
+
+        // 1. 更新 Touch 狀態機
         activeTouchesRef.current.forEach((touch, touchId) => {
             const x = touch.clientX - rect.left;
             const y = touch.clientY - rect.top;
@@ -351,10 +390,8 @@ export const usePlayerSelectorRenderer = ({
                                     return o.id === touch.selectedOptionId;
                                 });
                                 onCandidateLocked(lockedOpt.candidate);
-                                materializePlayer(touch, lockedOpt);
                             }
-                            activeTouchesRef.current.delete(touchId);
-                            removeOptionsForTouch(touchId);
+                            checkAndMaterializeAllLockedIfFull();
                         }
                     }
                 } else {
@@ -391,9 +428,7 @@ export const usePlayerSelectorRenderer = ({
                         optionsRef.current = optionsRef.current.filter(o => o.touchId !== touchId);
                         optionsRef.current.push(anonymousOption);
 
-                        materializePlayer(touch, anonymousOption);
-                        activeTouchesRef.current.delete(touchId);
-                        removeOptionsForTouch(touchId);
+                        checkAndMaterializeAllLockedIfFull();
                     }
                 }
             }

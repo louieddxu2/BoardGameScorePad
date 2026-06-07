@@ -15,6 +15,7 @@ interface TestComponentProps {
     onLocked?: (candidate: Candidate) => void;
     svgWidth?: number;
     svgHeight?: number;
+    expectedPlayerCount?: number;
     mockSvgRef?: (svg: SVGSVGElement | null) => void;
 }
 
@@ -24,6 +25,7 @@ const TestComponent: React.FC<TestComponentProps> = ({
     onLocked = () => {},
     svgWidth = 800,
     svgHeight = 600,
+    expectedPlayerCount = 0,
     mockSvgRef
 }) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
@@ -53,7 +55,8 @@ const TestComponent: React.FC<TestComponentProps> = ({
         candidates,
         randomNames: ['Arthur', 'Merlin'],
         onSelectorPlayersChange: onPlayersChange,
-        onCandidateLocked: onLocked
+        onCandidateLocked: onLocked,
+        expectedPlayerCount
     });
 
     return <svg ref={svgRef} data-testid="test-svg" style={{ width: svgWidth, height: svgHeight }} />;
@@ -396,7 +399,7 @@ describe('usePlayerSelectorRenderer', () => {
         ]);
     });
 
-    it('should lock an anonymous option after three seconds and materialize it immediately', () => {
+    it('should lock an anonymous option after three seconds and materialize it on release when count is not met', () => {
         const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(1000);
         const onPlayersChange = vi.fn();
         const candidates: Candidate[] = [
@@ -405,7 +408,7 @@ describe('usePlayerSelectorRenderer', () => {
         ];
 
         render(
-            <TestComponent candidates={candidates} onPlayersChange={onPlayersChange} />
+            <TestComponent candidates={candidates} onPlayersChange={onPlayersChange} expectedPlayerCount={2} />
         );
 
         const svgElement = screen.getByTestId('test-svg') as unknown as SVGSVGElement;
@@ -428,7 +431,62 @@ describe('usePlayerSelectorRenderer', () => {
             runFrame();
         });
 
-        // 鎖定瞬間應該已經 materialized 並呼叫 onPlayersChange，不用等到放開手指
+        // 人數未滿 (2)，鎖定時不應自動 materialized
+        expect(onPlayersChange).not.toHaveBeenCalledWith([
+            expect.objectContaining({ text: '玩家 1' })
+        ]);
+        expect(svgElement.textContent).toContain('玩家 1');
+
+        act(() => {
+            dispatchTouch(svgElement, 'touchend', {
+                identifier: 1,
+                clientX: 220,
+                clientY: 180
+            });
+        });
+
+        // 抬起手指釋放後才 materialized
+        expect(onPlayersChange).toHaveBeenLastCalledWith([
+            expect.objectContaining({
+                text: '玩家 1',
+                linkedPlayerId: undefined,
+                state: 'COLOR_PICKING'
+            })
+        ]);
+    });
+
+    it('should lock and materialize immediately when expected count is met (last player lock)', () => {
+        const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(1000);
+        const onPlayersChange = vi.fn();
+        const candidates: Candidate[] = [
+            { id: 'c1', name: 'Alice' }
+        ];
+
+        render(
+            <TestComponent candidates={candidates} onPlayersChange={onPlayersChange} expectedPlayerCount={1} />
+        );
+
+        const svgElement = screen.getByTestId('test-svg') as unknown as SVGSVGElement;
+
+        act(() => {
+            dispatchTouch(svgElement, 'touchstart', {
+                identifier: 1,
+                clientX: 220,
+                clientY: 180,
+                radiusX: 12,
+                radiusY: 8,
+                rotationAngle: 0
+            });
+            runFrame();
+        });
+
+        dateNowSpy.mockReturnValue(4101);
+
+        act(() => {
+            runFrame();
+        });
+
+        // 當預期人數為 1 且鎖定成功，應立即 materialized，不用等手指抬起
         expect(onPlayersChange).toHaveBeenCalledWith([
             expect.objectContaining({
                 text: '玩家 1',

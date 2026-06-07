@@ -30,6 +30,7 @@ interface PlayerSelectorSurfaceProps {
     starterPlayerId: string | null;
     shouldRetreatPlayers: boolean;
     isInteractionLocked: boolean;
+    expectedPlayerCount?: number;
     onSelectorPlayersChange: (players: SelectorPlayer[]) => void;
     onCandidateLocked: (candidate: Candidate) => void;
 }
@@ -42,6 +43,7 @@ const PlayerSelectorSurface = React.forwardRef<PlayerSelectorSurfaceHandle, Play
     starterPlayerId,
     shouldRetreatPlayers,
     isInteractionLocked,
+    expectedPlayerCount = 0,
     onSelectorPlayersChange,
     onCandidateLocked
 }, ref) => {
@@ -55,6 +57,7 @@ const PlayerSelectorSurface = React.forwardRef<PlayerSelectorSurfaceHandle, Play
         starterPlayerId,
         shouldRetreatPlayers,
         isInteractionLocked,
+        expectedPlayerCount,
         onSelectorPlayersChange,
         onCandidateLocked
     });
@@ -386,6 +389,7 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                     starterPlayerId={starterPlayerId}
                     shouldRetreatPlayers={shouldKeepRetreatedLayout}
                     isInteractionLocked={phase === 'drawing'}
+                    expectedPlayerCount={session.players.length}
                     onSelectorPlayersChange={handlePlayersChange}
                     onCandidateLocked={(candidate) => {
                         console.log("[Visual Selector] Candidate locked:", candidate);
@@ -393,7 +397,7 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                 />
                 
                 {/* Empty State Hint */}
-                {players.length === 0 && (
+                {phase === 'selecting' && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-300">
                         <div 
                             className="pointer-events-auto flex flex-col items-center justify-center gap-3 px-6 text-center cursor-pointer select-none"
