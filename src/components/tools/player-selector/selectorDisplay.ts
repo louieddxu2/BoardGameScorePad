@@ -1,4 +1,4 @@
-﻿import { SelectorPlayer } from './types';
+import { SelectorPlayer } from './types';
 
 export interface DisplayBounds {
     width: number;
@@ -51,10 +51,6 @@ export const getRetreatedDisplayPosition = (
         x: Math.min(Math.max(centerX + directionX * targetDistance, EDGE_MARGIN), bounds.width - EDGE_MARGIN),
         y: Math.min(Math.max(centerY + directionY * targetDistance, EDGE_MARGIN), bounds.height - EDGE_MARGIN)
     };
-};
-
-export const getBadgeTextRotation = (playerRotationDeg: number, desiredScreenRotationDeg: number): number => {
-    return desiredScreenRotationDeg - playerRotationDeg;
 };
 
 export const getAnimatedDisplayPosition = (

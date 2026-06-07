@@ -3,7 +3,6 @@ import { OptionState, TouchState } from './selectorEngineTypes';
 import { makeSvgNode } from './selectorSvg';
 import {
     getAnimatedDisplayPosition,
-    getBadgeTextRotation,
     getRetreatedDisplayPosition
 } from './selectorDisplay';
 import { COLOR_PALETTE_RADIUS, shouldRenderPaletteColor } from './selectorHitTest';
@@ -145,12 +144,12 @@ export const drawSelectorSvg = ({
 
         if (turnOrderEntry) {
             const badgePositions = [
-                { x: 0, y: -35, screenRotation: 180 },
-                { x: 52, y: 0, screenRotation: 90 },
-                { x: 0, y: 35, screenRotation: 0 },
-                { x: -52, y: 0, screenRotation: -90 }
+                { x: 0, y: -35, localRotation: 180 },
+                { x: 52, y: 0, localRotation: 90 },
+                { x: 0, y: 35, localRotation: 0 },
+                { x: -52, y: 0, localRotation: -90 }
             ];
-            badgePositions.forEach(({ x, y, screenRotation }) => {
+            badgePositions.forEach(({ x, y, localRotation }) => {
                 group.appendChild(makeSvgNode("circle", {
                     cx: x,
                     cy: y,
@@ -167,7 +166,7 @@ export const drawSelectorSvg = ({
                     "font-weight": "bold",
                     "text-anchor": "middle",
                     "dominant-baseline": "middle",
-                    transform: `rotate(${getBadgeTextRotation(rotation, screenRotation)} ${x} ${y})`,
+                    transform: `rotate(${localRotation} ${x} ${y})`,
                     "pointer-events": "none"
                 });
                 badgeText.textContent = String(turnOrderEntry.order);

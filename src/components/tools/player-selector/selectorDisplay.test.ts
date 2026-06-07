@@ -1,9 +1,8 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { SelectorPlayer } from './types';
 import {
     closeSelectorPlayerPalettes,
     getAnimatedDisplayPosition,
-    getBadgeTextRotation,
     getRetreatedDisplayPosition
 } from './selectorDisplay';
 
@@ -55,10 +54,6 @@ describe('selectorDisplay', () => {
         });
     });
 
-    it('counter-rotates badge text to the requested screen direction', () => {
-        expect(getBadgeTextRotation(30, 180)).toBe(150);
-        expect(getBadgeTextRotation(-45, 90)).toBe(135);
-    });
 
     it('eases display position toward the retreat target without mutating the player seat', () => {
         const player = makePlayer({ x: 100, y: 100 });
