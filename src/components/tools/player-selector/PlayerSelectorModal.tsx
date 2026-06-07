@@ -203,8 +203,6 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
         }
     }, []);
 
-    if (!isOpen) return null;
-
     const startDraw = useCallback(() => {
         if (players.length === 0 || phase === 'drawing') return;
 
@@ -240,6 +238,8 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
             startDraw();
         }
     }, [players.length, session.players.length, phase, startDraw]);
+
+    if (!isOpen) return null;
 
 
     const handleConfirm = () => {
