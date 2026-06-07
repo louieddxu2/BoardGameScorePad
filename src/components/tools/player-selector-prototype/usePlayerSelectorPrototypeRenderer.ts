@@ -225,88 +225,85 @@ export const usePlayerSelectorPrototypeRenderer = ({
             touch.anchorX = (touch.state === 'LOCKED') ? touch.canvasX : touch.startX;
             touch.anchorY = (touch.state === 'LOCKED') ? touch.canvasY : touch.startY;
 
-            const vecOutX = touch.canvasX - cx;
-            const vecOutY = touch.canvasY - cy;
-            const outDist = Math.sqrt(vecOutX * vecOutX + vecOutY * vecOutY);
-            const normOutX = outDist > 0 ? vecOutX / outDist : 0;
-            const normOutY = outDist > 0 ? vecOutY / outDist : 1;
-
-            let humanDirX = normOutX;
-            let humanDirY = normOutY;
-            const edgeProximity = Math.min(outDist / maxPossibleDist, 1.0);
-            const distanceTrustMultiplier = 1.0 - edgeProximity;
-
-            let bestDirX = normOutX;
-            let bestDirY = normOutY;
-            let bestTrust = 0;
-
-            let displayAngle = touch.rotationAngle;
-            let displayRx = touch.radiusX;
-            let displayRy = touch.radiusY;
-            let hasDisplayEllipse = touch.radiusX > 0 && touch.radiusY > 0;
-
-            if (touch.radiusX > 0 && touch.radiusY > 0) {
-                let angleDeg = touch.rotationAngle;
-                if (touch.radiusY > touch.radiusX) angleDeg += 90;
-                const ellipseRad = angleDeg * Math.PI / 180;
-
-                let ellipseDirX = Math.cos(ellipseRad);
-                let ellipseDirY = Math.sin(ellipseRad);
-                if (ellipseDirX * normOutX + ellipseDirY * normOutY < 0) {
-                    ellipseDirX = -ellipseDirX;
-                    ellipseDirY = -ellipseDirY;
-                }
-                const ratio = (Math.min(touch.radiusX, touch.radiusY) > 0) 
-                    ? Math.max(touch.radiusX, touch.radiusY) / Math.min(touch.radiusX, touch.radiusY) 
-                    : 1;
-
-                if (ratio > 1.1) {
-                    bestDirX = ellipseDirX;
-                    bestDirY = ellipseDirY;
-                    bestTrust = Math.min((ratio - 1.1) * 1.5, 0.85);
-                }
-            }
-
-            const moveDx = touch.canvasX - touch.startX;
-            const moveDy = touch.canvasY - touch.startY;
-            const moveDist = Math.sqrt(moveDx * moveDx + moveDy * moveDy);
-            if (moveDist > 1) {
-                let swipeDirX = moveDx / moveDist;
-                let swipeDirY = moveDy / moveDist;
-                if (swipeDirX * normOutX + swipeDirY * normOutY < 0) {
-                    swipeDirX = -swipeDirX;
-                    swipeDirY = -swipeDirY;
-                }
-                const swipeTrust = Math.min((moveDist - 1) * 0.1, 0.85);
-
-                if (swipeTrust > bestTrust) {
-                    bestDirX = swipeDirX;
-                    bestDirY = swipeDirY;
-                    bestTrust = swipeTrust;
-
-                    displayAngle = Math.atan2(moveDy, moveDx) * 180 / Math.PI;
-                    const t = swipeTrust / 0.85;
-                    displayRx = 16 + t * 16;
-                    displayRy = 16 - t * 4;
-                    hasDisplayEllipse = true;
-                }
-            }
-
-            const finalTrust = bestTrust * distanceTrustMultiplier;
-            humanDirX = bestDirX * finalTrust + normOutX * (1 - finalTrust);
-            humanDirY = bestDirY * finalTrust + normOutY * (1 - finalTrust);
-
-            touch.displayAngle = displayAngle;
-            touch.displayRx = displayRx;
-            touch.displayRy = displayRy;
-            touch.hasDisplayEllipse = hasDisplayEllipse;
-
-            const humanLen = Math.sqrt(humanDirX * humanDirX + humanDirY * humanDirY) || 1;
-            touch.humanAngleRad = Math.atan2(humanDirY / humanLen, humanDirX / humanLen);
-            touch.forwardAngleRad = touch.humanAngleRad + Math.PI;
-            touch.textRotationDeg = (touch.humanAngleRad * 180 / Math.PI) - 90;
-
             const timeAlive = now - touch.spawnTime;
+            if (timeAlive <= 500) {
+                const vecOutX = touch.canvasX - cx;
+                const vecOutY = touch.canvasY - cy;
+                const outDist = Math.sqrt(vecOutX * vecOutX + vecOutY * vecOutY);
+                const normOutX = outDist > 0 ? vecOutX / outDist : 0;
+                const normOutY = outDist > 0 ? vecOutY / outDist : 1;
+
+                let bestDirX = normOutX;
+                let bestDirY = normOutY;
+                let bestTrust = 0;
+                const distanceTrustMultiplier = 1.0 - Math.min(outDist / maxPossibleDist, 1.0);
+
+                let displayAngle = touch.rotationAngle;
+                let displayRx = touch.radiusX;
+                let displayRy = touch.radiusY;
+                let hasDisplayEllipse = touch.radiusX > 0 && touch.radiusY > 0;
+
+                if (touch.radiusX > 0 && touch.radiusY > 0) {
+                    let angleDeg = touch.rotationAngle;
+                    if (touch.radiusY > touch.radiusX) angleDeg += 90;
+                    const ellipseRad = angleDeg * Math.PI / 180;
+
+                    let ellipseDirX = Math.cos(ellipseRad);
+                    let ellipseDirY = Math.sin(ellipseRad);
+                    if (ellipseDirX * normOutX + ellipseDirY * normOutY < 0) {
+                        ellipseDirX = -ellipseDirX;
+                        ellipseDirY = -ellipseDirY;
+                    }
+                    const ratio = (Math.min(touch.radiusX, touch.radiusY) > 0) 
+                        ? Math.max(touch.radiusX, touch.radiusY) / Math.min(touch.radiusX, touch.radiusY) 
+                        : 1;
+
+                    if (ratio > 1.1) {
+                        bestDirX = ellipseDirX;
+                        bestDirY = ellipseDirY;
+                        bestTrust = Math.min((ratio - 1.1) * 1.5, 0.85);
+                    }
+                }
+
+                const moveDx = touch.canvasX - touch.startX;
+                const moveDy = touch.canvasY - touch.startY;
+                const moveDist = Math.sqrt(moveDx * moveDx + moveDy * moveDy);
+                if (moveDist > 1) {
+                    let swipeDirX = moveDx / moveDist;
+                    let swipeDirY = moveDy / moveDist;
+                    if (swipeDirX * normOutX + swipeDirY * normOutY < 0) {
+                        swipeDirX = -swipeDirX;
+                        swipeDirY = -swipeDirY;
+                    }
+                    const swipeTrust = Math.min((moveDist - 1) * 0.1, 0.85);
+
+                    if (swipeTrust > bestTrust) {
+                        bestDirX = swipeDirX;
+                        bestDirY = swipeDirY;
+                        bestTrust = swipeTrust;
+
+                        displayAngle = Math.atan2(moveDy, moveDx) * 180 / Math.PI;
+                        const t = swipeTrust / 0.85;
+                        displayRx = 16 + t * 16;
+                        displayRy = 16 - t * 4;
+                        hasDisplayEllipse = true;
+                    }
+                }
+
+                const finalTrust = bestTrust * distanceTrustMultiplier;
+                const humanDirX = bestDirX * finalTrust + normOutX * (1 - finalTrust);
+                const humanDirY = bestDirY * finalTrust + normOutY * (1 - finalTrust);
+
+                touch.displayAngle = displayAngle;
+                touch.displayRx = displayRx;
+                touch.displayRy = displayRy;
+                touch.hasDisplayEllipse = hasDisplayEllipse;
+
+                const humanLen = Math.sqrt(humanDirX * humanDirX + humanDirY * humanDirY) || 1;
+                touch.humanAngleRad = Math.atan2(humanDirY / humanLen, humanDirX / humanLen);
+                touch.forwardAngleRad = touch.humanAngleRad + Math.PI;
+                touch.textRotationDeg = (touch.humanAngleRad * 180 / Math.PI) - 90;
+            }
 
             if (touch.state === 'CHOOSING') {
                 if (timeAlive > FREEZE_TIME_MS && !touch.optionsFrozen) {
