@@ -25,7 +25,7 @@ const WALL_REPULSION_FORCE = 1.0;
 
 const FREEZE_TIME_MS = 1000;    
 const LOCK_TIME_MS = 750;
-const STATIONARY_LOCK_TIME_MS = 3000;
+const STATIONARY_LOCK_TIME_MS = 2000;
 const ANONYMOUS_MOVE_THRESHOLD = 15;
 const ANONYMOUS_PLAYER_PREFIX = "\u73a9\u5bb6";
 
@@ -226,7 +226,7 @@ export const usePlayerSelectorPrototypeRenderer = ({
             touch.anchorY = (touch.state === 'LOCKED') ? touch.canvasY : touch.startY;
 
             const timeAlive = now - touch.spawnTime;
-            if (timeAlive <= 500) {
+            if (timeAlive <= 300) {
                 const vecOutX = touch.canvasX - cx;
                 const vecOutY = touch.canvasY - cy;
                 const outDist = Math.sqrt(vecOutX * vecOutX + vecOutY * vecOutY);
@@ -763,13 +763,13 @@ export const usePlayerSelectorPrototypeRenderer = ({
                 svg.appendChild(makeSvgNode("circle", {
                     cx: touch.anchorX,
                     cy: touch.anchorY,
-                    r: 30,
+                    r: 42,
                     fill: "rgba(255,255,255,0.05)",
                     stroke: "#475569",
                     "stroke-width": 2
                 }));
                 if (touch.selectedOptionId === null && touch.progress > 0) {
-                    const r = 34;
+                    const r = 46;
                     const circumference = 2 * Math.PI * r;
                     const offset = circumference * (1 - Math.min(touch.progress, 1));
                     svg.appendChild(makeSvgNode("circle", {
