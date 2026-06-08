@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useRef, useImperativeHandle, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Play, RefreshCw } from 'lucide-react';
 import { useToolsTranslation } from '../../../i18n/tools';
-import { GameSession } from '../../../types';
+import { GameSession, SavedListItem } from '../../../types';
 import { Candidate, SelectorPlayer, SelectorTurnOrderEntry } from './types';
 import { usePlayerSelectorRenderer } from './usePlayerSelectorRenderer';
-import { recommendationService } from '../../../features/recommendation/RecommendationService';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 import { drawTurnOrder, getStarterSelectorPlayerId } from './turnOrder';
+import { db } from '../../../db';
+import { getRecommendedCandidatesPure } from '../../../features/recommendation/PlayerRecommendationEngine';
+import { Voter } from '../../../features/recommendation/ContextResolver';
 
 interface PlayerSelectorModalProps {
     isOpen: boolean;
@@ -86,7 +88,8 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
     const playerIdsRef = useRef<string>('');
     const lastClickTimeRef = useRef<number>(0);
     const clickCountRef = useRef<number>(0);
-    const [candidates, setCandidates] = useState<Candidate[]>([]);
+    const [allSavedPlayers, setAllSavedPlayers] = useState<SavedListItem[]>([]);
+    const [contextVoters, setContextVoters] = useState<Voter[]>([]);
     const [players, setPlayers] = useState<SelectorPlayer[]>([]);
     const [phase, setPhase] = useState<'selecting' | 'drawing' | 'result'>('selecting');
     const [turnOrder, setTurnOrder] = useState<SelectorTurnOrderEntry[]>([]);
@@ -150,60 +153,56 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
     // 實體返回鍵與 z-index 管理防線
     const { zIndex } = useModalBackHandler(isOpen, onClose, 'player-selector');
 
-    // 取得推薦候選人
-    const playersIdsKey = players.map(p => p.linkedPlayerId || p.id).join(',');
-
+    // 當 Modal 開啟時，一次性非同步讀取相關實體
     useEffect(() => {
         if (!isOpen) return;
 
-        const loadCandidates = async () => {
+        const initStaticData = async () => {
             try {
-                // 已鎖定的玩家 ID
-                const lockedPlayerIds = players
-                    .map(p => p.linkedPlayerId)
-                    .filter((id): id is string => !!id);
+                // 1. 撈取所有存檔玩家
+                const playersList = await db.savedPlayers.toArray();
+                setAllSavedPlayers(playersList);
 
-                const context = {
-                    gameName: session.name, // 修正：使用 session.name 替代不存在的 gameName
-                    playerCount: session.players.length,
-                    knownPlayerIds: lockedPlayerIds
-                };
-                const suggestions = await recommendationService.getPlayerSuggestions(context, 10);
-                
-                let list: Candidate[] = suggestions.map(s => ({
-                    id: s.id,
-                    name: s.name,
-                    linkedPlayerId: s.id
-                }));
-
-                // 推薦不足 4 人，用現有 session 中的玩家名稱補足
-                if (list.length < 4) {
-                    const existingNames = new Set(list.map(item => item.name));
-                    const lockedNames = new Set(players.map(p => p.text));
-                    const fallbackPlayers = session.players
-                        .filter(p => !existingNames.has(p.name) && !lockedNames.has(p.name))
-                        .map(p => ({
-                            id: p.id,
-                            name: p.name,
-                            linkedPlayerId: p.id
-                        }));
-                    list = [...list, ...fallbackPlayers];
+                // 2. 撈取當前遊戲與地點的實體做為 background context voters
+                const voters: Voter[] = [];
+                if (session.name) {
+                    const gameItem = await db.savedGames.where('name').equals(session.name).first();
+                    if (gameItem) {
+                        voters.push({ item: gameItem, factor: 'game' });
+                    }
                 }
-
-                setCandidates(list);
+                if (session.location) {
+                    const locItem = await db.savedLocations.where('name').equals(session.location).first();
+                    if (locItem) {
+                        voters.push({ item: locItem, factor: 'location' });
+                    }
+                }
+                setContextVoters(voters);
             } catch (error) {
-                console.error("[Visual Selector] Failed to load suggestions, fallback to session players", error);
-                const list = session.players.map(p => ({
-                    id: p.id,
-                    name: p.name,
-                    linkedPlayerId: p.id
-                }));
-                setCandidates(list);
+                console.error("[Visual Selector] Failed to initialize recommendation context data", error);
             }
         };
 
-        loadCandidates();
-    }, [isOpen, session, playersIdsKey]);
+        initStaticData();
+    }, [isOpen, session.name, session.location]);
+
+    // 每次鎖定玩家 (players) 有變化時，在記憶體內同步計算最新推薦清單
+    const candidates = useMemo(() => {
+        if (!isOpen) return [];
+
+        const lockedPlayerIds = players
+            .map(p => p.linkedPlayerId)
+            .filter((id): id is string => !!id);
+        const lockedNames = players.map(p => p.text);
+
+        return getRecommendedCandidatesPure({
+            allSavedPlayers,
+            contextVoters,
+            lockedPlayerIds,
+            lockedNames,
+            sessionPlayers: session.players
+        });
+    }, [isOpen, allSavedPlayers, contextVoters, players, session.players]);
 
     const randomNames = t('picker_prototype_random_names').split(',');
     const starterPlayerId = getStarterSelectorPlayerId(turnOrder) || null;

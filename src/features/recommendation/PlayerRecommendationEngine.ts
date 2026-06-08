@@ -2,18 +2,102 @@
 import { db } from '../../db';
 import { SavedListItem } from '../../types';
 import { RecommendationContext, SuggestedPlayer, PlayerRecommendationWeights, DEFAULT_PLAYER_WEIGHTS } from './types';
-import { contextResolver } from './ContextResolver';
+import { contextResolver, Voter } from './ContextResolver';
 import { votingEngine } from './VotingEngine';
 import { RELATION_PREDICTION_CONFIG } from '../../services/relationship/RelationMapper';
+import { Candidate } from '../../components/tools/player-selector/types';
+
+export interface GetRecommendedCandidatesParams {
+    allSavedPlayers: SavedListItem[];
+    contextVoters: Voter[];
+    lockedPlayerIds: string[];
+    lockedNames: string[];
+    sessionPlayers: Array<{ id: string; name: string }>;
+}
 
 /**
- * 玩家推薦引擎 (Player Recommendation Engine)
- * 專責處理「推薦玩家」的邏輯。
- * 
- * 使用 ContextResolver 取得環境資訊。
- * 使用 VotingEngine 進行加權投票。
- * 實作連鎖預測 (Chained Prediction) 邏輯。
+ * 記憶體同步算分推薦玩家
+ * 根據當前已鎖定玩家與背景 voters，在記憶體內直接進行一次性投票算分並排序。
+ * 消除 iterations 迴圈與非同步 I/O，大幅提升視覺選擇器在操作時的反應速度。
  */
+export function getRecommendedCandidatesPure({
+    allSavedPlayers,
+    contextVoters,
+    lockedPlayerIds,
+    lockedNames,
+    sessionPlayers
+}: GetRecommendedCandidatesParams): Candidate[] {
+    // 1. 準備投票者 (Voters)
+    const voters = [...contextVoters];
+
+    // 已鎖定的玩家也作為 Voter 參與投票
+    const allSavedPlayersMap = new Map(allSavedPlayers.map(p => [p.id, p]));
+    lockedPlayerIds.forEach(id => {
+        const p = allSavedPlayersMap.get(id);
+        if (p) {
+            voters.push({ item: p, factor: 'relatedPlayer' });
+        }
+    });
+
+    // 2. 呼叫 votingEngine.calculateScores (同步算分)
+    // 為了取得所有可能候選人的分數，不對 candidateLimit 做限制 (傳入 allSavedPlayers.length 確保每位同玩玩家都能計分)
+    const scoresMap = votingEngine.calculateScores(
+        voters,
+        DEFAULT_PLAYER_WEIGHTS as unknown as Record<string, number>,
+        'players',
+        lockedPlayerIds,
+        allSavedPlayers.length
+    );
+
+    // 3. 對所有真實存檔玩家進行算分與排序 (排除已鎖定的)
+    const candidatesList = allSavedPlayers
+        .filter(p => !lockedPlayerIds.includes(p.id))
+        .map(p => {
+            const score = scoresMap.get(p.id) || 0;
+            return {
+                id: p.id,
+                name: p.name,
+                linkedPlayerId: p.id,
+                score,
+                usageCount: p.usageCount || 0,
+                lastUsed: p.lastUsed || 0
+            };
+        });
+
+    // 排序優先級：
+    // A. 算分 (score) 降序
+    // B. usageCount 降序
+    // C. lastUsed 降序
+    candidatesList.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        if (b.usageCount !== a.usageCount) return b.usageCount - a.usageCount;
+        return b.lastUsed - a.lastUsed;
+    });
+
+    // 4. 將排序後的候選人轉成 Candidate[]
+    let list: Candidate[] = candidatesList.map(c => ({
+        id: c.id,
+        name: c.name,
+        linkedPlayerId: c.linkedPlayerId
+    }));
+
+    // 5. 推薦不足 4 人，用現有 session 中的玩家名稱補足
+    if (list.length < 4) {
+        const existingNames = new Set(list.map(item => item.name));
+        const lockedNamesSet = new Set(lockedNames);
+        const fallbackPlayers = sessionPlayers
+            .filter(p => !existingNames.has(p.name) && !lockedNamesSet.has(p.name))
+            .map(p => ({
+                id: p.id,
+                name: p.name,
+                linkedPlayerId: p.id
+            }));
+        list = [...list, ...fallbackPlayers];
+    }
+
+    return list;
+}
+
 export class PlayerRecommendationEngine {
 
     public async generateSuggestions(
