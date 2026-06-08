@@ -22,13 +22,13 @@ export class PlayerRecommendationEngine {
         limit: number = 4
     ): Promise<SuggestedPlayer[]> {
         
-        // 1. Initial State: Empty suggestions
-        const selectedPlayerIds: string[] = [];
+        // 1. Initial State: Start with already selected players for chained prediction
+        const selectedPlayerIds: string[] = [...(context.knownPlayerIds || [])];
         
         // 2. Resolve Base Context Voters (Game, Location, Time...) - Do this ONCE via ContextResolver
         const baseVoters = await contextResolver.resolveBaseContext(context);
         
-        // [Refactor] 使用統一配置的 candidate limit (5)
+        // [Refactor] 使用統一配置 the candidate limit (5)
         // 不論母群體多大，我們每次只取前 5 名最常一起玩的玩家來投票
         const candidateLimit = RELATION_PREDICTION_CONFIG.players.limit;
 
@@ -81,9 +81,11 @@ export class PlayerRecommendationEngine {
         const players = await db.savedPlayers.where('id').anyOf(selectedPlayerIds).toArray();
         players.forEach(p => playersMap.set(p.id, p));
 
-        // Map back to result format, preserving the ORDER of selection
+        // Map back to result format, preserving the ORDER of selection (excluding knownPlayerIds)
         const result: SuggestedPlayer[] = [];
+        const knownSet = new Set(context.knownPlayerIds || []);
         selectedPlayerIds.forEach(id => {
+            if (knownSet.has(id)) return; // 排除已鎖定的玩家
             const playerInfo = playersMap.get(id);
             if (playerInfo) {
                 result.push({

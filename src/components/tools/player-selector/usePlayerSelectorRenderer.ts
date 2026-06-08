@@ -75,6 +75,24 @@ export const usePlayerSelectorRenderer = ({
         expectedCountRef.current = expectedPlayerCount;
     }, [expectedPlayerCount]);
 
+    const candidatesRef = useRef<Candidate[]>(candidates);
+    useEffect(() => {
+        candidatesRef.current = candidates;
+    }, [candidates]);
+
+    const callbacksRef = useRef({
+        onSelectorPlayersChange,
+        onCandidateLocked,
+        randomNames
+    });
+    useEffect(() => {
+        callbacksRef.current = {
+            onSelectorPlayersChange,
+            onCandidateLocked,
+            randomNames
+        };
+    }, [onSelectorPlayersChange, onCandidateLocked, randomNames]);
+
     const prevWidthRef = useRef<number>(0);
     const prevHeightRef = useRef<number>(0);
 
@@ -105,10 +123,10 @@ export const usePlayerSelectorRenderer = ({
 
     const spawnOptionsForTouch = (touchId: string | number, x: number, y: number) => {
         const selectedCandidates = getFourCandidatesForTouch(
-            candidates,
+            candidatesRef.current,
             optionsRef.current,
             playersRef.current,
-            randomNames,
+            callbacksRef.current.randomNames,
             (name) => `fallback_${name}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
             (index) => `temp_${index}_${Date.now()}`
         );
@@ -168,7 +186,7 @@ export const usePlayerSelectorRenderer = ({
             color: option.color,
             state: 'COLOR_PICKING'
         });
-        onSelectorPlayersChange([...playersRef.current]);
+        callbacksRef.current.onSelectorPlayersChange([...playersRef.current]);
     };
 
     const physicsLoop = () => {
@@ -389,13 +407,13 @@ export const usePlayerSelectorRenderer = ({
 
                             const lockedOpt = optionsRef.current.find(o => o.id === touch.selectedOptionId);
                             if (lockedOpt) {
-                                lockedOpt.color = PALETTE[Math.floor(Math.random() * PALETTE.length)];
-                                optionsRef.current = optionsRef.current.filter(o => {
-                                    if (o.touchId !== touchId) return true;
-                                    return o.id === touch.selectedOptionId;
-                                });
-                                onCandidateLocked(lockedOpt.candidate);
-                            }
+                                 lockedOpt.color = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+                                 optionsRef.current = optionsRef.current.filter(o => {
+                                     if (o.touchId !== touchId) return true;
+                                     return o.id === touch.selectedOptionId;
+                                 });
+                                 callbacksRef.current.onCandidateLocked(lockedOpt.candidate);
+                             }
                             checkAndMaterializeAllLockedIfFull();
                         }
                     }
@@ -576,7 +594,7 @@ export const usePlayerSelectorRenderer = ({
         if (!result.handled) return false;
 
         playersRef.current = result.players;
-        onSelectorPlayersChange([...playersRef.current]);
+        callbacksRef.current.onSelectorPlayersChange([...playersRef.current]);
         return true;
     };
 
@@ -593,7 +611,7 @@ export const usePlayerSelectorRenderer = ({
         if (!result.handled) return false;
 
         playersRef.current = result.players;
-        onSelectorPlayersChange([...playersRef.current]);
+        callbacksRef.current.onSelectorPlayersChange([...playersRef.current]);
         return true;
 
     };
@@ -693,7 +711,7 @@ export const usePlayerSelectorRenderer = ({
     const closeAllPalettes = () => {
         const nextPlayers = closeSelectorPlayerPalettes(playersRef.current);
         playersRef.current = nextPlayers;
-        onSelectorPlayersChange([...playersRef.current]);
+        callbacksRef.current.onSelectorPlayersChange([...playersRef.current]);
     };
 
     const resetEngine = () => {
@@ -879,9 +897,9 @@ export const usePlayerSelectorRenderer = ({
             }
             clearRendererState();
             svg.innerHTML = "";
-            onSelectorPlayersChange([]);
+            callbacksRef.current.onSelectorPlayersChange([]);
         };
-    }, [candidates]);
+    }, []);
 
     return {
         resetEngine,
