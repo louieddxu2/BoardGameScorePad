@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { getFourCandidatesForTouch } from './selectorCandidates';
 import { Candidate, SelectorPlayer } from './types';
 import { OptionState } from './selectorEngineTypes';
@@ -64,5 +64,27 @@ describe('selectorCandidates', () => {
             { id: 'temp-3', name: 'Player 4' },
             { id: 'temp-4', name: 'Player 5' }
         ]);
+    });
+
+    it('excludes skippedNames from candidates even if they are in candidates list', () => {
+        const candidates: Candidate[] = [
+            { id: 'a', name: 'Alice' },
+            { id: 'b', name: 'Bob' },
+            { id: 'c', name: 'Carol' },
+            { id: 'd', name: 'Dan' },
+            { id: 'e', name: 'Eve' }
+        ];
+
+        const result = getFourCandidatesForTouch(
+            candidates,
+            [],
+            [],
+            ['Frank', 'Grace'],
+            name => `fallback-${name}`,
+            index => `temp-${index}`,
+            ['Alice', 'Carol']
+        );
+
+        expect(result.map(c => c.name)).toEqual(['Bob', 'Dan', 'Eve', 'Frank']);
     });
 });

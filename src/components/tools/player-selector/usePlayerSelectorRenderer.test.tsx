@@ -641,4 +641,61 @@ describe('usePlayerSelectorRenderer', () => {
         expect(svgElement.textContent).not.toContain('Alice');
         expect(svgElement.textContent).not.toContain('Bob');
     });
+
+    it('should exclude skipped candidate names when touch starts within 0.5s and 80px distance of last touch release', () => {
+        const onPlayersChange = vi.fn();
+        const candidates: Candidate[] = [
+            { id: 'c1', name: 'Alice' },
+            { id: 'c2', name: 'Bob' },
+            { id: 'c3', name: 'Carol' },
+            { id: 'c4', name: 'Dan' },
+            { id: 'c5', name: 'Eve' }
+        ];
+
+        render(
+            <TestComponent candidates={candidates} onPlayersChange={onPlayersChange} expectedPlayerCount={3} />
+        );
+
+        const svgElement = screen.getByTestId('test-svg') as unknown as SVGSVGElement;
+
+        // 1. 手指在 (100, 100) 按下，產生氣泡
+        const timeSpy = vi.spyOn(Date, 'now').mockReturnValue(1000);
+        act(() => {
+            dispatchTouch(svgElement, 'touchstart', {
+                identifier: 1,
+                clientX: 100,
+                clientY: 100
+            });
+            runFrame();
+        });
+
+        // 當時的氣泡名字應包含 Alice, Bob 等
+        expect(svgElement.textContent).toContain('Alice');
+        expect(svgElement.textContent).toContain('Bob');
+
+        // 2. 隨後快速放開手指（未鎖定）
+        act(() => {
+            dispatchTouch(svgElement, 'touchend', {
+                identifier: 1,
+                clientX: 100,
+                clientY: 100
+            });
+            runFrame();
+        });
+
+        // 3. 在 0.3 秒後（時間戳 1300），在 (110, 110) 再次按下手指
+        timeSpy.mockReturnValue(1300);
+        act(() => {
+            dispatchTouch(svgElement, 'touchstart', {
+                identifier: 2,
+                clientX: 110,
+                clientY: 110
+            });
+            runFrame();
+        });
+
+        // 此時應該跳過之前的 Alice, Bob, Carol, Dan，而推薦 Eve
+        expect(svgElement.textContent).toContain('Eve');
+        expect(svgElement.textContent).not.toContain('Alice');
+    });
 });
