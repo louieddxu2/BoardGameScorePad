@@ -13,6 +13,7 @@ export interface GetRecommendedCandidatesParams {
     lockedPlayerIds: string[];
     lockedNames: string[];
     sessionPlayers: Array<{ id: string; name: string }>;
+    candidateLimit?: number;
 }
 
 /**
@@ -25,7 +26,8 @@ export function getRecommendedCandidatesPure({
     contextVoters,
     lockedPlayerIds,
     lockedNames,
-    sessionPlayers
+    sessionPlayers,
+    candidateLimit
 }: GetRecommendedCandidatesParams): Candidate[] {
     // 1. 準備投票者 (Voters)
     const voters = [...contextVoters];
@@ -40,13 +42,14 @@ export function getRecommendedCandidatesPure({
     });
 
     // 2. 呼叫 votingEngine.calculateScores (同步算分)
-    // 為了取得所有可能候選人的分數，不對 candidateLimit 做限制 (傳入 allSavedPlayers.length 確保每位同玩玩家都能計分)
+    // 傳入 candidateLimit (若無則預設為 allSavedPlayers.length 確保每位同玩玩家都能計分)
+    const limitToUse = candidateLimit ?? allSavedPlayers.length;
     const scoresMap = votingEngine.calculateScores(
         voters,
         DEFAULT_PLAYER_WEIGHTS as unknown as Record<string, number>,
         'players',
         lockedPlayerIds,
-        allSavedPlayers.length
+        limitToUse
     );
 
     // 3. 對所有真實存檔玩家進行算分與排序 (排除已鎖定的)
@@ -112,58 +115,38 @@ export class PlayerRecommendationEngine {
         // 2. Resolve Base Context Voters (Game, Location, Time...) - Do this ONCE via ContextResolver
         const baseVoters = await contextResolver.resolveBaseContext(context);
         
-        // [Refactor] 使用統一配置 the candidate limit (5)
-        // 不論母群體多大，我們每次只取前 5 名最常一起玩的玩家來投票
+        // 3. 一次性撈取所有存檔玩家，消除迴圈內與迴圈後的重複查詢
+        const allSavedPlayers = await db.savedPlayers.toArray();
         const candidateLimit = RELATION_PREDICTION_CONFIG.players.limit;
 
-        // 3. Iterative Selection Loop (Chained Prediction)
+        // 4. Iterative Selection Loop (Chained Prediction)
         for (let i = 0; i < limit; i++) {
-            
-            // 3a. 準備本輪的投票者
-            let currentVoters = [...baseVoters];
-
-            // 加入「同儕投票者」(Peer Voters)：已選出的玩家也會影響下一位玩家的選擇
-            if (selectedPlayerIds.length > 0) {
-                 const peerVoters = await contextResolver.resolvePlayerVoters(selectedPlayerIds);
-                 currentVoters = [...currentVoters, ...peerVoters];
-            }
-
-            // 3b. 執行投票 (針對 'players' 關聯)
-            // 將 selectedPlayerIds 作為忽略清單，避免重複推薦
-            const scoresMap = votingEngine.calculateScores(
-                currentVoters, 
-                weights as unknown as Record<string, number>, 
-                'players', 
-                selectedPlayerIds,
+            // 呼叫抽離出的純函式，同步於記憶體內完成算分與排序
+            const candidates = getRecommendedCandidatesPure({
+                allSavedPlayers,
+                contextVoters: baseVoters,
+                lockedPlayerIds: selectedPlayerIds,
+                lockedNames: [],
+                sessionPlayers: [],
                 candidateLimit
-            );
+            });
 
-            // 3c. Pick Winner
-            let bestCandidateId: string | null = null;
-            let maxScore = -1;
-
-            for (const [id, score] of scoresMap.entries()) {
-                if (score > maxScore) {
-                    maxScore = score;
-                    bestCandidateId = id;
-                }
-            }
-
-            // 3d. Append to list
-            if (bestCandidateId) {
-                selectedPlayerIds.push(bestCandidateId);
+            if (candidates.length > 0) {
+                selectedPlayerIds.push(candidates[0].id);
             } else {
-                // No more candidates found
                 break;
             }
         }
 
-        // 4. Resolve Details & Return
+        // 5. Resolve Details & Return
         if (selectedPlayerIds.length === 0) return [];
 
         const playersMap = new Map<string, SavedListItem>();
-        const players = await db.savedPlayers.where('id').anyOf(selectedPlayerIds).toArray();
-        players.forEach(p => playersMap.set(p.id, p));
+        allSavedPlayers.forEach(p => {
+            if (selectedPlayerIds.includes(p.id)) {
+                playersMap.set(p.id, p);
+            }
+        });
 
         // Map back to result format, preserving the ORDER of selection (excluding knownPlayerIds)
         const result: SuggestedPlayer[] = [];
