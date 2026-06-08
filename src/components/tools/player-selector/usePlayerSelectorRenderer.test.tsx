@@ -698,4 +698,85 @@ describe('usePlayerSelectorRenderer', () => {
         expect(svgElement.textContent).toContain('Eve');
         expect(svgElement.textContent).not.toContain('Alice');
     });
+
+    it('should accumulate skipped candidate IDs over multiple rapid touch releases in the same area', () => {
+        const onPlayersChange = vi.fn();
+        const candidates: Candidate[] = [
+            { id: 'c1', name: 'Alice' },
+            { id: 'c2', name: 'Bob' },
+            { id: 'c3', name: 'Carol' },
+            { id: 'c4', name: 'Dan' },
+            { id: 'c5', name: 'Eve' },
+            { id: 'c6', name: 'Frank' },
+            { id: 'c7', name: 'Grace' },
+            { id: 'c8', name: 'Henry' },
+            { id: 'c9', name: 'Ivy' }
+        ];
+
+        render(
+            <TestComponent candidates={candidates} onPlayersChange={onPlayersChange} expectedPlayerCount={3} />
+        );
+
+        const svgElement = screen.getByTestId('test-svg') as unknown as SVGSVGElement;
+
+        // 1. 第 1 次點下 (100, 100) -> 出現 Alice, Bob, Carol, Dan
+        const timeSpy = vi.spyOn(Date, 'now').mockReturnValue(1000);
+        act(() => {
+            dispatchTouch(svgElement, 'touchstart', {
+                identifier: 1,
+                clientX: 100,
+                clientY: 100
+            });
+            runFrame();
+        });
+        expect(svgElement.textContent).toContain('Alice');
+        expect(svgElement.textContent).toContain('Bob');
+
+        // 2. 第 1 次放開
+        act(() => {
+            dispatchTouch(svgElement, 'touchend', {
+                identifier: 1,
+                clientX: 100,
+                clientY: 100
+            });
+            runFrame();
+        });
+
+        // 3. 0.3 秒後（1300）點第 2 次 (105, 105) -> 出現 Eve, Frank, Grace, Henry
+        timeSpy.mockReturnValue(1300);
+        act(() => {
+            dispatchTouch(svgElement, 'touchstart', {
+                identifier: 2,
+                clientX: 105,
+                clientY: 105
+            });
+            runFrame();
+        });
+        expect(svgElement.textContent).toContain('Eve');
+        expect(svgElement.textContent).not.toContain('Alice'); // Alice 已經被排除
+
+        // 4. 第 2 次放開
+        act(() => {
+            dispatchTouch(svgElement, 'touchend', {
+                identifier: 2,
+                clientX: 105,
+                clientY: 105
+            });
+            runFrame();
+        });
+
+        // 5. 又 0.3 秒後（1600）點第 3 次 (110, 110) -> 因為前兩次都被跳過，此時只能推薦剩下的 Ivy
+        timeSpy.mockReturnValue(1600);
+        act(() => {
+            dispatchTouch(svgElement, 'touchstart', {
+                identifier: 3,
+                clientX: 110,
+                clientY: 110
+            });
+            runFrame();
+        });
+        expect(svgElement.textContent).toContain('Ivy');
+        expect(svgElement.textContent).not.toContain('Alice'); // 第 1 次的 Alice 依然被排除！
+        expect(svgElement.textContent).not.toContain('Eve');   // 第 2 次的 Eve 也被排除！
+    });
 });

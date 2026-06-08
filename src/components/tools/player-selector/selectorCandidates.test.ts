@@ -66,7 +66,7 @@ describe('selectorCandidates', () => {
         ]);
     });
 
-    it('excludes skippedNames from candidates even if they are in candidates list', () => {
+    it('excludes skippedIds from candidates even if they are in candidates list', () => {
         const candidates: Candidate[] = [
             { id: 'a', name: 'Alice' },
             { id: 'b', name: 'Bob' },
@@ -82,7 +82,7 @@ describe('selectorCandidates', () => {
             ['Frank', 'Grace'],
             name => `fallback-${name}`,
             index => `temp-${index}`,
-            ['Alice', 'Carol']
+            ['a', 'c']
         );
 
         expect(result.map(c => c.name)).toEqual(['Bob', 'Dan', 'Eve', 'Frank']);

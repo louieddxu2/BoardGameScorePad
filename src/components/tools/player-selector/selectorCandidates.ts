@@ -8,14 +8,14 @@ export const getFourCandidatesForTouch = (
     randomNames: string[],
     createFallbackId: (name: string) => string,
     createTempId: (index: number) => string,
-    skippedNames: string[] = []
+    skippedIds: string[] = []
 ): Candidate[] => {
     const usedNamesInPlayers = new Set(players.map(player => player.text));
-    const skippedSet = new Set(skippedNames);
+    const skippedSet = new Set(skippedIds);
 
-    // 一開始就強排除：已選玩家與此位置被跳過的玩家
+    // 一開始就強排除：已選玩家的名字與此位置被跳過的玩家 id
     const baseCandidates = currentCandidates.filter(
-        candidate => !usedNamesInPlayers.has(candidate.name) && !skippedSet.has(candidate.name)
+        candidate => !usedNamesInPlayers.has(candidate.name) && !skippedSet.has(candidate.id)
     );
 
     const usedNamesInOptions = new Set(options.map(option => option.text));
@@ -35,17 +35,18 @@ export const getFourCandidatesForTouch = (
         }
     }
 
-    // 若仍不足 4 人，從隨機備用人名中補足（同樣排除強排除集合與已加入者）
+    // 若仍不足 4 人，從隨機備用人名中補足（同樣排除已選玩家與已跳過 ID）
     let nameIndex = 0;
     while (result.length < 4 && nameIndex < randomNames.length) {
         const fallbackName = randomNames[nameIndex++];
+        const fallbackId = createFallbackId(fallbackName);
         if (
             !usedNamesInPlayers.has(fallbackName) &&
-            !skippedSet.has(fallbackName) &&
+            !skippedSet.has(fallbackId) &&
             !result.some(item => item.name === fallbackName)
         ) {
             result.push({
-                id: createFallbackId(fallbackName),
+                id: fallbackId,
                 name: fallbackName
             });
         }
@@ -54,10 +55,13 @@ export const getFourCandidatesForTouch = (
     // 若仍不足 4 人，使用臨時 Player X 補足
     let tempIdx = 1;
     while (result.length < 4) {
-        result.push({
-            id: createTempId(tempIdx),
-            name: `Player ${tempIdx + 1}`
-        });
+        const tempId = createTempId(tempIdx);
+        if (!skippedSet.has(tempId)) {
+            result.push({
+                id: tempId,
+                name: `Player ${tempIdx + 1}`
+            });
+        }
         tempIdx += 1;
     }
 

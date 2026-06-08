@@ -80,7 +80,7 @@ export const usePlayerSelectorRenderer = ({
         candidatesRef.current = candidates;
     }, [candidates]);
 
-    const lastReleasesRef = useRef<Array<{ x: number; y: number; time: number; names: string[] }>>([]);
+    const lastReleasesRef = useRef<Array<{ x: number; y: number; time: number; ids: string[] }>>([]);
 
     const callbacksRef = useRef({
         onSelectorPlayersChange,
@@ -123,7 +123,7 @@ export const usePlayerSelectorRenderer = ({
         }
     };
 
-    const spawnOptionsForTouch = (touchId: string | number, x: number, y: number, skippedNames: string[] = []) => {
+    const spawnOptionsForTouch = (touchId: string | number, x: number, y: number, skippedIds: string[] = []) => {
         const selectedCandidates = getFourCandidatesForTouch(
             candidatesRef.current,
             optionsRef.current,
@@ -131,7 +131,7 @@ export const usePlayerSelectorRenderer = ({
             callbacksRef.current.randomNames,
             (name) => `fallback_${name}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
             (index) => `temp_${index}_${Date.now()}`,
-            skippedNames
+            skippedIds
         );
 
         for (let i = 0; i < 4; i++) {
@@ -633,7 +633,7 @@ export const usePlayerSelectorRenderer = ({
         const canvasY = input.clientY - rect.top;
 
         // 判定是否為 0.5 秒內且 80 像素內同位置的連點
-        let skippedNames: string[] = [];
+        let skippedIds: string[] = [];
         const now = Date.now();
         const matchIdx = lastReleasesRef.current.findIndex(r => {
             const timeDiff = now - r.time;
@@ -644,7 +644,7 @@ export const usePlayerSelectorRenderer = ({
         });
 
         if (matchIdx !== -1) {
-            skippedNames = lastReleasesRef.current[matchIdx].names;
+            skippedIds = lastReleasesRef.current[matchIdx].ids;
             // 移除該次記錄，避免被其他點按重複消費
             lastReleasesRef.current.splice(matchIdx, 1);
         }
@@ -671,10 +671,11 @@ export const usePlayerSelectorRenderer = ({
             progress: 0,
             forwardAngleRad: 0,
             humanAngleRad: 0,
-            textRotationDeg: 0
+            textRotationDeg: 0,
+            accumulatedSkippedIds: skippedIds
         });
 
-        spawnOptionsForTouch(input.id, canvasX, canvasY, skippedNames);
+        spawnOptionsForTouch(input.id, canvasX, canvasY, skippedIds);
     };
 
     const handleMove = (input: SelectorPointerInput) => {
@@ -725,15 +726,19 @@ export const usePlayerSelectorRenderer = ({
             }
         } else {
             // 手指放開且未鎖定，記錄為被跳過的氣泡
-            const currentOptNames = optionsRef.current
+            const currentOptIds = optionsRef.current
                 .filter(o => o.touchId === id)
-                .map(o => o.text);
-            if (currentOptNames.length > 0) {
+                .map(o => o.candidate.id);
+            if (currentOptIds.length > 0) {
+                const newSkippedIds = Array.from(new Set([
+                    ...(touch.accumulatedSkippedIds || []),
+                    ...currentOptIds
+                ]));
                 lastReleasesRef.current.push({
                     x: touch.canvasX,
                     y: touch.canvasY,
                     time: Date.now(),
-                    names: currentOptNames
+                    ids: newSkippedIds
                 });
                 // 只保留最近 5 筆記錄，防止洩漏
                 if (lastReleasesRef.current.length > 5) {

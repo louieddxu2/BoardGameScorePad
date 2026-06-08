@@ -1,4 +1,4 @@
-﻿import { Candidate } from './types';
+import { Candidate } from './types';
 
 export interface SelectorPointerInput {
     id: string | number;
@@ -38,6 +38,7 @@ export interface TouchState {
     displayRx?: number;
     displayRy?: number;
     hasDisplayEllipse?: boolean;
+    accumulatedSkippedIds?: string[];
 }
 
 export interface OptionState {
