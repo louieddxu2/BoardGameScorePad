@@ -779,4 +779,67 @@ describe('usePlayerSelectorRenderer', () => {
         expect(svgElement.textContent).not.toContain('Alice'); // 第 1 次的 Alice 依然被排除！
         expect(svgElement.textContent).not.toContain('Eve');   // 第 2 次的 Eve 也被排除！
     });
+
+    it('should follow touch position closely in initial 200ms calibration period and then lock anchor', () => {
+        const onPlayersChange = vi.fn();
+        const candidates: Candidate[] = [
+            { id: 'c1', name: 'Alice' }
+        ];
+
+        render(
+            <TestComponent candidates={candidates} onPlayersChange={onPlayersChange} expectedPlayerCount={3} />
+        );
+
+        const svgElement = screen.getByTestId('test-svg') as unknown as SVGSVGElement;
+
+        // 1. 於 t = 1000 觸碰 (100, 100)
+        const timeSpy = vi.spyOn(Date, 'now').mockReturnValue(1000);
+        act(() => {
+            dispatchTouch(svgElement, 'touchstart', {
+                identifier: 1,
+                clientX: 100,
+                clientY: 100
+            });
+            runFrame();
+        });
+
+        // 尋找畫面上 anchor 的 circle (半徑為 42 的那個圓)
+        let circles = svgElement.querySelectorAll('circle');
+        let anchorCircle = Array.from(circles).find(c => c.getAttribute('r') === '42');
+        expect(anchorCircle).not.toBeNull();
+        expect(anchorCircle?.getAttribute('cx')).toBe('100');
+        expect(anchorCircle?.getAttribute('cy')).toBe('100');
+
+        // 2. 於 t = 1100 觸碰移動至 (120, 120) (在 200ms 內，此時應該跟手，anchor 變為 120)
+        timeSpy.mockReturnValue(1100);
+        act(() => {
+            dispatchTouch(svgElement, 'touchmove', {
+                identifier: 1,
+                clientX: 120,
+                clientY: 120
+            });
+            runFrame();
+        });
+
+        circles = svgElement.querySelectorAll('circle');
+        anchorCircle = Array.from(circles).find(c => c.getAttribute('r') === '42');
+        expect(anchorCircle?.getAttribute('cx')).toBe('120');
+        expect(anchorCircle?.getAttribute('cy')).toBe('120');
+
+        // 3. 於 t = 1300 觸碰移動至 (150, 150) (大於 200ms，此時 anchor 應固定在 120，不隨觸摸移動)
+        timeSpy.mockReturnValue(1300);
+        act(() => {
+            dispatchTouch(svgElement, 'touchmove', {
+                identifier: 1,
+                clientX: 150,
+                clientY: 150
+            });
+            runFrame();
+        });
+
+        circles = svgElement.querySelectorAll('circle');
+        anchorCircle = Array.from(circles).find(c => c.getAttribute('r') === '42');
+        expect(anchorCircle?.getAttribute('cx')).toBe('120');
+        expect(anchorCircle?.getAttribute('cy')).toBe('120');
+    });
 });

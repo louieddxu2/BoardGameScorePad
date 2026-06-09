@@ -42,6 +42,21 @@ export const drawSelectorSvg = ({
     const cy = rect.height / 2;
     const now = Date.now();
 
+    // 繪製中央大橢圓視覺底圖 (對稱且 pointer-events: none)
+    const ellipseRx = rect.width * 0.32;
+    const ellipseRy = rect.height * 0.21;
+    svg.appendChild(makeSvgNode("ellipse", {
+        cx: cx,
+        cy: cy,
+        rx: ellipseRx,
+        ry: ellipseRy,
+        fill: "none",
+        stroke: "rgba(255, 255, 255, 0.12)",
+        "stroke-width": 2,
+        "stroke-dasharray": "6 4",
+        "pointer-events": "none"
+    }));
+
     const renderedPlayerIds = new Set<string>();
     players.forEach(p => {
         renderedPlayerIds.add(p.id);

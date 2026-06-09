@@ -287,8 +287,35 @@ export const usePlayerSelectorRenderer = ({
 
             const timeAlive = now - touch.spawnTime;
             if (timeAlive <= 300) {
-                const vecOutX = touch.canvasX - cx;
-                const vecOutY = touch.canvasY - cy;
+                // 1. 初始 0.2 秒校準期：錨點 anchor 跟隨手指
+                if (timeAlive < 200) {
+                    touch.startX = touch.canvasX;
+                    touch.startY = touch.canvasY;
+                    touch.anchorX = touch.canvasX;
+                    touch.anchorY = touch.canvasY;
+                    touch.progress = 0;
+                    touch.selectedOptionId = null;
+                }
+
+                // 2. 計算中心大橢圓的幾何交點，以此為座位朝向起點
+                const rx = rect.width * 0.32;
+                const ry = rect.height * 0.21;
+                const dx = touch.canvasX - cx;
+                const dy = touch.canvasY - cy;
+                const centerDist = Math.sqrt(dx * dx + dy * dy);
+
+                let ex = cx;
+                let ey = cy;
+                if (centerDist > 0.1) {
+                    // 射線與大橢圓之交點 (ex, ey)
+                    const t = 1 / Math.sqrt((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry));
+                    ex = cx + t * dx;
+                    ey = cy + t * dy;
+                }
+
+                // 座位朝外方向向量：自交點指向觸控點 (ex, ey) -> (touch.canvasX, touch.canvasY)
+                const vecOutX = touch.canvasX - ex;
+                const vecOutY = touch.canvasY - ey;
                 const outDist = Math.sqrt(vecOutX * vecOutX + vecOutY * vecOutY);
                 const normOutX = outDist > 0 ? vecOutX / outDist : 0;
                 const normOutY = outDist > 0 ? vecOutY / outDist : 1;
@@ -296,7 +323,8 @@ export const usePlayerSelectorRenderer = ({
                 let bestDirX = normOutX;
                 let bestDirY = normOutY;
                 let bestTrust = 0;
-                const distanceTrustMultiplier = 1.0 - Math.min(outDist / maxPossibleDist, 1.0);
+                // 距離信心度衰減仍相對於螢幕中心計算
+                const distanceTrustMultiplier = 1.0 - Math.min(centerDist / maxPossibleDist, 1.0);
 
                 let displayAngle = touch.rotationAngle;
                 let displayRx = touch.radiusX;
@@ -475,8 +503,9 @@ export const usePlayerSelectorRenderer = ({
                     const targetAngle = touch.forwardAngleRad + angleOffsets[opt.idx];
                     const targetX = touch.anchorX + Math.cos(targetAngle) * ORBIT_RADIUS;
                     const targetY = touch.anchorY + Math.sin(targetAngle) * ORBIT_RADIUS;
-                    opt.vx += (targetX - opt.x) * SPRING_K;
-                    opt.vy += (targetY - opt.y) * SPRING_K;
+                    const currentK = (now - touch.spawnTime) < 200 ? 0.4 : SPRING_K;
+                    opt.vx += (targetX - opt.x) * currentK;
+                    opt.vy += (targetY - opt.y) * currentK;
                 }
             } else if (touch.state === 'LOCKED') {
                 const lockedRadius = ORBIT_RADIUS / 2;
