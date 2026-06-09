@@ -134,21 +134,39 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
         };
     }, [isOpen, onClose]);
 
-    // 連點三次退出處理
-    const handleCenterClick = () => {
-        const now = Date.now();
-        if (now - lastClickTimeRef.current < 400) {
-            clickCountRef.current += 1;
-        } else {
-            clickCountRef.current = 1;
-        }
-        lastClickTimeRef.current = now;
+    // 連點三次中心區域退出處理 (改為 window 層級 pointerdown 監聽，避免攔截點擊)
+    useEffect(() => {
+        if (!isOpen) return;
 
-        if (clickCountRef.current >= 3) {
-            clickCountRef.current = 0;
-            onClose();
-        }
-    };
+        const handleWindowPointerDown = (e: PointerEvent) => {
+            const cx = window.innerWidth / 2;
+            const cy = window.innerHeight / 2;
+            const dx = e.clientX - cx;
+            const dy = e.clientY - cy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            // 只有點擊在中心半徑 100px 內，才時計入連點次數
+            if (dist < 100) {
+                const now = Date.now();
+                if (now - lastClickTimeRef.current < 400) {
+                    clickCountRef.current += 1;
+                } else {
+                    clickCountRef.current = 1;
+                }
+                lastClickTimeRef.current = now;
+
+                if (clickCountRef.current >= 3) {
+                    clickCountRef.current = 0;
+                    onClose();
+                }
+            }
+        };
+
+        window.addEventListener('pointerdown', handleWindowPointerDown);
+        return () => {
+            window.removeEventListener('pointerdown', handleWindowPointerDown);
+        };
+    }, [isOpen, onClose]);
 
     // 實體返回鍵與 z-index 管理防線
     const { zIndex } = useModalBackHandler(isOpen, onClose, 'player-selector');
@@ -406,16 +424,27 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                 {/* Empty State Hint */}
                 {phase === 'selecting' && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-300">
-                        <div 
-                            className="pointer-events-auto flex flex-col items-center justify-center gap-3 px-6 text-center cursor-pointer select-none"
-                            onClick={handleCenterClick}
-                        >
-                            <span className="text-brand-secondary font-bold text-lg md:text-xl tracking-widest drop-shadow-[0_0_10px_rgba(249,115,22,0.4)] animate-pulse">
-                                {t('picker_prototype_empty')}
-                            </span>
-                            <span className="text-txt-muted text-xs md:text-sm font-medium opacity-50 tracking-wider">
-                                {t('picker_prototype_exit_hint')}
-                            </span>
+                        <div className="flex flex-col items-center justify-center gap-2 text-center select-none max-w-[280px]">
+                            {/* 對面玩家的朝向 (倒置 180 度) */}
+                            <div className="transform rotate-180 opacity-70 scale-90 select-none">
+                                <span className="text-brand-secondary font-bold text-sm tracking-widest drop-shadow-[0_0_8px_rgba(249,115,22,0.3)] animate-pulse">
+                                    {t('picker_prototype_empty')}
+                                </span>
+                            </div>
+
+                            {/* 置中的橫置退出指示 (長軸，作為中心橢圓的視覺基礎) */}
+                            <div className="py-2 px-5 border-y border-white/10 my-2 select-none">
+                                <span className="text-txt-muted text-xs md:text-sm font-semibold opacity-60 tracking-wider">
+                                    {t('picker_prototype_exit_hint')}
+                                </span>
+                            </div>
+
+                            {/* 目前玩家的朝向 (正向) */}
+                            <div className="opacity-70 scale-90 select-none">
+                                <span className="text-brand-secondary font-bold text-sm tracking-widest drop-shadow-[0_0_8px_rgba(249,115,22,0.3)] animate-pulse">
+                                    {t('picker_prototype_empty')}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 )}
