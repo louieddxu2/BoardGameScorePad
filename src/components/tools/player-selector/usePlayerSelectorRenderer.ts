@@ -297,25 +297,12 @@ export const usePlayerSelectorRenderer = ({
                     touch.selectedOptionId = null;
                 }
 
-                // 2. 計算中心大橢圓的幾何交點，以此為座位朝向起點
-                const rx = rect.width * 0.32;
-                const ry = rect.height * 0.21;
+                // 2. 消除螢幕長寬比帶來的角度變形，將朝向還原為 1:1 物理空間
                 const dx = touch.canvasX - cx;
                 const dy = touch.canvasY - cy;
                 const centerDist = Math.sqrt(dx * dx + dy * dy);
-
-                let ex = cx;
-                let ey = cy;
-                if (centerDist > 0.1) {
-                    // 射線與大橢圓之交點 (ex, ey)
-                    const t = 1 / Math.sqrt((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry));
-                    ex = cx + t * dx;
-                    ey = cy + t * dy;
-                }
-
-                // 座位朝外方向向量：自交點指向觸控點 (ex, ey) -> (touch.canvasX, touch.canvasY)
-                const vecOutX = touch.canvasX - ex;
-                const vecOutY = touch.canvasY - ey;
+                const vecOutX = dx / rect.width;
+                const vecOutY = dy / rect.height;
                 const outDist = Math.sqrt(vecOutX * vecOutX + vecOutY * vecOutY);
                 const normOutX = outDist > 0 ? vecOutX / outDist : 0;
                 const normOutY = outDist > 0 ? vecOutY / outDist : 1;
