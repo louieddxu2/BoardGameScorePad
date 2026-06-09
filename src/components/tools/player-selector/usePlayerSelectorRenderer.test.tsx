@@ -826,7 +826,13 @@ describe('usePlayerSelectorRenderer', () => {
         expect(anchorCircle?.getAttribute('cx')).toBe('120');
         expect(anchorCircle?.getAttribute('cy')).toBe('120');
 
-        // 3. 於 t = 1300 觸碰移動至 (150, 150) (大於 200ms，此時 anchor 應固定在 120，不隨觸摸移動)
+        // 2.5. 於 t = 1200 (200ms) 保持在 (120, 120) 跑一幀，使其越過校準期並鎖定錨點
+        timeSpy.mockReturnValue(1200);
+        act(() => {
+            runFrame();
+        });
+
+        // 3. 於 t = 1300 觸碰移動至 (150, 150) (大於 200ms 且已鎖定，此時 anchor 應固定在 120，不隨觸摸移動)
         timeSpy.mockReturnValue(1300);
         act(() => {
             dispatchTouch(svgElement, 'touchmove', {

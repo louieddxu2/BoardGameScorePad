@@ -39,6 +39,7 @@ export interface TouchState {
     displayRy?: number;
     hasDisplayEllipse?: boolean;
     accumulatedSkippedIds?: string[];
+    calibrated?: boolean;
 }
 
 export interface OptionState {
