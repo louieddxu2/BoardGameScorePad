@@ -286,21 +286,16 @@ export const usePlayerSelectorRenderer = ({
             touch.anchorY = (touch.state === 'LOCKED') ? touch.canvasY : touch.startY;
 
             const timeAlive = now - touch.spawnTime;
-            if (timeAlive <= 300) {
+            
+            // 只要尚未完成校準，就持續動態偵測並計算座位朝向
+            if (!touch.calibrated) {
                 // 1. 初始 0.2 秒校準期：錨點 anchor 跟隨手指
                 if (timeAlive < 200) {
-                    // 校準期：跟手，但保留 startX 作為最初落點以進行瞬間方向偵測
+                    // 校準期：跟手，但保留 startX 作為物理起點以進行瞬間方向偵測
                     touch.anchorX = touch.canvasX;
                     touch.anchorY = touch.canvasY;
                     touch.progress = 0;
                     touch.selectedOptionId = null;
-                } else if (!touch.calibrated) {
-                    // 剛過 200ms 校準期：一次性將起點 startX 鎖定在當前位置，防扯回跳躍
-                    touch.startX = touch.canvasX;
-                    touch.startY = touch.canvasY;
-                    touch.anchorX = touch.canvasX;
-                    touch.anchorY = touch.canvasY;
-                    touch.calibrated = true;
                 }
 
                 // 2. 消除螢幕長寬比帶來的角度變形，將朝向還原為 1:1 物理空間
@@ -384,6 +379,16 @@ export const usePlayerSelectorRenderer = ({
                 touch.humanAngleRad = Math.atan2(humanDirY / humanLen, humanDirX / humanLen);
                 touch.forwardAngleRad = touch.humanAngleRad + Math.PI;
                 touch.textRotationDeg = (touch.humanAngleRad * 180 / Math.PI) - 90;
+
+                // 4. 當時間越過 200ms 時，在此影格的最後一次性將起點 startX 鎖定在當前位置，
+                //    並標記 calibrated = true。此後不再進入此 if 分支，從而永久封存最終方向！
+                if (timeAlive >= 200) {
+                    touch.startX = touch.canvasX;
+                    touch.startY = touch.canvasY;
+                    touch.anchorX = touch.canvasX;
+                    touch.anchorY = touch.canvasY;
+                    touch.calibrated = true;
+                }
             }
 
             if (touch.state === 'CHOOSING') {
