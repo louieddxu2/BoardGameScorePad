@@ -367,7 +367,8 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                         return {
                             ...existingPlayer,
                             color: sp.color,
-                            isStarter
+                            isStarter,
+                            isColorManuallySet: sp.isColorManuallySet || existingPlayer.isColorManuallySet || false
                         };
                     } else {
                         // 新鎖定加入的玩家
@@ -378,7 +379,8 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                             scores: {},
                             totalScore: 0,
                             isStarter,
-                            linkedPlayerId: sp.linkedPlayerId
+                            linkedPlayerId: sp.linkedPlayerId,
+                            isColorManuallySet: sp.isColorManuallySet || false
                         };
                     }
                 });

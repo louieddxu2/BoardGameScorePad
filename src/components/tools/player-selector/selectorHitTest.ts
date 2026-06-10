@@ -119,7 +119,7 @@ export const applyPaletteClick = (
             handled: true,
             color,
             players: players.map(candidate => candidate.id === player.id
-                ? { ...candidate, color, state: 'READY' as const }
+                ? { ...candidate, color, isColorManuallySet: true, state: 'READY' as const }
                 : candidate
             )
         };

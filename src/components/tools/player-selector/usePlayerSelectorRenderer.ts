@@ -193,6 +193,7 @@ export const usePlayerSelectorRenderer = ({
             textRotationDeg: touch.textRotationDeg,
             text: option.text,
             color: option.color,
+            isColorManuallySet: false,
             state
         });
         callbacksRef.current.onSelectorPlayersChange([...playersRef.current]);

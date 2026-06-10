@@ -15,6 +15,7 @@ export interface SelectorPlayer {
     y: number;
     textRotationDeg: number;
     color: string;
+    isColorManuallySet?: boolean;
     state: 'COLOR_PICKING' | 'READY';
 }
 
