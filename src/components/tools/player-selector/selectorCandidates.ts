@@ -18,22 +18,7 @@ export const getFourCandidatesForTouch = (
         candidate => !usedNamesInPlayers.has(candidate.name) && !skippedSet.has(candidate.id)
     );
 
-    const usedNamesInOptions = new Set(options.map(option => option.text));
-
-    // 優先選用：未在畫面其他氣泡上顯示的名字
-    const available = baseCandidates.filter(c => !usedNamesInOptions.has(c.name));
-    const result: Candidate[] = [...available];
-
-    // 若不足 4 人，則從「已被其他氣泡顯示」的名字中補足
-    if (result.length < 4) {
-        const rest = baseCandidates.filter(
-            c => usedNamesInOptions.has(c.name) && !result.some(item => item.name === c.name)
-        );
-        for (const candidate of rest) {
-            if (result.length >= 4) break;
-            result.push(candidate);
-        }
-    }
+    const result: Candidate[] = [...baseCandidates];
 
     // 若仍不足 4 人，從隨機備用人名中補足（同樣排除已選玩家與已跳過 ID）
     let nameIndex = 0;

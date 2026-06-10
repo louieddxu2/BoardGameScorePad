@@ -395,13 +395,13 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
 
     return createPortal(
         <div 
-            className="fixed inset-0 bg-app-bg-deep flex flex-col animate-in fade-in duration-200 text-txt-primary select-none"
+            className="fixed inset-0 bg-black flex flex-col animate-in fade-in duration-200 text-white select-none"
             data-mobile-zoom-ignore="true"
             style={{ zIndex }}
         >
             {/* Canvas Area */}
             <main
-                className="flex-1 w-full relative bg-app-bg-deep overflow-hidden touch-none overscroll-none select-none"
+                className="flex-1 w-full relative bg-black overflow-hidden touch-none overscroll-none select-none"
                 data-testid="player-selector-surface"
                 style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
             >

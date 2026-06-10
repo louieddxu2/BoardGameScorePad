@@ -45,7 +45,7 @@ describe('selectorCandidates', () => {
             index => `temp-${index}`
         );
 
-        expect(result.map(candidate => candidate.name)).toEqual(['Carol', 'Dan', 'Alice', 'Eve']);
+        expect(result.map(candidate => candidate.name)).toEqual(['Alice', 'Carol', 'Dan', 'Eve']);
     });
 
     it('creates temporary candidates when recommendations and fallback names are exhausted', () => {
