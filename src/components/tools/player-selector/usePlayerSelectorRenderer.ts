@@ -58,6 +58,7 @@ export const usePlayerSelectorRenderer = ({
     const activeTouchesRef = useRef<Map<string | number, TouchState>>(new Map());
     const optionsRef = useRef<OptionState[]>([]);
     const playersRef = useRef<SelectorPlayer[]>([]);
+    const playerVelocitiesRef = useRef<Map<string, { vx: number; vy: number }>>(new Map());
     const displayPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
     const optionIdCounterRef = useRef(0);
     const animationFrameIdRef = useRef<number | null>(null);
@@ -112,6 +113,7 @@ export const usePlayerSelectorRenderer = ({
         activeTouchesRef.current.clear();
         optionsRef.current = [];
         playersRef.current = [];
+        playerVelocitiesRef.current.clear();
         displayPositionsRef.current.clear();
         optionIdCounterRef.current = 0;
         prevWidthRef.current = 0;
@@ -173,21 +175,25 @@ export const usePlayerSelectorRenderer = ({
         return `${ANONYMOUS_PLAYER_PREFIX} ${index}`;
     };
 
-    const materializePlayer = (touch: TouchState, option: OptionState) => {
+    const materializePlayer = (touch: TouchState, option: OptionState, state: 'COLOR_PICKING' | 'READY' = 'READY') => {
         const expected = expectedCountRef.current;
         if (expected > 0 && playersRef.current.length >= expected) {
             return;
         }
 
+        const id = 'player_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+        playerVelocitiesRef.current.set(id, { vx: option.vx || 0, vy: option.vy || 0 });
+
         playersRef.current.push({
-            id: 'player_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+            id,
+            touchId: touch.id,
             linkedPlayerId: option.candidate.linkedPlayerId,
-            x: option.x + (touch.anchorX - option.x) / 2,
-            y: option.y + (touch.anchorY - option.y) / 2,
+            x: option.x,
+            y: option.y,
             textRotationDeg: touch.textRotationDeg,
             text: option.text,
             color: option.color,
-            state: 'COLOR_PICKING'
+            state
         });
         callbacksRef.current.onSelectorPlayersChange([...playersRef.current]);
     };
@@ -244,36 +250,13 @@ export const usePlayerSelectorRenderer = ({
         const maxPossibleDist = Math.sqrt(cx * cx + cy * cy);
         const now = Date.now();
 
-        const checkAndMaterializeAllLockedIfFull = () => {
-            const expected = expectedCountRef.current;
-            if (expected <= 0) return;
-
-            let lockedTouchesCount = 0;
-            activeTouchesRef.current.forEach(t => {
-                if (t.state === 'LOCKED') {
-                    lockedTouchesCount++;
-                }
-            });
-
-            const totalLocked = playersRef.current.length + lockedTouchesCount;
-            if (totalLocked >= expected) {
-                const lockedTouchIds: (string | number)[] = [];
-                activeTouchesRef.current.forEach((t, id) => {
-                    if (t.state === 'LOCKED') {
-                        const finalOpt = optionsRef.current.find(o => o.touchId === id);
-                        if (finalOpt) {
-                            materializePlayer(t, finalOpt);
-                        }
-                        lockedTouchIds.push(id);
-                    }
-                });
-
-                lockedTouchIds.forEach(id => {
-                    activeTouchesRef.current.delete(id);
-                    removeOptionsForTouch(id);
-                });
+        // If interaction is locked (e.g. startDraw has closed/cleared the UI), clear touch states
+        if (resultDisplayRef.current.isInteractionLocked) {
+            if (activeTouchesRef.current.size > 0) {
+                activeTouchesRef.current.clear();
+                optionsRef.current = [];
             }
-        };
+        }
 
         // 1. 更新 Touch 狀態機
         activeTouchesRef.current.forEach((touch, touchId) => {
@@ -441,9 +424,10 @@ export const usePlayerSelectorRenderer = ({
                                      if (o.touchId !== touchId) return true;
                                      return o.id === touch.selectedOptionId;
                                  });
+                                 materializePlayer(touch, lockedOpt, 'COLOR_PICKING');
+                                 removeOptionsForTouch(touchId);
                                  callbacksRef.current.onCandidateLocked(lockedOpt.candidate);
                              }
-                            checkAndMaterializeAllLockedIfFull();
                         }
                     }
                 } else {
@@ -477,12 +461,61 @@ export const usePlayerSelectorRenderer = ({
                             candidate: anonymousCandidate
                         };
 
-                        optionsRef.current = optionsRef.current.filter(o => o.touchId !== touchId);
-                        optionsRef.current.push(anonymousOption);
-
-                        checkAndMaterializeAllLockedIfFull();
+                        materializePlayer(touch, anonymousOption, 'COLOR_PICKING');
+                        removeOptionsForTouch(touchId);
                     }
                 }
+            }
+        });
+
+        // 1.5 更新已物化但仍在觸摸鎖定狀態的玩家位置與旋轉角度（帶有平滑彈線效果與手指排斥力，保持與原本相同的手指前方距離）
+        playersRef.current.forEach(p => {
+            if (p.touchId === undefined) return;
+            const touch = activeTouchesRef.current.get(p.touchId) ??
+                          activeTouchesRef.current.get(String(p.touchId)) ??
+                          activeTouchesRef.current.get(Number(p.touchId));
+            if (touch && touch.state === 'LOCKED') {
+                let vel = playerVelocitiesRef.current.get(p.id);
+                if (!vel) {
+                    vel = { vx: 0, vy: 0 };
+                    playerVelocitiesRef.current.set(p.id, vel);
+                }
+
+                const lockedRadius = ORBIT_RADIUS / 2;
+                const targetX = touch.anchorX + Math.cos(touch.forwardAngleRad) * lockedRadius;
+                const targetY = touch.anchorY + Math.sin(touch.forwardAngleRad) * lockedRadius;
+
+                // 1. 彈簧拉力
+                vel.vx += (targetX - p.x) * (SPRING_K * 2);
+                vel.vy += (targetY - p.y) * (SPRING_K * 2);
+
+                // 2. 引入手指排斥力 (Finger Exclusion Force)，以維持原汁原味的手指前方距離！
+                const dx = p.x - touch.anchorX;
+                const dy = p.y - touch.anchorY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const minDist = FINGER_EXCLUSION_RADIUS + BALL_RADIUS + 2; // 50 + 26 + 2 = 78
+
+                if (dist < minDist && dist > 0.1) {
+                    const penetration = minDist - dist;
+                    const nx = dx / dist;
+                    const ny = dy / dist;
+                    vel.vx += nx * penetration * 0.85;
+                    vel.vy += ny * penetration * 0.85;
+                }
+
+                // 3. 摩擦力與限速
+                vel.vx *= FRICTION;
+                vel.vy *= FRICTION;
+
+                const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
+                if (speed > MAX_NORMAL_SPEED) {
+                    vel.vx = (vel.vx / speed) * MAX_NORMAL_SPEED;
+                    vel.vy = (vel.vy / speed) * MAX_NORMAL_SPEED;
+                }
+
+                p.x += vel.vx;
+                p.y += vel.vy;
+                p.textRotationDeg = touch.textRotationDeg;
             }
         });
 
@@ -747,9 +780,11 @@ export const usePlayerSelectorRenderer = ({
         if (!touch) return;
 
         if (touch.state === 'LOCKED') {
-            const finalOpt = optionsRef.current.find(o => o.touchId === id);
-            if (finalOpt) {
-                materializePlayer(touch, finalOpt);
+            // 手指放開時，解綁該玩家的 touchId，結束物理跟手跟排斥更新，防範 touchId 被重用衝突
+            const targetPlayer = playersRef.current.find(p => p.touchId === id);
+            if (targetPlayer) {
+                targetPlayer.touchId = undefined;
+                callbacksRef.current.onSelectorPlayersChange([...playersRef.current]);
             }
         } else {
             // 手指放開且未鎖定，記錄為被跳過的氣泡

@@ -85,6 +85,13 @@ export const drawSelectorSvg = ({
         );
         displayPositions.set(p.id, displayPosition);
         
+        const touch = p.touchId !== undefined ? (
+            activeTouches.get(p.touchId) ??
+            activeTouches.get(String(p.touchId)) ??
+            activeTouches.get(Number(p.touchId))
+        ) : undefined;
+        const isCurrentlyHeldAndLocked = touch && touch.state === 'LOCKED';
+
         const group = makeSvgNode("g", { transform: `translate(${displayPosition.x}, ${displayPosition.y}) rotate(${rotation})` });
         const turnOrderEntry = turnOrder.find(entry => entry.prototypePlayerId === p.id);
         const isHighlighted = highlightedPlayerId === p.id;
@@ -248,6 +255,24 @@ export const drawSelectorSvg = ({
         }
 
         svg.appendChild(group);
+
+        if (isCurrentlyHeldAndLocked) {
+            [0, 0.5].forEach(offset => {
+                const pulse = ((now % 1000) / 1000 + offset) % 1;
+                const pulseR = 76 + pulse * 34;
+                const pulseAlpha = 0.8 * (1 - pulse);
+                svg.appendChild(makeSvgNode("circle", {
+                    cx: displayPosition.x,
+                    cy: displayPosition.y,
+                    r: pulseR,
+                    fill: "none",
+                    stroke: p.color,
+                    "stroke-width": 2.5,
+                    opacity: pulseAlpha,
+                    "pointer-events": "none"
+                }));
+            });
+        }
     });
 
     displayPositions.forEach((_, playerId) => {

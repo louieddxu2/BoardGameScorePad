@@ -431,9 +431,9 @@ describe('usePlayerSelectorRenderer', () => {
             runFrame();
         });
 
-        // 人數未滿 (2)，鎖定時不應自動 materialized
-        expect(onPlayersChange).not.toHaveBeenCalledWith([
-            expect.objectContaining({ text: '玩家 1' })
+        // 人數未滿 (2)，鎖定時就應 materialized，狀態直接為 COLOR_PICKING
+        expect(onPlayersChange).toHaveBeenCalledWith([
+            expect.objectContaining({ text: '玩家 1', state: 'COLOR_PICKING' })
         ]);
         expect(svgElement.textContent).toContain('玩家 1');
 
@@ -445,7 +445,7 @@ describe('usePlayerSelectorRenderer', () => {
             });
         });
 
-        // 抬起手指釋放後才 materialized
+        // 抬起手指釋放後，狀態變更為 COLOR_PICKING
         expect(onPlayersChange).toHaveBeenLastCalledWith([
             expect.objectContaining({
                 text: '玩家 1',
@@ -486,7 +486,7 @@ describe('usePlayerSelectorRenderer', () => {
             runFrame();
         });
 
-        // 當預期人數為 1 且鎖定成功，應立即 materialized，不用等手指抬起
+        // 當預期人數為 1 且鎖定成功，應立即 materialized，不用等手指抬起，狀態直接為 COLOR_PICKING
         expect(onPlayersChange).toHaveBeenCalledWith([
             expect.objectContaining({
                 text: '玩家 1',

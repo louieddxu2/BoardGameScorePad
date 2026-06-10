@@ -1,4 +1,4 @@
-﻿export interface Candidate {
+export interface Candidate {
     id: string;
     name: string;
     linkedPlayerId?: string;
@@ -9,6 +9,7 @@ export interface SelectorPlayer {
     id: string;
     text: string;
     linkedPlayerId?: string;
+    touchId?: string | number;
     x: number;
     y: number;
     textRotationDeg: number;
