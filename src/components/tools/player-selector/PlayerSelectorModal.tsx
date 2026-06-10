@@ -424,24 +424,24 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                 {/* Empty State Hint */}
                 {phase === 'selecting' && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-300">
-                        <div className="flex flex-col items-center justify-center gap-2 text-center select-none max-w-[280px]">
-                            {/* 對面玩家的朝向 (倒置 180 度) */}
-                            <div className="transform rotate-180 opacity-70 scale-90 select-none">
-                                <span className="text-brand-secondary font-bold text-sm tracking-widest drop-shadow-[0_0_8px_rgba(249,115,22,0.3)] animate-pulse">
+                        <div className="flex flex-col portrait:flex-row items-center justify-center gap-4 portrait:gap-8 text-center select-none max-w-[90vw] portrait:max-h-[90vh]">
+                            {/* 對面 / 左側 玩家的朝向 */}
+                            <div className="transform rotate-180 portrait:rotate-90 opacity-90 scale-95 md:scale-100 select-none">
+                                <span className="text-brand-secondary font-bold text-sm md:text-base tracking-widest drop-shadow-[0_0_8px_rgba(249,115,22,0.4)] animate-pulse">
                                     {t('picker_prototype_empty')}
                                 </span>
                             </div>
 
-                            {/* 置中的橫置退出指示 (長軸，作為中心橢圓的視覺基礎) */}
-                            <div className="py-2 px-5 border-y border-white/10 my-2 select-none">
-                                <span className="text-txt-muted text-xs md:text-sm font-semibold opacity-60 tracking-wider">
+                            {/* 置中的橫置退出指示 (長寬比自適應邊框與旋轉) */}
+                            <div className="py-2 px-5 portrait:py-5 portrait:px-2 border-y portrait:border-y-0 portrait:border-x border-white/20 my-2 portrait:my-0 portrait:mx-2 select-none transform portrait:rotate-90">
+                                <span className="text-white text-xs md:text-sm font-bold opacity-90 tracking-wider whitespace-nowrap">
                                     {t('picker_prototype_exit_hint')}
                                 </span>
                             </div>
 
-                            {/* 目前玩家的朝向 (正向) */}
-                            <div className="opacity-70 scale-90 select-none">
-                                <span className="text-brand-secondary font-bold text-sm tracking-widest drop-shadow-[0_0_8px_rgba(249,115,22,0.3)] animate-pulse">
+                            {/* 目前 / 右側 玩家的朝向 */}
+                            <div className="transform rotate-0 portrait:-rotate-90 opacity-90 scale-95 md:scale-100 select-none">
+                                <span className="text-brand-secondary font-bold text-sm md:text-base tracking-widest drop-shadow-[0_0_8px_rgba(249,115,22,0.4)] animate-pulse">
                                     {t('picker_prototype_empty')}
                                 </span>
                             </div>
