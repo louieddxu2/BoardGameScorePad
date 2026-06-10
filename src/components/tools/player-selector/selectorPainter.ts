@@ -11,6 +11,21 @@ const PALETTE = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#a855f7
 const ORBIT_RADIUS = 110;
 const BALL_RADIUS = 26;
 
+const calculateResponsiveFontSize = (text: string, baseSize = 19): string => {
+    let totalWeight = 0;
+    for (let i = 0; i < text.length; i++) {
+        // 全形/中文字元權重為 1.0，半形/英文字元權重為 0.52
+        totalWeight += text.charCodeAt(i) > 255 ? 1.0 : 0.52;
+    }
+    // 中文 4 字 (4.0) 與英文 8 字 (4.16) 為最大字型臨界點。
+    // 超過 4.16 時開始進行等比例縮小，最低不小於 11px
+    if (totalWeight > 4.16) {
+        const shrunkSize = Math.max(11, (baseSize * 4.16) / totalWeight);
+        return `${shrunkSize.toFixed(1)}px`;
+    }
+    return `${baseSize}px`;
+};
+
 interface DrawSelectorSvgProps {
     svg: SVGSVGElement;
     rect: DOMRect;
@@ -148,7 +163,7 @@ export const drawSelectorSvg = ({
             x: 0,
             y: 1,
             fill: "#ffffff",
-            "font-size": "17px",
+            "font-size": calculateResponsiveFontSize(p.text),
             "font-weight": "bold",
             "text-anchor": "middle",
             "dominant-baseline": "middle",
@@ -441,7 +456,7 @@ export const drawSelectorSvg = ({
             x: 0,
             y: 1,
             fill: "#ffffff",
-            "font-size": "17px",
+            "font-size": calculateResponsiveFontSize(opt.text),
             "font-weight": "bold",
             "text-anchor": "middle",
             "dominant-baseline": "middle",
