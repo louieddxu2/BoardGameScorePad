@@ -228,7 +228,7 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
 
     const stopDrawTimers = () => {
         if (drawIntervalRef.current !== null) {
-            window.clearInterval(drawIntervalRef.current);
+            window.clearTimeout(drawIntervalRef.current);
             drawIntervalRef.current = null;
         }
         if (drawTimeoutRef.current !== null) {
@@ -297,19 +297,33 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
 
         let highlightIndex = 0;
         setHighlightedPlayerId(players[highlightIndex % players.length].id);
-        drawIntervalRef.current = window.setInterval(() => {
-            highlightIndex += 1;
-            setHighlightedPlayerId(players[highlightIndex % players.length].id);
-        }, 120);
 
-        drawTimeoutRef.current = window.setTimeout(() => {
-            stopDrawTimers();
-            const result = drawTurnOrder(players);
-            setTurnOrder(result);
-            setHighlightedPlayerId(getStarterSelectorPlayerId(result) || null);
-            setShouldKeepRetreatedLayout(true);
-            setPhase('result');
-        }, 2000);
+        const startTime = Date.now();
+        const duration = 2000; // 總抽籤動畫時間 2 秒
+
+        const runTick = (currentDelay: number) => {
+            const elapsed = Date.now() - startTime;
+            if (elapsed >= duration) {
+                // 時間到，定格開獎
+                const result = drawTurnOrder(players);
+                setTurnOrder(result);
+                setHighlightedPlayerId(getStarterSelectorPlayerId(result) || null);
+                setShouldKeepRetreatedLayout(true);
+                setPhase('result');
+                drawIntervalRef.current = null;
+            } else {
+                // 繼續高亮下一位
+                highlightIndex += 1;
+                setHighlightedPlayerId(players[highlightIndex % players.length].id);
+
+                // 漸進式增加延遲，乘數為 1.25，最大為 500ms
+                const nextDelay = Math.min(currentDelay * 1.25, 500);
+                drawIntervalRef.current = window.setTimeout(() => runTick(nextDelay), currentDelay);
+            }
+        };
+
+        // 初始以 60ms 快速滾動
+        drawIntervalRef.current = window.setTimeout(() => runTick(60), 60);
     }, [players, phase]);
 
     // 當人數恰好達到預期人數時，自動觸發隨機抽起始玩家

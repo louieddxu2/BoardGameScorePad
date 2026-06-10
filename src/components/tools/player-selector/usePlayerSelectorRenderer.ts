@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Candidate, SelectorPlayer, SelectorTurnOrderEntry } from './types';
 import { OptionState, SelectorPointerInput, TouchState } from './selectorEngineTypes';
 import { getFourCandidatesForTouch } from './selectorCandidates';
-import { applyPaletteClick, applyPlayerClick, getPlayerPaletteColors } from './selectorHitTest';
+import { applyPaletteClick, applyPlayerClick, getPlayerPaletteColors, COLOR_PALETTE_RADIUS } from './selectorHitTest';
 import { drawSelectorSvg } from './selectorPainter';
 import { closeSelectorPlayerPalettes } from './selectorDisplay';
 
@@ -474,55 +474,97 @@ export const usePlayerSelectorRenderer = ({
             }
         });
 
-        // 1.5 更新已物化但仍在觸摸鎖定狀態的玩家位置與旋轉角度（帶有平滑彈線效果與手指排斥力，保持與原本相同的手指前方距離）
+        // 1.5 更新已物化玩家位置與旋轉角度（帶有平滑彈線效果、手指排斥力、玩家間物理互斥與邊界碰撞）
         playersRef.current.forEach(p => {
-            if (p.touchId === undefined) return;
-            const touch = activeTouchesRef.current.get(p.touchId) ??
-                          activeTouchesRef.current.get(String(p.touchId)) ??
-                          activeTouchesRef.current.get(Number(p.touchId));
-            if (touch && touch.state === 'LOCKED') {
-                let vel = playerVelocitiesRef.current.get(p.id);
-                if (!vel) {
-                    vel = { vx: 0, vy: 0 };
-                    playerVelocitiesRef.current.set(p.id, vel);
+            let vel = playerVelocitiesRef.current.get(p.id);
+            if (!vel) {
+                vel = { vx: 0, vy: 0 };
+                playerVelocitiesRef.current.set(p.id, vel);
+            }
+
+            if (p.touchId !== undefined) {
+                const touch = activeTouchesRef.current.get(p.touchId) ??
+                              activeTouchesRef.current.get(String(p.touchId)) ??
+                              activeTouchesRef.current.get(Number(p.touchId));
+                if (touch && touch.state === 'LOCKED') {
+                    const lockedRadius = ORBIT_RADIUS / 2;
+                    const targetX = touch.anchorX + Math.cos(touch.forwardAngleRad) * lockedRadius;
+                    const targetY = touch.anchorY + Math.sin(touch.forwardAngleRad) * lockedRadius;
+
+                    // 1. 彈簧拉力
+                    vel.vx += (targetX - p.x) * (SPRING_K * 2);
+                    vel.vy += (targetY - p.y) * (SPRING_K * 2);
+
+                    // 2. 手指排斥力 (Finger Exclusion Force)，以維持手指前方距離
+                    const dx = p.x - touch.anchorX;
+                    const dy = p.y - touch.anchorY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const minDist = FINGER_EXCLUSION_RADIUS + BALL_RADIUS + 2; // 50 + 26 + 2 = 78
+
+                    if (dist < minDist && dist > 0.1) {
+                        const penetration = minDist - dist;
+                        const nx = dx / dist;
+                        const ny = dy / dist;
+                        vel.vx += nx * penetration * 0.85;
+                        vel.vy += ny * penetration * 0.85;
+                    }
+
+                    p.textRotationDeg = touch.textRotationDeg;
                 }
+            }
+        });
 
-                const lockedRadius = ORBIT_RADIUS / 2;
-                const targetX = touch.anchorX + Math.cos(touch.forwardAngleRad) * lockedRadius;
-                const targetY = touch.anchorY + Math.sin(touch.forwardAngleRad) * lockedRadius;
-
-                // 1. 彈簧拉力
-                vel.vx += (targetX - p.x) * (SPRING_K * 2);
-                vel.vy += (targetY - p.y) * (SPRING_K * 2);
-
-                // 2. 引入手指排斥力 (Finger Exclusion Force)，以維持原汁原味的手指前方距離！
-                const dx = p.x - touch.anchorX;
-                const dy = p.y - touch.anchorY;
+        // 玩家間的物理互斥 (當開啟調色盤時碰撞半徑動態變大，把周圍玩家推開)
+        for (let i = 0; i < playersRef.current.length; i++) {
+            for (let j = i + 1; j < playersRef.current.length; j++) {
+                const p1 = playersRef.current[i];
+                const p2 = playersRef.current[j];
+                const dx = p1.x - p2.x;
+                const dy = p1.y - p2.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
-                const minDist = FINGER_EXCLUSION_RADIUS + BALL_RADIUS + 2; // 50 + 26 + 2 = 78
+
+                // 如果玩家開啟調色盤，碰撞半徑設為 COLOR_PALETTE_RADIUS + 10 = 74px；否則為預設 BALL_RADIUS = 26px
+                const r1 = p1.state === 'COLOR_PICKING' ? (COLOR_PALETTE_RADIUS + 10) : BALL_RADIUS;
+                const r2 = p2.state === 'COLOR_PICKING' ? (COLOR_PALETTE_RADIUS + 10) : BALL_RADIUS;
+                const minDist = r1 + r2;
 
                 if (dist < minDist && dist > 0.1) {
-                    const penetration = minDist - dist;
+                    const force = (minDist - dist) * 0.25; // 分離係數
                     const nx = dx / dist;
                     const ny = dy / dist;
-                    vel.vx += nx * penetration * 0.85;
-                    vel.vy += ny * penetration * 0.85;
+
+                    const v1 = playerVelocitiesRef.current.get(p1.id)!;
+                    const v2 = playerVelocitiesRef.current.get(p2.id)!;
+
+                    v1.vx += nx * force;
+                    v1.vy += ny * force;
+                    v2.vx -= nx * force;
+                    v2.vy -= ny * force;
                 }
-
-                // 3. 摩擦力與限速
-                vel.vx *= FRICTION;
-                vel.vy *= FRICTION;
-
-                const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
-                if (speed > MAX_NORMAL_SPEED) {
-                    vel.vx = (vel.vx / speed) * MAX_NORMAL_SPEED;
-                    vel.vy = (vel.vy / speed) * MAX_NORMAL_SPEED;
-                }
-
-                p.x += vel.vx;
-                p.y += vel.vy;
-                p.textRotationDeg = touch.textRotationDeg;
             }
+        }
+
+        // 應用速度、邊界防護與摩擦力
+        playersRef.current.forEach(p => {
+            const vel = playerVelocitiesRef.current.get(p.id)!;
+
+            // 邊界斥力
+            if (p.x < WALL_REPULSION_DIST) vel.vx += (WALL_REPULSION_DIST - p.x) * WALL_REPULSION_FORCE;
+            if (p.x > rect.width - WALL_REPULSION_DIST) vel.vx -= (p.x - (rect.width - WALL_REPULSION_DIST)) * WALL_REPULSION_FORCE;
+            if (p.y < WALL_REPULSION_DIST) vel.vy += (WALL_REPULSION_DIST - p.y) * WALL_REPULSION_FORCE;
+            if (p.y > rect.height - WALL_REPULSION_DIST) vel.vy -= (p.y - (rect.height - WALL_REPULSION_DIST)) * WALL_REPULSION_FORCE;
+
+            vel.vx *= FRICTION;
+            vel.vy *= FRICTION;
+
+            const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
+            if (speed > MAX_NORMAL_SPEED) {
+                vel.vx = (vel.vx / speed) * MAX_NORMAL_SPEED;
+                vel.vy = (vel.vy / speed) * MAX_NORMAL_SPEED;
+            }
+
+            p.x += vel.vx;
+            p.y += vel.vy;
         });
 
         optionsRef.current.forEach(opt => {
