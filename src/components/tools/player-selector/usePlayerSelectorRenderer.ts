@@ -514,32 +514,37 @@ export const usePlayerSelectorRenderer = ({
             }
         });
 
-        // 玩家間的物理互斥 (當開啟調色盤時碰撞半徑動態變大，把周圍玩家推開)
-        for (let i = 0; i < playersRef.current.length; i++) {
-            for (let j = i + 1; j < playersRef.current.length; j++) {
-                const p1 = playersRef.current[i];
-                const p2 = playersRef.current[j];
-                const dx = p1.x - p2.x;
-                const dy = p1.y - p2.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
+        const isLockedOrResult = resultDisplayRef.current.isInteractionLocked || 
+                                 (resultDisplayRef.current.turnOrder && resultDisplayRef.current.turnOrder.length > 0);
 
-                // 如果玩家開啟調色盤，碰撞半徑設為 COLOR_PALETTE_RADIUS + 10 = 74px；否則為預設 BALL_RADIUS = 26px
-                const r1 = p1.state === 'COLOR_PICKING' ? (COLOR_PALETTE_RADIUS + 10) : BALL_RADIUS;
-                const r2 = p2.state === 'COLOR_PICKING' ? (COLOR_PALETTE_RADIUS + 10) : BALL_RADIUS;
-                const minDist = r1 + r2;
+        // 只有在非抽籤、非結果畫面時，才計算玩家間的物理互斥 (當開啟調色盤時碰撞半徑動態變大，把周圍玩家推開)
+        if (!isLockedOrResult) {
+            for (let i = 0; i < playersRef.current.length; i++) {
+                for (let j = i + 1; j < playersRef.current.length; j++) {
+                    const p1 = playersRef.current[i];
+                    const p2 = playersRef.current[j];
+                    const dx = p1.x - p2.x;
+                    const dy = p1.y - p2.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
 
-                if (dist < minDist && dist > 0.1) {
-                    const force = (minDist - dist) * 0.25; // 分離係數
-                    const nx = dx / dist;
-                    const ny = dy / dist;
+                    // 如果玩家開啟調色盤，碰撞半徑設為 COLOR_PALETTE_RADIUS + 10 = 74px；否則為預設 BALL_RADIUS = 26px
+                    const r1 = p1.state === 'COLOR_PICKING' ? (COLOR_PALETTE_RADIUS + 10) : BALL_RADIUS;
+                    const r2 = p2.state === 'COLOR_PICKING' ? (COLOR_PALETTE_RADIUS + 10) : BALL_RADIUS;
+                    const minDist = r1 + r2;
 
-                    const v1 = playerVelocitiesRef.current.get(p1.id)!;
-                    const v2 = playerVelocitiesRef.current.get(p2.id)!;
+                    if (dist < minDist && dist > 0.1) {
+                        const force = (minDist - dist) * 0.25; // 分離係數
+                        const nx = dx / dist;
+                        const ny = dy / dist;
 
-                    v1.vx += nx * force;
-                    v1.vy += ny * force;
-                    v2.vx -= nx * force;
-                    v2.vy -= ny * force;
+                        const v1 = playerVelocitiesRef.current.get(p1.id)!;
+                        const v2 = playerVelocitiesRef.current.get(p2.id)!;
+
+                        v1.vx += nx * force;
+                        v1.vy += ny * force;
+                        v2.vx -= nx * force;
+                        v2.vy -= ny * force;
+                    }
                 }
             }
         }
@@ -548,11 +553,13 @@ export const usePlayerSelectorRenderer = ({
         playersRef.current.forEach(p => {
             const vel = playerVelocitiesRef.current.get(p.id)!;
 
-            // 邊界斥力
-            if (p.x < WALL_REPULSION_DIST) vel.vx += (WALL_REPULSION_DIST - p.x) * WALL_REPULSION_FORCE;
-            if (p.x > rect.width - WALL_REPULSION_DIST) vel.vx -= (p.x - (rect.width - WALL_REPULSION_DIST)) * WALL_REPULSION_FORCE;
-            if (p.y < WALL_REPULSION_DIST) vel.vy += (WALL_REPULSION_DIST - p.y) * WALL_REPULSION_FORCE;
-            if (p.y > rect.height - WALL_REPULSION_DIST) vel.vy -= (p.y - (rect.height - WALL_REPULSION_DIST)) * WALL_REPULSION_FORCE;
+            // 只有在非抽籤、非結果畫面時，才套用邊界斥力，避免干擾開獎排列
+            if (!isLockedOrResult) {
+                if (p.x < WALL_REPULSION_DIST) vel.vx += (WALL_REPULSION_DIST - p.x) * WALL_REPULSION_FORCE;
+                if (p.x > rect.width - WALL_REPULSION_DIST) vel.vx -= (p.x - (rect.width - WALL_REPULSION_DIST)) * WALL_REPULSION_FORCE;
+                if (p.y < WALL_REPULSION_DIST) vel.vy += (WALL_REPULSION_DIST - p.y) * WALL_REPULSION_FORCE;
+                if (p.y > rect.height - WALL_REPULSION_DIST) vel.vy -= (p.y - (rect.height - WALL_REPULSION_DIST)) * WALL_REPULSION_FORCE;
+            }
 
             vel.vx *= FRICTION;
             vel.vy *= FRICTION;
