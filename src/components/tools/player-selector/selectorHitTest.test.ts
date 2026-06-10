@@ -42,10 +42,10 @@ describe('selectorHitTest', () => {
         const result = applyPaletteClick(players, { x: 100, y: 100 + COLOR_PALETTE_RADIUS });
 
         expect(result.handled).toBe(true);
-        // 第一推薦色是 PALETTE[0] = #ef4444（自身顏色不排除）
-        expect(result.color).toBe('#ef4444');
+        // 第一推薦色是 COLORS[0] = 'rgb(var(--c-p-emerald))'（自身顏色 #ef4444 不在 COLORS 中，所以不排除）
+        expect(result.color).toBe('rgb(var(--c-p-emerald))');
         expect(result.players[0]).toMatchObject({
-            color: '#ef4444',
+            color: 'rgb(var(--c-p-emerald))',
             state: 'READY'
         });
     });

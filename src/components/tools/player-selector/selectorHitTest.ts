@@ -1,4 +1,5 @@
 import { SelectorPlayer } from './types';
+import { COLORS } from '../../../colors';
 
 export const PLAYER_BOX_HALF_WIDTH = 43;
 export const PLAYER_BOX_HALF_HEIGHT = 17;
@@ -12,8 +13,6 @@ const DELETE_HIT_BOTTOM = -30;
 // 調色盤槽位優先順序：正下方(90°) -> 右下(45°) -> 左下(135°) -> 右(0°) -> 左(180°) -> 右上(315°) -> 左上(225°)
 // 每個值是原始 8 格調色盤的 index (角度 = index * 45°)
 export const SLOT_INDICES = [2, 1, 3, 0, 4, 7, 5];
-
-const PALETTE = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#a855f7", "#ec4899", "#14b8a6"];
 
 export interface Point {
     x: number;
@@ -77,7 +76,7 @@ export const getPlayerPaletteColors = (
     }
 
     // 2. 補充預設調色盤中未被佔用的顏色
-    PALETTE.forEach(color => {
+    COLORS.forEach(color => {
         if (!availableColors.includes(color) && !otherSelectedColors.has(color)) {
             availableColors.push(color);
         }

@@ -293,37 +293,47 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
         stopDrawTimers();
         surfaceRef.current?.closeAllPalettes();
         setPhase('drawing');
-        setTurnOrder([]);
+
+        // 1. 動畫開始前，先隨機抽好最終的順序與起始玩家
+        const finalResult = drawTurnOrder(players);
+        const finalStarterId = getStarterSelectorPlayerId(finalResult);
+
+        // 2. 尋找起始玩家在目前 players 陣列中的 index
+        const starterIndex = players.findIndex(p => p.id === finalStarterId);
+
+        // 3. 設計跑馬燈高亮路徑，確保最後一格必定精準定格在 starterIndex
+        // 我們希望至少轉 3 圈以上，最後剛好停在 starterIndex
+        const baseSteps = Math.max(12, players.length * 3);
+        const totalSteps = baseSteps + ((starterIndex - (0 % players.length) + players.length) % players.length) + 1;
 
         let highlightIndex = 0;
         setHighlightedPlayerId(players[highlightIndex % players.length].id);
 
-        const startTime = Date.now();
-        const duration = 2000; // 總抽籤動畫時間 2 秒
-
-        const runTick = (currentDelay: number) => {
-            const elapsed = Date.now() - startTime;
-            if (elapsed >= duration) {
-                // 時間到，定格開獎
-                const result = drawTurnOrder(players);
-                setTurnOrder(result);
-                setHighlightedPlayerId(getStarterSelectorPlayerId(result) || null);
+        const runTick = (stepIndex: number, currentDelay: number) => {
+            if (stepIndex >= totalSteps) {
+                // 抵達最終步，時間到定格開獎
+                setTurnOrder(finalResult);
+                setHighlightedPlayerId(finalStarterId || null);
                 setShouldKeepRetreatedLayout(true);
                 setPhase('result');
                 drawIntervalRef.current = null;
             } else {
                 // 繼續高亮下一位
-                highlightIndex += 1;
-                setHighlightedPlayerId(players[highlightIndex % players.length].id);
+                setHighlightedPlayerId(players[stepIndex % players.length].id);
 
-                // 漸進式增加延遲，乘數為 1.25，最大為 500ms
-                const nextDelay = Math.min(currentDelay * 1.25, 500);
-                drawIntervalRef.current = window.setTimeout(() => runTick(nextDelay), currentDelay);
+                // 漸進式增加延遲，以 Math.pow 進行非線性拋物線減速，最大延遲 450ms
+                const progress = stepIndex / (totalSteps - 1);
+                const nextDelay = 50 + 400 * Math.pow(progress, 2.5);
+
+                drawIntervalRef.current = window.setTimeout(
+                    () => runTick(stepIndex + 1, nextDelay),
+                    currentDelay
+                );
             }
         };
 
-        // 初始以 60ms 快速滾動
-        drawIntervalRef.current = window.setTimeout(() => runTick(60), 60);
+        // 初始以 50ms 快速滾動
+        drawIntervalRef.current = window.setTimeout(() => runTick(0, 50), 50);
     }, [players, phase]);
 
     // 當人數恰好達到預期人數時，自動觸發隨機抽起始玩家
