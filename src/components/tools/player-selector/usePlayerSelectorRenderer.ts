@@ -410,7 +410,7 @@ export const usePlayerSelectorRenderer = ({
                     let minDiff = Infinity;
                     let bestOptId: number | null = null;
 
-                    const angleOffsets = [-Math.PI / 2, -Math.PI / 6, Math.PI / 6, Math.PI / 2];
+                    const angleOffsets = [-Math.PI / 2, Math.PI / 2, -Math.PI / 6, Math.PI / 6];
                     optionsRef.current.filter(o => o.touchId === touchId).forEach(o => {
                         const targetAngle = touch.forwardAngleRad + angleOffsets[o.idx];
                         let dAngle = joyAngle - targetAngle;
@@ -497,7 +497,7 @@ export const usePlayerSelectorRenderer = ({
                     opt.vx += (fx - opt.x) * (SPRING_K * 2.5);
                     opt.vy += (fy - opt.y) * (SPRING_K * 2.5);
                 } else {
-                    const angleOffsets = [-Math.PI / 2, -Math.PI / 6, Math.PI / 6, Math.PI / 2];
+                    const angleOffsets = [-Math.PI / 2, Math.PI / 2, -Math.PI / 6, Math.PI / 6];
                     const targetAngle = touch.forwardAngleRad + angleOffsets[opt.idx];
                     const targetX = touch.anchorX + Math.cos(targetAngle) * ORBIT_RADIUS;
                     const targetY = touch.anchorY + Math.sin(targetAngle) * ORBIT_RADIUS;
