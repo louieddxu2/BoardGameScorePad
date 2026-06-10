@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { SelectorPlayer } from './types';
 import {
     applyPaletteClick,
@@ -36,34 +36,35 @@ describe('selectorHitTest', () => {
     });
 
     it('selects a palette color and closes the player palette', () => {
-        const palette = ['#111111', '#222222'];
-        const players = [makePlayer({ state: 'COLOR_PICKING', color: '#111111' })];
+        const players = [makePlayer({ state: 'COLOR_PICKING', color: '#ef4444' })];
 
-        const result = applyPaletteClick(players, { x: 100 + COLOR_PALETTE_RADIUS, y: 100 }, palette);
+        // 正下方 (90°) 是第一推薦色，角度 90° 對應 local y = +RADIUS
+        const result = applyPaletteClick(players, { x: 100, y: 100 + COLOR_PALETTE_RADIUS });
 
         expect(result.handled).toBe(true);
-        expect(result.color).toBe('#111111');
+        // 第一推薦色是 PALETTE[0] = #ef4444（自身顏色不排除）
+        expect(result.color).toBe('#ef4444');
         expect(result.players[0]).toMatchObject({
-            color: '#111111',
+            color: '#ef4444',
             state: 'READY'
         });
     });
 
-    it('does not select the hidden top palette color', () => {
-        const palette = ['#111111', '#222222', '#333333', '#444444', '#555555', '#666666', '#777777', '#888888'];
-        const players = [makePlayer({ state: 'COLOR_PICKING', color: '#111111' })];
+    it('does not select a color at the hidden top slot (270° / index 6)', () => {
+        const players = [makePlayer({ state: 'COLOR_PICKING', color: '#ef4444' })];
 
-        const result = applyPaletteClick(players, { x: 100, y: 100 - COLOR_PALETTE_RADIUS }, palette);
+        // 正上方 (270°) 是刪除按鈕位置，不應該有調色盤圓點
+        const result = applyPaletteClick(players, { x: 100, y: 100 - COLOR_PALETTE_RADIUS });
 
         expect(result.handled).toBe(false);
         expect(result.players[0].state).toBe('COLOR_PICKING');
     });
 
     it('keeps the hidden palette gap above the rotated player name', () => {
-        const palette = ['#111111', '#222222', '#333333', '#444444', '#555555', '#666666', '#777777', '#888888'];
-        const players = [makePlayer({ state: 'COLOR_PICKING', textRotationDeg: 90, color: '#111111' })];
+        const players = [makePlayer({ state: 'COLOR_PICKING', textRotationDeg: 90, color: '#ef4444' })];
 
-        const result = applyPaletteClick(players, { x: 100 + COLOR_PALETTE_RADIUS, y: 100 }, palette);
+        // 旋轉 90° 後，正上方在螢幕上變為正右方，那個位置不應有調色盤圓點
+        const result = applyPaletteClick(players, { x: 100 + COLOR_PALETTE_RADIUS, y: 100 });
 
         expect(result.handled).toBe(false);
         expect(result.players[0].state).toBe('COLOR_PICKING');

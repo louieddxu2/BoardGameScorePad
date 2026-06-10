@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Candidate, SelectorPlayer, SelectorTurnOrderEntry } from './types';
 import { OptionState, SelectorPointerInput, TouchState } from './selectorEngineTypes';
 import { getFourCandidatesForTouch } from './selectorCandidates';
-import { applyPaletteClick, applyPlayerClick } from './selectorHitTest';
+import { applyPaletteClick, applyPlayerClick, getPlayerPaletteColors } from './selectorHitTest';
 import { drawSelectorSvg } from './selectorPainter';
 import { closeSelectorPlayerPalettes } from './selectorDisplay';
 
@@ -24,7 +24,6 @@ const STATIONARY_LOCK_TIME_MS = 2000;
 const ANONYMOUS_MOVE_THRESHOLD = 15;
 const ANONYMOUS_PLAYER_PREFIX = "\u73a9\u5bb6";
 
-const PALETTE = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#a855f7", "#ec4899", "#14b8a6"];
 const DEFAULT_COLOR = "#475569";
 
 interface UsePlayerSelectorPrototypeRendererProps {
@@ -187,6 +186,7 @@ export const usePlayerSelectorRenderer = ({
         playersRef.current.push({
             id,
             touchId: touch.id,
+            suggestedColors: option.candidate.suggestedColors,
             linkedPlayerId: option.candidate.linkedPlayerId,
             x: option.x,
             y: option.y,
@@ -419,7 +419,12 @@ export const usePlayerSelectorRenderer = ({
 
                             const lockedOpt = optionsRef.current.find(o => o.id === touch.selectedOptionId);
                             if (lockedOpt) {
-                                 lockedOpt.color = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+                                 const recommendedColors = getPlayerPaletteColors(
+                                     lockedOpt.candidate.suggestedColors,
+                                     playersRef.current,
+                                     'player_' + touchId
+                                 );
+                                 lockedOpt.color = recommendedColors[0] || DEFAULT_COLOR;
                                  optionsRef.current = optionsRef.current.filter(o => {
                                      if (o.touchId !== touchId) return true;
                                      return o.id === touch.selectedOptionId;
@@ -457,7 +462,7 @@ export const usePlayerSelectorRenderer = ({
                             frozenX: touch.anchorX,
                             frozenY: touch.anchorY,
                             text: anonymousName,
-                            color: PALETTE[Math.floor(Math.random() * PALETTE.length)],
+                            color: getPlayerPaletteColors(undefined, playersRef.current, 'player_' + touchId)[0] || DEFAULT_COLOR,
                             candidate: anonymousCandidate
                         };
 
@@ -650,8 +655,7 @@ export const usePlayerSelectorRenderer = ({
         const rect = svg.getBoundingClientRect();
         const result = applyPaletteClick(
             playersRef.current,
-            { x: clickX - rect.left, y: clickY - rect.top },
-            PALETTE
+            { x: clickX - rect.left, y: clickY - rect.top }
         );
 
         if (!result.handled) return false;

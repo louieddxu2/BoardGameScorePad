@@ -5,9 +5,7 @@ import {
     getAnimatedDisplayPosition,
     getRetreatedDisplayPosition
 } from './selectorDisplay';
-import { COLOR_PALETTE_RADIUS, shouldRenderPaletteColor } from './selectorHitTest';
-
-const PALETTE = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#a855f7", "#ec4899", "#14b8a6"];
+import { COLOR_PALETTE_RADIUS, getPlayerPaletteColors, SLOT_INDICES } from './selectorHitTest';
 const ORBIT_RADIUS = 110;
 const BALL_RADIUS = 26;
 
@@ -136,10 +134,10 @@ export const drawSelectorSvg = ({
                 "stroke-width": 1
             }));
 
-            PALETTE.forEach((color, i) => {
-                if (!shouldRenderPaletteColor(i)) return;
-
-                const angle = (i * 45) * Math.PI / 180;
+            const paletteColors = getPlayerPaletteColors(p.suggestedColors, players, p.id);
+            paletteColors.forEach((color, idx) => {
+                const slotIndex = SLOT_INDICES[idx];
+                const angle = (slotIndex * 45) * Math.PI / 180;
                 const dotX = Math.cos(angle) * COLOR_PALETTE_RADIUS;
                 const dotY = Math.sin(angle) * COLOR_PALETTE_RADIUS;
                 const isSelected = (p.color === color);
