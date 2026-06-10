@@ -426,22 +426,22 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-300">
                         <div className="flex flex-col portrait:flex-row items-center justify-center gap-4 portrait:gap-8 text-center select-none max-w-[90vw] portrait:max-h-[90vh]">
                             {/* 對面 / 左側 玩家的朝向 */}
-                            <div className="opacity-90 scale-95 md:scale-100 select-none portrait:w-8 portrait:h-40 portrait:flex portrait:items-center portrait:justify-center">
-                                <span className="text-brand-secondary font-bold text-sm md:text-base tracking-widest drop-shadow-[0_0_8px_rgba(249,115,22,0.4)] animate-pulse transform rotate-180 portrait:rotate-90 whitespace-nowrap">
+                            <div className="opacity-90 scale-95 md:scale-100 select-none portrait:w-10 portrait:h-48 portrait:flex portrait:items-center portrait:justify-center">
+                                <span className="text-brand-secondary font-bold text-[1.8vw] portrait:text-[2vh] landscape:text-[1.8vw] tracking-widest drop-shadow-[0_0_8px_rgba(249,115,22,0.4)] animate-pulse transform rotate-180 portrait:rotate-90 whitespace-nowrap">
                                     {t('picker_prototype_empty')}
                                 </span>
                             </div>
 
                             {/* 置中的橫置退出指示 (長寬比自適應邊框與旋轉) */}
-                            <div className="py-2 px-5 border-y border-white/20 my-2 portrait:my-0 portrait:mx-2 select-none portrait:w-8 portrait:h-40 portrait:flex portrait:items-center portrait:justify-center portrait:border-x portrait:border-y-0">
-                                <span className="text-white text-xs md:text-sm font-bold opacity-90 tracking-wider whitespace-nowrap transform portrait:rotate-90">
+                            <div className="py-2 px-5 border-y border-white/20 my-2 portrait:my-0 portrait:mx-2 select-none portrait:w-10 portrait:h-48 portrait:flex portrait:items-center portrait:justify-center portrait:border-x portrait:border-y-0">
+                                <span className="text-white text-[2.2vw] portrait:text-[2.4vh] landscape:text-[2.2vw] font-bold opacity-90 tracking-wider whitespace-nowrap transform portrait:rotate-90">
                                     {t('picker_prototype_exit_hint')}
                                 </span>
                             </div>
 
                             {/* 目前 / 右側 玩家的朝向 */}
-                            <div className="opacity-90 scale-95 md:scale-100 select-none portrait:w-8 portrait:h-40 portrait:flex portrait:items-center portrait:justify-center">
-                                <span className="text-brand-secondary font-bold text-sm md:text-base tracking-widest drop-shadow-[0_0_8px_rgba(249,115,22,0.4)] animate-pulse transform rotate-0 portrait:-rotate-90 whitespace-nowrap">
+                            <div className="opacity-90 scale-95 md:scale-100 select-none portrait:w-10 portrait:h-48 portrait:flex portrait:items-center portrait:justify-center">
+                                <span className="text-brand-secondary font-bold text-[1.8vw] portrait:text-[2vh] landscape:text-[1.8vw] tracking-widest drop-shadow-[0_0_8px_rgba(249,115,22,0.4)] animate-pulse transform rotate-0 portrait:-rotate-90 whitespace-nowrap">
                                     {t('picker_prototype_empty')}
                                 </span>
                             </div>
