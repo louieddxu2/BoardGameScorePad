@@ -1,4 +1,3 @@
-
 import { db } from '../../db';
 import { SavedListItem } from '../../types';
 import { RecommendationContext, SuggestedPlayer, PlayerRecommendationWeights, DEFAULT_PLAYER_WEIGHTS } from './types';
@@ -6,6 +5,7 @@ import { contextResolver, Voter } from './ContextResolver';
 import { votingEngine } from './VotingEngine';
 import { RELATION_PREDICTION_CONFIG } from '../../services/relationship/RelationMapper';
 import { Candidate } from '../../components/tools/player-selector/types';
+import { COLORS } from '../../colors';
 
 export interface GetRecommendedCandidatesParams {
     allSavedPlayers: SavedListItem[];
@@ -27,6 +27,14 @@ export function predictColorsForPlayer(player: SavedListItem): string[] {
             }
         });
     }
+
+    // 補充其餘未使用的顏色，確保回傳一個包含所有 17 色完整排序的推薦列表
+    COLORS.forEach(color => {
+        if (!colors.includes(color)) {
+            colors.push(color);
+        }
+    });
+
     return colors;
 }
 

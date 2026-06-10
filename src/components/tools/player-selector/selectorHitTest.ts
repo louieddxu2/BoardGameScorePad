@@ -66,18 +66,11 @@ export const getPlayerPaletteColors = (
 
     const availableColors: string[] = [];
 
-    // 1. 優先加入未被佔用的偏好顏色
-    if (preferredColors) {
-        preferredColors.forEach(color => {
-            if (!otherSelectedColors.has(color) && color !== 'transparent') {
-                availableColors.push(color);
-            }
-        });
-    }
+    // 推薦顏色已包含所有 17 色的完整排序，直接按順序取用未被佔用的顏色
+    const sourceColors = preferredColors && preferredColors.length > 0 ? preferredColors : COLORS;
 
-    // 2. 補充預設調色盤中未被佔用的顏色
-    COLORS.forEach(color => {
-        if (!availableColors.includes(color) && !otherSelectedColors.has(color)) {
+    sourceColors.forEach(color => {
+        if (!otherSelectedColors.has(color) && color !== 'transparent') {
             availableColors.push(color);
         }
     });
