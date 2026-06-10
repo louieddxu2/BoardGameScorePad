@@ -16,6 +16,20 @@ export interface GetRecommendedCandidatesParams {
     candidateLimit?: number;
 }
 
+export function predictColorsForPlayer(player: SavedListItem): string[] {
+    const rawColors = player.meta?.relations?.colors;
+    const colors: string[] = [];
+    if (Array.isArray(rawColors)) {
+        rawColors.forEach(c => {
+            const colorStr = (typeof c === 'object' && c.id) ? c.id : (typeof c === 'string' ? c : null);
+            if (colorStr && colorStr !== 'transparent') {
+                colors.push(colorStr);
+            }
+        });
+    }
+    return colors;
+}
+
 /**
  * 記憶體同步算分推薦玩家
  * 根據當前已鎖定玩家與背景 voters，在記憶體內直接進行一次性投票算分並排序。
@@ -63,7 +77,8 @@ export function getRecommendedCandidatesPure({
                 linkedPlayerId: p.id,
                 score,
                 usageCount: p.usageCount || 0,
-                lastUsed: p.lastUsed || 0
+                lastUsed: p.lastUsed || 0,
+                suggestedColors: predictColorsForPlayer(p)
             };
         });
 
@@ -81,7 +96,8 @@ export function getRecommendedCandidatesPure({
     let list: Candidate[] = candidatesList.map(c => ({
         id: c.id,
         name: c.name,
-        linkedPlayerId: c.linkedPlayerId
+        linkedPlayerId: c.linkedPlayerId,
+        suggestedColors: c.suggestedColors
     }));
 
     // 5. 推薦不足 4 人，用現有 session 中的玩家名稱補足

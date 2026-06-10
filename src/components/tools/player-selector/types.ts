@@ -10,6 +10,7 @@ export interface SelectorPlayer {
     text: string;
     linkedPlayerId?: string;
     touchId?: string | number;
+    suggestedColors?: string[];
     x: number;
     y: number;
     textRotationDeg: number;
