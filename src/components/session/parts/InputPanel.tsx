@@ -231,18 +231,19 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     const [showSwipeHint, setShowSwipeHint] = useState(false);
     const [recommendedColors, setRecommendedColors] = useState<string[]>([]);
 
+    const editingPlayer = session.players.find(p => p.id === editingPlayerId);
+    const currentName = editingPlayer?.name;
+    const currentLinkedId = editingPlayer?.linkedPlayerId;
+
     useEffect(() => {
-        if (!editingPlayerId) {
+        if (!editingPlayerId || !editingPlayer) {
             setRecommendedColors([]);
             return;
         }
 
         const fetchRecommendedColors = async () => {
             try {
-                const currentPlayer = session.players.find(p => p.id === editingPlayerId);
-                if (!currentPlayer) return;
-
-                const targetPlayerId = currentPlayer.linkedPlayerId || currentPlayer.id;
+                const targetPlayerId = currentLinkedId || editingPlayer.id;
 
                 const suggestions = await colorRecommendationEngine.generateSuggestions(
                     { gameName: session.name },
@@ -257,7 +258,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
         };
 
         fetchRecommendedColors();
-    }, [editingPlayerId, session.name, session.players, template]);
+    }, [editingPlayerId, currentName, currentLinkedId, session.name, template]);
 
     // Guard Ref to prevent re-initialization of preview value on every render
     const currentEditingIdRef = useRef<string | null>(null);

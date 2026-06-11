@@ -128,7 +128,16 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
           {/* Palette button on the right */}
           <button
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => setShowColorPicker(!showColorPicker)}
+            onClick={() => {
+              if (isInputFocused) {
+                onNameSubmit(player.id, tempName, false);
+                setTimeout(() => {
+                  setShowColorPicker(true);
+                }, 100);
+              } else {
+                setShowColorPicker(!showColorPicker);
+              }
+            }}
             className={`w-14 flex-none rounded-r-xl flex items-center justify-center transition-all active:scale-95 border-l border-surface-border/50 ${isMainDark ? 'ring-inset ring-1 ring-white/10' : ''}`}
             style={{ backgroundColor: isMainTransparent ? 'rgb(var(--c-surface-bg-alt))' : player.color }}
             title={t('player_color_none')}
