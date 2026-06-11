@@ -307,6 +307,79 @@ export class ScorePadDatabase extends Dexie {
 
         // Version 28: Force update for English templates
         (this as any).version(28).stores({});
+
+        // Version 29: Migrate legacy Hex colors to CSS semantic variables
+        (this as any).version(29).stores({}).upgrade(async (trans: any) => {
+            const HEX_TO_SEMANTIC_MAP: Record<string, string> = {
+              '#10b981': 'rgb(var(--c-p-emerald))',
+              '#3b82f6': 'rgb(var(--c-p-blue))',
+              '#facc15': 'rgb(var(--c-p-yellow))',
+              '#ef4444': 'rgb(var(--c-p-red))',
+              '#f97316': 'rgb(var(--c-p-orange))',
+              '#8b5cf6': 'rgb(var(--c-p-violet))',
+              '#1f2937': 'rgb(var(--c-p-black))',
+              '#ffffff': 'rgb(var(--c-p-white))',
+              '#ec4899': 'rgb(var(--c-p-pink))',
+              '#06b6d4': 'rgb(var(--c-p-cyan))',
+              '#84cc16': 'rgb(var(--c-p-lime))',
+              '#f59e0b': 'rgb(var(--c-p-amber))',
+              '#6366f1': 'rgb(var(--c-p-indigo))',
+              '#14b8a6': 'rgb(var(--c-p-teal))',
+              '#a16207': 'rgb(var(--c-p-brown))',
+              '#6b7280': 'rgb(var(--c-p-gray))',
+              '#fed7aa': 'rgb(var(--c-p-skin))',
+            };
+
+            const normalizeColorStr = (c: string): string => {
+                if (!c) return c;
+                const lower = c.toLowerCase().trim();
+                return HEX_TO_SEMANTIC_MAP[lower] || c;
+            };
+
+            // 1. Migrate savedPlayers meta relations colors
+            await trans.table('savedPlayers').toCollection().modify((player: any) => {
+                if (player.meta?.relations?.colors) {
+                    player.meta.relations.colors = player.meta.relations.colors.map((c: any) => {
+                        if (typeof c === 'object' && c.id) {
+                            return { ...c, id: normalizeColorStr(c.id) };
+                        }
+                        if (typeof c === 'string') {
+                            return normalizeColorStr(c);
+                        }
+                        return c;
+                    });
+                }
+            });
+
+            // 2. Migrate sessions players colors
+            await trans.table('sessions').toCollection().modify((session: any) => {
+                if (Array.isArray(session.players)) {
+                    session.players.forEach((p: any) => {
+                        if (p.color) {
+                            p.color = normalizeColorStr(p.color);
+                        }
+                    });
+                }
+            });
+
+            // 3. Migrate history players colors
+            await trans.table('history').toCollection().modify((record: any) => {
+                if (Array.isArray(record.players)) {
+                    record.players.forEach((p: any) => {
+                        if (p.color) {
+                            p.color = normalizeColorStr(p.color);
+                        }
+                    });
+                }
+            });
+
+            // 4. Migrate templates supportedColors
+            await trans.table('templates').toCollection().modify((template: any) => {
+                if (Array.isArray(template.supportedColors)) {
+                    template.supportedColors = template.supportedColors.map(normalizeColorStr);
+                }
+            });
+        });
     }
 }
 
