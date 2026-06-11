@@ -20,7 +20,7 @@ interface SmartSpacerProps {
     mode?: 'session' | 'history'; // New prop
 }
 
-const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, onTakePhoto, onScreenshot, onUpdateSession, mode = 'session' }) => {
+const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhoto, onScreenshot, onUpdateSession, mode = 'session' }) => {
     const { t } = useSessionTranslation();
     const isHistory = mode === 'history';
     return (
@@ -50,7 +50,7 @@ const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, onTakePhoto, onScree
                 {/* Row 2: Order */}
                 {!isHistory && (
                     <div className="col-span-4">
-                        <OrderTool session={session} onUpdateSession={onUpdateSession} />
+                        <OrderTool session={session} template={template} onUpdateSession={onUpdateSession} />
                     </div>
                 )}
 

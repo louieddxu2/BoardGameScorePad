@@ -1,6 +1,6 @@
 import { db } from '../../db';
-import { SavedListItem } from '../../types';
-import { RecommendationContext, SuggestedPlayer, PlayerRecommendationWeights, DEFAULT_PLAYER_WEIGHTS } from './types';
+import { GameTemplate, SavedListItem } from '../../types';
+import { RecommendationContext, SuggestedPlayer, PlayerRecommendationWeights, DEFAULT_PLAYER_WEIGHTS, ColorRecommendationWeights, DEFAULT_COLOR_WEIGHTS } from './types';
 import { contextResolver, Voter } from './ContextResolver';
 import { votingEngine } from './VotingEngine';
 import { RELATION_PREDICTION_CONFIG } from '../../services/relationship/RelationMapper';
@@ -14,28 +14,76 @@ export interface GetRecommendedCandidatesParams {
     lockedNames: string[];
     sessionPlayers: Array<{ id: string; name: string }>;
     candidateLimit?: number;
+    template?: GameTemplate;
 }
 
-export function predictColorsForPlayer(player: SavedListItem): string[] {
-    const rawColors = player.meta?.relations?.colors;
-    const colors: string[] = [];
-    if (Array.isArray(rawColors)) {
-        rawColors.forEach(c => {
-            const colorStr = (typeof c === 'object' && c.id) ? c.id : (typeof c === 'string' ? c : null);
-            if (colorStr && colorStr !== 'transparent') {
-                colors.push(colorStr);
-            }
+export function predictColorsForPlayer(
+    player: SavedListItem,
+    template?: GameTemplate,
+    contextVoters?: Voter[],
+    weights: ColorRecommendationWeights = DEFAULT_COLOR_WEIGHTS
+): string[] {
+    const voters: Voter[] = [];
+
+    // 1. Template Settings (Virtual Voter)
+    if (template?.supportedColors && template.supportedColors.length > 0) {
+        const relations = template.supportedColors.map(c => ({ 
+            id: c, 
+            count: 0 
+        }));
+        
+        voters.push({
+            item: {
+                id: 'template_settings_virtual',
+                name: 'Template Settings',
+                lastUsed: 0,
+                usageCount: 0,
+                meta: {
+                    relations: { colors: relations },
+                    confidence: { colors: 5.0 }
+                }
+            },
+            factor: 'templateSetting'
         });
     }
 
-    // 補充其餘未使用的顏色，確保回傳一個包含所有 17 色完整排序的推薦列表
+    // 2. Game Voter
+    if (contextVoters) {
+        const gameVoter = contextVoters.find(v => v.factor === 'game');
+        if (gameVoter) {
+            voters.push(gameVoter);
+        }
+    }
+
+    // 3. Player Voter
+    voters.push({
+        item: player,
+        factor: 'player'
+    });
+
+    // 4. Run Synchronous Voting
+    const scoresMap = votingEngine.calculateScores(
+        voters, 
+        weights as any, 
+        'colors', 
+        [], // 排除規則在 getPlayerPaletteColors 中進行，此處保留完整推薦
+        20
+    );
+
+    // 5. Sort Result
+    const sortedColors = Array.from(scoresMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(entry => entry[0])
+        .filter(c => c !== 'transparent');
+
+    // 6. Fill remaining global colors
     COLORS.forEach(color => {
-        if (!colors.includes(color)) {
-            colors.push(color);
+        if (!sortedColors.includes(color) && color !== 'transparent') {
+            sortedColors.push(color);
         }
     });
 
-    return colors;
+    return sortedColors;
 }
 
 /**
@@ -49,7 +97,8 @@ export function getRecommendedCandidatesPure({
     lockedPlayerIds,
     lockedNames,
     sessionPlayers,
-    candidateLimit
+    candidateLimit,
+    template
 }: GetRecommendedCandidatesParams): Candidate[] {
     // 1. 準備投票者 (Voters)
     const voters = [...contextVoters];
@@ -86,7 +135,7 @@ export function getRecommendedCandidatesPure({
                 score,
                 usageCount: p.usageCount || 0,
                 lastUsed: p.lastUsed || 0,
-                suggestedColors: predictColorsForPlayer(p)
+                suggestedColors: predictColorsForPlayer(p, template, contextVoters)
             };
         });
 
@@ -114,11 +163,20 @@ export function getRecommendedCandidatesPure({
         const lockedNamesSet = new Set(lockedNames);
         const fallbackPlayers = sessionPlayers
             .filter(p => !existingNames.has(p.name) && !lockedNamesSet.has(p.name))
-            .map(p => ({
-                id: p.id,
-                name: p.name,
-                linkedPlayerId: p.id
-            }));
+            .map(p => {
+                const matchedSaved = allSavedPlayers.find(sp => sp.name === p.name);
+                const suggestedColors = matchedSaved 
+                    ? predictColorsForPlayer(matchedSaved, template, contextVoters)
+                    : (template?.supportedColors && template.supportedColors.length > 0
+                        ? [...template.supportedColors, ...COLORS.filter(c => !template.supportedColors?.includes(c))]
+                        : COLORS);
+                return {
+                    id: p.id,
+                    name: p.name,
+                    linkedPlayerId: p.id,
+                    suggestedColors: suggestedColors.filter(c => c !== 'transparent')
+                };
+            });
         list = [...list, ...fallbackPlayers];
     }
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useImperativeHandle, useCallback, u
 import { createPortal } from 'react-dom';
 import { Play, RefreshCw } from 'lucide-react';
 import { useToolsTranslation } from '../../../i18n/tools';
-import { GameSession, SavedListItem } from '../../../types';
+import { GameSession, SavedListItem, GameTemplate } from '../../../types';
 import { Candidate, SelectorPlayer, SelectorTurnOrderEntry } from './types';
 import { usePlayerSelectorRenderer } from './usePlayerSelectorRenderer';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
@@ -15,6 +15,7 @@ interface PlayerSelectorModalProps {
     isOpen: boolean;
     onClose: () => void;
     session: GameSession;
+    template?: GameTemplate;
     onUpdateSession?: (session: GameSession) => void;
 }
 
@@ -79,6 +80,7 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
     isOpen,
     onClose,
     session,
+    template,
     onUpdateSession
 }) => {
     const { t } = useToolsTranslation();
@@ -218,9 +220,10 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
             contextVoters,
             lockedPlayerIds,
             lockedNames,
-            sessionPlayers: session.players
+            sessionPlayers: session.players,
+            template
         });
-    }, [isOpen, allSavedPlayers, contextVoters, players, session.players]);
+    }, [isOpen, allSavedPlayers, contextVoters, players, session.players, template]);
 
     const randomNames = t('picker_prototype_random_names').split(',');
     const starterPlayerId = getStarterSelectorPlayerId(turnOrder) || null;

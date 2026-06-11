@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { Shuffle, Users } from 'lucide-react';
-import { GameSession } from '../../types';
+import { GameSession, GameTemplate } from '../../types';
 import { useToolsTranslation } from '../../i18n/tools';
 import PlayerSelectorModal from './player-selector/PlayerSelectorModal';
 
 interface OrderToolProps {
     session: GameSession;
+    template: GameTemplate;
     onUpdateSession: (session: GameSession) => void;
 }
 
-const OrderTool: React.FC<OrderToolProps> = ({ session, onUpdateSession }) => {
+const OrderTool: React.FC<OrderToolProps> = ({ session, template, onUpdateSession }) => {
     const { t } = useToolsTranslation();
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -59,6 +60,7 @@ const OrderTool: React.FC<OrderToolProps> = ({ session, onUpdateSession }) => {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 session={session}
+                template={template}
                 onUpdateSession={onUpdateSession}
             />
         </div>
