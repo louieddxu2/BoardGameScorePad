@@ -23,8 +23,8 @@ const DashboardFAB: React.FC<DashboardFABProps> = ({ onClick, isVisible, mode = 
       // 為了讓圓形按鈕 (56x56) 的中心點與面板按鈕對齊：
       // Right: (90 - 56) / 2 = 17px
       // Bottom: (60 - 56) / 2 = 2px (視覺微調為 4px)
-      // 加上 relative 讓內部的透明觸控擴展 span 可以進行定位
-      className="absolute text-white rounded-full flex items-center justify-center z-40 transition-all duration-200 active:scale-95 animate-in zoom-in btn-fab-primary animate-guide-pulse relative"
+      // 圓形按鈕本身已是 absolute 定位，可作為內部透明擴充 span 的定位基準
+      className="absolute text-white rounded-full flex items-center justify-center z-40 transition-all duration-200 active:scale-95 animate-in zoom-in btn-fab-primary animate-guide-pulse"
       title={title || t('card_start_new')}
       style={{
         width: '56px',
