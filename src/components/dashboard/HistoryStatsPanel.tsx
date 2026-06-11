@@ -156,7 +156,8 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
           </div>
 
           <div className={`flex-none ${BOTTOM_ROW_HEIGHT_CLASS} flex border-t border-surface-border z-10 bg-app-bg-deep`}>
-            <div className={`min-w-0 flex-1 overflow-x-auto no-scrollbar flex items-center gap-1.5 px-2 pr-[126px] sm:pr-[148px] pointer-events-auto`}>
+            <div className="min-w-0 flex-1 flex items-center gap-2 px-3 pr-[126px] sm:pr-[148px] pointer-events-auto">
+              {/* 未來如需啟用計分規則篩選，請將下方註解解除：
               <button
                 onClick={(event) => openMenu('rule', event)}
                 className={`h-10 shrink-0 bg-app-bg border rounded-lg px-2.5 flex items-center gap-1 hover:border-txt-secondary transition-colors ${
@@ -167,10 +168,11 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
                 <span className="text-sm font-bold whitespace-nowrap max-w-[96px] truncate">{ruleLabel}</span>
                 <ChevronUp size={14} className="text-txt-muted shrink-0" />
               </button>
+              */}
 
               <button
                 onClick={(event) => openMenu('location', event)}
-                className={`h-10 shrink-0 bg-app-bg border rounded-lg px-2.5 flex items-center gap-1 hover:border-txt-secondary transition-colors ${
+                className={`h-10 bg-app-bg border rounded-lg px-2.5 flex items-center gap-1 hover:border-txt-secondary transition-colors ${
                   activeLocationFilter ? 'border-brand-primary text-brand-primary bg-brand-primary/10' : 'border-surface-border text-txt-primary'
                 }`}
                 title={activeLocationFilter || t('stats_all_locations')}
@@ -180,6 +182,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
                 <ChevronUp size={14} className="text-txt-muted shrink-0" />
               </button>
 
+              {/* 未來如需啟用意圖人數篩選，請將下方註解解除：
               <div className={`h-10 w-[104px] shrink-0 flex items-center justify-between bg-app-bg rounded-xl p-1 border relative overflow-hidden transition-all duration-300 ${
                 playerCount ? 'border-brand-primary bg-brand-primary/10' : 'border-surface-border'
               }`}>
@@ -206,10 +209,11 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
                   <Plus size={16} />
                 </button>
               </div>
+              */}
 
               <button
                 onClick={() => setDateRange(prev => getNextHistoryStatsDateRange(prev))}
-                className="h-10 shrink-0 bg-app-bg border border-surface-border rounded-lg px-2.5 flex items-center gap-1.5 text-txt-primary hover:border-txt-secondary transition-colors"
+                className="h-10 bg-app-bg border border-surface-border rounded-lg px-2.5 flex items-center gap-1.5 text-txt-primary hover:border-txt-secondary transition-colors"
                 title={t('stats_date_filter_title')}
               >
                 <CalendarDays size={14} className="text-txt-muted shrink-0" />
