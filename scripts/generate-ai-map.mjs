@@ -10,6 +10,7 @@ const groupMatchers = [
   { name: "dashboard", test: (p) => p.includes("components/dashboard") || p.includes("utils/historyStats") || p.includes("utils/historyGameEntries") },
   { name: "game-selector", test: (p) => p.includes("features/game-selector") },
   { name: "session", test: (p) => p.includes("/session/") },
+  { name: "player-selector", test: (p) => p.includes("components/tools/player-selector") },
   { name: "template", test: (p) => p.includes("/template/") },
   { name: "history", test: (p) => p.includes("/history/") || p.includes("useHistory") },
   { name: "ai-generator", test: (p) => p.includes("features/ai-generator") },

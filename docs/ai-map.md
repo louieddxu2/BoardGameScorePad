@@ -31,6 +31,13 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - History player stats use `savedPlayers` as the canonical player universe. History records are snapshots of appearances, but distinct player counts should resolve linked IDs or names back to the saved player master list and ignore orphan/stale identities that are not in that list.
 - The hidden/debug data inspector's player count is a raw `db.savedPlayers` table count. Treat that as the master-list count, not as a count of every player identity ever seen in history snapshots.
 
+## Player Selector Tool Patterns
+- The selector runs a custom physics engine in `usePlayerSelectorRenderer.ts` decoupled from React rendering cycles. It uses `candidatesRef` and `callbacksRef` to handle canvas/SVG interactions without triggering component re-renders.
+- Radial anchor-points are calculated relative to a central dashed ellipse (`rx = width * 0.32`, `ry = height * 0.21`). User seat orientations are normalized against physical viewport aspect ratios to prevent vector distortion on flat tablets.
+- Gesture mechanics implement a high-rigidity (k = 0.4) 200ms joystick calibration window immediately on pointer down to eliminate spring lag. This shifts into lock-on/palette-drawing stages on drag, or triggers a local 500ms refresh (Tap-to-Refresh) if tapped.
+- Color recommendation is deferred (Lazy load) until a candidate is locked. Recommended colors exclude already locked colors and display a dual outermost ripple effect for strong feedback.
+- To support clone players (same saved player on multiple seats), confirmed participants are saved using unique seat IDs (`sp.id`) in the session, with deduplication logic (`usedExistingIds`) preventing multiple seats from grabbing/mutating the same existing session player record.
+
 ## Module Index (Auto-Maintained)
 
 ### Dashboard / Stats / Photo Grid
@@ -125,8 +132,29 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - `src/components/session/parts/TotalsBar.tsx`
 - `src/components/session/SessionImageFlow.tsx`
 - `src/components/session/SessionUI.test.tsx`
+- `src/components/session/SessionView.toolboxScroll.test.tsx`
 - `src/components/session/SessionView.tsx`
 <!-- AUTO:session:end -->
+
+### Player Selector
+<!-- AUTO:player-selector:start -->
+- `src/components/tools/player-selector/PlayerSelectorModal.test.tsx`
+- `src/components/tools/player-selector/PlayerSelectorModal.tsx`
+- `src/components/tools/player-selector/selectorCandidates.test.ts`
+- `src/components/tools/player-selector/selectorCandidates.ts`
+- `src/components/tools/player-selector/selectorDisplay.test.ts`
+- `src/components/tools/player-selector/selectorDisplay.ts`
+- `src/components/tools/player-selector/selectorEngineTypes.ts`
+- `src/components/tools/player-selector/selectorHitTest.test.ts`
+- `src/components/tools/player-selector/selectorHitTest.ts`
+- `src/components/tools/player-selector/selectorPainter.ts`
+- `src/components/tools/player-selector/selectorSvg.ts`
+- `src/components/tools/player-selector/turnOrder.test.ts`
+- `src/components/tools/player-selector/turnOrder.ts`
+- `src/components/tools/player-selector/types.ts`
+- `src/components/tools/player-selector/usePlayerSelectorRenderer.test.tsx`
+- `src/components/tools/player-selector/usePlayerSelectorRenderer.ts`
+<!-- AUTO:player-selector:end -->
 
 ### Template
 <!-- AUTO:template:start -->
