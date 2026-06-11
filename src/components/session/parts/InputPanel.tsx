@@ -17,6 +17,7 @@ import { getScoreHistory, getRawValue, syncPartsFromIds } from '../../../utils/s
 import { useKeyboardStatus } from '../../../hooks/useVisualViewportOffset';
 import { useSessionTranslation } from '../../../i18n/session';
 import { getEffectiveIds } from '../../../utils/scoreDisplay';
+import { colorRecommendationEngine } from '../../../features/recommendation/ColorRecommendationEngine';
 
 // Helper for extracting factors from score value
 const getFactors = (value: any): [string | number, string | number] => {
@@ -228,6 +229,35 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     const { offset } = useKeyboardStatus();
     const [activeFactorIdx, setActiveFactorIdx] = useState<0 | 1>(0);
     const [showSwipeHint, setShowSwipeHint] = useState(false);
+    const [recommendedColors, setRecommendedColors] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (!editingPlayerId) {
+            setRecommendedColors([]);
+            return;
+        }
+
+        const fetchRecommendedColors = async () => {
+            try {
+                const currentPlayer = session.players.find(p => p.id === editingPlayerId);
+                if (!currentPlayer) return;
+
+                const targetPlayerId = currentPlayer.linkedPlayerId || currentPlayer.id;
+
+                const suggestions = await colorRecommendationEngine.generateSuggestions(
+                    { gameName: session.name },
+                    template,
+                    targetPlayerId
+                );
+                setRecommendedColors(suggestions);
+            } catch (error) {
+                console.error("[InputPanel] Failed to fetch recommended colors:", error);
+                setRecommendedColors([]);
+            }
+        };
+
+        fetchRecommendedColors();
+    }, [editingPlayerId, session.name, session.players, template]);
 
     // Guard Ref to prevent re-initialization of preview value on every render
     const currentEditingIdRef = useRef<string | null>(null);
@@ -549,6 +579,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     onNameSubmit={(id, name, next, linkedId) => eventHandlers.handlePlayerNameSubmit(id, name, next, linkedId)}
                     onToggleStarter={handleToggleStarter}
                     supportedColors={template.supportedColors} // [New] Pass supportedColors
+                    recommendedColors={recommendedColors} // [New] Pass recommendedColors
                 />
             );
             sidebarContentNode = <PlayerSettingsPanel player={activePlayer} onToggleStarter={handleToggleStarter} />;

@@ -17,6 +17,7 @@ interface PlayerEditorProps {
   onNameSubmit: (playerId: string, newName: string, moveNext?: boolean, linkedId?: string) => void;
   onToggleStarter: (playerId: string) => void;
   supportedColors?: string[]; // [New] Prop
+  recommendedColors?: string[]; // [New] Prop
 }
 
 // This is the pure content provider component
@@ -30,7 +31,8 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
   onUpdatePlayerColor,
   onNameSubmit,
   onToggleStarter,
-  supportedColors
+  supportedColors,
+  recommendedColors
 }) => {
   const { t } = useSessionTranslation();
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -55,12 +57,11 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
   }, [showColorPicker]);
 
   const sortedColors = useMemo(() => {
-    if (!supportedColors || supportedColors.length === 0) return COLORS;
-
-    const preferred = supportedColors;
+    // 推薦色優先，如果沒有，就 fallback 到模板設定色 supportedColors
+    const preferred = recommendedColors && recommendedColors.length > 0 ? recommendedColors : (supportedColors || []);
     const remaining = COLORS.filter(c => !preferred.includes(c));
     return [...preferred, ...remaining];
-  }, [supportedColors]);
+  }, [supportedColors, recommendedColors]);
 
   const displayedPlayers = useMemo(() => {
     const trimmedInput = tempName.trim();
