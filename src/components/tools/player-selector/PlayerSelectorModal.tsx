@@ -304,6 +304,7 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
         stopDrawTimers();
         surfaceRef.current?.closeAllPalettes();
         setPhase('drawing');
+        setTurnOrder([]); // 立即清空上一次的抽籤順位，讓數字和框立刻消失
 
         // 1. 動畫開始前，先隨機抽好最終的順序與起始玩家
         const finalResult = drawTurnOrder(players);
