@@ -222,6 +222,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
             </div>
 
             <div className={`absolute bottom-0 right-0 ${ACTION_ROW_WIDTH_CLASS} ${BOTTOM_ROW_HEIGHT_CLASS} flex border-t border-l border-surface-border z-20 bg-app-bg-deep pointer-events-auto`}>
+            {/* 未來如需啟用搜尋聯動，請將下方放大鏡按鈕註解解除：
             <button
               onClick={onSearchClick}
               className="w-[50px] h-full flex items-center justify-center bg-app-bg hover:bg-surface-bg text-brand-primary transition-colors active:brightness-90 border-r border-surface-border"
@@ -229,10 +230,11 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
             >
               <Search size={22} strokeWidth={2.5} />
             </button>
+            */}
 
             <button
               onClick={() => setShowPhotoGrid(true)}
-              className="w-[90px] h-full flex flex-col items-center justify-center transition-all active:brightness-90 bg-brand-primary hover:filter hover:brightness-110 text-white"
+              className="w-full h-full flex flex-col items-center justify-center transition-all active:brightness-90 bg-brand-primary hover:filter hover:brightness-110 text-white"
               title={t('stats_photo_grid_title')}
             >
               <Grid3X3 size={26} />
