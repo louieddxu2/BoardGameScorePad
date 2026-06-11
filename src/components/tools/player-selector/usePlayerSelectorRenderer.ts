@@ -5,6 +5,10 @@ import { getFourCandidatesForTouch } from './selectorCandidates';
 import { applyPaletteClick, applyPlayerClick, getPlayerPaletteColors, COLOR_PALETTE_RADIUS } from './selectorHitTest';
 import { drawSelectorSvg } from './selectorPainter';
 import { closeSelectorPlayerPalettes } from './selectorDisplay';
+import { GameTemplate, SavedListItem } from '../../../types';
+import { Voter } from '../../../features/recommendation/ContextResolver';
+import { predictColorsForPlayer } from '../../../features/recommendation/PlayerRecommendationEngine';
+import { COLORS } from '../../../colors';
 
 const SPRING_K = 0.08;       
 const FRICTION = 0.82;       
@@ -36,6 +40,9 @@ interface UsePlayerSelectorPrototypeRendererProps {
     shouldRetreatPlayers?: boolean;
     isInteractionLocked?: boolean;
     expectedPlayerCount?: number;
+    template?: GameTemplate;
+    allSavedPlayers?: SavedListItem[];
+    contextVoters?: Voter[];
     onSelectorPlayersChange: (players: SelectorPlayer[]) => void;
     onCandidateLocked: (candidate: Candidate) => void;
 }
@@ -50,9 +57,22 @@ export const usePlayerSelectorRenderer = ({
     shouldRetreatPlayers = false,
     isInteractionLocked = false,
     expectedPlayerCount = 0,
+    template,
+    allSavedPlayers = [],
+    contextVoters = [],
     onSelectorPlayersChange,
     onCandidateLocked
 }: UsePlayerSelectorPrototypeRendererProps) => {
+
+    const templateRef = useRef(template);
+    const allSavedPlayersRef = useRef(allSavedPlayers);
+    const contextVotersRef = useRef(contextVoters);
+
+    useEffect(() => {
+        templateRef.current = template;
+        allSavedPlayersRef.current = allSavedPlayers;
+        contextVotersRef.current = contextVoters;
+    }, [template, allSavedPlayers, contextVoters]);
 
     const activeTouchesRef = useRef<Map<string | number, TouchState>>(new Map());
     const optionsRef = useRef<OptionState[]>([]);
@@ -420,20 +440,29 @@ export const usePlayerSelectorRenderer = ({
 
                             const lockedOpt = optionsRef.current.find(o => o.id === touch.selectedOptionId);
                             if (lockedOpt) {
-                                 const recommendedColors = getPlayerPaletteColors(
-                                     lockedOpt.candidate.suggestedColors,
-                                     playersRef.current,
-                                     'player_' + touchId
-                                 );
-                                 lockedOpt.color = recommendedColors[0] || DEFAULT_COLOR;
-                                 optionsRef.current = optionsRef.current.filter(o => {
-                                     if (o.touchId !== touchId) return true;
-                                     return o.id === touch.selectedOptionId;
-                                 });
-                                 materializePlayer(touch, lockedOpt, 'COLOR_PICKING');
-                                 removeOptionsForTouch(touchId);
-                                 callbacksRef.current.onCandidateLocked(lockedOpt.candidate);
-                             }
+                                const matchedSaved = (allSavedPlayersRef.current || []).find(sp => sp.id === lockedOpt.candidate.linkedPlayerId);
+                                const preferredColors = matchedSaved
+                                    ? predictColorsForPlayer(matchedSaved, templateRef.current, contextVotersRef.current)
+                                    : (templateRef.current?.supportedColors && templateRef.current.supportedColors.length > 0
+                                        ? [...templateRef.current.supportedColors, ...COLORS.filter(c => !templateRef.current?.supportedColors?.includes(c))]
+                                        : COLORS);
+
+                                lockedOpt.candidate.suggestedColors = preferredColors;
+
+                                const recommendedColors = getPlayerPaletteColors(
+                                    preferredColors,
+                                    playersRef.current,
+                                    'player_' + touchId
+                                );
+                                lockedOpt.color = recommendedColors[0] || DEFAULT_COLOR;
+                                optionsRef.current = optionsRef.current.filter(o => {
+                                    if (o.touchId !== touchId) return true;
+                                    return o.id === touch.selectedOptionId;
+                                });
+                                materializePlayer(touch, lockedOpt, 'COLOR_PICKING');
+                                removeOptionsForTouch(touchId);
+                                callbacksRef.current.onCandidateLocked(lockedOpt.candidate);
+                            }
                         }
                     }
                 } else {

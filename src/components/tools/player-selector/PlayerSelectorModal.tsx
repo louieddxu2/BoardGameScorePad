@@ -34,6 +34,9 @@ interface PlayerSelectorSurfaceProps {
     shouldRetreatPlayers: boolean;
     isInteractionLocked: boolean;
     expectedPlayerCount?: number;
+    template?: GameTemplate;
+    allSavedPlayers?: SavedListItem[];
+    contextVoters?: Voter[];
     onSelectorPlayersChange: (players: SelectorPlayer[]) => void;
     onCandidateLocked: (candidate: Candidate) => void;
 }
@@ -47,6 +50,9 @@ const PlayerSelectorSurface = React.forwardRef<PlayerSelectorSurfaceHandle, Play
     shouldRetreatPlayers,
     isInteractionLocked,
     expectedPlayerCount = 0,
+    template,
+    allSavedPlayers,
+    contextVoters,
     onSelectorPlayersChange,
     onCandidateLocked
 }, ref) => {
@@ -61,6 +67,9 @@ const PlayerSelectorSurface = React.forwardRef<PlayerSelectorSurfaceHandle, Play
         shouldRetreatPlayers,
         isInteractionLocked,
         expectedPlayerCount,
+        template,
+        allSavedPlayers,
+        contextVoters,
         onSelectorPlayersChange,
         onCandidateLocked
     });
@@ -220,10 +229,9 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
             contextVoters,
             lockedPlayerIds,
             lockedNames,
-            sessionPlayers: session.players,
-            template
+            sessionPlayers: session.players
         });
-    }, [isOpen, allSavedPlayers, contextVoters, players, session.players, template]);
+    }, [isOpen, allSavedPlayers, contextVoters, players, session.players]);
 
     const randomNames = t('picker_prototype_random_names').split(',');
     const starterPlayerId = getStarterSelectorPlayerId(turnOrder) || null;
@@ -444,6 +452,9 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                     shouldRetreatPlayers={shouldKeepRetreatedLayout}
                     isInteractionLocked={phase === 'drawing'}
                     expectedPlayerCount={session.players.length}
+                    template={template}
+                    allSavedPlayers={allSavedPlayers}
+                    contextVoters={contextVoters}
                     onSelectorPlayersChange={handlePlayersChange}
                     onCandidateLocked={(candidate) => {
                         console.log("[Visual Selector] Candidate locked:", candidate);

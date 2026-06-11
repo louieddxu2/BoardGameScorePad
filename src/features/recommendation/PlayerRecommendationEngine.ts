@@ -14,7 +14,6 @@ export interface GetRecommendedCandidatesParams {
     lockedNames: string[];
     sessionPlayers: Array<{ id: string; name: string }>;
     candidateLimit?: number;
-    template?: GameTemplate;
 }
 
 export function predictColorsForPlayer(
@@ -97,8 +96,7 @@ export function getRecommendedCandidatesPure({
     lockedPlayerIds,
     lockedNames,
     sessionPlayers,
-    candidateLimit,
-    template
+    candidateLimit
 }: GetRecommendedCandidatesParams): Candidate[] {
     // 1. 準備投票者 (Voters)
     const voters = [...contextVoters];
@@ -134,8 +132,7 @@ export function getRecommendedCandidatesPure({
                 linkedPlayerId: p.id,
                 score,
                 usageCount: p.usageCount || 0,
-                lastUsed: p.lastUsed || 0,
-                suggestedColors: predictColorsForPlayer(p, template, contextVoters)
+                lastUsed: p.lastUsed || 0
             };
         });
 
@@ -153,8 +150,7 @@ export function getRecommendedCandidatesPure({
     let list: Candidate[] = candidatesList.map(c => ({
         id: c.id,
         name: c.name,
-        linkedPlayerId: c.linkedPlayerId,
-        suggestedColors: c.suggestedColors
+        linkedPlayerId: c.linkedPlayerId
     }));
 
     // 5. 推薦不足 4 人，用現有 session 中的玩家名稱補足
@@ -163,20 +159,11 @@ export function getRecommendedCandidatesPure({
         const lockedNamesSet = new Set(lockedNames);
         const fallbackPlayers = sessionPlayers
             .filter(p => !existingNames.has(p.name) && !lockedNamesSet.has(p.name))
-            .map(p => {
-                const matchedSaved = allSavedPlayers.find(sp => sp.name === p.name);
-                const suggestedColors = matchedSaved 
-                    ? predictColorsForPlayer(matchedSaved, template, contextVoters)
-                    : (template?.supportedColors && template.supportedColors.length > 0
-                        ? [...template.supportedColors, ...COLORS.filter(c => !template.supportedColors?.includes(c))]
-                        : COLORS);
-                return {
-                    id: p.id,
-                    name: p.name,
-                    linkedPlayerId: p.id,
-                    suggestedColors: suggestedColors.filter(c => c !== 'transparent')
-                };
-            });
+            .map(p => ({
+                id: p.id,
+                name: p.name,
+                linkedPlayerId: p.id
+            }));
         list = [...list, ...fallbackPlayers];
     }
 
