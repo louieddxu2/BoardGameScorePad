@@ -483,6 +483,7 @@ const App: React.FC = () => {
           historyStatsRecords={appData.historyStatsRecords}
           historyGameEntries={appData.historyGameEntries}
           historyCount={appData.historyCount}
+          savedPlayers={appData.savedPlayers}
           searchQuery={appData.searchQuery}
           setSearchQuery={appData.setSearchQuery}
           themeMode={appData.themeMode}

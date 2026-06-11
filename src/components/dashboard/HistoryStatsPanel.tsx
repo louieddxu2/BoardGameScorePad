@@ -1,14 +1,17 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { BarChart3, CalendarDays, ChevronDown, ChevronUp, Grid3X3, Hash, MapPin, Minus, Search, Users, Plus } from 'lucide-react';
-import { HistoryGameEntry } from '../../utils/historyGameEntries';
+import { HistoryGameEntry, buildHistoryGameEntries } from '../../utils/historyGameEntries';
 import { buildHistoryStats, filterHistoryEntriesByDateRange, filterHistoryEntriesByStatsFilters, getNextHistoryStatsDateRange, HistoryStatsDateRange } from '../../utils/historyStats';
 import HistoryPhotoGridShareModal from './HistoryPhotoGridShareModal';
 import { useHistoryStatsTranslation } from '../../i18n/history_stats';
-import { ScoringRule } from '../../types';
+import { ScoringRule, SavedListItem } from '../../types';
+import { HistorySummary } from '../../utils/extractDataSummaries';
 import UpwardSelectMenu, { UpwardSelectMenuAnchor } from '../shared/UpwardSelectMenu';
 
 interface HistoryStatsPanelProps {
   entries: HistoryGameEntry[];
+  records?: HistorySummary[];
+  savedPlayers?: Pick<SavedListItem, 'id' | 'name'>[];
   onSearchClick: () => void;
   isSearchKeyboardOpen?: boolean;
 }
@@ -30,7 +33,13 @@ const formatDate = (timestamp: number | undefined, emptyLabel: string) => {
   return new Date(timestamp).toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' });
 };
 
-const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearchClick, isSearchKeyboardOpen = false }) => {
+const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
+  entries,
+  records,
+  savedPlayers,
+  onSearchClick,
+  isSearchKeyboardOpen = false
+}) => {
   const { t, language } = useHistoryStatsTranslation();
   const [playerCount, setPlayerCount] = useState<number | null>(null);
   const [showPhotoGrid, setShowPhotoGrid] = useState(false);
@@ -40,22 +49,53 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({ entries, onSearch
   const [locationFilter, setLocationFilter] = useState<string | null>(null);
   const [activeMenu, setActiveMenu] = useState<({ type: 'rule' | 'location' } & UpwardSelectMenuAnchor) | null>(null);
   const menuListRef = useRef<HTMLDivElement>(null);
-  const dateFilteredEntries = useMemo(() => filterHistoryEntriesByDateRange(entries, dateRange), [entries, dateRange]);
+
+  // 1. 單局層面篩選：時間
+  const dateFilteredRecords = useMemo(() => {
+    if (!records) return [];
+    if (dateRange === 'all') return records;
+    const days = { month: 30, quarter: 90, year: 365 }[dateRange] || 0;
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    return records.filter(r => r.endTime >= cutoff);
+  }, [records, dateRange]);
+
+  // 2. 為了維持 locationOptions / scoringRuleOptions 的計算相容性
+  // 我們先將 dateFilteredRecords 臨時聚合為 dateFilteredEntries，用來提取原有的過濾選項
+  const dateFilteredEntries = useMemo(() => {
+    if (!records) return entries; // fallback
+    return buildHistoryGameEntries(dateFilteredRecords, { savedPlayers });
+  }, [records, dateFilteredRecords, savedPlayers, entries]);
+
   const scoringRuleOptions = useMemo(
     () => SCORING_RULE_ORDER.filter(rule => dateFilteredEntries.some(entry => entry.scoringRules.includes(rule))),
     [dateFilteredEntries]
   );
+
   const locationOptions = useMemo(
-    () => Array.from(new Set(dateFilteredEntries.flatMap(entry => entry.locations))).sort((a, b) => a.localeCompare(b)),
-    [dateFilteredEntries]
+    () => Array.from(new Set(dateFilteredRecords.map(r => r.location?.trim()).filter(Boolean) as string[]))
+      .sort((a, b) => a.localeCompare(b)),
+    [dateFilteredRecords]
   );
+
   const activeScoringRuleFilter = scoringRuleFilter && scoringRuleOptions.includes(scoringRuleFilter) ? scoringRuleFilter : null;
   const activeLocationFilter = locationFilter && locationOptions.includes(locationFilter) ? locationFilter : null;
-  const filteredEntries = useMemo(() => filterHistoryEntriesByStatsFilters(dateFilteredEntries, {
-    playerCount,
-    scoringRule: activeScoringRuleFilter,
-    location: activeLocationFilter
-  }), [dateFilteredEntries, playerCount, activeScoringRuleFilter, activeLocationFilter]);
+
+  // 3. 單局層面篩選：套用所有條件（地點、規則、人數）
+  const filteredRecords = useMemo(() => {
+    return dateFilteredRecords.filter(r => {
+      if (activeLocationFilter && r.location?.trim() !== activeLocationFilter) return false;
+      if (activeScoringRuleFilter && r.scoringRule !== activeScoringRuleFilter) return false;
+      if (playerCount && r.players.length !== playerCount) return false;
+      return true;
+    });
+  }, [dateFilteredRecords, activeLocationFilter, activeScoringRuleFilter, playerCount]);
+
+  // 4. 重建最終過濾後的聚合 entries
+  const filteredEntries = useMemo(() => {
+    if (!records) return entries; // fallback
+    return buildHistoryGameEntries(filteredRecords, { savedPlayers });
+  }, [records, filteredRecords, savedPlayers, entries]);
+
   const stats = useMemo(() => buildHistoryStats(filteredEntries), [filteredEntries]);
   const isPanelExpanded = isExpanded && !isSearchKeyboardOpen;
   const panelLayoutClass = isSearchKeyboardOpen

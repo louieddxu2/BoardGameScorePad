@@ -47,6 +47,7 @@ interface DashboardProps {
   historyStatsRecords?: HistorySummary[];
   historyGameEntries?: HistoryGameEntry[];
   historyCount?: number;
+  savedPlayers?: SavedListItem[];
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   themeMode: 'dark' | 'light';
@@ -95,8 +96,10 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   activeSessionIds,
   activeSessions,
   historyRecords,
+  historyStatsRecords,
   historyGameEntries,
   historyCount,
+  savedPlayers,
   searchQuery,
   setSearchQuery,
   themeMode,
@@ -396,6 +399,8 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         <div ref={statsPanelRef}>
           <HistoryStatsPanel
             entries={historyGameEntries || []}
+            records={historyStatsRecords}
+            savedPlayers={savedPlayers}
             onSearchClick={handlePanelSearchFocus}
             isSearchKeyboardOpen={isSearchActive && isSearchInputFocused && isKeyboardOpen}
           />
