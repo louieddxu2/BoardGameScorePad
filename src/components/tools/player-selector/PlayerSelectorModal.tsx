@@ -389,17 +389,22 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
 
             // 3. 安全更新計分板 GameSession (保留歷史分數，僅調整座位與 Starter)
             if (onUpdateSession) {
+                const usedExistingIds = new Set<string>(); // 避免 existingPlayer 被重複配對
+
                 const updatedPlayers = sortedBySeat.map(sp => {
-                    // 比對 linkedPlayerId 或 name，尋找原本已在計分板中的玩家
+                    // 比對 linkedPlayerId 或 name，尋找原本已在計分板中且尚未被佔用的玩家
                     const existingPlayer = session.players.find(p => 
-                        (sp.linkedPlayerId && p.id === sp.linkedPlayerId) || 
-                        p.id === sp.id || 
-                        p.name === sp.text
+                        !usedExistingIds.has(p.id) && (
+                            (sp.linkedPlayerId && p.id === sp.linkedPlayerId) || 
+                            p.id === sp.id || 
+                            p.name === sp.text
+                        )
                     );
 
                     const isStarter = sp.id === starterPlayerId;
 
                     if (existingPlayer) {
+                        usedExistingIds.add(existingPlayer.id);
                         return {
                             ...existingPlayer,
                             color: sp.color,
@@ -407,9 +412,9 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                             isColorManuallySet: sp.isColorManuallySet || existingPlayer.isColorManuallySet || false
                         };
                     } else {
-                        // 新鎖定加入的玩家
+                        // 新鎖定加入的玩家 (使用唯一的座位 sp.id 作為計分板唯一 ID)
                         return {
-                            id: sp.linkedPlayerId || sp.id,
+                            id: sp.id,
                             name: sp.text,
                             color: sp.color,
                             scores: {},
