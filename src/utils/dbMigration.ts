@@ -17,8 +17,8 @@ export const migrateFromLocalStorage = async () => {
     try {
         // --- Phase 1: 內建資料庫同步 (Seeding & Diffing) ---
         const savedVersion = parseInt(localStorage.getItem(VERSION_KEY) || '0', 10);
-        const existingBuiltins = await db.builtins.toArray();
-        const isFreshInstall = existingBuiltins.length === 0;
+        const existingBuiltinCount = await db.builtins.count();
+        const isFreshInstall = existingBuiltinCount === 0;
 
         if (savedVersion !== CURRENT_BUILTIN_VERSION || isFreshInstall) {
             console.log(`Updating built-in templates from v${savedVersion} to v${CURRENT_BUILTIN_VERSION}...`);
@@ -26,6 +26,7 @@ export const migrateFromLocalStorage = async () => {
             const { DEFAULT_TEMPLATES_EN } = await import('../data/templates-en');
 
             if (!isFreshInstall) {
+                const existingBuiltins = await db.builtins.toArray();
                 const existingIds = new Set(existingBuiltins.map(t => t.id));
                 const newArrivals = DEFAULT_TEMPLATES.filter(t => !existingIds.has(t.id)).map(t => t.id);
                 // Also check new English templates arrivals for badges
