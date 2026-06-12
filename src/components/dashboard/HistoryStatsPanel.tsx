@@ -7,6 +7,7 @@ import { useHistoryStatsTranslation } from '../../i18n/history_stats';
 import { ScoringRule, SavedListItem } from '../../types';
 import { HistorySummary } from '../../utils/extractDataSummaries';
 import UpwardSelectMenu, { UpwardSelectMenuAnchor } from '../shared/UpwardSelectMenu';
+import { DATA_LIMITS } from '../../dataLimits';
 
 interface HistoryStatsPanelProps {
   entries: HistoryGameEntry[];
@@ -97,6 +98,11 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
   }, [records, filteredRecords, savedPlayers, entries]);
 
   const stats = useMemo(() => buildHistoryStats(filteredEntries), [filteredEntries]);
+  const displayedGames = useMemo(
+    () => stats.games.slice(0, DATA_LIMITS.QUERY.HISTORY_STATS_GAMES),
+    [stats.games]
+  );
+  const hiddenGameCount = Math.max(0, stats.games.length - displayedGames.length);
   const isPanelExpanded = isExpanded && !isSearchKeyboardOpen;
   const panelLayoutClass = isSearchKeyboardOpen
     ? 'bottom-0 left-0 right-0 h-[220px]'
@@ -174,7 +180,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
               </div>
             ) : (
               <div className="flex flex-col justify-start min-w-[420px]">
-                {stats.games.map(game => (
+                {displayedGames.map(game => (
                   <div
                     key={game.key}
                     className="min-h-[46px] w-max min-w-full grid items-center gap-2 pr-3 py-1.5 border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors"
@@ -196,6 +202,11 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                     </div>
                   </div>
                 ))}
+                {hiddenGameCount > 0 && (
+                  <div className="min-h-[40px] w-full flex items-center px-3 border-b border-surface-border/70 text-[11px] font-bold text-txt-muted bg-app-bg">
+                    {t('stats_more_games_hidden').replace('{count}', hiddenGameCount.toString())}
+                  </div>
+                )}
                 <div className="h-2 shrink-0"></div>
               </div>
             )}

@@ -23,6 +23,8 @@ export const DATA_LIMITS = {
     BUILTIN_TEMPLATES: 50,
     /** 歷史紀錄列表 顯示上限 */
     HISTORY_RECORDS: 50,
+    /** 歷史統計面板遊戲排行顯示上限；完整統計仍使用全量資料 */
+    HISTORY_STATS_GAMES: 50,
     /** 下拉選單/預測列表 (玩家、地點) 最大載入筆數 */
     SAVED_LIST_ITEMS: 50,
     
