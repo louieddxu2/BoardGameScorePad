@@ -537,8 +537,7 @@ const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>((
   <div ref={ref} className="w-full aspect-[4/5] bg-app-bg p-3 flex flex-col gap-2 rounded-xl border border-surface-border shadow-2xl overflow-hidden">
     <div className="flex-none h-[13%] min-h-[54px] rounded-lg bg-app-bg-deep border border-surface-border px-3 flex items-center justify-between gap-2">
       <div className="min-w-0">
-        <div className="text-[10px] leading-none font-bold text-brand-primary uppercase tracking-normal">{formatGridDate(stats.latestPlayedAt || Date.now())}</div>
-        <div className="mt-1 text-sm leading-tight font-black text-txt-title truncate">{stats.gameCount} {labels.games}</div>
+        <div className="text-sm leading-tight font-black text-txt-title truncate">{stats.gameCount} {labels.games}</div>
       </div>
       <div className="flex items-center gap-2 text-right">
         <StatPill value={stats.playCount} label={labels.plays} />
@@ -603,9 +602,9 @@ const PhotoTile: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
   return (
     <div className="relative w-full h-full overflow-hidden bg-app-bg-deep">
       <PhotoImage tile={tile} />
-      <div className="absolute left-0 right-0 bottom-0 px-1.5 py-1 bg-black/55 text-white text-left">
-        <span className="block text-[9px] leading-tight font-bold truncate">{tile.gameName}</span>
-        <span className="block text-[7px] leading-tight text-white/65 font-mono">{formatGridDate(tile.endTime)}</span>
+      <div className="absolute left-0 right-0 bottom-0 px-1.5 py-1 bg-black/55 text-white flex items-center gap-1.5">
+        <span className="min-w-0 flex-1 text-[9px] leading-tight font-bold truncate text-left">{tile.gameName}</span>
+        <span className="shrink-0 text-[7px] leading-tight text-white/70 font-mono text-right">{formatGridDate(tile.endTime)}</span>
       </div>
     </div>
   );
