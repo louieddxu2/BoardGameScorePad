@@ -19,7 +19,9 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - `HistoryStatsPanel` intentionally mirrors the StartGamePanel layout language; inspect the game selector panel before changing its dock height, chimney behavior, or bottom actions.
 - History stats keeps the right-side chimney actions in their collapsed positions when expanded; expansion adds working space without relocating the existing controls.
 - `HistoryPhotoGridShareModal` is a modal child of the stats panel, not a replacement for it. It should use modal/back-handler behavior like other dashboard modals and should block panel swipe navigation while open.
-- The photo-grid crop editor uses a two-zone flow: large crop surface above, horizontal photo thumbnails below. Image zoom/pan is implemented with uniform transform scaling so aspect ratio stays intact and the image may overflow the square crop frame.
+- The photo-grid recap currently exports 8 photo tiles with stats at the top, not a 9-tile-only layout. Keep this vertical-share layout in mind before changing tile count or export proportions.
+- The photo-grid crop editor uses a two-zone flow: large crop surface above, horizontal photo thumbnails below. Image zoom/pan is implemented with uniform transform scaling so aspect ratio stays intact and the image may overflow the crop frame.
+- Photo-grid crop gestures must be a local exception to `useMobileZoom()`: pinch should update only the image crop zoom and must not change the app-wide font-size zoom.
 
 ## Data Aggregation Patterns
 - Game search uses `useGameOptionAggregator` to merge `savedGames`, `templates`, and `bggGames` into unique `GameOption` objects before filtering or rendering.
@@ -30,6 +32,15 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - History stats date/rule/location filters affect the stats aggregate and photo-grid source, not the left-side raw history list until a full history filtering architecture is implemented.
 - History player stats use `savedPlayers` as the canonical player universe. History records are snapshots of appearances, but distinct player counts should resolve linked IDs or names back to the saved player master list and ignore orphan/stale identities that are not in that list.
 - The hidden/debug data inspector's player count is a raw `db.savedPlayers` table count. Treat that as the master-list count, not as a count of every player identity ever seen in history snapshots.
+- `buildHistoryGameEntries()` is the canonical history-game aggregation boundary. History stats, ranking rows, and photo-grid source selection should consume `HistoryGameEntry` instead of reimplementing record deduplication in UI components.
+- History game ranking renders only the first `DATA_LIMITS.QUERY.HISTORY_STATS_GAMES` entries, while aggregate counts still use all filtered entries.
+- Photo-grid item selection uses one entry per deduplicated game and defaults to the latest record's first photo. Replacement candidates for the same game are ordered by newer record first, then by in-record photo order, and are capped by `DATA_LIMITS.QUERY.HISTORY_PHOTO_GRID_CANDIDATES`.
+- Photo-grid opening should load only the selected recap photos. Same-game replacement candidates should load lazily when the crop editor opens, and should not walk every photo from a game with a large album.
+
+## Release Observation Notes
+- Before release, history stats should be checked for stability with large history sets, but the current pragmatic cap is list display count rather than full virtualization.
+- Photo recap readability remains a design question: 8 vertical-share tiles may still make individual board photos small, especially for table-wide horizontal photos.
+- Do not expand date/rule/location/player filters into a full left-list filtering architecture unless the task explicitly asks for that larger behavior.
 
 ## Player Selector Tool Patterns
 - The selector runs a custom physics engine in `usePlayerSelectorRenderer.ts` decoupled from React rendering cycles. It uses `candidatesRef` and `callbacksRef` to handle canvas/SVG interactions without triggering component re-renders.
