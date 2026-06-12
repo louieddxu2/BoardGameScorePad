@@ -1,5 +1,10 @@
 
 import { googleDriveService } from './googleDrive';
+import {
+  mergeBggGames,
+  mergeSessionContextWeights,
+  mergeTemplatePrefs
+} from './systemBackupMerge';
 
 export const systemSyncService = {
   /**
@@ -14,6 +19,8 @@ export const systemSyncService = {
       // 1. 準備本機資料
       const localLib = localData.library || {};
       const finalLib = { ...localLib };
+      const localSystem = localData.system || {};
+      let finalSystem = { ...localSystem };
 
       // 2. 嘗試下載雲端現有資料
       try {
@@ -56,6 +63,15 @@ export const systemSyncService = {
             localLib.locations || [],
             cloudSettings.library.locations || []
           );
+
+          finalSystem = {
+            bggGames: mergeBggGames(localSystem.bggGames || [], cloudSettings.system?.bggGames || []),
+            templatePrefs: mergeTemplatePrefs(localSystem.templatePrefs || [], cloudSettings.system?.templatePrefs || []),
+            sessionContextWeights: mergeSessionContextWeights(
+              localSystem.sessionContextWeights || {},
+              cloudSettings.system?.sessionContextWeights || {}
+            )
+          };
           
           console.log(`[SystemSync] Merge complete. Players: ${finalLib.players.length}, Locations: ${finalLib.locations.length}`);
         }
@@ -67,8 +83,10 @@ export const systemSyncService = {
 
       // 4. 建構上傳封包
       const payload = {
+        schemaVersion: 2,
         preferences: localData.preferences, // 設定類 (Theme, Pin) 以本機為主 (Last Write Wins)
         library: finalLib, // 清單類已合併
+        system: finalSystem,
         timestamp: Date.now()
       };
 

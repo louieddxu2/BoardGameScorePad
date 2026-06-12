@@ -13,6 +13,13 @@ import { generateId } from '../utils/idGenerator';
 import { useAppTranslation } from '../i18n/app';
 import { prepareTemplateForSave, isDisposableTemplate, createTemplateFromOption } from '../utils/templateUtils';
 import { GameOption } from '../features/game-selector/types';
+import {
+    extractSessionContextWeights,
+    getSessionContextWeightUpdates,
+    mergeBggGames,
+    mergeTemplatePrefs,
+    SESSION_CONTEXT_WEIGHT_MODEL_IDS
+} from '../services/systemBackupMerge';
 
 // Sub-hooks
 import { useAppQueries } from './useAppQueries';
@@ -272,6 +279,9 @@ export const useAppData = () => {
         const overrides: GameTemplate[] = [];
         const history = await db.history.toArray();
         const activeSessions = await db.sessions.toArray();
+        const bggGames = await db.bggGames.toArray();
+        const templatePrefs = await db.templatePrefs.toArray();
+        const weightConfigs = await db.weights.bulkGet(Object.values(SESSION_CONTEXT_WEIGHT_MODEL_IDS));
 
         return {
             preferences: {
@@ -290,6 +300,11 @@ export const useAppData = () => {
                 overrides: overrides,
                 history: history,
                 sessions: activeSessions
+            },
+            system: {
+                bggGames,
+                templatePrefs,
+                sessionContextWeights: extractSessionContextWeights(weightConfigs)
             },
             timestamp: Date.now()
         };
@@ -320,6 +335,34 @@ export const useAppData = () => {
                 }
                 if (Array.isArray(settings.library.locations)) {
                     await db.savedLocations.bulkPut(settings.library.locations);
+                }
+            }
+
+            if (settings.system) {
+                if (Array.isArray(settings.system.bggGames)) {
+                    const localBggGames = await db.bggGames.toArray();
+                    await db.bggGames.bulkPut(mergeBggGames(localBggGames, settings.system.bggGames));
+                }
+                if (Array.isArray(settings.system.templatePrefs)) {
+                    const localTemplatePrefs = await db.templatePrefs.toArray();
+                    await db.templatePrefs.bulkPut(mergeTemplatePrefs(localTemplatePrefs, settings.system.templatePrefs));
+                }
+
+                const sessionContextUpdates = getSessionContextWeightUpdates(settings.system.sessionContextWeights);
+                for (const { id, value } of sessionContextUpdates) {
+                    const existing = await db.weights.get(id);
+                    if (existing) {
+                        await db.weights.update(id, {
+                            'weights.sessionContext': value,
+                            updatedAt: Date.now()
+                        });
+                    } else {
+                        await db.weights.put({
+                            id,
+                            weights: { sessionContext: value },
+                            updatedAt: Date.now()
+                        });
+                    }
                 }
             }
             console.log("System settings restored successfully");
