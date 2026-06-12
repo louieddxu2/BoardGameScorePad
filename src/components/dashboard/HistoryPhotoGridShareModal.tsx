@@ -53,6 +53,9 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
   const exportRef = useRef<HTMLDivElement>(null);
   const cropFrameRef = useRef<HTMLDivElement>(null);
   const cropEditorSurfaceRef = useRef<HTMLDivElement>(null);
+  const loadedPhotosRef = useRef<Map<string, LoadedGridPhoto>>(new Map());
+  const objectUrlsRef = useRef<string[]>([]);
+  const loadGenerationRef = useRef(0);
   const [photoPool, setPhotoPool] = useState<LoadedGridPhoto[]>([]);
   const [tiles, setTiles] = useState<EditableGridTile[]>([]);
   const [cropDraft, setCropDraft] = useState<CropDraft | null>(null);
@@ -62,7 +65,10 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  const gridItems = useMemo(() => selectHistoryPhotoGridItems(entries, Number.MAX_SAFE_INTEGER), [entries]);
+  const gridItems = useMemo(() => selectHistoryPhotoGridItems(entries, 9), [entries]);
+  const gridItemByGameKey = useMemo(() => (
+    new Map(gridItems.map(item => [item.gameKey, item]))
+  ), [gridItems]);
 
   const stopCropGestureEvent = (event: {
     preventDefault: () => void;
@@ -74,9 +80,58 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
     event.nativeEvent?.stopPropagation?.();
   };
 
+  const cleanupLoadedPhotos = () => {
+    loadGenerationRef.current += 1;
+    objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
+    objectUrlsRef.current = [];
+    loadedPhotosRef.current.clear();
+  };
+
+  const loadGridPhoto = async (
+    item: ReturnType<typeof selectHistoryPhotoGridItems>[number],
+    photoId: string
+  ): Promise<LoadedGridPhoto | null> => {
+    const generation = loadGenerationRef.current;
+    const existing = loadedPhotosRef.current.get(photoId);
+    if (existing) return existing;
+
+    const candidate = item.candidatePhotos.find(photo => photo.photoId === photoId);
+    if (!candidate) return null;
+
+    try {
+      const localImage = await imageService.getImage(photoId);
+      if (!localImage) return null;
+
+      const url = URL.createObjectURL(localImage.blob);
+      objectUrlsRef.current.push(url);
+      const imageSize = await getImageSize(url);
+      if (generation !== loadGenerationRef.current) {
+        URL.revokeObjectURL(url);
+        return null;
+      }
+
+      const loadedPhoto: LoadedGridPhoto = {
+        id: photoId,
+        recordId: candidate.recordId,
+        gameKey: item.gameKey,
+        gameName: item.gameName,
+        endTime: candidate.endTime,
+        url,
+        imageSize
+      };
+
+      loadedPhotosRef.current.set(photoId, loadedPhoto);
+      setPhotoPool(Array.from(loadedPhotosRef.current.values()));
+      return loadedPhoto;
+    } catch (error) {
+      console.warn('Failed to load history grid image', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) {
-      photoPool.forEach(photo => URL.revokeObjectURL(photo.url));
+      cleanupLoadedPhotos();
       setPhotoPool([]);
       setTiles([]);
       setCropDraft(null);
@@ -84,57 +139,38 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
     }
 
     let active = true;
-    const generatedUrls: string[] = [];
 
     const loadImages = async () => {
+      cleanupLoadedPhotos();
+      setPhotoPool([]);
+      setTiles([]);
+      setCropDraft(null);
       setIsLoading(true);
-      const loadedById = new Map<string, LoadedGridPhoto>();
 
-      for (const item of gridItems) {
-        for (const candidate of item.candidatePhotos) {
-          if (loadedById.has(candidate.photoId)) continue;
-
-          try {
-            const localImage = await imageService.getImage(candidate.photoId);
-            if (!localImage || !active) continue;
-
-            const url = URL.createObjectURL(localImage.blob);
-            generatedUrls.push(url);
-            const imageSize = await getImageSize(url);
-            loadedById.set(candidate.photoId, {
-              id: candidate.photoId,
-              recordId: candidate.recordId,
-              gameKey: item.gameKey,
-              gameName: item.gameName,
-              endTime: candidate.endTime,
-              url,
-              imageSize
-            });
-          } catch (error) {
-            console.warn('Failed to load history grid image', error);
-          }
-        }
-      }
-
-      if (active) {
-        const loaded = Array.from(loadedById.values());
-        setPhotoPool(loaded);
-        setTiles(gridItems.slice(0, 9).flatMap(item => {
-          const photo = loadedById.get(item.photoId);
-          return photo ? [createTileFromPhoto(photo)] : [];
-        }));
-        setCropDraft(null);
+      if (gridItems.length === 0) {
         setIsLoading(false);
-      } else {
-        generatedUrls.forEach(url => URL.revokeObjectURL(url));
+        return;
       }
+
+      await Promise.all(gridItems.map(async (item, index) => {
+        const photo = await loadGridPhoto(item, item.photoId);
+        if (!photo || !active) return;
+
+        setTiles(prev => {
+          const next = [...prev];
+          next[index] = createTileFromPhoto(photo);
+          return next;
+        });
+      }));
+
+      if (active) setIsLoading(false);
     };
 
     loadImages();
 
     return () => {
       active = false;
-      generatedUrls.forEach(url => URL.revokeObjectURL(url));
+      cleanupLoadedPhotos();
     };
   }, [isOpen, gridItems]);
 
@@ -160,6 +196,14 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
     const tile = tiles[tileIndex];
     if (!tile) return;
     setCropDraft({ ...tile, crop: { ...tile.crop }, tileIndex });
+
+    const item = gridItemByGameKey.get(tile.gameKey);
+    if (!item) return;
+
+    item.candidatePhotos.forEach(candidate => {
+      if (candidate.photoId === tile.id) return;
+      void loadGridPhoto(item, candidate.photoId);
+    });
   };
 
   const updateDraftCrop = (nextCrop: HistoryPhotoGridCrop) => {
@@ -392,7 +436,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
       ) : (
         <>
           <div className="flex-1 min-h-0 overflow-y-auto p-4 flex items-center justify-center">
-            {isLoading ? (
+            {isLoading && tiles.length === 0 ? (
               <div className="flex flex-col items-center gap-3 text-txt-muted">
                 <Loader2 size={32} className="animate-spin text-brand-primary" />
                 <span className="text-sm font-bold">{t('grid_loading')}</span>
@@ -420,7 +464,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
           <div className="flex-none h-20 px-4 border-t border-surface-border bg-modal-bg flex items-center justify-end">
             <button
               onClick={handleExport}
-              disabled={tiles.length === 0 || isExporting}
+              disabled={tiles.length === 0 || isLoading || isExporting}
               className="flex items-center gap-2 px-4 py-3 rounded-xl bg-brand-primary text-white font-bold text-sm disabled:bg-surface-bg disabled:text-txt-muted disabled:cursor-not-allowed active:scale-95 transition-all"
             >
               {isExporting ? <Loader2 size={18} className="animate-spin" /> : (typeof navigator.share === 'function' ? <Share2 size={18} /> : <Download size={18} />)}
