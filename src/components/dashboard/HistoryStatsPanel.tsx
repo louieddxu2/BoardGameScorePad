@@ -118,6 +118,12 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
     { value: STATS_FILTER_ALL, label: allLabel },
     ...locationOptions.map(location => ({ value: location, label: location }))
   ], [allLabel, locationOptions]);
+  const photoGridContextLabel = [
+    dateRangeLabel,
+    activeScoringRuleFilter ? ruleLabel : null,
+    activeLocationFilter,
+    playerCount ? `${playerCount} ${t('stats_players_label')}` : null
+  ].filter(Boolean).join(' · ');
 
   const openMenu = (type: 'rule' | 'location', event: React.MouseEvent) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -287,6 +293,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
       <HistoryPhotoGridShareModal
         isOpen={showPhotoGrid}
         entries={filteredEntries}
+        contextLabel={photoGridContextLabel}
         onClose={() => setShowPhotoGrid(false)}
       />
 

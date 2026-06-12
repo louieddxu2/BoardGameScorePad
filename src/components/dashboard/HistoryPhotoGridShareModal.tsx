@@ -37,6 +37,7 @@ interface CropDraft extends EditableGridTile {
 interface HistoryPhotoGridShareModalProps {
   isOpen: boolean;
   entries: HistoryGameEntry[];
+  contextLabel: string;
   onClose: () => void;
 }
 
@@ -47,7 +48,7 @@ const getTileFrameAspect = (tile: Pick<EditableGridTile, 'imageSize'>): number =
   PHOTO_RECAP_TILE_ASPECT
 );
 
-const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({ isOpen, entries, onClose }) => {
+const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({ isOpen, entries, contextLabel, onClose }) => {
   const { zIndex } = useModalBackHandler(isOpen, onClose, 'history-photo-grid-share');
   const { showToast } = useToast();
   const { t } = useHistoryStatsTranslation();
@@ -460,9 +461,9 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
               </div>
             ) : (
               <div className="w-full max-w-[520px]">
-                <PhotoGridCanvas tiles={tiles} stats={stats} labels={statLabels} onSelect={openCropEditor} />
+                <PhotoGridCanvas tiles={tiles} stats={stats} labels={statLabels} contextLabel={contextLabel} onSelect={openCropEditor} />
                 <div className="absolute left-[-10000px] top-0 pointer-events-none" style={{ width: EXPORT_GRID_WIDTH }}>
-                  <PhotoGridCanvas ref={exportRef} tiles={tiles} stats={stats} labels={statLabels} />
+                  <PhotoGridCanvas ref={exportRef} tiles={tiles} stats={stats} labels={statLabels} contextLabel={contextLabel} />
                 </div>
               </div>
             )}
@@ -525,6 +526,7 @@ const toTile = (draft: CropDraft): EditableGridTile => ({
 interface PhotoGridCanvasProps {
   tiles: EditableGridTile[];
   stats: ReturnType<typeof buildHistoryStats>;
+  contextLabel: string;
   labels: {
     plays: string;
     games: string;
@@ -533,13 +535,14 @@ interface PhotoGridCanvasProps {
   onSelect?: (index: number) => void;
 }
 
-const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>(({ tiles, stats, labels, onSelect }, ref) => (
+const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>(({ tiles, stats, contextLabel, labels, onSelect }, ref) => (
   <div ref={ref} className="w-full aspect-[4/5] bg-app-bg p-3 flex flex-col gap-2 rounded-xl border border-surface-border shadow-2xl overflow-hidden">
     <div className="flex-none h-[13%] min-h-[54px] rounded-lg bg-app-bg-deep border border-surface-border px-3 flex items-center justify-between gap-2">
       <div className="min-w-0">
-        <div className="text-sm leading-tight font-black text-txt-title truncate">{stats.gameCount} {labels.games}</div>
+        <div className="text-xs leading-tight font-black text-txt-title truncate">{contextLabel}</div>
       </div>
       <div className="flex items-center gap-2 text-right">
+        <StatPill value={stats.gameCount} label={labels.games} />
         <StatPill value={stats.playCount} label={labels.plays} />
         <StatPill value={stats.playerCount} label={labels.players} />
       </div>
