@@ -2,11 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Download, Image as ImageIcon, Loader2, Share2, X } from 'lucide-react';
 import { toBlob } from 'html-to-image';
 import { HistoryGameEntry } from '../../utils/historyGameEntries';
-import { selectHistoryPhotoGridItems } from '../../utils/historyStats';
+import { buildHistoryStats, selectHistoryPhotoGridItems } from '../../utils/historyStats';
 import {
   clampHistoryPhotoGridCrop,
   getHistoryPhotoGridBaseSize,
-  getHistoryPhotoGridFrameAspect,
   getInitialHistoryPhotoGridCrop,
   HistoryPhotoGridCrop,
   HistoryPhotoGridImageSize
@@ -41,9 +40,11 @@ interface HistoryPhotoGridShareModalProps {
   onClose: () => void;
 }
 
-const EXPORT_GRID_WIDTH = 520;
+const EXPORT_GRID_WIDTH = 1080;
+const PHOTO_RECAP_TILE_COUNT = 8;
+const PHOTO_RECAP_TILE_ASPECT = 16 / 9;
 const getTileFrameAspect = (tile: Pick<EditableGridTile, 'imageSize'>): number => (
-  getHistoryPhotoGridFrameAspect(tile.imageSize)
+  PHOTO_RECAP_TILE_ASPECT
 );
 
 const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({ isOpen, entries, onClose }) => {
@@ -65,7 +66,8 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  const gridItems = useMemo(() => selectHistoryPhotoGridItems(entries, 9), [entries]);
+  const gridItems = useMemo(() => selectHistoryPhotoGridItems(entries, PHOTO_RECAP_TILE_COUNT), [entries]);
+  const stats = useMemo(() => buildHistoryStats(entries), [entries]);
   const gridItemByGameKey = useMemo(() => (
     new Map(gridItems.map(item => [item.gameKey, item]))
   ), [gridItems]);
@@ -366,6 +368,11 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
   const cropPhotoOptions = cropDraft
     ? photoPool.filter(photo => photo.gameKey === cropDraft.gameKey)
     : [];
+  const statLabels = {
+    plays: t('stats_count_label'),
+    games: t('stats_games_label'),
+    players: t('stats_players_label')
+  };
 
   return (
     <div className="fixed inset-0 bg-app-bg-deep/95 backdrop-blur-sm flex flex-col animate-in fade-in duration-200" style={{ zIndex }}>
@@ -453,9 +460,9 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
               </div>
             ) : (
               <div className="w-full max-w-[520px]">
-                <PhotoGridCanvas tiles={tiles} onSelect={openCropEditor} />
+                <PhotoGridCanvas tiles={tiles} stats={stats} labels={statLabels} onSelect={openCropEditor} />
                 <div className="absolute left-[-10000px] top-0 pointer-events-none" style={{ width: EXPORT_GRID_WIDTH }}>
-                  <PhotoGridCanvas ref={exportRef} tiles={tiles} />
+                  <PhotoGridCanvas ref={exportRef} tiles={tiles} stats={stats} labels={statLabels} />
                 </div>
               </div>
             )}
@@ -501,7 +508,7 @@ const formatGridDate = (timestamp: number): string => {
 
 const createTileFromPhoto = (photo: LoadedGridPhoto): EditableGridTile => ({
   ...photo,
-  crop: getInitialHistoryPhotoGridCrop(photo.imageSize, getHistoryPhotoGridFrameAspect(photo.imageSize))
+  crop: getInitialHistoryPhotoGridCrop(photo.imageSize, PHOTO_RECAP_TILE_ASPECT)
 });
 
 const toTile = (draft: CropDraft): EditableGridTile => ({
@@ -517,34 +524,60 @@ const toTile = (draft: CropDraft): EditableGridTile => ({
 
 interface PhotoGridCanvasProps {
   tiles: EditableGridTile[];
+  stats: ReturnType<typeof buildHistoryStats>;
+  labels: {
+    plays: string;
+    games: string;
+    players: string;
+  };
   onSelect?: (index: number) => void;
 }
 
-const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>(({ tiles, onSelect }, ref) => (
-  <div ref={ref} className="w-full aspect-square bg-app-bg p-2 grid grid-cols-3 gap-1 rounded-xl border border-surface-border shadow-2xl">
-    {Array.from({ length: 9 }).map((_, index) => {
-      const tile = tiles[index];
-      return (
-        <button
-          key={`${tile?.id || 'empty'}-${index}`}
-          onClick={() => tile && onSelect?.(index)}
-          disabled={!tile || !onSelect}
-          className="bg-surface-recessed rounded-md overflow-hidden select-none disabled:cursor-default active:scale-[0.99] transition-transform flex flex-col"
-        >
-          {tile ? (
-            <PhotoTile tile={tile} />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-txt-muted/40">
-              <ImageIcon size={22} />
-            </div>
-          )}
-        </button>
-      );
-    })}
+const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>(({ tiles, stats, labels, onSelect }, ref) => (
+  <div ref={ref} className="w-full aspect-[4/5] bg-app-bg p-3 flex flex-col gap-2 rounded-xl border border-surface-border shadow-2xl overflow-hidden">
+    <div className="flex-none h-[13%] min-h-[54px] rounded-lg bg-app-bg-deep border border-surface-border px-3 flex items-center justify-between gap-2">
+      <div className="min-w-0">
+        <div className="text-[10px] leading-none font-bold text-brand-primary uppercase tracking-normal">{formatGridDate(stats.latestPlayedAt || Date.now())}</div>
+        <div className="mt-1 text-sm leading-tight font-black text-txt-title truncate">{stats.gameCount} {labels.games}</div>
+      </div>
+      <div className="flex items-center gap-2 text-right">
+        <StatPill value={stats.playCount} label={labels.plays} />
+        <StatPill value={stats.playerCount} label={labels.players} />
+      </div>
+    </div>
+
+    <div className="flex-1 min-h-0 grid grid-cols-2 grid-rows-4 gap-1.5">
+      {Array.from({ length: PHOTO_RECAP_TILE_COUNT }).map((_, index) => {
+        const tile = tiles[index];
+        return (
+          <button
+            key={`${tile?.id || 'empty'}-${index}`}
+            onClick={() => tile && onSelect?.(index)}
+            disabled={!tile || !onSelect}
+            className="bg-surface-recessed rounded-md overflow-hidden select-none disabled:cursor-default active:scale-[0.99] transition-transform relative min-h-0"
+          >
+            {tile ? (
+              <PhotoTile tile={tile} />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-txt-muted/40">
+                <ImageIcon size={22} />
+              </div>
+            )}
+          </button>
+        );
+      })}
+    </div>
   </div>
 ));
 
 PhotoGridCanvas.displayName = 'PhotoGridCanvas';
+
+const StatPill: React.FC<{ value: number; label: string }> = ({ value, label }) => (
+  <div className="min-w-[54px]">
+    <div className="text-base leading-none font-black font-mono text-txt-title">{value}</div>
+    <div className="mt-0.5 text-[8px] leading-none font-bold text-txt-muted uppercase tracking-normal">{label}</div>
+  </div>
+);
 
 const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
   const base = getHistoryPhotoGridBaseSize(tile.imageSize, getTileFrameAspect(tile));
@@ -568,18 +601,13 @@ const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
 
 const PhotoTile: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
   return (
-    <>
-      <div
-        className="relative flex-none w-full overflow-hidden bg-app-bg-deep"
-        style={{ aspectRatio: getTileFrameAspect(tile) }}
-      >
-        <PhotoImage tile={tile} />
+    <div className="relative w-full h-full overflow-hidden bg-app-bg-deep">
+      <PhotoImage tile={tile} />
+      <div className="absolute left-0 right-0 bottom-0 px-1.5 py-1 bg-black/55 text-white text-left">
+        <span className="block text-[9px] leading-tight font-bold truncate">{tile.gameName}</span>
+        <span className="block text-[7px] leading-tight text-white/65 font-mono">{formatGridDate(tile.endTime)}</span>
       </div>
-      <div className="flex-1 min-h-[24px] px-1.5 py-1 bg-app-bg-deep text-white flex flex-col justify-center">
-        <span className="text-[10px] leading-tight font-bold truncate">{tile.gameName}</span>
-        <span className="text-[8px] leading-tight text-white/60 font-mono">{formatGridDate(tile.endTime)}</span>
-      </div>
-    </>
+    </div>
   );
 };
 
