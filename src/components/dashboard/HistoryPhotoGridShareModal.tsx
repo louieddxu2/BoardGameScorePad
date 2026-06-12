@@ -15,6 +15,7 @@ import { imageService } from '../../services/imageService';
 import { useModalBackHandler } from '../../hooks/useModalBackHandler';
 import { useToast } from '../../hooks/useToast';
 import { useHistoryStatsTranslation } from '../../i18n/history_stats';
+import { DATA_LIMITS } from '../../dataLimits';
 
 interface LoadedGridPhoto {
   id: string;
@@ -44,6 +45,12 @@ interface HistoryPhotoGridShareModalProps {
 const EXPORT_GRID_WIDTH = 1080;
 const PHOTO_RECAP_TILE_COUNT = 8;
 const PHOTO_RECAP_TILE_ASPECT = 16 / 9;
+type HistoryPhotoGridItem = ReturnType<typeof selectHistoryPhotoGridItems>[number];
+
+const getLimitedCandidatePhotos = (item: HistoryPhotoGridItem) => (
+  item.candidatePhotos.slice(0, DATA_LIMITS.QUERY.HISTORY_PHOTO_GRID_CANDIDATES)
+);
+
 const getTileFrameAspect = (tile: Pick<EditableGridTile, 'imageSize'>): number => (
   PHOTO_RECAP_TILE_ASPECT
 );
@@ -91,7 +98,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
   };
 
   const loadGridPhoto = async (
-    item: ReturnType<typeof selectHistoryPhotoGridItems>[number],
+    item: HistoryPhotoGridItem,
     photoId: string
   ): Promise<LoadedGridPhoto | null> => {
     const generation = loadGenerationRef.current;
@@ -203,7 +210,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
     const item = gridItemByGameKey.get(tile.gameKey);
     if (!item) return;
 
-    item.candidatePhotos.forEach(candidate => {
+    getLimitedCandidatePhotos(item).forEach(candidate => {
       if (candidate.photoId === tile.id) return;
       void loadGridPhoto(item, candidate.photoId);
     });
@@ -367,7 +374,12 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
   if (!isOpen) return null;
 
   const cropPhotoOptions = cropDraft
-    ? photoPool.filter(photo => photo.gameKey === cropDraft.gameKey)
+    ? (() => {
+      const item = gridItemByGameKey.get(cropDraft.gameKey);
+      if (!item) return [];
+      const candidateIds = new Set(getLimitedCandidatePhotos(item).map(photo => photo.photoId));
+      return photoPool.filter(photo => photo.gameKey === cropDraft.gameKey && candidateIds.has(photo.id));
+    })()
     : [];
   const statLabels = {
     plays: t('stats_count_label'),
