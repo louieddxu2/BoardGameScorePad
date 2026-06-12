@@ -1,4 +1,5 @@
 
+import { useEffect, useState } from 'react';
 import { useTemplateQuery } from './queries/useTemplateQuery';
 import { useHistoryQuery } from './queries/useHistoryQuery';
 import { useSessionQuery } from './queries/useSessionQuery';
@@ -14,6 +15,15 @@ import { useGameOptionsQuery } from './queries/useGameOptionsQuery';
  * 這些邏輯應封裝在各自的 ./queries/*.ts Hook 中。
  */
 export const useAppQueries = (searchQuery: string, pinnedIds: string[]) => {
+  const [shouldLoadGameOptions, setShouldLoadGameOptions] = useState(false);
+
+  useEffect(() => {
+    const timerId = window.setTimeout(() => {
+      setShouldLoadGameOptions(true);
+    }, 0);
+
+    return () => window.clearTimeout(timerId);
+  }, []);
 
   // 1. Dashboard View Queries (Library & History)
   // 這些 Hook 內部已經實作了針對各自資料類型的搜尋過濾邏輯
@@ -27,7 +37,7 @@ export const useAppQueries = (searchQuery: string, pinnedIds: string[]) => {
 
   // 3. Start Game Panel Query (Merge then Search)
   // 這是一個專門的 Hook，負責處理「開始新遊戲」時的候選名單邏輯
-  const gameOptions = useGameOptionsQuery(searchQuery, pinnedIds);
+  const gameOptions = useGameOptionsQuery(searchQuery, pinnedIds, shouldLoadGameOptions);
 
   return {
     // Spread all data props from sub-hooks

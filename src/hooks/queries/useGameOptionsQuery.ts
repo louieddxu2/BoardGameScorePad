@@ -15,7 +15,7 @@ import { extractBggGameSummary } from '../../utils/extractDataSummaries';
  * 職責：專門為「開始新遊戲」面板提供選項列表。
  * 策略：整合 Templates、SavedGames 與 BggGames (字典)。
  */
-export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[]) => {
+export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], enabled = true) => {
   // 1. Fetch Local Data
   // Pass pinnedIds to ensure pinned simple templates are visible
   const {
@@ -30,22 +30,25 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[]) =>
   // 2. Fetch BGG Dictionary (Lite Summary)
   // [Optimization] 使用 extractBggGameSummary 轉換為輕量物件
   const allBggGames = useLiveQuery(async () => {
+    if (!enabled) return [];
     const rawGames = await db.bggGames.toArray();
     return rawGames.map(extractBggGameSummary);
-  }, [], []);
+  }, [enabled], []);
 
   // 3. Aggregate Data (Merge & Deduplicate)
   // 將 BGG Summary 傳入，讓 Aggregator 進行名稱匹配與搜尋索引補完
   // [Update] Pass pinnedIds so Aggregator can determine isPinned status
   const aggregatedOptions = useGameOptionAggregator(
-    [...allTemplates, ...allSystemTemplates],
-    allSavedGames,
-    allBggGames || [],
+    enabled ? [...allTemplates, ...allSystemTemplates] : [],
+    enabled ? allSavedGames : [],
+    enabled ? (allBggGames || []) : [],
     pinnedIds
   );
 
   // 4. Search
   const gameOptions = useMemo(() => {
+    if (!enabled) return [];
+
     const fuseResults = searchService.searchWithMatches<GameOption>(aggregatedOptions, searchQuery, [
       { name: 'displayName', weight: 1.0 },
       { name: '_searchTokens', weight: 0.8 }
@@ -75,7 +78,7 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[]) =>
 
       return result.item;
     });
-  }, [aggregatedOptions, searchQuery]);
+  }, [aggregatedOptions, searchQuery, enabled]);
 
   return gameOptions;
 };
