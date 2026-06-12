@@ -29,7 +29,13 @@ interface CloudManagerModalProps {
     onSessionRestoreSuccess: (session: GameSession) => void;
     onHistoryRestoreSuccess?: (record: HistoryRecord) => void;
     onSystemBackup?: (onProgress: (count: number, total: number) => void, onError: (failedItems: string[]) => void) => Promise<{ success: number, skipped: number, failed: number }>;
-    onSystemRestore?: (localMeta: any, onProgress: (count: number, total: number) => void, onError: (failedItems: string[]) => void, onItemRestored: any, onSettingsRestored: any) => Promise<{ success: number, skipped: number, failed: number }>;
+    onSystemRestore?: (
+        localMeta: any,
+        onProgress: (count: number, total: number) => void,
+        onError: (failedItems: string[]) => void,
+        onItemRestored: (type: 'template' | 'history' | 'session', item: any) => Promise<void>,
+        onSettingsRestored?: (settings: any) => void
+    ) => Promise<{ success: number, skipped: number, failed: number }>;
     onGetLocalData?: () => Promise<any>;
 }
 
@@ -420,12 +426,25 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
             (localData.data.sessions || []).forEach((s: any) => sessionsMap.set(s.id, s.lastUpdatedAt || s.startTime || 0));
 
             const localMeta = { templates: templatesMap, history: historyMap, sessions: sessionsMap };
+            const handleItemRestored = async (type: 'template' | 'history' | 'session', item: any) => {
+                if (type === 'template') {
+                    await Promise.resolve(onRestoreSuccess(item));
+                    return;
+                }
+                if (type === 'history' && onHistoryRestoreSuccess) {
+                    await Promise.resolve(onHistoryRestoreSuccess(item));
+                    return;
+                }
+                if (type === 'session') {
+                    await Promise.resolve(onSessionRestoreSuccess(item));
+                }
+            };
 
             const stats = await onSystemRestore(
                 localMeta,
                 (count, total) => setSyncResult(prev => ({ ...prev, current: count, total })),
                 (failed) => setSyncResult(prev => ({ ...prev, failed: [...prev.failed, ...failed] })),
-                undefined,
+                handleItemRestored,
                 undefined
             );
             setSyncResult(prev => ({ ...prev, success: stats.success, skipped: stats.skipped }));
