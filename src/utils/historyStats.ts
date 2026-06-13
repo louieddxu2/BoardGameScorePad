@@ -137,6 +137,7 @@ export interface SpecificGameStatsPlayer {
   playCount: number;
   winCount: number;
   winRate: number;
+  hasScoringPlay: boolean;
 }
 
 export interface SpecificGameStats {
@@ -185,6 +186,7 @@ export const buildSpecificGameStats = (
     key: string;
     name: string;
     playCount: number;
+    scoringPlayCount: number;
     winCount: number;
   }>();
 
@@ -204,8 +206,6 @@ export const buildSpecificGameStats = (
       const pKey = getHistoryPlayerKey(p);
       if (!pKey) return;
 
-      if (isNoScore) return;
-
       let displayName = p.name;
       if (savedPlayers) {
         const matched = savedPlayers.find(sp => sp.id === p.linkedPlayerId);
@@ -223,27 +223,37 @@ export const buildSpecificGameStats = (
         key: pKey,
         name: displayName,
         playCount: 0,
+        scoringPlayCount: 0,
         winCount: 0
       };
 
       existing.playCount += 1;
-      if (isWinner) existing.winCount += 1;
+      if (!isNoScore) {
+        existing.scoringPlayCount += 1;
+        if (isWinner) existing.winCount += 1;
+      }
 
       playerMap.set(pKey, existing);
     });
   });
 
   const players = Array.from(playerMap.values()).map(p => {
-    const winRate = p.playCount > 0 ? Math.round((p.winCount / p.playCount) * 100) : 0;
+    const winRate = p.scoringPlayCount > 0 ? Math.round((p.winCount / p.scoringPlayCount) * 100) : 0;
     return {
       key: p.key,
       name: p.name,
       playCount: p.playCount,
       winCount: p.winCount,
-      winRate
+      winRate,
+      hasScoringPlay: p.scoringPlayCount > 0
     };
   }).sort((a, b) => {
-    if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+    if (a.hasScoringPlay !== b.hasScoringPlay) {
+      return a.hasScoringPlay ? -1 : 1;
+    }
+    if (a.hasScoringPlay) {
+      if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+    }
     if (b.playCount !== a.playCount) return b.playCount - a.playCount;
     return a.name.localeCompare(b.name);
   });
@@ -258,4 +268,5 @@ export const buildSpecificGameStats = (
     competitivePlayCount
   };
 };
+
 

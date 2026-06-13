@@ -279,16 +279,25 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                                       <span className="text-[10px] font-normal text-txt-muted">{t('stats_plays_suffix')}</span>
                                     </div>
                                     <div className="flex items-center gap-2 pr-3 min-w-max">
-                                      <div className="w-[80px] sm:w-[100px] h-1.5 bg-surface-bg rounded-full overflow-hidden shrink-0">
-                                        <div 
-                                          className="bg-brand-primary h-full rounded-full" 
-                                          style={{ width: `${player.winRate}%` }} 
-                                        />
-                                      </div>
-                                      <span className="text-xs font-black text-brand-primary font-mono w-[36px] text-right">
-                                        {player.winRate}%
-                                      </span>
+                                      {player.hasScoringPlay ? (
+                                        <>
+                                          <div className="w-[80px] sm:w-[100px] h-1.5 bg-surface-bg rounded-full overflow-hidden shrink-0">
+                                            <div 
+                                              className="bg-brand-primary h-full rounded-full" 
+                                              style={{ width: `${player.winRate}%` }} 
+                                            />
+                                          </div>
+                                          <span className="text-xs font-black text-brand-primary font-mono w-[36px] text-right">
+                                            {player.winRate}%
+                                          </span>
+                                        </>
+                                      ) : (
+                                        <span className="text-xs font-black text-txt-muted font-mono w-[124px] sm:w-[144px] text-right pr-3">
+                                          -
+                                        </span>
+                                      )}
                                     </div>
+
                                   </div>
                                 );
                               })}

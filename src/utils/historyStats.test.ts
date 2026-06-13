@@ -201,7 +201,8 @@ describe('buildSpecificGameStats', () => {
         winnerIds: ['slot_2'],
         scoringRule: 'COMPETITIVE_NO_SCORE',
         players: [
-          { id: 'slot_2', name: 'Bob', color: '#000', totalScore: 0, scores: {} }
+          { id: 'slot_2', name: 'Bob', color: '#000', totalScore: 0, scores: {} },
+          { id: 'slot_3', name: 'Charlie', color: '#333', totalScore: 0, scores: {} }
         ]
       })
     ];
@@ -215,10 +216,12 @@ describe('buildSpecificGameStats', () => {
     expect(stats?.competitivePlayCount).toBe(3);
 
     expect(stats?.players).toEqual([
-      { key: 'name:alice', name: 'Alice', playCount: 3, winCount: 2, winRate: 67 },
-      { key: 'name:bob', name: 'Bob', playCount: 2, winCount: 1, winRate: 50 }
+      { key: 'name:alice', name: 'Alice', playCount: 3, winCount: 2, winRate: 67, hasScoringPlay: true },
+      { key: 'name:bob', name: 'Bob', playCount: 3, winCount: 1, winRate: 50, hasScoringPlay: true },
+      { key: 'name:charlie', name: 'Charlie', playCount: 1, winCount: 0, winRate: 0, hasScoringPlay: false }
     ]);
   });
+
 
 
 
