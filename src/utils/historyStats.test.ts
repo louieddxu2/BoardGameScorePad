@@ -214,6 +214,8 @@ describe('buildSpecificGameStats', () => {
     expect(stats?.latestPlayedAt).toBe(4000);
     expect(stats?.coopPlayCount).toBe(1);
     expect(stats?.competitivePlayCount).toBe(3);
+    expect(stats?.bestScore).toBe(15);
+    expect(stats?.bestScorePlayerName).toBe('Alice');
 
     expect(stats?.players).toEqual([
       { key: 'name:alice', name: 'Alice', playCount: 3, winCount: 2, winRate: 67, hasScoringPlay: true, noScorePlayCount: 0 },

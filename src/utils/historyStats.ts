@@ -151,6 +151,8 @@ export interface SpecificGameStats {
   coopPlayCount: number;
   competitivePlayCount: number;
   hasNoScorePlays: boolean;
+  bestScore?: number;
+  bestScorePlayerName?: string;
 }
 
 export const buildSpecificGameStats = (
@@ -175,6 +177,11 @@ export const buildSpecificGameStats = (
   let coopPlayCount = 0;
   let competitivePlayCount = 0;
   const hasNoScorePlays = gameRecords.some(r => r.scoringRule === 'COMPETITIVE_NO_SCORE' || r.scoringRule === 'COOP_NO_SCORE');
+
+  let bestScore: number | undefined = undefined;
+  let bestScorePlayerName: string | undefined = undefined;
+  const isLowestWins = scoringRule === 'LOWEST_WINS';
+
 
 
   const savedPlayers = options?.savedPlayers;
@@ -242,6 +249,25 @@ export const buildSpecificGameStats = (
       }
 
       playerMap.set(pKey, existing);
+
+      if (p.totalScore !== undefined && p.totalScore !== null) {
+        if (bestScore === undefined) {
+          bestScore = p.totalScore;
+          bestScorePlayerName = displayName;
+        } else {
+          if (isLowestWins) {
+            if (p.totalScore < bestScore) {
+              bestScore = p.totalScore;
+              bestScorePlayerName = displayName;
+            }
+          } else {
+            if (p.totalScore > bestScore) {
+              bestScore = p.totalScore;
+              bestScorePlayerName = displayName;
+            }
+          }
+        }
+      }
     });
   });
 
@@ -275,8 +301,11 @@ export const buildSpecificGameStats = (
     players,
     coopPlayCount,
     competitivePlayCount,
-    hasNoScorePlays
+    hasNoScorePlays,
+    bestScore,
+    bestScorePlayerName
   };
+
 };
 
 

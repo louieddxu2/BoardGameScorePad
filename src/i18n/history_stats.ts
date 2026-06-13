@@ -59,6 +59,8 @@ export const historyStatsTranslations = {
     stats_plays_mixed: '共 {count} 局 ({comp}競爭 / {coop}合作)',
     stats_no_scoring_records: '此遊戲皆為不計分紀錄，無勝率統計',
     stats_win_rate_excludes_no_score: '* 勝率計算已排除不計分局',
+    stats_best_score: '最佳',
+    stats_score_suffix: '分',
   },
   'en': {
     stats_empty_date: 'No records',
@@ -118,6 +120,8 @@ export const historyStatsTranslations = {
     stats_plays_mixed: '{count} plays ({comp} Comp / {coop} Co-op)',
     stats_no_scoring_records: 'This game has no scoring records to rank.',
     stats_win_rate_excludes_no_score: '* Win rate excludes non-scoring games',
+    stats_best_score: 'Best',
+    stats_score_suffix: 'pts',
   }
 };
 

@@ -210,12 +210,22 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                             {isSelected && <CornerUpLeft size={13} className="shrink-0 text-brand-primary animate-pulse" />}
                             <span>{game.name}</span>
                           </span>
-                          {isSelected && specificStats?.latestPlayedAt && (
-                            <span className="text-[10px] text-txt-muted font-normal mt-0.5 ml-[19px]">
-                              {t('stats_latest_play')}: {new Date(specificStats.latestPlayedAt).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' })}
+                          {isSelected && specificStats && (
+                            <span className="text-[10px] text-txt-muted font-normal mt-0.5 ml-[19px] whitespace-nowrap overflow-x-auto no-scrollbar max-w-[200px] sm:max-w-xs block">
+                              {specificStats.latestPlayedAt && (
+                                <span>
+                                  {t('stats_latest_play')}: {new Date(specificStats.latestPlayedAt).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' })}
+                                </span>
+                              )}
+                              {specificStats.bestScore !== undefined && specificStats.bestScorePlayerName && (
+                                <span className="text-brand-secondary font-semibold ml-2">
+                                  · 👑 {t('stats_best_score')}: {specificStats.bestScore}{t('stats_score_suffix')} ({specificStats.bestScorePlayerName})
+                                </span>
+                              )}
                             </span>
                           )}
                         </h3>
+
                         {isSelected && specificStats ? (
                           <div className="flex items-center justify-end text-txt-secondary font-bold text-[11px] shrink-0 px-2.5 whitespace-nowrap">
                             {specificStats.coopPlayCount > 0 && specificStats.competitivePlayCount > 0
