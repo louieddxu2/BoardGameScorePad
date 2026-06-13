@@ -212,11 +212,11 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
               </div>
             ) : selectedGameKey && specificStats ? (
               <div className="flex flex-col w-full h-full min-h-0">
-                {/* 遊戲名稱與返回列：使用 3 欄 Grid 排版，靠右對齊統計資訊與勝率圖示 */}
+                {/* 遊戲名稱與返回列：使用 2 欄 Grid 排版，靠右對齊統計資訊 */}
                 <div 
                   onClick={() => setSelectedGameKey(null)}
                   className="grid items-center gap-2 pr-3 py-1.5 min-h-[46px] border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors cursor-pointer w-full shrink-0"
-                  style={{ gridTemplateColumns: 'minmax(0, 1fr) max-content max-content' }}
+                  style={{ gridTemplateColumns: 'minmax(0, 1fr) max-content' }}
                 >
                   {/* 第一欄：返回箭頭 + 遊戲名稱 + 右側最近遊玩與最佳分數 (水平 baseline 對齊) */}
                   <div className="flex items-baseline gap-2 min-w-0 pl-3">
@@ -241,7 +241,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                   </div>
 
                   {/* 第二欄：局數統計資訊（scored + unscored / coop / 競爭局數） */}
-                  <div className="flex items-center justify-end text-txt-secondary font-bold text-xs shrink-0 px-2.5 whitespace-nowrap">
+                  <div className="flex items-center justify-end text-txt-secondary font-bold text-xs shrink-0 px-3 pr-3 whitespace-nowrap">
                     {specificStats.noScorePlayCount > 0 ? (
                       specificStats.coopPlayCount > 0 && specificStats.competitivePlayCount > 0
                         ? t('stats_plays_mixed_no_score')
@@ -264,11 +264,6 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                           ? t('stats_plays_coop_only').replace('{count}', specificStats.playCount.toString())
                           : t('stats_plays_comp_only').replace('{count}', specificStats.playCount.toString())
                     )}
-                  </div>
-
-                  {/* 第三欄：勝率欄位提示皇冠圖示 */}
-                  <div className="flex items-center gap-1 text-xs font-black text-brand-primary min-w-max whitespace-nowrap pr-3 justify-end">
-                    <Crown size={14} className="shrink-0 text-brand-primary" fill="currentColor" />
                   </div>
                 </div>
 
@@ -301,23 +296,20 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                               )}
                             </div>
 
-                            <div className="flex items-center gap-2 pr-3 min-w-max justify-end">
+                            <div className="flex items-center justify-end pr-3">
                               {player.hasScoringPlay ? (
-                                <>
-                                  <div className="w-[36px] sm:w-[48px] h-1 bg-surface-bg rounded-full overflow-hidden shrink-0">
-                                    <div 
-                                      className="bg-brand-primary h-full rounded-full" 
-                                      style={{ width: `${player.winRate}%` }} 
-                                    />
-                                  </div>
+                                <div className="flex items-center gap-1 justify-end min-w-[54px]">
+                                  <Crown size={12} className="text-status-warning shrink-0" fill="currentColor" />
                                   <span className="text-xs font-black text-brand-primary font-mono w-[36px] text-right">
                                     {player.winRate}%
                                   </span>
-                                </>
+                                </div>
                               ) : (
-                                <span className="text-xs font-black text-txt-muted font-mono w-[36px] text-right pr-0.5">
-                                  -
-                                </span>
+                                <div className="flex items-center justify-end min-w-[54px]">
+                                  <span className="text-xs font-black text-txt-muted font-mono w-[36px] text-right pr-1">
+                                    -
+                                  </span>
+                                </div>
                               )}
                             </div>
                           </div>
