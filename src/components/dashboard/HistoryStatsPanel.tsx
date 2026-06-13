@@ -228,7 +228,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                         </span>
                       )}
                       {specificStats.bestScore !== undefined && specificStats.bestScore !== 0 && specificStats.bestScorePlayerName && (
-                        <span className="text-brand-secondary font-semibold">
+                        <span className="text-status-warning font-semibold">
                           {specificStats.latestPlayedAt && <span className="mx-1">·</span>}
                           {t('stats_best_score_short')
                             .replace('{score}', specificStats.bestScore.toString())
@@ -284,7 +284,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                               {player.noScorePlayCount > 0 ? (
                                 <>
                                   <span>{player.playCount - player.noScorePlayCount}</span>
-                                  <span className="text-brand-secondary font-bold">+{player.noScorePlayCount}</span>
+                                  <span className="text-brand-primary font-bold">+{player.noScorePlayCount}</span>
                                   <span className="text-[10px] font-normal text-txt-muted ml-0.5">{t('stats_plays_suffix')}</span>
                                 </>
                               ) : (
