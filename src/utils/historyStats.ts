@@ -196,11 +196,15 @@ export const buildSpecificGameStats = (
       competitivePlayCount++;
     }
 
+    const isNoScore = r.scoringRule === 'COMPETITIVE_NO_SCORE' || r.scoringRule === 'COOP_NO_SCORE';
+
     const winnerIds = r.winnerIds || [];
 
     r.players.forEach(p => {
       const pKey = getHistoryPlayerKey(p);
       if (!pKey) return;
+
+      if (isNoScore) return;
 
       let displayName = p.name;
       if (savedPlayers) {

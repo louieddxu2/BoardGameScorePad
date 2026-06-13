@@ -193,22 +193,33 @@ describe('buildSpecificGameStats', () => {
         players: [
           { id: 'slot_1', name: 'Alice', color: '#fff', totalScore: 15, scores: {} }
         ]
+      }),
+      record({
+        id: 'h4',
+        gameName: 'Game A',
+        endTime: 4000,
+        winnerIds: ['slot_2'],
+        scoringRule: 'COMPETITIVE_NO_SCORE',
+        players: [
+          { id: 'slot_2', name: 'Bob', color: '#000', totalScore: 0, scores: {} }
+        ]
       })
     ];
 
     const stats = buildSpecificGameStats('name:game a', records);
     expect(stats).not.toBeNull();
     expect(stats?.gameName).toBe('Game A');
-    expect(stats?.playCount).toBe(3);
-    expect(stats?.latestPlayedAt).toBe(3000);
+    expect(stats?.playCount).toBe(4);
+    expect(stats?.latestPlayedAt).toBe(4000);
     expect(stats?.coopPlayCount).toBe(1);
-    expect(stats?.competitivePlayCount).toBe(2);
+    expect(stats?.competitivePlayCount).toBe(3);
 
     expect(stats?.players).toEqual([
       { key: 'name:alice', name: 'Alice', playCount: 3, winCount: 2, winRate: 67 },
       { key: 'name:bob', name: 'Bob', playCount: 2, winCount: 1, winRate: 50 }
     ]);
   });
+
 
 
   it('resolves displayName through savedPlayers option if provided', () => {

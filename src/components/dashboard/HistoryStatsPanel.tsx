@@ -261,37 +261,46 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
 
 
                       {isSelected && specificStats && (
-                        <div className="h-[92px] max-h-[92px] overflow-y-auto no-scrollbar border-b border-surface-border/70 bg-app-bg-deep pl-3">
-                          {specificStats.players.map((player) => {
-                            return (
-                              <div
-                                key={player.key}
-                                className="spreadsheet-row border-b-0 hover:bg-transparent min-h-[30px] py-1"
-                                style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 1fr' }}
-                              >
-                                <span className="spreadsheet-cell-sticky text-sm font-black text-txt-primary truncate">
-                                  {player.name}
-                                </span>
-                                <div className="flex items-center justify-start gap-0.5 text-txt-secondary font-mono font-black shrink-0 text-[11px]">
-                                  <span>{player.playCount}</span>
-                                  <span className="text-[10px] font-normal text-txt-muted">{t('stats_plays_suffix')}</span>
-                                </div>
-                                <div className="flex items-center gap-2 pr-3 min-w-max">
-                                  <div className="w-[80px] sm:w-[100px] h-1.5 bg-surface-bg rounded-full overflow-hidden shrink-0">
-                                    <div 
-                                      className="bg-brand-primary h-full rounded-full" 
-                                      style={{ width: `${player.winRate}%` }} 
-                                    />
+                        <div className="h-[92px] max-h-[92px] overflow-y-auto no-scrollbar border-b border-surface-border/70 bg-app-bg-deep">
+                          {specificStats.players.length > 0 ? (
+                            <div className="pl-3">
+                              {specificStats.players.map((player) => {
+                                return (
+                                  <div
+                                    key={player.key}
+                                    className="spreadsheet-row border-b-0 hover:bg-transparent min-h-[30px] py-1"
+                                    style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 1fr' }}
+                                  >
+                                    <span className="spreadsheet-cell-sticky text-sm font-black text-txt-primary truncate">
+                                      {player.name}
+                                    </span>
+                                    <div className="flex items-center justify-start gap-0.5 text-txt-secondary font-mono font-black shrink-0 text-[11px]">
+                                      <span>{player.playCount}</span>
+                                      <span className="text-[10px] font-normal text-txt-muted">{t('stats_plays_suffix')}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 pr-3 min-w-max">
+                                      <div className="w-[80px] sm:w-[100px] h-1.5 bg-surface-bg rounded-full overflow-hidden shrink-0">
+                                        <div 
+                                          className="bg-brand-primary h-full rounded-full" 
+                                          style={{ width: `${player.winRate}%` }} 
+                                        />
+                                      </div>
+                                      <span className="text-xs font-black text-brand-primary font-mono w-[36px] text-right">
+                                        {player.winRate}%
+                                      </span>
+                                    </div>
                                   </div>
-                                  <span className="text-xs font-black text-brand-primary font-mono w-[36px] text-right">
-                                    {player.winRate}%
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })}
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="h-full flex items-center justify-center text-[11px] font-bold text-txt-muted opacity-70 px-4 text-center">
+                              {t('stats_no_scoring_records')}
+                            </div>
+                          )}
                         </div>
                       )}
+
                     </div>
                   );
                 })}
