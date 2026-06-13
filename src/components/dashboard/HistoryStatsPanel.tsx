@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { BarChart3, CalendarDays, ChevronDown, ChevronUp, Grid3X3, Hash, MapPin, Minus, Search, Users, Plus, CornerUpLeft, Award } from 'lucide-react';
+import { BarChart3, CalendarDays, ChevronDown, ChevronUp, ChevronLeft, Grid3X3, Hash, MapPin, Minus, Search, Users, Plus, CornerUpLeft, Award } from 'lucide-react';
 import { HistoryGameEntry, buildHistoryGameEntries } from '../../utils/historyGameEntries';
 import { buildHistoryStats, filterHistoryEntriesByDateRange, filterHistoryEntriesByStatsFilters, getNextHistoryStatsDateRange, HistoryStatsDateRange, HistoryStatsGame, buildSpecificGameStats } from '../../utils/historyStats';
 import HistoryPhotoGridShareModal from './HistoryPhotoGridShareModal';
@@ -106,11 +106,8 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
   }, [selectedGameKey, records, savedPlayers]);
 
   const displayedGames = useMemo(() => {
-    if (selectedGameKey) {
-      return stats.games.filter(g => g.key === selectedGameKey);
-    }
     return stats.games.slice(0, DATA_LIMITS.QUERY.HISTORY_STATS_GAMES);
-  }, [stats.games, selectedGameKey]);
+  }, [stats.games]);
   const hiddenGameCount = Math.max(0, stats.games.length - displayedGames.length);
   const isPanelExpanded = isExpanded && !isSearchKeyboardOpen;
   const panelLayoutClass = isSearchKeyboardOpen
@@ -189,179 +186,138 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                 <BarChart3 size={32} />
                 <span className="text-sm font-bold">{t('stats_empty_records')}</span>
               </div>
+            ) : selectedGameKey && specificStats ? (
+              <div className="flex flex-col w-full h-full min-h-0">
+                {/* 遊戲名稱與返回列 */}
+                <div 
+                  onClick={() => setSelectedGameKey(null)}
+                  className="flex items-center gap-2 px-3 py-2 border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors cursor-pointer w-full shrink-0 min-h-[46px]"
+                >
+                  <ChevronLeft size={18} className="text-brand-primary shrink-0" />
+                  <div className="flex flex-col items-start min-w-0 justify-center">
+                    <span className="text-sm font-black text-txt-primary truncate w-full">{specificStats.gameName}</span>
+                    <span className="text-[10px] text-txt-muted font-normal mt-0.5 whitespace-nowrap overflow-x-auto no-scrollbar max-w-[280px] sm:max-w-xs block">
+                      {specificStats.latestPlayedAt && (
+                        <span>
+                          {t('stats_latest_play_short').replace('{date}', new Date(specificStats.latestPlayedAt).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' }))}
+                        </span>
+                      )}
+                      {specificStats.bestScore !== undefined && specificStats.bestScore !== 0 && specificStats.bestScorePlayerName && (
+                        <span className="text-brand-secondary font-semibold">
+                          {specificStats.latestPlayedAt && <span className="mx-1">·</span>}
+                          {t('stats_best_score_short')
+                            .replace('{score}', specificStats.bestScore.toString())
+                            .replace('{suffix}', t('stats_score_suffix'))
+                            .replace('{player}', specificStats.bestScorePlayerName)}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 玩家勝率列表：高度直接推滿 (flex-1) */}
+                <div className="flex-1 overflow-y-auto overflow-x-auto no-scrollbar bg-app-bg-deep w-full pb-8">
+                  {specificStats.players.length > 0 ? (
+                    <div className="pl-3 w-max min-w-full">
+                      {specificStats.players.map((player) => {
+                        return (
+                          <div
+                            key={player.key}
+                            className="spreadsheet-row border-b-0 hover:bg-transparent"
+                            style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 1fr' }}
+                          >
+                            <span className="spreadsheet-cell-sticky text-sm font-black text-txt-primary truncate">
+                              {player.name}
+                            </span>
+                            <div className="flex items-center justify-start gap-0.5 text-txt-secondary font-mono font-black shrink-0 text-[11px]">
+                              {player.noScorePlayCount > 0 ? (
+                                <>
+                                  <span>{player.playCount - player.noScorePlayCount}</span>
+                                  <span className="text-brand-secondary font-bold">+{player.noScorePlayCount}</span>
+                                  <span className="text-[10px] font-normal text-txt-muted ml-0.5">{t('stats_plays_suffix')}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span>{player.playCount}</span>
+                                  <span className="text-[10px] font-normal text-txt-muted ml-0.5">{t('stats_plays_suffix')}</span>
+                                </>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 pr-3 min-w-max">
+                              {player.hasScoringPlay ? (
+                                <>
+                                  <div className="w-[80px] sm:w-[100px] h-1.5 bg-surface-bg rounded-full overflow-hidden shrink-0">
+                                    <div 
+                                      className="bg-brand-primary h-full rounded-full" 
+                                      style={{ width: `${player.winRate}%` }} 
+                                    />
+                                  </div>
+                                  <span className="text-xs font-black text-brand-primary font-mono w-[36px] text-right">
+                                    {player.winRate}%
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-xs font-black text-txt-muted font-mono w-[124px] sm:w-[144px] text-right pr-3">
+                                  -
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {specificStats.hasNoScorePlays && (
+                        <div className="text-[10px] text-txt-muted italic py-1.5 pr-3 text-right">
+                          {t('stats_win_rate_excludes_no_score')}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-[11px] font-bold text-txt-muted opacity-70 px-4 text-center">
+                      {t('stats_no_scoring_records')}
+                    </div>
+                  )}
+                </div>
+              </div>
             ) : (
-              <div className={`flex flex-col justify-start ${selectedGameKey ? 'w-full' : 'min-w-[420px]'}`}>
+              // 渲染原有的多遊戲統計列表
+              <div className="flex flex-col justify-start min-w-[420px]">
                 {displayedGames.map(game => {
-                  const isSelected = selectedGameKey === game.key;
                   return (
-                    <div key={game.key} className={`flex flex-col ${isSelected ? 'w-full min-w-0' : 'min-w-full w-max'}`}>
+                    <div key={game.key} className="flex flex-col min-w-full w-max">
                       <div
-                        onClick={() => setSelectedGameKey(prev => prev === game.key ? null : game.key)}
-                        className={`spreadsheet-row cursor-pointer ${isSelected ? '!w-full !min-w-0' : ''}`}
+                        onClick={() => setSelectedGameKey(game.key)}
+                        className="spreadsheet-row cursor-pointer"
                         style={{
-                          gridTemplateColumns: isSelected
-                            ? 'minmax(0, min(150px, 25vw)) max-content max-content'
-                            : 'minmax(0, min(150px, 25vw)) 48px max-content'
+                          gridTemplateColumns: 'minmax(0, min(150px, 25vw)) 48px max-content'
                         }}
-                        title={isSelected ? t('stats_click_to_return') : undefined}
                       >
                         <h3 className="spreadsheet-cell-sticky flex flex-col items-start justify-center px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap">
                           <span className="flex items-center gap-1.5">
-                            {isSelected && <CornerUpLeft size={13} className="shrink-0 text-brand-primary animate-pulse" />}
                             <span>{game.name}</span>
                           </span>
-                          {isSelected && specificStats && (
-                            <span className="text-[10px] text-txt-muted font-normal mt-0.5 ml-[19px] whitespace-nowrap overflow-x-auto no-scrollbar max-w-[200px] sm:max-w-xs block">
-                              {specificStats.latestPlayedAt && (
-                                <span className="hidden min-[350px]:inline">
-                                  {t('stats_latest_play_short').replace('{date}', new Date(specificStats.latestPlayedAt).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' }))}
-                                </span>
-                              )}
-                              {specificStats.bestScore !== undefined && specificStats.bestScore !== 0 && specificStats.bestScorePlayerName && (
-                                <span className="text-brand-secondary font-semibold">
-                                  {specificStats.latestPlayedAt && (
-                                    <span className="hidden min-[350px]:inline mx-1.5">·</span>
-                                  )}
-                                  {t('stats_best_score_short')
-                                    .replace('{score}', specificStats.bestScore.toString())
-                                    .replace('{suffix}', t('stats_score_suffix'))
-                                    .replace('{player}', specificStats.bestScorePlayerName)}
-                                </span>
-                              )}
-                            </span>
-                          )}
                         </h3>
 
-                        {isSelected && specificStats ? (
-                          <div className="flex items-center justify-end text-txt-secondary font-bold text-[11px] shrink-0 px-2.5 whitespace-nowrap">
-                            {specificStats.noScorePlayCount > 0 ? (
-                              specificStats.coopPlayCount > 0 && specificStats.competitivePlayCount > 0
-                                ? t('stats_plays_mixed_no_score')
-                                    .replace('{scored}', (specificStats.playCount - specificStats.noScorePlayCount).toString())
-                                    .replace('{noScore}', specificStats.noScorePlayCount.toString())
-                                : specificStats.coopPlayCount > 0
-                                  ? t('stats_plays_coop_no_score')
-                                      .replace('{scored}', (specificStats.playCount - specificStats.noScorePlayCount).toString())
-                                      .replace('{noScore}', specificStats.noScorePlayCount.toString())
-                                  : t('stats_plays_comp_no_score')
-                                      .replace('{scored}', (specificStats.playCount - specificStats.noScorePlayCount).toString())
-                                      .replace('{noScore}', specificStats.noScorePlayCount.toString())
-                            ) : (
-                              specificStats.coopPlayCount > 0 && specificStats.competitivePlayCount > 0
-                                ? t('stats_plays_mixed')
-                                    .replace('{count}', specificStats.playCount.toString())
-                                    .replace('{comp}', specificStats.competitivePlayCount.toString())
-                                    .replace('{coop}', specificStats.coopPlayCount.toString())
-                                : specificStats.coopPlayCount > 0
-                                  ? t('stats_plays_coop_only').replace('{count}', specificStats.playCount.toString())
-                                  : t('stats_plays_comp_only').replace('{count}', specificStats.playCount.toString())
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-start gap-1 text-brand-primary font-mono font-black shrink-0">
-                              <Hash size={13} />
-                              <span>{game.playCount}</span>
-                          </div>
-                        )}
-                        {!selectedGameKey ? (
-                          <div className="flex items-center gap-1.5 text-[11px] text-txt-secondary min-w-max whitespace-nowrap">
-                            <Users size={12} className="shrink-0 text-brand-secondary" />
-                            <span className="font-semibold whitespace-nowrap">
-                              {game.players.length > 0
-                                ? game.players.slice(0, MAX_VISIBLE_STATS_PLAYERS).map(player => player.name).join('、')
-                                : t('stats_no_players')}
-                              {game.players.length > MAX_VISIBLE_STATS_PLAYERS ? ` +${game.players.length - MAX_VISIBLE_STATS_PLAYERS}` : ''}
-                            </span>
-                          </div>
-                        ) : (
-                          isSelected && specificStats && (
-                            <div className="flex items-center gap-1 text-[11px] font-black text-brand-primary min-w-max whitespace-nowrap pr-3">
-                              <Award size={12} className="shrink-0 text-brand-primary" />
-                              <span>
-                                {specificStats.coopPlayCount > 0 && specificStats.competitivePlayCount > 0
-                                  ? t('stats_overall_win_rate_rank')
-                                  : specificStats.coopPlayCount > 0
-                                    ? t('stats_success_rate_rank')
-                                    : t('stats_win_rate_rank')}
-                              </span>
-                            </div>
-                          )
-                        )}
-                      </div>
-
-
-                      {isSelected && specificStats && (
-                        <div className="h-[92px] max-h-[92px] overflow-y-auto overflow-x-auto no-scrollbar border-b border-surface-border/70 bg-app-bg-deep w-full">
-                          {specificStats.players.length > 0 ? (
-                            <div className="pl-3 w-max min-w-full">
-                              {specificStats.players.map((player) => {
-                                return (
-                                  <div
-                                    key={player.key}
-                                    className="spreadsheet-row border-b-0 hover:bg-transparent"
-                                    style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 1fr' }}
-                                  >
-                                    <span className="spreadsheet-cell-sticky text-sm font-black text-txt-primary truncate">
-                                      {player.name}
-                                    </span>
-                                    <div className="flex items-center justify-start gap-0.5 text-txt-secondary font-mono font-black shrink-0 text-[11px]">
-                                      {player.noScorePlayCount > 0 ? (
-                                        <>
-                                          <span>{player.playCount - player.noScorePlayCount}</span>
-                                          <span className="text-brand-secondary font-bold">+{player.noScorePlayCount}</span>
-                                          <span className="text-[10px] font-normal text-txt-muted ml-0.5">{t('stats_plays_suffix')}</span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <span>{player.playCount}</span>
-                                          <span className="text-[10px] font-normal text-txt-muted ml-0.5">{t('stats_plays_suffix')}</span>
-                                        </>
-                                      )}
-                                    </div>
-
-                                    <div className="flex items-center gap-2 pr-3 min-w-max">
-                                      {player.hasScoringPlay ? (
-                                        <>
-                                          <div className="w-[80px] sm:w-[100px] h-1.5 bg-surface-bg rounded-full overflow-hidden shrink-0">
-                                            <div 
-                                              className="bg-brand-primary h-full rounded-full" 
-                                              style={{ width: `${player.winRate}%` }} 
-                                            />
-                                          </div>
-                                          <span className="text-xs font-black text-brand-primary font-mono w-[36px] text-right">
-                                            {player.winRate}%
-                                          </span>
-                                        </>
-                                      ) : (
-                                        <span className="text-xs font-black text-txt-muted font-mono w-[124px] sm:w-[144px] text-right pr-3">
-                                          -
-                                        </span>
-                                      )}
-                                    </div>
-
-                                  </div>
-                                );
-                              })}
-                              {specificStats.hasNoScorePlays && (
-                                <div className="text-[10px] text-txt-muted italic py-1.5 pr-3 text-right">
-                                  {t('stats_win_rate_excludes_no_score')}
-                                </div>
-                              )}
-
-                            </div>
-                          ) : (
-                            <div className="h-full flex items-center justify-center text-[11px] font-bold text-txt-muted opacity-70 px-4 text-center">
-                              {t('stats_no_scoring_records')}
-                            </div>
-                          )}
+                        <div className="flex items-center justify-start gap-1 text-brand-primary font-mono font-black shrink-0">
+                          <Hash size={13} />
+                          <span>{game.playCount}</span>
                         </div>
-                      )}
 
+                        <div className="flex items-center gap-1.5 text-[11px] text-txt-secondary min-w-max whitespace-nowrap">
+                          <Users size={12} className="shrink-0 text-brand-secondary" />
+                          <span className="font-semibold whitespace-nowrap">
+                            {game.players.length > 0
+                              ? game.players.slice(0, MAX_VISIBLE_STATS_PLAYERS).map(player => player.name).join('、')
+                              : t('stats_no_players')}
+                            {game.players.length > MAX_VISIBLE_STATS_PLAYERS ? ` +${game.players.length - MAX_VISIBLE_STATS_PLAYERS}` : ''}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
 
-                {!selectedGameKey && hiddenGameCount > 0 && (
+                {hiddenGameCount > 0 && (
                   <div className="min-h-[40px] w-full flex items-center px-3 border-b border-surface-border/70 text-[11px] font-bold text-txt-muted bg-app-bg">
                     {t('stats_more_games_hidden').replace('{count}', hiddenGameCount.toString())}
                   </div>
