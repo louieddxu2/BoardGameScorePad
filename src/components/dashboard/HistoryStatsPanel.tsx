@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { BarChart3, CalendarDays, ChevronDown, ChevronUp, Grid3X3, Hash, MapPin, Minus, Search, Users, Plus } from 'lucide-react';
+import { BarChart3, CalendarDays, ChevronDown, ChevronUp, Grid3X3, Hash, MapPin, Minus, Search, Users, Plus, CornerUpLeft, Award } from 'lucide-react';
 import { HistoryGameEntry, buildHistoryGameEntries } from '../../utils/historyGameEntries';
 import { buildHistoryStats, filterHistoryEntriesByDateRange, filterHistoryEntriesByStatsFilters, getNextHistoryStatsDateRange, HistoryStatsDateRange, HistoryStatsGame, buildSpecificGameStats } from '../../utils/historyStats';
 import HistoryPhotoGridShareModal from './HistoryPhotoGridShareModal';
@@ -199,11 +199,15 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                         onClick={() => setSelectedGameKey(prev => prev === game.key ? null : game.key)}
                         className="spreadsheet-row cursor-pointer"
                         style={{ gridTemplateColumns: 'minmax(0, min(150px, 25vw)) 48px max-content' }}
+                        title={isSelected ? t('stats_click_to_return') : undefined}
                       >
                         <h3 className="spreadsheet-cell-sticky flex flex-col items-start px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap">
-                          <span>{game.name}</span>
+                          <span className="flex items-center gap-1.5">
+                            {isSelected && <CornerUpLeft size={13} className="shrink-0 text-brand-primary animate-pulse" />}
+                            <span>{game.name}</span>
+                          </span>
                           {isSelected && specificStats?.latestPlayedAt && (
-                            <span className="text-[10px] text-txt-muted font-normal mt-0.5">
+                            <span className="text-[10px] text-txt-muted font-normal mt-0.5 ml-[19px]">
                               {t('stats_latest_play')}: {new Date(specificStats.latestPlayedAt).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' })}
                             </span>
                           )}
@@ -212,7 +216,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                             <Hash size={13} />
                             <span>{game.playCount}</span>
                         </div>
-                        {!selectedGameKey && (
+                        {!selectedGameKey ? (
                           <div className="flex items-center gap-1.5 text-[11px] text-txt-secondary min-w-max whitespace-nowrap">
                             <Users size={12} className="shrink-0 text-brand-secondary" />
                             <span className="font-semibold whitespace-nowrap">
@@ -222,6 +226,17 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                               {game.players.length > MAX_VISIBLE_STATS_PLAYERS ? ` +${game.players.length - MAX_VISIBLE_STATS_PLAYERS}` : ''}
                             </span>
                           </div>
+                        ) : (
+                          isSelected && specificStats && (
+                            <div className="flex items-center gap-1 text-[11px] font-black text-brand-primary min-w-max whitespace-nowrap pr-3">
+                              <Award size={12} className="shrink-0 text-brand-primary" />
+                              <span>
+                                {specificStats.scoringRule === 'COOP'
+                                  ? t('stats_success_rate_rank')
+                                  : t('stats_win_rate_rank')}
+                              </span>
+                            </div>
+                          )
                         )}
                       </div>
 
@@ -231,14 +246,15 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                             return (
                               <div
                                 key={player.key}
-                                className="spreadsheet-row border-b-0 hover:bg-transparent min-h-[30px] py-0.5"
-                                style={{ gridTemplateColumns: 'minmax(0, min(100px, 20vw)) 50px 1fr' }}
+                                className="spreadsheet-row border-b-0 hover:bg-transparent min-h-[30px] py-1"
+                                style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 1fr' }}
                               >
-                                <span className="spreadsheet-cell-sticky text-xs font-semibold text-txt-primary truncate">
+                                <span className="spreadsheet-cell-sticky text-sm font-black text-txt-primary truncate">
                                   {player.name}
                                 </span>
-                                <div className="text-[11px] text-txt-secondary font-mono">
-                                  {player.playCount}{t('stats_plays_suffix')}
+                                <div className="flex items-center justify-start gap-0.5 text-txt-secondary font-mono font-black shrink-0 text-[11px]">
+                                  <span>{player.playCount}</span>
+                                  <span className="text-[10px] font-normal text-txt-muted">{t('stats_plays_suffix')}</span>
                                 </div>
                                 <div className="flex items-center gap-2 pr-3 min-w-max">
                                   <div className="w-[80px] sm:w-[100px] h-1.5 bg-surface-bg rounded-full overflow-hidden shrink-0">
@@ -247,7 +263,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                                       style={{ width: `${player.winRate}%` }} 
                                     />
                                   </div>
-                                  <span className="text-[11px] font-black text-brand-primary font-mono w-[32px] text-right">
+                                  <span className="text-xs font-black text-brand-primary font-mono w-[36px] text-right">
                                     {player.winRate}%
                                   </span>
                                 </div>
@@ -259,6 +275,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                     </div>
                   );
                 })}
+
                 {!selectedGameKey && hiddenGameCount > 0 && (
                   <div className="min-h-[40px] w-full flex items-center px-3 border-b border-surface-border/70 text-[11px] font-bold text-txt-muted bg-app-bg">
                     {t('stats_more_games_hidden').replace('{count}', hiddenGameCount.toString())}

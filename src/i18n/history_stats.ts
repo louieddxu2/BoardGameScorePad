@@ -52,6 +52,7 @@ export const historyStatsTranslations = {
     stats_latest_play: '最新遊玩',
     stats_win_count: '勝場',
     stats_win_rate: '勝率',
+    stats_click_to_return: '點擊返回列表',
   },
   'en': {
     stats_empty_date: 'No records',
@@ -104,6 +105,7 @@ export const historyStatsTranslations = {
     stats_latest_play: 'Latest Play',
     stats_win_count: 'Wins',
     stats_win_rate: 'Win Rate',
+    stats_click_to_return: 'Click to return to list',
   }
 };
 
