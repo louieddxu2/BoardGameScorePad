@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  /* 凍結列表行的通用容器 */
+  .spreadsheet-row {
+    @apply grid items-center gap-2 pr-3 py-1.5 min-h-[46px] w-max min-w-full border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors;
+  }
+  
+  /* 凍結在左側的單元格 */
+  .spreadsheet-cell-sticky {
+    @apply sticky left-0 z-10 min-h-full flex items-center bg-inherit;
+  }
+}
+
 /* ============================================================
    DESIGN SYSTEM: Primitive Tokens (RGB Channels)
    ============================================================ */

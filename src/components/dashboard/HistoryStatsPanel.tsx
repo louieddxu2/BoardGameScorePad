@@ -183,10 +183,10 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                 {displayedGames.map(game => (
                   <div
                     key={game.key}
-                    className="min-h-[46px] w-max min-w-full grid items-center gap-2 pr-3 py-1.5 border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors"
+                    className="spreadsheet-row"
                     style={{ gridTemplateColumns: 'minmax(0, min(150px, 25vw)) 48px max-content' }}
                   >
-                    <h3 className="sticky left-0 z-10 bg-app-bg px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap">{game.name}</h3>
+                    <h3 className="spreadsheet-cell-sticky px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap">{game.name}</h3>
                     <div className="flex items-center justify-start gap-1 text-brand-primary font-mono font-black shrink-0">
                         <Hash size={13} />
                         <span>{game.playCount}</span>
