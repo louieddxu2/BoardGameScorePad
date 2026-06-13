@@ -190,14 +190,14 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                 <span className="text-sm font-bold">{t('stats_empty_records')}</span>
               </div>
             ) : (
-              <div className="flex flex-col justify-start min-w-[420px]">
+              <div className={`flex flex-col justify-start ${selectedGameKey ? 'w-full' : 'min-w-[420px]'}`}>
                 {displayedGames.map(game => {
                   const isSelected = selectedGameKey === game.key;
                   return (
-                    <div key={game.key} className="flex flex-col min-w-full w-max">
+                    <div key={game.key} className={`flex flex-col ${isSelected ? 'w-full min-w-0' : 'min-w-full w-max'}`}>
                       <div
                         onClick={() => setSelectedGameKey(prev => prev === game.key ? null : game.key)}
-                        className="spreadsheet-row cursor-pointer"
+                        className={`spreadsheet-row cursor-pointer ${isSelected ? '!w-full !min-w-0' : ''}`}
                         style={{
                           gridTemplateColumns: isSelected
                             ? 'minmax(0, min(150px, 25vw)) max-content max-content'
@@ -205,7 +205,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                         }}
                         title={isSelected ? t('stats_click_to_return') : undefined}
                       >
-                        <h3 className="spreadsheet-cell-sticky flex flex-col items-start px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap">
+                        <h3 className="spreadsheet-cell-sticky flex flex-col items-start justify-center px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap">
                           <span className="flex items-center gap-1.5">
                             {isSelected && <CornerUpLeft size={13} className="shrink-0 text-brand-primary animate-pulse" />}
                             <span>{game.name}</span>
@@ -291,14 +291,14 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
 
 
                       {isSelected && specificStats && (
-                        <div className="h-[92px] max-h-[92px] overflow-y-auto no-scrollbar border-b border-surface-border/70 bg-app-bg-deep">
+                        <div className="h-[92px] max-h-[92px] overflow-y-auto overflow-x-auto no-scrollbar border-b border-surface-border/70 bg-app-bg-deep w-full">
                           {specificStats.players.length > 0 ? (
-                            <div className="pl-3">
+                            <div className="pl-3 w-max min-w-full">
                               {specificStats.players.map((player) => {
                                 return (
                                   <div
                                     key={player.key}
-                                    className="spreadsheet-row border-b-0 hover:bg-transparent min-h-[30px] py-1"
+                                    className="spreadsheet-row border-b-0 hover:bg-transparent"
                                     style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 1fr' }}
                                   >
                                     <span className="spreadsheet-cell-sticky text-sm font-black text-txt-primary truncate">
