@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { BarChart3, CalendarDays, ChevronDown, ChevronUp, ChevronLeft, Grid3X3, Hash, MapPin, Minus, Search, Users, Plus, CornerUpLeft, Award } from 'lucide-react';
+import { BarChart3, CalendarDays, ChevronDown, ChevronUp, ChevronLeft, Grid3X3, Hash, MapPin, Minus, Search, Users, Plus, CornerUpLeft, Crown } from 'lucide-react';
 import { HistoryGameEntry, buildHistoryGameEntries } from '../../utils/historyGameEntries';
 import { buildHistoryStats, filterHistoryEntriesByDateRange, filterHistoryEntriesByStatsFilters, getNextHistoryStatsDateRange, HistoryStatsDateRange, HistoryStatsGame, buildSpecificGameStats } from '../../utils/historyStats';
 import HistoryPhotoGridShareModal from './HistoryPhotoGridShareModal';
@@ -129,6 +129,13 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
     return buildSpecificGameStats(selectedGameKey, records, { savedPlayers });
   }, [selectedGameKey, records, savedPlayers]);
 
+  const maxWinRate = useMemo(() => {
+    if (!specificStats) return 0;
+    const scoringPlayers = specificStats.players.filter(p => p.hasScoringPlay);
+    if (scoringPlayers.length === 0) return 0;
+    return Math.max(...scoringPlayers.map(p => p.winRate));
+  }, [specificStats]);
+
   const displayedGames = useMemo(() => {
     return stats.games.slice(0, DATA_LIMITS.QUERY.HISTORY_STATS_GAMES);
   }, [stats.games]);
@@ -212,38 +219,36 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
               </div>
             ) : selectedGameKey && specificStats ? (
               <div className="flex flex-col w-full h-full min-h-0">
-                {/* 遊戲名稱與返回列：使用 3 欄 Grid 排版，補齊並靠右對齊原本的所有統計資訊 */}
+                {/* 遊戲名稱與返回列：使用 2 欄 Grid 排版，靠右對齊統計資訊 */}
                 <div 
                   onClick={() => setSelectedGameKey(null)}
                   className="grid items-center gap-2 pr-3 py-1.5 min-h-[46px] border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors cursor-pointer w-full shrink-0"
-                  style={{ gridTemplateColumns: 'minmax(0, 1fr) max-content max-content' }}
+                  style={{ gridTemplateColumns: 'minmax(0, 1fr) max-content' }}
                 >
-                  {/* 第一欄：返回箭頭 + 遊戲名稱 + 最近遊玩與最佳分數 */}
-                  <div className="flex items-center gap-1.5 min-w-0 pl-3">
-                    <ChevronLeft size={18} className="text-brand-primary shrink-0 -ml-1" />
-                    <div className="flex flex-col items-start min-w-0 justify-center">
-                      <span className="text-sm font-black text-txt-primary truncate w-full">{specificStats.gameName}</span>
-                      <span className="text-[9px] text-txt-muted font-normal mt-0.5 whitespace-nowrap overflow-x-auto no-scrollbar max-w-[140px] sm:max-w-xs block">
-                        {specificStats.latestPlayedAt && (
-                          <span>
-                            {t('stats_latest_play_short').replace('{date}', new Date(specificStats.latestPlayedAt).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' }))}
-                          </span>
-                        )}
-                        {specificStats.bestScore !== undefined && specificStats.bestScore !== 0 && specificStats.bestScorePlayerName && (
-                          <span className="text-brand-secondary font-semibold">
-                            {specificStats.latestPlayedAt && <span className="mx-1">·</span>}
-                            {t('stats_best_score_short')
-                              .replace('{score}', specificStats.bestScore.toString())
-                              .replace('{suffix}', t('stats_score_suffix'))
-                              .replace('{player}', specificStats.bestScorePlayerName)}
-                          </span>
-                        )}
-                      </span>
-                    </div>
+                  {/* 第一欄：返回箭頭 + 遊戲名稱 + 右側最近遊玩與最佳分數 (水平 baseline 對齊) */}
+                  <div className="flex items-baseline gap-1.5 min-w-0 pl-3">
+                    <ChevronLeft size={18} className="text-brand-primary shrink-0 -ml-1 self-center" />
+                    <span className="text-sm font-black text-txt-primary truncate shrink-0 max-w-[120px] sm:max-w-[240px]">{specificStats.gameName}</span>
+                    <span className="text-[9px] text-txt-muted font-normal whitespace-nowrap overflow-x-auto no-scrollbar max-w-[130px] sm:max-w-xs block ml-1.5">
+                      {specificStats.latestPlayedAt && (
+                        <span>
+                          {t('stats_latest_play_short').replace('{date}', new Date(specificStats.latestPlayedAt).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' }))}
+                        </span>
+                      )}
+                      {specificStats.bestScore !== undefined && specificStats.bestScore !== 0 && specificStats.bestScorePlayerName && (
+                        <span className="text-brand-secondary font-semibold">
+                          {specificStats.latestPlayedAt && <span className="mx-1">·</span>}
+                          {t('stats_best_score_short')
+                            .replace('{score}', specificStats.bestScore.toString())
+                            .replace('{suffix}', t('stats_score_suffix'))
+                            .replace('{player}', specificStats.bestScorePlayerName)}
+                        </span>
+                      )}
+                    </span>
                   </div>
 
                   {/* 第二欄：局數統計資訊（scored + unscored / coop / 競爭局數） */}
-                  <div className="flex items-center justify-end text-txt-secondary font-bold text-[11px] shrink-0 px-2.5 whitespace-nowrap">
+                  <div className="flex items-center justify-end text-txt-secondary font-bold text-[11px] shrink-0 px-2.5 pr-3 whitespace-nowrap">
                     {specificStats.noScorePlayCount > 0 ? (
                       specificStats.coopPlayCount > 0 && specificStats.competitivePlayCount > 0
                         ? t('stats_plays_mixed_no_score')
@@ -266,18 +271,6 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                           ? t('stats_plays_coop_only').replace('{count}', specificStats.playCount.toString())
                           : t('stats_plays_comp_only').replace('{count}', specificStats.playCount.toString())
                     )}
-                  </div>
-
-                  {/* 第三欄：勝率/成功率排行標題 */}
-                  <div className="flex items-center gap-1 text-[11px] font-black text-brand-primary min-w-max whitespace-nowrap pr-3 justify-end">
-                    <Award size={12} className="shrink-0 text-brand-primary" />
-                    <span>
-                      {specificStats.coopPlayCount > 0 && specificStats.competitivePlayCount > 0
-                        ? t('stats_overall_win_rate_rank')
-                        : specificStats.coopPlayCount > 0
-                          ? t('stats_success_rate_rank')
-                          : t('stats_win_rate_rank')}
-                    </span>
                   </div>
                 </div>
 
@@ -319,9 +312,14 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                                       style={{ width: `${player.winRate}%` }} 
                                     />
                                   </div>
-                                  <span className="text-xs font-black text-brand-primary font-mono w-[36px] text-right">
-                                    {player.winRate}%
-                                  </span>
+                                  <div className="flex items-center gap-1 min-w-[54px] justify-end">
+                                    {player.winRate === maxWinRate && maxWinRate > 0 && (
+                                      <Crown size={12} className="text-status-warning shrink-0" fill="currentColor" />
+                                    )}
+                                    <span className="text-xs font-black text-brand-primary font-mono w-[36px] text-right">
+                                      {player.winRate}%
+                                    </span>
+                                  </div>
                                 </>
                               ) : (
                                 <span className="text-xs font-black text-txt-muted font-mono w-[124px] sm:w-[144px] text-right pr-3">
