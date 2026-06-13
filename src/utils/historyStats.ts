@@ -148,6 +148,7 @@ export interface SpecificGameStats {
   players: SpecificGameStatsPlayer[];
   coopPlayCount: number;
   competitivePlayCount: number;
+  hasNoScorePlays: boolean;
 }
 
 export const buildSpecificGameStats = (
@@ -171,6 +172,8 @@ export const buildSpecificGameStats = (
 
   let coopPlayCount = 0;
   let competitivePlayCount = 0;
+  const hasNoScorePlays = gameRecords.some(r => r.scoringRule === 'COMPETITIVE_NO_SCORE' || r.scoringRule === 'COOP_NO_SCORE');
+
 
   const savedPlayers = options?.savedPlayers;
   const savedPlayerNameMap = new Map<string, string>();
@@ -265,7 +268,8 @@ export const buildSpecificGameStats = (
     scoringRule,
     players,
     coopPlayCount,
-    competitivePlayCount
+    competitivePlayCount,
+    hasNoScorePlays
   };
 };
 

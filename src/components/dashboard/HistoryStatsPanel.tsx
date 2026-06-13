@@ -301,6 +301,12 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                                   </div>
                                 );
                               })}
+                              {specificStats.hasNoScorePlays && (
+                                <div className="text-[10px] text-txt-muted italic py-1.5 pr-3 text-right">
+                                  {t('stats_win_rate_excludes_no_score')}
+                                </div>
+                              )}
+
                             </div>
                           ) : (
                             <div className="h-full flex items-center justify-center text-[11px] font-bold text-txt-muted opacity-70 px-4 text-center">
