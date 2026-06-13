@@ -174,12 +174,14 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
             <ChevronUp size={12} className="text-txt-muted mx-auto" />
           </div>
 
-          <div className="flex-none h-8 px-3 border-b border-surface-border bg-app-bg flex items-center gap-3 overflow-x-auto no-scrollbar text-[11px] font-bold text-txt-muted whitespace-nowrap">
-            <span><span className="text-txt-primary font-mono">{stats.playCount}</span> {t('stats_count_label')}</span>
-            <span><span className="text-txt-primary font-mono">{stats.gameCount}</span> {t('stats_games_label')}</span>
-            <span><span className="text-txt-primary font-mono">{stats.playerCount}</span> {t('stats_players_label')}</span>
-            <span>{t('stats_latest_label')} <span className="text-txt-primary">{formatDate(stats.latestPlayedAt, t('stats_empty_date'))}</span></span>
-          </div>
+          {!selectedGameKey && (
+            <div className="flex-none h-8 px-3 border-b border-surface-border bg-app-bg flex items-center gap-3 overflow-x-auto no-scrollbar text-[11px] font-bold text-txt-muted whitespace-nowrap">
+              <span><span className="text-txt-primary font-mono">{stats.playCount}</span> {t('stats_count_label')}</span>
+              <span><span className="text-txt-primary font-mono">{stats.gameCount}</span> {t('stats_games_label')}</span>
+              <span><span className="text-txt-primary font-mono">{stats.playerCount}</span> {t('stats_players_label')}</span>
+              <span>{t('stats_latest_label')} <span className="text-txt-primary">{formatDate(stats.latestPlayedAt, t('stats_empty_date'))}</span></span>
+            </div>
+          )}
 
           <div className="flex-1 min-h-0 overflow-auto no-scrollbar pb-2">
             {stats.games.length === 0 ? (
@@ -257,11 +259,12 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                     </div>
                   );
                 })}
-                {hiddenGameCount > 0 && (
+                {!selectedGameKey && hiddenGameCount > 0 && (
                   <div className="min-h-[40px] w-full flex items-center px-3 border-b border-surface-border/70 text-[11px] font-bold text-txt-muted bg-app-bg">
                     {t('stats_more_games_hidden').replace('{count}', hiddenGameCount.toString())}
                   </div>
                 )}
+
                 <div className="h-2 shrink-0"></div>
               </div>
             )}
