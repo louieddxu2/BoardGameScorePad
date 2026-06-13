@@ -198,7 +198,11 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                       <div
                         onClick={() => setSelectedGameKey(prev => prev === game.key ? null : game.key)}
                         className="spreadsheet-row cursor-pointer"
-                        style={{ gridTemplateColumns: 'minmax(0, min(150px, 25vw)) 48px max-content' }}
+                        style={{
+                          gridTemplateColumns: isSelected
+                            ? 'minmax(0, 1fr) max-content max-content'
+                            : 'minmax(0, min(150px, 25vw)) 48px max-content'
+                        }}
                         title={isSelected ? t('stats_click_to_return') : undefined}
                       >
                         <h3 className="spreadsheet-cell-sticky flex flex-col items-start px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap">
@@ -212,10 +216,23 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                             </span>
                           )}
                         </h3>
-                        <div className="flex items-center justify-start gap-1 text-brand-primary font-mono font-black shrink-0">
-                            <Hash size={13} />
-                            <span>{game.playCount}</span>
-                        </div>
+                        {isSelected && specificStats ? (
+                          <div className="flex items-center justify-end text-txt-secondary font-bold text-[11px] shrink-0 px-2.5 whitespace-nowrap">
+                            {specificStats.coopPlayCount > 0 && specificStats.competitivePlayCount > 0
+                              ? t('stats_plays_mixed')
+                                  .replace('{count}', specificStats.playCount.toString())
+                                  .replace('{comp}', specificStats.competitivePlayCount.toString())
+                                  .replace('{coop}', specificStats.coopPlayCount.toString())
+                              : specificStats.coopPlayCount > 0
+                                ? t('stats_plays_coop_only').replace('{count}', specificStats.playCount.toString())
+                                : t('stats_plays_comp_only').replace('{count}', specificStats.playCount.toString())}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-start gap-1 text-brand-primary font-mono font-black shrink-0">
+                              <Hash size={13} />
+                              <span>{game.playCount}</span>
+                          </div>
+                        )}
                         {!selectedGameKey ? (
                           <div className="flex items-center gap-1.5 text-[11px] text-txt-secondary min-w-max whitespace-nowrap">
                             <Users size={12} className="shrink-0 text-brand-secondary" />
@@ -231,14 +248,17 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                             <div className="flex items-center gap-1 text-[11px] font-black text-brand-primary min-w-max whitespace-nowrap pr-3">
                               <Award size={12} className="shrink-0 text-brand-primary" />
                               <span>
-                                {specificStats.scoringRule === 'COOP'
-                                  ? t('stats_success_rate_rank')
-                                  : t('stats_win_rate_rank')}
+                                {specificStats.coopPlayCount > 0 && specificStats.competitivePlayCount > 0
+                                  ? t('stats_overall_win_rate_rank')
+                                  : specificStats.coopPlayCount > 0
+                                    ? t('stats_success_rate_rank')
+                                    : t('stats_win_rate_rank')}
                               </span>
                             </div>
                           )
                         )}
                       </div>
+
 
                       {isSelected && specificStats && (
                         <div className="h-[92px] max-h-[92px] overflow-y-auto no-scrollbar border-b border-surface-border/70 bg-app-bg-deep pl-3">

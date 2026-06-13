@@ -53,6 +53,10 @@ export const historyStatsTranslations = {
     stats_win_count: '勝場',
     stats_win_rate: '勝率',
     stats_click_to_return: '點擊返回列表',
+    stats_overall_win_rate_rank: '綜合排行',
+    stats_plays_coop_only: '共 {count} 局 (合作)',
+    stats_plays_comp_only: '共 {count} 局',
+    stats_plays_mixed: '共 {count} 局 ({comp}競爭 / {coop}合作)',
   },
   'en': {
     stats_empty_date: 'No records',
@@ -106,6 +110,10 @@ export const historyStatsTranslations = {
     stats_win_count: 'Wins',
     stats_win_rate: 'Win Rate',
     stats_click_to_return: 'Click to return to list',
+    stats_overall_win_rate_rank: 'Overall Rank',
+    stats_plays_coop_only: '{count} plays (Co-op)',
+    stats_plays_comp_only: '{count} plays',
+    stats_plays_mixed: '{count} plays ({comp} Comp / {coop} Co-op)',
   }
 };
 

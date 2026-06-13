@@ -145,6 +145,8 @@ export interface SpecificGameStats {
   latestPlayedAt?: number;
   scoringRule?: ScoringRule;
   players: SpecificGameStatsPlayer[];
+  coopPlayCount: number;
+  competitivePlayCount: number;
 }
 
 export const buildSpecificGameStats = (
@@ -166,6 +168,9 @@ export const buildSpecificGameStats = (
   const playCount = gameRecords.length;
   const latestPlayedAt = gameRecords.reduce((max, r) => Math.max(max, r.endTime), 0);
 
+  let coopPlayCount = 0;
+  let competitivePlayCount = 0;
+
   const savedPlayers = options?.savedPlayers;
   const savedPlayerNameMap = new Map<string, string>();
   if (savedPlayers) {
@@ -184,6 +189,13 @@ export const buildSpecificGameStats = (
   }>();
 
   gameRecords.forEach(r => {
+    const isCoop = r.scoringRule === 'COOP' || r.scoringRule === 'COOP_NO_SCORE';
+    if (isCoop) {
+      coopPlayCount++;
+    } else {
+      competitivePlayCount++;
+    }
+
     const winnerIds = r.winnerIds || [];
 
     r.players.forEach(p => {
@@ -237,6 +249,9 @@ export const buildSpecificGameStats = (
     playCount,
     latestPlayedAt: latestPlayedAt || undefined,
     scoringRule,
-    players
+    players,
+    coopPlayCount,
+    competitivePlayCount
   };
 };
+
