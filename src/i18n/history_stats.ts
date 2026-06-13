@@ -66,6 +66,11 @@ export const historyStatsTranslations = {
     stats_plays_mixed_no_score: '共 {scored}+{noScore} 局',
     stats_plays_coop_no_score: '共 {scored}+{noScore} 局 (合作)',
     stats_plays_comp_no_score: '共 {scored}+{noScore} 局',
+    stats_header_player: '玩家',
+    stats_header_plays: '局數',
+    stats_header_win_rate: '勝率',
+    stats_header_avg: '平均',
+    stats_header_best: '最佳',
   },
   'en': {
     stats_empty_date: 'No records',
@@ -132,6 +137,11 @@ export const historyStatsTranslations = {
     stats_plays_mixed_no_score: '{scored}+{noScore} plays',
     stats_plays_coop_no_score: '{scored}+{noScore} plays (Co-op)',
     stats_plays_comp_no_score: '{scored}+{noScore} plays',
+    stats_header_player: 'Player',
+    stats_header_plays: 'Plays',
+    stats_header_win_rate: 'Win Rate',
+    stats_header_avg: 'Avg',
+    stats_header_best: 'Best',
   }
 };
 

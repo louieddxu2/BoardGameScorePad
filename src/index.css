@@ -12,6 +12,16 @@
   .spreadsheet-cell-sticky {
     @apply sticky left-0 z-10 min-h-full flex items-center bg-inherit px-3 overflow-x-auto no-scrollbar whitespace-nowrap;
   }
+
+  /* 凍結在頂部的表頭行 */
+  .spreadsheet-header-row {
+    @apply spreadsheet-row sticky top-0 z-20 bg-app-bg-deep border-b border-surface-border/80 font-black text-txt-muted text-[10px] select-none hover:bg-transparent pointer-events-none;
+  }
+
+  /* 雙向凍結的左上角交點單元格 */
+  .spreadsheet-cell-sticky-header {
+    @apply spreadsheet-cell-sticky z-30 bg-app-bg-deep;
+  }
 }
 
 /* ============================================================

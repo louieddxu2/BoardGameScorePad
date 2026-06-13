@@ -139,6 +139,8 @@ export interface SpecificGameStatsPlayer {
   winRate: number;
   hasScoringPlay: boolean;
   noScorePlayCount: number;
+  avgScore?: number;
+  personalBestScore?: number;
 }
 
 
@@ -202,6 +204,7 @@ export const buildSpecificGameStats = (
     scoringPlayCount: number;
     noScorePlayCount: number;
     winCount: number;
+    scores: number[];
   }>();
 
   gameRecords.forEach(r => {
@@ -241,13 +244,17 @@ export const buildSpecificGameStats = (
         playCount: 0,
         scoringPlayCount: 0,
         noScorePlayCount: 0,
-        winCount: 0
+        winCount: 0,
+        scores: []
       };
 
       existing.playCount += 1;
       if (!isNoScore) {
         existing.scoringPlayCount += 1;
         if (isWinner) existing.winCount += 1;
+        if (p.totalScore !== undefined && p.totalScore !== null) {
+          existing.scores.push(p.totalScore);
+        }
       } else {
         existing.noScorePlayCount += 1;
       }
@@ -277,6 +284,21 @@ export const buildSpecificGameStats = (
 
   const players = Array.from(playerMap.values()).map(p => {
     const winRate = p.scoringPlayCount > 0 ? Math.round((p.winCount / p.scoringPlayCount) * 100) : 0;
+    
+    let avgScore: number | undefined = undefined;
+    let personalBestScore: number | undefined = undefined;
+    
+    if (p.scores.length > 0) {
+      const totalSum = p.scores.reduce((sum, s) => sum + s, 0);
+      avgScore = Math.round((totalSum / p.scores.length) * 10) / 10;
+      
+      if (scoringRule === 'LOWEST_WINS') {
+        personalBestScore = Math.min(...p.scores);
+      } else {
+        personalBestScore = Math.max(...p.scores);
+      }
+    }
+
     return {
       key: p.key,
       name: p.name,
@@ -284,7 +306,9 @@ export const buildSpecificGameStats = (
       winCount: p.winCount,
       winRate,
       hasScoringPlay: p.scoringPlayCount > 0,
-      noScorePlayCount: p.noScorePlayCount
+      noScorePlayCount: p.noScorePlayCount,
+      avgScore,
+      personalBestScore
     };
   }).sort((a, b) => {
     if (a.hasScoringPlay !== b.hasScoringPlay) {

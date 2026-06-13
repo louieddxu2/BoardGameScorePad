@@ -219,9 +219,9 @@ describe('buildSpecificGameStats', () => {
     expect(stats?.bestScorePlayerName).toBe('Alice');
 
     expect(stats?.players).toEqual([
-      { key: 'name:alice', name: 'Alice', playCount: 3, winCount: 2, winRate: 67, hasScoringPlay: true, noScorePlayCount: 0 },
-      { key: 'name:bob', name: 'Bob', playCount: 3, winCount: 1, winRate: 50, hasScoringPlay: true, noScorePlayCount: 1 },
-      { key: 'name:charlie', name: 'Charlie', playCount: 1, winCount: 0, winRate: 0, hasScoringPlay: false, noScorePlayCount: 1 }
+      { key: 'name:alice', name: 'Alice', playCount: 3, winCount: 2, winRate: 67, hasScoringPlay: true, noScorePlayCount: 0, avgScore: 11, personalBestScore: 15 },
+      { key: 'name:bob', name: 'Bob', playCount: 3, winCount: 1, winRate: 50, hasScoringPlay: true, noScorePlayCount: 1, avgScore: 8.5, personalBestScore: 12 },
+      { key: 'name:charlie', name: 'Charlie', playCount: 1, winCount: 0, winRate: 0, hasScoringPlay: false, noScorePlayCount: 1, avgScore: undefined, personalBestScore: undefined }
     ]);
   });
 
