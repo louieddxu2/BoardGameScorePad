@@ -200,7 +200,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                         className="spreadsheet-row cursor-pointer"
                         style={{
                           gridTemplateColumns: isSelected
-                            ? 'minmax(0, 1fr) max-content max-content'
+                            ? 'minmax(0, min(150px, 25vw)) max-content max-content'
                             : 'minmax(0, min(150px, 25vw)) 48px max-content'
                         }}
                         title={isSelected ? t('stats_click_to_return') : undefined}
