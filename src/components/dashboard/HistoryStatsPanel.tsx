@@ -212,17 +212,16 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
               </div>
             ) : selectedGameKey && specificStats ? (
               <div className="flex flex-col w-full h-full min-h-0">
-                {/* 遊戲名稱與返回列：使用 2 欄 Grid 排版，靠右對齊統計資訊 */}
+                {/* 遊戲名稱與返回列：使用 Flex 兩端對齊排版，避免強行分欄限制空間 */}
                 <div 
                   onClick={() => setSelectedGameKey(null)}
-                  className="grid items-center gap-2 pr-3 py-1.5 min-h-[46px] border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors cursor-pointer w-full shrink-0"
-                  style={{ gridTemplateColumns: 'minmax(0, 1fr) max-content' }}
+                  className="flex items-center justify-between gap-3 pr-3 py-1.5 min-h-[46px] border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors cursor-pointer w-full shrink-0"
                 >
-                  {/* 第一欄：返回箭頭 + 遊戲名稱 + 右側最近遊玩與最佳分數 (水平 baseline 對齊) */}
-                  <div className="flex items-baseline gap-2 min-w-0 pl-3">
+                  {/* 左側：返回箭頭 + 遊戲名稱 + 右側最近遊玩與最佳分數 (水平 baseline 對齊) */}
+                  <div className="flex items-baseline gap-2 min-w-0 pl-3 flex-1">
                     <ChevronLeft size={18} className="text-brand-primary shrink-0 -ml-1 self-center" />
-                    <span className="text-base font-black text-txt-primary truncate shrink-0 max-w-[150px] sm:max-w-[300px]">{specificStats.gameName}</span>
-                    <span className="text-xs text-txt-muted font-normal whitespace-nowrap overflow-x-auto no-scrollbar max-w-[150px] sm:max-w-xs block ml-2">
+                    <span className="text-base font-black text-txt-primary truncate shrink-0">{specificStats.gameName}</span>
+                    <span className="text-xs text-txt-muted font-normal whitespace-nowrap overflow-x-auto no-scrollbar block ml-2">
                       {specificStats.latestPlayedAt && (
                         <span>
                           {t('stats_latest_play_short').replace('{date}', new Date(specificStats.latestPlayedAt).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' }))}
@@ -240,8 +239,8 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                     </span>
                   </div>
 
-                  {/* 第二欄：局數統計資訊（scored + unscored / coop / 競爭局數） */}
-                  <div className="flex items-center justify-end text-txt-secondary font-bold text-xs shrink-0 px-3 pr-3 whitespace-nowrap">
+                  {/* 右側：局數統計資訊（scored + unscored / coop / 競爭局數） */}
+                  <div className="flex items-center justify-end text-txt-secondary font-bold text-xs shrink-0 pl-2 whitespace-nowrap">
                     {specificStats.noScorePlayCount > 0 ? (
                       specificStats.coopPlayCount > 0 && specificStats.competitivePlayCount > 0
                         ? t('stats_plays_mixed_no_score')
