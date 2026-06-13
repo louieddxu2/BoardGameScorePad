@@ -61,6 +61,11 @@ export const historyStatsTranslations = {
     stats_win_rate_excludes_no_score: '* 勝率計算已排除不計分局',
     stats_best_score: '最佳',
     stats_score_suffix: '分',
+    stats_latest_play_short: '最近 {date}',
+    stats_best_score_short: '👑 {score}{suffix} ({player})',
+    stats_plays_mixed_no_score: '共 {scored}+{noScore} 局',
+    stats_plays_coop_no_score: '共 {scored}+{noScore} 局 (合作)',
+    stats_plays_comp_no_score: '共 {scored}+{noScore} 局',
   },
   'en': {
     stats_empty_date: 'No records',
@@ -122,6 +127,11 @@ export const historyStatsTranslations = {
     stats_win_rate_excludes_no_score: '* Win rate excludes non-scoring games',
     stats_best_score: 'Best',
     stats_score_suffix: 'pts',
+    stats_latest_play_short: '{date}',
+    stats_best_score_short: '👑 {score}{suffix} ({player})',
+    stats_plays_mixed_no_score: '{scored}+{noScore} plays',
+    stats_plays_coop_no_score: '{scored}+{noScore} plays (Co-op)',
+    stats_plays_comp_no_score: '{scored}+{noScore} plays',
   }
 };
 

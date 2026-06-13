@@ -151,6 +151,7 @@ export interface SpecificGameStats {
   coopPlayCount: number;
   competitivePlayCount: number;
   hasNoScorePlays: boolean;
+  noScorePlayCount: number;
   bestScore?: number;
   bestScorePlayerName?: string;
 }
@@ -176,7 +177,7 @@ export const buildSpecificGameStats = (
 
   let coopPlayCount = 0;
   let competitivePlayCount = 0;
-  const hasNoScorePlays = gameRecords.some(r => r.scoringRule === 'COMPETITIVE_NO_SCORE' || r.scoringRule === 'COOP_NO_SCORE');
+  let noScorePlayCount = 0;
 
   let bestScore: number | undefined = undefined;
   let bestScorePlayerName: string | undefined = undefined;
@@ -212,6 +213,9 @@ export const buildSpecificGameStats = (
     }
 
     const isNoScore = r.scoringRule === 'COMPETITIVE_NO_SCORE' || r.scoringRule === 'COOP_NO_SCORE';
+    if (isNoScore) {
+      noScorePlayCount++;
+    }
     const winnerIds = r.winnerIds || [];
 
     r.players.forEach(p => {
@@ -301,7 +305,8 @@ export const buildSpecificGameStats = (
     players,
     coopPlayCount,
     competitivePlayCount,
-    hasNoScorePlays,
+    hasNoScorePlays: noScorePlayCount > 0,
+    noScorePlayCount,
     bestScore,
     bestScorePlayerName
   };

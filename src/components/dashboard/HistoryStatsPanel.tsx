@@ -213,13 +213,19 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                           {isSelected && specificStats && (
                             <span className="text-[10px] text-txt-muted font-normal mt-0.5 ml-[19px] whitespace-nowrap overflow-x-auto no-scrollbar max-w-[200px] sm:max-w-xs block">
                               {specificStats.latestPlayedAt && (
-                                <span>
-                                  {t('stats_latest_play')}: {new Date(specificStats.latestPlayedAt).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' })}
+                                <span className="hidden min-[350px]:inline">
+                                  {t('stats_latest_play_short').replace('{date}', new Date(specificStats.latestPlayedAt).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' }))}
                                 </span>
                               )}
-                              {specificStats.bestScore !== undefined && specificStats.bestScorePlayerName && (
-                                <span className="text-brand-secondary font-semibold ml-2">
-                                  · 👑 {t('stats_best_score')}: {specificStats.bestScore}{t('stats_score_suffix')} ({specificStats.bestScorePlayerName})
+                              {specificStats.bestScore !== undefined && specificStats.bestScore !== 0 && specificStats.bestScorePlayerName && (
+                                <span className="text-brand-secondary font-semibold">
+                                  {specificStats.latestPlayedAt && (
+                                    <span className="hidden min-[350px]:inline mx-1.5">·</span>
+                                  )}
+                                  {t('stats_best_score_short')
+                                    .replace('{score}', specificStats.bestScore.toString())
+                                    .replace('{suffix}', t('stats_score_suffix'))
+                                    .replace('{player}', specificStats.bestScorePlayerName)}
                                 </span>
                               )}
                             </span>
@@ -228,14 +234,28 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
 
                         {isSelected && specificStats ? (
                           <div className="flex items-center justify-end text-txt-secondary font-bold text-[11px] shrink-0 px-2.5 whitespace-nowrap">
-                            {specificStats.coopPlayCount > 0 && specificStats.competitivePlayCount > 0
-                              ? t('stats_plays_mixed')
-                                  .replace('{count}', specificStats.playCount.toString())
-                                  .replace('{comp}', specificStats.competitivePlayCount.toString())
-                                  .replace('{coop}', specificStats.coopPlayCount.toString())
-                              : specificStats.coopPlayCount > 0
-                                ? t('stats_plays_coop_only').replace('{count}', specificStats.playCount.toString())
-                                : t('stats_plays_comp_only').replace('{count}', specificStats.playCount.toString())}
+                            {specificStats.noScorePlayCount > 0 ? (
+                              specificStats.coopPlayCount > 0 && specificStats.competitivePlayCount > 0
+                                ? t('stats_plays_mixed_no_score')
+                                    .replace('{scored}', (specificStats.playCount - specificStats.noScorePlayCount).toString())
+                                    .replace('{noScore}', specificStats.noScorePlayCount.toString())
+                                : specificStats.coopPlayCount > 0
+                                  ? t('stats_plays_coop_no_score')
+                                      .replace('{scored}', (specificStats.playCount - specificStats.noScorePlayCount).toString())
+                                      .replace('{noScore}', specificStats.noScorePlayCount.toString())
+                                  : t('stats_plays_comp_no_score')
+                                      .replace('{scored}', (specificStats.playCount - specificStats.noScorePlayCount).toString())
+                                      .replace('{noScore}', specificStats.noScorePlayCount.toString())
+                            ) : (
+                              specificStats.coopPlayCount > 0 && specificStats.competitivePlayCount > 0
+                                ? t('stats_plays_mixed')
+                                    .replace('{count}', specificStats.playCount.toString())
+                                    .replace('{comp}', specificStats.competitivePlayCount.toString())
+                                    .replace('{coop}', specificStats.coopPlayCount.toString())
+                                : specificStats.coopPlayCount > 0
+                                  ? t('stats_plays_coop_only').replace('{count}', specificStats.playCount.toString())
+                                  : t('stats_plays_comp_only').replace('{count}', specificStats.playCount.toString())
+                            )}
                           </div>
                         ) : (
                           <div className="flex items-center justify-start gap-1 text-brand-primary font-mono font-black shrink-0">

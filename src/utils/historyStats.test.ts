@@ -214,6 +214,7 @@ describe('buildSpecificGameStats', () => {
     expect(stats?.latestPlayedAt).toBe(4000);
     expect(stats?.coopPlayCount).toBe(1);
     expect(stats?.competitivePlayCount).toBe(3);
+    expect(stats?.noScorePlayCount).toBe(1);
     expect(stats?.bestScore).toBe(15);
     expect(stats?.bestScorePlayerName).toBe('Alice');
 
