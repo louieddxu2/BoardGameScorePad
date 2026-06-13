@@ -138,7 +138,9 @@ export interface SpecificGameStatsPlayer {
   winCount: number;
   winRate: number;
   hasScoringPlay: boolean;
+  noScorePlayCount: number;
 }
+
 
 export interface SpecificGameStats {
   gameName: string;
@@ -190,6 +192,7 @@ export const buildSpecificGameStats = (
     name: string;
     playCount: number;
     scoringPlayCount: number;
+    noScorePlayCount: number;
     winCount: number;
   }>();
 
@@ -202,7 +205,6 @@ export const buildSpecificGameStats = (
     }
 
     const isNoScore = r.scoringRule === 'COMPETITIVE_NO_SCORE' || r.scoringRule === 'COOP_NO_SCORE';
-
     const winnerIds = r.winnerIds || [];
 
     r.players.forEach(p => {
@@ -227,6 +229,7 @@ export const buildSpecificGameStats = (
         name: displayName,
         playCount: 0,
         scoringPlayCount: 0,
+        noScorePlayCount: 0,
         winCount: 0
       };
 
@@ -234,6 +237,8 @@ export const buildSpecificGameStats = (
       if (!isNoScore) {
         existing.scoringPlayCount += 1;
         if (isWinner) existing.winCount += 1;
+      } else {
+        existing.noScorePlayCount += 1;
       }
 
       playerMap.set(pKey, existing);
@@ -248,7 +253,8 @@ export const buildSpecificGameStats = (
       playCount: p.playCount,
       winCount: p.winCount,
       winRate,
-      hasScoringPlay: p.scoringPlayCount > 0
+      hasScoringPlay: p.scoringPlayCount > 0,
+      noScorePlayCount: p.noScorePlayCount
     };
   }).sort((a, b) => {
     if (a.hasScoringPlay !== b.hasScoringPlay) {

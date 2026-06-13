@@ -275,9 +275,20 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                                       {player.name}
                                     </span>
                                     <div className="flex items-center justify-start gap-0.5 text-txt-secondary font-mono font-black shrink-0 text-[11px]">
-                                      <span>{player.playCount}</span>
-                                      <span className="text-[10px] font-normal text-txt-muted">{t('stats_plays_suffix')}</span>
+                                      {player.noScorePlayCount > 0 ? (
+                                        <>
+                                          <span>{player.playCount - player.noScorePlayCount}</span>
+                                          <span className="text-brand-secondary font-bold">+{player.noScorePlayCount}</span>
+                                          <span className="text-[10px] font-normal text-txt-muted ml-0.5">{t('stats_plays_suffix')}</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span>{player.playCount}</span>
+                                          <span className="text-[10px] font-normal text-txt-muted ml-0.5">{t('stats_plays_suffix')}</span>
+                                        </>
+                                      )}
                                     </div>
+
                                     <div className="flex items-center gap-2 pr-3 min-w-max">
                                       {player.hasScoringPlay ? (
                                         <>
