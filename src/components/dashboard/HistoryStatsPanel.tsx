@@ -186,7 +186,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                     className="spreadsheet-row"
                     style={{ gridTemplateColumns: 'minmax(0, min(150px, 25vw)) 48px max-content' }}
                   >
-                    <h3 className="spreadsheet-cell-sticky px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap">{game.name}</h3>
+                    <h3 className="spreadsheet-cell-sticky text-sm font-black text-txt-primary">{game.name}</h3>
                     <div className="flex items-center justify-start gap-1 text-brand-primary font-mono font-black shrink-0">
                         <Hash size={13} />
                         <span>{game.playCount}</span>

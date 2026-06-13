@@ -10,7 +10,7 @@
   
   /* 凍結在左側的單元格 */
   .spreadsheet-cell-sticky {
-    @apply sticky left-0 z-10 min-h-full flex items-center bg-inherit;
+    @apply sticky left-0 z-10 min-h-full flex items-center bg-inherit px-3 overflow-x-auto no-scrollbar whitespace-nowrap;
   }
 }
 
