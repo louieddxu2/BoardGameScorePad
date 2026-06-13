@@ -296,20 +296,18 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                               )}
                             </div>
 
-                            <div className="flex items-center justify-end pr-3">
+                            <div className="flex items-center justify-start gap-1 pl-4 min-w-max">
                               {player.hasScoringPlay ? (
-                                <div className="flex items-center gap-1 justify-end min-w-[54px]">
+                                <>
                                   <Crown size={12} className="text-status-warning shrink-0" fill="currentColor" />
-                                  <span className="text-xs font-black text-brand-primary font-mono w-[36px] text-right">
+                                  <span className="text-xs font-black text-brand-primary font-mono text-left">
                                     {player.winRate}%
                                   </span>
-                                </div>
+                                </>
                               ) : (
-                                <div className="flex items-center justify-end min-w-[54px]">
-                                  <span className="text-xs font-black text-txt-muted font-mono w-[36px] text-right pr-1">
-                                    -
-                                  </span>
-                                </div>
+                                <span className="text-xs font-black text-txt-muted font-mono text-left pl-[16px]">
+                                  -
+                                </span>
                               )}
                             </div>
                           </div>
