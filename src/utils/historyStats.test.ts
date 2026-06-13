@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { HistorySummary } from './extractDataSummaries';
 import { buildHistoryGameEntries } from './historyGameEntries';
-import { buildHistoryStats, filterHistoryEntriesByDateRange, filterHistoryEntriesByStatsFilters, getNextHistoryStatsDateRange, selectHistoryPhotoGridItems } from './historyStats';
+import { buildHistoryStats, filterHistoryEntriesByDateRange, filterHistoryEntriesByStatsFilters, getNextHistoryStatsDateRange, selectHistoryPhotoGridItems, buildSpecificGameStats } from './historyStats';
 
 const record = (overrides: Partial<HistorySummary>): HistorySummary => ({
   id: overrides.id || 'h1',
@@ -10,7 +10,7 @@ const record = (overrides: Partial<HistorySummary>): HistorySummary => ({
   bggId: overrides.bggId,
   endTime: overrides.endTime || 1000,
   location: overrides.location,
-  winnerIds: [],
+  winnerIds: overrides.winnerIds || [],
   scoringRule: overrides.scoringRule,
   firstPhotoId: overrides.firstPhotoId,
   photoIds: overrides.photoIds,
@@ -154,3 +154,75 @@ describe('historyStats', () => {
     expect(filterHistoryEntriesByStatsFilters(entries, { location: 'Home' }).map(entry => entry.displayName)).toEqual(['Game A']);
   });
 });
+
+describe('buildSpecificGameStats', () => {
+  it('returns null if no records match gameKey', () => {
+    const records = [record({ id: 'h1', gameName: 'Game A' })];
+    const stats = buildSpecificGameStats('name:game b', records);
+    expect(stats).toBeNull();
+  });
+
+  it('aggregates stats for a specific game and lists players by win rate', () => {
+    const records = [
+      record({
+        id: 'h1',
+        gameName: 'Game A',
+        endTime: 1000,
+        winnerIds: ['slot_1'],
+        players: [
+          { id: 'slot_1', name: 'Alice', color: '#fff', totalScore: 10, scores: {} },
+          { id: 'slot_2', name: 'Bob', color: '#000', totalScore: 5, scores: {} }
+        ]
+      }),
+      record({
+        id: 'h2',
+        gameName: 'Game A',
+        endTime: 2000,
+        winnerIds: ['slot_2'],
+        players: [
+          { id: 'slot_1', name: 'Alice', color: '#fff', totalScore: 8, scores: {} },
+          { id: 'slot_2', name: 'Bob', color: '#000', totalScore: 12, scores: {} }
+        ]
+      }),
+      record({
+        id: 'h3',
+        gameName: 'Game A',
+        endTime: 3000,
+        winnerIds: ['slot_1'],
+        players: [
+          { id: 'slot_1', name: 'Alice', color: '#fff', totalScore: 15, scores: {} }
+        ]
+      })
+    ];
+
+    const stats = buildSpecificGameStats('name:game a', records);
+    expect(stats).not.toBeNull();
+    expect(stats?.gameName).toBe('Game A');
+    expect(stats?.playCount).toBe(3);
+    expect(stats?.latestPlayedAt).toBe(3000);
+
+    expect(stats?.players).toEqual([
+      { key: 'name:alice', name: 'Alice', playCount: 3, winCount: 2, winRate: 67 },
+      { key: 'name:bob', name: 'Bob', playCount: 2, winCount: 1, winRate: 50 }
+    ]);
+  });
+
+  it('resolves displayName through savedPlayers option if provided', () => {
+    const records = [
+      record({
+        id: 'h1',
+        gameName: 'Game A',
+        endTime: 1000,
+        winnerIds: ['slot_1'],
+        players: [
+          { id: 'slot_1', name: 'alice', color: '#fff', totalScore: 10, scores: {}, linkedPlayerId: 'p-alice' }
+        ]
+      })
+    ];
+
+    const savedPlayers = [{ id: 'p-alice', name: 'Alice Saved' }];
+    const stats = buildSpecificGameStats('name:game a', records, { savedPlayers });
+    expect(stats?.players[0].name).toBe('Alice Saved');
+  });
+});
+

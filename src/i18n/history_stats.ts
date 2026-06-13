@@ -46,6 +46,12 @@ export const historyStatsTranslations = {
     grid_share_button: '分享九宮格',
     grid_confirm_crop: '確認',
     grid_crop_hint: '縮放平移照片，或從下方替換',
+    stats_win_rate_rank: '勝率排行',
+    stats_success_rate_rank: '通關率排行',
+    stats_plays_suffix: '局',
+    stats_latest_play: '最新遊玩',
+    stats_win_count: '勝場',
+    stats_win_rate: '勝率',
   },
   'en': {
     stats_empty_date: 'No records',
@@ -92,6 +98,12 @@ export const historyStatsTranslations = {
     grid_share_button: 'Share Grid',
     grid_confirm_crop: 'Confirm',
     grid_crop_hint: 'Zoom, pan, or pick another photo',
+    stats_win_rate_rank: 'Win Rate Rank',
+    stats_success_rate_rank: 'Success Rate Rank',
+    stats_plays_suffix: 'plays',
+    stats_latest_play: 'Latest Play',
+    stats_win_count: 'Wins',
+    stats_win_rate: 'Win Rate',
   }
 };
 

@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { BarChart3, CalendarDays, ChevronDown, ChevronUp, Grid3X3, Hash, MapPin, Minus, Search, Users, Plus } from 'lucide-react';
 import { HistoryGameEntry, buildHistoryGameEntries } from '../../utils/historyGameEntries';
-import { buildHistoryStats, filterHistoryEntriesByDateRange, filterHistoryEntriesByStatsFilters, getNextHistoryStatsDateRange, HistoryStatsDateRange } from '../../utils/historyStats';
+import { buildHistoryStats, filterHistoryEntriesByDateRange, filterHistoryEntriesByStatsFilters, getNextHistoryStatsDateRange, HistoryStatsDateRange, HistoryStatsGame, buildSpecificGameStats } from '../../utils/historyStats';
 import HistoryPhotoGridShareModal from './HistoryPhotoGridShareModal';
 import { useHistoryStatsTranslation } from '../../i18n/history_stats';
 import { ScoringRule, SavedListItem } from '../../types';
@@ -50,6 +50,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
   const [locationFilter, setLocationFilter] = useState<string | null>(null);
   const [activeMenu, setActiveMenu] = useState<({ type: 'rule' | 'location' } & UpwardSelectMenuAnchor) | null>(null);
   const menuListRef = useRef<HTMLDivElement>(null);
+  const [selectedGameKey, setSelectedGameKey] = useState<string | null>(null);
 
   // 1. 單局層面篩選：時間
   const dateFilteredRecords = useMemo(() => {
@@ -98,10 +99,18 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
   }, [records, filteredRecords, savedPlayers, entries]);
 
   const stats = useMemo(() => buildHistoryStats(filteredEntries), [filteredEntries]);
-  const displayedGames = useMemo(
-    () => stats.games.slice(0, DATA_LIMITS.QUERY.HISTORY_STATS_GAMES),
-    [stats.games]
-  );
+
+  const specificStats = useMemo(() => {
+    if (!selectedGameKey || !records) return null;
+    return buildSpecificGameStats(selectedGameKey, records, { savedPlayers });
+  }, [selectedGameKey, records, savedPlayers]);
+
+  const displayedGames = useMemo(() => {
+    if (selectedGameKey) {
+      return stats.games.filter(g => g.key === selectedGameKey);
+    }
+    return stats.games.slice(0, DATA_LIMITS.QUERY.HISTORY_STATS_GAMES);
+  }, [stats.games, selectedGameKey]);
   const hiddenGameCount = Math.max(0, stats.games.length - displayedGames.length);
   const isPanelExpanded = isExpanded && !isSearchKeyboardOpen;
   const panelLayoutClass = isSearchKeyboardOpen
@@ -180,28 +189,74 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
               </div>
             ) : (
               <div className="flex flex-col justify-start min-w-[420px]">
-                {displayedGames.map(game => (
-                  <div
-                    key={game.key}
-                    className="spreadsheet-row"
-                    style={{ gridTemplateColumns: 'minmax(0, min(150px, 25vw)) 48px max-content' }}
-                  >
-                    <h3 className="spreadsheet-cell-sticky text-sm font-black text-txt-primary">{game.name}</h3>
-                    <div className="flex items-center justify-start gap-1 text-brand-primary font-mono font-black shrink-0">
-                        <Hash size={13} />
-                        <span>{game.playCount}</span>
+                {displayedGames.map(game => {
+                  const isSelected = selectedGameKey === game.key;
+                  return (
+                    <div key={game.key} className="flex flex-col min-w-full w-max">
+                      <div
+                        onClick={() => setSelectedGameKey(prev => prev === game.key ? null : game.key)}
+                        className="spreadsheet-row cursor-pointer"
+                        style={{ gridTemplateColumns: 'minmax(0, min(150px, 25vw)) 48px max-content' }}
+                      >
+                        <h3 className="spreadsheet-cell-sticky flex flex-col items-start px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap">
+                          <span>{game.name}</span>
+                          {isSelected && specificStats?.latestPlayedAt && (
+                            <span className="text-[10px] text-txt-muted font-normal mt-0.5">
+                              {t('stats_latest_play')}: {new Date(specificStats.latestPlayedAt).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' })}
+                            </span>
+                          )}
+                        </h3>
+                        <div className="flex items-center justify-start gap-1 text-brand-primary font-mono font-black shrink-0">
+                            <Hash size={13} />
+                            <span>{game.playCount}</span>
+                        </div>
+                        {!selectedGameKey && (
+                          <div className="flex items-center gap-1.5 text-[11px] text-txt-secondary min-w-max whitespace-nowrap">
+                            <Users size={12} className="shrink-0 text-brand-secondary" />
+                            <span className="font-semibold whitespace-nowrap">
+                              {game.players.length > 0
+                                ? game.players.slice(0, MAX_VISIBLE_STATS_PLAYERS).map(player => player.name).join('、')
+                                : t('stats_no_players')}
+                              {game.players.length > MAX_VISIBLE_STATS_PLAYERS ? ` +${game.players.length - MAX_VISIBLE_STATS_PLAYERS}` : ''}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {isSelected && specificStats && (
+                        <div className="h-[92px] max-h-[92px] overflow-y-auto no-scrollbar border-b border-surface-border/70 bg-app-bg-deep pl-3">
+                          {specificStats.players.map((player) => {
+                            return (
+                              <div
+                                key={player.key}
+                                className="spreadsheet-row border-b-0 hover:bg-transparent min-h-[30px] py-0.5"
+                                style={{ gridTemplateColumns: 'minmax(0, min(100px, 20vw)) 50px 1fr' }}
+                              >
+                                <span className="spreadsheet-cell-sticky text-xs font-semibold text-txt-primary truncate">
+                                  {player.name}
+                                </span>
+                                <div className="text-[11px] text-txt-secondary font-mono">
+                                  {player.playCount}{t('stats_plays_suffix')}
+                                </div>
+                                <div className="flex items-center gap-2 pr-3 min-w-max">
+                                  <div className="w-[80px] sm:w-[100px] h-1.5 bg-surface-bg rounded-full overflow-hidden shrink-0">
+                                    <div 
+                                      className="bg-brand-primary h-full rounded-full" 
+                                      style={{ width: `${player.winRate}%` }} 
+                                    />
+                                  </div>
+                                  <span className="text-[11px] font-black text-brand-primary font-mono w-[32px] text-right">
+                                    {player.winRate}%
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1.5 text-[11px] text-txt-secondary min-w-max whitespace-nowrap">
-                      <Users size={12} className="shrink-0 text-brand-secondary" />
-                      <span className="font-semibold whitespace-nowrap">
-                        {game.players.length > 0
-                          ? game.players.slice(0, MAX_VISIBLE_STATS_PLAYERS).map(player => player.name).join('、')
-                          : t('stats_no_players')}
-                        {game.players.length > MAX_VISIBLE_STATS_PLAYERS ? ` +${game.players.length - MAX_VISIBLE_STATS_PLAYERS}` : ''}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {hiddenGameCount > 0 && (
                   <div className="min-h-[40px] w-full flex items-center px-3 border-b border-surface-border/70 text-[11px] font-bold text-txt-muted bg-app-bg">
                     {t('stats_more_games_hidden').replace('{count}', hiddenGameCount.toString())}

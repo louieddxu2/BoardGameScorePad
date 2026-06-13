@@ -1,5 +1,6 @@
-import { HistoryGameEntry, HistoryGamePhotoEntry } from './historyGameEntries';
+import { HistoryGameEntry, HistoryGamePhotoEntry, getHistoryPlayerKey } from './historyGameEntries';
 import { ScoringRule } from '../types';
+import { HistorySummary } from './extractDataSummaries';
 
 export type HistoryStatsDateRange = 'all' | 'month' | 'quarter' | 'year';
 
@@ -128,4 +129,114 @@ export const selectHistoryPhotoGridItems = (entries: HistoryGameEntry[], limit =
       photoId: entry.firstRecentPhotoId!,
       candidatePhotos: entry.photos
     }));
+};
+
+export interface SpecificGameStatsPlayer {
+  key: string;
+  name: string;
+  playCount: number;
+  winCount: number;
+  winRate: number;
+}
+
+export interface SpecificGameStats {
+  gameName: string;
+  playCount: number;
+  latestPlayedAt?: number;
+  scoringRule?: ScoringRule;
+  players: SpecificGameStatsPlayer[];
+}
+
+export const buildSpecificGameStats = (
+  gameKey: string,
+  records: HistorySummary[],
+  options?: { savedPlayers?: { id: string; name: string }[] }
+): SpecificGameStats | null => {
+  const gameRecords = records.filter(r => {
+    const rKey = r.bggId ? `bgg:${r.bggId}` : (r.gameName ? `name:${r.gameName.trim().toLowerCase()}` : `record:${r.id}`);
+    return rKey === gameKey;
+  });
+
+  if (gameRecords.length === 0) return null;
+
+  const firstRecord = gameRecords[0];
+  const gameName = firstRecord.gameName;
+  const scoringRule = firstRecord.scoringRule;
+
+  const playCount = gameRecords.length;
+  const latestPlayedAt = gameRecords.reduce((max, r) => Math.max(max, r.endTime), 0);
+
+  const savedPlayers = options?.savedPlayers;
+  const savedPlayerNameMap = new Map<string, string>();
+  if (savedPlayers) {
+    savedPlayers.forEach(p => {
+      if (p.name?.trim()) {
+        savedPlayerNameMap.set(p.name.trim().toLowerCase(), p.name);
+      }
+    });
+  }
+
+  const playerMap = new Map<string, {
+    key: string;
+    name: string;
+    playCount: number;
+    winCount: number;
+  }>();
+
+  gameRecords.forEach(r => {
+    const winnerIds = r.winnerIds || [];
+
+    r.players.forEach(p => {
+      const pKey = getHistoryPlayerKey(p);
+      if (!pKey) return;
+
+      let displayName = p.name;
+      if (savedPlayers) {
+        const matched = savedPlayers.find(sp => sp.id === p.linkedPlayerId);
+        if (matched) {
+          displayName = matched.name;
+        } else {
+          const nameKey = p.name.trim().toLowerCase();
+          displayName = savedPlayerNameMap.get(nameKey) || p.name;
+        }
+      }
+
+      const isWinner = winnerIds.includes(p.id) || (p.linkedPlayerId && winnerIds.includes(p.linkedPlayerId));
+
+      const existing = playerMap.get(pKey) || {
+        key: pKey,
+        name: displayName,
+        playCount: 0,
+        winCount: 0
+      };
+
+      existing.playCount += 1;
+      if (isWinner) existing.winCount += 1;
+
+      playerMap.set(pKey, existing);
+    });
+  });
+
+  const players = Array.from(playerMap.values()).map(p => {
+    const winRate = p.playCount > 0 ? Math.round((p.winCount / p.playCount) * 100) : 0;
+    return {
+      key: p.key,
+      name: p.name,
+      playCount: p.playCount,
+      winCount: p.winCount,
+      winRate
+    };
+  }).sort((a, b) => {
+    if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+    if (b.playCount !== a.playCount) return b.playCount - a.playCount;
+    return a.name.localeCompare(b.name);
+  });
+
+  return {
+    gameName,
+    playCount,
+    latestPlayedAt: latestPlayedAt || undefined,
+    scoringRule,
+    players
+  };
 };
