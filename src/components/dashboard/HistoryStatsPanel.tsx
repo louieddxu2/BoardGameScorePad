@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { BarChart3, CalendarDays, ChevronDown, ChevronUp, ChevronLeft, Grid3X3, Hash, MapPin, Minus, Search, Users, Plus, CornerUpLeft, Crown } from 'lucide-react';
+import { BarChart3, CalendarDays, ChevronDown, ChevronUp, ChevronLeft, Grid3X3, Hash, MapPin, Minus, Search, Users, Plus, CornerUpLeft, Crown, Calculator, Trophy } from 'lucide-react';
 import { HistoryGameEntry, buildHistoryGameEntries } from '../../utils/historyGameEntries';
 import { buildHistoryStats, filterHistoryEntriesByDateRange, filterHistoryEntriesByStatsFilters, getNextHistoryStatsDateRange, HistoryStatsDateRange, HistoryStatsGame, buildSpecificGameStats } from '../../utils/historyStats';
 import HistoryPhotoGridShareModal from './HistoryPhotoGridShareModal';
@@ -276,13 +276,26 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                           className="spreadsheet-header-row"
                           style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 64px 54px 54px' }}
                         >
-                          <h3 className="spreadsheet-cell-sticky-header flex flex-col items-start justify-center px-3 text-[10px] font-black text-txt-muted overflow-x-auto no-scrollbar whitespace-nowrap">
-                            {t('stats_header_player')}
+                          <h3 className="spreadsheet-cell-sticky-header flex items-center gap-1 px-3 text-[10px] font-black text-txt-muted overflow-x-auto no-scrollbar whitespace-nowrap">
+                            <Users size={11} className="shrink-0 text-txt-muted" />
+                            <span>{t('stats_header_player')}</span>
                           </h3>
-                          <span className="flex items-center">{t('stats_header_plays')}</span>
-                          <span className="flex items-center pl-4">{t('stats_header_win_rate')}</span>
-                          <span className="flex items-center pl-4">{t('stats_header_avg')}</span>
-                          <span className="flex items-center pl-4">{t('stats_header_best')}</span>
+                          <span className="flex items-center gap-1">
+                            <Hash size={11} className="shrink-0 text-brand-primary" />
+                            <span>{t('stats_header_plays')}</span>
+                          </span>
+                          <span className="flex items-center gap-1 pl-4">
+                            <Crown size={11} className="shrink-0 text-status-warning" fill="currentColor" />
+                            <span>{t('stats_header_win_rate')}</span>
+                          </span>
+                          <span className="flex items-center gap-1 pl-4">
+                            <Calculator size={11} className="shrink-0 text-brand-secondary" />
+                            <span>{t('stats_header_avg')}</span>
+                          </span>
+                          <span className="flex items-center gap-1 pl-4">
+                            <Trophy size={11} className="shrink-0 text-status-warning" />
+                            <span>{t('stats_header_best')}</span>
+                          </span>
                         </div>
                       </div>
 
@@ -312,16 +325,13 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                               </div>
 
                               {/* 勝率欄位 */}
-                              <div className="flex items-center justify-start gap-1 pl-4 min-w-max">
+                              <div className="flex items-center justify-start pl-4 min-w-max">
                                 {player.hasScoringPlay ? (
-                                  <>
-                                    <Crown size={12} className="text-status-warning shrink-0" fill="currentColor" />
-                                    <span className="text-xs font-black text-brand-primary font-mono text-left">
-                                      {player.winRate}%
-                                    </span>
-                                  </>
+                                  <span className="text-xs font-black text-brand-primary font-mono text-left">
+                                    {player.winRate}%
+                                  </span>
                                 ) : (
-                                  <span className="text-xs font-black text-txt-muted font-mono text-left pl-[16px]">
+                                  <span className="text-xs font-black text-txt-muted font-mono text-left">
                                     -
                                   </span>
                                 )}

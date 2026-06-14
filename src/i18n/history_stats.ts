@@ -139,7 +139,7 @@ export const historyStatsTranslations = {
     stats_plays_comp_no_score: '{scored}+{noScore} plays',
     stats_header_player: 'Player',
     stats_header_plays: 'Plays',
-    stats_header_win_rate: 'Win Rate',
+    stats_header_win_rate: 'Win %',
     stats_header_avg: 'Avg',
     stats_header_best: 'Best',
   }
