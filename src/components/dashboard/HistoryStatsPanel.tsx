@@ -125,9 +125,9 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
   const stats = useMemo(() => buildHistoryStats(filteredEntries), [filteredEntries]);
 
   const specificStats = useMemo(() => {
-    if (!selectedGameKey || !records) return null;
-    return buildSpecificGameStats(selectedGameKey, records, { savedPlayers });
-  }, [selectedGameKey, records, savedPlayers]);
+    if (!selectedGameKey || !filteredRecords) return null;
+    return buildSpecificGameStats(selectedGameKey, filteredRecords, { savedPlayers });
+  }, [selectedGameKey, filteredRecords, savedPlayers]);
 
   const displayedGames = useMemo(() => {
     return stats.games.slice(0, DATA_LIMITS.QUERY.HISTORY_STATS_GAMES);
