@@ -403,6 +403,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
             savedPlayers={savedPlayers}
             onSearchClick={handlePanelSearchFocus}
             isSearchKeyboardOpen={isSearchActive && isSearchInputFocused && isKeyboardOpen}
+            onSelect={onHistorySelect}
           />
         </div>
       )}

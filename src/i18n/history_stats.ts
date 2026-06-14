@@ -71,6 +71,7 @@ export const historyStatsTranslations = {
     stats_header_win_rate: '勝率',
     stats_header_avg: '平均',
     stats_header_best: '最佳',
+    stats_history_title: '歷史遊玩明細',
   },
   'en': {
     stats_empty_date: 'No records',
@@ -142,6 +143,7 @@ export const historyStatsTranslations = {
     stats_header_win_rate: 'Win %',
     stats_header_avg: 'Avg',
     stats_header_best: 'Best',
+    stats_history_title: 'Play History Details',
   }
 };
 
