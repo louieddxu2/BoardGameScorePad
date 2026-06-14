@@ -288,8 +288,73 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                   </div>
                 </div>
 
+                {isPanelExpanded && specificStats.records && specificStats.records.length > 0 && (
+                  <div className="flex-1 min-h-0 flex flex-col bg-app-bg-deep border-b border-surface-border/50">
+                    {/* 明細標題列 */}
+                    <div className="px-3 py-1.5 border-b border-surface-border bg-app-bg shrink-0 flex items-center justify-between">
+                      <h4 className="text-xs font-black text-txt-muted uppercase tracking-wider flex items-center gap-1.5">
+                        <CalendarDays size={13} className="text-brand-primary" />
+                        <span>{t('stats_history_title')}</span>
+                        <span className="font-mono text-txt-primary">({specificStats.records.length})</span>
+                      </h4>
+                    </div>
+
+                    {/* 明細列表滾動區 */}
+                    <div className="flex-1 overflow-y-auto overflow-x-auto no-scrollbar pb-2">
+                      <div className="flex flex-col min-w-full w-max">
+                        {specificStats.records.map((record) => {
+                          const date = new Date(record.endTime);
+                          const dateStr = date.toLocaleDateString(language, { month: '2-digit', day: '2-digit' });
+                          
+                          return (
+                            <div
+                              key={record.id}
+                              onClick={() => onSelect?.(record)}
+                              className="spreadsheet-row cursor-pointer hover:bg-surface-hover"
+                              style={{
+                                gridTemplateColumns: '52px 85px 1fr 24px'
+                              }}
+                            >
+                              {/* 1. 日期 */}
+                              <span className="text-xs font-mono text-txt-secondary pl-3">
+                                {dateStr}
+                              </span>
+
+                              {/* 2. 地點 */}
+                              <span className="text-xs text-txt-muted truncate pr-2">
+                                {record.location || '-'}
+                              </span>
+
+                              {/* 3. 全體玩家與得分（贏家高亮並標記 👑） */}
+                              <div className="text-xs truncate pr-2 flex items-center gap-1 overflow-hidden">
+                                {record.players.map((p, idx) => {
+                                  const isWinner = (p.linkedPlayerId && record.winnerIds.includes(p.linkedPlayerId)) || record.winnerIds.includes(p.id);
+                                  return (
+                                    <React.Fragment key={p.id}>
+                                      {idx > 0 && <span className="text-txt-muted/30 mx-0.5">、</span>}
+                                      <span className={isWinner ? "font-bold text-status-warning brightness-110 flex items-center gap-0.5" : "text-txt-secondary"}>
+                                        {isWinner && <Crown size={10} className="shrink-0 text-status-warning" fill="currentColor" />}
+                                        {p.name}({p.totalScore})
+                                      </span>
+                                    </React.Fragment>
+                                  );
+                                })}
+                              </div>
+
+                              {/* 4. 進入箭頭 */}
+                              <div className="text-txt-muted flex items-center justify-center">
+                                <ChevronRight size={14} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className={isPanelExpanded && specificStats.records && specificStats.records.length > 0
-                  ? "max-h-[220px] overflow-y-auto overflow-x-auto no-scrollbar bg-app-bg-deep w-full border-b border-surface-border/50 shrink-0"
+                  ? "max-h-[220px] overflow-y-auto overflow-x-auto no-scrollbar bg-app-bg-deep w-full shrink-0 pb-8"
                   : "flex-1 overflow-y-auto overflow-x-auto no-scrollbar bg-app-bg-deep w-full pb-8"
                 }>
                   {specificStats.players.length > 0 ? (
@@ -393,71 +458,6 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                     </div>
                   )}
                 </div>
-
-                {isPanelExpanded && specificStats.records && specificStats.records.length > 0 && (
-                  <div className="flex-1 min-h-0 flex flex-col bg-app-bg-deep">
-                    {/* 明細標題列 */}
-                    <div className="px-3 py-1.5 border-b border-surface-border bg-app-bg shrink-0 flex items-center justify-between">
-                      <h4 className="text-xs font-black text-txt-muted uppercase tracking-wider flex items-center gap-1.5">
-                        <CalendarDays size={13} className="text-brand-primary" />
-                        <span>{t('stats_history_title')}</span>
-                        <span className="font-mono text-txt-primary">({specificStats.records.length})</span>
-                      </h4>
-                    </div>
-
-                    {/* 明細列表滾動區 */}
-                    <div className="flex-1 overflow-y-auto overflow-x-auto no-scrollbar pb-8">
-                      <div className="flex flex-col min-w-full w-max">
-                        {specificStats.records.map((record) => {
-                          const date = new Date(record.endTime);
-                          const dateStr = date.toLocaleDateString(language, { month: '2-digit', day: '2-digit' });
-                          
-                          return (
-                            <div
-                              key={record.id}
-                              onClick={() => onSelect?.(record)}
-                              className="spreadsheet-row cursor-pointer hover:bg-surface-hover"
-                              style={{
-                                gridTemplateColumns: '52px 85px 1fr 24px'
-                              }}
-                            >
-                              {/* 1. 日期 */}
-                              <span className="text-xs font-mono text-txt-secondary pl-3">
-                                {dateStr}
-                              </span>
-
-                              {/* 2. 地點 */}
-                              <span className="text-xs text-txt-muted truncate pr-2">
-                                {record.location || '-'}
-                              </span>
-
-                              {/* 3. 全體玩家與得分（贏家高亮並標記 👑） */}
-                              <div className="text-xs truncate pr-2 flex items-center gap-1 overflow-hidden">
-                                {record.players.map((p, idx) => {
-                                  const isWinner = (p.linkedPlayerId && record.winnerIds.includes(p.linkedPlayerId)) || record.winnerIds.includes(p.id);
-                                  return (
-                                    <React.Fragment key={p.id}>
-                                      {idx > 0 && <span className="text-txt-muted/30 mx-0.5">、</span>}
-                                      <span className={isWinner ? "font-bold text-status-warning brightness-110 flex items-center gap-0.5" : "text-txt-secondary"}>
-                                        {isWinner && <Crown size={10} className="shrink-0 text-status-warning" fill="currentColor" />}
-                                        {p.name}({p.totalScore})
-                                      </span>
-                                    </React.Fragment>
-                                  );
-                                })}
-                              </div>
-
-                              {/* 4. 進入箭頭 */}
-                              <div className="text-txt-muted flex items-center justify-center">
-                                <ChevronRight size={14} />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             ) : (
               <div className="flex flex-col justify-start min-w-[420px]">
