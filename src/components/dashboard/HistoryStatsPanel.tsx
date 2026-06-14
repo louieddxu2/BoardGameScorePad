@@ -285,106 +285,96 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                   </div>
                 </div>
 
-                {/* 玩家勝率列表：高度直接推滿 (flex-1) */}
                 <div className="flex-1 overflow-y-auto overflow-x-auto no-scrollbar bg-app-bg-deep w-full pb-8">
                   {specificStats.players.length > 0 ? (
-                    <div className="flex flex-col justify-start">
-                      {/* 凍結首列表頭 */}
-                      <div className="flex flex-col min-w-full w-max">
-                        <div 
-                          className="spreadsheet-header-row"
-                          style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 64px 54px 54px' }}
-                        >
-                          <h3 className="spreadsheet-cell-sticky-header flex items-center gap-1 px-3 text-[10px] font-black text-txt-muted overflow-x-auto no-scrollbar whitespace-nowrap">
-                            <Users size={11} className="shrink-0 text-txt-muted" />
-                            <span>{t('stats_header_player')}</span>
-                          </h3>
-                          <span className="flex items-center gap-1">
-                            <Hash size={11} className="shrink-0 text-brand-primary" />
-                            <span>{t('stats_header_plays')}</span>
-                          </span>
-                          <span className="flex items-center gap-1 pl-4">
-                            <Crown size={11} className="shrink-0 text-status-warning" fill="currentColor" />
-                            <span>{t('stats_header_win_rate')}</span>
-                          </span>
-                          <span className="flex items-center gap-1 pl-4">
-                            <Calculator size={11} className="shrink-0 text-brand-secondary" />
-                            <span>{t('stats_header_avg')}</span>
-                          </span>
-                          <span className="flex items-center gap-1 pl-4">
-                            <Trophy size={11} className="shrink-0 text-status-warning" />
-                            <span>{t('stats_header_best')}</span>
-                          </span>
-                        </div>
+                    <div className="flex flex-col min-w-full w-max">
+                      <div 
+                        className="spreadsheet-header-row"
+                        style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 64px 54px 54px' }}
+                      >
+                        <h3 className="spreadsheet-cell-sticky-header flex items-center gap-1 px-3 text-[10px] font-black text-txt-muted overflow-x-auto no-scrollbar whitespace-nowrap">
+                          <Users size={11} className="shrink-0 text-txt-muted" />
+                          <span>{t('stats_header_player')}</span>
+                        </h3>
+                        <span className="flex items-center gap-1">
+                          <Hash size={11} className="shrink-0 text-brand-primary" />
+                          <span>{t('stats_header_plays')}</span>
+                        </span>
+                        <span className="flex items-center gap-1 pl-4">
+                          <Crown size={11} className="shrink-0 text-status-warning" fill="currentColor" />
+                          <span>{t('stats_header_win_rate')}</span>
+                        </span>
+                        <span className="flex items-center gap-1 pl-4">
+                          <Calculator size={11} className="shrink-0 text-brand-secondary" />
+                          <span>{t('stats_header_avg')}</span>
+                        </span>
+                        <span className="flex items-center gap-1 pl-4">
+                          <Trophy size={11} className="shrink-0 text-status-warning" />
+                          <span>{t('stats_header_best')}</span>
+                        </span>
                       </div>
 
-                      {specificStats.players.map((player) => {
-                        return (
-                          <div key={player.key} className="flex flex-col min-w-full w-max">
-                            <div
-                              className="spreadsheet-row"
-                              style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 64px 54px 54px' }}
-                            >
-                              <h3 className="spreadsheet-cell-sticky flex flex-col items-start justify-center px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap">
-                                {player.name}
-                              </h3>
-                              <div className="flex items-center justify-start gap-0.5 text-txt-secondary font-mono font-black shrink-0 text-[11px]">
-                                {player.noScorePlayCount > 0 ? (
-                                  <>
-                                    <span>{player.playCount - player.noScorePlayCount}</span>
-                                    <span className="text-brand-primary font-bold">+{player.noScorePlayCount}</span>
-                                    <span className="text-[10px] font-normal text-txt-muted ml-0.5">{t('stats_plays_suffix')}</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <span>{player.playCount}</span>
-                                    <span className="text-[10px] font-normal text-txt-muted ml-0.5">{t('stats_plays_suffix')}</span>
-                                  </>
-                                )}
-                              </div>
-
-                              {/* 勝率欄位 */}
-                              <div className="flex items-center justify-start pl-4 min-w-max">
-                                {player.hasScoringPlay ? (
-                                  <span className="text-xs font-black text-brand-primary font-mono text-left">
-                                    {player.winRate}%
-                                  </span>
-                                ) : (
-                                  <span className="text-xs font-black text-txt-muted font-mono text-left">
-                                    -
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* 平均分數欄位 */}
-                              <div className="flex items-center justify-start pl-4 min-w-max">
-                                {player.avgScore !== undefined ? (
-                                  <span className="text-xs font-black text-txt-primary font-mono text-left">
-                                    {player.avgScore}
-                                  </span>
-                                ) : (
-                                  <span className="text-xs font-black text-txt-muted font-mono text-left">
-                                    -
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* 個人最佳分數欄位 */}
-                              <div className="flex items-center justify-start pl-4 min-w-max">
-                                {player.personalBestScore !== undefined ? (
-                                  <span className="text-xs font-black text-status-warning font-mono text-left">
-                                    {player.personalBestScore}
-                                  </span>
-                                ) : (
-                                  <span className="text-xs font-black text-txt-muted font-mono text-left">
-                                    -
-                                  </span>
-                                )}
-                              </div>
-                            </div>
+                      {specificStats.players.map((player) => (
+                        <div
+                          key={player.key}
+                          className="spreadsheet-row"
+                          style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 64px 54px 54px' }}
+                        >
+                          <h3 className="spreadsheet-cell-sticky flex flex-col items-start justify-center px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap">
+                            {player.name}
+                          </h3>
+                          <div className="flex items-center justify-start gap-0.5 text-txt-secondary font-mono font-black shrink-0 text-[11px]">
+                            {player.noScorePlayCount > 0 ? (
+                              <>
+                                <span>{player.playCount - player.noScorePlayCount}</span>
+                                <span className="text-brand-primary font-bold">+{player.noScorePlayCount}</span>
+                                <span className="text-[10px] font-normal text-txt-muted ml-0.5">{t('stats_plays_suffix')}</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>{player.playCount}</span>
+                                <span className="text-[10px] font-normal text-txt-muted ml-0.5">{t('stats_plays_suffix')}</span>
+                              </>
+                            )}
                           </div>
-                        );
-                      })}
+
+                          <div className="flex items-center justify-start pl-4 min-w-max">
+                            {player.hasScoringPlay ? (
+                              <span className="text-xs font-black text-brand-primary font-mono text-left">
+                                {player.winRate}%
+                              </span>
+                            ) : (
+                              <span className="text-xs font-black text-txt-muted font-mono text-left">
+                                -
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-start pl-4 min-w-max">
+                            {player.avgScore !== undefined ? (
+                              <span className="text-xs font-black text-txt-primary font-mono text-left">
+                                {player.avgScore}
+                              </span>
+                            ) : (
+                              <span className="text-xs font-black text-txt-muted font-mono text-left">
+                                -
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-start pl-4 min-w-max">
+                            {player.personalBestScore !== undefined ? (
+                              <span className="text-xs font-black text-status-warning font-mono text-left">
+                                {player.personalBestScore}
+                              </span>
+                            ) : (
+                              <span className="text-xs font-black text-txt-muted font-mono text-left">
+                                -
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                       {specificStats.hasNoScorePlays && (
                         <div className="text-[10px] text-txt-muted italic py-1.5 pr-3 text-right">
                           {t('stats_win_rate_excludes_no_score')}
@@ -399,7 +389,6 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                 </div>
               </div>
             ) : (
-              // 渲染原有的多遊戲統計列表
               <div className="flex flex-col justify-start min-w-[420px]">
                 {displayedGames.map(game => {
                   return (
