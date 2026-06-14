@@ -125,9 +125,28 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
   const stats = useMemo(() => buildHistoryStats(filteredEntries), [filteredEntries]);
 
   const specificStats = useMemo(() => {
-    if (!selectedGameKey || !filteredRecords) return null;
-    return buildSpecificGameStats(selectedGameKey, filteredRecords, { savedPlayers });
-  }, [selectedGameKey, filteredRecords, savedPlayers]);
+    if (!selectedGameKey || !records || !filteredRecords) return null;
+    
+    // 1. Try to compute stats using filtered records
+    const stats = buildSpecificGameStats(selectedGameKey, filteredRecords, { savedPlayers });
+    if (stats) return stats;
+
+    // 2. Fallback: If no records match under current filters, use unfiltered records to extract base game info
+    const baseStats = buildSpecificGameStats(selectedGameKey, records, { savedPlayers });
+    if (!baseStats) return null;
+
+    // Return an empty stats structure to keep the panel open and display 0 plays
+    return {
+      gameName: baseStats.gameName,
+      playCount: 0,
+      latestPlayedAt: 0,
+      coopPlayCount: 0,
+      competitivePlayCount: 0,
+      hasNoScorePlays: false,
+      noScorePlayCount: 0,
+      players: []
+    };
+  }, [selectedGameKey, records, filteredRecords, savedPlayers]);
 
   const displayedGames = useMemo(() => {
     return stats.games.slice(0, DATA_LIMITS.QUERY.HISTORY_STATS_GAMES);
