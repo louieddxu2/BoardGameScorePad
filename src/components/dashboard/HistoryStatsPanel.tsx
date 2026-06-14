@@ -267,16 +267,16 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                 </div>
 
                 {/* 玩家勝率列表：高度直接推滿 (flex-1) */}
-                <div className="spreadsheet-container bg-app-bg-deep pb-8">
+                <div className="flex-1 overflow-y-auto overflow-x-auto no-scrollbar bg-app-bg-deep w-full pb-8">
                   {specificStats.players.length > 0 ? (
-                    <div className="spreadsheet-body">
+                    <div className="flex flex-col justify-start">
                       {/* 凍結首列表頭 */}
                       <div className="flex flex-col min-w-full w-max">
                         <div 
                           className="spreadsheet-header-row"
                           style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 64px 54px 54px' }}
                         >
-                          <h3 className="flex flex-col items-start justify-center px-3 text-[10px] font-black text-txt-muted overflow-x-auto no-scrollbar whitespace-nowrap">
+                          <h3 className="spreadsheet-cell-sticky-header flex flex-col items-start justify-center px-3 text-[10px] font-black text-txt-muted overflow-x-auto no-scrollbar whitespace-nowrap">
                             {t('stats_header_player')}
                           </h3>
                           <span className="flex items-center">{t('stats_header_plays')}</span>
@@ -293,7 +293,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                               className="spreadsheet-row"
                               style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 64px 54px 54px' }}
                             >
-                              <h3 className="flex flex-col items-start justify-center px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap">
+                              <h3 className="spreadsheet-cell-sticky flex flex-col items-start justify-center px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap">
                                 {player.name}
                               </h3>
                               <div className="flex items-center justify-start gap-0.5 text-txt-secondary font-mono font-black shrink-0 text-[11px]">

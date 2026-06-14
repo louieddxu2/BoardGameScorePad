@@ -3,40 +3,24 @@
 @tailwind utilities;
 
 @layer components {
-  /* 1. 試算表最外層滾動容器 */
-  .spreadsheet-container {
-    @apply flex flex-col justify-start overflow-y-auto overflow-x-auto no-scrollbar w-full h-full;
-  }
-
-  /* 2. 試算表內部寬度撐開 wrapper */
-  .spreadsheet-body {
-    @apply flex flex-col min-w-full w-max;
-  }
-
-  /* 3. 凍結列表行的通用容器 */
+  /* 凍結列表行的通用容器 */
   .spreadsheet-row {
-    min-height: var(--spreadsheet-row-height, 46px);
-    @apply grid items-center gap-2 pr-3 py-1.5 w-max min-w-full border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors;
+    @apply grid items-center gap-2 pr-3 py-1.5 min-h-[46px] w-max min-w-full border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors;
   }
   
+  /* 凍結在左側的單元格 */
+  .spreadsheet-cell-sticky {
+    @apply sticky left-0 z-10 min-h-full flex items-center bg-inherit px-3 overflow-x-auto no-scrollbar whitespace-nowrap;
+  }
+
   /* 凍結在頂部的表頭行 */
   .spreadsheet-header-row {
     @apply spreadsheet-row sticky top-0 z-20 bg-app-bg-deep border-b border-surface-border/80 font-black text-txt-muted text-[10px] select-none hover:bg-transparent pointer-events-none;
   }
 
-  /* 4. 自動與顯式的首欄凍結：
-     不論是帶有 spreadsheet-cell-sticky 類別，還是 row 底下的第一個 h3 標籤，
-     都將會自動水平黏滯凍結在最左側。 */
-  .spreadsheet-cell-sticky,
-  .spreadsheet-row > h3:first-child,
-  .spreadsheet-header-row > h3:first-child {
-    @apply sticky left-0 z-10 min-h-full flex items-center bg-inherit px-3 overflow-x-auto no-scrollbar whitespace-nowrap;
-  }
-
-  /* 雙向凍結的左上角交點單元格（表頭第一欄） */
-  .spreadsheet-cell-sticky-header,
-  .spreadsheet-header-row > h3:first-child {
-    @apply z-30 bg-app-bg-deep;
+  /* 雙向凍結的左上角交點單元格 */
+  .spreadsheet-cell-sticky-header {
+    @apply spreadsheet-cell-sticky z-30 bg-app-bg-deep;
   }
 }
 
@@ -45,7 +29,6 @@
    ============================================================ */
 
 :root {
-  --spreadsheet-row-height: 46px;
   /* Slate Scale Mapping */
   --c-slate-50: 248 250 252;
   --c-slate-100: 241 245 249;
