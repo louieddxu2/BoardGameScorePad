@@ -146,14 +146,10 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
       competitivePlayCount: 0,
       hasNoScorePlays: false,
       noScorePlayCount: 0,
-      players: []
+      players: [],
+      records: []
     };
   }, [selectedGameKey, records, filteredRecords, savedPlayers]);
-
-  const gameRecords = useMemo(() => {
-    if (!selectedGameKey || !filteredRecords) return [];
-    return filteredRecords.filter(r => r.gameName === selectedGameKey);
-  }, [selectedGameKey, filteredRecords]);
 
   const displayedGames = useMemo(() => {
     return stats.games.slice(0, DATA_LIMITS.QUERY.HISTORY_STATS_GAMES);
@@ -292,7 +288,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                   </div>
                 </div>
 
-                <div className={isPanelExpanded && gameRecords.length > 0
+                <div className={isPanelExpanded && specificStats.records && specificStats.records.length > 0
                   ? "max-h-[220px] overflow-y-auto overflow-x-auto no-scrollbar bg-app-bg-deep w-full border-b border-surface-border/50 shrink-0"
                   : "flex-1 overflow-y-auto overflow-x-auto no-scrollbar bg-app-bg-deep w-full pb-8"
                 }>
@@ -398,21 +394,21 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                   )}
                 </div>
 
-                {isPanelExpanded && gameRecords.length > 0 && (
+                {isPanelExpanded && specificStats.records && specificStats.records.length > 0 && (
                   <div className="flex-1 min-h-0 flex flex-col bg-app-bg-deep">
                     {/* 明細標題列 */}
                     <div className="px-3 py-1.5 border-b border-surface-border bg-app-bg shrink-0 flex items-center justify-between">
                       <h4 className="text-xs font-black text-txt-muted uppercase tracking-wider flex items-center gap-1.5">
                         <CalendarDays size={13} className="text-brand-primary" />
                         <span>{t('stats_history_title')}</span>
-                        <span className="font-mono text-txt-primary">({gameRecords.length})</span>
+                        <span className="font-mono text-txt-primary">({specificStats.records.length})</span>
                       </h4>
                     </div>
 
                     {/* 明細列表滾動區 */}
                     <div className="flex-1 overflow-y-auto overflow-x-auto no-scrollbar pb-8">
                       <div className="flex flex-col min-w-full w-max">
-                        {gameRecords.map((record) => {
+                        {specificStats.records.map((record) => {
                           const date = new Date(record.endTime);
                           const dateStr = date.toLocaleDateString(language, { month: '2-digit', day: '2-digit' });
                           

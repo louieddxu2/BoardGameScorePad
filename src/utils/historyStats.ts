@@ -156,6 +156,7 @@ export interface SpecificGameStats {
   noScorePlayCount: number;
   bestScore?: number;
   bestScorePlayerName?: string;
+  records: HistorySummary[];
 }
 
 export const buildSpecificGameStats = (
@@ -332,7 +333,8 @@ export const buildSpecificGameStats = (
     hasNoScorePlays: noScorePlayCount > 0,
     noScorePlayCount,
     bestScore,
-    bestScorePlayerName
+    bestScorePlayerName,
+    records: gameRecords
   };
 
 };
