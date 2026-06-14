@@ -269,7 +269,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                 {/* 玩家勝率列表：高度直接推滿 (flex-1) */}
                 <div className="flex-1 overflow-y-auto overflow-x-auto no-scrollbar bg-app-bg-deep w-full pb-8">
                   {specificStats.players.length > 0 ? (
-                    <div className="pl-3 w-max min-w-full relative">
+                    <div className="w-max min-w-full">
                       {/* 凍結首列表頭 */}
                       <div 
                         className="spreadsheet-header-row"
@@ -289,7 +289,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                             className="spreadsheet-row border-b-0 hover:bg-transparent"
                             style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 64px 54px 54px' }}
                           >
-                            <span className="spreadsheet-cell-sticky text-sm font-black text-txt-primary truncate">
+                            <span className="spreadsheet-cell-sticky !bg-app-bg-deep text-sm font-black text-txt-primary truncate">
                               {player.name}
                             </span>
                             <div className="flex items-center justify-start gap-0.5 text-txt-secondary font-mono font-black shrink-0 text-[11px]">
