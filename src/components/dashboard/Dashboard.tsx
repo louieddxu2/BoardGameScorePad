@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GameTemplate, GameSession, HistoryRecord, SavedListItem, ScoringRule } from '../../types';
+import { GameTemplate, GameSession, HistoryRecord, SavedListItem, ScoringRule, AppView } from '../../types';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 import { usePullAction } from '../../hooks/usePullAction';
 import { useModalBackHandler } from '../../hooks/useModalBackHandler';
@@ -34,6 +34,7 @@ import { useDashboardActions } from './hooks/useDashboardActions';
 
 interface DashboardProps {
   isVisible: boolean;
+  currentView?: AppView;
   userTemplates: GameTemplate[];
   userTemplatesCount: number;
   systemOverrides: Record<string, GameTemplate>;
@@ -86,6 +87,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = React.memo(({
   isVisible,
+  currentView,
   userTemplates,
   userTemplatesCount,
   systemOverrides,
@@ -145,13 +147,15 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
 
   useEffect(() => {
     if (!isVisible) {
-      setIsSearchActive(false);
-      setIsSearchInputFocused(false);
-      setSearchQuery('');
-      setIsSetupMode(false);
-      setIsStatsMode(false);
+      if (currentView === AppView.ACTIVE_SESSION || currentView === AppView.TEMPLATE_CREATOR) {
+        setIsSearchActive(false);
+        setIsSearchInputFocused(false);
+        setSearchQuery('');
+        setIsSetupMode(false);
+        setIsStatsMode(false);
+      }
     }
-  }, [isVisible, setSearchQuery]);
+  }, [isVisible, currentView, setSearchQuery]);
 
   useEffect(() => {
     setIsSetupMode(false);

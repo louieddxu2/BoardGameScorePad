@@ -470,6 +470,7 @@ const App: React.FC = () => {
       <div className={`absolute inset-0 z-0 flex flex-col ${view !== AppView.DASHBOARD ? 'invisible pointer-events-none' : ''}`}>
         <Dashboard
           isVisible={view === AppView.DASHBOARD}
+          currentView={view}
           userTemplates={appData.templates}
           userTemplatesCount={appData.userTemplatesCount}
           systemOverrides={appData.systemOverrides}
