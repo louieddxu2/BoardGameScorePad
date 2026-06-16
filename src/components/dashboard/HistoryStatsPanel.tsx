@@ -325,13 +325,24 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                 {specificViewMode === 'records' ? (
                   specificStats.records && specificStats.records.length > 0 ? (
                     <div className="flex-1 min-h-0 flex flex-col bg-app-bg-deep w-full pb-8">
-                      {/* 明細標題列 */}
-                      <div className="px-3 py-1.5 border-b border-surface-border bg-app-bg shrink-0 flex items-center justify-between">
-                        <h4 className="text-xs font-black text-txt-muted uppercase tracking-wider flex items-center gap-1.5">
-                          <CalendarDays size={13} className="text-brand-primary" />
-                          <span>{t('stats_history_title')}</span>
-                          <span className="font-mono text-txt-primary">({specificStats.records.length})</span>
-                        </h4>
+                      {/* 凍結表頭列 */}
+                      <div 
+                        className="spreadsheet-header-row"
+                        style={{ gridTemplateColumns: '52px 85px 1fr 24px' }}
+                      >
+                        <h3 className="spreadsheet-cell-sticky-header flex items-center gap-1 px-3 text-[10px] font-black text-txt-muted overflow-x-auto no-scrollbar whitespace-nowrap">
+                          <CalendarDays size={11} className="shrink-0 text-txt-muted" />
+                          <span>{t('stats_header_date')}</span>
+                        </h3>
+                        <span className="flex items-center gap-1">
+                          <MapPin size={11} className="shrink-0 text-brand-primary" />
+                          <span>{t('stats_header_location')}</span>
+                        </span>
+                        <span className="flex items-center gap-1 pl-4">
+                          <Users size={11} className="shrink-0 text-brand-secondary" />
+                          <span>{t('stats_header_player')}</span>
+                        </span>
+                        <span></span>
                       </div>
 
                       {/* 明細列表滾動區 */}
@@ -350,13 +361,13 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                                   gridTemplateColumns: '52px 85px 1fr 24px'
                                 }}
                               >
-                                {/* 1. 日期 */}
-                                <span className="text-xs font-mono text-txt-secondary pl-3">
+                                {/* 1. 日期 (Sticky Left) */}
+                                <span className="spreadsheet-cell-sticky flex items-center px-3 text-xs font-mono text-txt-secondary bg-inherit">
                                   {dateStr}
                                 </span>
 
                                 {/* 2. 地點 */}
-                                <span className="text-xs text-txt-muted truncate pr-2">
+                                <span className="text-xs text-txt-muted truncate pr-2 flex items-center">
                                   {record.location || '-'}
                                 </span>
 
