@@ -53,8 +53,13 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
   const [activeMenu, setActiveMenu] = useState<({ type: 'rule' | 'location' } & UpwardSelectMenuAnchor) | null>(null);
   const menuListRef = useRef<HTMLDivElement>(null);
   const [selectedGameKey, setSelectedGameKey] = useState<string | null>(null);
+  const [specificViewMode, setSpecificViewMode] = useState<'players' | 'records'>('players');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const listScrollPosRef = useRef({ top: 0, left: 0 });
+
+  React.useEffect(() => {
+    setSpecificViewMode('players');
+  }, [selectedGameKey]);
 
   const handleGameSelect = (gameKey: string) => {
     if (scrollContainerRef.current) {
@@ -150,6 +155,36 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
       records: []
     };
   }, [selectedGameKey, records, filteredRecords, savedPlayers]);
+
+  const playsText = useMemo(() => {
+    if (!specificStats) return '';
+    if (specificStats.noScorePlayCount > 0) {
+      if (specificStats.coopPlayCount > 0 && specificStats.competitivePlayCount > 0) {
+        return t('stats_plays_mixed_no_score')
+          .replace('{scored}', (specificStats.playCount - specificStats.noScorePlayCount).toString())
+          .replace('{noScore}', specificStats.noScorePlayCount.toString());
+      } else if (specificStats.coopPlayCount > 0) {
+        return t('stats_plays_coop_no_score')
+          .replace('{scored}', (specificStats.playCount - specificStats.noScorePlayCount).toString())
+          .replace('{noScore}', specificStats.noScorePlayCount.toString());
+      } else {
+        return t('stats_plays_comp_no_score')
+          .replace('{scored}', (specificStats.playCount - specificStats.noScorePlayCount).toString())
+          .replace('{noScore}', specificStats.noScorePlayCount.toString());
+      }
+    } else {
+      if (specificStats.coopPlayCount > 0 && specificStats.competitivePlayCount > 0) {
+        return t('stats_plays_mixed')
+          .replace('{count}', specificStats.playCount.toString())
+          .replace('{comp}', specificStats.competitivePlayCount.toString())
+          .replace('{coop}', specificStats.coopPlayCount.toString());
+      } else if (specificStats.coopPlayCount > 0) {
+        return t('stats_plays_coop_only').replace('{count}', specificStats.playCount.toString());
+      } else {
+        return t('stats_plays_comp_only').replace('{count}', specificStats.playCount.toString());
+      }
+    }
+  }, [specificStats, t]);
 
   const displayedGames = useMemo(() => {
     return stats.games.slice(0, DATA_LIMITS.QUERY.HISTORY_STATS_GAMES);
@@ -261,203 +296,206 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                     </span>
                   </div>
 
-                  {/* 右側：局數統計資訊（scored + unscored / coop / 競爭局數） */}
-                  <div className="flex items-center justify-end text-txt-secondary font-bold text-xs shrink-0 pl-2 whitespace-nowrap">
-                    {specificStats.noScorePlayCount > 0 ? (
-                      specificStats.coopPlayCount > 0 && specificStats.competitivePlayCount > 0
-                        ? t('stats_plays_mixed_no_score')
-                            .replace('{scored}', (specificStats.playCount - specificStats.noScorePlayCount).toString())
-                            .replace('{noScore}', specificStats.noScorePlayCount.toString())
-                        : specificStats.coopPlayCount > 0
-                          ? t('stats_plays_coop_no_score')
-                              .replace('{scored}', (specificStats.playCount - specificStats.noScorePlayCount).toString())
-                              .replace('{noScore}', specificStats.noScorePlayCount.toString())
-                          : t('stats_plays_comp_no_score')
-                              .replace('{scored}', (specificStats.playCount - specificStats.noScorePlayCount).toString())
-                              .replace('{noScore}', specificStats.noScorePlayCount.toString())
+                  {/* 右側：切換按鈕（點擊切換 玩家統計 / 歷局明細） */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSpecificViewMode(prev => prev === 'players' ? 'records' : 'players');
+                    }}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition-all active:scale-95 pointer-events-auto shadow-sm shrink-0 ${
+                      specificViewMode === 'records'
+                        ? 'bg-brand-primary/10 border-brand-primary/30 text-brand-primary'
+                        : 'bg-app-bg-deep border-surface-border text-txt-secondary hover:text-txt-primary hover:border-txt-muted'
+                    }`}
+                  >
+                    {specificViewMode === 'players' ? (
+                      <>
+                        <CalendarDays size={12} className="text-brand-primary shrink-0" />
+                        <span>{playsText}</span>
+                      </>
                     ) : (
-                      specificStats.coopPlayCount > 0 && specificStats.competitivePlayCount > 0
-                        ? t('stats_plays_mixed')
-                            .replace('{count}', specificStats.playCount.toString())
-                            .replace('{comp}', specificStats.competitivePlayCount.toString())
-                            .replace('{coop}', specificStats.coopPlayCount.toString())
-                        : specificStats.coopPlayCount > 0
-                          ? t('stats_plays_coop_only').replace('{count}', specificStats.playCount.toString())
-                          : t('stats_plays_comp_only').replace('{count}', specificStats.playCount.toString())
+                      <>
+                        <Users size={12} className="text-brand-primary shrink-0" />
+                        <span>{t('stats_total_players').replace('{count}', specificStats.players.length.toString())}</span>
+                      </>
                     )}
-                  </div>
+                  </button>
                 </div>
 
-                {isPanelExpanded && specificStats.records && specificStats.records.length > 0 && (
-                  <div className="flex-1 min-h-0 flex flex-col bg-app-bg-deep border-b border-surface-border/50">
-                    {/* 明細標題列 */}
-                    <div className="px-3 py-1.5 border-b border-surface-border bg-app-bg shrink-0 flex items-center justify-between">
-                      <h4 className="text-xs font-black text-txt-muted uppercase tracking-wider flex items-center gap-1.5">
-                        <CalendarDays size={13} className="text-brand-primary" />
-                        <span>{t('stats_history_title')}</span>
-                        <span className="font-mono text-txt-primary">({specificStats.records.length})</span>
-                      </h4>
-                    </div>
-
-                    {/* 明細列表滾動區 */}
-                    <div className="flex-1 overflow-y-auto overflow-x-auto no-scrollbar pb-2">
-                      <div className="flex flex-col min-w-full w-max">
-                        {specificStats.records.map((record) => {
-                          const date = new Date(record.endTime);
-                          const dateStr = date.toLocaleDateString(language, { month: '2-digit', day: '2-digit' });
-                          
-                          return (
-                            <div
-                              key={record.id}
-                              onClick={() => onSelect?.(record)}
-                              className="spreadsheet-row cursor-pointer hover:bg-surface-hover"
-                              style={{
-                                gridTemplateColumns: '52px 85px 1fr 24px'
-                              }}
-                            >
-                              {/* 1. 日期 */}
-                              <span className="text-xs font-mono text-txt-secondary pl-3">
-                                {dateStr}
-                              </span>
-
-                              {/* 2. 地點 */}
-                              <span className="text-xs text-txt-muted truncate pr-2">
-                                {record.location || '-'}
-                              </span>
-
-                              {/* 3. 全體玩家與得分（贏家高亮並標記 👑） */}
-                              <div className="text-xs truncate pr-2 flex items-center gap-1 overflow-hidden">
-                                {record.players.map((p, idx) => {
-                                  const isWinner = (p.linkedPlayerId && record.winnerIds.includes(p.linkedPlayerId)) || record.winnerIds.includes(p.id);
-                                  return (
-                                    <React.Fragment key={p.id}>
-                                      {idx > 0 && <span className="text-txt-muted/30 mx-0.5">、</span>}
-                                      <span className={isWinner ? "font-bold text-status-warning brightness-110 flex items-center gap-0.5" : "text-txt-secondary"}>
-                                        {isWinner && <Crown size={10} className="shrink-0 text-status-warning" fill="currentColor" />}
-                                        {p.name}({p.totalScore})
-                                      </span>
-                                    </React.Fragment>
-                                  );
-                                })}
-                              </div>
-
-                              {/* 4. 進入箭頭 */}
-                              <div className="text-txt-muted flex items-center justify-center">
-                                <ChevronRight size={14} />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className={isPanelExpanded && specificStats.records && specificStats.records.length > 0
-                  ? "max-h-[220px] overflow-y-auto overflow-x-auto no-scrollbar bg-app-bg-deep w-full shrink-0 pb-8"
-                  : "flex-1 overflow-y-auto overflow-x-auto no-scrollbar bg-app-bg-deep w-full pb-8"
-                }>
-                  {specificStats.players.length > 0 ? (
-                    <div className="flex flex-col min-w-full w-max">
-                      <div 
-                        className="spreadsheet-header-row"
-                        style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 64px 54px 54px' }}
-                      >
-                        <h3 className="spreadsheet-cell-sticky-header flex items-center gap-1 px-3 text-[10px] font-black text-txt-muted overflow-x-auto no-scrollbar whitespace-nowrap">
-                          <Users size={11} className="shrink-0 text-txt-muted" />
-                          <span>{t('stats_header_player')}</span>
-                        </h3>
-                        <span className="flex items-center gap-1">
-                          <Hash size={11} className="shrink-0 text-brand-primary" />
-                          <span>{t('stats_header_plays')}</span>
-                        </span>
-                        <span className="flex items-center gap-1 pl-4">
-                          <Crown size={11} className="shrink-0 text-status-warning" fill="currentColor" />
-                          <span>{t('stats_header_win_rate')}</span>
-                        </span>
-                        <span className="flex items-center gap-1 pl-4">
-                          <Calculator size={11} className="shrink-0 text-brand-secondary" />
-                          <span>{t('stats_header_avg')}</span>
-                        </span>
-                        <span className="flex items-center gap-1 pl-4">
-                          <Trophy size={11} className="shrink-0 text-status-warning" />
-                          <span>{t('stats_header_best')}</span>
-                        </span>
+                {specificViewMode === 'records' ? (
+                  specificStats.records && specificStats.records.length > 0 ? (
+                    <div className="flex-1 min-h-0 flex flex-col bg-app-bg-deep w-full pb-8">
+                      {/* 明細標題列 */}
+                      <div className="px-3 py-1.5 border-b border-surface-border bg-app-bg shrink-0 flex items-center justify-between">
+                        <h4 className="text-xs font-black text-txt-muted uppercase tracking-wider flex items-center gap-1.5">
+                          <CalendarDays size={13} className="text-brand-primary" />
+                          <span>{t('stats_history_title')}</span>
+                          <span className="font-mono text-txt-primary">({specificStats.records.length})</span>
+                        </h4>
                       </div>
 
-                      {specificStats.players.map((player) => (
-                        <div
-                          key={player.key}
-                          className="spreadsheet-row"
-                          style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 64px 54px 54px' }}
-                        >
-                          <h3 className="spreadsheet-cell-sticky flex flex-col items-start justify-center px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap">
-                            {player.name}
-                          </h3>
-                          <div className="flex items-center justify-start gap-0.5 text-txt-secondary font-mono font-black shrink-0 text-[11px]">
-                            {player.noScorePlayCount > 0 ? (
-                              <>
-                                <span>{player.playCount - player.noScorePlayCount}</span>
-                                <span className="text-brand-primary font-bold">+{player.noScorePlayCount}</span>
-                                <span className="text-[10px] font-normal text-txt-muted ml-0.5">{t('stats_plays_suffix')}</span>
-                              </>
-                            ) : (
-                              <>
-                                <span>{player.playCount}</span>
-                                <span className="text-[10px] font-normal text-txt-muted ml-0.5">{t('stats_plays_suffix')}</span>
-                              </>
-                            )}
-                          </div>
+                      {/* 明細列表滾動區 */}
+                      <div className="flex-1 overflow-y-auto overflow-x-auto no-scrollbar pb-2">
+                        <div className="flex flex-col min-w-full w-max">
+                          {specificStats.records.map((record) => {
+                            const date = new Date(record.endTime);
+                            const dateStr = date.toLocaleDateString(language, { month: '2-digit', day: '2-digit' });
+                            
+                            return (
+                              <div
+                                key={record.id}
+                                onClick={() => onSelect?.(record)}
+                                className="spreadsheet-row cursor-pointer hover:bg-surface-hover"
+                                style={{
+                                  gridTemplateColumns: '52px 85px 1fr 24px'
+                                }}
+                              >
+                                {/* 1. 日期 */}
+                                <span className="text-xs font-mono text-txt-secondary pl-3">
+                                  {dateStr}
+                                </span>
 
-                          <div className="flex items-center justify-start pl-4 min-w-max">
-                            {player.hasScoringPlay ? (
-                              <span className="text-xs font-black text-brand-primary font-mono text-left">
-                                {player.winRate}%
-                              </span>
-                            ) : (
-                              <span className="text-xs font-black text-txt-muted font-mono text-left">
-                                -
-                              </span>
-                            )}
-                          </div>
+                                {/* 2. 地點 */}
+                                <span className="text-xs text-txt-muted truncate pr-2">
+                                  {record.location || '-'}
+                                </span>
 
-                          <div className="flex items-center justify-start pl-4 min-w-max">
-                            {player.avgScore !== undefined ? (
-                              <span className="text-xs font-black text-txt-primary font-mono text-left">
-                                {player.avgScore}
-                              </span>
-                            ) : (
-                              <span className="text-xs font-black text-txt-muted font-mono text-left">
-                                -
-                              </span>
-                            )}
-                          </div>
+                                {/* 3. 全體玩家與得分（贏家高亮並標記 👑） */}
+                                <div className="text-xs truncate pr-2 flex items-center gap-1 overflow-hidden">
+                                  {record.players.map((p, idx) => {
+                                    const isWinner = (p.linkedPlayerId && record.winnerIds.includes(p.linkedPlayerId)) || record.winnerIds.includes(p.id);
+                                    return (
+                                      <React.Fragment key={p.id}>
+                                        {idx > 0 && <span className="text-txt-muted/30 mx-0.5">、</span>}
+                                        <span className={isWinner ? "font-bold text-status-warning brightness-110 flex items-center gap-0.5" : "text-txt-secondary"}>
+                                          {isWinner && <Crown size={10} className="shrink-0 text-status-warning" fill="currentColor" />}
+                                          {p.name}({p.totalScore})
+                                        </span>
+                                      </React.Fragment>
+                                    );
+                                  })}
+                                </div>
 
-                          <div className="flex items-center justify-start pl-4 min-w-max">
-                            {player.personalBestScore !== undefined ? (
-                              <span className="text-xs font-black text-status-warning font-mono text-left">
-                                {player.personalBestScore}
-                              </span>
-                            ) : (
-                              <span className="text-xs font-black text-txt-muted font-mono text-left">
-                                -
-                              </span>
-                            )}
-                          </div>
+                                {/* 4. 進入箭頭 */}
+                                <div className="text-txt-muted flex items-center justify-center">
+                                  <ChevronRight size={14} />
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      ))}
-                      {specificStats.hasNoScorePlays && (
-                        <div className="text-[10px] text-txt-muted italic py-1.5 pr-3 text-right">
-                          {t('stats_win_rate_excludes_no_score')}
-                        </div>
-                      )}
+                      </div>
                     </div>
                   ) : (
-                    <div className="h-full flex items-center justify-center text-[11px] font-bold text-txt-muted opacity-70 px-4 text-center">
-                      {t('stats_no_scoring_records')}
+                    <div className="flex-1 flex flex-col items-center justify-center text-txt-muted opacity-70 gap-2 pb-8 bg-app-bg-deep">
+                      <CalendarDays size={32} />
+                      <span className="text-sm font-bold">{t('stats_empty_records')}</span>
                     </div>
-                  )}
-                </div>
+                  )
+                ) : (
+                  <div className="flex-1 overflow-y-auto overflow-x-auto no-scrollbar bg-app-bg-deep w-full pb-8">
+                    {specificStats.players.length > 0 ? (
+                      <div className="flex flex-col min-w-full w-max">
+                        <div 
+                          className="spreadsheet-header-row"
+                          style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 64px 54px 54px' }}
+                        >
+                          <h3 className="spreadsheet-cell-sticky-header flex items-center gap-1 px-3 text-[10px] font-black text-txt-muted overflow-x-auto no-scrollbar whitespace-nowrap">
+                            <Users size={11} className="shrink-0 text-txt-muted" />
+                            <span>{t('stats_header_player')}</span>
+                          </h3>
+                          <span className="flex items-center gap-1">
+                            <Hash size={11} className="shrink-0 text-brand-primary" />
+                            <span>{t('stats_header_plays')}</span>
+                          </span>
+                          <span className="flex items-center gap-1 pl-4">
+                            <Crown size={11} className="shrink-0 text-status-warning" fill="currentColor" />
+                            <span>{t('stats_header_win_rate')}</span>
+                          </span>
+                          <span className="flex items-center gap-1 pl-4">
+                            <Calculator size={11} className="shrink-0 text-brand-secondary" />
+                            <span>{t('stats_header_avg')}</span>
+                          </span>
+                          <span className="flex items-center gap-1 pl-4">
+                            <Trophy size={11} className="shrink-0 text-status-warning" />
+                            <span>{t('stats_header_best')}</span>
+                          </span>
+                        </div>
+
+                        {specificStats.players.map((player) => (
+                          <div
+                            key={player.key}
+                            className="spreadsheet-row"
+                            style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 64px 54px 54px' }}
+                          >
+                            <h3 className="spreadsheet-cell-sticky flex flex-col items-start justify-center px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap">
+                              {player.name}
+                            </h3>
+                            <div className="flex items-center justify-start gap-0.5 text-txt-secondary font-mono font-black shrink-0 text-[11px]">
+                              {player.noScorePlayCount > 0 ? (
+                                <>
+                                  <span>{player.playCount - player.noScorePlayCount}</span>
+                                  <span className="text-brand-primary font-bold">+{player.noScorePlayCount}</span>
+                                  <span className="text-[10px] font-normal text-txt-muted ml-0.5">{t('stats_plays_suffix')}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span>{player.playCount}</span>
+                                  <span className="text-[10px] font-normal text-txt-muted ml-0.5">{t('stats_plays_suffix')}</span>
+                                </>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-start pl-4 min-w-max">
+                              {player.hasScoringPlay ? (
+                                <span className="text-xs font-black text-brand-primary font-mono text-left">
+                                  {player.winRate}%
+                                </span>
+                              ) : (
+                                <span className="text-xs font-black text-txt-muted font-mono text-left">
+                                  -
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-start pl-4 min-w-max">
+                              {player.avgScore !== undefined ? (
+                                <span className="text-xs font-black text-txt-primary font-mono text-left">
+                                  {player.avgScore}
+                                </span>
+                              ) : (
+                                <span className="text-xs font-black text-txt-muted font-mono text-left">
+                                  -
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-start pl-4 min-w-max">
+                              {player.personalBestScore !== undefined ? (
+                                <span className="text-xs font-black text-status-warning font-mono text-left">
+                                  {player.personalBestScore}
+                                </span>
+                              ) : (
+                                <span className="text-xs font-black text-txt-muted font-mono text-left">
+                                  -
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        {specificStats.hasNoScorePlays && (
+                          <div className="text-[10px] text-txt-muted italic py-1.5 pr-3 text-right">
+                            {t('stats_win_rate_excludes_no_score')}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-[11px] font-bold text-txt-muted opacity-70 px-4 text-center">
+                        {t('stats_no_scoring_records')}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex flex-col justify-start min-w-[420px]">

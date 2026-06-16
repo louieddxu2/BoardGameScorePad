@@ -72,6 +72,7 @@ export const historyStatsTranslations = {
     stats_header_avg: '平均',
     stats_header_best: '最佳',
     stats_history_title: '歷史遊玩明細',
+    stats_total_players: '共 {count} 位玩家',
   },
   'en': {
     stats_empty_date: 'No records',
@@ -144,6 +145,7 @@ export const historyStatsTranslations = {
     stats_header_avg: 'Avg',
     stats_header_best: 'Best',
     stats_history_title: 'Play History Details',
+    stats_total_players: '{count} Players',
   }
 };
 
