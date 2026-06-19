@@ -66,6 +66,37 @@ export const getHistoryGameKey = (record: HistorySummary): string => {
   return normalizedName ? `name:${normalizedName}` : `record:${record.id}`;
 };
 
+export const createHistoryGameKeyResolver = (records: HistorySummary[]) => {
+  const bggIdsByName = new Map<string, Set<string>>();
+
+  records.forEach(record => {
+    if (!record.bggId) return;
+    const normalizedName = normalizeName(record.gameName);
+    if (!normalizedName) return;
+
+    const bggIds = bggIdsByName.get(normalizedName) || new Set<string>();
+    bggIds.add(record.bggId);
+    bggIdsByName.set(normalizedName, bggIds);
+  });
+
+  const uniqueBggIdByName = new Map<string, string>();
+  bggIdsByName.forEach((bggIds, name) => {
+    if (bggIds.size === 1) {
+      uniqueBggIdByName.set(name, Array.from(bggIds)[0]);
+    }
+  });
+
+  return (record: HistorySummary): string => {
+    if (record.bggId) return `bgg:${record.bggId}`;
+
+    const normalizedName = normalizeName(record.gameName);
+    const inferredBggId = normalizedName ? uniqueBggIdByName.get(normalizedName) : undefined;
+    if (inferredBggId) return `bgg:${inferredBggId}`;
+
+    return normalizedName ? `name:${normalizedName}` : `record:${record.id}`;
+  };
+};
+
 export const getHistoryPlayerKey = (player: HistorySummary['players'][number]): string | null => {
   if (player.linkedPlayerId) return `player:${player.linkedPlayerId}`;
   if (isDefaultPlayerName(player.name)) return null;
@@ -129,9 +160,10 @@ const sortPhotosByRecent = (a: HistoryGamePhotoEntry, b: HistoryGamePhotoEntry) 
 export const buildHistoryGameEntries = (records: HistorySummary[], options?: HistoryGameEntryOptions): HistoryGameEntry[] => {
   const gameMap = new Map<string, MutableHistoryGameEntry>();
   const resolveHistoryPlayer = createHistoryPlayerResolver(options);
+  const resolveHistoryGameKey = createHistoryGameKeyResolver(records);
 
   records.forEach(record => {
-    const gameKey = getHistoryGameKey(record);
+    const gameKey = resolveHistoryGameKey(record);
     const currentGame = gameMap.get(gameKey) || {
       gameKey,
       displayName: record.gameName,

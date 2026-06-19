@@ -1,4 +1,4 @@
-import { HistoryGameEntry, HistoryGamePhotoEntry, getHistoryPlayerKey } from './historyGameEntries';
+import { createHistoryGameKeyResolver, HistoryGameEntry, HistoryGamePhotoEntry, getHistoryPlayerKey } from './historyGameEntries';
 import { ScoringRule } from '../types';
 import { HistorySummary } from './extractDataSummaries';
 
@@ -164,9 +164,9 @@ export const buildSpecificGameStats = (
   records: HistorySummary[],
   options?: { savedPlayers?: { id: string; name: string }[] }
 ): SpecificGameStats | null => {
+  const resolveHistoryGameKey = createHistoryGameKeyResolver(records);
   const gameRecords = records.filter(r => {
-    const rKey = r.bggId ? `bgg:${r.bggId}` : (r.gameName ? `name:${r.gameName.trim().toLowerCase()}` : `record:${r.id}`);
-    return rKey === gameKey;
+    return resolveHistoryGameKey(r) === gameKey;
   });
 
   if (gameRecords.length === 0) return null;

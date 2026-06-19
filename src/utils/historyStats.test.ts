@@ -162,6 +162,17 @@ describe('buildSpecificGameStats', () => {
     expect(stats).toBeNull();
   });
 
+  it('includes same-name records without BGG id when a unique BGG id exists for that name', () => {
+    const records = [
+      record({ id: 'h1', gameName: 'Game A', bggId: '123', endTime: 2000 }),
+      record({ id: 'h2', gameName: 'game a', endTime: 1000 })
+    ];
+
+    const stats = buildSpecificGameStats('bgg:123', records);
+    expect(stats?.playCount).toBe(2);
+    expect(stats?.records.map(r => r.id)).toEqual(['h1', 'h2']);
+  });
+
   it('aggregates stats for a specific game and lists players by win rate', () => {
     const records = [
       record({

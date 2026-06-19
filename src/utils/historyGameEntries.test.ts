@@ -48,6 +48,35 @@ describe('historyGameEntries', () => {
     expect(entries[0].playCount).toBe(2);
   });
 
+  it('merges same-name records when only some records have a BGG id', () => {
+    const entries = buildHistoryGameEntries([
+      record({ id: 'h1', templateId: 'tpl-a', gameName: 'Game A', bggId: '123', endTime: 3000 }),
+      record({ id: 'h2', templateId: 'tpl-b', gameName: 'game a', endTime: 2000 })
+    ]);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      gameKey: 'bgg:123',
+      bggId: '123',
+      playCount: 2
+    });
+    expect(entries[0].templateIds).toEqual(['tpl-a', 'tpl-b']);
+  });
+
+  it('keeps same-name no-BGG records separate when the name maps to multiple BGG ids', () => {
+    const entries = buildHistoryGameEntries([
+      record({ id: 'h1', templateId: 'tpl-a', gameName: 'Game A', bggId: '123', endTime: 3000 }),
+      record({ id: 'h2', templateId: 'tpl-b', gameName: 'game a', bggId: '456', endTime: 2000 }),
+      record({ id: 'h3', templateId: 'tpl-c', gameName: 'GAME A', endTime: 1000 })
+    ]);
+
+    expect(entries.map(entry => [entry.gameKey, entry.playCount])).toEqual([
+      ['bgg:123', 1],
+      ['bgg:456', 1],
+      ['name:game a', 1]
+    ]);
+  });
+
   it('deduplicates linked players, falls back to names, and excludes default placeholders', () => {
     const entries = buildHistoryGameEntries([
       record({
