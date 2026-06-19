@@ -324,7 +324,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
 
                 {specificViewMode === 'records' ? (
                   specificStats.records && specificStats.records.length > 0 ? (
-                    <div className="flex-1 min-h-0 flex flex-col bg-app-bg-deep w-full pb-8">
+                    <div className="flex-1 min-h-0 flex flex-col bg-app-bg-deep w-full">
                       {/* 凍結表頭列 */}
                       <div 
                         className="spreadsheet-header-row"
@@ -346,7 +346,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                       </div>
 
                       {/* 明細列表滾動區 */}
-                      <div className="flex-1 overflow-y-auto overflow-x-auto no-scrollbar pb-2">
+                      <div className="flex-1 overflow-y-auto overflow-x-auto no-scrollbar">
                         <div className="flex flex-col min-w-full w-max">
                           {specificStats.records.map((record) => {
                             const date = new Date(record.endTime);
