@@ -257,5 +257,26 @@ describe('buildSpecificGameStats', () => {
     const stats = buildSpecificGameStats('name:game a', records, { savedPlayers });
     expect(stats?.players[0].name).toBe('Alice Saved');
   });
+
+  it('uses the shared saved-player resolver for specific game players', () => {
+    const records = [
+      record({
+        id: 'h1',
+        gameName: 'Game A',
+        players: [
+          { id: 'slot_1', name: 'alice', color: '#fff', totalScore: 10, scores: {} },
+          { id: 'slot_2', name: 'Guest', color: '#000', totalScore: 5, scores: {} }
+        ]
+      })
+    ];
+
+    const stats = buildSpecificGameStats('name:game a', records, {
+      savedPlayers: [{ id: 'p-alice', name: 'Alice' }]
+    });
+
+    expect(stats?.players.map(player => [player.key, player.name])).toEqual([
+      ['player:p-alice', 'Alice']
+    ]);
+  });
 });
 

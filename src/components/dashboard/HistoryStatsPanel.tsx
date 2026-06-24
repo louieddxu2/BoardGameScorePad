@@ -1,13 +1,15 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { BarChart3, CalendarDays, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Grid3X3, Hash, MapPin, Minus, Search, Users, Plus, CornerUpLeft, Crown, Calculator, Trophy } from 'lucide-react';
-import { HistoryGameEntry, buildHistoryGameEntries } from '../../utils/historyGameEntries';
+import { BarChart3, CalendarDays, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Gamepad2, Grid3X3, Hash, MapPin, Minus, Search, Users, Plus, CornerUpLeft, Crown, Calculator, Trophy } from 'lucide-react';
+import { HistoryGameEntry, buildHistoryGameEntries, createHistoryPlayerResolver } from '../../utils/historyGameEntries';
 import { buildHistoryStats, filterHistoryEntriesByDateRange, filterHistoryEntriesByStatsFilters, getNextHistoryStatsDateRange, HistoryStatsDateRange, HistoryStatsGame, buildSpecificGameStats } from '../../utils/historyStats';
+import { buildHistoryPlayerEntries, buildSpecificPlayerStats } from '../../utils/historyPlayerEntries';
 import HistoryPhotoGridShareModal from './HistoryPhotoGridShareModal';
 import { useHistoryStatsTranslation } from '../../i18n/history_stats';
 import { ScoringRule, SavedListItem } from '../../types';
 import { HistorySummary } from '../../utils/extractDataSummaries';
 import UpwardSelectMenu, { UpwardSelectMenuAnchor } from '../shared/UpwardSelectMenu';
 import { DATA_LIMITS } from '../../dataLimits';
+import { useModalBackHandler } from '../../hooks/useModalBackHandler';
 
 interface HistoryStatsPanelProps {
   entries: HistoryGameEntry[];
@@ -29,6 +31,11 @@ const DATE_RANGE_LABEL_KEYS: Record<HistoryStatsDateRange, 'stats_range_all' | '
   quarter: 'stats_range_quarter',
   year: 'stats_range_year'
 };
+
+type HistoryStatsOverviewTab = 'games' | 'players';
+type HistoryStatsDetailView =
+  | { type: 'game'; key: string; tab: 'players' | 'records' }
+  | { type: 'player'; key: string; tab: 'games' | 'records' };
 
 const formatDate = (timestamp: number | undefined, emptyLabel: string) => {
   if (!timestamp) return emptyLabel;
@@ -52,36 +59,54 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
   const [locationFilter, setLocationFilter] = useState<string | null>(null);
   const [activeMenu, setActiveMenu] = useState<({ type: 'rule' | 'location' } & UpwardSelectMenuAnchor) | null>(null);
   const menuListRef = useRef<HTMLDivElement>(null);
-  const [selectedGameKey, setSelectedGameKey] = useState<string | null>(null);
-  const [specificViewMode, setSpecificViewMode] = useState<'players' | 'records'>('players');
+  const [overviewTab, setOverviewTab] = useState<HistoryStatsOverviewTab>('games');
+  const [detailView, setDetailView] = useState<HistoryStatsDetailView | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const listScrollPosRef = useRef({ top: 0, left: 0 });
+  const overviewScrollPosRef = useRef<Record<HistoryStatsOverviewTab, { top: number; left: number }>>({
+    games: { top: 0, left: 0 },
+    players: { top: 0, left: 0 }
+  });
 
-  React.useEffect(() => {
-    setSpecificViewMode('players');
-  }, [selectedGameKey]);
+  const returnToOverview = React.useCallback(() => setDetailView(null), []);
+  const { zIndex } = useModalBackHandler(!!detailView, returnToOverview, 'history-stats-detail');
 
-  const handleGameSelect = (gameKey: string) => {
+  const saveOverviewScrollPosition = () => {
     if (scrollContainerRef.current) {
-      listScrollPosRef.current = {
+      overviewScrollPosRef.current[overviewTab] = {
         top: scrollContainerRef.current.scrollTop,
         left: scrollContainerRef.current.scrollLeft
       };
     }
-    setSelectedGameKey(gameKey);
+  };
+
+  const handleGameSelect = (gameKey: string) => {
+    if (!detailView) saveOverviewScrollPosition();
+    setDetailView({ type: 'game', key: gameKey, tab: 'players' });
+  };
+
+  const handlePlayerSelect = (playerKey: string) => {
+    if (!detailView) saveOverviewScrollPosition();
+    setDetailView({ type: 'player', key: playerKey, tab: 'games' });
+  };
+
+  const handleOverviewTabChange = (nextTab: HistoryStatsOverviewTab) => {
+    if (nextTab === overviewTab) return;
+    saveOverviewScrollPosition();
+    setOverviewTab(nextTab);
   };
 
   React.useEffect(() => {
-    if (!selectedGameKey && scrollContainerRef.current) {
+    if (!detailView && scrollContainerRef.current) {
       const timer = setTimeout(() => {
         if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollTop = listScrollPosRef.current.top;
-          scrollContainerRef.current.scrollLeft = listScrollPosRef.current.left;
+          const position = overviewScrollPosRef.current[overviewTab];
+          scrollContainerRef.current.scrollTop = position.top;
+          scrollContainerRef.current.scrollLeft = position.left;
         }
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [selectedGameKey]);
+  }, [detailView, overviewTab]);
 
   // 1. 單局層面篩選：時間
   const dateFilteredRecords = useMemo(() => {
@@ -130,16 +155,24 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
   }, [records, filteredRecords, savedPlayers, entries]);
 
   const stats = useMemo(() => buildHistoryStats(filteredEntries), [filteredEntries]);
+  const playerEntries = useMemo(
+    () => buildHistoryPlayerEntries(filteredRecords, { savedPlayers }),
+    [filteredRecords, savedPlayers]
+  );
+  const resolveHistoryPlayer = useMemo(
+    () => createHistoryPlayerResolver({ savedPlayers }),
+    [savedPlayers]
+  );
 
   const specificStats = useMemo(() => {
-    if (!selectedGameKey || !records || !filteredRecords) return null;
+    if (detailView?.type !== 'game' || !records) return null;
     
     // 1. Try to compute stats using filtered records
-    const stats = buildSpecificGameStats(selectedGameKey, filteredRecords, { savedPlayers });
+    const stats = buildSpecificGameStats(detailView.key, filteredRecords, { savedPlayers });
     if (stats) return stats;
 
     // 2. Fallback: If no records match under current filters, use unfiltered records to extract base game info
-    const baseStats = buildSpecificGameStats(selectedGameKey, records, { savedPlayers });
+    const baseStats = buildSpecificGameStats(detailView.key, records, { savedPlayers });
     if (!baseStats) return null;
 
     // Return an empty stats structure to keep the panel open and display 0 plays
@@ -154,7 +187,27 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
       players: [],
       records: []
     };
-  }, [selectedGameKey, records, filteredRecords, savedPlayers]);
+  }, [detailView, records, filteredRecords, savedPlayers]);
+
+  const specificPlayerStats = useMemo(() => {
+    if (detailView?.type !== 'player' || !records) return null;
+
+    const stats = buildSpecificPlayerStats(detailView.key, filteredRecords, { savedPlayers });
+    if (stats) return stats;
+
+    const baseStats = buildSpecificPlayerStats(detailView.key, records, { savedPlayers });
+    if (!baseStats) return null;
+
+    return {
+      ...baseStats,
+      playCount: 0,
+      gameCount: 0,
+      latestPlayedAt: 0,
+      games: [],
+      records: [],
+      recordIds: []
+    };
+  }, [detailView, records, filteredRecords, savedPlayers]);
 
   const playsText = useMemo(() => {
     if (!specificStats) return '';
@@ -189,7 +242,11 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
   const displayedGames = useMemo(() => {
     return stats.games.slice(0, DATA_LIMITS.QUERY.HISTORY_STATS_GAMES);
   }, [stats.games]);
+  const displayedPlayers = useMemo(() => {
+    return playerEntries.slice(0, DATA_LIMITS.QUERY.HISTORY_STATS_PLAYERS);
+  }, [playerEntries]);
   const hiddenGameCount = Math.max(0, stats.games.length - displayedGames.length);
+  const hiddenPlayerCount = Math.max(0, playerEntries.length - displayedPlayers.length);
   const isPanelExpanded = isExpanded && !isSearchKeyboardOpen;
   const panelLayoutClass = isSearchKeyboardOpen
     ? 'bottom-0 left-0 right-0 h-[220px]'
@@ -234,6 +291,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
     <>
       <div
         className={`fixed z-40 flex flex-col pointer-events-none transition-all duration-300 ease-in-out ${panelLayoutClass}`}
+        style={detailView && zIndex ? { zIndex } : undefined}
       >
         <button
           onClick={() => setIsExpanded(prev => !prev)}
@@ -252,12 +310,22 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
             <ChevronUp size={12} className="text-txt-muted mx-auto" />
           </div>
 
-          {!selectedGameKey && (
-            <div className="flex-none h-8 px-3 border-b border-surface-border bg-app-bg flex items-center gap-3 overflow-x-auto no-scrollbar text-[11px] font-bold text-txt-muted whitespace-nowrap">
+          {!detailView && (
+            <div className="flex-none h-8 pl-3 border-b border-surface-border bg-app-bg flex items-center gap-3 overflow-hidden text-[11px] font-bold text-txt-muted whitespace-nowrap">
               <span><span className="text-txt-primary font-mono">{stats.playCount}</span> {t('stats_count_label')}</span>
-              <span><span className="text-txt-primary font-mono">{stats.gameCount}</span> {t('stats_games_label')}</span>
-              <span><span className="text-txt-primary font-mono">{stats.playerCount}</span> {t('stats_players_label')}</span>
               <span>{t('stats_latest_label')} <span className="text-txt-primary">{formatDate(stats.latestPlayedAt, t('stats_empty_date'))}</span></span>
+              <button
+                onClick={() => handleOverviewTabChange(overviewTab === 'games' ? 'players' : 'games')}
+                className="ml-auto h-full px-3 border-l border-surface-border flex items-center gap-1.5 text-brand-primary bg-app-bg-deep hover:bg-surface-hover transition-colors shrink-0"
+                title={overviewTab === 'games' ? t('stats_show_players') : t('stats_show_games')}
+              >
+                {overviewTab === 'games' ? <Users size={13} /> : <Gamepad2 size={13} />}
+                <span>
+                  {overviewTab === 'games'
+                    ? t('stats_total_players').replace('{count}', playerEntries.length.toString())
+                    : t('stats_total_games').replace('{count}', stats.gameCount.toString())}
+                </span>
+              </button>
             </div>
           )}
 
@@ -267,11 +335,11 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                 <BarChart3 size={32} />
                 <span className="text-sm font-bold">{t('stats_empty_records')}</span>
               </div>
-            ) : selectedGameKey && specificStats ? (
+            ) : detailView?.type === 'game' && specificStats ? (
               <div className="flex flex-col w-full h-full min-h-0">
                 {/* 遊戲名稱與返回列：使用 Flex 兩端對齊排版，避免強行分欄限制空間 */}
                 <div 
-                  onClick={() => setSelectedGameKey(null)}
+                  onClick={returnToOverview}
                   className="flex items-center justify-between gap-3 pr-3 py-1.5 min-h-[46px] border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors cursor-pointer w-full shrink-0"
                 >
                   {/* 左側：返回箭頭 + 遊戲名稱 + 右側最近遊玩與最佳分數 (水平 baseline 對齊) */}
@@ -300,15 +368,17 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSpecificViewMode(prev => prev === 'players' ? 'records' : 'players');
+                      setDetailView(prev => prev?.type === 'game'
+                        ? { ...prev, tab: prev.tab === 'players' ? 'records' : 'players' }
+                        : prev);
                     }}
                     className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition-all active:scale-95 pointer-events-auto shadow-sm shrink-0 ${
-                      specificViewMode === 'records'
+                      detailView.tab === 'records'
                         ? 'bg-brand-primary/10 border-brand-primary/30 text-brand-primary'
                         : 'bg-app-bg-deep border-surface-border text-txt-secondary hover:text-txt-primary hover:border-txt-muted'
                     }`}
                   >
-                    {specificViewMode === 'players' ? (
+                    {detailView.tab === 'players' ? (
                       <>
                         <CalendarDays size={12} className="text-brand-primary shrink-0" />
                         <span>{playsText}</span>
@@ -322,7 +392,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                   </button>
                 </div>
 
-                {specificViewMode === 'records' ? (
+                {detailView.tab === 'records' ? (
                   specificStats.records && specificStats.records.length > 0 ? (
                     <div className="flex-1 min-h-0 flex flex-col bg-app-bg-deep w-full">
                       {/* 凍結表頭列 */}
@@ -436,7 +506,8 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                         {specificStats.players.map((player) => (
                           <div
                             key={player.key}
-                            className="spreadsheet-row"
+                            onClick={() => handlePlayerSelect(player.key)}
+                            className="spreadsheet-row cursor-pointer hover:bg-surface-hover"
                             style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 64px 54px 54px' }}
                           >
                             <h3 className="spreadsheet-cell-sticky flex flex-col items-start justify-center px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap">
@@ -508,14 +579,170 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                   </div>
                 )}
               </div>
+            ) : detailView?.type === 'player' && specificPlayerStats ? (
+              <div className="flex flex-col w-full h-full min-h-0">
+                <div
+                  onClick={returnToOverview}
+                  className="flex items-center justify-between gap-3 pr-3 py-1.5 min-h-[46px] border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors cursor-pointer w-full shrink-0"
+                >
+                  <div className="flex items-baseline gap-2 min-w-0 pl-3 flex-1">
+                    <ChevronLeft size={18} className="text-brand-primary shrink-0 -ml-1 self-center" />
+                    <span className="text-base font-black text-txt-primary truncate shrink-0">{specificPlayerStats.name}</span>
+                    <span className="text-xs text-txt-muted whitespace-nowrap overflow-hidden text-ellipsis">
+                      {specificPlayerStats.latestPlayedAt
+                        ? t('stats_latest_play_short').replace(
+                          '{date}',
+                          new Date(specificPlayerStats.latestPlayedAt).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' })
+                        )
+                        : t('stats_empty_date')}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setDetailView(prev => prev?.type === 'player'
+                        ? { ...prev, tab: prev.tab === 'games' ? 'records' : 'games' }
+                        : prev);
+                    }}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition-all active:scale-95 pointer-events-auto shadow-sm shrink-0 ${
+                      detailView.tab === 'records'
+                        ? 'bg-brand-primary/10 border-brand-primary/30 text-brand-primary'
+                        : 'bg-app-bg-deep border-surface-border text-txt-secondary hover:text-txt-primary hover:border-txt-muted'
+                    }`}
+                  >
+                    {detailView.tab === 'games' ? (
+                      <>
+                        <CalendarDays size={12} className="text-brand-primary shrink-0" />
+                        <span>{t('stats_total_plays').replace('{count}', specificPlayerStats.playCount.toString())}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Gamepad2 size={12} className="text-brand-primary shrink-0" />
+                        <span>{t('stats_total_games').replace('{count}', specificPlayerStats.gameCount.toString())}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {detailView.tab === 'records' ? (
+                  specificPlayerStats.records.length > 0 ? (
+                    <div className="flex-1 min-h-0 flex flex-col bg-app-bg-deep w-full">
+                      <div
+                        className="spreadsheet-header-row"
+                        style={{ gridTemplateColumns: '52px minmax(110px, 25vw) 85px minmax(150px, 1fr) 24px' }}
+                      >
+                        <h3 className="spreadsheet-cell-sticky-header flex items-center gap-1 px-3 text-[10px] font-black text-txt-muted whitespace-nowrap">
+                          <CalendarDays size={11} />
+                          <span>{t('stats_header_date')}</span>
+                        </h3>
+                        <span className="flex items-center gap-1">
+                          <Gamepad2 size={11} className="text-brand-primary" />
+                          <span>{t('stats_header_game')}</span>
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MapPin size={11} className="text-brand-primary" />
+                          <span>{t('stats_header_location')}</span>
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Users size={11} className="text-brand-secondary" />
+                          <span>{t('stats_header_companions')}</span>
+                        </span>
+                        <span />
+                      </div>
+
+                      <div className="flex-1 overflow-y-auto overflow-x-auto no-scrollbar">
+                        <div className="flex flex-col min-w-full w-max">
+                          {specificPlayerStats.records.map(record => (
+                            <div
+                              key={record.id}
+                              onClick={() => onSelect?.(record)}
+                              className="spreadsheet-row cursor-pointer hover:bg-surface-hover"
+                              style={{ gridTemplateColumns: '52px minmax(110px, 25vw) 85px minmax(150px, 1fr) 24px' }}
+                            >
+                              <span className="spreadsheet-cell-sticky flex items-center px-3 text-xs font-mono text-txt-secondary bg-inherit">
+                                {new Date(record.endTime).toLocaleDateString(language, { month: '2-digit', day: '2-digit' })}
+                              </span>
+                              <span className="text-xs font-bold text-txt-primary truncate pr-2 flex items-center">
+                                {record.gameName}
+                              </span>
+                              <span className="text-xs text-txt-muted truncate pr-2 flex items-center">
+                                {record.location || '-'}
+                              </span>
+                              <span className="text-xs text-txt-secondary truncate pr-2 flex items-center">
+                                {record.players
+                                  .filter(player => {
+                                    return resolveHistoryPlayer(player)?.key !== specificPlayerStats.key;
+                                  })
+                                  .map(player => player.name)
+                                  .join('、') || '-'}
+                              </span>
+                              <div className="text-txt-muted flex items-center justify-center">
+                                <ChevronRight size={14} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center text-txt-muted opacity-70 gap-2 bg-app-bg-deep">
+                      <CalendarDays size={32} />
+                      <span className="text-sm font-bold">{t('stats_empty_records')}</span>
+                    </div>
+                  )
+                ) : (
+                  <div className="flex-1 overflow-y-auto overflow-x-auto no-scrollbar bg-app-bg-deep w-full">
+                    <div className="flex flex-col min-w-full w-max">
+                      <div
+                        className="spreadsheet-header-row"
+                        style={{ gridTemplateColumns: 'minmax(0, min(150px, 25vw)) 52px 64px 72px' }}
+                      >
+                        <h3 className="spreadsheet-cell-sticky-header flex items-center gap-1 px-3 text-[10px] font-black text-txt-muted whitespace-nowrap">
+                          <Gamepad2 size={11} />
+                          <span>{t('stats_header_game')}</span>
+                        </h3>
+                        <span className="flex items-center gap-1">
+                          <Hash size={11} className="text-brand-primary" />
+                          <span>{t('stats_header_plays')}</span>
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Crown size={11} className="text-status-warning" />
+                          <span>{t('stats_header_wins')}</span>
+                        </span>
+                        <span>{t('stats_header_recent')}</span>
+                      </div>
+
+                      {specificPlayerStats.games.map(game => (
+                        <div
+                          key={game.key}
+                          onClick={() => handleGameSelect(game.key)}
+                          className="spreadsheet-row cursor-pointer hover:bg-surface-hover"
+                          style={{ gridTemplateColumns: 'minmax(0, min(150px, 25vw)) 52px 64px 72px' }}
+                        >
+                          <h3 className="spreadsheet-cell-sticky px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap flex items-center">
+                            {game.name}
+                          </h3>
+                          <span className="text-xs font-black font-mono text-brand-primary flex items-center">{game.playCount}</span>
+                          <span className="text-xs font-black font-mono text-status-warning flex items-center">{game.winCount}</span>
+                          <span className="text-xs font-mono text-txt-muted flex items-center">
+                            {new Date(game.latestPlayedAt).toLocaleDateString(language, { month: '2-digit', day: '2-digit' })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="flex flex-col justify-start min-w-[420px]">
-                {displayedGames.map(game => {
-                  return (
-                    <div key={game.key} className="flex flex-col min-w-full w-max">
+                {overviewTab === 'games' ? (
+                  <>
+                    {displayedGames.map(game => (
+                      <div key={game.key} className="flex flex-col min-w-full w-max">
                       <div
                         onClick={() => handleGameSelect(game.key)}
-                        className="spreadsheet-row cursor-pointer"
+                        className="spreadsheet-row cursor-pointer hover:bg-surface-hover"
                         style={{
                           gridTemplateColumns: 'minmax(0, min(150px, 25vw)) 48px max-content'
                         }}
@@ -541,14 +768,52 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                           </span>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                      </div>
+                    ))}
 
-                {hiddenGameCount > 0 && (
-                  <div className="min-h-[40px] w-full flex items-center px-3 border-b border-surface-border/70 text-[11px] font-bold text-txt-muted bg-app-bg">
-                    {t('stats_more_games_hidden').replace('{count}', hiddenGameCount.toString())}
-                  </div>
+                    {hiddenGameCount > 0 && (
+                      <div className="min-h-[40px] w-full flex items-center px-3 border-b border-surface-border/70 text-[11px] font-bold text-txt-muted bg-app-bg">
+                        {t('stats_more_games_hidden').replace('{count}', hiddenGameCount.toString())}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div
+                      className="spreadsheet-header-row"
+                      style={{ gridTemplateColumns: 'minmax(0, min(130px, 25vw)) 52px 52px 72px' }}
+                    >
+                      <h3 className="spreadsheet-cell-sticky-header flex items-center gap-1 px-3 text-[10px] font-black text-txt-muted whitespace-nowrap">
+                        <Users size={11} />
+                        <span>{t('stats_header_player')}</span>
+                      </h3>
+                      <span>{t('stats_header_plays')}</span>
+                      <span>{t('stats_header_games')}</span>
+                      <span>{t('stats_header_recent')}</span>
+                    </div>
+                    {displayedPlayers.map(player => (
+                      <div
+                        key={player.key}
+                        onClick={() => handlePlayerSelect(player.key)}
+                        className="spreadsheet-row cursor-pointer hover:bg-surface-hover"
+                        style={{ gridTemplateColumns: 'minmax(0, min(130px, 25vw)) 52px 52px 72px' }}
+                      >
+                        <h3 className="spreadsheet-cell-sticky px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap flex items-center">
+                          {player.name}
+                        </h3>
+                        <span className="text-xs font-black font-mono text-brand-primary flex items-center">{player.playCount}</span>
+                        <span className="text-xs font-black font-mono text-txt-secondary flex items-center">{player.gameCount}</span>
+                        <span className="text-xs font-mono text-txt-muted flex items-center">
+                          {new Date(player.latestPlayedAt).toLocaleDateString(language, { month: '2-digit', day: '2-digit' })}
+                        </span>
+                      </div>
+                    ))}
+                    {hiddenPlayerCount > 0 && (
+                      <div className="min-h-[40px] w-full flex items-center px-3 border-b border-surface-border/70 text-[11px] font-bold text-txt-muted bg-app-bg">
+                        {t('stats_more_players_hidden').replace('{count}', hiddenPlayerCount.toString())}
+                      </div>
+                    )}
+                  </>
                 )}
 
                 <div className="h-2 shrink-0"></div>

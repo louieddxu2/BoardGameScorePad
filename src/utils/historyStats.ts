@@ -1,4 +1,4 @@
-import { createHistoryGameKeyResolver, HistoryGameEntry, HistoryGamePhotoEntry, getHistoryPlayerKey } from './historyGameEntries';
+import { createHistoryGameKeyResolver, createHistoryPlayerResolver, HistoryGameEntry, HistoryGamePhotoEntry } from './historyGameEntries';
 import { ScoringRule } from '../types';
 import { HistorySummary } from './extractDataSummaries';
 
@@ -188,15 +188,7 @@ export const buildSpecificGameStats = (
 
 
 
-  const savedPlayers = options?.savedPlayers;
-  const savedPlayerNameMap = new Map<string, string>();
-  if (savedPlayers) {
-    savedPlayers.forEach(p => {
-      if (p.name?.trim()) {
-        savedPlayerNameMap.set(p.name.trim().toLowerCase(), p.name);
-      }
-    });
-  }
+  const resolvePlayer = createHistoryPlayerResolver(options);
 
   const playerMap = new Map<string, {
     key: string;
@@ -223,19 +215,10 @@ export const buildSpecificGameStats = (
     const winnerIds = r.winnerIds || [];
 
     r.players.forEach(p => {
-      const pKey = getHistoryPlayerKey(p);
-      if (!pKey) return;
-
-      let displayName = p.name;
-      if (savedPlayers) {
-        const matched = savedPlayers.find(sp => sp.id === p.linkedPlayerId);
-        if (matched) {
-          displayName = matched.name;
-        } else {
-          const nameKey = p.name.trim().toLowerCase();
-          displayName = savedPlayerNameMap.get(nameKey) || p.name;
-        }
-      }
+      const resolvedPlayer = resolvePlayer(p);
+      if (!resolvedPlayer) return;
+      const pKey = resolvedPlayer.key;
+      const displayName = resolvedPlayer.name;
 
       const isWinner = winnerIds.includes(p.id) || (p.linkedPlayerId && winnerIds.includes(p.linkedPlayerId));
 

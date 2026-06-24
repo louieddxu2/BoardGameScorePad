@@ -105,7 +105,7 @@ export const getHistoryPlayerKey = (player: HistorySummary['players'][number]): 
   return normalizedName ? `name:${normalizedName}` : null;
 };
 
-const createHistoryPlayerResolver = (options?: HistoryGameEntryOptions) => {
+export const createHistoryPlayerResolver = (options?: HistoryGameEntryOptions) => {
   const savedPlayers = options?.savedPlayers;
 
   if (!savedPlayers) {
