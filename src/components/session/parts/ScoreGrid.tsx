@@ -43,6 +43,7 @@ interface ScoreGridProps {
   simpleFlashStatus?: string;
   simpleGemmaStatus?: string;
   elapsedTime?: number;
+  panelDockOffset: string;
 }
 
 const ScoreGrid: React.FC<ScoreGridProps> = ({
@@ -70,6 +71,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   simpleFlashStatus,
   simpleGemmaStatus,
   elapsedTime,
+  panelDockOffset,
 }) => {
   const { t } = useSessionTranslation();
   const dnd = useColumnDragAndDrop({ template, onUpdateTemplate, scrollRef: scrollContainerRef });
@@ -700,6 +702,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
             onDragOver={(e) => { if (isEditMode && lastColId) dnd.handleDragOver(e, lastColId); }}
             onDrop={(e) => { if (isEditMode && lastColId) dnd.handleDrop(e, lastColId); }}
             className={`w-full bg-app-bg ${(editingCell || editingPlayerId || (!baseImage && template.columns.length < 5) || isToolboxOpen) ? 'h-[40vh]' : 'h-24'}`}
+            style={{ marginBottom: panelDockOffset }}
           />
         )}
       </div>

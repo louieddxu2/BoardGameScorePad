@@ -67,7 +67,7 @@ describe.skip('UI 互動與手機版面響應測試', () => {
     const panel = clearButton.closest('.fixed') as HTMLElement;
 
     // 初始狀態：面板應該貼底 (bottom: 0px)
-    expect(panel.style.bottom).toBe('0px');
+    expect(panel.style.bottom).toBe('var(--bottom-ui-safe-gap)');
 
     // --- 模擬手機行為：鍵盤彈出 ---
     // 這會觸發 useVisualViewportOffset Hook
@@ -101,7 +101,7 @@ describe.skip('UI 互動與手機版面響應測試', () => {
       }
     });
 
-    expect(panel.style.bottom).toBe('0px');
+    expect(panel.style.bottom).toBe('var(--bottom-ui-safe-gap)');
   });
 
   it('介面切換測試：點擊玩家標題應進入「玩家編輯模式」(面板變矮)', async () => {

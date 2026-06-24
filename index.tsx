@@ -9,7 +9,10 @@ import { LanguageProvider } from './src/i18n'; // Import i18n provider
 import { setAutoConnectPreference } from './src/services/googleDrive';
 import { db } from './src/db'; // Import DB to clear session context
 import { registerServiceWorker } from './src/registerSW';
+import { applyPlatformEnvironmentAttributes } from './src/utils/platformEnvironment';
 import './src/index.css';
+
+applyPlatformEnvironmentAttributes();
 
 // [Requirement] Force reset the cloud connection preference on App boot / Refresh.
 // This ensures that every time the user opens or refreshes the page, the auto-connect is disabled.

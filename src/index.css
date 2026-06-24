@@ -38,6 +38,12 @@
    ============================================================ */
 
 :root {
+  --app-safe-area-top: env(safe-area-inset-top, 0px);
+  --app-safe-area-right: env(safe-area-inset-right, 0px);
+  --app-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --app-safe-area-left: env(safe-area-inset-left, 0px);
+  --bottom-ui-safe-gap: 0px;
+
   /* Slate Scale Mapping */
   --c-slate-50: 248 250 252;
   --c-slate-100: 241 245 249;
@@ -110,6 +116,14 @@
   --c-p-brown: 161 98 7;
   --c-p-gray: 107 114 128;
   --c-p-skin: 254 215 170;
+}
+
+html[data-ios='true'] {
+  --bottom-ui-safe-gap: var(--app-safe-area-bottom);
+}
+
+html[data-ios-safari-browser='true'] {
+  --bottom-ui-safe-gap: max(16px, var(--app-safe-area-bottom));
 }
 
 /* ============================================================
@@ -395,6 +409,14 @@ html[data-theme='light'] {
   .modal-backdrop {
     @apply fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300;
     background-color: rgba(var(--c-modal-backdrop));
+    padding-top: max(1rem, var(--app-safe-area-top));
+    padding-right: max(1rem, var(--app-safe-area-right));
+    padding-bottom: max(1rem, var(--app-safe-area-bottom));
+    padding-left: max(1rem, var(--app-safe-area-left));
+  }
+
+  .safe-area-top {
+    padding-top: var(--app-safe-area-top);
   }
 
   .no-scrollbar::-webkit-scrollbar { display: none; }

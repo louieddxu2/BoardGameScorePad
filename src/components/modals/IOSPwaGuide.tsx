@@ -2,6 +2,7 @@
 import React from 'react';
 import { useIntegrationTranslation } from '../../i18n/integration';
 import { Share } from 'lucide-react';
+import { getPlatformEnvironment } from '../../utils/platformEnvironment';
 
 interface IOSPwaGuideProps {
     onClose: () => void;
@@ -63,13 +64,7 @@ export const IOSPwaGuide: React.FC<IOSPwaGuideProps> = ({ onClose }) => {
  * Utility to check if the guide should be triggered for the current environment and state
  */
 export const shouldTriggerIOSPwaGuide = (): boolean => {
-    // 1. Check if iOS
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                  (/Macintosh/.test(navigator.userAgent) && 'ontouchend' in document);
-    
-    // 2. Check if already in standalone mode (PWA)
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                        (window.navigator as any).standalone;
+    const { isIOS, isStandalone } = getPlatformEnvironment();
 
     if (!isIOS || isStandalone) return false;
 

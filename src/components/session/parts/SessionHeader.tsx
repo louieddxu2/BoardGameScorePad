@@ -79,7 +79,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   };
 
   return (
-    <div className="flex-none modal-bg-elevated p-2 flex items-center justify-between border-b border-surface-border shadow-md z-20 transition-colors">
+    <div className="safe-area-top flex-none modal-bg-elevated px-2 pb-2 flex items-center justify-between border-b border-surface-border shadow-md z-20 transition-colors">
       <div className="flex items-center gap-2 flex-1 min-w-0 mr-2">
         <button
           onMouseDown={preventBlur}

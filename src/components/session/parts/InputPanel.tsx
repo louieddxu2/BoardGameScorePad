@@ -14,7 +14,6 @@ import { Eraser, ArrowRight, ArrowDown, Edit, Plus, ArrowUpToLine, ListPlus, Cal
 import { isColorDark, getContrastTextStyles } from '../../../utils/ui';
 import { ContrastText } from '../../shared/ContrastText';
 import { getScoreHistory, getRawValue, syncPartsFromIds } from '../../../utils/scoring';
-import { useKeyboardStatus } from '../../../hooks/useVisualViewportOffset';
 import { useSessionTranslation } from '../../../i18n/session';
 import { getEffectiveIds } from '../../../utils/scoreDisplay';
 import { colorRecommendationEngine } from '../../../features/recommendation/ColorRecommendationEngine';
@@ -41,6 +40,7 @@ interface InputPanelProps {
     onScreenshotRequest?: (mode: 'full' | 'simple') => void;
     isVoiceEnabled?: boolean;
     onToggleVoice?: () => void;
+    bottomOffset: string;
 }
 
 import { injectSoftHyphens } from '../../../utils/text';
@@ -221,12 +221,11 @@ const TotalAdjustmentSidebar: React.FC<{
 
 
 const InputPanel: React.FC<InputPanelProps> = (props) => {
-    const { sessionState, eventHandlers, session, template, savedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice } = props;
+    const { sessionState, eventHandlers, session, template, savedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice, bottomOffset } = props;
     const { uiState, setUiState, panelHeight, isShortList } = sessionState;
     const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue, isEditingTitle, isToolboxOpen } = uiState;
     const { t } = useSessionTranslation();
 
-    const { offset } = useKeyboardStatus();
     const [activeFactorIdx, setActiveFactorIdx] = useState<0 | 1>(0);
     const [showSwipeHint, setShowSwipeHint] = useState(false);
     const [recommendedColors, setRecommendedColors] = useState<string[]>([]);
@@ -934,7 +933,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     return (
         <div
             className={`fixed left-0 right-0 z-50 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgb(var(--c-black)_/_0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
-            style={{ height: panelHeight, bottom: offset }}
+            style={{ height: panelHeight, bottom: bottomOffset }}
             // [Added] Joystick Touch Handlers
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}

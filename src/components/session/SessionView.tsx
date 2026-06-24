@@ -33,6 +33,8 @@ import { useAiSimpleGenerator } from '../../features/ai-generator/hooks/useAiSim
 import { db } from '../../db';
 import { useAiGenerator } from '../../features/ai-generator/hooks/useAiGenerator';
 import { markPendingAiShare } from '../../utils/pendingAiShare';
+import { useKeyboardStatus } from '../../hooks/useVisualViewportOffset';
+import { getSessionOccupiedBottom, getSessionPanelDockOffset } from '../../utils/sessionViewport';
 
 interface SessionViewProps {
   session: GameSession;
@@ -116,6 +118,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   const sessionState = useSessionState(props);
   const { setUiState } = sessionState;
+  const { offset: keyboardOffset } = useKeyboardStatus();
+  const panelDockOffset = getSessionPanelDockOffset(keyboardOffset);
+  const occupiedBottom = getSessionOccupiedBottom(sessionState.panelHeight, keyboardOffset);
 
   // No special local state needed for photo preview anymore
   const eventHandlers = useSessionEvents(props, sessionState);
@@ -823,6 +828,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           simpleFlashStatus={aiSimpleGenerator.flashStatus}
           simpleGemmaStatus={aiSimpleGenerator.gemmaStatus}
           elapsedTime={elapsedTime}
+          panelDockOffset={panelDockOffset}
         />
       </div>
 
@@ -832,7 +838,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
             (editingCell?.colId === '__TOTAL__' || isToolboxOpen) ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
           }`}
           style={{
-            bottom: `calc(${sessionState.panelHeight} + 40px + 8px)`,
+            bottom: `calc(${occupiedBottom} + 40px + 8px)`,
             paddingLeft: `${leftColWidth}px`,
             paddingRight: '16px'
           }}
@@ -851,7 +857,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           players={session.players}
           winners={winners}
           isPanelOpen={isPanelOpen}
-          panelHeight={sessionState.panelHeight}
+          panelHeight={occupiedBottom}
           scrollRef={sessionState.totalBarScrollRef}
           contentRef={sessionState.totalContentRef}
           isHidden={isInputFocused || isEditingTitle} // [Modified] Also hide when editing title
@@ -880,6 +886,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onScreenshotRequest={handleScreenshotRequest} // [New] Pass screenshot action
         isVoiceEnabled={props.isVoiceEnabled}
         onToggleVoice={props.onToggleVoice}
+        bottomOffset={panelDockOffset}
       />
 
       <ScreenshotModal

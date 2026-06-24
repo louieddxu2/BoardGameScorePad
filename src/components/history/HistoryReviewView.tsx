@@ -306,6 +306,11 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
         setShowPhotoGallery(true);
     };
 
+    const panelDockOffset = 'var(--bottom-ui-safe-gap)';
+    const occupiedBottom = isToolboxOpen
+        ? `calc(40vh + ${panelDockOffset})`
+        : panelDockOffset;
+
     return (
         <div className="flex flex-col h-full bg-app-bg text-txt-primary overflow-hidden relative animate-in fade-in duration-300">
 
@@ -321,7 +326,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
             )}
 
             {/* --- Header --- */}
-            <div className="flex-none bg-app-bg p-2 flex items-center justify-between border-b border-surface-border shadow-md z-20">
+            <div className="safe-area-top flex-none bg-app-bg px-2 pb-2 flex items-center justify-between border-b border-surface-border shadow-md z-20">
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => window.history.back()}
@@ -385,6 +390,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                     previewValue={0}
                     onToggleToolbox={() => setIsToolboxOpen(!isToolboxOpen)}
                     isToolboxOpen={isToolboxOpen}
+                    panelDockOffset={panelDockOffset}
                 />
             </div>
 
@@ -393,7 +399,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                 players={fakeSession.players}
                 winners={winners}
                 isPanelOpen={false}
-                panelHeight={isToolboxOpen ? "40vh" : "0px"}
+                panelHeight={occupiedBottom}
                 scrollRef={totalBarScrollRef}
                 contentRef={totalContentRef}
                 template={template}
@@ -418,7 +424,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
             {/* History Toolbox Drawer - No backdrop, matches Session InputPanel feel */}
             <div
                 className={`fixed left-0 right-0 z-40 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgb(var(--c-black)_/_0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isToolboxOpen ? 'translate-y-0' : 'translate-y-full'}`}
-                style={{ height: '40vh', bottom: 0 }}
+                style={{ height: '40vh', bottom: panelDockOffset }}
             >
                 <div className="flex-1 min-h-0 bg-modal-bg relative">
                     <SmartSpacer

@@ -176,7 +176,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
   return (
     <header
-      className="flex flex-col bg-app-bg/95 backdrop-blur-md border-b border-surface-border sticky top-0 z-30 transition-all duration-300 shadow-sm"
+      className="safe-area-top flex flex-col bg-app-bg/95 backdrop-blur-md border-b border-surface-border sticky top-0 z-30 transition-all duration-300 shadow-sm"
       onClick={handleHeaderClick}
     >
       <div className="p-2.5 flex items-center gap-2 h-[58px]">

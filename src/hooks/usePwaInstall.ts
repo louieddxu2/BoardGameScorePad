@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { getPlatformEnvironment } from '../utils/platformEnvironment';
 
 /**
  * Custom Hook: 監聽 beforeinstallprompt 並管理 PWA 安裝提示狀態
@@ -9,7 +10,7 @@ export const usePwaInstall = () => {
 
   useEffect(() => {
     const pwaInstalled = localStorage.getItem('pwa_installed') === 'true';
-    if (pwaInstalled || window.matchMedia('(display-mode: standalone)').matches) {
+    if (pwaInstalled || getPlatformEnvironment().isStandalone) {
       setIsInstalled(true);
       return;
     }
