@@ -427,16 +427,16 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                         className="spreadsheet-header-row"
                         style={{ gridTemplateColumns: '52px 85px 1fr 24px' }}
                       >
-                        <h3 className="spreadsheet-cell-sticky-header flex items-center gap-1 px-3 text-[10px] font-black text-txt-muted overflow-x-auto no-scrollbar whitespace-nowrap">
-                          <CalendarDays size={11} className="shrink-0 text-txt-muted" />
+                        <h3 className="spreadsheet-cell-sticky-header spreadsheet-header-cell overflow-x-auto no-scrollbar">
+                          <CalendarDays size={11} />
                           <span>{t('stats_header_date')}</span>
                         </h3>
-                        <span className="flex items-center gap-1">
-                          <MapPin size={11} className="shrink-0 text-brand-primary" />
+                        <span className="spreadsheet-header-cell">
+                          <MapPin size={11} />
                           <span>{t('stats_header_location')}</span>
                         </span>
-                        <span className="flex items-center gap-1 pl-4">
-                          <Users size={11} className="shrink-0 text-brand-secondary" />
+                        <span className="spreadsheet-header-cell">
+                          <Users size={11} />
                           <span>{t('stats_header_player')}</span>
                         </span>
                         <span></span>
@@ -508,24 +508,24 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                           className="spreadsheet-header-row"
                           style={{ gridTemplateColumns: 'minmax(0, min(110px, 22vw)) 52px 64px 54px 54px' }}
                         >
-                          <h3 className="spreadsheet-cell-sticky-header flex items-center gap-1 px-3 text-[10px] font-black text-txt-muted overflow-x-auto no-scrollbar whitespace-nowrap">
-                            <Users size={11} className="shrink-0 text-txt-muted" />
+                          <h3 className="spreadsheet-cell-sticky-header spreadsheet-header-cell overflow-x-auto no-scrollbar">
+                            <Users size={11} />
                             <span>{t('stats_header_player')}</span>
                           </h3>
-                          <span className="flex items-center gap-1">
-                            <Hash size={11} className="shrink-0 text-brand-primary" />
+                          <span className="spreadsheet-header-cell">
+                            <Hash size={11} />
                             <span>{t('stats_header_plays')}</span>
                           </span>
-                          <span className="flex items-center gap-1 pl-4">
-                            <Crown size={11} className="shrink-0 text-status-warning" fill="currentColor" />
+                          <span className="spreadsheet-header-cell">
+                            <Crown size={11} />
                             <span>{t('stats_header_win_rate')}</span>
                           </span>
-                          <span className="flex items-center gap-1 pl-4">
-                            <Calculator size={11} className="shrink-0 text-brand-secondary" />
+                          <span className="spreadsheet-header-cell">
+                            <Calculator size={11} />
                             <span>{t('stats_header_avg')}</span>
                           </span>
-                          <span className="flex items-center gap-1 pl-4">
-                            <Trophy size={11} className="shrink-0 text-status-warning" />
+                          <span className="spreadsheet-header-cell">
+                            <Trophy size={11} />
                             <span>{t('stats_header_best')}</span>
                           </span>
                         </div>
@@ -659,20 +659,20 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                         className="spreadsheet-header-row"
                         style={{ gridTemplateColumns: '52px minmax(110px, 25vw) 85px minmax(150px, 1fr) 24px' }}
                       >
-                        <h3 className="spreadsheet-cell-sticky-header flex items-center gap-1 px-3 text-[10px] font-black text-txt-muted whitespace-nowrap">
+                        <h3 className="spreadsheet-cell-sticky-header spreadsheet-header-cell">
                           <CalendarDays size={11} />
                           <span>{t('stats_header_date')}</span>
                         </h3>
-                        <span className="flex items-center gap-1">
-                          <Gamepad2 size={11} className="text-brand-primary" />
+                        <span className="spreadsheet-header-cell">
+                          <Gamepad2 size={11} />
                           <span>{t('stats_header_game')}</span>
                         </span>
-                        <span className="flex items-center gap-1">
-                          <MapPin size={11} className="text-brand-primary" />
+                        <span className="spreadsheet-header-cell">
+                          <MapPin size={11} />
                           <span>{t('stats_header_location')}</span>
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Users size={11} className="text-brand-secondary" />
+                        <span className="spreadsheet-header-cell">
+                          <Users size={11} />
                           <span>{t('stats_header_companions')}</span>
                         </span>
                         <span />
@@ -725,16 +725,16 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                         className="spreadsheet-header-row"
                         style={{ gridTemplateColumns: 'minmax(0, min(150px, 25vw)) 58px max-content' }}
                       >
-                        <h3 className="spreadsheet-cell-sticky-header flex items-center gap-1 px-3 text-[10px] font-black text-txt-muted whitespace-nowrap">
+                        <h3 className="spreadsheet-cell-sticky-header spreadsheet-header-cell">
                           <Gamepad2 size={11} />
                           <span>{t('stats_header_game')}</span>
                         </h3>
-                        <span className="flex items-center gap-1">
-                          <Hash size={11} className="text-brand-primary" />
+                        <span className="spreadsheet-header-cell">
+                          <Hash size={11} />
                           <span>{t('stats_header_win_play_score')}</span>
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Users size={11} className="text-brand-secondary" />
+                        <span className="spreadsheet-header-cell">
+                          <Users size={11} />
                           <span>{t('stats_header_companions')}</span>
                         </span>
                       </div>
@@ -779,16 +779,16 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                       className="spreadsheet-header-row"
                       style={{ gridTemplateColumns: 'minmax(0, min(150px, 25vw)) 48px max-content' }}
                     >
-                      <h3 className="spreadsheet-cell-sticky-header flex items-center gap-1 px-3 text-[10px] font-black text-txt-muted whitespace-nowrap">
+                      <h3 className="spreadsheet-cell-sticky-header spreadsheet-header-cell">
                         <Gamepad2 size={11} />
                         <span>{t('stats_header_game')}</span>
                       </h3>
-                      <span className="flex items-center gap-1">
-                        <Hash size={11} className="text-brand-primary" />
+                      <span className="spreadsheet-header-cell">
+                        <Hash size={11} />
                         <span>{t('stats_header_plays')}</span>
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Users size={11} className="text-brand-secondary" />
+                      <span className="spreadsheet-header-cell">
+                        <Users size={11} />
                         <span>{t('stats_header_players_played')}</span>
                       </span>
                     </div>
@@ -835,13 +835,16 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                       className="spreadsheet-header-row"
                       style={{ gridTemplateColumns: 'minmax(0, min(130px, 25vw)) 48px max-content' }}
                     >
-                      <h3 className="spreadsheet-cell-sticky-header flex items-center gap-1 px-3 text-[10px] font-black text-txt-muted whitespace-nowrap">
+                      <h3 className="spreadsheet-cell-sticky-header spreadsheet-header-cell">
                         <Users size={11} />
                         <span>{t('stats_header_player')}</span>
                       </h3>
-                      <span>{t('stats_header_plays')}</span>
-                      <span className="flex items-center gap-1">
-                        <Gamepad2 size={11} className="text-brand-secondary" />
+                      <span className="spreadsheet-header-cell">
+                        <Hash size={11} />
+                        <span>{t('stats_header_plays')}</span>
+                      </span>
+                      <span className="spreadsheet-header-cell">
+                        <Gamepad2 size={11} />
                         <span>{t('stats_header_recent_games')}</span>
                       </span>
                     </div>

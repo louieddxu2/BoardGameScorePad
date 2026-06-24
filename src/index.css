@@ -18,6 +18,15 @@
     @apply spreadsheet-row sticky top-0 z-20 bg-app-bg-deep border-b border-surface-border/80 font-black text-txt-muted text-[10px] select-none hover:bg-transparent pointer-events-none;
   }
 
+  /* 統計面板所有表頭欄位使用一致的文字與圖示排列 */
+  .spreadsheet-header-cell {
+    @apply min-w-0 flex items-center gap-1 whitespace-nowrap text-[10px] font-black text-txt-muted;
+  }
+
+  .spreadsheet-header-cell > svg {
+    @apply shrink-0 text-txt-muted;
+  }
+
   /* 雙向凍結的左上角交點單元格 */
   .spreadsheet-cell-sticky-header {
     @apply spreadsheet-cell-sticky z-30 bg-app-bg-deep;
