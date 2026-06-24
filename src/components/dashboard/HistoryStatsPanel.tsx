@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { BarChart3, CalendarDays, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Gamepad2, Grid3X3, Hash, MapPin, Minus, Search, Users, Plus, CornerUpLeft, Crown, Calculator, Trophy } from 'lucide-react';
+import { BarChart3, CalendarDays, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Gamepad2, Hash, Images, MapPin, Minus, Search, Users, Plus, CornerUpLeft, Crown, Calculator, Trophy } from 'lucide-react';
 import { HistoryGameEntry, buildHistoryGameEntries, createHistoryPlayerResolver } from '../../utils/historyGameEntries';
 import { buildHistoryStats, filterHistoryEntriesByDateRange, filterHistoryEntriesByStatsFilters, getNextHistoryStatsDateRange, HistoryStatsDateRange, HistoryStatsGame, buildSpecificGameStats } from '../../utils/historyStats';
 import { buildHistoryPlayerEntries, buildSpecificPlayerStats } from '../../utils/historyPlayerEntries';
@@ -271,7 +271,31 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
     { value: STATS_FILTER_ALL, label: allLabel },
     ...locationOptions.map(location => ({ value: location, label: location }))
   ], [allLabel, locationOptions]);
+  const photoGridEntries = useMemo(() => {
+    if (detailView?.type === 'game') {
+      return filteredEntries.filter(entry => entry.gameKey === detailView.key);
+    }
+    if (detailView?.type === 'player') {
+      const playerRecords = filteredRecords.filter(record => (
+        record.players.some(player => resolveHistoryPlayer(player)?.key === detailView.key)
+      ));
+      return buildHistoryGameEntries(playerRecords, { savedPlayers });
+    }
+    return filteredEntries;
+  }, [detailView, filteredEntries, filteredRecords, resolveHistoryPlayer, savedPlayers]);
+  const photoGridCompanionCount = useMemo(() => {
+    if (detailView?.type !== 'player' || !specificPlayerStats) return undefined;
+    return new Set(
+      specificPlayerStats.games.flatMap(game => game.companions.map(companion => companion.key))
+    ).size;
+  }, [detailView, specificPlayerStats]);
+  const photoGridScopeLabel = detailView?.type === 'game'
+    ? specificStats?.gameName
+    : detailView?.type === 'player'
+      ? specificPlayerStats?.name
+      : null;
   const photoGridContextLabel = [
+    photoGridScopeLabel,
     dateRangeLabel,
     activeScoringRuleFilter ? ruleLabel : null,
     activeLocationFilter,
@@ -751,6 +775,23 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
               <div className="flex flex-col justify-start min-w-[420px]">
                 {overviewTab === 'games' ? (
                   <>
+                    <div
+                      className="spreadsheet-header-row"
+                      style={{ gridTemplateColumns: 'minmax(0, min(150px, 25vw)) 48px max-content' }}
+                    >
+                      <h3 className="spreadsheet-cell-sticky-header flex items-center gap-1 px-3 text-[10px] font-black text-txt-muted whitespace-nowrap">
+                        <Gamepad2 size={11} />
+                        <span>{t('stats_header_game')}</span>
+                      </h3>
+                      <span className="flex items-center gap-1">
+                        <Hash size={11} className="text-brand-primary" />
+                        <span>{t('stats_header_plays')}</span>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Users size={11} className="text-brand-secondary" />
+                        <span>{t('stats_header_players_played')}</span>
+                      </span>
+                    </div>
                     {displayedGames.map(game => (
                       <div key={game.key} className="flex flex-col min-w-full w-max">
                       <div
@@ -766,13 +807,11 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                           </span>
                         </h3>
 
-                        <div className="flex items-center justify-start gap-1 text-brand-primary font-mono font-black shrink-0">
-                          <Hash size={13} />
+                        <div className="flex items-center justify-start text-brand-primary font-mono font-black shrink-0">
                           <span>{game.playCount}</span>
                         </div>
 
-                        <div className="flex items-center gap-1.5 text-[11px] text-txt-secondary min-w-max whitespace-nowrap">
-                          <Users size={12} className="shrink-0 text-brand-secondary" />
+                        <div className="flex items-center text-[11px] text-txt-secondary min-w-max whitespace-nowrap">
                           <span className="font-semibold whitespace-nowrap">
                             {game.players.length > 0
                               ? game.players.slice(0, MAX_VISIBLE_STATS_PLAYERS).map(player => player.name).join('、')
@@ -920,10 +959,11 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
 
             <button
               onClick={() => setShowPhotoGrid(true)}
-              className="w-full h-full flex flex-col items-center justify-center transition-all active:brightness-90 bg-brand-primary hover:filter hover:brightness-110 text-white"
+              className="w-full h-full flex flex-col items-center justify-center gap-0.5 transition-all active:brightness-90 bg-brand-primary hover:filter hover:brightness-110 text-white"
               title={t('stats_photo_grid_title')}
             >
-              <Grid3X3 size={26} />
+              <Images size={23} />
+              <span className="text-[10px] font-bold leading-none">{t('stats_photo_recap_action')}</span>
             </button>
             </div>
           </div>
@@ -932,8 +972,11 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
 
       <HistoryPhotoGridShareModal
         isOpen={showPhotoGrid}
-        entries={filteredEntries}
+        entries={photoGridEntries}
         contextLabel={photoGridContextLabel}
+        selectionMode={detailView?.type === 'game' ? 'records' : 'games'}
+        playerCountOverride={photoGridCompanionCount}
+        playerLabelOverride={detailView?.type === 'player' ? t('stats_companions_label') : undefined}
         onClose={() => setShowPhotoGrid(false)}
       />
 

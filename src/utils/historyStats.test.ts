@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { HistorySummary } from './extractDataSummaries';
 import { buildHistoryGameEntries } from './historyGameEntries';
-import { buildHistoryStats, filterHistoryEntriesByDateRange, filterHistoryEntriesByStatsFilters, getNextHistoryStatsDateRange, selectHistoryPhotoGridItems, buildSpecificGameStats } from './historyStats';
+import { buildHistoryStats, filterHistoryEntriesByDateRange, filterHistoryEntriesByStatsFilters, getNextHistoryStatsDateRange, selectHistoryPhotoGridItems, selectSpecificGamePhotoGridItems, buildSpecificGameStats } from './historyStats';
 
 const record = (overrides: Partial<HistorySummary>): HistorySummary => ({
   id: overrides.id || 'h1',
@@ -277,6 +277,23 @@ describe('buildSpecificGameStats', () => {
     expect(stats?.players.map(player => [player.key, player.name])).toEqual([
       ['player:p-alice', 'Alice']
     ]);
+  });
+
+  it('selects recent photographed records for a specific game recap', () => {
+    const [entry] = buildHistoryGameEntries([
+      record({ id: 'new', gameName: 'Game A', endTime: 3000, photoIds: ['new-first', 'new-second'] }),
+      record({ id: 'middle', gameName: 'Game A', endTime: 2000, photoIds: ['middle-first'] }),
+      record({ id: 'old', gameName: 'Game A', endTime: 1000, photoIds: ['old-first'] })
+    ]);
+
+    const items = selectSpecificGamePhotoGridItems(entry, 2);
+
+    expect(items.map(item => [item.recordId, item.photoId])).toEqual([
+      ['new', 'new-first'],
+      ['middle', 'middle-first']
+    ]);
+    expect(items[0].candidatePhotos.map(photo => photo.photoId)).toEqual(['new-first', 'new-second']);
+    expect(items[0].itemKey).toBe(`${entry.gameKey}:record:new`);
   });
 });
 

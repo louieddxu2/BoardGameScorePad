@@ -43,6 +43,7 @@ export interface HistoryStatsFilters {
 }
 
 export interface HistoryPhotoGridItem {
+  itemKey: string;
   recordId: string;
   gameKey: string;
   gameName: string;
@@ -122,12 +123,45 @@ export const selectHistoryPhotoGridItems = (entries: HistoryGameEntry[], limit =
     .filter(entry => entry.firstRecentPhotoId && entry.firstRecentPhotoRecordId)
     .slice(0, limit)
     .map(entry => ({
+      itemKey: entry.gameKey,
       recordId: entry.firstRecentPhotoRecordId!,
       gameKey: entry.gameKey,
       gameName: entry.displayName,
       endTime: entry.latestPlayedAt,
       photoId: entry.firstRecentPhotoId!,
       candidatePhotos: entry.photos
+    }));
+};
+
+export const selectSpecificGamePhotoGridItems = (
+  entry: HistoryGameEntry | undefined,
+  limit = 8
+): HistoryPhotoGridItem[] => {
+  if (!entry) return [];
+
+  const photosByRecord = new Map<string, HistoryGamePhotoEntry[]>();
+  entry.photos.forEach(photo => {
+    const photos = photosByRecord.get(photo.recordId) || [];
+    photos.push(photo);
+    photosByRecord.set(photo.recordId, photos);
+  });
+
+  return Array.from(photosByRecord.entries())
+    .map(([recordId, photos]) => ({
+      recordId,
+      photos: [...photos].sort((a, b) => a.photoIndex - b.photoIndex),
+      endTime: Math.max(...photos.map(photo => photo.endTime))
+    }))
+    .sort((a, b) => b.endTime - a.endTime)
+    .slice(0, limit)
+    .map(({ recordId, photos, endTime }) => ({
+      itemKey: `${entry.gameKey}:record:${recordId}`,
+      recordId,
+      gameKey: entry.gameKey,
+      gameName: entry.displayName,
+      endTime,
+      photoId: photos[0].photoId,
+      candidatePhotos: photos
     }));
 };
 

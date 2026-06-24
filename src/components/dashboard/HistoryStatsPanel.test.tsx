@@ -12,7 +12,20 @@ vi.mock('../../hooks/useModalBackHandler', () => ({
 }));
 
 vi.mock('./HistoryPhotoGridShareModal', () => ({
-  default: () => null
+  default: (props: {
+    isOpen: boolean;
+    entries: Array<{ displayName: string }>;
+    selectionMode?: string;
+    playerCountOverride?: number;
+  }) => props.isOpen ? (
+    <div
+      data-testid="photo-recap"
+      data-selection-mode={props.selectionMode}
+      data-player-count={props.playerCountOverride}
+    >
+      {props.entries.map(entry => entry.displayName).join('、')}
+    </div>
+  ) : null
 }));
 
 const record = (overrides: Partial<HistorySummary>): HistorySummary => ({
@@ -107,5 +120,91 @@ describe('HistoryStatsPanel navigation', () => {
     act(() => detailRegistration?.[1]());
 
     expect(screen.getByTitle('切換至玩家總覽')).toBeInTheDocument();
+  });
+
+  it('scopes photo recaps to the current detail page', () => {
+    const records = [
+      record({
+        id: 'a',
+        gameName: 'Game A',
+        endTime: 2000,
+        players: [
+          { id: 'slot-a1', linkedPlayerId: 'p1', name: 'Alice', color: '#fff', totalScore: 10 },
+          { id: 'slot-a2', linkedPlayerId: 'p2', name: 'Bob', color: '#000', totalScore: 8 }
+        ]
+      }),
+      record({
+        id: 'b',
+        gameName: 'Game B',
+        endTime: 3000,
+        players: [{ id: 'slot-b', linkedPlayerId: 'p1', name: 'Alice', color: '#fff', totalScore: 8 }]
+      })
+    ];
+    const savedPlayers = [
+      { id: 'p1', name: 'Alice' },
+      { id: 'p2', name: 'Bob' }
+    ];
+
+    render(
+      <LanguageProvider>
+        <HistoryStatsPanel
+          entries={buildHistoryGameEntries(records, { savedPlayers })}
+          records={records}
+          savedPlayers={savedPlayers}
+          onSearchClick={vi.fn()}
+        />
+      </LanguageProvider>
+    );
+
+    fireEvent.click(screen.getByText('Game A'));
+    fireEvent.click(screen.getByTitle('照片回顧'));
+
+    expect(screen.getByTestId('photo-recap')).toHaveAttribute('data-selection-mode', 'records');
+    expect(screen.getByTestId('photo-recap')).toHaveTextContent('Game A');
+    expect(screen.getByTestId('photo-recap')).not.toHaveTextContent('Game B');
+  });
+
+  it('scopes player photo recaps to that player and counts unique companions', () => {
+    const records = [
+      record({
+        id: 'a',
+        gameName: 'Game A',
+        endTime: 2000,
+        players: [
+          { id: 'slot-a1', linkedPlayerId: 'p1', name: 'Alice', color: '#fff', totalScore: 10 },
+          { id: 'slot-a2', linkedPlayerId: 'p2', name: 'Bob', color: '#000', totalScore: 8 }
+        ]
+      }),
+      record({
+        id: 'b',
+        gameName: 'Game B',
+        endTime: 3000,
+        players: [{ id: 'slot-b', linkedPlayerId: 'p2', name: 'Bob', color: '#000', totalScore: 8 }]
+      })
+    ];
+    const savedPlayers = [
+      { id: 'p1', name: 'Alice' },
+      { id: 'p2', name: 'Bob' }
+    ];
+
+    render(
+      <LanguageProvider>
+        <HistoryStatsPanel
+          entries={buildHistoryGameEntries(records, { savedPlayers })}
+          records={records}
+          savedPlayers={savedPlayers}
+          onSearchClick={vi.fn()}
+        />
+      </LanguageProvider>
+    );
+
+    fireEvent.click(screen.getByTitle('切換至玩家總覽'));
+    fireEvent.click(screen.getByText('Alice'));
+    fireEvent.click(screen.getByTitle('照片回顧'));
+
+    expect(screen.getByTestId('photo-recap')).toHaveAttribute('data-selection-mode', 'games');
+    expect(screen.getByTestId('photo-recap')).toHaveAttribute('data-player-count', '1');
+    expect(screen.getByTestId('photo-recap')).toHaveTextContent('Game A');
+    expect(screen.getByTestId('photo-recap')).not.toHaveTextContent('Game B');
   });
 });

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Download, Image as ImageIcon, Loader2, Share2, X } from 'lucide-react';
 import { toBlob } from 'html-to-image';
 import { HistoryGameEntry } from '../../utils/historyGameEntries';
-import { buildHistoryStats, selectHistoryPhotoGridItems } from '../../utils/historyStats';
+import { buildHistoryStats, HistoryPhotoGridItem, selectHistoryPhotoGridItems, selectSpecificGamePhotoGridItems } from '../../utils/historyStats';
 import {
   clampHistoryPhotoGridCrop,
   getHistoryPhotoGridBaseSize,
@@ -19,6 +19,7 @@ import { DATA_LIMITS } from '../../dataLimits';
 
 interface LoadedGridPhoto {
   id: string;
+  itemKey: string;
   recordId: string;
   gameKey: string;
   gameName: string;
@@ -39,14 +40,15 @@ interface HistoryPhotoGridShareModalProps {
   isOpen: boolean;
   entries: HistoryGameEntry[];
   contextLabel: string;
+  selectionMode?: 'games' | 'records';
+  playerCountOverride?: number;
+  playerLabelOverride?: string;
   onClose: () => void;
 }
 
 const EXPORT_GRID_WIDTH = 1080;
 const PHOTO_RECAP_TILE_COUNT = 8;
 const PHOTO_RECAP_TILE_ASPECT = 16 / 9;
-type HistoryPhotoGridItem = ReturnType<typeof selectHistoryPhotoGridItems>[number];
-
 const getLimitedCandidatePhotos = (item: HistoryPhotoGridItem) => (
   item.candidatePhotos.slice(0, DATA_LIMITS.QUERY.HISTORY_PHOTO_GRID_CANDIDATES)
 );
@@ -55,7 +57,15 @@ const getTileFrameAspect = (tile: Pick<EditableGridTile, 'imageSize'>): number =
   PHOTO_RECAP_TILE_ASPECT
 );
 
-const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({ isOpen, entries, contextLabel, onClose }) => {
+const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
+  isOpen,
+  entries,
+  contextLabel,
+  selectionMode = 'games',
+  playerCountOverride,
+  playerLabelOverride,
+  onClose
+}) => {
   const { zIndex } = useModalBackHandler(isOpen, onClose, 'history-photo-grid-share');
   const { showToast } = useToast();
   const { t } = useHistoryStatsTranslation();
@@ -74,10 +84,20 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  const gridItems = useMemo(() => selectHistoryPhotoGridItems(entries, PHOTO_RECAP_TILE_COUNT), [entries]);
-  const stats = useMemo(() => buildHistoryStats(entries), [entries]);
-  const gridItemByGameKey = useMemo(() => (
-    new Map(gridItems.map(item => [item.gameKey, item]))
+  const gridItems = useMemo(
+    () => selectionMode === 'records'
+      ? selectSpecificGamePhotoGridItems(entries[0], PHOTO_RECAP_TILE_COUNT)
+      : selectHistoryPhotoGridItems(entries, PHOTO_RECAP_TILE_COUNT),
+    [entries, selectionMode]
+  );
+  const stats = useMemo(() => {
+    const baseStats = buildHistoryStats(entries);
+    return playerCountOverride === undefined
+      ? baseStats
+      : { ...baseStats, playerCount: playerCountOverride };
+  }, [entries, playerCountOverride]);
+  const gridItemByItemKey = useMemo(() => (
+    new Map(gridItems.map(item => [item.itemKey, item]))
   ), [gridItems]);
 
   const stopCropGestureEvent = (event: {
@@ -122,6 +142,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
 
       const loadedPhoto: LoadedGridPhoto = {
         id: photoId,
+        itemKey: item.itemKey,
         recordId: candidate.recordId,
         gameKey: item.gameKey,
         gameName: item.gameName,
@@ -207,7 +228,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
     if (!tile) return;
     setCropDraft({ ...tile, crop: { ...tile.crop }, tileIndex });
 
-    const item = gridItemByGameKey.get(tile.gameKey);
+    const item = gridItemByItemKey.get(tile.itemKey);
     if (!item) return;
 
     getLimitedCandidatePhotos(item).forEach(candidate => {
@@ -375,16 +396,16 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
 
   const cropPhotoOptions = cropDraft
     ? (() => {
-      const item = gridItemByGameKey.get(cropDraft.gameKey);
+      const item = gridItemByItemKey.get(cropDraft.itemKey);
       if (!item) return [];
       const candidateIds = new Set(getLimitedCandidatePhotos(item).map(photo => photo.photoId));
-      return photoPool.filter(photo => photo.gameKey === cropDraft.gameKey && candidateIds.has(photo.id));
+      return photoPool.filter(photo => photo.itemKey === cropDraft.itemKey && candidateIds.has(photo.id));
     })()
     : [];
   const statLabels = {
     plays: t('stats_count_label'),
     games: t('stats_games_label'),
-    players: t('stats_players_label')
+    players: playerLabelOverride || t('stats_players_label')
   };
 
   return (
@@ -396,7 +417,11 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
           </div>
           <div className="min-w-0">
             <h3 className="text-base font-bold text-txt-title truncate">{t('grid_modal_title')}</h3>
-            <p className="text-[11px] text-txt-muted">{cropDraft ? t('grid_crop_hint') : t('grid_modal_subtitle')}</p>
+            <p className="text-[11px] text-txt-muted">
+              {cropDraft
+                ? t('grid_crop_hint')
+                : t(selectionMode === 'records' ? 'grid_modal_subtitle_records' : 'grid_modal_subtitle')}
+            </p>
           </div>
         </div>
         <button onClick={() => cropDraft ? setCropDraft(null) : onClose()} className="p-2 rounded-full bg-modal-bg-elevated text-txt-secondary hover:text-txt-title transition-colors">
@@ -526,6 +551,7 @@ const createTileFromPhoto = (photo: LoadedGridPhoto): EditableGridTile => ({
 
 const toTile = (draft: CropDraft): EditableGridTile => ({
   id: draft.id,
+  itemKey: draft.itemKey,
   recordId: draft.recordId,
   gameKey: draft.gameKey,
   gameName: draft.gameName,
