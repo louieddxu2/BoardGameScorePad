@@ -53,6 +53,37 @@ describe('historyPlayerEntries', () => {
       ['Game B', 1, 0],
       ['Game A', 1, 1]
     ]);
+    expect(players[0].recentGames.map(game => game.name)).toEqual(['Game B', 'Game A']);
+  });
+
+  it('orders overview recent games by latest play rather than play count', () => {
+    const records = [
+      record({
+        id: 'a1',
+        gameName: 'Frequently Played',
+        endTime: 1000,
+        players: [{ id: 'slot-a1', linkedPlayerId: 'p1', name: 'Alice', color: '#fff', totalScore: 1 }]
+      }),
+      record({
+        id: 'a2',
+        gameName: 'Frequently Played',
+        endTime: 2000,
+        players: [{ id: 'slot-a2', linkedPlayerId: 'p1', name: 'Alice', color: '#fff', totalScore: 2 }]
+      }),
+      record({
+        id: 'b1',
+        gameName: 'Recently Played',
+        endTime: 3000,
+        players: [{ id: 'slot-b1', linkedPlayerId: 'p1', name: 'Alice', color: '#fff', totalScore: 3 }]
+      })
+    ];
+
+    const [player] = buildHistoryPlayerEntries(records, {
+      savedPlayers: [{ id: 'p1', name: 'Alice' }]
+    });
+
+    expect(player.games.map(game => game.name)).toEqual(['Frequently Played', 'Recently Played']);
+    expect(player.recentGames.map(game => game.name)).toEqual(['Recently Played', 'Frequently Played']);
   });
 
   it('uses saved-player name matching and excludes unresolved temporary players', () => {

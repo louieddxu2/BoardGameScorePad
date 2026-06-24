@@ -68,6 +68,7 @@ describe('HistoryStatsPanel navigation', () => {
 
     fireEvent.click(screen.getByTitle('切換至玩家總覽'));
     expect(screen.getByTitle('切換至遊戲總覽')).toBeInTheDocument();
+    expect(screen.getByText('Game B、Game A')).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Alice'));
     fireEvent.click(screen.getByText('Game A'));

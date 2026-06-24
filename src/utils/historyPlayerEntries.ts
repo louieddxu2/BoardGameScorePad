@@ -21,6 +21,7 @@ export interface HistoryPlayerEntry {
   gameCount: number;
   latestPlayedAt: number;
   games: HistoryPlayerGameEntry[];
+  recentGames: HistoryPlayerGameEntry[];
   recordIds: string[];
 }
 
@@ -40,6 +41,12 @@ type MutablePlayerEntry = {
 const sortGames = (a: HistoryPlayerGameEntry, b: HistoryPlayerGameEntry) => {
   if (b.playCount !== a.playCount) return b.playCount - a.playCount;
   if (b.latestPlayedAt !== a.latestPlayedAt) return b.latestPlayedAt - a.latestPlayedAt;
+  return a.name.localeCompare(b.name);
+};
+
+const sortGamesByRecent = (a: HistoryPlayerGameEntry, b: HistoryPlayerGameEntry) => {
+  if (b.latestPlayedAt !== a.latestPlayedAt) return b.latestPlayedAt - a.latestPlayedAt;
+  if (b.playCount !== a.playCount) return b.playCount - a.playCount;
   return a.name.localeCompare(b.name);
 };
 
@@ -97,15 +104,19 @@ export const buildHistoryPlayerEntries = (
     });
   });
 
-  return Array.from(playerMap.values()).map(player => ({
-    key: player.key,
-    name: player.name,
-    playCount: player.playCount,
-    gameCount: player.games.size,
-    latestPlayedAt: player.latestPlayedAt,
-    games: Array.from(player.games.values()).sort(sortGames),
-    recordIds: player.recordIds
-  })).sort(sortPlayers);
+  return Array.from(playerMap.values()).map(player => {
+    const games = Array.from(player.games.values());
+    return {
+      key: player.key,
+      name: player.name,
+      playCount: player.playCount,
+      gameCount: player.games.size,
+      latestPlayedAt: player.latestPlayedAt,
+      games: [...games].sort(sortGames),
+      recentGames: [...games].sort(sortGamesByRecent),
+      recordIds: player.recordIds
+    };
+  }).sort(sortPlayers);
 };
 
 export const buildSpecificPlayerStats = (

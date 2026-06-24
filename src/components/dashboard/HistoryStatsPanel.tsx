@@ -23,6 +23,7 @@ interface HistoryStatsPanelProps {
 const BOTTOM_ROW_HEIGHT_CLASS = 'h-[60px]';
 const ACTION_ROW_WIDTH_CLASS = 'w-[118px] sm:w-[140px]';
 const MAX_VISIBLE_STATS_PLAYERS = 10;
+const MAX_VISIBLE_RECENT_GAMES = 10;
 const STATS_FILTER_ALL = '__all__';
 const SCORING_RULE_ORDER: ScoringRule[] = ['HIGHEST_WINS', 'LOWEST_WINS', 'COOP', 'COMPETITIVE_NO_SCORE', 'COOP_NO_SCORE'];
 const DATE_RANGE_LABEL_KEYS: Record<HistoryStatsDateRange, 'stats_range_all' | 'stats_range_month' | 'stats_range_quarter' | 'stats_range_year'> = {
@@ -204,6 +205,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
       gameCount: 0,
       latestPlayedAt: 0,
       games: [],
+      recentGames: [],
       records: [],
       recordIds: []
     };
@@ -781,30 +783,37 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                   <>
                     <div
                       className="spreadsheet-header-row"
-                      style={{ gridTemplateColumns: 'minmax(0, min(130px, 25vw)) 52px 52px 72px' }}
+                      style={{ gridTemplateColumns: 'minmax(0, min(130px, 25vw)) 48px max-content' }}
                     >
                       <h3 className="spreadsheet-cell-sticky-header flex items-center gap-1 px-3 text-[10px] font-black text-txt-muted whitespace-nowrap">
                         <Users size={11} />
                         <span>{t('stats_header_player')}</span>
                       </h3>
                       <span>{t('stats_header_plays')}</span>
-                      <span>{t('stats_header_games')}</span>
-                      <span>{t('stats_header_recent')}</span>
+                      <span className="flex items-center gap-1">
+                        <Gamepad2 size={11} className="text-brand-secondary" />
+                        <span>{t('stats_header_recent_games')}</span>
+                      </span>
                     </div>
                     {displayedPlayers.map(player => (
                       <div
                         key={player.key}
                         onClick={() => handlePlayerSelect(player.key)}
                         className="spreadsheet-row cursor-pointer hover:bg-surface-hover"
-                        style={{ gridTemplateColumns: 'minmax(0, min(130px, 25vw)) 52px 52px 72px' }}
+                        style={{ gridTemplateColumns: 'minmax(0, min(130px, 25vw)) 48px max-content' }}
                       >
                         <h3 className="spreadsheet-cell-sticky px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap flex items-center">
                           {player.name}
                         </h3>
                         <span className="text-xs font-black font-mono text-brand-primary flex items-center">{player.playCount}</span>
-                        <span className="text-xs font-black font-mono text-txt-secondary flex items-center">{player.gameCount}</span>
-                        <span className="text-xs font-mono text-txt-muted flex items-center">
-                          {new Date(player.latestPlayedAt).toLocaleDateString(language, { month: '2-digit', day: '2-digit' })}
+                        <span className="text-[11px] font-semibold text-txt-secondary flex items-center whitespace-nowrap">
+                          {player.recentGames
+                            .slice(0, MAX_VISIBLE_RECENT_GAMES)
+                            .map(game => game.name)
+                            .join('、')}
+                          {player.recentGames.length > MAX_VISIBLE_RECENT_GAMES
+                            ? ` +${player.recentGames.length - MAX_VISIBLE_RECENT_GAMES}`
+                            : ''}
                         </span>
                       </div>
                     ))}
