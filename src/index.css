@@ -419,6 +419,47 @@ html[data-theme='light'] {
     padding-top: var(--app-safe-area-top);
   }
 
+  .safe-area-top-padding {
+    padding-top: max(1rem, var(--app-safe-area-top));
+  }
+
+  .safe-area-top-compact {
+    padding-top: max(0.5rem, var(--app-safe-area-top));
+  }
+
+  .safe-area-top-medium {
+    padding-top: max(0.75rem, var(--app-safe-area-top));
+  }
+
+  .safe-area-bottom-padding {
+    padding-bottom: max(1rem, var(--app-safe-area-bottom));
+  }
+
+  .safe-area-bottom-medium {
+    padding-bottom: max(0.75rem, var(--app-safe-area-bottom));
+  }
+
+  .safe-area-screen-padding {
+    padding-top: max(1rem, var(--app-safe-area-top));
+    padding-right: max(1rem, var(--app-safe-area-right));
+    padding-bottom: max(1rem, var(--app-safe-area-bottom));
+    padding-left: max(1rem, var(--app-safe-area-left));
+  }
+
+  .safe-area-screen-padding-5 {
+    padding-top: max(1.25rem, var(--app-safe-area-top));
+    padding-right: max(1.25rem, var(--app-safe-area-right));
+    padding-bottom: max(1.25rem, var(--app-safe-area-bottom));
+    padding-left: max(1.25rem, var(--app-safe-area-left));
+  }
+
+  .safe-area-screen-padding-6 {
+    padding-top: max(1.5rem, var(--app-safe-area-top));
+    padding-right: max(1.5rem, var(--app-safe-area-right));
+    padding-bottom: max(1.5rem, var(--app-safe-area-bottom));
+    padding-left: max(1.5rem, var(--app-safe-area-left));
+  }
+
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 

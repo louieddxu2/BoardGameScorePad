@@ -302,7 +302,7 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
 
   return (
     <div className="fixed inset-0 z-[70] bg-app-bg flex flex-col">
-      <div className="flex items-center justify-between p-4 modal-bg-elevated border-b border-surface-border flex-none z-50">
+      <div className="safe-area-top-padding flex items-center justify-between p-4 modal-bg-elevated border-b border-surface-border flex-none z-50">
         <button onClick={onClose} className="p-2 text-txt-muted hover:text-txt-primary transition-colors"><X size={24} /></button>
         <h2 className="text-txt-primary font-bold">{t('scan_title')}</h2>
         <div className="w-10"></div>
@@ -360,7 +360,7 @@ const PhotoScanner: React.FC<PhotoScannerProps> = ({ onClose, onConfirm, initial
       </div>
 
       {imageSrc && !showCamera && (
-        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 modal-bg-elevated/60 backdrop-blur text-txt-primary text-xs rounded-full pointer-events-none flex items-center gap-2 z-40 border border-surface-border/50 shadow-lg whitespace-nowrap">
+        <div className="absolute left-1/2 -translate-x-1/2 px-4 py-2 modal-bg-elevated/60 backdrop-blur text-txt-primary text-xs rounded-full pointer-events-none flex items-center gap-2 z-40 border border-surface-border/50 shadow-lg whitespace-nowrap" style={{ bottom: 'calc(6rem + var(--app-safe-area-bottom))' }}>
           <Move size={12} /> {t('scan_drag_hint')}
         </div>
       )}

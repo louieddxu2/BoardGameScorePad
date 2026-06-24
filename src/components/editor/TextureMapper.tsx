@@ -461,7 +461,7 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
         )}
 
         {showImportModal && <ImportTemplateModal allTemplates={allTemplates} onSelect={handleTemplateSelect} onClose={() => setShowImportModal(false)} />}
-        <header className="flex-none modal-bg-elevated border-b border-surface-border p-2 flex items-center justify-between z-50 shadow-sm">
+        <header className="safe-area-top-compact flex-none modal-bg-elevated border-b border-surface-border p-2 flex items-center justify-between z-50 shadow-sm">
           <button onClick={onCancel} className="p-2 text-txt-muted hover:text-txt-primary hover:modal-bg-recessed rounded-lg transition-all active:scale-90 shrink-0"><ArrowLeft size={20} /></button>
           <div className="flex-1 px-3 flex flex-col items-center justify-center overflow-hidden">
             <span className="text-[10px] font-bold text-brand-primary uppercase tracking-wider">{phase === 'grid' ? t('mapper_step_1') : t('mapper_step_2')}</span>
@@ -471,7 +471,7 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
         </header>
 
         <main className="flex-1 relative bg-app-bg overflow-hidden touch-none select-none" ref={containerRef} onMouseDown={(e) => handlePointerDown(e, 'bg')} onTouchStart={(e) => handlePointerDown(e, 'bg')} onWheel={handleWheel}>
-          <div className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 modal-bg-elevated/60 backdrop-blur text-txt-primary text-xs rounded-full pointer-events-none flex items-center gap-2 z-40 border border-surface-border/50 shadow-lg">
+          <div className="absolute left-1/2 -translate-x-1/2 px-4 py-2 modal-bg-elevated/60 backdrop-blur text-txt-primary text-xs rounded-full pointer-events-none flex items-center gap-2 z-40 border border-surface-border/50 shadow-lg" style={{ bottom: 'calc(6rem + var(--app-safe-area-bottom))' }}>
             <Move size={12} /> {t('mapper_interaction_hint')}
           </div>
 
@@ -488,7 +488,7 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
           </div>
         </main>
 
-        <footer className="flex-none p-4 modal-bg-elevated border-t border-surface-border flex items-center justify-between z-50">
+        <footer className="safe-area-bottom-padding flex-none p-4 modal-bg-elevated border-t border-surface-border flex items-center justify-between z-50">
           {phase === 'grid' ? (
             <>
               <div className="flex items-center gap-4">

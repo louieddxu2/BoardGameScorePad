@@ -24,7 +24,7 @@ export const InAppBrowserGuide: React.FC = () => {
     if (!isInApp) return null;
 
     return (
-        <div className="fixed inset-0 w-screen h-screen z-[999999] flex items-center justify-center p-5 box-border bg-black/50 animate-in fade-in duration-500 backdrop-blur-sm">
+        <div className="safe-area-screen-padding-5 fixed inset-0 w-screen h-screen z-[999999] flex items-center justify-center p-5 box-border bg-black/50 animate-in fade-in duration-500 backdrop-blur-sm">
             {/* Modal Container - Max width 2/3 of screen */}
             <div className="bg-surface-bg rounded-3xl p-6 w-[80%] max-w-[400px] text-center shadow-2xl animate-in zoom-in-95 duration-300 border border-surface-border relative">
 

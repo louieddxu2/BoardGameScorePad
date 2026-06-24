@@ -235,7 +235,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
     };
 
     let containerClass = "fixed inset-0 bg-black flex ";
-    let controlsContainerClass = "flex-none bg-black flex items-center justify-between p-4 safe-area-bottom ";
+    let controlsContainerClass = "flex-none bg-black flex items-center justify-between p-4 safe-area-screen-padding ";
 
     if (isLandscapeLayout) {
         if (rotation === -90) {
@@ -264,7 +264,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
                 />
 
                 {/* Top Bar (Overlay on Video) */}
-                <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start bg-gradient-to-b from-black/60 to-transparent z-10 pointer-events-none">
+                <div className="safe-area-top-padding absolute top-0 left-0 right-0 p-4 flex justify-between items-start bg-gradient-to-b from-black/60 to-transparent z-10 pointer-events-none">
                     <div className="pointer-events-auto">
                         <button onClick={onClose} className="p-3 bg-black/40 text-white rounded-full backdrop-blur-md active:scale-95 transition-transform" style={iconStyle}>
                             <X size={24} />

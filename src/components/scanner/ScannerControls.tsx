@@ -24,7 +24,7 @@ const ScannerControls: React.FC<ScannerControlsProps> = ({
 }) => {
     const { t } = useScannerTranslation();
     return (
-        <footer className="p-4 modal-bg-elevated border-t border-surface-border flex items-center justify-between flex-none z-50">
+        <footer className="safe-area-bottom-padding p-4 modal-bg-elevated border-t border-surface-border flex items-center justify-between flex-none z-50">
             <div className="flex items-center gap-4">
                 <button
                     onClick={onToggleSnap}

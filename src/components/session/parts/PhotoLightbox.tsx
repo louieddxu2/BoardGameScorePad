@@ -282,7 +282,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
             )}
 
             {/* Header Toolbar */}
-            <div className="flex-none flex justify-between items-center p-4 bg-surface-recessed border-b border-surface-border z-10 h-16">
+            <div className="safe-area-top-padding flex-none flex justify-between items-center p-4 bg-surface-recessed border-b border-surface-border z-10 min-h-16">
                 <button onClick={onClose} className="p-2 bg-surface-recessed rounded-full text-txt-muted hover:text-txt-title border border-surface-border transition-colors">
                     <X size={24} />
                 </button>
@@ -353,7 +353,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
 
             {/* Anonymous Settings Panel (Floating) */}
             {isAnonPanelOpen && overlayData && (
-                <div className="absolute bottom-24 left-4 right-4 bg-modal-bg-elevated/95 backdrop-blur-md border border-surface-border rounded-2xl p-4 z-30 shadow-2xl animate-in slide-in-from-bottom-5">
+                <div className="absolute left-4 right-4 bg-modal-bg-elevated/95 backdrop-blur-md border border-surface-border rounded-2xl p-4 z-30 shadow-2xl animate-in slide-in-from-bottom-5" style={{ bottom: 'calc(6rem + var(--app-safe-area-bottom))' }}>
                     <div className="flex justify-between items-center mb-3">
                         <span className="text-xs font-bold text-txt-muted uppercase">{t('lightbox_anon_hint')}</span>
                         <button onClick={() => setIsAnonPanelOpen(false)} className="p-1 bg-surface-recessed rounded-full text-txt-secondary"><X size={14} /></button>
@@ -389,7 +389,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
             )}
 
             {/* Footer Controls - Reorganized */}
-            <div className="flex-none px-4 py-3 bg-surface-recessed border-t border-surface-border z-20 flex items-center justify-between h-20 gap-4">
+            <div className="safe-area-bottom-medium flex-none px-4 py-3 bg-surface-recessed border-t border-surface-border z-20 flex items-center justify-between min-h-20 gap-4">
 
                 {/* Left Group: Config & Show */}
                 <div className="flex items-center gap-2">

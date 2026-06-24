@@ -132,7 +132,7 @@ const ScanPreview: React.FC<ScanPreviewProps> = ({ imageSrc, template, onBack, o
 
     return (
         <div className="fixed inset-0 z-[70] bg-app-bg flex flex-col">
-            <header className="flex-none p-4 modal-bg-elevated border-b border-surface-border flex justify-center items-center z-50 shadow-sm">
+            <header className="safe-area-top-padding flex-none p-4 modal-bg-elevated border-b border-surface-border flex justify-center items-center z-50 shadow-sm">
                 <h2 className="text-txt-primary font-bold">{t('scan_preview_title')}</h2>
             </header>
 
@@ -162,7 +162,7 @@ const ScanPreview: React.FC<ScanPreviewProps> = ({ imageSrc, template, onBack, o
                 </div>
             </main>
 
-            <footer className="flex-none w-full p-4 modal-bg-elevated border-t border-surface-border flex items-center justify-between z-50">
+            <footer className="safe-area-bottom-padding flex-none w-full p-4 modal-bg-elevated border-t border-surface-border flex items-center justify-between z-50">
                 <button onClick={onBack} className="px-4 py-3 modal-bg-recessed hover:modal-bg-elevated text-txt-primary rounded-xl border border-surface-border font-bold text-sm active:scale-95 transition-all">{t('scan_btn_back')}</button>
 
                 <div className="flex items-center gap-2">

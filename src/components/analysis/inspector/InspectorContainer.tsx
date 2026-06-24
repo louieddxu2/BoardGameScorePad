@@ -76,7 +76,7 @@ const InspectorContainer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <div className="fixed inset-0 z-[100] bg-app-bg flex flex-col animate-in fade-in duration-200">
 
             {/* Header */}
-            <div className="flex-none modal-bg-elevated p-3 border-b border-surface-border flex justify-between items-center shadow-md z-20">
+            <div className="safe-area-top-medium flex-none modal-bg-elevated p-3 border-b border-surface-border flex justify-between items-center shadow-md z-20">
                 <div className="flex items-center gap-3">
                     <div className="bg-brand-primary/10 p-2 rounded-lg border border-brand-primary/20">
                         <Database size={18} className="text-brand-primary" />

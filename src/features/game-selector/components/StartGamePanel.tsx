@@ -78,13 +78,14 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
 
 
     const containerLayoutClass = isAdvancedMode
-        ? "inset-0 top-[56px]"
+        ? "inset-0 top-[calc(56px+var(--app-safe-area-top))]"
         : "bottom-0 left-0 right-0 h-[220px]";
 
     return (
         <div
             ref={ref}
             className={`fixed z-40 flex flex-row items-end pointer-events-none transition-all duration-300 ease-in-out ${containerLayoutClass}`}
+            style={{ bottom: 'var(--bottom-ui-safe-gap)' }}
         >
 
             {/* --- LEFT: Game List --- */}

@@ -253,7 +253,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
   const isPanelExpanded = isExpanded && !isSearchKeyboardOpen;
   const panelLayoutClass = isSearchKeyboardOpen
     ? 'bottom-0 left-0 right-0 h-[220px]'
-    : (isExpanded ? 'inset-0 top-[56px]' : 'bottom-0 left-0 right-0 h-[45dvh]');
+    : (isExpanded ? 'inset-0 top-[calc(56px+var(--app-safe-area-top))]' : 'bottom-0 left-0 right-0 h-[45dvh]');
   const dateRangeLabel = t(DATE_RANGE_LABEL_KEYS[dateRange]);
   const ruleLabel = activeScoringRuleFilter
     ? t(`rule_${activeScoringRuleFilter}` as any)
@@ -318,7 +318,10 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
     <>
       <div
         className={`fixed z-40 flex flex-col pointer-events-none transition-all duration-300 ease-in-out ${panelLayoutClass}`}
-        style={detailView && zIndex ? { zIndex } : undefined}
+        style={{
+          bottom: 'var(--bottom-ui-safe-gap)',
+          ...(detailView && zIndex ? { zIndex } : {}),
+        }}
       >
         <button
           onClick={() => setIsExpanded(prev => !prev)}

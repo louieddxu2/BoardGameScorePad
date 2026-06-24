@@ -155,7 +155,7 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
             )}
 
             {/* Header */}
-            <div className="flex-none bg-modal-bg p-3 border-b border-modal-border flex items-center justify-between z-10 gap-2">
+            <div className="safe-area-top-medium flex-none bg-modal-bg p-3 border-b border-modal-border flex items-center justify-between z-10 gap-2">
                 <div className="flex items-center gap-2 overflow-hidden">
                     <div className="p-2 bg-brand-secondary/10 rounded-lg shrink-0">
                         <ImageIcon size={20} className="text-brand-secondary" />
@@ -186,7 +186,7 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
             </div>
 
             {/* Grid Content */}
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-4 safe-area-bottom-padding">
                 {loading && images.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 text-txt-muted gap-2">
                         <Loader2 size={32} className="animate-spin text-brand-secondary" />

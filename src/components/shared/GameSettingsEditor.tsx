@@ -68,7 +68,7 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ isOpen, templat
             style={{ zIndex }}
         >
             {/* Header */}
-            <header className="flex items-center justify-between p-4 bg-app-bg border-b border-surface-border flex-none z-20">
+            <header className="safe-area-top-padding flex items-center justify-between p-4 bg-app-bg border-b border-surface-border flex-none z-20">
                 <div className="flex items-center gap-2">
                     <div className="bg-surface-bg p-2 rounded text-brand-primary"><Settings size={20} /></div>
                     <div>
@@ -195,7 +195,7 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ isOpen, templat
             </main>
 
             {/* Footer */}
-            <footer className="p-4 bg-app-bg border-t border-surface-border flex-none mt-auto">
+            <footer className="safe-area-bottom-padding p-4 bg-app-bg border-t border-surface-border flex-none mt-auto">
                 <button
                     onClick={handleSave}
                     className="w-full py-3 bg-brand-primary-deep hover:bg-brand-primary text-white font-bold rounded-xl shadow-lg shadow-brand-primary/30 flex items-center justify-center gap-2 transition-transform active:scale-95"

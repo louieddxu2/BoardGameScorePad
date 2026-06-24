@@ -137,6 +137,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
     }, [editedCol.name]);
 
     const { isKeyboardOpen, offset } = useKeyboardStatus();
+    const bottomOffset = isKeyboardOpen ? `${offset}px` : 'var(--bottom-ui-safe-gap)';
 
     const hasUnsavedChanges = () => JSON.stringify(editedCol) !== initialStringifiedRef.current;
 
@@ -368,7 +369,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
     }
 
     return (
-        <div className="fixed inset-0 z-[70] bg-app-bg-deep flex flex-col animate-in slide-in-from-bottom-5" style={{ paddingBottom: offset }}>
+        <div className="fixed inset-0 z-[70] bg-app-bg-deep flex flex-col animate-in slide-in-from-bottom-5" style={{ paddingBottom: bottomOffset }}>
 
 
             {showLayoutEditor && (
@@ -387,7 +388,10 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
             )}
 
             {/* Header: Redesigned for better airiness */}
-            <header className="flex items-center justify-between px-5 py-6 bg-modal-bg flex-none z-20">
+            <header
+                className="flex items-center justify-between px-5 py-6 bg-modal-bg flex-none z-20"
+                style={{ paddingTop: 'calc(1.5rem + var(--app-safe-area-top))' }}
+            >
                 <div className="flex items-center gap-3">
                     <div className="bg-modal-bg-elevated p-2.5 rounded-xl shadow-sm text-brand-primary border border-surface-border"><Settings size={22} /></div>
                     <div><h2 className="text-txt-primary font-black text-xl leading-tight">{t('col_edit_title')}</h2><p className="text-[10px] font-bold text-txt-muted uppercase tracking-wider">{t('col_edit_subtitle')}</p></div>
@@ -492,7 +496,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                 <div className="p-4 pb-4">{renderTabContent()}</div>
             </main>
             {!isKeyboardOpen && (
-                <footer className="flex-none p-4 bg-modal-bg/80 backdrop-blur-sm border-t border-surface-border" style={{ paddingBottom: `calc(1rem + ${offset}px)` }}>
+                <footer className="flex-none p-4 bg-modal-bg/80 backdrop-blur-sm border-t border-surface-border">
                     <button onClick={handleSave} className="w-full py-3 bg-brand-primary-deep hover:bg-brand-primary text-white font-bold rounded-xl shadow-lg shadow-brand-primary/50 flex items-center justify-center gap-2"><Save size={20} /> {t('col_btn_save')}</button>
                 </footer>
             )}

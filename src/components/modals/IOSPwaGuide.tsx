@@ -22,7 +22,7 @@ export const IOSPwaGuide: React.FC<IOSPwaGuideProps> = ({ onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 w-screen h-screen z-[999999] flex items-center justify-center p-5 box-border bg-black/50 animate-in fade-in duration-500 backdrop-blur-sm">
+        <div className="safe-area-screen-padding-5 fixed inset-0 w-screen h-screen z-[999999] flex items-center justify-center p-5 box-border bg-black/50 animate-in fade-in duration-500 backdrop-blur-sm">
             <div className="bg-surface-bg rounded-3xl p-6 w-[90%] max-w-[400px] text-center shadow-2xl animate-in zoom-in-95 duration-300 border border-surface-border relative">
 
                 <div className="w-16 h-16 bg-brand-primary/10 rounded-2xl flex items-center justify-center text-brand-primary mx-auto mb-4">

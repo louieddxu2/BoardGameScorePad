@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getPlatformEnvironment } from './platformEnvironment';
+import { applyPlatformEnvironmentAttributes, getPlatformEnvironment } from './platformEnvironment';
 
 describe('getPlatformEnvironment', () => {
   const iphoneSafari =
@@ -41,5 +41,25 @@ describe('getPlatformEnvironment', () => {
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 
     expect(getPlatformEnvironment(ipadDesktopUA, false, false, true).isIOS).toBe(true);
+  });
+
+  it('keeps Android platform attributes outside the iOS safe-area rules', () => {
+    const root = document.createElement('html');
+    const originalUserAgent = navigator.userAgent;
+
+    Object.defineProperty(navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36',
+    });
+
+    applyPlatformEnvironmentAttributes(root);
+
+    expect(root.dataset.ios).toBe('false');
+    expect(root.dataset.iosSafariBrowser).toBe('false');
+
+    Object.defineProperty(navigator, 'userAgent', {
+      configurable: true,
+      value: originalUserAgent,
+    });
   });
 });

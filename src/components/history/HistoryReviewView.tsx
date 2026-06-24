@@ -326,7 +326,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
             )}
 
             {/* --- Header --- */}
-            <div className="safe-area-top flex-none bg-app-bg px-2 pb-2 flex items-center justify-between border-b border-surface-border shadow-md z-20">
+            <div className="safe-area-top-compact flex-none bg-app-bg px-2 pb-2 flex items-center justify-between border-b border-surface-border shadow-md z-20">
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => window.history.back()}

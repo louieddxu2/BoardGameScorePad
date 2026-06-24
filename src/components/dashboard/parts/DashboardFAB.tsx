@@ -30,8 +30,7 @@ const DashboardFAB: React.FC<DashboardFABProps> = ({ onClick, isVisible, mode = 
         width: '56px',
         height: '56px',
         right: '17px',
-        bottom: '4px',
-        // 不使用 safe-area-inset，以確保與 fixed bottom-0 的面板按鈕在視覺上重疊
+        bottom: 'calc(4px + var(--bottom-ui-safe-gap))',
       }}
     >
       {mode === 'stats'
