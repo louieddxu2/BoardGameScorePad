@@ -86,6 +86,44 @@ describe('historyPlayerEntries', () => {
     expect(player.recentGames.map(game => game.name)).toEqual(['Recently Played', 'Frequently Played']);
   });
 
+  it('collects per-game companions by resolved player id', () => {
+    const records = [
+      record({
+        id: 'h1',
+        gameName: 'Game A',
+        endTime: 1000,
+        players: [
+          { id: 'slot-a1', linkedPlayerId: 'p1', name: 'Alice', color: '#fff', totalScore: 1 },
+          { id: 'slot-b1', linkedPlayerId: 'p2', name: 'Bob', color: '#000', totalScore: 2 }
+        ]
+      }),
+      record({
+        id: 'h2',
+        gameName: 'Game A',
+        endTime: 2000,
+        players: [
+          { id: 'slot-a2', linkedPlayerId: 'p1', name: 'Alice', color: '#fff', totalScore: 3 },
+          { id: 'slot-b2', linkedPlayerId: 'p2', name: 'Bobby', color: '#000', totalScore: 4 },
+          { id: 'slot-c2', linkedPlayerId: 'p3', name: 'Carol', color: '#333', totalScore: 5 }
+        ]
+      })
+    ];
+
+    const players = buildHistoryPlayerEntries(records, {
+      savedPlayers: [
+        { id: 'p1', name: 'Alice' },
+        { id: 'p2', name: 'Bob' },
+        { id: 'p3', name: 'Carol' }
+      ]
+    });
+    const alice = players.find(player => player.key === 'player:p1');
+
+    expect(alice?.games[0].companions.map(companion => [companion.key, companion.name, companion.playCount])).toEqual([
+      ['player:p2', 'Bob', 2],
+      ['player:p3', 'Carol', 1]
+    ]);
+  });
+
   it('uses saved-player name matching and excludes unresolved temporary players', () => {
     const players = buildHistoryPlayerEntries([
       record({

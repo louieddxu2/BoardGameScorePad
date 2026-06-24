@@ -84,8 +84,10 @@ export const historyStatsTranslations = {
     stats_header_games: '遊戲數',
     stats_header_recent_games: '最近玩過的遊戲',
     stats_header_wins: '勝場',
+    stats_header_win_play_score: '勝／局',
     stats_header_recent: '最近',
     stats_header_companions: '同桌玩家',
+    stats_no_companions: '無其他玩家',
   },
   'en': {
     stats_empty_date: 'No records',
@@ -170,8 +172,10 @@ export const historyStatsTranslations = {
     stats_header_games: 'Games',
     stats_header_recent_games: 'Recently played',
     stats_header_wins: 'Wins',
+    stats_header_win_play_score: 'W/P',
     stats_header_recent: 'Recent',
     stats_header_companions: 'Played with',
+    stats_no_companions: 'No other players',
   }
 };
 

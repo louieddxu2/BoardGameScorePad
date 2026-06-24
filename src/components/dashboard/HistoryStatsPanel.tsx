@@ -24,6 +24,7 @@ const BOTTOM_ROW_HEIGHT_CLASS = 'h-[60px]';
 const ACTION_ROW_WIDTH_CLASS = 'w-[118px] sm:w-[140px]';
 const MAX_VISIBLE_STATS_PLAYERS = 10;
 const MAX_VISIBLE_RECENT_GAMES = 10;
+const MAX_VISIBLE_GAME_COMPANIONS = 10;
 const STATS_FILTER_ALL = '__all__';
 const SCORING_RULE_ORDER: ScoringRule[] = ['HIGHEST_WINS', 'LOWEST_WINS', 'COOP', 'COMPETITIVE_NO_SCORE', 'COOP_NO_SCORE'];
 const DATE_RANGE_LABEL_KEYS: Record<HistoryStatsDateRange, 'stats_range_all' | 'stats_range_month' | 'stats_range_quarter' | 'stats_range_year'> = {
@@ -698,7 +699,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                     <div className="flex flex-col min-w-full w-max">
                       <div
                         className="spreadsheet-header-row"
-                        style={{ gridTemplateColumns: 'minmax(0, min(150px, 25vw)) 52px 64px 72px' }}
+                        style={{ gridTemplateColumns: 'minmax(0, min(150px, 25vw)) 58px max-content' }}
                       >
                         <h3 className="spreadsheet-cell-sticky-header flex items-center gap-1 px-3 text-[10px] font-black text-txt-muted whitespace-nowrap">
                           <Gamepad2 size={11} />
@@ -706,13 +707,12 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                         </h3>
                         <span className="flex items-center gap-1">
                           <Hash size={11} className="text-brand-primary" />
-                          <span>{t('stats_header_plays')}</span>
+                          <span>{t('stats_header_win_play_score')}</span>
                         </span>
                         <span className="flex items-center gap-1">
-                          <Crown size={11} className="text-status-warning" />
-                          <span>{t('stats_header_wins')}</span>
+                          <Users size={11} className="text-brand-secondary" />
+                          <span>{t('stats_header_companions')}</span>
                         </span>
-                        <span>{t('stats_header_recent')}</span>
                       </div>
 
                       {specificPlayerStats.games.map(game => (
@@ -720,15 +720,26 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                           key={game.key}
                           onClick={() => handleGameSelect(game.key)}
                           className="spreadsheet-row cursor-pointer hover:bg-surface-hover"
-                          style={{ gridTemplateColumns: 'minmax(0, min(150px, 25vw)) 52px 64px 72px' }}
+                          style={{ gridTemplateColumns: 'minmax(0, min(150px, 25vw)) 58px max-content' }}
                         >
                           <h3 className="spreadsheet-cell-sticky px-3 text-sm font-black text-txt-primary overflow-x-auto no-scrollbar whitespace-nowrap flex items-center">
                             {game.name}
                           </h3>
-                          <span className="text-xs font-black font-mono text-brand-primary flex items-center">{game.playCount}</span>
-                          <span className="text-xs font-black font-mono text-status-warning flex items-center">{game.winCount}</span>
-                          <span className="text-xs font-mono text-txt-muted flex items-center">
-                            {new Date(game.latestPlayedAt).toLocaleDateString(language, { month: '2-digit', day: '2-digit' })}
+                          <span className="text-xs font-black font-mono flex items-center gap-0.5">
+                            <span className="text-status-warning">{game.winCount}</span>
+                            <span className="text-txt-muted">/</span>
+                            <span className="text-brand-primary">{game.playCount}</span>
+                          </span>
+                          <span className="text-[11px] font-semibold text-txt-secondary flex items-center whitespace-nowrap">
+                            {game.companions.length > 0
+                              ? game.companions
+                                .slice(0, MAX_VISIBLE_GAME_COMPANIONS)
+                                .map(companion => companion.name)
+                                .join('、')
+                              : t('stats_no_companions')}
+                            {game.companions.length > MAX_VISIBLE_GAME_COMPANIONS
+                              ? ` +${game.companions.length - MAX_VISIBLE_GAME_COMPANIONS}`
+                              : ''}
                           </span>
                         </div>
                       ))}

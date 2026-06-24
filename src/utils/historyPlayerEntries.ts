@@ -12,6 +12,13 @@ export interface HistoryPlayerGameEntry {
   playCount: number;
   winCount: number;
   latestPlayedAt: number;
+  companions: HistoryPlayerCompanionEntry[];
+}
+
+export interface HistoryPlayerCompanionEntry {
+  key: string;
+  name: string;
+  playCount: number;
 }
 
 export interface HistoryPlayerEntry {
@@ -34,8 +41,12 @@ type MutablePlayerEntry = {
   name: string;
   playCount: number;
   latestPlayedAt: number;
-  games: Map<string, HistoryPlayerGameEntry>;
+  games: Map<string, MutableHistoryPlayerGameEntry>;
   recordIds: string[];
+};
+
+type MutableHistoryPlayerGameEntry = Omit<HistoryPlayerGameEntry, 'companions'> & {
+  companions: Map<string, HistoryPlayerCompanionEntry>;
 };
 
 const sortGames = (a: HistoryPlayerGameEntry, b: HistoryPlayerGameEntry) => {
@@ -46,6 +57,11 @@ const sortGames = (a: HistoryPlayerGameEntry, b: HistoryPlayerGameEntry) => {
 
 const sortGamesByRecent = (a: HistoryPlayerGameEntry, b: HistoryPlayerGameEntry) => {
   if (b.latestPlayedAt !== a.latestPlayedAt) return b.latestPlayedAt - a.latestPlayedAt;
+  if (b.playCount !== a.playCount) return b.playCount - a.playCount;
+  return a.name.localeCompare(b.name);
+};
+
+const sortCompanions = (a: HistoryPlayerCompanionEntry, b: HistoryPlayerCompanionEntry) => {
   if (b.playCount !== a.playCount) return b.playCount - a.playCount;
   return a.name.localeCompare(b.name);
 };
@@ -66,46 +82,64 @@ export const buildHistoryPlayerEntries = (
 
   records.forEach(record => {
     const gameKey = resolveGameKey(record);
-    const seenPlayerKeys = new Set<string>();
-
-    record.players.forEach(player => {
+    const resolvedPlayers = record.players.reduce<Array<{
+      source: HistorySummary['players'][number];
+      key: string;
+      name: string;
+    }>>((players, player) => {
       const resolved = resolvePlayer(player);
-      if (!resolved || seenPlayerKeys.has(resolved.key)) return;
-      seenPlayerKeys.add(resolved.key);
+      if (!resolved || players.some(existing => existing.key === resolved.key)) return players;
+      players.push({ source: player, key: resolved.key, name: resolved.name });
+      return players;
+    }, []);
 
-      const current = playerMap.get(resolved.key) || {
-        key: resolved.key,
-        name: resolved.name,
+    resolvedPlayers.forEach(player => {
+      const current = playerMap.get(player.key) || {
+        key: player.key,
+        name: player.name,
         playCount: 0,
         latestPlayedAt: 0,
-        games: new Map<string, HistoryPlayerGameEntry>(),
+        games: new Map<string, MutableHistoryPlayerGameEntry>(),
         recordIds: []
       };
       const winnerIds = record.winnerIds || [];
-      const isWinner = winnerIds.includes(player.id)
-        || (!!player.linkedPlayerId && winnerIds.includes(player.linkedPlayerId));
+      const isWinner = winnerIds.includes(player.source.id)
+        || (!!player.source.linkedPlayerId && winnerIds.includes(player.source.linkedPlayerId));
       const game = current.games.get(gameKey) || {
         key: gameKey,
         name: record.gameName,
         playCount: 0,
         winCount: 0,
-        latestPlayedAt: 0
+        latestPlayedAt: 0,
+        companions: new Map<string, HistoryPlayerCompanionEntry>()
       };
 
-      current.name = resolved.name || current.name;
+      current.name = player.name || current.name;
       current.playCount += 1;
       current.latestPlayedAt = Math.max(current.latestPlayedAt, record.endTime);
       current.recordIds.push(record.id);
       game.playCount += 1;
       game.winCount += isWinner ? 1 : 0;
       game.latestPlayedAt = Math.max(game.latestPlayedAt, record.endTime);
+      resolvedPlayers.forEach(companion => {
+        if (companion.key === player.key) return;
+        const existing = game.companions.get(companion.key);
+        game.companions.set(companion.key, {
+          key: companion.key,
+          name: existing?.name || companion.name,
+          playCount: (existing?.playCount || 0) + 1
+        });
+      });
       current.games.set(gameKey, game);
-      playerMap.set(resolved.key, current);
+      playerMap.set(player.key, current);
     });
   });
 
   return Array.from(playerMap.values()).map(player => {
-    const games = Array.from(player.games.values());
+    const games = Array.from(player.games.values()).map(game => ({
+      ...game,
+      companions: Array.from(game.companions.values()).sort(sortCompanions)
+    }));
     return {
       key: player.key,
       name: player.name,
