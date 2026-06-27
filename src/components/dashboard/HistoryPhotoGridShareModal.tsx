@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Download, Image as ImageIcon, Loader2, Share2, X } from 'lucide-react';
+import { Check, Download, Image as ImageIcon, Loader2, Share2, X, Trophy } from 'lucide-react';
 import { toBlob } from 'html-to-image';
 import { HistoryGameEntry } from '../../utils/historyGameEntries';
 import { buildHistoryStats, HistoryPhotoGridItem, selectHistoryPhotoGridItems, selectSpecificGamePhotoGridItems } from '../../utils/historyStats';
@@ -83,6 +83,8 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
   const pinchRef = useRef<{ distance: number; zoom: number } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+  const [generatedFile, setGeneratedFile] = useState<File | null>(null);
 
   const gridItems = useMemo(
     () => selectionMode === 'records'
@@ -116,6 +118,22 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
     objectUrlsRef.current = [];
     loadedPhotosRef.current.clear();
   };
+
+  const handleBackToEdit = () => {
+    if (generatedImageUrl) {
+      URL.revokeObjectURL(generatedImageUrl);
+      setGeneratedImageUrl(null);
+      setGeneratedFile(null);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (generatedImageUrl) {
+        URL.revokeObjectURL(generatedImageUrl);
+      }
+    };
+  }, [generatedImageUrl]);
 
   const loadGridPhoto = async (
     item: HistoryPhotoGridItem,
@@ -166,6 +184,11 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
       setPhotoPool([]);
       setTiles([]);
       setCropDraft(null);
+      if (generatedImageUrl) {
+        URL.revokeObjectURL(generatedImageUrl);
+        setGeneratedImageUrl(null);
+        setGeneratedFile(null);
+      }
       return;
     }
 
@@ -355,7 +378,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
     });
   };
 
-  const handleExport = async () => {
+  const handleGenerateImage = async () => {
     if (!exportRef.current || tiles.length === 0) return;
     setIsExporting(true);
     try {
@@ -366,29 +389,39 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
       });
       if (!blob) throw new Error('Failed to generate image');
 
+      const url = URL.createObjectURL(blob);
       const fileName = `history_grid_${Date.now()}.png`;
       const file = new File([blob], fileName, { type: 'image/png' });
 
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: t('grid_share_title') });
+      setGeneratedImageUrl(url);
+      setGeneratedFile(file);
+    } catch (error) {
+      console.error('History grid generation failed', error);
+      showToast({ message: t('grid_export_failed'), type: 'error' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleShareImage = async () => {
+    if (!generatedFile || !generatedImageUrl) return;
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [generatedFile] })) {
+        await navigator.share({ files: [generatedFile], title: t('grid_share_title') });
       } else {
-        const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
+        link.href = generatedImageUrl;
+        link.download = generatedFile.name;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        URL.revokeObjectURL(url);
         showToast({ message: t('grid_download_success'), type: 'success' });
       }
     } catch (error: any) {
       if (error?.name !== 'AbortError') {
-        console.error('History grid export failed', error);
+        console.error('History grid share failed', error);
         showToast({ message: t('grid_export_failed'), type: 'error' });
       }
-    } finally {
-      setIsExporting(false);
     }
   };
 
@@ -416,15 +449,28 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
             <ImageIcon size={20} />
           </div>
           <div className="min-w-0">
-            <h3 className="text-base font-bold text-txt-title truncate">{t('grid_modal_title')}</h3>
-            <p className="text-[11px] text-txt-muted">
+            <h3 className="text-base font-bold text-txt-title truncate">
+              {generatedImageUrl ? t('grid_generated_title') : t('grid_modal_title')}
+            </h3>
+            <p className="text-[11px] text-txt-muted truncate">
               {cropDraft
                 ? t('grid_crop_hint')
                 : t(selectionMode === 'records' ? 'grid_modal_subtitle_records' : 'grid_modal_subtitle')}
             </p>
           </div>
         </div>
-        <button onClick={() => cropDraft ? setCropDraft(null) : onClose()} className="p-2 rounded-full bg-modal-bg-elevated text-txt-secondary hover:text-txt-title transition-colors">
+        <button
+          onClick={() => {
+            if (cropDraft) {
+              setCropDraft(null);
+            } else if (generatedImageUrl) {
+              handleBackToEdit();
+            } else {
+              onClose();
+            }
+          }}
+          className="p-2 rounded-full bg-modal-bg-elevated text-txt-secondary hover:text-txt-title transition-colors"
+        >
           <X size={20} />
         </button>
       </div>
@@ -478,6 +524,37 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
             </button>
           </div>
         </div>
+      ) : generatedImageUrl ? (
+        <>
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 flex flex-col items-center justify-center gap-3">
+            <div className="w-full max-w-[520px] flex flex-col items-center justify-center">
+              <div className="relative rounded-xl overflow-hidden shadow-2xl border border-surface-border bg-app-bg-deep max-h-[70vh] flex items-center justify-center">
+                <img
+                  src={generatedImageUrl}
+                  alt="Generated Photo Grid"
+                  className="max-w-full max-h-[70vh] object-contain select-all"
+                  style={{ WebkitTouchCallout: 'default' } as React.CSSProperties}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-none h-20 px-4 border-t border-surface-border bg-modal-bg flex items-center justify-end gap-3">
+            <button
+              onClick={handleBackToEdit}
+              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-surface-bg border border-surface-border text-txt-primary font-bold text-sm active:scale-95 transition-all"
+            >
+              {t('grid_back_to_edit')}
+            </button>
+            <button
+              onClick={handleShareImage}
+              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-brand-primary text-white font-bold text-sm active:scale-95 transition-all"
+            >
+              <Share2 size={18} />
+              {t('grid_share_button')}
+            </button>
+          </div>
+        </>
       ) : (
         <>
           <div className="flex-1 min-h-0 overflow-y-auto p-4 flex items-center justify-center">
@@ -508,12 +585,12 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
 
           <div className="flex-none h-20 px-4 border-t border-surface-border bg-modal-bg flex items-center justify-end">
             <button
-              onClick={handleExport}
+              onClick={handleGenerateImage}
               disabled={tiles.length === 0 || isLoading || isExporting}
               className="flex items-center gap-2 px-4 py-3 rounded-xl bg-brand-primary text-white font-bold text-sm disabled:bg-surface-bg disabled:text-txt-muted disabled:cursor-not-allowed active:scale-95 transition-all"
             >
-              {isExporting ? <Loader2 size={18} className="animate-spin" /> : (typeof navigator.share === 'function' ? <Share2 size={18} /> : <Download size={18} />)}
-              {isExporting ? t('grid_exporting') : t('grid_share_button')}
+              {isExporting ? <Loader2 size={18} className="animate-spin" /> : <ImageIcon size={18} />}
+              {isExporting ? t('grid_exporting') : t('grid_generate_action')}
             </button>
           </div>
         </>
@@ -572,50 +649,77 @@ interface PhotoGridCanvasProps {
   };
   onSelect?: (index: number) => void;
 }
+const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>(({ tiles, stats, contextLabel, labels, onSelect }, ref) => {
+  const activeTiles = useMemo(() => tiles.filter(tile => tile && tile.url), [tiles]);
+  const N = activeTiles.length;
 
-const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>(({ tiles, stats, contextLabel, labels, onSelect }, ref) => (
-  <div ref={ref} className="w-full aspect-[4/5] bg-app-bg p-3 flex flex-col gap-2 rounded-xl border border-surface-border shadow-2xl overflow-hidden">
-    <div className="flex-none h-[13%] min-h-[54px] rounded-lg bg-app-bg-deep border border-surface-border px-3 flex items-center justify-between gap-2">
-      <div className="min-w-0">
-        <div className="text-xs leading-tight font-black text-txt-title truncate">{contextLabel}</div>
-      </div>
-      <div className="flex items-center gap-2 text-right">
-        <StatPill value={stats.gameCount} label={labels.games} />
-        <StatPill value={stats.playCount} label={labels.plays} />
-        <StatPill value={stats.playerCount} label={labels.players} />
-      </div>
-    </div>
+  const layout = useMemo(() => {
+    if (N === 0) return { cols: 1, rows: 1, aspect: PHOTO_RECAP_TILE_ASPECT };
+    if (N === 1) return { cols: 1, rows: 1, aspect: PHOTO_RECAP_TILE_ASPECT };
+    if (N === 2) return { cols: 1, rows: 2, aspect: PHOTO_RECAP_TILE_ASPECT / 2 };
 
-    <div className="flex-1 min-h-0 grid grid-cols-2 grid-rows-4 gap-1.5">
-      {Array.from({ length: PHOTO_RECAP_TILE_COUNT }).map((_, index) => {
-        const tile = tiles[index];
-        return (
-          <button
-            key={`${tile?.id || 'empty'}-${index}`}
-            onClick={() => tile && onSelect?.(index)}
-            disabled={!tile || !onSelect}
-            className="bg-surface-recessed rounded-md overflow-hidden select-none disabled:cursor-default active:scale-[0.99] transition-transform relative min-h-0"
-          >
-            {tile ? (
+    const cols = 2;
+    const rows = N % 2 !== 0 ? 2 + (N - 1) / 2 : N / 2;
+    const aspect = (2 * PHOTO_RECAP_TILE_ASPECT) / rows;
+    return { cols, rows, aspect };
+  }, [N]);
+
+  if (N === 0) return null;
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        containerType: 'inline-size',
+        aspectRatio: `${layout.aspect}`
+      }}
+      className="w-full bg-app-bg p-[1.2cqw] flex flex-col gap-[1.2cqw] rounded-[2cqw] border border-surface-border shadow-2xl overflow-hidden"
+    >
+      <div className="flex-none rounded-[1.5cqw] bg-app-bg-deep border border-surface-border px-[2cqw] py-[2cqw] flex items-center justify-between gap-[1.5cqw]">
+        <div className="min-w-0 flex-1">
+          <div className="text-[4.2cqw] leading-tight font-black text-txt-title truncate">{contextLabel}</div>
+        </div>
+        <div className="flex items-center gap-[1.5cqw] text-right shrink-0">
+          <StatPill value={stats.gameCount} label={labels.games} />
+          <StatPill value={stats.playCount} label={labels.plays} />
+          <StatPill value={stats.playerCount} label={labels.players} />
+        </div>
+      </div>
+
+      <div
+        className="flex-1 min-h-0 grid gap-[0.8cqw]"
+        style={{
+          gridTemplateColumns: `repeat(${layout.cols}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${layout.rows}, minmax(0, 1fr))`
+        }}
+      >
+        {activeTiles.map((tile, index) => {
+          const isLarge = N >= 3 && N % 2 !== 0 && index === 0;
+
+          return (
+            <button
+              key={`${tile.id}-${index}`}
+              onClick={() => onSelect?.(tiles.indexOf(tile))}
+              disabled={!onSelect}
+              className={`bg-surface-recessed rounded-[1cqw] overflow-hidden select-none disabled:cursor-default active:scale-[0.99] transition-transform relative min-h-0 ${
+                isLarge ? 'col-span-2 row-span-2' : 'col-span-1 row-span-1'
+              }`}
+            >
               <PhotoTile tile={tile} />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-txt-muted/40">
-                <ImageIcon size={22} />
-              </div>
-            )}
-          </button>
-        );
-      })}
+            </button>
+          );
+        })}
+      </div>
     </div>
-  </div>
-));
+  );
+});
 
 PhotoGridCanvas.displayName = 'PhotoGridCanvas';
 
 const StatPill: React.FC<{ value: number; label: string }> = ({ value, label }) => (
-  <div className="min-w-[54px]">
-    <div className="text-base leading-none font-black font-mono text-txt-title">{value}</div>
-    <div className="mt-0.5 text-[8px] leading-none font-bold text-txt-muted uppercase tracking-normal">{label}</div>
+  <div className="min-w-[15cqw]">
+    <div className="text-[5.5cqw] leading-none font-black font-mono text-txt-title">{value}</div>
+    <div className="mt-[0.5cqw] text-[2.4cqw] leading-none font-bold text-txt-muted uppercase tracking-normal">{label}</div>
   </div>
 );
 
@@ -643,9 +747,9 @@ const PhotoTile: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
   return (
     <div className="relative w-full h-full overflow-hidden bg-app-bg-deep">
       <PhotoImage tile={tile} />
-      <div className="absolute left-0 right-0 bottom-0 px-1.5 py-1 bg-black/55 text-white flex items-center gap-1.5">
-        <span className="min-w-0 flex-1 text-[9px] leading-tight font-bold truncate text-left">{tile.gameName}</span>
-        <span className="shrink-0 text-[7px] leading-tight text-white/70 font-mono text-right">{formatGridDate(tile.endTime)}</span>
+      <div className="absolute left-0 right-0 bottom-0 px-[2.5cqw] py-[1.8cqw] bg-black/55 text-white flex items-center gap-[2cqw]">
+        <span className="min-w-0 flex-1 text-[3.2cqw] leading-tight font-bold truncate text-left">{tile.gameName}</span>
+        <span className="shrink-0 text-[2.2cqw] leading-tight text-white/70 font-mono text-right">{formatGridDate(tile.endTime)}</span>
       </div>
     </div>
   );
