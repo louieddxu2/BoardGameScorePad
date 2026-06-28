@@ -117,7 +117,7 @@ export const buildHistoryStats = (entries: HistoryGameEntry[]): HistoryStatsOver
   };
 };
 
-export const selectHistoryPhotoGridItems = (entries: HistoryGameEntry[], limit = 9): HistoryPhotoGridItem[] => {
+export const selectHistoryPhotoGridItems = (entries: HistoryGameEntry[], limit = 8): HistoryPhotoGridItem[] => {
   return [...entries]
     .sort((a, b) => b.latestPlayedAt - a.latestPlayedAt)
     .filter(entry => entry.firstRecentPhotoId && entry.firstRecentPhotoRecordId)
