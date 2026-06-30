@@ -19,6 +19,7 @@ interface UpwardSelectMenuProps<T extends string> {
   onSelect: (value: T) => void;
   onClose: () => void;
   listRef?: React.RefObject<HTMLDivElement>;
+  zIndex?: number;
 }
 
 const UpwardSelectMenu = <T extends string>({
@@ -27,12 +28,16 @@ const UpwardSelectMenu = <T extends string>({
   selectedValue,
   onSelect,
   onClose,
-  listRef
+  listRef,
+  zIndex
 }: UpwardSelectMenuProps<T>) => {
+  const backdropZIndex = zIndex !== undefined ? zIndex : 60;
+  const menuZIndex = zIndex !== undefined ? zIndex + 1 : 70;
   return (
     <>
       <div
-        className="fixed inset-0 z-[60] pointer-events-auto"
+        className="fixed inset-0 pointer-events-auto"
+        style={{ zIndex: backdropZIndex }}
         onClick={(event) => {
           event.stopPropagation();
           onClose();
@@ -40,11 +45,12 @@ const UpwardSelectMenu = <T extends string>({
       />
       <div
         ref={listRef}
-        className="fixed bg-surface-bg border border-surface-border rounded-xl shadow-ui-floating z-[70] overflow-hidden max-h-[50vh] overflow-y-auto no-scrollbar flex flex-col animate-in zoom-in-95 slide-in-from-bottom-2 duration-200 pointer-events-auto"
+        className="fixed bg-surface-bg border border-surface-border rounded-xl shadow-ui-floating overflow-hidden max-h-[50vh] overflow-y-auto no-scrollbar flex flex-col animate-in zoom-in-95 slide-in-from-bottom-2 duration-200 pointer-events-auto"
         style={{
           bottom: `${anchor.bottom + 8}px`,
           left: `${anchor.left}px`,
-          width: `${anchor.width}px`
+          width: `${anchor.width}px`,
+          zIndex: menuZIndex
         }}
         onClick={(event) => event.stopPropagation()}
       >

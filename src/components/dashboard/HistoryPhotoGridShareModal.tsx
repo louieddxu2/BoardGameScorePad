@@ -575,9 +575,9 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
               </div>
             ) : (
               <div className="w-full max-w-[520px]">
-                <PhotoGridCanvas tiles={tiles} stats={stats} labels={statLabels} contextLabel={contextLabel} onSelect={openCropEditor} />
+                <PhotoGridCanvas tiles={tiles} stats={stats} labels={statLabels} contextLabel={contextLabel} onSelect={openCropEditor} isSingleGame={selectionMode === 'records'} />
                 <div className="absolute left-[-10000px] top-0 pointer-events-none" style={{ width: EXPORT_GRID_WIDTH }}>
-                  <PhotoGridCanvas ref={exportRef} tiles={tiles} stats={stats} labels={statLabels} contextLabel={contextLabel} />
+                  <PhotoGridCanvas ref={exportRef} tiles={tiles} stats={stats} labels={statLabels} contextLabel={contextLabel} isSingleGame={selectionMode === 'records'} />
                 </div>
               </div>
             )}
@@ -648,8 +648,9 @@ interface PhotoGridCanvasProps {
     players: string;
   };
   onSelect?: (index: number) => void;
+  isSingleGame?: boolean;
 }
-const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>(({ tiles, stats, contextLabel, labels, onSelect }, ref) => {
+const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>(({ tiles, stats, contextLabel, labels, onSelect, isSingleGame }, ref) => {
   const activeTiles = useMemo(() => tiles.filter(tile => tile && tile.url), [tiles]);
   const N = activeTiles.length;
 
@@ -705,7 +706,7 @@ const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>((
                 isLarge ? 'col-span-2 row-span-2' : 'col-span-1 row-span-1'
               }`}
             >
-              <PhotoTile tile={tile} />
+              <PhotoTile tile={tile} isSingleGame={isSingleGame} />
             </button>
           );
         })}
@@ -743,14 +744,20 @@ const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
   );
 };
 
-const PhotoTile: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
+const PhotoTile: React.FC<{ tile: EditableGridTile; isSingleGame?: boolean }> = ({ tile, isSingleGame }) => {
   return (
     <div className="relative w-full h-full overflow-hidden bg-app-bg-deep">
       <PhotoImage tile={tile} />
-      <div className="absolute left-0 right-0 bottom-0 px-[2.5cqw] py-[1.8cqw] bg-black/55 text-white flex items-center gap-[2cqw]">
-        <span className="min-w-0 flex-1 text-[3.2cqw] leading-tight font-bold truncate text-left">{tile.gameName}</span>
-        <span className="shrink-0 text-[2.2cqw] leading-tight text-white/70 font-mono text-right">{formatGridDate(tile.endTime)}</span>
-      </div>
+      {isSingleGame ? (
+        <div className="absolute right-0 bottom-0 px-[2.5cqw] py-[1.8cqw] bg-black/55 text-white rounded-tl-[1cqw] flex items-center justify-center">
+          <span className="text-[2.2cqw] leading-none text-white/70 font-mono">{formatGridDate(tile.endTime)}</span>
+        </div>
+      ) : (
+        <div className="absolute left-0 right-0 bottom-0 px-[2.5cqw] py-[1.8cqw] bg-black/55 text-white flex items-center gap-[2cqw]">
+          <span className="min-w-0 flex-1 text-[3.2cqw] leading-tight font-bold truncate text-left">{tile.gameName}</span>
+          <span className="shrink-0 text-[2.2cqw] leading-tight text-white/70 font-mono text-right">{formatGridDate(tile.endTime)}</span>
+        </div>
+      )}
     </div>
   );
 };

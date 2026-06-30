@@ -997,6 +997,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
           }}
           onClose={() => setActiveMenu(null)}
           listRef={menuListRef}
+          zIndex={detailView && zIndex ? zIndex + 5 : undefined}
         />
       )}
 
@@ -1011,6 +1012,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
           }}
           onClose={() => setActiveMenu(null)}
           listRef={menuListRef}
+          zIndex={detailView && zIndex ? zIndex + 5 : undefined}
         />
       )}
     </>
