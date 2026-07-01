@@ -10,6 +10,8 @@ param(
 
     [string]$WrapperPath = $env:AGY_WRAPPER,
 
+    [string]$WorkspaceDir,
+
     [string]$Python = "python",
 
     [switch]$ListWrappers,
@@ -70,6 +72,13 @@ if (-not $Instruction -or $Instruction.Count -eq 0) {
     exit 2
 }
 
+if (-not $WorkspaceDir) {
+    $WorkspaceDir = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
+}
+else {
+    $WorkspaceDir = (Resolve-Path -LiteralPath $WorkspaceDir).Path
+}
+
 $resolvedWrapper = Resolve-AgyWrapper -PathFromUser $WrapperPath
 $instructionText = ($Instruction -join " ").Trim()
 
@@ -80,9 +89,16 @@ if (-not $instructionText) {
 if ($DryRun) {
     Write-Host "Python:  $Python"
     Write-Host "Wrapper: $resolvedWrapper"
+    Write-Host "Workspace: $WorkspaceDir"
     Write-Host "Prompt:  $instructionText"
     exit 0
 }
 
-& $Python $resolvedWrapper $instructionText
-exit $LASTEXITCODE
+Push-Location -LiteralPath $WorkspaceDir
+try {
+    & $Python $resolvedWrapper $instructionText
+    exit $LASTEXITCODE
+}
+finally {
+    Pop-Location
+}

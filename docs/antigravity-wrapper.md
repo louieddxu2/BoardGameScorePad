@@ -34,6 +34,12 @@ Use a specific wrapper:
 powershell -ExecutionPolicy Bypass -File scripts\agy.ps1 -WrapperPath "C:\path\to\agy_wrapper.py" "請做一次架構 review"
 ```
 
+Use a specific workspace directory:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\agy.ps1 -WorkspaceDir "C:\board-game-score-pad" "請做一次架構 review"
+```
+
 Or set `AGY_WRAPPER` in your shell/profile when you want to pin a specific wrapper.
 
 ## Optional Personal Alias
