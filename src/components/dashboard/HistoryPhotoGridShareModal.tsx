@@ -653,6 +653,7 @@ interface PhotoGridCanvasProps {
 const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>(({ tiles, stats, contextLabel, labels, onSelect, isSingleGame }, ref) => {
   const activeTiles = useMemo(() => tiles.filter(tile => tile && tile.url), [tiles]);
   const N = activeTiles.length;
+  const shouldHideTileGameName = isSingleGame || new Set(activeTiles.map(tile => tile.gameKey)).size === 1;
 
   const layout = useMemo(() => {
     if (N === 0) return { cols: 1, rows: 1, aspect: PHOTO_RECAP_TILE_ASPECT };
@@ -706,7 +707,7 @@ const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>((
                 isLarge ? 'col-span-2 row-span-2' : 'col-span-1 row-span-1'
               }`}
             >
-              <PhotoTile tile={tile} isSingleGame={isSingleGame} />
+              <PhotoTile tile={tile} hideGameName={shouldHideTileGameName} />
             </button>
           );
         })}
@@ -744,11 +745,11 @@ const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
   );
 };
 
-const PhotoTile: React.FC<{ tile: EditableGridTile; isSingleGame?: boolean }> = ({ tile, isSingleGame }) => {
+const PhotoTile: React.FC<{ tile: EditableGridTile; hideGameName?: boolean }> = ({ tile, hideGameName }) => {
   return (
     <div className="relative w-full h-full overflow-hidden bg-app-bg-deep">
       <PhotoImage tile={tile} />
-      {isSingleGame ? (
+      {hideGameName ? (
         <div className="absolute right-0 bottom-0 px-[2.5cqw] py-[1.8cqw] bg-black/55 text-white rounded-tl-[1cqw] flex items-center justify-center">
           <span className="text-[2.2cqw] leading-none text-white/70 font-mono">{formatGridDate(tile.endTime)}</span>
         </div>
