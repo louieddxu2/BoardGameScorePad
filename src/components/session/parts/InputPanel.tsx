@@ -17,6 +17,7 @@ import { getScoreHistory, getRawValue, syncPartsFromIds } from '../../../utils/s
 import { useSessionTranslation } from '../../../i18n/session';
 import { getEffectiveIds } from '../../../utils/scoreDisplay';
 import { colorRecommendationEngine } from '../../../features/recommendation/ColorRecommendationEngine';
+import { applyScoreValuePatch } from '../../../features/multiplayer/scoreValuePatch';
 
 // Helper for extracting factors from score value
 const getFactors = (value: any): [string | number, string | number] => {
@@ -400,7 +401,17 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             }
             return { ...p, scores: newScores };
         });
-        onUpdateSession({ ...session, players });
+        const nextSession = { ...session, players };
+        const nextPlayer = nextSession.players.find((p: any) => p.id === playerId);
+        const scoreValue = nextPlayer?.scores[colId] ?? null;
+        const result = applyScoreValuePatch(session, template, {
+            actor: { role: 'host' },
+            targetPlayerId: playerId,
+            colId,
+            scoreValue
+        });
+
+        onUpdateSession(result.ok ? result.session : nextSession);
     };
 
     const updatePlayerMeta = (playerId: string, updates: Partial<Player>) => {
