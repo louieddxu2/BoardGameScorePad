@@ -146,6 +146,38 @@ class VoiceService {
     this.synth.speak(utterance);
   }
 
+  playActivationTone() {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+
+      const audioContext = new AudioContextClass();
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(1174.66, audioContext.currentTime + 0.08);
+
+      gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.08, audioContext.currentTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.14);
+
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.15);
+      oscillator.onended = () => {
+        void audioContext.close();
+      };
+    } catch (error) {
+      console.warn("Voice activation tone failed:", error);
+    }
+  }
+
   /**
    * Future-proofing placeholder for voice recognition.
    */

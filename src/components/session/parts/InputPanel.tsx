@@ -128,7 +128,7 @@ const PanelHeader: React.FC<{
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
                         if (!isVoiceEnabled) {
-                            voiceService.speakRaw(t('input_voice_on'), true);
+                            voiceService.playActivationTone();
                         }
                         onToggleVoice?.();
                     }}
