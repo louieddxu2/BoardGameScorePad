@@ -18,6 +18,7 @@ import { useSessionTranslation } from '../../../i18n/session';
 import { getEffectiveIds } from '../../../utils/scoreDisplay';
 import { colorRecommendationEngine } from '../../../features/recommendation/ColorRecommendationEngine';
 import { applyScoreValuePatch } from '../../../features/multiplayer/scoreValuePatch';
+import { voiceService } from '../../../services/voiceService';
 
 // Helper for extracting factors from score value
 const getFactors = (value: any): [string | number, string | number] => {
@@ -125,7 +126,12 @@ const PanelHeader: React.FC<{
                 {/* Voice Toggle */}
                 <button
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={onToggleVoice}
+                    onClick={() => {
+                        if (!isVoiceEnabled) {
+                            voiceService.speakRaw(t('input_voice_on'), true);
+                        }
+                        onToggleVoice?.();
+                    }}
                     className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all border shrink-0 ${isVoiceEnabled 
                         ? 'bg-status-success/20 border-status-success/50 text-status-success' 
                         : 'bg-surface-recessed border-surface-border text-txt-muted hover:text-txt-primary'}`}
