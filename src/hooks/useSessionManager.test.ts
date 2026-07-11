@@ -18,6 +18,7 @@ const hoisted = vi.hoisted(() => {
       }),
     },
     sessions: {
+      get: vi.fn(async (id: string) => sessionStore.get(id)),
       put: vi.fn(async (session: GameSession) => {
         sessionStore.set(session.id, session);
       }),
@@ -197,6 +198,38 @@ describe('useSessionManager', () => {
 
     expect(result.current.currentSession).toBeNull();
     expect(result.current.activeTemplate).toBeNull();
+  });
+
+  it('resumes the requested active session by ID when multiple sessions use one template', async () => {
+    const template: GameTemplate = {
+      id: 'tpl_1', name: 'Test Game', columns: [], createdAt: Date.now(),
+    };
+    const firstSession: GameSession = {
+      id: 'session_1', templateId: template.id, name: template.name, startTime: 1,
+      players: [], status: 'active', scoringRule: 'HIGHEST_WINS',
+    };
+    const requestedSession: GameSession = {
+      ...firstSession, id: 'session_2', startTime: 2,
+    };
+    hoisted.sessionStore.set(firstSession.id, firstSession);
+    hoisted.sessionStore.set(requestedSession.id, requestedSession);
+
+    const { result } = renderHook(() =>
+      useSessionManager({
+        getTemplate: async () => template,
+        activeSessions: [firstSession, requestedSession],
+        isCloudEnabled: () => false,
+      })
+    );
+
+    let didResume = false;
+    await act(async () => {
+      didResume = await result.current.resumeSessionById('session_2');
+    });
+
+    expect(didResume).toBe(true);
+    expect(result.current.currentSession?.id).toBe('session_2');
+    expect(result.current.activeTemplate?.id).toBe(template.id);
   });
 });
 

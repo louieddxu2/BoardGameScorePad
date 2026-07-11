@@ -466,6 +466,7 @@ export const useAppData = () => {
         // Actions
         startSession: sessionManager.startSession,
         resumeSession: sessionManager.resumeSession,
+        resumeSessionById: sessionManager.resumeSessionById,
         discardSession: sessionManager.discardSession,
         clearAllActiveSessions: sessionManager.clearAllActiveSessions,
         updateSession: sessionManager.updateSession,

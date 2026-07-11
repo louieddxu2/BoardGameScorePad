@@ -162,18 +162,15 @@ export const useSessionManager = ({
         return sessionId;
     };
 
-    const resumeSession = async (templateId: string): Promise<boolean> => {
+    const activateSession = async (session: GameSession): Promise<boolean> => {
         try {
-            const session = await db.sessions.where('templateId').equals(templateId).and(s => s.status === 'active').first();
-            if (!session) return false;
-
-            let template = await getTemplate(templateId);
+            let template = await getTemplate(session.templateId);
 
             // [Fail-Safe Reader]
             if (!template) {
-                console.warn(`Template ${templateId} missing for session ${session.id}. Creating virtual fallback.`);
+                console.warn(`Template ${session.templateId} missing for session ${session.id}. Creating virtual fallback.`);
                 template = createVirtualTemplate(
-                    templateId,
+                    session.templateId,
                     session.name || "Unknown Game",
                     session.bggId,
                     session.startTime,
@@ -220,6 +217,17 @@ export const useSessionManager = ({
 
         } catch (e) { console.error("Failed to resume session", e); }
         return false;
+    };
+
+    const resumeSession = async (templateId: string): Promise<boolean> => {
+        const session = await db.sessions.where('templateId').equals(templateId).and(s => s.status === 'active').first();
+        return session ? activateSession(session) : false;
+    };
+
+    const resumeSessionById = async (sessionId: string): Promise<boolean> => {
+        const session = await db.sessions.get(sessionId);
+        if (!session || session.status !== 'active') return false;
+        return activateSession(session);
     };
 
     const discardSession = async (templateId: string) => {
@@ -560,6 +568,7 @@ export const useSessionManager = ({
         sessionPlayerCount,
         startSession,
         resumeSession,
+        resumeSessionById,
         discardSession,
         clearAllActiveSessions,
         updateSession,
