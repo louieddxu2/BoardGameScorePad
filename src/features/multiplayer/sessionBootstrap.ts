@@ -10,7 +10,7 @@ export type TemplateImportDecision =
   | { action: 'reuse-local'; templateId: string }
   | { action: 'overwrite-local'; templateId: string }
   | { action: 'add-new'; templateId: string }
-  | { action: 'use-session-copy-only'; templateId: string; reason: 'local-newer' };
+  | { action: 'add-session-copy'; templateId: string; sourceTemplateId: string; reason: 'local-newer' };
 
 export interface ResolvedBootstrapImport {
   decision: TemplateImportDecision;
@@ -19,6 +19,8 @@ export interface ResolvedBootstrapImport {
 }
 
 const cloneJson = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+
+export const getMultiplayerSessionTemplateId = (sessionId: string): string => `Multiplayer-${sessionId}`;
 
 export const getTemplateVersion = (template: Pick<GameTemplate, 'createdAt' | 'updatedAt'>): number => {
   return template.updatedAt ?? template.createdAt;
@@ -44,7 +46,8 @@ export const createSessionBootstrapPackage = (options: {
 
 export const decideTemplateImport = (
   remoteTemplate: GameTemplate,
-  localTemplate?: GameTemplate | null
+  localTemplate?: GameTemplate | null,
+  sessionTemplateId: string = remoteTemplate.id
 ): TemplateImportDecision => {
   if (!localTemplate || localTemplate.id !== remoteTemplate.id) {
     return { action: 'add-new', templateId: remoteTemplate.id };
@@ -61,7 +64,12 @@ export const decideTemplateImport = (
     return { action: 'overwrite-local', templateId: remoteTemplate.id };
   }
 
-  return { action: 'use-session-copy-only', templateId: remoteTemplate.id, reason: 'local-newer' };
+  return {
+    action: 'add-session-copy',
+    templateId: sessionTemplateId,
+    sourceTemplateId: remoteTemplate.id,
+    reason: 'local-newer',
+  };
 };
 
 export const resolveBootstrapImport = (
@@ -72,10 +80,17 @@ export const resolveBootstrapImport = (
     throw new Error('invalid_bootstrap_package');
   }
 
-  const decision = decideTemplateImport(bootstrap.template, localTemplate);
+  const decision = decideTemplateImport(
+    bootstrap.template,
+    localTemplate,
+    getMultiplayerSessionTemplateId(bootstrap.session.id)
+  );
   const templateForSession = decision.action === 'reuse-local' && localTemplate
     ? cloneJson(localTemplate)
     : cloneJson(bootstrap.template);
+  if (decision.action === 'add-session-copy') {
+    templateForSession.id = decision.templateId;
+  }
 
   return {
     decision,

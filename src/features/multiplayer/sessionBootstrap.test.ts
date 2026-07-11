@@ -66,9 +66,10 @@ describe('multiplayer bootstrap infrastructure', () => {
       templateId: 'template-1',
     });
 
-    expect(decideTemplateImport(remote, createTemplate({ updatedAt: 300 }))).toEqual({
-      action: 'use-session-copy-only',
-      templateId: 'template-1',
+    expect(decideTemplateImport(remote, createTemplate({ updatedAt: 300 }), 'Multiplayer-session-1')).toEqual({
+      action: 'add-session-copy',
+      templateId: 'Multiplayer-session-1',
+      sourceTemplateId: 'template-1',
       reason: 'local-newer',
     });
   });

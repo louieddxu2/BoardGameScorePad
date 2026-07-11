@@ -114,6 +114,12 @@ export const isSessionBootstrapPackage = (value: unknown): value is SessionBoots
     hasNumber(value, 'exportedAt');
 };
 
+export const isBootstrapPackageMessage = (value: unknown): value is BootstrapPackageMessage => {
+  if (!isRecord(value) || value.type !== 'room:bootstrap' || !hasString(value, 'roomId')) return false;
+  if (!isSessionBootstrapPackage(value.package)) return false;
+  return value.roomId === value.package.room.roomId;
+};
+
 export const isScoreValuePatchMessage = (value: unknown): value is ScoreValuePatchMessage => {
   if (!isRecord(value)) return false;
   if (value.type !== 'score:valuePatch') return false;
