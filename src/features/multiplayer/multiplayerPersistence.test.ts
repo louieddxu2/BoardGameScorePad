@@ -27,19 +27,23 @@ describe('multiplayer local persistence', () => {
   it('reuses an equal local template and only persists the session', async () => {
     const putTemplate = vi.fn(async () => undefined);
     const putSession = vi.fn(async () => undefined);
+    const putRoom = vi.fn(async () => undefined);
     const result = await persistMultiplayerBootstrap(createMessage(), {
-      getTemplate: async () => createTemplate(100), putTemplate, putSession,
+      getTemplate: async () => createTemplate(100), putTemplate, putSession, putRoom,
     });
 
     expect(result.decision.action).toBe('reuse-local');
     expect(putTemplate).not.toHaveBeenCalled();
     expect(putSession).toHaveBeenCalledWith(expect.objectContaining({ id: 'session-1' }));
+    expect(putRoom).toHaveBeenCalledWith(expect.objectContaining({
+      roomId: 'room-1', sessionId: 'session-1', role: 'player', revision: 1,
+    }));
   });
 
   it('overwrites only when the host template is newer', async () => {
     const putTemplate = vi.fn(async () => undefined);
     const result = await persistMultiplayerBootstrap(createMessage(createTemplate(200)), {
-      getTemplate: async () => createTemplate(100), putTemplate, putSession: async () => undefined,
+      getTemplate: async () => createTemplate(100), putTemplate, putSession: async () => undefined, putRoom: async () => undefined,
     });
 
     expect(result.decision.action).toBe('overwrite-local');
@@ -50,7 +54,7 @@ describe('multiplayer local persistence', () => {
     const putTemplate = vi.fn(async () => undefined);
     const putSession = vi.fn(async () => undefined);
     const result = await persistMultiplayerBootstrap(createMessage(createTemplate(100)), {
-      getTemplate: async () => createTemplate(200), putTemplate, putSession,
+      getTemplate: async () => createTemplate(200), putTemplate, putSession, putRoom: async () => undefined,
     });
 
     expect(result.decision).toEqual({
@@ -70,23 +74,26 @@ describe('multiplayer local persistence', () => {
   it('writes each player a final history record and removes the active session', async () => {
     const putHistory = vi.fn(async () => undefined);
     const deleteSession = vi.fn(async () => undefined);
+    const deleteRoom = vi.fn(async () => undefined);
     const session = createSession();
     session.status = 'completed';
     session.players[0].scores.points = { parts: [12] };
     session.players[0].totalScore = 12;
 
     const record = await persistMultiplayerCompletion({
-      store: { putHistory, deleteSession }, template: createTemplate(), session, completedAt: 30,
+      store: { putHistory, deleteSession, deleteRoom }, roomId: 'room-1', template: createTemplate(), session, completedAt: 30,
     });
 
     expect(record.id).toBe('session-1');
     expect(record.players[0].scores.points).toEqual({ parts: [12] });
     expect(putHistory).toHaveBeenCalledWith(record);
     expect(deleteSession).toHaveBeenCalledWith('session-1');
+    expect(deleteRoom).toHaveBeenCalledWith('room-1');
   });
 
   it('persists a valid host snapshot as the local active session', async () => {
     const putSession = vi.fn(async () => undefined);
+    const updateRoomRevision = vi.fn(async () => undefined);
     const snapshot = {
       type: 'session:snapshot' as const,
       roomId: 'room-1',
@@ -96,10 +103,11 @@ describe('multiplayer local persistence', () => {
       updatedAt: 40,
     };
 
-    const persisted = await persistMultiplayerSnapshot(snapshot, { putSession });
+    const persisted = await persistMultiplayerSnapshot(snapshot, { putSession, updateRoomRevision });
 
     expect(persisted).toEqual(snapshot.session);
     expect(putSession).toHaveBeenCalledWith(snapshot.session);
+    expect(updateRoomRevision).toHaveBeenCalledWith('room-1', 4, 40);
   });
 
   it('rejects a snapshot whose message session ID does not match its session data', async () => {
@@ -110,6 +118,6 @@ describe('multiplayer local persistence', () => {
       session: createSession(),
       revision: 4,
       updatedAt: 40,
-    }, { putSession: async () => undefined })).rejects.toThrow('invalid_session_snapshot');
+    }, { putSession: async () => undefined, updateRoomRevision: async () => undefined })).rejects.toThrow('invalid_session_snapshot');
   });
 });

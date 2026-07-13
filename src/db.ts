@@ -1,6 +1,6 @@
 
 import Dexie, { Table } from 'dexie';
-import { GameTemplate, GameSession, TemplatePreference, HistoryRecord, SavedListItem, LocalImage, AnalyticsLog, BggGame, SystemWeightConfig, TemplateShareCache } from './types';
+import { GameTemplate, GameSession, TemplatePreference, HistoryRecord, SavedListItem, LocalImage, AnalyticsLog, BggGame, SystemWeightConfig, TemplateShareCache, MultiplayerRoomRecord } from './types';
 import { generateId } from './utils/idGenerator';
 import { DATA_LIMITS } from './dataLimits';
 
@@ -15,6 +15,7 @@ export class ScorePadDatabase extends Dexie {
     savedGames!: Table<SavedListItem>; // [v12] 儲存的遊戲清單 (使用者習慣)
     savedCurrentSession!: Table<SavedListItem>; // [v25] 短期會話推薦者 (App重啟即清空)
     templateShareCache!: Table<TemplateShareCache>; // [v26] Template cloud share cache
+    multiplayerRooms!: Table<MultiplayerRoomRecord>;
     bggGames!: Table<BggGame>; // [v19] BGG 資料庫 (獨立架構)
     savedWeekdays!: Table<SavedListItem>; // [v12] 星期維度 (0-6)
     savedTimeSlots!: Table<SavedListItem>; // [v12] 時段維度 (0-7, 3hr/slot)
@@ -33,6 +34,7 @@ export class ScorePadDatabase extends Dexie {
         templates: null,
         templatePrefs: null,
         templateShareCache: null,
+        multiplayerRooms: 'templateId',
         sessions: 'templateId',
     } as const;
 
@@ -379,6 +381,11 @@ export class ScorePadDatabase extends Dexie {
                     template.supportedColors = template.supportedColors.map(normalizeColorStr);
                 }
             });
+        });
+
+        // Version 30: Persist multiplayer room recovery metadata outside game sessions.
+        (this as any).version(30).stores({
+            multiplayerRooms: 'roomId, sessionId, templateId, role, updatedAt'
         });
     }
 }

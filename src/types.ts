@@ -204,6 +204,17 @@ export interface GameSession extends GameIdentity {
   note?: string; // [New] 進行中遊戲的備忘錄 (將同步至歷史紀錄的 note)
 }
 
+export interface MultiplayerRoomRecord {
+  roomId: string;
+  sessionId: string;
+  templateId: string;
+  hostDeviceId: string;
+  role: 'host' | 'player';
+  revision: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
 // [New Interface] History Record
 // HistoryRecord 暫時保持 gameName 屬性以維持與舊資料的相容性，
 // 但我們手動加上 bggId 使其在概念上與 GameIdentity 保持一致。

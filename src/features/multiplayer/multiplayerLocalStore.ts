@@ -1,5 +1,5 @@
 import { db } from '../../db';
-import { GameSession, GameTemplate, HistoryRecord } from '../../types';
+import { GameSession, GameTemplate, HistoryRecord, MultiplayerRoomRecord } from '../../types';
 import {
   MultiplayerBootstrapStore,
   MultiplayerHistoryStore,
@@ -16,10 +16,19 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
   putSession(session: GameSession) {
     return db.sessions.put(session);
   },
+  putRoom(room: MultiplayerRoomRecord) {
+    return db.multiplayerRooms.put(room);
+  },
+  updateRoomRevision(roomId: string, revision: number, updatedAt: number) {
+    return db.multiplayerRooms.update(roomId, { revision, updatedAt });
+  },
   putHistory(record: HistoryRecord) {
     return db.history.put(record);
   },
   deleteSession(sessionId: string) {
     return db.sessions.delete(sessionId);
+  },
+  deleteRoom(roomId: string) {
+    return db.multiplayerRooms.delete(roomId);
   },
 };
