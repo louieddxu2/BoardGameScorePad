@@ -1,6 +1,6 @@
 
 import Dexie, { Table } from 'dexie';
-import { GameTemplate, GameSession, TemplatePreference, HistoryRecord, SavedListItem, LocalImage, AnalyticsLog, BggGame, SystemWeightConfig, TemplateShareCache, MultiplayerRoomRecord } from './types';
+import { GameTemplate, GameSession, TemplatePreference, HistoryRecord, SavedListItem, LocalImage, AnalyticsLog, BggGame, SystemWeightConfig, TemplateShareCache, MultiplayerRoomRecord, MultiplayerDeviceRecord, MultiplayerSequenceRecord, MultiplayerOutboxRecord, MultiplayerPatchReceiptRecord } from './types';
 import { generateId } from './utils/idGenerator';
 import { DATA_LIMITS } from './dataLimits';
 
@@ -16,6 +16,10 @@ export class ScorePadDatabase extends Dexie {
     savedCurrentSession!: Table<SavedListItem>; // [v25] 短期會話推薦者 (App重啟即清空)
     templateShareCache!: Table<TemplateShareCache>; // [v26] Template cloud share cache
     multiplayerRooms!: Table<MultiplayerRoomRecord>;
+    multiplayerDevices!: Table<MultiplayerDeviceRecord>;
+    multiplayerSequences!: Table<MultiplayerSequenceRecord>;
+    multiplayerOutbox!: Table<MultiplayerOutboxRecord>;
+    multiplayerPatchReceipts!: Table<MultiplayerPatchReceiptRecord>;
     bggGames!: Table<BggGame>; // [v19] BGG 資料庫 (獨立架構)
     savedWeekdays!: Table<SavedListItem>; // [v12] 星期維度 (0-6)
     savedTimeSlots!: Table<SavedListItem>; // [v12] 時段維度 (0-7, 3hr/slot)
@@ -386,6 +390,14 @@ export class ScorePadDatabase extends Dexie {
         // Version 30: Persist multiplayer room recovery metadata outside game sessions.
         (this as any).version(30).stores({
             multiplayerRooms: 'roomId, sessionId, templateId, role, updatedAt'
+        });
+
+        // Version 31: Persist delivery state so patch retries survive a reload.
+        (this as any).version(31).stores({
+            multiplayerDevices: 'id, deviceId',
+            multiplayerSequences: 'id, updatedAt',
+            multiplayerOutbox: 'id, roomId, sessionId, [roomId+sessionId], deviceId, updatedAt',
+            multiplayerPatchReceipts: 'id, roomId, sessionId, deviceId, updatedAt'
         });
     }
 }

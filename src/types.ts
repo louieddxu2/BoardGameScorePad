@@ -215,6 +215,41 @@ export interface MultiplayerRoomRecord {
   updatedAt: number;
 }
 
+/** Transport bookkeeping for multiplayer rooms. It never changes score data. */
+export interface MultiplayerDeviceRecord {
+  id: 'local-device';
+  deviceId: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface MultiplayerSequenceRecord {
+  id: string;
+  nextSequence: number;
+  updatedAt: number;
+}
+
+export interface MultiplayerOutboxRecord {
+  id: string;
+  roomId: string;
+  sessionId: string;
+  deviceId: string;
+  opId: string;
+  message: unknown;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface MultiplayerPatchReceiptRecord {
+  id: string;
+  roomId: string;
+  sessionId: string;
+  deviceId: string;
+  opId: string;
+  acceptedRevision: number;
+  updatedAt: number;
+}
+
 // [New Interface] History Record
 // HistoryRecord 暫時保持 gameName 屬性以維持與舊資料的相容性，
 // 但我們手動加上 bggId 使其在概念上與 GameIdentity 保持一致。

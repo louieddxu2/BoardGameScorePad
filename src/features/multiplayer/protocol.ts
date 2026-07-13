@@ -54,6 +54,16 @@ export interface SessionSnapshotMessage {
   updatedAt: number;
 }
 
+export interface ScorePatchResultMessage {
+  type: 'score:patch-result';
+  roomId: string;
+  sessionId: string;
+  opId: string;
+  accepted: boolean;
+  snapshot?: SessionSnapshotMessage;
+  reason?: string;
+}
+
 export interface SessionCompletedMessage {
   type: 'session:completed';
   roomId: string;
@@ -68,6 +78,7 @@ export type MultiplayerMessage =
   | BootstrapRequestMessage
   | BootstrapPackageMessage
   | ScoreValuePatchMessage
+  | ScorePatchResultMessage
   | SessionSnapshotMessage
   | SessionCompletedMessage;
 
@@ -150,4 +161,16 @@ export const isSessionSnapshotMessage = (value: unknown): value is SessionSnapsh
     value.session.id === value.sessionId &&
     typeof revision === 'number' && Number.isFinite(revision) && revision >= 0 &&
     hasNumber(value, 'updatedAt');
+};
+
+export const isScorePatchResultMessage = (value: unknown): value is ScorePatchResultMessage => {
+  if (!isRecord(value) || value.type !== 'score:patch-result') return false;
+  if (!hasString(value, 'roomId') || !hasString(value, 'sessionId') || !hasString(value, 'opId') || typeof value.accepted !== 'boolean') {
+    return false;
+  }
+  if (value.accepted) {
+    return isSessionSnapshotMessage(value.snapshot) &&
+      value.snapshot.roomId === value.roomId && value.snapshot.sessionId === value.sessionId;
+  }
+  return typeof value.reason === 'string' && value.reason !== '';
 };

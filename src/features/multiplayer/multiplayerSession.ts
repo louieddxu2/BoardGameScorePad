@@ -33,6 +33,7 @@ export interface MultiplayerPlayerSession {
     colId: string;
     scoreValue: ScoreValue | null;
     opId: string;
+    sequence?: number;
   }): ScoreValuePatchMessage;
   applySnapshot(message: SessionSnapshotMessage): boolean;
   applyCompleted(message: SessionCompletedMessage): boolean;
@@ -173,7 +174,7 @@ export const createMultiplayerPlayerSessionFromBootstrap = (options: {
 
     createScoreValuePatchMessage(input) {
       const sequenceKey = `${input.actor.role}:${input.actor.role === 'player' ? input.actor.playerId : ''}:${input.targetPlayerId}:${input.colId}`;
-      const sequence = (state.nextSequences.get(sequenceKey) ?? 0) + 1;
+      const sequence = input.sequence ?? (state.nextSequences.get(sequenceKey) ?? 0) + 1;
       state.nextSequences.set(sequenceKey, sequence);
       return {
         type: 'score:valuePatch',

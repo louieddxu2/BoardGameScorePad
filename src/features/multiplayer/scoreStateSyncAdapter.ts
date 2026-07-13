@@ -72,8 +72,8 @@ const parsePayload = async (item: SyncItem, roomId: string): Promise<BootstrapPa
   }
 
   const bootstrap = {
-    version: MULTIPLAYER_PROTOCOL_VERSION,
     ...(payload as Record<string, unknown>),
+    version: MULTIPLAYER_PROTOCOL_VERSION,
   };
 
   if (!isSessionBootstrapPackage(bootstrap) ||
