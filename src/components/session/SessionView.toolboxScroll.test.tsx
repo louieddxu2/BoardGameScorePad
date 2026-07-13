@@ -183,6 +183,7 @@ describe('SessionView toolbox scroll behavior', () => {
 
     fireEvent.click(button);
     expect(screen.getByRole('button', { name: 'Multiplayer test: player 1' })).toBeInTheDocument();
+    expect(screen.getByText('1')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Multiplayer test: player 1' }));
     expect(screen.getByRole('button', { name: 'Multiplayer test: player 2' })).toBeInTheDocument();

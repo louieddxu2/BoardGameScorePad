@@ -128,6 +128,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const multiplayerPreviewLabel = capabilities.role === 'host'
     ? 'Multiplayer test: host'
     : `Multiplayer test: player ${session.players.findIndex(player => player.id === capabilities.playerId) + 1}`;
+  const multiplayerPreviewPlayerNumber = capabilities.role === 'player'
+    ? session.players.findIndex(player => player.id === capabilities.playerId) + 1
+    : null;
   const { setUiState } = sessionState;
   const { offset: keyboardOffset } = useKeyboardStatus();
   const panelDockOffset = getSessionPanelDockOffset(keyboardOffset);
@@ -764,6 +767,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           setUiState((current) => ({ ...current, editingCell: null, editingPlayerId: null, previewValue: 0 }));
         }}
         multiplayerPreviewLabel={multiplayerPreviewLabel}
+        multiplayerPreviewPlayerNumber={multiplayerPreviewPlayerNumber}
         hasVisuals={!!template.globalVisuals}
         hasCloudImage={!!template.cloudImageId && !baseImage}
         onEditTitleToggle={(editing) => {

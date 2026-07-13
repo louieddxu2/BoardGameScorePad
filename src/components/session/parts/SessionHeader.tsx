@@ -32,6 +32,7 @@ interface SessionHeaderProps {
   canUseMediaTools?: boolean;
   onCycleMultiplayerPreview?: () => void;
   multiplayerPreviewLabel?: string;
+  multiplayerPreviewPlayerNumber?: number | null;
 }
 
 const SessionHeader: React.FC<SessionHeaderProps> = ({
@@ -62,6 +63,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   canUseMediaTools = true,
   onCycleMultiplayerPreview,
   multiplayerPreviewLabel,
+  multiplayerPreviewPlayerNumber,
 }) => {
   const { t } = useSessionTranslation();
   const [tempTitle, setTempTitle] = useState('');
@@ -136,11 +138,16 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
           <button
             onMouseDown={preventBlur}
             onClick={onCycleMultiplayerPreview}
-            className="p-2 rounded-lg transition-colors border border-surface-border text-txt-muted hover:text-brand-primary hover:bg-surface-hover"
+            className="relative p-2 rounded-lg transition-colors border border-surface-border text-txt-muted hover:text-brand-primary hover:bg-surface-hover"
             title={multiplayerPreviewLabel}
             aria-label={multiplayerPreviewLabel}
           >
             <UsersRound size={20} />
+            {multiplayerPreviewPlayerNumber !== null && multiplayerPreviewPlayerNumber !== undefined && (
+              <span className="absolute -right-1 -top-1 min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-brand-primary text-white text-[10px] font-bold leading-none border border-modal-bg">
+                {multiplayerPreviewPlayerNumber}
+              </span>
+            )}
           </button>
         )}
         {/* Cloud Download Shortcut */}
