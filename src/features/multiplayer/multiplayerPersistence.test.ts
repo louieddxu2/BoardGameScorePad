@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { GameSession, GameTemplate, Player, ScoreColumn } from '../../types';
-import { persistMultiplayerBootstrap, persistMultiplayerCompletion } from './multiplayerPersistence';
+import { persistMultiplayerBootstrap, persistMultiplayerCompletion, persistMultiplayerSnapshot } from './multiplayerPersistence';
 import { createSessionBootstrapPackage } from './sessionBootstrap';
 
 const createColumn = (): ScoreColumn => ({
@@ -83,5 +83,33 @@ describe('multiplayer local persistence', () => {
     expect(record.players[0].scores.points).toEqual({ parts: [12] });
     expect(putHistory).toHaveBeenCalledWith(record);
     expect(deleteSession).toHaveBeenCalledWith('session-1');
+  });
+
+  it('persists a valid host snapshot as the local active session', async () => {
+    const putSession = vi.fn(async () => undefined);
+    const snapshot = {
+      type: 'session:snapshot' as const,
+      roomId: 'room-1',
+      sessionId: 'session-1',
+      session: createSession(),
+      revision: 4,
+      updatedAt: 40,
+    };
+
+    const persisted = await persistMultiplayerSnapshot(snapshot, { putSession });
+
+    expect(persisted).toEqual(snapshot.session);
+    expect(putSession).toHaveBeenCalledWith(snapshot.session);
+  });
+
+  it('rejects a snapshot whose message session ID does not match its session data', async () => {
+    await expect(persistMultiplayerSnapshot({
+      type: 'session:snapshot',
+      roomId: 'room-1',
+      sessionId: 'other-session',
+      session: createSession(),
+      revision: 4,
+      updatedAt: 40,
+    }, { putSession: async () => undefined })).rejects.toThrow('invalid_session_snapshot');
   });
 });

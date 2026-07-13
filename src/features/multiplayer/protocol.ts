@@ -40,6 +40,7 @@ export interface ScoreValuePatchMessage {
   sessionId: string;
   opId: string;
   deviceId: string;
+  sequence: number;
   patch: ScoreValuePatch;
   updatedAt: number;
 }
@@ -126,7 +127,8 @@ export const isScoreValuePatchMessage = (value: unknown): value is ScoreValuePat
   if (!hasString(value, 'roomId') || !hasString(value, 'sessionId') || !hasString(value, 'opId') || !hasString(value, 'deviceId')) {
     return false;
   }
-  if (!hasNumber(value, 'updatedAt')) return false;
+  const sequence = value.sequence;
+  if (!hasNumber(value, 'updatedAt') || typeof sequence !== 'number' || sequence < 1 || !Number.isInteger(sequence)) return false;
 
   const patch = value.patch;
   if (!isRecord(patch)) return false;
@@ -137,4 +139,15 @@ export const isScoreValuePatchMessage = (value: unknown): value is ScoreValuePat
   if (!isRecord(actor)) return false;
   if (actor.role === 'host') return true;
   return actor.role === 'player' && hasString(actor, 'playerId');
+};
+
+export const isSessionSnapshotMessage = (value: unknown): value is SessionSnapshotMessage => {
+  if (!isRecord(value) || value.type !== 'session:snapshot') return false;
+  const revision = value.revision;
+  return hasString(value, 'roomId') &&
+    hasString(value, 'sessionId') &&
+    isGameSessionLike(value.session) &&
+    value.session.id === value.sessionId &&
+    typeof revision === 'number' && Number.isFinite(revision) && revision >= 0 &&
+    hasNumber(value, 'updatedAt');
 };

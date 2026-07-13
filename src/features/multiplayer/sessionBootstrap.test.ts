@@ -188,4 +188,36 @@ describe('multiplayer bootstrap infrastructure', () => {
       updatedAt: 1,
     })).toBe(false);
   });
+
+  it('deduplicates retried operations and rejects out-of-order player updates for one cell', () => {
+    let now = 100;
+    const host = createMultiplayerHostSession({
+      roomId: 'room-1', hostDeviceId: 'host-1', template: createTemplate(), session: createSession(), now: () => now++,
+    });
+    const player = createMultiplayerPlayerSessionFromBootstrap({
+      bootstrapMessage: host.createBootstrapMessage(), now: () => now++,
+    });
+
+    const older = player.createScoreValuePatchMessage({
+      deviceId: 'device-p1', actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1',
+      colId: 'points', scoreValue: { parts: [5] }, opId: 'op-older',
+    });
+    const newer = player.createScoreValuePatchMessage({
+      deviceId: 'device-p1', actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1',
+      colId: 'points', scoreValue: { parts: [6] }, opId: 'op-newer',
+    });
+
+    expect(newer.sequence).toBeGreaterThan(older.sequence);
+    const accepted = host.receiveScoreValuePatch(newer);
+    expect(accepted.accepted).toBe(true);
+    const revisionAfterNewer = host.revision;
+
+    expect(host.receiveScoreValuePatch(older)).toEqual({ accepted: false, reason: 'outdated_player_update' });
+    expect(host.session.players[0].scores.points).toEqual({ parts: [6] });
+    expect(host.revision).toBe(revisionAfterNewer);
+
+    const retry = host.receiveScoreValuePatch(newer);
+    expect(retry).toEqual(accepted);
+    expect(host.revision).toBe(revisionAfterNewer);
+  });
 });

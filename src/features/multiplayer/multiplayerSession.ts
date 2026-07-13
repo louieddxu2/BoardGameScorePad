@@ -58,6 +58,16 @@ export const createMultiplayerHostSession = (options: {
     template: cloneJson(options.template),
     session: cloneJson(options.session),
     revision: options.revision ?? 1,
+    processedOperations: new Map<string, SessionSnapshotMessage>(),
+    latestPlayerSequences: new Map<string, number>(),
+  };
+
+  const rememberOperation = (operationKey: string, snapshot: SessionSnapshotMessage) => {
+    state.processedOperations.set(operationKey, cloneJson(snapshot));
+    if (state.processedOperations.size > 256) {
+      const oldestKey = state.processedOperations.keys().next().value;
+      if (oldestKey) state.processedOperations.delete(oldestKey);
+    }
   };
 
   return {
@@ -86,22 +96,40 @@ export const createMultiplayerHostSession = (options: {
         return { accepted: false, reason: 'message_not_for_room' };
       }
 
+      const operationKey = `${message.deviceId}:${message.opId}`;
+      const duplicateSnapshot = state.processedOperations.get(operationKey);
+      if (duplicateSnapshot) {
+        return { accepted: true, snapshot: cloneJson(duplicateSnapshot) };
+      }
+
+      if (message.patch.actor.role === 'player') {
+        const sequenceKey = `${message.deviceId}:${message.patch.actor.playerId}:${message.patch.targetPlayerId}:${message.patch.colId}`;
+        const latestSequence = state.latestPlayerSequences.get(sequenceKey) ?? 0;
+        if (message.sequence <= latestSequence) {
+          return { accepted: false, reason: 'outdated_player_update' };
+        }
+        state.latestPlayerSequences.set(sequenceKey, message.sequence);
+      }
+
       const result = applyScoreValuePatch(state.session, state.template, message.patch);
       if (!result.ok) return { accepted: false, reason: result.reason };
 
       state.session = result.session;
       state.revision += 1;
 
+      const snapshot: SessionSnapshotMessage = {
+        type: 'session:snapshot',
+        roomId: state.room.roomId,
+        sessionId: state.session.id,
+        session: cloneJson(state.session),
+        revision: state.revision,
+        updatedAt: now(),
+      };
+      rememberOperation(operationKey, snapshot);
+
       return {
         accepted: true,
-        snapshot: {
-          type: 'session:snapshot',
-          roomId: state.room.roomId,
-          sessionId: state.session.id,
-          session: cloneJson(state.session),
-          revision: state.revision,
-          updatedAt: now(),
-        },
+        snapshot,
       };
     },
 
@@ -133,6 +161,7 @@ export const createMultiplayerPlayerSessionFromBootstrap = (options: {
     template: resolved.templateForSession,
     session: resolved.session,
     revision: options.bootstrapMessage.package.revision,
+    nextSequences: new Map<string, number>(),
   };
 
   return {
@@ -143,12 +172,16 @@ export const createMultiplayerPlayerSessionFromBootstrap = (options: {
     get revision() { return state.revision; },
 
     createScoreValuePatchMessage(input) {
+      const sequenceKey = `${input.actor.role}:${input.actor.role === 'player' ? input.actor.playerId : ''}:${input.targetPlayerId}:${input.colId}`;
+      const sequence = (state.nextSequences.get(sequenceKey) ?? 0) + 1;
+      state.nextSequences.set(sequenceKey, sequence);
       return {
         type: 'score:valuePatch',
         roomId: state.room.roomId,
         sessionId: state.session.id,
         opId: input.opId,
         deviceId: input.deviceId,
+        sequence,
         updatedAt: now(),
         patch: {
           actor: input.actor,

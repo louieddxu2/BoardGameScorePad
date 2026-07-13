@@ -1,6 +1,11 @@
 import { GameSession, GameTemplate, HistoryRecord } from '../../types';
 import { createHistoryRecordFromFinalSnapshot } from './multiplayerHistory';
-import { BootstrapPackageMessage, isBootstrapPackageMessage } from './protocol';
+import {
+  BootstrapPackageMessage,
+  SessionSnapshotMessage,
+  isBootstrapPackageMessage,
+  isSessionSnapshotMessage,
+} from './protocol';
 import { resolveBootstrapImport, TemplateImportDecision } from './sessionBootstrap';
 
 export interface MultiplayerBootstrapStore {
@@ -12,6 +17,10 @@ export interface MultiplayerBootstrapStore {
 export interface MultiplayerHistoryStore {
   putHistory(record: HistoryRecord): Promise<unknown>;
   deleteSession(sessionId: string): Promise<unknown>;
+}
+
+export interface MultiplayerSnapshotStore {
+  putSession(session: GameSession): Promise<unknown>;
 }
 
 export interface PersistedBootstrapImport {
@@ -49,6 +58,19 @@ export const persistMultiplayerBootstrap = async (
     session: resolved.session,
     templateForSession: resolved.templateForSession,
   };
+};
+
+export const persistMultiplayerSnapshot = async (
+  message: SessionSnapshotMessage,
+  store: MultiplayerSnapshotStore
+): Promise<GameSession> => {
+  if (!isSessionSnapshotMessage(message)) {
+    throw new Error('invalid_session_snapshot');
+  }
+
+  const session = cloneJson(message.session);
+  await store.putSession(session);
+  return session;
 };
 
 /** Saves a final snapshot for every participant and clears its active-session copy. */
