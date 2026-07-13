@@ -129,6 +129,12 @@ const getFirstScoreCell = () => {
   return cell;
 };
 
+const getScoreCell = (playerId: string) => {
+  const cell = document.querySelector(`#row-col-1 .player-col-${playerId} > div`) as HTMLElement | null;
+  if (!cell) throw new Error(`score cell not found for ${playerId}`);
+  return cell;
+};
+
 const setScrollTop = (element: HTMLElement, value: number) => {
   Object.defineProperty(element, 'scrollTop', {
     configurable: true,
@@ -171,6 +177,31 @@ const swipeOn = (
 };
 
 describe('SessionView toolbox scroll behavior', () => {
+  it('cycles the multiplayer preview button through each player and back to host', () => {
+    renderSession();
+    const button = screen.getByRole('button', { name: 'Multiplayer test: host' });
+
+    fireEvent.click(button);
+    expect(screen.getByRole('button', { name: 'Multiplayer test: player 1' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Multiplayer test: player 1' }));
+    expect(screen.getByRole('button', { name: 'Multiplayer test: player 2' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Multiplayer test: player 2' }));
+    expect(screen.getByRole('button', { name: 'Multiplayer test: host' })).toBeInTheDocument();
+  });
+
+  it('only opens the active participant score cell in multiplayer preview', () => {
+    renderSession();
+    fireEvent.click(screen.getByRole('button', { name: 'Multiplayer test: host' }));
+
+    fireEvent.click(getScoreCell('p2'));
+    expect(getScoreCell('p2').className).not.toContain('ring-2');
+
+    fireEvent.click(getScoreCell('p1'));
+    expect(getScoreCell('p1').className).toContain('ring-2');
+  });
+
   beforeEach(() => {
     localStorage.setItem('app_language', 'en');
   });

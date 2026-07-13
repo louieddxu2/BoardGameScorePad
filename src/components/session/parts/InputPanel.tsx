@@ -43,6 +43,8 @@ interface InputPanelProps {
     isVoiceEnabled?: boolean;
     onToggleVoice?: () => void;
     bottomOffset: string;
+    canEditScore?: (playerId: string, column: ScoreColumn | undefined) => boolean;
+    canEditPlayers?: boolean;
 }
 
 import { injectSoftHyphens } from '../../../utils/text';
@@ -228,7 +230,7 @@ const TotalAdjustmentSidebar: React.FC<{
 
 
 const InputPanel: React.FC<InputPanelProps> = (props) => {
-    const { sessionState, eventHandlers, session, template, savedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice, bottomOffset } = props;
+    const { sessionState, eventHandlers, session, template, savedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice, bottomOffset, canEditScore = () => true, canEditPlayers = true } = props;
     const { uiState, setUiState, panelHeight, isShortList } = sessionState;
     const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue, isEditingTitle, isToolboxOpen } = uiState;
     const { t } = useSessionTranslation();
@@ -370,7 +372,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
     const updateScore = (playerId: string, colId: string, value: any) => {
         const col = template.columns.find((c: any) => c.id === colId);
-        if (!col) return;
+        if (!col || !canEditScore(playerId, col)) return;
 
         const players = session.players.map((p: any) => {
             if (!col.isShared && p.id !== playerId) return p;
@@ -421,11 +423,13 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     };
 
     const updatePlayerMeta = (playerId: string, updates: Partial<Player>) => {
+        if (!canEditPlayers) return;
         const players = session.players.map(p => p.id === playerId ? { ...p, ...updates } : p);
         onUpdateSession({ ...session, players });
     };
 
     const handleToggleStarter = (playerId: string) => {
+        if (!canEditPlayers) return;
         const targetPlayer = session.players.find(p => p.id === playerId);
         const isCurrentlyStarter = !!targetPlayer?.isStarter;
 

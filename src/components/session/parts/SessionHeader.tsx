@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, ListPlus, RotateCcw, Share2, Edit2, Lock, Unlock, DownloadCloud } from 'lucide-react';
+import { ArrowLeft, ListPlus, RotateCcw, Share2, Edit2, Lock, Unlock, DownloadCloud, UsersRound } from 'lucide-react';
 import ShareMenu from '../modals/ShareMenu';
 import { useSessionTranslation } from '../../../i18n/session';
 
@@ -27,6 +27,11 @@ interface SessionHeaderProps {
   photoCount?: number;
   isCloudConnected?: boolean;
   shareMenuZIndex?: number; // [NEW] Dynamic zIndex from stack
+  canEditTemplate?: boolean;
+  canManageSession?: boolean;
+  canUseMediaTools?: boolean;
+  onCycleMultiplayerPreview?: () => void;
+  multiplayerPreviewLabel?: string;
 }
 
 const SessionHeader: React.FC<SessionHeaderProps> = ({
@@ -51,14 +56,19 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   onTakePhoto,
   photoCount,
   isCloudConnected,
-  shareMenuZIndex = 40 // Default for backward compatibility/static
+  shareMenuZIndex = 40, // Default for backward compatibility/static
+  canEditTemplate = true,
+  canManageSession = true,
+  canUseMediaTools = true,
+  onCycleMultiplayerPreview,
+  multiplayerPreviewLabel,
 }) => {
   const { t } = useSessionTranslation();
   const [tempTitle, setTempTitle] = useState('');
 
   const handleTitleClick = () => {
     // Only allow title editing if in Edit Mode
-    if (!isEditMode) return;
+    if (!isEditMode || !canEditTemplate) return;
     setTempTitle(templateName);
     onEditTitleToggle(true);
   };
@@ -114,16 +124,27 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
         ) : (
           <div
             onClick={handleTitleClick}
-            className={`font-bold text-lg truncate flex items-center gap-2 px-2 py-1 rounded transition-colors group ${isEditMode ? 'cursor-pointer hover:bg-surface-hover' : 'text-txt-primary'}`}
+            className={`font-bold text-lg truncate flex items-center gap-2 px-2 py-1 rounded transition-colors group ${isEditMode && canEditTemplate ? 'cursor-pointer hover:bg-surface-hover' : 'text-txt-primary'}`}
           >
             {templateName}
-            {isEditMode && <Edit2 size={14} className="text-txt-muted opacity-0 group-hover:opacity-100 transition-opacity" />}
+            {isEditMode && canEditTemplate && <Edit2 size={14} className="text-txt-muted opacity-0 group-hover:opacity-100 transition-opacity" />}
           </div>
         )}
       </div>
       <div className="flex items-center gap-1 relative shrink-0">
+        {onCycleMultiplayerPreview && (
+          <button
+            onMouseDown={preventBlur}
+            onClick={onCycleMultiplayerPreview}
+            className="p-2 rounded-lg transition-colors border border-surface-border text-txt-muted hover:text-brand-primary hover:bg-surface-hover"
+            title={multiplayerPreviewLabel}
+            aria-label={multiplayerPreviewLabel}
+          >
+            <UsersRound size={20} />
+          </button>
+        )}
         {/* Cloud Download Shortcut */}
-        {hasCloudImage && onCloudDownload && (
+        {canUseMediaTools && hasCloudImage && onCloudDownload && (
           <button
             onMouseDown={preventBlur}
             onClick={onCloudDownload}
@@ -134,17 +155,17 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
           </button>
         )}
 
-        <button
+        {canEditTemplate && <button
           onMouseDown={preventBlur}
           onClick={onToggleEditMode}
           className={`p-2 rounded-lg transition-colors border ${isEditMode ? 'bg-brand-secondary border-brand-secondary text-white shadow-lg' : 'modal-bg-elevated border-surface-border text-txt-muted hover:text-txt-primary'}`}
           title={isEditMode ? t('session_lock_edit') : t('session_unlock_edit')}
         >
           {isEditMode ? <Unlock size={20} /> : <Lock size={20} />}
-        </button>
+        </button>}
 
         {/* Only show Add Column button in Edit Mode */}
-        {isEditMode && (
+        {canEditTemplate && isEditMode && (
           <button
             onMouseDown={preventBlur}
             onClick={onAddColumn}
@@ -154,7 +175,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
           </button>
         )}
 
-        <button
+        {canManageSession && <button
           onMouseDown={preventBlur}
           onClick={() => {
             if (isEditingTitle) onEditTitleToggle(false);
@@ -163,18 +184,18 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
           className="p-2 hover:bg-surface-hover hover:text-status-danger rounded-lg text-txt-muted transition-colors"
         >
           <RotateCcw size={20} />
-        </button>
+        </button>}
 
-        <div className="w-px h-6 bg-surface-border mx-1"></div>
-        <button
+        {canUseMediaTools && <div className="w-px h-6 bg-surface-border mx-1"></div>}
+        {canUseMediaTools && <button
           onMouseDown={preventBlur}
           onClick={() => onShareMenuToggle(!showShareMenu)}
           className="p-2 hover:bg-surface-hover hover:text-brand-secondary rounded-lg text-txt-muted transition-colors"
         >
           <Share2 size={20} />
-        </button>
+        </button>}
 
-        {showShareMenu && (
+        {canUseMediaTools && showShareMenu && (
           <ShareMenu
             isOpen={showShareMenu}
             onClose={() => onShareMenuToggle(false)}
@@ -188,7 +209,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
             zIndex={shareMenuZIndex} // [NEW]
           />
         )}
-        {showShareMenu && (
+        {canUseMediaTools && showShareMenu && (
           <div 
             className="fixed inset-0" 
             style={{ zIndex: shareMenuZIndex - 1 }} 

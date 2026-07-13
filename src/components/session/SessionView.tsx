@@ -35,6 +35,7 @@ import { useAiGenerator } from '../../features/ai-generator/hooks/useAiGenerator
 import { markPendingAiShare } from '../../utils/pendingAiShare';
 import { useKeyboardStatus } from '../../hooks/useVisualViewportOffset';
 import { getSessionOccupiedBottom, getSessionPanelDockOffset } from '../../utils/sessionViewport';
+import { createPlayerSessionCapabilities, hostSessionCapabilities, SessionCapabilities } from '../../features/multiplayer/sessionCapabilities';
 
 interface SessionViewProps {
   session: GameSession;
@@ -53,6 +54,7 @@ interface SessionViewProps {
   onDiscard: () => void;
   isVoiceEnabled?: boolean;
   onToggleVoice?: () => void;
+  multiplayerCapabilities?: SessionCapabilities;
 }
 
 const SessionView: React.FC<SessionViewProps> = (props) => {
@@ -69,6 +71,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const aiGenerator = useAiGenerator();
   const aiSimpleGenerator = useAiSimpleGenerator();
   const [elapsedTime, setElapsedTime] = React.useState<number>(0);
+  const [multiplayerPreviewIndex, setMultiplayerPreviewIndex] = React.useState(-1);
 
   const isAiWorking = aiGenerator.status === 'compressing' || 
                       aiGenerator.status === 'generating' || 
@@ -117,6 +120,14 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   }, [aiSimpleGenerator.simpleStatus, aiGenerator.status]);
 
   const sessionState = useSessionState(props);
+  const capabilities = useMemo(() => {
+    if (props.multiplayerCapabilities) return props.multiplayerCapabilities;
+    const player = session.players[multiplayerPreviewIndex];
+    return player ? createPlayerSessionCapabilities(player.id) : hostSessionCapabilities;
+  }, [props.multiplayerCapabilities, session.players, multiplayerPreviewIndex]);
+  const multiplayerPreviewLabel = capabilities.role === 'host'
+    ? 'Multiplayer test: host'
+    : `Multiplayer test: player ${session.players.findIndex(player => player.id === capabilities.playerId) + 1}`;
   const { setUiState } = sessionState;
   const { offset: keyboardOffset } = useKeyboardStatus();
   const panelDockOffset = getSessionPanelDockOffset(keyboardOffset);
@@ -330,15 +341,18 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     if (isAiWorking) {
       return;
     }
+    const column = template.columns.find((item) => item.id === colId);
+    if (!capabilities.canEditScore(playerId, column)) return;
     eventHandlers.handleCellClick(playerId, colId, e);
-  }, [isAiWorking, eventHandlers.handleCellClick]);
+  }, [isAiWorking, eventHandlers.handleCellClick, template.columns, capabilities]);
 
   const handleColumnHeaderClickSafe = useCallback((e: React.MouseEvent, col: any) => {
     if (isAiWorking) {
       return;
     }
+    if (!capabilities.canEditTemplate) return;
     eventHandlers.handleColumnHeaderClick(e, col);
-  }, [isAiWorking, eventHandlers.handleColumnHeaderClick]);
+  }, [isAiWorking, eventHandlers.handleColumnHeaderClick, capabilities]);
 
   // Prepare Overlay Data for Photo Gallery
   const overlayData = useMemo(() => ({
@@ -741,7 +755,15 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         showShareMenu={showShareMenu}
         shareMenuZIndex={eventHandlers.shareMenuZIndex} // [NEW] Pass dynamic zIndex
         screenshotActive={screenshotModal.isOpen}
-        isEditMode={isEditMode}
+        isEditMode={isEditMode && capabilities.canEditTemplate}
+        canEditTemplate={capabilities.canEditTemplate}
+        canManageSession={capabilities.canManageSession}
+        canUseMediaTools={capabilities.canUseMediaTools}
+        onCycleMultiplayerPreview={() => {
+          setMultiplayerPreviewIndex((current) => current >= session.players.length - 1 ? -1 : current + 1);
+          setUiState((current) => ({ ...current, editingCell: null, editingPlayerId: null, previewValue: 0 }));
+        }}
+        multiplayerPreviewLabel={multiplayerPreviewLabel}
         hasVisuals={!!template.globalVisuals}
         hasCloudImage={!!template.cloudImageId && !baseImage}
         onEditTitleToggle={(editing) => {
@@ -757,11 +779,11 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         }}
         onTitleSubmit={eventHandlers.handleTitleSubmit}
         onAddColumn={() => {
-          if (isAiWorking) return;
+          if (isAiWorking || !capabilities.canEditTemplate) return;
           setUiState(prev => ({ ...prev, isAddColumnModalOpen: true }));
         }}
         onReset={async () => {
-          if (isAiWorking) return;
+          if (isAiWorking || !capabilities.canManageSession) return;
           if (await confirm({
             title: tSession('session_reset_confirm_title'),
             message: tSession('session_reset_confirm_msg'),
@@ -775,9 +797,15 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onExit={() => {
           window.dispatchEvent(new CustomEvent('app-back-press'));
         }}
-        onShareMenuToggle={(show) => setUiState(prev => ({ ...prev, showShareMenu: show }))}
+        onShareMenuToggle={(show) => {
+          if (!capabilities.canUseMediaTools) return;
+          setUiState(prev => ({ ...prev, showShareMenu: show }));
+        }}
         onScreenshotRequest={handleScreenshotRequest}
-        onToggleEditMode={() => setUiState(prev => ({ ...prev, isEditMode: !prev.isEditMode }))}
+        onToggleEditMode={() => {
+          if (!capabilities.canEditTemplate) return;
+          setUiState(prev => ({ ...prev, isEditMode: !prev.isEditMode }));
+        }}
         onUploadImage={() => setUiState(p => ({ ...p, isImageUploadModalOpen: true, showShareMenu: false }))}
         onCloudDownload={media.handleCloudDownload}
         onOpenGallery={() => setUiState(p => ({
@@ -809,21 +837,24 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           editingCell={editingCell}
           editingPlayerId={editingPlayerId}
           onCellClick={handleCellClickSafe}
-          onPlayerHeaderClick={eventHandlers.handlePlayerHeaderClick}
+          onPlayerHeaderClick={(playerId, event) => {
+            if (!capabilities.canEditPlayers) return;
+            eventHandlers.handlePlayerHeaderClick(playerId, event);
+          }}
           onColumnHeaderClick={handleColumnHeaderClickSafe}
-          onUpdateTemplate={onUpdateTemplate}
-          onAddColumn={eventHandlers.handleAddBlankColumn} // Pass the handler
-          onOpenSettings={eventHandlers.handleOpenGameSettings} // [New] Pass handler
-          onToggleToolbox={eventHandlers.handleToggleToolbox} // [New Step 2]
-          isToolboxOpen={isToolboxOpen} // [New Step 2]
+          onUpdateTemplate={capabilities.canEditTemplate ? onUpdateTemplate : () => undefined}
+          onAddColumn={capabilities.canEditTemplate ? eventHandlers.handleAddBlankColumn : () => undefined}
+          onOpenSettings={capabilities.canEditTemplate ? eventHandlers.handleOpenGameSettings : undefined}
+          onToggleToolbox={capabilities.canOpenToolbox ? eventHandlers.handleToggleToolbox : undefined}
+          isToolboxOpen={capabilities.canOpenToolbox && isToolboxOpen}
           scrollContainerRef={sessionState.tableContainerRef}
           contentRef={sessionState.gridContentRef}
           baseImage={baseImage || undefined}
-          isEditMode={isEditMode}
+          isEditMode={isEditMode && capabilities.canEditTemplate}
           zoomLevel={zoomLevel}
           previewValue={previewValue}
-          onOpenOnlineSearch={() => setIsOnlineSearchOpen(true)}
-          onOpenAiPrompt={handleOpenActiveAiPrompt}
+          onOpenOnlineSearch={capabilities.canOpenToolbox ? () => setIsOnlineSearchOpen(true) : undefined}
+          onOpenAiPrompt={capabilities.canOpenToolbox ? handleOpenActiveAiPrompt : undefined}
           aiStatus={aiSimpleGenerator.simpleStatus !== 'idle' ? (aiSimpleGenerator.simpleStatus as any) : aiGenerator.status}
           simpleFlashStatus={aiSimpleGenerator.flashStatus}
           simpleGemmaStatus={aiSimpleGenerator.gemmaStatus}
@@ -866,7 +897,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           editingCell={editingCell}
           previewValue={previewValue}
           onTotalClick={(playerId) => {
-            if (isAiWorking) return;
+            if (isAiWorking || !capabilities.canEditScore(playerId, undefined)) return;
             eventHandlers.handleCellClick(playerId, '__TOTAL__', { stopPropagation: () => { } } as any);
           }}
           zoomLevel={zoomLevel}
@@ -882,11 +913,13 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         savedPlayers={props.savedPlayers} // Updated Prop Name
         onUpdateSession={props.onUpdateSession}
         onUpdateSavedPlayer={props.onUpdateSavedPlayer} // Updated Prop Name
-        onTakePhoto={media.openScoreCamera} // [FIXED] Use special mode for toolbox camera
-        onScreenshotRequest={handleScreenshotRequest} // [New] Pass screenshot action
+        onTakePhoto={capabilities.canUseMediaTools ? media.openScoreCamera : undefined}
+        onScreenshotRequest={capabilities.canUseMediaTools ? handleScreenshotRequest : undefined}
         isVoiceEnabled={props.isVoiceEnabled}
         onToggleVoice={props.onToggleVoice}
         bottomOffset={panelDockOffset}
+        canEditScore={capabilities.canEditScore}
+        canEditPlayers={capabilities.canEditPlayers}
       />
 
       <ScreenshotModal
