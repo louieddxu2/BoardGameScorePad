@@ -4,7 +4,9 @@ import {
   MultiplayerBootstrapStore,
   MultiplayerHistoryStore,
   MultiplayerSnapshotStore,
+  persistMultiplayerBootstrap,
 } from './multiplayerPersistence';
+import { createScoreStateSyncAdapter } from './scoreStateSyncAdapter';
 
 export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHistoryStore & MultiplayerSnapshotStore = {
   async getTemplate(id: string): Promise<GameTemplate | undefined> {
@@ -31,4 +33,19 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
   deleteRoom(roomId: string) {
     return db.multiplayerRooms.delete(roomId);
   },
+};
+
+export const createLocalScoreStateSyncAdapter = (roomId: string, role: 'host' | 'player') => {
+  return createScoreStateSyncAdapter({
+    roomId,
+    role,
+    store: {
+      getRoom: (id) => db.multiplayerRooms.get(id),
+      getSession: (id) => db.sessions.get(id),
+      getTemplate: (id) => multiplayerLocalStore.getTemplate(id),
+      async applyRemoteBootstrap(message) {
+        await persistMultiplayerBootstrap(message, multiplayerLocalStore, 'player');
+      },
+    },
+  });
 };
