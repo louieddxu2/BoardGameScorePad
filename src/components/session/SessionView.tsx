@@ -36,6 +36,7 @@ import { markPendingAiShare } from '../../utils/pendingAiShare';
 import { useKeyboardStatus } from '../../hooks/useVisualViewportOffset';
 import { getSessionOccupiedBottom, getSessionPanelDockOffset } from '../../utils/sessionViewport';
 import { createPlayerSessionCapabilities, hostSessionCapabilities, SessionCapabilities } from '../../features/multiplayer/sessionCapabilities';
+import { MultiplayerSessionManager, multiplayerSessionManager } from '../../features/multiplayer/multiplayerSessionManager';
 
 interface SessionViewProps {
   session: GameSession;
@@ -55,6 +56,8 @@ interface SessionViewProps {
   isVoiceEnabled?: boolean;
   onToggleVoice?: () => void;
   multiplayerCapabilities?: SessionCapabilities;
+  multiplayerRoomId?: string;
+  multiplayerManager?: MultiplayerSessionManager;
 }
 
 const SessionView: React.FC<SessionViewProps> = (props) => {
@@ -72,6 +75,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const aiSimpleGenerator = useAiSimpleGenerator();
   const [elapsedTime, setElapsedTime] = React.useState<number>(0);
   const [multiplayerPreviewIndex, setMultiplayerPreviewIndex] = React.useState(-1);
+  const [isLocalOwnershipReturned, setIsLocalOwnershipReturned] = React.useState(false);
+  const manager = props.multiplayerManager ?? multiplayerSessionManager;
+  const [managedRoomState, setManagedRoomState] = React.useState(() => props.multiplayerRoomId ? manager.get(props.multiplayerRoomId) : null);
 
   const isAiWorking = aiGenerator.status === 'compressing' || 
                       aiGenerator.status === 'generating' || 
@@ -121,10 +127,11 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   const sessionState = useSessionState(props);
   const capabilities = useMemo(() => {
+    if (isLocalOwnershipReturned) return hostSessionCapabilities;
     if (props.multiplayerCapabilities) return props.multiplayerCapabilities;
     const player = session.players[multiplayerPreviewIndex];
     return player ? createPlayerSessionCapabilities(player.id) : hostSessionCapabilities;
-  }, [props.multiplayerCapabilities, session.players, multiplayerPreviewIndex]);
+  }, [isLocalOwnershipReturned, props.multiplayerCapabilities, session.players, multiplayerPreviewIndex]);
   const multiplayerPreviewLabel = capabilities.role === 'host'
     ? 'Multiplayer test: host'
     : `Multiplayer test: player ${session.players.findIndex(player => player.id === capabilities.playerId) + 1}`;
@@ -153,6 +160,33 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+
+  React.useEffect(() => {
+    const roomId = props.multiplayerRoomId;
+    if (!roomId) {
+      setManagedRoomState(null);
+      return undefined;
+    }
+    const refresh = () => setManagedRoomState(manager.get(roomId));
+    manager.attachView(roomId);
+    const unsubscribe = manager.subscribe(refresh);
+    refresh();
+    return () => {
+      unsubscribe();
+      manager.detachView(roomId);
+    };
+  }, [manager, props.multiplayerRoomId]);
+
+  React.useEffect(() => {
+    const roomId = props.multiplayerRoomId;
+    if (!roomId || managedRoomState?.status !== 'ownership-returned') return;
+    const returnedSession = manager.takeReturnedSession(roomId);
+    if (!returnedSession) return;
+    setMultiplayerPreviewIndex(-1);
+    setIsLocalOwnershipReturned(true);
+    props.onUpdateSession(returnedSession);
+    showToast({ message: tSession('toast_multiplayer_ownership_returned'), type: 'success' });
+  }, [managedRoomState?.status, manager, props.multiplayerRoomId, props.onUpdateSession, showToast, tSession]);
 
   const {
     editingCell,

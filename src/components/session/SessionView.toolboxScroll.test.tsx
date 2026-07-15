@@ -6,6 +6,7 @@ import { ConfirmationProvider } from '../../hooks/useConfirm';
 import { ToastProvider } from '../../hooks/useToast';
 import { LanguageProvider } from '../../i18n';
 import { GameSession, GameTemplate } from '../../types';
+import { createMultiplayerSessionManager } from '../../features/multiplayer/multiplayerSessionManager';
 
 vi.mock('../../features/ai-generator/hooks/useAiGenerator', () => ({
   useAiGenerator: () => ({
@@ -80,7 +81,7 @@ const makeSession = (): GameSession => ({
   ],
 });
 
-const renderSession = () => {
+const renderSession = (overrides: Partial<React.ComponentProps<typeof SessionView>> = {}) => {
   const template = makeTemplate();
   const session = makeSession();
 
@@ -103,6 +104,7 @@ const renderSession = () => {
             onResetScores={vi.fn()}
             onSaveToHistory={vi.fn()}
             onDiscard={vi.fn()}
+            {...overrides}
           />
         </ConfirmationProvider>
       </ToastProvider>
@@ -177,6 +179,17 @@ const swipeOn = (
 };
 
 describe('SessionView toolbox scroll behavior', () => {
+  it('detaches a multiplayer room without stopping its runtime when the view unmounts', () => {
+    const manager = createMultiplayerSessionManager();
+    const runtime = { role: 'player' as const, stop: vi.fn(), start: vi.fn(), controller: {}, session: {} } as any;
+    manager.register('room-1', runtime);
+    const { unmount } = renderSession({ multiplayerRoomId: 'room-1', multiplayerManager: manager });
+    expect(manager.get('room-1')?.isViewAttached).toBe(true);
+    unmount();
+    expect(manager.get('room-1')?.isViewAttached).toBe(false);
+    expect(runtime.stop).not.toHaveBeenCalled();
+  });
+
   it('cycles the multiplayer preview button through each player and back to host', () => {
     renderSession();
     const button = screen.getByRole('button', { name: 'Multiplayer test: host' });
