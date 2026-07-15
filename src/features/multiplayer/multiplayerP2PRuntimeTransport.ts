@@ -15,9 +15,11 @@ export const createMultiplayerP2PRuntimeTransport = (options: {
   logger?: (message: string, level?: 'info' | 'error') => void;
 }): MultiplayerRoomRuntimeTransport => {
   let receiver: ((message: unknown, connection?: unknown) => void | Promise<void>) | undefined;
+  let connectionOpenHandler: (() => void | Promise<void>) | undefined;
   const handshake = createP2PHandshakeSync({
     ...options,
     onMessage: (message, connection) => receiver?.(message, connection),
+    onConnectionOpen: () => connectionOpenHandler?.(),
   });
   return {
     startHost: (roomId) => handshake.startHost(roomId),
@@ -27,5 +29,6 @@ export const createMultiplayerP2PRuntimeTransport = (options: {
     sendToConnection: (connection, message) => handshake.sendToConnection(connection as P2PDataConnection, message),
     broadcastLocalChanges: () => handshake.broadcastLocalChanges(),
     setMessageReceiver: (nextReceiver) => { receiver = nextReceiver; },
+    setConnectionOpenHandler: (nextHandler) => { connectionOpenHandler = nextHandler; },
   };
 };

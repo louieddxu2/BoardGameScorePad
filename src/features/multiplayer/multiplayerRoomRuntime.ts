@@ -1,4 +1,4 @@
-import { GameSession, GameTemplate } from '../../types';
+import { GameSession, GameTemplate, MultiplayerRoomRecord } from '../../types';
 import { MultiplayerDeliveryStore } from './multiplayerDeliveryStore';
 import { MultiplayerParticipantBindingStore, participantBindingKey, saveParticipantBinding } from './multiplayerParticipantBinding';
 import { MultiplayerBootstrapStore, MultiplayerSnapshotStore, createMultiplayerRoomRecord, persistMultiplayerBootstrap } from './multiplayerPersistence';
@@ -15,9 +15,14 @@ export interface MultiplayerRoomRuntimeTransport extends MultiplayerRoomTranspor
   joinRoom?(roomId: string): unknown;
   stop?(): void;
   setMessageReceiver?(receiver: (message: unknown, connection?: unknown) => void | Promise<void>): void;
+  setConnectionOpenHandler?(handler: () => void | Promise<void>): void;
 }
 
 export type MultiplayerRoomRuntimeStore = MultiplayerBootstrapStore & MultiplayerSnapshotStore;
+export type MultiplayerRoomRecoveryStore = MultiplayerRoomRuntimeStore & {
+  getRoom(roomId: string): Promise<MultiplayerRoomRecord | undefined>;
+  getSession(sessionId: string): Promise<GameSession | undefined>;
+};
 
 export interface MultiplayerHostRoomRuntime {
   role: 'host';
@@ -45,6 +50,7 @@ export const createMultiplayerHostRoomRuntime = async (options: {
   template: GameTemplate;
   session: GameSession;
   revision?: number;
+  createdAt?: number;
   store: MultiplayerRoomRuntimeStore;
   deliveryStore: MultiplayerDeliveryStore;
   transport: MultiplayerRoomRuntimeTransport;
@@ -74,6 +80,35 @@ export const createMultiplayerHostRoomRuntime = async (options: {
   };
 };
 
+/** Rehydrates an existing host room without changing its room identity or revision. */
+export const restoreMultiplayerHostRoomRuntime = async (options: {
+  roomId: string;
+  store: MultiplayerRoomRecoveryStore;
+  deliveryStore: MultiplayerDeliveryStore;
+  transport: MultiplayerRoomRuntimeTransport;
+  now?: () => number;
+}): Promise<MultiplayerHostRoomRuntime | null> => {
+  const room = await options.store.getRoom(options.roomId);
+  if (!room || room.role !== 'host') return null;
+  const [session, template] = await Promise.all([
+    options.store.getSession(room.sessionId),
+    options.store.getTemplate(room.templateId),
+  ]);
+  if (!session || !template || session.status !== 'active') return null;
+  return createMultiplayerHostRoomRuntime({
+    roomId: room.roomId,
+    hostDeviceId: room.hostDeviceId,
+    template,
+    session,
+    revision: room.revision,
+    createdAt: room.createdAt,
+    store: options.store,
+    deliveryStore: options.deliveryStore,
+    transport: options.transport,
+    now: options.now,
+  });
+};
+
 export const createMultiplayerPlayerRoomRuntime = async (options: {
   bootstrapMessage: BootstrapPackageMessage;
   deviceId: string;
@@ -92,7 +127,7 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
   });
   await persistMultiplayerBootstrap(options.bootstrapMessage, options.store, 'player');
 
-  let replayAfterClaim = false;
+  let pendingReplayClaims = new Set<string>();
   const controller = createMultiplayerPlayerRoomController({
     playerSession,
     deviceId: options.deviceId,
@@ -101,33 +136,39 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
     transport: options.transport,
     now,
     onClaimAccepted: async (playerId) => {
+      const existing = await options.bindingStore.get(participantBindingKey(playerSession.room.roomId, options.deviceId));
+      const playerIds = new Set(existing?.playerIds ?? (existing?.playerId ? [existing.playerId] : []));
+      playerIds.add(playerId);
       await saveParticipantBinding({
         store: options.bindingStore,
         roomId: playerSession.room.roomId,
         sessionId: playerSession.session.id,
         deviceId: options.deviceId,
-        playerId,
+        playerIds: [...playerIds],
         now,
       });
-      if (replayAfterClaim) {
-        replayAfterClaim = false;
+      pendingReplayClaims.delete(playerId);
+      if (pendingReplayClaims.size === 0) {
         await controller.replayPendingPatches();
       }
     },
   });
+  const restoreParticipantBinding = async () => {
+    const binding = await options.bindingStore.get(participantBindingKey(playerSession.room.roomId, options.deviceId));
+    const playerIds = binding?.playerIds ?? (binding?.playerId ? [binding.playerId] : []);
+    if (!binding || binding.sessionId !== playerSession.session.id || !playerIds.length) return false;
+    pendingReplayClaims = new Set(playerIds);
+    for (const playerId of playerIds) controller.claimPlayer(playerId);
+    return true;
+  };
   options.transport.setMessageReceiver?.(async (message) => { await controller.receive(message); });
+  options.transport.setConnectionOpenHandler?.(async () => { await restoreParticipantBinding(); });
 
   return {
     role: 'player', session: playerSession, controller,
     start: () => { options.transport.joinRoom?.(playerSession.room.roomId); },
     stop: () => { options.transport.stop?.(); },
-    async restoreParticipantBinding() {
-      const binding = await options.bindingStore.get(participantBindingKey(playerSession.room.roomId, options.deviceId));
-      if (!binding || binding.sessionId !== playerSession.session.id) return false;
-      replayAfterClaim = true;
-      controller.claimPlayer(binding.playerId);
-      return true;
-    },
+    restoreParticipantBinding,
     receive: (message) => controller.receive(message),
   };
 };

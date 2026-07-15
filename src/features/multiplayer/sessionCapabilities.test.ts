@@ -25,4 +25,16 @@ describe('multiplayer session capabilities', () => {
     expect(capabilities.canManageSession).toBe(false);
     expect(capabilities.canUseMediaTools).toBe(true);
   });
+
+  it('allows a participant to act for multiple claimed players without granting host controls', () => {
+    const capabilities = createPlayerSessionCapabilities(['p1', 'p2']);
+    expect(capabilities.canEditScore('p1', personal)).toBe(true);
+    expect(capabilities.canEditScore('p2', personal)).toBe(true);
+    expect(capabilities.canEditScore('p3', personal)).toBe(false);
+    expect(capabilities.canEditTotal('p2')).toBe(true);
+    expect(capabilities.canEditTemplate).toBe(false);
+    expect(capabilities.canEditPlayers).toBe(false);
+    expect(capabilities.canManageSession).toBe(false);
+    expect(capabilities.canOpenToolbox).toBe(false);
+  });
 });

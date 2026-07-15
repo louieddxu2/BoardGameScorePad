@@ -72,4 +72,41 @@ describe('multiplayer room controller', () => {
     expect(host.session.players[0].totalScore).toBe(12);
     expect(reply).toHaveBeenLastCalledWith(expect.objectContaining({ accepted: true, snapshot: expect.any(Object) }));
   });
+
+  it('allows one connection to claim multiple players without becoming host', async () => {
+    const twoPlayerSession = { ...session, players: [player, { ...player, id: 'p2', name: 'P2' }] };
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session: twoPlayerSession, now: () => 10 });
+    const store = createDeliveryStore(); const reply = vi.fn(); const connection = {};
+    const controller = createMultiplayerRoomController({ role: 'host', hostSession: host, deliveryStore: store,
+      snapshotStore: { putSession: async () => undefined, updateRoomRevision: async () => undefined },
+      transport: { sendToHost: () => false, sendToConnection: (_connection, message) => { reply(message); return true; }, broadcastLocalChanges: async () => undefined }, now: () => 20,
+    });
+    await controller.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-1', playerId: 'p1' }, connection);
+    await controller.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-1', playerId: 'p2' }, connection);
+    await controller.receive({ type: 'score:valuePatch', roomId: 'room-1', sessionId: 'session-1', opId: 'p2-op', deviceId: 'device-1', sequence: 1, updatedAt: 20, patch: { actor: { role: 'player', playerId: 'p2' }, targetPlayerId: 'p2', colId: 'points', scoreValue: { parts: [4] } } }, connection);
+    expect(host.session.players.find((item) => item.id === 'p2')?.scores.points).toEqual({ parts: [4] });
+  });
+
+  it('serializes host persistence for rapid accepted patches', async () => {
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
+    const store = createDeliveryStore(); const connection = {}; const revisions: number[] = [];
+    let releaseFirst: (() => void) | undefined;
+    const firstWrite = new Promise<void>((resolve) => { releaseFirst = resolve; });
+    const controller = createMultiplayerRoomController({ role: 'host', hostSession: host, deliveryStore: store,
+      snapshotStore: {
+        putSession: async () => { if (revisions.length === 0) await firstWrite; },
+        updateRoomRevision: async (_roomId, revision) => { revisions.push(revision); },
+      },
+      transport: { sendToHost: () => false, sendToConnection: () => true, broadcastLocalChanges: async () => undefined }, now: () => 20,
+    });
+    await controller.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-1', playerId: 'p1' }, connection);
+    const first = controller.receive({ type: 'score:valuePatch', roomId: 'room-1', sessionId: 'session-1', opId: 'op-1', deviceId: 'device-1', sequence: 1, updatedAt: 20, patch: { actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [1] } } }, connection);
+    const second = controller.receive({ type: 'score:valuePatch', roomId: 'room-1', sessionId: 'session-1', opId: 'op-2', deviceId: 'device-1', sequence: 2, updatedAt: 20, patch: { actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [2] } } }, connection);
+    await Promise.resolve();
+    expect(revisions).toEqual([]);
+    releaseFirst?.();
+    await Promise.all([first, second]);
+    expect(revisions).toEqual([2, 3]);
+    expect(host.session.players[0].scores.points).toEqual({ parts: [2] });
+  });
 });

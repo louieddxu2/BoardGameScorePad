@@ -255,7 +255,9 @@ export interface MultiplayerParticipantBindingRecord {
   roomId: string;
   sessionId: string;
   deviceId: string;
-  playerId: string;
+  /** Legacy primary claim retained so existing local records remain readable. */
+  playerId?: string;
+  playerIds?: string[];
   updatedAt: number;
 }
 

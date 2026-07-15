@@ -35,6 +35,7 @@ export const createP2PHandshakeSync = (options: {
   peerOptions?: unknown;
   chunkSize?: number;
   onMessage?: (message: unknown, connection: P2PDataConnection) => void | Promise<void>;
+  onConnectionOpen?: (connection: P2PDataConnection) => void | Promise<void>;
   logger?: (message: string, level?: 'info' | 'error') => void;
 }): P2PHandshakeSync => {
   const chunkSize = options.chunkSize ?? 16 * 1024;
@@ -69,7 +70,7 @@ export const createP2PHandshakeSync = (options: {
   };
   const setupConnection = (connection: P2PDataConnection) => {
     connections.add(connection);
-    connection.on('open', () => { void sendHello(connection); });
+    connection.on('open', () => { void sendHello(connection); void options.onConnectionOpen?.(connection); });
     connection.on('data', (message: unknown) => {
       void (async () => {
         if (!isRecord(message) || typeof message.type !== 'string') return;

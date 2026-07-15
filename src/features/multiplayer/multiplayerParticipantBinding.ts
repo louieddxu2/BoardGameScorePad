@@ -18,12 +18,14 @@ export const saveParticipantBinding = async (options: {
   roomId: string;
   sessionId: string;
   deviceId: string;
-  playerId: string;
+  playerIds: string[];
   now?: () => number;
 }): Promise<MultiplayerParticipantBindingRecord> => {
+  const playerIds = [...new Set(options.playerIds)];
+  if (!playerIds.length) throw new Error('participant_binding_requires_player');
   const record: MultiplayerParticipantBindingRecord = {
     id: participantBindingKey(options.roomId, options.deviceId), roomId: options.roomId,
-    sessionId: options.sessionId, deviceId: options.deviceId, playerId: options.playerId,
+    sessionId: options.sessionId, deviceId: options.deviceId, playerId: playerIds[0], playerIds,
     updatedAt: (options.now ?? Date.now)(),
   };
   await (options.store ?? multiplayerParticipantBindingStore).put(record);

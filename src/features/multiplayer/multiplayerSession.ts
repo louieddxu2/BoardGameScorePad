@@ -49,6 +49,7 @@ export const createMultiplayerHostSession = (options: {
   template: GameTemplate;
   session: GameSession;
   revision?: number;
+  createdAt?: number;
   now?: () => number;
 }): MultiplayerHostSession => {
   const now = options.now ?? Date.now;
@@ -56,7 +57,7 @@ export const createMultiplayerHostSession = (options: {
     room: {
       roomId: options.roomId,
       hostDeviceId: options.hostDeviceId,
-      createdAt: now(),
+      createdAt: options.createdAt ?? now(),
     },
     template: cloneJson(options.template),
     session: cloneJson(options.session),

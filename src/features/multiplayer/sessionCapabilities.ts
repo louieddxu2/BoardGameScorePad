@@ -3,6 +3,7 @@ import { ScoreColumn } from '../../types';
 export interface SessionCapabilities {
   role: 'host' | 'player';
   playerId?: string;
+  playerIds?: string[];
   canEditScore(playerId: string, column: ScoreColumn | undefined): boolean;
   canEditTotal(playerId: string): boolean;
   canEditPlayers: boolean;
@@ -23,18 +24,22 @@ export const hostSessionCapabilities: SessionCapabilities = {
   canOpenToolbox: true,
 };
 
-export const createPlayerSessionCapabilities = (playerId: string): SessionCapabilities => ({
+export const createPlayerSessionCapabilities = (claimedPlayerIds: string | string[]): SessionCapabilities => {
+  const playerIds = Array.isArray(claimedPlayerIds) ? [...new Set(claimedPlayerIds)] : [claimedPlayerIds];
+  return {
   role: 'player',
-  playerId,
+  playerId: playerIds[0],
+  playerIds,
   canEditScore(targetPlayerId, column) {
-    return targetPlayerId === playerId && !!column && !column.isShared && column.inputType !== 'auto';
+    return playerIds.includes(targetPlayerId) && !!column && !column.isShared && column.inputType !== 'auto';
   },
   canEditTotal(targetPlayerId) {
-    return targetPlayerId === playerId;
+    return playerIds.includes(targetPlayerId);
   },
   canEditPlayers: false,
   canEditTemplate: false,
   canManageSession: false,
   canUseMediaTools: true,
   canOpenToolbox: false,
-});
+  };
+};

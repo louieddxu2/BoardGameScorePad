@@ -45,27 +45,31 @@ export const createMultiplayerRoomController = (options: {
   now?: () => number;
 }) => {
   const now = options.now ?? Date.now;
-  const bindings = new Map<unknown, { deviceId: string; playerId: string }>();
+  const bindings = new Map<unknown, { deviceId: string; playerIds: Set<string> }>();
   const makeResult = (message: Pick<ScoreValuePatchMessage, 'roomId' | 'sessionId' | 'opId'>, accepted: boolean, snapshot?: SessionSnapshotMessage, reason?: string): ScorePatchResultMessage => accepted
     ? { type: 'score:patch-result', roomId: message.roomId, sessionId: message.sessionId, opId: message.opId, accepted: true, snapshot: snapshot! }
     : { type: 'score:patch-result', roomId: message.roomId, sessionId: message.sessionId, opId: message.opId, accepted: false, reason: reason ?? 'rejected' };
 
-  return {
-    async receive(message: unknown, connection: unknown) {
+  const receiveOne = async (message: unknown, connection: unknown) => {
       if (isParticipantClaimMessage(message)) {
         const validRoom = message.roomId === options.hostSession.room.roomId && message.sessionId === options.hostSession.session.id;
         const playerExists = options.hostSession.session.players.some((player) => player.id === message.playerId);
         const result: ParticipantClaimResultMessage = validRoom && playerExists
           ? { type: 'room:claim-result', roomId: message.roomId, sessionId: message.sessionId, accepted: true, playerId: message.playerId }
           : { type: 'room:claim-result', roomId: message.roomId, sessionId: message.sessionId, accepted: false, reason: validRoom ? 'player_not_found' : 'message_not_for_room' };
-        if (result.accepted) bindings.set(connection, { deviceId: message.deviceId, playerId: message.playerId });
+        if (result.accepted) {
+          const existing = bindings.get(connection);
+          const playerIds = existing?.deviceId === message.deviceId ? existing.playerIds : new Set<string>();
+          playerIds.add(message.playerId);
+          bindings.set(connection, { deviceId: message.deviceId, playerIds });
+        }
         options.transport.sendToConnection(connection, result);
         return true;
       }
       if (!isScoreValuePatchMessage(message) && !isTotalAdjustmentPatchMessage(message)) return false;
       const actor = isScoreValuePatchMessage(message) ? message.patch.actor : message.actor;
       const binding = bindings.get(connection);
-      if (actor.role !== 'player' || !binding || binding.deviceId !== message.deviceId || binding.playerId !== actor.playerId) {
+      if (actor.role !== 'player' || !binding || binding.deviceId !== message.deviceId || !binding.playerIds.has(actor.playerId)) {
         options.transport.sendToConnection(connection, makeResult(message, false, undefined, 'participant_not_claimed'));
         return true;
       }
@@ -96,6 +100,13 @@ export const createMultiplayerRoomController = (options: {
       options.transport.sendToConnection(connection, makeResult(message, true, result.snapshot));
       await options.transport.broadcastLocalChanges();
       return true;
+  };
+  let receiveQueue = Promise.resolve();
+  return {
+    receive(message: unknown, connection: unknown) {
+      const next = receiveQueue.then(() => receiveOne(message, connection));
+      receiveQueue = next.then(() => undefined, () => undefined);
+      return next;
     },
   };
 };

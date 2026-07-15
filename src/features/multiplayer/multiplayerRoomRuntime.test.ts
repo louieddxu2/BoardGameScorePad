@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { GameSession, GameTemplate, MultiplayerParticipantBindingRecord, MultiplayerRoomRecord, ScoreColumn } from '../../types';
 import { MultiplayerDeliveryStore } from './multiplayerDeliveryStore';
 import { MultiplayerParticipantBindingStore } from './multiplayerParticipantBinding';
-import { MultiplayerRoomRuntimeStore, MultiplayerRoomRuntimeTransport, createMultiplayerHostRoomRuntime, createMultiplayerPlayerRoomRuntime } from './multiplayerRoomRuntime';
+import { MultiplayerRoomRecoveryStore, MultiplayerRoomRuntimeTransport, createMultiplayerHostRoomRuntime, createMultiplayerPlayerRoomRuntime, restoreMultiplayerHostRoomRuntime } from './multiplayerRoomRuntime';
 
 const column: ScoreColumn = { id: 'points', name: 'Points', formula: 'a1', inputType: 'keypad', isScoring: true, rounding: 'none' };
 const template: GameTemplate = { id: 'template-1', name: 'Template', columns: [column], createdAt: 1, updatedAt: 1 };
@@ -11,10 +11,12 @@ const session: GameSession = {
   players: [{ id: 'p1', name: 'P1', color: '#fff', scores: {}, totalScore: 0 }],
 };
 
-const createRuntimeStore = (): MultiplayerRoomRuntimeStore => {
+const createRuntimeStore = (): MultiplayerRoomRecoveryStore => {
   const templates = new Map<string, GameTemplate>(); const sessions = new Map<string, GameSession>(); const rooms = new Map<string, MultiplayerRoomRecord>();
   return {
     getTemplate: async (id) => templates.get(id),
+    getRoom: async (id) => rooms.get(id),
+    getSession: async (id) => sessions.get(id),
     putTemplate: async (value) => { templates.set(value.id, value); },
     putSession: async (value) => { sessions.set(value.id, value); },
     putRoom: async (value) => { rooms.set(value.roomId, value); },
@@ -76,5 +78,14 @@ describe('multiplayer room runtime', () => {
     await vi.waitFor(async () => expect(await playerDelivery.listOutbox('room-1', 'session-1')).toHaveLength(0));
     expect(host.session.session.players[0].scores.points).toEqual({ parts: [8] });
     expect(host.session.revision).toBe(2);
+  });
+
+  it('restores a host runtime with the original room identity and revision', async () => {
+    const store = createRuntimeStore(); const delivery = createDeliveryStore();
+    const transport: MultiplayerRoomRuntimeTransport = { sendToHost: () => false, sendToConnection: () => false, broadcastLocalChanges: async () => undefined };
+    await createMultiplayerHostRoomRuntime({ roomId: 'room-1', hostDeviceId: 'host-1', template, session, revision: 7, store, deliveryStore: delivery, transport, now: () => 10 });
+    const restored = await restoreMultiplayerHostRoomRuntime({ roomId: 'room-1', store, deliveryStore: delivery, transport, now: () => 20 });
+    expect(restored?.session.room).toEqual({ roomId: 'room-1', hostDeviceId: 'host-1', createdAt: 10 });
+    expect(restored?.session.revision).toBe(7);
   });
 });
