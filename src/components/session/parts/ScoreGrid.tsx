@@ -44,6 +44,7 @@ interface ScoreGridProps {
   simpleGemmaStatus?: string;
   elapsedTime?: number;
   panelDockOffset: string;
+  canEditScore?: (playerId: string, column: ScoreColumn | undefined) => boolean;
 }
 
 const ScoreGrid: React.FC<ScoreGridProps> = ({
@@ -72,6 +73,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   simpleGemmaStatus,
   elapsedTime,
   panelDockOffset,
+  canEditScore = () => true,
 }) => {
   const { t } = useSessionTranslation();
   const dnd = useColumnDragAndDrop({ template, onUpdateTemplate, scrollRef: scrollContainerRef });
@@ -397,6 +399,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                       isAlt={isAlt}
                       previewValue={editingCell?.colId === col.id ? previewValue : undefined}
                       forceWidth="100%"
+                      isReadOnly={!canEditScore(session.players[0].id, col)}
+                      isEditable={canEditScore(session.players[0].id, col)}
                     />
                     {/* 疊加的 Overlay 也一併在此渲染 (例如公式、文字顯示) */}
                     {col.overlayColumns.map((overlayCol) => {
@@ -499,6 +503,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         limitX={template.globalVisuals?.rightMaskRect?.x}
                         isAlt={isAlt}
                         previewValue={isActive ? previewValue : undefined}
+                        isReadOnly={!canEditScore(p.id, col)}
+                        isEditable={canEditScore(p.id, col)}
                       />
                       {col.overlayColumns.map(overlayCol => {
                         const isOverlayActive = editingCell?.playerId === p.id && editingCell?.colId === overlayCol.id;

@@ -4,6 +4,7 @@ export interface SessionCapabilities {
   role: 'host' | 'player';
   playerId?: string;
   canEditScore(playerId: string, column: ScoreColumn | undefined): boolean;
+  canEditTotal(playerId: string): boolean;
   canEditPlayers: boolean;
   canEditTemplate: boolean;
   canManageSession: boolean;
@@ -14,6 +15,7 @@ export interface SessionCapabilities {
 export const hostSessionCapabilities: SessionCapabilities = {
   role: 'host',
   canEditScore: () => true,
+  canEditTotal: () => true,
   canEditPlayers: true,
   canEditTemplate: true,
   canManageSession: true,
@@ -27,9 +29,12 @@ export const createPlayerSessionCapabilities = (playerId: string): SessionCapabi
   canEditScore(targetPlayerId, column) {
     return targetPlayerId === playerId && !!column && !column.isShared && column.inputType !== 'auto';
   },
+  canEditTotal(targetPlayerId) {
+    return targetPlayerId === playerId;
+  },
   canEditPlayers: false,
   canEditTemplate: false,
   canManageSession: false,
-  canUseMediaTools: false,
+  canUseMediaTools: true,
   canOpenToolbox: false,
 });

@@ -198,6 +198,7 @@ describe('SessionView toolbox scroll behavior', () => {
 
     fireEvent.click(getScoreCell('p2'));
     expect(getScoreCell('p2').className).not.toContain('ring-2');
+    expect(getScoreCell('p2').className).toContain('saturate-[0.78]');
 
     fireEvent.click(getScoreCell('p1'));
     expect(getScoreCell('p1').className).toContain('ring-2');

@@ -26,6 +26,8 @@ interface TexturedScoreCellProps {
     isEditMode?: boolean;
     limitX?: number;
     skipTextureRendering?: boolean; // New Prop
+    isReadOnly?: boolean;
+    isEditable?: boolean;
 }
 
 const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
@@ -43,7 +45,9 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
     simpleMode = false,
     isEditMode = false,
     limitX,
-    skipTextureRendering = false
+    skipTextureRendering = false,
+    isReadOnly = false,
+    isEditable = false
 }) => {
     const { t } = useSessionTranslation();
     const [bgUrl, setBgUrl] = useState<string | null>(null);
@@ -186,12 +190,14 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                 <div
                     onClick={(e) => { e.stopPropagation(); onClick(e); }}
                     className={`
-                    absolute flex items-center justify-center z-10 border-2 rounded-md cursor-pointer transition-all pointer-events-auto
+                    absolute flex items-center justify-center z-10 border-2 rounded-md transition-all pointer-events-auto ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}
                     ${isActive
                             ? 'border-brand-primary bg-brand-primary/20 ring-1 ring-brand-primary' // Active Style
-                            : (isEditMode
+                            : (isEditable
+                                ? 'border-brand-primary/50 hover:border-brand-primary/70 hover:bg-brand-primary/5'
+                                : (isReadOnly ? 'border-transparent saturate-[0.78]' : (isEditMode
                                 ? 'border-dashed border-surface-border hover:border-surface-border-hover hover:bg-black/5'
-                                : 'border-transparent hover:border-black/10 hover:bg-black/5') // Inactive Style
+                                : 'border-transparent hover:border-black/10 hover:bg-black/5'))) // Inactive Style
                         }
                 `}
                     style={{
@@ -358,7 +364,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
     return (
         <div
             onClick={onClick}
-            className={`w-full h-full relative cursor-pointer select-none overflow-hidden transition-all ${isActive ? '' : 'hover:brightness-95'}`}
+            className={`w-full h-full relative ${isReadOnly ? 'cursor-default' : 'cursor-pointer'} select-none overflow-hidden transition-all ${isActive ? '' : (isEditable ? 'ring-1 ring-inset ring-brand-primary/45' : (isReadOnly ? 'saturate-[0.78]' : 'hover:brightness-95'))}`}
             style={{
                 backgroundColor: skipTextureRendering ? 'transparent' : 'rgb(var(--c-surface-recessed))',
                 minHeight: effectiveMinHeight,

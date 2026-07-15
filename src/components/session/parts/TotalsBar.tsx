@@ -18,6 +18,7 @@ interface TotalsBarProps {
   editingCell?: { playerId: string, colId: string } | null;
   previewValue?: any;
   onTotalClick?: (playerId: string) => void;
+  canEditTotal?: (playerId: string) => boolean;
   zoomLevel?: number; // Added prop
   scoringRule?: ScoringRule;
 }
@@ -35,6 +36,7 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
   editingCell,
   previewValue,
   onTotalClick,
+  canEditTotal = () => true,
   zoomLevel = 1, // Default to 1
   scoringRule,
 }) => {
@@ -128,7 +130,7 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
               limitX={template?.globalVisuals?.rightMaskRect?.x}
               isActive={editingCell?.colId === '__TOTAL__' && editingCell?.playerId === p.id}
               previewValue={editingCell?.colId === '__TOTAL__' && editingCell?.playerId === p.id ? previewValue : undefined}
-              onClick={() => onTotalClick && onTotalClick(p.id)}
+              onClick={onTotalClick && canEditTotal(p.id) ? () => onTotalClick(p.id) : undefined}
               scoringRule={scoringRule}
             />
           ))}

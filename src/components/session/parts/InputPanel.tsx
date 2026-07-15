@@ -44,6 +44,7 @@ interface InputPanelProps {
     onToggleVoice?: () => void;
     bottomOffset: string;
     canEditScore?: (playerId: string, column: ScoreColumn | undefined) => boolean;
+    canEditTotal?: (playerId: string) => boolean;
     canEditPlayers?: boolean;
 }
 
@@ -230,7 +231,7 @@ const TotalAdjustmentSidebar: React.FC<{
 
 
 const InputPanel: React.FC<InputPanelProps> = (props) => {
-    const { sessionState, eventHandlers, session, template, savedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice, bottomOffset, canEditScore = () => true, canEditPlayers = true } = props;
+    const { sessionState, eventHandlers, session, template, savedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice, bottomOffset, canEditScore = () => true, canEditTotal = () => true, canEditPlayers = true } = props;
     const { uiState, setUiState, panelHeight, isShortList } = sessionState;
     const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue, isEditingTitle, isToolboxOpen } = uiState;
     const { t } = useSessionTranslation();
@@ -423,7 +424,8 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     };
 
     const updatePlayerMeta = (playerId: string, updates: Partial<Player>) => {
-        if (!canEditPlayers) return;
+        const isOwnTotalAdjustment = editingCell?.colId === '__TOTAL__' && canEditTotal(playerId);
+        if (!canEditPlayers && !isOwnTotalAdjustment) return;
         const players = session.players.map(p => p.id === playerId ? { ...p, ...updates } : p);
         onUpdateSession({ ...session, players });
     };
@@ -650,7 +652,9 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     playerId={activePlayer.id}
                 />;
 
-                sidebarContentNode = <TotalAdjustmentSidebar player={activePlayer} onUpdatePlayer={(u) => updatePlayerMeta(activePlayer!.id, u)} />;
+                if (canEditPlayers) {
+                    sidebarContentNode = <TotalAdjustmentSidebar player={activePlayer} onUpdatePlayer={(u) => updatePlayerMeta(activePlayer!.id, u)} />;
+                }
 
                 // Check if last player to show confirm checkmark
                 const playerIdx = session.players.findIndex(p => p.id === activePlayer!.id);

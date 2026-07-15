@@ -8,6 +8,7 @@ const shared: ScoreColumn = { ...personal, id: 'shared', isShared: true };
 describe('multiplayer session capabilities', () => {
   it('keeps host session controls unchanged', () => {
     expect(hostSessionCapabilities.canEditScore('any-player', personal)).toBe(true);
+    expect(hostSessionCapabilities.canEditTotal('any-player')).toBe(true);
     expect(hostSessionCapabilities.canEditTemplate).toBe(true);
     expect(hostSessionCapabilities.canManageSession).toBe(true);
   });
@@ -18,7 +19,10 @@ describe('multiplayer session capabilities', () => {
     expect(capabilities.canEditScore('p1', personal)).toBe(false);
     expect(capabilities.canEditScore('p2', shared)).toBe(false);
     expect(capabilities.canEditScore('p2', undefined)).toBe(false);
+    expect(capabilities.canEditTotal('p2')).toBe(true);
+    expect(capabilities.canEditTotal('p1')).toBe(false);
     expect(capabilities.canEditPlayers).toBe(false);
     expect(capabilities.canManageSession).toBe(false);
+    expect(capabilities.canUseMediaTools).toBe(true);
   });
 });

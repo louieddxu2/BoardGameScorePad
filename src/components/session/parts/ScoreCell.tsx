@@ -34,6 +34,8 @@ interface ScoreCellProps {
     previewValue?: any;
     forceWidth?: string; // [New] For enforcing full width in shared columns
     skipTextureRendering?: boolean;
+    isReadOnly?: boolean;
+    isEditable?: boolean;
 }
 
 interface CellContentProps {
@@ -322,7 +324,7 @@ const CellContentStandard: React.FC<CellContentProps> = ({ parts, displayScore, 
 // --- Main Component ---
 
 const ScoreCell: React.FC<ScoreCellProps> = (props) => {
-    const { player, playerIndex, column, allColumns, allPlayers, isActive, onClick, forceHeight, screenshotMode = false, baseImage, isEditMode, limitX, isAlt, previewValue, forceWidth, skipTextureRendering } = props;
+    const { player, playerIndex, column, allColumns, allPlayers, isActive, onClick, forceHeight, screenshotMode = false, baseImage, isEditMode, limitX, isAlt, previewValue, forceWidth, skipTextureRendering, isReadOnly = false, isEditable = false } = props;
     const { t } = useSessionTranslation();
     const scoreData: ScoreValue | undefined = player.scores[column.id];
 
@@ -351,7 +353,7 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
     // --- Visuals ---
     const minHeightClass = screenshotMode ? '' : (baseImage ? 'min-h-[3rem]' : 'min-h-[4rem]');
     const borderStructureClasses = baseImage ? '' : 'border-r border-b';
-    const cursorClass = hasLayout ? 'cursor-default' : 'cursor-pointer';
+    const cursorClass = hasLayout || isReadOnly ? 'cursor-default' : 'cursor-pointer';
     const pointerEventsClass = hasLayout ? 'pointer-events-none' : '';
     const baseContainerClasses = `w-full h-full ${forceHeight || ''} ${borderStructureClasses} relative ${cursorClass} ${pointerEventsClass} transition-colors select-none flex flex-col justify-center items-center overflow-hidden`;
     const containerStyle: React.CSSProperties = forceWidth ? { width: forceWidth, minWidth: forceWidth } : {};
@@ -395,7 +397,11 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
         } as any;
 
         if (isActive && !hasLayout) {
-            visualClasses += ` ring-2 ring-inset ring-[rgb(var(--c-grid-active-ring))] z-10`;
+          visualClasses += ` ring-2 ring-inset ring-[rgb(var(--c-grid-active-ring))] z-10`;
+        } else if (isEditable && !hasLayout) {
+          visualClasses += ' ring-1 ring-inset ring-brand-primary/45';
+        } else if (isReadOnly && !hasLayout) {
+          visualClasses += ' saturate-[0.78]';
         }
     }
 
@@ -444,10 +450,12 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
             onClick={(e) => { e.stopPropagation(); onClick(e); }}
             className={`
             absolute flex items-center justify-center 
-            ${!screenshotMode ? 'border-2 rounded-md cursor-pointer transition-all pointer-events-auto' : ''}
+            ${!screenshotMode ? `border-2 rounded-md transition-all pointer-events-auto ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}` : ''}
             ${!screenshotMode && isActive
                     ? 'border-[rgb(var(--c-grid-active-ring))] bg-[rgb(var(--c-grid-active-ring)_/_0.2)] ring-1 ring-[rgb(var(--c-grid-active-ring))]'
-                    : (!screenshotMode ? 'border-dashed border-[rgb(var(--c-txt-primary)_/_0.2)] hover:border-[rgb(var(--c-txt-primary)_/_0.5)] hover:bg-[rgb(var(--c-txt-primary)_/_0.05)]' : '')
+                    : (!screenshotMode ? (isEditable
+                      ? 'border-brand-primary/50 hover:border-brand-primary/70 hover:bg-brand-primary/5'
+                      : (isReadOnly ? 'border-transparent' : 'border-dashed border-[rgb(var(--c-txt-primary)_/_0.2)] hover:border-[rgb(var(--c-txt-primary)_/_0.5)] hover:bg-[rgb(var(--c-txt-primary)_/_0.05)]')) : '')
                 }
         `}
             style={{

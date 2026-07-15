@@ -864,6 +864,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           simpleGemmaStatus={aiSimpleGenerator.gemmaStatus}
           elapsedTime={elapsedTime}
           panelDockOffset={panelDockOffset}
+          canEditScore={capabilities.canEditScore}
         />
       </div>
 
@@ -901,9 +902,10 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           editingCell={editingCell}
           previewValue={previewValue}
           onTotalClick={(playerId) => {
-            if (isAiWorking || !capabilities.canEditScore(playerId, undefined)) return;
+            if (isAiWorking || !capabilities.canEditTotal(playerId)) return;
             eventHandlers.handleCellClick(playerId, '__TOTAL__', { stopPropagation: () => { } } as any);
           }}
+          canEditTotal={capabilities.canEditTotal}
           zoomLevel={zoomLevel}
           scoringRule={session.scoringRule}
         />
@@ -923,6 +925,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onToggleVoice={props.onToggleVoice}
         bottomOffset={panelDockOffset}
         canEditScore={capabilities.canEditScore}
+        canEditTotal={capabilities.canEditTotal}
         canEditPlayers={capabilities.canEditPlayers}
       />
 
