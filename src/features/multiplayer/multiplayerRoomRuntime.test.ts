@@ -1,9 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { GameSession, GameTemplate, HistoryRecord, MultiplayerParticipantBindingRecord, MultiplayerRoomRecord, ScoreColumn } from '../../types';
+import { GameSession, GameTemplate, MultiplayerParticipantBindingRecord, MultiplayerRoomRecord, ScoreColumn } from '../../types';
 import { MultiplayerDeliveryStore } from './multiplayerDeliveryStore';
 import { MultiplayerParticipantBindingStore } from './multiplayerParticipantBinding';
-import { MultiplayerRoomRecoveryStore, MultiplayerRoomRuntimeTransport, createMultiplayerHostRoomRuntime, createMultiplayerPlayerRoomRuntime, restoreMultiplayerHostRoomRuntime } from './multiplayerRoomRuntime';
-import { MultiplayerCompletionReleaseStore } from './multiplayerPersistence';
+import { MultiplayerPlayerRoomStore, MultiplayerRoomRecoveryStore, MultiplayerRoomRuntimeTransport, createMultiplayerHostRoomRuntime, createMultiplayerPlayerRoomRuntime, restoreMultiplayerHostRoomRuntime } from './multiplayerRoomRuntime';
 
 const column: ScoreColumn = { id: 'points', name: 'Points', formula: 'a1', inputType: 'keypad', isScoring: true, rounding: 'none' };
 const template: GameTemplate = { id: 'template-1', name: 'Template', columns: [column], createdAt: 1, updatedAt: 1 };
@@ -12,8 +11,8 @@ const session: GameSession = {
   players: [{ id: 'p1', name: 'P1', color: '#fff', scores: {}, totalScore: 0 }],
 };
 
-const createRuntimeStore = (): MultiplayerRoomRecoveryStore & MultiplayerCompletionReleaseStore => {
-  const templates = new Map<string, GameTemplate>(); const sessions = new Map<string, GameSession>(); const rooms = new Map<string, MultiplayerRoomRecord>(); const history = new Map<string, HistoryRecord>();
+const createRuntimeStore = (): MultiplayerRoomRecoveryStore & MultiplayerPlayerRoomStore => {
+  const templates = new Map<string, GameTemplate>(); const sessions = new Map<string, GameSession>(); const rooms = new Map<string, MultiplayerRoomRecord>();
   return {
     getTemplate: async (id) => templates.get(id),
     getRoom: async (id) => rooms.get(id),
@@ -22,8 +21,6 @@ const createRuntimeStore = (): MultiplayerRoomRecoveryStore & MultiplayerComplet
     putSession: async (value) => { sessions.set(value.id, value); },
     putRoom: async (value) => { rooms.set(value.roomId, value); },
     updateRoomRevision: async (roomId, revision, updatedAt) => { const room = rooms.get(roomId); if (room) rooms.set(roomId, { ...room, revision, updatedAt }); },
-    putHistory: async (value) => { history.set(value.id, value); },
-    deleteSession: async (id) => { sessions.delete(id); },
     deleteRoom: async (id) => { rooms.delete(id); },
   };
 };
@@ -93,7 +90,7 @@ describe('multiplayer room runtime', () => {
     expect(restored?.session.revision).toBe(7);
   });
 
-  it('releases a participant to an editable local copy only after the host completes the room', async () => {
+  it('returns session ownership only after the host completes the room', async () => {
     const hostStore = createRuntimeStore(); const playerStore = createRuntimeStore();
     const hostDelivery = createDeliveryStore(); const playerDelivery = createDeliveryStore(); const bindingStore = createBindingStore();
     let stopped = false; let released: GameSession | undefined;
@@ -110,7 +107,7 @@ describe('multiplayer room runtime', () => {
     player = await createMultiplayerPlayerRoomRuntime({
       bootstrapMessage: host.session.createBootstrapMessage(), deviceId: 'player-device', store: playerStore,
       bindingStore, deliveryStore: playerDelivery, transport: playerTransport,
-      onReleasedToLocalCopy: (localSession) => { released = localSession; }, now: () => 20,
+      onOwnershipReturned: (localSession) => { released = localSession; }, now: () => 20,
     });
     await host.controller.complete();
     await vi.waitFor(() => expect(released?.status).toBe('active'));

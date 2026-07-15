@@ -1,7 +1,7 @@
 import { GameSession, GameTemplate, MultiplayerRoomRecord } from '../../types';
 import { MultiplayerDeliveryStore } from './multiplayerDeliveryStore';
 import { MultiplayerParticipantBindingStore, participantBindingKey, saveParticipantBinding } from './multiplayerParticipantBinding';
-import { MultiplayerBootstrapStore, MultiplayerCompletionReleaseStore, MultiplayerSnapshotStore, createMultiplayerRoomRecord, persistMultiplayerBootstrap, releaseMultiplayerCompletionToLocalCopy } from './multiplayerPersistence';
+import { MultiplayerBootstrapStore, MultiplayerCompletionReleaseStore, MultiplayerSnapshotStore, createMultiplayerRoomRecord, persistMultiplayerBootstrap, releaseMultiplayerRoomOwnership } from './multiplayerPersistence';
 import { MultiplayerRoomTransport, createMultiplayerPlayerRoomController, createMultiplayerRoomController } from './multiplayerRoomController';
 import { createMultiplayerHostSession, createMultiplayerPlayerSessionFromBootstrap } from './multiplayerSession';
 import { BootstrapPackageMessage } from './protocol';
@@ -19,6 +19,7 @@ export interface MultiplayerRoomRuntimeTransport extends MultiplayerRoomTranspor
 }
 
 export type MultiplayerRoomRuntimeStore = MultiplayerBootstrapStore & MultiplayerSnapshotStore;
+export type MultiplayerPlayerRoomStore = MultiplayerRoomRuntimeStore & Pick<MultiplayerCompletionReleaseStore, 'deleteRoom'>;
 export type MultiplayerRoomRecoveryStore = MultiplayerRoomRuntimeStore & {
   getRoom(roomId: string): Promise<MultiplayerRoomRecord | undefined>;
   getSession(sessionId: string): Promise<GameSession | undefined>;
@@ -112,11 +113,11 @@ export const restoreMultiplayerHostRoomRuntime = async (options: {
 export const createMultiplayerPlayerRoomRuntime = async (options: {
   bootstrapMessage: BootstrapPackageMessage;
   deviceId: string;
-  store: MultiplayerRoomRuntimeStore & MultiplayerCompletionReleaseStore;
+  store: MultiplayerPlayerRoomStore;
   bindingStore: MultiplayerParticipantBindingStore;
   deliveryStore: MultiplayerDeliveryStore;
   transport: MultiplayerRoomRuntimeTransport;
-  onReleasedToLocalCopy?: (session: GameSession) => void | Promise<void>;
+  onOwnershipReturned?: (session: GameSession) => void | Promise<void>;
   now?: () => number;
 }): Promise<MultiplayerPlayerRoomRuntime> => {
   const now = options.now ?? Date.now;
@@ -154,10 +155,9 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
       }
     },
     onCompleted: async (message) => {
-      const released = await releaseMultiplayerCompletionToLocalCopy({
+      const localSession = await releaseMultiplayerRoomOwnership({
         store: options.store,
         roomId: playerSession.room.roomId,
-        template: message.template,
         session: message.finalSession,
         completedAt: message.completedAt,
       });
@@ -165,7 +165,7 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
       await Promise.all(pending.map((record) => options.deliveryStore.deleteOutbox(record.id)));
       await options.bindingStore.delete(participantBindingKey(playerSession.room.roomId, options.deviceId));
       options.transport.stop?.();
-      await options.onReleasedToLocalCopy?.(released.localSession);
+      await options.onOwnershipReturned?.(localSession);
     },
   });
   const restoreParticipantBinding = async () => {

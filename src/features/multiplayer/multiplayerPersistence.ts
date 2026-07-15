@@ -130,28 +130,19 @@ export const persistMultiplayerCompletion = async (options: {
   return record;
 };
 
-/** Releases a participant from a completed room while retaining an editable local copy. */
-export const releaseMultiplayerCompletionToLocalCopy = async (options: {
-  store: MultiplayerCompletionReleaseStore;
+/** Returns ownership of a completed room session to the local device. */
+export const releaseMultiplayerRoomOwnership = async (options: {
+  store: Pick<MultiplayerCompletionReleaseStore, 'putSession' | 'deleteRoom'>;
   roomId: string;
-  template: GameTemplate;
   session: GameSession;
   completedAt: number;
-  location?: string;
-}): Promise<{ history: HistoryRecord; localSession: GameSession }> => {
-  const history = createHistoryRecordFromFinalSnapshot({
-    template: options.template,
-    session: options.session,
-    completedAt: options.completedAt,
-    location: options.location,
-  });
+}): Promise<GameSession> => {
   const localSession: GameSession = {
     ...cloneJson(options.session),
     status: 'active',
     lastUpdatedAt: options.completedAt,
   };
-  await options.store.putHistory(history);
   await options.store.putSession(localSession);
   await options.store.deleteRoom(options.roomId);
-  return { history, localSession };
+  return localSession;
 };
