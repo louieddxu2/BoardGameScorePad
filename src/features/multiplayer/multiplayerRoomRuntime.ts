@@ -55,6 +55,7 @@ export const createMultiplayerHostRoomRuntime = async (options: {
   store: MultiplayerRoomRuntimeStore;
   deliveryStore: MultiplayerDeliveryStore;
   transport: MultiplayerRoomRuntimeTransport;
+  onSessionSnapshot?: (session: GameSession) => void | Promise<void>;
   now?: () => number;
 }): Promise<MultiplayerHostRoomRuntime> => {
   const now = options.now ?? Date.now;
@@ -71,6 +72,7 @@ export const createMultiplayerHostRoomRuntime = async (options: {
   const controller = createMultiplayerRoomController({
     role: 'host', hostSession, deliveryStore: options.deliveryStore,
     snapshotStore: options.store, transport: options.transport, now,
+    onSnapshot: async (snapshot) => { await options.onSessionSnapshot?.(snapshot.session); },
   });
   options.transport.setMessageReceiver?.(async (message, connection) => { await controller.receive(message, connection); });
   return {
@@ -118,6 +120,7 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
   deliveryStore: MultiplayerDeliveryStore;
   transport: MultiplayerRoomRuntimeTransport;
   onOwnershipReturned?: (session: GameSession) => void | Promise<void>;
+  onSessionSnapshot?: (session: GameSession) => void | Promise<void>;
   now?: () => number;
 }): Promise<MultiplayerPlayerRoomRuntime> => {
   const now = options.now ?? Date.now;
@@ -167,6 +170,7 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
       options.transport.stop?.();
       await options.onOwnershipReturned?.(localSession);
     },
+    onSnapshot: async (snapshot) => { await options.onSessionSnapshot?.(snapshot.session); },
   });
   const restoreParticipantBinding = async () => {
     const binding = await options.bindingStore.get(participantBindingKey(playerSession.room.roomId, options.deviceId));

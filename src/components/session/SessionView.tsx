@@ -37,6 +37,7 @@ import { useKeyboardStatus } from '../../hooks/useVisualViewportOffset';
 import { getSessionOccupiedBottom, getSessionPanelDockOffset } from '../../utils/sessionViewport';
 import { createPlayerSessionCapabilities, hostSessionCapabilities, SessionCapabilities } from '../../features/multiplayer/sessionCapabilities';
 import { MultiplayerSessionManager, multiplayerSessionManager } from '../../features/multiplayer/multiplayerSessionManager';
+import { routeMultiplayerSessionUpdate } from '../../features/multiplayer/multiplayerSessionUpdateRouter';
 
 interface SessionViewProps {
   session: GameSession;
@@ -61,7 +62,7 @@ interface SessionViewProps {
 }
 
 const SessionView: React.FC<SessionViewProps> = (props) => {
-  const { session, template, zoomLevel, baseImage, onUpdateTemplate } = props;
+  const { template, zoomLevel, baseImage, onUpdateTemplate } = props;
   const { t: tSession } = useSessionTranslation();
   const { t: tCommon } = useCommonTranslation();
 
@@ -78,6 +79,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const [isLocalOwnershipReturned, setIsLocalOwnershipReturned] = React.useState(false);
   const manager = props.multiplayerManager ?? multiplayerSessionManager;
   const [managedRoomState, setManagedRoomState] = React.useState(() => props.multiplayerRoomId ? manager.get(props.multiplayerRoomId) : null);
+  const session = managedRoomState?.session ?? props.session;
 
   const isAiWorking = aiGenerator.status === 'compressing' || 
                       aiGenerator.status === 'generating' || 
@@ -187,6 +189,27 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     props.onUpdateSession(returnedSession);
     showToast({ message: tSession('toast_multiplayer_ownership_returned'), type: 'success' });
   }, [managedRoomState?.status, manager, props.multiplayerRoomId, props.onUpdateSession, showToast, tSession]);
+
+  const handleSessionUpdate = useCallback(async (nextSession: GameSession) => {
+    const roomId = props.multiplayerRoomId;
+    const runtime = managedRoomState?.runtime;
+    if (!roomId || !runtime || isLocalOwnershipReturned) {
+      props.onUpdateSession(nextSession);
+      return;
+    }
+    const claimedPlayerIds = props.multiplayerCapabilities?.playerIds ??
+      (props.multiplayerCapabilities?.playerId ? [props.multiplayerCapabilities.playerId] : []);
+    const canonical = await routeMultiplayerSessionUpdate({
+      previous: session,
+      next: nextSession,
+      runtime,
+      claimedPlayerIds,
+    });
+    if (canonical) {
+      manager.publishSession(roomId, canonical);
+      props.onUpdateSession(canonical);
+    }
+  }, [isLocalOwnershipReturned, managedRoomState?.runtime, manager, props.multiplayerCapabilities, props.multiplayerRoomId, props.onUpdateSession, session]);
 
   const {
     editingCell,
@@ -951,7 +974,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         session={session}
         template={template}
         savedPlayers={props.savedPlayers} // Updated Prop Name
-        onUpdateSession={props.onUpdateSession}
+        onUpdateSession={handleSessionUpdate}
         onUpdateSavedPlayer={props.onUpdateSavedPlayer} // Updated Prop Name
         onTakePhoto={capabilities.canUseMediaTools ? media.openScoreCamera : undefined}
         onScreenshotRequest={capabilities.canUseMediaTools ? handleScreenshotRequest : undefined}

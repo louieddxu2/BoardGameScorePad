@@ -44,6 +44,7 @@ export const createMultiplayerRoomController = (options: {
   deliveryStore: MultiplayerDeliveryStore;
   snapshotStore: MultiplayerSnapshotStore;
   transport: MultiplayerRoomTransport;
+  onSnapshot?: (snapshot: SessionSnapshotMessage) => void | Promise<void>;
   now?: () => number;
 }) => {
   const now = options.now ?? Date.now;
@@ -95,6 +96,7 @@ export const createMultiplayerRoomController = (options: {
       }
 
       await persistMultiplayerSnapshot(result.snapshot, options.snapshotStore);
+      await options.onSnapshot?.(result.snapshot);
       await options.deliveryStore.putReceipt({
         id: receiptId, roomId: message.roomId, sessionId: message.sessionId, deviceId: message.deviceId,
         opId: message.opId, acceptedRevision: result.snapshot.revision, updatedAt: now(),
@@ -123,6 +125,14 @@ export const createMultiplayerRoomController = (options: {
       options.transport.broadcastMessage?.(message);
       return message;
     },
+    async applyLocalSession(session: import('../../types').GameSession) {
+      const snapshot = options.hostSession.applyLocalSession(session);
+      if (!snapshot) return null;
+      await persistMultiplayerSnapshot(snapshot, options.snapshotStore);
+      await options.onSnapshot?.(snapshot);
+      await options.transport.broadcastLocalChanges();
+      return snapshot;
+    },
   };
 };
 
@@ -134,6 +144,7 @@ export const createMultiplayerPlayerRoomController = (options: {
   transport: MultiplayerRoomTransport;
   onClaimAccepted?: (playerId: string) => void | Promise<void>;
   onCompleted?: (message: import('./protocol').SessionCompletedMessage) => void | Promise<void>;
+  onSnapshot?: (snapshot: SessionSnapshotMessage) => void | Promise<void>;
   now?: () => number;
 }) => {
   const now = options.now ?? Date.now;
@@ -192,6 +203,7 @@ export const createMultiplayerPlayerRoomController = (options: {
       }
       if (message.snapshot && options.playerSession.applySnapshot(message.snapshot)) {
         await persistMultiplayerSnapshot(message.snapshot, options.snapshotStore);
+        await options.onSnapshot?.(message.snapshot);
       }
       await options.deliveryStore.deleteOutbox(outboxId);
       return true;

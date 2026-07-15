@@ -35,4 +35,14 @@ describe('multiplayer session manager', () => {
     expect(manager.takeReturnedSession('room-1')).toEqual(session);
     expect(manager.get('room-1')).toBeNull();
   });
+
+  it('provides runtime callbacks that publish canonical sessions and return ownership', () => {
+    const manager = createMultiplayerSessionManager(); const runtime = createRuntime('player');
+    manager.register('room-1', runtime);
+    const callbacks = manager.createRuntimeCallbacks('room-1');
+    callbacks.onSessionSnapshot({ ...session, name: 'Canonical' });
+    expect(manager.get('room-1')?.session?.name).toBe('Canonical');
+    callbacks.onOwnershipReturned(session);
+    expect(manager.get('room-1')?.status).toBe('ownership-returned');
+  });
 });

@@ -16,6 +16,7 @@ export interface MultiplayerRoomState {
   status: MultiplayerConnectionStatus;
   isViewAttached: boolean;
   runtime: ManagedMultiplayerRuntime | null;
+  session?: GameSession;
   returnedSession?: GameSession;
 }
 
@@ -25,6 +26,11 @@ export interface MultiplayerSessionManager {
   attachView(roomId: string): MultiplayerRoomState | null;
   detachView(roomId: string): void;
   setConnectionStatus(roomId: string, status: Exclude<MultiplayerConnectionStatus, 'ownership-returned'>): void;
+  publishSession(roomId: string, session: GameSession): void;
+  createRuntimeCallbacks(roomId: string): {
+    onSessionSnapshot: (session: GameSession) => void;
+    onOwnershipReturned: (session: GameSession) => void;
+  };
   returnOwnership(roomId: string, session: GameSession): void;
   takeReturnedSession(roomId: string): GameSession | null;
   closeRoom(roomId: string): void;
@@ -34,6 +40,7 @@ export interface MultiplayerSessionManager {
 const snapshot = (state: MultiplayerRoomState): MultiplayerRoomState => ({
   ...state,
   returnedSession: state.returnedSession ? JSON.parse(JSON.stringify(state.returnedSession)) as GameSession : undefined,
+  session: state.session ? JSON.parse(JSON.stringify(state.session)) as GameSession : undefined,
 });
 
 /**
@@ -51,7 +58,8 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
 
   return {
     register(roomId, runtime, status = 'connected') {
-      const state: MultiplayerRoomState = { roomId, role: runtime.role, status, isViewAttached: false, runtime };
+      const runtimeSession = runtime.role === 'host' ? runtime.session.session : runtime.session.session;
+      const state: MultiplayerRoomState = { roomId, role: runtime.role, status, isViewAttached: false, runtime, session: runtimeSession };
       rooms.set(roomId, state);
       notify();
       return snapshot(state);
@@ -76,6 +84,18 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
       state.status = status;
       notify();
     },
+    publishSession(roomId, session) {
+      const state = rooms.get(roomId);
+      if (!state || !state.runtime) return;
+      state.session = JSON.parse(JSON.stringify(session)) as GameSession;
+      notify();
+    },
+    createRuntimeCallbacks(roomId) {
+      return {
+        onSessionSnapshot: (session) => { this.publishSession(roomId, session); },
+        onOwnershipReturned: (session) => { this.returnOwnership(roomId, session); },
+      };
+    },
     returnOwnership(roomId, session) {
       const state = rooms.get(roomId);
       if (!state) return;
@@ -83,6 +103,7 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
       state.runtime = null;
       state.status = 'ownership-returned';
       state.returnedSession = JSON.parse(JSON.stringify(session)) as GameSession;
+      state.session = undefined;
       notify();
     },
     takeReturnedSession(roomId) {

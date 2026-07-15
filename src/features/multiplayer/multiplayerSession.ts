@@ -19,6 +19,7 @@ export interface MultiplayerHostSession {
   createBootstrapMessage(): BootstrapPackageMessage;
   receiveScoreValuePatch(message: ScoreValuePatchMessage): { accepted: true; snapshot: SessionSnapshotMessage } | { accepted: false; reason: string };
   receiveTotalAdjustmentPatch(message: TotalAdjustmentPatchMessage): { accepted: true; snapshot: SessionSnapshotMessage } | { accepted: false; reason: string };
+  applyLocalSession(session: GameSession): SessionSnapshotMessage | null;
   complete(): SessionCompletedMessage;
 }
 
@@ -164,6 +165,16 @@ export const createMultiplayerHostSession = (options: {
       const snapshot: SessionSnapshotMessage = { type: 'session:snapshot', roomId: state.room.roomId, sessionId: state.session.id, session: cloneJson(state.session), revision: state.revision, updatedAt: now() };
       rememberOperation(operationKey, snapshot);
       return { accepted: true, snapshot };
+    },
+
+    applyLocalSession(session) {
+      if (session.id !== state.session.id || session.status !== 'active') return null;
+      state.session = recalculateScoreSession(cloneJson(session), state.template);
+      state.revision += 1;
+      return {
+        type: 'session:snapshot', roomId: state.room.roomId, sessionId: state.session.id,
+        session: cloneJson(state.session), revision: state.revision, updatedAt: now(),
+      };
     },
 
     complete() {
