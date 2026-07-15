@@ -457,6 +457,15 @@ const App: React.FC = () => {
     if (resumed) setView(AppView.ACTIVE_SESSION);
   }, [appData, pendingMultiplayerJoin]);
 
+  const handleCancelMultiplayerJoin = useCallback(() => {
+    pendingMultiplayerJoin?.transport.stop?.();
+    setPendingMultiplayerJoin(null);
+    setIsJoiningMultiplayer(false);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('room');
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  }, [pendingMultiplayerJoin]);
+
   const multiplayerRoomState = activeMultiplayerRoom ? multiplayerSessionManager.get(activeMultiplayerRoom.roomId) : null;
   const multiplayerJoinUrl = activeMultiplayerRoom?.role === 'host'
     ? `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(activeMultiplayerRoom.roomId)}`
@@ -713,6 +722,7 @@ const App: React.FC = () => {
           isOpen
           players={pendingMultiplayerJoin.bootstrapMessage.package.session.players}
           onConfirm={handleConfirmMultiplayerPlayers}
+          onClose={handleCancelMultiplayerJoin}
         />
       )}
       
