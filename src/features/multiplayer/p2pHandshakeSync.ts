@@ -22,6 +22,7 @@ export interface P2PHandshakeSync {
   stop(): void;
   setupConnection(connection: P2PDataConnection): void;
   broadcastLocalChanges(): Promise<void>;
+  broadcast(message: unknown): boolean;
   sendToHost(message: unknown): boolean;
   sendToConnection(connection: P2PDataConnection, message: unknown): boolean;
 }
@@ -99,6 +100,7 @@ export const createP2PHandshakeSync = (options: {
     stop,
     setupConnection,
     async broadcastLocalChanges() { const metas = await options.adapter.listMetas(); for (const meta of metas) { const item = await options.adapter.getItem(meta.id); if (item) for (const connection of connections) await sendItem(connection, item); } },
+    broadcast(message) { let sent = false; for (const connection of connections) sent = send(connection, message) || sent; return sent; },
     sendToHost(message) { return hostConnection ? send(hostConnection, message) : false; },
     sendToConnection: send,
   };

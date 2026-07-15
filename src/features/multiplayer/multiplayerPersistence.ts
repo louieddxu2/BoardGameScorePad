@@ -23,6 +23,10 @@ export interface MultiplayerHistoryStore {
   deleteRoom(roomId: string): Promise<unknown>;
 }
 
+export interface MultiplayerCompletionReleaseStore extends MultiplayerHistoryStore {
+  putSession(session: GameSession): Promise<unknown>;
+}
+
 export interface MultiplayerSnapshotStore {
   putSession(session: GameSession): Promise<unknown>;
   updateRoomRevision(roomId: string, revision: number, updatedAt: number): Promise<unknown>;
@@ -124,4 +128,30 @@ export const persistMultiplayerCompletion = async (options: {
   await options.store.deleteSession(options.session.id);
   await options.store.deleteRoom(options.roomId);
   return record;
+};
+
+/** Releases a participant from a completed room while retaining an editable local copy. */
+export const releaseMultiplayerCompletionToLocalCopy = async (options: {
+  store: MultiplayerCompletionReleaseStore;
+  roomId: string;
+  template: GameTemplate;
+  session: GameSession;
+  completedAt: number;
+  location?: string;
+}): Promise<{ history: HistoryRecord; localSession: GameSession }> => {
+  const history = createHistoryRecordFromFinalSnapshot({
+    template: options.template,
+    session: options.session,
+    completedAt: options.completedAt,
+    location: options.location,
+  });
+  const localSession: GameSession = {
+    ...cloneJson(options.session),
+    status: 'active',
+    lastUpdatedAt: options.completedAt,
+  };
+  await options.store.putHistory(history);
+  await options.store.putSession(localSession);
+  await options.store.deleteRoom(options.roomId);
+  return { history, localSession };
 };

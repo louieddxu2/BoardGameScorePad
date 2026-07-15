@@ -9,6 +9,7 @@ import {
   isScoreValuePatchMessage,
   isParticipantClaimMessage,
   isParticipantClaimResultMessage,
+  isSessionCompletedMessage,
   isTotalAdjustmentPatchMessage,
   ParticipantClaimResultMessage,
   ScorePatchResultMessage,
@@ -30,6 +31,7 @@ export interface MultiplayerRoomTransport {
   sendToHost(message: unknown): boolean;
   sendToConnection(connection: unknown, message: unknown): boolean;
   broadcastLocalChanges(): Promise<void>;
+  broadcastMessage?(message: unknown): boolean;
 }
 
 /**
@@ -108,6 +110,19 @@ export const createMultiplayerRoomController = (options: {
       receiveQueue = next.then(() => undefined, () => undefined);
       return next;
     },
+    async complete() {
+      const message = options.hostSession.complete();
+      await persistMultiplayerSnapshot({
+        type: 'session:snapshot',
+        roomId: message.roomId,
+        sessionId: message.sessionId,
+        session: message.finalSession,
+        revision: message.revision,
+        updatedAt: message.completedAt,
+      }, options.snapshotStore);
+      options.transport.broadcastMessage?.(message);
+      return message;
+    },
   };
 };
 
@@ -118,6 +133,7 @@ export const createMultiplayerPlayerRoomController = (options: {
   snapshotStore: MultiplayerSnapshotStore;
   transport: MultiplayerRoomTransport;
   onClaimAccepted?: (playerId: string) => void | Promise<void>;
+  onCompleted?: (message: import('./protocol').SessionCompletedMessage) => void | Promise<void>;
   now?: () => number;
 }) => {
   const now = options.now ?? Date.now;
@@ -157,6 +173,11 @@ export const createMultiplayerPlayerRoomController = (options: {
     },
 
     async receive(message: unknown) {
+      if (isSessionCompletedMessage(message)) {
+        if (!options.playerSession.applyCompleted(message)) return false;
+        await options.onCompleted?.(message);
+        return true;
+      }
       if (isParticipantClaimResultMessage(message)) {
         if (message.roomId !== options.playerSession.room.roomId || message.sessionId !== options.playerSession.session.id) return false;
         if (message.accepted && message.playerId) await options.onClaimAccepted?.(message.playerId);

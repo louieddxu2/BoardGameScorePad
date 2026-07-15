@@ -1,7 +1,7 @@
 import { GameSession, GameTemplate, MultiplayerRoomRecord } from '../../types';
 import { MultiplayerDeliveryStore } from './multiplayerDeliveryStore';
 import { MultiplayerParticipantBindingStore, participantBindingKey, saveParticipantBinding } from './multiplayerParticipantBinding';
-import { MultiplayerBootstrapStore, MultiplayerSnapshotStore, createMultiplayerRoomRecord, persistMultiplayerBootstrap } from './multiplayerPersistence';
+import { MultiplayerBootstrapStore, MultiplayerCompletionReleaseStore, MultiplayerSnapshotStore, createMultiplayerRoomRecord, persistMultiplayerBootstrap, releaseMultiplayerCompletionToLocalCopy } from './multiplayerPersistence';
 import { MultiplayerRoomTransport, createMultiplayerPlayerRoomController, createMultiplayerRoomController } from './multiplayerRoomController';
 import { createMultiplayerHostSession, createMultiplayerPlayerSessionFromBootstrap } from './multiplayerSession';
 import { BootstrapPackageMessage } from './protocol';
@@ -112,10 +112,11 @@ export const restoreMultiplayerHostRoomRuntime = async (options: {
 export const createMultiplayerPlayerRoomRuntime = async (options: {
   bootstrapMessage: BootstrapPackageMessage;
   deviceId: string;
-  store: MultiplayerRoomRuntimeStore;
+  store: MultiplayerRoomRuntimeStore & MultiplayerCompletionReleaseStore;
   bindingStore: MultiplayerParticipantBindingStore;
   deliveryStore: MultiplayerDeliveryStore;
   transport: MultiplayerRoomRuntimeTransport;
+  onReleasedToLocalCopy?: (session: GameSession) => void | Promise<void>;
   now?: () => number;
 }): Promise<MultiplayerPlayerRoomRuntime> => {
   const now = options.now ?? Date.now;
@@ -151,6 +152,20 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
       if (pendingReplayClaims.size === 0) {
         await controller.replayPendingPatches();
       }
+    },
+    onCompleted: async (message) => {
+      const released = await releaseMultiplayerCompletionToLocalCopy({
+        store: options.store,
+        roomId: playerSession.room.roomId,
+        template: message.template,
+        session: message.finalSession,
+        completedAt: message.completedAt,
+      });
+      const pending = await options.deliveryStore.listOutbox(playerSession.room.roomId, playerSession.session.id);
+      await Promise.all(pending.map((record) => options.deliveryStore.deleteOutbox(record.id)));
+      await options.bindingStore.delete(participantBindingKey(playerSession.room.roomId, options.deviceId));
+      options.transport.stop?.();
+      await options.onReleasedToLocalCopy?.(released.localSession);
     },
   });
   const restoreParticipantBinding = async () => {

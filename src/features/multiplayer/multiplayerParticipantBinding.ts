@@ -4,11 +4,13 @@ import { MultiplayerParticipantBindingRecord } from '../../types';
 export interface MultiplayerParticipantBindingStore {
   get(id: string): Promise<MultiplayerParticipantBindingRecord | undefined>;
   put(record: MultiplayerParticipantBindingRecord): Promise<unknown>;
+  delete(id: string): Promise<unknown>;
 }
 
 export const multiplayerParticipantBindingStore: MultiplayerParticipantBindingStore = {
   get: (id) => db.multiplayerParticipantBindings.get(id),
   put: (record) => db.multiplayerParticipantBindings.put(record),
+  delete: (id) => db.multiplayerParticipantBindings.delete(id),
 };
 
 export const participantBindingKey = (roomId: string, deviceId: string): string => `${roomId}:${deviceId}`;

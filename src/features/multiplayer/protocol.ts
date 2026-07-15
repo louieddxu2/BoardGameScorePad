@@ -226,3 +226,14 @@ export const isScorePatchResultMessage = (value: unknown): value is ScorePatchRe
   }
   return typeof value.reason === 'string' && value.reason !== '';
 };
+
+export const isSessionCompletedMessage = (value: unknown): value is SessionCompletedMessage => {
+  if (!isRecord(value) || value.type !== 'session:completed') return false;
+  return hasString(value, 'roomId') &&
+    hasString(value, 'sessionId') &&
+    isGameTemplateLike(value.template) &&
+    isGameSessionLike(value.finalSession) &&
+    value.finalSession.id === value.sessionId &&
+    hasNumber(value, 'revision') &&
+    hasNumber(value, 'completedAt');
+};
