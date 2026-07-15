@@ -927,6 +927,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         canEditScore={capabilities.canEditScore}
         canEditTotal={capabilities.canEditTotal}
         canEditPlayers={capabilities.canEditPlayers}
+        mediaOnlyTools={capabilities.role === 'player'}
       />
 
       <ScreenshotModal

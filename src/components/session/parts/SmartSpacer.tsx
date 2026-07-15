@@ -18,15 +18,16 @@ interface SmartSpacerProps {
     onScreenshot?: () => void;
     onUpdateSession: (session: GameSession) => void;
     mode?: 'session' | 'history'; // New prop
+    mediaOnly?: boolean;
 }
 
-const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhoto, onScreenshot, onUpdateSession, mode = 'session' }) => {
+const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhoto, onScreenshot, onUpdateSession, mode = 'session', mediaOnly = false }) => {
     const { t } = useSessionTranslation();
     const isHistory = mode === 'history';
     return (
         <div className="absolute inset-0 flex flex-col p-4 overflow-y-auto no-scrollbar">
             {/* Hint Text */}
-            {!isHistory && (
+            {!isHistory && !mediaOnly && (
                 <div className="flex items-center justify-center gap-2 text-txt-muted mb-6 mt-2 opacity-70 select-none">
                     <MousePointerClick size={16} className="animate-bounce" />
                     <span className="text-xs font-bold">{t('smart_spacer_hint')}</span>
@@ -41,37 +42,37 @@ const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhot
                     <MediaTool onTakePhoto={onTakePhoto} onScreenshot={onScreenshot} />
                 </div>
 
-                <div className="col-span-4 h-px bg-[rgb(var(--c-input-border)/0.5)] my-1 flex items-center justify-center">
+                {!mediaOnly && <div className="col-span-4 h-px bg-[rgb(var(--c-input-border)/0.5)] my-1 flex items-center justify-center">
                     <span className="bg-[rgb(var(--c-input-bg))] px-2 text-[10px] text-txt-muted font-bold uppercase tracking-widest flex items-center gap-1">
                         <Wrench size={10} /> {t('smart_spacer_tools_title')}
                     </span>
-                </div>
+                </div>}
 
                 {/* Row 2: Order */}
-                {!isHistory && (
+                {!isHistory && !mediaOnly && (
                     <div className="col-span-4">
                         <OrderTool session={session} template={template} onUpdateSession={onUpdateSession} />
                     </div>
                 )}
 
                 {/* Row 3: Countdown */}
-                {!isHistory && (
+                {!isHistory && !mediaOnly && (
                     <div className="col-span-4">
                         <CountdownTool />
                     </div>
                 )}
 
                 {/* Row 4: Randomizer (Coin + Dice) */}
-                {!isHistory && (
+                {!isHistory && !mediaOnly && (
                     <div className="col-span-4">
                         <RandomizerTool />
                     </div>
                 )}
 
                 {/* Row 5: Notes */}
-                <div className="col-span-4">
+                {!mediaOnly && <div className="col-span-4">
                     <MemoTool session={session} onUpdateSession={onUpdateSession} />
-                </div>
+                </div>}
 
             </div>
         </div>
