@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { db } from './db';
 
-describe('database schema guard (v31)', () => {
+describe('database schema guard (v32)', () => {
   it('keeps expected schema version', () => {
-    expect(db.verno).toBe(31);
+    expect(db.verno).toBe(32);
   });
 
   it('includes key tables required by migration path', () => {
@@ -27,6 +27,7 @@ describe('database schema guard (v31)', () => {
     expect(schema.multiplayerRooms.primKey.keyPath).toBe('roomId');
     expect(schema.multiplayerOutbox).toBeTruthy();
     expect(schema.multiplayerPatchReceipts).toBeTruthy();
+    expect(schema.multiplayerParticipantBindings).toBeTruthy();
   });
 });
 

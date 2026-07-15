@@ -42,15 +42,34 @@ describe('multiplayer room controller', () => {
   it('uses a durable host receipt to make a retried operation harmless', async () => {
     const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
     const store = createDeliveryStore(); const reply = vi.fn(); const broadcast = vi.fn(async () => undefined);
+    const connection = {};
     const controller = createMultiplayerRoomController({ role: 'host', hostSession: host, deliveryStore: store,
       snapshotStore: { putSession: async () => undefined, updateRoomRevision: async () => undefined },
       transport: { sendToHost: () => false, sendToConnection: (_connection, message) => { reply(message); return true; }, broadcastLocalChanges: broadcast }, now: () => 20,
     });
     const patch = { type: 'score:valuePatch' as const, roomId: 'room-1', sessionId: 'session-1', opId: 'op-1', deviceId: 'device-1', sequence: 1, updatedAt: 20, patch: { actor: { role: 'player' as const, playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [7] } } };
-    await controller.receive(patch, {});
-    await controller.receive(patch, {});
+    await controller.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-1', playerId: 'p1' }, connection);
+    await controller.receive(patch, connection);
+    await controller.receive(patch, connection);
     expect(host.revision).toBe(2);
     expect(broadcast).toHaveBeenCalledTimes(1);
-    expect(reply).toHaveBeenCalledTimes(2);
+    expect(reply).toHaveBeenCalledTimes(3);
+  });
+
+  it('requires a claim and accepts a claimed player total adjustment', async () => {
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
+    const store = createDeliveryStore(); const reply = vi.fn();
+    const connection = {};
+    const controller = createMultiplayerRoomController({ role: 'host', hostSession: host, deliveryStore: store,
+      snapshotStore: { putSession: async () => undefined, updateRoomRevision: async () => undefined },
+      transport: { sendToHost: () => false, sendToConnection: (_connection, message) => { reply(message); return true; }, broadcastLocalChanges: async () => undefined }, now: () => 20,
+    });
+    const adjustment = { type: 'player:total-adjustment' as const, roomId: 'room-1', sessionId: 'session-1', opId: 'total-1', deviceId: 'device-1', sequence: 1, actor: { role: 'player' as const, playerId: 'p1' }, targetPlayerId: 'p1', targetTotal: 12, updatedAt: 20 };
+    await controller.receive(adjustment, connection);
+    expect(reply).toHaveBeenLastCalledWith(expect.objectContaining({ accepted: false, reason: 'participant_not_claimed' }));
+    await controller.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-1', playerId: 'p1' }, connection);
+    await controller.receive(adjustment, connection);
+    expect(host.session.players[0].totalScore).toBe(12);
+    expect(reply).toHaveBeenLastCalledWith(expect.objectContaining({ accepted: true, snapshot: expect.any(Object) }));
   });
 });

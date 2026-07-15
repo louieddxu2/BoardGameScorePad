@@ -7,9 +7,13 @@ import {
 import {
   isScorePatchResultMessage,
   isScoreValuePatchMessage,
+  isParticipantClaimMessage,
+  isTotalAdjustmentPatchMessage,
+  ParticipantClaimResultMessage,
   ScorePatchResultMessage,
   ScoreValuePatchMessage,
   SessionSnapshotMessage,
+  TotalAdjustmentPatchMessage,
 } from './protocol';
 import { ScorePatchActor } from './scoreValuePatch';
 import {
@@ -40,13 +44,30 @@ export const createMultiplayerRoomController = (options: {
   now?: () => number;
 }) => {
   const now = options.now ?? Date.now;
-  const makeResult = (message: ScoreValuePatchMessage, accepted: boolean, snapshot?: SessionSnapshotMessage, reason?: string): ScorePatchResultMessage => accepted
+  const bindings = new Map<unknown, { deviceId: string; playerId: string }>();
+  const makeResult = (message: Pick<ScoreValuePatchMessage, 'roomId' | 'sessionId' | 'opId'>, accepted: boolean, snapshot?: SessionSnapshotMessage, reason?: string): ScorePatchResultMessage => accepted
     ? { type: 'score:patch-result', roomId: message.roomId, sessionId: message.sessionId, opId: message.opId, accepted: true, snapshot: snapshot! }
     : { type: 'score:patch-result', roomId: message.roomId, sessionId: message.sessionId, opId: message.opId, accepted: false, reason: reason ?? 'rejected' };
 
   return {
     async receive(message: unknown, connection: unknown) {
-      if (!isScoreValuePatchMessage(message)) return false;
+      if (isParticipantClaimMessage(message)) {
+        const validRoom = message.roomId === options.hostSession.room.roomId && message.sessionId === options.hostSession.session.id;
+        const playerExists = options.hostSession.session.players.some((player) => player.id === message.playerId);
+        const result: ParticipantClaimResultMessage = validRoom && playerExists
+          ? { type: 'room:claim-result', roomId: message.roomId, sessionId: message.sessionId, accepted: true, playerId: message.playerId }
+          : { type: 'room:claim-result', roomId: message.roomId, sessionId: message.sessionId, accepted: false, reason: validRoom ? 'player_not_found' : 'message_not_for_room' };
+        if (result.accepted) bindings.set(connection, { deviceId: message.deviceId, playerId: message.playerId });
+        options.transport.sendToConnection(connection, result);
+        return true;
+      }
+      if (!isScoreValuePatchMessage(message) && !isTotalAdjustmentPatchMessage(message)) return false;
+      const actor = isScoreValuePatchMessage(message) ? message.patch.actor : message.actor;
+      const binding = bindings.get(connection);
+      if (actor.role !== 'player' || !binding || binding.deviceId !== message.deviceId || binding.playerId !== actor.playerId) {
+        options.transport.sendToConnection(connection, makeResult(message, false, undefined, 'participant_not_claimed'));
+        return true;
+      }
       const receiptId = scorePatchOperationKey(message.roomId, message.deviceId, message.opId);
       const existing = await options.deliveryStore.getReceipt(receiptId);
       if (existing) {
@@ -58,7 +79,9 @@ export const createMultiplayerRoomController = (options: {
         return true;
       }
 
-      const result = options.hostSession.receiveScoreValuePatch(message);
+      const result = isScoreValuePatchMessage(message)
+        ? options.hostSession.receiveScoreValuePatch(message)
+        : options.hostSession.receiveTotalAdjustmentPatch(message);
       if (!result.accepted) {
         options.transport.sendToConnection(connection, makeResult(message, false, undefined, result.reason));
         return true;
@@ -85,7 +108,7 @@ export const createMultiplayerPlayerRoomController = (options: {
   now?: () => number;
 }) => {
   const now = options.now ?? Date.now;
-  const send = (message: ScoreValuePatchMessage) => options.transport.sendToHost(message);
+  const send = (message: unknown) => options.transport.sendToHost(message);
   return {
     async queueScoreValuePatch(input: {
       actor: ScorePatchActor;
@@ -97,6 +120,23 @@ export const createMultiplayerPlayerRoomController = (options: {
       const sequence = await reserveScorePatchSequence({
         store: options.deliveryStore, key: scorePatchSequenceKey(draft), now,
       });
+      const message = { ...draft, sequence, updatedAt: now() };
+      await options.deliveryStore.putOutbox(createOutboxRecord(message));
+      send(message);
+      return message;
+    },
+
+    claimPlayer(playerId: string) {
+      return send({ type: 'room:claim-player', roomId: options.playerSession.room.roomId, sessionId: options.playerSession.session.id, deviceId: options.deviceId, playerId });
+    },
+
+    async queueTotalAdjustment(input: { playerId: string; targetTotal: number }): Promise<TotalAdjustmentPatchMessage> {
+      const draft: TotalAdjustmentPatchMessage = {
+        type: 'player:total-adjustment', roomId: options.playerSession.room.roomId, sessionId: options.playerSession.session.id,
+        opId: generateId(), deviceId: options.deviceId, sequence: 1, actor: { role: 'player', playerId: input.playerId },
+        targetPlayerId: input.playerId, targetTotal: input.targetTotal, updatedAt: now(),
+      };
+      const sequence = await reserveScorePatchSequence({ store: options.deliveryStore, key: `${draft.roomId}:${draft.deviceId}:${input.playerId}:__TOTAL__`, now });
       const message = { ...draft, sequence, updatedAt: now() };
       await options.deliveryStore.putOutbox(createOutboxRecord(message));
       send(message);
@@ -121,7 +161,7 @@ export const createMultiplayerPlayerRoomController = (options: {
     async replayPendingPatches() {
       const records = await options.deliveryStore.listOutbox(options.playerSession.room.roomId, options.playerSession.session.id);
       for (const record of records) {
-        if (isScoreValuePatchMessage(record.message)) send(record.message);
+        if (isScoreValuePatchMessage(record.message) || isTotalAdjustmentPatchMessage(record.message)) send(record.message);
       }
     },
   };

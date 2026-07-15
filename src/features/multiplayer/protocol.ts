@@ -1,5 +1,5 @@
 import { GameSession, GameTemplate } from '../../types';
-import { ScoreValuePatch, isValidScoreValue } from './scoreValuePatch';
+import { ScorePatchActor, ScoreValuePatch, isValidScoreValue } from './scoreValuePatch';
 
 export const MULTIPLAYER_PROTOCOL_VERSION = 1 as const;
 
@@ -45,6 +45,36 @@ export interface ScoreValuePatchMessage {
   updatedAt: number;
 }
 
+export interface TotalAdjustmentPatchMessage {
+  type: 'player:total-adjustment';
+  roomId: string;
+  sessionId: string;
+  opId: string;
+  deviceId: string;
+  sequence: number;
+  actor: ScorePatchActor;
+  targetPlayerId: string;
+  targetTotal: number;
+  updatedAt: number;
+}
+
+export interface ParticipantClaimMessage {
+  type: 'room:claim-player';
+  roomId: string;
+  sessionId: string;
+  deviceId: string;
+  playerId: string;
+}
+
+export interface ParticipantClaimResultMessage {
+  type: 'room:claim-result';
+  roomId: string;
+  sessionId: string;
+  accepted: boolean;
+  playerId?: string;
+  reason?: string;
+}
+
 export interface SessionSnapshotMessage {
   type: 'session:snapshot';
   roomId: string;
@@ -78,6 +108,9 @@ export type MultiplayerMessage =
   | BootstrapRequestMessage
   | BootstrapPackageMessage
   | ScoreValuePatchMessage
+  | TotalAdjustmentPatchMessage
+  | ParticipantClaimMessage
+  | ParticipantClaimResultMessage
   | ScorePatchResultMessage
   | SessionSnapshotMessage
   | SessionCompletedMessage;
@@ -150,6 +183,25 @@ export const isScoreValuePatchMessage = (value: unknown): value is ScoreValuePat
   if (!isRecord(actor)) return false;
   if (actor.role === 'host') return true;
   return actor.role === 'player' && hasString(actor, 'playerId');
+};
+
+export const isTotalAdjustmentPatchMessage = (value: unknown): value is TotalAdjustmentPatchMessage => {
+  if (!isRecord(value) || value.type !== 'player:total-adjustment') return false;
+  if (!hasString(value, 'roomId') || !hasString(value, 'sessionId') || !hasString(value, 'opId') || !hasString(value, 'deviceId') || !hasString(value, 'targetPlayerId')) return false;
+  const sequence = value.sequence;
+  if (!hasNumber(value, 'updatedAt') || !hasNumber(value, 'targetTotal') || typeof sequence !== 'number' || !Number.isInteger(sequence) || sequence < 1) return false;
+  const actor = value.actor;
+  if (!isRecord(actor)) return false;
+  return actor.role === 'host' || (actor.role === 'player' && hasString(actor, 'playerId'));
+};
+
+export const isParticipantClaimMessage = (value: unknown): value is ParticipantClaimMessage => {
+  return isRecord(value) && value.type === 'room:claim-player' && hasString(value, 'roomId') && hasString(value, 'sessionId') && hasString(value, 'deviceId') && hasString(value, 'playerId');
+};
+
+export const isParticipantClaimResultMessage = (value: unknown): value is ParticipantClaimResultMessage => {
+  if (!isRecord(value) || value.type !== 'room:claim-result' || !hasString(value, 'roomId') || !hasString(value, 'sessionId') || typeof value.accepted !== 'boolean') return false;
+  return value.accepted ? hasString(value, 'playerId') : typeof value.reason === 'string' && value.reason !== '';
 };
 
 export const isSessionSnapshotMessage = (value: unknown): value is SessionSnapshotMessage => {

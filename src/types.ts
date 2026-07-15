@@ -250,6 +250,15 @@ export interface MultiplayerPatchReceiptRecord {
   updatedAt: number;
 }
 
+export interface MultiplayerParticipantBindingRecord {
+  id: string;
+  roomId: string;
+  sessionId: string;
+  deviceId: string;
+  playerId: string;
+  updatedAt: number;
+}
+
 // [New Interface] History Record
 // HistoryRecord 暫時保持 gameName 屬性以維持與舊資料的相容性，
 // 但我們手動加上 bggId 使其在概念上與 GameIdentity 保持一致。

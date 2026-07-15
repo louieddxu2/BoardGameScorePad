@@ -50,7 +50,7 @@ const cloneScoreValue = (value: ScoreValue): ScoreValue => ({
   ...(value.multiOptionIds !== undefined ? { multiOptionIds: [...value.multiOptionIds] } : {}),
 });
 
-const recalculateSession = (session: GameSession, template: GameTemplate): GameSession => {
+export const recalculateScoreSession = (session: GameSession, template: GameTemplate): GameSession => {
   const playersWithTotals = session.players.map((player) => ({
     ...player,
     totalScore: calculatePlayerTotal(player, template, session.players),
@@ -110,6 +110,6 @@ export const applyScoreValuePatch = (
 
   return {
     ok: true,
-    session: recalculateSession({ ...session, players: updatedPlayers }, template),
+    session: recalculateScoreSession({ ...session, players: updatedPlayers }, template),
   };
 };

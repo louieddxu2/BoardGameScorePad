@@ -3,10 +3,11 @@ import {
   BootstrapPackageMessage,
   MultiplayerRoomInfo,
   ScoreValuePatchMessage,
+  TotalAdjustmentPatchMessage,
   SessionCompletedMessage,
   SessionSnapshotMessage,
 } from './protocol';
-import { applyScoreValuePatch, ScorePatchActor } from './scoreValuePatch';
+import { applyScoreValuePatch, recalculateScoreSession, ScorePatchActor } from './scoreValuePatch';
 import { createSessionBootstrapPackage, resolveBootstrapImport } from './sessionBootstrap';
 
 export interface MultiplayerHostSession {
@@ -17,6 +18,7 @@ export interface MultiplayerHostSession {
   revision: number;
   createBootstrapMessage(): BootstrapPackageMessage;
   receiveScoreValuePatch(message: ScoreValuePatchMessage): { accepted: true; snapshot: SessionSnapshotMessage } | { accepted: false; reason: string };
+  receiveTotalAdjustmentPatch(message: TotalAdjustmentPatchMessage): { accepted: true; snapshot: SessionSnapshotMessage } | { accepted: false; reason: string };
   complete(): SessionCompletedMessage;
 }
 
@@ -132,6 +134,35 @@ export const createMultiplayerHostSession = (options: {
         accepted: true,
         snapshot,
       };
+    },
+
+    receiveTotalAdjustmentPatch(message) {
+      if (message.type !== 'player:total-adjustment' || message.roomId !== state.room.roomId || message.sessionId !== state.session.id) {
+        return { accepted: false, reason: 'message_not_for_room' };
+      }
+      const operationKey = `${message.deviceId}:${message.opId}`;
+      const duplicateSnapshot = state.processedOperations.get(operationKey);
+      if (duplicateSnapshot) return { accepted: true, snapshot: cloneJson(duplicateSnapshot) };
+      if (message.actor.role === 'player') {
+        if (message.actor.playerId !== message.targetPlayerId) return { accepted: false, reason: 'player_cannot_edit_other_player' };
+        const sequenceKey = `${message.deviceId}:${message.actor.playerId}:${message.targetPlayerId}:__TOTAL__`;
+        const latestSequence = state.latestPlayerSequences.get(sequenceKey) ?? 0;
+        if (message.sequence <= latestSequence) return { accepted: false, reason: 'outdated_player_update' };
+        state.latestPlayerSequences.set(sequenceKey, message.sequence);
+      }
+      const player = state.session.players.find((item) => item.id === message.targetPlayerId);
+      if (!player) return { accepted: false, reason: 'player_not_found' };
+      const baseTotal = player.totalScore - (player.bonusScore ?? 0);
+      state.session = recalculateScoreSession({
+        ...state.session,
+        players: state.session.players.map((item) => item.id === player.id
+          ? { ...item, bonusScore: message.targetTotal - baseTotal }
+          : item),
+      }, state.template);
+      state.revision += 1;
+      const snapshot: SessionSnapshotMessage = { type: 'session:snapshot', roomId: state.room.roomId, sessionId: state.session.id, session: cloneJson(state.session), revision: state.revision, updatedAt: now() };
+      rememberOperation(operationKey, snapshot);
+      return { accepted: true, snapshot };
     },
 
     complete() {

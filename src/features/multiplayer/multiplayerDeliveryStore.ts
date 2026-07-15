@@ -5,7 +5,7 @@ import {
   MultiplayerSequenceRecord,
 } from '../../types';
 import { db } from '../../db';
-import { ScoreValuePatchMessage } from './protocol';
+import { ScoreValuePatchMessage, TotalAdjustmentPatchMessage } from './protocol';
 import { generateId } from '../../utils/idGenerator';
 
 export interface MultiplayerDeliveryStore {
@@ -66,7 +66,7 @@ export const reserveScorePatchSequence = async (options: {
 
 export const scorePatchOperationKey = (roomId: string, deviceId: string, opId: string): string => `${roomId}:${deviceId}:${opId}`;
 
-export const createOutboxRecord = (message: ScoreValuePatchMessage): MultiplayerOutboxRecord => ({
+export const createOutboxRecord = (message: ScoreValuePatchMessage | TotalAdjustmentPatchMessage): MultiplayerOutboxRecord => ({
   id: scorePatchOperationKey(message.roomId, message.deviceId, message.opId),
   roomId: message.roomId,
   sessionId: message.sessionId,

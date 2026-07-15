@@ -1,6 +1,6 @@
 
 import Dexie, { Table } from 'dexie';
-import { GameTemplate, GameSession, TemplatePreference, HistoryRecord, SavedListItem, LocalImage, AnalyticsLog, BggGame, SystemWeightConfig, TemplateShareCache, MultiplayerRoomRecord, MultiplayerDeviceRecord, MultiplayerSequenceRecord, MultiplayerOutboxRecord, MultiplayerPatchReceiptRecord } from './types';
+import { GameTemplate, GameSession, TemplatePreference, HistoryRecord, SavedListItem, LocalImage, AnalyticsLog, BggGame, SystemWeightConfig, TemplateShareCache, MultiplayerRoomRecord, MultiplayerDeviceRecord, MultiplayerSequenceRecord, MultiplayerOutboxRecord, MultiplayerPatchReceiptRecord, MultiplayerParticipantBindingRecord } from './types';
 import { generateId } from './utils/idGenerator';
 import { DATA_LIMITS } from './dataLimits';
 
@@ -20,6 +20,7 @@ export class ScorePadDatabase extends Dexie {
     multiplayerSequences!: Table<MultiplayerSequenceRecord>;
     multiplayerOutbox!: Table<MultiplayerOutboxRecord>;
     multiplayerPatchReceipts!: Table<MultiplayerPatchReceiptRecord>;
+    multiplayerParticipantBindings!: Table<MultiplayerParticipantBindingRecord>;
     bggGames!: Table<BggGame>; // [v19] BGG 資料庫 (獨立架構)
     savedWeekdays!: Table<SavedListItem>; // [v12] 星期維度 (0-6)
     savedTimeSlots!: Table<SavedListItem>; // [v12] 時段維度 (0-7, 3hr/slot)
@@ -398,6 +399,11 @@ export class ScorePadDatabase extends Dexie {
             multiplayerSequences: 'id, updatedAt',
             multiplayerOutbox: 'id, roomId, sessionId, [roomId+sessionId], deviceId, updatedAt',
             multiplayerPatchReceipts: 'id, roomId, sessionId, deviceId, updatedAt'
+        });
+
+        // Version 32: Remember which room player this device claimed.
+        (this as any).version(32).stores({
+            multiplayerParticipantBindings: 'id, roomId, sessionId, deviceId, playerId, updatedAt'
         });
     }
 }
