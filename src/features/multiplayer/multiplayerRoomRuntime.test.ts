@@ -1,0 +1,80 @@
+import { describe, expect, it, vi } from 'vitest';
+import { GameSession, GameTemplate, MultiplayerParticipantBindingRecord, MultiplayerRoomRecord, ScoreColumn } from '../../types';
+import { MultiplayerDeliveryStore } from './multiplayerDeliveryStore';
+import { MultiplayerParticipantBindingStore } from './multiplayerParticipantBinding';
+import { MultiplayerRoomRuntimeStore, MultiplayerRoomRuntimeTransport, createMultiplayerHostRoomRuntime, createMultiplayerPlayerRoomRuntime } from './multiplayerRoomRuntime';
+
+const column: ScoreColumn = { id: 'points', name: 'Points', formula: 'a1', inputType: 'keypad', isScoring: true, rounding: 'none' };
+const template: GameTemplate = { id: 'template-1', name: 'Template', columns: [column], createdAt: 1, updatedAt: 1 };
+const session: GameSession = {
+  id: 'session-1', templateId: 'template-1', name: 'Template', startTime: 1, status: 'active',
+  players: [{ id: 'p1', name: 'P1', color: '#fff', scores: {}, totalScore: 0 }],
+};
+
+const createRuntimeStore = (): MultiplayerRoomRuntimeStore => {
+  const templates = new Map<string, GameTemplate>(); const sessions = new Map<string, GameSession>(); const rooms = new Map<string, MultiplayerRoomRecord>();
+  return {
+    getTemplate: async (id) => templates.get(id),
+    putTemplate: async (value) => { templates.set(value.id, value); },
+    putSession: async (value) => { sessions.set(value.id, value); },
+    putRoom: async (value) => { rooms.set(value.roomId, value); },
+    updateRoomRevision: async (roomId, revision, updatedAt) => { const room = rooms.get(roomId); if (room) rooms.set(roomId, { ...room, revision, updatedAt }); },
+  };
+};
+
+const createDeliveryStore = (): MultiplayerDeliveryStore => {
+  const outbox = new Map<string, any>(); const receipts = new Map<string, any>(); const sequences = new Map<string, any>();
+  return {
+    getDevice: async () => undefined, putDevice: async () => undefined,
+    getSequence: async (id) => sequences.get(id), putSequence: async (record) => { sequences.set(record.id, record); },
+    putOutbox: async (record) => { outbox.set(record.id, record); },
+    listOutbox: async (roomId, sessionId) => [...outbox.values()].filter((record) => record.roomId === roomId && record.sessionId === sessionId),
+    deleteOutbox: async (id) => { outbox.delete(id); },
+    getReceipt: async (id) => receipts.get(id), putReceipt: async (record) => { receipts.set(record.id, record); },
+  };
+};
+
+const createBindingStore = (): MultiplayerParticipantBindingStore => {
+  const records = new Map<string, MultiplayerParticipantBindingRecord>();
+  return { get: async (id) => records.get(id), put: async (record) => { records.set(record.id, record); } };
+};
+
+describe('multiplayer room runtime', () => {
+  it('reclaims the bound player before replaying a disconnected edit', async () => {
+    const hostStore = createRuntimeStore(); const playerStore = createRuntimeStore();
+    const hostDelivery = createDeliveryStore(); const playerDelivery = createDeliveryStore(); const bindingStore = createBindingStore();
+    const connection = {};
+    let connected = true;
+    let host: Awaited<ReturnType<typeof createMultiplayerHostRoomRuntime>>;
+    let player: Awaited<ReturnType<typeof createMultiplayerPlayerRoomRuntime>>;
+    const hostTransport: MultiplayerRoomRuntimeTransport = {
+      sendToHost: () => false,
+      sendToConnection: (_connection, message) => { void player.receive(message); return true; },
+      broadcastLocalChanges: vi.fn(async () => undefined),
+    };
+    const playerTransport: MultiplayerRoomRuntimeTransport = {
+      sendToHost: (message) => { if (!connected) return false; void host.receive(message, connection); return true; },
+      sendToConnection: () => false,
+      broadcastLocalChanges: async () => undefined,
+    };
+    host = await createMultiplayerHostRoomRuntime({ roomId: 'room-1', hostDeviceId: 'host-1', template, session, store: hostStore, deliveryStore: hostDelivery, transport: hostTransport, now: () => 10 });
+    const bootstrap = host.session.createBootstrapMessage();
+    player = await createMultiplayerPlayerRoomRuntime({ bootstrapMessage: bootstrap, deviceId: 'player-device', store: playerStore, bindingStore, deliveryStore: playerDelivery, transport: playerTransport, now: () => 20 });
+
+    player.controller.claimPlayer('p1');
+    await vi.waitFor(async () => expect(await bindingStore.get('room-1:player-device')).toMatchObject({ playerId: 'p1' }));
+
+    connected = false;
+    await player.controller.queueScoreValuePatch({ actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [8] } });
+    expect((await playerDelivery.listOutbox('room-1', 'session-1'))).toHaveLength(1);
+    expect(host.session.session.players[0].scores.points).toBeUndefined();
+
+    connected = true;
+    player = await createMultiplayerPlayerRoomRuntime({ bootstrapMessage: bootstrap, deviceId: 'player-device', store: playerStore, bindingStore, deliveryStore: playerDelivery, transport: playerTransport, now: () => 30 });
+    expect(await player.restoreParticipantBinding()).toBe(true);
+
+    await vi.waitFor(async () => expect(await playerDelivery.listOutbox('room-1', 'session-1')).toHaveLength(0));
+    expect(host.session.session.players[0].scores.points).toEqual({ parts: [8] });
+    expect(host.session.revision).toBe(2);
+  });
+});

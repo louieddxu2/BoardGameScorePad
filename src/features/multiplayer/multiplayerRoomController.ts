@@ -8,6 +8,7 @@ import {
   isScorePatchResultMessage,
   isScoreValuePatchMessage,
   isParticipantClaimMessage,
+  isParticipantClaimResultMessage,
   isTotalAdjustmentPatchMessage,
   ParticipantClaimResultMessage,
   ScorePatchResultMessage,
@@ -105,6 +106,7 @@ export const createMultiplayerPlayerRoomController = (options: {
   deliveryStore: MultiplayerDeliveryStore;
   snapshotStore: MultiplayerSnapshotStore;
   transport: MultiplayerRoomTransport;
+  onClaimAccepted?: (playerId: string) => void | Promise<void>;
   now?: () => number;
 }) => {
   const now = options.now ?? Date.now;
@@ -144,6 +146,11 @@ export const createMultiplayerPlayerRoomController = (options: {
     },
 
     async receive(message: unknown) {
+      if (isParticipantClaimResultMessage(message)) {
+        if (message.roomId !== options.playerSession.room.roomId || message.sessionId !== options.playerSession.session.id) return false;
+        if (message.accepted && message.playerId) await options.onClaimAccepted?.(message.playerId);
+        return true;
+      }
       if (!isScorePatchResultMessage(message)) return false;
       if (message.roomId !== options.playerSession.room.roomId || message.sessionId !== options.playerSession.session.id) return false;
       const outboxId = scorePatchOperationKey(message.roomId, options.deviceId, message.opId);
