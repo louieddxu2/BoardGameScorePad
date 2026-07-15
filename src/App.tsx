@@ -15,6 +15,16 @@ import { parseDeepLinkFromHash } from './utils/deepLink';
 import { fetchTemplateFromCloud } from './services/templateShareService';
 import { cloudClient } from './services/cloudClient';
 import { db } from './db';
+import Peer from 'peerjs';
+import { generateId } from './utils/idGenerator';
+import { createLocalScoreStateSyncAdapter, multiplayerLocalStore } from './features/multiplayer/multiplayerLocalStore';
+import { multiplayerDeliveryStore, getOrCreateMultiplayerDeviceId } from './features/multiplayer/multiplayerDeliveryStore';
+import { multiplayerParticipantBindingStore } from './features/multiplayer/multiplayerParticipantBinding';
+import { createMultiplayerP2PRuntimeTransport } from './features/multiplayer/multiplayerP2PRuntimeTransport';
+import { createMultiplayerHostRoomRuntime, createMultiplayerPlayerRoomRuntime } from './features/multiplayer/multiplayerRoomRuntime';
+import { multiplayerSessionManager } from './features/multiplayer/multiplayerSessionManager';
+import { BootstrapPackageMessage } from './features/multiplayer/protocol';
+import { createPlayerSessionCapabilities, hostSessionCapabilities } from './features/multiplayer/sessionCapabilities';
 
 // Components
 import TemplateEditor from './components/editor/TemplateEditor';
@@ -24,10 +34,29 @@ import GameSetupModal from './components/dashboard/modals/GameSetupModal';
 import HistoryReviewView from './components/history/HistoryReviewView';
 import { InAppBrowserGuide, isInAppBrowser } from './components/modals/InAppBrowserGuide';
 import { IOSPwaGuide, shouldTriggerIOSPwaGuide } from './components/modals/IOSPwaGuide';
+import MultiplayerRoomModal from './components/session/modals/MultiplayerRoomModal';
+import MultiplayerPlayerClaimModal from './components/session/modals/MultiplayerPlayerClaimModal';
+
+type ActiveMultiplayerRoom = {
+  roomId: string;
+  role: 'host' | 'player';
+  playerIds?: string[];
+};
+
+type PendingMultiplayerJoin = {
+  roomId: string;
+  bootstrapMessage: BootstrapPackageMessage;
+  transport: ReturnType<typeof createMultiplayerP2PRuntimeTransport>;
+};
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.DASHBOARD);
   const [isCloudImporting, setIsCloudImporting] = useState(false);
+  const [activeMultiplayerRoom, setActiveMultiplayerRoom] = useState<ActiveMultiplayerRoom | null>(null);
+  const [isMultiplayerRoomModalOpen, setIsMultiplayerRoomModalOpen] = useState(false);
+  const [pendingMultiplayerJoin, setPendingMultiplayerJoin] = useState<PendingMultiplayerJoin | null>(null);
+  const [isJoiningMultiplayer, setIsJoiningMultiplayer] = useState(false);
+  const [, setMultiplayerVersion] = useState(0);
 
   // Custom Hook for all data logic
   const appData = useAppData();
@@ -47,11 +76,30 @@ const App: React.FC = () => {
   // Ref to ignore popstates triggered by our own history manipulation (pruning)
   const ignorePopstateRef = useRef(false);
   const deepLinkHandledRef = useRef(false);
+  const multiplayerJoinStartedRef = useRef<string | null>(null);
 
   // Hardware & Environment Side Effects Hooks
   const zoomLevel = useMobileZoom();
   const showLandscapeOverlay = useLandscapeOrientation();
   const { isInstalled, canInstall, handleInstallClick } = usePwaInstall();
+
+  useEffect(() => multiplayerSessionManager.subscribe(() => setMultiplayerVersion((version) => version + 1)), []);
+
+  useEffect(() => {
+    if (!appData.isDbReady || isInAppBrowser()) return;
+    const roomId = new URLSearchParams(window.location.search).get('room');
+    if (!roomId || multiplayerJoinStartedRef.current === roomId) return;
+    multiplayerJoinStartedRef.current = roomId;
+    setIsJoiningMultiplayer(true);
+    const adapter = createLocalScoreStateSyncAdapter(roomId, 'player', {
+      onRemoteBootstrap: async (bootstrapMessage) => {
+        setPendingMultiplayerJoin({ roomId, bootstrapMessage, transport });
+        setIsJoiningMultiplayer(false);
+      },
+    });
+    const transport = createMultiplayerP2PRuntimeTransport({ Peer, adapter, logger: (message) => console.info('[multiplayer]', message) });
+    transport.joinRoom?.(roomId);
+  }, [appData.isDbReady]);
 
   const [isIOSPwaGuideVisible, setIsIOSPwaGuideVisible] = useState(false);
 
@@ -356,6 +404,64 @@ const App: React.FC = () => {
     }
   };
 
+  const handleOpenMultiplayerRoom = useCallback(async () => {
+    if (activeMultiplayerRoom?.role === 'host') {
+      setIsMultiplayerRoomModalOpen(true);
+      return;
+    }
+    if (!appData.currentSession || !appData.activeTemplate) return;
+
+    const roomId = `scorepad-${generateId(12)}`;
+    const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
+    const adapter = createLocalScoreStateSyncAdapter(roomId, 'host');
+    const transport = createMultiplayerP2PRuntimeTransport({ Peer, adapter, logger: (message) => console.info('[multiplayer]', message) });
+    const callbacks = multiplayerSessionManager.createRuntimeCallbacks(roomId);
+    const runtime = await createMultiplayerHostRoomRuntime({
+      roomId,
+      hostDeviceId: deviceId,
+      template: appData.activeTemplate,
+      session: appData.currentSession,
+      store: multiplayerLocalStore,
+      deliveryStore: multiplayerDeliveryStore,
+      transport,
+      onSessionSnapshot: callbacks.onSessionSnapshot,
+    });
+    multiplayerSessionManager.register(roomId, runtime, 'connecting');
+    transport.setConnectionChangeHandler?.((connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount));
+    runtime.start();
+    setActiveMultiplayerRoom({ roomId, role: 'host' });
+    setIsMultiplayerRoomModalOpen(true);
+  }, [activeMultiplayerRoom?.role, appData.activeTemplate, appData.currentSession]);
+
+  const handleConfirmMultiplayerPlayers = useCallback(async (playerIds: string[]) => {
+    if (!pendingMultiplayerJoin) return;
+    const { roomId, bootstrapMessage, transport } = pendingMultiplayerJoin;
+    const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
+    const callbacks = multiplayerSessionManager.createRuntimeCallbacks(roomId);
+    const runtime = await createMultiplayerPlayerRoomRuntime({
+      bootstrapMessage,
+      deviceId,
+      store: multiplayerLocalStore,
+      bindingStore: multiplayerParticipantBindingStore,
+      deliveryStore: multiplayerDeliveryStore,
+      transport,
+      onSessionSnapshot: callbacks.onSessionSnapshot,
+      onOwnershipReturned: callbacks.onOwnershipReturned,
+    });
+    multiplayerSessionManager.register(roomId, runtime, 'connected');
+    transport.setConnectionChangeHandler?.((connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount));
+    for (const playerId of playerIds) runtime.controller.claimPlayer(playerId);
+    setActiveMultiplayerRoom({ roomId, role: 'player', playerIds });
+    setPendingMultiplayerJoin(null);
+    const resumed = await appData.resumeSessionById(runtime.session.session.id);
+    if (resumed) setView(AppView.ACTIVE_SESSION);
+  }, [appData, pendingMultiplayerJoin]);
+
+  const multiplayerRoomState = activeMultiplayerRoom ? multiplayerSessionManager.get(activeMultiplayerRoom.roomId) : null;
+  const multiplayerJoinUrl = activeMultiplayerRoom?.role === 'host'
+    ? `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(activeMultiplayerRoom.roomId)}`
+    : '';
+
   const handleStartNewGame = async (count: number, options: { startTimeStr: string, scoringRule: ScoringRule }) => {
     if (pendingTemplate) {
       if (appData.activeSessionIds.includes(pendingTemplate.id)) {
@@ -558,6 +664,10 @@ const App: React.FC = () => {
             onDiscard={handleDiscard}
             isVoiceEnabled={appData.isVoiceEnabled}
             onToggleVoice={appData.toggleVoice}
+            multiplayerRoomId={activeMultiplayerRoom?.roomId}
+            multiplayerManager={multiplayerSessionManager}
+            multiplayerCapabilities={activeMultiplayerRoom?.role === 'player' ? createPlayerSessionCapabilities(activeMultiplayerRoom.playerIds ?? []) : hostSessionCapabilities}
+            onOpenMultiplayerRoom={activeMultiplayerRoom?.role !== 'player' ? handleOpenMultiplayerRoom : undefined}
           />
         </div>
       )}
@@ -580,6 +690,29 @@ const App: React.FC = () => {
           onClose={() => setPendingTemplate(null)}
           onStart={handleStartNewGame}
           onResume={handleResumeGame}
+        />
+      )}
+
+      {isJoiningMultiplayer && (
+        <div className="modal-backdrop z-[10000]">
+          <Loader2 className="w-8 h-8 text-brand-primary animate-spin" />
+        </div>
+      )}
+
+      {isMultiplayerRoomModalOpen && activeMultiplayerRoom?.role === 'host' && (
+        <MultiplayerRoomModal
+          isOpen
+          joinUrl={multiplayerJoinUrl}
+          connectionCount={multiplayerRoomState?.connectionCount ?? 0}
+          onClose={() => setIsMultiplayerRoomModalOpen(false)}
+        />
+      )}
+
+      {pendingMultiplayerJoin && (
+        <MultiplayerPlayerClaimModal
+          isOpen
+          players={pendingMultiplayerJoin.bootstrapMessage.package.session.players}
+          onConfirm={handleConfirmMultiplayerPlayers}
         />
       )}
       

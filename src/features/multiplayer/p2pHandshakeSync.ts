@@ -25,6 +25,7 @@ export interface P2PHandshakeSync {
   broadcast(message: unknown): boolean;
   sendToHost(message: unknown): boolean;
   sendToConnection(connection: P2PDataConnection, message: unknown): boolean;
+  getConnectionCount(): number;
 }
 
 const isRecord = (value: unknown): value is Record<string, any> => !!value && typeof value === 'object';
@@ -37,6 +38,7 @@ export const createP2PHandshakeSync = (options: {
   chunkSize?: number;
   onMessage?: (message: unknown, connection: P2PDataConnection) => void | Promise<void>;
   onConnectionOpen?: (connection: P2PDataConnection) => void | Promise<void>;
+  onConnectionChange?: (connectionCount: number) => void | Promise<void>;
   logger?: (message: string, level?: 'info' | 'error') => void;
 }): P2PHandshakeSync => {
   const chunkSize = options.chunkSize ?? 16 * 1024;
@@ -71,7 +73,11 @@ export const createP2PHandshakeSync = (options: {
   };
   const setupConnection = (connection: P2PDataConnection) => {
     connections.add(connection);
-    connection.on('open', () => { void sendHello(connection); void options.onConnectionOpen?.(connection); });
+    connection.on('open', () => {
+      void sendHello(connection);
+      void options.onConnectionOpen?.(connection);
+      void options.onConnectionChange?.(connections.size);
+    });
     connection.on('data', (message: unknown) => {
       void (async () => {
         if (!isRecord(message) || typeof message.type !== 'string') return;
@@ -90,7 +96,11 @@ export const createP2PHandshakeSync = (options: {
         await options.onMessage?.(message, connection);
       })().catch((error) => options.logger?.(String(error), 'error'));
     });
-    const cleanup = () => { connections.delete(connection); if (hostConnection === connection) hostConnection = null; };
+    const cleanup = () => {
+      connections.delete(connection);
+      if (hostConnection === connection) hostConnection = null;
+      void options.onConnectionChange?.(connections.size);
+    };
     connection.on('close', cleanup); connection.on('error', cleanup);
   };
   const stop = () => { for (const connection of connections) connection.close(); connections.clear(); incoming.clear(); if (peer) peer.destroy(); peer = null; hostConnection = null; };
@@ -103,5 +113,6 @@ export const createP2PHandshakeSync = (options: {
     broadcast(message) { let sent = false; for (const connection of connections) sent = send(connection, message) || sent; return sent; },
     sendToHost(message) { return hostConnection ? send(hostConnection, message) : false; },
     sendToConnection: send,
+    getConnectionCount: () => connections.size,
   };
 };

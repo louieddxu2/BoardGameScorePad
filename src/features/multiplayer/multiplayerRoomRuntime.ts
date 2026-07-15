@@ -16,6 +16,8 @@ export interface MultiplayerRoomRuntimeTransport extends MultiplayerRoomTranspor
   stop?(): void;
   setMessageReceiver?(receiver: (message: unknown, connection?: unknown) => void | Promise<void>): void;
   setConnectionOpenHandler?(handler: () => void | Promise<void>): void;
+  setConnectionChangeHandler?(handler: (connectionCount: number) => void | Promise<void>): void;
+  getConnectionCount?(): number;
 }
 
 export type MultiplayerRoomRuntimeStore = MultiplayerBootstrapStore & MultiplayerSnapshotStore;
@@ -32,6 +34,7 @@ export interface MultiplayerHostRoomRuntime {
   start(): void;
   stop(): void;
   receive(message: unknown, connection: unknown): Promise<boolean>;
+  getConnectionCount(): number;
 }
 
 export interface MultiplayerPlayerRoomRuntime {
@@ -43,6 +46,7 @@ export interface MultiplayerPlayerRoomRuntime {
   /** Reclaims the previously selected player; pending edits replay only after acceptance. */
   restoreParticipantBinding(): Promise<boolean>;
   receive(message: unknown): Promise<boolean>;
+  getConnectionCount(): number;
 }
 
 export const createMultiplayerHostRoomRuntime = async (options: {
@@ -80,6 +84,7 @@ export const createMultiplayerHostRoomRuntime = async (options: {
     start: () => { options.transport.startHost?.(hostSession.room.roomId); },
     stop: () => { options.transport.stop?.(); },
     receive: (message, connection) => controller.receive(message, connection),
+    getConnectionCount: () => options.transport.getConnectionCount?.() ?? 0,
   };
 };
 
@@ -189,5 +194,6 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
     stop: () => { options.transport.stop?.(); },
     restoreParticipantBinding,
     receive: (message) => controller.receive(message),
+    getConnectionCount: () => options.transport.getConnectionCount?.() ?? 0,
   };
 };

@@ -18,6 +18,7 @@ export interface MultiplayerRoomState {
   runtime: ManagedMultiplayerRuntime | null;
   session?: GameSession;
   returnedSession?: GameSession;
+  connectionCount: number;
 }
 
 export interface MultiplayerSessionManager {
@@ -26,6 +27,7 @@ export interface MultiplayerSessionManager {
   attachView(roomId: string): MultiplayerRoomState | null;
   detachView(roomId: string): void;
   setConnectionStatus(roomId: string, status: Exclude<MultiplayerConnectionStatus, 'ownership-returned'>): void;
+  setConnectionCount(roomId: string, connectionCount: number): void;
   publishSession(roomId: string, session: GameSession): void;
   createRuntimeCallbacks(roomId: string): {
     onSessionSnapshot: (session: GameSession) => void;
@@ -59,7 +61,8 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
   return {
     register(roomId, runtime, status = 'connected') {
       const runtimeSession = runtime.role === 'host' ? runtime.session.session : runtime.session.session;
-      const state: MultiplayerRoomState = { roomId, role: runtime.role, status, isViewAttached: false, runtime, session: runtimeSession };
+      const connectionCount = (runtime as Partial<ManagedMultiplayerRuntime>).getConnectionCount?.() ?? 0;
+      const state: MultiplayerRoomState = { roomId, role: runtime.role, status, isViewAttached: false, runtime, session: runtimeSession, connectionCount };
       rooms.set(roomId, state);
       notify();
       return snapshot(state);
@@ -82,6 +85,13 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
       const state = rooms.get(roomId);
       if (!state || !state.runtime) return;
       state.status = status;
+      notify();
+    },
+    setConnectionCount(roomId, connectionCount) {
+      const state = rooms.get(roomId);
+      if (!state || !state.runtime) return;
+      state.connectionCount = Math.max(0, connectionCount);
+      state.status = state.connectionCount > 0 ? 'connected' : 'disconnected';
       notify();
     },
     publishSession(roomId, session) {

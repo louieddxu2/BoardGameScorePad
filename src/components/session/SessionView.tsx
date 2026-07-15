@@ -59,6 +59,7 @@ interface SessionViewProps {
   multiplayerCapabilities?: SessionCapabilities;
   multiplayerRoomId?: string;
   multiplayerManager?: MultiplayerSessionManager;
+  onOpenMultiplayerRoom?: () => void;
 }
 
 const SessionView: React.FC<SessionViewProps> = (props) => {
@@ -825,6 +826,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         }}
         multiplayerPreviewLabel={multiplayerPreviewLabel}
         multiplayerPreviewPlayerNumber={multiplayerPreviewPlayerNumber}
+        onOpenMultiplayerRoom={capabilities.role === 'host' ? props.onOpenMultiplayerRoom : undefined}
         hasVisuals={!!template.globalVisuals}
         hasCloudImage={!!template.cloudImageId && !baseImage}
         onEditTitleToggle={(editing) => {

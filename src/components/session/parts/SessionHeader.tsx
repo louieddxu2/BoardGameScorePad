@@ -33,6 +33,7 @@ interface SessionHeaderProps {
   onCycleMultiplayerPreview?: () => void;
   multiplayerPreviewLabel?: string;
   multiplayerPreviewPlayerNumber?: number | null;
+  onOpenMultiplayerRoom?: () => void;
 }
 
 const SessionHeader: React.FC<SessionHeaderProps> = ({
@@ -64,6 +65,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   onCycleMultiplayerPreview,
   multiplayerPreviewLabel,
   multiplayerPreviewPlayerNumber,
+  onOpenMultiplayerRoom,
 }) => {
   const { t } = useSessionTranslation();
   const [tempTitle, setTempTitle] = useState('');
@@ -134,16 +136,16 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
         )}
       </div>
       <div className="flex items-center gap-1 relative shrink-0">
-        {onCycleMultiplayerPreview && (
+        {(onOpenMultiplayerRoom || onCycleMultiplayerPreview) && (
           <button
             onMouseDown={preventBlur}
-            onClick={onCycleMultiplayerPreview}
+            onClick={onOpenMultiplayerRoom ?? onCycleMultiplayerPreview}
             className="relative p-2 rounded-lg transition-colors border border-surface-border text-txt-muted hover:text-brand-primary hover:bg-surface-hover"
-            title={multiplayerPreviewLabel}
-            aria-label={multiplayerPreviewLabel}
+            title={onOpenMultiplayerRoom ? t('multiplayer_open_room') : multiplayerPreviewLabel}
+            aria-label={onOpenMultiplayerRoom ? t('multiplayer_open_room') : multiplayerPreviewLabel}
           >
             <UsersRound size={20} />
-            {multiplayerPreviewPlayerNumber !== null && multiplayerPreviewPlayerNumber !== undefined && (
+            {!onOpenMultiplayerRoom && multiplayerPreviewPlayerNumber !== null && multiplayerPreviewPlayerNumber !== undefined && (
               <span className="absolute -right-1 -top-1 min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-brand-primary text-white text-[10px] font-bold leading-none border border-modal-bg">
                 {multiplayerPreviewPlayerNumber}
               </span>
