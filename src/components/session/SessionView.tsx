@@ -842,6 +842,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         multiplayerPreviewPlayerNumber={multiplayerPreviewPlayerNumber}
         onOpenMultiplayerRoom={capabilities.role === 'host' ? props.onOpenMultiplayerRoom : undefined}
         multiplayerConnectionCount={managedRoomState?.role === 'host' ? managedRoomState.connectionCount : undefined}
+        hasUnpublishedBoardUpdate={managedRoomState?.role === 'host' ? managedRoomState.hasUnpublishedBoardUpdate : false}
         hasVisuals={!!template.globalVisuals}
         hasCloudImage={!!template.cloudImageId && !baseImage}
         onEditTitleToggle={(editing) => {

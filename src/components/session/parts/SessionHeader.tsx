@@ -35,6 +35,7 @@ interface SessionHeaderProps {
   multiplayerPreviewPlayerNumber?: number | null;
   onOpenMultiplayerRoom?: () => void;
   multiplayerConnectionCount?: number;
+  hasUnpublishedBoardUpdate?: boolean;
 }
 
 const SessionHeader: React.FC<SessionHeaderProps> = ({
@@ -68,6 +69,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   multiplayerPreviewPlayerNumber,
   onOpenMultiplayerRoom,
   multiplayerConnectionCount,
+  hasUnpublishedBoardUpdate = false,
 }) => {
   const { t } = useSessionTranslation();
   const [tempTitle, setTempTitle] = useState('');
@@ -88,6 +90,12 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
       (e.target as HTMLInputElement).blur();
     }
   };
+
+  const multiplayerButtonClass = onOpenMultiplayerRoom && multiplayerConnectionCount !== undefined
+    ? hasUnpublishedBoardUpdate
+      ? 'border-status-warning/60 bg-status-warning/10 text-status-warning hover:bg-status-warning/20'
+      : 'border-status-info/60 bg-status-info/10 text-status-info hover:bg-status-info/20'
+    : 'border-surface-border text-txt-muted hover:text-brand-primary hover:bg-surface-hover';
 
   // Helper to prevent input blur when clicking buttons
   const preventBlur = (e: React.MouseEvent) => {
@@ -142,13 +150,13 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
           <button
             onMouseDown={preventBlur}
             onClick={onOpenMultiplayerRoom ?? onCycleMultiplayerPreview}
-            className="relative p-2 rounded-lg transition-colors border border-surface-border text-txt-muted hover:text-brand-primary hover:bg-surface-hover"
+            className={`relative p-2 rounded-lg transition-colors border ${multiplayerButtonClass}`}
             title={onOpenMultiplayerRoom ? t('multiplayer_open_room') : multiplayerPreviewLabel}
             aria-label={onOpenMultiplayerRoom ? t('multiplayer_open_room') : multiplayerPreviewLabel}
           >
             <UsersRound size={20} />
             {onOpenMultiplayerRoom && multiplayerConnectionCount !== undefined && (
-              <span className="absolute -right-1 -top-1 min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-brand-primary text-white text-[10px] font-bold leading-none border border-modal-bg" title={t('multiplayer_connected_count', { count: multiplayerConnectionCount })}>
+              <span className={`absolute -right-1 -top-1 min-w-4 h-4 px-1 flex items-center justify-center rounded-full text-[10px] font-bold leading-none border border-modal-bg ${hasUnpublishedBoardUpdate ? 'bg-status-warning text-modal-bg' : 'bg-status-info text-white'}`} title={t('multiplayer_connected_count', { count: multiplayerConnectionCount })}>
                 {multiplayerConnectionCount > 99 ? '99+' : multiplayerConnectionCount}
               </span>
             )}
