@@ -57,6 +57,12 @@ export const useSessionManager = ({
         return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
     }, [currentSession]);
 
+    const cancelPendingAutosave = () => {
+        if (!saveTimeoutRef.current) return;
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+    };
+
     const startSession = async (
         partialTemplate: GameTemplate,
         playerCount: number,
@@ -234,6 +240,7 @@ export const useSessionManager = ({
         const session = activeSessions?.find(s => s.templateId === templateId);
 
         if (session) {
+            if (currentSession?.id === session.id) cancelPendingAutosave();
             await cleanupService.cleanSessionArtifacts(session.id, session.cloudFolderId);
             await db.sessions.delete(session.id);
             await cleanupService.cleanupDisposableTemplate(templateId);
@@ -318,6 +325,7 @@ export const useSessionManager = ({
         const hasDataToSave = hasScores || hasPhotos || hasCustomPlayers || hasLocation || hasNote;
 
         if (!hasDataToSave) {
+            cancelPendingAutosave();
             cleanupService.cleanSessionArtifacts(sessionToSave.id, sessionToSave.cloudFolderId).catch(console.error);
             db.sessions.delete(sessionToSave.id).catch(console.error);
 
@@ -402,6 +410,7 @@ export const useSessionManager = ({
             };
 
             await db.history.put(record);
+            cancelPendingAutosave();
             await db.sessions.delete(currentSession.id);
 
             try {

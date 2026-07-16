@@ -200,6 +200,28 @@ describe('useSessionManager', () => {
     expect(result.current.activeTemplate).toBeNull();
   });
 
+  it('does not restore an active session from a pending autosave after saving history', async () => {
+    vi.useFakeTimers();
+    try {
+      const template: GameTemplate = {
+        id: 'tpl_autosave', name: 'Autosave', columns: [{ id: 'score', name: 'Score', formula: 'a1', inputType: 'keypad', isScoring: true }], createdAt: Date.now(),
+      };
+      const { result } = renderHook(() => useSessionManager({ getTemplate: async () => template, activeSessions: [], isCloudEnabled: () => false }));
+
+      let sessionId: string | null = null;
+      await act(async () => { sessionId = await result.current.startSession(template, 1); });
+      const updated = { ...result.current.currentSession!, players: [{ ...result.current.currentSession!.players[0], scores: { score: { parts: [5] } } }] };
+      act(() => { result.current.updateSession(updated); });
+
+      await act(async () => { await result.current.saveToHistory(); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+
+      expect(hoisted.sessionStore.has(sessionId!)).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('resumes the requested active session by ID when multiple sessions use one template', async () => {
     const template: GameTemplate = {
       id: 'tpl_1', name: 'Test Game', columns: [], createdAt: Date.now(),

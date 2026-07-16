@@ -50,6 +50,7 @@ interface CellContentProps {
     screenshotMode?: boolean;
     autoError?: 'missing_dependency' | 'math_error' | null;
     previewValue?: any;
+    previewDisplayScore?: number;
     isActive?: boolean;
 }
 
@@ -280,7 +281,7 @@ const CellContentSum: React.FC<CellContentProps> = ({ parts, displayScore, hasIn
     );
 };
 
-const CellContentStandard: React.FC<CellContentProps> = ({ parts, displayScore, hasInput, column, simpleMode, forceHeight, textStyle, previewValue, isActive }) => {
+const CellContentStandard: React.FC<CellContentProps> = ({ parts, displayScore, hasInput, column, simpleMode, forceHeight, textStyle, previewValue, previewDisplayScore, isActive }) => {
     const rawVal = parts[0];
     const computedStr = formatDisplayNumber(displayScore);
     const hasUnit = !!column.unit;
@@ -291,6 +292,11 @@ const CellContentStandard: React.FC<CellContentProps> = ({ parts, displayScore, 
 
     // Check if user is actively typing (isActive is sufficient proxy here combined with result)
     const isTyping = !!isActive;
+    // In multiplayer mode the persisted session can arrive a moment after the local keypad preview.
+    // Compare against the preview calculation while typing so that delay does not create a false hint.
+    const activeComputedStr = isTyping && previewDisplayScore !== undefined
+        ? formatDisplayNumber(previewDisplayScore)
+        : computedStr;
 
     const showRawValHint = displayScore !== rawVal;
 
@@ -301,7 +307,7 @@ const CellContentStandard: React.FC<CellContentProps> = ({ parts, displayScore, 
     //      (Not Active AND HasInput AND (Calculated != Raw OR Has Unit))
     //    )
     const shouldShowBottomRight = !simpleMode && (
-        (isTyping && (displayRawStr !== computedStr || hasUnit)) ||
+        (isTyping && (displayRawStr !== activeComputedStr || hasUnit)) ||
         (!isTyping && hasInput && (showRawValHint || hasUnit))
     );
 
@@ -347,6 +353,16 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
     const displayScore = calculateColumnScore(column, parts, scoringContext, scoreData);
     const autoError = getAutoColumnError(column, scoringContext);
     const hasInput = column.isAuto ? true : parts.length > 0;
+    const previewRawInput = getRawInputString(previewValue, isActive);
+    const previewNumber = previewRawInput === undefined || previewRawInput === ''
+        ? undefined
+        : Number.parseFloat(previewRawInput);
+    const previewParts = typeof previewNumber === 'number' && Number.isFinite(previewNumber)
+        ? [previewNumber, ...parts.slice(1)]
+        : undefined;
+    const previewDisplayScore = previewParts
+        ? calculateColumnScore(column, previewParts, scoringContext, { ...scoreData, parts: previewParts })
+        : undefined;
 
     const hasLayout = !!column.contentLayout;
 
@@ -433,6 +449,7 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
             textStyle, 
             autoError, 
             previewValue, 
+            previewDisplayScore,
             isActive 
         };
 
