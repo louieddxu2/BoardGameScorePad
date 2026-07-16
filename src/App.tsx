@@ -37,6 +37,7 @@ import { InAppBrowserGuide, isInAppBrowser } from './components/modals/InAppBrow
 import { IOSPwaGuide, shouldTriggerIOSPwaGuide } from './components/modals/IOSPwaGuide';
 import MultiplayerRoomModal from './components/session/modals/MultiplayerRoomModal';
 import MultiplayerPlayerClaimModal from './components/session/modals/MultiplayerPlayerClaimModal';
+import MultiplayerParticipantRoomModal from './components/session/modals/MultiplayerParticipantRoomModal';
 
 type ActiveMultiplayerRoom = {
   roomId: string;
@@ -55,6 +56,7 @@ const App: React.FC = () => {
   const [isCloudImporting, setIsCloudImporting] = useState(false);
   const [activeMultiplayerRoom, setActiveMultiplayerRoom] = useState<ActiveMultiplayerRoom | null>(null);
   const [isMultiplayerRoomModalOpen, setIsMultiplayerRoomModalOpen] = useState(false);
+  const [isMultiplayerParticipantRoomModalOpen, setIsMultiplayerParticipantRoomModalOpen] = useState(false);
   const [pendingMultiplayerJoin, setPendingMultiplayerJoin] = useState<PendingMultiplayerJoin | null>(null);
   const [isJoiningMultiplayer, setIsJoiningMultiplayer] = useState(false);
   const [multiplayerVersion, setMultiplayerVersion] = useState(0);
@@ -515,6 +517,7 @@ const App: React.FC = () => {
     });
     multiplayerSessionManager.closeRoom(activeMultiplayerRoom.roomId);
     setActiveMultiplayerRoom(null);
+    setIsMultiplayerParticipantRoomModalOpen(false);
     setIsMultiplayerRoomModalOpen(false);
     await appData.resumeSessionById(completed.finalSession.id);
   }, [activeMultiplayerRoom, appData]);
@@ -524,6 +527,7 @@ const App: React.FC = () => {
     await multiplayerLocalStore.deleteRoom(activeMultiplayerRoom.roomId);
     multiplayerSessionManager.closeRoom(activeMultiplayerRoom.roomId);
     setActiveMultiplayerRoom(null);
+    setIsMultiplayerParticipantRoomModalOpen(false);
   }, [activeMultiplayerRoom]);
 
   const handleStartNewGame = async (count: number, options: { startTimeStr: string, scoringRule: ScoringRule }) => {
@@ -732,7 +736,7 @@ const App: React.FC = () => {
             multiplayerManager={multiplayerSessionManager}
             multiplayerCapabilities={activeMultiplayerRoom?.role === 'player' ? createPlayerSessionCapabilities(activeMultiplayerRoom.playerIds ?? []) : hostSessionCapabilities}
             onOpenMultiplayerRoom={activeMultiplayerRoom?.role !== 'player' ? handleOpenMultiplayerRoom : undefined}
-            onLeaveMultiplayerRoom={activeMultiplayerRoom?.role === 'player' ? handleLeaveMultiplayerRoom : undefined}
+            onOpenMultiplayerParticipantRoom={activeMultiplayerRoom?.role === 'player' ? () => setIsMultiplayerParticipantRoomModalOpen(true) : undefined}
           />
         </div>
       )}
@@ -773,6 +777,14 @@ const App: React.FC = () => {
           onPublishBoardUpdate={handlePublishMultiplayerBoardUpdate}
           onCloseRoom={handleCloseMultiplayerRoom}
           onClose={() => setIsMultiplayerRoomModalOpen(false)}
+        />
+      )}
+
+      {isMultiplayerParticipantRoomModalOpen && activeMultiplayerRoom?.role === 'player' && (
+        <MultiplayerParticipantRoomModal
+          isOpen
+          onLeave={handleLeaveMultiplayerRoom}
+          onClose={() => setIsMultiplayerParticipantRoomModalOpen(false)}
         />
       )}
 

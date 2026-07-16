@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, ListPlus, RotateCcw, Share2, Edit2, Lock, Unlock, DownloadCloud, LogOut, UsersRound } from 'lucide-react';
+import { ArrowLeft, ListPlus, RotateCcw, Share2, Edit2, Lock, Unlock, DownloadCloud, UsersRound } from 'lucide-react';
 import ShareMenu from '../modals/ShareMenu';
 import { useSessionTranslation } from '../../../i18n/session';
 
@@ -36,7 +36,7 @@ interface SessionHeaderProps {
   onOpenMultiplayerRoom?: () => void;
   multiplayerConnectionCount?: number;
   hasUnpublishedBoardUpdate?: boolean;
-  onLeaveMultiplayerRoom?: () => void;
+  onOpenMultiplayerParticipantRoom?: () => void;
 }
 
 const SessionHeader: React.FC<SessionHeaderProps> = ({
@@ -71,7 +71,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   onOpenMultiplayerRoom,
   multiplayerConnectionCount,
   hasUnpublishedBoardUpdate = false,
-  onLeaveMultiplayerRoom,
+  onOpenMultiplayerParticipantRoom,
 }) => {
   const { t } = useSessionTranslation();
   const [tempTitle, setTempTitle] = useState('');
@@ -148,13 +148,13 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
         )}
       </div>
       <div className="flex items-center gap-1 relative shrink-0">
-        {(onOpenMultiplayerRoom || onCycleMultiplayerPreview) && (
+        {(onOpenMultiplayerRoom || onOpenMultiplayerParticipantRoom || onCycleMultiplayerPreview) && (
           <button
             onMouseDown={preventBlur}
-            onClick={onOpenMultiplayerRoom ?? onCycleMultiplayerPreview}
+            onClick={onOpenMultiplayerRoom ?? onOpenMultiplayerParticipantRoom ?? onCycleMultiplayerPreview}
             className={`relative p-2 rounded-lg transition-colors border ${multiplayerButtonClass}`}
-            title={onOpenMultiplayerRoom ? t('multiplayer_open_room') : multiplayerPreviewLabel}
-            aria-label={onOpenMultiplayerRoom ? t('multiplayer_open_room') : multiplayerPreviewLabel}
+            title={onOpenMultiplayerRoom ? t('multiplayer_open_room') : onOpenMultiplayerParticipantRoom ? t('multiplayer_connection_title') : multiplayerPreviewLabel}
+            aria-label={onOpenMultiplayerRoom ? t('multiplayer_open_room') : onOpenMultiplayerParticipantRoom ? t('multiplayer_connection_title') : multiplayerPreviewLabel}
           >
             <UsersRound size={20} />
             {onOpenMultiplayerRoom && multiplayerConnectionCount !== undefined && (
@@ -162,23 +162,11 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
                 {multiplayerConnectionCount > 99 ? '99+' : multiplayerConnectionCount}
               </span>
             )}
-            {!onOpenMultiplayerRoom && multiplayerPreviewPlayerNumber !== null && multiplayerPreviewPlayerNumber !== undefined && (
+            {!onOpenMultiplayerRoom && !onOpenMultiplayerParticipantRoom && multiplayerPreviewPlayerNumber !== null && multiplayerPreviewPlayerNumber !== undefined && (
               <span className="absolute -right-1 -top-1 min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-brand-primary text-white text-[10px] font-bold leading-none border border-modal-bg">
                 {multiplayerPreviewPlayerNumber}
               </span>
             )}
-          </button>
-        )}
-        {onLeaveMultiplayerRoom && (
-          <button
-            type="button"
-            onMouseDown={preventBlur}
-            onClick={onLeaveMultiplayerRoom}
-            className="p-2 rounded-lg transition-colors border border-surface-border text-txt-muted hover:text-txt-primary hover:bg-surface-hover"
-            title={t('multiplayer_leave_room')}
-            aria-label={t('multiplayer_leave_room')}
-          >
-            <LogOut size={20} />
           </button>
         )}
         {/* Cloud Download Shortcut */}
