@@ -34,6 +34,7 @@ interface SessionHeaderProps {
   multiplayerPreviewLabel?: string;
   multiplayerPreviewPlayerNumber?: number | null;
   onOpenMultiplayerRoom?: () => void;
+  multiplayerConnectionCount?: number;
 }
 
 const SessionHeader: React.FC<SessionHeaderProps> = ({
@@ -66,6 +67,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   multiplayerPreviewLabel,
   multiplayerPreviewPlayerNumber,
   onOpenMultiplayerRoom,
+  multiplayerConnectionCount,
 }) => {
   const { t } = useSessionTranslation();
   const [tempTitle, setTempTitle] = useState('');
@@ -145,6 +147,11 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
             aria-label={onOpenMultiplayerRoom ? t('multiplayer_open_room') : multiplayerPreviewLabel}
           >
             <UsersRound size={20} />
+            {onOpenMultiplayerRoom && multiplayerConnectionCount !== undefined && (
+              <span className="absolute -right-1 -top-1 min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-brand-primary text-white text-[10px] font-bold leading-none border border-modal-bg" title={t('multiplayer_connected_count', { count: multiplayerConnectionCount })}>
+                {multiplayerConnectionCount > 99 ? '99+' : multiplayerConnectionCount}
+              </span>
+            )}
             {!onOpenMultiplayerRoom && multiplayerPreviewPlayerNumber !== null && multiplayerPreviewPlayerNumber !== undefined && (
               <span className="absolute -right-1 -top-1 min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-brand-primary text-white text-[10px] font-bold leading-none border border-modal-bg">
                 {multiplayerPreviewPlayerNumber}
