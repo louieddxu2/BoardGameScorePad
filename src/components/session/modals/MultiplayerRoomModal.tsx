@@ -1,6 +1,6 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Send, UsersRound, X } from 'lucide-react';
+import { Check, Loader2, Send, UsersRound, X } from 'lucide-react';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useCommonTranslation } from '../../../i18n/common';
@@ -18,6 +18,25 @@ const MultiplayerRoomModal: React.FC<MultiplayerRoomModalProps> = ({ isOpen, joi
   const { t } = useSessionTranslation();
   const { t: tCommon } = useCommonTranslation();
   const { zIndex } = useModalBackHandler(isOpen, onClose, 'multiplayer-room');
+  const [publishState, setPublishState] = React.useState<'idle' | 'publishing' | 'published'>('idle');
+  const publishedTimerRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => () => {
+    if (publishedTimerRef.current !== null) window.clearTimeout(publishedTimerRef.current);
+  }, []);
+
+  const handlePublish = async () => {
+    if (publishState === 'publishing') return;
+    setPublishState('publishing');
+    try {
+      await onPublishBoardUpdate();
+      setPublishState('published');
+      publishedTimerRef.current = window.setTimeout(() => setPublishState('idle'), 1800);
+    } catch {
+      setPublishState('idle');
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -41,9 +60,17 @@ const MultiplayerRoomModal: React.FC<MultiplayerRoomModalProps> = ({ isOpen, joi
         </div>
         <div className="mt-4 border-t border-border-subtle pt-4">
           {hasUnpublishedBoardUpdate && <p className="mb-3 text-sm text-txt-secondary">{t('multiplayer_publish_pending')}</p>}
-          <button type="button" onClick={() => { void onPublishBoardUpdate(); }} className="btn-primary w-full justify-center gap-2">
-            <Send size={16} />
-            {t('multiplayer_publish_update')}
+          <button type="button" onClick={() => { void handlePublish(); }} disabled={publishState === 'publishing'} className="btn-primary w-full min-h-10 justify-start gap-2 disabled:opacity-70">
+            {publishState === 'publishing'
+              ? <Loader2 size={16} className="animate-spin" />
+              : publishState === 'published' ? <Check size={16} /> : <Send size={16} />}
+            <span>{publishState === 'publishing'
+              ? t('multiplayer_publish_publishing')
+              : publishState === 'published' ? t('multiplayer_publish_published') : t('multiplayer_publish_update')}</span>
+            <span className="ml-auto inline-flex items-center gap-1 text-sm font-semibold" aria-label={t('multiplayer_connected_count', { count: connectionCount })}>
+              <UsersRound size={16} />
+              {connectionCount}
+            </span>
           </button>
         </div>
       </section>
