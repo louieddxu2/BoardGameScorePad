@@ -17,11 +17,13 @@ export const createMultiplayerP2PRuntimeTransport = (options: {
   let receiver: ((message: unknown, connection?: unknown) => void | Promise<void>) | undefined;
   let connectionOpenHandler: (() => void | Promise<void>) | undefined;
   let connectionChangeHandler: ((connectionCount: number) => void | Promise<void>) | undefined;
+  let connectionCloseHandler: ((connection: unknown) => void | Promise<void>) | undefined;
   const handshake = createP2PHandshakeSync({
     ...options,
     onMessage: (message, connection) => receiver?.(message, connection),
     onConnectionOpen: () => connectionOpenHandler?.(),
     onConnectionChange: (connectionCount) => connectionChangeHandler?.(connectionCount),
+    onConnectionClose: (connection) => connectionCloseHandler?.(connection),
   });
   return {
     startHost: (roomId) => handshake.startHost(roomId),
@@ -34,6 +36,7 @@ export const createMultiplayerP2PRuntimeTransport = (options: {
     setMessageReceiver: (nextReceiver) => { receiver = nextReceiver; },
     setConnectionOpenHandler: (nextHandler) => { connectionOpenHandler = nextHandler; },
     setConnectionChangeHandler: (nextHandler) => { connectionChangeHandler = nextHandler; },
+    setConnectionCloseHandler: (nextHandler) => { connectionCloseHandler = nextHandler; },
     getConnectionCount: () => handshake.getConnectionCount(),
   };
 };

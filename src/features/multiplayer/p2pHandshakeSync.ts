@@ -38,6 +38,7 @@ export const createP2PHandshakeSync = (options: {
   chunkSize?: number;
   onMessage?: (message: unknown, connection: P2PDataConnection) => void | Promise<void>;
   onConnectionOpen?: (connection: P2PDataConnection) => void | Promise<void>;
+  onConnectionClose?: (connection: P2PDataConnection) => void | Promise<void>;
   onConnectionChange?: (connectionCount: number) => void | Promise<void>;
   logger?: (message: string, level?: 'info' | 'error') => void;
 }): P2PHandshakeSync => {
@@ -99,6 +100,7 @@ export const createP2PHandshakeSync = (options: {
     const cleanup = () => {
       connections.delete(connection);
       if (hostConnection === connection) hostConnection = null;
+      void options.onConnectionClose?.(connection);
       void options.onConnectionChange?.(connections.size);
     };
     connection.on('close', cleanup); connection.on('error', cleanup);

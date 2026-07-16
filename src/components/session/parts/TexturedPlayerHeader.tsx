@@ -7,6 +7,7 @@ import { ContrastText } from '../../shared/ContrastText';
 import SmartTextureLayer from './SmartTextureLayer';
 import { COLORS } from '../../../colors'; // Import colors for fallback
 import { useSessionTranslation } from '../../../i18n/session';
+import { Pencil, UsersRound } from 'lucide-react';
 
 interface TexturedPlayerHeaderProps {
   player: Player;
@@ -19,6 +20,8 @@ interface TexturedPlayerHeaderProps {
   style?: React.CSSProperties;
   limitX?: number; // New Prop for Right Bound limit
   id?: string;
+  participantCount?: number;
+  isEditableByParticipant?: boolean;
 }
 
 // Simple Meeple Icon SVG Component with Stroke for visibility
@@ -44,7 +47,9 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
   className,
   style,
   limitX,
-  id
+  id,
+  participantCount = 0,
+  isEditableByParticipant = false,
 }) => {
   const { t } = useSessionTranslation();
   const [bgUrl, setBgUrl] = useState<string | null>(null);
@@ -116,6 +121,25 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
           title={t('player_is_starter')}
         >
           <MeepleIcon className="w-5 h-5 drop-shadow-[0_2px_2px_rgb(var(--c-black)_/_0.5)]" />
+        </div>
+      )}
+
+      {participantCount > 0 && (
+        <div
+          className="absolute top-1 right-1 z-20 pointer-events-none flex items-center gap-0.5 px-1 py-0.5 rounded bg-modal-backdrop/70 text-txt-primary border border-white/10 shadow-sm"
+          title={t('multiplayer_player_claimed', { count: participantCount })}
+        >
+          <UsersRound size={11} />
+          <span className="text-[10px] font-bold leading-none">{participantCount}</span>
+        </div>
+      )}
+
+      {isEditableByParticipant && (
+        <div
+          className="absolute bottom-1 right-1 z-20 pointer-events-none flex items-center justify-center w-4 h-4 rounded bg-modal-backdrop/70 text-txt-primary border border-white/10 shadow-sm"
+          title={t('multiplayer_player_editable')}
+        >
+          <Pencil size={10} />
         </div>
       )}
 

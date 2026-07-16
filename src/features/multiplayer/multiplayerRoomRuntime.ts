@@ -2,7 +2,7 @@ import { GameSession, GameTemplate, MultiplayerRoomRecord } from '../../types';
 import { MultiplayerDeliveryStore } from './multiplayerDeliveryStore';
 import { MultiplayerParticipantBindingStore, participantBindingKey, saveParticipantBinding } from './multiplayerParticipantBinding';
 import { MultiplayerBootstrapStore, MultiplayerCompletionReleaseStore, MultiplayerSnapshotStore, createMultiplayerRoomRecord, persistMultiplayerBootstrap, releaseMultiplayerRoomOwnership } from './multiplayerPersistence';
-import { MultiplayerRoomTransport, createMultiplayerPlayerRoomController, createMultiplayerRoomController } from './multiplayerRoomController';
+import { MultiplayerRoomTransport, ParticipantClaimCounts, createMultiplayerPlayerRoomController, createMultiplayerRoomController } from './multiplayerRoomController';
 import { createMultiplayerHostSession, createMultiplayerPlayerSessionFromBootstrap } from './multiplayerSession';
 import { BootstrapPackageMessage } from './protocol';
 
@@ -17,6 +17,7 @@ export interface MultiplayerRoomRuntimeTransport extends MultiplayerRoomTranspor
   setMessageReceiver?(receiver: (message: unknown, connection?: unknown) => void | Promise<void>): void;
   setConnectionOpenHandler?(handler: () => void | Promise<void>): void;
   setConnectionChangeHandler?(handler: (connectionCount: number) => void | Promise<void>): void;
+  setConnectionCloseHandler?(handler: (connection: unknown) => void | Promise<void>): void;
   getConnectionCount?(): number;
 }
 
@@ -35,6 +36,7 @@ export interface MultiplayerHostRoomRuntime {
   stop(): void;
   receive(message: unknown, connection: unknown): Promise<boolean>;
   getConnectionCount(): number;
+  getParticipantClaims(): ParticipantClaimCounts;
 }
 
 export interface MultiplayerPlayerRoomRuntime {
@@ -47,6 +49,7 @@ export interface MultiplayerPlayerRoomRuntime {
   restoreParticipantBinding(): Promise<boolean>;
   receive(message: unknown): Promise<boolean>;
   getConnectionCount(): number;
+  getParticipantClaims(): ParticipantClaimCounts;
 }
 
 export const createMultiplayerHostRoomRuntime = async (options: {
@@ -60,6 +63,7 @@ export const createMultiplayerHostRoomRuntime = async (options: {
   deliveryStore: MultiplayerDeliveryStore;
   transport: MultiplayerRoomRuntimeTransport;
   onSessionSnapshot?: (session: GameSession) => void | Promise<void>;
+  onParticipantClaims?: (claims: ParticipantClaimCounts) => void | Promise<void>;
   now?: () => number;
 }): Promise<MultiplayerHostRoomRuntime> => {
   const now = options.now ?? Date.now;
@@ -77,14 +81,17 @@ export const createMultiplayerHostRoomRuntime = async (options: {
     role: 'host', hostSession, deliveryStore: options.deliveryStore,
     snapshotStore: options.store, transport: options.transport, now,
     onSnapshot: async (snapshot) => { await options.onSessionSnapshot?.(snapshot.session); },
+    onParticipantClaims: options.onParticipantClaims,
   });
   options.transport.setMessageReceiver?.(async (message, connection) => { await controller.receive(message, connection); });
+  options.transport.setConnectionCloseHandler?.(async (connection) => { await controller.releaseConnection(connection); });
   return {
     role: 'host', session: hostSession, controller,
     start: () => { options.transport.startHost?.(hostSession.room.roomId); },
     stop: () => { options.transport.stop?.(); },
     receive: (message, connection) => controller.receive(message, connection),
     getConnectionCount: () => options.transport.getConnectionCount?.() ?? 0,
+    getParticipantClaims: () => controller.getParticipantClaims(),
   };
 };
 
@@ -195,5 +202,6 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
     restoreParticipantBinding,
     receive: (message) => controller.receive(message),
     getConnectionCount: () => options.transport.getConnectionCount?.() ?? 0,
+    getParticipantClaims: () => ({}),
   };
 };

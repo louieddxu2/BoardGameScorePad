@@ -924,7 +924,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           elapsedTime={elapsedTime}
           panelDockOffset={panelDockOffset}
           canEditScore={capabilities.canEditScore}
-          showEditableScoreHint={capabilities.role === 'player' && !!props.multiplayerRoomId && !isLocalOwnershipReturned}
+          participantClaimCounts={managedRoomState?.role === 'host' ? managedRoomState.participantClaims : undefined}
+          editablePlayerIds={capabilities.role === 'player' && !isLocalOwnershipReturned ? capabilities.playerIds : undefined}
         />
       </div>
 

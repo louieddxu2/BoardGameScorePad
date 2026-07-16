@@ -45,8 +45,8 @@ interface ScoreGridProps {
   elapsedTime?: number;
   panelDockOffset: string;
   canEditScore?: (playerId: string, column: ScoreColumn | undefined) => boolean;
-  /** Shows editable-cell emphasis only for a connected participant. */
-  showEditableScoreHint?: boolean;
+  participantClaimCounts?: Record<string, number>;
+  editablePlayerIds?: string[];
 }
 
 const ScoreGrid: React.FC<ScoreGridProps> = ({
@@ -76,7 +76,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   elapsedTime,
   panelDockOffset,
   canEditScore = () => true,
-  showEditableScoreHint = false,
+  participantClaimCounts = {},
+  editablePlayerIds = [],
 }) => {
   const { t } = useSessionTranslation();
   const dnd = useColumnDragAndDrop({ template, onUpdateTemplate, scrollRef: scrollContainerRef });
@@ -280,6 +281,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
               rect={template.globalVisuals?.playerHeaderRect}
               onClick={(e) => onPlayerHeaderClick(p.id, e)}
               isEditing={editingPlayerId === p.id}
+              participantCount={participantClaimCounts[p.id] ?? 0}
+              isEditableByParticipant={editablePlayerIds.includes(p.id)}
               limitX={template.globalVisuals?.rightMaskRect?.x}
             />
           ))}
@@ -403,7 +406,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                       previewValue={editingCell?.colId === col.id ? previewValue : undefined}
                       forceWidth="100%"
                       isReadOnly={!canEditScore(session.players[0].id, col)}
-                      isEditable={showEditableScoreHint && canEditScore(session.players[0].id, col)}
+                      isEditable={false}
                     />
                     {/* 疊加的 Overlay 也一併在此渲染 (例如公式、文字顯示) */}
                     {col.overlayColumns.map((overlayCol) => {
@@ -507,7 +510,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         isAlt={isAlt}
                         previewValue={isActive ? previewValue : undefined}
                         isReadOnly={!canEditScore(p.id, col)}
-                        isEditable={showEditableScoreHint && canEditScore(p.id, col)}
+                        isEditable={false}
                       />
                       {col.overlayColumns.map(overlayCol => {
                         const isOverlayActive = editingCell?.playerId === p.id && editingCell?.colId === overlayCol.id;

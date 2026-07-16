@@ -425,6 +425,7 @@ const App: React.FC = () => {
       deliveryStore: multiplayerDeliveryStore,
       transport,
       onSessionSnapshot: callbacks.onSessionSnapshot,
+      onParticipantClaims: (claims) => multiplayerSessionManager.setParticipantClaims(roomId, claims),
     });
     multiplayerSessionManager.register(roomId, runtime, 'connecting');
     transport.setConnectionChangeHandler?.((connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount));

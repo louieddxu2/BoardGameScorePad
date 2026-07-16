@@ -34,6 +34,8 @@ export interface MultiplayerRoomTransport {
   broadcastMessage?(message: unknown): boolean;
 }
 
+export type ParticipantClaimCounts = Record<string, number>;
+
 /**
  * Domain coordinator only. UI and a concrete WebRTC/PeerJS constructor are
  * intentionally outside this boundary.
@@ -45,10 +47,19 @@ export const createMultiplayerRoomController = (options: {
   snapshotStore: MultiplayerSnapshotStore;
   transport: MultiplayerRoomTransport;
   onSnapshot?: (snapshot: SessionSnapshotMessage) => void | Promise<void>;
+  onParticipantClaims?: (claims: ParticipantClaimCounts) => void | Promise<void>;
   now?: () => number;
 }) => {
   const now = options.now ?? Date.now;
   const bindings = new Map<unknown, { deviceId: string; playerIds: Set<string> }>();
+  const getParticipantClaims = (): ParticipantClaimCounts => {
+    const claims: ParticipantClaimCounts = {};
+    for (const binding of bindings.values()) {
+      for (const playerId of binding.playerIds) claims[playerId] = (claims[playerId] ?? 0) + 1;
+    }
+    return claims;
+  };
+  const publishParticipantClaims = async () => { await options.onParticipantClaims?.(getParticipantClaims()); };
   const makeResult = (message: Pick<ScoreValuePatchMessage, 'roomId' | 'sessionId' | 'opId'>, accepted: boolean, snapshot?: SessionSnapshotMessage, reason?: string): ScorePatchResultMessage => accepted
     ? { type: 'score:patch-result', roomId: message.roomId, sessionId: message.sessionId, opId: message.opId, accepted: true, snapshot: snapshot! }
     : { type: 'score:patch-result', roomId: message.roomId, sessionId: message.sessionId, opId: message.opId, accepted: false, reason: reason ?? 'rejected' };
@@ -65,6 +76,7 @@ export const createMultiplayerRoomController = (options: {
           const playerIds = existing?.deviceId === message.deviceId ? existing.playerIds : new Set<string>();
           playerIds.add(message.playerId);
           bindings.set(connection, { deviceId: message.deviceId, playerIds });
+          await publishParticipantClaims();
         }
         options.transport.sendToConnection(connection, result);
         return true;
@@ -112,6 +124,12 @@ export const createMultiplayerRoomController = (options: {
       receiveQueue = next.then(() => undefined, () => undefined);
       return next;
     },
+    async releaseConnection(connection: unknown) {
+      if (!bindings.delete(connection)) return false;
+      await publishParticipantClaims();
+      return true;
+    },
+    getParticipantClaims,
     async complete() {
       const message = options.hostSession.complete();
       await persistMultiplayerSnapshot({

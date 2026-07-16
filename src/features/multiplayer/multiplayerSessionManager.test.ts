@@ -45,4 +45,11 @@ describe('multiplayer session manager', () => {
     callbacks.onOwnershipReturned(session);
     expect(manager.get('room-1')?.status).toBe('ownership-returned');
   });
+
+  it('publishes participant claim counts separately from the score snapshot', () => {
+    const manager = createMultiplayerSessionManager(); const runtime = createRuntime('host');
+    manager.register('room-1', runtime);
+    manager.setParticipantClaims('room-1', { p1: 2, p2: 1 });
+    expect(manager.get('room-1')?.participantClaims).toEqual({ p1: 2, p2: 1 });
+  });
 });

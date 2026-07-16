@@ -87,6 +87,24 @@ describe('multiplayer room controller', () => {
     expect(host.session.players.find((item) => item.id === 'p2')?.scores.points).toEqual({ parts: [4] });
   });
 
+  it('reports claimed players per live connection and removes them on disconnect', async () => {
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
+    const store = createDeliveryStore(); const claims = vi.fn(); const firstConnection = {}; const secondConnection = {};
+    const controller = createMultiplayerRoomController({ role: 'host', hostSession: host, deliveryStore: store,
+      snapshotStore: { putSession: async () => undefined, updateRoomRevision: async () => undefined },
+      transport: { sendToHost: () => false, sendToConnection: () => true, broadcastLocalChanges: async () => undefined },
+      onParticipantClaims: claims, now: () => 20,
+    });
+
+    await controller.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-1', playerId: 'p1' }, firstConnection);
+    await controller.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-2', playerId: 'p1' }, secondConnection);
+    expect(controller.getParticipantClaims()).toEqual({ p1: 2 });
+
+    await controller.releaseConnection(firstConnection);
+    expect(controller.getParticipantClaims()).toEqual({ p1: 1 });
+    expect(claims).toHaveBeenLastCalledWith({ p1: 1 });
+  });
+
   it('serializes host persistence for rapid accepted patches', async () => {
     const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
     const store = createDeliveryStore(); const connection = {}; const revisions: number[] = [];
