@@ -9,6 +9,7 @@ import {
   isScoreValuePatchMessage,
   isParticipantClaimMessage,
   isParticipantClaimResultMessage,
+  isSessionCompletedAckMessage,
   isSessionCompletedMessage,
   isSessionSnapshotMessage,
   isTotalAdjustmentPatchMessage,
@@ -62,11 +63,26 @@ export const createMultiplayerRoomController = (options: {
   };
   const publishParticipantClaims = async () => { await options.onParticipantClaims?.(getParticipantClaims()); };
   const broadcastSnapshot = (snapshot: SessionSnapshotMessage) => { options.transport.broadcastMessage?.(snapshot); };
+  let completionWaiter: { roomId: string; sessionId: string; pendingDeviceIds: Set<string>; resolve: () => void } | null = null;
+  const acknowledgeCompletion = (deviceId: string) => {
+    if (!completionWaiter) return;
+    completionWaiter.pendingDeviceIds.delete(deviceId);
+    if (completionWaiter.pendingDeviceIds.size === 0) completionWaiter.resolve();
+  };
   const makeResult = (message: Pick<ScoreValuePatchMessage, 'roomId' | 'sessionId' | 'opId'>, accepted: boolean, snapshot?: SessionSnapshotMessage, reason?: string): ScorePatchResultMessage => accepted
     ? { type: 'score:patch-result', roomId: message.roomId, sessionId: message.sessionId, opId: message.opId, accepted: true, snapshot: snapshot! }
     : { type: 'score:patch-result', roomId: message.roomId, sessionId: message.sessionId, opId: message.opId, accepted: false, reason: reason ?? 'rejected' };
 
   const receiveOne = async (message: unknown, connection: unknown) => {
+      if (isSessionCompletedAckMessage(message)) {
+        const binding = bindings.get(connection);
+        const matchesActiveCompletion = completionWaiter &&
+          completionWaiter.roomId === message.roomId &&
+          completionWaiter.sessionId === message.sessionId;
+        if (!binding || binding.deviceId !== message.deviceId || !matchesActiveCompletion) return false;
+        acknowledgeCompletion(message.deviceId);
+        return true;
+      }
       if (isParticipantClaimMessage(message)) {
         const validRoom = message.roomId === options.hostSession.room.roomId && message.sessionId === options.hostSession.session.id;
         const playerExists = options.hostSession.session.players.some((player) => player.id === message.playerId);
@@ -142,7 +158,17 @@ export const createMultiplayerRoomController = (options: {
         revision: message.revision,
         updatedAt: message.completedAt,
       }, options.snapshotStore);
+      const pendingDeviceIds = new Set([...bindings.values()].map((binding) => binding.deviceId));
+      let completionTimeout: number | null = null;
+      const acknowledged = new Promise<void>((resolve) => {
+        completionWaiter = { roomId: message.roomId, sessionId: message.sessionId, pendingDeviceIds, resolve };
+        if (pendingDeviceIds.size === 0) resolve();
+        else completionTimeout = window.setTimeout(resolve, 1000);
+      });
       options.transport.broadcastMessage?.(message);
+      await acknowledged;
+      if (completionTimeout !== null) window.clearTimeout(completionTimeout);
+      completionWaiter = null;
       return message;
     },
     async applyLocalSession(session: import('../../types').GameSession) {
@@ -217,6 +243,7 @@ export const createMultiplayerPlayerRoomController = (options: {
     async receive(message: unknown) {
       if (isSessionCompletedMessage(message)) {
         if (!options.playerSession.applyCompleted(message)) return false;
+        send({ type: 'session:completed:ack', roomId: message.roomId, sessionId: message.sessionId, deviceId: options.deviceId });
         await options.onCompleted?.(message);
         return true;
       }

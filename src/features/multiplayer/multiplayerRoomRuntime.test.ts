@@ -94,21 +94,25 @@ describe('multiplayer room runtime', () => {
     const hostStore = createRuntimeStore(); const playerStore = createRuntimeStore();
     const hostDelivery = createDeliveryStore(); const playerDelivery = createDeliveryStore(); const bindingStore = createBindingStore();
     let stopped = false; let released: GameSession | undefined;
+    const connection = {};
+    let host: Awaited<ReturnType<typeof createMultiplayerHostRoomRuntime>>;
     let player: Awaited<ReturnType<typeof createMultiplayerPlayerRoomRuntime>>;
     const hostTransport: MultiplayerRoomRuntimeTransport = {
-      sendToHost: () => false, sendToConnection: () => false, broadcastLocalChanges: async () => undefined,
+      sendToHost: () => false, sendToConnection: (_connection, message) => { void player.receive(message); return true; }, broadcastLocalChanges: async () => undefined,
       broadcastMessage: (message) => { void player.receive(message); return true; },
     };
     const playerTransport: MultiplayerRoomRuntimeTransport = {
-      sendToHost: () => false, sendToConnection: () => false, broadcastLocalChanges: async () => undefined,
+      sendToHost: (message) => { void host.receive(message, connection); return true; }, sendToConnection: () => false, broadcastLocalChanges: async () => undefined,
       stop: () => { stopped = true; },
     };
-    const host = await createMultiplayerHostRoomRuntime({ roomId: 'room-1', hostDeviceId: 'host-1', template, session, store: hostStore, deliveryStore: hostDelivery, transport: hostTransport, now: () => 10 });
+    host = await createMultiplayerHostRoomRuntime({ roomId: 'room-1', hostDeviceId: 'host-1', template, session, store: hostStore, deliveryStore: hostDelivery, transport: hostTransport, now: () => 10 });
     player = await createMultiplayerPlayerRoomRuntime({
       bootstrapMessage: host.session.createBootstrapMessage(), deviceId: 'player-device', store: playerStore,
       bindingStore, deliveryStore: playerDelivery, transport: playerTransport,
       onOwnershipReturned: (localSession) => { released = localSession; }, now: () => 20,
     });
+    player.controller.claimPlayer('p1');
+    await vi.waitFor(() => expect(host.getParticipantClaims()).toEqual({ p1: 1 }));
     await host.controller.complete();
     await vi.waitFor(() => expect(released?.status).toBe('active'));
     expect(stopped).toBe(true);

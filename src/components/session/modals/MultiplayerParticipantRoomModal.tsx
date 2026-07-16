@@ -25,7 +25,7 @@ const MultiplayerParticipantRoomModal: React.FC<MultiplayerParticipantRoomModalP
           <button type="button" onClick={onClose} className="p-2 -mr-2 text-txt-muted hover:text-txt-primary" aria-label={tCommon('close')}><X size={20} /></button>
         </div>
         <p className="text-sm leading-relaxed text-txt-secondary">{t('multiplayer_connection_desc')}</p>
-        <button type="button" onClick={() => { void onLeave(); }} className="mt-5 btn-modal-secondary w-full min-h-10 justify-start gap-2 text-status-danger hover:text-status-danger">
+        <button type="button" onClick={() => { void onLeave(); }} className="btn-action-primary mt-5 min-h-10 w-full justify-center gap-2 bg-status-danger text-white shadow-none hover:bg-status-danger/90">
           <LogOut size={16} />
           <span>{t('multiplayer_leave_room')}</span>
         </button>

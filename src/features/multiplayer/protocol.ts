@@ -104,6 +104,13 @@ export interface SessionCompletedMessage {
   completedAt: number;
 }
 
+export interface SessionCompletedAckMessage {
+  type: 'session:completed:ack';
+  roomId: string;
+  sessionId: string;
+  deviceId: string;
+}
+
 export type MultiplayerMessage =
   | BootstrapRequestMessage
   | BootstrapPackageMessage
@@ -113,7 +120,8 @@ export type MultiplayerMessage =
   | ParticipantClaimResultMessage
   | ScorePatchResultMessage
   | SessionSnapshotMessage
-  | SessionCompletedMessage;
+  | SessionCompletedMessage
+  | SessionCompletedAckMessage;
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -236,4 +244,9 @@ export const isSessionCompletedMessage = (value: unknown): value is SessionCompl
     value.finalSession.id === value.sessionId &&
     hasNumber(value, 'revision') &&
     hasNumber(value, 'completedAt');
+};
+
+export const isSessionCompletedAckMessage = (value: unknown): value is SessionCompletedAckMessage => {
+  return isRecord(value) && value.type === 'session:completed:ack' &&
+    hasString(value, 'roomId') && hasString(value, 'sessionId') && hasString(value, 'deviceId');
 };
