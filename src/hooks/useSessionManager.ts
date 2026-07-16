@@ -454,6 +454,7 @@ export const useSessionManager = ({
         );
 
         await db.templates.put(finalTemplate);
+        let sessionWithSync: GameSession | null = null;
         if (currentSession) {
             // [Migration Logic] Detect Column Attribute Changes (e.g. isMultiSelect Toggle)
             const migrations: Record<string, { toMulti: boolean }> = {};
@@ -501,7 +502,7 @@ export const useSessionManager = ({
 
             const winnerIds = calculateWinners(updatedPlayers, currentSession.scoringRule);
 
-            const sessionWithSync = {
+            sessionWithSync = {
                 ...currentSession,
                 templateId: finalTemplate.id,
                 name: finalTemplate.name,
@@ -523,6 +524,8 @@ export const useSessionManager = ({
                 }
             }).catch(console.error);
         }
+
+        return { template: finalTemplate, session: sessionWithSync };
     };
 
     const handleUpdateSessionImage = async (imgBlobOrUrl: string | Blob | null) => {

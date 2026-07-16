@@ -29,6 +29,7 @@ export interface MultiplayerCompletionReleaseStore extends MultiplayerHistorySto
 
 export interface MultiplayerSnapshotStore {
   putSession(session: GameSession): Promise<unknown>;
+  putTemplate?(template: GameTemplate): Promise<unknown>;
   updateRoomRevision(roomId: string, revision: number, updatedAt: number): Promise<unknown>;
 }
 

@@ -4,6 +4,7 @@ import {
   MultiplayerBootstrapStore,
   MultiplayerHistoryStore,
   MultiplayerSnapshotStore,
+  PersistedBootstrapImport,
   persistMultiplayerBootstrap,
 } from './multiplayerPersistence';
 import { createScoreStateSyncAdapter } from './scoreStateSyncAdapter';
@@ -45,7 +46,10 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
 };
 
 export const createLocalScoreStateSyncAdapter = (roomId: string, role: 'host' | 'player', options?: {
-  onRemoteBootstrap?: (message: Parameters<typeof persistMultiplayerBootstrap>[0]) => void | Promise<void>;
+  onRemoteBootstrap?: (
+    message: Parameters<typeof persistMultiplayerBootstrap>[0],
+    persisted: PersistedBootstrapImport,
+  ) => void | Promise<void>;
 }) => {
   return createScoreStateSyncAdapter({
     roomId,
@@ -55,8 +59,8 @@ export const createLocalScoreStateSyncAdapter = (roomId: string, role: 'host' | 
       getSession: (id) => db.sessions.get(id),
       getTemplate: (id) => multiplayerLocalStore.getTemplate(id),
       async applyRemoteBootstrap(message) {
-        await persistMultiplayerBootstrap(message, multiplayerLocalStore, 'player');
-        await options?.onRemoteBootstrap?.(message);
+        const persisted = await persistMultiplayerBootstrap(message, multiplayerLocalStore, 'player');
+        await options?.onRemoteBootstrap?.(message, persisted);
       },
     },
   });

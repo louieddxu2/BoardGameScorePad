@@ -151,6 +151,21 @@ describe('multiplayer bootstrap infrastructure', () => {
     expect(history.snapshotTemplate?.id).toBe('template-1');
   });
 
+  it('applies a newer host board package without changing the session template identity', () => {
+    const template = createTemplate({ updatedAt: 100 });
+    const session = createSession();
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host-1', template, session, now: () => 10 });
+    const player = createMultiplayerPlayerSessionFromBootstrap({ bootstrapMessage: host.createBootstrapMessage(), now: () => 10 });
+    const updatedTemplate = { ...template, updatedAt: 20, columns: [...template.columns, { ...template.columns[0], id: 'bonus', name: 'Bonus' }] };
+    const snapshot = host.applyLocalBoard(updatedTemplate, session);
+
+    expect(snapshot).not.toBeNull();
+    expect(player.applyBootstrap({ template: updatedTemplate, session: snapshot!.session, revision: snapshot!.revision })).toBe(true);
+    expect(player.template.id).toBe('template-1');
+    expect(player.template.columns.map((column) => column.id)).toEqual(['points', 'bonus']);
+    expect(player.session.templateId).toBe('template-1');
+  });
+
   it('rejects invalid or stale mock messages', () => {
     const host = createMultiplayerHostSession({
       roomId: 'room-1',

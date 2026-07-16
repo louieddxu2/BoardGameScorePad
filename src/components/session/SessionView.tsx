@@ -47,7 +47,7 @@ interface SessionViewProps {
   zoomLevel: number;
   baseImage: string | null;
   onUpdateSession: (session: GameSession) => void;
-  onUpdateTemplate: (template: GameTemplate) => void;
+  onUpdateTemplate: (template: GameTemplate) => Promise<{ template: GameTemplate; session: GameSession | null }>;
   onUpdateSavedPlayer: (name: string) => void; // Renamed from onUpdatePlayerHistory
   onUpdateImage: (img: string | Blob | null) => void;
   onExit: (location?: string) => void;
@@ -63,7 +63,7 @@ interface SessionViewProps {
 }
 
 const SessionView: React.FC<SessionViewProps> = (props) => {
-  const { template, zoomLevel, baseImage, onUpdateTemplate } = props;
+  const { template, zoomLevel, baseImage } = props;
   const { t: tSession } = useSessionTranslation();
   const { t: tCommon } = useCommonTranslation();
 
@@ -81,6 +81,17 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const manager = props.multiplayerManager ?? multiplayerSessionManager;
   const [managedRoomState, setManagedRoomState] = React.useState(() => props.multiplayerRoomId ? manager.get(props.multiplayerRoomId) : null);
   const session = managedRoomState?.session ?? props.session;
+
+  const handleTemplateUpdate = React.useCallback(async (nextTemplate: GameTemplate) => {
+    const result = await props.onUpdateTemplate(nextTemplate);
+    const roomId = props.multiplayerRoomId;
+    const runtime = managedRoomState?.runtime;
+    if (!roomId || !runtime || runtime.role !== 'host' || !result.session || isLocalOwnershipReturned) return result;
+
+    const snapshot = await runtime.controller.applyLocalBoard(result.template, result.session);
+    if (snapshot) manager.publishSession(roomId, snapshot.session);
+    return result;
+  }, [isLocalOwnershipReturned, managedRoomState?.runtime, manager, props.multiplayerRoomId, props.onUpdateTemplate]);
 
   const isAiWorking = aiGenerator.status === 'compressing' || 
                       aiGenerator.status === 'generating' || 
@@ -128,7 +139,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     }
   }, [aiSimpleGenerator.simpleStatus, aiGenerator.status]);
 
-  const sessionState = useSessionState(props);
+  const sessionState = useSessionState({ ...props, onUpdateTemplate: handleTemplateUpdate });
   const capabilities = useMemo(() => {
     if (isLocalOwnershipReturned) return hostSessionCapabilities;
     if (props.multiplayerCapabilities) return props.multiplayerCapabilities;
@@ -147,7 +158,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const occupiedBottom = getSessionOccupiedBottom(sessionState.panelHeight, keyboardOffset);
 
   // No special local state needed for photo preview anymore
-  const eventHandlers = useSessionEvents(props, sessionState);
+  const eventHandlers = useSessionEvents({ ...props, onUpdateTemplate: handleTemplateUpdate }, sessionState);
 
   // Media Logic
   const media = useSessionMedia({
@@ -155,7 +166,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     template,
     baseImage,
     onUpdateSession: props.onUpdateSession,
-    onUpdateTemplate: props.onUpdateTemplate,
+    onUpdateTemplate: handleTemplateUpdate,
     onUpdateImage: props.onUpdateImage,
     setUiState,
     isEditMode: sessionState.uiState.isEditMode
@@ -269,7 +280,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
 
   // 安全套用社群範本 (重置分數格，更新 columns，安全原地刷新)
-  const handleApplyTemplate = useCallback((fetched: any) => {
+  const handleApplyTemplate = useCallback(async (fetched: any) => {
     let payloadObj: any = null;
     try {
       payloadObj = typeof fetched.payload === 'string'
@@ -311,8 +322,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     };
 
     // 4. 原地驅動 React 狀態流更新（IndexedDB 寫入由上層 onUpdate 自動非同步完成）
-    props.onUpdateTemplate(updatedTemplate);
-    props.onUpdateSession(updatedSession);
+    await handleTemplateUpdate(updatedTemplate);
+    await handleSessionUpdate(updatedSession);
 
     // 5. 標記偏好，記錄此範本以防止重覆推薦
     try {
@@ -328,10 +339,10 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     // 6. 關閉彈窗並彈出提示
     setIsOnlineSearchOpen(false);
     showToast({ message: tSession('toast_apply_template_success'), type: 'success' });
-  }, [session, template, props.onUpdateTemplate, props.onUpdateSession, showToast, tSession]);
+  }, [handleSessionUpdate, handleTemplateUpdate, session, template, showToast, tSession]);
 
   // 安全套用 AI 產生之範本
-  const handleAiSuccess = useCallback((result: Partial<GameTemplate>) => {
+  const handleAiSuccess = useCallback(async (result: Partial<GameTemplate>) => {
     if (!result.columns || result.columns.length === 0) return;
 
     // 1. 複製玩家並清空所有輸入分數 (原地清空)
@@ -357,8 +368,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     };
 
     // 4. 原地驅動 React 狀態更新
-    props.onUpdateTemplate(updatedTemplate);
-    props.onUpdateSession(updatedSession);
+    await handleTemplateUpdate(updatedTemplate);
+    await handleSessionUpdate(updatedSession);
 
     // 5. 記憶體標記：待首次結束遊戲 Save to History 時詢問分享
     markPendingAiShare(template.id);
@@ -367,7 +378,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     setIsAiPromptOpen(false);
     setIsOnlineSearchOpen(false);
     showToast({ message: tSession('toast_ai_apply_success'), type: 'success' });
-  }, [session, template, props.onUpdateTemplate, props.onUpdateSession, showToast, tSession]);
+  }, [handleSessionUpdate, handleTemplateUpdate, session, template, showToast, tSession]);
 
   React.useEffect(() => {
     if (aiGenerator.status === 'error') {
@@ -750,7 +761,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         template={template}
         baseImage={baseImage}
         onScannerConfirm={media.handleScannerConfirm}
-        onUpdateTemplate={onUpdateTemplate}
+        onUpdateTemplate={handleTemplateUpdate}
       />
 
       {/* Background Settings Modal */}
@@ -788,7 +799,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
               isDangerous: true
             })) {
               const newCols = template.columns.filter(c => c.id !== editingColumn.id);
-              onUpdateTemplate({ ...template, columns: newCols });
+              void handleTemplateUpdate({ ...template, columns: newCols });
               setUiState(p => ({ ...p, editingColumn: null }));
             }
           }}
@@ -905,7 +916,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
             eventHandlers.handlePlayerHeaderClick(playerId, event);
           }}
           onColumnHeaderClick={handleColumnHeaderClickSafe}
-          onUpdateTemplate={capabilities.canEditTemplate ? onUpdateTemplate : () => undefined}
+          onUpdateTemplate={capabilities.canEditTemplate ? handleTemplateUpdate : () => undefined}
           onAddColumn={capabilities.canEditTemplate ? eventHandlers.handleAddBlankColumn : () => undefined}
           onOpenSettings={capabilities.canEditTemplate ? eventHandlers.handleOpenGameSettings : undefined}
           onToggleToolbox={capabilities.canOpenToolbox ? eventHandlers.handleToggleToolbox : undefined}

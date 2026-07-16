@@ -105,6 +105,29 @@ describe('multiplayer room controller', () => {
     expect(claims).toHaveBeenLastCalledWith({ p1: 1 });
   });
 
+  it('persists and broadcasts a host template change with its active session', async () => {
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
+    const store = createDeliveryStore(); const templates: GameTemplate[] = []; const snapshots: GameSession[] = [];
+    const broadcast = vi.fn(async () => undefined);
+    const controller = createMultiplayerRoomController({ role: 'host', hostSession: host, deliveryStore: store,
+      snapshotStore: {
+        putTemplate: async (nextTemplate) => { templates.push(nextTemplate); },
+        putSession: async (nextSession) => { snapshots.push(nextSession); },
+        updateRoomRevision: async () => undefined,
+      },
+      transport: { sendToHost: () => false, sendToConnection: () => true, broadcastLocalChanges: broadcast }, now: () => 20,
+    });
+    const updatedTemplate = { ...template, columns: [...template.columns, { ...column, id: 'bonus', name: 'Bonus' }], updatedAt: 20 };
+
+    const snapshot = await controller.applyLocalBoard(updatedTemplate, session);
+
+    expect(snapshot?.revision).toBe(2);
+    expect(host.template.columns.map((item) => item.id)).toEqual(['points', 'bonus']);
+    expect(templates).toEqual([updatedTemplate]);
+    expect(snapshots).toEqual([snapshot?.session]);
+    expect(broadcast).toHaveBeenCalledTimes(1);
+  });
+
   it('serializes host persistence for rapid accepted patches', async () => {
     const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
     const store = createDeliveryStore(); const connection = {}; const revisions: number[] = [];

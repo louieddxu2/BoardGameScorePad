@@ -48,6 +48,7 @@ export interface MultiplayerPlayerRoomRuntime {
   /** Reclaims the previously selected player; pending edits replay only after acceptance. */
   restoreParticipantBinding(): Promise<boolean>;
   receive(message: unknown): Promise<boolean>;
+  applyBootstrap(input: { template: GameTemplate; session: GameSession; revision: number }): boolean;
   getConnectionCount(): number;
   getParticipantClaims(): ParticipantClaimCounts;
 }
@@ -199,6 +200,7 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
     role: 'player', session: playerSession, controller,
     start: () => { options.transport.joinRoom?.(playerSession.room.roomId); },
     stop: () => { options.transport.stop?.(); },
+    applyBootstrap: (input) => playerSession.applyBootstrap(input),
     restoreParticipantBinding,
     receive: (message) => controller.receive(message),
     getConnectionCount: () => options.transport.getConnectionCount?.() ?? 0,

@@ -20,6 +20,7 @@ export interface MultiplayerHostSession {
   receiveScoreValuePatch(message: ScoreValuePatchMessage): { accepted: true; snapshot: SessionSnapshotMessage } | { accepted: false; reason: string };
   receiveTotalAdjustmentPatch(message: TotalAdjustmentPatchMessage): { accepted: true; snapshot: SessionSnapshotMessage } | { accepted: false; reason: string };
   applyLocalSession(session: GameSession): SessionSnapshotMessage | null;
+  applyLocalBoard(template: GameTemplate, session: GameSession): SessionSnapshotMessage | null;
   complete(): SessionCompletedMessage;
 }
 
@@ -39,6 +40,7 @@ export interface MultiplayerPlayerSession {
     sequence?: number;
   }): ScoreValuePatchMessage;
   applySnapshot(message: SessionSnapshotMessage): boolean;
+  applyBootstrap(input: { template: GameTemplate; session: GameSession; revision: number }): boolean;
   applyCompleted(message: SessionCompletedMessage): boolean;
 }
 
@@ -177,6 +179,17 @@ export const createMultiplayerHostSession = (options: {
       };
     },
 
+    applyLocalBoard(template, session) {
+      if (session.id !== state.session.id || session.status !== 'active' || session.templateId !== template.id) return null;
+      state.template = cloneJson(template);
+      state.session = recalculateScoreSession(cloneJson(session), state.template);
+      state.revision += 1;
+      return {
+        type: 'session:snapshot', roomId: state.room.roomId, sessionId: state.session.id,
+        session: cloneJson(state.session), revision: state.revision, updatedAt: now(),
+      };
+    },
+
     complete() {
       state.session = { ...state.session, status: 'completed', lastUpdatedAt: now() };
       state.revision += 1;
@@ -244,6 +257,16 @@ export const createMultiplayerPlayerSessionFromBootstrap = (options: {
 
       state.session = cloneJson(message.session);
       state.revision = message.revision;
+      return true;
+    },
+
+    applyBootstrap(input) {
+      if (input.session.id !== state.session.id || input.session.templateId !== input.template.id || input.revision < state.revision) {
+        return false;
+      }
+      state.template = cloneJson(input.template);
+      state.session = cloneJson(input.session);
+      state.revision = input.revision;
       return true;
     },
 

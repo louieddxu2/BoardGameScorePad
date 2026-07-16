@@ -92,14 +92,27 @@ const App: React.FC = () => {
     multiplayerJoinStartedRef.current = roomId;
     setIsJoiningMultiplayer(true);
     const adapter = createLocalScoreStateSyncAdapter(roomId, 'player', {
-      onRemoteBootstrap: async (bootstrapMessage) => {
+      onRemoteBootstrap: async (bootstrapMessage, persisted) => {
+        const managedRoom = multiplayerSessionManager.get(roomId);
+        if (managedRoom?.runtime?.role === 'player') {
+          const runtime = managedRoom.runtime;
+          const templateChanged = JSON.stringify(runtime.session.template) !== JSON.stringify(persisted.templateForSession);
+          if (!runtime.applyBootstrap({
+            template: persisted.templateForSession,
+            session: persisted.session,
+            revision: bootstrapMessage.package.revision,
+          })) return;
+          multiplayerSessionManager.publishSession(roomId, persisted.session);
+          if (templateChanged) await appData.resumeSessionById(persisted.session.id);
+          return;
+        }
         setPendingMultiplayerJoin({ roomId, bootstrapMessage, transport });
         setIsJoiningMultiplayer(false);
       },
     });
     const transport = createMultiplayerP2PRuntimeTransport({ Peer, adapter, logger: (message) => console.info('[multiplayer]', message) });
     transport.joinRoom?.(roomId);
-  }, [appData.isDbReady]);
+  }, [appData, appData.isDbReady]);
 
   const [isIOSPwaGuideVisible, setIsIOSPwaGuideVisible] = useState(false);
 

@@ -151,6 +151,15 @@ export const createMultiplayerRoomController = (options: {
       await options.transport.broadcastLocalChanges();
       return snapshot;
     },
+    async applyLocalBoard(template: import('../../types').GameTemplate, session: import('../../types').GameSession) {
+      const snapshot = options.hostSession.applyLocalBoard(template, session);
+      if (!snapshot) return null;
+      await options.snapshotStore.putTemplate?.(options.hostSession.template);
+      await persistMultiplayerSnapshot(snapshot, options.snapshotStore);
+      await options.onSnapshot?.(snapshot);
+      await options.transport.broadcastLocalChanges();
+      return snapshot;
+    },
   };
 };
 
