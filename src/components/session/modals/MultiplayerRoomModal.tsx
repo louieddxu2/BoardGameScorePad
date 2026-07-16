@@ -1,6 +1,6 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Check, Loader2, Send, UsersRound, X } from 'lucide-react';
+import { Check, Loader2, LogOut, Send, UsersRound, X } from 'lucide-react';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useCommonTranslation } from '../../../i18n/common';
@@ -11,10 +11,11 @@ interface MultiplayerRoomModalProps {
   connectionCount: number;
   hasUnpublishedBoardUpdate: boolean;
   onPublishBoardUpdate: () => void | Promise<void>;
+  onCloseRoom?: () => void | Promise<void>;
   onClose: () => void;
 }
 
-const MultiplayerRoomModal: React.FC<MultiplayerRoomModalProps> = ({ isOpen, joinUrl, connectionCount, hasUnpublishedBoardUpdate, onPublishBoardUpdate, onClose }) => {
+const MultiplayerRoomModal: React.FC<MultiplayerRoomModalProps> = ({ isOpen, joinUrl, connectionCount, hasUnpublishedBoardUpdate, onPublishBoardUpdate, onCloseRoom, onClose }) => {
   const { t } = useSessionTranslation();
   const { t: tCommon } = useCommonTranslation();
   const { zIndex } = useModalBackHandler(isOpen, onClose, 'multiplayer-room');
@@ -72,6 +73,12 @@ const MultiplayerRoomModal: React.FC<MultiplayerRoomModalProps> = ({ isOpen, joi
               {connectionCount}
             </span>
           </button>
+          {onCloseRoom && (
+            <button type="button" onClick={() => { void onCloseRoom(); }} className="mt-3 btn-modal-secondary w-full min-h-10 justify-start gap-2 text-status-danger hover:text-status-danger">
+              <LogOut size={16} />
+              <span>{t('multiplayer_close_room')}</span>
+            </button>
+          )}
         </div>
       </section>
     </div>

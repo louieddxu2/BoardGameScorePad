@@ -60,6 +60,7 @@ interface SessionViewProps {
   multiplayerRoomId?: string;
   multiplayerManager?: MultiplayerSessionManager;
   onOpenMultiplayerRoom?: () => void;
+  onLeaveMultiplayerRoom?: () => void;
 }
 
 const SessionView: React.FC<SessionViewProps> = (props) => {
@@ -841,6 +842,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         multiplayerPreviewLabel={multiplayerPreviewLabel}
         multiplayerPreviewPlayerNumber={multiplayerPreviewPlayerNumber}
         onOpenMultiplayerRoom={capabilities.role === 'host' ? props.onOpenMultiplayerRoom : undefined}
+        onLeaveMultiplayerRoom={capabilities.role === 'player' ? props.onLeaveMultiplayerRoom : undefined}
         multiplayerConnectionCount={managedRoomState?.role === 'host' ? managedRoomState.connectionCount : undefined}
         hasUnpublishedBoardUpdate={managedRoomState?.role === 'host' ? managedRoomState.hasUnpublishedBoardUpdate : false}
         hasVisuals={!!template.globalVisuals}

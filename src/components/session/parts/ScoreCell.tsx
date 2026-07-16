@@ -292,7 +292,9 @@ const CellContentStandard: React.FC<CellContentProps> = ({ parts, displayScore, 
     // Check if user is actively typing (isActive is sufficient proxy here combined with result)
     const isTyping = !!isActive;
 
-    const showRawValHint = displayScore !== rawVal; // For non-active state (saved value check)
+    // Keep calculated-field inputs visible even when a formula currently resolves
+    // to the same value, such as a multiplier of 1.
+    const showRawValHint = displayScore !== rawVal || column.formula !== 'a1';
 
     // Show condition:
     // 1. Not Simple Mode

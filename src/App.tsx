@@ -25,6 +25,7 @@ import { createMultiplayerHostRoomRuntime, createMultiplayerPlayerRoomRuntime } 
 import { multiplayerSessionManager } from './features/multiplayer/multiplayerSessionManager';
 import { BootstrapPackageMessage } from './features/multiplayer/protocol';
 import { createPlayerSessionCapabilities, hostSessionCapabilities } from './features/multiplayer/sessionCapabilities';
+import { releaseMultiplayerRoomOwnership } from './features/multiplayer/multiplayerPersistence';
 
 // Components
 import TemplateEditor from './components/editor/TemplateEditor';
@@ -56,7 +57,7 @@ const App: React.FC = () => {
   const [isMultiplayerRoomModalOpen, setIsMultiplayerRoomModalOpen] = useState(false);
   const [pendingMultiplayerJoin, setPendingMultiplayerJoin] = useState<PendingMultiplayerJoin | null>(null);
   const [isJoiningMultiplayer, setIsJoiningMultiplayer] = useState(false);
-  const [, setMultiplayerVersion] = useState(0);
+  const [multiplayerVersion, setMultiplayerVersion] = useState(0);
 
   // Custom Hook for all data logic
   const appData = useAppData();
@@ -84,6 +85,14 @@ const App: React.FC = () => {
   const { isInstalled, canInstall, handleInstallClick } = usePwaInstall();
 
   useEffect(() => multiplayerSessionManager.subscribe(() => setMultiplayerVersion((version) => version + 1)), []);
+
+  useEffect(() => {
+    if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
+    const returned = multiplayerSessionManager.takeReturnedSession(activeMultiplayerRoom.roomId);
+    if (!returned) return;
+    setActiveMultiplayerRoom(null);
+    void appData.resumeSessionById(returned.id);
+  }, [activeMultiplayerRoom, appData, multiplayerVersion]);
 
   useEffect(() => {
     if (!appData.isDbReady || isInAppBrowser()) return;
@@ -493,6 +502,30 @@ const App: React.FC = () => {
     multiplayerSessionManager.setUnpublishedBoardUpdate(activeMultiplayerRoom.roomId, false);
   }, [activeMultiplayerRoom]);
 
+  const handleCloseMultiplayerRoom = useCallback(async () => {
+    if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'host') return;
+    const managedRoom = multiplayerSessionManager.get(activeMultiplayerRoom.roomId);
+    if (!managedRoom?.runtime || managedRoom.runtime.role !== 'host') return;
+    const completed = await managedRoom.runtime.controller.complete();
+    await releaseMultiplayerRoomOwnership({
+      store: multiplayerLocalStore,
+      roomId: activeMultiplayerRoom.roomId,
+      session: completed.finalSession,
+      completedAt: completed.completedAt,
+    });
+    multiplayerSessionManager.closeRoom(activeMultiplayerRoom.roomId);
+    setActiveMultiplayerRoom(null);
+    setIsMultiplayerRoomModalOpen(false);
+    await appData.resumeSessionById(completed.finalSession.id);
+  }, [activeMultiplayerRoom, appData]);
+
+  const handleLeaveMultiplayerRoom = useCallback(async () => {
+    if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
+    await multiplayerLocalStore.deleteRoom(activeMultiplayerRoom.roomId);
+    multiplayerSessionManager.closeRoom(activeMultiplayerRoom.roomId);
+    setActiveMultiplayerRoom(null);
+  }, [activeMultiplayerRoom]);
+
   const handleStartNewGame = async (count: number, options: { startTimeStr: string, scoringRule: ScoringRule }) => {
     if (pendingTemplate) {
       if (appData.activeSessionIds.includes(pendingTemplate.id)) {
@@ -699,6 +732,7 @@ const App: React.FC = () => {
             multiplayerManager={multiplayerSessionManager}
             multiplayerCapabilities={activeMultiplayerRoom?.role === 'player' ? createPlayerSessionCapabilities(activeMultiplayerRoom.playerIds ?? []) : hostSessionCapabilities}
             onOpenMultiplayerRoom={activeMultiplayerRoom?.role !== 'player' ? handleOpenMultiplayerRoom : undefined}
+            onLeaveMultiplayerRoom={activeMultiplayerRoom?.role === 'player' ? handleLeaveMultiplayerRoom : undefined}
           />
         </div>
       )}
@@ -737,6 +771,7 @@ const App: React.FC = () => {
           connectionCount={multiplayerRoomState?.connectionCount ?? 0}
           hasUnpublishedBoardUpdate={multiplayerRoomState?.hasUnpublishedBoardUpdate ?? false}
           onPublishBoardUpdate={handlePublishMultiplayerBoardUpdate}
+          onCloseRoom={handleCloseMultiplayerRoom}
           onClose={() => setIsMultiplayerRoomModalOpen(false)}
         />
       )}

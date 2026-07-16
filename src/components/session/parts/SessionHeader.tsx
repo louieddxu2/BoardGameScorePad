@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, ListPlus, RotateCcw, Share2, Edit2, Lock, Unlock, DownloadCloud, UsersRound } from 'lucide-react';
+import { ArrowLeft, ListPlus, RotateCcw, Share2, Edit2, Lock, Unlock, DownloadCloud, LogOut, UsersRound } from 'lucide-react';
 import ShareMenu from '../modals/ShareMenu';
 import { useSessionTranslation } from '../../../i18n/session';
 
@@ -36,6 +36,7 @@ interface SessionHeaderProps {
   onOpenMultiplayerRoom?: () => void;
   multiplayerConnectionCount?: number;
   hasUnpublishedBoardUpdate?: boolean;
+  onLeaveMultiplayerRoom?: () => void;
 }
 
 const SessionHeader: React.FC<SessionHeaderProps> = ({
@@ -70,6 +71,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   onOpenMultiplayerRoom,
   multiplayerConnectionCount,
   hasUnpublishedBoardUpdate = false,
+  onLeaveMultiplayerRoom,
 }) => {
   const { t } = useSessionTranslation();
   const [tempTitle, setTempTitle] = useState('');
@@ -165,6 +167,18 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
                 {multiplayerPreviewPlayerNumber}
               </span>
             )}
+          </button>
+        )}
+        {onLeaveMultiplayerRoom && (
+          <button
+            type="button"
+            onMouseDown={preventBlur}
+            onClick={onLeaveMultiplayerRoom}
+            className="p-2 rounded-lg transition-colors border border-surface-border text-txt-muted hover:text-txt-primary hover:bg-surface-hover"
+            title={t('multiplayer_leave_room')}
+            aria-label={t('multiplayer_leave_room')}
+          >
+            <LogOut size={20} />
           </button>
         )}
         {/* Cloud Download Shortcut */}
