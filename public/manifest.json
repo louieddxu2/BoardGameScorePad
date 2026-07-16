@@ -7,7 +7,9 @@
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "window-controls-overlay"],
-  "capture_links": "existing-app-window",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
   "orientation": "portrait",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
