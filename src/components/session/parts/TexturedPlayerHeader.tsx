@@ -136,7 +136,7 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
 
       {isEditableByParticipant && (
         <div
-          className="absolute bottom-1 right-1 z-20 pointer-events-none flex items-center justify-center w-4 h-4 rounded bg-modal-backdrop/70 text-txt-primary border border-white/10 shadow-sm"
+          className="absolute top-1 right-1 z-20 pointer-events-none flex items-center justify-center w-4 h-4 rounded bg-modal-backdrop/70 text-txt-primary border border-white/10 shadow-sm"
           title={t('multiplayer_player_editable')}
         >
           <Pencil size={10} />
