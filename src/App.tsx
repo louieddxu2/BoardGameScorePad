@@ -504,7 +504,7 @@ const App: React.FC = () => {
     multiplayerSessionManager.setUnpublishedBoardUpdate(activeMultiplayerRoom.roomId, false);
   }, [activeMultiplayerRoom]);
 
-  const handleCloseMultiplayerRoom = useCallback(async () => {
+  const releaseHostMultiplayerRoom = useCallback(async () => {
     if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'host') return;
     const managedRoom = multiplayerSessionManager.get(activeMultiplayerRoom.roomId);
     if (!managedRoom?.runtime || managedRoom.runtime.role !== 'host') return;
@@ -519,8 +519,13 @@ const App: React.FC = () => {
     setActiveMultiplayerRoom(null);
     setIsMultiplayerParticipantRoomModalOpen(false);
     setIsMultiplayerRoomModalOpen(false);
-    await appData.resumeSessionById(completed.finalSession.id);
-  }, [activeMultiplayerRoom, appData]);
+    return completed.finalSession;
+  }, [activeMultiplayerRoom]);
+
+  const handleCloseMultiplayerRoom = useCallback(async () => {
+    const releasedSession = await releaseHostMultiplayerRoom();
+    if (releasedSession) await appData.resumeSessionById(releasedSession.id);
+  }, [appData, releaseHostMultiplayerRoom]);
 
   const handleLeaveMultiplayerRoom = useCallback(async () => {
     if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
@@ -567,23 +572,25 @@ const App: React.FC = () => {
     transitionToDashboard();
   }, [appData, transitionToDashboard]);
 
-  const handleSaveToHistory = useCallback((location?: string) => {
+  const handleSaveToHistory = useCallback(async (location?: string) => {
+    await releaseHostMultiplayerRoom();
     captureAiTemplateForSharing(appData.activeTemplate);
-    appData.saveToHistory(location);
+    await appData.saveToHistory(location);
     transitionToDashboard();
     
     // Trigger iOS PWA guide if applicable
     if (shouldTriggerIOSPwaGuide()) {
       setIsIOSPwaGuideVisible(true);
     }
-  }, [appData, transitionToDashboard, captureAiTemplateForSharing]);
+  }, [appData, transitionToDashboard, captureAiTemplateForSharing, releaseHostMultiplayerRoom]);
 
-  const handleDiscard = useCallback(() => {
+  const handleDiscard = useCallback(async () => {
+    await releaseHostMultiplayerRoom();
     if (appData.activeTemplate) {
-      appData.discardSession(appData.activeTemplate.id);
+      await appData.discardSession(appData.activeTemplate.id);
       transitionToDashboard();
     }
-  }, [appData, transitionToDashboard]);
+  }, [appData, transitionToDashboard, releaseHostMultiplayerRoom]);
 
   const handleTemplateSave = async (template: GameTemplate) => {
     await appData.saveTemplate(template);
