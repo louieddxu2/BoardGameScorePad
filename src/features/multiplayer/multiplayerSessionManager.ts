@@ -21,6 +21,7 @@ export interface MultiplayerRoomState {
   returnedSession?: GameSession;
   connectionCount: number;
   participantClaims: ParticipantClaimCounts;
+  hasUnpublishedBoardUpdate: boolean;
 }
 
 export interface MultiplayerSessionManager {
@@ -31,6 +32,7 @@ export interface MultiplayerSessionManager {
   setConnectionStatus(roomId: string, status: Exclude<MultiplayerConnectionStatus, 'ownership-returned'>): void;
   setConnectionCount(roomId: string, connectionCount: number): void;
   setParticipantClaims(roomId: string, claims: ParticipantClaimCounts): void;
+  setUnpublishedBoardUpdate(roomId: string, hasUnpublishedBoardUpdate: boolean): void;
   publishSession(roomId: string, session: GameSession): void;
   createRuntimeCallbacks(roomId: string): {
     onSessionSnapshot: (session: GameSession) => void;
@@ -66,7 +68,7 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
       const runtimeSession = runtime.role === 'host' ? runtime.session.session : runtime.session.session;
       const connectionCount = (runtime as Partial<ManagedMultiplayerRuntime>).getConnectionCount?.() ?? 0;
       const participantClaims = (runtime as Partial<ManagedMultiplayerRuntime>).getParticipantClaims?.() ?? {};
-      const state: MultiplayerRoomState = { roomId, role: runtime.role, status, isViewAttached: false, runtime, session: runtimeSession, connectionCount, participantClaims };
+      const state: MultiplayerRoomState = { roomId, role: runtime.role, status, isViewAttached: false, runtime, session: runtimeSession, connectionCount, participantClaims, hasUnpublishedBoardUpdate: false };
       rooms.set(roomId, state);
       notify();
       return snapshot(state);
@@ -102,6 +104,12 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
       const state = rooms.get(roomId);
       if (!state || !state.runtime) return;
       state.participantClaims = { ...claims };
+      notify();
+    },
+    setUnpublishedBoardUpdate(roomId, hasUnpublishedBoardUpdate) {
+      const state = rooms.get(roomId);
+      if (!state || !state.runtime || state.role !== 'host') return;
+      state.hasUnpublishedBoardUpdate = hasUnpublishedBoardUpdate;
       notify();
     },
     publishSession(roomId, session) {

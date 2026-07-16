@@ -89,7 +89,10 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     if (!roomId || !runtime || runtime.role !== 'host' || !result.session || isLocalOwnershipReturned) return result;
 
     const snapshot = await runtime.controller.applyLocalBoard(result.template, result.session);
-    if (snapshot) manager.publishSession(roomId, snapshot.session);
+    if (snapshot) {
+      manager.publishSession(roomId, snapshot.session);
+      manager.setUnpublishedBoardUpdate(roomId, true);
+    }
     return result;
   }, [isLocalOwnershipReturned, managedRoomState?.runtime, manager, props.multiplayerRoomId, props.onUpdateTemplate]);
 

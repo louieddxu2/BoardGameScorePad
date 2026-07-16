@@ -1,6 +1,6 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { UsersRound, X } from 'lucide-react';
+import { Send, UsersRound, X } from 'lucide-react';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useCommonTranslation } from '../../../i18n/common';
@@ -9,10 +9,12 @@ interface MultiplayerRoomModalProps {
   isOpen: boolean;
   joinUrl: string;
   connectionCount: number;
+  hasUnpublishedBoardUpdate: boolean;
+  onPublishBoardUpdate: () => void | Promise<void>;
   onClose: () => void;
 }
 
-const MultiplayerRoomModal: React.FC<MultiplayerRoomModalProps> = ({ isOpen, joinUrl, connectionCount, onClose }) => {
+const MultiplayerRoomModal: React.FC<MultiplayerRoomModalProps> = ({ isOpen, joinUrl, connectionCount, hasUnpublishedBoardUpdate, onPublishBoardUpdate, onClose }) => {
   const { t } = useSessionTranslation();
   const { t: tCommon } = useCommonTranslation();
   const { zIndex } = useModalBackHandler(isOpen, onClose, 'multiplayer-room');
@@ -36,6 +38,13 @@ const MultiplayerRoomModal: React.FC<MultiplayerRoomModalProps> = ({ isOpen, joi
         <div className="mt-4 flex items-center justify-center gap-2 text-sm font-medium text-txt-secondary">
           <UsersRound size={17} className="text-brand-primary" />
           <span>{connectionCount > 0 ? t('multiplayer_connected_count', { count: connectionCount }) : t('multiplayer_waiting')}</span>
+        </div>
+        <div className="mt-4 border-t border-border-subtle pt-4">
+          {hasUnpublishedBoardUpdate && <p className="mb-3 text-sm text-txt-secondary">{t('multiplayer_publish_pending')}</p>}
+          <button type="button" onClick={() => { void onPublishBoardUpdate(); }} className="btn-primary w-full justify-center gap-2">
+            <Send size={16} />
+            {t('multiplayer_publish_update')}
+          </button>
         </div>
       </section>
     </div>

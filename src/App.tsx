@@ -485,6 +485,14 @@ const App: React.FC = () => {
     ? `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(activeMultiplayerRoom.roomId)}`
     : '';
 
+  const handlePublishMultiplayerBoardUpdate = useCallback(async () => {
+    if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'host') return;
+    const managedRoom = multiplayerSessionManager.get(activeMultiplayerRoom.roomId);
+    if (managedRoom?.runtime?.role !== 'host') return;
+    await managedRoom.runtime.controller.publishBoard();
+    multiplayerSessionManager.setUnpublishedBoardUpdate(activeMultiplayerRoom.roomId, false);
+  }, [activeMultiplayerRoom]);
+
   const handleStartNewGame = async (count: number, options: { startTimeStr: string, scoringRule: ScoringRule }) => {
     if (pendingTemplate) {
       if (appData.activeSessionIds.includes(pendingTemplate.id)) {
@@ -727,6 +735,8 @@ const App: React.FC = () => {
           isOpen
           joinUrl={multiplayerJoinUrl}
           connectionCount={multiplayerRoomState?.connectionCount ?? 0}
+          hasUnpublishedBoardUpdate={multiplayerRoomState?.hasUnpublishedBoardUpdate ?? false}
+          onPublishBoardUpdate={handlePublishMultiplayerBoardUpdate}
           onClose={() => setIsMultiplayerRoomModalOpen(false)}
         />
       )}

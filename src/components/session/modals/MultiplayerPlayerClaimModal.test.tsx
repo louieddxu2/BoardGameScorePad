@@ -44,6 +44,8 @@ describe('MultiplayerPlayerClaimModal', () => {
           isOpen
           joinUrl="https://example.test/?room=room-1"
           connectionCount={0}
+          hasUnpublishedBoardUpdate={false}
+          onPublishBoardUpdate={vi.fn()}
           onClose={onClose}
         />
       </LanguageProvider>

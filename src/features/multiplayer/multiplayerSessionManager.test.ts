@@ -52,4 +52,13 @@ describe('multiplayer session manager', () => {
     manager.setParticipantClaims('room-1', { p1: 2, p2: 1 });
     expect(manager.get('room-1')?.participantClaims).toEqual({ p1: 2, p2: 1 });
   });
+
+  it('tracks unpublished board updates for a host room', () => {
+    const manager = createMultiplayerSessionManager(); const runtime = createRuntime('host');
+    manager.register('room-1', runtime);
+    manager.setUnpublishedBoardUpdate('room-1', true);
+    expect(manager.get('room-1')?.hasUnpublishedBoardUpdate).toBe(true);
+    manager.setUnpublishedBoardUpdate('room-1', false);
+    expect(manager.get('room-1')?.hasUnpublishedBoardUpdate).toBe(false);
+  });
 });

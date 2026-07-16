@@ -10,6 +10,7 @@ import {
   isParticipantClaimMessage,
   isParticipantClaimResultMessage,
   isSessionCompletedMessage,
+  isSessionSnapshotMessage,
   isTotalAdjustmentPatchMessage,
   ParticipantClaimResultMessage,
   ScorePatchResultMessage,
@@ -60,6 +61,7 @@ export const createMultiplayerRoomController = (options: {
     return claims;
   };
   const publishParticipantClaims = async () => { await options.onParticipantClaims?.(getParticipantClaims()); };
+  const broadcastSnapshot = (snapshot: SessionSnapshotMessage) => { options.transport.broadcastMessage?.(snapshot); };
   const makeResult = (message: Pick<ScoreValuePatchMessage, 'roomId' | 'sessionId' | 'opId'>, accepted: boolean, snapshot?: SessionSnapshotMessage, reason?: string): ScorePatchResultMessage => accepted
     ? { type: 'score:patch-result', roomId: message.roomId, sessionId: message.sessionId, opId: message.opId, accepted: true, snapshot: snapshot! }
     : { type: 'score:patch-result', roomId: message.roomId, sessionId: message.sessionId, opId: message.opId, accepted: false, reason: reason ?? 'rejected' };
@@ -114,7 +116,7 @@ export const createMultiplayerRoomController = (options: {
         opId: message.opId, acceptedRevision: result.snapshot.revision, updatedAt: now(),
       });
       options.transport.sendToConnection(connection, makeResult(message, true, result.snapshot));
-      await options.transport.broadcastLocalChanges();
+      broadcastSnapshot(result.snapshot);
       return true;
   };
   let receiveQueue = Promise.resolve();
@@ -148,7 +150,7 @@ export const createMultiplayerRoomController = (options: {
       if (!snapshot) return null;
       await persistMultiplayerSnapshot(snapshot, options.snapshotStore);
       await options.onSnapshot?.(snapshot);
-      await options.transport.broadcastLocalChanges();
+      broadcastSnapshot(snapshot);
       return snapshot;
     },
     async applyLocalBoard(template: import('../../types').GameTemplate, session: import('../../types').GameSession) {
@@ -157,8 +159,10 @@ export const createMultiplayerRoomController = (options: {
       await options.snapshotStore.putTemplate?.(options.hostSession.template);
       await persistMultiplayerSnapshot(snapshot, options.snapshotStore);
       await options.onSnapshot?.(snapshot);
-      await options.transport.broadcastLocalChanges();
       return snapshot;
+    },
+    async publishBoard() {
+      await options.transport.broadcastLocalChanges();
     },
   };
 };
@@ -219,6 +223,12 @@ export const createMultiplayerPlayerRoomController = (options: {
       if (isParticipantClaimResultMessage(message)) {
         if (message.roomId !== options.playerSession.room.roomId || message.sessionId !== options.playerSession.session.id) return false;
         if (message.accepted && message.playerId) await options.onClaimAccepted?.(message.playerId);
+        return true;
+      }
+      if (isSessionSnapshotMessage(message)) {
+        if (!options.playerSession.applySnapshot(message)) return false;
+        await persistMultiplayerSnapshot(message, options.snapshotStore);
+        await options.onSnapshot?.(message);
         return true;
       }
       if (!isScorePatchResultMessage(message)) return false;

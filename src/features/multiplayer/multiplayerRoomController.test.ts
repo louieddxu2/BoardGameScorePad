@@ -39,20 +39,36 @@ describe('multiplayer room controller', () => {
     expect((await store.listOutbox('room-1', 'session-1'))).toHaveLength(0);
   });
 
+  it('applies a broadcast session snapshot without requesting a new board package', async () => {
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
+    const playerSession = createMultiplayerPlayerSessionFromBootstrap({ bootstrapMessage: host.createBootstrapMessage(), now: () => 10 });
+    const controller = createMultiplayerPlayerRoomController({
+      playerSession, deviceId: 'device-1', deliveryStore: createDeliveryStore(),
+      snapshotStore: { putSession: async () => undefined, updateRoomRevision: async () => undefined },
+      transport: { sendToHost: () => false, sendToConnection: () => true, broadcastLocalChanges: async () => undefined }, now: () => 20,
+    });
+    const updatedSession = { ...session, players: [{ ...player, scores: { points: { parts: [8] } }, totalScore: 8 }] };
+
+    await controller.receive({ type: 'session:snapshot', roomId: 'room-1', sessionId: 'session-1', session: updatedSession, revision: 2, updatedAt: 20 });
+
+    expect(playerSession.session.players[0].scores.points).toEqual({ parts: [8] });
+    expect(playerSession.revision).toBe(2);
+  });
+
   it('uses a durable host receipt to make a retried operation harmless', async () => {
     const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
-    const store = createDeliveryStore(); const reply = vi.fn(); const broadcast = vi.fn(async () => undefined);
+    const store = createDeliveryStore(); const reply = vi.fn(); const broadcast = vi.fn();
     const connection = {};
     const controller = createMultiplayerRoomController({ role: 'host', hostSession: host, deliveryStore: store,
       snapshotStore: { putSession: async () => undefined, updateRoomRevision: async () => undefined },
-      transport: { sendToHost: () => false, sendToConnection: (_connection, message) => { reply(message); return true; }, broadcastLocalChanges: broadcast }, now: () => 20,
+      transport: { sendToHost: () => false, sendToConnection: (_connection, message) => { reply(message); return true; }, broadcastLocalChanges: async () => undefined, broadcastMessage: broadcast }, now: () => 20,
     });
     const patch = { type: 'score:valuePatch' as const, roomId: 'room-1', sessionId: 'session-1', opId: 'op-1', deviceId: 'device-1', sequence: 1, updatedAt: 20, patch: { actor: { role: 'player' as const, playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [7] } } };
     await controller.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-1', playerId: 'p1' }, connection);
     await controller.receive(patch, connection);
     await controller.receive(patch, connection);
     expect(host.revision).toBe(2);
-    expect(broadcast).toHaveBeenCalledTimes(1);
+    expect(broadcast).toHaveBeenCalledWith(expect.objectContaining({ type: 'session:snapshot', revision: 2 }));
     expect(reply).toHaveBeenCalledTimes(3);
   });
 
@@ -125,6 +141,8 @@ describe('multiplayer room controller', () => {
     expect(host.template.columns.map((item) => item.id)).toEqual(['points', 'bonus']);
     expect(templates).toEqual([updatedTemplate]);
     expect(snapshots).toEqual([snapshot?.session]);
+    expect(broadcast).not.toHaveBeenCalled();
+    await controller.publishBoard();
     expect(broadcast).toHaveBeenCalledTimes(1);
   });
 
