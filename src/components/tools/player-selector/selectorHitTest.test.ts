@@ -88,4 +88,18 @@ describe('selectorHitTest', () => {
         expect(result.handled).toBe(true);
         expect(result.players[0].state).toBe('COLOR_PICKING');
     });
+
+    it('uses displayPositions for hit testing when player has retreated/moved', () => {
+        const player = makePlayer({ x: 100, y: 100 });
+        const displayPositions = new Map([['player-1', { x: 200, y: 200 }]]);
+
+        // 點擊原始座標 (100, 100) -> 應未命中
+        const oldPosResult = applyPlayerClick([player], { x: 100, y: 100 }, displayPositions);
+        expect(oldPosResult.handled).toBe(false);
+
+        // 點擊移動後的新座標 (200, 200) -> 應精準命中
+        const newPosResult = applyPlayerClick([player], { x: 200, y: 200 }, displayPositions);
+        expect(newPosResult.handled).toBe(true);
+        expect(newPosResult.players[0].state).toBe('COLOR_PICKING');
+    });
 });

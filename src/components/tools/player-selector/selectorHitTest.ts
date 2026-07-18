@@ -28,10 +28,16 @@ export interface PaletteHitResult extends PlayerHitResult {
     color: string | null;
 }
 
-export const getPlayerLocalPoint = (player: SelectorPlayer, point: Point): Point => {
+export const getPlayerLocalPoint = (
+    player: SelectorPlayer,
+    point: Point,
+    displayPos?: Point
+): Point => {
+    const targetX = displayPos ? displayPos.x : player.x;
+    const targetY = displayPos ? displayPos.y : player.y;
     const rad = -player.textRotationDeg * Math.PI / 180;
-    const dx = point.x - player.x;
-    const dy = point.y - player.y;
+    const dx = point.x - targetX;
+    const dy = point.y - targetY;
 
     return {
         x: dx * Math.cos(rad) - dy * Math.sin(rad),
@@ -98,13 +104,15 @@ export const getPaletteColorAtLocalPoint = (localPoint: Point, paletteColors: st
 
 export const applyPaletteClick = (
     players: SelectorPlayer[],
-    point: Point
+    point: Point,
+    displayPositions?: Map<string, Point>
 ): PaletteHitResult => {
     for (const player of players) {
         if (player.state !== 'COLOR_PICKING') continue;
 
         const paletteColors = getPlayerPaletteColors(player.suggestedColors, players, player.id);
-        const color = getPaletteColorAtLocalPoint(getPlayerLocalPoint(player, point), paletteColors);
+        const displayPos = displayPositions?.get(player.id);
+        const color = getPaletteColorAtLocalPoint(getPlayerLocalPoint(player, point, displayPos), paletteColors);
         if (!color) continue;
 
         return {
@@ -122,10 +130,12 @@ export const applyPaletteClick = (
 
 export const applyPlayerClick = (
     players: SelectorPlayer[],
-    point: Point
+    point: Point,
+    displayPositions?: Map<string, Point>
 ): PlayerHitResult => {
     for (const player of players) {
-        const localPoint = getPlayerLocalPoint(player, point);
+        const displayPos = displayPositions?.get(player.id);
+        const localPoint = getPlayerLocalPoint(player, point, displayPos);
 
         if (player.state === 'COLOR_PICKING' && isPlayerDeleteHit(localPoint)) {
             return {

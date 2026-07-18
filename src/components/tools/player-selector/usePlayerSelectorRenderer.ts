@@ -734,7 +734,8 @@ export const usePlayerSelectorRenderer = ({
         const rect = svg.getBoundingClientRect();
         const result = applyPaletteClick(
             playersRef.current,
-            { x: clickX - rect.left, y: clickY - rect.top }
+            { x: clickX - rect.left, y: clickY - rect.top },
+            displayPositionsRef.current
         );
 
         if (!result.handled) return false;
@@ -751,7 +752,8 @@ export const usePlayerSelectorRenderer = ({
         const rect = svg.getBoundingClientRect();
         const result = applyPlayerClick(
             playersRef.current,
-            { x: clickX - rect.left, y: clickY - rect.top }
+            { x: clickX - rect.left, y: clickY - rect.top },
+            displayPositionsRef.current
         );
 
         if (!result.handled) return false;
