@@ -56,6 +56,7 @@ const PlayerSelectorSurface = React.forwardRef<PlayerSelectorSurfaceHandle, Play
     onSelectorPlayersChange,
     onCandidateLocked
 }, ref) => {
+    const { t } = useToolsTranslation();
     const svgRef = useRef<SVGSVGElement | null>(null);
     const { resetEngine, closeAllPalettes } = usePlayerSelectorRenderer({
         svgRef,
@@ -70,6 +71,7 @@ const PlayerSelectorSurface = React.forwardRef<PlayerSelectorSurfaceHandle, Play
         template,
         allSavedPlayers,
         contextVoters,
+        tapToRefreshText: t('picker_tap_to_refresh'),
         onSelectorPlayersChange,
         onCandidateLocked
     });

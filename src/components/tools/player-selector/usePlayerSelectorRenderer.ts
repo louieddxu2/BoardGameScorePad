@@ -10,6 +10,7 @@ import { Voter } from '../../../features/recommendation/ContextResolver';
 import { predictColorsForPlayer } from '../../../features/recommendation/PlayerRecommendationEngine';
 import { COLORS } from '../../../colors';
 
+
 const SPRING_K = 0.08;       
 const FRICTION = 0.82;       
 const MAX_NORMAL_SPEED = 12; 
@@ -23,10 +24,10 @@ const WALL_REPULSION_DIST = BALL_RADIUS + 5;
 const WALL_REPULSION_FORCE = 1.0; 
 
 const FREEZE_TIME_MS = 1000;    
-const LOCK_TIME_MS = 750;
-const STATIONARY_LOCK_TIME_MS = 2000;
+const LOCK_TIME_MS = 1000;
+const STATIONARY_LOCK_TIME_MS = 3000;
 const ANONYMOUS_MOVE_THRESHOLD = 15;
-const ANONYMOUS_PLAYER_PREFIX = "\u73a9\u5bb6";
+const ANONYMOUS_PLAYER_PREFIX = "玩家"; // 預設玩家
 
 const DEFAULT_COLOR = "#475569";
 
@@ -43,6 +44,7 @@ interface UsePlayerSelectorPrototypeRendererProps {
     template?: GameTemplate;
     allSavedPlayers?: SavedListItem[];
     contextVoters?: Voter[];
+    tapToRefreshText?: string;
     onSelectorPlayersChange: (players: SelectorPlayer[]) => void;
     onCandidateLocked: (candidate: Candidate) => void;
 }
@@ -60,6 +62,7 @@ export const usePlayerSelectorRenderer = ({
     template,
     allSavedPlayers = [],
     contextVoters = [],
+    tapToRefreshText,
     onSelectorPlayersChange,
     onCandidateLocked
 }: UsePlayerSelectorPrototypeRendererProps) => {
@@ -719,7 +722,8 @@ export const usePlayerSelectorRenderer = ({
             turnOrder: resultDisplayRef.current.turnOrder,
             highlightedPlayerId: resultDisplayRef.current.highlightedPlayerId,
             starterPlayerId: resultDisplayRef.current.starterPlayerId,
-            shouldRetreatPlayers: resultDisplayRef.current.shouldRetreatPlayers
+            shouldRetreatPlayers: resultDisplayRef.current.shouldRetreatPlayers,
+            tapToRefreshText
         });
 
         if (isRunningRef.current) {

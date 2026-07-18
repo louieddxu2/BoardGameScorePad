@@ -83,10 +83,10 @@ export const toolsTranslations = {
         picker_prototype_close: "關閉",
         picker_prototype_selected_players: "已選玩家",
         picker_prototype_random_names: "亞瑟,梅林,史萊姆,哥布林,龍傲天,路人甲,巨石強森,哈利,妙麗,阿呆,胖虎,小夫,靜香,哆啦,勇者,魔王,精靈,矮人",
+        picker_tap_to_refresh: "重按 ↺",
     },
     'en': {
         tools_title: "Tools",
-
         // Order Tool
         order_title: "Seat Order & Teams",
         order_shuffle: "Reshuffle",
@@ -161,6 +161,7 @@ export const toolsTranslations = {
         picker_prototype_close: "Close",
         picker_prototype_selected_players: "Selected Players",
         picker_prototype_random_names: "Arthur,Merlin,Slime,Goblin,Dragon,Passerby,Rock,Harry,Hermione,Dumb,Fatty,Sinyi,Shizuka,Dora,Hero,Demon,Elf,Dwarf",
+        picker_tap_to_refresh: "Tap ↺",
     }
 };
 

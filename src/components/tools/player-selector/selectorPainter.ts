@@ -35,6 +35,7 @@ interface DrawSelectorSvgProps {
     highlightedPlayerId: string | null;
     starterPlayerId: string | null;
     shouldRetreatPlayers: boolean;
+    tapToRefreshText?: string;
 }
 
 export const drawSelectorSvg = ({
@@ -47,7 +48,8 @@ export const drawSelectorSvg = ({
     turnOrder,
     highlightedPlayerId,
     starterPlayerId,
-    shouldRetreatPlayers
+    shouldRetreatPlayers,
+    tapToRefreshText = ""
 }: DrawSelectorSvgProps) => {
     svg.innerHTML = "";
 
@@ -351,6 +353,38 @@ export const drawSelectorSvg = ({
         }
 
         if (touch.state === 'CHOOSING') {
+            // 在手指前方 96 像素處顯示帶有 1 秒週期呼吸效果的「重按 ↺」提示標籤
+            const breathOpacity = 0.55 + 0.45 * Math.sin(((now % 1000) / 1000) * Math.PI * 2);
+            const hintGroup = makeSvgNode("g", {
+                transform: `translate(${touch.canvasX}, ${touch.canvasY}) rotate(${touch.textRotationDeg}) translate(0, -96)`,
+                "pointer-events": "none"
+            });
+            hintGroup.appendChild(makeSvgNode("rect", {
+                x: -38,
+                y: -11,
+                width: 76,
+                height: 22,
+                rx: 11,
+                fill: "rgba(15, 23, 42, 0.85)",
+                stroke: `rgba(255, 255, 255, ${0.2 * breathOpacity})`,
+                "stroke-width": 1,
+                opacity: breathOpacity
+            }));
+            const hintText = makeSvgNode("text", {
+                x: 0,
+                y: 1,
+                fill: "#d8b4fe",
+                "font-size": "11px",
+                "font-weight": "bold",
+                "text-anchor": "middle",
+                "dominant-baseline": "middle",
+                opacity: breathOpacity,
+                "pointer-events": "none"
+            });
+            hintText.textContent = tapToRefreshText;
+            hintGroup.appendChild(hintText);
+            svg.appendChild(hintGroup);
+
             svg.appendChild(makeSvgNode("circle", {
                 cx: touch.anchorX,
                 cy: touch.anchorY,
