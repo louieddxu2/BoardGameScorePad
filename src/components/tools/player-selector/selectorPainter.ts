@@ -353,8 +353,11 @@ export const drawSelectorSvg = ({
         }
 
         if (touch.state === 'CHOOSING') {
-            // 在手指前方 136 像素處顯示帶有 1 秒週期呼吸效果的「重按 ↺」提示標籤
-            const breathOpacity = 0.55 + 0.45 * Math.sin(((now % 1000) / 1000) * Math.PI * 2);
+            // 前 80% 時間保持 0.85 穩定高清晰可讀，僅在週期末 20% 時間輕微脈衝閃爍 (0.85 -> 1.0 -> 0.85)
+            const cycleRatio = (now % 1200) / 1200;
+            const breathOpacity = cycleRatio < 0.8
+                ? 0.85
+                : 0.85 + 0.15 * Math.sin(((cycleRatio - 0.8) / 0.2) * Math.PI);
             const hintGroup = makeSvgNode("g", {
                 transform: `translate(${touch.canvasX}, ${touch.canvasY}) rotate(${touch.textRotationDeg}) translate(0, -136)`,
                 "pointer-events": "none"
