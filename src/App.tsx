@@ -515,6 +515,7 @@ const App: React.FC = () => {
     pendingMultiplayerJoin?.transport.stop?.();
     setPendingMultiplayerJoin(null);
     setIsJoiningMultiplayer(false);
+    multiplayerJoinStartedRef.current = null;
     const url = new URL(window.location.href);
     url.searchParams.delete('room');
     window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
@@ -551,18 +552,27 @@ const App: React.FC = () => {
     return completed.finalSession;
   }, [activeMultiplayerRoom]);
 
+  const releaseParticipantMultiplayerRoom = useCallback(async (options?: { deleteLocalRoom?: boolean }) => {
+    if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
+    const roomId = activeMultiplayerRoom.roomId;
+    if (options?.deleteLocalRoom) {
+      await multiplayerLocalStore.deleteRoom(roomId);
+    }
+    multiplayerSessionManager.closeRoom(roomId);
+    multiplayerJoinStartedRef.current = null;
+    clearMultiplayerJoinTimeout();
+    setActiveMultiplayerRoom(null);
+    setIsMultiplayerParticipantRoomModalOpen(false);
+  }, [activeMultiplayerRoom, clearMultiplayerJoinTimeout]);
+
   const handleCloseMultiplayerRoom = useCallback(async () => {
     const releasedSession = await releaseHostMultiplayerRoom();
     if (releasedSession) await appData.resumeSessionById(releasedSession.id);
   }, [appData, releaseHostMultiplayerRoom]);
 
   const handleLeaveMultiplayerRoom = useCallback(async () => {
-    if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
-    await multiplayerLocalStore.deleteRoom(activeMultiplayerRoom.roomId);
-    multiplayerSessionManager.closeRoom(activeMultiplayerRoom.roomId);
-    setActiveMultiplayerRoom(null);
-    setIsMultiplayerParticipantRoomModalOpen(false);
-  }, [activeMultiplayerRoom]);
+    await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true });
+  }, [releaseParticipantMultiplayerRoom]);
 
   const handleStartNewGame = async (count: number, options: { startTimeStr: string, scoringRule: ScoringRule }) => {
     if (pendingTemplate) {
@@ -596,13 +606,20 @@ const App: React.FC = () => {
     setView(AppView.ACTIVE_SESSION);
   };
 
-  const handleExitSession = useCallback((location?: string) => {
+  const handleExitSession = useCallback(async (location?: string) => {
+    if (activeMultiplayerRoom?.role === 'player') {
+      await releaseParticipantMultiplayerRoom({ deleteLocalRoom: false });
+    }
     appData.exitSession(location !== undefined ? { location } : undefined);
     transitionToDashboard();
-  }, [appData, transitionToDashboard]);
+  }, [activeMultiplayerRoom, appData, releaseParticipantMultiplayerRoom, transitionToDashboard]);
 
   const handleSaveToHistory = useCallback(async (location?: string) => {
-    await releaseHostMultiplayerRoom();
+    if (activeMultiplayerRoom?.role === 'host') {
+      await releaseHostMultiplayerRoom();
+    } else if (activeMultiplayerRoom?.role === 'player') {
+      await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true });
+    }
     captureAiTemplateForSharing(appData.activeTemplate);
     await appData.saveToHistory(location);
     transitionToDashboard();
@@ -611,15 +628,19 @@ const App: React.FC = () => {
     if (shouldTriggerIOSPwaGuide()) {
       setIsIOSPwaGuideVisible(true);
     }
-  }, [appData, transitionToDashboard, captureAiTemplateForSharing, releaseHostMultiplayerRoom]);
+  }, [activeMultiplayerRoom, appData, transitionToDashboard, captureAiTemplateForSharing, releaseHostMultiplayerRoom, releaseParticipantMultiplayerRoom]);
 
   const handleDiscard = useCallback(async () => {
-    await releaseHostMultiplayerRoom();
+    if (activeMultiplayerRoom?.role === 'host') {
+      await releaseHostMultiplayerRoom();
+    } else if (activeMultiplayerRoom?.role === 'player') {
+      await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true });
+    }
     if (appData.activeTemplate) {
       await appData.discardSession(appData.activeTemplate.id);
       transitionToDashboard();
     }
-  }, [appData, transitionToDashboard, releaseHostMultiplayerRoom]);
+  }, [activeMultiplayerRoom, appData, transitionToDashboard, releaseHostMultiplayerRoom, releaseParticipantMultiplayerRoom]);
 
   const handleTemplateSave = async (template: GameTemplate) => {
     await appData.saveTemplate(template);
