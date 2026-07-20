@@ -487,6 +487,13 @@ const App: React.FC = () => {
     setIsMultiplayerRoomModalOpen(true);
   }, [activeMultiplayerRoom?.role, appData.activeTemplate, appData.currentSession]);
 
+  const clearRoomUrlQuery = useCallback(() => {
+    if (!window.location.search.includes('room')) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('room');
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  }, []);
+
   const handleConfirmMultiplayerPlayers = useCallback(async (playerIds: string[]) => {
     if (!pendingMultiplayerJoin) return;
     const { roomId, bootstrapMessage, transport } = pendingMultiplayerJoin;
@@ -507,19 +514,18 @@ const App: React.FC = () => {
     for (const playerId of playerIds) runtime.controller.claimPlayer(playerId);
     setActiveMultiplayerRoom({ roomId, role: 'player', playerIds });
     setPendingMultiplayerJoin(null);
+    clearRoomUrlQuery();
     const resumed = await appData.resumeSessionById(runtime.session.session.id);
     if (resumed) setView(AppView.ACTIVE_SESSION);
-  }, [appData, pendingMultiplayerJoin]);
+  }, [appData, clearRoomUrlQuery, pendingMultiplayerJoin]);
 
   const handleCancelMultiplayerJoin = useCallback(() => {
     pendingMultiplayerJoin?.transport.stop?.();
     setPendingMultiplayerJoin(null);
     setIsJoiningMultiplayer(false);
     multiplayerJoinStartedRef.current = null;
-    const url = new URL(window.location.href);
-    url.searchParams.delete('room');
-    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
-  }, [pendingMultiplayerJoin]);
+    clearRoomUrlQuery();
+  }, [clearRoomUrlQuery, pendingMultiplayerJoin]);
 
   const multiplayerRoomState = activeMultiplayerRoom ? multiplayerSessionManager.get(activeMultiplayerRoom.roomId) : null;
   const multiplayerJoinUrl = activeMultiplayerRoom?.role === 'host'
@@ -546,11 +552,12 @@ const App: React.FC = () => {
       completedAt: completed.completedAt,
     });
     multiplayerSessionManager.closeRoom(activeMultiplayerRoom.roomId);
+    clearRoomUrlQuery();
     setActiveMultiplayerRoom(null);
     setIsMultiplayerParticipantRoomModalOpen(false);
     setIsMultiplayerRoomModalOpen(false);
     return completed.finalSession;
-  }, [activeMultiplayerRoom]);
+  }, [activeMultiplayerRoom, clearRoomUrlQuery]);
 
   const releaseParticipantMultiplayerRoom = useCallback(async (options?: { deleteLocalRoom?: boolean }) => {
     if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
@@ -561,9 +568,10 @@ const App: React.FC = () => {
     multiplayerSessionManager.closeRoom(roomId);
     multiplayerJoinStartedRef.current = null;
     clearMultiplayerJoinTimeout();
+    clearRoomUrlQuery();
     setActiveMultiplayerRoom(null);
     setIsMultiplayerParticipantRoomModalOpen(false);
-  }, [activeMultiplayerRoom, clearMultiplayerJoinTimeout]);
+  }, [activeMultiplayerRoom, clearMultiplayerJoinTimeout, clearRoomUrlQuery]);
 
   const handleCloseMultiplayerRoom = useCallback(async () => {
     const releasedSession = await releaseHostMultiplayerRoom();
