@@ -105,23 +105,49 @@ const App: React.FC = () => {
     void appData.resumeSessionById(returned.id);
   }, [activeMultiplayerRoom, appData, multiplayerVersion]);
 
+  const clearRoomUrlQuery = useCallback(() => {
+    if (!window.location.search.includes('room')) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('room');
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  }, []);
+
   useEffect(() => {
     if (!appData.isDbReady || isInAppBrowser()) return;
     const roomId = new URLSearchParams(window.location.search).get('room');
     if (!roomId) return;
+
     const existingRoom = multiplayerSessionManager.get(roomId);
-    if (existingRoom?.role === 'player') {
+
+    // 情況 A：既有連線仍在且有效 (connected) -> 照既有的連上
+    if (existingRoom && existingRoom.status === 'connected' && existingRoom.session) {
       multiplayerJoinStartedRef.current = roomId;
       clearMultiplayerJoinTimeout();
       setIsJoiningMultiplayer(false);
-      if (existingRoom.session && appData.currentSession?.id !== existingRoom.session.id) {
-        void appData.resumeSessionById(existingRoom.session.id);
+      if (activeMultiplayerRoom?.roomId !== roomId) {
+        setActiveMultiplayerRoom({
+          roomId,
+          role: existingRoom.role,
+          playerIds: existingRoom.runtime?.session.claimedPlayerIds || (activeMultiplayerRoom?.playerIds ?? [])
+        });
       }
+      void appData.resumeSessionById(existingRoom.session.id).then(() => {
+        setView(AppView.ACTIVE_SESSION);
+        clearRoomUrlQuery();
+      });
       return;
     }
-    if (multiplayerJoinStartedRef.current === roomId) return;
+
+    // 情況 B：既有連線無效/舊連線殘留 -> 徹底把既有連線清空再連上
+    if (existingRoom) {
+      multiplayerSessionManager.closeRoom(roomId);
+    }
+
+    if (multiplayerJoinStartedRef.current === roomId && isJoiningMultiplayer) return;
     multiplayerJoinStartedRef.current = roomId;
+    clearMultiplayerJoinTimeout();
     setIsJoiningMultiplayer(true);
+
     let transport: ReturnType<typeof createMultiplayerP2PRuntimeTransport>;
     const adapter = createLocalScoreStateSyncAdapter(roomId, 'player', {
       onRemoteBootstrap: async (bootstrapMessage, persisted) => {
@@ -143,16 +169,19 @@ const App: React.FC = () => {
         setPendingMultiplayerJoin({ roomId, bootstrapMessage, transport });
       },
     });
+
     transport = createMultiplayerP2PRuntimeTransport({ Peer, adapter, logger: (message) => console.info('[multiplayer]', message) });
     transport.joinRoom?.(roomId);
+
     multiplayerJoinTimeoutRef.current = window.setTimeout(() => {
       if (multiplayerJoinStartedRef.current !== roomId || multiplayerSessionManager.get(roomId)?.role === 'player') return;
       transport.stop?.();
       multiplayerJoinStartedRef.current = null;
       setIsJoiningMultiplayer(false);
+      clearRoomUrlQuery();
       showToast({ message: tApp('app_toast_multiplayer_join_timeout'), type: 'warning' });
     }, 15000);
-  }, [appData, appData.isDbReady, clearMultiplayerJoinTimeout, showToast, tApp]);
+  }, [activeMultiplayerRoom, appData, appData.isDbReady, clearMultiplayerJoinTimeout, clearRoomUrlQuery, isJoiningMultiplayer, showToast, tApp]);
 
   const [isIOSPwaGuideVisible, setIsIOSPwaGuideVisible] = useState(false);
 
@@ -486,13 +515,6 @@ const App: React.FC = () => {
     setActiveMultiplayerRoom({ roomId, role: 'host' });
     setIsMultiplayerRoomModalOpen(true);
   }, [activeMultiplayerRoom?.role, appData.activeTemplate, appData.currentSession]);
-
-  const clearRoomUrlQuery = useCallback(() => {
-    if (!window.location.search.includes('room')) return;
-    const url = new URL(window.location.href);
-    url.searchParams.delete('room');
-    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
-  }, []);
 
   const handleConfirmMultiplayerPlayers = useCallback(async (playerIds: string[]) => {
     if (!pendingMultiplayerJoin) return;
