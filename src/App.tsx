@@ -128,7 +128,7 @@ const App: React.FC = () => {
       // 如果已重連或房間已不存在，不處理
       if (!currentState || currentState.status === 'connected') return;
       // 確認仍然斷線，清除狀態並提示
-      multiplayerSessionManager.closeRoom(roomId);
+      multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
       activeMultiplayerRoomRef.current = null;
       setActiveMultiplayerRoom(null);
       showToast({ message: tApp('app_toast_multiplayer_host_disconnected'), type: 'warning' });
@@ -180,7 +180,7 @@ const App: React.FC = () => {
 
     // 情況 B：既有連線無效/舊連線殘留 -> 徹底把既有連線清空再連上
     if (existingRoom) {
-      multiplayerSessionManager.closeRoom(roomId);
+      multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
     }
 
     if (multiplayerJoinStartedRef.current === roomId && isJoiningMultiplayerRef.current) return;
@@ -761,10 +761,7 @@ const App: React.FC = () => {
   const releaseParticipantMultiplayerRoom = useCallback(async (options?: { deleteLocalRoom?: boolean }) => {
     if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
     const roomId = activeMultiplayerRoom.roomId;
-    if (options?.deleteLocalRoom) {
-      await multiplayerLocalStore.deleteRoom(roomId);
-    }
-    multiplayerSessionManager.closeRoom(roomId);
+    multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: options?.deleteLocalRoom });
     multiplayerJoinStartedRef.current = null;
     clearMultiplayerJoinTimeout();
     isJoiningMultiplayerRef.current = false;

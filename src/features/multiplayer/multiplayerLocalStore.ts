@@ -13,6 +13,8 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
   getRoom(roomId: string): Promise<MultiplayerRoomRecord | undefined>;
   getRoomBySessionId(sessionId: string): Promise<MultiplayerRoomRecord | undefined>;
   getSession(sessionId: string): Promise<GameSession | undefined>;
+  purgeRoomData(roomId: string): Promise<void>;
+  deleteRoom(roomId: string): Promise<void>;
 } = {
   async getTemplate(id: string): Promise<GameTemplate | undefined> {
     return (await db.templates.get(id)) ?? await db.builtins.get(id);
@@ -44,8 +46,24 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
   deleteSession(sessionId: string) {
     return db.sessions.delete(sessionId);
   },
-  deleteRoom(roomId: string) {
-    return db.multiplayerRooms.delete(roomId);
+  async purgeRoomData(roomId: string): Promise<void> {
+    await db.transaction('rw', [
+      db.multiplayerRooms,
+      db.multiplayerOutbox,
+      db.multiplayerParticipantBindings,
+      db.multiplayerPatchReceipts,
+      db.multiplayerSequences,
+    ], async () => {
+      await db.multiplayerRooms.delete(roomId);
+      await db.multiplayerOutbox.where('roomId').equals(roomId).delete();
+      await db.multiplayerParticipantBindings.where('roomId').equals(roomId).delete();
+      await db.multiplayerPatchReceipts.where('roomId').equals(roomId).delete();
+      await db.multiplayerSequences.where('id').startsWith(`${roomId}:`).delete();
+      await db.multiplayerSequences.where('id').equals(roomId).delete();
+    });
+  },
+  deleteRoom(roomId: string): Promise<void> {
+    return this.purgeRoomData(roomId);
   },
 };
 

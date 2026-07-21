@@ -1,6 +1,7 @@
 import { GameSession } from '../../types';
 import { MultiplayerHostRoomRuntime, MultiplayerPlayerRoomRuntime } from './multiplayerRoomRuntime';
 import { ParticipantClaimCounts } from './multiplayerRoomController';
+import { multiplayerLocalStore } from './multiplayerLocalStore';
 
 export type MultiplayerConnectionStatus =
   | 'connecting'
@@ -41,7 +42,7 @@ export interface MultiplayerSessionManager {
   returnOwnership(roomId: string, session: GameSession): void;
   peekReturnedSession(roomId: string): GameSession | null;
   takeReturnedSession(roomId: string): GameSession | null;
-  closeRoom(roomId: string): void;
+  closeRoom(roomId: string, options?: { deleteLocalRoom?: boolean }): void;
   subscribe(listener: () => void): () => void;
 }
 
@@ -156,12 +157,18 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
       notify();
       return session;
     },
-    closeRoom(roomId) {
+    closeRoom(roomId, options) {
       const state = rooms.get(roomId);
-      if (!state) return;
-      state.runtime?.stop();
-      rooms.delete(roomId);
-      notify();
+      if (state) {
+        state.runtime?.stop();
+        rooms.delete(roomId);
+        notify();
+      }
+      if (options?.deleteLocalRoom) {
+        void multiplayerLocalStore.purgeRoomData(roomId).catch((err) => {
+          console.warn('[multiplayerSessionManager] Failed to purge local room data on close:', err);
+        });
+      }
     },
     subscribe(listener) {
       listeners.add(listener);
