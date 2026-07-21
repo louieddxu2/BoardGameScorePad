@@ -209,6 +209,7 @@ const App: React.FC = () => {
         activeTransport?.stop?.();
         isJoiningMultiplayerRef.current = false;
         setIsJoiningMultiplayer(false);
+        setPendingMultiplayerJoin(null);
       }
     };
   }, [appData, appData.isDbReady, clearMultiplayerJoinTimeout, clearRoomUrlQuery, showToast, tApp]);
