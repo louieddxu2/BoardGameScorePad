@@ -39,6 +39,7 @@ export interface MultiplayerSessionManager {
     onOwnershipReturned: (session: GameSession) => void;
   };
   returnOwnership(roomId: string, session: GameSession): void;
+  peekReturnedSession(roomId: string): GameSession | null;
   takeReturnedSession(roomId: string): GameSession | null;
   closeRoom(roomId: string): void;
   subscribe(listener: () => void): () => void;
@@ -133,6 +134,11 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
       state.returnedSession = JSON.parse(JSON.stringify(session)) as GameSession;
       state.session = undefined;
       notify();
+    },
+    peekReturnedSession(roomId) {
+      const state = rooms.get(roomId);
+      if (!state?.returnedSession) return null;
+      return JSON.parse(JSON.stringify(state.returnedSession)) as GameSession;
     },
     takeReturnedSession(roomId) {
       const state = rooms.get(roomId);

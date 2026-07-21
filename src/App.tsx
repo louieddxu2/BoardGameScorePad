@@ -104,7 +104,7 @@ const App: React.FC = () => {
     const roomId = activeMultiplayerRoom.roomId;
 
     // 情況 A：Host 正常結束，歸還 session 擁有權
-    const returned = multiplayerSessionManager.takeReturnedSession(roomId);
+    const returned = multiplayerSessionManager.peekReturnedSession(roomId);
     if (returned) {
       activeMultiplayerRoomRef.current = null;
       setActiveMultiplayerRoom(null);
@@ -114,7 +114,12 @@ const App: React.FC = () => {
 
     // 情況 B：Host 異常斷線偵測
     const roomState = multiplayerSessionManager.get(roomId);
-    if (roomState?.status !== 'disconnected') return;
+    if (!roomState) {
+      activeMultiplayerRoomRef.current = null;
+      setActiveMultiplayerRoom(null);
+      return;
+    }
+    if (roomState.status !== 'disconnected') return;
 
     // 給 5 秒延遲，允許短暫斷線自動恢復
     const disconnectTimer = window.setTimeout(() => {

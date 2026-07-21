@@ -32,6 +32,8 @@ describe('multiplayer session manager', () => {
     manager.returnOwnership('room-1', session);
     expect(runtime.stop).toHaveBeenCalledOnce();
     expect(manager.get('room-1')).toMatchObject({ status: 'ownership-returned', runtime: null });
+    expect(manager.peekReturnedSession('room-1')).toEqual(session);
+    expect(manager.get('room-1')).not.toBeNull();
     expect(manager.takeReturnedSession('room-1')).toEqual(session);
     expect(manager.get('room-1')).toBeNull();
   });
