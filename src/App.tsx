@@ -189,13 +189,18 @@ const App: React.FC = () => {
     activeTransport.joinRoom?.(roomId);
 
     multiplayerJoinTimeoutRef.current = window.setTimeout(() => {
-      if (multiplayerJoinStartedRef.current !== roomId || multiplayerSessionManager.get(roomId)?.role === 'player') return;
-      activeTransport?.stop?.();
-      multiplayerJoinStartedRef.current = null;
+      // 已經成功連線為 player，不需要超時處理
+      if (multiplayerSessionManager.get(roomId)?.role === 'player') return;
+      // ref 仍指向當前 roomId → 這是真正的超時，執行完整清理
+      if (multiplayerJoinStartedRef.current === roomId) {
+        activeTransport?.stop?.();
+        multiplayerJoinStartedRef.current = null;
+        clearRoomUrlQuery();
+        showToast({ message: tApp('app_toast_multiplayer_join_timeout'), type: 'warning' });
+      }
+      // 無論如何都確保清除 Spinner
       isJoiningMultiplayerRef.current = false;
       setIsJoiningMultiplayer(false);
-      clearRoomUrlQuery();
-      showToast({ message: tApp('app_toast_multiplayer_join_timeout'), type: 'warning' });
     }, 15000);
 
     return () => {
