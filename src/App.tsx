@@ -101,12 +101,35 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
-    const returned = multiplayerSessionManager.takeReturnedSession(activeMultiplayerRoom.roomId);
-    if (!returned) return;
-    activeMultiplayerRoomRef.current = null;
-    setActiveMultiplayerRoom(null);
-    void appData.resumeSessionById(returned.id);
-  }, [activeMultiplayerRoom, appData, multiplayerVersion]);
+    const roomId = activeMultiplayerRoom.roomId;
+
+    // 情況 A：Host 正常結束，歸還 session 擁有權
+    const returned = multiplayerSessionManager.takeReturnedSession(roomId);
+    if (returned) {
+      activeMultiplayerRoomRef.current = null;
+      setActiveMultiplayerRoom(null);
+      void appData.resumeSessionById(returned.id);
+      return;
+    }
+
+    // 情況 B：Host 異常斷線偵測
+    const roomState = multiplayerSessionManager.get(roomId);
+    if (roomState?.status !== 'disconnected') return;
+
+    // 給 5 秒延遲，允許短暫斷線自動恢復
+    const disconnectTimer = window.setTimeout(() => {
+      const currentState = multiplayerSessionManager.get(roomId);
+      // 如果已重連或房間已不存在，不處理
+      if (!currentState || currentState.status === 'connected') return;
+      // 確認仍然斷線，清除狀態並提示
+      multiplayerSessionManager.closeRoom(roomId);
+      activeMultiplayerRoomRef.current = null;
+      setActiveMultiplayerRoom(null);
+      showToast({ message: tApp('app_toast_multiplayer_host_disconnected'), type: 'warning' });
+    }, 5000);
+
+    return () => window.clearTimeout(disconnectTimer);
+  }, [activeMultiplayerRoom, appData, multiplayerVersion, showToast, tApp]);
 
   const clearRoomUrlQuery = useCallback(() => {
     if (!window.location.search.includes('room')) return;
