@@ -58,10 +58,23 @@ export const reserveScorePatchSequence = async (options: {
 }): Promise<number> => {
   const store = options.store ?? multiplayerDeliveryStore;
   const now = options.now ?? Date.now;
-  const current = await store.getSequence(options.key);
-  const sequence = current?.nextSequence ?? 1;
-  await store.putSequence({ id: options.key, nextSequence: sequence + 1, updatedAt: now() });
-  return sequence;
+  const execute = async () => {
+    const current = await store.getSequence(options.key);
+    const sequence = current?.nextSequence ?? 1;
+    await store.putSequence({ id: options.key, nextSequence: sequence + 1, updatedAt: now() });
+    return sequence;
+  };
+  if (typeof indexedDB === 'undefined') {
+    return execute();
+  }
+  try {
+    return await db.transaction('rw', db.multiplayerSequences, execute);
+  } catch (err: any) {
+    if (err?.name === 'MissingAPIError' || err?.message?.includes('IndexedDB API missing')) {
+      return execute();
+    }
+    throw err;
+  }
 };
 
 export const scorePatchOperationKey = (roomId: string, deviceId: string, opId: string): string => `${roomId}:${deviceId}:${opId}`;

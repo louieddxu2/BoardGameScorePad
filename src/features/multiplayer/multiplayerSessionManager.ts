@@ -5,7 +5,7 @@ import { multiplayerLocalStore } from './multiplayerLocalStore';
 
 export type MultiplayerConnectionStatus =
   | 'connecting'
-  | 'syncing'
+  | 'syncing' // Initial payload synchronization phase after P2P connection established
   | 'connected'
   | 'disconnected'
   | 'ownership-returned';
@@ -59,7 +59,15 @@ const snapshot = (state: MultiplayerRoomState): MultiplayerRoomState => ({
 export const createMultiplayerSessionManager = (): MultiplayerSessionManager => {
   const rooms = new Map<string, MultiplayerRoomState>();
   const listeners = new Set<() => void>();
-  const notify = () => { for (const listener of listeners) listener(); };
+  const notify = () => {
+    for (const listener of Array.from(listeners)) {
+      try {
+        listener();
+      } catch (err) {
+        console.error('[multiplayerSessionManager] Listener error:', err);
+      }
+    }
+  };
   const get = (roomId: string) => {
     const state = rooms.get(roomId);
     return state ? snapshot(state) : null;
@@ -107,7 +115,11 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
       const state = rooms.get(roomId);
       if (!state || !state.runtime) return;
       state.connectionCount = Math.max(0, connectionCount);
-      state.status = state.connectionCount > 0 ? 'connected' : 'disconnected';
+      if (state.connectionCount > 0) {
+        state.status = 'connected';
+      } else if (state.status !== 'connecting') {
+        state.status = 'disconnected';
+      }
       notify();
     },
     setParticipantClaims(roomId, claims) {

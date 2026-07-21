@@ -28,7 +28,13 @@ export const createMultiplayerP2PRuntimeTransport = (options: {
   return {
     startHost: (roomId) => handshake.startHost(roomId),
     joinRoom: (roomId) => handshake.joinRoom(roomId),
-    stop: () => handshake.stop(),
+    stop: () => {
+      receiver = undefined;
+      connectionOpenHandler = undefined;
+      connectionChangeHandler = undefined;
+      connectionCloseHandler = undefined;
+      handshake.stop();
+    },
     sendToHost: (message) => handshake.sendToHost(message),
     sendToConnection: (connection, message) => handshake.sendToConnection(connection as P2PDataConnection, message),
     broadcastLocalChanges: () => handshake.broadcastLocalChanges(),

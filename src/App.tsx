@@ -192,6 +192,7 @@ const App: React.FC = () => {
     let activeTransport: ReturnType<typeof createMultiplayerP2PRuntimeTransport> | null = null;
     const adapter = createLocalScoreStateSyncAdapter(roomId, 'player', {
       onRemoteBootstrap: async (bootstrapMessage, persisted) => {
+        if (!isJoiningMultiplayerRef.current || multiplayerJoinStartedRef.current !== roomId) return;
         clearMultiplayerJoinTimeout();
         isJoiningMultiplayerRef.current = false;
         setIsJoiningMultiplayer(false);

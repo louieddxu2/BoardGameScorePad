@@ -1,3 +1,4 @@
+import { db } from '../../db';
 import { GameSession, GameTemplate, HistoryRecord, MultiplayerRoomRecord } from '../../types';
 import { createHistoryRecordFromFinalSnapshot } from './multiplayerHistory';
 import {
@@ -125,9 +126,38 @@ export const persistMultiplayerCompletion = async (options: {
     location: options.location,
   });
 
-  await options.store.putHistory(record);
-  await options.store.deleteSession(options.session.id);
-  await options.store.deleteRoom(options.roomId);
+  const execute = async () => {
+    await options.store.putHistory(record);
+    await options.store.deleteSession(options.session.id);
+    await options.store.deleteRoom(options.roomId);
+  };
+
+  if (typeof indexedDB === 'undefined') {
+    await execute();
+  } else {
+    try {
+      await db.transaction(
+        'rw',
+        [
+          db.history,
+          db.sessions,
+          db.multiplayerRooms,
+          db.multiplayerOutbox,
+          db.multiplayerParticipantBindings,
+          db.multiplayerPatchReceipts,
+          db.multiplayerSequences,
+        ],
+        execute
+      );
+    } catch (err: any) {
+      if (err?.name === 'MissingAPIError' || err?.message?.includes('IndexedDB API missing')) {
+        await execute();
+      } else {
+        throw err;
+      }
+    }
+  }
+
   return record;
 };
 
