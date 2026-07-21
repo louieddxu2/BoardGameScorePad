@@ -19,9 +19,9 @@ import Peer from 'peerjs';
 import { generateId } from './utils/idGenerator';
 import { createLocalScoreStateSyncAdapter, multiplayerLocalStore } from './features/multiplayer/multiplayerLocalStore';
 import { multiplayerDeliveryStore, getOrCreateMultiplayerDeviceId } from './features/multiplayer/multiplayerDeliveryStore';
-import { multiplayerParticipantBindingStore } from './features/multiplayer/multiplayerParticipantBinding';
+import { multiplayerParticipantBindingStore, participantBindingKey } from './features/multiplayer/multiplayerParticipantBinding';
 import { createMultiplayerP2PRuntimeTransport } from './features/multiplayer/multiplayerP2PRuntimeTransport';
-import { createMultiplayerHostRoomRuntime, createMultiplayerPlayerRoomRuntime } from './features/multiplayer/multiplayerRoomRuntime';
+import { createMultiplayerHostRoomRuntime, createMultiplayerPlayerRoomRuntime, restoreMultiplayerHostRoomRuntime, restoreMultiplayerPlayerRoomRuntime } from './features/multiplayer/multiplayerRoomRuntime';
 import { multiplayerSessionManager } from './features/multiplayer/multiplayerSessionManager';
 import { BootstrapPackageMessage } from './features/multiplayer/protocol';
 import { createPlayerSessionCapabilities, hostSessionCapabilities } from './features/multiplayer/sessionCapabilities';
@@ -528,10 +528,106 @@ const App: React.FC = () => {
     setPendingTemplate(template);
   };
 
+  const tryRestoreMultiplayerRoom = useCallback(async (sessionId: string) => {
+    try {
+      const room = await multiplayerLocalStore.getRoomBySessionId(sessionId);
+      if (!room) return;
+
+      const existingManagedRoom = multiplayerSessionManager.get(room.roomId);
+      if (existingManagedRoom?.runtime) {
+        if (room.role === 'host') {
+          const nextRoom: ActiveMultiplayerRoom = { roomId: room.roomId, role: 'host' };
+          activeMultiplayerRoomRef.current = nextRoom;
+          setActiveMultiplayerRoom(nextRoom);
+        } else {
+          const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
+          const binding = await multiplayerParticipantBindingStore.get(participantBindingKey(room.roomId, deviceId));
+          const playerIds = binding?.playerIds ?? (binding?.playerId ? [binding.playerId] : []);
+          const nextRoom: ActiveMultiplayerRoom = { roomId: room.roomId, role: 'player', playerIds };
+          activeMultiplayerRoomRef.current = nextRoom;
+          setActiveMultiplayerRoom(nextRoom);
+        }
+        return;
+      }
+
+      if (room.role === 'host') {
+        const adapter = createLocalScoreStateSyncAdapter(room.roomId, 'host');
+        const transport = createMultiplayerP2PRuntimeTransport({
+          Peer,
+          adapter,
+          logger: (message) => console.info('[multiplayer]', message),
+        });
+        const callbacks = multiplayerSessionManager.createRuntimeCallbacks(room.roomId);
+        const runtime = await restoreMultiplayerHostRoomRuntime({
+          roomId: room.roomId,
+          store: multiplayerLocalStore,
+          deliveryStore: multiplayerDeliveryStore,
+          transport,
+          onSessionSnapshot: callbacks.onSessionSnapshot,
+          onParticipantClaims: (claims) => multiplayerSessionManager.setParticipantClaims(room.roomId, claims),
+        });
+        if (runtime) {
+          multiplayerSessionManager.register(room.roomId, runtime, 'connecting');
+          transport.setConnectionChangeHandler?.((connectionCount) =>
+            multiplayerSessionManager.setConnectionCount(room.roomId, connectionCount)
+          );
+          runtime.start();
+          const nextRoom: ActiveMultiplayerRoom = { roomId: room.roomId, role: 'host' };
+          activeMultiplayerRoomRef.current = nextRoom;
+          setActiveMultiplayerRoom(nextRoom);
+        }
+      } else if (room.role === 'player') {
+        const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
+        const binding = await multiplayerParticipantBindingStore.get(participantBindingKey(room.roomId, deviceId));
+        const playerIds = binding?.playerIds ?? (binding?.playerId ? [binding.playerId] : []);
+
+        const adapter = createLocalScoreStateSyncAdapter(room.roomId, 'player');
+        const transport = createMultiplayerP2PRuntimeTransport({
+          Peer,
+          adapter,
+          logger: (message) => console.info('[multiplayer]', message),
+        });
+        const callbacks = multiplayerSessionManager.createRuntimeCallbacks(room.roomId);
+        const runtime = await restoreMultiplayerPlayerRoomRuntime({
+          roomId: room.roomId,
+          deviceId,
+          store: multiplayerLocalStore,
+          bindingStore: multiplayerParticipantBindingStore,
+          deliveryStore: multiplayerDeliveryStore,
+          transport,
+          onSessionSnapshot: callbacks.onSessionSnapshot,
+          onOwnershipReturned: callbacks.onOwnershipReturned,
+        });
+        if (runtime) {
+          multiplayerSessionManager.register(room.roomId, runtime, 'connecting');
+          transport.setConnectionChangeHandler?.((connectionCount) =>
+            multiplayerSessionManager.setConnectionCount(room.roomId, connectionCount)
+          );
+          runtime.start();
+          await runtime.restoreParticipantBinding();
+          const nextRoom: ActiveMultiplayerRoom = { roomId: room.roomId, role: 'player', playerIds };
+          activeMultiplayerRoomRef.current = nextRoom;
+          setActiveMultiplayerRoom(nextRoom);
+        }
+      }
+    } catch (err) {
+      console.warn('[multiplayer] Failed to restore multiplayer room:', err);
+    }
+  }, []);
+
   const handleResumeGame = async () => {
     if (pendingTemplate) {
+      const activeSession = appData.activeSessions?.find(s => s.templateId === pendingTemplate.id);
       const success = await appData.resumeSession(pendingTemplate.id);
       if (success) {
+        let sessionId = activeSession?.id;
+        if (!sessionId) {
+          const s = await db.sessions.where('templateId').equals(pendingTemplate.id).and(x => x.status === 'active').first();
+          sessionId = s?.id;
+        }
+        if (sessionId) {
+          await tryRestoreMultiplayerRoom(sessionId);
+        }
         setView(AppView.ACTIVE_SESSION);
         setPendingTemplate(null);
       }
@@ -539,8 +635,17 @@ const App: React.FC = () => {
   };
 
   const handleDirectResume = async (templateId: string) => {
+    const activeSession = appData.activeSessions?.find(s => s.templateId === templateId);
     const success = await appData.resumeSession(templateId);
     if (success) {
+      let sessionId = activeSession?.id;
+      if (!sessionId) {
+        const s = await db.sessions.where('templateId').equals(templateId).and(x => x.status === 'active').first();
+        sessionId = s?.id;
+      }
+      if (sessionId) {
+        await tryRestoreMultiplayerRoom(sessionId);
+      }
       setPendingTemplate(null);
       setView(AppView.ACTIVE_SESSION);
     }

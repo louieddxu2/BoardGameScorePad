@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { GameSession, GameTemplate, MultiplayerParticipantBindingRecord, MultiplayerRoomRecord, ScoreColumn } from '../../types';
 import { MultiplayerDeliveryStore } from './multiplayerDeliveryStore';
-import { MultiplayerParticipantBindingStore } from './multiplayerParticipantBinding';
-import { MultiplayerPlayerRoomStore, MultiplayerRoomRecoveryStore, MultiplayerRoomRuntimeTransport, createMultiplayerHostRoomRuntime, createMultiplayerPlayerRoomRuntime, restoreMultiplayerHostRoomRuntime } from './multiplayerRoomRuntime';
+import { MultiplayerParticipantBindingStore, saveParticipantBinding } from './multiplayerParticipantBinding';
+import { MultiplayerPlayerRoomStore, MultiplayerRoomRecoveryStore, MultiplayerRoomRuntimeTransport, createMultiplayerHostRoomRuntime, createMultiplayerPlayerRoomRuntime, restoreMultiplayerHostRoomRuntime, restoreMultiplayerPlayerRoomRuntime } from './multiplayerRoomRuntime';
 
 const column: ScoreColumn = { id: 'points', name: 'Points', formula: 'a1', inputType: 'keypad', isScoring: true, rounding: 'none' };
 const template: GameTemplate = { id: 'template-1', name: 'Template', columns: [column], createdAt: 1, updatedAt: 1 };
@@ -88,6 +88,30 @@ describe('multiplayer room runtime', () => {
     const restored = await restoreMultiplayerHostRoomRuntime({ roomId: 'room-1', store, deliveryStore: delivery, transport, now: () => 20 });
     expect(restored?.session.room).toEqual({ roomId: 'room-1', hostDeviceId: 'host-1', createdAt: 10 });
     expect(restored?.session.revision).toBe(7);
+  });
+
+  it('restores a player runtime with stored room, session, template, and binding', async () => {
+    const hostStore = createRuntimeStore(); const playerStore = createRuntimeStore();
+    const hostDelivery = createDeliveryStore(); const playerDelivery = createDeliveryStore(); const bindingStore = createBindingStore();
+    const transport: MultiplayerRoomRuntimeTransport = { sendToHost: () => false, sendToConnection: () => false, broadcastLocalChanges: async () => undefined };
+
+    const host = await createMultiplayerHostRoomRuntime({ roomId: 'room-1', hostDeviceId: 'host-1', template, session, store: hostStore, deliveryStore: hostDelivery, transport, now: () => 10 });
+    const bootstrap = host.session.createBootstrapMessage();
+    const player = await createMultiplayerPlayerRoomRuntime({ bootstrapMessage: bootstrap, deviceId: 'player-device', store: playerStore, bindingStore, deliveryStore: playerDelivery, transport, now: () => 20 });
+    await saveParticipantBinding({ store: bindingStore, roomId: 'room-1', sessionId: 'session-1', deviceId: 'player-device', playerIds: ['p1'] });
+
+    const restored = await restoreMultiplayerPlayerRoomRuntime({
+      roomId: 'room-1',
+      deviceId: 'player-device',
+      store: playerStore,
+      bindingStore,
+      deliveryStore: playerDelivery,
+      transport,
+      now: () => 30,
+    });
+    expect(restored).not.toBeNull();
+    expect(restored?.session.room).toEqual({ roomId: 'room-1', hostDeviceId: 'host-1', createdAt: 10 });
+    expect(await restored?.restoreParticipantBinding()).toBe(true);
   });
 
   it('returns session ownership only after the host completes the room', async () => {

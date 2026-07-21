@@ -4,7 +4,7 @@ import { MultiplayerParticipantBindingStore, participantBindingKey, saveParticip
 import { MultiplayerBootstrapStore, MultiplayerCompletionReleaseStore, MultiplayerSnapshotStore, createMultiplayerRoomRecord, persistMultiplayerBootstrap, releaseMultiplayerRoomOwnership } from './multiplayerPersistence';
 import { MultiplayerRoomTransport, ParticipantClaimCounts, createMultiplayerPlayerRoomController, createMultiplayerRoomController } from './multiplayerRoomController';
 import { createMultiplayerHostSession, createMultiplayerPlayerSessionFromBootstrap } from './multiplayerSession';
-import { BootstrapPackageMessage } from './protocol';
+import { BootstrapPackageMessage, MULTIPLAYER_PROTOCOL_VERSION } from './protocol';
 
 /**
  * Runtime composition for a multiplayer room. It deliberately has no PeerJS,
@@ -102,6 +102,8 @@ export const restoreMultiplayerHostRoomRuntime = async (options: {
   store: MultiplayerRoomRecoveryStore;
   deliveryStore: MultiplayerDeliveryStore;
   transport: MultiplayerRoomRuntimeTransport;
+  onSessionSnapshot?: (session: GameSession) => void | Promise<void>;
+  onParticipantClaims?: (claims: ParticipantClaimCounts) => void | Promise<void>;
   now?: () => number;
 }): Promise<MultiplayerHostRoomRuntime | null> => {
   const room = await options.store.getRoom(options.roomId);
@@ -121,6 +123,8 @@ export const restoreMultiplayerHostRoomRuntime = async (options: {
     store: options.store,
     deliveryStore: options.deliveryStore,
     transport: options.transport,
+    onSessionSnapshot: options.onSessionSnapshot,
+    onParticipantClaims: options.onParticipantClaims,
     now: options.now,
   });
 };
@@ -207,3 +211,54 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
     getParticipantClaims: () => ({}),
   };
 };
+
+/** Rehydrates an existing player room runtime from stored room, session, and template. */
+export const restoreMultiplayerPlayerRoomRuntime = async (options: {
+  roomId: string;
+  deviceId: string;
+  store: MultiplayerRoomRecoveryStore & MultiplayerPlayerRoomStore;
+  bindingStore: MultiplayerParticipantBindingStore;
+  deliveryStore: MultiplayerDeliveryStore;
+  transport: MultiplayerRoomRuntimeTransport;
+  onOwnershipReturned?: (session: GameSession) => void | Promise<void>;
+  onSessionSnapshot?: (session: GameSession) => void | Promise<void>;
+  now?: () => number;
+}): Promise<MultiplayerPlayerRoomRuntime | null> => {
+  const room = await options.store.getRoom(options.roomId);
+  if (!room || room.role !== 'player') return null;
+  const [session, template] = await Promise.all([
+    options.store.getSession(room.sessionId),
+    options.store.getTemplate(room.templateId),
+  ]);
+  if (!session || !template || session.status !== 'active') return null;
+
+  const bootstrapMessage: BootstrapPackageMessage = {
+    type: 'room:bootstrap',
+    roomId: room.roomId,
+    package: {
+      version: MULTIPLAYER_PROTOCOL_VERSION,
+      room: {
+        roomId: room.roomId,
+        hostDeviceId: room.hostDeviceId,
+        createdAt: room.createdAt,
+      },
+      template,
+      session,
+      revision: room.revision,
+      exportedAt: room.updatedAt,
+    },
+  };
+
+  return createMultiplayerPlayerRoomRuntime({
+    bootstrapMessage,
+    deviceId: options.deviceId,
+    store: options.store,
+    bindingStore: options.bindingStore,
+    deliveryStore: options.deliveryStore,
+    transport: options.transport,
+    onOwnershipReturned: options.onOwnershipReturned,
+    onSessionSnapshot: options.onSessionSnapshot,
+    now: options.now,
+  });
+};
+

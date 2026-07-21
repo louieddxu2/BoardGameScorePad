@@ -11,6 +11,7 @@ import { createScoreStateSyncAdapter } from './scoreStateSyncAdapter';
 
 export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHistoryStore & MultiplayerSnapshotStore & {
   getRoom(roomId: string): Promise<MultiplayerRoomRecord | undefined>;
+  getRoomBySessionId(sessionId: string): Promise<MultiplayerRoomRecord | undefined>;
   getSession(sessionId: string): Promise<GameSession | undefined>;
 } = {
   async getTemplate(id: string): Promise<GameTemplate | undefined> {
@@ -27,6 +28,9 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
   },
   getRoom(roomId: string) {
     return db.multiplayerRooms.get(roomId);
+  },
+  getRoomBySessionId(sessionId: string) {
+    return db.multiplayerRooms.where('sessionId').equals(sessionId).first();
   },
   getSession(sessionId: string) {
     return db.sessions.get(sessionId);
