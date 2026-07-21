@@ -66,6 +66,14 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
 
   return {
     register(roomId, runtime, status = 'connected') {
+      const existing = rooms.get(roomId);
+      if (existing && existing.runtime !== runtime) {
+        try {
+          existing.runtime?.stop();
+        } catch (e) {
+          console.warn('[multiplayerSessionManager] Failed to stop existing runtime during re-registration:', e);
+        }
+      }
       const runtimeSession = runtime.role === 'host' ? runtime.session.session : runtime.session.session;
       const connectionCount = (runtime as Partial<ManagedMultiplayerRuntime>).getConnectionCount?.() ?? 0;
       const participantClaims = (runtime as Partial<ManagedMultiplayerRuntime>).getParticipantClaims?.() ?? {};

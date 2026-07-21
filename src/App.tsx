@@ -88,6 +88,7 @@ const App: React.FC = () => {
   const multiplayerJoinStartedRef = useRef<string | null>(null);
   const multiplayerJoinTimeoutRef = useRef<number | null>(null);
   const isJoiningMultiplayerRef = useRef(false);
+  const isOpeningRoomRef = useRef(false);
   const activeMultiplayerRoomRef = useRef<ActiveMultiplayerRoom | null>(null);
 
   // Hardware & Environment Side Effects Hooks
@@ -546,35 +547,41 @@ const App: React.FC = () => {
   };
 
   const handleOpenMultiplayerRoom = useCallback(async () => {
+    if (isOpeningRoomRef.current) return;
     if (activeMultiplayerRoom?.role === 'host') {
       setIsMultiplayerRoomModalOpen(true);
       return;
     }
     if (!appData.currentSession || !appData.activeTemplate) return;
 
-    const roomId = `scorepad-${generateId(12)}`;
-    const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
-    const adapter = createLocalScoreStateSyncAdapter(roomId, 'host');
-    const transport = createMultiplayerP2PRuntimeTransport({ Peer, adapter, logger: (message) => console.info('[multiplayer]', message) });
-    const callbacks = multiplayerSessionManager.createRuntimeCallbacks(roomId);
-    const runtime = await createMultiplayerHostRoomRuntime({
-      roomId,
-      hostDeviceId: deviceId,
-      template: appData.activeTemplate,
-      session: appData.currentSession,
-      store: multiplayerLocalStore,
-      deliveryStore: multiplayerDeliveryStore,
-      transport,
-      onSessionSnapshot: callbacks.onSessionSnapshot,
-      onParticipantClaims: (claims) => multiplayerSessionManager.setParticipantClaims(roomId, claims),
-    });
-    multiplayerSessionManager.register(roomId, runtime, 'connecting');
-    transport.setConnectionChangeHandler?.((connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount));
-    runtime.start();
-    const nextRoom: ActiveMultiplayerRoom = { roomId, role: 'host' };
-    activeMultiplayerRoomRef.current = nextRoom;
-    setActiveMultiplayerRoom(nextRoom);
-    setIsMultiplayerRoomModalOpen(true);
+    isOpeningRoomRef.current = true;
+    try {
+      const roomId = `scorepad-${generateId(12)}`;
+      const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
+      const adapter = createLocalScoreStateSyncAdapter(roomId, 'host');
+      const transport = createMultiplayerP2PRuntimeTransport({ Peer, adapter, logger: (message) => console.info('[multiplayer]', message) });
+      const callbacks = multiplayerSessionManager.createRuntimeCallbacks(roomId);
+      const runtime = await createMultiplayerHostRoomRuntime({
+        roomId,
+        hostDeviceId: deviceId,
+        template: appData.activeTemplate,
+        session: appData.currentSession,
+        store: multiplayerLocalStore,
+        deliveryStore: multiplayerDeliveryStore,
+        transport,
+        onSessionSnapshot: callbacks.onSessionSnapshot,
+        onParticipantClaims: (claims) => multiplayerSessionManager.setParticipantClaims(roomId, claims),
+      });
+      multiplayerSessionManager.register(roomId, runtime, 'connecting');
+      transport.setConnectionChangeHandler?.((connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount));
+      runtime.start();
+      const nextRoom: ActiveMultiplayerRoom = { roomId, role: 'host' };
+      activeMultiplayerRoomRef.current = nextRoom;
+      setActiveMultiplayerRoom(nextRoom);
+      setIsMultiplayerRoomModalOpen(true);
+    } finally {
+      isOpeningRoomRef.current = false;
+    }
   }, [activeMultiplayerRoom?.role, appData.activeTemplate, appData.currentSession]);
 
   const handleConfirmMultiplayerPlayers = useCallback(async (playerIds: string[]) => {

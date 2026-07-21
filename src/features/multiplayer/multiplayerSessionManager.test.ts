@@ -63,4 +63,14 @@ describe('multiplayer session manager', () => {
     manager.setUnpublishedBoardUpdate('room-1', false);
     expect(manager.get('room-1')?.hasUnpublishedBoardUpdate).toBe(false);
   });
+
+  it('stops existing runtime during re-registration if runtime changes', () => {
+    const manager = createMultiplayerSessionManager();
+    const runtime1 = createRuntime('host');
+    const runtime2 = createRuntime('host');
+    manager.register('room-1', runtime1);
+    manager.register('room-1', runtime2);
+    expect(runtime1.stop).toHaveBeenCalledOnce();
+    expect(manager.get('room-1')?.runtime).toBe(runtime2);
+  });
 });
