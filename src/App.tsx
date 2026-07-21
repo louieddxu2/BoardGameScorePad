@@ -87,6 +87,8 @@ const App: React.FC = () => {
   const deepLinkHandledRef = useRef(false);
   const multiplayerJoinStartedRef = useRef<string | null>(null);
   const multiplayerJoinTimeoutRef = useRef<number | null>(null);
+  const isJoiningMultiplayerRef = useRef(false);
+  const activeMultiplayerRoomRef = useRef<ActiveMultiplayerRoom | null>(null);
 
   // Hardware & Environment Side Effects Hooks
   const zoomLevel = useMobileZoom();
@@ -101,6 +103,7 @@ const App: React.FC = () => {
     if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
     const returned = multiplayerSessionManager.takeReturnedSession(activeMultiplayerRoom.roomId);
     if (!returned) return;
+    activeMultiplayerRoomRef.current = null;
     setActiveMultiplayerRoom(null);
     void appData.resumeSessionById(returned.id);
   }, [activeMultiplayerRoom, appData, multiplayerVersion]);
@@ -123,18 +126,21 @@ const App: React.FC = () => {
     if (existingRoom && existingRoom.status === 'connected' && existingRoom.session) {
       multiplayerJoinStartedRef.current = roomId;
       clearMultiplayerJoinTimeout();
+      isJoiningMultiplayerRef.current = false;
       setIsJoiningMultiplayer(false);
-      if (activeMultiplayerRoom?.roomId !== roomId) {
+      if (activeMultiplayerRoomRef.current?.roomId !== roomId) {
         const runtimeSession = existingRoom.runtime?.session as { claimedPlayerIds?: string | string[] } | undefined;
         const rawPlayerIds = runtimeSession?.claimedPlayerIds;
         const existingPlayerIds = rawPlayerIds
           ? (Array.isArray(rawPlayerIds) ? rawPlayerIds : [rawPlayerIds])
           : undefined;
-        setActiveMultiplayerRoom({
+        const nextRoom: ActiveMultiplayerRoom = {
           roomId,
           role: existingRoom.role,
-          playerIds: existingPlayerIds || (activeMultiplayerRoom?.playerIds ?? [])
-        });
+          playerIds: existingPlayerIds || (activeMultiplayerRoomRef.current?.playerIds ?? [])
+        };
+        activeMultiplayerRoomRef.current = nextRoom;
+        setActiveMultiplayerRoom(nextRoom);
       }
       void appData.resumeSessionById(existingRoom.session.id).then(() => {
         setView(AppView.ACTIVE_SESSION);
@@ -148,15 +154,17 @@ const App: React.FC = () => {
       multiplayerSessionManager.closeRoom(roomId);
     }
 
-    if (multiplayerJoinStartedRef.current === roomId && isJoiningMultiplayer) return;
+    if (multiplayerJoinStartedRef.current === roomId && isJoiningMultiplayerRef.current) return;
     multiplayerJoinStartedRef.current = roomId;
     clearMultiplayerJoinTimeout();
+    isJoiningMultiplayerRef.current = true;
     setIsJoiningMultiplayer(true);
 
     let activeTransport: ReturnType<typeof createMultiplayerP2PRuntimeTransport> | null = null;
     const adapter = createLocalScoreStateSyncAdapter(roomId, 'player', {
       onRemoteBootstrap: async (bootstrapMessage, persisted) => {
         clearMultiplayerJoinTimeout();
+        isJoiningMultiplayerRef.current = false;
         setIsJoiningMultiplayer(false);
         const managedRoom = multiplayerSessionManager.get(roomId);
         if (managedRoom?.runtime?.role === 'player') {
@@ -184,6 +192,7 @@ const App: React.FC = () => {
       if (multiplayerJoinStartedRef.current !== roomId || multiplayerSessionManager.get(roomId)?.role === 'player') return;
       activeTransport?.stop?.();
       multiplayerJoinStartedRef.current = null;
+      isJoiningMultiplayerRef.current = false;
       setIsJoiningMultiplayer(false);
       clearRoomUrlQuery();
       showToast({ message: tApp('app_toast_multiplayer_join_timeout'), type: 'warning' });
@@ -193,10 +202,11 @@ const App: React.FC = () => {
       clearMultiplayerJoinTimeout();
       if (multiplayerJoinStartedRef.current === roomId && !multiplayerSessionManager.get(roomId)) {
         activeTransport?.stop?.();
+        isJoiningMultiplayerRef.current = false;
         setIsJoiningMultiplayer(false);
       }
     };
-  }, [activeMultiplayerRoom, appData, appData.isDbReady, clearMultiplayerJoinTimeout, clearRoomUrlQuery, isJoiningMultiplayer, showToast, tApp]);
+  }, [appData, appData.isDbReady, clearMultiplayerJoinTimeout, clearRoomUrlQuery, showToast, tApp]);
 
   const [isIOSPwaGuideVisible, setIsIOSPwaGuideVisible] = useState(false);
 
@@ -527,7 +537,9 @@ const App: React.FC = () => {
     multiplayerSessionManager.register(roomId, runtime, 'connecting');
     transport.setConnectionChangeHandler?.((connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount));
     runtime.start();
-    setActiveMultiplayerRoom({ roomId, role: 'host' });
+    const nextRoom: ActiveMultiplayerRoom = { roomId, role: 'host' };
+    activeMultiplayerRoomRef.current = nextRoom;
+    setActiveMultiplayerRoom(nextRoom);
     setIsMultiplayerRoomModalOpen(true);
   }, [activeMultiplayerRoom?.role, appData.activeTemplate, appData.currentSession]);
 
@@ -549,7 +561,9 @@ const App: React.FC = () => {
     multiplayerSessionManager.register(roomId, runtime, 'connected');
     transport.setConnectionChangeHandler?.((connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount));
     for (const playerId of playerIds) runtime.controller.claimPlayer(playerId);
-    setActiveMultiplayerRoom({ roomId, role: 'player', playerIds });
+    const nextRoom: ActiveMultiplayerRoom = { roomId, role: 'player', playerIds };
+    activeMultiplayerRoomRef.current = nextRoom;
+    setActiveMultiplayerRoom(nextRoom);
     setPendingMultiplayerJoin(null);
     clearRoomUrlQuery();
     const resumed = await appData.resumeSessionById(runtime.session.session.id);
@@ -559,6 +573,7 @@ const App: React.FC = () => {
   const handleCancelMultiplayerJoin = useCallback(() => {
     pendingMultiplayerJoin?.transport.stop?.();
     setPendingMultiplayerJoin(null);
+    isJoiningMultiplayerRef.current = false;
     setIsJoiningMultiplayer(false);
     multiplayerJoinStartedRef.current = null;
     clearRoomUrlQuery();
@@ -590,6 +605,7 @@ const App: React.FC = () => {
     });
     multiplayerSessionManager.closeRoom(activeMultiplayerRoom.roomId);
     clearRoomUrlQuery();
+    activeMultiplayerRoomRef.current = null;
     setActiveMultiplayerRoom(null);
     setIsMultiplayerParticipantRoomModalOpen(false);
     setIsMultiplayerRoomModalOpen(false);
@@ -605,8 +621,10 @@ const App: React.FC = () => {
     multiplayerSessionManager.closeRoom(roomId);
     multiplayerJoinStartedRef.current = null;
     clearMultiplayerJoinTimeout();
+    isJoiningMultiplayerRef.current = false;
     setIsJoiningMultiplayer(false);
     clearRoomUrlQuery();
+    activeMultiplayerRoomRef.current = null;
     setActiveMultiplayerRoom(null);
     setIsMultiplayerParticipantRoomModalOpen(false);
   }, [activeMultiplayerRoom, clearMultiplayerJoinTimeout, clearRoomUrlQuery]);
