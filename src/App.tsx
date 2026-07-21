@@ -125,10 +125,15 @@ const App: React.FC = () => {
       clearMultiplayerJoinTimeout();
       setIsJoiningMultiplayer(false);
       if (activeMultiplayerRoom?.roomId !== roomId) {
+        const runtimeSession = existingRoom.runtime?.session as { claimedPlayerIds?: string | string[] } | undefined;
+        const rawPlayerIds = runtimeSession?.claimedPlayerIds;
+        const existingPlayerIds = rawPlayerIds
+          ? (Array.isArray(rawPlayerIds) ? rawPlayerIds : [rawPlayerIds])
+          : undefined;
         setActiveMultiplayerRoom({
           roomId,
           role: existingRoom.role,
-          playerIds: existingRoom.runtime?.session.claimedPlayerIds || (activeMultiplayerRoom?.playerIds ?? [])
+          playerIds: existingPlayerIds || (activeMultiplayerRoom?.playerIds ?? [])
         });
       }
       void appData.resumeSessionById(existingRoom.session.id).then(() => {
@@ -607,12 +612,20 @@ const App: React.FC = () => {
   }, [activeMultiplayerRoom, clearMultiplayerJoinTimeout, clearRoomUrlQuery]);
 
   const handleCloseMultiplayerRoom = useCallback(async () => {
-    const releasedSession = await releaseHostMultiplayerRoom();
-    if (releasedSession) await appData.resumeSessionById(releasedSession.id);
+    try {
+      const releasedSession = await releaseHostMultiplayerRoom();
+      if (releasedSession) await appData.resumeSessionById(releasedSession.id);
+    } catch (err) {
+      console.warn('[multiplayer] Failed to close host room:', err);
+    }
   }, [appData, releaseHostMultiplayerRoom]);
 
   const handleLeaveMultiplayerRoom = useCallback(async () => {
-    await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true });
+    try {
+      await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true });
+    } catch (err) {
+      console.warn('[multiplayer] Failed to leave participant room:', err);
+    }
   }, [releaseParticipantMultiplayerRoom]);
 
   const handleStartNewGame = async (count: number, options: { startTimeStr: string, scoringRule: ScoringRule }) => {
@@ -648,38 +661,53 @@ const App: React.FC = () => {
   };
 
   const handleExitSession = useCallback(async (location?: string) => {
-    if (activeMultiplayerRoom?.role === 'player') {
-      await releaseParticipantMultiplayerRoom({ deleteLocalRoom: false });
+    try {
+      if (activeMultiplayerRoom?.role === 'player') {
+        await releaseParticipantMultiplayerRoom({ deleteLocalRoom: false });
+      }
+    } catch (err) {
+      console.warn('[multiplayer] Failed to release participant room on exit:', err);
+    } finally {
+      appData.exitSession(location !== undefined ? { location } : undefined);
+      transitionToDashboard();
     }
-    appData.exitSession(location !== undefined ? { location } : undefined);
-    transitionToDashboard();
   }, [activeMultiplayerRoom, appData, releaseParticipantMultiplayerRoom, transitionToDashboard]);
 
   const handleSaveToHistory = useCallback(async (location?: string) => {
-    if (activeMultiplayerRoom?.role === 'host') {
-      await releaseHostMultiplayerRoom();
-    } else if (activeMultiplayerRoom?.role === 'player') {
-      await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true });
-    }
-    captureAiTemplateForSharing(appData.activeTemplate);
-    await appData.saveToHistory(location);
-    transitionToDashboard();
-    
-    // Trigger iOS PWA guide if applicable
-    if (shouldTriggerIOSPwaGuide()) {
-      setIsIOSPwaGuideVisible(true);
+    try {
+      if (activeMultiplayerRoom?.role === 'host') {
+        await releaseHostMultiplayerRoom();
+      } else if (activeMultiplayerRoom?.role === 'player') {
+        await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true });
+      }
+    } catch (err) {
+      console.warn('[multiplayer] Failed to release room on save:', err);
+    } finally {
+      captureAiTemplateForSharing(appData.activeTemplate);
+      await appData.saveToHistory(location);
+      transitionToDashboard();
+      
+      // Trigger iOS PWA guide if applicable
+      if (shouldTriggerIOSPwaGuide()) {
+        setIsIOSPwaGuideVisible(true);
+      }
     }
   }, [activeMultiplayerRoom, appData, transitionToDashboard, captureAiTemplateForSharing, releaseHostMultiplayerRoom, releaseParticipantMultiplayerRoom]);
 
   const handleDiscard = useCallback(async () => {
-    if (activeMultiplayerRoom?.role === 'host') {
-      await releaseHostMultiplayerRoom();
-    } else if (activeMultiplayerRoom?.role === 'player') {
-      await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true });
-    }
-    if (appData.activeTemplate) {
-      await appData.discardSession(appData.activeTemplate.id);
-      transitionToDashboard();
+    try {
+      if (activeMultiplayerRoom?.role === 'host') {
+        await releaseHostMultiplayerRoom();
+      } else if (activeMultiplayerRoom?.role === 'player') {
+        await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true });
+      }
+    } catch (err) {
+      console.warn('[multiplayer] Failed to release room on discard:', err);
+    } finally {
+      if (appData.activeTemplate) {
+        await appData.discardSession(appData.activeTemplate.id);
+        transitionToDashboard();
+      }
     }
   }, [activeMultiplayerRoom, appData, transitionToDashboard, releaseHostMultiplayerRoom, releaseParticipantMultiplayerRoom]);
 
