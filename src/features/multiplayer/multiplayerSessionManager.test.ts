@@ -26,6 +26,14 @@ describe('multiplayer session manager', () => {
     expect(manager.get('room-1')).toBeNull();
   });
 
+  it('marks a player with no connections as reconnecting while keeping the runtime alive', () => {
+    const manager = createMultiplayerSessionManager(); const runtime = createRuntime('player');
+    manager.register('room-1', runtime, 'connected');
+    manager.setConnectionCount('room-1', 0);
+    expect(manager.get('room-1')?.status).toBe('reconnecting');
+    expect(runtime.stop).not.toHaveBeenCalled();
+  });
+
   it('holds an ownership return until the local view consumes it', () => {
     const manager = createMultiplayerSessionManager(); const runtime = createRuntime('player');
     manager.register('room-1', runtime);

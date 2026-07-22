@@ -5,6 +5,7 @@ import { multiplayerLocalStore } from './multiplayerLocalStore';
 
 export type MultiplayerConnectionStatus =
   | 'connecting'
+  | 'reconnecting'
   | 'syncing' // Initial payload synchronization phase after P2P connection established
   | 'connected'
   | 'disconnected'
@@ -115,10 +116,10 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
       const state = rooms.get(roomId);
       if (!state || !state.runtime) return;
       state.connectionCount = Math.max(0, connectionCount);
-      if (state.connectionCount > 0) {
+      if (state.connectionCount > 0 || state.role === 'host') {
         state.status = 'connected';
-      } else if (state.status !== 'connecting') {
-        state.status = 'disconnected';
+      } else {
+        state.status = 'reconnecting';
       }
       notify();
     },

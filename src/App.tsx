@@ -113,28 +113,8 @@ const App: React.FC = () => {
       return;
     }
 
-    // 情況 B：Host 異常斷線偵測
-    const roomState = multiplayerSessionManager.get(roomId);
-    if (!roomState) {
-      activeMultiplayerRoomRef.current = null;
-      setActiveMultiplayerRoom(null);
-      return;
-    }
-    if (roomState.status !== 'disconnected') return;
-
-    // 給 5 秒延遲，允許短暫斷線自動恢復
-    const disconnectTimer = window.setTimeout(() => {
-      const currentState = multiplayerSessionManager.get(roomId);
-      // 如果已重連或房間已不存在，不處理
-      if (!currentState || currentState.status === 'connected') return;
-      // 確認仍然斷線，清除狀態並提示
-      multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
-      activeMultiplayerRoomRef.current = null;
-      setActiveMultiplayerRoom(null);
-      showToast({ message: tApp('app_toast_multiplayer_host_disconnected'), type: 'warning' });
-    }, 5000);
-
-    return () => window.clearTimeout(disconnectTimer);
+    // Transport owns retry/backoff. Do not interpret a temporary mobile or
+    // network disconnect as a host shutdown and cancel its recovery loop.
   }, [activeMultiplayerRoom, appData, multiplayerVersion, showToast, tApp]);
 
   const clearRoomUrlQuery = useCallback(() => {
