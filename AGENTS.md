@@ -33,3 +33,8 @@ For `C:\board-game-score-pad`:
 # Local Verification Constraints
 
 - Do not open a browser or run browser-based visual verification unless the user explicitly asks for it.
+
+# Sub-Agent Delegation Rules
+
+- When invoking sub-agents via `invoke_subagent` or defining sub-agents via `define_subagent`, always explicitly set `Model` to `"flash"` (or `"flash_lite"`) for routine or background tasks (e.g., searching, reading files, generating boilerplate, running unit tests) unless deep complex reasoning is strictly required.
+- Avoid leaving `Model` as `"inherit"` by default, ensuring sub-agents execute fast and cost-effectively without inheriting the main agent's model.

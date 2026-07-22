@@ -23,19 +23,21 @@ describe('multiplayerLocalStore purgeRoomData & deleteRoom', () => {
 
     const seqStartsWithDeleteSpy = vi.fn().mockResolvedValue(1);
     const seqEqualsDeleteSpy = vi.fn().mockResolvedValue(1);
-    const seqWhereSpy = vi.spyOn(db.multiplayerSequences, 'where').mockImplementation((field: string) => {
+    const sequenceWhere = ((field: unknown) => {
       if (field === 'id') {
         return {
           startsWith: vi.fn().mockReturnValue({ delete: seqStartsWithDeleteSpy }),
           equals: vi.fn().mockReturnValue({ delete: seqEqualsDeleteSpy }),
-        } as any;
+        };
       }
-      return {} as any;
-    });
+      return {};
+    }) as unknown as typeof db.multiplayerSequences.where;
+    const seqWhereSpy = vi.spyOn(db.multiplayerSequences, 'where').mockImplementation(sequenceWhere);
 
-    vi.spyOn(db, 'transaction').mockImplementation(async (_mode, _tables, cb: any) => {
+    const transaction = async (_mode: unknown, _tables: unknown, cb: () => Promise<unknown>) => {
       return cb();
-    });
+    };
+    vi.spyOn(db, 'transaction').mockImplementation(transaction as unknown as typeof db.transaction);
 
     await multiplayerLocalStore.purgeRoomData('room-1');
 
