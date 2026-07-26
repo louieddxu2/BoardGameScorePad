@@ -123,6 +123,51 @@ describe('createP2PHandshakeSync reconnect lifecycle', () => {
     expect(FakePeer.instances).toHaveLength(1);
   });
 
+  it('retries when a replacement data connection never opens', async () => {
+    vi.useFakeTimers();
+    const sync = createP2PHandshakeSync({
+      Peer: FakePeer,
+      adapter: createAdapter(),
+      reconnectBaseDelayMs: 1,
+      reconnectMaxDelayMs: 1,
+      connectionOpenTimeoutMs: 5,
+      bindVisibility: false,
+    });
+
+    sync.joinRoom('room-1');
+    const firstConnection = await openClientConnection(FakePeer.instances[0]);
+    firstConnection.close();
+    await vi.advanceTimersByTimeAsync(1);
+
+    const stalledPeer = FakePeer.instances[1];
+    stalledPeer.emit('open');
+    expect(sync.getConnectionCount()).toBe(0);
+    expect(stalledPeer.connections).toHaveLength(1);
+
+    await vi.advanceTimersByTimeAsync(5);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(FakePeer.instances).toHaveLength(3);
+    sync.stop();
+  });
+
+  it('does not recreate a failed host peer when automatic reconnect is disabled', async () => {
+    vi.useFakeTimers();
+    const sync = createP2PHandshakeSync({
+      Peer: FakePeer,
+      adapter: createAdapter(),
+      autoReconnect: false,
+      reconnectBaseDelayMs: 1,
+      reconnectMaxDelayMs: 1,
+      bindVisibility: false,
+    });
+
+    sync.startHost('room-1');
+    FakePeer.instances[0].emit('error', new Error('network failure'));
+    await vi.advanceTimersByTimeAsync(10);
+    expect(FakePeer.instances).toHaveLength(1);
+    sync.stop();
+  });
+
   it('retries when a suspended client returns to a visible page without a connection', async () => {
     vi.useFakeTimers();
     let visibilityListener: (() => void) | undefined;

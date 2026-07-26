@@ -105,11 +105,12 @@ const App: React.FC = () => {
     const roomId = activeMultiplayerRoom.roomId;
 
     // 情況 A：Host 正常結束，歸還 session 擁有權
-    const returned = multiplayerSessionManager.peekReturnedSession(roomId);
+    const returned = multiplayerSessionManager.takeReturnedSession(roomId);
     if (returned) {
       activeMultiplayerRoomRef.current = null;
       setActiveMultiplayerRoom(null);
       void appData.resumeSessionById(returned.id);
+      showToast({ message: tApp('app_toast_multiplayer_ownership_returned'), type: 'success' });
       return;
     }
 
@@ -1051,6 +1052,7 @@ const App: React.FC = () => {
       {isMultiplayerParticipantRoomModalOpen && activeMultiplayerRoom?.role === 'player' && (
         <MultiplayerParticipantRoomModal
           isOpen
+          connectionStatus={multiplayerRoomState?.status}
           onLeave={handleLeaveMultiplayerRoom}
           onClose={() => setIsMultiplayerParticipantRoomModalOpen(false)}
         />

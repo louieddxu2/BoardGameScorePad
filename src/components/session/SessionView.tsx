@@ -78,7 +78,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const aiSimpleGenerator = useAiSimpleGenerator();
   const [elapsedTime, setElapsedTime] = React.useState<number>(0);
   const [multiplayerPreviewIndex, setMultiplayerPreviewIndex] = React.useState(-1);
-  const [isLocalOwnershipReturned, setIsLocalOwnershipReturned] = React.useState(false);
   const manager = props.multiplayerManager ?? multiplayerSessionManager;
   const [managedRoomState, setManagedRoomState] = React.useState(() => props.multiplayerRoomId ? manager.get(props.multiplayerRoomId) : null);
   const session = managedRoomState?.session ?? props.session;
@@ -87,7 +86,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     const result = await props.onUpdateTemplate(nextTemplate);
     const roomId = props.multiplayerRoomId;
     const runtime = managedRoomState?.runtime;
-    if (!roomId || !runtime || runtime.role !== 'host' || !result.session || isLocalOwnershipReturned) return result;
+    if (!roomId || !runtime || runtime.role !== 'host' || !result.session) return result;
 
     const snapshot = await runtime.controller.applyLocalBoard(result.template, result.session);
     if (snapshot) {
@@ -95,7 +94,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       manager.setUnpublishedBoardUpdate(roomId, true);
     }
     return result;
-  }, [isLocalOwnershipReturned, managedRoomState?.runtime, manager, props.multiplayerRoomId, props.onUpdateTemplate]);
+  }, [managedRoomState?.runtime, manager, props.multiplayerRoomId, props.onUpdateTemplate]);
 
   const isAiWorking = aiGenerator.status === 'compressing' || 
                       aiGenerator.status === 'generating' || 
@@ -145,11 +144,10 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   const sessionState = useSessionState({ ...props, onUpdateTemplate: handleTemplateUpdate });
   const capabilities = useMemo(() => {
-    if (isLocalOwnershipReturned) return hostSessionCapabilities;
     if (props.multiplayerCapabilities) return props.multiplayerCapabilities;
     const player = session.players[multiplayerPreviewIndex];
     return player ? createPlayerSessionCapabilities(player.id) : hostSessionCapabilities;
-  }, [isLocalOwnershipReturned, props.multiplayerCapabilities, session.players, multiplayerPreviewIndex]);
+  }, [props.multiplayerCapabilities, session.players, multiplayerPreviewIndex]);
   const multiplayerPreviewLabel = capabilities.role === 'host'
     ? 'Multiplayer test: host'
     : `Multiplayer test: player ${session.players.findIndex(player => player.id === capabilities.playerId) + 1}`;
@@ -195,21 +193,10 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     };
   }, [manager, props.multiplayerRoomId]);
 
-  React.useEffect(() => {
-    const roomId = props.multiplayerRoomId;
-    if (!roomId || managedRoomState?.status !== 'ownership-returned') return;
-    const returnedSession = manager.takeReturnedSession(roomId);
-    if (!returnedSession) return;
-    setMultiplayerPreviewIndex(-1);
-    setIsLocalOwnershipReturned(true);
-    props.onUpdateSession(returnedSession);
-    showToast({ message: tSession('toast_multiplayer_ownership_returned'), type: 'success' });
-  }, [managedRoomState?.status, manager, props.multiplayerRoomId, props.onUpdateSession, showToast, tSession]);
-
   const handleSessionUpdate = useCallback(async (nextSession: GameSession) => {
     const roomId = props.multiplayerRoomId;
     const runtime = managedRoomState?.runtime;
-    if (!roomId || !runtime || isLocalOwnershipReturned) {
+    if (!roomId || !runtime) {
       props.onUpdateSession(nextSession);
       return;
     }
@@ -225,7 +212,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       manager.publishSession(roomId, canonical);
       props.onUpdateSession(canonical);
     }
-  }, [isLocalOwnershipReturned, managedRoomState?.runtime, manager, props.multiplayerCapabilities, props.multiplayerRoomId, props.onUpdateSession, session]);
+  }, [managedRoomState?.runtime, manager, props.multiplayerCapabilities, props.multiplayerRoomId, props.onUpdateSession, session]);
 
   const {
     editingCell,
@@ -843,6 +830,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         multiplayerPreviewPlayerNumber={multiplayerPreviewPlayerNumber}
         onOpenMultiplayerRoom={capabilities.role === 'host' ? props.onOpenMultiplayerRoom : undefined}
         onOpenMultiplayerParticipantRoom={capabilities.role === 'player' ? props.onOpenMultiplayerParticipantRoom : undefined}
+        multiplayerConnectionStatus={managedRoomState?.role === 'player' ? managedRoomState.status : undefined}
         multiplayerConnectionCount={managedRoomState?.role === 'host' ? managedRoomState.connectionCount : undefined}
         hasUnpublishedBoardUpdate={managedRoomState?.role === 'host' ? managedRoomState.hasUnpublishedBoardUpdate : false}
         hasVisuals={!!template.globalVisuals}
@@ -943,7 +931,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           panelDockOffset={panelDockOffset}
           canEditScore={capabilities.canEditScore}
           participantClaimCounts={managedRoomState?.role === 'host' ? managedRoomState.participantClaims : undefined}
-          editablePlayerIds={capabilities.role === 'player' && !isLocalOwnershipReturned ? capabilities.playerIds : undefined}
+          editablePlayerIds={capabilities.role === 'player' ? capabilities.playerIds : undefined}
         />
       </div>
 

@@ -58,6 +58,7 @@ export const createP2PHandshakeSync = (options: {
   autoReconnect?: boolean;
   reconnectBaseDelayMs?: number;
   reconnectMaxDelayMs?: number;
+  connectionOpenTimeoutMs?: number;
   bindVisibility?: boolean;
   lifecycleTarget?: P2PLifecycleTarget | null;
   onMessage?: (message: unknown, connection: P2PDataConnection) => void | Promise<void>;
@@ -71,6 +72,7 @@ export const createP2PHandshakeSync = (options: {
   const autoReconnect = options.autoReconnect ?? true;
   const reconnectBaseDelayMs = options.reconnectBaseDelayMs ?? 1_000;
   const reconnectMaxDelayMs = options.reconnectMaxDelayMs ?? 15_000;
+  const connectionOpenTimeoutMs = options.connectionOpenTimeoutMs ?? 10_000;
   const lifecycleTarget = options.lifecycleTarget ?? (typeof document !== 'undefined' ? document : null);
   const connections = new Set<P2PDataConnection>();
   const incoming = new Map<string, IncomingTransfer>();
@@ -153,9 +155,11 @@ export const createP2PHandshakeSync = (options: {
     reconnectTimer = null;
   };
 
+  const getOpenConnectionCount = () => Array.from(connections).filter((connection) => connection.open).length;
+
   const hasUsableTransport = () => {
     if (!peer || peer.destroyed) return false;
-    return desiredMode === 'host' || connections.size > 0;
+    return desiredMode === 'host' || getOpenConnectionCount() > 0;
   };
 
   const scheduleReconnect = (reason: string) => {
@@ -166,7 +170,7 @@ export const createP2PHandshakeSync = (options: {
     log(`Reconnect scheduled in ${delay}ms (${reason})`);
     reconnectTimer = window.setTimeout(() => {
       reconnectTimer = null;
-      if (!stopping && desiredMode === 'client' && desiredRoomId) createClientPeer(desiredRoomId);
+      if (!stopping && desiredMode === 'client' && desiredRoomId && !hasUsableTransport()) createClientPeer(desiredRoomId);
     }, delay);
   };
 
@@ -212,7 +216,7 @@ export const createP2PHandshakeSync = (options: {
       log(`Peer error: ${String(error)}`, 'error');
       disposeTransport();
       // A host stays reachable while its Peer is alive; retry only when that Peer fails.
-      if (!stopping && desiredMode === 'host' && desiredRoomId) {
+      if (!stopping && autoReconnect && desiredMode === 'host' && desiredRoomId) {
         const delay = Math.min(reconnectBaseDelayMs * (2 ** reconnectAttempt), reconnectMaxDelayMs);
         reconnectAttempt += 1;
         clearReconnectTimer();
@@ -253,13 +257,20 @@ export const createP2PHandshakeSync = (options: {
   const setupConnection = (connection: P2PDataConnection) => {
     connections.add(connection);
     let closed = false;
+    let openTimeoutId: number | null = null;
+    const clearOpenTimeout = () => {
+      if (openTimeoutId === null) return;
+      window.clearTimeout(openTimeoutId);
+      openTimeoutId = null;
+    };
     connection.on('open', () => {
       if (closed) return;
+      clearOpenTimeout();
       reconnectAttempt = 0;
       clearReconnectTimer();
       void sendHello(connection);
       void options.onConnectionOpen?.(connection);
-      void options.onConnectionChange?.(connections.size);
+      void options.onConnectionChange?.(getOpenConnectionCount());
     });
     connection.on('data', (message: unknown) => {
       void (async () => {
@@ -322,17 +333,28 @@ export const createP2PHandshakeSync = (options: {
     const cleanup = () => {
       if (closed) return;
       closed = true;
+      clearOpenTimeout();
       for (const key of Array.from(incoming.keys())) {
         if (key.startsWith(`${connection.peer ?? 'unknown'}:`)) clearIncoming(key);
       }
       connections.delete(connection);
       if (hostConnection === connection) hostConnection = null;
       void options.onConnectionClose?.(connection);
-      void options.onConnectionChange?.(connections.size);
-      if (!disposing && desiredMode === 'client' && connections.size === 0) scheduleReconnect('connection-closed');
+      void options.onConnectionChange?.(getOpenConnectionCount());
+      if (!disposing && desiredMode === 'client' && getOpenConnectionCount() === 0) scheduleReconnect('connection-closed');
     };
     connection.on('close', cleanup);
     connection.on('error', cleanup);
+    openTimeoutId = window.setTimeout(() => {
+      if (closed || connection.open) return;
+      log(`Connection to ${connection.peer ?? 'unknown'} did not open in time`, 'error');
+      try {
+        connection.close();
+      } catch (error) {
+        log(`Failed to close unopened connection: ${String(error)}`, 'error');
+      }
+      cleanup();
+    }, connectionOpenTimeoutMs);
   };
 
   const handleVisibilityChange = () => {
@@ -406,6 +428,6 @@ export const createP2PHandshakeSync = (options: {
       return hostConnection ? send(hostConnection, message) : false;
     },
     sendToConnection: send,
-    getConnectionCount: () => connections.size,
+    getConnectionCount: getOpenConnectionCount,
   };
 };

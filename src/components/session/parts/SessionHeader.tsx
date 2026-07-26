@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, ListPlus, RotateCcw, Share2, Edit2, Lock, Unlock, DownloadCloud, UsersRound } from 'lucide-react';
+import { ArrowLeft, ListPlus, RotateCcw, Share2, Edit2, Lock, Unlock, DownloadCloud, RefreshCw, UsersRound } from 'lucide-react';
 import ShareMenu from '../modals/ShareMenu';
 import { useSessionTranslation } from '../../../i18n/session';
+import { MultiplayerConnectionStatus } from '../../../features/multiplayer/multiplayerSessionManager';
 
 interface SessionHeaderProps {
   templateName: string;
@@ -37,6 +38,7 @@ interface SessionHeaderProps {
   multiplayerConnectionCount?: number;
   hasUnpublishedBoardUpdate?: boolean;
   onOpenMultiplayerParticipantRoom?: () => void;
+  multiplayerConnectionStatus?: MultiplayerConnectionStatus;
 }
 
 const SessionHeader: React.FC<SessionHeaderProps> = ({
@@ -72,6 +74,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   multiplayerConnectionCount,
   hasUnpublishedBoardUpdate = false,
   onOpenMultiplayerParticipantRoom,
+  multiplayerConnectionStatus,
 }) => {
   const { t } = useSessionTranslation();
   const [tempTitle, setTempTitle] = useState('');
@@ -98,6 +101,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
       ? 'border-status-warning/60 bg-status-warning/10 text-status-warning hover:bg-status-warning/20'
       : 'border-status-info/60 bg-status-info/10 text-status-info hover:bg-status-info/20'
     : 'border-surface-border text-txt-muted hover:text-brand-primary hover:bg-surface-hover';
+  const isParticipantReconnecting = onOpenMultiplayerParticipantRoom && multiplayerConnectionStatus === 'reconnecting';
 
   // Helper to prevent input blur when clicking buttons
   const preventBlur = (e: React.MouseEvent) => {
@@ -152,11 +156,12 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
           <button
             onMouseDown={preventBlur}
             onClick={onOpenMultiplayerRoom ?? onOpenMultiplayerParticipantRoom ?? onCycleMultiplayerPreview}
-            className={`relative p-2 rounded-lg transition-colors border ${multiplayerButtonClass}`}
-            title={onOpenMultiplayerRoom ? t('multiplayer_open_room') : onOpenMultiplayerParticipantRoom ? t('multiplayer_connection_title') : multiplayerPreviewLabel}
-            aria-label={onOpenMultiplayerRoom ? t('multiplayer_open_room') : onOpenMultiplayerParticipantRoom ? t('multiplayer_connection_title') : multiplayerPreviewLabel}
+            className={`relative p-2 rounded-lg transition-colors border ${isParticipantReconnecting ? 'border-status-warning/60 bg-status-warning/10 text-status-warning hover:bg-status-warning/20' : multiplayerButtonClass}`}
+            title={onOpenMultiplayerRoom ? t('multiplayer_open_room') : onOpenMultiplayerParticipantRoom ? (isParticipantReconnecting ? t('multiplayer_reconnecting') : t('multiplayer_connection_title')) : multiplayerPreviewLabel}
+            aria-label={onOpenMultiplayerRoom ? t('multiplayer_open_room') : onOpenMultiplayerParticipantRoom ? (isParticipantReconnecting ? t('multiplayer_reconnecting') : t('multiplayer_connection_title')) : multiplayerPreviewLabel}
           >
             <UsersRound size={20} />
+            {isParticipantReconnecting && <RefreshCw size={11} className="absolute -right-1 -top-1 rounded-full border border-modal-bg bg-status-warning p-0.5 text-modal-bg animate-spin" />}
             {onOpenMultiplayerRoom && multiplayerConnectionCount !== undefined && (
               <span className={`absolute -right-1 -top-1 min-w-4 h-4 px-1 flex items-center justify-center rounded-full text-[10px] font-bold leading-none border border-modal-bg ${hasUnpublishedBoardUpdate ? 'bg-status-warning text-modal-bg' : 'bg-status-info text-white'}`} title={t('multiplayer_connected_count', { count: multiplayerConnectionCount })}>
                 {multiplayerConnectionCount > 99 ? '99+' : multiplayerConnectionCount}
