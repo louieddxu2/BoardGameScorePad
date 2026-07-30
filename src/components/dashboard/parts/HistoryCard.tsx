@@ -55,22 +55,25 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ record, onDelete, onClick }) 
                 {record.players.map(p => {
                     const isWinner = (p.linkedPlayerId && record.winnerIds.includes(p.linkedPlayerId)) || record.winnerIds.includes(p.id);
 
-                    const isTransparent = p.color === 'transparent';
+                    const isTransparent = !p.color || p.color === 'transparent';
 
                     return (
                         <div key={p.id} className={`flex items-center justify-between text-sm ${isWinner ? 'bg-status-warning/10 -mx-2 px-2 py-1 rounded-lg border border-status-warning/30 shadow-sm' : ''}`}>
-                            <div className="flex items-center gap-2 overflow-hidden">
+                            <div className="flex items-center gap-1.5 overflow-hidden">
                                 {isWinner && <Crown size={14} className="text-status-warning shrink-0" fill="currentColor" />}
                                 <ContrastText
-                                    className={`truncate font-medium ${isWinner ? 'text-status-warning brightness-125' : 'text-txt-secondary'}`}
-                                    color={isWinner ? 'rgb(var(--c-status-warning))' : (isTransparent ? 'rgb(var(--c-txt-secondary))' : p.color)}
+                                    className={`truncate font-medium ${isWinner ? 'font-bold' : ''}`}
+                                    color={isTransparent ? 'rgb(var(--c-txt-secondary))' : p.color}
                                 >
                                     {p.name}
                                 </ContrastText>
                             </div>
-                            <span className={`font-mono font-bold ${isWinner ? 'text-status-warning text-base' : 'text-txt-muted'}`}>
+                            <ContrastText
+                                className={`font-mono font-bold ${isWinner ? 'text-base font-extrabold' : ''}`}
+                                color={isTransparent ? 'rgb(var(--c-txt-muted))' : p.color}
+                            >
                                 {p.totalScore}
-                            </span>
+                            </ContrastText>
                         </div>
                     );
                 })}

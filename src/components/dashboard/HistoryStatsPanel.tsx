@@ -10,6 +10,7 @@ import { HistorySummary } from '../../utils/extractDataSummaries';
 import UpwardSelectMenu, { UpwardSelectMenuAnchor } from '../shared/UpwardSelectMenu';
 import { DATA_LIMITS } from '../../dataLimits';
 import { useModalBackHandler } from '../../hooks/useModalBackHandler';
+import { ContrastText } from '../shared/ContrastText';
 
 interface HistoryStatsPanelProps {
   entries: HistoryGameEntry[];
@@ -471,16 +472,23 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                                   {record.location || '-'}
                                 </span>
 
-                                {/* 3. 全體玩家與得分（贏家高亮並標記 👑） */}
+                                {/* 3. 全體玩家與得分（贏家高亮並標記 👑，保留玩家原本色彩） */}
                                 <div className="text-xs truncate pr-2 flex items-center gap-1 overflow-hidden">
                                   {record.players.map((p, idx) => {
                                     const isWinner = (p.linkedPlayerId && record.winnerIds.includes(p.linkedPlayerId)) || record.winnerIds.includes(p.id);
+                                    const isTransparent = !p.color || p.color === 'transparent';
                                     return (
                                       <React.Fragment key={p.id}>
                                         {idx > 0 && <span className="text-txt-muted/30 mx-0.5">、</span>}
-                                        <span className={isWinner ? "font-bold text-status-warning brightness-110 flex items-center gap-0.5" : "text-txt-secondary"}>
+                                        <span className={isWinner ? "font-bold flex items-center gap-0.5 inline-flex" : "inline-flex items-center"}>
                                           {isWinner && <Crown size={10} className="shrink-0 text-status-warning" fill="currentColor" />}
-                                          {p.name}({p.totalScore})
+                                          <ContrastText
+                                            className="truncate"
+                                            color={isTransparent ? 'rgb(var(--c-txt-secondary))' : p.color}
+                                          >
+                                            {p.name}
+                                          </ContrastText>
+                                          <span className={isWinner ? "text-status-warning font-mono ml-0.5" : "text-txt-muted font-mono ml-0.5"}>({p.totalScore})</span>
                                         </span>
                                       </React.Fragment>
                                     );
