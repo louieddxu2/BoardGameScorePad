@@ -92,7 +92,7 @@
   /* Accent & Shared UI Tokens */
   --c-accent-emerald: 16 185 129;
   --c-btn-primary-bg: var(--c-accent-emerald);
-  --c-btn-primary-text: 255 255 255;
+  --c-btn-primary-text: 2 6 23; /* slate-950 for high contrast (7.97:1) on emerald-500 */
   --btn-shadow-active: 0 8px 25px -4px rgba(var(--c-accent-emerald), 0.3);
   --btn-border-primary: var(--c-accent-emerald) / 0.3;
   --c-icon-active: var(--c-accent-emerald);
@@ -127,7 +127,7 @@ html[data-ios-safari-browser='true'] {
 }
 
 /* ============================================================
-   THEME MAPPING: Mirrored Semantic Tokens
+   THEME MAPPING: Mirrored Semantic Tokens (WCAG AA 4.5 Compliant)
    ============================================================ */
 
 /* DEFAULT/DARK MODE */
@@ -137,15 +137,15 @@ html[data-ios-safari-browser='true'] {
   --c-app-bg-deep: 2 6 23;       /* slate-950 */
   --c-txt-title: 255 255 255;    /* pure white */
   --c-txt-primary: 248 250 252;  /* slate-50 */
-  --c-txt-secondary: 148 163 184; /* slate-400 */
-  --c-txt-tertiary: 203 213 225; /* slate-300 */
-  --c-txt-muted: 100 116 139;    /* slate-500 */
+  --c-txt-secondary: 203 213 225; /* slate-300 */
+  --c-txt-tertiary: 226 232 240; /* slate-200 */
+  --c-txt-muted: 148 163 184;    /* slate-400 (6.96:1 contrast) */
   --c-surface-bg: 30 41 59;      /* slate-800 */
   --c-surface-bg-alt: 23 31 45;  /* slate-850 */
   --c-surface-border: 51 65 85;  /* slate-700 */
-  --c-brand-primary: 16 185 129; /* emerald-500 */
-  --c-brand-primary-deep: 5 150 105; /* emerald-600 */
-  --c-brand-secondary: 129 140 248; /* indigo-400 */
+  --c-brand-primary: 52 211 153; /* emerald-400 (8.63:1 contrast) */
+  --c-brand-primary-deep: 16 185 129; /* emerald-500 */
+  --c-brand-secondary: 165 180 252; /* indigo-300 (11.75:1 contrast) */
   --c-surface-hover: 38 48 64;         /* slate-750 */
   --c-surface-border-hover: 71 85 105; /* slate-600 */
   --c-card-txt-hover: 255 255 255;     /* white */
@@ -164,11 +164,11 @@ html[data-ios-safari-browser='true'] {
   --c-modal-btn-sec-bg: 51 65 85; /* slate-700 */
   --c-modal-btn-sec-text: 255 255 255;
 
-  /* Status Tokens */
-  --c-status-danger: var(--c-red-500);
-  --c-status-warning: var(--c-amber-400);
+  /* Status Tokens (WCAG AA 4.5 Compliant) */
+  --c-status-danger: 248 113 113; /* red-400 (5.85:1 contrast on slate-800) */
+  --c-status-warning: var(--c-amber-400); /* 10.69:1 contrast */
   --c-status-success: var(--c-brand-primary);
-  --c-status-info: var(--c-sky-400);
+  --c-status-info: var(--c-sky-400); /* 8.33:1 contrast */
 
   /* Button Overrides */
   --c-btn-ghost-hover: 51 65 85; /* slate-700 */
@@ -197,21 +197,21 @@ html[data-ios-safari-browser='true'] {
   --c-keypad-btn-active: 79 70 229; /* indigo-600 */
 }
 
-/* LIGHT MODE MAPPING (Mirrored) */
+/* LIGHT MODE MAPPING (WCAG AA 4.5 Compliant) */
 html[data-theme='light'] {
   --c-app-bg: 248 250 252;       /* slate-50 */
   --c-app-bg-deep: 241 245 249;  /* slate-100 */
   --c-txt-title: 15 23 42;       /* slate-900 */
   --c-txt-primary: 15 23 42;     /* slate-900 */
-  --c-txt-secondary: 71 85 105;  /* slate-600 */
-  --c-txt-tertiary: 51 65 85;    /* slate-700 */
-  --c-txt-muted: 148 163 184;    /* slate-400 */
+  --c-txt-secondary: 51 65 85;   /* slate-700 (10.35:1 contrast) */
+  --c-txt-tertiary: 71 85 105;   /* slate-600 (7.58:1 contrast) */
+  --c-txt-muted: 71 85 105;      /* slate-600 (7.58:1 contrast) */
   --c-surface-bg: 255 255 255;   /* white */
   --c-surface-bg-alt: 248 250 252; /* slate-50 */
   --c-surface-border: 226 232 240; /* slate-200 */
-  --c-brand-primary: 16 185 129; /* emerald-500 */
-  --c-brand-primary-deep: 5 150 105; /* emerald-600 */
-  --c-brand-secondary: 67 56 202; /* indigo-700 */
+  --c-brand-primary: 4 120 87;   /* emerald-700 (4.72:1 contrast) */
+  --c-brand-primary-deep: 6 95 70; /* emerald-800 */
+  --c-brand-secondary: 67 56 202; /* indigo-700 (7.90:1 contrast) */
   --c-surface-hover: 241 245 249;      /* slate-100 */
   --c-surface-border-hover: 203 213 225; /* slate-300 */
   --c-card-txt-hover: 15 23 42;        /* slate-900 */
@@ -229,11 +229,11 @@ html[data-theme='light'] {
   --c-modal-btn-sec-bg: 243 244 246; /* gray-100 */
   --c-modal-btn-sec-text: 55 65 81;  /* gray-700 */
 
-  /* Status Tokens (Higher Contrast for Light Mode) */
-  --c-status-danger: var(--c-red-600);
-  --c-status-warning: var(--c-amber-500);
+  /* Status Tokens (WCAG AA 4.5 Compliant for Light Mode) */
+  --c-status-danger: 185 28 28;  /* red-700 (6.59:1 contrast) */
+  --c-status-warning: 180 83 9;  /* amber-700 (4.71:1 contrast) */
   --c-status-success: var(--c-brand-primary);
-  --c-status-info: var(--c-sky-600);
+  --c-status-info: 3 105 161;   /* sky-700 (5.45:1 contrast) */
 
   /* Button Overrides */
   --c-btn-ghost-hover: 241 245 249; /* slate-100 */
