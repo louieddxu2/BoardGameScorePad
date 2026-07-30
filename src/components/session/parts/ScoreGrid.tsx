@@ -705,6 +705,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
             simpleGemmaStatus={simpleGemmaStatus}
             elapsedTime={elapsedTime}
             zoomLevel={zoomLevel}
+            isEditMode={isEditMode}
           />
         )}
 

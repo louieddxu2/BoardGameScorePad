@@ -12,6 +12,7 @@ interface SimpleScorepadPromoProps {
   simpleGemmaStatus?: string;
   elapsedTime?: number;
   zoomLevel?: number;
+  isEditMode?: boolean;
 }
 
 const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
@@ -24,6 +25,7 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
   simpleGemmaStatus,
   elapsedTime,
   zoomLevel = 1,
+  isEditMode = true,
 }) => {
   const { t } = useSessionTranslation();
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
@@ -46,7 +48,7 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
     : `${t('session_ai_generating_with_timer').replace('{seconds}', (elapsedTime || 0).toString())}`;
 
   useEffect(() => {
-    if (!isInitialSimpleScorepad) return;
+    if (!isInitialSimpleScorepad || !isEditMode) return;
 
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -58,9 +60,9 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [isInitialSimpleScorepad]);
+  }, [isInitialSimpleScorepad, isEditMode]);
 
-  if (!isInitialSimpleScorepad) return null;
+  if (!isInitialSimpleScorepad || !isEditMode) return null;
 
   return (
     <div className="w-full flex items-center gap-2 py-1 select-none animate-in fade-in duration-300">
