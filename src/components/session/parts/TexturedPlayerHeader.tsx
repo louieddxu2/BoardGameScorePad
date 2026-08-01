@@ -152,6 +152,10 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
         </div>
       )}
 
+      {isEditableByParticipant && (
+        <div className="absolute inset-x-0 bottom-0 z-20 h-0.5 bg-brand-primary/80 shadow-[0_0_6px_rgb(var(--c-brand-primary)_/_0.45)] pointer-events-none" />
+      )}
+
       {/* Shadow Overlay */}
       {bgUrl && <div className="absolute inset-0 shadow-[inset_0_0_10px_rgb(var(--c-black)_/_0.05)] pointer-events-none z-0" />}
     </div>

@@ -513,7 +513,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         isAlt={isAlt}
                         previewValue={isActive ? previewValue : undefined}
                         isReadOnly={!canEditScore(p.id, col)}
-                        isEditable={editablePlayerIds.includes(p.id) && canEditScore(p.id, col)}
+                        isEditable={false}
                       />
                       {col.overlayColumns.map(overlayCol => {
                         const isOverlayActive = editingCell?.playerId === p.id && editingCell?.colId === overlayCol.id;
