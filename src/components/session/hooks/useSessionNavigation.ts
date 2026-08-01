@@ -1,5 +1,5 @@
 
-import { GameSession, GameTemplate } from '../../../types';
+import { GameSession, GameTemplate, ScoreColumn } from '../../../types';
 
 interface NavigationProps {
   session: GameSession;
@@ -9,6 +9,9 @@ interface NavigationProps {
   advanceDirection: 'horizontal' | 'vertical';
   setEditingCell: (cell: { playerId: string; colId: string } | null) => void;
   setEditingPlayerId: (id: string | null) => void;
+  canEditScore?: (playerId: string, column: ScoreColumn | undefined) => boolean;
+  canEditTotal?: (playerId: string) => boolean;
+  canEditPlayers?: boolean;
 }
 
 export const useSessionNavigation = ({
@@ -19,47 +22,71 @@ export const useSessionNavigation = ({
   advanceDirection,
   setEditingCell,
   setEditingPlayerId,
+  canEditScore = () => true,
+  canEditTotal = () => true,
+  canEditPlayers = true,
 }: NavigationProps) => {
+
+  const isGridEntryColumn = (column: ScoreColumn) => (
+    column.displayMode !== 'hidden' &&
+    column.displayMode !== 'overlay' &&
+    !column.isAuto
+  );
+
+  const canEditCell = (playerId: string, colId: string) => {
+    if (colId === '__TOTAL__') return canEditTotal(playerId);
+    const column = template.columns.find((item) => item.id === colId);
+    return !!column && canEditScore(playerId, column);
+  };
+
+  const findFirstEditableCell = (playerId: string) => {
+    const firstColumn = template.columns.find((column) => (
+      isGridEntryColumn(column) && canEditScore(playerId, column)
+    ));
+    if (firstColumn) return { playerId, colId: firstColumn.id };
+    if (canEditTotal(playerId)) return { playerId, colId: '__TOTAL__' };
+    return null;
+  };
+
+  const findNextPlayerWithEditableCell = (currentPlayerId: string, direction: 1 | -1, colId: string) => {
+    const currentIndex = session.players.findIndex((player) => player.id === currentPlayerId);
+    if (currentIndex === -1) return null;
+
+    for (let offset = 1; offset < session.players.length; offset += 1) {
+      const candidateIndex = (currentIndex + (offset * direction) + session.players.length) % session.players.length;
+      const candidate = session.players[candidateIndex];
+      if (canEditCell(candidate.id, colId)) return candidate.id;
+    }
+    return null;
+  };
 
   // Helper: Move from Player Header down into the grid (Vertical Navigation)
   const moveIntoGrid = (playerId: string) => {
-      // Find first visible, non-overlay, non-auto column to focus
-      const firstValidCol = template.columns.find(c => 
-          c.displayMode !== 'hidden' && 
-          c.displayMode !== 'overlay' && 
-          !c.isAuto
-      );
-      
-      if (firstValidCol) {
-          setEditingCell({ playerId, colId: firstValidCol.id });
-      } else {
-          // If no valid input columns found (e.g., 0-column template), 
-          // navigation into the grid should land on the Total cell for manual adjustment.
-          setEditingCell({ playerId, colId: '__TOTAL__' });
-      }
+    const firstEditableCell = findFirstEditableCell(playerId);
+    if (firstEditableCell) setEditingCell(firstEditableCell);
   };
 
   const moveToNextPlayer = (currentPlayerId: string) => {
     const idx = session.players.findIndex(p => p.id === currentPlayerId);
     if (idx === -1) return;
-    const nextIdx = (idx + 1) % session.players.length;
-    
     if (editingCell) {
-        setEditingCell({ playerId: session.players[nextIdx].id, colId: editingCell.colId });
-    } else {
-        setEditingPlayerId(session.players[nextIdx].id);
+      const nextPlayerId = findNextPlayerWithEditableCell(currentPlayerId, 1, editingCell.colId);
+      if (nextPlayerId) setEditingCell({ playerId: nextPlayerId, colId: editingCell.colId });
+    } else if (canEditPlayers) {
+      const nextIdx = (idx + 1) % session.players.length;
+      setEditingPlayerId(session.players[nextIdx].id);
     }
   };
 
   const moveToPrevPlayer = (currentPlayerId: string) => {
     const idx = session.players.findIndex(p => p.id === currentPlayerId);
     if (idx === -1) return;
-    const prevIdx = (idx - 1 + session.players.length) % session.players.length;
-    
     if (editingCell) {
-        setEditingCell({ playerId: session.players[prevIdx].id, colId: editingCell.colId });
-    } else {
-        setEditingPlayerId(session.players[prevIdx].id);
+      const previousPlayerId = findNextPlayerWithEditableCell(currentPlayerId, -1, editingCell.colId);
+      if (previousPlayerId) setEditingCell({ playerId: previousPlayerId, colId: editingCell.colId });
+    } else if (canEditPlayers) {
+      const prevIdx = (idx - 1 + session.players.length) % session.players.length;
+      setEditingPlayerId(session.players[prevIdx].id);
     }
   };
 
@@ -81,12 +108,26 @@ export const useSessionNavigation = ({
                 return;
             }
 
-            const nextIdx = playerIdx + 1;
             if (advanceDirection === 'horizontal') {
-                setEditingCell({ playerId: session.players[nextIdx].id, colId: '__TOTAL__' });
+                for (let nextIdx = playerIdx + 1; nextIdx < session.players.length; nextIdx += 1) {
+                    if (canEditTotal(session.players[nextIdx].id)) {
+                        setEditingCell({ playerId: session.players[nextIdx].id, colId: '__TOTAL__' });
+                        return;
+                    }
+                }
+            } else if (canEditPlayers) {
+                setEditingPlayerId(session.players[playerIdx + 1].id);
+                return;
             } else {
-                setEditingPlayerId(session.players[nextIdx].id);
+                for (let nextIdx = playerIdx + 1; nextIdx < session.players.length; nextIdx += 1) {
+                    const firstEditableCell = findFirstEditableCell(session.players[nextIdx].id);
+                    if (firstEditableCell) {
+                        setEditingCell(firstEditableCell);
+                        return;
+                    }
+                }
             }
+            setEditingCell(null);
             return;
         }
 
@@ -96,33 +137,50 @@ export const useSessionNavigation = ({
         if (playerIdx === -1 || colIdx === -1) return;
 
         if (advanceDirection === 'horizontal') {
-            if (playerIdx < session.players.length - 1) {
-                setEditingCell({ playerId: session.players[playerIdx + 1].id, colId: colId });
-            } else {
-                // End of row: Wrap to first player of NEXT valid column
-                let nextColIdx = colIdx + 1;
-                while (nextColIdx < template.columns.length && template.columns[nextColIdx].isAuto) nextColIdx++;
-                
-                if (nextColIdx < template.columns.length) {
-                    setEditingCell({ playerId: session.players[0].id, colId: template.columns[nextColIdx].id });
-                } else {
-                    setEditingCell(null); // End of grid
+            for (let nextPlayerIdx = playerIdx + 1; nextPlayerIdx < session.players.length; nextPlayerIdx += 1) {
+                if (canEditScore(session.players[nextPlayerIdx].id, template.columns[colIdx])) {
+                    setEditingCell({ playerId: session.players[nextPlayerIdx].id, colId });
+                    return;
                 }
             }
-        } else { // vertical
-            // Find next valid column for same player
-            let nextColIdx = colIdx + 1;
-            while (nextColIdx < template.columns.length && template.columns[nextColIdx].isAuto) nextColIdx++;
 
-            if (nextColIdx < template.columns.length) {
-                setEditingCell({ playerId, colId: template.columns[nextColIdx].id });
-            } 
-            // End of column: Move to NEXT player's NAME (Header)
-            else if (playerIdx < session.players.length - 1) {
-                setEditingPlayerId(session.players[playerIdx + 1].id);
-            } else {
-                setEditingCell(null); // End of grid
+            // End of row: Wrap to the first editable player of the NEXT valid column.
+            for (let nextColIdx = colIdx + 1; nextColIdx < template.columns.length; nextColIdx += 1) {
+                const nextColumn = template.columns[nextColIdx];
+                if (nextColumn.isAuto) continue;
+                const nextPlayer = session.players.find((player) => canEditScore(player.id, nextColumn));
+                if (nextPlayer) {
+                    setEditingCell({ playerId: nextPlayer.id, colId: nextColumn.id });
+                    return;
+                }
             }
+            setEditingCell(null); // End of grid
+        } else { // vertical
+            // Find the next editable column for the same player.
+            for (let nextColIdx = colIdx + 1; nextColIdx < template.columns.length; nextColIdx += 1) {
+                const nextColumn = template.columns[nextColIdx];
+                if (nextColumn.isAuto) continue;
+                if (canEditScore(playerId, nextColumn)) {
+                    setEditingCell({ playerId, colId: nextColumn.id });
+                    return;
+                }
+            }
+
+            // End of this player's columns.
+            if (canEditPlayers && playerIdx < session.players.length - 1) {
+                setEditingPlayerId(session.players[playerIdx + 1].id);
+                return;
+            }
+            if (!canEditPlayers) {
+                for (let nextPlayerIdx = playerIdx + 1; nextPlayerIdx < session.players.length; nextPlayerIdx += 1) {
+                    const firstEditableCell = findFirstEditableCell(session.players[nextPlayerIdx].id);
+                    if (firstEditableCell) {
+                        setEditingCell(firstEditableCell);
+                        return;
+                    }
+                }
+            }
+            setEditingCell(null); // End of grid
         }
         return;
     }
@@ -130,7 +188,7 @@ export const useSessionNavigation = ({
     // 2. Context: Player Header (using overrideId if provided, else current editingPlayerId)
     const activeId = overrideId || editingPlayerId;
     if (activeId) {
-        if (advanceDirection === 'vertical') {
+        if (advanceDirection === 'vertical' || !canEditPlayers) {
             moveIntoGrid(activeId);
         } else {
             // Horizontal Mode

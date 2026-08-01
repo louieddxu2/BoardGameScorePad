@@ -11,6 +11,7 @@ import { useSessionTranslation } from '../../../i18n/session';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 import { useTranslation } from '../../../i18n';
 import { useVoiceAnnouncements } from './useVoiceAnnouncements';
+import { SessionCapabilities } from '../../../features/multiplayer/sessionCapabilities';
 
 interface SessionViewProps {
   session: GameSession;
@@ -23,6 +24,7 @@ interface SessionViewProps {
   onResetScores: () => void;
   isVoiceEnabled?: boolean;
   onToggleVoice?: () => void;
+  multiplayerCapabilities?: SessionCapabilities;
 }
 
 interface LocalUiState {
@@ -51,6 +53,9 @@ export const useSessionEvents = (
     advanceDirection: uiState.advanceDirection,
     setEditingCell: (cell) => setUiState(prev => ({ ...prev, editingCell: cell, editingPlayerId: null, previewValue: 0 })),
     setEditingPlayerId: (id) => setUiState(prev => ({ ...prev, editingPlayerId: id, editingCell: null, previewValue: 0 })),
+    canEditScore: props.multiplayerCapabilities?.canEditScore,
+    canEditTotal: props.multiplayerCapabilities?.canEditTotal,
+    canEditPlayers: props.multiplayerCapabilities?.canEditPlayers,
   });
 
   // [Optimization] Use Ref to track latest UI State without triggering effect re-run
