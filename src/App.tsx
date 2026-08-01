@@ -1,11 +1,10 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { AppView, GameTemplate, ScoringRule } from './types';
+import { AppView, GameTemplate } from './types';
 import { useAppData } from './hooks/useAppData';
 import { useMobileZoom } from './hooks/useMobileZoom';
 import { useLandscapeOrientation } from './hooks/useLandscapeOrientation';
 import { usePwaInstall } from './hooks/usePwaInstall';
-import { Smartphone, Loader2 } from 'lucide-react';
 import { getTargetHistoryDepth } from './config/historyStrategy'; // Import Strategy
 import { hasActiveModals } from './hooks/useModalBackHandler'; // Modal 歷史協調
 import { useToast } from './hooks/useToast';
@@ -15,21 +14,12 @@ import { parseDeepLinkFromHash } from './utils/deepLink';
 import { fetchTemplateFromCloud } from './services/templateShareService';
 import { cloudClient } from './services/cloudClient';
 import { db } from './db';
-import { multiplayerSessionManager } from './features/multiplayer/multiplayerSessionManager';
-import { createPlayerSessionCapabilities, hostSessionCapabilities } from './features/multiplayer/sessionCapabilities';
 import { useMultiplayerRoomLifecycle } from './hooks/useMultiplayerRoomLifecycle';
+import { useAppSessionActions } from './hooks/useAppSessionActions';
 
-// Components
-import TemplateEditor from './components/editor/TemplateEditor';
-import SessionView from './components/session/SessionView';
-import Dashboard from './components/dashboard/Dashboard';
-import GameSetupModal from './components/dashboard/modals/GameSetupModal';
-import HistoryReviewView from './components/history/HistoryReviewView';
-import { InAppBrowserGuide, isInAppBrowser } from './components/modals/InAppBrowserGuide';
-import { IOSPwaGuide, shouldTriggerIOSPwaGuide } from './components/modals/IOSPwaGuide';
-import MultiplayerRoomModal from './components/session/modals/MultiplayerRoomModal';
-import MultiplayerPlayerClaimModal from './components/session/modals/MultiplayerPlayerClaimModal';
-import MultiplayerParticipantRoomModal from './components/session/modals/MultiplayerParticipantRoomModal';
+import AppWorkspace from './components/app/AppWorkspace';
+import { isInAppBrowser } from './components/modals/InAppBrowserGuide';
+import { shouldTriggerIOSPwaGuide } from './components/modals/IOSPwaGuide';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.DASHBOARD);
@@ -41,6 +31,7 @@ const App: React.FC = () => {
   const { showToast } = useToast();
   const { t: tApp } = useAppTranslation();
 
+  const multiplayerLifecycle = useMultiplayerRoomLifecycle({ appData, setView, showToast, tApp });
   const {
     activeMultiplayerRoom,
     activeMultiplayerRoomState: multiplayerRoomState,
@@ -62,7 +53,7 @@ const App: React.FC = () => {
     handlePublishMultiplayerBoardUpdate,
     releaseHostMultiplayerRoom,
     releaseParticipantMultiplayerRoom,
-  } = useMultiplayerRoomLifecycle({ appData, setView, showToast, tApp });
+  } = multiplayerLifecycle;
 
   // Hook for encapsulated AI Template Sharing confirmation
   const { captureAiTemplateForSharing } = useAiTemplateShareConfirm(view);
@@ -361,376 +352,43 @@ const App: React.FC = () => {
     };
   }, [view]);
 
-  // --- Navigation Handlers ---
-
-  const initSetup = (template: GameTemplate) => {
-    setPendingTemplate(template);
-  };
-
-  const handleResumeGame = async () => {
-    if (pendingTemplate) {
-      const activeSession = appData.activeSessions?.find(s => s.templateId === pendingTemplate.id);
-      const success = await appData.resumeSession(pendingTemplate.id);
-      if (success) {
-        let sessionId = activeSession?.id;
-        if (!sessionId) {
-          const s = await db.sessions.where('templateId').equals(pendingTemplate.id).and(x => x.status === 'active').first();
-          sessionId = s?.id;
-        }
-        if (sessionId) {
-          await tryRestoreMultiplayerRoom(sessionId);
-        }
-        setView(AppView.ACTIVE_SESSION);
-        setPendingTemplate(null);
-      }
-    }
-  };
-
-  const handleDirectResume = async (templateId: string) => {
-    const activeSession = appData.activeSessions?.find(s => s.templateId === templateId);
-    const success = await appData.resumeSession(templateId);
-    if (success) {
-      let sessionId = activeSession?.id;
-      if (!sessionId) {
-        const s = await db.sessions.where('templateId').equals(templateId).and(x => x.status === 'active').first();
-        sessionId = s?.id;
-      }
-      if (sessionId) {
-        await tryRestoreMultiplayerRoom(sessionId);
-      }
-      setPendingTemplate(null);
-      setView(AppView.ACTIVE_SESSION);
-    }
-  };
-
-  const handleCloseMultiplayerRoom = useCallback(async () => {
-    try {
-      const releasedSession = await releaseHostMultiplayerRoom();
-      if (releasedSession) await appData.resumeSessionById(releasedSession.id);
-    } catch (err) {
-      console.warn('[multiplayer] Failed to close host room:', err);
-    }
-  }, [appData, releaseHostMultiplayerRoom]);
-
-  const handleLeaveMultiplayerRoom = useCallback(async () => {
-    try {
-      await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true });
-    } catch (err) {
-      console.warn('[multiplayer] Failed to leave participant room:', err);
-    }
-  }, [releaseParticipantMultiplayerRoom]);
-
-  const handleStartNewGame = async (count: number, options: { startTimeStr: string, scoringRule: ScoringRule }) => {
-    if (pendingTemplate) {
-      if (appData.activeSessionIds.includes(pendingTemplate.id)) {
-        await appData.discardSession(pendingTemplate.id);
-      }
-
-      // Normal start doesn't trigger auto-fill (as user has opportunity to set manually in setup modal)
-      await appData.startSession(pendingTemplate, count, options);
-      setView(AppView.ACTIVE_SESSION);
-      setPendingTemplate(null);
-    }
-  };
-
-  // [New] Direct Start Handler (Bypasses Setup Modal)
-  // [Updated] Integrate Auto-Fill logic directly in startSession
-  const handleQuickStart = async (template: GameTemplate, playerCount: number, location: string, locationId?: string, extra?: { startTimeStr?: string, scoringRule?: ScoringRule }) => {
-    if (appData.activeSessionIds.includes(template.id)) {
-      await appData.discardSession(template.id);
-    }
-
-    // 1. Start Session (Async) - Includes Auto-Fill Logic
-    await appData.startSession(template, playerCount, {
-      startTimeStr: extra?.startTimeStr,
-      scoringRule: extra?.scoringRule || template.defaultScoringRule || 'HIGHEST_WINS',
-      location: location,
-      locationId: locationId
-    });
-
-    // 2. Switch View (Session is already populated with players)
-    setView(AppView.ACTIVE_SESSION);
-  };
-
-  const handleExitSession = useCallback(async (location?: string) => {
-    try {
-      if (activeMultiplayerRoom?.role === 'player') {
-        await releaseParticipantMultiplayerRoom({ deleteLocalRoom: false });
-      }
-    } catch (err) {
-      console.warn('[multiplayer] Failed to release participant room on exit:', err);
-    } finally {
-      appData.exitSession(location !== undefined ? { location } : undefined);
-      transitionToDashboard();
-    }
-  }, [activeMultiplayerRoom, appData, releaseParticipantMultiplayerRoom, transitionToDashboard]);
-
-  const handleSaveToHistory = useCallback(async (location?: string) => {
-    try {
-      if (activeMultiplayerRoom?.role === 'host') {
-        await releaseHostMultiplayerRoom();
-      } else if (activeMultiplayerRoom?.role === 'player') {
-        await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true });
-      }
-    } catch (err) {
-      console.warn('[multiplayer] Failed to release room on save:', err);
-    } finally {
-      captureAiTemplateForSharing(appData.activeTemplate);
-      await appData.saveToHistory(location);
-      transitionToDashboard();
-      
-      // Trigger iOS PWA guide if applicable
-      if (shouldTriggerIOSPwaGuide()) {
-        setIsIOSPwaGuideVisible(true);
-      }
-    }
-  }, [activeMultiplayerRoom, appData, transitionToDashboard, captureAiTemplateForSharing, releaseHostMultiplayerRoom, releaseParticipantMultiplayerRoom]);
-
-  const handleDiscard = useCallback(async () => {
-    try {
-      if (activeMultiplayerRoom?.role === 'host') {
-        await releaseHostMultiplayerRoom();
-      } else if (activeMultiplayerRoom?.role === 'player') {
-        await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true });
-      }
-    } catch (err) {
-      console.warn('[multiplayer] Failed to release room on discard:', err);
-    } finally {
-      if (appData.activeTemplate) {
-        await appData.discardSession(appData.activeTemplate.id);
-        transitionToDashboard();
-      }
-    }
-  }, [activeMultiplayerRoom, appData, transitionToDashboard, releaseHostMultiplayerRoom, releaseParticipantMultiplayerRoom]);
-
-  const handleTemplateSave = async (template: GameTemplate) => {
-    await appData.saveTemplate(template);
-    const defaultCount = appData.sessionPlayerCount || template.lastPlayerCount || 4;
-
-    await appData.startSession(template, defaultCount, {
-      startTimeStr: undefined,
-      scoringRule: template.defaultScoringRule || 'HIGHEST_WINS'
-    });
-
-    setView(AppView.ACTIVE_SESSION);
-    setEditorInitialName(undefined);
-  };
-
-  const handleBatchImport = (templates: GameTemplate[]) => {
-    templates.forEach(t => appData.saveTemplate(t));
-    setView(AppView.DASHBOARD);
-  };
-
-  const handleHistorySelect = async (record: any) => {
-    await appData.viewHistory(record.id);
-    setView(AppView.HISTORY_REVIEW);
-  };
-
-  const handleHistoryExit = () => {
-    appData.viewHistory(null);
-    transitionToDashboard();
-  };
+  const actions = useAppSessionActions({
+    appData,
+    activeMultiplayerRoom,
+    releaseHostMultiplayerRoom,
+    releaseParticipantMultiplayerRoom,
+    tryRestoreMultiplayerRoom,
+    transitionToDashboard,
+    captureAiTemplateForSharing,
+    shouldTriggerIOSPwaGuide,
+    setView,
+    setPendingTemplate,
+    setEditorInitialName,
+    setIsIOSPwaGuideVisible,
+  });
 
   return (
-    <div className="h-full bg-app-bg text-txt-primary font-sans overflow-hidden transition-colors duration-300 relative">
-
-      {isCloudImporting && (
-        <div className="modal-backdrop z-[10000] animate-in fade-in duration-300">
-          <div className="modal-container items-center justify-center p-8 text-center border-none shadow-none bg-transparent">
-            <div className="w-16 h-16 bg-brand-primary/10 rounded-2xl flex items-center justify-center text-brand-primary mb-6 animate-bounce">
-              <Smartphone size={32} />
-            </div>
-            <div className="flex flex-col items-center gap-4">
-              <Loader2 className="w-8 h-8 text-brand-primary animate-spin" />
-              <p className="text-lg font-bold text-txt-primary tracking-wide">{tApp('msg_loading_cloud_data')}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div
-        id="landscape-overlay"
-        className={`fixed inset-0 z-[9999] bg-app-bg flex-col items-center justify-center text-center p-10 ${showLandscapeOverlay ? 'flex' : 'hidden'}`}
-      >
-        <div className="animate-rotate-phone mb-4 text-brand-primary">
-          <Smartphone size={64} strokeWidth={1.5} className="rotate-90" />
-        </div>
-        <h2 className="text-xl font-bold text-txt-primary mb-2">{tApp('rotate_device')}</h2>
-        <p className="text-txt-muted text-sm">{tApp('rotate_device_desc')}</p>
-      </div>
-
-      <div className={`absolute inset-0 z-0 flex flex-col ${view !== AppView.DASHBOARD ? 'invisible pointer-events-none' : ''}`}>
-        <Dashboard
-          isVisible={view === AppView.DASHBOARD}
-          currentView={view}
-          userTemplates={appData.templates}
-          userTemplatesCount={appData.userTemplatesCount}
-          systemOverrides={appData.systemOverrides}
-          systemTemplates={appData.systemTemplates}
-          systemTemplatesCount={appData.systemTemplatesCount}
-          pinnedIds={appData.pinnedIds}
-          newBadgeIds={appData.newBadgeIds}
-          activeSessionIds={appData.activeSessionIds}
-          activeSessions={appData.activeSessions}
-          historyRecords={appData.historyRecords}
-          historyStatsRecords={appData.historyStatsRecords}
-          historyGameEntries={appData.historyGameEntries}
-          historyCount={appData.historyCount}
-          savedPlayers={appData.savedPlayers}
-          searchQuery={appData.searchQuery}
-          setSearchQuery={appData.setSearchQuery}
-          themeMode={appData.themeMode}
-          onToggleTheme={appData.toggleTheme}
-          onTemplateSelect={initSetup}
-          onDirectResume={handleDirectResume}
-          onDiscardSession={appData.discardSession}
-          onClearAllActiveSessions={appData.clearAllActiveSessions}
-          getSessionPreview={appData.getSessionPreview}
-          onTemplateCreate={(name) => {
-            setEditorInitialName(name);
-            setView(AppView.TEMPLATE_CREATOR);
-          }}
-          onTemplateDelete={appData.deleteTemplate}
-          onTemplateSave={appData.saveTemplate}
-          onBatchImport={handleBatchImport}
-          onTogglePin={appData.togglePin}
-          onTogglePinOption={appData.togglePinOption}
-          onClearNewBadges={appData.clearNewBadges}
-          onRestoreSystem={appData.restoreSystemTemplate}
-          onGetFullTemplate={appData.getTemplate}
-          onDeleteHistory={appData.deleteHistoryRecord}
-          onHistorySelect={handleHistorySelect}
-          isInstalled={isInstalled}
-          canInstall={canInstall}
-          onInstallClick={handleInstallClick}
-          onImportSession={appData.importSession}
-          onImportHistory={appData.importHistoryRecord}
-          onImportSettings={appData.importSystemSettings}
-          onBgStatsImport={appData.importBgStatsData}
-          onGetLocalData={appData.getSystemExportData}
-          savedLocations={appData.savedLocations}
-          savedGames={appData.savedGames}
-          isSetupModalOpen={!!pendingTemplate}
-          gameOptions={appData.gameOptions}
-          onQuickStart={handleQuickStart}
-        />
-      </div>
-
-      {view === AppView.TEMPLATE_CREATOR && (
-        <div className="absolute inset-0 z-50 bg-app-bg">
-          <TemplateEditor
-            onSave={handleTemplateSave}
-            onCancel={() => {
-              setView(AppView.DASHBOARD);
-              setEditorInitialName(undefined);
-            }}
-            allTemplates={[...appData.systemTemplates, ...appData.templates]}
-            initialName={editorInitialName}
-          />
-        </div>
-      )}
-
-      {view === AppView.ACTIVE_SESSION && appData.currentSession && appData.activeTemplate && (
-        <div className="absolute inset-0 z-40 bg-app-bg animate-in fade-in duration-300">
-          <SessionView
-            key={appData.currentSession.id}
-            session={appData.currentSession}
-            template={appData.activeTemplate}
-            savedPlayers={appData.savedPlayers}
-            savedLocations={appData.savedLocations}
-            zoomLevel={zoomLevel}
-            baseImage={appData.sessionImage}
-            onUpdateSession={appData.updateSession}
-            onUpdateSavedPlayer={appData.updateSavedPlayer}
-            onUpdateImage={appData.setSessionImage}
-            onResetScores={appData.resetSessionScores}
-            onUpdateTemplate={appData.updateActiveTemplate}
-            onExit={handleExitSession}
-            onSaveToHistory={handleSaveToHistory}
-            onDiscard={handleDiscard}
-            isVoiceEnabled={appData.isVoiceEnabled}
-            onToggleVoice={appData.toggleVoice}
-            multiplayerRoomId={activeMultiplayerRoom?.roomId}
-            multiplayerManager={multiplayerSessionManager}
-            multiplayerCapabilities={activeMultiplayerRoom?.role === 'player' ? createPlayerSessionCapabilities(activeMultiplayerRoom.playerIds ?? []) : hostSessionCapabilities}
-            onOpenMultiplayerRoom={activeMultiplayerRoom?.role !== 'player' ? handleOpenMultiplayerRoom : undefined}
-            onOpenMultiplayerParticipantRoom={activeMultiplayerRoom?.role === 'player' ? () => setIsMultiplayerParticipantRoomModalOpen(true) : undefined}
-            onRequestMultiplayerPlayerClaim={activeMultiplayerRoom?.role === 'player' ? handleRequestMultiplayerPlayerClaim : undefined}
-          />
-        </div>
-      )}
-
-      {view === AppView.HISTORY_REVIEW && appData.viewingHistoryRecord && (
-        <div className="absolute inset-0 z-40 bg-app-bg animate-in fade-in duration-300">
-          <HistoryReviewView
-            record={appData.viewingHistoryRecord}
-            onExit={handleHistoryExit}
-            zoomLevel={zoomLevel}
-          />
-        </div>
-      )}
-
-      {pendingTemplate && (
-        <GameSetupModal
-          template={pendingTemplate}
-          previewSession={pendingSessionPreview}
-          sessionPlayerCount={appData.sessionPlayerCount}
-          onClose={() => setPendingTemplate(null)}
-          onStart={handleStartNewGame}
-          onResume={handleResumeGame}
-        />
-      )}
-
-      {isJoiningMultiplayer && (
-        <div className="modal-backdrop z-[10000]">
-          <Loader2 className="w-8 h-8 text-brand-primary animate-spin" />
-        </div>
-      )}
-
-      {isMultiplayerRoomModalOpen && activeMultiplayerRoom?.role === 'host' && (
-        <MultiplayerRoomModal
-          isOpen
-          joinUrl={multiplayerJoinUrl}
-          connectionCount={multiplayerRoomState?.connectionCount ?? 0}
-          hasUnpublishedBoardUpdate={multiplayerRoomState?.hasUnpublishedBoardUpdate ?? false}
-          onPublishBoardUpdate={handlePublishMultiplayerBoardUpdate}
-          onCloseRoom={handleCloseMultiplayerRoom}
-          onClose={() => setIsMultiplayerRoomModalOpen(false)}
-        />
-      )}
-
-      {isMultiplayerParticipantRoomModalOpen && activeMultiplayerRoom?.role === 'player' && (
-        <MultiplayerParticipantRoomModal
-          isOpen
-          connectionStatus={multiplayerRoomState?.status}
-          onLeave={handleLeaveMultiplayerRoom}
-          onClose={() => setIsMultiplayerParticipantRoomModalOpen(false)}
-        />
-      )}
-
-      {pendingMultiplayerClaimIds && activeMultiplayerRoom?.role === 'player' && multiplayerRoomState?.session && (
-        <MultiplayerPlayerClaimModal
-          isOpen
-          variant="claim"
-          initialSelectedIds={pendingMultiplayerClaimIds}
-          players={multiplayerRoomState.session.players}
-          onConfirm={handleConfirmMultiplayerPlayerClaims}
-          onClose={handleCancelMultiplayerPlayerClaims}
-        />
-      )}
-
-      {pendingMultiplayerJoin && (
-        <MultiplayerPlayerClaimModal
-          isOpen
-          players={pendingMultiplayerJoin.bootstrapMessage.package.session.players}
-          onConfirm={handleConfirmMultiplayerPlayers}
-          onClose={handleCancelMultiplayerJoin}
-        />
-      )}
-      
-      <InAppBrowserGuide />
-      {isIOSPwaGuideVisible && <IOSPwaGuide onClose={() => setIsIOSPwaGuideVisible(false)} />}
-    </div>
+    <AppWorkspace
+      view={view}
+      appData={appData}
+      pendingTemplate={pendingTemplate}
+      pendingSessionPreview={pendingSessionPreview}
+      editorInitialName={editorInitialName}
+      isCloudImporting={isCloudImporting}
+      showLandscapeOverlay={showLandscapeOverlay}
+      zoomLevel={zoomLevel}
+      isInstalled={isInstalled}
+      canInstall={canInstall}
+      isIOSPwaGuideVisible={isIOSPwaGuideVisible}
+      setView={setView}
+      setPendingTemplate={setPendingTemplate}
+      setEditorInitialName={setEditorInitialName}
+      setIsIOSPwaGuideVisible={setIsIOSPwaGuideVisible}
+      handleInstallClick={handleInstallClick}
+      tApp={tApp}
+      actions={actions}
+      multiplayer={multiplayerLifecycle}
+    />
   );
 };
 
