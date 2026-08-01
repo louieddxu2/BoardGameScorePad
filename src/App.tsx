@@ -63,9 +63,15 @@ const App: React.FC = () => {
 
   // Custom Hook for all data logic
   const appData = useAppData();
+  const appDataRef = useRef(appData);
+  appDataRef.current = appData;
 
   const { showToast } = useToast();
   const { t: tApp } = useAppTranslation();
+  const showToastRef = useRef(showToast);
+  const tAppRef = useRef(tApp);
+  showToastRef.current = showToast;
+  tAppRef.current = tApp;
 
   const clearMultiplayerJoinTimeout = useCallback(() => {
     if (multiplayerJoinTimeoutRef.current === null) return;
@@ -109,14 +115,14 @@ const App: React.FC = () => {
     if (returned) {
       activeMultiplayerRoomRef.current = null;
       setActiveMultiplayerRoom(null);
-      void appData.resumeSessionById(returned.id);
-      showToast({ message: tApp('app_toast_multiplayer_ownership_returned'), type: 'success' });
+      void appDataRef.current.resumeSessionById(returned.id);
+      showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_ownership_returned'), type: 'success' });
       return;
     }
 
     // Transport owns retry/backoff. Do not interpret a temporary mobile or
     // network disconnect as a host shutdown and cancel its recovery loop.
-  }, [activeMultiplayerRoom, appData, multiplayerVersion, showToast, tApp]);
+  }, [activeMultiplayerRoom, multiplayerVersion]);
 
   const clearRoomUrlQuery = useCallback(() => {
     if (!window.location.search.includes('room')) return;
@@ -152,7 +158,7 @@ const App: React.FC = () => {
         activeMultiplayerRoomRef.current = nextRoom;
         setActiveMultiplayerRoom(nextRoom);
       }
-      void appData.resumeSessionById(existingRoom.session.id).then(() => {
+      void appDataRef.current.resumeSessionById(existingRoom.session.id).then(() => {
         setView(AppView.ACTIVE_SESSION);
         clearRoomUrlQuery();
       });
@@ -187,7 +193,7 @@ const App: React.FC = () => {
             revision: bootstrapMessage.package.revision,
           })) return;
           multiplayerSessionManager.publishSession(roomId, persisted.session);
-          if (templateChanged) await appData.resumeSessionById(persisted.session.id);
+          if (templateChanged) await appDataRef.current.resumeSessionById(persisted.session.id);
           return;
         }
         if (activeTransport) {
@@ -207,7 +213,7 @@ const App: React.FC = () => {
         activeTransport?.stop?.();
         multiplayerJoinStartedRef.current = null;
         clearRoomUrlQuery();
-        showToast({ message: tApp('app_toast_multiplayer_join_timeout'), type: 'warning' });
+        showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_join_timeout'), type: 'warning' });
       }
       // 無論如何都確保清除 Spinner
       isJoiningMultiplayerRef.current = false;
@@ -223,7 +229,7 @@ const App: React.FC = () => {
         setPendingMultiplayerJoin(null);
       }
     };
-  }, [appData, appData.isDbReady, clearMultiplayerJoinTimeout, clearRoomUrlQuery, showToast, tApp]);
+  }, [appData.isDbReady, clearMultiplayerJoinTimeout, clearRoomUrlQuery]);
 
   const [isIOSPwaGuideVisible, setIsIOSPwaGuideVisible] = useState(false);
 
