@@ -520,12 +520,12 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         <>
                           <div
                             aria-hidden="true"
-                            className="absolute inset-y-0 left-0 z-20 w-1.5 pointer-events-none blur-[2px]"
+                            className="absolute inset-y-0 left-0 z-20 w-2 pointer-events-none blur-[3px]"
                             style={{ backgroundImage: `linear-gradient(to right, ${p.color}, transparent)`, opacity: 0.42 }}
                           />
                           <div
                             aria-hidden="true"
-                            className="absolute inset-y-0 right-0 z-20 w-1.5 pointer-events-none blur-[2px]"
+                            className="absolute inset-y-0 right-0 z-20 w-2 pointer-events-none blur-[3px]"
                             style={{ backgroundImage: `linear-gradient(to left, ${p.color}, transparent)`, opacity: 0.42 }}
                           />
                         </>
