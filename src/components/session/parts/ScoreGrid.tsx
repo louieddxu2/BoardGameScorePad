@@ -493,6 +493,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
               ) : (
                 session.players.map((p, pIdx) => {
                   const isActive = editingCell?.playerId === p.id && editingCell?.colId === col.id;
+                  const isParticipantEditableColumn = editablePlayerIds.includes(p.id) && p.color !== 'transparent';
 
                   return (
                     <div key={p.id} className={`${rowHiddenClass} w-full relative player-col-${p.id}`}>
@@ -515,6 +516,20 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                         isReadOnly={!canEditScore(p.id, col)}
                         isEditable={false}
                       />
+                      {isParticipantEditableColumn && (
+                        <>
+                          <div
+                            aria-hidden="true"
+                            className="absolute inset-y-0 left-0 z-20 w-1.5 pointer-events-none blur-[2px]"
+                            style={{ backgroundImage: `linear-gradient(to right, ${p.color}, transparent)`, opacity: 0.42 }}
+                          />
+                          <div
+                            aria-hidden="true"
+                            className="absolute inset-y-0 right-0 z-20 w-1.5 pointer-events-none blur-[2px]"
+                            style={{ backgroundImage: `linear-gradient(to left, ${p.color}, transparent)`, opacity: 0.42 }}
+                          />
+                        </>
+                      )}
                       {col.overlayColumns.map(overlayCol => {
                         const isOverlayActive = editingCell?.playerId === p.id && editingCell?.colId === overlayCol.id;
                         const scoreData = p.scores[overlayCol.id];
