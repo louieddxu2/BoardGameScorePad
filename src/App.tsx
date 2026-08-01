@@ -15,17 +15,9 @@ import { parseDeepLinkFromHash } from './utils/deepLink';
 import { fetchTemplateFromCloud } from './services/templateShareService';
 import { cloudClient } from './services/cloudClient';
 import { db } from './db';
-import Peer from 'peerjs';
-import { generateId } from './utils/idGenerator';
-import { createLocalScoreStateSyncAdapter, multiplayerLocalStore } from './features/multiplayer/multiplayerLocalStore';
-import { multiplayerDeliveryStore, getOrCreateMultiplayerDeviceId } from './features/multiplayer/multiplayerDeliveryStore';
-import { multiplayerParticipantBindingStore, participantBindingKey } from './features/multiplayer/multiplayerParticipantBinding';
-import { createMultiplayerP2PRuntimeTransport } from './features/multiplayer/multiplayerP2PRuntimeTransport';
-import { createMultiplayerHostRoomRuntime, createMultiplayerPlayerRoomRuntime, restoreMultiplayerHostRoomRuntime, restoreMultiplayerPlayerRoomRuntime } from './features/multiplayer/multiplayerRoomRuntime';
 import { multiplayerSessionManager } from './features/multiplayer/multiplayerSessionManager';
-import { BootstrapPackageMessage } from './features/multiplayer/protocol';
 import { createPlayerSessionCapabilities, hostSessionCapabilities } from './features/multiplayer/sessionCapabilities';
-import { releaseMultiplayerRoomOwnership } from './features/multiplayer/multiplayerPersistence';
+import { useMultiplayerRoomLifecycle } from './hooks/useMultiplayerRoomLifecycle';
 
 // Components
 import TemplateEditor from './components/editor/TemplateEditor';
@@ -39,46 +31,38 @@ import MultiplayerRoomModal from './components/session/modals/MultiplayerRoomMod
 import MultiplayerPlayerClaimModal from './components/session/modals/MultiplayerPlayerClaimModal';
 import MultiplayerParticipantRoomModal from './components/session/modals/MultiplayerParticipantRoomModal';
 
-type ActiveMultiplayerRoom = {
-  roomId: string;
-  role: 'host' | 'player';
-  playerIds?: string[];
-};
-
-type PendingMultiplayerJoin = {
-  roomId: string;
-  bootstrapMessage: BootstrapPackageMessage;
-  transport: ReturnType<typeof createMultiplayerP2PRuntimeTransport>;
-};
-
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.DASHBOARD);
   const [isCloudImporting, setIsCloudImporting] = useState(false);
-  const [activeMultiplayerRoom, setActiveMultiplayerRoom] = useState<ActiveMultiplayerRoom | null>(null);
-  const [isMultiplayerRoomModalOpen, setIsMultiplayerRoomModalOpen] = useState(false);
-  const [isMultiplayerParticipantRoomModalOpen, setIsMultiplayerParticipantRoomModalOpen] = useState(false);
-  const [pendingMultiplayerJoin, setPendingMultiplayerJoin] = useState<PendingMultiplayerJoin | null>(null);
-  const [pendingMultiplayerClaimIds, setPendingMultiplayerClaimIds] = useState<string[] | null>(null);
-  const [isJoiningMultiplayer, setIsJoiningMultiplayer] = useState(false);
-  const [multiplayerVersion, setMultiplayerVersion] = useState(0);
 
   // Custom Hook for all data logic
   const appData = useAppData();
-  const appDataRef = useRef(appData);
-  appDataRef.current = appData;
 
   const { showToast } = useToast();
   const { t: tApp } = useAppTranslation();
-  const showToastRef = useRef(showToast);
-  const tAppRef = useRef(tApp);
-  showToastRef.current = showToast;
-  tAppRef.current = tApp;
 
-  const clearMultiplayerJoinTimeout = useCallback(() => {
-    if (multiplayerJoinTimeoutRef.current === null) return;
-    window.clearTimeout(multiplayerJoinTimeoutRef.current);
-    multiplayerJoinTimeoutRef.current = null;
-  }, []);
+  const {
+    activeMultiplayerRoom,
+    activeMultiplayerRoomState: multiplayerRoomState,
+    multiplayerJoinUrl,
+    pendingMultiplayerJoin,
+    pendingMultiplayerClaimIds,
+    isJoiningMultiplayer,
+    isMultiplayerRoomModalOpen,
+    setIsMultiplayerRoomModalOpen,
+    isMultiplayerParticipantRoomModalOpen,
+    setIsMultiplayerParticipantRoomModalOpen,
+    tryRestoreMultiplayerRoom,
+    handleOpenMultiplayerRoom,
+    handleConfirmMultiplayerPlayers,
+    handleRequestMultiplayerPlayerClaim,
+    handleConfirmMultiplayerPlayerClaims,
+    handleCancelMultiplayerPlayerClaims,
+    handleCancelMultiplayerJoin,
+    handlePublishMultiplayerBoardUpdate,
+    releaseHostMultiplayerRoom,
+    releaseParticipantMultiplayerRoom,
+  } = useMultiplayerRoomLifecycle({ appData, setView, showToast, tApp });
 
   // Hook for encapsulated AI Template Sharing confirmation
   const { captureAiTemplateForSharing } = useAiTemplateShareConfirm(view);
@@ -92,145 +76,11 @@ const App: React.FC = () => {
   // Ref to ignore popstates triggered by our own history manipulation (pruning)
   const ignorePopstateRef = useRef(false);
   const deepLinkHandledRef = useRef(false);
-  const multiplayerJoinStartedRef = useRef<string | null>(null);
-  const multiplayerJoinTimeoutRef = useRef<number | null>(null);
-  const isJoiningMultiplayerRef = useRef(false);
-  const isOpeningRoomRef = useRef(false);
-  const activeMultiplayerRoomRef = useRef<ActiveMultiplayerRoom | null>(null);
 
   // Hardware & Environment Side Effects Hooks
   const zoomLevel = useMobileZoom();
   const showLandscapeOverlay = useLandscapeOrientation();
   const { isInstalled, canInstall, handleInstallClick } = usePwaInstall();
-
-  useEffect(() => () => clearMultiplayerJoinTimeout(), [clearMultiplayerJoinTimeout]);
-
-  useEffect(() => multiplayerSessionManager.subscribe(() => setMultiplayerVersion((version) => version + 1)), []);
-
-  useEffect(() => {
-    if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
-    const roomId = activeMultiplayerRoom.roomId;
-
-    // 情況 A：Host 正常結束，歸還 session 擁有權
-    const returned = multiplayerSessionManager.takeReturnedSession(roomId);
-    if (returned) {
-      activeMultiplayerRoomRef.current = null;
-      setActiveMultiplayerRoom(null);
-      void appDataRef.current.resumeSessionById(returned.id);
-      showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_ownership_returned'), type: 'success' });
-      return;
-    }
-
-    // Transport owns retry/backoff. Do not interpret a temporary mobile or
-    // network disconnect as a host shutdown and cancel its recovery loop.
-  }, [activeMultiplayerRoom, multiplayerVersion]);
-
-  const clearRoomUrlQuery = useCallback(() => {
-    if (!window.location.search.includes('room')) return;
-    const url = new URL(window.location.href);
-    url.searchParams.delete('room');
-    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
-  }, []);
-
-  useEffect(() => {
-    if (!appData.isDbReady || isInAppBrowser()) return;
-    const roomId = new URLSearchParams(window.location.search).get('room');
-    if (!roomId) return;
-
-    const existingRoom = multiplayerSessionManager.get(roomId);
-
-    // 情況 A：既有連線仍在且有效 (connected) -> 照既有的連上
-    if (existingRoom && existingRoom.status === 'connected' && existingRoom.session) {
-      multiplayerJoinStartedRef.current = roomId;
-      clearMultiplayerJoinTimeout();
-      isJoiningMultiplayerRef.current = false;
-      setIsJoiningMultiplayer(false);
-      if (activeMultiplayerRoomRef.current?.roomId !== roomId) {
-        const runtimeSession = existingRoom.runtime?.session as { claimedPlayerIds?: string | string[] } | undefined;
-        const rawPlayerIds = runtimeSession?.claimedPlayerIds;
-        const existingPlayerIds = rawPlayerIds
-          ? (Array.isArray(rawPlayerIds) ? rawPlayerIds : [rawPlayerIds])
-          : undefined;
-        const nextRoom: ActiveMultiplayerRoom = {
-          roomId,
-          role: existingRoom.role,
-          playerIds: existingPlayerIds || (activeMultiplayerRoomRef.current?.playerIds ?? [])
-        };
-        activeMultiplayerRoomRef.current = nextRoom;
-        setActiveMultiplayerRoom(nextRoom);
-      }
-      void appDataRef.current.resumeSessionById(existingRoom.session.id).then(() => {
-        setView(AppView.ACTIVE_SESSION);
-        clearRoomUrlQuery();
-      });
-      return;
-    }
-
-    // 情況 B：既有連線無效/舊連線殘留 -> 徹底把既有連線清空再連上
-    if (existingRoom) {
-      multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
-    }
-
-    if (multiplayerJoinStartedRef.current === roomId && isJoiningMultiplayerRef.current) return;
-    multiplayerJoinStartedRef.current = roomId;
-    clearMultiplayerJoinTimeout();
-    isJoiningMultiplayerRef.current = true;
-    setIsJoiningMultiplayer(true);
-
-    let activeTransport: ReturnType<typeof createMultiplayerP2PRuntimeTransport> | null = null;
-    const adapter = createLocalScoreStateSyncAdapter(roomId, 'player', {
-      onRemoteBootstrap: async (bootstrapMessage, persisted) => {
-        const managedRoom = multiplayerSessionManager.get(roomId);
-        if (managedRoom?.runtime?.role === 'player') {
-          const runtime = managedRoom.runtime;
-          const templateChanged = JSON.stringify(runtime.session.template) !== JSON.stringify(persisted.templateForSession);
-          if (!runtime.applyBootstrap({
-            template: persisted.templateForSession,
-            session: persisted.session,
-            revision: bootstrapMessage.package.revision,
-          })) return;
-          multiplayerSessionManager.publishSession(roomId, persisted.session);
-          if (templateChanged) await appDataRef.current.resumeSessionById(persisted.session.id);
-          return;
-        }
-        if (!isJoiningMultiplayerRef.current || multiplayerJoinStartedRef.current !== roomId) return;
-        clearMultiplayerJoinTimeout();
-        isJoiningMultiplayerRef.current = false;
-        setIsJoiningMultiplayer(false);
-        if (activeTransport) {
-          setPendingMultiplayerJoin({ roomId, bootstrapMessage, transport: activeTransport });
-        }
-      },
-    });
-
-    activeTransport = createMultiplayerP2PRuntimeTransport({ Peer, adapter, logger: (message) => console.info('[multiplayer]', message) });
-    activeTransport.joinRoom?.(roomId);
-
-    multiplayerJoinTimeoutRef.current = window.setTimeout(() => {
-      // 已經成功連線為 player，不需要超時處理
-      if (multiplayerSessionManager.get(roomId)?.role === 'player') return;
-      // ref 仍指向當前 roomId → 這是真正的超時，執行完整清理
-      if (multiplayerJoinStartedRef.current === roomId) {
-        activeTransport?.stop?.();
-        multiplayerJoinStartedRef.current = null;
-        clearRoomUrlQuery();
-        showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_join_timeout'), type: 'warning' });
-      }
-      // 無論如何都確保清除 Spinner
-      isJoiningMultiplayerRef.current = false;
-      setIsJoiningMultiplayer(false);
-    }, 15000);
-
-    return () => {
-      clearMultiplayerJoinTimeout();
-      if (multiplayerJoinStartedRef.current === roomId && !multiplayerSessionManager.get(roomId)) {
-        activeTransport?.stop?.();
-        isJoiningMultiplayerRef.current = false;
-        setIsJoiningMultiplayer(false);
-        setPendingMultiplayerJoin(null);
-      }
-    };
-  }, [appData.isDbReady, clearMultiplayerJoinTimeout, clearRoomUrlQuery]);
 
   const [isIOSPwaGuideVisible, setIsIOSPwaGuideVisible] = useState(false);
 
@@ -517,93 +367,6 @@ const App: React.FC = () => {
     setPendingTemplate(template);
   };
 
-  const tryRestoreMultiplayerRoom = useCallback(async (sessionId: string) => {
-    try {
-      const room = await multiplayerLocalStore.getRoomBySessionId(sessionId);
-      if (!room) return;
-
-      const existingManagedRoom = multiplayerSessionManager.get(room.roomId);
-      if (existingManagedRoom?.runtime) {
-        if (room.role === 'host') {
-          const nextRoom: ActiveMultiplayerRoom = { roomId: room.roomId, role: 'host' };
-          activeMultiplayerRoomRef.current = nextRoom;
-          setActiveMultiplayerRoom(nextRoom);
-        } else {
-          const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
-          const binding = await multiplayerParticipantBindingStore.get(participantBindingKey(room.roomId, deviceId));
-          const playerIds = binding?.playerIds ?? (binding?.playerId ? [binding.playerId] : []);
-          const nextRoom: ActiveMultiplayerRoom = { roomId: room.roomId, role: 'player', playerIds };
-          activeMultiplayerRoomRef.current = nextRoom;
-          setActiveMultiplayerRoom(nextRoom);
-        }
-        return;
-      }
-
-      if (room.role === 'host') {
-        const adapter = createLocalScoreStateSyncAdapter(room.roomId, 'host');
-        const transport = createMultiplayerP2PRuntimeTransport({
-          Peer,
-          adapter,
-          logger: (message) => console.info('[multiplayer]', message),
-        });
-        const callbacks = multiplayerSessionManager.createRuntimeCallbacks(room.roomId);
-        const runtime = await restoreMultiplayerHostRoomRuntime({
-          roomId: room.roomId,
-          store: multiplayerLocalStore,
-          deliveryStore: multiplayerDeliveryStore,
-          transport,
-          onSessionSnapshot: callbacks.onSessionSnapshot,
-          onParticipantClaims: (claims) => multiplayerSessionManager.setParticipantClaims(room.roomId, claims),
-        });
-        if (runtime) {
-          multiplayerSessionManager.register(room.roomId, runtime, 'connecting');
-          transport.setConnectionChangeHandler?.((connectionCount) =>
-            multiplayerSessionManager.setConnectionCount(room.roomId, connectionCount)
-          );
-          runtime.start();
-          const nextRoom: ActiveMultiplayerRoom = { roomId: room.roomId, role: 'host' };
-          activeMultiplayerRoomRef.current = nextRoom;
-          setActiveMultiplayerRoom(nextRoom);
-        }
-      } else if (room.role === 'player') {
-        const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
-        const binding = await multiplayerParticipantBindingStore.get(participantBindingKey(room.roomId, deviceId));
-        const playerIds = binding?.playerIds ?? (binding?.playerId ? [binding.playerId] : []);
-
-        const adapter = createLocalScoreStateSyncAdapter(room.roomId, 'player');
-        const transport = createMultiplayerP2PRuntimeTransport({
-          Peer,
-          adapter,
-          logger: (message) => console.info('[multiplayer]', message),
-        });
-        const callbacks = multiplayerSessionManager.createRuntimeCallbacks(room.roomId);
-        const runtime = await restoreMultiplayerPlayerRoomRuntime({
-          roomId: room.roomId,
-          deviceId,
-          store: multiplayerLocalStore,
-          bindingStore: multiplayerParticipantBindingStore,
-          deliveryStore: multiplayerDeliveryStore,
-          transport,
-          onSessionSnapshot: callbacks.onSessionSnapshot,
-          onOwnershipReturned: callbacks.onOwnershipReturned,
-        });
-        if (runtime) {
-          multiplayerSessionManager.register(room.roomId, runtime, 'connecting');
-          transport.setConnectionChangeHandler?.((connectionCount) =>
-            multiplayerSessionManager.setConnectionCount(room.roomId, connectionCount)
-          );
-          runtime.start();
-          await runtime.restoreParticipantBinding();
-          const nextRoom: ActiveMultiplayerRoom = { roomId: room.roomId, role: 'player', playerIds };
-          activeMultiplayerRoomRef.current = nextRoom;
-          setActiveMultiplayerRoom(nextRoom);
-        }
-      }
-    } catch (err) {
-      console.warn('[multiplayer] Failed to restore multiplayer room:', err);
-    }
-  }, []);
-
   const handleResumeGame = async () => {
     if (pendingTemplate) {
       const activeSession = appData.activeSessions?.find(s => s.templateId === pendingTemplate.id);
@@ -639,154 +402,6 @@ const App: React.FC = () => {
       setView(AppView.ACTIVE_SESSION);
     }
   };
-
-  const handleOpenMultiplayerRoom = useCallback(async () => {
-    if (isOpeningRoomRef.current) return;
-    if (activeMultiplayerRoom?.role === 'host') {
-      setIsMultiplayerRoomModalOpen(true);
-      return;
-    }
-    if (!appData.currentSession || !appData.activeTemplate) return;
-
-    isOpeningRoomRef.current = true;
-    try {
-      const roomId = `scorepad-${generateId(12)}`;
-      const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
-      const adapter = createLocalScoreStateSyncAdapter(roomId, 'host');
-      const transport = createMultiplayerP2PRuntimeTransport({ Peer, adapter, logger: (message) => console.info('[multiplayer]', message) });
-      const callbacks = multiplayerSessionManager.createRuntimeCallbacks(roomId);
-      const runtime = await createMultiplayerHostRoomRuntime({
-        roomId,
-        hostDeviceId: deviceId,
-        template: appData.activeTemplate,
-        session: appData.currentSession,
-        store: multiplayerLocalStore,
-        deliveryStore: multiplayerDeliveryStore,
-        transport,
-        onSessionSnapshot: callbacks.onSessionSnapshot,
-        onParticipantClaims: (claims) => multiplayerSessionManager.setParticipantClaims(roomId, claims),
-      });
-      multiplayerSessionManager.register(roomId, runtime, 'connecting');
-      transport.setConnectionChangeHandler?.((connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount));
-      runtime.start();
-      const nextRoom: ActiveMultiplayerRoom = { roomId, role: 'host' };
-      activeMultiplayerRoomRef.current = nextRoom;
-      setActiveMultiplayerRoom(nextRoom);
-      setIsMultiplayerRoomModalOpen(true);
-    } finally {
-      isOpeningRoomRef.current = false;
-    }
-  }, [activeMultiplayerRoom?.role, appData.activeTemplate, appData.currentSession]);
-
-  const handleConfirmMultiplayerPlayers = useCallback(async (playerIds: string[]) => {
-    if (!pendingMultiplayerJoin) return;
-    const { roomId, bootstrapMessage, transport } = pendingMultiplayerJoin;
-    const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
-    const callbacks = multiplayerSessionManager.createRuntimeCallbacks(roomId);
-    const runtime = await createMultiplayerPlayerRoomRuntime({
-      bootstrapMessage,
-      deviceId,
-      store: multiplayerLocalStore,
-      bindingStore: multiplayerParticipantBindingStore,
-      deliveryStore: multiplayerDeliveryStore,
-      transport,
-      onSessionSnapshot: callbacks.onSessionSnapshot,
-      onOwnershipReturned: callbacks.onOwnershipReturned,
-    });
-    multiplayerSessionManager.register(roomId, runtime, 'connected');
-    transport.setConnectionChangeHandler?.((connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount));
-    for (const playerId of playerIds) runtime.controller.claimPlayer(playerId);
-    const nextRoom: ActiveMultiplayerRoom = { roomId, role: 'player', playerIds };
-    activeMultiplayerRoomRef.current = nextRoom;
-    setActiveMultiplayerRoom(nextRoom);
-    setPendingMultiplayerJoin(null);
-    clearRoomUrlQuery();
-    const resumed = await appData.resumeSessionById(runtime.session.session.id);
-    if (resumed) setView(AppView.ACTIVE_SESSION);
-  }, [appData, clearRoomUrlQuery, pendingMultiplayerJoin]);
-
-  const handleRequestMultiplayerPlayerClaim = useCallback((playerId: string) => {
-    if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
-    if (activeMultiplayerRoom.playerIds?.includes(playerId)) return;
-    setPendingMultiplayerClaimIds([playerId]);
-  }, [activeMultiplayerRoom]);
-
-  const handleConfirmMultiplayerPlayerClaims = useCallback((playerIds: string[]) => {
-    if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
-    const managedRoom = multiplayerSessionManager.get(activeMultiplayerRoom.roomId);
-    if (managedRoom?.runtime?.role !== 'player') return;
-
-    const existingPlayerIds = activeMultiplayerRoom.playerIds ?? [];
-    const nextPlayerIds = [...new Set([...existingPlayerIds, ...playerIds])];
-    for (const playerId of nextPlayerIds) {
-      if (!existingPlayerIds.includes(playerId)) managedRoom.runtime.controller.claimPlayer(playerId);
-    }
-
-    const nextRoom: ActiveMultiplayerRoom = { ...activeMultiplayerRoom, playerIds: nextPlayerIds };
-    activeMultiplayerRoomRef.current = nextRoom;
-    setActiveMultiplayerRoom(nextRoom);
-    setPendingMultiplayerClaimIds(null);
-  }, [activeMultiplayerRoom]);
-
-  const handleCancelMultiplayerPlayerClaims = useCallback(() => {
-    setPendingMultiplayerClaimIds(null);
-  }, []);
-
-  const handleCancelMultiplayerJoin = useCallback(() => {
-    pendingMultiplayerJoin?.transport.stop?.();
-    setPendingMultiplayerJoin(null);
-    isJoiningMultiplayerRef.current = false;
-    setIsJoiningMultiplayer(false);
-    multiplayerJoinStartedRef.current = null;
-    clearRoomUrlQuery();
-  }, [clearRoomUrlQuery, pendingMultiplayerJoin]);
-
-  const multiplayerRoomState = activeMultiplayerRoom ? multiplayerSessionManager.get(activeMultiplayerRoom.roomId) : null;
-  const multiplayerJoinUrl = activeMultiplayerRoom?.role === 'host'
-    ? `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(activeMultiplayerRoom.roomId)}`
-    : '';
-
-  const handlePublishMultiplayerBoardUpdate = useCallback(async () => {
-    if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'host') return;
-    const managedRoom = multiplayerSessionManager.get(activeMultiplayerRoom.roomId);
-    if (managedRoom?.runtime?.role !== 'host') return;
-    await managedRoom.runtime.controller.publishBoard();
-    multiplayerSessionManager.setUnpublishedBoardUpdate(activeMultiplayerRoom.roomId, false);
-  }, [activeMultiplayerRoom]);
-
-  const releaseHostMultiplayerRoom = useCallback(async () => {
-    if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'host') return;
-    const managedRoom = multiplayerSessionManager.get(activeMultiplayerRoom.roomId);
-    if (!managedRoom?.runtime || managedRoom.runtime.role !== 'host') return;
-    const completed = await managedRoom.runtime.controller.complete();
-    await releaseMultiplayerRoomOwnership({
-      store: multiplayerLocalStore,
-      roomId: activeMultiplayerRoom.roomId,
-      session: completed.finalSession,
-      completedAt: completed.completedAt,
-    });
-    multiplayerSessionManager.closeRoom(activeMultiplayerRoom.roomId);
-    clearRoomUrlQuery();
-    activeMultiplayerRoomRef.current = null;
-    setActiveMultiplayerRoom(null);
-    setIsMultiplayerParticipantRoomModalOpen(false);
-    setIsMultiplayerRoomModalOpen(false);
-    return completed.finalSession;
-  }, [activeMultiplayerRoom, clearRoomUrlQuery]);
-
-  const releaseParticipantMultiplayerRoom = useCallback(async (options?: { deleteLocalRoom?: boolean }) => {
-    if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
-    const roomId = activeMultiplayerRoom.roomId;
-    multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: options?.deleteLocalRoom });
-    multiplayerJoinStartedRef.current = null;
-    clearMultiplayerJoinTimeout();
-    isJoiningMultiplayerRef.current = false;
-    setIsJoiningMultiplayer(false);
-    clearRoomUrlQuery();
-    activeMultiplayerRoomRef.current = null;
-    setActiveMultiplayerRoom(null);
-    setIsMultiplayerParticipantRoomModalOpen(false);
-  }, [activeMultiplayerRoom, clearMultiplayerJoinTimeout, clearRoomUrlQuery]);
 
   const handleCloseMultiplayerRoom = useCallback(async () => {
     try {
