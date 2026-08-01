@@ -1,4 +1,4 @@
-const CACHE_NAME = 'boardgame-scorepad-cache-2026-08-02-editable-column-glow';
+const CACHE_NAME = 'boardgame-scorepad-cache-2026-08-02-builtin-template-v16';
 
 // 核心靜態資源
 const CORE_ASSETS = [

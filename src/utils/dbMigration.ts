@@ -4,8 +4,8 @@ import { migrateTemplate, migrateScores } from './dataMigration';
 import { GameTemplate, GameSession } from '../types';
 import { generateId } from './idGenerator';
 
-// [Update] Bumped to 11 to force refresh of built-in templates (template content updates)
-const CURRENT_BUILTIN_VERSION = 15;
+// Bump when built-in template content changes so existing installs refresh it.
+const CURRENT_BUILTIN_VERSION = 16;
 
 export const migrateFromLocalStorage = async () => {
     const MIGRATION_KEY = 'sm_migration_v1_done';
