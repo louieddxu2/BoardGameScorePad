@@ -47,6 +47,7 @@ interface ScoreGridProps {
   canEditScore?: (playerId: string, column: ScoreColumn | undefined) => boolean;
   participantClaimCounts?: Record<string, number>;
   editablePlayerIds?: string[];
+  canRequestPlayerClaim?: boolean;
 }
 
 const ScoreGrid: React.FC<ScoreGridProps> = ({
@@ -78,6 +79,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   canEditScore = () => true,
   participantClaimCounts = {},
   editablePlayerIds = [],
+  canRequestPlayerClaim = false,
 }) => {
   const { t } = useSessionTranslation();
   const dnd = useColumnDragAndDrop({ template, onUpdateTemplate, scrollRef: scrollContainerRef });
@@ -283,6 +285,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
               isEditing={editingPlayerId === p.id}
               participantCount={participantClaimCounts[p.id] ?? 0}
               isEditableByParticipant={editablePlayerIds.includes(p.id)}
+              canRequestParticipantClaim={canRequestPlayerClaim && !editablePlayerIds.includes(p.id)}
               limitX={template.globalVisuals?.rightMaskRect?.x}
             />
           ))}

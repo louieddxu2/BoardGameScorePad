@@ -58,6 +58,7 @@ const App: React.FC = () => {
   const [isMultiplayerRoomModalOpen, setIsMultiplayerRoomModalOpen] = useState(false);
   const [isMultiplayerParticipantRoomModalOpen, setIsMultiplayerParticipantRoomModalOpen] = useState(false);
   const [pendingMultiplayerJoin, setPendingMultiplayerJoin] = useState<PendingMultiplayerJoin | null>(null);
+  const [pendingMultiplayerClaimIds, setPendingMultiplayerClaimIds] = useState<string[] | null>(null);
   const [isJoiningMultiplayer, setIsJoiningMultiplayer] = useState(false);
   const [multiplayerVersion, setMultiplayerVersion] = useState(0);
 
@@ -179,10 +180,6 @@ const App: React.FC = () => {
     let activeTransport: ReturnType<typeof createMultiplayerP2PRuntimeTransport> | null = null;
     const adapter = createLocalScoreStateSyncAdapter(roomId, 'player', {
       onRemoteBootstrap: async (bootstrapMessage, persisted) => {
-        if (!isJoiningMultiplayerRef.current || multiplayerJoinStartedRef.current !== roomId) return;
-        clearMultiplayerJoinTimeout();
-        isJoiningMultiplayerRef.current = false;
-        setIsJoiningMultiplayer(false);
         const managedRoom = multiplayerSessionManager.get(roomId);
         if (managedRoom?.runtime?.role === 'player') {
           const runtime = managedRoom.runtime;
@@ -196,6 +193,10 @@ const App: React.FC = () => {
           if (templateChanged) await appDataRef.current.resumeSessionById(persisted.session.id);
           return;
         }
+        if (!isJoiningMultiplayerRef.current || multiplayerJoinStartedRef.current !== roomId) return;
+        clearMultiplayerJoinTimeout();
+        isJoiningMultiplayerRef.current = false;
+        setIsJoiningMultiplayer(false);
         if (activeTransport) {
           setPendingMultiplayerJoin({ roomId, bootstrapMessage, transport: activeTransport });
         }
@@ -704,6 +705,33 @@ const App: React.FC = () => {
     if (resumed) setView(AppView.ACTIVE_SESSION);
   }, [appData, clearRoomUrlQuery, pendingMultiplayerJoin]);
 
+  const handleRequestMultiplayerPlayerClaim = useCallback((playerId: string) => {
+    if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
+    if (activeMultiplayerRoom.playerIds?.includes(playerId)) return;
+    setPendingMultiplayerClaimIds([playerId]);
+  }, [activeMultiplayerRoom]);
+
+  const handleConfirmMultiplayerPlayerClaims = useCallback((playerIds: string[]) => {
+    if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
+    const managedRoom = multiplayerSessionManager.get(activeMultiplayerRoom.roomId);
+    if (managedRoom?.runtime?.role !== 'player') return;
+
+    const existingPlayerIds = activeMultiplayerRoom.playerIds ?? [];
+    const nextPlayerIds = [...new Set([...existingPlayerIds, ...playerIds])];
+    for (const playerId of nextPlayerIds) {
+      if (!existingPlayerIds.includes(playerId)) managedRoom.runtime.controller.claimPlayer(playerId);
+    }
+
+    const nextRoom: ActiveMultiplayerRoom = { ...activeMultiplayerRoom, playerIds: nextPlayerIds };
+    activeMultiplayerRoomRef.current = nextRoom;
+    setActiveMultiplayerRoom(nextRoom);
+    setPendingMultiplayerClaimIds(null);
+  }, [activeMultiplayerRoom]);
+
+  const handleCancelMultiplayerPlayerClaims = useCallback(() => {
+    setPendingMultiplayerClaimIds(null);
+  }, []);
+
   const handleCancelMultiplayerJoin = useCallback(() => {
     pendingMultiplayerJoin?.transport.stop?.();
     setPendingMultiplayerJoin(null);
@@ -1012,6 +1040,7 @@ const App: React.FC = () => {
             multiplayerCapabilities={activeMultiplayerRoom?.role === 'player' ? createPlayerSessionCapabilities(activeMultiplayerRoom.playerIds ?? []) : hostSessionCapabilities}
             onOpenMultiplayerRoom={activeMultiplayerRoom?.role !== 'player' ? handleOpenMultiplayerRoom : undefined}
             onOpenMultiplayerParticipantRoom={activeMultiplayerRoom?.role === 'player' ? () => setIsMultiplayerParticipantRoomModalOpen(true) : undefined}
+            onRequestMultiplayerPlayerClaim={activeMultiplayerRoom?.role === 'player' ? handleRequestMultiplayerPlayerClaim : undefined}
           />
         </div>
       )}
@@ -1061,6 +1090,17 @@ const App: React.FC = () => {
           connectionStatus={multiplayerRoomState?.status}
           onLeave={handleLeaveMultiplayerRoom}
           onClose={() => setIsMultiplayerParticipantRoomModalOpen(false)}
+        />
+      )}
+
+      {pendingMultiplayerClaimIds && activeMultiplayerRoom?.role === 'player' && multiplayerRoomState?.session && (
+        <MultiplayerPlayerClaimModal
+          isOpen
+          variant="claim"
+          initialSelectedIds={pendingMultiplayerClaimIds}
+          players={multiplayerRoomState.session.players}
+          onConfirm={handleConfirmMultiplayerPlayerClaims}
+          onClose={handleCancelMultiplayerPlayerClaims}
         />
       )}
 

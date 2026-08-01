@@ -10,22 +10,26 @@ interface MultiplayerPlayerClaimModalProps {
   players: Player[];
   onConfirm: (playerIds: string[]) => void;
   onClose: () => void;
+  variant?: 'join' | 'claim';
+  initialSelectedIds?: string[];
 }
 
-const MultiplayerPlayerClaimModal: React.FC<MultiplayerPlayerClaimModalProps> = ({ isOpen, players, onConfirm, onClose }) => {
+const MultiplayerPlayerClaimModal: React.FC<MultiplayerPlayerClaimModalProps> = ({ isOpen, players, onConfirm, onClose, variant = 'join', initialSelectedIds = [] }) => {
   const { t } = useSessionTranslation();
   const { t: tCommon } = useCommonTranslation();
   const { zIndex } = useModalBackHandler(isOpen, onClose, 'multiplayer-player-claim');
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  useEffect(() => { if (isOpen) setSelectedIds([]); }, [isOpen]);
+  const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
+  const initialSelectionKey = initialSelectedIds.join('|');
+  useEffect(() => { if (isOpen) setSelectedIds(initialSelectedIds); }, [initialSelectionKey, isOpen]);
   if (!isOpen) return null;
   const toggle = (id: string) => setSelectedIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
+  const isClaim = variant === 'claim';
 
   return (
     <div className="modal-backdrop p-4" style={{ zIndex }} onClick={onClose}>
       <section className="modal-container w-full max-w-sm p-5" onClick={(event) => event.stopPropagation()}>
-        <div className="flex items-center justify-between gap-3 mb-2"><div className="flex items-center gap-2"><UsersRound size={20} className="text-brand-primary" /><h2 className="text-lg font-bold">{t('multiplayer_join_title')}</h2></div><button type="button" onClick={onClose} className="p-2 -mr-2 text-txt-muted hover:text-txt-primary" aria-label={tCommon('close')}><X size={20} /></button></div>
-        <p className="mb-4 text-sm leading-relaxed text-txt-secondary">{t('multiplayer_join_desc')}</p>
+        <div className="flex items-center justify-between gap-3 mb-2"><div className="flex items-center gap-2"><UsersRound size={20} className="text-brand-primary" /><h2 className="text-lg font-bold">{t(isClaim ? 'multiplayer_claim_title' : 'multiplayer_join_title')}</h2></div><button type="button" onClick={onClose} className="p-2 -mr-2 text-txt-muted hover:text-txt-primary" aria-label={tCommon('close')}><X size={20} /></button></div>
+        <p className="mb-4 text-sm leading-relaxed text-txt-secondary">{t(isClaim ? 'multiplayer_claim_desc' : 'multiplayer_join_desc')}</p>
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {players.map((player) => {
             const selected = selectedIds.includes(player.id);
@@ -36,7 +40,7 @@ const MultiplayerPlayerClaimModal: React.FC<MultiplayerPlayerClaimModalProps> = 
           })}
         </div>
         <button type="button" disabled={!selectedIds.length} onClick={() => onConfirm(selectedIds)} className="w-full mt-5 py-3 rounded-lg bg-brand-primary text-white font-bold disabled:opacity-40 disabled:cursor-not-allowed">
-          {t('multiplayer_join_confirm')}
+          {t(isClaim ? 'multiplayer_claim_confirm' : 'multiplayer_join_confirm')}
         </button>
       </section>
     </div>

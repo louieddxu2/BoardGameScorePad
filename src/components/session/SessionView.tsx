@@ -61,6 +61,7 @@ interface SessionViewProps {
   multiplayerManager?: MultiplayerSessionManager;
   onOpenMultiplayerRoom?: () => void;
   onOpenMultiplayerParticipantRoom?: () => void;
+  onRequestMultiplayerPlayerClaim?: (playerId: string) => void;
 }
 
 const SessionView: React.FC<SessionViewProps> = (props) => {
@@ -405,9 +406,20 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       return;
     }
     const column = template.columns.find((item) => item.id === colId);
-    if (!capabilities.canEditScore(playerId, column)) return;
+    if (!capabilities.canEditScore(playerId, column)) {
+      if (
+        capabilities.role === 'player' &&
+        column &&
+        !column.isShared &&
+        column.inputType !== 'auto' &&
+        !capabilities.playerIds?.includes(playerId)
+      ) {
+        props.onRequestMultiplayerPlayerClaim?.(playerId);
+      }
+      return;
+    }
     eventHandlers.handleCellClick(playerId, colId, e);
-  }, [isAiWorking, eventHandlers.handleCellClick, template.columns, capabilities]);
+  }, [isAiWorking, eventHandlers.handleCellClick, template.columns, capabilities, props.onRequestMultiplayerPlayerClaim]);
 
   const handleColumnHeaderClickSafe = useCallback((e: React.MouseEvent, col: any) => {
     if (isAiWorking) {
@@ -907,9 +919,14 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           editingPlayerId={editingPlayerId}
           onCellClick={handleCellClickSafe}
           onPlayerHeaderClick={(playerId, event) => {
+            if (capabilities.role === 'player' && !capabilities.playerIds?.includes(playerId)) {
+              props.onRequestMultiplayerPlayerClaim?.(playerId);
+              return;
+            }
             if (!capabilities.canEditPlayers) return;
             eventHandlers.handlePlayerHeaderClick(playerId, event);
           }}
+          canRequestPlayerClaim={capabilities.role === 'player'}
           onColumnHeaderClick={handleColumnHeaderClickSafe}
           onUpdateTemplate={capabilities.canEditTemplate ? handleTemplateUpdate : () => undefined}
           onAddColumn={capabilities.canEditTemplate ? eventHandlers.handleAddBlankColumn : () => undefined}
@@ -969,7 +986,13 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           editingCell={editingCell}
           previewValue={previewValue}
           onTotalClick={(playerId) => {
-            if (isAiWorking || !capabilities.canEditTotal(playerId)) return;
+            if (isAiWorking) return;
+            if (!capabilities.canEditTotal(playerId)) {
+              if (capabilities.role === 'player' && !capabilities.playerIds?.includes(playerId)) {
+                props.onRequestMultiplayerPlayerClaim?.(playerId);
+              }
+              return;
+            }
             eventHandlers.handleCellClick(playerId, '__TOTAL__', { stopPropagation: () => { } } as any);
           }}
           canEditTotal={capabilities.canEditTotal}
