@@ -1,4 +1,4 @@
-const CACHE_NAME = 'boardgame-scorepad-cache-2026-08-02-join-fix';
+const CACHE_NAME = 'boardgame-scorepad-cache-2026-08-02-editable-column-glow';
 
 // 核心靜態資源
 const CORE_ASSETS = [
