@@ -7,7 +7,6 @@ import { useAppData } from './useAppData';
 import type { AppTranslationKey } from '../i18n/app';
 import { isInAppBrowser } from '../components/modals/InAppBrowserGuide';
 import { generateId } from '../utils/idGenerator';
-import { db } from '../db';
 import { createLocalScoreStateSyncAdapter, multiplayerLocalStore } from '../features/multiplayer/multiplayerLocalStore';
 import { getOrCreateMultiplayerDeviceId, multiplayerDeliveryStore } from '../features/multiplayer/multiplayerDeliveryStore';
 import { multiplayerParticipantBindingStore, participantBindingKey } from '../features/multiplayer/multiplayerParticipantBinding';
@@ -332,35 +331,6 @@ export const useMultiplayerRoomLifecycle = ({
       console.warn('[multiplayer] Failed to restore multiplayer room:', err);
     }
   }, [setActiveRoom]);
-
-  useEffect(() => {
-    if (!appData.isDbReady || appData.currentSession || typeof indexedDB === 'undefined' || isInAppBrowser() || window.location.search.includes('room')) return;
-
-    let cancelled = false;
-    const restorePersistedRoom = async () => {
-      try {
-        const activeSessions = await db.sessions.where('status').equals('active').toArray();
-        for (const session of activeSessions) {
-          if (cancelled) return;
-          const room = await multiplayerLocalStore.getRoomBySessionId(session.id);
-          if (!room || room.status === 'completed') continue;
-
-          await tryRestoreMultiplayerRoom(session.id);
-          if (cancelled) return;
-          const resumed = await appDataRef.current.resumeSessionById(session.id);
-          if (resumed) {
-            setView(AppView.ACTIVE_SESSION);
-            return;
-          }
-        }
-      } catch (err) {
-        console.warn('[multiplayer] Failed to restore persisted room:', err);
-      }
-    };
-
-    void restorePersistedRoom();
-    return () => { cancelled = true; };
-  }, [appData.currentSession, appData.isDbReady, setView, tryRestoreMultiplayerRoom]);
 
   const handleOpenMultiplayerRoom = useCallback(async () => {
     if (isOpeningRoomRef.current) return;
