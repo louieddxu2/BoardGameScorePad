@@ -4,6 +4,8 @@ import {
   BootstrapPackageMessage,
   MultiplayerRole,
   MultiplayerRoomInfo,
+  SessionCompletedMessage,
+  isSessionCompletedMessage,
   isSessionBootstrapPackage,
 } from './protocol';
 
@@ -46,7 +48,7 @@ interface ScoreStatePayload {
   exportedAt: number;
 }
 
-const serializePayload = (payload: ScoreStatePayload): Blob => {
+const serializePayload = (payload: ScoreStatePayload | SessionCompletedMessage): Blob => {
   return new Blob([JSON.stringify(payload)], { type: 'application/json' });
 };
 
@@ -63,12 +65,19 @@ export const readSyncItemPayload = async (blob: Blob): Promise<string> => {
   });
 };
 
-const parsePayload = async (item: SyncItem, roomId: string): Promise<BootstrapPackageMessage> => {
+const parsePayload = async (item: SyncItem, roomId: string): Promise<BootstrapPackageMessage | SessionCompletedMessage> => {
   let payload: unknown;
   try {
     payload = JSON.parse(await readSyncItemPayload(item.payload));
   } catch {
     throw new Error('invalid_score_state_item');
+  }
+
+  if (item.meta?.kind === 'session-completion') {
+    if (!isSessionCompletedMessage(payload) || payload.roomId !== roomId || payload.sessionId !== item.id || payload.revision !== item.version) {
+      throw new Error('invalid_score_completion_item');
+    }
+    return payload;
   }
 
   const bootstrap = {
@@ -98,6 +107,7 @@ export const createScoreStateSyncAdapter = (options: {
   roomId: string;
   role: MultiplayerRole;
   store: ScoreStateSyncStore;
+  onRemoteCompletion?: (message: SessionCompletedMessage) => void | Promise<void>;
 }): ScoreStateSyncAdapter => ({
   getScope() {
     return { sessionStart: 0, roomKey: options.roomId };
@@ -114,6 +124,35 @@ export const createScoreStateSyncAdapter = (options: {
 
     const room = await options.store.getRoom(options.roomId);
     if (!room || room.sessionId !== id) return null;
+
+    if (room.status === 'completed') {
+      const [session, template] = await Promise.all([
+        Promise.resolve(room.completedSession ?? options.store.getSession(room.sessionId)),
+        Promise.resolve(room.completedTemplate ?? options.store.getTemplate(room.templateId)),
+      ]);
+      if (!session || !template) return null;
+      const completedAt = room.completedAt ?? room.updatedAt;
+      const finalSession: GameSession = {
+        ...session,
+        status: 'completed',
+        lastUpdatedAt: completedAt,
+      };
+      const completion: SessionCompletedMessage = {
+        type: 'session:completed',
+        roomId: room.roomId,
+        sessionId: session.id,
+        template,
+        finalSession,
+        revision: room.revision,
+        completedAt,
+      };
+      return {
+        id: session.id,
+        version: room.revision,
+        meta: { kind: 'session-completion' },
+        payload: serializePayload(completion),
+      };
+    }
 
     const [session, template] = await Promise.all([
       options.store.getSession(room.sessionId),
@@ -141,6 +180,11 @@ export const createScoreStateSyncAdapter = (options: {
 
   async upsertRemoteItem(item) {
     if (options.role !== 'player') return;
-    await options.store.applyRemoteBootstrap(await parsePayload(item, options.roomId));
+    const payload = await parsePayload(item, options.roomId);
+    if (isSessionCompletedMessage(payload)) {
+      await options.onRemoteCompletion?.(payload);
+      return;
+    }
+    await options.store.applyRemoteBootstrap(payload);
   },
 });

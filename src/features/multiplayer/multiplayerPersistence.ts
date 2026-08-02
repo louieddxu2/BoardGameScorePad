@@ -54,10 +54,42 @@ export const createMultiplayerRoomRecord = (options: {
   templateId: options.session.templateId,
   hostDeviceId: options.room.hostDeviceId,
   role: options.role,
+  status: 'active',
   revision: options.revision,
   createdAt: options.room.createdAt,
   updatedAt: options.updatedAt,
 });
+
+/**
+ * Keeps a completed host room available briefly so a temporarily offline
+ * participant can receive the terminal snapshot after reconnecting.
+ */
+export const retainMultiplayerCompletionRelay = async (options: {
+  store: Pick<MultiplayerCompletionReleaseStore, 'putSession'> & Pick<MultiplayerBootstrapStore, 'putRoom'>;
+  room: MultiplayerRoomRecord;
+  template: GameTemplate;
+  session: GameSession;
+  revision: number;
+  completedAt: number;
+}): Promise<GameSession> => {
+  const localSession: GameSession = {
+    ...cloneJson(options.session),
+    status: 'active',
+    lastUpdatedAt: options.completedAt,
+  };
+
+  await options.store.putSession(localSession);
+  await options.store.putRoom({
+    ...cloneJson(options.room),
+    status: 'completed',
+    revision: options.revision,
+    completedAt: options.completedAt,
+    completedSession: cloneJson(options.session),
+    completedTemplate: cloneJson(options.template),
+    updatedAt: options.completedAt,
+  });
+  return localSession;
+};
 
 /** Keeps one local template per ID, using a deterministic copy only when local is newer. */
 export const persistMultiplayerBootstrap = async (

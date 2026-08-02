@@ -60,6 +60,34 @@ describe('score-state sync adapter', () => {
     }));
   });
 
+  it('publishes a terminal completion item and lets a player receive it after reconnecting', async () => {
+    const finalSession = { ...session, status: 'completed' as const, lastUpdatedAt: 50 };
+    const completedRoom: MultiplayerRoomRecord = {
+      ...room,
+      status: 'completed',
+      revision: 4,
+      completedAt: 50,
+      completedSession: finalSession,
+      completedTemplate: template,
+    };
+    const host = createScoreStateSyncAdapter({
+      roomId: 'room-1', role: 'host', store: createStore({ getRoom: async () => completedRoom }),
+    });
+    const item = await host.getItem('session-1');
+    expect(item).toMatchObject({ id: 'session-1', version: 4, meta: { kind: 'session-completion' } });
+
+    const onRemoteCompletion = vi.fn(async () => undefined);
+    const player = createScoreStateSyncAdapter({
+      roomId: 'room-1', role: 'player', store: createStore(), onRemoteCompletion,
+    });
+    await player.upsertRemoteItem(item!);
+
+    expect(onRemoteCompletion).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'session:completed', roomId: 'room-1', sessionId: 'session-1', revision: 4,
+      finalSession,
+    }));
+  });
+
   it('rejects a score-state item with a mismatched room or version', async () => {
     const player = createScoreStateSyncAdapter({ roomId: 'room-1', role: 'player', store: createStore() });
     const invalidItem = {

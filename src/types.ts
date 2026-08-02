@@ -210,6 +210,10 @@ export interface MultiplayerRoomRecord {
   templateId: string;
   hostDeviceId: string;
   role: 'host' | 'player';
+  status?: 'active' | 'completed';
+  completedAt?: number;
+  completedSession?: GameSession;
+  completedTemplate?: GameTemplate;
   revision: number;
   createdAt: number;
   updatedAt: number;

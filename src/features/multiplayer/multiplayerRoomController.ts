@@ -64,6 +64,7 @@ export const createMultiplayerRoomController = (options: {
   const publishParticipantClaims = async () => { await options.onParticipantClaims?.(getParticipantClaims()); };
   const broadcastSnapshot = (snapshot: SessionSnapshotMessage) => { options.transport.broadcastMessage?.(snapshot); };
   let completionWaiter: { roomId: string; sessionId: string; pendingDeviceIds: Set<string>; resolve: () => void } | null = null;
+  let completionPromise: Promise<import('./protocol').SessionCompletedMessage> | null = null;
   const acknowledgeCompletion = (deviceId: string) => {
     if (!completionWaiter) return;
     completionWaiter.pendingDeviceIds.delete(deviceId);
@@ -86,9 +87,10 @@ export const createMultiplayerRoomController = (options: {
       if (isParticipantClaimMessage(message)) {
         const validRoom = message.roomId === options.hostSession.room.roomId && message.sessionId === options.hostSession.session.id;
         const playerExists = options.hostSession.session.players.some((player) => player.id === message.playerId);
-        const result: ParticipantClaimResultMessage = validRoom && playerExists
+        const roomActive = options.hostSession.session.status === 'active';
+        const result: ParticipantClaimResultMessage = validRoom && roomActive && playerExists
           ? { type: 'room:claim-result', roomId: message.roomId, sessionId: message.sessionId, accepted: true, playerId: message.playerId }
-          : { type: 'room:claim-result', roomId: message.roomId, sessionId: message.sessionId, accepted: false, reason: validRoom ? 'player_not_found' : 'message_not_for_room' };
+          : { type: 'room:claim-result', roomId: message.roomId, sessionId: message.sessionId, accepted: false, reason: !roomActive && validRoom ? 'room_completed' : validRoom ? 'player_not_found' : 'message_not_for_room' };
         if (result.accepted) {
           const existing = bindings.get(connection);
           const playerIds = existing?.deviceId === message.deviceId ? existing.playerIds : new Set<string>();
@@ -104,6 +106,10 @@ export const createMultiplayerRoomController = (options: {
       const binding = bindings.get(connection);
       if (actor.role !== 'player' || !binding || binding.deviceId !== message.deviceId || !binding.playerIds.has(actor.playerId)) {
         options.transport.sendToConnection(connection, makeResult(message, false, undefined, 'participant_not_claimed'));
+        return true;
+      }
+      if (options.hostSession.session.status !== 'active') {
+        options.transport.sendToConnection(connection, makeResult(message, false, undefined, 'room_completed'));
         return true;
       }
       const receiptId = scorePatchOperationKey(message.roomId, message.deviceId, message.opId);
@@ -149,27 +155,31 @@ export const createMultiplayerRoomController = (options: {
     },
     getParticipantClaims,
     async complete() {
-      const message = options.hostSession.complete();
-      await persistMultiplayerSnapshot({
-        type: 'session:snapshot',
-        roomId: message.roomId,
-        sessionId: message.sessionId,
-        session: message.finalSession,
-        revision: message.revision,
-        updatedAt: message.completedAt,
-      }, options.snapshotStore);
-      const pendingDeviceIds = new Set([...bindings.values()].map((binding) => binding.deviceId));
-      let completionTimeout: number | null = null;
-      const acknowledged = new Promise<void>((resolve) => {
-        completionWaiter = { roomId: message.roomId, sessionId: message.sessionId, pendingDeviceIds, resolve };
-        if (pendingDeviceIds.size === 0) resolve();
-        else completionTimeout = window.setTimeout(resolve, 1000);
-      });
-      options.transport.broadcastMessage?.(message);
-      await acknowledged;
-      if (completionTimeout !== null) window.clearTimeout(completionTimeout);
-      completionWaiter = null;
-      return message;
+      if (completionPromise) return completionPromise;
+      completionPromise = (async () => {
+        const message = options.hostSession.complete();
+        await persistMultiplayerSnapshot({
+          type: 'session:snapshot',
+          roomId: message.roomId,
+          sessionId: message.sessionId,
+          session: message.finalSession,
+          revision: message.revision,
+          updatedAt: message.completedAt,
+        }, options.snapshotStore);
+        const pendingDeviceIds = new Set([...bindings.values()].map((binding) => binding.deviceId));
+        let completionTimeout: number | null = null;
+        const acknowledged = new Promise<void>((resolve) => {
+          completionWaiter = { roomId: message.roomId, sessionId: message.sessionId, pendingDeviceIds, resolve };
+          if (pendingDeviceIds.size === 0) resolve();
+          else completionTimeout = window.setTimeout(resolve, 1000);
+        });
+        options.transport.broadcastMessage?.(message);
+        await acknowledged;
+        if (completionTimeout !== null) window.clearTimeout(completionTimeout);
+        completionWaiter = null;
+        return message;
+      })();
+      return completionPromise;
     },
     async applyLocalSession(session: import('../../types').GameSession) {
       const snapshot = options.hostSession.applyLocalSession(session);

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { GameSession, GameTemplate, Player, ScoreColumn } from '../../types';
-import { persistMultiplayerBootstrap, persistMultiplayerCompletion, persistMultiplayerSnapshot } from './multiplayerPersistence';
+import { persistMultiplayerBootstrap, persistMultiplayerCompletion, persistMultiplayerSnapshot, retainMultiplayerCompletionRelay } from './multiplayerPersistence';
 import { createSessionBootstrapPackage } from './sessionBootstrap';
 
 const createColumn = (): ScoreColumn => ({
@@ -108,6 +108,27 @@ describe('multiplayer local persistence', () => {
     expect(persisted).toEqual(snapshot.session);
     expect(putSession).toHaveBeenCalledWith(snapshot.session);
     expect(updateRoomRevision).toHaveBeenCalledWith('room-1', 4, 40);
+  });
+
+  it('retains a terminal snapshot for participants reconnecting after host completion', async () => {
+    const putSession = vi.fn(async () => undefined);
+    const putRoom = vi.fn(async () => undefined);
+    const finalSession = { ...createSession(), status: 'completed' as const };
+    const room = {
+      roomId: 'room-1', sessionId: 'session-1', templateId: 'template-1', hostDeviceId: 'host-1',
+      role: 'host' as const, status: 'active' as const, revision: 2, createdAt: 1, updatedAt: 20,
+    };
+
+    const localSession = await retainMultiplayerCompletionRelay({
+      store: { putSession, putRoom }, room, template: createTemplate(200), session: finalSession, revision: 3, completedAt: 30,
+    });
+
+    expect(localSession.status).toBe('active');
+    expect(putSession).toHaveBeenCalledWith(expect.objectContaining({ id: 'session-1', status: 'active' }));
+    expect(putRoom).toHaveBeenCalledWith(expect.objectContaining({
+      roomId: 'room-1', status: 'completed', revision: 3, completedAt: 30,
+      completedSession: finalSession, completedTemplate: expect.objectContaining({ updatedAt: 200 }),
+    }));
   });
 
   it('rejects a snapshot whose message session ID does not match its session data', async () => {

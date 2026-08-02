@@ -42,7 +42,8 @@ export const cleanupService = {
   async cleanupDisposableTemplate(templateId: string) {
     try {
       const template = await db.templates.get(templateId);
-      if (template && isDisposableTemplate(template)) {
+      const isMultiplayerSessionTemplate = templateId.startsWith('Multiplayer-');
+      if (template && (isDisposableTemplate(template) || isMultiplayerSessionTemplate)) {
         await db.templates.delete(templateId);
         await db.templatePrefs.delete(templateId);
 

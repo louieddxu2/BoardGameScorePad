@@ -5,6 +5,7 @@ import { MultiplayerBootstrapStore, MultiplayerCompletionReleaseStore, Multiplay
 import { MultiplayerRoomTransport, ParticipantClaimCounts, createMultiplayerPlayerRoomController, createMultiplayerRoomController } from './multiplayerRoomController';
 import { createMultiplayerHostSession, createMultiplayerPlayerSessionFromBootstrap } from './multiplayerSession';
 import { BootstrapPackageMessage, MULTIPLAYER_PROTOCOL_VERSION } from './protocol';
+import { resolveBootstrapImport } from './sessionBootstrap';
 
 /**
  * Runtime composition for a multiplayer room. It deliberately has no PeerJS,
@@ -107,7 +108,7 @@ export const restoreMultiplayerHostRoomRuntime = async (options: {
   now?: () => number;
 }): Promise<MultiplayerHostRoomRuntime | null> => {
   const room = await options.store.getRoom(options.roomId);
-  if (!room || room.role !== 'host') return null;
+  if (!room || room.role !== 'host' || room.status === 'completed') return null;
   const [session, template] = await Promise.all([
     options.store.getSession(room.sessionId),
     options.store.getTemplate(room.templateId),
@@ -175,10 +176,19 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
       }
     },
     onCompleted: async (message) => {
+      const resolved = resolveBootstrapImport({
+        version: MULTIPLAYER_PROTOCOL_VERSION,
+        room: playerSession.room,
+        template: message.template,
+        session: message.finalSession,
+        revision: message.revision,
+        exportedAt: message.completedAt,
+      }, await options.store.getTemplate(message.template.id));
+      await options.store.putTemplate(resolved.templateForSession);
       const localSession = await releaseMultiplayerRoomOwnership({
         store: options.store,
         roomId: playerSession.room.roomId,
-        session: message.finalSession,
+        session: { ...message.finalSession, templateId: resolved.templateForSession.id },
         completedAt: message.completedAt,
       });
       const pending = await options.deliveryStore.listOutbox(playerSession.room.roomId, playerSession.session.id);
@@ -261,4 +271,3 @@ export const restoreMultiplayerPlayerRoomRuntime = async (options: {
     now: options.now,
   });
 };
-

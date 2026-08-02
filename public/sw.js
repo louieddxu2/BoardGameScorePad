@@ -1,4 +1,4 @@
-const CACHE_NAME = 'boardgame-scorepad-cache-2026-08-02-app-refactor-v17';
+const CACHE_NAME = 'boardgame-scorepad-cache-2026-08-02-multiplayer-completion-v18';
 
 // 核心靜態資源
 const CORE_ASSETS = [
