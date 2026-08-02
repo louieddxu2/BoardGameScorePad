@@ -262,7 +262,12 @@ export const useMultiplayerRoomLifecycle = ({
         const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
         const binding = await multiplayerParticipantBindingStore.get(participantBindingKey(room.roomId, deviceId));
         const playerIds = binding?.playerIds ?? (binding?.playerId ? [binding.playerId] : []);
-        const adapter = createLocalScoreStateSyncAdapter(room.roomId, 'player');
+        const adapter = createLocalScoreStateSyncAdapter(room.roomId, 'player', {
+          onRemoteCompletion: async (message) => {
+            const managedRoom = multiplayerSessionManager.get(room.roomId);
+            if (managedRoom?.runtime?.role === 'player') await managedRoom.runtime.receive(message);
+          },
+        });
         const transport = createMultiplayerP2PRuntimeTransport({ Peer, adapter, logger: (message) => console.info('[multiplayer]', message) });
         const callbacks = multiplayerSessionManager.createRuntimeCallbacks(room.roomId);
         const runtime = await restoreMultiplayerPlayerRoomRuntime({
