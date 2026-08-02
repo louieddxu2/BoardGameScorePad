@@ -407,15 +407,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     }
     const column = template.columns.find((item) => item.id === colId);
     if (!capabilities.canEditScore(playerId, column)) {
-      if (
-        capabilities.role === 'player' &&
-        column &&
-        !column.isShared &&
-        column.inputType !== 'auto' &&
-        !capabilities.playerIds?.includes(playerId)
-      ) {
-        props.onRequestMultiplayerPlayerClaim?.(playerId);
-      }
       return;
     }
     eventHandlers.handleCellClick(playerId, colId, e);
@@ -988,9 +979,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           onTotalClick={(playerId) => {
             if (isAiWorking) return;
             if (!capabilities.canEditTotal(playerId)) {
-              if (capabilities.role === 'player' && !capabilities.playerIds?.includes(playerId)) {
-                props.onRequestMultiplayerPlayerClaim?.(playerId);
-              }
               return;
             }
             eventHandlers.handleCellClick(playerId, '__TOTAL__', { stopPropagation: () => { } } as any);
