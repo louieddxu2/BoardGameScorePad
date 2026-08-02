@@ -23,6 +23,11 @@ import type { BootstrapPackageMessage, SessionCompletedMessage } from '../featur
 import { releaseMultiplayerRoomOwnership, retainMultiplayerCompletionRelay } from '../features/multiplayer/multiplayerPersistence';
 
 const MULTIPLAYER_COMPLETION_RELAY_TTL_MS = 5 * 60 * 1000;
+const MULTIPLAYER_STATE_CHANGE_EVENT = 'boardgame-scorepad-multiplayer-state-change';
+
+type ScorePadWindow = Window & {
+  __boardGameScorePadMultiplayerActive?: boolean;
+};
 
 export type ActiveMultiplayerRoom = {
   roomId: string;
@@ -97,6 +102,14 @@ export const useMultiplayerRoomLifecycle = ({
   }, []);
 
   useEffect(() => multiplayerSessionManager.subscribe(() => setMultiplayerVersion((version) => version + 1)), []);
+
+  useEffect(() => {
+    const scorePadWindow = window as ScorePadWindow;
+    scorePadWindow.__boardGameScorePadMultiplayerActive = Boolean(
+      activeMultiplayerRoom || pendingMultiplayerJoin || isJoiningMultiplayer
+    );
+    window.dispatchEvent(new Event(MULTIPLAYER_STATE_CHANGE_EVENT));
+  }, [activeMultiplayerRoom, isJoiningMultiplayer, pendingMultiplayerJoin]);
 
   useEffect(() => {
     if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
@@ -197,10 +210,37 @@ export const useMultiplayerRoomLifecycle = ({
       adapter,
       logger: (message) => console.info('[multiplayer]', message),
     });
-    activeTransport.joinRoom?.(roomId);
+    try {
+      activeTransport.joinRoom?.(roomId);
+    } catch (error) {
+      console.warn('[multiplayer] Failed to start room join:', error);
+      activeTransport.stop?.();
+      multiplayerJoinStartedRef.current = null;
+      isJoiningMultiplayerRef.current = false;
+      setIsJoiningMultiplayer(false);
+      setPendingMultiplayerJoin(null);
+      clearRoomUrlQuery();
+      showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_join_timeout'), type: 'warning' });
+    }
 
     multiplayerJoinTimeoutRef.current = window.setTimeout(() => {
-      if (multiplayerSessionManager.get(roomId)?.role === 'player') return;
+      const managedRoom = multiplayerSessionManager.get(roomId);
+      if (managedRoom?.role === 'player' && managedRoom.runtime) {
+        clearMultiplayerJoinTimeout();
+        isJoiningMultiplayerRef.current = false;
+        setIsJoiningMultiplayer(false);
+        const runtimeSession = managedRoom.runtime.session as { session: { id: string }; claimedPlayerIds?: string | string[] };
+        const rawPlayerIds = runtimeSession.claimedPlayerIds;
+        const playerIds = rawPlayerIds
+          ? (Array.isArray(rawPlayerIds) ? rawPlayerIds : [rawPlayerIds])
+          : [];
+        setActiveRoom({ roomId, role: 'player', playerIds });
+        void appDataRef.current.resumeSessionById(runtimeSession.session.id).then(() => {
+          setView(AppView.ACTIVE_SESSION);
+          clearRoomUrlQuery();
+        });
+        return;
+      }
       if (multiplayerJoinStartedRef.current === roomId) {
         activeTransport?.stop?.();
         multiplayerJoinStartedRef.current = null;

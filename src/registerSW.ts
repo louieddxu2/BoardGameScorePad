@@ -6,6 +6,12 @@ type SwRuntime = {
     windowObj: Window;
 };
 
+type ScorePadWindow = Window & {
+    __boardGameScorePadMultiplayerActive?: boolean;
+};
+
+const MULTIPLAYER_STATE_CHANGE_EVENT = 'boardgame-scorepad-multiplayer-state-change';
+
 export function registerServiceWorker(runtime?: Partial<SwRuntime>) {
     const env = runtime?.env ?? import.meta.env;
     const navigatorObj = runtime?.navigatorObj ?? navigator;
@@ -13,12 +19,36 @@ export function registerServiceWorker(runtime?: Partial<SwRuntime>) {
 
     if (env.PROD && 'serviceWorker' in navigatorObj) {
         // 監聽 controllerchange 事件，當新的 Service Worker 取得控制權時自動重新整理
+        const scorePadWindow = windowObj as ScorePadWindow;
+        const hasActiveMultiplayerRoom = () => {
+            const hasRoomQuery = typeof scorePadWindow.location?.search === 'string' && scorePadWindow.location.search.includes('room');
+            return hasRoomQuery || scorePadWindow.__boardGameScorePadMultiplayerActive === true;
+        };
+
         let refreshing = false;
+        let reloadPending = false;
+        const reloadWhenSafe = () => {
+            if (refreshing) return;
+            if (hasActiveMultiplayerRoom()) {
+                reloadPending = true;
+                return;
+            }
+            refreshing = true;
+            windowObj.location.reload();
+        };
+
         if (typeof navigatorObj.serviceWorker.addEventListener === 'function') {
             navigatorObj.serviceWorker.addEventListener('controllerchange', () => {
-                if (refreshing) return;
-                refreshing = true;
-                windowObj.location.reload();
+                reloadWhenSafe();
+            });
+        }
+
+        if (typeof windowObj.addEventListener === 'function') {
+            windowObj.addEventListener(MULTIPLAYER_STATE_CHANGE_EVENT, () => {
+                if (reloadPending && !hasActiveMultiplayerRoom()) {
+                    reloadPending = false;
+                    reloadWhenSafe();
+                }
             });
         }
 

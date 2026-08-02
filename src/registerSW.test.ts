@@ -47,6 +47,37 @@ describe('registerServiceWorker', () => {
     expect(unregister2).toHaveBeenCalledTimes(1);
   });
 
+  it('defers controller reload while a multiplayer room is active', async () => {
+    const reload = vi.fn();
+    const listeners = new Map<string, () => void>();
+    const serviceWorkerListeners = new Map<string, () => void>();
+    const register = vi.fn(async () => ({ update: vi.fn() }));
+    const windowObj = {
+      location: { search: '', reload },
+      addEventListener: vi.fn((event: string, callback: () => void) => listeners.set(event, callback)),
+    } as any;
+    const navigatorObj = {
+      serviceWorker: {
+        register,
+        addEventListener: vi.fn((event: string, callback: () => void) => serviceWorkerListeners.set(event, callback)),
+      },
+    } as any;
+
+    windowObj.__boardGameScorePadMultiplayerActive = true;
+    registerServiceWorker({
+      env: { DEV: false, PROD: true },
+      navigatorObj,
+      windowObj,
+    });
+
+    serviceWorkerListeners.get('controllerchange')?.();
+    expect(reload).not.toHaveBeenCalled();
+
+    windowObj.__boardGameScorePadMultiplayerActive = false;
+    listeners.get('boardgame-scorepad-multiplayer-state-change')?.();
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
   it('does nothing when serviceWorker is unavailable', async () => {
     const addEventListener = vi.fn();
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'boardgame-scorepad-cache-2026-08-02-multiplayer-completion-v18';
+const CACHE_NAME = 'boardgame-scorepad-cache-2026-08-02-multiplayer-join-guard-v19';
 
 // 核心靜態資源
 const CORE_ASSETS = [
