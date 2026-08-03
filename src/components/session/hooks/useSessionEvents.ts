@@ -17,6 +17,7 @@ interface SessionViewProps {
   session: GameSession;
   template: GameTemplate;
   savedPlayers: SavedListItem[]; // Renamed
+  allSavedPlayers?: SavedListItem[];
   onUpdateSession: (session: GameSession) => void;
   onUpdateTemplate: (template: GameTemplate) => void;
   onUpdateSavedPlayer: (name: string, uuid?: string) => void; // Renamed
@@ -39,7 +40,7 @@ export const useSessionEvents = (
   sessionState: SessionStateHook,
   localUiState?: LocalUiState
 ) => {
-  const { session, template, savedPlayers, onUpdateSession, onUpdateTemplate, onUpdateSavedPlayer, onExit, onResetScores, isVoiceEnabled } = props;
+  const { session, template, savedPlayers, allSavedPlayers, onUpdateSession, onUpdateTemplate, onUpdateSavedPlayer, onExit, onResetScores, isVoiceEnabled } = props;
   const { uiState, setUiState } = sessionState;
   const { showToast } = useToast();
   const { t } = useSessionTranslation();
@@ -238,7 +239,7 @@ export const useSessionEvents = (
       if (!finalLinkedId) {
         if (nameChanged && finalName) {
           // If name changed, try to find a match or generate new
-          const matchedRecord = savedPlayers.find(h => h.name.toLowerCase() === finalName.toLowerCase());
+          const matchedRecord = (allSavedPlayers ?? savedPlayers).find(h => h.name.toLowerCase() === finalName.toLowerCase());
           if (matchedRecord) {
             finalLinkedId = matchedRecord.id;
           } else {

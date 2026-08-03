@@ -10,6 +10,7 @@ import { drawTurnOrder, getStarterSelectorPlayerId } from './turnOrder';
 import { db } from '../../../db';
 import { getRecommendedCandidatesPure } from '../../../features/recommendation/PlayerRecommendationEngine';
 import { Voter } from '../../../features/recommendation/ContextResolver';
+import { loadPlayerRecommendationContextVoters } from '../../../features/recommendation/playerRecommendationContext';
 
 interface PlayerSelectorModalProps {
     isOpen: boolean;
@@ -195,20 +196,7 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                 setAllSavedPlayers(playersList);
 
                 // 2. 撈取當前遊戲與地點的實體做為 background context voters
-                const voters: Voter[] = [];
-                if (session.name) {
-                    const gameItem = await db.savedGames.where('name').equals(session.name).first();
-                    if (gameItem) {
-                        voters.push({ item: gameItem, factor: 'game' });
-                    }
-                }
-                if (session.location) {
-                    const locItem = await db.savedLocations.where('name').equals(session.location).first();
-                    if (locItem) {
-                        voters.push({ item: locItem, factor: 'location' });
-                    }
-                }
-                setContextVoters(voters);
+                setContextVoters(await loadPlayerRecommendationContextVoters(session.name, session.location));
             } catch (error) {
                 console.error("[Visual Selector] Failed to initialize recommendation context data", error);
             }

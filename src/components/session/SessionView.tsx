@@ -44,6 +44,7 @@ interface SessionViewProps {
   session: GameSession;
   template: GameTemplate;
   savedPlayers: SavedListItem[]; // Renamed from playerHistory
+  allSavedPlayers?: SavedListItem[];
   savedLocations?: SavedListItem[]; // Renamed from locationHistory
   zoomLevel: number;
   baseImage: string | null;
@@ -1047,6 +1048,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         session={session}
         template={template}
         savedPlayers={props.savedPlayers} // Updated Prop Name
+        allSavedPlayers={props.allSavedPlayers}
         onUpdateSession={handleSessionUpdate}
         onUpdateSavedPlayer={props.onUpdateSavedPlayer} // Updated Prop Name
         onTakePhoto={capabilities.canUseMediaTools ? media.openScoreCamera : undefined}

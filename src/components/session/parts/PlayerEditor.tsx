@@ -1,14 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Player, SavedListItem } from '../../../types';
+import { GameSession, Player, SavedListItem } from '../../../types';
 import { Ban, Flag, Palette } from 'lucide-react';
 import { COLORS } from '../../../colors';
 import { isColorDark } from '../../../utils/ui';
-import { searchService } from '../../../services/searchService';
 import { useSessionTranslation } from '../../../i18n/session';
+import { Voter } from '../../../features/recommendation/ContextResolver';
+import { loadPlayerRecommendationContextVoters } from '../../../features/recommendation/playerRecommendationContext';
+import { getPlayerEditorRecommendations, searchPlayerEditorCandidates } from '../../../features/recommendation/PlayerEditorRecommendation';
 
 interface PlayerEditorProps {
   player: Player;
   savedPlayers: SavedListItem[]; // Renamed from playerHistory
+  allSavedPlayers?: SavedListItem[];
+  session: GameSession;
   tempName: string;
   setTempName: (name: string) => void;
   isInputFocused: boolean;
@@ -24,6 +28,8 @@ interface PlayerEditorProps {
 const PlayerEditor: React.FC<PlayerEditorProps> = ({
   player,
   savedPlayers, // Renamed
+  allSavedPlayers = savedPlayers,
+  session,
   tempName,
   setTempName,
   isInputFocused,
@@ -39,6 +45,26 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
   const colorPickerAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const ignoreNextBlur = useRef(false);
+  const [contextVoters, setContextVoters] = useState<Voter[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadContext = async () => {
+      try {
+        const voters = await loadPlayerRecommendationContextVoters(session.name, session.location);
+        if (!cancelled) setContextVoters(voters);
+      } catch (error) {
+        console.error('[PlayerEditor] Failed to load recommendation context:', error);
+        if (!cancelled) setContextVoters([]);
+      }
+    };
+
+    void loadContext();
+    return () => {
+      cancelled = true;
+    };
+  }, [session.name, session.location]);
 
   // Click-outside handler: close color picker when tapping outside the strip area
   useEffect(() => {
@@ -63,26 +89,28 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
     return [...preferred, ...remaining];
   }, [supportedColors, recommendedColors]);
 
+  const recommendedPlayers = useMemo(() => getPlayerEditorRecommendations({
+    session,
+    playerId: player.id,
+    allSavedPlayers,
+    contextVoters
+  }), [session, player.id, allSavedPlayers, contextVoters]);
+
   const displayedPlayers = useMemo(() => {
     const trimmedInput = tempName.trim();
 
     // [New] 特殊判定：若目前為預設名稱且尚未連結身分，直接顯示完整歷史名單
     // 這解決了「玩家 1」狀態下搜尋會導致空列表的問題。
-    const isDefaultUnlinked = !player.linkedPlayerId && tempName === player.name;
-    if (isDefaultUnlinked) return savedPlayers;
+    const isInitialEditorValue = !isInputFocused && tempName === player.name;
+    if (isInitialEditorValue) return recommendedPlayers;
 
     // 1. 如果輸入為空，顯示完整歷史紀錄 (依最近使用排序)
-    if (!trimmedInput) return savedPlayers;
+    if (!trimmedInput) return recommendedPlayers;
 
     // 2. 如果完全匹配現有玩家名稱且「非焦點狀態」，顯示完整歷史紀錄 (這通常是為了輔助自動填入後的修正)
-    const hasExactMatch = savedPlayers.some(p => p.name.toLowerCase() === trimmedInput.toLowerCase());
-    if (hasExactMatch && !isInputFocused) {
-      return savedPlayers;
-    }
-
     // 3. 否則 (包含焦點狀態下)，顯示模糊搜尋結果
-    return searchService.search(savedPlayers, trimmedInput, ['name']);
-  }, [savedPlayers, tempName, player.linkedPlayerId, player.name, isInputFocused]);
+    return searchPlayerEditorCandidates(allSavedPlayers, trimmedInput);
+  }, [allSavedPlayers, isInputFocused, player.name, recommendedPlayers, tempName]);
 
   const isMainTransparent = player.color === 'transparent';
   const isMainDark = !isMainTransparent && isColorDark(player.color);
@@ -197,7 +225,7 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
                       const finalName = item.name;
-                      const linkedId = item.meta?.uuid;
+                      const linkedId = item.linkedPlayerId || item.id;
                       ignoreNextBlur.current = true;
                       setTempName(finalName);
                       onNameSubmit(player.id, finalName, false, linkedId);

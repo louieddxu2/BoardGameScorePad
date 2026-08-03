@@ -35,6 +35,7 @@ interface InputPanelProps {
     session: GameSession;
     template: GameTemplate;
     savedPlayers: SavedListItem[]; // Renamed from playerHistory
+    allSavedPlayers?: SavedListItem[];
     onUpdateSession: (session: GameSession) => void;
     onUpdateSavedPlayer: (name: string) => void; // Renamed from onUpdatePlayerHistory
     // [New Props for SmartSpacer]
@@ -232,7 +233,7 @@ const TotalAdjustmentSidebar: React.FC<{
 
 
 const InputPanel: React.FC<InputPanelProps> = (props) => {
-    const { sessionState, eventHandlers, session, template, savedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice, bottomOffset, canEditScore = () => true, canEditTotal = () => true, canEditPlayers = true, mediaOnlyTools = false } = props;
+    const { sessionState, eventHandlers, session, template, savedPlayers, allSavedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice, bottomOffset, canEditScore = () => true, canEditTotal = () => true, canEditPlayers = true, mediaOnlyTools = false } = props;
     const { uiState, setUiState, panelHeight, isShortList } = sessionState;
     const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue, isEditingTitle, isToolboxOpen } = uiState;
     const { t } = useSessionTranslation();
@@ -594,6 +595,8 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     key={activePlayer.id}
                     player={activePlayer}
                     savedPlayers={savedPlayers} // Updated Prop Name
+                    allSavedPlayers={allSavedPlayers}
+                    session={session}
                     tempName={uiState.tempPlayerName}
                     setTempName={(name) => setUiState((p: any) => ({ ...p, tempPlayerName: name }))}
                     isInputFocused={uiState.isInputFocused} setIsInputFocused={(focused) => setUiState((p: any) => ({ ...p, isInputFocused: focused }))}

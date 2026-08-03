@@ -441,6 +441,7 @@ export const useAppData = () => {
         historyCount: queries.historyCount,
 
         savedPlayers: queries.savedPlayers,
+        savedPlayersAll: queries.savedPlayersAll || [],
         savedLocations: queries.savedLocations,
 
         savedGames: queries.savedGames,

@@ -189,6 +189,7 @@ const AppWorkspace: React.FC<AppWorkspaceProps> = ({
             session={appData.currentSession}
             template={appData.activeTemplate}
             savedPlayers={appData.savedPlayers}
+            allSavedPlayers={appData.savedPlayersAll}
             savedLocations={appData.savedLocations}
             zoomLevel={zoomLevel}
             baseImage={appData.sessionImage}
