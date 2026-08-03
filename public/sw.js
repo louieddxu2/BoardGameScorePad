@@ -1,4 +1,4 @@
-const CACHE_NAME = 'boardgame-scorepad-cache-2026-08-02-multiplayer-resume-on-open-v20';
+const CACHE_NAME = 'boardgame-scorepad-cache-2026-08-03-keyboard-dismiss-v21';
 
 // 核心靜態資源
 const CORE_ASSETS = [
