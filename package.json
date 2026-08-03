@@ -12,7 +12,8 @@
     "test": "vitest run --exclude \"{src/components/session/SessionUI.test.tsx,src/utils/ui-consistency.test.ts}\"",
     "test:core": "vitest run --exclude \"{src/components/session/SessionUI.test.tsx,src/utils/ui-consistency.test.ts}\"",
     "test:release": "vitest run",
-    "test:ui": "vitest run src/utils/ui-consistency.test.ts"
+    "test:ui": "vitest run src/utils/ui-consistency.test.ts",
+    "test:touch": "vitest run src/components/session/SessionView.toolboxScroll.test.tsx"
   },
   "dependencies": {
     "dexie": "^3.2.4",
