@@ -82,7 +82,7 @@ describe('PlayerEditorRecommendation', () => {
         expect(updatedCurrent.linkedPlayerId).toBe(session.players[1].linkedPlayerId);
     });
 
-    it('preserves a later name even when it shares a linked identity with a prior seat', () => {
+    it('does not append a later name that the engine did not recommend', () => {
         const session = makeSession([
             makePlayer('seat-left', 'Alice', 'shared-id'),
             makePlayer('seat-current', 'Current'),
@@ -96,11 +96,7 @@ describe('PlayerEditorRecommendation', () => {
             contextVoters: []
         });
 
-        expect(result).toContainEqual({
-            id: 'seat-right',
-            name: 'Alice Alias',
-            linkedPlayerId: 'shared-id'
-        });
+        expect(result.some(candidate => candidate.name === 'Alice Alias')).toBe(false);
     });
 
     it('searches the complete saved-player list for non-empty input', () => {

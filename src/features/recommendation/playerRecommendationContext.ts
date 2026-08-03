@@ -1,18 +1,20 @@
-import { db } from '../../db';
-import { Voter } from './ContextResolver';
+import { RecommendationContext, PlayerRecommendationWeights, DEFAULT_PLAYER_WEIGHTS } from './types';
+import { contextResolver, Voter } from './ContextResolver';
+import { weightAdjustmentEngine, PLAYER_WEIGHTS_ID } from './WeightAdjustmentEngine';
 
-/** Load the game/location voters shared by player recommendation surfaces. */
-export async function loadPlayerRecommendationContextVoters(
-    gameName?: string,
-    locationName?: string
-): Promise<Voter[]> {
-    const [gameItem, locationItem] = await Promise.all([
-        gameName ? db.savedGames.where('name').equals(gameName).first() : Promise.resolve(undefined),
-        locationName ? db.savedLocations.where('name').equals(locationName).first() : Promise.resolve(undefined)
+export interface LoadedPlayerRecommendationContext {
+    voters: Voter[];
+    weights: PlayerRecommendationWeights;
+}
+
+/** Load the complete context and dynamic weights used when entering a game. */
+export async function loadPlayerRecommendationContext(
+    context: RecommendationContext
+): Promise<LoadedPlayerRecommendationContext> {
+    const [voters, weights] = await Promise.all([
+        contextResolver.resolveBaseContext(context),
+        weightAdjustmentEngine.getWeights(PLAYER_WEIGHTS_ID, DEFAULT_PLAYER_WEIGHTS)
     ]);
 
-    const voters: Voter[] = [];
-    if (gameItem) voters.push({ item: gameItem, factor: 'game' });
-    if (locationItem) voters.push({ item: locationItem, factor: 'location' });
-    return voters;
+    return { voters, weights };
 }

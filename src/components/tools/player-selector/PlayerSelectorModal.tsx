@@ -10,7 +10,8 @@ import { drawTurnOrder, getStarterSelectorPlayerId } from './turnOrder';
 import { db } from '../../../db';
 import { getRecommendedCandidatesPure } from '../../../features/recommendation/PlayerRecommendationEngine';
 import { Voter } from '../../../features/recommendation/ContextResolver';
-import { loadPlayerRecommendationContextVoters } from '../../../features/recommendation/playerRecommendationContext';
+import { loadPlayerRecommendationContext, LoadedPlayerRecommendationContext } from '../../../features/recommendation/playerRecommendationContext';
+import { DEFAULT_PLAYER_WEIGHTS } from '../../../features/recommendation/types';
 
 interface PlayerSelectorModalProps {
     isOpen: boolean;
@@ -103,7 +104,10 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
     const lastClickTimeRef = useRef<number>(0);
     const clickCountRef = useRef<number>(0);
     const [allSavedPlayers, setAllSavedPlayers] = useState<SavedListItem[]>([]);
-    const [contextVoters, setContextVoters] = useState<Voter[]>([]);
+    const [recommendationContext, setRecommendationContext] = useState<LoadedPlayerRecommendationContext>(() => ({
+        voters: [],
+        weights: { ...DEFAULT_PLAYER_WEIGHTS }
+    }));
     const [players, setPlayers] = useState<SelectorPlayer[]>([]);
     const [phase, setPhase] = useState<'selecting' | 'drawing' | 'result'>('selecting');
     const [turnOrder, setTurnOrder] = useState<SelectorTurnOrderEntry[]>([]);
@@ -195,15 +199,23 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                 const playersList = await db.savedPlayers.toArray();
                 setAllSavedPlayers(playersList);
 
-                // 2. 撈取當前遊戲與地點的實體做為 background context voters
-                setContextVoters(await loadPlayerRecommendationContextVoters(session.name, session.location));
+                // 2. 載入與進入遊戲時相同的完整推薦 context 與權重
+                const context = await loadPlayerRecommendationContext({
+                    gameName: session.name,
+                    bggId: session.bggId,
+                    locationName: session.location,
+                    playerCount: session.players.length,
+                    scoringRule: session.scoringRule,
+                    timestamp: session.startTime
+                });
+                setRecommendationContext(context);
             } catch (error) {
                 console.error("[Visual Selector] Failed to initialize recommendation context data", error);
             }
         };
 
         initStaticData();
-    }, [isOpen, session.name, session.location]);
+    }, [isOpen, session.bggId, session.location, session.name, session.players.length, session.scoringRule, session.startTime]);
 
     // 每次鎖定玩家 (players) 有變化時，在記憶體內同步計算最新推薦清單
     const candidates = useMemo(() => {
@@ -216,12 +228,13 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
 
         return getRecommendedCandidatesPure({
             allSavedPlayers,
-            contextVoters,
+            contextVoters: recommendationContext.voters,
             lockedPlayerIds,
             lockedNames,
-            sessionPlayers: session.players
+            sessionPlayers: [],
+            weights: recommendationContext.weights
         });
-    }, [isOpen, allSavedPlayers, contextVoters, players, session.players]);
+    }, [isOpen, allSavedPlayers, players, recommendationContext, session.players]);
 
     const randomNames = t('picker_prototype_random_names').split(',');
     const starterPlayerId = getStarterSelectorPlayerId(turnOrder) || null;
@@ -450,7 +463,7 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                     expectedPlayerCount={session.players.length}
                     template={template}
                     allSavedPlayers={allSavedPlayers}
-                    contextVoters={contextVoters}
+                    contextVoters={recommendationContext.voters}
                     onSelectorPlayersChange={handlePlayersChange}
                     onCandidateLocked={(candidate) => {
                         console.log("[Visual Selector] Candidate locked:", candidate);

@@ -4,9 +4,9 @@ import { Ban, Flag, Palette } from 'lucide-react';
 import { COLORS } from '../../../colors';
 import { isColorDark } from '../../../utils/ui';
 import { useSessionTranslation } from '../../../i18n/session';
-import { Voter } from '../../../features/recommendation/ContextResolver';
-import { loadPlayerRecommendationContextVoters } from '../../../features/recommendation/playerRecommendationContext';
+import { loadPlayerRecommendationContext, LoadedPlayerRecommendationContext } from '../../../features/recommendation/playerRecommendationContext';
 import { getPlayerEditorRecommendations, searchPlayerEditorCandidates } from '../../../features/recommendation/PlayerEditorRecommendation';
+import { DEFAULT_PLAYER_WEIGHTS } from '../../../features/recommendation/types';
 
 interface PlayerEditorProps {
   player: Player;
@@ -45,18 +45,28 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
   const colorPickerAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const ignoreNextBlur = useRef(false);
-  const [contextVoters, setContextVoters] = useState<Voter[]>([]);
+  const [recommendationContext, setRecommendationContext] = useState<LoadedPlayerRecommendationContext>(() => ({
+    voters: [],
+    weights: { ...DEFAULT_PLAYER_WEIGHTS }
+  }));
 
   useEffect(() => {
     let cancelled = false;
 
     const loadContext = async () => {
       try {
-        const voters = await loadPlayerRecommendationContextVoters(session.name, session.location);
-        if (!cancelled) setContextVoters(voters);
+        const context = await loadPlayerRecommendationContext({
+          gameName: session.name,
+          bggId: session.bggId,
+          locationName: session.location,
+          playerCount: session.players.length,
+          scoringRule: session.scoringRule,
+          timestamp: session.startTime
+        });
+        if (!cancelled) setRecommendationContext(context);
       } catch (error) {
         console.error('[PlayerEditor] Failed to load recommendation context:', error);
-        if (!cancelled) setContextVoters([]);
+        if (!cancelled) setRecommendationContext({ voters: [], weights: { ...DEFAULT_PLAYER_WEIGHTS } });
       }
     };
 
@@ -64,7 +74,7 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [session.name, session.location]);
+  }, [session.bggId, session.location, session.name, session.players.length, session.scoringRule, session.startTime]);
 
   // Click-outside handler: close color picker when tapping outside the strip area
   useEffect(() => {
@@ -93,8 +103,9 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
     session,
     playerId: player.id,
     allSavedPlayers,
-    contextVoters
-  }), [session, player.id, allSavedPlayers, contextVoters]);
+    contextVoters: recommendationContext.voters,
+    weights: recommendationContext.weights
+  }), [session, player.id, allSavedPlayers, recommendationContext]);
 
   const displayedPlayers = useMemo(() => {
     const trimmedInput = tempName.trim();

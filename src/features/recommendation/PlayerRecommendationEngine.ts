@@ -14,6 +14,7 @@ export interface GetRecommendedCandidatesParams {
     lockedNames: string[];
     sessionPlayers: Array<{ id: string; name: string }>;
     candidateLimit?: number;
+    weights?: PlayerRecommendationWeights;
 }
 
 export function predictColorsForPlayer(
@@ -96,7 +97,8 @@ export function getRecommendedCandidatesPure({
     lockedPlayerIds,
     lockedNames,
     sessionPlayers,
-    candidateLimit
+    candidateLimit,
+    weights = DEFAULT_PLAYER_WEIGHTS
 }: GetRecommendedCandidatesParams): Candidate[] {
     // 1. 準備投票者 (Voters)
     const voters = [...contextVoters];
@@ -110,12 +112,12 @@ export function getRecommendedCandidatesPure({
         }
     });
 
-    // 2. 呼叫 votingEngine.calculateScores (同步算分)
-    // 傳入 candidateLimit (若無則預設為 allSavedPlayers.length 確保每位同玩玩家都能計分)
-    const limitToUse = candidateLimit ?? allSavedPlayers.length;
+    // 2. 使用與進入遊戲流程相同的單次投票模型
+    // 未指定時沿用原型的前五名投票窗口；不在這裡執行迭代選取。
+    const limitToUse = candidateLimit ?? RELATION_PREDICTION_CONFIG.players.limit;
     const scoresMap = votingEngine.calculateScores(
         voters,
-        DEFAULT_PLAYER_WEIGHTS as unknown as Record<string, number>,
+        weights as unknown as Record<string, number>,
         'players',
         lockedPlayerIds,
         limitToUse
@@ -197,7 +199,8 @@ export class PlayerRecommendationEngine {
                 lockedPlayerIds: selectedPlayerIds,
                 lockedNames: [],
                 sessionPlayers: [],
-                candidateLimit
+                candidateLimit,
+                weights
             });
 
             if (candidates.length > 0) {

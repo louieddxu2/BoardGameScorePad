@@ -112,4 +112,78 @@ describe('getRecommendedCandidatesPure', () => {
 
         expect(result.map(r => r.name)).toEqual(['Charlie', 'David', 'Eve', 'Frank']);
     });
+
+    it('uses the original five-player voting window by default', () => {
+        const candidates = [
+            'A', 'B', 'C', 'D', 'E', 'F'
+        ].map((name, index) => ({
+            id: `candidate-${name}`,
+            name,
+            usageCount: name === 'F' ? 100 : 1,
+            lastUsed: index
+        }));
+        const voter: SavedListItem = {
+            id: 'voter',
+            name: 'Voter',
+            usageCount: 1,
+            lastUsed: 1,
+            meta: {
+                relations: {
+                    players: candidates.map(candidate => ({ id: candidate.id, count: 1 }))
+                }
+            }
+        };
+
+        const result = getRecommendedCandidatesPure({
+            allSavedPlayers: candidates,
+            contextVoters: [{ item: voter, factor: 'game' }],
+            lockedPlayerIds: [],
+            lockedNames: [],
+            sessionPlayers: []
+        });
+
+        expect(result.slice(0, 5).map(candidate => candidate.name)).toEqual(['A', 'B', 'C', 'D', 'E']);
+        expect(result[5].name).toBe('F');
+    });
+
+    it('applies supplied dynamic weights to the single-pass vote', () => {
+        const candidates = [
+            { id: 'candidate-a', name: 'A', usageCount: 1, lastUsed: 1 },
+            { id: 'candidate-b', name: 'B', usageCount: 10, lastUsed: 10 }
+        ];
+        const voter: SavedListItem = {
+            id: 'voter',
+            name: 'Voter',
+            usageCount: 1,
+            lastUsed: 1,
+            meta: {
+                relations: {
+                    players: [
+                        { id: 'candidate-a', count: 1 },
+                        { id: 'candidate-b', count: 1 }
+                    ]
+                }
+            }
+        };
+
+        const result = getRecommendedCandidatesPure({
+            allSavedPlayers: candidates,
+            contextVoters: [{ item: voter, factor: 'game' }],
+            lockedPlayerIds: [],
+            lockedNames: [],
+            sessionPlayers: [],
+            weights: {
+                game: 0,
+                location: 1,
+                weekday: 1,
+                timeSlot: 1,
+                playerCount: 1,
+                gameMode: 1,
+                relatedPlayer: 1,
+                sessionContext: 1
+            }
+        });
+
+        expect(result.map(candidate => candidate.name)).toEqual(['B', 'A']);
+    });
 });
