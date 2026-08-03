@@ -384,6 +384,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                 >
                   <div
                     className="sticky z-10 flex items-center justify-center overflow-hidden"
+                    data-score-cell={`${session.players[0].id}:${col.id}`}
                     style={{
                       left: leftColWidth,
                       width: `min(100%, ${containerWidth - leftColWidth}px)`,
@@ -496,7 +497,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                   const isParticipantEditableColumn = editablePlayerIds.includes(p.id) && p.color !== 'transparent';
 
                   return (
-                    <div key={p.id} className={`${rowHiddenClass} w-full relative player-col-${p.id}`}>
+                    <div key={p.id} className={`${rowHiddenClass} w-full relative player-col-${p.id}`} data-score-cell={`${p.id}:${col.id}`}>
                       <ScoreCell
                         player={p}
                         playerIndex={pIdx}

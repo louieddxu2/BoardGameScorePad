@@ -5,6 +5,8 @@ import { GameSession, GameTemplate, SavedListItem } from '../../types';
 import { useSessionState, ScreenshotLayout } from './hooks/useSessionState';
 import { useSessionEvents } from './hooks/useSessionEvents';
 import { useSessionMedia } from './hooks/useSessionMedia';
+import { installTouchDiagnostics, recordScoreHandlerDecision } from './touchDiagnostics';
+import type { TouchDiagnosticState } from './touchDiagnostics';
 import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useSessionTranslation } from '../../i18n/session';
@@ -237,6 +239,31 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   const isPanelOpen = editingCell !== null || editingPlayerId !== null;
 
+  const sessionSurfaceRef = useRef<HTMLDivElement>(null);
+  const touchDiagnosticStateRef = useRef<TouchDiagnosticState>({
+    editingCell: null,
+    editingPlayerId: null,
+    isInputFocused: false,
+    isToolboxOpen: false,
+    isEditMode: false,
+  });
+
+  React.useEffect(() => {
+    touchDiagnosticStateRef.current = {
+      editingCell: editingCell ? `${editingCell.playerId}:${editingCell.colId}` : null,
+      editingPlayerId,
+      isInputFocused,
+      isToolboxOpen,
+      isEditMode,
+    };
+  }, [editingCell, editingPlayerId, isInputFocused, isToolboxOpen, isEditMode]);
+
+  React.useEffect(() => {
+    const surface = sessionSurfaceRef.current;
+    if (!surface) return undefined;
+    return installTouchDiagnostics(surface, () => touchDiagnosticStateRef.current);
+  }, []);
+
   // Winners Logic - Use pre-calculated winners from session to stabilize references
   const winners = useMemo(() => session.winnerIds || [], [session.winnerIds]);
 
@@ -403,12 +430,37 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   const handleCellClickSafe = useCallback((playerId: string, colId: string, e: React.MouseEvent) => {
     if (isAiWorking) {
+      recordScoreHandlerDecision({
+        event: e.nativeEvent,
+        state: touchDiagnosticStateRef.current,
+        playerId,
+        columnId: colId,
+        accepted: false,
+        reason: 'ai-working',
+      });
       return;
     }
     const column = template.columns.find((item) => item.id === colId);
-    if (!capabilities.canEditScore(playerId, column)) {
+    const canEdit = capabilities.canEditScore(playerId, column);
+    if (!canEdit) {
+      recordScoreHandlerDecision({
+        event: e.nativeEvent,
+        state: touchDiagnosticStateRef.current,
+        playerId,
+        columnId: colId,
+        accepted: false,
+        reason: 'capability-rejected',
+      });
       return;
     }
+    recordScoreHandlerDecision({
+      event: e.nativeEvent,
+      state: touchDiagnosticStateRef.current,
+      playerId,
+      columnId: colId,
+      accepted: true,
+      reason: 'accepted',
+    });
     eventHandlers.handleCellClick(playerId, colId, e);
   }, [isAiWorking, eventHandlers.handleCellClick, template.columns, capabilities, props.onRequestMultiplayerPlayerClaim]);
 
@@ -664,6 +716,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   return (
     <div 
+      ref={sessionSurfaceRef}
+      data-session-surface="true"
       className="flex flex-col h-full bg-app-bg text-txt-primary overflow-hidden relative"
       style={{
         '--internal-panel-height': isPanelOpen ? `${sessionState.panelHeight}` : '0px',
