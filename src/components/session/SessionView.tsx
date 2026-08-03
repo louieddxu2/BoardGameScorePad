@@ -895,9 +895,11 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       >
         {editingPlayerId && isInputFocused && (
           <div
-            // Keep the visual focus boundary without blocking score-cell hit testing.
-            // The focused name input will commit/unmount when another score cell is tapped.
-            className="absolute inset-0 z-40 bg-transparent pointer-events-none"
+            className="absolute inset-0 z-40 bg-transparent"
+            onClick={(e) => {
+              e.stopPropagation();
+              setUiState(p => ({ ...p, isInputFocused: false }));
+            }}
           />
         )}
 

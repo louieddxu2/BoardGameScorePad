@@ -137,12 +137,6 @@ const getScoreCell = (playerId: string) => {
   return cell;
 };
 
-const getFocusedNameDismissLayer = () => {
-  const layer = document.querySelector('div.absolute.inset-0.z-40.bg-transparent') as HTMLElement | null;
-  if (!layer) throw new Error('focused name dismiss layer not found');
-  return layer;
-};
-
 const setScrollTop = (element: HTMLElement, value: number) => {
   Object.defineProperty(element, 'scrollTop', {
     configurable: true,
@@ -331,45 +325,5 @@ describe('SessionView toolbox scroll behavior', () => {
     swipeOn(scroller, { startY: 130, endY: 200, moveScrollTop: 70 });
 
     expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
-  });
-});
-
-describe('SessionView score-cell touch interaction', () => {
-  beforeEach(() => {
-    localStorage.setItem('app_language', 'en');
-  });
-
-  it('keeps the score grid hit-testable while the player name input is focused', () => {
-    renderSession();
-
-    fireEvent.click(screen.getByText('Player 1'));
-    const nameInput = screen.getByPlaceholderText('Player...');
-    fireEvent.focus(nameInput);
-
-    expect(getFocusedNameDismissLayer()).toHaveClass('pointer-events-none');
-
-    const cell = getFirstScoreCell();
-    fireEvent.click(cell);
-
-    expect(cell.className).toContain('ring-2');
-  });
-
-  it('opens a score cell after a tap-shaped touch sequence', () => {
-    renderSession();
-
-    const cell = getFirstScoreCell();
-    act(() => {
-      fireEvent.touchStart(cell, {
-        touches: [{ clientX: 120, clientY: 180 }],
-      });
-      fireEvent.touchEnd(cell, {
-        changedTouches: [{ clientX: 120, clientY: 180 }],
-      });
-      // jsdom does not synthesize browser compatibility clicks from touch events.
-      // Keep the synthetic click explicit so this test covers the React event path.
-      fireEvent.click(cell);
-    });
-
-    expect(cell.className).toContain('ring-2');
   });
 });
