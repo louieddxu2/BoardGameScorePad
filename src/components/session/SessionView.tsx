@@ -35,7 +35,6 @@ import { useAiSimpleGenerator } from '../../features/ai-generator/hooks/useAiSim
 import { db } from '../../db';
 import { useAiGenerator } from '../../features/ai-generator/hooks/useAiGenerator';
 import { markPendingAiShare } from '../../utils/pendingAiShare';
-import { useKeyboardStatus } from '../../hooks/useVisualViewportOffset';
 import { getSessionOccupiedBottom, getSessionPanelDockOffset } from '../../utils/sessionViewport';
 import { createPlayerSessionCapabilities, hostSessionCapabilities, SessionCapabilities } from '../../features/multiplayer/sessionCapabilities';
 import { MultiplayerSessionManager, multiplayerSessionManager } from '../../features/multiplayer/multiplayerSessionManager';
@@ -157,8 +156,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const multiplayerPreviewPlayerNumber = capabilities.role === 'player'
     ? session.players.findIndex(player => player.id === capabilities.playerId) + 1
     : null;
-  const { setUiState } = sessionState;
-  const { offset: keyboardOffset } = useKeyboardStatus();
+  const { setUiState, keyboardOffset, closeFocusedPlayerNameInput } = sessionState;
   const panelDockOffset = getSessionPanelDockOffset(keyboardOffset);
   const occupiedBottom = getSessionOccupiedBottom(sessionState.panelHeight, keyboardOffset);
 
@@ -952,7 +950,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
             className="absolute inset-0 z-40 bg-transparent"
             onClick={(e) => {
               e.stopPropagation();
-              setUiState(p => ({ ...p, isInputFocused: false }));
+              closeFocusedPlayerNameInput();
             }}
           />
         )}

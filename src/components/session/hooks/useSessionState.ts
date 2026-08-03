@@ -1,6 +1,7 @@
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { GameSession, GameTemplate, SavedListItem } from '../../../types';
+import { useKeyboardStatus } from '../../../hooks/useVisualViewportOffset';
 
 interface SessionViewProps {
   session: GameSession;
@@ -112,6 +113,39 @@ export const useSessionState = (props: SessionViewProps) => {
 
   const gridContentRef = useRef<HTMLDivElement>(null);
   const totalContentRef = useRef<HTMLDivElement>(null);
+
+  const { offset: keyboardOffset, isKeyboardOpen } = useKeyboardStatus();
+  const wasKeyboardOpenRef = useRef(false);
+
+  // Keep every player-name close path identical: blur the native input first so
+  // its existing onBlur commit runs, then leave compact mode explicitly.
+  const closeFocusedPlayerNameInput = useCallback(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    setUiState(previous => previous.isInputFocused
+      ? { ...previous, isInputFocused: false }
+      : previous);
+  }, []);
+
+  // Android's back action can dismiss the IME without dispatching input blur.
+  // Treat the keyboard-open -> keyboard-closed transition as the same close
+  // action as tapping the transparent page overlay.
+  useEffect(() => {
+    const wasKeyboardOpen = wasKeyboardOpenRef.current;
+    wasKeyboardOpenRef.current = isKeyboardOpen;
+
+    if (
+      !wasKeyboardOpen ||
+      isKeyboardOpen ||
+      !uiState.editingPlayerId ||
+      !uiState.isInputFocused
+    ) {
+      return;
+    }
+
+    closeFocusedPlayerNameInput();
+  }, [closeFocusedPlayerNameInput, isKeyboardOpen, uiState.editingPlayerId, uiState.isInputFocused]);
 
   // --- Effects for state transitions ---
 
@@ -242,6 +276,8 @@ export const useSessionState = (props: SessionViewProps) => {
   return {
     uiState,
     setUiState,
+    keyboardOffset,
+    closeFocusedPlayerNameInput,
     panelHeight,
     isShortList, // Export for InputPanel to know when to show placeholder
     tableContainerRef,
