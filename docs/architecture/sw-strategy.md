@@ -19,6 +19,20 @@
 - Call `registration.update()` after register.
 - Use versioned `CACHE_NAME` in `public/sw.js`.
 
+## Cache Naming
+
+Use the following format for `CACHE_NAME`:
+
+```text
+boardgame-scorepad-cache-YYYY-MM-DD-NN
+```
+
+- `YYYY-MM-DD` is the date the cache namespace is introduced.
+- `NN` is a two-digit cache revision for that date, starting at `01`.
+- `NN` is not a global release or deployment counter.
+- Increment `NN` only when a deployed asset or Service Worker behavior requires old cached assets to be discarded.
+- Keep the previous cache namespace out of the new value so the activation handler removes it automatically.
+
 ## Single Ownership Rule
 - Runtime SW registration should live in one place only (`src/registerSW.ts`).
 - `index.html` should only keep fallback UI logic for resource-load failure.

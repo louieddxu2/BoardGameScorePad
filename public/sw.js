@@ -1,4 +1,6 @@
-const CACHE_NAME = 'boardgame-scorepad-cache-2026-08-03-keyboard-dismiss-v21';
+// Cache format: boardgame-scorepad-cache-YYYY-MM-DD-NN.
+// NN is the same-day cache revision, not a global release counter.
+const CACHE_NAME = 'boardgame-scorepad-cache-2026-08-03-01';
 
 // 核心靜態資源
 const CORE_ASSETS = [
