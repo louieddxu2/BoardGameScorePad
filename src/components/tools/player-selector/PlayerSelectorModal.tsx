@@ -8,7 +8,7 @@ import { usePlayerSelectorRenderer } from './usePlayerSelectorRenderer';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 import { drawTurnOrder, getStarterSelectorPlayerId } from './turnOrder';
 import { db } from '../../../db';
-import { getRecommendedCandidatesPure } from '../../../features/recommendation/PlayerRecommendationEngine';
+import { playerRecommendationEngine } from '../../../features/recommendation/PlayerRecommendationEngine';
 import { Voter } from '../../../features/recommendation/ContextResolver';
 import { loadPlayerRecommendationContext, LoadedPlayerRecommendationContext } from '../../../features/recommendation/playerRecommendationContext';
 import { DEFAULT_PLAYER_WEIGHTS } from '../../../features/recommendation/types';
@@ -226,7 +226,7 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
             .filter((id): id is string => !!id);
         const lockedNames = players.map(p => p.text);
 
-        return getRecommendedCandidatesPure({
+        return playerRecommendationEngine.generateSuggestions({
             allSavedPlayers,
             contextVoters: recommendationContext.voters,
             lockedPlayerIds,

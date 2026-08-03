@@ -7,7 +7,7 @@ import { RELATION_PREDICTION_CONFIG } from '../../services/relationship/Relation
 import { Candidate } from '../../components/tools/player-selector/types';
 import { COLORS } from '../../colors';
 
-export interface GetRecommendedCandidatesParams {
+export interface PlayerSuggestionInput {
     allSavedPlayers: SavedListItem[];
     contextVoters: Voter[];
     lockedPlayerIds: string[];
@@ -91,7 +91,8 @@ export function predictColorsForPlayer(
  * 根據當前已鎖定玩家與背景 voters，在記憶體內直接進行一次性投票算分並排序。
  * 消除 iterations 迴圈與非同步 I/O，大幅提升視覺選擇器在操作時的反應速度。
  */
-export function getRecommendedCandidatesPure({
+/** Internal implementation for the public one-pass generateSuggestions method. */
+function generateSuggestionsFromInputs({
     allSavedPlayers,
     contextVoters,
     lockedPlayerIds,
@@ -99,7 +100,7 @@ export function getRecommendedCandidatesPure({
     sessionPlayers,
     candidateLimit,
     weights = DEFAULT_PLAYER_WEIGHTS
-}: GetRecommendedCandidatesParams): Candidate[] {
+}: PlayerSuggestionInput): Candidate[] {
     // 1. 準備投票者 (Voters)
     const voters = [...contextVoters];
 
@@ -174,7 +175,13 @@ export function getRecommendedCandidatesPure({
 
 export class PlayerRecommendationEngine {
 
-    public async generateSuggestions(
+    /** Generate one player suggestion list from already loaded inputs. */
+    public generateSuggestions(input: PlayerSuggestionInput): Candidate[] {
+        return generateSuggestionsFromInputs(input);
+    }
+
+    /** Generate the initial player suggestions by chaining one-pass predictions. */
+    public async generateInitialPlayersSuggestions(
         context: RecommendationContext, 
         weights: PlayerRecommendationWeights = DEFAULT_PLAYER_WEIGHTS,
         limit: number = 4
@@ -193,7 +200,7 @@ export class PlayerRecommendationEngine {
         // 4. Iterative Selection Loop (Chained Prediction)
         for (let i = 0; i < limit; i++) {
             // 呼叫抽離出的純函式，同步於記憶體內完成算分與排序
-            const candidates = getRecommendedCandidatesPure({
+            const candidates = this.generateSuggestions({
                 allSavedPlayers,
                 contextVoters: baseVoters,
                 lockedPlayerIds: selectedPlayerIds,

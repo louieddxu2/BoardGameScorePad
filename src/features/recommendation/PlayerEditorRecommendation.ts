@@ -2,7 +2,7 @@ import { GameSession, SavedListItem } from '../../types';
 import { Candidate } from '../../components/tools/player-selector/types';
 import { searchService } from '../../services/searchService';
 import { Voter } from './ContextResolver';
-import { getRecommendedCandidatesPure } from './PlayerRecommendationEngine';
+import { playerRecommendationEngine } from './PlayerRecommendationEngine';
 import { PlayerRecommendationWeights } from './types';
 
 interface PlayerEditorRecommendationParams {
@@ -24,7 +24,7 @@ export function getPlayerEditorRecommendations({
     const currentIndex = session.players.findIndex(player => player.id === playerId);
     const playersBeforeCurrent = currentIndex < 0 ? [] : session.players.slice(0, currentIndex);
 
-    return getRecommendedCandidatesPure({
+    return playerRecommendationEngine.generateSuggestions({
         allSavedPlayers,
         contextVoters,
         lockedPlayerIds: playersBeforeCurrent

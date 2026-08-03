@@ -1,9 +1,14 @@
-import { describe, it, expect } from 'vitest';
-import { getRecommendedCandidatesPure } from './PlayerRecommendationEngine';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { db } from '../../db';
+import { contextResolver, Voter } from './ContextResolver';
+import { playerRecommendationEngine } from './PlayerRecommendationEngine';
 import { SavedListItem } from '../../types';
-import { Voter } from './ContextResolver';
 
-describe('getRecommendedCandidatesPure', () => {
+afterEach(() => {
+    vi.restoreAllMocks();
+});
+
+describe('PlayerRecommendationEngine.generateSuggestions', () => {
     const mockSavedPlayers: SavedListItem[] = [
         {
             id: 'player_1',
@@ -53,7 +58,7 @@ describe('getRecommendedCandidatesPure', () => {
     ];
 
     it('should sort by usageCount and lastUsed when no players are locked and no votes', () => {
-        const result = getRecommendedCandidatesPure({
+        const result = playerRecommendationEngine.generateSuggestions({
             allSavedPlayers: mockSavedPlayers,
             contextVoters: [],
             lockedPlayerIds: [],
@@ -67,7 +72,7 @@ describe('getRecommendedCandidatesPure', () => {
 
     it('should calculate relation scores and recommend related players first', () => {
         // 鎖定 Alice
-        const result = getRecommendedCandidatesPure({
+        const result = playerRecommendationEngine.generateSuggestions({
             allSavedPlayers: mockSavedPlayers,
             contextVoters: [],
             lockedPlayerIds: ['player_1'],
@@ -82,7 +87,7 @@ describe('getRecommendedCandidatesPure', () => {
 
     it('should exclude locked player IDs from recommendation list', () => {
         // 鎖定 Alice 與 Bob
-        const result = getRecommendedCandidatesPure({
+        const result = playerRecommendationEngine.generateSuggestions({
             allSavedPlayers: mockSavedPlayers,
             contextVoters: [],
             lockedPlayerIds: ['player_1', 'player_2'],
@@ -98,7 +103,7 @@ describe('getRecommendedCandidatesPure', () => {
 
     it('should fill with session players when recommended count is less than 4', () => {
         // 鎖定 Alice 與 Bob，剩餘真實玩家只有 2 個，應以 Eve 與 Frank 補足
-        const result = getRecommendedCandidatesPure({
+        const result = playerRecommendationEngine.generateSuggestions({
             allSavedPlayers: mockSavedPlayers,
             contextVoters: [],
             lockedPlayerIds: ['player_1', 'player_2'],
@@ -134,7 +139,7 @@ describe('getRecommendedCandidatesPure', () => {
             }
         };
 
-        const result = getRecommendedCandidatesPure({
+        const result = playerRecommendationEngine.generateSuggestions({
             allSavedPlayers: candidates,
             contextVoters: [{ item: voter, factor: 'game' }],
             lockedPlayerIds: [],
@@ -166,7 +171,7 @@ describe('getRecommendedCandidatesPure', () => {
             }
         };
 
-        const result = getRecommendedCandidatesPure({
+        const result = playerRecommendationEngine.generateSuggestions({
             allSavedPlayers: candidates,
             contextVoters: [{ item: voter, factor: 'game' }],
             lockedPlayerIds: [],
@@ -185,5 +190,40 @@ describe('getRecommendedCandidatesPure', () => {
         });
 
         expect(result.map(candidate => candidate.name)).toEqual(['B', 'A']);
+    });
+
+    it('builds initial player suggestions by chaining single-pass suggestions', async () => {
+        const savedPlayers: SavedListItem[] = [
+            { id: 'a', name: 'A', usageCount: 1, lastUsed: 1 },
+            { id: 'b', name: 'B', usageCount: 1, lastUsed: 1 },
+            { id: 'c', name: 'C', usageCount: 1, lastUsed: 1 }
+        ];
+        const contextVoter: Voter = {
+            item: {
+                id: 'game',
+                name: 'Game',
+                usageCount: 1,
+                lastUsed: 1,
+                meta: {
+                    relations: {
+                        players: [
+                            { id: 'a', count: 5 },
+                            { id: 'b', count: 4 },
+                            { id: 'c', count: 3 }
+                        ]
+                    }
+                }
+            },
+            factor: 'game'
+        };
+
+        vi.spyOn(contextResolver, 'resolveBaseContext').mockResolvedValue([contextVoter]);
+        vi.spyOn(db.savedPlayers, 'toArray').mockResolvedValue(savedPlayers);
+        const generateSuggestionsSpy = vi.spyOn(playerRecommendationEngine, 'generateSuggestions');
+
+        const result = await playerRecommendationEngine.generateInitialPlayersSuggestions({}, undefined, 2);
+
+        expect(result.map(player => player.name)).toEqual(['A', 'B']);
+        expect(generateSuggestionsSpy).toHaveBeenCalledTimes(2);
     });
 });

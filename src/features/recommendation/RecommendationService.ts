@@ -17,7 +17,7 @@ class RecommendationService {
         const weights = await weightAdjustmentEngine.getWeights(PLAYER_WEIGHTS_ID, DEFAULT_PLAYER_WEIGHTS);
 
         // Delegate to Player Engine
-        const suggestions = await playerRecommendationEngine.generateSuggestions(context, weights, limit);
+        const suggestions = await playerRecommendationEngine.generateInitialPlayersSuggestions(context, weights, limit);
 
         return suggestions;
     }
