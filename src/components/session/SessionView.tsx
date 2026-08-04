@@ -36,6 +36,7 @@ import { db } from '../../db';
 import { useAiGenerator } from '../../features/ai-generator/hooks/useAiGenerator';
 import { markPendingAiShare } from '../../utils/pendingAiShare';
 import { getSessionOccupiedBottom, getSessionPanelDockOffset } from '../../utils/sessionViewport';
+import { useToolboxBoundaryGesture } from '../../hooks/useToolboxBoundaryGesture';
 import { createPlayerSessionCapabilities, hostSessionCapabilities, SessionCapabilities } from '../../features/multiplayer/sessionCapabilities';
 import { MultiplayerSessionManager, multiplayerSessionManager } from '../../features/multiplayer/multiplayerSessionManager';
 import { routeMultiplayerSessionUpdate } from '../../features/multiplayer/multiplayerSessionUpdateRouter';
@@ -103,16 +104,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
                       aiGenerator.status === 'generating' || 
                       aiSimpleGenerator.simpleStatus === 'compressing' || 
                       aiSimpleGenerator.simpleStatus === 'generating';
-
-  const toolboxAutoOpenedRef = useRef(false);
-  const toolboxTouchRef = useRef<{
-    startX: number;
-    startY: number;
-    startScrollTop: number;
-    minScrollTop: number;
-    maxScrollTop: number;
-    axis: 'vertical' | 'horizontal' | null;
-  } | null>(null);
 
   // 全域同步計時器
   React.useEffect(() => {
@@ -237,6 +228,46 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   } = sessionState.uiState;
 
   const isPanelOpen = editingCell !== null || editingPlayerId !== null;
+
+  const isInputInterfaceOpen =
+    editingCell !== null ||
+    editingPlayerId !== null ||
+    editingColumn !== null ||
+    isEditingTitle ||
+    isInputFocused ||
+    isAddColumnModalOpen ||
+    isGameSettingsOpen ||
+    isImageUploadModalOpen ||
+    isPhotoGalleryOpen ||
+    isScannerOpen ||
+    isTextureMapperOpen ||
+    screenshotModal.isOpen ||
+    showShareMenu;
+
+  const canAutoOpenToolbox = !!baseImage || template.columns.length >= 5;
+
+  const handleAutoOpenToolbox = useCallback(() => {
+    setUiState(prev => ({
+      ...prev,
+      isToolboxOpen: true,
+      editingCell: null,
+      editingPlayerId: null,
+      previewValue: 0,
+    }));
+  }, [setUiState]);
+
+  const handleAutoCloseToolbox = useCallback(() => {
+    setUiState(prev => ({ ...prev, isToolboxOpen: false }));
+  }, [setUiState]);
+
+  useToolboxBoundaryGesture({
+    scrollContainerRef: sessionState.tableContainerRef,
+    isToolboxOpen,
+    canAutoOpenToolbox,
+    isInputInterfaceOpen,
+    onAutoOpen: handleAutoOpenToolbox,
+    onAutoClose: handleAutoCloseToolbox,
+  });
 
   const sessionSurfaceRef = useRef<HTMLDivElement>(null);
   const touchDiagnosticStateRef = useRef<TouchDiagnosticState>({
@@ -527,166 +558,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     grid.addEventListener('scroll', handleScroll, { passive: true });
     return () => grid.removeEventListener('scroll', handleScroll);
   }, [sessionState.tableContainerRef, sessionState.totalBarScrollRef]);
-
-  React.useEffect(() => {
-    if (!isToolboxOpen) {
-      toolboxAutoOpenedRef.current = false;
-    }
-  }, [isToolboxOpen]);
-
-  React.useEffect(() => {
-    const grid = sessionState.tableContainerRef.current;
-    if (!grid) return;
-
-    const minVerticalLockDistance = 24;
-    const verticalSlopeRatio = 1.5;
-    const minTriggerDistance = 48;
-    const scrollMovementTolerance = 1;
-    const canAutoOpenToolbox = !!baseImage || template.columns.length >= 5;
-
-    const hasInputInterfaceOpen =
-      editingCell !== null ||
-      editingPlayerId !== null ||
-      editingColumn !== null ||
-      isEditingTitle ||
-      isInputFocused ||
-      isAddColumnModalOpen ||
-      isGameSettingsOpen ||
-      isImageUploadModalOpen ||
-      isPhotoGalleryOpen ||
-      isScannerOpen ||
-      isTextureMapperOpen ||
-      screenshotModal.isOpen ||
-      showShareMenu;
-
-    const openAutoToolbox = () => {
-      if (!canAutoOpenToolbox || isToolboxOpen || hasInputInterfaceOpen) return;
-
-      toolboxAutoOpenedRef.current = true;
-      setUiState(prev => ({
-        ...prev,
-        isToolboxOpen: true,
-        editingCell: null,
-        editingPlayerId: null,
-        previewValue: 0
-      }));
-    };
-
-    const handleTouchStart = (event: TouchEvent) => {
-      if (event.touches.length !== 1 || !canAutoOpenToolbox || hasInputInterfaceOpen) {
-        toolboxTouchRef.current = null;
-        return;
-      }
-
-      const touch = event.touches[0];
-      toolboxTouchRef.current = {
-        startX: touch.clientX,
-        startY: touch.clientY,
-        startScrollTop: grid.scrollTop,
-        minScrollTop: grid.scrollTop,
-        maxScrollTop: grid.scrollTop,
-        axis: null
-      };
-    };
-
-    const handleTouchMove = (event: TouchEvent) => {
-      const state = toolboxTouchRef.current;
-      if (!state || event.touches.length !== 1) return;
-
-      state.minScrollTop = Math.min(state.minScrollTop, grid.scrollTop);
-      state.maxScrollTop = Math.max(state.maxScrollTop, grid.scrollTop);
-
-      const touch = event.touches[0];
-      const deltaX = touch.clientX - state.startX;
-      const deltaY = touch.clientY - state.startY;
-      const absDeltaX = Math.abs(deltaX);
-      const absDeltaY = Math.abs(deltaY);
-
-      if (!state.axis && (absDeltaX >= minVerticalLockDistance || absDeltaY >= minVerticalLockDistance)) {
-        state.axis = absDeltaY >= minVerticalLockDistance && absDeltaY >= absDeltaX * verticalSlopeRatio
-          ? 'vertical'
-          : 'horizontal';
-      }
-    };
-
-    const handleTouchEnd = (event: TouchEvent) => {
-      const state = toolboxTouchRef.current;
-      toolboxTouchRef.current = null;
-      if (!state) return;
-
-      state.maxScrollTop = Math.max(state.maxScrollTop, grid.scrollTop);
-      state.minScrollTop = Math.min(state.minScrollTop, grid.scrollTop);
-
-      const changedTouch = event.changedTouches[0];
-      if (!changedTouch) return;
-
-      const totalDeltaY = changedTouch.clientY - state.startY;
-      const fingerMovedUpEnough = totalDeltaY <= -minTriggerDistance;
-      const fingerMovedDownEnough = totalDeltaY >= minTriggerDistance;
-      const didNotScrollDown = state.maxScrollTop <= state.startScrollTop + scrollMovementTolerance;
-      const didNotScrollUp = state.minScrollTop >= state.startScrollTop - scrollMovementTolerance;
-
-      if (state.axis === 'vertical' && fingerMovedUpEnough && didNotScrollDown) {
-        openAutoToolbox();
-      }
-
-      if (
-        state.axis === 'vertical' &&
-        fingerMovedDownEnough &&
-        didNotScrollUp &&
-        toolboxAutoOpenedRef.current &&
-        isToolboxOpen &&
-        !hasInputInterfaceOpen
-      ) {
-        toolboxAutoOpenedRef.current = false;
-        setUiState(prev => ({ ...prev, isToolboxOpen: false }));
-      }
-    };
-
-    const handleScroll = () => {
-      if (toolboxAutoOpenedRef.current && isToolboxOpen && !hasInputInterfaceOpen && grid.scrollTop <= 1) {
-        toolboxAutoOpenedRef.current = false;
-        setUiState(prev => ({ ...prev, isToolboxOpen: false }));
-      }
-    };
-
-    const handleTouchCancel = () => {
-      toolboxTouchRef.current = null;
-    };
-
-    grid.addEventListener('touchstart', handleTouchStart, { passive: true });
-    grid.addEventListener('touchmove', handleTouchMove, { passive: true });
-    grid.addEventListener('touchend', handleTouchEnd);
-    grid.addEventListener('touchcancel', handleTouchCancel);
-    grid.addEventListener('scroll', handleScroll, { passive: true });
-
-    return () => {
-      grid.removeEventListener('touchstart', handleTouchStart);
-      grid.removeEventListener('touchmove', handleTouchMove);
-      grid.removeEventListener('touchend', handleTouchEnd);
-      grid.removeEventListener('touchcancel', handleTouchCancel);
-      grid.removeEventListener('scroll', handleScroll);
-    };
-  }, [
-    editingCell,
-    editingPlayerId,
-    editingColumn,
-    isEditingTitle,
-    isInputFocused,
-    isAddColumnModalOpen,
-    isGameSettingsOpen,
-    isImageUploadModalOpen,
-    isPhotoGalleryOpen,
-    isScannerOpen,
-    isTextureMapperOpen,
-    isToolboxOpen,
-    baseImage,
-    screenshotModal.isOpen,
-    sessionState.tableContainerRef,
-    setUiState,
-    showShareMenu,
-    template.columns.length,
-  ]);
 
   React.useEffect(() => {
     const gridContent = sessionState.gridContentRef.current;

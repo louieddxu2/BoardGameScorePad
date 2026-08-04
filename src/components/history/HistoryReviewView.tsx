@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { HistoryRecord, GameSession, SavedListItem } from '../../types';
 import { ArrowLeft, Share2, Settings } from 'lucide-react';
 import { useToast } from '../../hooks/useToast';
@@ -18,6 +18,7 @@ import PhotoGalleryModal from '../session/modals/PhotoGalleryModal';
 import CameraView from '../scanner/CameraView';
 import { getRecordScoringRule, getRecordTemplate } from '../../utils/historyUtils';
 import { usePhotoManager } from '../../hooks/usePhotoManager';
+import { useToolboxBoundaryGesture } from '../../hooks/useToolboxBoundaryGesture';
 import SmartSpacer from '../session/parts/SmartSpacer';
 
 import { useHistoryTranslation } from '../../i18n/history';
@@ -184,6 +185,31 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
     const totalBarScrollRef = useRef<HTMLDivElement>(null);
     const gridContentRef = useRef<HTMLDivElement>(null);
     const totalContentRef = useRef<HTMLDivElement>(null);
+
+    const canAutoOpenToolbox = !!baseImage || template.columns.length >= 5;
+    const isInputInterfaceOpen =
+        showScreenshotModal ||
+        showSettingsModal ||
+        showShareMenu ||
+        showPhotoGallery ||
+        photos.isCameraOpen;
+
+    const handleAutoOpenToolbox = useCallback(() => {
+        setIsToolboxOpen(true);
+    }, []);
+
+    const handleAutoCloseToolbox = useCallback(() => {
+        setIsToolboxOpen(false);
+    }, []);
+
+    useToolboxBoundaryGesture({
+        scrollContainerRef: tableContainerRef,
+        isToolboxOpen,
+        canAutoOpenToolbox,
+        isInputInterfaceOpen,
+        onAutoOpen: handleAutoOpenToolbox,
+        onAutoClose: handleAutoCloseToolbox,
+    });
 
     useEffect(() => {
         const grid = tableContainerRef.current;
