@@ -21,6 +21,11 @@
 - Summarize changes, stage relevant files only, and commit with a clear message.
 - Do not push unless explicitly requested.
 
+7. V3test publishing:
+- For an explicit publish request, use `npm run publish:v3test` instead of calling `git push` directly.
+- The publish command requires a clean `V3test` worktree, runs type-check and core tests, updates the dated service-worker cache revision, commits only `public/sw.js`, and pushes `origin/V3test`.
+- If any precondition or verification fails, stop without publishing.
+
 # Project-Specific Testing Notes
 
 For `C:\board-game-score-pad`:

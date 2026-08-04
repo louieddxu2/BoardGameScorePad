@@ -13,7 +13,8 @@
     "test:core": "vitest run --exclude \"{src/components/session/SessionUI.test.tsx,src/utils/ui-consistency.test.ts}\"",
     "test:release": "vitest run",
     "test:ui": "vitest run src/utils/ui-consistency.test.ts",
-    "test:touch": "vitest run src/components/session/touchDiagnostics.test.ts"
+    "test:touch": "vitest run src/components/session/touchDiagnostics.test.ts",
+    "publish:v3test": "powershell -ExecutionPolicy Bypass -File scripts/publish-v3test.ps1"
   },
   "dependencies": {
     "dexie": "^3.2.4",
