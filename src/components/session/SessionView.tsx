@@ -834,14 +834,14 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           editingPlayerId={editingPlayerId}
           onCellClick={handleCellClickSafe}
           onPlayerHeaderClick={(playerId, event) => {
-            if (capabilities.role === 'player' && !capabilities.playerIds?.includes(playerId)) {
+            if (capabilities.role === 'player') {
               props.onRequestMultiplayerPlayerClaim?.(playerId);
               return;
             }
             if (!capabilities.canEditPlayers) return;
             eventHandlers.handlePlayerHeaderClick(playerId, event);
           }}
-          canRequestPlayerClaim={capabilities.role === 'player'}
+          canManageParticipantClaims={capabilities.role === 'player'}
           onColumnHeaderClick={handleColumnHeaderClickSafe}
           onUpdateTemplate={capabilities.canEditTemplate ? handleTemplateUpdate : () => undefined}
           onAddColumn={capabilities.canEditTemplate ? eventHandlers.handleAddBlankColumn : () => undefined}

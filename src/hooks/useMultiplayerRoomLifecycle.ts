@@ -393,10 +393,9 @@ export const useMultiplayerRoomLifecycle = ({
     if (resumed) setView(AppView.ACTIVE_SESSION);
   }, [clearRoomUrlQuery, pendingMultiplayerJoin, setActiveRoom, setView]);
 
-  const handleRequestMultiplayerPlayerClaim = useCallback((playerId: string) => {
+  const handleRequestMultiplayerPlayerClaim = useCallback((_playerId: string) => {
     if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
-    if (activeMultiplayerRoom.playerIds?.includes(playerId)) return;
-    setPendingMultiplayerClaimIds([playerId]);
+    setPendingMultiplayerClaimIds([...(activeMultiplayerRoom.playerIds ?? [])]);
   }, [activeMultiplayerRoom]);
 
   const handleConfirmMultiplayerPlayerClaims = useCallback((playerIds: string[]) => {
@@ -404,11 +403,8 @@ export const useMultiplayerRoomLifecycle = ({
     const managedRoom = multiplayerSessionManager.get(activeMultiplayerRoom.roomId);
     if (managedRoom?.runtime?.role !== 'player') return;
 
-    const existingPlayerIds = activeMultiplayerRoom.playerIds ?? [];
-    const nextPlayerIds = [...new Set([...existingPlayerIds, ...playerIds])];
-    for (const playerId of nextPlayerIds) {
-      if (!existingPlayerIds.includes(playerId)) managedRoom.runtime.controller.claimPlayer(playerId);
-    }
+    const nextPlayerIds = [...new Set(playerIds)];
+    if (!managedRoom.runtime.controller.setPlayerClaims(nextPlayerIds)) return;
     setActiveRoom({ ...activeMultiplayerRoom, playerIds: nextPlayerIds });
     setPendingMultiplayerClaimIds(null);
   }, [activeMultiplayerRoom, setActiveRoom]);

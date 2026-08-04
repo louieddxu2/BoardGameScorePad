@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../../../i18n';
 import { _resetActiveCountForTesting } from '../../../hooks/useModalBackHandler';
@@ -34,6 +34,28 @@ describe('MultiplayerPlayerClaimModal', () => {
     act(() => { window.dispatchEvent(new PopStateEvent('popstate')); });
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows the permission settings variant to clear every selected player', () => {
+    const onConfirm = vi.fn();
+    render(
+      <LanguageProvider>
+        <MultiplayerPlayerClaimModal
+          isOpen
+          variant="manage"
+          players={[{ id: 'p1', name: 'P1', color: '#fff', scores: {}, totalScore: 0 }]}
+          initialSelectedIds={['p1']}
+          onConfirm={onConfirm}
+          onClose={vi.fn()}
+        />
+      </LanguageProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'P1' }));
+    const buttons = screen.getAllByRole('button');
+    fireEvent.click(buttons[buttons.length - 1]);
+
+    expect(onConfirm).toHaveBeenCalledWith([]);
   });
 
   it('closes the QR room dialog when the browser returns', () => {

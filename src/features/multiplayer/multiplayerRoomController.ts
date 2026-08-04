@@ -9,11 +9,14 @@ import {
   isScoreValuePatchMessage,
   isParticipantClaimMessage,
   isParticipantClaimResultMessage,
+  isParticipantClaimsUpdateMessage,
+  isParticipantClaimsUpdateResultMessage,
   isSessionCompletedAckMessage,
   isSessionCompletedMessage,
   isSessionSnapshotMessage,
   isTotalAdjustmentPatchMessage,
   ParticipantClaimResultMessage,
+  ParticipantClaimsUpdateResultMessage,
   ScorePatchResultMessage,
   ScoreValuePatchMessage,
   SessionSnapshotMessage,
@@ -82,6 +85,22 @@ export const createMultiplayerRoomController = (options: {
           completionWaiter.sessionId === message.sessionId;
         if (!binding || binding.deviceId !== message.deviceId || !matchesActiveCompletion) return false;
         acknowledgeCompletion(message.deviceId);
+        return true;
+      }
+      if (isParticipantClaimsUpdateMessage(message)) {
+        const validRoom = message.roomId === options.hostSession.room.roomId && message.sessionId === options.hostSession.session.id;
+        const playerIds = [...new Set(message.playerIds)];
+        const playersExist = playerIds.every((playerId) => options.hostSession.session.players.some((player) => player.id === playerId));
+        const roomActive = options.hostSession.session.status === 'active';
+        const accepted = validRoom && roomActive && playersExist;
+        const result: ParticipantClaimsUpdateResultMessage = accepted
+          ? { type: 'room:set-player-claims-result', roomId: message.roomId, sessionId: message.sessionId, accepted: true, playerIds }
+          : { type: 'room:set-player-claims-result', roomId: message.roomId, sessionId: message.sessionId, accepted: false, reason: !roomActive && validRoom ? 'room_completed' : validRoom ? 'player_not_found' : 'message_not_for_room' };
+        if (accepted) {
+          bindings.set(connection, { deviceId: message.deviceId, playerIds: new Set(playerIds) });
+          await publishParticipantClaims();
+        }
+        options.transport.sendToConnection(connection, result);
         return true;
       }
       if (isParticipantClaimMessage(message)) {
@@ -210,6 +229,7 @@ export const createMultiplayerPlayerRoomController = (options: {
   snapshotStore: MultiplayerSnapshotStore;
   transport: MultiplayerRoomTransport;
   onClaimAccepted?: (playerId: string) => void | Promise<void>;
+  onClaimsAccepted?: (playerIds: string[]) => void | Promise<void>;
   onCompleted?: (message: import('./protocol').SessionCompletedMessage) => void | Promise<void>;
   onSnapshot?: (snapshot: SessionSnapshotMessage) => void | Promise<void>;
   now?: () => number;
@@ -237,6 +257,16 @@ export const createMultiplayerPlayerRoomController = (options: {
       return send({ type: 'room:claim-player', roomId: options.playerSession.room.roomId, sessionId: options.playerSession.session.id, deviceId: options.deviceId, playerId });
     },
 
+    setPlayerClaims(playerIds: string[]) {
+      return send({
+        type: 'room:set-player-claims',
+        roomId: options.playerSession.room.roomId,
+        sessionId: options.playerSession.session.id,
+        deviceId: options.deviceId,
+        playerIds: [...new Set(playerIds)],
+      });
+    },
+
     async queueTotalAdjustment(input: { playerId: string; targetTotal: number }): Promise<TotalAdjustmentPatchMessage> {
       const draft: TotalAdjustmentPatchMessage = {
         type: 'player:total-adjustment', roomId: options.playerSession.room.roomId, sessionId: options.playerSession.session.id,
@@ -260,6 +290,11 @@ export const createMultiplayerPlayerRoomController = (options: {
       if (isParticipantClaimResultMessage(message)) {
         if (message.roomId !== options.playerSession.room.roomId || message.sessionId !== options.playerSession.session.id) return false;
         if (message.accepted && message.playerId) await options.onClaimAccepted?.(message.playerId);
+        return true;
+      }
+      if (isParticipantClaimsUpdateResultMessage(message)) {
+        if (message.roomId !== options.playerSession.room.roomId || message.sessionId !== options.playerSession.session.id) return false;
+        if (message.accepted && message.playerIds) await options.onClaimsAccepted?.(message.playerIds);
         return true;
       }
       if (isSessionSnapshotMessage(message)) {

@@ -258,7 +258,7 @@ const AppWorkspace: React.FC<AppWorkspaceProps> = ({
       {pendingMultiplayerClaimIds && activeMultiplayerRoom?.role === 'player' && multiplayerRoomState?.session && (
         <MultiplayerPlayerClaimModal
           isOpen
-          variant="claim"
+          variant="manage"
           initialSelectedIds={pendingMultiplayerClaimIds}
           players={multiplayerRoomState.session.players}
           onConfirm={handleConfirmMultiplayerPlayerClaims}

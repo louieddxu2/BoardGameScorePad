@@ -7,6 +7,7 @@ import { ToastProvider } from '../../hooks/useToast';
 import { LanguageProvider } from '../../i18n';
 import { GameSession, GameTemplate } from '../../types';
 import { createMultiplayerSessionManager } from '../../features/multiplayer/multiplayerSessionManager';
+import { createPlayerSessionCapabilities } from '../../features/multiplayer/sessionCapabilities';
 
 vi.mock('../../features/ai-generator/hooks/useAiGenerator', () => ({
   useAiGenerator: () => ({
@@ -215,6 +216,20 @@ describe('SessionView toolbox scroll behavior', () => {
 
     fireEvent.click(getScoreCell('p1'));
     expect(getScoreCell('p1').className).toContain('ring-2');
+  });
+
+  it('opens permission settings for both claimed and unclaimed player headers', () => {
+    const onRequestPlayerClaim = vi.fn();
+    renderSession({
+      multiplayerCapabilities: createPlayerSessionCapabilities(['p1']),
+      onRequestMultiplayerPlayerClaim: onRequestPlayerClaim,
+    });
+
+    fireEvent.click(document.querySelector('[data-player-header-id="p1"]') as HTMLElement);
+    fireEvent.click(document.querySelector('[data-player-header-id="p2"]') as HTMLElement);
+
+    expect(onRequestPlayerClaim).toHaveBeenNthCalledWith(1, 'p1');
+    expect(onRequestPlayerClaim).toHaveBeenNthCalledWith(2, 'p2');
   });
 
   beforeEach(() => {

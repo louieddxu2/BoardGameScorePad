@@ -43,6 +43,34 @@ const createBindingStore = (): MultiplayerParticipantBindingStore => {
 };
 
 describe('multiplayer room runtime', () => {
+  it('persists a complete permission set and removes it when all permissions are cleared', async () => {
+    const hostStore = createRuntimeStore(); const playerStore = createRuntimeStore();
+    const hostDelivery = createDeliveryStore(); const playerDelivery = createDeliveryStore(); const bindingStore = createBindingStore();
+    const connection = {};
+    let host: Awaited<ReturnType<typeof createMultiplayerHostRoomRuntime>>;
+    let player: Awaited<ReturnType<typeof createMultiplayerPlayerRoomRuntime>>;
+    const hostTransport: MultiplayerRoomRuntimeTransport = {
+      sendToHost: () => false,
+      sendToConnection: (_connection, message) => { void player.receive(message); return true; },
+      broadcastLocalChanges: vi.fn(async () => undefined),
+    };
+    const playerTransport: MultiplayerRoomRuntimeTransport = {
+      sendToHost: (message) => { void host.receive(message, connection); return true; },
+      sendToConnection: () => false,
+      broadcastLocalChanges: async () => undefined,
+    };
+    host = await createMultiplayerHostRoomRuntime({ roomId: 'room-1', hostDeviceId: 'host-1', template, session, store: hostStore, deliveryStore: hostDelivery, transport: hostTransport, now: () => 10 });
+    player = await createMultiplayerPlayerRoomRuntime({ bootstrapMessage: host.session.createBootstrapMessage(), deviceId: 'player-device', store: playerStore, bindingStore, deliveryStore: playerDelivery, transport: playerTransport, now: () => 20 });
+
+    expect(player.controller.setPlayerClaims(['p1'])).toBe(true);
+    await vi.waitFor(async () => expect(await bindingStore.get('room-1:player-device')).toMatchObject({ playerIds: ['p1'] }));
+    expect(host.getParticipantClaims()).toEqual({ p1: 1 });
+
+    expect(player.controller.setPlayerClaims([])).toBe(true);
+    await vi.waitFor(async () => expect(await bindingStore.get('room-1:player-device')).toBeUndefined());
+    expect(host.getParticipantClaims()).toEqual({});
+  });
+
   it('reclaims the bound player before replaying a disconnected edit', async () => {
     const hostStore = createRuntimeStore(); const playerStore = createRuntimeStore();
     const hostDelivery = createDeliveryStore(); const playerDelivery = createDeliveryStore(); const bindingStore = createBindingStore();

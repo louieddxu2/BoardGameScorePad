@@ -22,6 +22,25 @@ const createDeliveryStore = (): MultiplayerDeliveryStore => {
 };
 
 describe('multiplayer room controller', () => {
+  it('sends a complete claim set and accepts an empty permission set', async () => {
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
+    const playerSession = createMultiplayerPlayerSessionFromBootstrap({ bootstrapMessage: host.createBootstrapMessage(), now: () => 10 });
+    const accepted = vi.fn();
+    const sent: unknown[] = [];
+    const controller = createMultiplayerPlayerRoomController({
+      playerSession, deviceId: 'device-1', deliveryStore: createDeliveryStore(),
+      snapshotStore: { putSession: async () => undefined, updateRoomRevision: async () => undefined },
+      transport: { sendToHost: (message) => { sent.push(message); return true; }, sendToConnection: () => true, broadcastLocalChanges: async () => undefined },
+      onClaimsAccepted: accepted, now: () => 20,
+    });
+
+    expect(controller.setPlayerClaims(['p1', 'p1'])).toBe(true);
+    expect(sent).toEqual([expect.objectContaining({ type: 'room:set-player-claims', playerIds: ['p1'] })]);
+
+    await controller.receive({ type: 'room:set-player-claims-result', roomId: 'room-1', sessionId: 'session-1', accepted: true, playerIds: [] });
+    expect(accepted).toHaveBeenCalledWith([]);
+  });
+
   it('persists before send, then clears an acknowledged player patch', async () => {
     const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
     const playerSession = createMultiplayerPlayerSessionFromBootstrap({ bootstrapMessage: host.createBootstrapMessage(), now: () => 10 });
@@ -101,6 +120,27 @@ describe('multiplayer room controller', () => {
     await controller.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-1', playerId: 'p2' }, connection);
     await controller.receive({ type: 'score:valuePatch', roomId: 'room-1', sessionId: 'session-1', opId: 'p2-op', deviceId: 'device-1', sequence: 1, updatedAt: 20, patch: { actor: { role: 'player', playerId: 'p2' }, targetPlayerId: 'p2', colId: 'points', scoreValue: { parts: [4] } } }, connection);
     expect(host.session.players.find((item) => item.id === 'p2')?.scores.points).toEqual({ parts: [4] });
+  });
+
+  it('replaces a connection claim set and allows all permissions to be cleared', async () => {
+    const twoPlayerSession = { ...session, players: [player, { ...player, id: 'p2', name: 'P2' }] };
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session: twoPlayerSession, now: () => 10 });
+    const store = createDeliveryStore(); const claims = vi.fn(); const connection = {};
+    const controller = createMultiplayerRoomController({ role: 'host', hostSession: host, deliveryStore: store,
+      snapshotStore: { putSession: async () => undefined, updateRoomRevision: async () => undefined },
+      transport: { sendToHost: () => false, sendToConnection: () => true, broadcastLocalChanges: async () => undefined },
+      onParticipantClaims: claims, now: () => 20,
+    });
+
+    await controller.receive({ type: 'room:set-player-claims', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-1', playerIds: ['p1', 'p2'] }, connection);
+    expect(controller.getParticipantClaims()).toEqual({ p1: 1, p2: 1 });
+
+    await controller.receive({ type: 'room:set-player-claims', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-1', playerIds: ['p2'] }, connection);
+    expect(controller.getParticipantClaims()).toEqual({ p2: 1 });
+
+    await controller.receive({ type: 'room:set-player-claims', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-1', playerIds: [] }, connection);
+    expect(controller.getParticipantClaims()).toEqual({});
+    expect(claims).toHaveBeenLastCalledWith({});
   });
 
   it('reports claimed players per live connection and removes them on disconnect', async () => {

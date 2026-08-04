@@ -139,6 +139,7 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
   transport: MultiplayerRoomRuntimeTransport;
   onOwnershipReturned?: (session: GameSession) => void | Promise<void>;
   onSessionSnapshot?: (session: GameSession) => void | Promise<void>;
+  onClaimsAccepted?: (playerIds: string[]) => void | Promise<void>;
   now?: () => number;
 }): Promise<MultiplayerPlayerRoomRuntime> => {
   const now = options.now ?? Date.now;
@@ -174,6 +175,25 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
       if (pendingReplayClaims.size === 0) {
         await controller.replayPendingPatches();
       }
+    },
+    onClaimsAccepted: async (playerIds) => {
+      const normalizedPlayerIds = [...new Set(playerIds)];
+      const bindingId = participantBindingKey(playerSession.room.roomId, options.deviceId);
+      if (normalizedPlayerIds.length > 0) {
+        await saveParticipantBinding({
+          store: options.bindingStore,
+          roomId: playerSession.room.roomId,
+          sessionId: playerSession.session.id,
+          deviceId: options.deviceId,
+          playerIds: normalizedPlayerIds,
+          now,
+        });
+      } else {
+        await options.bindingStore.delete(bindingId);
+      }
+      pendingReplayClaims.clear();
+      await controller.replayPendingPatches();
+      await options.onClaimsAccepted?.(normalizedPlayerIds);
     },
     onCompleted: async (message) => {
       const resolved = resolveBootstrapImport({
@@ -232,6 +252,7 @@ export const restoreMultiplayerPlayerRoomRuntime = async (options: {
   transport: MultiplayerRoomRuntimeTransport;
   onOwnershipReturned?: (session: GameSession) => void | Promise<void>;
   onSessionSnapshot?: (session: GameSession) => void | Promise<void>;
+  onClaimsAccepted?: (playerIds: string[]) => void | Promise<void>;
   now?: () => number;
 }): Promise<MultiplayerPlayerRoomRuntime | null> => {
   const room = await options.store.getRoom(options.roomId);
@@ -268,6 +289,7 @@ export const restoreMultiplayerPlayerRoomRuntime = async (options: {
     transport: options.transport,
     onOwnershipReturned: options.onOwnershipReturned,
     onSessionSnapshot: options.onSessionSnapshot,
+    onClaimsAccepted: options.onClaimsAccepted,
     now: options.now,
   });
 };

@@ -75,6 +75,23 @@ export interface ParticipantClaimResultMessage {
   reason?: string;
 }
 
+export interface ParticipantClaimsUpdateMessage {
+  type: 'room:set-player-claims';
+  roomId: string;
+  sessionId: string;
+  deviceId: string;
+  playerIds: string[];
+}
+
+export interface ParticipantClaimsUpdateResultMessage {
+  type: 'room:set-player-claims-result';
+  roomId: string;
+  sessionId: string;
+  accepted: boolean;
+  playerIds?: string[];
+  reason?: string;
+}
+
 export interface SessionSnapshotMessage {
   type: 'session:snapshot';
   roomId: string;
@@ -118,6 +135,8 @@ export type MultiplayerMessage =
   | TotalAdjustmentPatchMessage
   | ParticipantClaimMessage
   | ParticipantClaimResultMessage
+  | ParticipantClaimsUpdateMessage
+  | ParticipantClaimsUpdateResultMessage
   | ScorePatchResultMessage
   | SessionSnapshotMessage
   | SessionCompletedMessage
@@ -210,6 +229,22 @@ export const isParticipantClaimMessage = (value: unknown): value is ParticipantC
 export const isParticipantClaimResultMessage = (value: unknown): value is ParticipantClaimResultMessage => {
   if (!isRecord(value) || value.type !== 'room:claim-result' || !hasString(value, 'roomId') || !hasString(value, 'sessionId') || typeof value.accepted !== 'boolean') return false;
   return value.accepted ? hasString(value, 'playerId') : typeof value.reason === 'string' && value.reason !== '';
+};
+
+const isPlayerIdList = (value: unknown): value is string[] => (
+  Array.isArray(value) && value.every((playerId) => typeof playerId === 'string' && playerId !== '')
+);
+
+export const isParticipantClaimsUpdateMessage = (value: unknown): value is ParticipantClaimsUpdateMessage => {
+  if (!isRecord(value) || value.type !== 'room:set-player-claims') return false;
+  return hasString(value, 'roomId') && hasString(value, 'sessionId') && hasString(value, 'deviceId') && isPlayerIdList(value.playerIds);
+};
+
+export const isParticipantClaimsUpdateResultMessage = (value: unknown): value is ParticipantClaimsUpdateResultMessage => {
+  if (!isRecord(value) || value.type !== 'room:set-player-claims-result' || !hasString(value, 'roomId') || !hasString(value, 'sessionId') || typeof value.accepted !== 'boolean') return false;
+  return value.accepted
+    ? isPlayerIdList(value.playerIds)
+    : typeof value.reason === 'string' && value.reason !== '';
 };
 
 export const isSessionSnapshotMessage = (value: unknown): value is SessionSnapshotMessage => {

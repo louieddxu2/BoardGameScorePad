@@ -7,7 +7,7 @@ import { ContrastText } from '../../shared/ContrastText';
 import SmartTextureLayer from './SmartTextureLayer';
 import { COLORS } from '../../../colors'; // Import colors for fallback
 import { useSessionTranslation } from '../../../i18n/session';
-import { LockKeyhole, Pencil, UsersRound } from 'lucide-react';
+import { Pencil, Settings2, UsersRound } from 'lucide-react';
 
 interface TexturedPlayerHeaderProps {
   player: Player;
@@ -22,7 +22,7 @@ interface TexturedPlayerHeaderProps {
   id?: string;
   participantCount?: number;
   isEditableByParticipant?: boolean;
-  canRequestParticipantClaim?: boolean;
+  canManageParticipantClaims?: boolean;
 }
 
 // Simple Meeple Icon SVG Component with Stroke for visibility
@@ -51,7 +51,7 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
   id,
   participantCount = 0,
   isEditableByParticipant = false,
-  canRequestParticipantClaim = false,
+  canManageParticipantClaims = false,
 }) => {
   const { t } = useSessionTranslation();
   const [bgUrl, setBgUrl] = useState<string | null>(null);
@@ -100,7 +100,7 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
       id={id || `header-${player.id}`}
       data-player-header-id={player.id}
       onClick={onClick}
-      title={canRequestParticipantClaim ? t('multiplayer_player_claim_action') : undefined}
+      title={canManageParticipantClaims ? t('multiplayer_player_claim_action') : undefined}
       // [CRITICAL CHANGE] Always enforce min-width 3.375rem (approx 54px).
       // Even in textured mode, if columns get too thin, we want scrolling, not illegible text.
       className={`relative flex-auto w-auto min-w-[3.375rem] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${isEditing ? 'z-20 ring-2 ring-inset ring-[rgb(var(--c-grid-active-ring))] shadow-lg' : ''} ${!bgUrl ? 'border-r border-b border-surface-border' : ''} ${baseImage ? 'p-0' : 'p-2'} ${className}`}
@@ -146,9 +146,9 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
         </div>
       )}
 
-      {canRequestParticipantClaim && (
+      {canManageParticipantClaims && (
         <div className="absolute bottom-1 right-1 z-20 pointer-events-none flex items-center justify-center w-4 h-4 rounded bg-modal-backdrop/70 text-txt-muted border border-white/10 shadow-sm">
-          <LockKeyhole size={10} />
+          <Settings2 size={10} />
         </div>
       )}
 
