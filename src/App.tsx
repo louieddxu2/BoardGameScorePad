@@ -42,6 +42,7 @@ const App: React.FC = () => {
   const {
     activeMultiplayerRoom,
     activeMultiplayerRoomState: multiplayerRoomState,
+    isMultiplayerTransitioning,
     multiplayerJoinUrl,
     pendingMultiplayerJoin,
     pendingMultiplayerClaimIds,
@@ -364,6 +365,7 @@ const App: React.FC = () => {
   const actions = useAppSessionActions({
     appData,
     activeMultiplayerRoom,
+    isMultiplayerTransitioning,
     releaseHostMultiplayerRoom,
     releaseParticipantMultiplayerRoom,
     releaseMultiplayerRoomForSession,

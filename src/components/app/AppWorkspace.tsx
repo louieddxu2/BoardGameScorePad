@@ -67,6 +67,7 @@ const AppWorkspace: React.FC<AppWorkspaceProps> = ({
   const {
     activeMultiplayerRoom,
     activeMultiplayerRoomState: multiplayerRoomState,
+    isMultiplayerTransitioning,
     multiplayerJoinUrl,
     pendingMultiplayerJoin,
     pendingMultiplayerClaimIds,
@@ -206,9 +207,9 @@ const AppWorkspace: React.FC<AppWorkspaceProps> = ({
             multiplayerRoomId={activeMultiplayerRoom?.roomId}
             multiplayerManager={multiplayerSessionManager}
             multiplayerCapabilities={activeMultiplayerRoom?.role === 'player' ? createPlayerSessionCapabilities(activeMultiplayerRoom.playerIds ?? []) : hostSessionCapabilities}
-            onOpenMultiplayerRoom={activeMultiplayerRoom?.role !== 'player' ? handleOpenMultiplayerRoom : undefined}
-            onOpenMultiplayerParticipantRoom={activeMultiplayerRoom?.role === 'player' ? () => setIsMultiplayerParticipantRoomModalOpen(true) : undefined}
-            onRequestMultiplayerPlayerClaim={activeMultiplayerRoom?.role === 'player' ? handleRequestMultiplayerPlayerClaim : undefined}
+            onOpenMultiplayerRoom={activeMultiplayerRoom?.role !== 'player' && !isMultiplayerTransitioning ? handleOpenMultiplayerRoom : undefined}
+            onOpenMultiplayerParticipantRoom={activeMultiplayerRoom?.role === 'player' && !isMultiplayerTransitioning ? () => setIsMultiplayerParticipantRoomModalOpen(true) : undefined}
+            onRequestMultiplayerPlayerClaim={activeMultiplayerRoom?.role === 'player' && !isMultiplayerTransitioning ? handleRequestMultiplayerPlayerClaim : undefined}
           />
         </div>
       )}

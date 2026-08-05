@@ -157,9 +157,22 @@ export const useMultiplayerRoomLifecycle = ({
     const returned = multiplayerSessionManager.takeReturnedSession(activeMultiplayerRoom.roomId);
     if (!returned) return;
 
-    setActiveRoom(null);
-    void appDataRef.current.resumeSessionById(returned.id);
-    showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_ownership_returned'), type: 'success' });
+    setIsMultiplayerTransitioning(true);
+    setPendingMultiplayerClaimIds(null);
+    setIsMultiplayerParticipantRoomModalOpen(false);
+    void (async () => {
+      try {
+        await appDataRef.current.resumeSessionById(returned.id);
+        showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_ownership_returned'), type: 'success' });
+      } catch (error) {
+        console.warn('[multiplayer] Failed to restore returned local session:', error);
+      } finally {
+        // Keep the room active until the local session has been restored. This
+        // prevents a fast back/exit action from racing the ownership handoff.
+        setActiveRoom(null);
+        setIsMultiplayerTransitioning(false);
+      }
+    })();
   }, [activeMultiplayerRoom, multiplayerVersion, setActiveRoom]);
 
   const applyRemoteBootstrapToPlayerRuntime = useCallback(async (
@@ -721,6 +734,7 @@ export const useMultiplayerRoomLifecycle = ({
   return {
     activeMultiplayerRoom,
     activeMultiplayerRoomState: multiplayerRoomState,
+    isMultiplayerTransitioning,
     multiplayerJoinUrl,
     pendingMultiplayerJoin,
     pendingMultiplayerClaimIds,

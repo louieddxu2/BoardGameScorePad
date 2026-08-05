@@ -17,6 +17,7 @@ type MultiplayerRoomLifecycle = ReturnType<typeof useMultiplayerRoomLifecycle>;
 type UseAppSessionActionsOptions = {
   appData: AppData;
   activeMultiplayerRoom: ActiveMultiplayerRoom | null;
+  isMultiplayerTransitioning: boolean;
   releaseHostMultiplayerRoom: MultiplayerRoomLifecycle['releaseHostMultiplayerRoom'];
   releaseParticipantMultiplayerRoom: MultiplayerRoomLifecycle['releaseParticipantMultiplayerRoom'];
   releaseMultiplayerRoomForSession: MultiplayerRoomLifecycle['releaseMultiplayerRoomForSession'];
@@ -36,6 +37,7 @@ type UseAppSessionActionsOptions = {
 export const useAppSessionActions = ({
   appData,
   activeMultiplayerRoom,
+  isMultiplayerTransitioning,
   releaseHostMultiplayerRoom,
   releaseParticipantMultiplayerRoom,
   releaseMultiplayerRoomForSession,
@@ -52,6 +54,9 @@ export const useAppSessionActions = ({
   setIsIOSPwaGuideVisible,
 }: UseAppSessionActionsOptions) => {
   const sessionTransitionInFlightRef = useRef(false);
+  // Room teardown can clear activeMultiplayerRoom before the host's local
+  // session has finished resuming. Keep exit actions blocked across that gap.
+  const multiplayerRoomTransitionInFlightRef = useRef(false);
   const { showToast } = useToast();
   const { t: tApp } = useAppTranslation();
 
@@ -92,21 +97,29 @@ export const useAppSessionActions = ({
   }, [resumeSessionWithRoom]);
 
   const handleCloseMultiplayerRoom = useCallback(async () => {
+    if (isMultiplayerTransitioning || multiplayerRoomTransitionInFlightRef.current) return;
+    multiplayerRoomTransitionInFlightRef.current = true;
     try {
       const releasedSession = await releaseHostMultiplayerRoom();
       if (releasedSession) await appData.resumeSessionById(releasedSession.id);
     } catch (err) {
       console.warn('[multiplayer] Failed to close host room:', err);
+    } finally {
+      multiplayerRoomTransitionInFlightRef.current = false;
     }
-  }, [appData, releaseHostMultiplayerRoom]);
+  }, [appData, isMultiplayerTransitioning, releaseHostMultiplayerRoom]);
 
   const handleLeaveMultiplayerRoom = useCallback(async () => {
+    if (isMultiplayerTransitioning || multiplayerRoomTransitionInFlightRef.current) return;
+    multiplayerRoomTransitionInFlightRef.current = true;
     try {
       await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true, awaitLocalCleanup: false });
     } catch (err) {
       console.warn('[multiplayer] Failed to leave participant room:', err);
+    } finally {
+      multiplayerRoomTransitionInFlightRef.current = false;
     }
-  }, [releaseParticipantMultiplayerRoom]);
+  }, [isMultiplayerTransitioning, releaseParticipantMultiplayerRoom]);
 
   const handleStartNewGame = useCallback(async (template: GameTemplate, count: number, options: { startTimeStr: string; scoringRule: ScoringRule }) => {
     if (!template) return;
@@ -141,7 +154,7 @@ export const useAppSessionActions = ({
   }, [appData, enterActiveSession]);
 
   const handleExitSession = useCallback(async (location?: string) => {
-    if (activeMultiplayerRoom) {
+    if (activeMultiplayerRoom || isMultiplayerTransitioning || multiplayerRoomTransitionInFlightRef.current) {
       blockMultiplayerRoomExit();
       return;
     }
@@ -160,10 +173,10 @@ export const useAppSessionActions = ({
         sessionTransitionInFlightRef.current = false;
       }
     }
-  }, [activeMultiplayerRoom, appData, blockMultiplayerRoomExit, finalizeMultiplayerSessionExit, prepareMultiplayerSessionExit, transitionToDashboard]);
+  }, [activeMultiplayerRoom, appData, blockMultiplayerRoomExit, finalizeMultiplayerSessionExit, isMultiplayerTransitioning, prepareMultiplayerSessionExit, transitionToDashboard]);
 
   const handleSaveToHistory = useCallback(async (location?: string) => {
-    if (activeMultiplayerRoom) {
+    if (activeMultiplayerRoom || isMultiplayerTransitioning || multiplayerRoomTransitionInFlightRef.current) {
       blockMultiplayerRoomExit();
       return;
     }
@@ -187,10 +200,10 @@ export const useAppSessionActions = ({
         sessionTransitionInFlightRef.current = false;
       }
     }
-  }, [activeMultiplayerRoom, appData, blockMultiplayerRoomExit, captureAiTemplateForSharing, finalizeMultiplayerSessionExit, prepareMultiplayerSessionExit, setIsIOSPwaGuideVisible, transitionToDashboard]);
+  }, [activeMultiplayerRoom, appData, blockMultiplayerRoomExit, captureAiTemplateForSharing, finalizeMultiplayerSessionExit, isMultiplayerTransitioning, prepareMultiplayerSessionExit, setIsIOSPwaGuideVisible, transitionToDashboard]);
 
   const handleDiscard = useCallback(async () => {
-    if (activeMultiplayerRoom) {
+    if (activeMultiplayerRoom || isMultiplayerTransitioning || multiplayerRoomTransitionInFlightRef.current) {
       blockMultiplayerRoomExit();
       return;
     }
@@ -212,7 +225,7 @@ export const useAppSessionActions = ({
         sessionTransitionInFlightRef.current = false;
       }
     }
-  }, [activeMultiplayerRoom, appData, blockMultiplayerRoomExit, finalizeMultiplayerSessionExit, prepareMultiplayerSessionExit, transitionToDashboard]);
+  }, [activeMultiplayerRoom, appData, blockMultiplayerRoomExit, finalizeMultiplayerSessionExit, isMultiplayerTransitioning, prepareMultiplayerSessionExit, transitionToDashboard]);
 
   const handleDiscardActiveSession = useCallback(async (templateId: string) => {
     const session = appData.activeSessions?.find((item) => item.templateId === templateId)
