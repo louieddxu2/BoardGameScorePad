@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { AppView, GameTemplate, ScoringRule } from '../types';
 import { db } from '../db';
@@ -17,6 +17,8 @@ type UseAppSessionActionsOptions = {
   releaseHostMultiplayerRoom: MultiplayerRoomLifecycle['releaseHostMultiplayerRoom'];
   releaseParticipantMultiplayerRoom: MultiplayerRoomLifecycle['releaseParticipantMultiplayerRoom'];
   tryRestoreMultiplayerRoom: MultiplayerRoomLifecycle['tryRestoreMultiplayerRoom'];
+  prepareMultiplayerSessionExit: MultiplayerRoomLifecycle['prepareMultiplayerSessionExit'];
+  finalizeMultiplayerSessionExit: MultiplayerRoomLifecycle['finalizeMultiplayerSessionExit'];
   transitionToDashboard: () => void;
   captureAiTemplateForSharing: ReturnType<typeof useAiTemplateShareConfirm>['captureAiTemplateForSharing'];
   shouldTriggerIOSPwaGuide: typeof shouldTriggerIOSPwaGuide;
@@ -32,6 +34,8 @@ export const useAppSessionActions = ({
   releaseHostMultiplayerRoom,
   releaseParticipantMultiplayerRoom,
   tryRestoreMultiplayerRoom,
+  prepareMultiplayerSessionExit,
+  finalizeMultiplayerSessionExit,
   transitionToDashboard,
   captureAiTemplateForSharing,
   shouldTriggerIOSPwaGuide: shouldShowIOSPwaGuide,
@@ -40,6 +44,8 @@ export const useAppSessionActions = ({
   setEditorInitialName,
   setIsIOSPwaGuideVisible,
 }: UseAppSessionActionsOptions) => {
+  const sessionTransitionInFlightRef = useRef(false);
+
   const initSetup = useCallback((template: GameTemplate) => {
     setPendingTemplate(template);
   }, [setPendingTemplate]);
@@ -122,19 +128,34 @@ export const useAppSessionActions = ({
   }, [appData, setView]);
 
   const handleExitSession = useCallback(async (location?: string) => {
+    if (sessionTransitionInFlightRef.current) return;
+    sessionTransitionInFlightRef.current = true;
+    prepareMultiplayerSessionExit();
     try {
       if (activeMultiplayerRoom?.role === 'player') {
         await releaseParticipantMultiplayerRoom({ deleteLocalRoom: false });
       }
     } catch (err) {
       console.warn('[multiplayer] Failed to release participant room on exit:', err);
-    } finally {
-      appData.exitSession(location !== undefined ? { location } : undefined);
-      transitionToDashboard();
     }
-  }, [activeMultiplayerRoom, appData, releaseParticipantMultiplayerRoom, transitionToDashboard]);
+    try {
+      await appData.exitSession(location !== undefined ? { location } : undefined);
+    } catch (err) {
+      console.warn('[session] Failed to persist active session on exit:', err);
+    } finally {
+      try {
+        finalizeMultiplayerSessionExit();
+        transitionToDashboard();
+      } finally {
+        sessionTransitionInFlightRef.current = false;
+      }
+    }
+  }, [activeMultiplayerRoom, appData, finalizeMultiplayerSessionExit, prepareMultiplayerSessionExit, releaseParticipantMultiplayerRoom, transitionToDashboard]);
 
   const handleSaveToHistory = useCallback(async (location?: string) => {
+    if (sessionTransitionInFlightRef.current) return;
+    sessionTransitionInFlightRef.current = true;
+    prepareMultiplayerSessionExit();
     try {
       if (activeMultiplayerRoom?.role === 'host') {
         await releaseHostMultiplayerRoom();
@@ -143,18 +164,30 @@ export const useAppSessionActions = ({
       }
     } catch (err) {
       console.warn('[multiplayer] Failed to release room on save:', err);
-    } finally {
+    }
+    try {
       captureAiTemplateForSharing(appData.activeTemplate);
       await appData.saveToHistory(location);
-      transitionToDashboard();
+    } catch (err) {
+      console.warn('[session] Failed to save session to history:', err);
+    } finally {
+      try {
+        finalizeMultiplayerSessionExit();
+        transitionToDashboard();
 
-      if (shouldShowIOSPwaGuide()) {
-        setIsIOSPwaGuideVisible(true);
+        if (shouldShowIOSPwaGuide()) {
+          setIsIOSPwaGuideVisible(true);
+        }
+      } finally {
+        sessionTransitionInFlightRef.current = false;
       }
     }
-  }, [activeMultiplayerRoom, appData, captureAiTemplateForSharing, releaseHostMultiplayerRoom, releaseParticipantMultiplayerRoom, setIsIOSPwaGuideVisible, transitionToDashboard]);
+  }, [activeMultiplayerRoom, appData, captureAiTemplateForSharing, finalizeMultiplayerSessionExit, prepareMultiplayerSessionExit, releaseHostMultiplayerRoom, releaseParticipantMultiplayerRoom, setIsIOSPwaGuideVisible, transitionToDashboard]);
 
   const handleDiscard = useCallback(async () => {
+    if (sessionTransitionInFlightRef.current) return;
+    sessionTransitionInFlightRef.current = true;
+    prepareMultiplayerSessionExit();
     try {
       if (activeMultiplayerRoom?.role === 'host') {
         await releaseHostMultiplayerRoom();
@@ -163,13 +196,20 @@ export const useAppSessionActions = ({
       }
     } catch (err) {
       console.warn('[multiplayer] Failed to release room on discard:', err);
+    }
+    try {
+      if (appData.activeTemplate) await appData.discardSession(appData.activeTemplate.id);
+    } catch (err) {
+      console.warn('[session] Failed to discard active session:', err);
     } finally {
-      if (appData.activeTemplate) {
-        await appData.discardSession(appData.activeTemplate.id);
+      try {
+        finalizeMultiplayerSessionExit();
         transitionToDashboard();
+      } finally {
+        sessionTransitionInFlightRef.current = false;
       }
     }
-  }, [activeMultiplayerRoom, appData, releaseHostMultiplayerRoom, releaseParticipantMultiplayerRoom, transitionToDashboard]);
+  }, [activeMultiplayerRoom, appData, finalizeMultiplayerSessionExit, prepareMultiplayerSessionExit, releaseHostMultiplayerRoom, releaseParticipantMultiplayerRoom, transitionToDashboard]);
 
   const handleTemplateSave = useCallback(async (template: GameTemplate) => {
     await appData.saveTemplate(template);

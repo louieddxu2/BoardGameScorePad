@@ -44,6 +44,8 @@ const App: React.FC = () => {
     isMultiplayerParticipantRoomModalOpen,
     setIsMultiplayerParticipantRoomModalOpen,
     tryRestoreMultiplayerRoom,
+    prepareMultiplayerSessionExit,
+    finalizeMultiplayerSessionExit,
     handleOpenMultiplayerRoom,
     handleConfirmMultiplayerPlayers,
     handleRequestMultiplayerPlayerClaim,
@@ -80,13 +82,6 @@ const App: React.FC = () => {
     if (!pendingTemplate || !appData.activeSessionIds.includes(pendingTemplate.id)) return null;
     return appData.getSessionPreview(pendingTemplate.id);
   }, [pendingTemplate, appData.activeSessionIds]);
-
-  // --- Restore View State ---
-  useEffect(() => {
-    if (appData.currentSession && appData.activeTemplate) {
-      setView(AppView.ACTIVE_SESSION);
-    }
-  }, [appData.currentSession, appData.activeTemplate]);
 
   // --- Deep Link (Built-in template -> Setup Modal) ---
   useEffect(() => {
@@ -247,6 +242,12 @@ const App: React.FC = () => {
   }, [view, pendingTemplate]);
 
   const transitionToDashboard = useCallback(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('room')) {
+      url.searchParams.delete('room');
+      window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+    }
+
     const targetDepth = 1;
     const currentDepth = historyWallDepth.current;
 
@@ -358,6 +359,8 @@ const App: React.FC = () => {
     releaseHostMultiplayerRoom,
     releaseParticipantMultiplayerRoom,
     tryRestoreMultiplayerRoom,
+    prepareMultiplayerSessionExit,
+    finalizeMultiplayerSessionExit,
     transitionToDashboard,
     captureAiTemplateForSharing,
     shouldTriggerIOSPwaGuide,

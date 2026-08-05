@@ -78,6 +78,58 @@ describe('registerServiceWorker', () => {
     expect(reload).toHaveBeenCalledTimes(1);
   });
 
+  it('does not mistake an unrelated query parameter for a room join route', () => {
+    const reload = vi.fn();
+    const serviceWorkerListeners = new Map<string, () => void>();
+    const register = vi.fn(async () => ({ update: vi.fn() }));
+    const windowObj = {
+      location: { search: '?roommate=notes', reload },
+      addEventListener: vi.fn(),
+    } as any;
+    const navigatorObj = {
+      serviceWorker: {
+        register,
+        addEventListener: vi.fn((event: string, callback: () => void) => serviceWorkerListeners.set(event, callback)),
+      },
+    } as any;
+
+    registerServiceWorker({
+      env: { DEV: false, PROD: true },
+      navigatorObj,
+      windowObj,
+    });
+
+    serviceWorkerListeners.get('controllerchange')?.();
+
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it('defers controller reload while a room join route is present', () => {
+    const reload = vi.fn();
+    const serviceWorkerListeners = new Map<string, () => void>();
+    const register = vi.fn(async () => ({ update: vi.fn() }));
+    const windowObj = {
+      location: { search: '?room=room-1', reload },
+      addEventListener: vi.fn(),
+    } as any;
+    const navigatorObj = {
+      serviceWorker: {
+        register,
+        addEventListener: vi.fn((event: string, callback: () => void) => serviceWorkerListeners.set(event, callback)),
+      },
+    } as any;
+
+    registerServiceWorker({
+      env: { DEV: false, PROD: true },
+      navigatorObj,
+      windowObj,
+    });
+
+    serviceWorkerListeners.get('controllerchange')?.();
+
+    expect(reload).not.toHaveBeenCalled();
+  });
+
   it('does nothing when serviceWorker is unavailable', async () => {
     const addEventListener = vi.fn();
 

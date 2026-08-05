@@ -21,7 +21,8 @@ export function registerServiceWorker(runtime?: Partial<SwRuntime>) {
         // 監聽 controllerchange 事件，當新的 Service Worker 取得控制權時自動重新整理
         const scorePadWindow = windowObj as ScorePadWindow;
         const hasActiveMultiplayerRoom = () => {
-            const hasRoomQuery = typeof scorePadWindow.location?.search === 'string' && scorePadWindow.location.search.includes('room');
+            const hasRoomQuery = typeof scorePadWindow.location?.search === 'string'
+                && Boolean(new URLSearchParams(scorePadWindow.location.search).get('room'));
             return hasRoomQuery || scorePadWindow.__boardGameScorePadMultiplayerActive === true;
         };
 

@@ -60,6 +60,7 @@ export const useMultiplayerRoomLifecycle = ({
   const [pendingMultiplayerJoin, setPendingMultiplayerJoin] = useState<PendingMultiplayerJoin | null>(null);
   const [pendingMultiplayerClaimIds, setPendingMultiplayerClaimIds] = useState<string[] | null>(null);
   const [isJoiningMultiplayer, setIsJoiningMultiplayer] = useState(false);
+  const [isMultiplayerTransitioning, setIsMultiplayerTransitioning] = useState(false);
   const [multiplayerVersion, setMultiplayerVersion] = useState(0);
 
   const appDataRef = useRef(appData);
@@ -106,10 +107,10 @@ export const useMultiplayerRoomLifecycle = ({
   useEffect(() => {
     const scorePadWindow = window as ScorePadWindow;
     scorePadWindow.__boardGameScorePadMultiplayerActive = Boolean(
-      activeMultiplayerRoom || pendingMultiplayerJoin || isJoiningMultiplayer
+      activeMultiplayerRoom || pendingMultiplayerJoin || isJoiningMultiplayer || isMultiplayerTransitioning
     );
     window.dispatchEvent(new Event(MULTIPLAYER_STATE_CHANGE_EVENT));
-  }, [activeMultiplayerRoom, isJoiningMultiplayer, pendingMultiplayerJoin]);
+  }, [activeMultiplayerRoom, isJoiningMultiplayer, isMultiplayerTransitioning, pendingMultiplayerJoin]);
 
   useEffect(() => {
     if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
@@ -146,6 +147,11 @@ export const useMultiplayerRoomLifecycle = ({
     const roomId = new URLSearchParams(window.location.search).get('room');
     if (!roomId) return;
 
+    // A QR URL is a one-time join intent, not a persistent reconnect route.
+    // Consume it before any async handshake so a reload cannot replay the same
+    // join after the user has already left the session.
+    clearRoomUrlQuery();
+
     const existingRoom = multiplayerSessionManager.get(roomId);
     if (isMultiplayerRoomReusableForQrScan(existingRoom)) {
       multiplayerJoinStartedRef.current = roomId;
@@ -164,9 +170,9 @@ export const useMultiplayerRoomLifecycle = ({
           playerIds: existingPlayerIds || (activeMultiplayerRoomRef.current?.playerIds ?? []),
         });
       }
-      void appDataRef.current.resumeSessionById(existingRoom.session.id).then(() => {
+      void appDataRef.current.resumeSessionById(existingRoom.session.id).then((resumed) => {
+        if (!resumed || multiplayerJoinStartedRef.current !== roomId) return;
         setView(AppView.ACTIVE_SESSION);
-        clearRoomUrlQuery();
       });
       return;
     }
@@ -243,9 +249,9 @@ export const useMultiplayerRoomLifecycle = ({
           ? (Array.isArray(rawPlayerIds) ? rawPlayerIds : [rawPlayerIds])
           : [];
         setActiveRoom({ roomId, role: 'player', playerIds });
-        void appDataRef.current.resumeSessionById(runtimeSession.session.id).then(() => {
+        void appDataRef.current.resumeSessionById(runtimeSession.session.id).then((resumed) => {
+          if (!resumed || multiplayerJoinStartedRef.current !== roomId) return;
           setView(AppView.ACTIVE_SESSION);
-          clearRoomUrlQuery();
         });
         return;
       }
@@ -432,6 +438,29 @@ export const useMultiplayerRoomLifecycle = ({
     clearRoomUrlQuery();
   }, [clearRoomUrlQuery, pendingMultiplayerJoin]);
 
+  const prepareMultiplayerSessionExit = useCallback(() => {
+    // Remove the QR join route before any persistence or transport work. This
+    // makes an in-flight SW update or page reload land on the dashboard rather
+    // than replaying the room join.
+    clearRoomUrlQuery();
+    multiplayerJoinStartedRef.current = null;
+    clearMultiplayerJoinTimeout();
+    setIsMultiplayerTransitioning(true);
+  }, [clearMultiplayerJoinTimeout, clearRoomUrlQuery]);
+
+  const finalizeMultiplayerSessionExit = useCallback(() => {
+    const activeRoom = activeMultiplayerRoomRef.current;
+    if (activeRoom?.role === 'host') {
+      multiplayerSessionManager.detachView(activeRoom.roomId);
+      // Keep the host runtime and local room record for explicit resume from
+      // the active-session card, but do not keep the dashboard marked active.
+      setActiveRoom(null);
+      setIsMultiplayerRoomModalOpen(false);
+    }
+
+    setIsMultiplayerTransitioning(false);
+  }, [setActiveRoom]);
+
   const multiplayerRoomState = activeMultiplayerRoom
     ? multiplayerSessionManager.get(activeMultiplayerRoom.roomId)
     : null;
@@ -519,6 +548,8 @@ export const useMultiplayerRoomLifecycle = ({
     handleConfirmMultiplayerPlayerClaims,
     handleCancelMultiplayerPlayerClaims,
     handleCancelMultiplayerJoin,
+    prepareMultiplayerSessionExit,
+    finalizeMultiplayerSessionExit,
     handlePublishMultiplayerBoardUpdate,
     releaseHostMultiplayerRoom,
     releaseParticipantMultiplayerRoom,
