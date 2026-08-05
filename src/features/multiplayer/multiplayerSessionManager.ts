@@ -47,6 +47,13 @@ export interface MultiplayerSessionManager {
   subscribe(listener: () => void): () => void;
 }
 
+export const isMultiplayerRoomReusableForQrScan = (room: MultiplayerRoomState | null): room is MultiplayerRoomState & { session: GameSession } => Boolean(
+  room &&
+  room.status === 'connected' &&
+  room.session &&
+  (room.role === 'host' || room.connectionCount > 0)
+);
+
 const snapshot = (state: MultiplayerRoomState): MultiplayerRoomState => ({
   ...state,
   returnedSession: state.returnedSession ? JSON.parse(JSON.stringify(state.returnedSession)) as GameSession : undefined,

@@ -35,6 +35,7 @@ import { MultiplayerSnapshotStore, persistMultiplayerSnapshot } from './multipla
 export interface MultiplayerRoomTransport {
   sendToHost(message: unknown): boolean;
   sendToConnection(connection: unknown, message: unknown): boolean;
+  closeConnection?(connection: unknown): boolean;
   broadcastLocalChanges(): Promise<void>;
   broadcastMessage?(message: unknown): boolean;
 }
@@ -65,6 +66,13 @@ export const createMultiplayerRoomController = (options: {
     return claims;
   };
   const publishParticipantClaims = async () => { await options.onParticipantClaims?.(getParticipantClaims()); };
+  const releaseExistingDeviceBindings = (deviceId: string, exceptConnection: unknown) => {
+    for (const [existingConnection, binding] of bindings) {
+      if (existingConnection === exceptConnection || binding.deviceId !== deviceId) continue;
+      bindings.delete(existingConnection);
+      options.transport.closeConnection?.(existingConnection);
+    }
+  };
   const broadcastSnapshot = (snapshot: SessionSnapshotMessage) => { options.transport.broadcastMessage?.(snapshot); };
   let completionWaiter: { roomId: string; sessionId: string; pendingDeviceIds: Set<string>; resolve: () => void } | null = null;
   let completionPromise: Promise<import('./protocol').SessionCompletedMessage> | null = null;
@@ -97,6 +105,7 @@ export const createMultiplayerRoomController = (options: {
           ? { type: 'room:set-player-claims-result', roomId: message.roomId, sessionId: message.sessionId, accepted: true, playerIds }
           : { type: 'room:set-player-claims-result', roomId: message.roomId, sessionId: message.sessionId, accepted: false, reason: !roomActive && validRoom ? 'room_completed' : validRoom ? 'player_not_found' : 'message_not_for_room' };
         if (accepted) {
+          releaseExistingDeviceBindings(message.deviceId, connection);
           bindings.set(connection, { deviceId: message.deviceId, playerIds: new Set(playerIds) });
           await publishParticipantClaims();
         }
@@ -111,6 +120,7 @@ export const createMultiplayerRoomController = (options: {
           ? { type: 'room:claim-result', roomId: message.roomId, sessionId: message.sessionId, accepted: true, playerId: message.playerId }
           : { type: 'room:claim-result', roomId: message.roomId, sessionId: message.sessionId, accepted: false, reason: !roomActive && validRoom ? 'room_completed' : validRoom ? 'player_not_found' : 'message_not_for_room' };
         if (result.accepted) {
+          releaseExistingDeviceBindings(message.deviceId, connection);
           const existing = bindings.get(connection);
           const playerIds = existing?.deviceId === message.deviceId ? existing.playerIds : new Set<string>();
           playerIds.add(message.playerId);

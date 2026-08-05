@@ -28,6 +28,7 @@ export interface P2PHandshakeSync {
   joinRoom(roomId: string): P2PPeer;
   stop(): void;
   setupConnection(connection: P2PDataConnection): void;
+  closeConnection(connection: P2PDataConnection): boolean;
   broadcastLocalChanges(): Promise<void>;
   broadcast(message: unknown): boolean;
   sendToHost(message: unknown): boolean;
@@ -75,6 +76,7 @@ export const createP2PHandshakeSync = (options: {
   const connectionOpenTimeoutMs = options.connectionOpenTimeoutMs ?? 10_000;
   const lifecycleTarget = options.lifecycleTarget ?? (typeof document !== 'undefined' ? document : null);
   const connections = new Set<P2PDataConnection>();
+  const connectionCleanups = new Map<P2PDataConnection, () => void>();
   const incoming = new Map<string, IncomingTransfer>();
   const broadcastedVersions = new Map<string, number>();
 
@@ -333,6 +335,7 @@ export const createP2PHandshakeSync = (options: {
     const cleanup = () => {
       if (closed) return;
       closed = true;
+      connectionCleanups.delete(connection);
       clearOpenTimeout();
       for (const key of Array.from(incoming.keys())) {
         if (key.startsWith(`${connection.peer ?? 'unknown'}:`)) clearIncoming(key);
@@ -343,6 +346,7 @@ export const createP2PHandshakeSync = (options: {
       void options.onConnectionChange?.(getOpenConnectionCount());
       if (!disposing && desiredMode === 'client' && getOpenConnectionCount() === 0) scheduleReconnect('connection-closed');
     };
+    connectionCleanups.set(connection, cleanup);
     connection.on('close', cleanup);
     connection.on('error', cleanup);
     openTimeoutId = window.setTimeout(() => {
@@ -400,6 +404,18 @@ export const createP2PHandshakeSync = (options: {
       broadcastedVersions.clear();
     },
     setupConnection,
+    closeConnection(connection) {
+      const cleanup = connectionCleanups.get(connection);
+      if (!cleanup) return false;
+      try {
+        connection.close();
+      } catch (error) {
+        log(`Failed to close connection: ${String(error)}`, 'error');
+      } finally {
+        cleanup();
+      }
+      return true;
+    },
     async broadcastLocalChanges() {
       const metas = await options.adapter.listMetas();
       for (const meta of metas) {

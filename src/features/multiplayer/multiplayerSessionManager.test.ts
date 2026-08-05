@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { GameSession } from '../../types';
-import { createMultiplayerSessionManager } from './multiplayerSessionManager';
+import { createMultiplayerSessionManager, isMultiplayerRoomReusableForQrScan } from './multiplayerSessionManager';
 
 const session: GameSession = {
   id: 'session-1', templateId: 'template-1', name: 'Test', startTime: 1, status: 'active', players: [],
@@ -32,6 +32,16 @@ describe('multiplayer session manager', () => {
     manager.setConnectionCount('room-1', 0);
     expect(manager.get('room-1')?.status).toBe('reconnecting');
     expect(runtime.stop).not.toHaveBeenCalled();
+  });
+
+  it('does not reuse a player room for QR scans when its connection count is stale', () => {
+    const manager = createMultiplayerSessionManager(); const runtime = createRuntime('player');
+    runtime.session = { session };
+    manager.register('room-1', runtime, 'connected');
+    expect(isMultiplayerRoomReusableForQrScan(manager.get('room-1'))).toBe(false);
+
+    manager.setConnectionCount('room-1', 1);
+    expect(isMultiplayerRoomReusableForQrScan(manager.get('room-1'))).toBe(true);
   });
 
   it('holds an ownership return until the local view consumes it', () => {

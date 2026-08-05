@@ -123,6 +123,23 @@ describe('createP2PHandshakeSync reconnect lifecycle', () => {
     expect(FakePeer.instances).toHaveLength(1);
   });
 
+  it('closes a specific connection and updates the connection count', async () => {
+    const sync = createP2PHandshakeSync({
+      Peer: FakePeer,
+      adapter: createAdapter(),
+      bindVisibility: false,
+    });
+
+    sync.joinRoom('room-1');
+    const connection = await openClientConnection(FakePeer.instances[0]);
+    expect(sync.getConnectionCount()).toBe(1);
+
+    expect(sync.closeConnection(connection)).toBe(true);
+    expect(sync.getConnectionCount()).toBe(0);
+    expect(sync.closeConnection(connection)).toBe(false);
+    sync.stop();
+  });
+
   it('retries when a replacement data connection never opens', async () => {
     vi.useFakeTimers();
     const sync = createP2PHandshakeSync({

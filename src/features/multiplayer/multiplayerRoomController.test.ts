@@ -161,6 +161,22 @@ describe('multiplayer room controller', () => {
     expect(claims).toHaveBeenLastCalledWith({ p1: 1 });
   });
 
+  it('treats a repeated QR scan from the same device as one participant binding', async () => {
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
+    const store = createDeliveryStore(); const claims = vi.fn(); const closeConnection = vi.fn(); const firstConnection = {}; const secondConnection = {};
+    const controller = createMultiplayerRoomController({ role: 'host', hostSession: host, deliveryStore: store,
+      snapshotStore: { putSession: async () => undefined, updateRoomRevision: async () => undefined },
+      transport: { sendToHost: () => false, sendToConnection: () => true, closeConnection, broadcastLocalChanges: async () => undefined },
+      onParticipantClaims: claims, now: () => 20,
+    });
+
+    await controller.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-1', playerId: 'p1' }, firstConnection);
+    await controller.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-1', playerId: 'p1' }, secondConnection);
+
+    expect(controller.getParticipantClaims()).toEqual({ p1: 1 });
+    expect(closeConnection).toHaveBeenCalledWith(firstConnection);
+  });
+
   it('persists and broadcasts a host template change with its active session', async () => {
     const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
     const store = createDeliveryStore(); const templates: GameTemplate[] = []; const snapshots: GameSession[] = [];
