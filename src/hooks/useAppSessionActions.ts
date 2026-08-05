@@ -7,6 +7,7 @@ import { useAiTemplateShareConfirm } from './useAiTemplateShareConfirm';
 import { useMultiplayerRoomLifecycle } from './useMultiplayerRoomLifecycle';
 import type { ActiveMultiplayerRoom } from './useMultiplayerRoomLifecycle';
 import { shouldTriggerIOSPwaGuide } from '../components/modals/IOSPwaGuide';
+import type { EnterActiveSession } from '../utils/activeSessionNavigation';
 
 type AppData = ReturnType<typeof useAppData>;
 type MultiplayerRoomLifecycle = ReturnType<typeof useMultiplayerRoomLifecycle>;
@@ -17,6 +18,7 @@ type UseAppSessionActionsOptions = {
   releaseHostMultiplayerRoom: MultiplayerRoomLifecycle['releaseHostMultiplayerRoom'];
   releaseParticipantMultiplayerRoom: MultiplayerRoomLifecycle['releaseParticipantMultiplayerRoom'];
   tryRestoreMultiplayerRoom: MultiplayerRoomLifecycle['tryRestoreMultiplayerRoom'];
+  enterActiveSession: EnterActiveSession;
   prepareMultiplayerSessionExit: MultiplayerRoomLifecycle['prepareMultiplayerSessionExit'];
   finalizeMultiplayerSessionExit: MultiplayerRoomLifecycle['finalizeMultiplayerSessionExit'];
   transitionToDashboard: () => void;
@@ -34,6 +36,7 @@ export const useAppSessionActions = ({
   releaseHostMultiplayerRoom,
   releaseParticipantMultiplayerRoom,
   tryRestoreMultiplayerRoom,
+  enterActiveSession,
   prepareMultiplayerSessionExit,
   finalizeMultiplayerSessionExit,
   transitionToDashboard,
@@ -66,9 +69,9 @@ export const useAppSessionActions = ({
     if (pendingTemplateId === undefined || pendingTemplateId === templateId) {
       setPendingTemplate(null);
     }
-    setView(AppView.ACTIVE_SESSION);
+    enterActiveSession('resume-active-session');
     return true;
-  }, [appData, setPendingTemplate, setView, tryRestoreMultiplayerRoom]);
+  }, [appData, enterActiveSession, setPendingTemplate, tryRestoreMultiplayerRoom]);
 
   const handleResumeGame = useCallback(async (templateId: string) => {
     await resumeSessionWithRoom(templateId, templateId);
@@ -103,9 +106,9 @@ export const useAppSessionActions = ({
     }
 
     await appData.startSession(template, count, options);
-    setView(AppView.ACTIVE_SESSION);
+    enterActiveSession('start-new-session');
     setPendingTemplate(null);
-  }, [appData, setPendingTemplate, setView]);
+  }, [appData, enterActiveSession, setPendingTemplate]);
 
   const handleQuickStart = useCallback(async (
     template: GameTemplate,
@@ -124,8 +127,8 @@ export const useAppSessionActions = ({
       location,
       locationId,
     });
-    setView(AppView.ACTIVE_SESSION);
-  }, [appData, setView]);
+    enterActiveSession('start-new-session');
+  }, [appData, enterActiveSession]);
 
   const handleExitSession = useCallback(async (location?: string) => {
     if (sessionTransitionInFlightRef.current) return;
@@ -220,9 +223,9 @@ export const useAppSessionActions = ({
       scoringRule: template.defaultScoringRule || 'HIGHEST_WINS',
     });
 
-    setView(AppView.ACTIVE_SESSION);
+    enterActiveSession('start-new-session');
     setEditorInitialName(undefined);
-  }, [appData, setEditorInitialName, setView]);
+  }, [appData, enterActiveSession, setEditorInitialName]);
 
   const handleBatchImport = useCallback((templates: GameTemplate[]) => {
     templates.forEach(template => appData.saveTemplate(template));

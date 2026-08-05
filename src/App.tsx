@@ -20,6 +20,8 @@ import { useAppSessionActions } from './hooks/useAppSessionActions';
 import AppWorkspace from './components/app/AppWorkspace';
 import { isInAppBrowser } from './components/modals/InAppBrowserGuide';
 import { shouldTriggerIOSPwaGuide } from './components/modals/IOSPwaGuide';
+import { navigateToActiveSession } from './utils/activeSessionNavigation';
+import type { EnterActiveSession } from './utils/activeSessionNavigation';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.DASHBOARD);
@@ -31,7 +33,12 @@ const App: React.FC = () => {
   const { showToast } = useToast();
   const { t: tApp } = useAppTranslation();
 
-  const multiplayerLifecycle = useMultiplayerRoomLifecycle({ appData, setView, showToast, tApp });
+  const enterActiveSession = useCallback<EnterActiveSession>(
+    (source) => navigateToActiveSession(setView, source),
+    [],
+  );
+
+  const multiplayerLifecycle = useMultiplayerRoomLifecycle({ appData, enterActiveSession, showToast, tApp });
   const {
     activeMultiplayerRoom,
     activeMultiplayerRoomState: multiplayerRoomState,
@@ -359,6 +366,7 @@ const App: React.FC = () => {
     releaseHostMultiplayerRoom,
     releaseParticipantMultiplayerRoom,
     tryRestoreMultiplayerRoom,
+    enterActiveSession,
     prepareMultiplayerSessionExit,
     finalizeMultiplayerSessionExit,
     transitionToDashboard,

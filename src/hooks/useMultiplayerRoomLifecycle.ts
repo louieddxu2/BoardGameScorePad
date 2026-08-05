@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Dispatch, SetStateAction } from 'react';
 import Peer from 'peerjs';
-import { AppView } from '../types';
 import type { ToastMessage } from './useToast';
 import { useAppData } from './useAppData';
 import type { AppTranslationKey } from '../i18n/app';
@@ -21,6 +19,7 @@ import { isMultiplayerRoomReusableForQrScan, multiplayerSessionManager } from '.
 import type { BootstrapPackageMessage, SessionCompletedMessage } from '../features/multiplayer/protocol';
 import { releaseMultiplayerRoomOwnership, retainMultiplayerCompletionRelay } from '../features/multiplayer/multiplayerPersistence';
 import type { PersistedBootstrapImport } from '../features/multiplayer/multiplayerPersistence';
+import type { EnterActiveSession } from '../utils/activeSessionNavigation';
 
 const MULTIPLAYER_COMPLETION_RELAY_TTL_MS = 5 * 60 * 1000;
 const MULTIPLAYER_STATE_CHANGE_EVENT = 'boardgame-scorepad-multiplayer-state-change';
@@ -43,14 +42,14 @@ export type PendingMultiplayerJoin = {
 
 type UseMultiplayerRoomLifecycleOptions = {
   appData: ReturnType<typeof useAppData>;
-  setView: Dispatch<SetStateAction<AppView>>;
+  enterActiveSession: EnterActiveSession;
   showToast: (options: Omit<ToastMessage, 'id'>) => void;
   tApp: (key: AppTranslationKey, params?: Record<string, string | number>) => string;
 };
 
 export const useMultiplayerRoomLifecycle = ({
   appData,
-  setView,
+  enterActiveSession,
   showToast,
   tApp,
 }: UseMultiplayerRoomLifecycleOptions) => {
@@ -172,7 +171,7 @@ export const useMultiplayerRoomLifecycle = ({
       }
       void appDataRef.current.resumeSessionById(existingRoom.session.id).then((resumed) => {
         if (!resumed || multiplayerJoinStartedRef.current !== roomId) return;
-        setView(AppView.ACTIVE_SESSION);
+        enterActiveSession('qr-join');
       });
       return;
     }
@@ -251,7 +250,7 @@ export const useMultiplayerRoomLifecycle = ({
         setActiveRoom({ roomId, role: 'player', playerIds });
         void appDataRef.current.resumeSessionById(runtimeSession.session.id).then((resumed) => {
           if (!resumed || multiplayerJoinStartedRef.current !== roomId) return;
-          setView(AppView.ACTIVE_SESSION);
+          enterActiveSession('qr-join');
         });
         return;
       }
@@ -274,7 +273,7 @@ export const useMultiplayerRoomLifecycle = ({
         setPendingMultiplayerJoin(null);
       }
     };
-  }, [appData.isDbReady, applyRemoteBootstrapToPlayerRuntime, clearMultiplayerJoinTimeout, clearRoomUrlQuery, setActiveRoom, setView]);
+  }, [appData.isDbReady, applyRemoteBootstrapToPlayerRuntime, clearMultiplayerJoinTimeout, clearRoomUrlQuery, enterActiveSession, setActiveRoom]);
 
   const tryRestoreMultiplayerRoom = useCallback(async (sessionId: string) => {
     try {
@@ -408,8 +407,8 @@ export const useMultiplayerRoomLifecycle = ({
     setPendingMultiplayerJoin(null);
     clearRoomUrlQuery();
     const resumed = await appDataRef.current.resumeSessionById(runtime.session.session.id);
-    if (resumed) setView(AppView.ACTIVE_SESSION);
-  }, [clearRoomUrlQuery, pendingMultiplayerJoin, setActiveRoom, setView]);
+    if (resumed) enterActiveSession('qr-join');
+  }, [clearRoomUrlQuery, enterActiveSession, pendingMultiplayerJoin, setActiveRoom]);
 
   const handleRequestMultiplayerPlayerClaim = useCallback((_playerId: string) => {
     if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
