@@ -69,7 +69,7 @@ const MultiplayerRoomModal: React.FC<MultiplayerRoomModalProps> = ({ isOpen, joi
         </div>
         <div className="mt-3">
           {hasUnpublishedBoardUpdate && <p className="mb-2 text-sm text-status-warning">{t('multiplayer_publish_pending')}</p>}
-          <button type="button" onClick={() => { void handlePublish(); }} disabled={publishState === 'publishing'} className="btn-action-primary min-h-10 w-full justify-center gap-2 disabled:opacity-70">
+          <button type="button" onClick={() => { void handlePublish(); }} disabled={publishState === 'publishing'} className="btn-action-primary min-h-12 w-full justify-center gap-2 text-base disabled:opacity-70">
             {publishState === 'publishing'
               ? <Loader2 size={16} className="animate-spin" />
               : publishState === 'published' ? <Check size={16} /> : <Send size={16} />}

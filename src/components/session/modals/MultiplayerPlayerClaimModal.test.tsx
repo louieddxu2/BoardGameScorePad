@@ -76,6 +76,8 @@ describe('MultiplayerPlayerClaimModal', () => {
     act(() => { vi.advanceTimersByTime(300); });
     act(() => { window.dispatchEvent(new PopStateEvent('popstate')); });
 
+    expect(screen.getByRole('heading', { name: 'Score together' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Sync score sheet status' })).toHaveClass('text-base', 'min-h-12');
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
