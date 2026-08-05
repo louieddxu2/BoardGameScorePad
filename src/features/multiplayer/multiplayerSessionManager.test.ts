@@ -34,11 +34,11 @@ describe('multiplayer session manager', () => {
     expect(runtime.stop).not.toHaveBeenCalled();
   });
 
-  it('does not reuse a player room for QR scans when its connection count is stale', () => {
+  it('reuses a player room for QR scans while its runtime can reconnect', () => {
     const manager = createMultiplayerSessionManager(); const runtime = createRuntime('player');
     runtime.session = { session };
     manager.register('room-1', runtime, 'connected');
-    expect(isMultiplayerRoomReusableForQrScan(manager.get('room-1'))).toBe(false);
+    expect(isMultiplayerRoomReusableForQrScan(manager.get('room-1'))).toBe(true);
 
     manager.setConnectionCount('room-1', 1);
     expect(isMultiplayerRoomReusableForQrScan(manager.get('room-1'))).toBe(true);

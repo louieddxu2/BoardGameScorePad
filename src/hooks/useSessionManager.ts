@@ -39,6 +39,8 @@ export const useSessionManager = ({
 
     const isImageDirtyRef = useRef(false);
     const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const autosaveInFlightRef = useRef<Promise<unknown> | null>(null);
+    const autosaveGenerationRef = useRef(0);
 
     useEffect(() => {
         return () => {
@@ -51,16 +53,31 @@ export const useSessionManager = ({
     useEffect(() => {
         if (!currentSession) return;
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        const generation = autosaveGenerationRef.current;
         saveTimeoutRef.current = setTimeout(() => {
-            db.sessions.put(currentSession).catch(err => console.error("Failed to autosave:", err));
+            saveTimeoutRef.current = null;
+            if (generation !== autosaveGenerationRef.current) return;
+            const write = db.sessions.put(currentSession).catch(err => {
+                console.error("Failed to autosave:", err);
+            });
+            autosaveInFlightRef.current = write;
+            void write.finally(() => {
+                if (autosaveInFlightRef.current === write) autosaveInFlightRef.current = null;
+            });
         }, 1000);
         return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
     }, [currentSession]);
 
     const cancelPendingAutosave = () => {
+        autosaveGenerationRef.current += 1;
         if (!saveTimeoutRef.current) return;
         clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = null;
+    };
+
+    const waitForPendingAutosave = async () => {
+        const pending = autosaveInFlightRef.current;
+        if (pending) await pending;
     };
 
     const startSession = async (
@@ -237,10 +254,15 @@ export const useSessionManager = ({
     };
 
     const discardSession = async (templateId: string) => {
-        const session = activeSessions?.find(s => s.templateId === templateId);
+        const session = (currentSession?.templateId === templateId ? currentSession : undefined)
+            ?? activeSessions?.find(s => s.templateId === templateId)
+            ?? await db.sessions.where('templateId').equals(templateId).and(s => s.status === 'active').first();
 
         if (session) {
-            if (currentSession?.id === session.id) cancelPendingAutosave();
+            if (currentSession?.id === session.id) {
+                cancelPendingAutosave();
+                await waitForPendingAutosave();
+            }
             await cleanupService.cleanSessionArtifacts(session.id, session.cloudFolderId);
             await db.sessions.delete(session.id);
             await cleanupService.cleanupDisposableTemplate(templateId);
@@ -255,10 +277,18 @@ export const useSessionManager = ({
     const clearAllActiveSessions = async () => {
         const activeIds = activeSessions?.map(s => s.id) || [];
         if (activeIds.length > 0 && activeSessions) {
+            if (currentSession && activeIds.includes(currentSession.id)) {
+                cancelPendingAutosave();
+                await waitForPendingAutosave();
+            }
             for (const session of activeSessions) {
                 await cleanupService.cleanSessionArtifacts(session.id, session.cloudFolderId);
             }
             await db.sessions.bulkDelete(activeIds);
+            if (currentSession && activeIds.includes(currentSession.id)) {
+                setCurrentSession(null);
+                setActiveTemplate(null);
+            }
         }
     };
 
@@ -303,6 +333,8 @@ export const useSessionManager = ({
         if (!currentSession) return;
 
         const sessionToSave = { ...currentSession, ...overrides };
+        cancelPendingAutosave();
+        await waitForPendingAutosave();
 
         const hasScores = sessionToSave.players.some(p =>
             Object.keys(p.scores).length > 0 ||
@@ -325,9 +357,8 @@ export const useSessionManager = ({
         const hasDataToSave = hasScores || hasPhotos || hasCustomPlayers || hasLocation || hasNote;
 
         if (!hasDataToSave) {
-            cancelPendingAutosave();
-            cleanupService.cleanSessionArtifacts(sessionToSave.id, sessionToSave.cloudFolderId).catch(console.error);
-            db.sessions.delete(sessionToSave.id).catch(console.error);
+            await cleanupService.cleanSessionArtifacts(sessionToSave.id, sessionToSave.cloudFolderId);
+            await db.sessions.delete(sessionToSave.id);
 
             if (activeTemplate) {
                 await cleanupService.cleanupDisposableTemplate(activeTemplate.id);
@@ -376,6 +407,8 @@ export const useSessionManager = ({
     const saveToHistory = async (finalLocation?: string) => {
         if (!currentSession || !activeTemplate) return;
         try {
+            cancelPendingAutosave();
+            await waitForPendingAutosave();
             const effectiveLocation = finalLocation !== undefined ? finalLocation : currentSession.location;
             const trimmedLoc = effectiveLocation?.trim();
 
@@ -410,7 +443,6 @@ export const useSessionManager = ({
             };
 
             await db.history.put(record);
-            cancelPendingAutosave();
             await db.sessions.delete(currentSession.id);
 
             try {

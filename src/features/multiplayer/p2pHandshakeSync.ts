@@ -56,6 +56,7 @@ export const createP2PHandshakeSync = (options: {
   peerOptions?: unknown;
   chunkSize?: number;
   incomingTtlMs?: number;
+  forceInitialSync?: boolean;
   autoReconnect?: boolean;
   reconnectBaseDelayMs?: number;
   reconnectMaxDelayMs?: number;
@@ -86,6 +87,7 @@ export const createP2PHandshakeSync = (options: {
   let desiredRoomId: string | null = null;
   let reconnectTimer: number | null = null;
   let reconnectAttempt = 0;
+  let forceInitialSync = options.forceInitialSync === true;
   let stopping = true;
   let disposing = false;
   let visibilityBound = false;
@@ -142,7 +144,9 @@ export const createP2PHandshakeSync = (options: {
   const requestMissing = async (connection: P2PDataConnection, remote: Array<{ id: string; version: number }>) => {
     const local = await options.adapter.listMetas();
     const localVersions = new Map(local.map((meta) => [meta.id, meta.version]));
-    const ids = remote.filter((meta) => (localVersions.get(meta.id) ?? -1) < meta.version).map((meta) => meta.id);
+    const shouldForce = forceInitialSync;
+    forceInitialSync = false;
+    const ids = remote.filter((meta) => (shouldForce ? -1 : (localVersions.get(meta.id) ?? -1)) < meta.version).map((meta) => meta.id);
     if (ids.length) send(connection, { type: 'REQUEST_ITEMS', ids });
   };
 

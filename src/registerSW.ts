@@ -8,6 +8,7 @@ type SwRuntime = {
 
 type ScorePadWindow = Window & {
     __boardGameScorePadMultiplayerActive?: boolean;
+    __boardGameScorePadMultiplayerJoinPending?: boolean;
 };
 
 const MULTIPLAYER_STATE_CHANGE_EVENT = 'boardgame-scorepad-multiplayer-state-change';
@@ -21,9 +22,12 @@ export function registerServiceWorker(runtime?: Partial<SwRuntime>) {
         // 監聽 controllerchange 事件，當新的 Service Worker 取得控制權時自動重新整理
         const scorePadWindow = windowObj as ScorePadWindow;
         const hasActiveMultiplayerRoom = () => {
-            const hasRoomQuery = typeof scorePadWindow.location?.search === 'string'
-                && Boolean(new URLSearchParams(scorePadWindow.location.search).get('room'));
-            return hasRoomQuery || scorePadWindow.__boardGameScorePadMultiplayerActive === true;
+            // An explicit QR join may safely reload: its short-lived room
+            // intent is persisted by the app and replayed by the new version.
+            // Stable rooms still defer reload so an active score sheet is not
+            // interrupted by a background service-worker update.
+            return scorePadWindow.__boardGameScorePadMultiplayerActive === true
+                && scorePadWindow.__boardGameScorePadMultiplayerJoinPending !== true;
         };
 
         let refreshing = false;

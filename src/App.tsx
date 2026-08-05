@@ -62,6 +62,7 @@ const App: React.FC = () => {
     handlePublishMultiplayerBoardUpdate,
     releaseHostMultiplayerRoom,
     releaseParticipantMultiplayerRoom,
+    releaseMultiplayerRoomForSession,
   } = multiplayerLifecycle;
 
   // Hook for encapsulated AI Template Sharing confirmation
@@ -365,6 +366,7 @@ const App: React.FC = () => {
     activeMultiplayerRoom,
     releaseHostMultiplayerRoom,
     releaseParticipantMultiplayerRoom,
+    releaseMultiplayerRoomForSession,
     tryRestoreMultiplayerRoom,
     enterActiveSession,
     prepareMultiplayerSessionExit,

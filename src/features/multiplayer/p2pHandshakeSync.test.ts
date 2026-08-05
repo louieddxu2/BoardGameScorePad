@@ -105,6 +105,31 @@ describe('createP2PHandshakeSync reconnect lifecycle', () => {
     sync.stop();
   });
 
+  it('requests the host snapshot on the first join even when local metadata has the same revision', async () => {
+    const adapter = {
+      ...createAdapter(),
+      listMetas: async () => [{ id: 'session-1', version: 3 }],
+    };
+    const sync = createP2PHandshakeSync({
+      Peer: FakePeer,
+      adapter,
+      forceInitialSync: true,
+      bindVisibility: false,
+    });
+
+    sync.joinRoom('room-1');
+    const connection = await openClientConnection(FakePeer.instances[0]);
+    connection.emit('data', { type: 'MY_METAS', metas: [{ id: 'session-1', version: 3 }] });
+    await Promise.resolve();
+
+    expect(connection.sent).toContainEqual({ type: 'REQUEST_ITEMS', ids: ['session-1'] });
+    const requestCount = connection.sent.filter((message) => (message as { type?: string }).type === 'REQUEST_ITEMS').length;
+    connection.emit('data', { type: 'MY_METAS', metas: [{ id: 'session-1', version: 3 }] });
+    await Promise.resolve();
+    expect(connection.sent.filter((message) => (message as { type?: string }).type === 'REQUEST_ITEMS')).toHaveLength(requestCount);
+    sync.stop();
+  });
+
   it('cancels scheduled reconnect attempts after an explicit stop', async () => {
     vi.useFakeTimers();
     const sync = createP2PHandshakeSync({

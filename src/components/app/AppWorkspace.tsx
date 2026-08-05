@@ -135,8 +135,8 @@ const AppWorkspace: React.FC<AppWorkspaceProps> = ({
           onToggleTheme={appData.toggleTheme}
           onTemplateSelect={actions.initSetup}
           onDirectResume={actions.handleDirectResume}
-          onDiscardSession={appData.discardSession}
-          onClearAllActiveSessions={appData.clearAllActiveSessions}
+          onDiscardSession={actions.handleDiscardActiveSession}
+          onClearAllActiveSessions={actions.handleClearAllActiveSessions}
           getSessionPreview={appData.getSessionPreview}
           onTemplateCreate={(name) => {
             setEditorInitialName(name);

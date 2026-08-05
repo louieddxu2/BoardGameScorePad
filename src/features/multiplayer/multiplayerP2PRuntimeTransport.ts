@@ -12,6 +12,7 @@ export const createMultiplayerP2PRuntimeTransport = (options: {
   adapter: ScoreStateSyncAdapter;
   peerOptions?: unknown;
   chunkSize?: number;
+  forceInitialSync?: boolean;
   logger?: (message: string, level?: 'info' | 'error') => void;
 }): MultiplayerRoomRuntimeTransport => {
   let receiver: ((message: unknown, connection?: unknown) => void | Promise<void>) | undefined;

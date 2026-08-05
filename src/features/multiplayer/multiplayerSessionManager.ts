@@ -43,15 +43,15 @@ export interface MultiplayerSessionManager {
   returnOwnership(roomId: string, session: GameSession): void;
   peekReturnedSession(roomId: string): GameSession | null;
   takeReturnedSession(roomId: string): GameSession | null;
-  closeRoom(roomId: string, options?: { deleteLocalRoom?: boolean }): void;
+  closeRoom(roomId: string, options?: { deleteLocalRoom?: boolean }): Promise<void>;
   subscribe(listener: () => void): () => void;
 }
 
 export const isMultiplayerRoomReusableForQrScan = (room: MultiplayerRoomState | null): room is MultiplayerRoomState & { session: GameSession } => Boolean(
   room &&
-  room.status === 'connected' &&
+  room.runtime &&
   room.session &&
-  (room.role === 'host' || room.connectionCount > 0)
+  (room.role === 'host' || room.role === 'player')
 );
 
 const snapshot = (state: MultiplayerRoomState): MultiplayerRoomState => ({
@@ -177,7 +177,7 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
       notify();
       return session;
     },
-    closeRoom(roomId, options) {
+    async closeRoom(roomId, options) {
       const state = rooms.get(roomId);
       if (state) {
         state.runtime?.stop();
@@ -185,7 +185,7 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
         notify();
       }
       if (options?.deleteLocalRoom) {
-        void multiplayerLocalStore.purgeRoomData(roomId).catch((err) => {
+        await multiplayerLocalStore.purgeRoomData(roomId).catch((err) => {
           console.warn('[multiplayerSessionManager] Failed to purge local room data on close:', err);
         });
       }

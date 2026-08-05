@@ -104,13 +104,41 @@ describe('registerServiceWorker', () => {
     expect(reload).toHaveBeenCalledOnce();
   });
 
-  it('defers controller reload while a room join route is present', () => {
+  it('allows controller reload while an explicit room join is pending', () => {
     const reload = vi.fn();
     const serviceWorkerListeners = new Map<string, () => void>();
     const register = vi.fn(async () => ({ update: vi.fn() }));
     const windowObj = {
       location: { search: '?room=room-1', reload },
       addEventListener: vi.fn(),
+    } as any;
+    const navigatorObj = {
+      serviceWorker: {
+        register,
+        addEventListener: vi.fn((event: string, callback: () => void) => serviceWorkerListeners.set(event, callback)),
+      },
+    } as any;
+
+    registerServiceWorker({
+      env: { DEV: false, PROD: true },
+      navigatorObj,
+      windowObj,
+    });
+
+    serviceWorkerListeners.get('controllerchange')?.();
+
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it('still defers controller reload while joining is actively handshaking', () => {
+    const reload = vi.fn();
+    const serviceWorkerListeners = new Map<string, () => void>();
+    const register = vi.fn(async () => ({ update: vi.fn() }));
+    const windowObj = {
+      location: { search: '?room=room-1', reload },
+      addEventListener: vi.fn(),
+      __boardGameScorePadMultiplayerActive: true,
+      __boardGameScorePadMultiplayerJoinPending: false,
     } as any;
     const navigatorObj = {
       serviceWorker: {

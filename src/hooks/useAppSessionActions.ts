@@ -17,6 +17,7 @@ type UseAppSessionActionsOptions = {
   activeMultiplayerRoom: ActiveMultiplayerRoom | null;
   releaseHostMultiplayerRoom: MultiplayerRoomLifecycle['releaseHostMultiplayerRoom'];
   releaseParticipantMultiplayerRoom: MultiplayerRoomLifecycle['releaseParticipantMultiplayerRoom'];
+  releaseMultiplayerRoomForSession: MultiplayerRoomLifecycle['releaseMultiplayerRoomForSession'];
   tryRestoreMultiplayerRoom: MultiplayerRoomLifecycle['tryRestoreMultiplayerRoom'];
   enterActiveSession: EnterActiveSession;
   prepareMultiplayerSessionExit: MultiplayerRoomLifecycle['prepareMultiplayerSessionExit'];
@@ -35,6 +36,7 @@ export const useAppSessionActions = ({
   activeMultiplayerRoom,
   releaseHostMultiplayerRoom,
   releaseParticipantMultiplayerRoom,
+  releaseMultiplayerRoomForSession,
   tryRestoreMultiplayerRoom,
   enterActiveSession,
   prepareMultiplayerSessionExit,
@@ -214,6 +216,19 @@ export const useAppSessionActions = ({
     }
   }, [activeMultiplayerRoom, appData, finalizeMultiplayerSessionExit, prepareMultiplayerSessionExit, releaseHostMultiplayerRoom, releaseParticipantMultiplayerRoom, transitionToDashboard]);
 
+  const handleDiscardActiveSession = useCallback(async (templateId: string) => {
+    const session = appData.activeSessions?.find((item) => item.templateId === templateId)
+      ?? await db.sessions.where('templateId').equals(templateId).and((item) => item.status === 'active').first();
+    if (session) await releaseMultiplayerRoomForSession(session.id);
+    await appData.discardSession(templateId);
+  }, [appData, releaseMultiplayerRoomForSession]);
+
+  const handleClearAllActiveSessions = useCallback(async () => {
+    const sessions = appData.activeSessions ?? await db.sessions.where('status').equals('active').toArray();
+    for (const session of sessions) await releaseMultiplayerRoomForSession(session.id);
+    await appData.clearAllActiveSessions();
+  }, [appData, releaseMultiplayerRoomForSession]);
+
   const handleTemplateSave = useCallback(async (template: GameTemplate) => {
     await appData.saveTemplate(template);
     const defaultCount = appData.sessionPlayerCount || template.lastPlayerCount || 4;
@@ -253,6 +268,8 @@ export const useAppSessionActions = ({
     handleExitSession,
     handleSaveToHistory,
     handleDiscard,
+    handleDiscardActiveSession,
+    handleClearAllActiveSessions,
     handleTemplateSave,
     handleBatchImport,
     handleHistorySelect,
