@@ -153,7 +153,11 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const occupiedBottom = getSessionOccupiedBottom(sessionState.panelHeight, keyboardOffset);
 
   // No special local state needed for photo preview anymore
-  const eventHandlers = useSessionEvents({ ...props, onUpdateTemplate: handleTemplateUpdate }, sessionState);
+  const eventHandlers = useSessionEvents({
+    ...props,
+    onUpdateTemplate: handleTemplateUpdate,
+    isMultiplayerParticipant: props.multiplayerCapabilities?.role === 'player' && Boolean(props.multiplayerRoomId),
+  }, sessionState);
 
   // Media Logic
   const media = useSessionMedia({

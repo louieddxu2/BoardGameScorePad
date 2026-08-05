@@ -8,6 +8,8 @@ import { useMultiplayerRoomLifecycle } from './useMultiplayerRoomLifecycle';
 import type { ActiveMultiplayerRoom } from './useMultiplayerRoomLifecycle';
 import { shouldTriggerIOSPwaGuide } from '../components/modals/IOSPwaGuide';
 import type { EnterActiveSession } from '../utils/activeSessionNavigation';
+import { useToast } from './useToast';
+import { useAppTranslation } from '../i18n/app';
 
 type AppData = ReturnType<typeof useAppData>;
 type MultiplayerRoomLifecycle = ReturnType<typeof useMultiplayerRoomLifecycle>;
@@ -50,6 +52,12 @@ export const useAppSessionActions = ({
   setIsIOSPwaGuideVisible,
 }: UseAppSessionActionsOptions) => {
   const sessionTransitionInFlightRef = useRef(false);
+  const { showToast } = useToast();
+  const { t: tApp } = useAppTranslation();
+
+  const blockParticipantExit = useCallback(() => {
+    showToast({ message: tApp('app_toast_multiplayer_exit_requires_disconnect'), type: 'warning' });
+  }, [showToast, tApp]);
 
   const initSetup = useCallback((template: GameTemplate) => {
     setPendingTemplate(template);
@@ -94,7 +102,7 @@ export const useAppSessionActions = ({
 
   const handleLeaveMultiplayerRoom = useCallback(async () => {
     try {
-      await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true });
+      await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true, awaitLocalCleanup: false });
     } catch (err) {
       console.warn('[multiplayer] Failed to leave participant room:', err);
     }
@@ -133,16 +141,13 @@ export const useAppSessionActions = ({
   }, [appData, enterActiveSession]);
 
   const handleExitSession = useCallback(async (location?: string) => {
+    if (activeMultiplayerRoom?.role === 'player') {
+      blockParticipantExit();
+      return;
+    }
     if (sessionTransitionInFlightRef.current) return;
     sessionTransitionInFlightRef.current = true;
     prepareMultiplayerSessionExit();
-    try {
-      if (activeMultiplayerRoom?.role === 'player') {
-        await releaseParticipantMultiplayerRoom({ deleteLocalRoom: false });
-      }
-    } catch (err) {
-      console.warn('[multiplayer] Failed to release participant room on exit:', err);
-    }
     try {
       await appData.exitSession(location !== undefined ? { location } : undefined);
     } catch (err) {
@@ -155,17 +160,19 @@ export const useAppSessionActions = ({
         sessionTransitionInFlightRef.current = false;
       }
     }
-  }, [activeMultiplayerRoom, appData, finalizeMultiplayerSessionExit, prepareMultiplayerSessionExit, releaseParticipantMultiplayerRoom, transitionToDashboard]);
+  }, [activeMultiplayerRoom, appData, blockParticipantExit, finalizeMultiplayerSessionExit, prepareMultiplayerSessionExit, transitionToDashboard]);
 
   const handleSaveToHistory = useCallback(async (location?: string) => {
+    if (activeMultiplayerRoom?.role === 'player') {
+      blockParticipantExit();
+      return;
+    }
     if (sessionTransitionInFlightRef.current) return;
     sessionTransitionInFlightRef.current = true;
     prepareMultiplayerSessionExit();
     try {
       if (activeMultiplayerRoom?.role === 'host') {
         await releaseHostMultiplayerRoom();
-      } else if (activeMultiplayerRoom?.role === 'player') {
-        await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true });
       }
     } catch (err) {
       console.warn('[multiplayer] Failed to release room on save:', err);
@@ -187,9 +194,13 @@ export const useAppSessionActions = ({
         sessionTransitionInFlightRef.current = false;
       }
     }
-  }, [activeMultiplayerRoom, appData, captureAiTemplateForSharing, finalizeMultiplayerSessionExit, prepareMultiplayerSessionExit, releaseHostMultiplayerRoom, releaseParticipantMultiplayerRoom, setIsIOSPwaGuideVisible, transitionToDashboard]);
+  }, [activeMultiplayerRoom, appData, blockParticipantExit, captureAiTemplateForSharing, finalizeMultiplayerSessionExit, prepareMultiplayerSessionExit, releaseHostMultiplayerRoom, setIsIOSPwaGuideVisible, transitionToDashboard]);
 
   const handleDiscard = useCallback(async () => {
+    if (activeMultiplayerRoom?.role === 'player') {
+      blockParticipantExit();
+      return;
+    }
     if (sessionTransitionInFlightRef.current) return;
     sessionTransitionInFlightRef.current = true;
     prepareMultiplayerSessionExit();
@@ -198,10 +209,6 @@ export const useAppSessionActions = ({
     try {
       if (activeMultiplayerRoom?.role === 'host') {
         await releaseHostMultiplayerRoom();
-      } else if (activeMultiplayerRoom?.role === 'player') {
-        // Stopping the runtime is synchronous; the IndexedDB room purge is
-        // tracked in the background so it cannot block deleting this session.
-        await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true, awaitLocalCleanup: false });
       }
     } catch (err) {
       console.warn('[multiplayer] Failed to release room on discard:', err);
@@ -219,7 +226,7 @@ export const useAppSessionActions = ({
         sessionTransitionInFlightRef.current = false;
       }
     }
-  }, [activeMultiplayerRoom, appData, finalizeMultiplayerSessionExit, prepareMultiplayerSessionExit, releaseHostMultiplayerRoom, releaseParticipantMultiplayerRoom, transitionToDashboard]);
+  }, [activeMultiplayerRoom, appData, blockParticipantExit, finalizeMultiplayerSessionExit, prepareMultiplayerSessionExit, releaseHostMultiplayerRoom, transitionToDashboard]);
 
   const handleDiscardActiveSession = useCallback(async (templateId: string) => {
     const session = appData.activeSessions?.find((item) => item.templateId === templateId)
