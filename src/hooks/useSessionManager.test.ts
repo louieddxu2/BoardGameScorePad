@@ -222,6 +222,30 @@ describe('useSessionManager', () => {
     }
   });
 
+  it('discards the exact active session by ID and cancels its pending autosave', async () => {
+    vi.useFakeTimers();
+    try {
+      const template: GameTemplate = {
+        id: 'tpl_discard', name: 'Discard', columns: [], createdAt: Date.now(),
+      };
+      const { result } = renderHook(() => useSessionManager({ getTemplate: async () => template, activeSessions: [], isCloudEnabled: () => false }));
+
+      let sessionId: string | null = null;
+      await act(async () => { sessionId = await result.current.startSession(template, 1); });
+      expect(sessionId).toBeTruthy();
+
+      await act(async () => { await result.current.discardSessionById(sessionId!); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+
+      expect(hoisted.dbMock.sessions.delete).toHaveBeenCalledWith(sessionId);
+      expect(hoisted.sessionStore.has(sessionId!)).toBe(false);
+      expect(result.current.currentSession).toBeNull();
+      expect(result.current.activeTemplate).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('resumes the requested active session by ID when multiple sessions use one template', async () => {
     const template: GameTemplate = {
       id: 'tpl_1', name: 'Test Game', columns: [], createdAt: Date.now(),

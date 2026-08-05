@@ -223,6 +223,10 @@ export const useMultiplayerRoomLifecycle = ({
     };
 
     const startJoin = async () => {
+      // A destructive exit may have stopped the runtime before its IndexedDB
+      // purge finished. Wait before reusing the same QR room so a late purge
+      // cannot delete a newly imported bootstrap.
+      await multiplayerSessionManager.waitForRoomCleanup(roomId);
       const existingRoom = multiplayerSessionManager.get(roomId);
       let existingPlayerIds: string[] = [];
 
@@ -672,14 +676,17 @@ export const useMultiplayerRoomLifecycle = ({
     return completed.finalSession;
   }, [clearPendingRoomJoin, clearRoomUrlQuery, setActiveRoom]);
 
-  const releaseParticipantMultiplayerRoom = useCallback(async (options?: { deleteLocalRoom?: boolean }) => {
+  const releaseParticipantMultiplayerRoom = useCallback(async (options?: { deleteLocalRoom?: boolean; awaitLocalCleanup?: boolean }) => {
     const activeRoom = activeMultiplayerRoomRef.current;
     if (!activeRoom || activeRoom.role !== 'player') return;
     const managedRoom = multiplayerSessionManager.get(activeRoom.roomId);
     if (managedRoom?.runtime?.role === 'player') {
       managedRoom.runtime.leaveRoom();
     }
-    await multiplayerSessionManager.closeRoom(activeRoom.roomId, { deleteLocalRoom: options?.deleteLocalRoom });
+    await multiplayerSessionManager.closeRoom(activeRoom.roomId, {
+      deleteLocalRoom: options?.deleteLocalRoom,
+      awaitLocalCleanup: options?.awaitLocalCleanup,
+    });
     multiplayerJoinStartedRef.current = null;
     clearMultiplayerJoinTimeout();
     isJoiningMultiplayerRef.current = false;

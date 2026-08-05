@@ -43,7 +43,8 @@ export interface MultiplayerSessionManager {
   returnOwnership(roomId: string, session: GameSession): void;
   peekReturnedSession(roomId: string): GameSession | null;
   takeReturnedSession(roomId: string): GameSession | null;
-  closeRoom(roomId: string, options?: { deleteLocalRoom?: boolean }): Promise<void>;
+  waitForRoomCleanup(roomId: string): Promise<void>;
+  closeRoom(roomId: string, options?: { deleteLocalRoom?: boolean; awaitLocalCleanup?: boolean }): Promise<void>;
   subscribe(listener: () => void): () => void;
 }
 
@@ -66,6 +67,7 @@ const snapshot = (state: MultiplayerRoomState): MultiplayerRoomState => ({
  */
 export const createMultiplayerSessionManager = (): MultiplayerSessionManager => {
   const rooms = new Map<string, MultiplayerRoomState>();
+  const cleanupTasks = new Map<string, Promise<void>>();
   const listeners = new Set<() => void>();
   const notify = () => {
     for (const listener of Array.from(listeners)) {
@@ -177,6 +179,9 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
       notify();
       return session;
     },
+    async waitForRoomCleanup(roomId) {
+      await cleanupTasks.get(roomId);
+    },
     async closeRoom(roomId, options) {
       const state = rooms.get(roomId);
       if (state) {
@@ -185,9 +190,15 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
         notify();
       }
       if (options?.deleteLocalRoom) {
-        await multiplayerLocalStore.purgeRoomData(roomId).catch((err) => {
+        const previousCleanup = cleanupTasks.get(roomId) ?? Promise.resolve();
+        const cleanup = previousCleanup.then(() => multiplayerLocalStore.purgeRoomData(roomId)).catch((err) => {
           console.warn('[multiplayerSessionManager] Failed to purge local room data on close:', err);
         });
+        const trackedCleanup = cleanup.finally(() => {
+          if (cleanupTasks.get(roomId) === trackedCleanup) cleanupTasks.delete(roomId);
+        });
+        cleanupTasks.set(roomId, trackedCleanup);
+        if (options.awaitLocalCleanup !== false) await trackedCleanup;
       }
     },
     subscribe(listener) {

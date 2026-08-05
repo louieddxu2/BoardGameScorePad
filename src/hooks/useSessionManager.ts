@@ -253,25 +253,38 @@ export const useSessionManager = ({
         return activateSession(session);
     };
 
+    const discardSessionById = async (sessionId: string) => {
+        const session = (currentSession?.id === sessionId ? currentSession : undefined)
+            ?? await db.sessions.get(sessionId);
+
+        if (!session) {
+            if (currentSession?.id === sessionId) {
+                setCurrentSession(null);
+                setActiveTemplate(null);
+            }
+            return;
+        }
+
+        if (currentSession?.id === session.id) {
+            cancelPendingAutosave();
+            await waitForPendingAutosave();
+        }
+        await cleanupService.cleanSessionArtifacts(session.id, session.cloudFolderId);
+        await db.sessions.delete(session.id);
+        await cleanupService.cleanupDisposableTemplate(session.templateId);
+
+        if (currentSession?.id === session.id) {
+            setCurrentSession(null);
+            setActiveTemplate(null);
+        }
+    };
+
     const discardSession = async (templateId: string) => {
         const session = (currentSession?.templateId === templateId ? currentSession : undefined)
             ?? activeSessions?.find(s => s.templateId === templateId)
             ?? await db.sessions.where('templateId').equals(templateId).and(s => s.status === 'active').first();
 
-        if (session) {
-            if (currentSession?.id === session.id) {
-                cancelPendingAutosave();
-                await waitForPendingAutosave();
-            }
-            await cleanupService.cleanSessionArtifacts(session.id, session.cloudFolderId);
-            await db.sessions.delete(session.id);
-            await cleanupService.cleanupDisposableTemplate(templateId);
-        }
-
-        if (currentSession?.templateId === templateId) {
-            setCurrentSession(null);
-            setActiveTemplate(null);
-        }
+        if (session) await discardSessionById(session.id);
     };
 
     const clearAllActiveSessions = async () => {
@@ -614,6 +627,7 @@ export const useSessionManager = ({
         resumeSession,
         resumeSessionById,
         discardSession,
+        discardSessionById,
         clearAllActiveSessions,
         updateSession,
         resetSessionScores,

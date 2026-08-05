@@ -193,17 +193,22 @@ export const useAppSessionActions = ({
     if (sessionTransitionInFlightRef.current) return;
     sessionTransitionInFlightRef.current = true;
     prepareMultiplayerSessionExit();
+    const sessionId = appData.currentSession?.id;
+    const templateId = appData.currentSession?.templateId ?? appData.activeTemplate?.id;
     try {
       if (activeMultiplayerRoom?.role === 'host') {
         await releaseHostMultiplayerRoom();
       } else if (activeMultiplayerRoom?.role === 'player') {
-        await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true });
+        // Stopping the runtime is synchronous; the IndexedDB room purge is
+        // tracked in the background so it cannot block deleting this session.
+        await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true, awaitLocalCleanup: false });
       }
     } catch (err) {
       console.warn('[multiplayer] Failed to release room on discard:', err);
     }
     try {
-      if (appData.activeTemplate) await appData.discardSession(appData.activeTemplate.id);
+      if (sessionId) await appData.discardSessionById(sessionId);
+      else if (templateId) await appData.discardSession(templateId);
     } catch (err) {
       console.warn('[session] Failed to discard active session:', err);
     } finally {
@@ -220,7 +225,8 @@ export const useAppSessionActions = ({
     const session = appData.activeSessions?.find((item) => item.templateId === templateId)
       ?? await db.sessions.where('templateId').equals(templateId).and((item) => item.status === 'active').first();
     if (session) await releaseMultiplayerRoomForSession(session.id);
-    await appData.discardSession(templateId);
+    if (session) await appData.discardSessionById(session.id);
+    else await appData.discardSession(templateId);
   }, [appData, releaseMultiplayerRoomForSession]);
 
   const handleClearAllActiveSessions = useCallback(async () => {

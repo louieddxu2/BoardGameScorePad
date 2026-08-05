@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { GameSession } from '../../types';
 import { createMultiplayerSessionManager, isMultiplayerRoomReusableForQrScan } from './multiplayerSessionManager';
+import { multiplayerLocalStore } from './multiplayerLocalStore';
 
 const session: GameSession = {
   id: 'session-1', templateId: 'template-1', name: 'Test', startTime: 1, status: 'active', players: [],
@@ -24,6 +25,30 @@ describe('multiplayer session manager', () => {
     manager.closeRoom('room-1');
     expect(runtime.stop).toHaveBeenCalledOnce();
     expect(manager.get('room-1')).toBeNull();
+  });
+
+  it('tracks background room cleanup before the same room can be reused', async () => {
+    let resolveCleanup!: () => void;
+    const cleanup = new Promise<void>((resolve) => { resolveCleanup = resolve; });
+    const purgeSpy = vi.spyOn(multiplayerLocalStore, 'purgeRoomData').mockReturnValue(cleanup);
+    try {
+      const manager = createMultiplayerSessionManager();
+      const runtime = createRuntime('player');
+      manager.register('room-1', runtime);
+
+      await manager.closeRoom('room-1', { deleteLocalRoom: true, awaitLocalCleanup: false });
+      let finished = false;
+      const waiting = manager.waitForRoomCleanup('room-1').then(() => { finished = true; });
+
+      await Promise.resolve();
+      expect(finished).toBe(false);
+      resolveCleanup();
+      await waiting;
+      expect(finished).toBe(true);
+      expect(purgeSpy).toHaveBeenCalledWith('room-1');
+    } finally {
+      purgeSpy.mockRestore();
+    }
   });
 
   it('marks a player with no connections as reconnecting while keeping the runtime alive', () => {
