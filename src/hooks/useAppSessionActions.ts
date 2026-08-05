@@ -55,7 +55,7 @@ export const useAppSessionActions = ({
   const { showToast } = useToast();
   const { t: tApp } = useAppTranslation();
 
-  const blockParticipantExit = useCallback(() => {
+  const blockMultiplayerRoomExit = useCallback(() => {
     showToast({ message: tApp('app_toast_multiplayer_exit_requires_disconnect'), type: 'warning' });
   }, [showToast, tApp]);
 
@@ -141,8 +141,8 @@ export const useAppSessionActions = ({
   }, [appData, enterActiveSession]);
 
   const handleExitSession = useCallback(async (location?: string) => {
-    if (activeMultiplayerRoom?.role === 'player') {
-      blockParticipantExit();
+    if (activeMultiplayerRoom) {
+      blockMultiplayerRoomExit();
       return;
     }
     if (sessionTransitionInFlightRef.current) return;
@@ -160,23 +160,16 @@ export const useAppSessionActions = ({
         sessionTransitionInFlightRef.current = false;
       }
     }
-  }, [activeMultiplayerRoom, appData, blockParticipantExit, finalizeMultiplayerSessionExit, prepareMultiplayerSessionExit, transitionToDashboard]);
+  }, [activeMultiplayerRoom, appData, blockMultiplayerRoomExit, finalizeMultiplayerSessionExit, prepareMultiplayerSessionExit, transitionToDashboard]);
 
   const handleSaveToHistory = useCallback(async (location?: string) => {
-    if (activeMultiplayerRoom?.role === 'player') {
-      blockParticipantExit();
+    if (activeMultiplayerRoom) {
+      blockMultiplayerRoomExit();
       return;
     }
     if (sessionTransitionInFlightRef.current) return;
     sessionTransitionInFlightRef.current = true;
     prepareMultiplayerSessionExit();
-    try {
-      if (activeMultiplayerRoom?.role === 'host') {
-        await releaseHostMultiplayerRoom();
-      }
-    } catch (err) {
-      console.warn('[multiplayer] Failed to release room on save:', err);
-    }
     try {
       captureAiTemplateForSharing(appData.activeTemplate);
       await appData.saveToHistory(location);
@@ -194,11 +187,11 @@ export const useAppSessionActions = ({
         sessionTransitionInFlightRef.current = false;
       }
     }
-  }, [activeMultiplayerRoom, appData, blockParticipantExit, captureAiTemplateForSharing, finalizeMultiplayerSessionExit, prepareMultiplayerSessionExit, releaseHostMultiplayerRoom, setIsIOSPwaGuideVisible, transitionToDashboard]);
+  }, [activeMultiplayerRoom, appData, blockMultiplayerRoomExit, captureAiTemplateForSharing, finalizeMultiplayerSessionExit, prepareMultiplayerSessionExit, setIsIOSPwaGuideVisible, transitionToDashboard]);
 
   const handleDiscard = useCallback(async () => {
-    if (activeMultiplayerRoom?.role === 'player') {
-      blockParticipantExit();
+    if (activeMultiplayerRoom) {
+      blockMultiplayerRoomExit();
       return;
     }
     if (sessionTransitionInFlightRef.current) return;
@@ -206,13 +199,6 @@ export const useAppSessionActions = ({
     prepareMultiplayerSessionExit();
     const sessionId = appData.currentSession?.id;
     const templateId = appData.currentSession?.templateId ?? appData.activeTemplate?.id;
-    try {
-      if (activeMultiplayerRoom?.role === 'host') {
-        await releaseHostMultiplayerRoom();
-      }
-    } catch (err) {
-      console.warn('[multiplayer] Failed to release room on discard:', err);
-    }
     try {
       if (sessionId) await appData.discardSessionById(sessionId);
       else if (templateId) await appData.discardSession(templateId);
@@ -226,7 +212,7 @@ export const useAppSessionActions = ({
         sessionTransitionInFlightRef.current = false;
       }
     }
-  }, [activeMultiplayerRoom, appData, blockParticipantExit, finalizeMultiplayerSessionExit, prepareMultiplayerSessionExit, releaseHostMultiplayerRoom, transitionToDashboard]);
+  }, [activeMultiplayerRoom, appData, blockMultiplayerRoomExit, finalizeMultiplayerSessionExit, prepareMultiplayerSessionExit, transitionToDashboard]);
 
   const handleDiscardActiveSession = useCallback(async (templateId: string) => {
     const session = appData.activeSessions?.find((item) => item.templateId === templateId)

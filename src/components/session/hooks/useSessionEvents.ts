@@ -26,7 +26,7 @@ interface SessionViewProps {
   isVoiceEnabled?: boolean;
   onToggleVoice?: () => void;
   multiplayerCapabilities?: SessionCapabilities;
-  isMultiplayerParticipant?: boolean;
+  isMultiplayerRoomActive?: boolean;
 }
 
 interface LocalUiState {
@@ -41,7 +41,7 @@ export const useSessionEvents = (
   sessionState: SessionStateHook,
   localUiState?: LocalUiState
 ) => {
-  const { session, template, savedPlayers, allSavedPlayers, onUpdateSession, onUpdateTemplate, onUpdateSavedPlayer, onExit, onResetScores, isVoiceEnabled, isMultiplayerParticipant } = props;
+  const { session, template, savedPlayers, allSavedPlayers, onUpdateSession, onUpdateTemplate, onUpdateSavedPlayer, onExit, onResetScores, isVoiceEnabled, isMultiplayerRoomActive } = props;
   const { uiState, setUiState } = sessionState;
   const { showToast } = useToast();
   const { t } = useSessionTranslation();
@@ -64,14 +64,14 @@ export const useSessionEvents = (
   const uiStateRef = useRef(uiState);
   const sessionRef = useRef(session);
   const localUiStateRef = useRef(localUiState);
-  const isMultiplayerParticipantRef = useRef(Boolean(isMultiplayerParticipant));
+  const isMultiplayerRoomActiveRef = useRef(Boolean(isMultiplayerRoomActive));
   // [Fix] Track onExit in a ref to prevent listener re-binding when parent re-renders
   const onExitRef = useRef(onExit);
 
   useEffect(() => { uiStateRef.current = uiState; }, [uiState]);
   useEffect(() => { sessionRef.current = session; }, [session]);
   useEffect(() => { localUiStateRef.current = localUiState; }, [localUiState]);
-  useEffect(() => { isMultiplayerParticipantRef.current = Boolean(isMultiplayerParticipant); }, [isMultiplayerParticipant]);
+  useEffect(() => { isMultiplayerRoomActiveRef.current = Boolean(isMultiplayerRoomActive); }, [isMultiplayerRoomActive]);
   useEffect(() => { onExitRef.current = onExit; }, [onExit]);
 
   // --- Voice Feedback Logic ---
@@ -134,9 +134,10 @@ export const useSessionEvents = (
       // Note: ScreenshotModal and ColumnConfigEditor are managed internally by their own hooks.
       // because App.tsx checks hasActiveModals(), this listener won't be called if they are open.
 
-      // Participants must explicitly leave the room from the connection menu before
-      // leaving the score sheet. Inner local UI, such as photo preview, stays dismissible.
-      if (isMultiplayerParticipantRef.current) {
+      // Everyone in an active multiplayer room must end the room from the
+      // connection menu before leaving the score sheet. Inner local UI, such
+      // as photo preview, stays dismissible.
+      if (isMultiplayerRoomActiveRef.current) {
         showToast({ message: t('multiplayer_exit_requires_disconnect'), type: 'warning' });
         e.stopImmediatePropagation();
         return;

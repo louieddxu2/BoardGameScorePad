@@ -156,7 +156,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const eventHandlers = useSessionEvents({
     ...props,
     onUpdateTemplate: handleTemplateUpdate,
-    isMultiplayerParticipant: props.multiplayerCapabilities?.role === 'player' && Boolean(props.multiplayerRoomId),
+    isMultiplayerRoomActive: Boolean(props.multiplayerRoomId),
   }, sessionState);
 
   // Media Logic
