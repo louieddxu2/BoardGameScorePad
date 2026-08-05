@@ -644,6 +644,10 @@ export const useMultiplayerRoomLifecycle = ({
   const releaseParticipantMultiplayerRoom = useCallback(async (options?: { deleteLocalRoom?: boolean }) => {
     const activeRoom = activeMultiplayerRoomRef.current;
     if (!activeRoom || activeRoom.role !== 'player') return;
+    const managedRoom = multiplayerSessionManager.get(activeRoom.roomId);
+    if (managedRoom?.runtime?.role === 'player') {
+      managedRoom.runtime.leaveRoom();
+    }
     await multiplayerSessionManager.closeRoom(activeRoom.roomId, { deleteLocalRoom: options?.deleteLocalRoom });
     multiplayerJoinStartedRef.current = null;
     clearMultiplayerJoinTimeout();
@@ -659,6 +663,10 @@ export const useMultiplayerRoomLifecycle = ({
     const room = await multiplayerLocalStore.getRoomBySessionId(sessionId);
     if (!room) return;
 
+    const managedRoom = multiplayerSessionManager.get(room.roomId);
+    if (managedRoom?.runtime?.role === 'player') {
+      managedRoom.runtime.leaveRoom();
+    }
     await multiplayerSessionManager.closeRoom(room.roomId, { deleteLocalRoom: true });
     if (activeMultiplayerRoomRef.current?.roomId !== room.roomId) return;
 

@@ -39,6 +39,9 @@ describe('multiplayer room controller', () => {
 
     await controller.receive({ type: 'room:set-player-claims-result', roomId: 'room-1', sessionId: 'session-1', accepted: true, playerIds: [] });
     expect(accepted).toHaveBeenCalledWith([]);
+
+    expect(controller.leaveRoom()).toBe(true);
+    expect(sent).toContainEqual({ type: 'room:leave', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-1' });
   });
 
   it('persists before send, then clears an acknowledged player patch', async () => {
@@ -175,6 +178,23 @@ describe('multiplayer room controller', () => {
 
     expect(controller.getParticipantClaims()).toEqual({ p1: 1 });
     expect(closeConnection).toHaveBeenCalledWith(firstConnection);
+  });
+
+  it('releases a participant binding when the participant explicitly leaves', async () => {
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
+    const store = createDeliveryStore(); const claims = vi.fn(); const closeConnection = vi.fn(); const connection = {};
+    const controller = createMultiplayerRoomController({ role: 'host', hostSession: host, deliveryStore: store,
+      snapshotStore: { putSession: async () => undefined, updateRoomRevision: async () => undefined },
+      transport: { sendToHost: () => false, sendToConnection: () => true, closeConnection, broadcastLocalChanges: async () => undefined },
+      onParticipantClaims: claims, now: () => 20,
+    });
+
+    await controller.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-1', playerId: 'p1' }, connection);
+    await controller.receive({ type: 'room:leave', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-1' }, connection);
+
+    expect(controller.getParticipantClaims()).toEqual({});
+    expect(claims).toHaveBeenLastCalledWith({});
+    expect(closeConnection).toHaveBeenCalledWith(connection);
   });
 
   it('persists and broadcasts a host template change with its active session', async () => {

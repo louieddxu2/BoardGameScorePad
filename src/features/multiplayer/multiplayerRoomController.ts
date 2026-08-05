@@ -11,6 +11,7 @@ import {
   isParticipantClaimResultMessage,
   isParticipantClaimsUpdateMessage,
   isParticipantClaimsUpdateResultMessage,
+  isParticipantLeaveMessage,
   isSessionCompletedAckMessage,
   isSessionCompletedMessage,
   isSessionSnapshotMessage,
@@ -86,6 +87,17 @@ export const createMultiplayerRoomController = (options: {
     : { type: 'score:patch-result', roomId: message.roomId, sessionId: message.sessionId, opId: message.opId, accepted: false, reason: reason ?? 'rejected' };
 
   const receiveOne = async (message: unknown, connection: unknown) => {
+      if (isParticipantLeaveMessage(message)) {
+        const validRoom = message.roomId === options.hostSession.room.roomId && message.sessionId === options.hostSession.session.id;
+        const binding = bindings.get(connection);
+        if (!validRoom || (binding && binding.deviceId !== message.deviceId)) return false;
+        if (binding) {
+          bindings.delete(connection);
+          await publishParticipantClaims();
+        }
+        options.transport.closeConnection?.(connection);
+        return true;
+      }
       if (isSessionCompletedAckMessage(message)) {
         const binding = bindings.get(connection);
         const matchesActiveCompletion = completionWaiter &&
@@ -274,6 +286,15 @@ export const createMultiplayerPlayerRoomController = (options: {
         sessionId: options.playerSession.session.id,
         deviceId: options.deviceId,
         playerIds: [...new Set(playerIds)],
+      });
+    },
+
+    leaveRoom() {
+      return send({
+        type: 'room:leave',
+        roomId: options.playerSession.room.roomId,
+        sessionId: options.playerSession.session.id,
+        deviceId: options.deviceId,
       });
     },
 

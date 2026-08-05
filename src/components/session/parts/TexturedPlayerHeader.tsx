@@ -7,7 +7,7 @@ import { ContrastText } from '../../shared/ContrastText';
 import SmartTextureLayer from './SmartTextureLayer';
 import { COLORS } from '../../../colors'; // Import colors for fallback
 import { useSessionTranslation } from '../../../i18n/session';
-import { Pencil, Settings2, UsersRound } from 'lucide-react';
+import { Ban, Pencil, UsersRound } from 'lucide-react';
 
 interface TexturedPlayerHeaderProps {
   player: Player;
@@ -146,9 +146,9 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
         </div>
       )}
 
-      {canManageParticipantClaims && (
-        <div className="absolute bottom-1 right-1 z-20 pointer-events-none flex items-center justify-center w-4 h-4 rounded bg-modal-backdrop/70 text-txt-muted border border-white/10 shadow-sm">
-          <Settings2 size={10} />
+      {canManageParticipantClaims && !isEditableByParticipant && (
+        <div className="absolute top-1 right-1 z-20 pointer-events-none flex items-center justify-center w-4 h-4 rounded bg-modal-backdrop/70 text-txt-muted border border-white/10 shadow-sm">
+          <Ban size={10} />
         </div>
       )}
 

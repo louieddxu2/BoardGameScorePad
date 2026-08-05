@@ -66,6 +66,13 @@ export interface ParticipantClaimMessage {
   playerId: string;
 }
 
+export interface ParticipantLeaveMessage {
+  type: 'room:leave';
+  roomId: string;
+  sessionId: string;
+  deviceId: string;
+}
+
 export interface ParticipantClaimResultMessage {
   type: 'room:claim-result';
   roomId: string;
@@ -134,6 +141,7 @@ export type MultiplayerMessage =
   | ScoreValuePatchMessage
   | TotalAdjustmentPatchMessage
   | ParticipantClaimMessage
+  | ParticipantLeaveMessage
   | ParticipantClaimResultMessage
   | ParticipantClaimsUpdateMessage
   | ParticipantClaimsUpdateResultMessage
@@ -224,6 +232,10 @@ export const isTotalAdjustmentPatchMessage = (value: unknown): value is TotalAdj
 
 export const isParticipantClaimMessage = (value: unknown): value is ParticipantClaimMessage => {
   return isRecord(value) && value.type === 'room:claim-player' && hasString(value, 'roomId') && hasString(value, 'sessionId') && hasString(value, 'deviceId') && hasString(value, 'playerId');
+};
+
+export const isParticipantLeaveMessage = (value: unknown): value is ParticipantLeaveMessage => {
+  return isRecord(value) && value.type === 'room:leave' && hasString(value, 'roomId') && hasString(value, 'sessionId') && hasString(value, 'deviceId');
 };
 
 export const isParticipantClaimResultMessage = (value: unknown): value is ParticipantClaimResultMessage => {
