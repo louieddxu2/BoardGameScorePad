@@ -43,7 +43,13 @@ export const createMultiplayerP2PRuntimeTransport = (options: {
     broadcastMessage: (message) => handshake.broadcast(message),
     setMessageReceiver: (nextReceiver) => { receiver = nextReceiver; },
     setConnectionOpenHandler: (nextHandler) => { connectionOpenHandler = nextHandler; },
-    setConnectionChangeHandler: (nextHandler) => { connectionChangeHandler = nextHandler; },
+    setConnectionChangeHandler: (nextHandler) => {
+      connectionChangeHandler = nextHandler;
+      // A QR join can attach the room runtime after the transport is already
+      // open. Synchronize the current count so the handoff does not lose the
+      // first connection state transition.
+      nextHandler?.(handshake.getConnectionCount());
+    },
     setConnectionCloseHandler: (nextHandler) => { connectionCloseHandler = nextHandler; },
     getConnectionCount: () => handshake.getConnectionCount(),
   };

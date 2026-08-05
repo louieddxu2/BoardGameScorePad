@@ -290,6 +290,29 @@ export const useMultiplayerRoomLifecycle = ({
         onRemoteBootstrap: async (bootstrapMessage, persisted) => {
           if (await applyRemoteBootstrapToPlayerRuntime(roomId, bootstrapMessage, persisted)) return;
           if (!isJoiningMultiplayerRef.current || !isCurrentJoin()) return;
+
+          // Take ownership of the already-running QR transport as soon as the
+          // bootstrap arrives. The player picker should only choose claims;
+          // it must not delay creation of the runtime that owns reconnects and
+          // connection state.
+          const existingRuntime = multiplayerSessionManager.get(roomId)?.runtime;
+          if (!existingRuntime) {
+            const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
+            const callbacks = multiplayerSessionManager.createRuntimeCallbacks(roomId);
+            const runtime = await createMultiplayerPlayerRoomRuntime({
+              bootstrapMessage,
+              deviceId,
+              store: multiplayerLocalStore,
+              bindingStore: multiplayerParticipantBindingStore,
+              deliveryStore: multiplayerDeliveryStore,
+              transport: activeTransport!,
+              onSessionSnapshot: callbacks.onSessionSnapshot,
+              onOwnershipReturned: callbacks.onOwnershipReturned,
+            });
+            multiplayerSessionManager.register(roomId, runtime, 'connecting');
+            activeTransport?.setConnectionChangeHandler?.((connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount));
+          }
+
           clearMultiplayerJoinTimeout();
           isJoiningMultiplayerRef.current = false;
           setIsJoiningMultiplayer(false);
@@ -497,19 +520,23 @@ export const useMultiplayerRoomLifecycle = ({
     if (!pendingMultiplayerJoin) return;
     const { roomId, bootstrapMessage, transport } = pendingMultiplayerJoin;
     const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
-    const callbacks = multiplayerSessionManager.createRuntimeCallbacks(roomId);
-    const runtime = await createMultiplayerPlayerRoomRuntime({
-      bootstrapMessage,
-      deviceId,
-      store: multiplayerLocalStore,
-      bindingStore: multiplayerParticipantBindingStore,
-      deliveryStore: multiplayerDeliveryStore,
-      transport,
-      onSessionSnapshot: callbacks.onSessionSnapshot,
-      onOwnershipReturned: callbacks.onOwnershipReturned,
-    });
-    multiplayerSessionManager.register(roomId, runtime, 'connected');
-    transport.setConnectionChangeHandler?.((connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount));
+    const managedRuntime = multiplayerSessionManager.get(roomId)?.runtime;
+    let runtime = managedRuntime?.role === 'player' ? managedRuntime : null;
+    if (!runtime) {
+      const callbacks = multiplayerSessionManager.createRuntimeCallbacks(roomId);
+      runtime = await createMultiplayerPlayerRoomRuntime({
+        bootstrapMessage,
+        deviceId,
+        store: multiplayerLocalStore,
+        bindingStore: multiplayerParticipantBindingStore,
+        deliveryStore: multiplayerDeliveryStore,
+        transport,
+        onSessionSnapshot: callbacks.onSessionSnapshot,
+        onOwnershipReturned: callbacks.onOwnershipReturned,
+      });
+      multiplayerSessionManager.register(roomId, runtime, 'connecting');
+      transport.setConnectionChangeHandler?.((connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount));
+    }
     const normalizedPlayerIds = [...new Set(playerIds)];
     await saveParticipantBinding({
       store: multiplayerParticipantBindingStore,
@@ -549,7 +576,11 @@ export const useMultiplayerRoomLifecycle = ({
   const handleCancelMultiplayerPlayerClaims = useCallback(() => setPendingMultiplayerClaimIds(null), []);
 
   const handleCancelMultiplayerJoin = useCallback(() => {
-    pendingMultiplayerJoin?.transport.stop?.();
+    if (pendingMultiplayerJoin?.roomId && multiplayerSessionManager.get(pendingMultiplayerJoin.roomId)?.runtime) {
+      void multiplayerSessionManager.closeRoom(pendingMultiplayerJoin.roomId, { deleteLocalRoom: true });
+    } else {
+      pendingMultiplayerJoin?.transport.stop?.();
+    }
     setPendingJoin(null);
     isJoiningMultiplayerRef.current = false;
     setIsJoiningMultiplayer(false);
