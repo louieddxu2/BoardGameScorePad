@@ -59,11 +59,38 @@ export const createMultiplayerTabCoordinator = (options?: {
   const ownerId = options?.ownerId ?? generateId();
   const listeners = new Set<(claim: MultiplayerTabClaim) => void>();
   let currentClaim: MultiplayerTabClaim | null = null;
+  let storageUsable = storage !== null;
 
-  const readActiveClaim = () => parseClaim(storage?.getItem(MULTIPLAYER_ACTIVE_TAB_KEY) ?? null);
+  const readActiveClaim = () => {
+    if (!storage || !storageUsable) return null;
+    try {
+      return parseClaim(storage.getItem(MULTIPLAYER_ACTIVE_TAB_KEY));
+    } catch {
+      storageUsable = false;
+      return null;
+    }
+  };
+  const persistClaim = (claim: MultiplayerTabClaim) => {
+    if (!storage || !storageUsable) return;
+    try {
+      storage.setItem(MULTIPLAYER_ACTIVE_TAB_KEY, JSON.stringify(claim));
+    } catch {
+      storageUsable = false;
+    }
+  };
+  const removePersistedClaim = () => {
+    if (!storage || !storageUsable) return;
+    try {
+      storage.removeItem(MULTIPLAYER_ACTIVE_TAB_KEY);
+    } catch {
+      storageUsable = false;
+    }
+  };
   const ownsClaim = (claim: MultiplayerTabClaim | null) => {
     if (!claim || claim.ownerId !== ownerId) return false;
+    if (!storageUsable) return currentClaim?.generation === claim.generation;
     const active = readActiveClaim();
+    if (!storageUsable) return currentClaim?.generation === claim.generation;
     return active?.ownerId === claim.ownerId && active.generation === claim.generation;
   };
   const notifyIfSuperseded = () => {
@@ -74,6 +101,12 @@ export const createMultiplayerTabCoordinator = (options?: {
   };
   const handleMessage = (event: MessageEvent<MultiplayerTabMessage>) => {
     if (event.data?.type !== 'participant-takeover' || event.data.claim.ownerId === ownerId) return;
+    if (!storageUsable) {
+      if (currentClaim && event.data.claim.claimedAt >= currentClaim.claimedAt) {
+        for (const listener of listeners) listener(event.data.claim);
+      }
+      return;
+    }
     notifyIfSuperseded();
   };
   const handleLifecycleEvent: EventListener = () => notifyIfSuperseded();
@@ -89,7 +122,7 @@ export const createMultiplayerTabCoordinator = (options?: {
     claim(roomId: string): MultiplayerTabClaim {
       const claim = { ownerId, generation: generateId(), roomId, claimedAt: now() };
       currentClaim = claim;
-      storage?.setItem(MULTIPLAYER_ACTIVE_TAB_KEY, JSON.stringify(claim));
+      persistClaim(claim);
       channel?.postMessage({ type: 'participant-takeover', claim });
       return claim;
     },
@@ -97,7 +130,7 @@ export const createMultiplayerTabCoordinator = (options?: {
       return ownsClaim(claim);
     },
     release(claim: MultiplayerTabClaim | null) {
-      if (ownsClaim(claim)) storage?.removeItem(MULTIPLAYER_ACTIVE_TAB_KEY);
+      if (ownsClaim(claim)) removePersistedClaim();
       if (currentClaim?.generation === claim?.generation) currentClaim = null;
     },
     subscribe(listener: (claim: MultiplayerTabClaim) => void) {

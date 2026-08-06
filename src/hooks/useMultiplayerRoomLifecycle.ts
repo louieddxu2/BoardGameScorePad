@@ -270,21 +270,10 @@ export const useMultiplayerRoomLifecycle = ({
     const roomId = roomIdFromUrl;
     const tabClaim = claimParticipantTab(roomId);
 
-    // A second scan of the same QR code must not create a second PeerJS
-    // handshake. Keep the existing picker visible, or let the current attempt
-    // finish; otherwise its loading layer can cover the picker indefinitely.
+    // Every QR scan is a fresh intent. The tab claim above invalidates every
+    // callback captured by the previous attempt, including for the same room.
     const pendingJoin = pendingMultiplayerJoinRef.current;
-    if (pendingJoin?.roomId === roomId) {
-      clearRoomUrlQuery();
-      isJoiningMultiplayerRef.current = false;
-      setIsJoiningMultiplayer(false);
-      return;
-    }
-    if (isJoiningMultiplayerRef.current && multiplayerJoinStartedRef.current === roomId) {
-      clearRoomUrlQuery();
-      return;
-    }
-    if (pendingJoin && pendingJoin.roomId !== roomId) {
+    if (pendingJoin) {
       pendingJoin.transport.stop?.();
       setPendingJoin(null);
     }
@@ -298,17 +287,22 @@ export const useMultiplayerRoomLifecycle = ({
     let activeTransport: ReturnType<typeof createMultiplayerP2PRuntimeTransport> | null = null;
 
     const isCurrentJoin = () => !cancelled && multiplayerJoinStartedRef.current === roomId && tabCoordinatorRef.current?.isCurrent(tabClaim) === true;
-    const getStoredPlayerIds = async () => {
-      const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
-      const binding = await multiplayerParticipantBindingStore.get(participantBindingKey(roomId, deviceId));
-      return binding?.playerIds ?? (binding?.playerId ? [binding.playerId] : []);
+    const failCurrentJoin = () => {
+      if (!isCurrentJoin()) return;
+      activeTransport?.stop?.();
+      releaseParticipantTabClaim(roomId);
+      resetMultiplayerJoinState(roomId);
+      showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_join_timeout'), type: 'warning' });
+      // Room cleanup can be serialized behind an earlier purge. It must not
+      // delay the user-visible three-second failure boundary.
+      void multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
     };
-
     const startJoin = async () => {
       // A destructive exit may have stopped the runtime before its IndexedDB
       // purge finished. Wait before reusing the same QR room so a late purge
       // cannot delete a newly imported bootstrap.
       await multiplayerSessionManager.waitForRoomCleanup(roomId);
+      if (!isCurrentJoin()) return;
       const existingRoom = multiplayerSessionManager.get(roomId);
       if (existingRoom) {
         // A QR scan is an explicit fresh connection intent. Never let a stale,
@@ -387,74 +381,20 @@ export const useMultiplayerRoomLifecycle = ({
         activeTransport.joinRoom?.(roomId);
       } catch (error) {
         console.warn('[multiplayer] Failed to start room join:', error);
-        activeTransport.stop?.();
-        releaseParticipantTabClaim(roomId);
-        resetMultiplayerJoinState(roomId);
-        showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_join_timeout'), type: 'warning' });
+        failCurrentJoin();
         return;
       }
-
-      multiplayerJoinTimeoutRef.current = window.setTimeout(() => {
-        if (cancelled) return;
-        const managedRoom = multiplayerSessionManager.get(roomId);
-
-        const failCurrentJoin = async () => {
-          activeTransport?.stop?.();
-          await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
-          if (!isCurrentJoin()) return;
-          releaseParticipantTabClaim(roomId);
-          resetMultiplayerJoinState(roomId);
-          showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_join_timeout'), type: 'warning' });
-        };
-
-        if (managedRoom?.role === 'player' && managedRoom.runtime) {
-          clearMultiplayerJoinTimeout();
-          isJoiningMultiplayerRef.current = false;
-          setIsJoiningMultiplayer(false);
-          void getStoredPlayerIds().then(async (playerIds) => {
-            if (!isCurrentJoin()) return;
-            if (!playerIds.length) {
-              // A runtime without an accepted binding still needs the initial
-              // player picker; do not silently enter an uneditable board.
-              await failCurrentJoin();
-              return;
-            }
-            setActiveRoom({ roomId, role: 'player', playerIds });
-            let resumed = false;
-            try {
-              resumed = await appDataRef.current.resumeSessionById(managedRoom.session?.id ?? managedRoom.runtime!.session.session.id);
-            } catch (error) {
-              console.warn('[multiplayer] Failed to resume player session after join timeout:', error);
-            }
-            if (!resumed) {
-              await failCurrentJoin();
-              return;
-            }
-            if (!isCurrentJoin()) return;
-            resetMultiplayerJoinState(roomId, { clearActiveRoom: false });
-            enterActiveSession('qr-join');
-          }).catch((error) => {
-            console.warn('[multiplayer] Failed to finish timed-out room join:', error);
-            void failCurrentJoin();
-          });
-          return;
-        }
-        if (isCurrentJoin()) {
-          void failCurrentJoin();
-        }
-      }, MULTIPLAYER_JOIN_DEADLINE_MS);
     };
 
     multiplayerJoinStartedRef.current = roomId;
-    void startJoin().catch(async (error) => {
+    clearMultiplayerJoinTimeout();
+    multiplayerJoinTimeoutRef.current = window.setTimeout(() => {
+      failCurrentJoin();
+    }, MULTIPLAYER_JOIN_DEADLINE_MS);
+    void startJoin().catch((error) => {
       if (cancelled) return;
       console.warn('[multiplayer] Failed to join room:', error);
-      activeTransport?.stop?.();
-      await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
-      if (!isCurrentJoin()) return;
-      releaseParticipantTabClaim(roomId);
-      resetMultiplayerJoinState(roomId);
-      showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_join_timeout'), type: 'warning' });
+      failCurrentJoin();
     });
 
     return () => {

@@ -69,4 +69,36 @@ describe('multiplayer tab coordinator', () => {
 
     expect(onSuperseded).toHaveBeenCalledWith(secondClaim);
   });
+
+  it('keeps the current page usable when localStorage is unavailable', () => {
+    const brokenStorage = {
+      getItem: () => { throw new Error('storage_blocked'); },
+      setItem: () => { throw new Error('storage_blocked'); },
+      removeItem: () => { throw new Error('storage_blocked'); },
+    };
+    const coordinator = createMultiplayerTabCoordinator({ storage: brokenStorage, channel: null, lifecycleTarget: null, ownerId: 'tab-a' });
+
+    const claim = coordinator.claim('room-1');
+
+    expect(coordinator.isCurrent(claim)).toBe(true);
+    expect(() => coordinator.release(claim)).not.toThrow();
+  });
+
+  it('falls back to BroadcastChannel takeover when localStorage is unavailable', () => {
+    const brokenStorage = {
+      getItem: () => { throw new Error('storage_blocked'); },
+      setItem: () => { throw new Error('storage_blocked'); },
+      removeItem: () => { throw new Error('storage_blocked'); },
+    };
+    const [channelA, channelB] = createChannelPair();
+    const first = createMultiplayerTabCoordinator({ storage: brokenStorage, channel: channelA, lifecycleTarget: null, ownerId: 'tab-a', now: () => 1 });
+    const second = createMultiplayerTabCoordinator({ storage: brokenStorage, channel: channelB, lifecycleTarget: null, ownerId: 'tab-b', now: () => 2 });
+    const onSuperseded = vi.fn();
+    first.subscribe(onSuperseded);
+    first.claim('room-1');
+
+    const secondClaim = second.claim('room-1');
+
+    expect(onSuperseded).toHaveBeenCalledWith(secondClaim);
+  });
 });
