@@ -26,15 +26,22 @@ import { createMultiplayerTabCoordinator, MultiplayerTabClaim } from '../feature
 import { subscribeToSessionDeletion } from '../features/multiplayer/sessionDeletionEvents';
 import { db } from '../db';
 import { createPostBootstrapConnectionCountHandler } from '../features/multiplayer/multiplayerConnectionCountHandoff';
+import {
+  MULTIPLAYER_UPDATE_ROOM_QUERY_PARAM,
+  clearPendingMultiplayerRoomJoin,
+  consumeMultiplayerJoinAfterUpdate,
+  createMultiplayerJoinUrl,
+  rememberPendingMultiplayerRoomJoin,
+} from '../features/multiplayer/multiplayerJoinResume';
 
 const MULTIPLAYER_COMPLETION_RELAY_TTL_MS = 5 * 60 * 1000;
-const MULTIPLAYER_PENDING_JOIN_STORAGE_KEY = 'boardgame-scorepad-pending-room-join';
 const MULTIPLAYER_STATE_CHANGE_EVENT = 'boardgame-scorepad-multiplayer-state-change';
 const MULTIPLAYER_JOIN_DEADLINE_MS = 3_000;
 
 type ScorePadWindow = Window & {
   __boardGameScorePadMultiplayerActive?: boolean;
   __boardGameScorePadMultiplayerJoinPending?: boolean;
+  __boardGameScorePadMultiplayerJoinRoomId?: string;
 };
 
 export type ActiveMultiplayerRoom = {
@@ -111,15 +118,17 @@ export const useMultiplayerRoomLifecycle = ({
   }, []);
 
   const clearRoomUrlQuery = useCallback(() => {
-    if (!window.location.search.includes('room')) return;
     const url = new URL(window.location.href);
+    if (!url.searchParams.has('room') && !url.searchParams.has(MULTIPLAYER_UPDATE_ROOM_QUERY_PARAM)) return;
     url.searchParams.delete('room');
+    url.searchParams.delete(MULTIPLAYER_UPDATE_ROOM_QUERY_PARAM);
     window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
   }, []);
 
   const rememberPendingRoomJoin = useCallback((roomId: string) => {
     try {
-      sessionStorage.setItem(MULTIPLAYER_PENDING_JOIN_STORAGE_KEY, JSON.stringify({ roomId, createdAt: Date.now() }));
+      rememberPendingMultiplayerRoomJoin(sessionStorage, roomId);
+      (window as ScorePadWindow).__boardGameScorePadMultiplayerJoinRoomId = roomId;
     } catch {
       // Storage can be unavailable in private or embedded browser contexts.
     }
@@ -127,7 +136,8 @@ export const useMultiplayerRoomLifecycle = ({
 
   const clearPendingRoomJoin = useCallback(() => {
     try {
-      sessionStorage.removeItem(MULTIPLAYER_PENDING_JOIN_STORAGE_KEY);
+      clearPendingMultiplayerRoomJoin(sessionStorage);
+      delete (window as ScorePadWindow).__boardGameScorePadMultiplayerJoinRoomId;
     } catch {
       // Storage can be unavailable in private or embedded browser contexts.
     }
@@ -321,12 +331,27 @@ export const useMultiplayerRoomLifecycle = ({
 
   useEffect(() => {
     if (!appData.isDbReady || isInAppBrowser()) return;
-    const roomIdFromUrl = new URLSearchParams(window.location.search).get('room');
+    const searchParams = new URLSearchParams(window.location.search);
+    const roomIdFromUrl = searchParams.get('room');
+    let roomIdFromUpdate: string | null = null;
     if (!roomIdFromUrl) {
+      try {
+        const navigation = performance.getEntriesByType?.('navigation')[0] as PerformanceNavigationTiming | undefined;
+        roomIdFromUpdate = consumeMultiplayerJoinAfterUpdate({
+          storage: sessionStorage,
+          legacyRoomId: searchParams.get(MULTIPLAYER_UPDATE_ROOM_QUERY_PARAM),
+          isReloadNavigation: navigation?.type === 'reload',
+        });
+      } catch {
+        roomIdFromUpdate = null;
+      }
+    }
+    const roomId = roomIdFromUrl ?? roomIdFromUpdate;
+    if (!roomId) {
       clearPendingRoomJoin();
+      clearRoomUrlQuery();
       return;
     }
-    const roomId = roomIdFromUrl;
     const tabClaim = claimParticipantTab(roomId);
     multiplayerSessionManager.supersedeRoomCleanup(roomId);
     playerRuntimeCreationsRef.current.delete(roomId);
@@ -743,7 +768,7 @@ export const useMultiplayerRoomLifecycle = ({
     ? multiplayerSessionManager.get(activeMultiplayerRoom.roomId)
     : null;
   const multiplayerJoinUrl = activeMultiplayerRoom?.role === 'host'
-    ? `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(activeMultiplayerRoom.roomId)}`
+    ? createMultiplayerJoinUrl(window.location.origin, window.location.pathname, activeMultiplayerRoom.roomId)
     : '';
 
   const handlePublishMultiplayerBoardUpdate = useCallback(async () => {

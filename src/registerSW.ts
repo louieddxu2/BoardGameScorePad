@@ -1,5 +1,10 @@
 /// <reference types="vite/client" />
 
+import {
+    authorizeMultiplayerJoinAfterUpdate,
+    getPendingMultiplayerRoomJoin,
+} from './features/multiplayer/multiplayerJoinResume';
+
 type SwRuntime = {
     env: { PROD: boolean; DEV: boolean };
     navigatorObj: Navigator;
@@ -9,6 +14,7 @@ type SwRuntime = {
 type ScorePadWindow = Window & {
     __boardGameScorePadMultiplayerActive?: boolean;
     __boardGameScorePadMultiplayerJoinPending?: boolean;
+    __boardGameScorePadMultiplayerJoinRoomId?: string;
 };
 
 const MULTIPLAYER_STATE_CHANGE_EVENT = 'boardgame-scorepad-multiplayer-state-change';
@@ -32,6 +38,19 @@ export function registerServiceWorker(runtime?: Partial<SwRuntime>) {
 
         let refreshing = false;
         let reloadPending = false;
+        const authorizePendingJoinReload = () => {
+            try {
+                const roomIdFromUrl = new URLSearchParams(windowObj.location.search).get('room');
+                const roomId = roomIdFromUrl
+                    ?? scorePadWindow.__boardGameScorePadMultiplayerJoinRoomId
+                    ?? (scorePadWindow.__boardGameScorePadMultiplayerJoinPending === true
+                        ? getPendingMultiplayerRoomJoin(windowObj.sessionStorage)?.roomId
+                        : null);
+                if (roomId) authorizeMultiplayerJoinAfterUpdate(windowObj.sessionStorage, roomId);
+            } catch {
+                // Reload remains safe; the app will simply require another scan.
+            }
+        };
         const reloadWhenSafe = () => {
             if (refreshing) return;
             if (hasActiveMultiplayerRoom()) {
@@ -39,6 +58,7 @@ export function registerServiceWorker(runtime?: Partial<SwRuntime>) {
                 return;
             }
             refreshing = true;
+            authorizePendingJoinReload();
             windowObj.location.reload();
         };
 

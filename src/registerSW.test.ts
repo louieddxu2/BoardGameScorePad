@@ -130,6 +130,38 @@ describe('registerServiceWorker', () => {
     expect(reload).toHaveBeenCalledOnce();
   });
 
+  it('authorizes one update reload to resume the pending QR join before reloading', () => {
+    const reload = vi.fn();
+    const serviceWorkerListeners = new Map<string, () => void>();
+    const values = new Map<string, string>([
+      ['boardgame-scorepad-pending-room-join', JSON.stringify({ roomId: 'room-1', createdAt: Date.now() })],
+    ]);
+    const sessionStorage = {
+      getItem: vi.fn((key: string) => values.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => { values.set(key, value); }),
+      removeItem: vi.fn((key: string) => { values.delete(key); }),
+    };
+    const windowObj = {
+      location: { search: '', reload },
+      sessionStorage,
+      addEventListener: vi.fn(),
+      __boardGameScorePadMultiplayerActive: true,
+      __boardGameScorePadMultiplayerJoinPending: true,
+    } as any;
+    const navigatorObj = {
+      serviceWorker: {
+        register: vi.fn(async () => ({ update: vi.fn() })),
+        addEventListener: vi.fn((event: string, callback: () => void) => serviceWorkerListeners.set(event, callback)),
+      },
+    } as any;
+
+    registerServiceWorker({ env: { DEV: false, PROD: true }, navigatorObj, windowObj });
+    serviceWorkerListeners.get('controllerchange')?.();
+
+    expect(JSON.parse(values.get('boardgame-scorepad-update-room-join') ?? '{}')).toMatchObject({ roomId: 'room-1' });
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
   it('still defers controller reload while joining is actively handshaking', () => {
     const reload = vi.fn();
     const serviceWorkerListeners = new Map<string, () => void>();

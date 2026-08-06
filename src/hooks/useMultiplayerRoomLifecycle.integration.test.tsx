@@ -139,6 +139,7 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     showToast.mockClear();
     vi.mocked(multiplayerSessionManager.setConnectionStatus).mockClear();
     sessionStorage.clear();
+    delete (window as typeof window & { __boardGameScorePadMultiplayerJoinRoomId?: string }).__boardGameScorePadMultiplayerJoinRoomId;
     window.history.replaceState({}, '', '/');
     appData.isDbReady = true;
     appData.activeSessions = [];
@@ -151,6 +152,43 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
 
     await waitFor(() => expect(sessionStorage.getItem('boardgame-scorepad-pending-room-join')).toBeNull());
     expect(mocks.transport.joinRoom).not.toHaveBeenCalled();
+  });
+
+  it('replays a stored join intent exactly once after a service-worker update reload', async () => {
+    sessionStorage.setItem('boardgame-scorepad-pending-room-join', JSON.stringify({ roomId: 'room-1', createdAt: Date.now() }));
+    sessionStorage.setItem('boardgame-scorepad-update-room-join', JSON.stringify({ roomId: 'room-1', createdAt: Date.now() }));
+
+    renderLifecycle();
+
+    await waitFor(() => expect(mocks.transport.joinRoom).toHaveBeenCalledWith('room-1'));
+    expect(sessionStorage.getItem('boardgame-scorepad-update-room-join')).toBeNull();
+  });
+
+  it('uses the cross-version QR fallback during a reload', async () => {
+    sessionStorage.setItem('boardgame-scorepad-pending-room-join', JSON.stringify({ roomId: 'room-1', createdAt: Date.now() }));
+    window.history.replaceState({}, '', '/?resumeRoom=room-1');
+    const navigationSpy = vi.spyOn(performance, 'getEntriesByType').mockReturnValue([{ type: 'reload' } as PerformanceNavigationTiming]);
+    try {
+      renderLifecycle();
+      await waitFor(() => expect(mocks.transport.joinRoom).toHaveBeenCalledWith('room-1'));
+      expect(window.location.search).toBe('');
+    } finally {
+      navigationSpy.mockRestore();
+    }
+  });
+
+  it('does not use the cross-version QR fallback during a normal reopen', async () => {
+    sessionStorage.setItem('boardgame-scorepad-pending-room-join', JSON.stringify({ roomId: 'room-1', createdAt: Date.now() }));
+    window.history.replaceState({}, '', '/?resumeRoom=room-1');
+    const navigationSpy = vi.spyOn(performance, 'getEntriesByType').mockReturnValue([{ type: 'navigate' } as PerformanceNavigationTiming]);
+    try {
+      renderLifecycle();
+      await waitFor(() => expect(window.location.search).toBe(''));
+      expect(mocks.transport.joinRoom).not.toHaveBeenCalled();
+      expect(sessionStorage.getItem('boardgame-scorepad-pending-room-join')).toBeNull();
+    } finally {
+      navigationSpy.mockRestore();
+    }
   });
 
   it('shows the player picker when bootstrap arrives before the three-second deadline', async () => {
