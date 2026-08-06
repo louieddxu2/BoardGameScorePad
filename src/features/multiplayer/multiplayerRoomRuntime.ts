@@ -35,6 +35,7 @@ export interface MultiplayerHostRoomRuntime {
   controller: ReturnType<typeof createMultiplayerRoomController>;
   start(): void;
   stop(): void;
+  whenIdle?(): Promise<void>;
   receive(message: unknown, connection: unknown): Promise<boolean>;
   getConnectionCount(): number;
   getParticipantClaims(): ParticipantClaimCounts;
@@ -46,6 +47,7 @@ export interface MultiplayerPlayerRoomRuntime {
   controller: ReturnType<typeof createMultiplayerPlayerRoomController>;
   start(): void;
   stop(): void;
+  whenIdle?(): Promise<void>;
   leaveRoom(): boolean;
   /** Reclaims the previously selected player; pending edits replay only after acceptance. */
   restoreParticipantBinding(): Promise<boolean>;
@@ -153,6 +155,14 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
   await persistMultiplayerBootstrap(options.bootstrapMessage, options.store, 'player');
 
   let pendingReplayClaims = new Set<string>();
+  const pendingRuntimeTasks = new Set<Promise<unknown>>();
+  let stopped = false;
+  const stopRuntime = () => {
+    if (stopped) return;
+    stopped = true;
+    pendingReplayClaims = new Set();
+    options.transport.stop?.();
+  };
   const controller = createMultiplayerPlayerRoomController({
     playerSession,
     deviceId: options.deviceId,
@@ -161,7 +171,9 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
     transport: options.transport,
     now,
     onClaimAccepted: async (playerId) => {
+      if (stopped) return;
       const existing = await options.bindingStore.get(participantBindingKey(playerSession.room.roomId, options.deviceId));
+      if (stopped) return;
       const playerIds = new Set(existing?.playerIds ?? (existing?.playerId ? [existing.playerId] : []));
       playerIds.add(playerId);
       await saveParticipantBinding({
@@ -173,11 +185,12 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
         now,
       });
       pendingReplayClaims.delete(playerId);
-      if (pendingReplayClaims.size === 0) {
+      if (!stopped && pendingReplayClaims.size === 0) {
         await controller.replayPendingPatches();
       }
     },
     onClaimsAccepted: async (playerIds) => {
+      if (stopped) return;
       const normalizedPlayerIds = [...new Set(playerIds)];
       const bindingId = participantBindingKey(playerSession.room.roomId, options.deviceId);
       if (normalizedPlayerIds.length > 0) {
@@ -192,11 +205,13 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
       } else {
         await options.bindingStore.delete(bindingId);
       }
+      if (stopped) return;
       pendingReplayClaims.clear();
       await controller.replayPendingPatches();
       await options.onClaimsAccepted?.(normalizedPlayerIds);
     },
     onCompleted: async (message) => {
+      if (stopped) return;
       const resolved = resolveBootstrapImport({
         version: MULTIPLAYER_PROTOCOL_VERSION,
         room: playerSession.room,
@@ -205,7 +220,9 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
         revision: message.revision,
         exportedAt: message.completedAt,
       }, await options.store.getTemplate(message.template.id));
+      if (stopped) return;
       await options.store.putTemplate(resolved.templateForSession);
+      if (stopped) return;
       const localSession = await releaseMultiplayerRoomOwnership({
         store: options.store,
         roomId: playerSession.room.roomId,
@@ -215,30 +232,63 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
       const pending = await options.deliveryStore.listOutbox(playerSession.room.roomId, playerSession.session.id);
       await Promise.all(pending.map((record) => options.deliveryStore.deleteOutbox(record.id)));
       await options.bindingStore.delete(participantBindingKey(playerSession.room.roomId, options.deviceId));
-      options.transport.stop?.();
+      stopRuntime();
       await options.onOwnershipReturned?.(localSession);
     },
     onSnapshot: async (snapshot) => { await options.onSessionSnapshot?.(snapshot.session); },
   });
   const restoreParticipantBinding = async () => {
+    if (stopped) return false;
     const binding = await options.bindingStore.get(participantBindingKey(playerSession.room.roomId, options.deviceId));
+    if (stopped) return false;
     const playerIds = binding?.playerIds ?? (binding?.playerId ? [binding.playerId] : []);
     if (!binding || binding.sessionId !== playerSession.session.id || !playerIds.length) return false;
     pendingReplayClaims = new Set(playerIds);
-    for (const playerId of playerIds) controller.claimPlayer(playerId);
+    for (const playerId of playerIds) {
+      if (stopped) return false;
+      controller.claimPlayer(playerId);
+    }
     return true;
   };
-  options.transport.setMessageReceiver?.(async (message) => { await controller.receive(message); });
+  const receive = (message: unknown): Promise<boolean> => {
+    if (stopped) return Promise.resolve(false);
+    const task = controller.receive(message);
+    pendingRuntimeTasks.add(task);
+    void task.then(
+      () => { pendingRuntimeTasks.delete(task); },
+      () => { pendingRuntimeTasks.delete(task); },
+    );
+    return task;
+  };
+  const whenIdle = async () => {
+    while (pendingRuntimeTasks.size > 0) {
+      await Promise.all([...pendingRuntimeTasks]);
+    }
+  };
+
+  options.transport.setMessageReceiver?.(async (message) => {
+    await receive(message);
+  });
   options.transport.setConnectionOpenHandler?.(async () => { await restoreParticipantBinding(); });
 
   return {
     role: 'player', session: playerSession, controller,
-    start: () => { options.transport.joinRoom?.(playerSession.room.roomId); },
-    stop: () => { options.transport.stop?.(); },
-    leaveRoom: () => controller.leaveRoom(),
+    start: () => { if (!stopped) options.transport.joinRoom?.(playerSession.room.roomId); },
+    stop: stopRuntime,
+    leaveRoom: () => {
+      if (stopped) return false;
+      let sent = false;
+      try {
+        sent = controller.leaveRoom();
+      } finally {
+        stopRuntime();
+      }
+      return sent;
+    },
     applyBootstrap: (input) => playerSession.applyBootstrap(input),
     restoreParticipantBinding,
-    receive: (message) => controller.receive(message),
+    receive,
+    whenIdle,
     getConnectionCount: () => options.transport.getConnectionCount?.() ?? 0,
     getParticipantClaims: () => ({}),
   };

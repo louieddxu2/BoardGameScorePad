@@ -185,9 +185,15 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
     async closeRoom(roomId, options) {
       const state = rooms.get(roomId);
       if (state) {
-        state.runtime?.stop();
+        const runtime = state.runtime;
+        runtime?.stop();
         rooms.delete(roomId);
         notify();
+        try {
+          await runtime?.whenIdle?.();
+        } catch (err) {
+          console.warn('[multiplayerSessionManager] Failed to drain runtime during close:', err);
+        }
       }
       if (options?.deleteLocalRoom) {
         const previousCleanup = cleanupTasks.get(roomId) ?? Promise.resolve();

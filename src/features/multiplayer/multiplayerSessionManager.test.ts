@@ -51,6 +51,30 @@ describe('multiplayer session manager', () => {
     }
   });
 
+  it('drains a participant runtime before purging its room data', async () => {
+    let resolveIdle!: () => void;
+    const idle = new Promise<void>((resolve) => { resolveIdle = resolve; });
+    const purgeSpy = vi.spyOn(multiplayerLocalStore, 'purgeRoomData').mockResolvedValue();
+    try {
+      const manager = createMultiplayerSessionManager();
+      const runtime = createRuntime('player');
+      runtime.whenIdle = vi.fn(() => idle);
+      manager.register('room-1', runtime);
+
+      const closing = manager.closeRoom('room-1', { deleteLocalRoom: true, awaitLocalCleanup: false });
+      await Promise.resolve();
+      expect(runtime.stop).toHaveBeenCalledOnce();
+      expect(purgeSpy).not.toHaveBeenCalled();
+
+      resolveIdle();
+      await closing;
+      expect(runtime.whenIdle).toHaveBeenCalledOnce();
+      expect(purgeSpy).toHaveBeenCalledWith('room-1');
+    } finally {
+      purgeSpy.mockRestore();
+    }
+  });
+
   it('marks a player with no connections as reconnecting while keeping the runtime alive', () => {
     const manager = createMultiplayerSessionManager(); const runtime = createRuntime('player');
     manager.register('room-1', runtime, 'connected');

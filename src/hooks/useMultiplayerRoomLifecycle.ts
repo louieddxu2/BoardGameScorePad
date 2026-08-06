@@ -134,6 +134,27 @@ export const useMultiplayerRoomLifecycle = ({
     }
   }, []);
 
+  const resetMultiplayerJoinState = useCallback((roomId: string, options?: { clearActiveRoom?: boolean }) => {
+    const ownsStartedJoin = multiplayerJoinStartedRef.current === roomId;
+    const ownsPendingJoin = pendingMultiplayerJoinRef.current?.roomId === roomId;
+    const ownsActiveRoom = activeMultiplayerRoomRef.current?.roomId === roomId;
+    const clearActiveRoom = options?.clearActiveRoom !== false;
+
+    if (ownsStartedJoin || ownsPendingJoin) clearMultiplayerJoinTimeout();
+    if (ownsStartedJoin) {
+      multiplayerJoinStartedRef.current = null;
+      isJoiningMultiplayerRef.current = false;
+      setIsJoiningMultiplayer(false);
+    }
+    if (ownsPendingJoin) setPendingJoin(null);
+    if (clearActiveRoom && ownsActiveRoom) setActiveRoom(null);
+
+    if (ownsStartedJoin || ownsPendingJoin || (clearActiveRoom && ownsActiveRoom)) {
+      clearPendingRoomJoin();
+      clearRoomUrlQuery();
+    }
+  }, [clearMultiplayerJoinTimeout, clearPendingRoomJoin, clearRoomUrlQuery, setActiveRoom, setPendingJoin]);
+
   useEffect(() => () => clearMultiplayerJoinTimeout(), [clearMultiplayerJoinTimeout]);
 
   useEffect(() => () => {
@@ -162,7 +183,8 @@ export const useMultiplayerRoomLifecycle = ({
     setIsMultiplayerParticipantRoomModalOpen(false);
     void (async () => {
       try {
-        await appDataRef.current.resumeSessionById(returned.id);
+        const resumed = await appDataRef.current.resumeSessionById(returned.id);
+        if (!resumed) throw new Error('returned_session_resume_failed');
         showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_ownership_returned'), type: 'success' });
       } catch (error) {
         console.warn('[multiplayer] Failed to restore returned local session:', error);
@@ -274,9 +296,11 @@ export const useMultiplayerRoomLifecycle = ({
 
         await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
         if (!isCurrentJoin()) return;
+        if (activeMultiplayerRoomRef.current?.roomId === roomId) setActiveRoom(null);
       } else if (existingRoom) {
         await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
         if (!isCurrentJoin()) return;
+        if (activeMultiplayerRoomRef.current?.roomId === roomId) setActiveRoom(null);
       }
 
       clearMultiplayerJoinTimeout();
@@ -293,12 +317,7 @@ export const useMultiplayerRoomLifecycle = ({
         if (isJoiningMultiplayerRef.current && isCurrentJoin()) {
           clearMultiplayerJoinTimeout();
           activeTransport?.stop?.();
-          multiplayerJoinStartedRef.current = null;
-          isJoiningMultiplayerRef.current = false;
-          setIsJoiningMultiplayer(false);
-          setPendingJoin(null);
-          clearPendingRoomJoin();
-          clearRoomUrlQuery();
+          resetMultiplayerJoinState(roomId);
           showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_room_ended'), type: 'info' });
         }
       };
@@ -352,12 +371,7 @@ export const useMultiplayerRoomLifecycle = ({
       } catch (error) {
         console.warn('[multiplayer] Failed to start room join:', error);
         activeTransport.stop?.();
-        multiplayerJoinStartedRef.current = null;
-        isJoiningMultiplayerRef.current = false;
-        setIsJoiningMultiplayer(false);
-        setPendingJoin(null);
-        clearPendingRoomJoin();
-        clearRoomUrlQuery();
+        resetMultiplayerJoinState(roomId);
         showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_join_timeout'), type: 'warning' });
         return;
       }
@@ -365,48 +379,61 @@ export const useMultiplayerRoomLifecycle = ({
       multiplayerJoinTimeoutRef.current = window.setTimeout(() => {
         if (cancelled) return;
         const managedRoom = multiplayerSessionManager.get(roomId);
+
+        const failCurrentJoin = async () => {
+          activeTransport?.stop?.();
+          await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
+          if (!isCurrentJoin()) return;
+          resetMultiplayerJoinState(roomId);
+          showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_join_timeout'), type: 'warning' });
+        };
+
         if (managedRoom?.role === 'player' && managedRoom.runtime) {
           clearMultiplayerJoinTimeout();
           isJoiningMultiplayerRef.current = false;
           setIsJoiningMultiplayer(false);
-          void getStoredPlayerIds().then((playerIds) => {
+          void getStoredPlayerIds().then(async (playerIds) => {
             if (!isCurrentJoin()) return;
             if (!playerIds.length) {
               // A runtime without an accepted binding still needs the initial
               // player picker; do not silently enter an uneditable board.
-              void multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
+              await failCurrentJoin();
               return;
             }
             setActiveRoom({ roomId, role: 'player', playerIds });
-            void appDataRef.current.resumeSessionById(managedRoom.session?.id ?? managedRoom.runtime!.session.session.id).then((resumed) => {
-              if (!resumed || !isCurrentJoin()) return;
-              enterActiveSession('qr-join');
-            });
+            let resumed = false;
+            try {
+              resumed = await appDataRef.current.resumeSessionById(managedRoom.session?.id ?? managedRoom.runtime!.session.session.id);
+            } catch (error) {
+              console.warn('[multiplayer] Failed to resume player session after join timeout:', error);
+            }
+            if (!resumed) {
+              await failCurrentJoin();
+              return;
+            }
+            if (!isCurrentJoin()) return;
+            resetMultiplayerJoinState(roomId, { clearActiveRoom: false });
+            enterActiveSession('qr-join');
+          }).catch((error) => {
+            console.warn('[multiplayer] Failed to finish timed-out room join:', error);
+            void failCurrentJoin();
           });
           return;
         }
         if (isCurrentJoin()) {
-          activeTransport?.stop?.();
-          multiplayerJoinStartedRef.current = null;
-          clearPendingRoomJoin();
-          clearRoomUrlQuery();
-          showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_join_timeout'), type: 'warning' });
+          void failCurrentJoin();
         }
-        isJoiningMultiplayerRef.current = false;
-        setIsJoiningMultiplayer(false);
       }, 15000);
     };
 
     multiplayerJoinStartedRef.current = roomId;
-    void startJoin().catch((error) => {
+    void startJoin().catch(async (error) => {
       if (cancelled) return;
       console.warn('[multiplayer] Failed to join room:', error);
       activeTransport?.stop?.();
-      multiplayerJoinStartedRef.current = null;
-      isJoiningMultiplayerRef.current = false;
-      setIsJoiningMultiplayer(false);
-      setPendingJoin(null);
-      clearPendingRoomJoin();
+      await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
+      if (!isCurrentJoin()) return;
+      resetMultiplayerJoinState(roomId);
       showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_join_timeout'), type: 'warning' });
     });
 
@@ -421,7 +448,7 @@ export const useMultiplayerRoomLifecycle = ({
         setPendingJoin(null);
       }
     };
-  }, [appData.isDbReady, applyRemoteBootstrapToPlayerRuntime, clearMultiplayerJoinTimeout, clearPendingRoomJoin, clearRoomUrlQuery, enterActiveSession, getPendingRoomJoin, rememberPendingRoomJoin, setActiveRoom, setPendingJoin]);
+  }, [appData.isDbReady, applyRemoteBootstrapToPlayerRuntime, clearMultiplayerJoinTimeout, clearPendingRoomJoin, clearRoomUrlQuery, enterActiveSession, getPendingRoomJoin, rememberPendingRoomJoin, resetMultiplayerJoinState, setActiveRoom, setPendingJoin]);
 
   const tryRestoreMultiplayerRoom = useCallback(async (sessionId: string) => {
     try {
@@ -534,45 +561,75 @@ export const useMultiplayerRoomLifecycle = ({
   }, [activeMultiplayerRoom?.role, setActiveRoom]);
 
   const handleConfirmMultiplayerPlayers = useCallback(async (playerIds: string[]) => {
-    if (!pendingMultiplayerJoin) return;
-    const { roomId, bootstrapMessage, transport } = pendingMultiplayerJoin;
-    const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
-    const managedRuntime = multiplayerSessionManager.get(roomId)?.runtime;
-    let runtime = managedRuntime?.role === 'player' ? managedRuntime : null;
-    if (!runtime) {
-      const callbacks = multiplayerSessionManager.createRuntimeCallbacks(roomId);
-      runtime = await createMultiplayerPlayerRoomRuntime({
-        bootstrapMessage,
+    const pendingJoin = pendingMultiplayerJoinRef.current;
+    if (!pendingJoin) return;
+    const { roomId, bootstrapMessage, transport } = pendingJoin;
+    const isCurrentPendingJoin = () => pendingMultiplayerJoinRef.current?.roomId === roomId && pendingMultiplayerJoinRef.current.transport === transport;
+
+    try {
+      const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
+      if (!isCurrentPendingJoin()) return;
+
+      const managedRuntime = multiplayerSessionManager.get(roomId)?.runtime;
+      let runtime = managedRuntime?.role === 'player' ? managedRuntime : null;
+      if (!runtime) {
+        const callbacks = multiplayerSessionManager.createRuntimeCallbacks(roomId);
+        runtime = await createMultiplayerPlayerRoomRuntime({
+          bootstrapMessage,
+          deviceId,
+          store: multiplayerLocalStore,
+          bindingStore: multiplayerParticipantBindingStore,
+          deliveryStore: multiplayerDeliveryStore,
+          transport,
+          onSessionSnapshot: callbacks.onSessionSnapshot,
+          onOwnershipReturned: callbacks.onOwnershipReturned,
+        });
+        multiplayerSessionManager.register(roomId, runtime, 'connecting');
+        transport.setConnectionChangeHandler?.((connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount));
+      }
+      if (!isCurrentPendingJoin()) {
+        await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
+        return;
+      }
+
+      const normalizedPlayerIds = [...new Set(playerIds)];
+      await saveParticipantBinding({
+        store: multiplayerParticipantBindingStore,
+        roomId,
+        sessionId: runtime.session.session.id,
         deviceId,
-        store: multiplayerLocalStore,
-        bindingStore: multiplayerParticipantBindingStore,
-        deliveryStore: multiplayerDeliveryStore,
-        transport,
-        onSessionSnapshot: callbacks.onSessionSnapshot,
-        onOwnershipReturned: callbacks.onOwnershipReturned,
+        playerIds: normalizedPlayerIds,
       });
-      multiplayerSessionManager.register(roomId, runtime, 'connecting');
-      transport.setConnectionChangeHandler?.((connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount));
+      if (!isCurrentPendingJoin()) {
+        await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
+        return;
+      }
+
+      // Persist the intended claims before sending them. If the connection drops
+      // during the first claim, the transport's reconnect hook can send them
+      // again instead of leaving this device connected but unable to edit.
+      if (!await runtime.restoreParticipantBinding()) throw new Error('participant_binding_restore_failed');
+      if (!isCurrentPendingJoin()) {
+        await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
+        return;
+      }
+
+      setActiveRoom({ roomId, role: 'player', playerIds: normalizedPlayerIds });
+      clearRoomUrlQuery();
+      const resumed = await appDataRef.current.resumeSessionById(runtime.session.session.id);
+      if (!resumed) throw new Error('participant_session_resume_failed');
+      if (!isCurrentPendingJoin()) return;
+      setPendingJoin(null);
+      clearPendingRoomJoin();
+      enterActiveSession('qr-join');
+    } catch (error) {
+      if (!isCurrentPendingJoin()) return;
+      console.warn('[multiplayer] Failed to finish player join:', error);
+      await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
+      resetMultiplayerJoinState(roomId);
+      showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_join_timeout'), type: 'warning' });
     }
-    const normalizedPlayerIds = [...new Set(playerIds)];
-    await saveParticipantBinding({
-      store: multiplayerParticipantBindingStore,
-      roomId,
-      sessionId: runtime.session.session.id,
-      deviceId,
-      playerIds: normalizedPlayerIds,
-    });
-    // Persist the intended claims before sending them. If the connection drops
-    // during the first claim, the transport's reconnect hook can send them
-    // again instead of leaving this device connected but unable to edit.
-    await runtime.restoreParticipantBinding();
-    setActiveRoom({ roomId, role: 'player', playerIds: normalizedPlayerIds });
-    setPendingJoin(null);
-    clearRoomUrlQuery();
-    const resumed = await appDataRef.current.resumeSessionById(runtime.session.session.id);
-    if (resumed) enterActiveSession('qr-join');
-    clearPendingRoomJoin();
-  }, [clearPendingRoomJoin, clearRoomUrlQuery, enterActiveSession, pendingMultiplayerJoin, setActiveRoom, setPendingJoin]);
+  }, [clearPendingRoomJoin, clearRoomUrlQuery, enterActiveSession, resetMultiplayerJoinState, setActiveRoom, setPendingJoin]);
 
   const handleRequestMultiplayerPlayerClaim = useCallback((_playerId: string) => {
     if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
@@ -593,18 +650,14 @@ export const useMultiplayerRoomLifecycle = ({
   const handleCancelMultiplayerPlayerClaims = useCallback(() => setPendingMultiplayerClaimIds(null), []);
 
   const handleCancelMultiplayerJoin = useCallback(() => {
-    if (pendingMultiplayerJoin?.roomId && multiplayerSessionManager.get(pendingMultiplayerJoin.roomId)?.runtime) {
-      void multiplayerSessionManager.closeRoom(pendingMultiplayerJoin.roomId, { deleteLocalRoom: true });
+    const pendingJoin = pendingMultiplayerJoinRef.current;
+    if (pendingJoin?.roomId && multiplayerSessionManager.get(pendingJoin.roomId)?.runtime) {
+      void multiplayerSessionManager.closeRoom(pendingJoin.roomId, { deleteLocalRoom: true });
     } else {
-      pendingMultiplayerJoin?.transport.stop?.();
+      pendingJoin?.transport.stop?.();
     }
-    setPendingJoin(null);
-    isJoiningMultiplayerRef.current = false;
-    setIsJoiningMultiplayer(false);
-    multiplayerJoinStartedRef.current = null;
-    clearRoomUrlQuery();
-    clearPendingRoomJoin();
-  }, [clearPendingRoomJoin, clearRoomUrlQuery, pendingMultiplayerJoin, setPendingJoin]);
+    if (pendingJoin) resetMultiplayerJoinState(pendingJoin.roomId);
+  }, [resetMultiplayerJoinState]);
 
   const prepareMultiplayerSessionExit = useCallback(() => {
     // Remove the QR join route before any persistence or transport work. This

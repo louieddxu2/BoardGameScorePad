@@ -170,4 +170,56 @@ describe('multiplayer room runtime', () => {
     expect(stopped).toBe(true);
     expect(released?.players).toEqual(session.players);
   });
+
+  it('ignores a late completion after the participant has left the room', async () => {
+    const store = createRuntimeStore();
+    const delivery = createDeliveryStore();
+    const bindingStore = createBindingStore();
+    const sent: unknown[] = [];
+    let released = false;
+    const transport: MultiplayerRoomRuntimeTransport = {
+      sendToHost: (message) => { sent.push(message); return true; },
+      sendToConnection: () => false,
+      broadcastLocalChanges: async () => undefined,
+      stop: vi.fn(),
+    };
+    const player = await createMultiplayerPlayerRoomRuntime({
+      bootstrapMessage: {
+        type: 'room:bootstrap',
+        roomId: 'room-1',
+        package: {
+          version: 1,
+          room: { roomId: 'room-1', hostDeviceId: 'host-1', createdAt: 10 },
+          template,
+          session,
+          revision: 1,
+          exportedAt: 10,
+        },
+      },
+      deviceId: 'player-device',
+      store,
+      bindingStore,
+      deliveryStore: delivery,
+      transport,
+      onOwnershipReturned: () => { released = true; },
+      now: () => 20,
+    });
+
+    expect(player.leaveRoom()).toBe(true);
+    expect(sent).toEqual([expect.objectContaining({ type: 'room:leave' })]);
+
+    const completed = await player.receive({
+      type: 'session:completed',
+      roomId: 'room-1',
+      sessionId: 'session-1',
+      template,
+      finalSession: { ...session, status: 'completed' },
+      revision: 2,
+      completedAt: 30,
+    });
+
+    expect(completed).toBe(false);
+    expect(released).toBe(false);
+    expect(transport.stop).toHaveBeenCalledTimes(1);
+  });
 });
