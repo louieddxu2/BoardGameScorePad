@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
+import { RotateCcw } from 'lucide-react';
 import { GameTemplate, Player, ScoringRule } from '../../../types';
 import TexturedTotalCell from './TexturedTotalCell';
 import TexturedBlock from './TexturedBlock';
@@ -18,6 +19,7 @@ interface TotalsBarProps {
   editingCell?: { playerId: string, colId: string } | null;
   previewValue?: any;
   onTotalClick?: (playerId: string) => void;
+  onReset?: () => void;
   canEditTotal?: (playerId: string) => boolean;
   zoomLevel?: number; // Added prop
   scoringRule?: ScoringRule;
@@ -36,6 +38,7 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
   editingCell,
   previewValue,
   onTotalClick,
+  onReset,
   canEditTotal = () => true,
   zoomLevel = 1, // Default to 1
   scoringRule,
@@ -112,7 +115,22 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
         fallbackContent={<span className="font-black text-brand-primary text-xs uppercase tracking-wider">{t('grid_total_score')}</span>}
         className={`bg-modal-bg-elevated border-r border-surface-border flex items-center justify-center shrink-0 z-40 relative ${isTextureMode ? 'p-0 border-transparent' : 'p-2'}`}
         style={itemColStyle}
-      />
+      >
+        {onReset && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onReset();
+            }}
+            className="absolute left-1 top-1 z-50 flex h-5 w-5 items-center justify-center rounded text-status-warning drop-shadow-md transition-colors hover:bg-modal-bg/70 hover:text-status-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-warning/70"
+            title={t('input_reset')}
+            aria-label={t('input_reset')}
+          >
+            <RotateCcw size={14} />
+          </button>
+        )}
+      </TexturedBlock>
       <div className="flex-1 overflow-hidden" ref={scrollRef}>
         <div
           className="flex min-w-fit h-full"

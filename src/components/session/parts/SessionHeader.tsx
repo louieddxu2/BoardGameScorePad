@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, RotateCcw, Share2, Edit2, Lock, Unlock, DownloadCloud, RefreshCw, UsersRound } from 'lucide-react';
+import { ArrowLeft, Share2, Edit2, Lock, Unlock, DownloadCloud, RefreshCw, UsersRound } from 'lucide-react';
 import ShareMenu from '../modals/ShareMenu';
 import { useSessionTranslation } from '../../../i18n/session';
 import { MultiplayerConnectionStatus } from '../../../features/multiplayer/multiplayerSessionManager';
@@ -16,7 +16,6 @@ interface SessionHeaderProps {
   onEditTitleToggle: (editing: boolean) => void;
   onTitleSubmit: (newTitle: string) => void;
   onExit: () => void;
-  onReset: () => void;
   onShareMenuToggle: (show: boolean) => void;
   onScreenshotRequest: (mode: 'full' | 'simple') => void;
   onToggleEditMode: () => void; // New callback
@@ -28,7 +27,6 @@ interface SessionHeaderProps {
   isCloudConnected?: boolean;
   shareMenuZIndex?: number; // [NEW] Dynamic zIndex from stack
   canEditTemplate?: boolean;
-  canManageSession?: boolean;
   canUseMediaTools?: boolean;
   onCycleMultiplayerPreview?: () => void;
   multiplayerPreviewLabel?: string;
@@ -51,7 +49,6 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   onEditTitleToggle,
   onTitleSubmit,
   onExit,
-  onReset,
   onShareMenuToggle,
   onScreenshotRequest,
   onToggleEditMode,
@@ -63,7 +60,6 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   isCloudConnected,
   shareMenuZIndex = 40, // Default for backward compatibility/static
   canEditTemplate = true,
-  canManageSession = true,
   canUseMediaTools = true,
   onCycleMultiplayerPreview,
   multiplayerPreviewLabel,
@@ -191,17 +187,6 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
           title={isEditMode ? t('session_lock_edit') : t('session_unlock_edit')}
         >
           {isEditMode ? <Unlock size={20} /> : <Lock size={20} />}
-        </button>}
-
-        {canManageSession && <button
-          onMouseDown={preventBlur}
-          onClick={() => {
-            if (isEditingTitle) onEditTitleToggle(false);
-            onReset();
-          }}
-          className="p-2 hover:bg-surface-hover hover:text-status-danger rounded-lg text-txt-muted transition-colors"
-        >
-          <RotateCcw size={20} />
         </button>}
 
         {canUseMediaTools && <div className="w-px h-6 bg-surface-border mx-1"></div>}

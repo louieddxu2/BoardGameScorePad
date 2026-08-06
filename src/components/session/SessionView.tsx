@@ -174,6 +174,19 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
 
+  const handleResetScores = useCallback(async () => {
+    if (isAiWorking || !capabilities.canManageSession) return;
+    if (await confirm({
+      title: tSession('session_reset_confirm_title'),
+      message: tSession('session_reset_confirm_msg'),
+      confirmText: tCommon('reset'),
+      isDangerous: true
+    })) {
+      props.onResetScores();
+      setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null, previewValue: 0 }));
+    }
+  }, [capabilities.canManageSession, confirm, isAiWorking, props.onResetScores, setUiState, tCommon, tSession]);
+
   React.useEffect(() => {
     const roomId = props.multiplayerRoomId;
     if (!roomId) {
@@ -751,7 +764,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         screenshotActive={screenshotModal.isOpen}
         isEditMode={isEditMode && capabilities.canEditTemplate}
         canEditTemplate={capabilities.canEditTemplate}
-        canManageSession={capabilities.canManageSession}
         canUseMediaTools={capabilities.canUseMediaTools}
         onCycleMultiplayerPreview={() => {
           setMultiplayerPreviewIndex((current) => current >= session.players.length - 1 ? -1 : current + 1);
@@ -778,18 +790,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           });
         }}
         onTitleSubmit={eventHandlers.handleTitleSubmit}
-        onReset={async () => {
-          if (isAiWorking || !capabilities.canManageSession) return;
-          if (await confirm({
-            title: tSession('session_reset_confirm_title'),
-            message: tSession('session_reset_confirm_msg'),
-            confirmText: tCommon('reset'),
-            isDangerous: true
-          })) {
-            props.onResetScores();
-            setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null, previewValue: 0 }));
-          }
-        }}
         onExit={() => {
           window.dispatchEvent(new CustomEvent('app-back-press'));
         }}
@@ -910,6 +910,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
             }
             eventHandlers.handleCellClick(playerId, '__TOTAL__', { stopPropagation: () => { } } as any);
           }}
+          onReset={capabilities.canManageSession ? handleResetScores : undefined}
           canEditTotal={capabilities.canEditTotal}
           zoomLevel={zoomLevel}
           scoringRule={session.scoringRule}
