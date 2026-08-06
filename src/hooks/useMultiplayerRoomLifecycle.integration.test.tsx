@@ -68,6 +68,7 @@ vi.mock('../features/multiplayer/multiplayerSessionManager', () => ({
   multiplayerSessionManager: {
     get: vi.fn(() => mocks.managedRoom),
     waitForRoomCleanup: vi.fn(async () => undefined),
+    supersedeRoomCleanup: vi.fn(),
     closeRoom: mocks.closeRoom,
     register: mocks.register,
     createRuntimeCallbacks: vi.fn(() => ({ onSessionSnapshot: vi.fn(), onOwnershipReturned: vi.fn() })),
@@ -126,6 +127,7 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     mocks.transport.stop.mockReset();
     mocks.runtime.stop.mockReset();
     mocks.runtime.start.mockReset();
+    mocks.runtime.leaveRoom.mockReset();
     vi.mocked(createMultiplayerPlayerRoomRuntime).mockClear();
     mocks.closeRoom.mockClear();
     mocks.register.mockClear();
@@ -135,6 +137,7 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     showToast.mockClear();
     sessionStorage.clear();
     window.history.replaceState({}, '', '/');
+    appData.isDbReady = true;
     appData.activeSessions = [];
   });
 
@@ -209,12 +212,11 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     expect(showToast).toHaveBeenCalledWith({ message: 'app_toast_multiplayer_moved_to_new_tab', type: 'info' });
   });
 
-  it('starts the three-second failure deadline from QR intent consumption', async () => {
+  it('starts a fresh QR join without waiting for stale destructive cleanup', async () => {
     let finishCleanup!: () => void;
     const cleanup = new Promise<void>((resolve) => { finishCleanup = resolve; });
     const manager = await import('../features/multiplayer/multiplayerSessionManager');
     vi.mocked(manager.multiplayerSessionManager.waitForRoomCleanup).mockReturnValueOnce(cleanup);
-    vi.useFakeTimers();
     window.history.replaceState({}, '', '/?room=room-1');
     renderHook(() => useMultiplayerRoomLifecycle({
       appData,
@@ -224,13 +226,81 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
       tApp,
     }));
 
+    await waitFor(() => expect(mocks.transport.joinRoom).toHaveBeenCalledWith('room-1'));
+    expect(manager.multiplayerSessionManager.supersedeRoomCleanup).toHaveBeenCalledWith('room-1');
+    expect(showToast).not.toHaveBeenCalledWith({ message: 'app_toast_multiplayer_join_timeout', type: 'warning' });
+    await act(async () => { finishCleanup(); await cleanup; await Promise.resolve(); });
+    expect(mocks.transport.joinRoom).toHaveBeenCalledTimes(1);
+  });
+
+  it('abandons the old active participant runtime when one scan targets a different room', async () => {
+    appData.isDbReady = false;
+    mocks.roomRecord = {
+      roomId: 'room-old', sessionId: 'session-1', templateId: 'template-1', hostDeviceId: 'host-1',
+      role: 'player', status: 'active', revision: 2, createdAt: 1, updatedAt: 2,
+    };
+    mocks.managedRoom = { role: 'player', runtime: mocks.runtime, session: mocks.runtime.session.session };
+    const { result, rerender } = renderLifecycle();
+    await act(async () => { await result.current.tryRestoreMultiplayerRoom('session-1'); });
+    expect(result.current.activeMultiplayerRoom?.roomId).toBe('room-old');
+
+    mocks.transport.joinRoom.mockClear();
+    window.history.replaceState({}, '', '/?room=room-new');
+    appData.isDbReady = true;
+    rerender();
+
+    await waitFor(() => expect(mocks.transport.joinRoom).toHaveBeenCalledWith('room-new'));
+    expect(mocks.runtime.leaveRoom).toHaveBeenCalled();
+    expect(mocks.closeRoom).toHaveBeenCalledWith('room-old');
+    expect(result.current.activeMultiplayerRoom).toBeNull();
+  });
+
+  it('returns to a usable state when transport startup throws', async () => {
+    mocks.transport.joinRoom.mockImplementationOnce(() => { throw new Error('peer_start_failed'); });
+    window.history.replaceState({}, '', '/?room=room-1');
+    const { result } = renderLifecycle();
+
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith({
+      message: 'app_toast_multiplayer_join_timeout',
+      type: 'warning',
+    }));
+    expect(result.current.isJoiningMultiplayer).toBe(false);
+    expect(result.current.pendingMultiplayerJoin).toBeNull();
+    expect(mocks.transport.stop).toHaveBeenCalled();
+  });
+
+  it('treats room completion before bootstrap as a final result instead of hanging', async () => {
+    window.history.replaceState({}, '', '/?room=room-1');
+    const { result } = renderLifecycle();
+    await waitFor(() => expect(mocks.transport.joinRoom).toHaveBeenCalledWith('room-1'));
+
+    await act(async () => {
+      await mocks.adapterOptions.onRemoteCompletion({ type: 'session:completed', roomId: 'room-1' });
+    });
+
+    expect(showToast).toHaveBeenCalledWith({ message: 'app_toast_multiplayer_room_ended', type: 'info' });
+    expect(result.current.isJoiningMultiplayer).toBe(false);
+    expect(result.current.pendingMultiplayerJoin).toBeNull();
+    expect(mocks.transport.stop).toHaveBeenCalled();
+  });
+
+  it('ignores a bootstrap that arrives after the QR deadline has already recovered the UI', async () => {
+    vi.useFakeTimers();
+    window.history.replaceState({}, '', '/?room=room-1');
+    const { result } = renderLifecycle();
     await act(async () => { await Promise.resolve(); });
     await act(async () => { await vi.advanceTimersByTimeAsync(3_001); });
 
+    await act(async () => {
+      await mocks.adapterOptions.onRemoteBootstrap(
+        { package: { revision: 1 } },
+        { templateForSession: { id: 'template-1' }, session: { id: 'session-1', status: 'active' } },
+      );
+    });
+
+    expect(result.current.pendingMultiplayerJoin).toBeNull();
+    expect(mocks.register).not.toHaveBeenCalled();
     expect(showToast).toHaveBeenCalledWith({ message: 'app_toast_multiplayer_join_timeout', type: 'warning' });
-    expect(mocks.transport.joinRoom).not.toHaveBeenCalled();
-    await act(async () => { finishCleanup(); await cleanup; await Promise.resolve(); });
-    expect(mocks.transport.joinRoom).not.toHaveBeenCalled();
   });
 
   it('does not restore a completed host relay as an active host room', async () => {

@@ -86,7 +86,7 @@ export const useMultiplayerRoomLifecycle = ({
   const participantTransportRef = useRef<ReturnType<typeof createMultiplayerP2PRuntimeTransport> | null>(null);
   const tabCoordinatorRef = useRef<ReturnType<typeof createMultiplayerTabCoordinator> | null>(null);
   const activeTabClaimRef = useRef<MultiplayerTabClaim | null>(null);
-  const playerRuntimeCreationsRef = useRef(new Map<string, Promise<MultiplayerPlayerRoomRuntime>>());
+  const playerRuntimeCreationsRef = useRef(new Map<string, Promise<MultiplayerPlayerRoomRuntime | null>>());
 
   if (!tabCoordinatorRef.current) tabCoordinatorRef.current = createMultiplayerTabCoordinator();
 
@@ -269,6 +269,7 @@ export const useMultiplayerRoomLifecycle = ({
     roomId: string,
     bootstrapMessage: BootstrapPackageMessage,
     transport: ReturnType<typeof createMultiplayerP2PRuntimeTransport>,
+    isStillCurrent: () => boolean,
   ) => {
     const existingRuntime = multiplayerSessionManager.get(roomId)?.runtime;
     if (existingRuntime?.role === 'player') return Promise.resolve(existingRuntime);
@@ -292,6 +293,10 @@ export const useMultiplayerRoomLifecycle = ({
         onSessionSnapshot: callbacks.onSessionSnapshot,
         onOwnershipReturned: callbacks.onOwnershipReturned,
       });
+      if (!isStillCurrent()) {
+        runtime.stop();
+        return null;
+      }
       multiplayerSessionManager.register(roomId, runtime, 'connected');
       transport.setConnectionChangeHandler?.(createPostBootstrapConnectionCountHandler(
         (connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount),
@@ -317,14 +322,32 @@ export const useMultiplayerRoomLifecycle = ({
     }
     const roomId = roomIdFromUrl;
     const tabClaim = claimParticipantTab(roomId);
+    multiplayerSessionManager.supersedeRoomCleanup(roomId);
+    playerRuntimeCreationsRef.current.delete(roomId);
 
     // Every QR scan is a fresh intent. The tab claim above invalidates every
     // callback captured by the previous attempt, including for the same room.
     const pendingJoin = pendingMultiplayerJoinRef.current;
     if (pendingJoin) {
       pendingJoin.transport.stop?.();
+      const pendingRuntime = multiplayerSessionManager.get(pendingJoin.roomId)?.runtime;
+      if (pendingRuntime?.role === 'player') pendingRuntime.leaveRoom();
+      void multiplayerSessionManager.closeRoom(pendingJoin.roomId);
       setPendingJoin(null);
     }
+    const activeParticipantRoom = activeMultiplayerRoomRef.current?.role === 'player'
+      ? activeMultiplayerRoomRef.current
+      : null;
+    if (activeParticipantRoom) {
+      const activeRuntime = multiplayerSessionManager.get(activeParticipantRoom.roomId)?.runtime;
+      if (activeRuntime?.role === 'player') activeRuntime.leaveRoom();
+      void multiplayerSessionManager.closeRoom(activeParticipantRoom.roomId);
+      setActiveRoom(null);
+    }
+    participantTransportRef.current = null;
+    setPendingMultiplayerClaimIds(null);
+    setIsMultiplayerParticipantRoomModalOpen(false);
+    setIsMultiplayerTransitioning(false);
 
     // A QR URL is a one-time join intent, not a persistent reconnect route.
     // Consume it before any async handshake so a reload cannot replay the same
@@ -346,10 +369,6 @@ export const useMultiplayerRoomLifecycle = ({
       void multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
     };
     const startJoin = async () => {
-      // A destructive exit may have stopped the runtime before its IndexedDB
-      // purge finished. Wait before reusing the same QR room so a late purge
-      // cannot delete a newly imported bootstrap.
-      await multiplayerSessionManager.waitForRoomCleanup(roomId);
       if (!isCurrentJoin()) return;
       const existingRoom = multiplayerSessionManager.get(roomId);
       if (existingRoom) {
@@ -360,7 +379,6 @@ export const useMultiplayerRoomLifecycle = ({
         if (activeMultiplayerRoomRef.current?.roomId === roomId) setActiveRoom(null);
       }
 
-      clearMultiplayerJoinTimeout();
       isJoiningMultiplayerRef.current = true;
       setIsJoiningMultiplayer(true);
 
@@ -389,7 +407,8 @@ export const useMultiplayerRoomLifecycle = ({
           // bootstrap arrives. The player picker should only choose claims;
           // it must not delay creation of the runtime that owns reconnects and
           // connection state.
-          await ensurePlayerRuntime(roomId, bootstrapMessage, activeTransport!);
+          const runtime = await ensurePlayerRuntime(roomId, bootstrapMessage, activeTransport!, isCurrentJoin);
+          if (!runtime || !isCurrentJoin()) return;
 
           clearMultiplayerJoinTimeout();
           isJoiningMultiplayerRef.current = false;

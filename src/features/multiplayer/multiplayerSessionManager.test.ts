@@ -51,6 +51,28 @@ describe('multiplayer session manager', () => {
     }
   });
 
+  it('lets a fresh QR intent supersede queued destructive cleanup', async () => {
+    let resolveFirstCleanup!: () => void;
+    const firstCleanup = new Promise<void>((resolve) => { resolveFirstCleanup = resolve; });
+    const purgeSpy = vi.spyOn(multiplayerLocalStore, 'purgeRoomData')
+      .mockReturnValueOnce(firstCleanup)
+      .mockResolvedValue(undefined);
+    try {
+      const manager = createMultiplayerSessionManager();
+      await manager.closeRoom('room-1', { deleteLocalRoom: true, awaitLocalCleanup: false });
+      await Promise.resolve();
+      await manager.closeRoom('room-1', { deleteLocalRoom: true, awaitLocalCleanup: false });
+
+      manager.supersedeRoomCleanup('room-1');
+      resolveFirstCleanup();
+      await manager.waitForRoomCleanup('room-1');
+
+      expect(purgeSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      purgeSpy.mockRestore();
+    }
+  });
+
   it('drains a participant runtime before purging its room data', async () => {
     let resolveIdle!: () => void;
     const idle = new Promise<void>((resolve) => { resolveIdle = resolve; });

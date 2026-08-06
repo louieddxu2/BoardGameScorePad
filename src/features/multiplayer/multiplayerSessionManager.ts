@@ -43,6 +43,7 @@ export interface MultiplayerSessionManager {
   returnOwnership(roomId: string, session: GameSession): void;
   peekReturnedSession(roomId: string): GameSession | null;
   takeReturnedSession(roomId: string): GameSession | null;
+  supersedeRoomCleanup(roomId: string): void;
   waitForRoomCleanup(roomId: string): Promise<void>;
   closeRoom(roomId: string, options?: { deleteLocalRoom?: boolean; awaitLocalCleanup?: boolean }): Promise<void>;
   subscribe(listener: () => void): () => void;
@@ -68,6 +69,7 @@ const snapshot = (state: MultiplayerRoomState): MultiplayerRoomState => ({
 export const createMultiplayerSessionManager = (): MultiplayerSessionManager => {
   const rooms = new Map<string, MultiplayerRoomState>();
   const cleanupTasks = new Map<string, Promise<void>>();
+  const cleanupGenerations = new Map<string, number>();
   const listeners = new Set<() => void>();
   const notify = () => {
     for (const listener of Array.from(listeners)) {
@@ -179,6 +181,9 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
       notify();
       return session;
     },
+    supersedeRoomCleanup(roomId) {
+      cleanupGenerations.set(roomId, (cleanupGenerations.get(roomId) ?? 0) + 1);
+    },
     async waitForRoomCleanup(roomId) {
       await cleanupTasks.get(roomId);
     },
@@ -196,8 +201,12 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
         }
       }
       if (options?.deleteLocalRoom) {
+        const cleanupGeneration = cleanupGenerations.get(roomId) ?? 0;
         const previousCleanup = cleanupTasks.get(roomId) ?? Promise.resolve();
-        const cleanup = previousCleanup.then(() => multiplayerLocalStore.purgeRoomData(roomId)).catch((err) => {
+        const cleanup = previousCleanup.then(() => {
+          if ((cleanupGenerations.get(roomId) ?? 0) !== cleanupGeneration) return;
+          return multiplayerLocalStore.purgeRoomData(roomId);
+        }).catch((err) => {
           console.warn('[multiplayerSessionManager] Failed to purge local room data on close:', err);
         });
         const trackedCleanup = cleanup.finally(() => {
