@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => {
     runtime,
     isCurrentClaim: true,
     supersedeListener: null,
+    roomRecord: null,
   };
   state.closeRoom = vi.fn(async () => {
     state.managedRoom?.runtime?.stop?.();
@@ -41,7 +42,7 @@ vi.mock('../features/multiplayer/multiplayerLocalStore', () => ({
     mocks.adapterOptions = options;
     return {};
   }),
-  multiplayerLocalStore: { getRoomBySessionId: vi.fn(async () => null) },
+  multiplayerLocalStore: { getRoomBySessionId: vi.fn(async () => mocks.roomRecord) },
 }));
 vi.mock('../features/multiplayer/multiplayerDeliveryStore', () => ({
   getOrCreateMultiplayerDeviceId: vi.fn(async () => 'device-1'),
@@ -118,6 +119,7 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     mocks.managedRoom = null;
     mocks.isCurrentClaim = true;
     mocks.supersedeListener = null;
+    mocks.roomRecord = null;
     mocks.transport.joinRoom.mockReset();
     mocks.transport.stop.mockReset();
     mocks.runtime.stop.mockReset();
@@ -129,6 +131,7 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     showToast.mockClear();
     sessionStorage.clear();
     window.history.replaceState({}, '', '/');
+    appData.activeSessions = [];
   });
 
   it('does not replay a stored join intent after a page reload without a QR URL', async () => {
@@ -205,5 +208,33 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     expect(mocks.transport.joinRoom).not.toHaveBeenCalled();
     await act(async () => { finishCleanup(); await cleanup; await Promise.resolve(); });
     expect(mocks.transport.joinRoom).not.toHaveBeenCalled();
+  });
+
+  it('does not restore a completed host relay as an active host room', async () => {
+    mocks.roomRecord = {
+      roomId: 'room-1', sessionId: 'session-1', templateId: 'template-1', hostDeviceId: 'host-1',
+      role: 'host', status: 'completed', revision: 2, createdAt: 1, updatedAt: 2,
+    };
+    mocks.managedRoom = { role: 'host', runtime: { role: 'host' }, session: { id: 'session-1', status: 'completed' } };
+    appData.activeSessions = [{ id: 'session-1', status: 'active' }];
+    const { result } = renderLifecycle();
+
+    await act(async () => { await result.current.tryRestoreMultiplayerRoom('session-1'); });
+
+    expect(result.current.activeMultiplayerRoom).toBeNull();
+  });
+
+  it('still restores an active host room', async () => {
+    mocks.roomRecord = {
+      roomId: 'room-1', sessionId: 'session-1', templateId: 'template-1', hostDeviceId: 'host-1',
+      role: 'host', status: 'active', revision: 2, createdAt: 1, updatedAt: 2,
+    };
+    mocks.managedRoom = { role: 'host', runtime: { role: 'host' }, session: { id: 'session-1', status: 'active' } };
+    appData.activeSessions = [{ id: 'session-1', status: 'active' }];
+    const { result } = renderLifecycle();
+
+    await act(async () => { await result.current.tryRestoreMultiplayerRoom('session-1'); });
+
+    expect(result.current.activeMultiplayerRoom).toEqual({ roomId: 'room-1', role: 'host' });
   });
 });

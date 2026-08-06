@@ -418,6 +418,11 @@ export const useMultiplayerRoomLifecycle = ({
       const room = await multiplayerLocalStore.getRoomBySessionId(sessionId);
       if (!room) return;
 
+      // A completed host room may remain alive briefly only to relay the final
+      // snapshot to reconnecting participants. It no longer represents local
+      // multiplayer ownership and must never be restored into the UI.
+      if (room.status === 'completed') return;
+
       if (room.role === 'player') claimParticipantTab(room.roomId);
 
       const existingManagedRoom = multiplayerSessionManager.get(room.roomId);
