@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useMultiplayerRoomLifecycle } from './useMultiplayerRoomLifecycle';
 import { createMultiplayerPlayerRoomRuntime, restoreMultiplayerPlayerRoomRuntime } from '../features/multiplayer/multiplayerRoomRuntime';
+import { multiplayerSessionManager } from '../features/multiplayer/multiplayerSessionManager';
 
 const mocks = vi.hoisted(() => {
   const transport = {
@@ -73,6 +74,7 @@ vi.mock('../features/multiplayer/multiplayerSessionManager', () => ({
     register: mocks.register,
     createRuntimeCallbacks: vi.fn(() => ({ onSessionSnapshot: vi.fn(), onOwnershipReturned: vi.fn() })),
     setConnectionCount: vi.fn(),
+    setConnectionStatus: vi.fn(),
     subscribe: vi.fn(() => () => undefined),
     takeReturnedSession: vi.fn(() => null),
   },
@@ -135,6 +137,7 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     enterActiveSession.mockClear();
     returnToDashboard.mockClear();
     showToast.mockClear();
+    vi.mocked(multiplayerSessionManager.setConnectionStatus).mockClear();
     sessionStorage.clear();
     window.history.replaceState({}, '', '/');
     appData.isDbReady = true;
@@ -185,6 +188,24 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     expect(createMultiplayerPlayerRoomRuntime).toHaveBeenCalledTimes(1);
     expect(mocks.register).toHaveBeenCalledTimes(1);
     expect(mocks.transport.stop).not.toHaveBeenCalled();
+  });
+
+  it('marks an active participant disconnected and reports room completion immediately', async () => {
+    window.history.replaceState({}, '', '/?room=room-1');
+    renderLifecycle();
+    await waitFor(() => expect(mocks.transport.joinRoom).toHaveBeenCalledWith('room-1'));
+    await act(async () => {
+      await mocks.adapterOptions.onRemoteBootstrap(
+        { package: { revision: 1 } },
+        { templateForSession: { id: 'template-1' }, session: { id: 'session-1', status: 'active' } },
+      );
+    });
+
+    const runtimeOptions = vi.mocked(createMultiplayerPlayerRoomRuntime).mock.calls[0]?.[0];
+    await act(async () => { await runtimeOptions?.onCompletionReceived?.(); });
+
+    expect(multiplayerSessionManager.setConnectionStatus).toHaveBeenCalledWith('room-1', 'disconnected');
+    expect(showToast).toHaveBeenCalledWith({ message: 'app_toast_multiplayer_room_ended', type: 'info' });
   });
 
   it('replaces an existing room runtime when the same QR code is scanned again', async () => {

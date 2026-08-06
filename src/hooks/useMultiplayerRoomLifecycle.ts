@@ -211,6 +211,11 @@ export const useMultiplayerRoomLifecycle = ({
 
   useEffect(() => multiplayerSessionManager.subscribe(() => setMultiplayerVersion((version) => version + 1)), []);
 
+  const notifyParticipantCompletion = useCallback((roomId: string) => {
+    multiplayerSessionManager.setConnectionStatus(roomId, 'disconnected');
+    showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_room_ended'), type: 'info' });
+  }, []);
+
   useEffect(() => {
     const scorePadWindow = window as ScorePadWindow;
     scorePadWindow.__boardGameScorePadMultiplayerActive = Boolean(
@@ -292,6 +297,7 @@ export const useMultiplayerRoomLifecycle = ({
         transport,
         onSessionSnapshot: callbacks.onSessionSnapshot,
         onOwnershipReturned: callbacks.onOwnershipReturned,
+        onCompletionReceived: () => notifyParticipantCompletion(roomId),
       });
       if (!isStillCurrent()) {
         runtime.stop();
@@ -311,7 +317,7 @@ export const useMultiplayerRoomLifecycle = ({
       }
     });
     return creation;
-  }, []);
+  }, [notifyParticipantCompletion]);
 
   useEffect(() => {
     if (!appData.isDbReady || isInAppBrowser()) return;
@@ -546,6 +552,7 @@ export const useMultiplayerRoomLifecycle = ({
           transport,
           onSessionSnapshot: callbacks.onSessionSnapshot,
           onOwnershipReturned: callbacks.onOwnershipReturned,
+          onCompletionReceived: () => notifyParticipantCompletion(room.roomId),
         });
         if (!isCurrentParticipantRestore()) return rejectSupersededRestore(runtime);
         if (runtime) {
@@ -567,7 +574,7 @@ export const useMultiplayerRoomLifecycle = ({
       }
       return participantClaim === null;
     }
-  }, [applyRemoteBootstrapToPlayerRuntime, claimParticipantTab, releaseParticipantTabClaim, setActiveRoom]);
+  }, [applyRemoteBootstrapToPlayerRuntime, claimParticipantTab, notifyParticipantCompletion, releaseParticipantTabClaim, setActiveRoom]);
 
   const handleOpenMultiplayerRoom = useCallback(async () => {
     if (isOpeningRoomRef.current) return;
@@ -628,6 +635,7 @@ export const useMultiplayerRoomLifecycle = ({
           transport,
           onSessionSnapshot: callbacks.onSessionSnapshot,
           onOwnershipReturned: callbacks.onOwnershipReturned,
+          onCompletionReceived: () => notifyParticipantCompletion(roomId),
         });
         multiplayerSessionManager.register(roomId, runtime, 'connecting');
         transport.setConnectionChangeHandler?.((connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount));
@@ -675,7 +683,7 @@ export const useMultiplayerRoomLifecycle = ({
       resetMultiplayerJoinState(roomId);
       showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_join_timeout'), type: 'warning' });
     }
-  }, [clearPendingRoomJoin, clearRoomUrlQuery, enterActiveSession, releaseParticipantTabClaim, resetMultiplayerJoinState, setActiveRoom, setPendingJoin]);
+  }, [clearPendingRoomJoin, clearRoomUrlQuery, enterActiveSession, notifyParticipantCompletion, releaseParticipantTabClaim, resetMultiplayerJoinState, setActiveRoom, setPendingJoin]);
 
   const handleRequestMultiplayerPlayerClaim = useCallback((_playerId: string) => {
     if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;

@@ -141,6 +141,7 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
   deliveryStore: MultiplayerDeliveryStore;
   transport: MultiplayerRoomRuntimeTransport;
   onOwnershipReturned?: (session: GameSession) => void | Promise<void>;
+  onCompletionReceived?: () => void | Promise<void>;
   onSessionSnapshot?: (session: GameSession) => void | Promise<void>;
   onClaimsAccepted?: (playerIds: string[]) => void | Promise<void>;
   now?: () => number;
@@ -212,6 +213,11 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
     },
     onCompleted: async (message) => {
       if (stopped) return;
+      // Completion is a terminal transport event. Disconnect before touching
+      // IndexedDB so a slow or blocked local write cannot leave the UI looking
+      // connected to a room that the host has already closed.
+      stopRuntime();
+      await options.onCompletionReceived?.();
       const resolved = resolveBootstrapImport({
         version: MULTIPLAYER_PROTOCOL_VERSION,
         room: playerSession.room,
@@ -220,9 +226,7 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
         revision: message.revision,
         exportedAt: message.completedAt,
       }, await options.store.getTemplate(message.template.id));
-      if (stopped) return;
       await options.store.putTemplate(resolved.templateForSession);
-      if (stopped) return;
       const localSession = await releaseMultiplayerRoomOwnership({
         store: options.store,
         roomId: playerSession.room.roomId,
@@ -232,7 +236,6 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
       const pending = await options.deliveryStore.listOutbox(playerSession.room.roomId, playerSession.session.id);
       await Promise.all(pending.map((record) => options.deliveryStore.deleteOutbox(record.id)));
       await options.bindingStore.delete(participantBindingKey(playerSession.room.roomId, options.deviceId));
-      stopRuntime();
       await options.onOwnershipReturned?.(localSession);
     },
     onSnapshot: async (snapshot) => { await options.onSessionSnapshot?.(snapshot.session); },
@@ -303,6 +306,7 @@ export const restoreMultiplayerPlayerRoomRuntime = async (options: {
   deliveryStore: MultiplayerDeliveryStore;
   transport: MultiplayerRoomRuntimeTransport;
   onOwnershipReturned?: (session: GameSession) => void | Promise<void>;
+  onCompletionReceived?: () => void | Promise<void>;
   onSessionSnapshot?: (session: GameSession) => void | Promise<void>;
   onClaimsAccepted?: (playerIds: string[]) => void | Promise<void>;
   now?: () => number;
@@ -340,6 +344,7 @@ export const restoreMultiplayerPlayerRoomRuntime = async (options: {
     deliveryStore: options.deliveryStore,
     transport: options.transport,
     onOwnershipReturned: options.onOwnershipReturned,
+    onCompletionReceived: options.onCompletionReceived,
     onSessionSnapshot: options.onSessionSnapshot,
     onClaimsAccepted: options.onClaimsAccepted,
     now: options.now,

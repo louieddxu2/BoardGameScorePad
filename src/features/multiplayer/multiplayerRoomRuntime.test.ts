@@ -171,6 +171,36 @@ describe('multiplayer room runtime', () => {
     expect(released?.players).toEqual(session.players);
   });
 
+  it('stops the participant transport as soon as completion arrives, before local persistence finishes', async () => {
+    const hostStore = createRuntimeStore(); const playerStore = createRuntimeStore();
+    const hostDelivery = createDeliveryStore(); const playerDelivery = createDeliveryStore(); const bindingStore = createBindingStore();
+    const host = await createMultiplayerHostRoomRuntime({
+      roomId: 'room-1', hostDeviceId: 'host-1', template, session, store: hostStore,
+      deliveryStore: hostDelivery,
+      transport: { sendToHost: () => false, sendToConnection: () => false, broadcastLocalChanges: async () => undefined },
+      now: () => 10,
+    });
+    let finishPersistence!: () => void;
+    const persistenceGate = new Promise<void>((resolve) => { finishPersistence = resolve; });
+    const originalPutTemplate = playerStore.putTemplate;
+    const stop = vi.fn();
+    const player = await createMultiplayerPlayerRoomRuntime({
+      bootstrapMessage: host.session.createBootstrapMessage(), deviceId: 'player-device',
+      store: playerStore, bindingStore, deliveryStore: playerDelivery,
+      transport: { sendToHost: () => true, sendToConnection: () => false, broadcastLocalChanges: async () => undefined, stop },
+      now: () => 20,
+    });
+    playerStore.putTemplate = async (value) => {
+      await persistenceGate;
+      return originalPutTemplate(value);
+    };
+
+    const receiving = player.receive(host.session.complete());
+    await vi.waitFor(() => expect(stop).toHaveBeenCalledTimes(1));
+    finishPersistence();
+    await receiving;
+  });
+
   it('ignores a late completion after the participant has left the room', async () => {
     const store = createRuntimeStore();
     const delivery = createDeliveryStore();
