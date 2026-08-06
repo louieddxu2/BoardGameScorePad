@@ -9,6 +9,37 @@ const setModalStack = (stack: string[]) => { (window as any).__modalStack = stac
 /** 供 App.tsx 查詢：是否有 modal 正在管理歷史紀錄？ */
 export const hasActiveModals = () => getModalStack().length > 0;
 
+/**
+ * Programmatic view changes (for example, another tab taking over a live
+ * multiplayer room) can unmount several history-managed controls at once.
+ * Remove their registrations first and consume their history entries in one
+ * coordinated navigation so individual cleanup effects cannot over-navigate.
+ */
+export const dismissActiveModalsForViewChange = (onHistorySettled?: () => void) => {
+  const steps = getModalStack().length;
+  if (steps === 0) {
+    onHistorySettled?.();
+    return;
+  }
+
+  setModalStack([]);
+  window.dispatchEvent(new CustomEvent('modal-stack-changed'));
+  (window as any).__silentBack = ((window as any).__silentBack || 0) + 1;
+  let settled = false;
+  const settleHistory = () => {
+    if (settled) return;
+    settled = true;
+    window.removeEventListener('popstate', settleHistory);
+    onHistorySettled?.();
+  };
+  window.addEventListener('popstate', settleHistory, { once: true });
+  window.history.go(-steps);
+  window.setTimeout(() => {
+    (window as any).__silentBack = Math.max(0, ((window as any).__silentBack || 0) - 1);
+    settleHistory();
+  }, steps * 100);
+};
+
 /** 僅供測試使用：重置堆疊 */
 export const _resetActiveCountForTesting = () => {
   setModalStack([]);

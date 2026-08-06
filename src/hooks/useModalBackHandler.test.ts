@@ -1,7 +1,7 @@
 
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { useModalBackHandler, _resetActiveCountForTesting, hasActiveModals } from './useModalBackHandler';
+import { useModalBackHandler, _resetActiveCountForTesting, dismissActiveModalsForViewChange, hasActiveModals } from './useModalBackHandler';
 
 describe('useModalBackHandler', () => {
   beforeEach(() => {
@@ -102,6 +102,28 @@ describe('useModalBackHandler', () => {
     });
     expect((window as any).__silentBack).toBe(0);
 
+    vi.useRealTimers();
+  });
+
+  it('coordinates modal history cleanup during a programmatic view change', () => {
+    vi.useFakeTimers();
+    const historyGo = vi.spyOn(window.history, 'go').mockImplementation(() => undefined);
+    const onHistorySettled = vi.fn();
+    const { unmount } = renderHook(() => {
+      useModalBackHandler(true, vi.fn(), 'modal-a');
+      useModalBackHandler(true, vi.fn(), 'modal-b');
+    });
+
+    act(() => dismissActiveModalsForViewChange(onHistorySettled));
+    unmount();
+
+    expect(historyGo).toHaveBeenCalledTimes(1);
+    expect(historyGo).toHaveBeenCalledWith(-2);
+    expect(window.history.back).not.toHaveBeenCalled();
+    expect(hasActiveModals()).toBe(false);
+
+    act(() => vi.runAllTimers());
+    expect(onHistorySettled).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
   });
 });

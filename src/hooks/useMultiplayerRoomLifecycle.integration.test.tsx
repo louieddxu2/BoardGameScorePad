@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useMultiplayerRoomLifecycle } from './useMultiplayerRoomLifecycle';
-import { createMultiplayerPlayerRoomRuntime } from '../features/multiplayer/multiplayerRoomRuntime';
+import { createMultiplayerPlayerRoomRuntime, restoreMultiplayerPlayerRoomRuntime } from '../features/multiplayer/multiplayerRoomRuntime';
 
 const mocks = vi.hoisted(() => {
   const transport = {
@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => {
     role: 'player',
     session: { template: { id: 'template-1' }, session: { id: 'session-1', status: 'active' } },
     stop: vi.fn(),
+    start: vi.fn(),
     leaveRoom: vi.fn(),
     restoreParticipantBinding: vi.fn(async () => true),
   };
@@ -124,6 +125,7 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     mocks.transport.joinRoom.mockReset();
     mocks.transport.stop.mockReset();
     mocks.runtime.stop.mockReset();
+    mocks.runtime.start.mockReset();
     vi.mocked(createMultiplayerPlayerRoomRuntime).mockClear();
     mocks.closeRoom.mockClear();
     mocks.register.mockClear();
@@ -257,5 +259,34 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     await act(async () => { await result.current.tryRestoreMultiplayerRoom('session-1'); });
 
     expect(result.current.activeMultiplayerRoom).toEqual({ roomId: 'room-1', role: 'host' });
+  });
+
+  it('does not resurrect a participant room when another tab supersedes an in-flight restore', async () => {
+    mocks.roomRecord = {
+      roomId: 'room-1', sessionId: 'session-1', templateId: 'template-1', hostDeviceId: 'host-1',
+      role: 'player', status: 'active', revision: 2, createdAt: 1, updatedAt: 2,
+    };
+    let finishRestore!: (runtime: any) => void;
+    vi.mocked(restoreMultiplayerPlayerRoomRuntime).mockImplementationOnce(() => new Promise((resolve) => {
+      finishRestore = resolve;
+    }));
+    const { result } = renderLifecycle();
+
+    let restoreResult!: Promise<boolean>;
+    act(() => {
+      restoreResult = result.current.tryRestoreMultiplayerRoom('session-1');
+    });
+    await waitFor(() => expect(mocks.claim).toHaveBeenCalledWith('room-1'));
+
+    mocks.isCurrentClaim = false;
+    act(() => mocks.supersedeListener({ ownerId: 'tab-2', generation: 'new', roomId: 'room-1', claimedAt: 2 }));
+    await act(async () => {
+      finishRestore(mocks.runtime);
+      await restoreResult;
+    });
+
+    expect(result.current.activeMultiplayerRoom).toBeNull();
+    expect(mocks.runtime.start).not.toHaveBeenCalled();
+    expect(await restoreResult).toBe(false);
   });
 });

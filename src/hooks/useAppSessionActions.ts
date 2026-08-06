@@ -69,23 +69,27 @@ export const useAppSessionActions = ({
   }, [setPendingTemplate]);
 
   const resumeSessionWithRoom = useCallback(async (templateId: string, pendingTemplateId?: string) => {
-    const activeSession = appData.activeSessions?.find(s => s.templateId === templateId);
-    const success = await appData.resumeSession(templateId);
-    if (!success) return false;
+    if (sessionTransitionInFlightRef.current) return false;
+    sessionTransitionInFlightRef.current = true;
+    try {
+      const activeSession = appData.activeSessions?.find(s => s.templateId === templateId);
+      const success = await appData.resumeSession(templateId);
+      if (!success) return false;
 
-    let sessionId = activeSession?.id;
-    if (!sessionId) {
-      const session = await db.sessions.where('templateId').equals(templateId).and(item => item.status === 'active').first();
-      sessionId = session?.id;
+      let sessionId = activeSession?.id;
+      if (!sessionId) {
+        const session = await db.sessions.where('templateId').equals(templateId).and(item => item.status === 'active').first();
+        sessionId = session?.id;
+      }
+      if (sessionId && !await tryRestoreMultiplayerRoom(sessionId)) return false;
+      if (pendingTemplateId === undefined || pendingTemplateId === templateId) {
+        setPendingTemplate(null);
+      }
+      enterActiveSession('resume-active-session');
+      return true;
+    } finally {
+      sessionTransitionInFlightRef.current = false;
     }
-    if (sessionId) {
-      await tryRestoreMultiplayerRoom(sessionId);
-    }
-    if (pendingTemplateId === undefined || pendingTemplateId === templateId) {
-      setPendingTemplate(null);
-    }
-    enterActiveSession('resume-active-session');
-    return true;
   }, [appData, enterActiveSession, setPendingTemplate, tryRestoreMultiplayerRoom]);
 
   const handleResumeGame = useCallback(async (templateId: string) => {
