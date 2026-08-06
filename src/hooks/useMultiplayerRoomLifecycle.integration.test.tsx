@@ -153,6 +153,7 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     });
 
     expect(mocks.register).toHaveBeenCalled();
+    expect(mocks.register).toHaveBeenCalledWith('room-1', mocks.runtime, 'connected');
     await waitFor(() => expect(result.current.pendingMultiplayerJoin?.roomId).toBe('room-1'));
     expect(mocks.transport.stop).not.toHaveBeenCalled();
   });

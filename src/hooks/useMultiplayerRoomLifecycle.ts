@@ -23,6 +23,7 @@ import type { EnterActiveSession } from '../utils/activeSessionNavigation';
 import { createMultiplayerTabCoordinator, MultiplayerTabClaim } from '../features/multiplayer/multiplayerTabCoordinator';
 import { subscribeToSessionDeletion } from '../features/multiplayer/sessionDeletionEvents';
 import { db } from '../db';
+import { createPostBootstrapConnectionCountHandler } from '../features/multiplayer/multiplayerConnectionCountHandoff';
 
 const MULTIPLAYER_COMPLETION_RELAY_TTL_MS = 5 * 60 * 1000;
 const MULTIPLAYER_PENDING_JOIN_STORAGE_KEY = 'boardgame-scorepad-pending-room-join';
@@ -355,8 +356,10 @@ export const useMultiplayerRoomLifecycle = ({
               onSessionSnapshot: callbacks.onSessionSnapshot,
               onOwnershipReturned: callbacks.onOwnershipReturned,
             });
-            multiplayerSessionManager.register(roomId, runtime, 'connecting');
-            activeTransport?.setConnectionChangeHandler?.((connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount));
+            multiplayerSessionManager.register(roomId, runtime, 'connected');
+            activeTransport?.setConnectionChangeHandler?.(createPostBootstrapConnectionCountHandler(
+              (connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount),
+            ));
           }
 
           clearMultiplayerJoinTimeout();
