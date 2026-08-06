@@ -778,10 +778,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           });
         }}
         onTitleSubmit={eventHandlers.handleTitleSubmit}
-        onAddColumn={() => {
-          if (isAiWorking || !capabilities.canEditTemplate) return;
-          setUiState(prev => ({ ...prev, isAddColumnModalOpen: true }));
-        }}
         onReset={async () => {
           if (isAiWorking || !capabilities.canManageSession) return;
           if (await confirm({
@@ -849,6 +845,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           onColumnHeaderClick={handleColumnHeaderClickSafe}
           onUpdateTemplate={capabilities.canEditTemplate ? handleTemplateUpdate : () => undefined}
           onAddColumn={capabilities.canEditTemplate ? eventHandlers.handleAddBlankColumn : () => undefined}
+          onOpenBatchAdd={capabilities.canEditTemplate && !isAiWorking ? () => {
+            setUiState(prev => ({ ...prev, isAddColumnModalOpen: true }));
+          } : undefined}
           onOpenSettings={capabilities.canEditTemplate ? eventHandlers.handleOpenGameSettings : undefined}
           onToggleToolbox={capabilities.canOpenToolbox ? eventHandlers.handleToggleToolbox : undefined}
           isToolboxOpen={capabilities.canOpenToolbox && isToolboxOpen}

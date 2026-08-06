@@ -27,6 +27,7 @@ interface ScoreGridProps {
   onColumnHeaderClick: (e: React.MouseEvent, col: ScoreColumn) => void;
   onUpdateTemplate: (template: GameTemplate) => void;
   onAddColumn: () => void;
+  onOpenBatchAdd?: () => void;
   onOpenSettings?: () => void; // Made optional for robustness
   scrollContainerRef: React.RefObject<HTMLDivElement>;
   contentRef: React.RefObject<HTMLDivElement>;
@@ -60,6 +61,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   onColumnHeaderClick,
   onUpdateTemplate,
   onAddColumn,
+  onOpenBatchAdd,
   onOpenSettings,
   onToggleToolbox, // [New]
   isToolboxOpen,   // [New]
@@ -622,6 +624,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
         <GridFooter
           isEditMode={isEditMode}
           onAddColumn={onAddColumn}
+          onOpenBatchAdd={onOpenBatchAdd}
           itemColStyle={itemColStyle}
           showToolboxButton={showToolboxButton} // [New]
           isToolboxOpen={!!isToolboxOpen}      // [New]

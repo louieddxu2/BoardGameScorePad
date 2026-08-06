@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, ListPlus, RotateCcw, Share2, Edit2, Lock, Unlock, DownloadCloud, RefreshCw, UsersRound } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Share2, Edit2, Lock, Unlock, DownloadCloud, RefreshCw, UsersRound } from 'lucide-react';
 import ShareMenu from '../modals/ShareMenu';
 import { useSessionTranslation } from '../../../i18n/session';
 import { MultiplayerConnectionStatus } from '../../../features/multiplayer/multiplayerSessionManager';
@@ -16,7 +16,6 @@ interface SessionHeaderProps {
   onEditTitleToggle: (editing: boolean) => void;
   onTitleSubmit: (newTitle: string) => void;
   onExit: () => void;
-  onAddColumn: () => void;
   onReset: () => void;
   onShareMenuToggle: (show: boolean) => void;
   onScreenshotRequest: (mode: 'full' | 'simple') => void;
@@ -52,7 +51,6 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   onEditTitleToggle,
   onTitleSubmit,
   onExit,
-  onAddColumn,
   onReset,
   onShareMenuToggle,
   onScreenshotRequest,
@@ -194,17 +192,6 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
         >
           {isEditMode ? <Unlock size={20} /> : <Lock size={20} />}
         </button>}
-
-        {/* Only show Add Column button in Edit Mode */}
-        {canEditTemplate && isEditMode && (
-          <button
-            onMouseDown={preventBlur}
-            onClick={onAddColumn}
-            className="p-2 hover:bg-surface-hover hover:text-brand-primary rounded-lg text-txt-muted transition-colors"
-          >
-            <ListPlus size={20} />
-          </button>
-        )}
 
         {canManageSession && <button
           onMouseDown={preventBlur}
