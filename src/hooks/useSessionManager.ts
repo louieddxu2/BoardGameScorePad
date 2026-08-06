@@ -15,6 +15,7 @@ import { COLORS } from '../colors';
 import { useLibrary } from './useLibrary';
 import { useSessionTranslation } from '../i18n/session';
 import { isDisposableTemplate, calculateWinners, prepareTemplateForSave, createVirtualTemplate } from '../utils/templateUtils';
+import { deleteSessionRecord, deleteSessionRecords } from '../features/multiplayer/sessionDeletionEvents';
 
 interface UseSessionManagerProps {
     getTemplate: (id: string) => Promise<GameTemplate | null>;
@@ -270,7 +271,7 @@ export const useSessionManager = ({
             await waitForPendingAutosave();
         }
         await cleanupService.cleanSessionArtifacts(session.id, session.cloudFolderId);
-        await db.sessions.delete(session.id);
+        await deleteSessionRecord(session.id);
         await cleanupService.cleanupDisposableTemplate(session.templateId);
 
         if (currentSession?.id === session.id) {
@@ -297,7 +298,7 @@ export const useSessionManager = ({
             for (const session of activeSessions) {
                 await cleanupService.cleanSessionArtifacts(session.id, session.cloudFolderId);
             }
-            await db.sessions.bulkDelete(activeIds);
+            await deleteSessionRecords(activeIds);
             if (currentSession && activeIds.includes(currentSession.id)) {
                 setCurrentSession(null);
                 setActiveTemplate(null);
@@ -371,7 +372,7 @@ export const useSessionManager = ({
 
         if (!hasDataToSave) {
             await cleanupService.cleanSessionArtifacts(sessionToSave.id, sessionToSave.cloudFolderId);
-            await db.sessions.delete(sessionToSave.id);
+            await deleteSessionRecord(sessionToSave.id);
 
             if (activeTemplate) {
                 await cleanupService.cleanupDisposableTemplate(activeTemplate.id);
@@ -456,7 +457,7 @@ export const useSessionManager = ({
             };
 
             await db.history.put(record);
-            await db.sessions.delete(currentSession.id);
+            await deleteSessionRecord(currentSession.id);
 
             try {
                 await relationshipService.processGameEnd(record);

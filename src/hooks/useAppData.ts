@@ -12,6 +12,7 @@ import { useToast } from './useToast';
 import { generateId } from '../utils/idGenerator';
 import { useAppTranslation } from '../i18n/app';
 import { prepareTemplateForSave, isDisposableTemplate, createTemplateFromOption } from '../utils/templateUtils';
+import { deleteSessionRecord } from '../features/multiplayer/sessionDeletionEvents';
 import { GameOption } from '../features/game-selector/types';
 import {
     extractSessionContextWeights,
@@ -386,7 +387,7 @@ export const useAppData = () => {
             await db.history.put(record);
             const activeConflict = await db.sessions.get(record.id);
             if (activeConflict) {
-                await db.sessions.delete(record.id);
+                await deleteSessionRecord(record.id);
                 console.log("Cleaned up conflicting active session during history restore");
             }
 

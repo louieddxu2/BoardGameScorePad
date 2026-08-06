@@ -15,16 +15,19 @@ import {
   restoreMultiplayerHostRoomRuntime,
   restoreMultiplayerPlayerRoomRuntime,
 } from '../features/multiplayer/multiplayerRoomRuntime';
-import { isMultiplayerRoomReusableForQrScan, multiplayerSessionManager } from '../features/multiplayer/multiplayerSessionManager';
+import { multiplayerSessionManager } from '../features/multiplayer/multiplayerSessionManager';
 import type { BootstrapPackageMessage, SessionCompletedMessage } from '../features/multiplayer/protocol';
 import { releaseMultiplayerRoomOwnership, retainMultiplayerCompletionRelay } from '../features/multiplayer/multiplayerPersistence';
 import type { PersistedBootstrapImport } from '../features/multiplayer/multiplayerPersistence';
 import type { EnterActiveSession } from '../utils/activeSessionNavigation';
+import { createMultiplayerTabCoordinator, MultiplayerTabClaim } from '../features/multiplayer/multiplayerTabCoordinator';
+import { subscribeToSessionDeletion } from '../features/multiplayer/sessionDeletionEvents';
+import { db } from '../db';
 
 const MULTIPLAYER_COMPLETION_RELAY_TTL_MS = 5 * 60 * 1000;
 const MULTIPLAYER_PENDING_JOIN_STORAGE_KEY = 'boardgame-scorepad-pending-room-join';
-const MULTIPLAYER_PENDING_JOIN_TTL_MS = 60 * 1000;
 const MULTIPLAYER_STATE_CHANGE_EVENT = 'boardgame-scorepad-multiplayer-state-change';
+const MULTIPLAYER_JOIN_DEADLINE_MS = 3_000;
 
 type ScorePadWindow = Window & {
   __boardGameScorePadMultiplayerActive?: boolean;
@@ -46,6 +49,7 @@ export type PendingMultiplayerJoin = {
 type UseMultiplayerRoomLifecycleOptions = {
   appData: ReturnType<typeof useAppData>;
   enterActiveSession: EnterActiveSession;
+  returnToDashboard: () => void;
   showToast: (options: Omit<ToastMessage, 'id'>) => void;
   tApp: (key: AppTranslationKey, params?: Record<string, string | number>) => string;
 };
@@ -53,6 +57,7 @@ type UseMultiplayerRoomLifecycleOptions = {
 export const useMultiplayerRoomLifecycle = ({
   appData,
   enterActiveSession,
+  returnToDashboard,
   showToast,
   tApp,
 }: UseMultiplayerRoomLifecycleOptions) => {
@@ -75,6 +80,11 @@ export const useMultiplayerRoomLifecycle = ({
   const completionRelayTimeoutsRef = useRef(new Map<string, number>());
   const isJoiningMultiplayerRef = useRef(false);
   const isOpeningRoomRef = useRef(false);
+  const participantTransportRef = useRef<ReturnType<typeof createMultiplayerP2PRuntimeTransport> | null>(null);
+  const tabCoordinatorRef = useRef<ReturnType<typeof createMultiplayerTabCoordinator> | null>(null);
+  const activeTabClaimRef = useRef<MultiplayerTabClaim | null>(null);
+
+  if (!tabCoordinatorRef.current) tabCoordinatorRef.current = createMultiplayerTabCoordinator();
 
   appDataRef.current = appData;
   showToastRef.current = showToast;
@@ -111,21 +121,6 @@ export const useMultiplayerRoomLifecycle = ({
     }
   }, []);
 
-  const getPendingRoomJoin = useCallback(() => {
-    try {
-      const raw = sessionStorage.getItem(MULTIPLAYER_PENDING_JOIN_STORAGE_KEY);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw) as { roomId?: unknown; createdAt?: unknown };
-      if (typeof parsed.roomId !== 'string' || typeof parsed.createdAt !== 'number' || Date.now() - parsed.createdAt > MULTIPLAYER_PENDING_JOIN_TTL_MS) {
-        sessionStorage.removeItem(MULTIPLAYER_PENDING_JOIN_STORAGE_KEY);
-        return null;
-      }
-      return parsed.roomId;
-    } catch {
-      return null;
-    }
-  }, []);
-
   const clearPendingRoomJoin = useCallback(() => {
     try {
       sessionStorage.removeItem(MULTIPLAYER_PENDING_JOIN_STORAGE_KEY);
@@ -155,6 +150,53 @@ export const useMultiplayerRoomLifecycle = ({
     }
   }, [clearMultiplayerJoinTimeout, clearPendingRoomJoin, clearRoomUrlQuery, setActiveRoom, setPendingJoin]);
 
+  const claimParticipantTab = useCallback((roomId: string) => {
+    const claim = tabCoordinatorRef.current!.claim(roomId);
+    activeTabClaimRef.current = claim;
+    return claim;
+  }, []);
+
+  const releaseParticipantTabClaim = useCallback((roomId?: string) => {
+    const claim = activeTabClaimRef.current;
+    if (!claim || (roomId && claim.roomId !== roomId)) return;
+    tabCoordinatorRef.current?.release(claim);
+    activeTabClaimRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    const coordinator = tabCoordinatorRef.current!;
+    const unsubscribe = coordinator.subscribe(() => {
+      const claim = activeTabClaimRef.current;
+      if (!claim || coordinator.isCurrent(claim)) return;
+
+      const roomId = claim.roomId;
+      participantTransportRef.current?.stop?.();
+      participantTransportRef.current = null;
+      const managedRoom = multiplayerSessionManager.get(roomId);
+      if (managedRoom?.runtime?.role === 'player') managedRoom.runtime.leaveRoom();
+      void multiplayerSessionManager.closeRoom(roomId);
+
+      activeTabClaimRef.current = null;
+      multiplayerJoinStartedRef.current = null;
+      clearMultiplayerJoinTimeout();
+      isJoiningMultiplayerRef.current = false;
+      setIsJoiningMultiplayer(false);
+      setPendingJoin(null);
+      setPendingMultiplayerClaimIds(null);
+      setActiveRoom(null);
+      setIsMultiplayerRoomModalOpen(false);
+      setIsMultiplayerParticipantRoomModalOpen(false);
+      setIsMultiplayerTransitioning(false);
+      clearPendingRoomJoin();
+      clearRoomUrlQuery();
+      returnToDashboard();
+      showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_moved_to_new_tab'), type: 'info' });
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [clearMultiplayerJoinTimeout, clearPendingRoomJoin, clearRoomUrlQuery, returnToDashboard, setActiveRoom, setPendingJoin]);
+
   useEffect(() => () => clearMultiplayerJoinTimeout(), [clearMultiplayerJoinTimeout]);
 
   useEffect(() => () => {
@@ -177,6 +219,7 @@ export const useMultiplayerRoomLifecycle = ({
     if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
     const returned = multiplayerSessionManager.takeReturnedSession(activeMultiplayerRoom.roomId);
     if (!returned) return;
+    releaseParticipantTabClaim(activeMultiplayerRoom.roomId);
 
     setIsMultiplayerTransitioning(true);
     setPendingMultiplayerClaimIds(null);
@@ -195,7 +238,7 @@ export const useMultiplayerRoomLifecycle = ({
         setIsMultiplayerTransitioning(false);
       }
     })();
-  }, [activeMultiplayerRoom, multiplayerVersion, setActiveRoom]);
+  }, [activeMultiplayerRoom, multiplayerVersion, releaseParticipantTabClaim, setActiveRoom]);
 
   const applyRemoteBootstrapToPlayerRuntime = useCallback(async (
     roomId: string,
@@ -220,8 +263,12 @@ export const useMultiplayerRoomLifecycle = ({
   useEffect(() => {
     if (!appData.isDbReady || isInAppBrowser()) return;
     const roomIdFromUrl = new URLSearchParams(window.location.search).get('room');
-    const roomId = roomIdFromUrl ?? getPendingRoomJoin();
-    if (!roomId) return;
+    if (!roomIdFromUrl) {
+      clearPendingRoomJoin();
+      return;
+    }
+    const roomId = roomIdFromUrl;
+    const tabClaim = claimParticipantTab(roomId);
 
     // A second scan of the same QR code must not create a second PeerJS
     // handshake. Keep the existing picker visible, or let the current attempt
@@ -250,7 +297,7 @@ export const useMultiplayerRoomLifecycle = ({
     let cancelled = false;
     let activeTransport: ReturnType<typeof createMultiplayerP2PRuntimeTransport> | null = null;
 
-    const isCurrentJoin = () => !cancelled && multiplayerJoinStartedRef.current === roomId;
+    const isCurrentJoin = () => !cancelled && multiplayerJoinStartedRef.current === roomId && tabCoordinatorRef.current?.isCurrent(tabClaim) === true;
     const getStoredPlayerIds = async () => {
       const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
       const binding = await multiplayerParticipantBindingStore.get(participantBindingKey(roomId, deviceId));
@@ -263,42 +310,10 @@ export const useMultiplayerRoomLifecycle = ({
       // cannot delete a newly imported bootstrap.
       await multiplayerSessionManager.waitForRoomCleanup(roomId);
       const existingRoom = multiplayerSessionManager.get(roomId);
-      let existingPlayerIds: string[] = [];
-
-      if (isMultiplayerRoomReusableForQrScan(existingRoom)) {
-        if (existingRoom.role === 'player') {
-          existingPlayerIds = await getStoredPlayerIds();
-          if (!existingPlayerIds.length && activeMultiplayerRoomRef.current?.roomId === roomId) {
-            existingPlayerIds = activeMultiplayerRoomRef.current.playerIds ?? [];
-          }
-        }
-
-        if (!isCurrentJoin()) return;
-        if (existingRoom.role === 'host' || existingPlayerIds.length > 0) {
-          clearMultiplayerJoinTimeout();
-          isJoiningMultiplayerRef.current = false;
-          setIsJoiningMultiplayer(false);
-          setActiveRoom({ roomId, role: existingRoom.role, playerIds: existingPlayerIds });
-
-          let resumed = await appDataRef.current.resumeSessionById(existingRoom.session.id);
-          if (!resumed && existingRoom.session.status === 'active') {
-            // The room manager can outlive a delayed IndexedDB observer update.
-            // Restore its canonical snapshot before giving up on the QR intent.
-            await multiplayerLocalStore.putSession(existingRoom.session);
-            resumed = await appDataRef.current.resumeSessionById(existingRoom.session.id);
-          }
-          if (resumed && isCurrentJoin()) {
-            clearPendingRoomJoin();
-            enterActiveSession('qr-join');
-            return;
-          }
-        }
-
-        await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
-        if (!isCurrentJoin()) return;
-        if (activeMultiplayerRoomRef.current?.roomId === roomId) setActiveRoom(null);
-      } else if (existingRoom) {
-        await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
+      if (existingRoom) {
+        // A QR scan is an explicit fresh connection intent. Never let a stale,
+        // reconnecting, or even currently-online runtime bypass the new join.
+        await multiplayerSessionManager.closeRoom(roomId);
         if (!isCurrentJoin()) return;
         if (activeMultiplayerRoomRef.current?.roomId === roomId) setActiveRoom(null);
       }
@@ -317,6 +332,7 @@ export const useMultiplayerRoomLifecycle = ({
         if (isJoiningMultiplayerRef.current && isCurrentJoin()) {
           clearMultiplayerJoinTimeout();
           activeTransport?.stop?.();
+          releaseParticipantTabClaim(roomId);
           resetMultiplayerJoinState(roomId);
           showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_room_ended'), type: 'info' });
         }
@@ -366,11 +382,13 @@ export const useMultiplayerRoomLifecycle = ({
         forceInitialSync: true,
         logger: (message) => console.info('[multiplayer]', message),
       });
+      participantTransportRef.current = activeTransport;
       try {
         activeTransport.joinRoom?.(roomId);
       } catch (error) {
         console.warn('[multiplayer] Failed to start room join:', error);
         activeTransport.stop?.();
+        releaseParticipantTabClaim(roomId);
         resetMultiplayerJoinState(roomId);
         showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_join_timeout'), type: 'warning' });
         return;
@@ -384,6 +402,7 @@ export const useMultiplayerRoomLifecycle = ({
           activeTransport?.stop?.();
           await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
           if (!isCurrentJoin()) return;
+          releaseParticipantTabClaim(roomId);
           resetMultiplayerJoinState(roomId);
           showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_join_timeout'), type: 'warning' });
         };
@@ -423,7 +442,7 @@ export const useMultiplayerRoomLifecycle = ({
         if (isCurrentJoin()) {
           void failCurrentJoin();
         }
-      }, 15000);
+      }, MULTIPLAYER_JOIN_DEADLINE_MS);
     };
 
     multiplayerJoinStartedRef.current = roomId;
@@ -433,6 +452,7 @@ export const useMultiplayerRoomLifecycle = ({
       activeTransport?.stop?.();
       await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
       if (!isCurrentJoin()) return;
+      releaseParticipantTabClaim(roomId);
       resetMultiplayerJoinState(roomId);
       showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_join_timeout'), type: 'warning' });
     });
@@ -448,12 +468,14 @@ export const useMultiplayerRoomLifecycle = ({
         setPendingJoin(null);
       }
     };
-  }, [appData.isDbReady, applyRemoteBootstrapToPlayerRuntime, clearMultiplayerJoinTimeout, clearPendingRoomJoin, clearRoomUrlQuery, enterActiveSession, getPendingRoomJoin, rememberPendingRoomJoin, resetMultiplayerJoinState, setActiveRoom, setPendingJoin]);
+  }, [appData.isDbReady, applyRemoteBootstrapToPlayerRuntime, claimParticipantTab, clearMultiplayerJoinTimeout, clearPendingRoomJoin, clearRoomUrlQuery, enterActiveSession, releaseParticipantTabClaim, rememberPendingRoomJoin, resetMultiplayerJoinState, setActiveRoom, setPendingJoin]);
 
   const tryRestoreMultiplayerRoom = useCallback(async (sessionId: string) => {
     try {
       const room = await multiplayerLocalStore.getRoomBySessionId(sessionId);
       if (!room) return;
+
+      if (room.role === 'player') claimParticipantTab(room.roomId);
 
       const existingManagedRoom = multiplayerSessionManager.get(room.roomId);
       if (existingManagedRoom?.runtime) {
@@ -522,7 +544,7 @@ export const useMultiplayerRoomLifecycle = ({
     } catch (err) {
       console.warn('[multiplayer] Failed to restore multiplayer room:', err);
     }
-  }, [applyRemoteBootstrapToPlayerRuntime, setActiveRoom]);
+  }, [applyRemoteBootstrapToPlayerRuntime, claimParticipantTab, setActiveRoom]);
 
   const handleOpenMultiplayerRoom = useCallback(async () => {
     if (isOpeningRoomRef.current) return;
@@ -626,10 +648,11 @@ export const useMultiplayerRoomLifecycle = ({
       if (!isCurrentPendingJoin()) return;
       console.warn('[multiplayer] Failed to finish player join:', error);
       await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
+      releaseParticipantTabClaim(roomId);
       resetMultiplayerJoinState(roomId);
       showToastRef.current({ message: tAppRef.current('app_toast_multiplayer_join_timeout'), type: 'warning' });
     }
-  }, [clearPendingRoomJoin, clearRoomUrlQuery, enterActiveSession, resetMultiplayerJoinState, setActiveRoom, setPendingJoin]);
+  }, [clearPendingRoomJoin, clearRoomUrlQuery, enterActiveSession, releaseParticipantTabClaim, resetMultiplayerJoinState, setActiveRoom, setPendingJoin]);
 
   const handleRequestMultiplayerPlayerClaim = useCallback((_playerId: string) => {
     if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
@@ -657,7 +680,9 @@ export const useMultiplayerRoomLifecycle = ({
       pendingJoin?.transport.stop?.();
     }
     if (pendingJoin) resetMultiplayerJoinState(pendingJoin.roomId);
-  }, [resetMultiplayerJoinState]);
+    if (pendingJoin) releaseParticipantTabClaim(pendingJoin.roomId);
+    participantTransportRef.current = null;
+  }, [releaseParticipantTabClaim, resetMultiplayerJoinState]);
 
   const prepareMultiplayerSessionExit = useCallback(() => {
     // Remove the QR join route before any persistence or transport work. This
@@ -753,6 +778,8 @@ export const useMultiplayerRoomLifecycle = ({
       deleteLocalRoom: options?.deleteLocalRoom,
       awaitLocalCleanup: options?.awaitLocalCleanup,
     });
+    participantTransportRef.current = null;
+    releaseParticipantTabClaim(activeRoom.roomId);
     multiplayerJoinStartedRef.current = null;
     clearMultiplayerJoinTimeout();
     isJoiningMultiplayerRef.current = false;
@@ -761,7 +788,7 @@ export const useMultiplayerRoomLifecycle = ({
     clearPendingRoomJoin();
     setActiveRoom(null);
     setIsMultiplayerParticipantRoomModalOpen(false);
-  }, [clearMultiplayerJoinTimeout, clearPendingRoomJoin, clearRoomUrlQuery, setActiveRoom]);
+  }, [clearMultiplayerJoinTimeout, clearPendingRoomJoin, clearRoomUrlQuery, releaseParticipantTabClaim, setActiveRoom]);
 
   const releaseMultiplayerRoomForSession = useCallback(async (sessionId: string) => {
     const room = await multiplayerLocalStore.getRoomBySessionId(sessionId);
@@ -772,6 +799,8 @@ export const useMultiplayerRoomLifecycle = ({
       managedRoom.runtime.leaveRoom();
     }
     await multiplayerSessionManager.closeRoom(room.roomId, { deleteLocalRoom: true });
+    participantTransportRef.current = null;
+    releaseParticipantTabClaim(room.roomId);
     if (activeMultiplayerRoomRef.current?.roomId !== room.roomId) return;
 
     multiplayerJoinStartedRef.current = null;
@@ -782,7 +811,33 @@ export const useMultiplayerRoomLifecycle = ({
     setActiveRoom(null);
     setIsMultiplayerRoomModalOpen(false);
     setIsMultiplayerParticipantRoomModalOpen(false);
-  }, [clearMultiplayerJoinTimeout, clearPendingRoomJoin, setActiveRoom]);
+  }, [clearMultiplayerJoinTimeout, clearPendingRoomJoin, releaseParticipantTabClaim, setActiveRoom]);
+
+  useEffect(() => subscribeToSessionDeletion((sessionId) => {
+    const activeRoom = activeMultiplayerRoomRef.current;
+    const activeSessionId = activeRoom ? multiplayerSessionManager.get(activeRoom.roomId)?.session?.id : null;
+    void releaseMultiplayerRoomForSession(sessionId).then(() => {
+      if (activeSessionId === sessionId) returnToDashboard();
+    });
+  }), [releaseMultiplayerRoomForSession, returnToDashboard]);
+
+  useEffect(() => {
+    const activeRoom = activeMultiplayerRoomRef.current;
+    if (!appData.isDbReady || !activeRoom) return;
+
+    const sessionId = multiplayerSessionManager.get(activeRoom.roomId)?.session?.id;
+    if (!sessionId || appData.activeSessions?.some((session) => session.id === sessionId)) return;
+
+    // The live query also observes IndexedDB changes made by another tab. Read
+    // once more before teardown so a just-imported bootstrap is not mistaken
+    // for a deletion while the live query is catching up.
+    let cancelled = false;
+    void db.sessions.get(sessionId).then((session) => {
+      if (cancelled || session || activeMultiplayerRoomRef.current?.roomId !== activeRoom.roomId) return;
+      return releaseMultiplayerRoomForSession(sessionId).then(() => returnToDashboard());
+    });
+    return () => { cancelled = true; };
+  }, [appData.activeSessions, appData.isDbReady, releaseMultiplayerRoomForSession, returnToDashboard]);
 
   return {
     activeMultiplayerRoom,

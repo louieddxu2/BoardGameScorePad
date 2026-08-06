@@ -37,8 +37,9 @@ const App: React.FC = () => {
     (source) => navigateToActiveSession(setView, source),
     [],
   );
+  const returnToDashboard = useCallback(() => setView(AppView.DASHBOARD), []);
 
-  const multiplayerLifecycle = useMultiplayerRoomLifecycle({ appData, enterActiveSession, showToast, tApp });
+  const multiplayerLifecycle = useMultiplayerRoomLifecycle({ appData, enterActiveSession, returnToDashboard, showToast, tApp });
   const {
     activeMultiplayerRoom,
     activeMultiplayerRoomState: multiplayerRoomState,

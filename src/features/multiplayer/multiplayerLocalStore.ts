@@ -45,6 +45,8 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
     return db.history.put(record);
   },
   deleteSession(sessionId: string) {
+    // Multiplayer completion already owns and closes its runtime before this
+    // transactional cleanup; external deletion paths use sessionDeletionEvents.
     return db.sessions.delete(sessionId);
   },
   async purgeRoomData(roomId: string): Promise<void> {
