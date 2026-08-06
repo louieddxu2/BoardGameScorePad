@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useMultiplayerRoomLifecycle } from './useMultiplayerRoomLifecycle';
+import { createMultiplayerPlayerRoomRuntime } from '../features/multiplayer/multiplayerRoomRuntime';
 
 const mocks = vi.hoisted(() => {
   const transport = {
@@ -123,6 +124,7 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     mocks.transport.joinRoom.mockReset();
     mocks.transport.stop.mockReset();
     mocks.runtime.stop.mockReset();
+    vi.mocked(createMultiplayerPlayerRoomRuntime).mockClear();
     mocks.closeRoom.mockClear();
     mocks.register.mockClear();
     mocks.claim.mockClear();
@@ -158,6 +160,25 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     expect(mocks.register).toHaveBeenCalled();
     expect(mocks.register).toHaveBeenCalledWith('room-1', mocks.runtime, 'connected');
     await waitFor(() => expect(result.current.pendingMultiplayerJoin?.roomId).toBe('room-1'));
+    expect(mocks.transport.stop).not.toHaveBeenCalled();
+  });
+
+  it('creates and registers only one player runtime when bootstrap delivery overlaps', async () => {
+    window.history.replaceState({}, '', '/?room=room-1');
+    renderLifecycle();
+    await waitFor(() => expect(mocks.transport.joinRoom).toHaveBeenCalledWith('room-1'));
+
+    const bootstrap = { package: { revision: 1 } };
+    const persisted = { templateForSession: { id: 'template-1' }, session: { id: 'session-1', status: 'active' } };
+    await act(async () => {
+      await Promise.all([
+        mocks.adapterOptions.onRemoteBootstrap(bootstrap, persisted),
+        mocks.adapterOptions.onRemoteBootstrap(bootstrap, persisted),
+      ]);
+    });
+
+    expect(createMultiplayerPlayerRoomRuntime).toHaveBeenCalledTimes(1);
+    expect(mocks.register).toHaveBeenCalledTimes(1);
     expect(mocks.transport.stop).not.toHaveBeenCalled();
   });
 
