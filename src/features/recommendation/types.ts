@@ -57,11 +57,13 @@ export const DEFAULT_PLAYER_WEIGHTS: PlayerRecommendationWeights = {
 
 // 影響「人數推薦」的因素
 // [Added] sessionContext (Short-term memory)
-export type CountRecommendationFactor = 'game' | 'location' | 'weekday' | 'timeSlot' | 'sessionContext';
+export type CountRecommendationFactor = 'game' | 'gamePlayStage' | 'gameRecency' | 'location' | 'weekday' | 'timeSlot' | 'sessionContext';
 
 // 定義「人數推薦」專用的權重表結構
 export interface CountRecommendationWeights {
     game: number;
+    gamePlayStage: number;
+    gameRecency: number;
     location: number;
     weekday: number;
     timeSlot: number;
@@ -70,6 +72,8 @@ export interface CountRecommendationWeights {
 
 export const DEFAULT_COUNT_WEIGHTS: CountRecommendationWeights = {
     game: 1.0,     // 遊戲本身通常最重要 (例如某些遊戲只能 4 人)
+    gamePlayStage: 1.0,
+    gameRecency: 1.0,
     location: 1.0, // 地點限制
     weekday: 1.0,  // 平日/假日團人數習慣
     timeSlot: 1.0, // 時段習慣
@@ -79,11 +83,13 @@ export const DEFAULT_COUNT_WEIGHTS: CountRecommendationWeights = {
 // --- Location Recommendation Types ---
 
 // 影響「地點推薦」的因素
-export type LocationRecommendationFactor = 'game' | 'playerCount' | 'weekday' | 'timeSlot' | 'sessionContext' | 'relatedPlayer';
+export type LocationRecommendationFactor = 'game' | 'gamePlayStage' | 'gameRecency' | 'playerCount' | 'weekday' | 'timeSlot' | 'sessionContext' | 'relatedPlayer';
 
 // 定義「地點推薦」專用的權重表結構
 export interface LocationRecommendationWeights {
     game: number;
+    gamePlayStage: number;
+    gameRecency: number;
     playerCount: number;
     weekday: number;
     timeSlot: number;
@@ -93,6 +99,8 @@ export interface LocationRecommendationWeights {
 
 export const DEFAULT_LOCATION_WEIGHTS: LocationRecommendationWeights = {
     game: 1.0,         // 遊戲種類 (大桌遊去店裡)
+    gamePlayStage: 1.0,
+    gameRecency: 1.0,
     playerCount: 1.0,  // 人數 (多人去大場地)
     weekday: 1.0,      // 時間 (平日在家/假日出門)
     timeSlot: 1.0,

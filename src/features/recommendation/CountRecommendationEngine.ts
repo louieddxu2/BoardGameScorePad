@@ -18,7 +18,7 @@ export class CountRecommendationEngine {
     ): Promise<number[]> {
         
         // 1. Resolve Base Context Voters (Game, Location, Time...)
-        const voters = await contextResolver.resolveBaseContext(context);
+        const voters = await contextResolver.resolveCountContext(context);
 
         // 2. 執行投票 (針對 'playerCounts' 關聯)
         // [Refactor] 使用統一配置的 limit (3)

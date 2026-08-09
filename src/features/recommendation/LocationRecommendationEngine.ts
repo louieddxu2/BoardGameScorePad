@@ -20,7 +20,7 @@ export class LocationRecommendationEngine {
     ): Promise<string[]> {
         
         // 1. Resolve Base Context Voters (Game, Time, Count...)
-        const voters = await contextResolver.resolveBaseContext(context);
+        const voters = await contextResolver.resolveLocationContext(context);
 
         // 2. Add Known Players as Voters (if any)
         if (context.knownPlayerIds && context.knownPlayerIds.length > 0) {

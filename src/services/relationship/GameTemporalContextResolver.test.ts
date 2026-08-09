@@ -208,14 +208,24 @@ describe('lifecycle relation scope', () => {
         const playerCountEntity: ResolvedEntity = { item: savedItem('c1'), table, type: 'playerCount', isNewContext: true };
         const gameModeEntity: ResolvedEntity = { item: savedItem('m1'), table, type: 'gameMode', isNewContext: true };
         const gameSource: ResolvedEntity = { item: savedItem('g1'), table, type: 'game', isNewContext: true };
+        const countWeights = { ...DEFAULT_COUNT_WEIGHTS };
+        const locationWeights = { ...DEFAULT_LOCATION_WEIGHTS };
 
         await relationTrainer.trainRelations(
             bucket,
             [playerEntity, gameEntity, locationEntity, weekdayEntity, timeSlotEntity, playerCountEntity, gameModeEntity],
             { ...DEFAULT_PLAYER_WEIGHTS },
-            { ...DEFAULT_COUNT_WEIGHTS },
-            { ...DEFAULT_LOCATION_WEIGHTS },
+            countWeights,
+            locationWeights,
             { players: 1, games: 1, locations: 1, weekdays: 7, timeSlots: 8, playerCounts: 24, gameModes: 5 }
+        );
+        await relationTrainer.trainRelations(
+            bucket,
+            [locationEntity, playerCountEntity],
+            { ...DEFAULT_PLAYER_WEIGHTS },
+            countWeights,
+            locationWeights,
+            { locations: 1, playerCounts: 24 }
         );
         for (const source of [playerEntity, locationEntity, weekdayEntity, timeSlotEntity, playerCountEntity, gameModeEntity]) {
             await relationTrainer.trainRelations(
@@ -241,8 +251,12 @@ describe('lifecycle relation scope', () => {
             ]);
         }
         expect(gameSource.item.meta!.relations).toEqual({});
-        expect(RelationMapper.getCountRecommendationFactor('gamePlayStage')).toBeUndefined();
-        expect(RelationMapper.getLocationRecommendationFactor('gamePlayStage')).toBeUndefined();
+        expect(RelationMapper.getCountRecommendationFactor('gamePlayStage')).toBe('gamePlayStage');
+        expect(RelationMapper.getCountRecommendationFactor('gameRecency')).toBe('gameRecency');
+        expect(RelationMapper.getLocationRecommendationFactor('gamePlayStage')).toBe('gamePlayStage');
+        expect(RelationMapper.getLocationRecommendationFactor('gameRecency')).toBe('gameRecency');
+        expect(countWeights.gamePlayStage).toBeGreaterThan(1);
+        expect(locationWeights.gamePlayStage).toBeGreaterThan(1);
         expect(RelationMapper.getColorRecommendationFactor('gamePlayStage')).toBeUndefined();
     });
 });

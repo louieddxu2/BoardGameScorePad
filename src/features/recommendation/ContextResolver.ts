@@ -13,6 +13,18 @@ export interface Voter {
 export class ContextResolver {
 
     public async resolvePlayerContext(context: RecommendationContext): Promise<Voter[]> {
+        return this.resolveContextWithLifecycle(context);
+    }
+
+    public async resolveCountContext(context: RecommendationContext): Promise<Voter[]> {
+        return this.resolveContextWithLifecycle(context);
+    }
+
+    public async resolveLocationContext(context: RecommendationContext): Promise<Voter[]> {
+        return this.resolveContextWithLifecycle(context);
+    }
+
+    private async resolveContextWithLifecycle(context: RecommendationContext): Promise<Voter[]> {
         const voters = await this.resolveBaseContext(context);
         const gameVoter = voters.find(voter => voter.factor === 'game');
         if (!gameVoter && !context.gameName && !context.bggId) return voters;

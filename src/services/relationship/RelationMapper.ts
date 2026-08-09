@@ -99,6 +99,8 @@ export class RelationMapper {
     public static getCountRecommendationFactor(type: EntityType): CountRecommendationFactor | undefined {
         switch (type) {
             case 'game': return 'game';
+            case 'gamePlayStage': return 'gamePlayStage';
+            case 'gameRecency': return 'gameRecency';
             case 'location': return 'location';
             case 'weekday': return 'weekday';
             case 'timeslot': return 'timeSlot';
@@ -115,6 +117,8 @@ export class RelationMapper {
     public static getLocationRecommendationFactor(type: EntityType): LocationRecommendationFactor | undefined {
         switch (type) {
             case 'game': return 'game';
+            case 'gamePlayStage': return 'gamePlayStage';
+            case 'gameRecency': return 'gameRecency';
             case 'playerCount': return 'playerCount';
             case 'weekday': return 'weekday';
             case 'timeslot': return 'timeSlot';
