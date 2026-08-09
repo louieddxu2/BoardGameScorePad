@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Database, Users, MapPin, Clock, Hash, LayoutGrid, Zap, Image as ImageIcon, HardDrive, RefreshCw, Trash2, Trophy } from 'lucide-react';
+import { X, Database, Users, MapPin, Clock, Hash, LayoutGrid, Zap, Image as ImageIcon, HardDrive, RefreshCw, Trash2, Trophy, Activity } from 'lucide-react';
 import { db } from '../../../db';
 import { DataList, useInspectorTranslation } from './shared/InspectorCommon';
 import { useMaintenance } from './hooks/useMaintenance';
@@ -14,7 +14,7 @@ import ImageInspector from './inspectors/ImageInspector';
 import DatabaseInspector from './inspectors/DatabaseInspector';
 
 const InspectorContainer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-    const [activeTab, setActiveTab] = useState<'games' | 'players' | 'locations' | 'time' | 'counts' | 'modes' | 'weights' | 'images' | 'bgg' | 'session' | 'db'>('games');
+    const [activeTab, setActiveTab] = useState<'games' | 'players' | 'locations' | 'time' | 'counts' | 'modes' | 'lifecycle' | 'weights' | 'images' | 'bgg' | 'session' | 'db'>('games');
     const { confirm } = useConfirm();
 
     const t = useInspectorTranslation();
@@ -65,6 +65,7 @@ const InspectorContainer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         { id: 'time', label: t('tab_time'), icon: Clock },
         { id: 'counts', label: t('tab_counts'), icon: Hash },
         { id: 'modes', label: t('tab_modes'), icon: Trophy },
+        { id: 'lifecycle', label: t('tab_lifecycle'), icon: Activity },
         { id: 'session', label: t('tab_session'), icon: Zap },
         { id: 'weights', label: t('tab_weights'), icon: Users },
         { id: 'images', label: t('tab_images'), icon: ImageIcon },
@@ -140,6 +141,7 @@ const InspectorContainer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 {activeTab === 'time' && <TimeInspector />}
                 {activeTab === 'counts' && <DataList title={t('list_counts')} table={db.savedPlayerCounts} icon={Hash} />}
                 {activeTab === 'modes' && <DataList title={t('list_modes')} table={db.savedGameModes} icon={Trophy} />}
+                {activeTab === 'lifecycle' && <DataList title={t('list_lifecycle')} table={db.savedGameLifecycleContexts} icon={Activity} />}
                 {activeTab === 'weights' && <WeightsInspector />}
                 {activeTab === 'images' && <ImageInspector />}
                 {activeTab === 'bgg' && <DataList title={t('list_bgg')} table={db.bggGames} icon={Database} isBGG={true} />}

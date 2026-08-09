@@ -71,6 +71,7 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
     const timeSlots = useLiveQuery(() => db.savedTimeSlots.toArray()) || [];
     const playerCounts = useLiveQuery(() => db.savedPlayerCounts.toArray()) || [];
     const gameModes = useLiveQuery(() => db.savedGameModes.toArray()) || [];
+    const lifecycleContexts = useLiveQuery(() => db.savedGameLifecycleContexts.toArray()) || [];
 
     // Create Lookup Maps
     const lookups = useMemo(() => {
@@ -82,9 +83,10 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
             weekdays: createMap(weekdays),
             timeSlots: createMap(timeSlots),
             playerCounts: createMap(playerCounts),
-            gameModes: createMap(gameModes)
+            gameModes: createMap(gameModes),
+            lifecycleContexts: createMap(lifecycleContexts)
         };
-    }, [players, locations, games, weekdays, timeSlots, playerCounts, gameModes]);
+    }, [players, locations, games, weekdays, timeSlots, playerCounts, gameModes, lifecycleContexts]);
 
     if (!meta || !meta.relations) return <span className="text-txt-muted italic text-xs">{t('no_relations')}</span>;
 
@@ -107,6 +109,7 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
                 else if (key === 'timeSlots') lookupKey = 'timeSlots';
                 else if (key === 'playerCounts') lookupKey = 'playerCounts';
                 else if (key === 'gameModes') lookupKey = 'gameModes';
+                else if (key === 'gamePlayStages' || key === 'gameRecencies') lookupKey = 'lifecycleContexts';
 
                 if (lookupKey) {
                     const entity = lookups[lookupKey].get(r.id);
@@ -171,6 +174,14 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
             })}
 
             {renderCategory('timeSlots', <Watch size={12} className="text-status-warning" />, t('rel_timeslots'), (id, { entity }) => (
+                <span className="text-txt-primary">{entity?.name || id}</span>
+            ))}
+
+            {renderCategory('gamePlayStages', <Activity size={12} className="text-brand-primary" />, t('rel_game_play_stages'), (id, { entity }) => (
+                <span className="text-txt-primary">{entity?.name || id}</span>
+            ))}
+
+            {renderCategory('gameRecencies', <Activity size={12} className="text-brand-secondary" />, t('rel_game_recencies'), (id, { entity }) => (
                 <span className="text-txt-primary">{entity?.name || id}</span>
             ))}
         </div>

@@ -3,6 +3,7 @@ import { db } from '../../db';
 import { contextResolver, Voter } from './ContextResolver';
 import { playerRecommendationEngine } from './PlayerRecommendationEngine';
 import { SavedListItem } from '../../types';
+import { gameTemporalContextResolver } from '../../services/relationship/GameTemporalContextResolver';
 
 afterEach(() => {
     vi.restoreAllMocks();
@@ -192,6 +193,60 @@ describe('PlayerRecommendationEngine.generateSuggestions', () => {
         });
 
         expect(result.map(candidate => candidate.name)).toEqual(['B', 'A']);
+    });
+
+    it('counts play-stage and recency voters in player scores', () => {
+        const candidates = [
+            { id: 'candidate-a', name: 'A', usageCount: 1, lastUsed: 1 },
+            { id: 'candidate-b', name: 'B', usageCount: 10, lastUsed: 10 }
+        ];
+        const lifecycleVoter = (id: string): SavedListItem => ({
+            id,
+            name: id,
+            usageCount: 1,
+            lastUsed: 1,
+            meta: {
+                relations: { players: [{ id: 'candidate-a', count: 1 }] },
+                confidence: { players: 1 }
+            }
+        });
+
+        const result = playerRecommendationEngine.generateSuggestions({
+            allSavedPlayers: candidates,
+            contextVoters: [
+                { item: lifecycleVoter('game_play_stage:second'), factor: 'gamePlayStage' },
+                { item: lifecycleVoter('game_recency:within_7_days'), factor: 'gameRecency' }
+            ],
+            lockedPlayerIds: [],
+            lockedNames: [],
+            sessionPlayers: []
+        });
+
+        expect(result.map(candidate => candidate.name)).toEqual(['A', 'B']);
+    });
+
+    it('adds resolved play-stage and recency buckets to player context', async () => {
+        const gameItem: SavedListItem = { id: 'game', name: 'Azul', usageCount: 1, lastUsed: 1 };
+        vi.spyOn(contextResolver, 'resolveBaseContext').mockResolvedValue([{ item: gameItem, factor: 'game' }]);
+        vi.spyOn(gameTemporalContextResolver, 'resolveFromHistory').mockResolvedValue({
+            priorCount: 1,
+            lastCompletedAt: 100,
+            stageBucketId: 'game_play_stage:second',
+            recencyBucketId: 'game_recency:within_1_day'
+        });
+        vi.spyOn(gameTemporalContextResolver, 'resolveBucketEntities').mockResolvedValue([
+            { item: { id: 'game_play_stage:second', name: 'stage', usageCount: 1, lastUsed: 1 }, table: db.savedGameLifecycleContexts, type: 'gamePlayStage', isNewContext: true },
+            { item: { id: 'game_recency:within_1_day', name: 'recency', usageCount: 1, lastUsed: 1 }, table: db.savedGameLifecycleContexts, type: 'gameRecency', isNewContext: true }
+        ]);
+
+        const voters = await contextResolver.resolvePlayerContext({ gameName: 'Azul', timestamp: 1_000 });
+
+        expect(voters.map(voter => voter.factor)).toEqual(['game', 'gamePlayStage', 'gameRecency']);
+        expect(gameTemporalContextResolver.resolveFromHistory).toHaveBeenCalledWith(expect.objectContaining({
+            referenceStartTime: 1_000,
+            gameName: 'Azul',
+            resolvedGame: gameItem
+        }));
     });
 
     it('builds initial player suggestions by chaining single-pass suggestions', async () => {

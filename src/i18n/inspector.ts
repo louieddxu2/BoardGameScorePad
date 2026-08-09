@@ -14,6 +14,7 @@ export const inspectorTranslations = {
     tab_time: "時間統計",
     tab_counts: "人數統計",
     tab_modes: "模式統計",
+    tab_lifecycle: "遊戲生命週期",
     tab_weights: "權重模型",
     tab_images: "圖片儲存",
     tab_bgg: "BGG 快取",
@@ -28,6 +29,7 @@ export const inspectorTranslations = {
     list_timeslots: "時段統計 (0-7)",
     list_counts: "玩家人數統計",
     list_modes: "遊戲模式統計",
+    list_lifecycle: "遊玩階段與距上次遊玩",
     list_images: "本地圖片庫",
     list_bgg: "BGG 資料庫",
     list_session: "本次會話 (Session Context)", // New
@@ -129,6 +131,8 @@ export const inspectorTranslations = {
     rel_timeslots: "熱門時段",
     rel_player_counts: "常開人數",
     rel_modes: "常玩模式", // New
+    rel_game_play_stages: "遊玩階段",
+    rel_game_recencies: "距上次遊玩",
 
     // Confirmations
     confirm_reset_title: "危險：清空統計資料庫",
@@ -179,6 +183,7 @@ export const inspectorTranslations = {
     tab_time: "Time Stats",
     tab_counts: "Player Counts",
     tab_modes: "Mode Stats",
+    tab_lifecycle: "Game Lifecycle",
     tab_weights: "Weights",
     tab_images: "Storage",
     tab_bgg: "BGG Cache",
@@ -193,6 +198,7 @@ export const inspectorTranslations = {
     list_timeslots: "Time Slots (0-7)",
     list_counts: "Player Count Stats",
     list_modes: "Game Mode Stats",
+    list_lifecycle: "Play Stage & Game Recency",
     list_images: "Local Images",
     list_bgg: "BGG Database",
     list_session: "Current Session Context", // New
@@ -293,6 +299,8 @@ export const inspectorTranslations = {
     rel_timeslots: "Top Times",
     rel_player_counts: "Top Counts",
     rel_modes: "Top Modes", // New
+    rel_game_play_stages: "Play Stages",
+    rel_game_recencies: "Game Recencies",
 
     // Confirmations
     confirm_reset_title: "Danger: Reset Stats DB",
