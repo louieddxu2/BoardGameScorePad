@@ -71,7 +71,7 @@ async function trainSequence(input: HistoryRecord[], mode: 'single' | 'batch') {
                 type: bucketId.startsWith('game_play_stage:') ? 'gamePlayStage' : 'gameRecency',
                 isNewContext: true,
                 relationTargetScope: [...GAME_LIFECYCLE_RELATION_TARGET_SCOPE],
-                canBeRelationTarget: false
+                relationSourceScope: [...GAME_LIFECYCLE_RELATION_TARGET_SCOPE]
             };
             const targets: ResolvedEntity[] = current.players.map(value => ({
                 item: players.get(value.id)!, table, type: 'player', isNewContext: true
@@ -194,10 +194,11 @@ describe('lifecycle replay consistency', () => {
 });
 
 describe('lifecycle relation scope', () => {
-    it('learns broad non-game context, cannot become a target, and has no count/location/color factor', async () => {
+    it('learns broad non-game context in both directions without game relations or unrelated factors', async () => {
         const bucket: ResolvedEntity = {
             item: savedItem('game_play_stage:first'), table, type: 'gamePlayStage', isNewContext: true,
-            relationTargetScope: [...GAME_LIFECYCLE_RELATION_TARGET_SCOPE], canBeRelationTarget: false
+            relationTargetScope: [...GAME_LIFECYCLE_RELATION_TARGET_SCOPE],
+            relationSourceScope: [...GAME_LIFECYCLE_RELATION_TARGET_SCOPE]
         };
         const playerEntity: ResolvedEntity = { item: savedItem('p1'), table, type: 'player', isNewContext: true };
         const gameEntity: ResolvedEntity = { item: savedItem('g1'), table, type: 'game', isNewContext: true };
@@ -206,7 +207,7 @@ describe('lifecycle relation scope', () => {
         const timeSlotEntity: ResolvedEntity = { item: savedItem('t1'), table, type: 'timeslot', isNewContext: true };
         const playerCountEntity: ResolvedEntity = { item: savedItem('c1'), table, type: 'playerCount', isNewContext: true };
         const gameModeEntity: ResolvedEntity = { item: savedItem('m1'), table, type: 'gameMode', isNewContext: true };
-        const locationSource: ResolvedEntity = { item: savedItem('l1'), table, type: 'location', isNewContext: true };
+        const gameSource: ResolvedEntity = { item: savedItem('g1'), table, type: 'game', isNewContext: true };
 
         await relationTrainer.trainRelations(
             bucket,
@@ -216,8 +217,14 @@ describe('lifecycle relation scope', () => {
             { ...DEFAULT_LOCATION_WEIGHTS },
             { players: 1, games: 1, locations: 1, weekdays: 7, timeSlots: 8, playerCounts: 24, gameModes: 5 }
         );
+        for (const source of [playerEntity, locationEntity, weekdayEntity, timeSlotEntity, playerCountEntity, gameModeEntity]) {
+            await relationTrainer.trainRelations(
+                source, [bucket], { ...DEFAULT_PLAYER_WEIGHTS }, { ...DEFAULT_COUNT_WEIGHTS },
+                { ...DEFAULT_LOCATION_WEIGHTS }, { gamePlayStages: 1 }
+            );
+        }
         await relationTrainer.trainRelations(
-            locationSource, [bucket], { ...DEFAULT_PLAYER_WEIGHTS }, { ...DEFAULT_COUNT_WEIGHTS },
+            gameSource, [bucket], { ...DEFAULT_PLAYER_WEIGHTS }, { ...DEFAULT_COUNT_WEIGHTS },
             { ...DEFAULT_LOCATION_WEIGHTS }, { gamePlayStages: 1 }
         );
 
@@ -228,7 +235,12 @@ describe('lifecycle relation scope', () => {
             'players', 'locations', 'weekdays', 'timeSlots', 'playerCounts', 'gameModes'
         ]);
         expect(bucket.item.meta!.relations!.games).toBeUndefined();
-        expect(locationSource.item.meta!.relations).toEqual({});
+        for (const source of [playerEntity, locationEntity, weekdayEntity, timeSlotEntity, playerCountEntity, gameModeEntity]) {
+            expect(source.item.meta!.relations!.gamePlayStages).toEqual([
+                { id: 'game_play_stage:first', count: 1 }
+            ]);
+        }
+        expect(gameSource.item.meta!.relations).toEqual({});
         expect(RelationMapper.getCountRecommendationFactor('gamePlayStage')).toBeUndefined();
         expect(RelationMapper.getLocationRecommendationFactor('gamePlayStage')).toBeUndefined();
         expect(RelationMapper.getColorRecommendationFactor('gamePlayStage')).toBeUndefined();

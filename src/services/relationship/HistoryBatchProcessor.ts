@@ -352,7 +352,7 @@ export class HistoryBatchProcessor {
                             type: id.startsWith('game_play_stage:') ? 'gamePlayStage' : 'gameRecency',
                             isNewContext: true,
                             relationTargetScope: [...GAME_LIFECYCLE_RELATION_TARGET_SCOPE],
-                            canBeRelationTarget: false
+                            relationSourceScope: [...GAME_LIFECYCLE_RELATION_TARGET_SCOPE]
                         });
                     }
                 }
