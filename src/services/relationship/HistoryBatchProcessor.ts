@@ -10,7 +10,7 @@ import { ResolvedEntity, EntityType } from './types';
 import { generateId } from '../../utils/idGenerator';
 import { DATA_LIMITS } from '../../dataLimits';
 import { getRecordScoringRule, getRecordBggId } from '../../utils/historyUtils';
-import { createLifecycleBucketItems, gameTemporalContextResolver, GameTemporalRunningState, sortHistoryRecordsStable } from './GameTemporalContextResolver';
+import { createLifecycleBucketItems, GAME_LIFECYCLE_RELATION_TARGET_SCOPE, gameTemporalContextResolver, GameTemporalRunningState, sortHistoryRecordsStable } from './GameTemporalContextResolver';
 
 /**
  * 歷史紀錄批次處理器 (High Performance Version)
@@ -351,7 +351,7 @@ export class HistoryBatchProcessor {
                             table: db.savedGameLifecycleContexts,
                             type: id.startsWith('game_play_stage:') ? 'gamePlayStage' : 'gameRecency',
                             isNewContext: true,
-                            relationTargetScope: ['players'],
+                            relationTargetScope: [...GAME_LIFECYCLE_RELATION_TARGET_SCOPE],
                             canBeRelationTarget: false
                         });
                     }

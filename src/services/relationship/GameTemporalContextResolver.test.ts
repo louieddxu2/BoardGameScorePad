@@ -9,6 +9,7 @@ import {
     classifyGameRecency,
     classifyGameTemporalContext,
     createLifecycleBucketItems,
+    GAME_LIFECYCLE_RELATION_TARGET_SCOPE,
     gameTemporalContextResolver,
     sortHistoryRecordsStable
 } from './GameTemporalContextResolver';
@@ -69,7 +70,7 @@ async function trainSequence(input: HistoryRecord[], mode: 'single' | 'batch') {
                 table,
                 type: bucketId.startsWith('game_play_stage:') ? 'gamePlayStage' : 'gameRecency',
                 isNewContext: true,
-                relationTargetScope: ['players'],
+                relationTargetScope: [...GAME_LIFECYCLE_RELATION_TARGET_SCOPE],
                 canBeRelationTarget: false
             };
             const targets: ResolvedEntity[] = current.players.map(value => ({
@@ -193,25 +194,40 @@ describe('lifecycle replay consistency', () => {
 });
 
 describe('lifecycle relation scope', () => {
-    it('learns players only, cannot become a target, and has no count/location/color factor', async () => {
+    it('learns broad non-game context, cannot become a target, and has no count/location/color factor', async () => {
         const bucket: ResolvedEntity = {
             item: savedItem('game_play_stage:first'), table, type: 'gamePlayStage', isNewContext: true,
-            relationTargetScope: ['players'], canBeRelationTarget: false
+            relationTargetScope: [...GAME_LIFECYCLE_RELATION_TARGET_SCOPE], canBeRelationTarget: false
         };
         const playerEntity: ResolvedEntity = { item: savedItem('p1'), table, type: 'player', isNewContext: true };
         const gameEntity: ResolvedEntity = { item: savedItem('g1'), table, type: 'game', isNewContext: true };
+        const locationEntity: ResolvedEntity = { item: savedItem('l1'), table, type: 'location', isNewContext: true };
+        const weekdayEntity: ResolvedEntity = { item: savedItem('w1'), table, type: 'weekday', isNewContext: true };
+        const timeSlotEntity: ResolvedEntity = { item: savedItem('t1'), table, type: 'timeslot', isNewContext: true };
+        const playerCountEntity: ResolvedEntity = { item: savedItem('c1'), table, type: 'playerCount', isNewContext: true };
+        const gameModeEntity: ResolvedEntity = { item: savedItem('m1'), table, type: 'gameMode', isNewContext: true };
         const locationSource: ResolvedEntity = { item: savedItem('l1'), table, type: 'location', isNewContext: true };
 
         await relationTrainer.trainRelations(
-            bucket, [playerEntity, gameEntity], { ...DEFAULT_PLAYER_WEIGHTS }, { ...DEFAULT_COUNT_WEIGHTS },
-            { ...DEFAULT_LOCATION_WEIGHTS }, { players: 1, games: 1 }
+            bucket,
+            [playerEntity, gameEntity, locationEntity, weekdayEntity, timeSlotEntity, playerCountEntity, gameModeEntity],
+            { ...DEFAULT_PLAYER_WEIGHTS },
+            { ...DEFAULT_COUNT_WEIGHTS },
+            { ...DEFAULT_LOCATION_WEIGHTS },
+            { players: 1, games: 1, locations: 1, weekdays: 7, timeSlots: 8, playerCounts: 24, gameModes: 5 }
         );
         await relationTrainer.trainRelations(
             locationSource, [bucket], { ...DEFAULT_PLAYER_WEIGHTS }, { ...DEFAULT_COUNT_WEIGHTS },
             { ...DEFAULT_LOCATION_WEIGHTS }, { gamePlayStages: 1 }
         );
 
-        expect(Object.keys(bucket.item.meta!.relations!)).toEqual(['players']);
+        expect(GAME_LIFECYCLE_RELATION_TARGET_SCOPE).toEqual([
+            'players', 'locations', 'weekdays', 'timeSlots', 'playerCounts', 'gameModes'
+        ]);
+        expect(Object.keys(bucket.item.meta!.relations!)).toEqual([
+            'players', 'locations', 'weekdays', 'timeSlots', 'playerCounts', 'gameModes'
+        ]);
+        expect(bucket.item.meta!.relations!.games).toBeUndefined();
         expect(locationSource.item.meta!.relations).toEqual({});
         expect(RelationMapper.getCountRecommendationFactor('gamePlayStage')).toBeUndefined();
         expect(RelationMapper.getLocationRecommendationFactor('gamePlayStage')).toBeUndefined();

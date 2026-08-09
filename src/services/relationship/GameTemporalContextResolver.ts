@@ -21,6 +21,14 @@ export const GAME_RECENCY_BUCKET_IDS = [
 ] as const;
 
 export const GAME_LIFECYCLE_BUCKET_IDS = [...GAME_PLAY_STAGE_BUCKET_IDS, ...GAME_RECENCY_BUCKET_IDS] as const;
+export const GAME_LIFECYCLE_RELATION_TARGET_SCOPE = [
+    'players',
+    'locations',
+    'weekdays',
+    'timeSlots',
+    'playerCounts',
+    'gameModes'
+] as const;
 export type GamePlayStageBucketId = typeof GAME_PLAY_STAGE_BUCKET_IDS[number];
 export type GameRecencyBucketId = typeof GAME_RECENCY_BUCKET_IDS[number];
 
@@ -160,7 +168,7 @@ export class GameTemporalContextResolver {
             table: db.savedGameLifecycleContexts as Table<SavedListItem>,
             type: item.id.startsWith('game_play_stage:') ? 'gamePlayStage' : 'gameRecency',
             isNewContext: true,
-            relationTargetScope: ['players'],
+            relationTargetScope: [...GAME_LIFECYCLE_RELATION_TARGET_SCOPE],
             canBeRelationTarget: false
         }));
     }
