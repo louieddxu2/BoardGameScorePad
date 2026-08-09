@@ -208,6 +208,7 @@ export const usePlayerSelectorRenderer = ({
 
         playersRef.current.push({
             id,
+            candidateId: option.candidate.id,
             touchId: touch.id,
             suggestedColors: option.candidate.suggestedColors,
             linkedPlayerId: option.candidate.linkedPlayerId,

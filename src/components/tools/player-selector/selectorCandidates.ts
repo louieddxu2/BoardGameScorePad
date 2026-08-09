@@ -2,8 +2,6 @@ import { Candidate, SelectorPlayer } from './types';
 import { OptionState } from './selectorEngineTypes';
 import { Player } from '../../../types';
 
-const normalizeCandidateName = (name: string): string => name.trim().normalize('NFKC').toLowerCase();
-
 export const getManualSessionPlayerCandidates = (players: Player[]): Candidate[] => players
     .filter(player => player.isIdentityManuallySet && player.name.trim().length > 0)
     .map(player => ({
@@ -17,15 +15,12 @@ export const prioritizePlayerCandidates = (
     recommendedCandidates: Candidate[]
 ): Candidate[] => {
     const seenIds = new Set<string>();
-    const seenNames = new Set<string>();
 
     return [...preferredCandidates, ...recommendedCandidates].filter(candidate => {
         const identityId = candidate.linkedPlayerId || candidate.id;
-        const normalizedName = normalizeCandidateName(candidate.name);
-        if (seenIds.has(identityId) || seenNames.has(normalizedName)) return false;
+        if (seenIds.has(identityId)) return false;
 
         seenIds.add(identityId);
-        seenNames.add(normalizedName);
         return true;
     });
 };
@@ -54,11 +49,19 @@ export const getFourCandidatesForTouch = (
     skippedIds: string[] = []
 ): Candidate[] => {
     const usedNamesInPlayers = new Set(players.map(player => player.text));
+    const usedCandidateIds = new Set(players
+        .map(player => player.candidateId)
+        .filter((id): id is string => !!id));
+    const legacyUsedNames = new Set(players
+        .filter(player => !player.candidateId)
+        .map(player => player.text));
     const skippedSet = new Set(skippedIds);
 
     // 一開始就強排除：已選玩家的名字與此位置被跳過的玩家 id
     const baseCandidates = currentCandidates.filter(
-        candidate => !usedNamesInPlayers.has(candidate.name) && !skippedSet.has(candidate.id)
+        candidate => !usedCandidateIds.has(candidate.id)
+            && !legacyUsedNames.has(candidate.name)
+            && !skippedSet.has(candidate.id)
     );
 
     const result: Candidate[] = [...baseCandidates];

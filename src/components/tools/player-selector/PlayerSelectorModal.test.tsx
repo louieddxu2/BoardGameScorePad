@@ -1,6 +1,7 @@
 ﻿import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SelectorPlayer } from './types';
 import PlayerSelectorModal from './PlayerSelectorModal';
 import { GameSession } from '../../../types';
 
@@ -78,6 +79,7 @@ const session: GameSession = {
 
 describe('PlayerSelectorModal gesture handling', () => {
     beforeEach(() => {
+        vi.useRealTimers();
         rendererSpy.mockClear();
         generateSuggestionsMock.mockReset();
         generateSuggestionsMock.mockReturnValue([
@@ -87,6 +89,10 @@ describe('PlayerSelectorModal gesture handling', () => {
             configurable: true,
             value: vi.fn().mockResolvedValue(undefined)
         });
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
     });
 
     it('blocks app zoom detection and iOS system gestures while open', () => {
@@ -142,5 +148,52 @@ describe('PlayerSelectorModal gesture handling', () => {
 
         const latestRendererProps = rendererSpy.mock.calls[rendererSpy.mock.calls.length - 1][0] as { candidates: Array<{ name: string }> };
         expect(latestRendererProps.candidates.map(candidate => candidate.name)).toEqual(['Manual Alice', 'Carol']);
+    });
+
+    it('marks selected players as manual and keeps exactly one starter after confirmation', async () => {
+        const onUpdateSession = vi.fn();
+        const sessionToConfirm: GameSession = {
+            ...session,
+            players: [
+                { id: 'slot-1', name: 'Alice', linkedPlayerId: 'saved-a', color: '#fff', scores: {}, totalScore: 0, isIdentityManuallySet: false },
+                { id: 'slot-2', name: 'Bob', linkedPlayerId: 'saved-b', color: '#000', scores: {}, totalScore: 0, isIdentityManuallySet: false }
+            ]
+        };
+
+        render(
+            <PlayerSelectorModal
+                isOpen
+                onClose={vi.fn()}
+                session={sessionToConfirm}
+                onUpdateSession={onUpdateSession}
+            />
+        );
+
+        await waitFor(() => {
+            expect(generateSuggestionsMock).toHaveBeenCalled();
+        });
+        vi.useFakeTimers();
+
+        const selectedPlayers: SelectorPlayer[] = [
+            { id: 'selector-a', candidateId: 'saved-a', linkedPlayerId: 'saved-a', text: 'Alice', x: 10, y: 0, textRotationDeg: 0, color: '#fff', state: 'READY' },
+            { id: 'selector-b', candidateId: 'saved-b', linkedPlayerId: 'saved-b', text: 'Bob', x: -10, y: 0, textRotationDeg: 0, color: '#000', state: 'READY' }
+        ];
+        const latestRendererProps = rendererSpy.mock.calls[rendererSpy.mock.calls.length - 1][0] as {
+            onSelectorPlayersChange: (players: SelectorPlayer[]) => void;
+        };
+
+        act(() => {
+            latestRendererProps.onSelectorPlayersChange(selectedPlayers);
+        });
+        act(() => {
+            vi.runAllTimers();
+        });
+
+        fireEvent.click(screen.getByText('picker_prototype_start_game'));
+
+        expect(onUpdateSession).toHaveBeenCalledTimes(1);
+        const updatedSession = onUpdateSession.mock.calls[0][0] as GameSession;
+        expect(updatedSession.players.every(player => player.isIdentityManuallySet)).toBe(true);
+        expect(updatedSession.players.filter(player => player.isStarter)).toHaveLength(1);
     });
 });
