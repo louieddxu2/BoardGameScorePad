@@ -23,11 +23,13 @@ export interface SuggestedPlayer {
 // 定義影響「玩家推薦」的各種因素
 // [Added] 'relatedPlayer' for Player-to-Player voting
 // [Added] 'sessionContext' for Short-term memory (Last played context)
-export type PlayerRecommendationFactor = 'game' | 'location' | 'weekday' | 'timeSlot' | 'playerCount' | 'gameMode' | 'relatedPlayer' | 'sessionContext';
+export type PlayerRecommendationFactor = 'game' | 'gamePlayStage' | 'gameRecency' | 'location' | 'weekday' | 'timeSlot' | 'playerCount' | 'gameMode' | 'relatedPlayer' | 'sessionContext';
 
 // 定義「玩家推薦」專用的權重表結構
 export interface PlayerRecommendationWeights {
     game: number;
+    gamePlayStage: number;
+    gameRecency: number;
     location: number;
     weekday: number;
     timeSlot: number;
@@ -40,6 +42,8 @@ export interface PlayerRecommendationWeights {
 // 預設權重 (目前全部為 1.0，即平權投票)
 export const DEFAULT_PLAYER_WEIGHTS: PlayerRecommendationWeights = {
     game: 1.0,
+    gamePlayStage: 1.0,
+    gameRecency: 1.0,
     location: 1.0,
     weekday: 1.0,
     timeSlot: 1.0,

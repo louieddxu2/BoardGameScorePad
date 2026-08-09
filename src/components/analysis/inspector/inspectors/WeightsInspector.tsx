@@ -21,6 +21,8 @@ const EngineWeightSection: React.FC<{
     const getFactorLabel = (key: string) => {
         switch (key) {
             case 'game': return t('factor_game');
+            case 'gamePlayStage': return t('factor_gamePlayStage');
+            case 'gameRecency': return t('factor_gameRecency');
             case 'location': return t('factor_location');
             case 'weekday': return t('factor_weekday');
             case 'timeSlot': return t('factor_timeSlot');

@@ -33,7 +33,9 @@ export class RelationTrainer {
         // 1. 將目標對象依類型分組
         const targetsByType = new Map<string, string[]>();
         for (const target of targetCandidates) {
+            if (target.canBeRelationTarget === false) continue;
             const key = RelationMapper.getRelationKey(target.type);
+            if (source.relationTargetScope && !source.relationTargetScope.includes(key)) continue;
             if (!targetsByType.has(key)) targetsByType.set(key, []);
             targetsByType.get(key)!.push(target.item.id);
         }

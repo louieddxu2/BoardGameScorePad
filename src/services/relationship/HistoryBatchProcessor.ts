@@ -10,6 +10,7 @@ import { ResolvedEntity, EntityType } from './types';
 import { generateId } from '../../utils/idGenerator';
 import { DATA_LIMITS } from '../../dataLimits';
 import { getRecordScoringRule, getRecordBggId } from '../../utils/historyUtils';
+import { createLifecycleBucketItems, gameTemporalContextResolver, GameTemporalRunningState, sortHistoryRecordsStable } from './GameTemporalContextResolver';
 
 /**
  * 歷史紀錄批次處理器 (High Performance Version)
@@ -17,21 +18,23 @@ import { getRecordScoringRule, getRecordBggId } from '../../utils/historyUtils';
  * 目的：將資料庫 I/O 從 O(N) 降為 O(1)，解決手機端效能瓶頸。
  */
 export class HistoryBatchProcessor {
+    private lifecycleStates = new Map<string, GameTemporalRunningState>();
 
     public async run(records: HistoryRecord[]): Promise<void> {
         if (records.length === 0) return;
 
         console.time("BatchProcess");
 
-        await (db as any).transaction('rw', db.savedPlayers, db.savedGames, db.savedLocations, db.savedWeekdays, db.savedTimeSlots, db.savedPlayerCounts, db.savedGameModes, db.savedCurrentSession, db.analyticsLogs, db.bggGames, db.weights, async () => {
+        await (db as any).transaction('rw', db.savedPlayers, db.savedGames, db.savedLocations, db.savedWeekdays, db.savedTimeSlots, db.savedPlayerCounts, db.savedGameModes, db.savedCurrentSession, db.savedGameLifecycleContexts, db.analyticsLogs, db.bggGames, db.weights, async () => {
 
             // --- 1. Pre-load Fixed Dimensions (Read All) ---
             // 這些維度資料量小，一次全讀取比反覆查詢快得多
-            const [weekdays, timeSlots, playerCounts, gameModes] = await Promise.all([
+            const [weekdays, timeSlots, playerCounts, gameModes, lifecycleBuckets] = await Promise.all([
                 db.savedWeekdays.toArray(),
                 db.savedTimeSlots.toArray(),
                 db.savedPlayerCounts.toArray(),
-                db.savedGameModes.toArray()
+                db.savedGameModes.toArray(),
+                db.savedGameLifecycleContexts.toArray()
             ]);
 
             // 建立 ID 索引 Map
@@ -42,6 +45,10 @@ export class HistoryBatchProcessor {
             addAllToMap(timeSlots);
             addAllToMap(playerCounts);
             addAllToMap(gameModes);
+            const lifecycleMap = new Map(lifecycleBuckets.map(item => [item.id, item]));
+            for (const seed of createLifecycleBucketItems()) {
+                if (!lifecycleMap.has(seed.id)) lifecycleMap.set(seed.id, seed);
+            }
 
             // --- 2. Harvest Context from Records (採集階段) ---
             const gameIds = new Set<string>();
@@ -167,6 +174,7 @@ export class HistoryBatchProcessor {
             const modifiedTimeSlots = new Map<string, SavedListItem>();
             const modifiedPlayerCounts = new Map<string, SavedListItem>();
             const modifiedGameModes = new Map<string, SavedListItem>();
+            const modifiedLifecycleBuckets = new Map<string, SavedListItem>();
 
             const markDirty = (item: SavedListItem, type: EntityType) => {
                 if (type === 'game') modifiedGames.set(item.id, item);
@@ -252,7 +260,11 @@ export class HistoryBatchProcessor {
             };
 
             // --- 5. Process Loop (運算階段) ---
-            for (const { record, mode } of recordsToProcess) {
+            const orderedRecords = sortHistoryRecordsStable(recordsToProcess.map(item => item.record));
+            const processModeById = new Map(recordsToProcess.map(item => [item.record.id, item.mode]));
+
+            for (const record of orderedRecords) {
+                const mode = processModeById.get(record.id)!;
                 const resolvedEntities: ResolvedEntity[] = [];
                 const isFull = mode === 'full';
 
@@ -323,6 +335,26 @@ export class HistoryBatchProcessor {
                     }
 
                     resolveFixed(rule, rule, 'gameMode', db.savedGameModes);
+
+                    const identity = gameTemporalContextResolver.resolveIdentity(record, itemGame || undefined);
+                    let state = this.lifecycleStates.get(identity);
+                    if (!state) {
+                        state = gameTemporalContextResolver.createRunningState();
+                        this.lifecycleStates.set(identity, state);
+                    }
+                    const temporal = gameTemporalContextResolver.resolveFromRunningState(state, record.startTime);
+                    const bucketIds = [temporal.stageBucketId, ...(temporal.recencyBucketId ? [temporal.recencyBucketId] : [])];
+                    for (const id of bucketIds) {
+                        const item = lifecycleMap.get(id)!;
+                        resolvedEntities.push({
+                            item,
+                            table: db.savedGameLifecycleContexts,
+                            type: id.startsWith('game_play_stage:') ? 'gamePlayStage' : 'gameRecency',
+                            isNewContext: true,
+                            relationTargetScope: ['players'],
+                            canBeRelationTarget: false
+                        });
+                    }
                 }
 
                 // Note: Skip Session Context for Batch (Short-term memory not needed for historical data)
@@ -382,9 +414,18 @@ export class HistoryBatchProcessor {
 
                         // Mark dirty if changed
                         if (entityChanged) {
-                            markDirty(source.item, source.type);
+                            if (source.type === 'gamePlayStage' || source.type === 'gameRecency') {
+                                modifiedLifecycleBuckets.set(source.item.id, source.item);
+                            } else {
+                                markDirty(source.item, source.type);
+                            }
                         }
                     }
+                }
+
+                if (isFull && itemGame) {
+                    const identity = gameTemporalContextResolver.resolveIdentity(record, itemGame);
+                    gameTemporalContextResolver.recordCompletion(this.lifecycleStates.get(identity)!, record);
                 }
 
                 // Prepare Log Update
@@ -403,6 +444,7 @@ export class HistoryBatchProcessor {
             if (modifiedTimeSlots.size > 0) await db.savedTimeSlots.bulkPut(Array.from(modifiedTimeSlots.values()));
             if (modifiedPlayerCounts.size > 0) await db.savedPlayerCounts.bulkPut(Array.from(modifiedPlayerCounts.values()));
             if (modifiedGameModes.size > 0) await db.savedGameModes.bulkPut(Array.from(modifiedGameModes.values()));
+            if (modifiedLifecycleBuckets.size > 0) await db.savedGameLifecycleContexts.bulkPut(Array.from(modifiedLifecycleBuckets.values()));
 
             // Write Logs
             if (logUpdates.length > 0) await db.analyticsLogs.bulkPut(logUpdates);

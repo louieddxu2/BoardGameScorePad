@@ -66,6 +66,8 @@ export class RelationMapper {
             case 'playerCount': return 'playerCounts';
             case 'gameMode': return 'gameModes';
             case 'color': return 'colors';
+            case 'gamePlayStage': return 'gamePlayStages';
+            case 'gameRecency': return 'gameRecencies';
         }
         return 'others';
     }
@@ -77,6 +79,8 @@ export class RelationMapper {
     public static getRecommendationFactor(type: EntityType): PlayerRecommendationFactor | undefined {
         switch (type) {
             case 'game': return 'game';
+            case 'gamePlayStage': return 'gamePlayStage';
+            case 'gameRecency': return 'gameRecency';
             case 'location': return 'location';
             case 'weekday': return 'weekday';
             case 'timeslot': return 'timeSlot';

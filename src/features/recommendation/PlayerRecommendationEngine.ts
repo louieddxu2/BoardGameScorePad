@@ -191,7 +191,7 @@ export class PlayerRecommendationEngine {
         const selectedPlayerIds: string[] = [...(context.knownPlayerIds || [])];
         
         // 2. Resolve Base Context Voters (Game, Location, Time...) - Do this ONCE via ContextResolver
-        const baseVoters = await contextResolver.resolveBaseContext(context);
+        const baseVoters = await contextResolver.resolvePlayerContext(context);
         
         // 3. 一次性撈取所有存檔玩家，消除迴圈內與迴圈後的重複查詢
         const allSavedPlayers = await db.savedPlayers.toArray();

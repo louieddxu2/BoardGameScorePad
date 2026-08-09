@@ -12,7 +12,7 @@ export async function loadPlayerRecommendationContext(
     context: RecommendationContext
 ): Promise<LoadedPlayerRecommendationContext> {
     const [voters, weights] = await Promise.all([
-        contextResolver.resolveBaseContext(context),
+        contextResolver.resolvePlayerContext(context),
         weightAdjustmentEngine.getWeights(PLAYER_WEIGHTS_ID, DEFAULT_PLAYER_WEIGHTS)
     ]);
 

@@ -106,6 +106,8 @@ export const inspectorTranslations = {
     weight_value: "權重",
 
     factor_game: "遊戲種類",
+    factor_gamePlayStage: "遊玩階段",
+    factor_gameRecency: "距上次遊玩",
     factor_location: "遊玩地點",
     factor_weekday: "星期幾",
     factor_timeSlot: "時段",
@@ -268,6 +270,8 @@ export const inspectorTranslations = {
     weight_value: "Weight",
 
     factor_game: "Game",
+    factor_gamePlayStage: "Play Stage",
+    factor_gameRecency: "Game Recency",
     factor_location: "Location",
     factor_weekday: "Weekday",
     factor_timeSlot: "Time Slot",

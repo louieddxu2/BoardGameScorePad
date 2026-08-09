@@ -29,6 +29,7 @@ export class ScorePadDatabase extends Dexie {
     images!: Table<LocalImage>; // [v7] 離線圖片儲存
     analyticsLogs!: Table<AnalyticsLog>; // [v14] 統計處理記錄表
     weights!: Table<SystemWeightConfig>; // [v24] 系統權重設定表
+    savedGameLifecycleContexts!: Table<SavedListItem>;
 
     /** 
      * [Arch] 宣告式清理註冊表 
@@ -404,6 +405,34 @@ export class ScorePadDatabase extends Dexie {
         // Version 32: Remember which room player this device claimed.
         (this as any).version(32).stores({
             multiplayerParticipantBindings: 'id, roomId, sessionId, deviceId, playerId, updatedAt'
+        });
+
+        // Version 33: Shared game lifecycle buckets for player recommendation.
+        (this as any).version(33).stores({
+            savedGameLifecycleContexts: 'id'
+        }).upgrade(async (trans: any) => {
+            const ids = [
+                'game_play_stage:first',
+                'game_play_stage:second',
+                'game_play_stage:third_to_fourth',
+                'game_play_stage:fifth_to_ninth',
+                'game_play_stage:tenth_plus',
+                'game_recency:within_1_day',
+                'game_recency:within_7_days',
+                'game_recency:within_30_days',
+                'game_recency:within_90_days',
+                'game_recency:over_90_days'
+            ];
+            const table = trans.table('savedGameLifecycleContexts');
+            const existing = new Set(await table.toCollection().primaryKeys());
+            const missing = ids.filter(id => !existing.has(id)).map(id => ({
+                id,
+                name: id,
+                lastUsed: 0,
+                usageCount: 0,
+                meta: { relations: {}, confidence: {} }
+            }));
+            if (missing.length > 0) await table.bulkAdd(missing);
         });
     }
 }

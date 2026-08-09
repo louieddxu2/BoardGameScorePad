@@ -179,6 +179,8 @@ describe('PlayerRecommendationEngine.generateSuggestions', () => {
             sessionPlayers: [],
             weights: {
                 game: 0,
+                gamePlayStage: 1,
+                gameRecency: 1,
                 location: 1,
                 weekday: 1,
                 timeSlot: 1,
@@ -217,7 +219,7 @@ describe('PlayerRecommendationEngine.generateSuggestions', () => {
             factor: 'game'
         };
 
-        vi.spyOn(contextResolver, 'resolveBaseContext').mockResolvedValue([contextVoter]);
+        vi.spyOn(contextResolver, 'resolvePlayerContext').mockResolvedValue([contextVoter]);
         vi.spyOn(db.savedPlayers, 'toArray').mockResolvedValue(savedPlayers);
         const generateSuggestionsSpy = vi.spyOn(playerRecommendationEngine, 'generateSuggestions');
 
