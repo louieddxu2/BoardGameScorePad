@@ -127,6 +127,7 @@ export const useSessionManager = ({
                 scores: {},
                 totalScore: 0,
                 color: defaultColors[i],
+                isIdentityManuallySet: false,
                 isColorManuallySet: false // Init to false
             };
         });

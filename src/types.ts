@@ -118,6 +118,7 @@ export interface Player {
   scores: Record<string, ScoreValue>;
   totalScore: number;
   isStarter?: boolean; // New: Starting player marker
+  isIdentityManuallySet?: boolean; // Player identity was explicitly entered or selected by the user
   linkedPlayerId?: string; // [New] 指向歷史紀錄的 UUID，用於關聯分析
   isColorManuallySet?: boolean; // [New] 指示此顏色是否為使用者手動選擇 (用於過濾雜訊)
 

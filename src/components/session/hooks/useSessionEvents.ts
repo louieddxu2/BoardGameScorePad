@@ -12,6 +12,7 @@ import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 import { useTranslation } from '../../../i18n';
 import { useVoiceAnnouncements } from './useVoiceAnnouncements';
 import { SessionCapabilities } from '../../../features/multiplayer/sessionCapabilities';
+import { resolveManualIdentityFlag } from './playerIdentity';
 
 interface SessionViewProps {
   session: GameSession;
@@ -268,14 +269,23 @@ export const useSessionEvents = (
 
       // Check if link changed (e.g. from undefined to uuid)
       const linkChanged = currentPlayer.linkedPlayerId !== finalLinkedId;
+      const wasExplicitlySelected = linkedId !== undefined;
+      const nextIsIdentityManuallySet = resolveManualIdentityFlag(
+        currentPlayer,
+        finalName,
+        finalLinkedId,
+        wasExplicitlySelected
+      );
+      const manualIdentityChanged = currentPlayer.isIdentityManuallySet !== nextIsIdentityManuallySet;
 
-      if (nameChanged || linkChanged) {
+      if (nameChanged || linkChanged || manualIdentityChanged) {
         const players = session.players.map(p => {
           if (p.id === playerId) {
             return {
               ...p,
               name: finalName,
-              linkedPlayerId: finalLinkedId
+              linkedPlayerId: finalLinkedId,
+              isIdentityManuallySet: nextIsIdentityManuallySet
             };
           }
           return p;

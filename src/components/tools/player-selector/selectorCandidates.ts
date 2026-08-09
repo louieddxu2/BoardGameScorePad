@@ -1,5 +1,48 @@
 import { Candidate, SelectorPlayer } from './types';
 import { OptionState } from './selectorEngineTypes';
+import { Player } from '../../../types';
+
+const normalizeCandidateName = (name: string): string => name.trim().normalize('NFKC').toLowerCase();
+
+export const getManualSessionPlayerCandidates = (players: Player[]): Candidate[] => players
+    .filter(player => player.isIdentityManuallySet && player.name.trim().length > 0)
+    .map(player => ({
+        id: player.linkedPlayerId || `session-player:${player.id}`,
+        name: player.name.trim(),
+        linkedPlayerId: player.linkedPlayerId
+    }));
+
+export const prioritizePlayerCandidates = (
+    preferredCandidates: Candidate[],
+    recommendedCandidates: Candidate[]
+): Candidate[] => {
+    const seenIds = new Set<string>();
+    const seenNames = new Set<string>();
+
+    return [...preferredCandidates, ...recommendedCandidates].filter(candidate => {
+        const identityId = candidate.linkedPlayerId || candidate.id;
+        const normalizedName = normalizeCandidateName(candidate.name);
+        if (seenIds.has(identityId) || seenNames.has(normalizedName)) return false;
+
+        seenIds.add(identityId);
+        seenNames.add(normalizedName);
+        return true;
+    });
+};
+
+export const getPlayerCandidateLocks = (
+    manualCandidates: Candidate[],
+    selectedPlayers: SelectorPlayer[]
+): { lockedPlayerIds: string[]; lockedNames: string[] } => ({
+    lockedPlayerIds: Array.from(new Set([
+        ...manualCandidates.map(candidate => candidate.linkedPlayerId),
+        ...selectedPlayers.map(player => player.linkedPlayerId)
+    ].filter((id): id is string => !!id))),
+    lockedNames: Array.from(new Set([
+        ...manualCandidates.map(candidate => candidate.name),
+        ...selectedPlayers.map(player => player.text)
+    ]))
+});
 
 export const getFourCandidatesForTouch = (
     currentCandidates: Candidate[],
