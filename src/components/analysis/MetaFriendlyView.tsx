@@ -5,6 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { SavedListItem } from '../../types';
 import { useInspectorTranslation } from './inspector/shared/InspectorCommon';
+import { getLifecycleBucketLabel } from './inspector/shared/lifecycleLabels';
 
 const CollapsibleSection = ({ icon, title, count, confidence, children }: { icon: React.ReactNode, title: string, count: number, confidence?: number, children?: React.ReactNode }) => {
     const [isOpen, setIsOpen] = useState(true);
@@ -178,11 +179,11 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
             ))}
 
             {renderCategory('gamePlayStages', <Activity size={12} className="text-brand-primary" />, t('rel_game_play_stages'), (id, { entity }) => (
-                <span className="text-txt-primary">{entity?.name || id}</span>
+                <span className="text-txt-primary">{getLifecycleBucketLabel(entity?.id || id, t)}</span>
             ))}
 
             {renderCategory('gameRecencies', <Activity size={12} className="text-brand-secondary" />, t('rel_game_recencies'), (id, { entity }) => (
-                <span className="text-txt-primary">{entity?.name || id}</span>
+                <span className="text-txt-primary">{getLifecycleBucketLabel(entity?.id || id, t)}</span>
             ))}
         </div>
     );

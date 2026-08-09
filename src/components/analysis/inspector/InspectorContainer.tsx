@@ -12,6 +12,7 @@ import TimeInspector from './inspectors/TimeInspector';
 import WeightsInspector from './inspectors/WeightsInspector';
 import ImageInspector from './inspectors/ImageInspector';
 import DatabaseInspector from './inspectors/DatabaseInspector';
+import LifecycleInspector from './inspectors/LifecycleInspector';
 
 const InspectorContainer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const [activeTab, setActiveTab] = useState<'games' | 'players' | 'locations' | 'time' | 'counts' | 'modes' | 'lifecycle' | 'weights' | 'images' | 'bgg' | 'session' | 'db'>('games');
@@ -141,7 +142,7 @@ const InspectorContainer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 {activeTab === 'time' && <TimeInspector />}
                 {activeTab === 'counts' && <DataList title={t('list_counts')} table={db.savedPlayerCounts} icon={Hash} />}
                 {activeTab === 'modes' && <DataList title={t('list_modes')} table={db.savedGameModes} icon={Trophy} />}
-                {activeTab === 'lifecycle' && <DataList title={t('list_lifecycle')} table={db.savedGameLifecycleContexts} icon={Activity} />}
+                {activeTab === 'lifecycle' && <LifecycleInspector />}
                 {activeTab === 'weights' && <WeightsInspector />}
                 {activeTab === 'images' && <ImageInspector />}
                 {activeTab === 'bgg' && <DataList title={t('list_bgg')} table={db.bggGames} icon={Database} isBGG={true} />}
