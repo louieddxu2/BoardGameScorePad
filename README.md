@@ -14,6 +14,9 @@
 - Vitest + Testing Library
 
 ## Local Development
+
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the third-party package acknowledgements, versions, licenses, and upstream sources used by this project.
+
 ### Prerequisites
 - Node.js 18+
 
