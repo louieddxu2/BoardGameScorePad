@@ -54,8 +54,6 @@ export class RelationTrainer {
             const currentList = source.item.meta!.relations![relKey] as RelationItem[] | undefined;
             const currentConfidence = source.item.meta!.confidence![relKey] || 1.0;
             const currentRankWeights = source.item.meta!.rankWeights![relKey];
-            const votingLimit = RelationMapper.getVotingLimit(relKey);
-            const rankedPredictionList = RankVotingPolicy.rankCandidates(currentList, currentRankWeights, votingLimit);
 
             // [CALC] 根據 Config 取得正確的預測窗口大小
             // 優化：如果提供了 overridePoolSizes，直接使用，否則查詢 DB
@@ -66,7 +64,11 @@ export class RelationTrainer {
                 totalPoolSize = await this.getTotalPoolSize(relKey);
             }
 
-            const predictionWindow = RelationMapper.getPredictionWindow(relKey, totalPoolSize);
+            // N is shared by training and voting. Dynamic relations therefore use
+            // the same pool-based window (for example, 25% capped at five).
+            const votingLimit = RelationMapper.getVotingLimit(relKey, totalPoolSize);
+            const predictionWindow = votingLimit;
+            const rankedPredictionList = RankVotingPolicy.rankCandidates(currentList, currentRankWeights, votingLimit);
 
             // [LEARN 1] 調整全域權重 (Evaluate Prediction)
 
@@ -214,8 +216,6 @@ export class RelationTrainer {
             const currentList = source.item.meta!.relations![relKey] as RelationItem[] | undefined;
             const currentConfidence = source.item.meta!.confidence![relKey] || 1.0;
             const currentRankWeights = source.item.meta!.rankWeights![relKey];
-            const votingLimit = RelationMapper.getVotingLimit(relKey);
-            const rankedPredictionList = RankVotingPolicy.rankCandidates(currentList, currentRankWeights, votingLimit);
 
             // Get Config Window
             let totalPoolSize = COLORS.length;
@@ -223,7 +223,9 @@ export class RelationTrainer {
                 totalPoolSize = overridePoolSizes[relKey];
             }
 
-            const predictionWindow = RelationMapper.getPredictionWindow(relKey, totalPoolSize);
+            const votingLimit = RelationMapper.getVotingLimit(relKey, totalPoolSize);
+            const predictionWindow = votingLimit;
+            const rankedPredictionList = RankVotingPolicy.rankCandidates(currentList, currentRankWeights, votingLimit);
 
             // [LEARN 1] Update Global Weights
             const factor = RelationMapper.getColorRecommendationFactor(source.type);

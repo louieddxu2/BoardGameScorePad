@@ -119,7 +119,7 @@ describe('PlayerRecommendationEngine.generateSuggestions', () => {
         expect(result.map(r => r.name)).toEqual(['Charlie', 'David', 'Eve', 'Frank']);
     });
 
-    it('uses the original five-player voting window by default', () => {
+    it('uses the dynamic 25% window as N and casts learned votes across at most 2N ranks', () => {
         const candidates = [
             'A', 'B', 'C', 'D', 'E', 'F'
         ].map((name, index) => ({
@@ -136,7 +136,9 @@ describe('PlayerRecommendationEngine.generateSuggestions', () => {
             meta: {
                 relations: {
                     players: candidates.map(candidate => ({ id: candidate.id, count: 1 }))
-                }
+                },
+                // Six saved players => N = ceil(6 * 25%) = 2, so only four ranks may vote.
+                rankWeights: { players: [4, 3, 1, 1] }
             }
         };
 
@@ -148,8 +150,10 @@ describe('PlayerRecommendationEngine.generateSuggestions', () => {
             sessionPlayers: []
         });
 
-        expect(result.slice(0, 5).map(candidate => candidate.name)).toEqual(['A', 'B', 'C', 'D', 'E']);
-        expect(result[5].name).toBe('F');
+        expect(result.slice(0, 2).map(candidate => candidate.name)).toEqual(['A', 'B']);
+        expect(new Set(result.slice(2, 4).map(candidate => candidate.name))).toEqual(new Set(['C', 'D']));
+        expect(result[4].name).toBe('F');
+        expect(result[5].name).toBe('E');
     });
 
     it('applies supplied dynamic weights to the single-pass vote', () => {

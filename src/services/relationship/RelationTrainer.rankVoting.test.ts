@@ -10,6 +10,47 @@ import { RelationTrainer } from './RelationTrainer';
 import { ResolvedEntity } from './types';
 
 describe('RelationTrainer rank voting integration', () => {
+    it('uses the same dynamic N for the 2N rank window and top-N correctness check', async () => {
+        const sourceItem: SavedListItem = {
+            id: 'game-small-pool',
+            name: 'Small Pool Game',
+            usageCount: 3,
+            lastUsed: 1,
+            meta: {
+                relations: {
+                    players: Array.from({ length: 4 }, (_, index) => ({ id: `p${index + 1}`, count: 1 }))
+                },
+                confidence: { players: 1 },
+                // Six saved players => N = 2. Rank 3 is promoted into the top two by vote weight.
+                rankWeights: { players: [4, 1, 3, 1] }
+            }
+        };
+        const playerWeights = { ...DEFAULT_PLAYER_WEIGHTS };
+
+        await new RelationTrainer().trainRelations(
+            {
+                item: sourceItem,
+                table: db.savedGames,
+                type: 'game',
+                isNewContext: true
+            },
+            [{
+                item: { id: 'p3', name: 'P3', usageCount: 1, lastUsed: 1 },
+                table: db.savedPlayers,
+                type: 'player',
+                isNewContext: true
+            }],
+            playerWeights,
+            { ...DEFAULT_COUNT_WEIGHTS },
+            { ...DEFAULT_LOCATION_WEIGHTS },
+            { players: 6 }
+        );
+
+        expect(playerWeights.game).toBe(1.1);
+        expect(sourceItem.meta!.confidence!.players).toBe(1.1);
+        expect(sourceItem.meta!.rankWeights!.players).toHaveLength(4);
+    });
+
     it('evaluates confidence and factor weight from the weighted prediction set before updating relations', async () => {
         const sourceItem: SavedListItem = {
             id: 'game-1',

@@ -4,7 +4,7 @@ import { SavedListItem } from '../../types';
 import { RecommendationContext, LocationRecommendationWeights, DEFAULT_LOCATION_WEIGHTS } from './types';
 import { contextResolver } from './ContextResolver';
 import { votingEngine } from './VotingEngine';
-import { RELATION_PREDICTION_CONFIG } from '../../services/relationship/RelationMapper';
+import { RelationMapper } from '../../services/relationship/RelationMapper';
 
 /**
  * 地點推薦引擎 (Location Recommendation Engine)
@@ -30,7 +30,8 @@ export class LocationRecommendationEngine {
 
         // 3. 執行投票 (針對 'locations' 關聯)
         // 使用統一配置的 limit
-        const limit = RELATION_PREDICTION_CONFIG.locations.limit;
+        const allLocations = await db.savedLocations.toArray();
+        const limit = RelationMapper.getVotingLimit('locations', allLocations.length);
 
         const scoresMap = votingEngine.calculateScores(
             voters, 
@@ -52,8 +53,7 @@ export class LocationRecommendationEngine {
         // 實際上 UI 需要的是地點名稱字串 (如果是新地點) 或 ID
         // 我們這裡做一次 DB 查詢把 ID 轉回 Name，方便 UI 顯示
         const resultNames: string[] = [];
-        const locations = await db.savedLocations.where('id').anyOf(sortedIds).toArray();
-        const locMap = new Map<string, string>(locations.map(l => [l.id, l.name] as [string, string]));
+        const locMap = new Map<string, string>(allLocations.map(l => [l.id, l.name] as [string, string]));
 
         sortedIds.forEach(id => {
             const name = locMap.get(id);

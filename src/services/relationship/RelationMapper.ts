@@ -53,8 +53,11 @@ export class RelationMapper {
         return Math.max(1, Math.min(config.limit, calculated));
     }
 
-    public static getVotingLimit(relationKey: string): number {
+    public static getVotingLimit(relationKey: string, totalPoolSize?: number): number {
         const config = RELATION_PREDICTION_CONFIG[relationKey] || RELATION_PREDICTION_CONFIG.others;
+        if (config.strategy === 'dynamic' && totalPoolSize !== undefined) {
+            return this.getPredictionWindow(relationKey, totalPoolSize);
+        }
         return config.votingLimit ?? config.limit;
     }
 

@@ -42,13 +42,9 @@ describe('lifecycle count and location voting', () => {
             lifecycleVoter('game_play_stage:second', 'locations', 'location-home'),
             lifecycleVoter('game_recency:within_7_days', 'locations', 'location-home')
         ]);
-        vi.spyOn(db.savedLocations, 'where').mockReturnValue({
-            anyOf: vi.fn().mockReturnValue({
-                toArray: vi.fn().mockResolvedValue([
-                    { id: 'location-home', name: 'Home', usageCount: 1, lastUsed: 1 }
-                ])
-            })
-        } as never);
+        vi.spyOn(db.savedLocations, 'toArray').mockResolvedValue([
+            { id: 'location-home', name: 'Home', usageCount: 1, lastUsed: 1 }
+        ]);
 
         await expect(locationRecommendationEngine.generateSuggestions({}, DEFAULT_LOCATION_WEIGHTS)).resolves.toEqual(['Home']);
     });

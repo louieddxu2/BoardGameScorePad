@@ -96,8 +96,11 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
     const renderCategory = (key: string, icon: React.ReactNode, title: string, resolveFn: (id: string, item: any) => React.ReactNode) => {
         const items = meta.relations[key];
         const confidence = meta.confidence ? meta.confidence[key] : undefined;
-        const votingLimit = RelationMapper.getVotingLimit(key);
-        const rankWeights = RankVotingPolicy.getWeights(meta.rankWeights?.[key], votingLimit);
+        const savedRankWeights = meta.rankWeights?.[key];
+        const votingLimit = Array.isArray(savedRankWeights) && savedRankWeights.length > 0 && savedRankWeights.length % 2 === 0
+            ? savedRankWeights.length / 2
+            : RelationMapper.getVotingLimit(key);
+        const rankWeights = RankVotingPolicy.getWeights(savedRankWeights, votingLimit);
 
         if (!items || !Array.isArray(items) || items.length === 0) return null;
 
