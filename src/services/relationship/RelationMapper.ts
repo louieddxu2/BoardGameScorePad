@@ -10,6 +10,7 @@ export interface PredictionStrategy {
     strategy: 'fixed' | 'dynamic';
     limit: number; // Max Cap for dynamic, or Exact Value for fixed
     ratio?: number; // Only for dynamic
+    votingLimit?: number; // Existing number of relation ranks that cast votes, when different from prediction limit
 }
 
 // [Centralized Config]
@@ -29,7 +30,7 @@ export const RELATION_PREDICTION_CONFIG: Record<string, PredictionStrategy> = {
     gameModes: { strategy: 'fixed', limit: 2 },
     
     // 顏色
-    colors: { strategy: 'fixed', limit: 4 },
+    colors: { strategy: 'fixed', limit: 4, votingLimit: 20 },
     
     // 預設 fallback
     others: { strategy: 'dynamic', limit: 5, ratio: 0.25 }
@@ -50,6 +51,11 @@ export class RelationMapper {
         const calculated = Math.ceil(totalPoolSize * (config.ratio || 0.25));
         // 確保至少為 1，且不超過設定的上限 (limit)
         return Math.max(1, Math.min(config.limit, calculated));
+    }
+
+    public static getVotingLimit(relationKey: string): number {
+        const config = RELATION_PREDICTION_CONFIG[relationKey] || RELATION_PREDICTION_CONFIG.others;
+        return config.votingLimit ?? config.limit;
     }
 
     /**

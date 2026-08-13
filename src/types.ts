@@ -355,6 +355,7 @@ export interface SavedListItem extends GameIdentity {
     // key: 'players' | 'locations' | 'games' | 'colors' ...
     relations?: Record<string, any>;
     confidence?: Record<string, number>;
+    rankWeights?: Record<string, number[]>;
 
     // 注意：BGG Metadata 應優先從 bggGames 資料表讀取
     // 這裡僅保留作為快取或舊資料相容
