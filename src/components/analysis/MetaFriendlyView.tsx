@@ -6,6 +6,8 @@ import { db } from '../../db';
 import { SavedListItem } from '../../types';
 import { useInspectorTranslation } from './inspector/shared/InspectorCommon';
 import { getLifecycleBucketLabel } from './inspector/shared/lifecycleLabels';
+import { RelationMapper } from '../../services/relationship/RelationMapper';
+import { RankVotingPolicy } from '../../services/relationship/RankVotingPolicy';
 
 const CollapsibleSection = ({ icon, title, count, confidence, children }: { icon: React.ReactNode, title: string, count: number, confidence?: number, children?: React.ReactNode }) => {
     const [isOpen, setIsOpen] = useState(true);
@@ -94,13 +96,15 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
     const renderCategory = (key: string, icon: React.ReactNode, title: string, resolveFn: (id: string, item: any) => React.ReactNode) => {
         const items = meta.relations[key];
         const confidence = meta.confidence ? meta.confidence[key] : undefined;
+        const votingLimit = RelationMapper.getVotingLimit(key);
+        const rankWeights = RankVotingPolicy.getWeights(meta.rankWeights?.[key], votingLimit);
 
         if (!items || !Array.isArray(items) || items.length === 0) return null;
 
         // Filter valid items
         const validItems = items
-            .map((r: any) => {
-                if (key === 'colors') return { ...r, resolved: r.id };
+            .map((r: any, rank: number) => {
+                if (key === 'colors') return { ...r, rank, resolved: r.id };
 
                 let lookupKey: keyof typeof lookups | null = null;
                 if (key === 'players') lookupKey = 'players';
@@ -114,9 +118,9 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
 
                 if (lookupKey) {
                     const entity = lookups[lookupKey].get(r.id);
-                    return { ...r, entity };
+                    return { ...r, rank, entity };
                 }
-                return r;
+                return { ...r, rank };
             })
             .filter(Boolean);
 
@@ -125,12 +129,21 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
         return (
             <CollapsibleSection icon={icon} title={title} count={validItems.length} confidence={confidence}>
                 <div className="space-y-1 pl-2">
+                    <div className="grid grid-cols-[minmax(0,1fr)_3.5rem_4.5rem] gap-2 px-1 pb-1 text-[9px] font-bold uppercase text-txt-muted border-b border-surface-border">
+                        <span>{t('relation_item')}</span>
+                        <span className="text-right">{t('relation_count')}</span>
+                        <span className="text-right">{t('rank_vote_weight')}</span>
+                    </div>
                     {validItems.map((item: any) => (
-                        <div key={item.id} className="flex items-center justify-between text-xs py-1 border-b border-surface-border/50 last:border-0">
-                            <div className="flex items-center gap-2 truncate pr-2">
+                        <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_3.5rem_4.5rem] gap-2 items-center text-xs py-1 border-b border-surface-border/50 last:border-0">
+                            <div className="flex items-center gap-2 truncate pr-2" title={`${t('relation_rank')} ${item.rank + 1}`}>
+                                <span className="w-5 shrink-0 text-[9px] font-mono text-txt-muted">#{item.rank + 1}</span>
                                 {resolveFn(item.id, item)}
                             </div>
-                            <span className="font-mono text-brand-primary font-bold bg-brand-primary/10 px-1.5 rounded">{item.count}</span>
+                            <span className="justify-self-end font-mono text-brand-primary font-bold bg-brand-primary/10 px-1.5 rounded">{item.count}</span>
+                            <span className="justify-self-end font-mono text-status-warning font-bold bg-status-warning/10 px-1.5 rounded">
+                                {item.rank < rankWeights.length ? rankWeights[item.rank].toFixed(2) : '—'}
+                            </span>
                         </div>
                     ))}
                 </div>

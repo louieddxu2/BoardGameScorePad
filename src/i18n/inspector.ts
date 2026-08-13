@@ -74,6 +74,10 @@ export const inspectorTranslations = {
     unit_minute: "分",
     unit_player: "人",
     confidence_hint: "信心值 (Confidence)",
+    relation_item: "關聯項目",
+    relation_rank: "關聯名次",
+    relation_count: "次數",
+    rank_vote_weight: "排名票權",
 
     // Weekdays
     day_0: "週日",
@@ -254,6 +258,10 @@ export const inspectorTranslations = {
     unit_minute: "m",
     unit_player: "P",
     confidence_hint: "Confidence Score",
+    relation_item: "Relation",
+    relation_rank: "Relation Rank",
+    relation_count: "Count",
+    rank_vote_weight: "Rank Vote",
 
     // Weekdays
     day_0: "Sun",
