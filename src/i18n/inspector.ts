@@ -124,7 +124,7 @@ export const inspectorTranslations = {
     weight_value: "權重",
     prediction_strength_recent: "近 10 場命中率",
     prediction_strength_no_data: "尚無資料",
-    prediction_strength_detail: "{hits}/{total}，共 {games} 場",
+    prediction_strength_detail: "{games} 場各自計算後平均",
 
     factor_game: "遊戲種類",
     factor_gamePlayStage: "遊玩階段",
@@ -311,7 +311,7 @@ export const inspectorTranslations = {
     weight_value: "Weight",
     prediction_strength_recent: "Last 10 hit rate",
     prediction_strength_no_data: "No data yet",
-    prediction_strength_detail: "{hits}/{total} across {games} games",
+    prediction_strength_detail: "Average of {games} per-game rates",
 
     factor_game: "Game",
     factor_gamePlayStage: "Play Stage",

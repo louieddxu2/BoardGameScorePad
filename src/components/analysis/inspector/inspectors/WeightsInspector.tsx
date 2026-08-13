@@ -105,8 +105,6 @@ const EngineWeightSection: React.FC<{
                         {strength && (
                             <span className="text-[10px] text-txt-muted">
                                 {t('prediction_strength_detail')
-                                    .replace('{hits}', String(strength.hits))
-                                    .replace('{total}', String(strength.total))
                                     .replace('{games}', String(strength.games))}
                             </span>
                         )}

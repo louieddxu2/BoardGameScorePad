@@ -103,4 +103,23 @@ describe('summarizeRecentPredictionStrength', () => {
             rate: 0.5
         });
     });
+
+    it('averages each game equally instead of pooling all player appearances', () => {
+        const logs = [
+            {
+                historyId: 'small', status: 'processed' as const, lastProcessedAt: 1,
+                predictionStrength: { player: { hits: 1, total: 2 } }
+            },
+            {
+                historyId: 'large', status: 'processed' as const, lastProcessedAt: 2,
+                predictionStrength: { player: { hits: 4, total: 4 } }
+            }
+        ];
+        expect(summarizeRecentPredictionStrength(logs, 'player')).toEqual({
+            hits: 5,
+            total: 6,
+            games: 2,
+            rate: 0.75
+        });
+    });
 });

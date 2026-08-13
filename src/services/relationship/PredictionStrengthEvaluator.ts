@@ -37,7 +37,8 @@ export function summarizeRecentPredictionStrength(
     if (recent.length === 0) return undefined;
     const hits = recent.reduce((sum, outcome) => sum + outcome.hits, 0);
     const total = recent.reduce((sum, outcome) => sum + outcome.total, 0);
-    return { hits, total, games: recent.length, rate: total > 0 ? hits / total : 0 };
+    const rate = recent.reduce((sum, outcome) => sum + outcome.hits / outcome.total, 0) / recent.length;
+    return { hits, total, games: recent.length, rate };
 }
 
 const sortScoreIds = (scores: Map<string, number>): string[] => Array.from(scores.entries())
