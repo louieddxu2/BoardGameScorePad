@@ -17,14 +17,23 @@ export class RankVotingPolicy {
 
     public static getWeights(weights: number[] | undefined, votingLimit: number): number[] {
         const defaults = this.getDefaultWeights(votingLimit);
-        if (!Array.isArray(weights) || weights.length !== defaults.length || weights.some(value => !Number.isFinite(value))) {
+        if (!Array.isArray(weights) || weights.length === 0 || weights.length % 2 !== 0 || weights.some(value => !Number.isFinite(value))) {
             return defaults;
         }
 
         const minimums = defaults.map((_, rank) => rank < votingLimit ? 1 : 0);
-        const cents = weights.map((value, rank) =>
-            Math.max(minimums[rank], Math.min(500, Math.round(value * 100)))
-        );
+        const previousVotingLimit = weights.length / 2;
+        const cents = defaults.map((_, rank) => {
+            const existing = rank < weights.length ? Math.round(weights[rank] * 100) : 0;
+            return Math.max(minimums[rank], Math.min(500, existing));
+        });
+
+        // When a dynamic N grows, preserve every learned position and add only
+        // the vote budget introduced by each newly admitted original rank.
+        for (let rank = previousVotingLimit; rank < votingLimit; rank++) {
+            cents[rank] = Math.min(500, cents[rank] + Math.max(1, this.MAX_WEIGHT - rank) * 100);
+        }
+
         this.normalizeCents(cents, defaults.reduce((sum, value) => sum + value, 0) * 100, minimums);
         return cents.map(value => value / 100);
     }

@@ -62,4 +62,18 @@ describe('RankVotingPolicy', () => {
         expect(weights[1]).toBeGreaterThanOrEqual(0.01);
         expect(weights.every(value => Number.isInteger(value * 100))).toBe(true);
     });
+
+    it('preserves learned positions and adds only the new budget when dynamic N grows', () => {
+        expect(RankVotingPolicy.getWeights([4.6, 3.8, 0.6, 0], 3)).toEqual([
+            4.6, 3.8, 3.6, 0, 0, 0
+        ]);
+    });
+
+    it('keeps surviving learned positions normalized when dynamic N shrinks', () => {
+        const resized = RankVotingPolicy.getWeights([4, 3, 2, 1, 1, 0], 2);
+
+        expect(resized).toHaveLength(4);
+        expect(resized.reduce((sum, value) => sum + value, 0)).toBe(9);
+        expect(resized[0]).toBeGreaterThanOrEqual(resized[1]);
+    });
 });
