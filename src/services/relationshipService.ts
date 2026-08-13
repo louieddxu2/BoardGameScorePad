@@ -9,6 +9,7 @@ import { trainingContextResolver } from './relationship/TrainingContextResolver'
 import { relationTrainer } from './relationship/RelationTrainer';
 import { HistoryBatchProcessor } from './relationship/HistoryBatchProcessor';
 import { createLifecycleBucketItems, gameTemporalContextResolver, sortHistoryRecordsStable } from './relationship/GameTemporalContextResolver';
+import { predictionStrengthEvaluator } from './relationship/PredictionStrengthEvaluator';
 
 class RelationshipService {
 
@@ -119,6 +120,19 @@ class RelationshipService {
                 let locationWeightsDirty = false;
                 let colorWeightsDirty = false;
 
+                const predictionStrength = mode === 'full' ? predictionStrengthEvaluator.evaluate(
+                    record,
+                    resolvedEntities,
+                    await db.savedPlayers.toArray(),
+                    await db.savedLocations.toArray(),
+                    {
+                        player: globalPlayerWeights,
+                        count: globalCountWeights,
+                        location: globalLocationWeights,
+                        color: globalColorWeights
+                    }
+                ) : log?.predictionStrength;
+
                 if (resolvedEntities.length > 0) {
                     for (const source of resolvedEntities) {
                         let hasChanges = false;
@@ -193,7 +207,9 @@ class RelationshipService {
                 await db.analyticsLogs.put({
                     historyId: record.id,
                     status: newStatus,
-                    lastProcessedAt: Date.now()
+                    lastProcessedAt: Date.now(),
+                    referenceStartTime: record.startTime,
+                    predictionStrength
                 });
 
             });

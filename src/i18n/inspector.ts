@@ -122,6 +122,9 @@ export const inspectorTranslations = {
 
     weight_factor: "影響因子",
     weight_value: "權重",
+    prediction_strength_recent: "近 10 場命中率",
+    prediction_strength_no_data: "尚無資料",
+    prediction_strength_detail: "{hits}/{total}，共 {games} 場",
 
     factor_game: "遊戲種類",
     factor_gamePlayStage: "遊玩階段",
@@ -306,6 +309,9 @@ export const inspectorTranslations = {
 
     weight_factor: "Factor",
     weight_value: "Weight",
+    prediction_strength_recent: "Last 10 hit rate",
+    prediction_strength_no_data: "No data yet",
+    prediction_strength_detail: "{hits}/{total} across {games} games",
 
     factor_game: "Game",
     factor_gamePlayStage: "Play Stage",

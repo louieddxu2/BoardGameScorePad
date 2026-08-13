@@ -297,11 +297,20 @@ export interface HistoryRecord {
 // [New Type] 資料處理狀態
 export type AnalyticsStatus = 'processed' | 'missing_location';
 
+export type PredictionModelKey = 'player' | 'count' | 'location' | 'color';
+
+export interface PredictionModelOutcome {
+  hits: number;
+  total: number;
+}
+
 // [New Interface] 統計處理記錄表 (Local Only)
 export interface AnalyticsLog {
   historyId: string; // PK
   status: AnalyticsStatus;
   lastProcessedAt: number;
+  referenceStartTime?: number;
+  predictionStrength?: Partial<Record<PredictionModelKey, PredictionModelOutcome>>;
 }
 
 // [New Interface] Dedicated BGG Game Data Storage

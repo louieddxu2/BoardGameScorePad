@@ -11,6 +11,7 @@ import { generateId } from '../../utils/idGenerator';
 import { DATA_LIMITS } from '../../dataLimits';
 import { getRecordScoringRule, getRecordBggId } from '../../utils/historyUtils';
 import { createLifecycleBucketItems, GAME_LIFECYCLE_RELATION_TARGET_SCOPE, gameTemporalContextResolver, GameTemporalRunningState, sortHistoryRecordsStable } from './GameTemporalContextResolver';
+import { predictionStrengthEvaluator } from './PredictionStrengthEvaluator';
 
 /**
  * 歷史紀錄批次處理器 (High Performance Version)
@@ -165,6 +166,13 @@ export class HistoryBatchProcessor {
             existingLocations.forEach(i => indexItem(i, 'location'));
             existingPlayers.forEach(i => indexItem(i, 'player'));
 
+            // Prediction evaluation must see the same candidate pool as the live engines,
+            // including entities learned in earlier replay chunks.
+            const predictionPlayerMap = new Map((await db.savedPlayers.toArray()).map(item => [item.id, item]));
+            const predictionLocationMap = new Map((await db.savedLocations.toArray()).map(item => [item.id, item]));
+            existingPlayers.forEach(item => predictionPlayerMap.set(item.id, item));
+            existingLocations.forEach(item => predictionLocationMap.set(item.id, item));
+
             // --- 4. Prepare Tracking State (追蹤修改) ---
             // 分別追蹤不同 Table 的修改，以便最後 bulkPut
             const modifiedGames = new Map<string, SavedListItem>();
@@ -253,8 +261,14 @@ export class HistoryBatchProcessor {
 
                 // Increment Pool Size immediately for accurate calculation
                 if (type === 'game') poolSizes.games++;
-                if (type === 'player') poolSizes.players++;
-                if (type === 'location') poolSizes.locations++;
+                if (type === 'player') {
+                    poolSizes.players++;
+                    predictionPlayerMap.set(newItem.id, newItem);
+                }
+                if (type === 'location') {
+                    poolSizes.locations++;
+                    predictionLocationMap.set(newItem.id, newItem);
+                }
 
                 return newItem;
             };
@@ -359,6 +373,19 @@ export class HistoryBatchProcessor {
 
                 // Note: Skip Session Context for Batch (Short-term memory not needed for historical data)
 
+                const predictionStrength = isFull ? predictionStrengthEvaluator.evaluate(
+                    record,
+                    resolvedEntities,
+                    Array.from(predictionPlayerMap.values()),
+                    Array.from(predictionLocationMap.values()),
+                    {
+                        player: globalPlayerWeights,
+                        count: globalCountWeights,
+                        location: globalLocationWeights,
+                        color: globalColorWeights
+                    }
+                ) : undefined;
+
                 // --- Train Relations ---
                 const newContextEntities = resolvedEntities.filter(e => e.isNewContext);
 
@@ -432,7 +459,9 @@ export class HistoryBatchProcessor {
                 logUpdates.push({
                     historyId: record.id,
                     status: record.location ? 'processed' : 'missing_location',
-                    lastProcessedAt: Date.now()
+                    lastProcessedAt: Date.now(),
+                    referenceStartTime: record.startTime,
+                    predictionStrength
                 });
             } // End Loop
 
