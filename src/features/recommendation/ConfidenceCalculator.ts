@@ -43,7 +43,8 @@ export class ConfidenceCalculator {
         currentRelationList: RelationItem[] | undefined,
         incomingIds: string[],
         currentConfidence: number = 1.0,
-        predictionWindowSize: number
+        predictionWindowSize: number,
+        correctPredictionIds?: ReadonlySet<string>
     ): number {
         // 1. 冷啟動保護：如果沒有舊資料，代表無法進行預測，保持原信心值
         if (!currentRelationList || currentRelationList.length === 0) {
@@ -55,7 +56,7 @@ export class ConfidenceCalculator {
         // 2. 建立預測集合 (Top N)
         // 使用外部傳入的 window size (例如：人數=3, 玩家=5)
         const topN = currentRelationList.slice(0, predictionWindowSize);
-        const predictionSet = new Set(topN.map(item => item.id));
+        const predictionSet = correctPredictionIds || new Set(topN.map(item => item.id));
 
         // 3. 決定基礎步長 (Small Pool Boost)
         // 若 L <= N：全知視角 (0.5)，否則標準預測 (0.1)

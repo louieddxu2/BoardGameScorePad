@@ -68,7 +68,11 @@ export class RelationTrainer {
             // the same pool-based window (for example, 25% capped at five).
             const votingLimit = RelationMapper.getVotingLimit(relKey, totalPoolSize);
             const predictionWindow = votingLimit;
-            const rankedPredictionList = RankVotingPolicy.rankCandidates(currentList, currentRankWeights, votingLimit);
+            const correctPredictionIds = RankVotingPolicy.getCorrectPredictionIds(
+                currentList,
+                currentRankWeights,
+                votingLimit
+            );
 
             // [LEARN 1] 調整全域權重 (Evaluate Prediction)
 
@@ -77,11 +81,12 @@ export class RelationTrainer {
                 const factor = RelationMapper.getRecommendationFactor(source.type);
                 if (factor) {
                     this.updateGlobalWeight(
-                        rankedPredictionList,
+                        currentList,
                         activeIds,
                         globalPlayerWeights as any,
                         factor,
                         predictionWindow,
+                        correctPredictionIds,
                         () => { playerWeightsChanged = true; }
                     );
                 }
@@ -92,11 +97,12 @@ export class RelationTrainer {
                 const factor = RelationMapper.getCountRecommendationFactor(source.type);
                 if (factor) {
                     this.updateGlobalWeight(
-                        rankedPredictionList,
+                        currentList,
                         activeIds,
                         globalCountWeights as any,
                         factor,
                         predictionWindow,
+                        correctPredictionIds,
                         () => { countWeightsChanged = true; }
                     );
                 }
@@ -107,11 +113,12 @@ export class RelationTrainer {
                 const factor = RelationMapper.getLocationRecommendationFactor(source.type);
                 if (factor) {
                     this.updateGlobalWeight(
-                        rankedPredictionList,
+                        currentList,
                         activeIds,
                         globalLocationWeights as any,
                         factor,
                         predictionWindow,
+                        correctPredictionIds,
                         () => { locationWeightsChanged = true; }
                     );
                 }
@@ -123,10 +130,11 @@ export class RelationTrainer {
                 newConfidence = 5.0; // 短期記憶固定高信心
             } else {
                 newConfidence = ConfidenceCalculator.calculate(
-                    rankedPredictionList,
+                    currentList,
                     activeIds,
                     currentConfidence,
-                    predictionWindow
+                    predictionWindow,
+                    correctPredictionIds
                 );
             }
 
@@ -150,6 +158,7 @@ export class RelationTrainer {
         weightsObj: Record<string, number>,
         factorKey: string,
         windowSize: number,
+        correctPredictionIds: ReadonlySet<string>,
         onChange: () => void
     ) {
         const historyLength = currentList ? currentList.length : 0;
@@ -158,12 +167,8 @@ export class RelationTrainer {
             ? (windowSize > 0 ? historyLength / windowSize : 0)
             : 1.0;
 
-        const predictionPool = new Set(
-            (currentList || []).slice(0, windowSize).map(r => r.id)
-        );
-
         for (const id of activeIds) {
-            const isHit = predictionPool.has(id);
+            const isHit = correctPredictionIds.has(id);
             const oldWeight = weightsObj[factorKey];
             const newWeight = weightAdjustmentEngine.calculateNewWeight(oldWeight, isHit, penaltyFactor);
 
@@ -225,27 +230,33 @@ export class RelationTrainer {
 
             const votingLimit = RelationMapper.getVotingLimit(relKey, totalPoolSize);
             const predictionWindow = votingLimit;
-            const rankedPredictionList = RankVotingPolicy.rankCandidates(currentList, currentRankWeights, votingLimit);
+            const correctPredictionIds = RankVotingPolicy.getCorrectPredictionIds(
+                currentList,
+                currentRankWeights,
+                votingLimit
+            );
 
             // [LEARN 1] Update Global Weights
             const factor = RelationMapper.getColorRecommendationFactor(source.type);
             if (factor) {
                 this.updateGlobalWeight(
-                    rankedPredictionList,
+                    currentList,
                     colorsToAdd,
                     globalColorWeights as any,
                     factor,
                     predictionWindow,
+                    correctPredictionIds,
                     () => { weightChanged = true; }
                 );
             }
 
             // [LEARN 2] Calculate Confidence
             const newConfidence = ConfidenceCalculator.calculate(
-                rankedPredictionList,
+                currentList,
                 colorsToAdd,
                 currentConfidence,
-                predictionWindow
+                predictionWindow,
+                correctPredictionIds
             );
 
             // [UPDATE] Update List

@@ -10,6 +10,46 @@ import { RelationTrainer } from './RelationTrainer';
 import { ResolvedEntity } from './types';
 
 describe('RelationTrainer rank voting integration', () => {
+    it('keeps an original top-N candidate correct when weighted top N excludes it', async () => {
+        const sourceItem: SavedListItem = {
+            id: 'game-union-hit',
+            name: 'Union Hit Game',
+            usageCount: 5,
+            lastUsed: 1,
+            meta: {
+                relations: {
+                    players: Array.from({ length: 6 }, (_, index) => ({ id: `p${index + 1}`, count: 1 }))
+                },
+                confidence: { players: 1 },
+                // N=3. Weighted top three are p1, p4 and p5, excluding raw rank p3.
+                rankWeights: { players: [5, 1, 1, 4, 3, 0] }
+            }
+        };
+        const playerWeights = { ...DEFAULT_PLAYER_WEIGHTS };
+
+        await new RelationTrainer().trainRelations(
+            {
+                item: sourceItem,
+                table: db.savedGames,
+                type: 'game',
+                isNewContext: true
+            },
+            [{
+                item: { id: 'p3', name: 'P3', usageCount: 1, lastUsed: 1 },
+                table: db.savedPlayers,
+                type: 'player',
+                isNewContext: true
+            }],
+            playerWeights,
+            { ...DEFAULT_COUNT_WEIGHTS },
+            { ...DEFAULT_LOCATION_WEIGHTS },
+            { players: 12 }
+        );
+
+        expect(playerWeights.game).toBe(1.1);
+        expect(sourceItem.meta!.confidence!.players).toBe(1.1);
+    });
+
     it('uses the same dynamic N for the 2N rank window and top-N correctness check', async () => {
         const sourceItem: SavedListItem = {
             id: 'game-small-pool',

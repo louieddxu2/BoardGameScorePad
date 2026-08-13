@@ -32,6 +32,21 @@ describe('RankVotingPolicy', () => {
         ]);
     });
 
+    it('counts both relation top N and weighted top N as correct predictions', () => {
+        const correctIds = RankVotingPolicy.getCorrectPredictionIds(
+            relations(6),
+            [5, 1, 0, 4, 0, 0],
+            3
+        );
+
+        expect(correctIds).toEqual(new Set([
+            'candidate-1',
+            'candidate-2',
+            'candidate-3',
+            'candidate-4'
+        ]));
+    });
+
     it('moves at most 0.50 vote to hit ranks without lowering any hit rank', () => {
         const before = RankVotingPolicy.getDefaultWeights(5);
         const after = RankVotingPolicy.adjustWeights(

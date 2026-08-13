@@ -58,6 +58,19 @@ export class RankVotingPolicy {
         ];
     }
 
+    public static getCorrectPredictionIds(
+        currentList: RelationItem[] | undefined,
+        weights: number[] | undefined,
+        votingLimit: number
+    ): Set<string> {
+        const list = currentList || [];
+        const weighted = this.rankCandidates(list, weights, votingLimit);
+        return new Set([
+            ...list.slice(0, votingLimit).map(item => item.id),
+            ...weighted.slice(0, votingLimit).map(item => item.id)
+        ]);
+    }
+
     public static adjustWeights(
         currentList: RelationItem[] | undefined,
         activeIds: string[],
