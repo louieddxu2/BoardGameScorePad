@@ -3,7 +3,7 @@ import { GameSession, GameTemplate, ScoreColumn, SavedListItem } from '../../../
 import { useSessionState } from './useSessionState';
 import { useSessionNavigation } from './useSessionNavigation';
 import { generateId } from '../../../utils/idGenerator';
-import { calculatePlayerTotal, syncPartsFromIds } from '../../../utils/scoring';
+import { syncPartsFromIds } from '../../../utils/scoring';
 import { useToast } from '../../../hooks/useToast';
 import { DATA_LIMITS } from '../../../dataLimits';
 import { bgStatsEntityService } from '../../../features/bgstats/services/bgStatsEntityService';
@@ -13,6 +13,7 @@ import { useTranslation } from '../../../i18n';
 import { useVoiceAnnouncements } from './useVoiceAnnouncements';
 import { SessionCapabilities } from '../../../features/multiplayer/sessionCapabilities';
 import { resolveManualIdentityFlag } from './playerIdentity';
+import { getInitialScoreInputPreviewValue } from '../scoreInputPreview';
 
 interface SessionViewProps {
   session: GameSession;
@@ -54,7 +55,13 @@ export const useSessionEvents = (
     editingCell: uiState.editingCell,
     editingPlayerId: uiState.editingPlayerId,
     advanceDirection: uiState.advanceDirection,
-    setEditingCell: (cell) => setUiState(prev => ({ ...prev, editingCell: cell, editingPlayerId: null, previewValue: 0 })),
+    setEditingCell: (cell) => setUiState(prev => ({
+      ...prev,
+      editingCell: cell,
+      editingPlayerId: null,
+      previewValue: getInitialScoreInputPreviewValue(session, template, cell),
+      ...(cell ? { overwriteMode: true } : {}),
+    })),
     setEditingPlayerId: (id) => setUiState(prev => ({ ...prev, editingPlayerId: id, editingCell: null, previewValue: 0 })),
     canEditScore: props.multiplayerCapabilities?.canEditScore,
     canEditTotal: props.multiplayerCapabilities?.canEditTotal,
@@ -199,19 +206,12 @@ export const useSessionEvents = (
     if (uiState.editingCell?.playerId === playerId && uiState.editingCell?.colId === colId) {
       setUiState(p => ({ ...p, editingCell: null, previewValue: 0 }));
     } else {
-      let initialValue: any = 0;
-      if (colId === '__TOTAL__') {
-        const player = session.players.find(p => p.id === playerId);
-        if (player) {
-          initialValue = calculatePlayerTotal(player, template, session.players);
-        }
-      }
-
       setUiState(p => ({
         ...p,
         editingCell: { playerId, colId },
         editingPlayerId: null,
-        previewValue: initialValue
+        previewValue: getInitialScoreInputPreviewValue(session, template, { playerId, colId }),
+        overwriteMode: true,
       }));
     }
   };

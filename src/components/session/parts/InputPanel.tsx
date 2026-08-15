@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { GameSession, GameTemplate, Player, ScoreColumn, QuickAction, ScoreValue, SavedListItem } from '../../../types';
 import { useSessionState } from '../hooks/useSessionState';
 import { useSessionEvents } from '../hooks/useSessionEvents';
@@ -19,6 +19,7 @@ import { getEffectiveIds } from '../../../utils/scoreDisplay';
 import { colorRecommendationEngine } from '../../../features/recommendation/ColorRecommendationEngine';
 import { applyScoreValuePatch } from '../../../features/multiplayer/scoreValuePatch';
 import { voiceService } from '../../../services/voiceService';
+import { getInitialScoreInputPreviewValue } from '../scoreInputPreview';
 
 // Helper for extracting factors from score value
 const getFactors = (value: any): [string | number, string | number] => {
@@ -281,7 +282,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     const prevEditingCellRef = useRef(editingCell);
 
     // Initialize preview value based on column type when cell changes
-    useEffect(() => {
+    useLayoutEffect(() => {
         // Construct a unique key for the current cell
         const targetId = editingCell ? `${editingCell.playerId}-${editingCell.colId}` : null;
 
@@ -293,39 +294,10 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             setActiveFactorIdx(0);
 
             if (editingCell) {
-                // Special init for Total Mode
-                if (editingCell.colId === '__TOTAL__') {
-                    const player = session.players.find(p => p.id === editingCell.playerId);
-                    if (player) {
-                        setPreview(player.totalScore);
-                    }
-                    return;
-                }
-
-                const col = template.columns.find((c: any) => c.id === editingCell.colId);
-                if (col && (col.formula || '').includes('+next')) {
-                    if (col.formula.includes('×a2')) {
-                        setUiState((p: any) => ({ ...p, previewValue: { factors: [0, 1] } }));
-                    } else {
-                        setPreview(0); // Sum parts starts empty/zero
-                    }
-                } else {
-                    // [Update] Standard Mode: Initialize preview with EXISTING value
-                    // This ensures that when we open the panel, we see the current score in the "preview" state,
-                    // allowing us to append decimals or edit it visually.
-                    const player = session.players.find(p => p.id === editingCell.playerId);
-                    const existingScoreObject = player?.scores[editingCell.colId];
-
-                    if (col && col.formula === 'a1×a2') {
-                        // Standard Product Mode
-                        const factors = existingScoreObject?.parts || [0, 1];
-                        setPreview({ factors });
-                    } else {
-                        // Standard Numeric
-                        const val = existingScoreObject?.parts?.[0] ?? 0;
-                        setPreview({ value: val });
-                    }
-                }
+                setUiState((p: any) => ({
+                    ...p,
+                    previewValue: getInitialScoreInputPreviewValue(session, template, editingCell),
+                }));
             }
         }
     }, [editingCell, template.columns, setUiState, session.players]);

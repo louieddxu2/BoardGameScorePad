@@ -1,5 +1,5 @@
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { GameSession, GameTemplate, SavedListItem } from '../../../types';
 import { useKeyboardStatus } from '../../../hooks/useVisualViewportOffset';
 
@@ -153,7 +153,7 @@ export const useSessionState = (props: SessionViewProps) => {
     localStorage.setItem('app_edit_mode', String(uiState.isEditMode));
   }, [uiState.isEditMode]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (uiState.editingCell) {
       setUiState(prev => ({ ...prev, overwriteMode: true }));
     }
