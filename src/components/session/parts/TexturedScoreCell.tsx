@@ -9,6 +9,7 @@ import { calculateDynamicFontSize } from '../../../utils/dynamicLayout';
 import { useSessionTranslation } from '../../../i18n/session';
 import { injectSoftHyphens } from '../../../utils/text';
 import { formatDisplayNumber } from '../../../utils/scoreDisplay';
+import type { TouchActionHandlers } from '../../shared/useTouchAction';
 
 interface TexturedScoreCellProps {
     player: Player;
@@ -28,6 +29,7 @@ interface TexturedScoreCellProps {
     skipTextureRendering?: boolean; // New Prop
     isReadOnly?: boolean;
     isEditable?: boolean;
+    touchHandlers: TouchActionHandlers<HTMLDivElement>;
 }
 
 const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
@@ -47,7 +49,8 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
     limitX,
     skipTextureRendering = false,
     isReadOnly = false,
-    isEditable = false
+    isEditable = false,
+    touchHandlers,
 }) => {
     const { t } = useSessionTranslation();
     const [bgUrl, setBgUrl] = useState<string | null>(null);
@@ -188,7 +191,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                 {!skipTextureRendering && <SmartTextureLayer bgUrl={bgUrl} rect={rect} />}
 
                 <div
-                    onClick={(e) => { e.stopPropagation(); onClick(e); }}
+                    {...touchHandlers}
                     className={`
                     absolute flex items-center justify-center z-10 border-2 rounded-md transition-all pointer-events-auto ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}
                     ${isActive
@@ -363,7 +366,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
 
     return (
         <div
-            onClick={onClick}
+            {...touchHandlers}
             className={`w-full h-full relative ${isReadOnly ? 'cursor-default' : 'cursor-pointer'} select-none overflow-hidden transition-all ${isActive ? '' : (isEditable ? 'ring-1 ring-inset ring-brand-primary/45' : (isReadOnly ? 'saturate-[0.78]' : 'hover:brightness-95'))}`}
             style={{
                 backgroundColor: skipTextureRendering ? 'transparent' : 'rgb(var(--c-surface-recessed))',

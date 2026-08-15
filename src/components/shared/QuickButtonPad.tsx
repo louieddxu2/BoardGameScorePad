@@ -4,6 +4,7 @@ import { QuickAction, ScoreColumn } from '../../types';
 import { isColorTooLight } from '../../utils/ui';
 import { Check } from 'lucide-react';
 import { useSessionTranslation } from '../../i18n/session';
+import { useTouchAction } from './useTouchAction';
 
 import { injectSoftHyphens } from '../../utils/text';
 
@@ -14,14 +15,70 @@ interface QuickButtonPadProps {
     currentMultiOptionIds?: string[];
 }
 
+interface QuickActionButtonProps {
+    action: QuickAction;
+    isSelected: boolean;
+    isListMode: boolean;
+    isStandardSumParts: boolean;
+    backgroundColor: string;
+    textColor: string;
+    borderClass: string;
+    badgeBackgroundClass: string;
+    onAction: (action: QuickAction) => void;
+}
+
+const QuickActionButton: React.FC<QuickActionButtonProps> = ({
+    action,
+    isSelected,
+    isListMode,
+    isStandardSumParts,
+    backgroundColor,
+    textColor,
+    borderClass,
+    badgeBackgroundClass,
+    onAction,
+}) => {
+    const touchHandlers = useTouchAction<HTMLButtonElement>(() => {
+        if (navigator.vibrate) navigator.vibrate(10);
+        onAction(action);
+    }, { moveThreshold: 10 });
+
+    return (
+        <button
+            {...touchHandlers}
+            className={`
+                    rounded-xl flex items-center p-2 shadow-sm transition-all relative h-full
+                    ${isListMode ? 'flex-row justify-between px-4' : 'flex-col justify-center'}
+                    ${borderClass}
+                    ${isSelected ? 'ring-2 ring-[rgb(var(--c-txt-primary))] ring-offset-2 ring-offset-[rgb(var(--c-surface-bg))] z-10 scale-[1.02]' : 'active:scale-95 z-10'}
+                `}
+            style={{ backgroundColor }}
+        >
+            {isSelected && (
+                <div className="absolute -top-1.5 -right-1.5 bg-white text-status-success rounded-full p-0.5 shadow-md animate-in zoom-in duration-200 z-20">
+                    <Check strokeWidth={4} size={12} />
+                </div>
+            )}
+
+            <span
+                className={`font-bold leading-tight break-words whitespace-pre-wrap pointer-events-none hyphenate ${isListMode ? 'text-[20px] text-left flex-1 min-w-0' : 'text-[16px] text-center w-full mb-1'}`}
+                style={{ color: textColor }}
+            >
+                {injectSoftHyphens(action.label)}
+            </span>
+            <span
+                className={`font-mono font-bold rounded-full flex items-center justify-center shrink-0 pointer-events-none ${isListMode ? 'text-[16px] px-3 py-1 ml-2' : 'text-[14px] px-2 py-0.5'} ${badgeBackgroundClass}`}
+                style={{ color: textColor }}
+            >
+                {isStandardSumParts && action.value > 0 ? '+' : ''}{action.value}
+            </span>
+        </button>
+    );
+};
+
 const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, currentOptionId, currentMultiOptionIds }) => {
     const { t } = useSessionTranslation();
     const actions = column.quickActions || [];
-
-    const handleAction = (action: QuickAction) => {
-        if (navigator.vibrate) navigator.vibrate(10);
-        onAction(action);
-    };
 
     if (actions.length === 0) {
         return (
@@ -70,37 +127,18 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
                         : 'bg-[rgb(var(--c-black)_/_0.2)]';
 
                     return (
-                        <button
+                        <QuickActionButton
                             key={action.id}
-                            onClick={() => handleAction(action)}
-                            className={`
-                    rounded-xl flex items-center p-2 shadow-sm transition-all relative h-full 
-                    ${isListMode ? 'flex-row justify-between px-4' : 'flex-col justify-center'} 
-                    ${borderClass}
-                    ${isSelected ? 'ring-2 ring-[rgb(var(--c-txt-primary))] ring-offset-2 ring-offset-[rgb(var(--c-surface-bg))] z-10 scale-[1.02]' : 'active:scale-95 z-10'}
-                `}
-                            style={{ backgroundColor: bg }}
-                        >
-                            {/* Selection Indicator Icon */}
-                            {isSelected && (
-                                <div className="absolute -top-1.5 -right-1.5 bg-white text-status-success rounded-full p-0.5 shadow-md animate-in zoom-in duration-200 z-20">
-                                    <Check strokeWidth={4} size={12} />
-                                </div>
-                            )}
-
-                            <span
-                                className={`font-bold leading-tight break-words whitespace-pre-wrap pointer-events-none hyphenate ${isListMode ? 'text-[20px] text-left flex-1 min-w-0' : 'text-[16px] text-center w-full mb-1'}`}
-                                style={{ color: textColor }}
-                            >
-                                {injectSoftHyphens(action.label)}
-                            </span>
-                            <span
-                                className={`font-mono font-bold rounded-full flex items-center justify-center shrink-0 pointer-events-none ${isListMode ? 'text-[16px] px-3 py-1 ml-2' : 'text-[14px] px-2 py-0.5'} ${badgeBgClass}`}
-                                style={{ color: textColor }}
-                            >
-                                {isStandardSumParts && action.value > 0 ? '+' : ''}{action.value}
-                            </span>
-                        </button>
+                            action={action}
+                            isSelected={isSelected}
+                            isListMode={isListMode}
+                            isStandardSumParts={isStandardSumParts}
+                            backgroundColor={bg}
+                            textColor={textColor}
+                            borderClass={borderClass}
+                            badgeBackgroundClass={badgeBgClass}
+                            onAction={onAction}
+                        />
                     );
                 })}
             </div>

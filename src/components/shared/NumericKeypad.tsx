@@ -2,6 +2,7 @@
 import React from 'react';
 import { Delete, Dot } from 'lucide-react';
 import { ScoreColumn } from '../../types';
+import { useTouchAction } from './useTouchAction';
 
 interface NumericKeypadContentProps {
   value: any;
@@ -21,91 +22,12 @@ interface KeypadButtonProps {
   onActivate: () => void;
 }
 
-const KEYPAD_SWIPE_THRESHOLD = 30;
-
-/**
- * Touch browsers may show a button's active state without emitting the
- * compatibility click that the keypad previously relied on. Resolve touch
- * taps from the same gesture, while leaving keyboard/mouse clicks unchanged.
- */
 const KeypadButton: React.FC<KeypadButtonProps> = ({ children, className, onActivate }) => {
-  const touchStartRef = React.useRef<{ x: number; y: number } | null>(null);
-  const touchMovedRef = React.useRef(false);
-  const touchActivationRef = React.useRef(false);
-
-  const handleTouchStart = (event: React.TouchEvent<HTMLButtonElement>) => {
-    const touch = event.touches[0];
-    if (!touch || event.touches.length !== 1) {
-      touchStartRef.current = null;
-      touchMovedRef.current = true;
-      return;
-    }
-
-    touchActivationRef.current = false;
-    touchMovedRef.current = false;
-    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
-  };
-
-  const handleTouchMove = (event: React.TouchEvent<HTMLButtonElement>) => {
-    const start = touchStartRef.current;
-    const touch = event.touches[0];
-    if (!start || !touch || touchMovedRef.current) return;
-
-    const dx = touch.clientX - start.x;
-    const dy = touch.clientY - start.y;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) > KEYPAD_SWIPE_THRESHOLD) {
-      touchMovedRef.current = true;
-    }
-  };
-
-  const handleTouchEnd = (event: React.TouchEvent<HTMLButtonElement>) => {
-    const start = touchStartRef.current;
-    const touch = event.changedTouches[0];
-    const moved = touchMovedRef.current || !start || !touch || (
-      Math.max(Math.abs(touch.clientX - start.x), Math.abs(touch.clientY - start.y)) > KEYPAD_SWIPE_THRESHOLD
-    );
-
-    touchStartRef.current = null;
-    touchMovedRef.current = false;
-
-    if (moved) return;
-
-    // The action is now resolved from the touch sequence itself. Prevent the
-    // browser from dispatching a second compatibility click for the same tap.
-    touchActivationRef.current = true;
-    if (event.cancelable) event.preventDefault();
-    onActivate();
-  };
-
-  const handleTouchCancel = () => {
-    touchStartRef.current = null;
-    touchMovedRef.current = false;
-    touchActivationRef.current = false;
-  };
-
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    const nativeEvent = event.nativeEvent as MouseEvent & {
-      sourceCapabilities?: { firesTouchEvents?: boolean } | null;
-    };
-    const isTouchCompatibilityClick = nativeEvent.sourceCapabilities?.firesTouchEvents === true
-      || (touchActivationRef.current && event.detail > 0);
-
-    if (touchActivationRef.current && isTouchCompatibilityClick) {
-      touchActivationRef.current = false;
-      return;
-    }
-
-    touchActivationRef.current = false;
-    onActivate();
-  };
+  const touchHandlers = useTouchAction<HTMLButtonElement>(() => onActivate());
 
   return (
     <button
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchCancel}
-      onClick={handleClick}
+      {...touchHandlers}
       className={className}
     >
       {children}

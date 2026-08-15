@@ -469,24 +469,35 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     // --- Joystick Logic (Swipe to Switch Players) ---
     const touchStartRef = useRef<{ x: number, y: number } | null>(null);
     const hasTriggeredRef = useRef(false);
+    const touchAxisRef = useRef<'horizontal' | 'vertical' | null>(null);
 
     const handleTouchStart = (e: React.TouchEvent) => {
-        if (e.touches.length !== 1) return;
+        if (e.touches.length !== 1) {
+            touchStartRef.current = null;
+            hasTriggeredRef.current = false;
+            touchAxisRef.current = null;
+            return;
+        }
         touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
         hasTriggeredRef.current = false;
+        touchAxisRef.current = null;
     };
 
     const handleTouchMove = (e: React.TouchEvent) => {
         // 1. Basic Guards
-        if (!touchStartRef.current || hasTriggeredRef.current || !isPanelOpen) return;
+        if (!touchStartRef.current || hasTriggeredRef.current || !isPanelOpen || e.touches.length !== 1) return;
 
         const touch = e.touches[0];
         const dx = touch.clientX - touchStartRef.current.x;
         const dy = touch.clientY - touchStartRef.current.y;
 
-        // 2. Axis Locking: Ignore if scrolling vertically (history list, buttons)
-        // Allow some diagonal tolerance but prioritize horizontal
-        if (Math.abs(dy) > Math.abs(dx)) return;
+        // 2. Axis Locking: decide once for this gesture. A vertical scroll must
+        // not become a player swipe just because a later sample leans sideways.
+        if (!touchAxisRef.current && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+            touchAxisRef.current = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
+        }
+
+        if (touchAxisRef.current !== 'horizontal') return;
 
         // 3. Threshold Trigger (30px)
         if (Math.abs(dx) > 30) {
@@ -543,6 +554,13 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
         }
         touchStartRef.current = null;
         hasTriggeredRef.current = false;
+        touchAxisRef.current = null;
+    };
+
+    const handleTouchCancel = () => {
+        touchStartRef.current = null;
+        hasTriggeredRef.current = false;
+        touchAxisRef.current = null;
     };
 
     let mainContentNode = null;
@@ -939,6 +957,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchCancel}
         >
             {activePlayer && !isPlaceholderMode && (
                 <PanelHeader
