@@ -15,6 +15,104 @@ interface NumericKeypadContentProps {
   playerId: string;
 }
 
+interface KeypadButtonProps {
+  children: React.ReactNode;
+  className: string;
+  onActivate: () => void;
+}
+
+const KEYPAD_SWIPE_THRESHOLD = 30;
+
+/**
+ * Touch browsers may show a button's active state without emitting the
+ * compatibility click that the keypad previously relied on. Resolve touch
+ * taps from the same gesture, while leaving keyboard/mouse clicks unchanged.
+ */
+const KeypadButton: React.FC<KeypadButtonProps> = ({ children, className, onActivate }) => {
+  const touchStartRef = React.useRef<{ x: number; y: number } | null>(null);
+  const touchMovedRef = React.useRef(false);
+  const touchActivationRef = React.useRef(false);
+
+  const handleTouchStart = (event: React.TouchEvent<HTMLButtonElement>) => {
+    const touch = event.touches[0];
+    if (!touch || event.touches.length !== 1) {
+      touchStartRef.current = null;
+      touchMovedRef.current = true;
+      return;
+    }
+
+    touchActivationRef.current = false;
+    touchMovedRef.current = false;
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTouchMove = (event: React.TouchEvent<HTMLButtonElement>) => {
+    const start = touchStartRef.current;
+    const touch = event.touches[0];
+    if (!start || !touch || touchMovedRef.current) return;
+
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) > KEYPAD_SWIPE_THRESHOLD) {
+      touchMovedRef.current = true;
+    }
+  };
+
+  const handleTouchEnd = (event: React.TouchEvent<HTMLButtonElement>) => {
+    const start = touchStartRef.current;
+    const touch = event.changedTouches[0];
+    const moved = touchMovedRef.current || !start || !touch || (
+      Math.max(Math.abs(touch.clientX - start.x), Math.abs(touch.clientY - start.y)) > KEYPAD_SWIPE_THRESHOLD
+    );
+
+    touchStartRef.current = null;
+    touchMovedRef.current = false;
+
+    if (moved) return;
+
+    // The action is now resolved from the touch sequence itself. Prevent the
+    // browser from dispatching a second compatibility click for the same tap.
+    touchActivationRef.current = true;
+    if (event.cancelable) event.preventDefault();
+    onActivate();
+  };
+
+  const handleTouchCancel = () => {
+    touchStartRef.current = null;
+    touchMovedRef.current = false;
+    touchActivationRef.current = false;
+  };
+
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const nativeEvent = event.nativeEvent as MouseEvent & {
+      sourceCapabilities?: { firesTouchEvents?: boolean } | null;
+    };
+    const isTouchCompatibilityClick = nativeEvent.sourceCapabilities?.firesTouchEvents === true
+      || (touchActivationRef.current && event.detail > 0);
+
+    if (touchActivationRef.current && isTouchCompatibilityClick) {
+      touchActivationRef.current = false;
+      return;
+    }
+
+    touchActivationRef.current = false;
+    onActivate();
+  };
+
+  return (
+    <button
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
+      onClick={handleClick}
+      className={className}
+    >
+      {children}
+    </button>
+  );
+};
+
 const NumericKeypad: React.FC<NumericKeypadContentProps> = (props) => {
   const {
     value,
@@ -173,16 +271,16 @@ const NumericKeypad: React.FC<NumericKeypadContentProps> = (props) => {
   return (
       <div className="grid grid-cols-3 grid-rows-4 gap-2 h-full">
         {[7, 8, 9, 4, 5, 6, 1, 2, 3].map(num => (
-          <button key={num} onClick={() => handleNumClick(num)} className={`text-[32px] leading-none font-bold rounded-xl shadow-sm transition-all touch-manipulation active:scale-95 h-full ${overwrite ? 'bg-keypad-active text-white shadow-brand-secondary/20 hover:opacity-90' : 'bg-keypad-bg text-keypad-text hover:bg-surface-hover border border-input-border'}`}>{num}</button>
+          <KeypadButton key={num} onActivate={() => handleNumClick(num)} className={`text-[32px] leading-none font-bold rounded-xl shadow-sm transition-all touch-manipulation active:scale-95 h-full ${overwrite ? 'bg-keypad-active text-white shadow-brand-secondary/20 hover:opacity-90' : 'bg-keypad-bg text-keypad-text hover:bg-surface-hover border border-input-border'}`}>{num}</KeypadButton>
         ))}
         <div className="bg-keypad-bg rounded-xl border border-input-border grid grid-rows-2 h-full overflow-hidden shadow-sm">
-            <button onClick={handleToggleSign} className={`hover:bg-surface-hover text-txt-muted flex items-center justify-center transition-colors active:scale-95 touch-manipulation font-bold ${!isToggleMode ? 'font-mono text-[28px] leading-none' : 'text-xl'}`}>
+            <KeypadButton onActivate={handleToggleSign} className={`hover:bg-surface-hover text-txt-muted flex items-center justify-center transition-colors active:scale-95 touch-manipulation font-bold ${!isToggleMode ? 'font-mono text-[28px] leading-none' : 'text-xl'}`}>
               {isToggleMode ? '+/-' : '-'}
-            </button>
-            <button onClick={handleDecimal} className="border-t border-input-border hover:bg-surface-hover text-keypad-text font-bold flex items-center justify-center transition-colors active:scale-95 touch-manipulation"><Dot size={32} /></button>
+            </KeypadButton>
+            <KeypadButton onActivate={handleDecimal} className="border-t border-input-border hover:bg-surface-hover text-keypad-text font-bold flex items-center justify-center transition-colors active:scale-95 touch-manipulation"><Dot size={32} /></KeypadButton>
         </div>
-        <button onClick={() => handleNumClick(0)} className={`text-[32px] leading-none font-bold rounded-xl touch-manipulation active:scale-95 transition-all h-full ${overwrite ? 'bg-keypad-active text-white shadow-brand-secondary/20' : 'bg-keypad-bg text-keypad-text border border-input-border hover:bg-surface-hover'}`}>0</button>
-        <button onClick={handleBackspace} className="bg-keypad-bg hover:bg-status-danger/10 text-status-danger rounded-xl flex items-center justify-center border border-input-border active:scale-95 transition-transform h-full"><Delete size={32} /></button>
+        <KeypadButton onActivate={() => handleNumClick(0)} className={`text-[32px] leading-none font-bold rounded-xl touch-manipulation active:scale-95 transition-all h-full ${overwrite ? 'bg-keypad-active text-white shadow-brand-secondary/20' : 'bg-keypad-bg text-keypad-text border border-input-border hover:bg-surface-hover'}`}>0</KeypadButton>
+        <KeypadButton onActivate={handleBackspace} className="bg-keypad-bg hover:bg-status-danger/10 text-status-danger rounded-xl flex items-center justify-center border border-input-border active:scale-95 transition-transform h-full"><Delete size={32} /></KeypadButton>
       </div>
   );
 };
