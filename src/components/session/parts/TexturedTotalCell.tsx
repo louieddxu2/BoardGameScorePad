@@ -164,8 +164,10 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
   const [bgUrl, setBgUrl] = useState<string | null>(null);
   const cellRef = useRef<HTMLDivElement>(null);
 
-  const isCoop = scoringRule === 'COOP' || scoringRule === 'COOP_NO_SCORE';
-  const shouldShowCrown = isWinner && (hasMultiplePlayers || isCoop);
+  const effectiveScoringRule = scoringRule ?? 'HIGHEST_WINS';
+  const isCoop = effectiveScoringRule === 'COOP' || effectiveScoringRule === 'COOP_NO_SCORE';
+  const isCompetitive = effectiveScoringRule === 'HIGHEST_WINS' || effectiveScoringRule === 'LOWEST_WINS';
+  const shouldShowCrown = isWinner && (hasMultiplePlayers || isCoop || isCompetitive);
 
   useEffect(() => {
     let isMounted = true;

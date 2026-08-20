@@ -400,6 +400,7 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                             isWinner={winners.includes(p.id)}
                             hasMultiplePlayers={session.players.length > 1}
                             baseImage={''}
+                            scoringRule={session.scoringRule}
                             className={`${borderRightClass} ${rowBorderClass} flex items-center justify-center relative`}
                             style={getPlayerColStyle(p.id)}
                         />
