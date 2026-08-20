@@ -95,14 +95,7 @@ class RelationshipService {
                 const resolvedEntities = await trainingContextResolver.resolve(record, mode as 'full' | 'location_only');
                 if (mode === 'full') {
                     const resolvedGame = resolvedEntities.find(entity => entity.type === 'game')?.item;
-                    const temporal = await gameTemporalContextResolver.resolveFromHistory({
-                        referenceStartTime: record.startTime,
-                        currentRecordId: record.id,
-                        bggId: record.bggId,
-                        gameName: record.gameName,
-                        templateId: record.templateId,
-                        resolvedGame
-                    });
+                    const temporal = gameTemporalContextResolver.resolveFromSavedGameStats(resolvedGame, record.startTime);
                     resolvedEntities.push(...await gameTemporalContextResolver.resolveBucketEntities(temporal));
                 }
                 const newContextEntities = resolvedEntities.filter(e => e.isNewContext);

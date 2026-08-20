@@ -29,12 +29,7 @@ export class ContextResolver {
         const gameVoter = voters.find(voter => voter.factor === 'game');
         if (!gameVoter && !context.gameName && !context.bggId) return voters;
 
-        const temporal = await gameTemporalContextResolver.resolveFromHistory({
-            referenceStartTime: context.timestamp ?? Date.now(),
-            bggId: context.bggId,
-            gameName: context.gameName,
-            resolvedGame: gameVoter?.item
-        });
+        const temporal = gameTemporalContextResolver.resolveFromSavedGameStats(gameVoter?.item, context.timestamp ?? Date.now());
         const buckets = await gameTemporalContextResolver.resolveBucketEntities(temporal);
         return voters.concat(buckets.map(bucket => ({
             item: bucket.item,

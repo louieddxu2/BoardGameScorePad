@@ -95,6 +95,12 @@ export function createLifecycleBucketItems(): SavedListItem[] {
 }
 
 export class GameTemporalContextResolver {
+    public resolveFromSavedGameStats(savedGame: SavedListItem | undefined, referenceStartTime: number): GameTemporalContext {
+        const priorCount = savedGame?.usageCount ?? 0;
+        const lastCompletedAt = priorCount > 0 ? savedGame?.lastUsed : undefined;
+        return classifyGameTemporalContext(priorCount, referenceStartTime, lastCompletedAt);
+    }
+
     public resolveIdentity(input: { bggId?: string; gameName?: string; templateId?: string }, resolvedGame?: SavedListItem): string {
         const bggId = input.bggId || resolvedGame?.bggId;
         if (bggId) return `bgg:${bggId}`;

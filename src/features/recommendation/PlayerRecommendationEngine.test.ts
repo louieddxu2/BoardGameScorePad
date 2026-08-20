@@ -232,7 +232,7 @@ describe('PlayerRecommendationEngine.generateSuggestions', () => {
     it('adds resolved play-stage and recency buckets to player context', async () => {
         const gameItem: SavedListItem = { id: 'game', name: 'Azul', usageCount: 1, lastUsed: 1 };
         vi.spyOn(contextResolver, 'resolveBaseContext').mockResolvedValue([{ item: gameItem, factor: 'game' }]);
-        vi.spyOn(gameTemporalContextResolver, 'resolveFromHistory').mockResolvedValue({
+        vi.spyOn(gameTemporalContextResolver, 'resolveFromSavedGameStats').mockReturnValue({
             priorCount: 1,
             lastCompletedAt: 100,
             stageBucketId: 'game_play_stage:second',
@@ -246,11 +246,7 @@ describe('PlayerRecommendationEngine.generateSuggestions', () => {
         const voters = await contextResolver.resolvePlayerContext({ gameName: 'Azul', timestamp: 1_000 });
 
         expect(voters.map(voter => voter.factor)).toEqual(['game', 'gamePlayStage', 'gameRecency']);
-        expect(gameTemporalContextResolver.resolveFromHistory).toHaveBeenCalledWith(expect.objectContaining({
-            referenceStartTime: 1_000,
-            gameName: 'Azul',
-            resolvedGame: gameItem
-        }));
+        expect(gameTemporalContextResolver.resolveFromSavedGameStats).toHaveBeenCalledWith(gameItem, 1_000);
     });
 
     it('builds initial player suggestions by chaining single-pass suggestions', async () => {
