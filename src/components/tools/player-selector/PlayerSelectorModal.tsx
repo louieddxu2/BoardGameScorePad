@@ -12,6 +12,7 @@ import { playerRecommendationEngine } from '../../../features/recommendation/Pla
 import { Voter } from '../../../features/recommendation/ContextResolver';
 import { loadPlayerRecommendationContext, LoadedPlayerRecommendationContext } from '../../../features/recommendation/playerRecommendationContext';
 import { DEFAULT_PLAYER_WEIGHTS } from '../../../features/recommendation/types';
+import { getManualSessionPlayerCandidates, getPlayerCandidateLocks, prioritizePlayerCandidates } from './selectorCandidates';
 
 interface PlayerSelectorModalProps {
     isOpen: boolean;
@@ -221,12 +222,10 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
     const candidates = useMemo(() => {
         if (!isOpen) return [];
 
-        const lockedPlayerIds = players
-            .map(p => p.linkedPlayerId)
-            .filter((id): id is string => !!id);
-        const lockedNames = players.map(p => p.text);
+        const manualCandidates = getManualSessionPlayerCandidates(session.players);
+        const { lockedPlayerIds, lockedNames } = getPlayerCandidateLocks(manualCandidates, players);
 
-        return playerRecommendationEngine.generateSuggestions({
+        const recommendedCandidates = playerRecommendationEngine.generateSuggestions({
             allSavedPlayers,
             contextVoters: recommendationContext.voters,
             lockedPlayerIds,
@@ -234,6 +233,8 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
             sessionPlayers: [],
             weights: recommendationContext.weights
         });
+
+        return prioritizePlayerCandidates(manualCandidates, recommendedCandidates);
     }, [isOpen, allSavedPlayers, players, recommendationContext, session.players]);
 
     const randomNames = t('picker_prototype_random_names').split(',');
@@ -398,7 +399,7 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                     // 比對 linkedPlayerId 或 name，尋找原本已在計分板中且尚未被佔用的玩家
                     const existingPlayer = session.players.find(p => 
                         !usedExistingIds.has(p.id) && (
-                            (sp.linkedPlayerId && p.id === sp.linkedPlayerId) || 
+                            (sp.linkedPlayerId && p.linkedPlayerId === sp.linkedPlayerId) ||
                             p.id === sp.id || 
                             p.name === sp.text
                         )
@@ -412,6 +413,7 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                             ...existingPlayer,
                             color: sp.color,
                             isStarter,
+                            isIdentityManuallySet: true,
                             isColorManuallySet: sp.isColorManuallySet || existingPlayer.isColorManuallySet || false
                         };
                     } else {
@@ -424,6 +426,7 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                             totalScore: 0,
                             isStarter,
                             linkedPlayerId: sp.linkedPlayerId,
+                            isIdentityManuallySet: true,
                             isColorManuallySet: sp.isColorManuallySet || false
                         };
                     }

@@ -1,0 +1,105 @@
+import { Table } from 'dexie';
+import { db } from '../../db';
+import { HistoryRecord, SavedListItem } from '../../types';
+import { ResolvedEntity } from './types';
+
+export const GAME_PLAY_STAGE_BUCKET_IDS = [
+    'game_play_stage:first',
+    'game_play_stage:second',
+    'game_play_stage:third_to_fourth',
+    'game_play_stage:fifth_to_ninth',
+    'game_play_stage:tenth_plus'
+] as const;
+
+export const GAME_RECENCY_BUCKET_IDS = [
+    'game_recency:within_1_day',
+    'game_recency:within_7_days',
+    'game_recency:within_30_days',
+    'game_recency:within_90_days',
+    'game_recency:over_90_days'
+] as const;
+
+export const GAME_LIFECYCLE_BUCKET_IDS = [...GAME_PLAY_STAGE_BUCKET_IDS, ...GAME_RECENCY_BUCKET_IDS] as const;
+export const GAME_LIFECYCLE_RELATION_TARGET_SCOPE = [
+    'players',
+    'locations',
+    'weekdays',
+    'timeSlots',
+    'playerCounts',
+    'gameModes'
+] as const;
+export type GamePlayStageBucketId = typeof GAME_PLAY_STAGE_BUCKET_IDS[number];
+export type GameRecencyBucketId = typeof GAME_RECENCY_BUCKET_IDS[number];
+
+export interface GameTemporalContext {
+    priorCount: number;
+    lastCompletedAt?: number;
+    stageBucketId: GamePlayStageBucketId;
+    recencyBucketId?: GameRecencyBucketId;
+}
+
+const DAY = 24 * 60 * 60 * 1000;
+
+export function sortHistoryRecordsStable<T extends Pick<HistoryRecord, 'startTime' | 'endTime' | 'id'>>(records: T[]): T[] {
+    return [...records].sort((a, b) => a.startTime - b.startTime || a.endTime - b.endTime || a.id.localeCompare(b.id));
+}
+
+export function classifyGamePlayStage(priorCount: number): GamePlayStageBucketId {
+    if (priorCount === 0) return 'game_play_stage:first';
+    if (priorCount === 1) return 'game_play_stage:second';
+    if (priorCount <= 3) return 'game_play_stage:third_to_fourth';
+    if (priorCount <= 8) return 'game_play_stage:fifth_to_ninth';
+    return 'game_play_stage:tenth_plus';
+}
+
+export function classifyGameRecency(elapsedMs: number): GameRecencyBucketId {
+    if (elapsedMs <= DAY) return 'game_recency:within_1_day';
+    if (elapsedMs <= 7 * DAY) return 'game_recency:within_7_days';
+    if (elapsedMs <= 30 * DAY) return 'game_recency:within_30_days';
+    if (elapsedMs <= 90 * DAY) return 'game_recency:within_90_days';
+    return 'game_recency:over_90_days';
+}
+
+export function classifyGameTemporalContext(priorCount: number, referenceStartTime: number, lastCompletedAt?: number): GameTemporalContext {
+    return {
+        priorCount,
+        lastCompletedAt,
+        stageBucketId: classifyGamePlayStage(priorCount),
+        recencyBucketId: priorCount > 0 && lastCompletedAt !== undefined
+            ? classifyGameRecency(referenceStartTime - lastCompletedAt)
+            : undefined
+    };
+}
+
+export function createLifecycleBucketItems(): SavedListItem[] {
+    return GAME_LIFECYCLE_BUCKET_IDS.map(id => ({
+        id,
+        name: id,
+        lastUsed: 0,
+        usageCount: 0,
+        meta: { relations: {}, confidence: {} }
+    }));
+}
+
+export class GameTemporalContextResolver {
+    public resolveFromSavedGameStats(savedGame: SavedListItem | undefined, referenceStartTime: number): GameTemporalContext {
+        const priorCount = savedGame?.usageCount ?? 0;
+        const lastCompletedAt = priorCount > 0 ? savedGame?.lastUsed : undefined;
+        return classifyGameTemporalContext(priorCount, referenceStartTime, lastCompletedAt);
+    }
+
+    public async resolveBucketEntities(context: GameTemporalContext): Promise<ResolvedEntity[]> {
+        const ids = [context.stageBucketId, ...(context.recencyBucketId ? [context.recencyBucketId] : [])];
+        const items = await db.savedGameLifecycleContexts.bulkGet(ids);
+        return items.filter((item): item is SavedListItem => !!item).map(item => ({
+            item,
+            table: db.savedGameLifecycleContexts as Table<SavedListItem>,
+            type: item.id.startsWith('game_play_stage:') ? 'gamePlayStage' : 'gameRecency',
+            isNewContext: true,
+            relationTargetScope: [...GAME_LIFECYCLE_RELATION_TARGET_SCOPE],
+            relationSourceScope: [...GAME_LIFECYCLE_RELATION_TARGET_SCOPE]
+        }));
+    }
+}
+
+export const gameTemporalContextResolver = new GameTemporalContextResolver();

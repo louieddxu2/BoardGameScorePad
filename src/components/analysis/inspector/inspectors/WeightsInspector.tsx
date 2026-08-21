@@ -6,6 +6,9 @@ import { DEFAULT_PLAYER_WEIGHTS, PlayerRecommendationWeights, DEFAULT_COUNT_WEIG
 import { weightAdjustmentEngine, PLAYER_WEIGHTS_ID, COUNT_WEIGHTS_ID, LOCATION_WEIGHTS_ID, COLOR_WEIGHTS_ID } from '../../../../features/recommendation/WeightAdjustmentEngine';
 import { useInspectorTranslation } from '../shared/InspectorCommon';
 import { useConfirm } from '../../../../hooks/useConfirm';
+import { db } from '../../../../db';
+import { PredictionModelKey } from '../../../../types';
+import { PredictionStrengthSummary, summarizeRecentPredictionStrength } from '../../../../services/relationship/PredictionStrengthEvaluator';
 
 // Reusable Component for displaying a single engine's weights
 const EngineWeightSection: React.FC<{
@@ -14,13 +17,16 @@ const EngineWeightSection: React.FC<{
     icon: React.ReactNode;
     weights: Record<string, number>;
     onReset: () => void;
+    strength?: PredictionStrengthSummary;
     colorTheme?: 'indigo' | 'amber' | 'rose' | 'pink';
-}> = ({ title, desc, icon, weights, onReset, colorTheme = 'indigo' }) => {
+}> = ({ title, desc, icon, weights, onReset, strength, colorTheme = 'indigo' }) => {
     const t = useInspectorTranslation();
 
     const getFactorLabel = (key: string) => {
         switch (key) {
             case 'game': return t('factor_game');
+            case 'gamePlayStage': return t('factor_gamePlayStage');
+            case 'gameRecency': return t('factor_gameRecency');
             case 'location': return t('factor_location');
             case 'weekday': return t('factor_weekday');
             case 'timeSlot': return t('factor_timeSlot');
@@ -91,6 +97,18 @@ const EngineWeightSection: React.FC<{
                     <p className={`text-xs mt-1 leading-relaxed ${descClass}`}>
                         {desc}
                     </p>
+                    <div className="mt-2 flex items-baseline gap-2 text-xs">
+                        <span className="font-bold text-txt-secondary">{t('prediction_strength_recent')}</span>
+                        <span className={`font-mono font-bold ${strength ? titleClass : 'text-txt-muted'}`}>
+                            {strength ? `${Math.round(strength.rate * 100)}%` : t('prediction_strength_no_data')}
+                        </span>
+                        {strength && (
+                            <span className="text-[10px] text-txt-muted">
+                                {t('prediction_strength_detail')
+                                    .replace('{games}', String(strength.games))}
+                            </span>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -129,6 +147,12 @@ const WeightsInspector: React.FC = () => {
     const colorWeights = useLiveQuery(async () => {
         return await weightAdjustmentEngine.getWeights(COLOR_WEIGHTS_ID, DEFAULT_COLOR_WEIGHTS);
     }, [], DEFAULT_COLOR_WEIGHTS);
+
+    const predictionStrength = useLiveQuery(async () => {
+        const logs = await db.analyticsLogs.toArray();
+        const models: PredictionModelKey[] = ['player', 'count', 'location', 'color'];
+        return Object.fromEntries(models.map(model => [model, summarizeRecentPredictionStrength(logs, model)])) as Record<PredictionModelKey, PredictionStrengthSummary | undefined>;
+    }, [], {} as Record<PredictionModelKey, PredictionStrengthSummary | undefined>);
 
     const handleResetPlayer = async () => {
         if (await confirm({ title: t('btn_reset_weights'), message: t('confirm_reset_player'), isDangerous: true })) {
@@ -185,6 +209,7 @@ const WeightsInspector: React.FC = () => {
                     desc={t('engine_player_desc')}
                     icon={<BrainCircuit size={16} />}
                     weights={playerWeights as unknown as Record<string, number>}
+                    strength={predictionStrength.player}
                     onReset={handleResetPlayer}
                     colorTheme="indigo"
                 />
@@ -194,6 +219,7 @@ const WeightsInspector: React.FC = () => {
                     desc={t('engine_count_desc')}
                     icon={<Calculator size={16} />}
                     weights={countWeights as unknown as Record<string, number>}
+                    strength={predictionStrength.count}
                     onReset={handleResetCount}
                     colorTheme="amber"
                 />
@@ -203,6 +229,7 @@ const WeightsInspector: React.FC = () => {
                     desc={t('engine_location_desc')}
                     icon={<MapPin size={16} />}
                     weights={locationWeights as unknown as Record<string, number>}
+                    strength={predictionStrength.location}
                     onReset={handleResetLocation}
                     colorTheme="rose"
                 />
@@ -212,6 +239,7 @@ const WeightsInspector: React.FC = () => {
                     desc={t('engine_color_desc')}
                     icon={<Palette size={16} />}
                     weights={colorWeights as unknown as Record<string, number>}
+                    strength={predictionStrength.color}
                     onReset={handleResetColor}
                     colorTheme="pink"
                 />

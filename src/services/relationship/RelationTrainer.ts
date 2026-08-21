@@ -5,10 +5,11 @@ import { PlayerRecommendationWeights, CountRecommendationWeights, LocationRecomm
 import { weightAdjustmentEngine } from '../../features/recommendation/WeightAdjustmentEngine';
 import { ConfidenceCalculator } from '../../features/recommendation/ConfidenceCalculator';
 import { DATA_LIMITS } from '../../dataLimits';
-import { RelationMapper, RELATION_PREDICTION_CONFIG } from './RelationMapper';
+import { RelationMapper } from './RelationMapper';
 import { RelationRanking } from './RelationRanking';
 import { ResolvedEntity, RelationItem } from './types';
 import { HistoryRecord } from '../../types';
+import { RankVotingPolicy } from './RankVotingPolicy';
 
 export class RelationTrainer {
 
@@ -32,8 +33,12 @@ export class RelationTrainer {
 
         // 1. 將目標對象依類型分組
         const targetsByType = new Map<string, string[]>();
+        const sourceKey = RelationMapper.getRelationKey(source.type);
         for (const target of targetCandidates) {
+            if (target.canBeRelationTarget === false) continue;
+            if (target.relationSourceScope && !target.relationSourceScope.includes(sourceKey)) continue;
             const key = RelationMapper.getRelationKey(target.type);
+            if (source.relationTargetScope && !source.relationTargetScope.includes(key)) continue;
             if (!targetsByType.has(key)) targetsByType.set(key, []);
             targetsByType.get(key)!.push(target.item.id);
         }
@@ -48,6 +53,7 @@ export class RelationTrainer {
             // [READ] 讀取「舊」狀態快照
             const currentList = source.item.meta!.relations![relKey] as RelationItem[] | undefined;
             const currentConfidence = source.item.meta!.confidence![relKey] || 1.0;
+            const currentRankWeights = source.item.meta!.rankWeights![relKey];
 
             // [CALC] 根據 Config 取得正確的預測窗口大小
             // 優化：如果提供了 overridePoolSizes，直接使用，否則查詢 DB
@@ -58,7 +64,15 @@ export class RelationTrainer {
                 totalPoolSize = await this.getTotalPoolSize(relKey);
             }
 
-            const predictionWindow = RelationMapper.getPredictionWindow(relKey, totalPoolSize);
+            // N is shared by training and voting. Dynamic relations therefore use
+            // the same pool-based window (for example, 25% capped at five).
+            const votingLimit = RelationMapper.getVotingLimit(relKey, totalPoolSize);
+            const predictionWindow = votingLimit;
+            const correctPredictionIds = RankVotingPolicy.getCorrectPredictionIds(
+                currentList,
+                currentRankWeights,
+                votingLimit
+            );
 
             // [LEARN 1] 調整全域權重 (Evaluate Prediction)
 
@@ -72,6 +86,7 @@ export class RelationTrainer {
                         globalPlayerWeights as any,
                         factor,
                         predictionWindow,
+                        correctPredictionIds,
                         () => { playerWeightsChanged = true; }
                     );
                 }
@@ -87,6 +102,7 @@ export class RelationTrainer {
                         globalCountWeights as any,
                         factor,
                         predictionWindow,
+                        correctPredictionIds,
                         () => { countWeightsChanged = true; }
                     );
                 }
@@ -102,6 +118,7 @@ export class RelationTrainer {
                         globalLocationWeights as any,
                         factor,
                         predictionWindow,
+                        correctPredictionIds,
                         () => { locationWeightsChanged = true; }
                     );
                 }
@@ -116,16 +133,19 @@ export class RelationTrainer {
                     currentList,
                     activeIds,
                     currentConfidence,
-                    predictionWindow // 傳入統一計算後的窗口
+                    predictionWindow,
+                    correctPredictionIds
                 );
             }
 
             // [UPDATE] 更新排名與狀態 (Mutation)
             const newList = RelationRanking.update(currentList, activeIds, limit);
+            const newRankWeights = RankVotingPolicy.adjustWeights(currentList, activeIds, currentRankWeights, votingLimit);
 
             // 寫入變更
             source.item.meta!.relations![relKey] = newList;
             source.item.meta!.confidence![relKey] = newConfidence;
+            source.item.meta!.rankWeights![relKey] = newRankWeights;
         }
 
         return { playerWeightsChanged, countWeightsChanged, locationWeightsChanged };
@@ -138,6 +158,7 @@ export class RelationTrainer {
         weightsObj: Record<string, number>,
         factorKey: string,
         windowSize: number,
+        correctPredictionIds: ReadonlySet<string>,
         onChange: () => void
     ) {
         const historyLength = currentList ? currentList.length : 0;
@@ -146,12 +167,8 @@ export class RelationTrainer {
             ? (windowSize > 0 ? historyLength / windowSize : 0)
             : 1.0;
 
-        const predictionPool = new Set(
-            (currentList || []).slice(0, windowSize).map(r => r.id)
-        );
-
         for (const id of activeIds) {
-            const isHit = predictionPool.has(id);
+            const isHit = correctPredictionIds.has(id);
             const oldWeight = weightsObj[factorKey];
             const newWeight = weightAdjustmentEngine.calculateNewWeight(oldWeight, isHit, penaltyFactor);
 
@@ -203,6 +220,7 @@ export class RelationTrainer {
             // [READ]
             const currentList = source.item.meta!.relations![relKey] as RelationItem[] | undefined;
             const currentConfidence = source.item.meta!.confidence![relKey] || 1.0;
+            const currentRankWeights = source.item.meta!.rankWeights![relKey];
 
             // Get Config Window
             let totalPoolSize = COLORS.length;
@@ -210,7 +228,13 @@ export class RelationTrainer {
                 totalPoolSize = overridePoolSizes[relKey];
             }
 
-            const predictionWindow = RelationMapper.getPredictionWindow(relKey, totalPoolSize);
+            const votingLimit = RelationMapper.getVotingLimit(relKey, totalPoolSize);
+            const predictionWindow = votingLimit;
+            const correctPredictionIds = RankVotingPolicy.getCorrectPredictionIds(
+                currentList,
+                currentRankWeights,
+                votingLimit
+            );
 
             // [LEARN 1] Update Global Weights
             const factor = RelationMapper.getColorRecommendationFactor(source.type);
@@ -221,6 +245,7 @@ export class RelationTrainer {
                     globalColorWeights as any,
                     factor,
                     predictionWindow,
+                    correctPredictionIds,
                     () => { weightChanged = true; }
                 );
             }
@@ -230,7 +255,8 @@ export class RelationTrainer {
                 currentList,
                 colorsToAdd,
                 currentConfidence,
-                predictionWindow
+                predictionWindow,
+                correctPredictionIds
             );
 
             // [UPDATE] Update List
@@ -241,6 +267,12 @@ export class RelationTrainer {
             );
 
             source.item.meta!.confidence![relKey] = newConfidence;
+            source.item.meta!.rankWeights![relKey] = RankVotingPolicy.adjustWeights(
+                currentList,
+                colorsToAdd,
+                currentRankWeights,
+                votingLimit
+            );
             return { itemChanged: true, weightChanged };
         }
         return { itemChanged: false, weightChanged: false };
@@ -253,6 +285,9 @@ export class RelationTrainer {
         }
         if (!source.item.meta.confidence) {
             source.item.meta.confidence = {};
+        }
+        if (!source.item.meta.rankWeights) {
+            source.item.meta.rankWeights = {};
         }
     }
 

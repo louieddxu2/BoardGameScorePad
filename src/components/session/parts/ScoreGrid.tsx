@@ -16,6 +16,7 @@ import { calculateColumnScore, resolveSelectOption } from '../../../utils/scorin
 import { calculateDynamicFontSize } from '../../../utils/dynamicLayout';
 import { injectSoftHyphens } from '../../../utils/text';
 import { formatDisplayNumber } from '../../../utils/scoreDisplay';
+import TouchActionTarget from '../../shared/TouchActionTarget';
 
 interface ScoreGridProps {
   session: GameSession;
@@ -455,8 +456,9 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
 
                       return (
                         <div key={overlayCol.id} className="absolute inset-0 pointer-events-none">
-                          <div
-                            onClick={(e) => { e.stopPropagation(); onCellClick(session.players[0].id, overlayCol.id, e); }}
+                          <TouchActionTarget
+                            onActivate={(event) => { event.stopPropagation(); onCellClick(session.players[0].id, overlayCol.id, event as unknown as React.MouseEvent); }}
+                            moveThreshold={10}
                             className={`
                                           absolute flex items-center justify-center 
                                           border-2 rounded-md cursor-pointer transition-all pointer-events-auto
@@ -487,7 +489,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                             >
                               {displayText}
                             </ContrastText>
-                          </div>
+                          </TouchActionTarget>
                         </div>
                       );
                     })}
@@ -573,8 +575,9 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
 
                         return (
                           <div key={overlayCol.id} className="absolute inset-0 pointer-events-none">
-                            <div
-                              onClick={(e) => { e.stopPropagation(); onCellClick(p.id, overlayCol.id, e); }}
+                            <TouchActionTarget
+                              onActivate={(event) => { event.stopPropagation(); onCellClick(p.id, overlayCol.id, event as unknown as React.MouseEvent); }}
+                              moveThreshold={10}
                               className={`
                                           absolute flex items-center justify-center 
                                           border-2 rounded-md cursor-pointer transition-all pointer-events-auto
@@ -605,7 +608,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
                               >
                                 {displayText}
                               </ContrastText>
-                            </div>
+                            </TouchActionTarget>
                           </div>
                         );
                       })}

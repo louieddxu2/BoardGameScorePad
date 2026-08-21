@@ -3,6 +3,7 @@ import { Shuffle, Users } from 'lucide-react';
 import { GameSession, GameTemplate } from '../../types';
 import { useToolsTranslation } from '../../i18n/tools';
 import PlayerSelectorModal from './player-selector/PlayerSelectorModal';
+import { shufflePlayersAndAssignStarter } from './orderPlayers';
 
 interface OrderToolProps {
     session: GameSession;
@@ -15,20 +16,8 @@ const OrderTool: React.FC<OrderToolProps> = ({ session, template, onUpdateSessio
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const handleShuffle = () => {
-        const newPlayers = [...session.players];
+        const newPlayers = shufflePlayersAndAssignStarter(session.players);
 
-        // 1. Fisher-Yates Shuffle
-        for (let i = newPlayers.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [newPlayers[i], newPlayers[j]] = [newPlayers[j], newPlayers[i]];
-        }
-
-        // 2. Set First Player as Starter (Reset others)
-        newPlayers.forEach((p, i) => {
-            p.isStarter = (i === 0);
-        });
-
-        // 3. Update Session
         onUpdateSession({
             ...session,
             players: newPlayers

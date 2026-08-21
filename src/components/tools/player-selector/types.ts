@@ -7,6 +7,7 @@ export interface Candidate {
 
 export interface SelectorPlayer {
     id: string;
+    candidateId?: string;
     text: string;
     linkedPlayerId?: string;
     touchId?: string | number;

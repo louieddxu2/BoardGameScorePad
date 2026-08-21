@@ -65,11 +65,12 @@ describe('applyRecommendationsToPlayers', () => {
         expect(players.map(player => ({
             name: player.name,
             linkedPlayerId: player.linkedPlayerId,
+            isIdentityManuallySet: player.isIdentityManuallySet,
             color: player.color
         }))).toEqual([
-            { name: 'Alice', linkedPlayerId: 'saved-a', color: 'red' },
-            { name: 'Bob', linkedPlayerId: 'saved-b', color: 'blue' },
-            { name: 'player_3', linkedPlayerId: undefined, color: 'yellow' }
+            { name: 'Alice', linkedPlayerId: 'saved-a', isIdentityManuallySet: false, color: 'red' },
+            { name: 'Bob', linkedPlayerId: 'saved-b', isIdentityManuallySet: false, color: 'blue' },
+            { name: 'player_3', linkedPlayerId: undefined, isIdentityManuallySet: undefined, color: 'yellow' }
         ]);
 
         expect(recommendationService.getSuggestedColors).toHaveBeenNthCalledWith(

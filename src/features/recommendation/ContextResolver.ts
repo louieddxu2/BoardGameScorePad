@@ -3,6 +3,7 @@
 import { db } from '../../db';
 import { SavedListItem } from '../../types';
 import { RecommendationContext, PlayerRecommendationFactor, RecommendationFactor } from './types';
+import { gameTemporalContextResolver } from '../../services/relationship/GameTemporalContextResolver';
 
 export interface Voter {
     item: SavedListItem;
@@ -10,6 +11,31 @@ export interface Voter {
 }
 
 export class ContextResolver {
+
+    public async resolvePlayerContext(context: RecommendationContext): Promise<Voter[]> {
+        return this.resolveContextWithLifecycle(context);
+    }
+
+    public async resolveCountContext(context: RecommendationContext): Promise<Voter[]> {
+        return this.resolveContextWithLifecycle(context);
+    }
+
+    public async resolveLocationContext(context: RecommendationContext): Promise<Voter[]> {
+        return this.resolveContextWithLifecycle(context);
+    }
+
+    private async resolveContextWithLifecycle(context: RecommendationContext): Promise<Voter[]> {
+        const voters = await this.resolveBaseContext(context);
+        const gameVoter = voters.find(voter => voter.factor === 'game');
+        if (!gameVoter && !context.gameName && !context.bggId) return voters;
+
+        const temporal = gameTemporalContextResolver.resolveFromSavedGameStats(gameVoter?.item, context.timestamp ?? Date.now());
+        const buckets = await gameTemporalContextResolver.resolveBucketEntities(temporal);
+        return voters.concat(buckets.map(bucket => ({
+            item: bucket.item,
+            factor: bucket.type === 'gamePlayStage' ? 'gamePlayStage' as const : 'gameRecency' as const
+        })));
+    }
 
     /**
      * 根據傳入的推薦情境 (Game, Location, Time...)，從資料庫撈取對應的實體。
@@ -25,9 +51,11 @@ export class ContextResolver {
 
         // A. Game (Try BGG ID first, then Name)
         if (context.bggId) {
-            promises.push(fetch(db.savedGames.where('bggId').equals(context.bggId).first(), 'game'));
-        }
-        if (context.gameName) {
+            const preferredGame = db.savedGames.where('bggId').equals(context.bggId).first().then(async item =>
+                item || (context.gameName ? db.savedGames.where('name').equals(context.gameName).first() : undefined)
+            );
+            promises.push(fetch(preferredGame, 'game'));
+        } else if (context.gameName) {
             promises.push(fetch(db.savedGames.where('name').equals(context.gameName).first(), 'game'));
         }
 

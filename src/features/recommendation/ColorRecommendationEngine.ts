@@ -4,6 +4,7 @@ import { GameTemplate, SavedListItem } from '../../types';
 import { RecommendationContext, ColorRecommendationWeights, DEFAULT_COLOR_WEIGHTS } from './types';
 import { contextResolver, Voter } from './ContextResolver';
 import { votingEngine } from './VotingEngine';
+import { RelationMapper } from '../../services/relationship/RelationMapper';
 
 /**
  * 顏色推薦引擎 (Color Recommendation Engine)
@@ -85,7 +86,7 @@ export class ColorRecommendationEngine {
             weights as any, 
             'colors', 
             ignoreColors,
-            20 // Max candidate limit for colors
+            RelationMapper.getVotingLimit('colors')
         );
 
         // 5. 排序結果

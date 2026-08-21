@@ -1,5 +1,43 @@
 import { Candidate, SelectorPlayer } from './types';
 import { OptionState } from './selectorEngineTypes';
+import { Player } from '../../../types';
+
+export const getManualSessionPlayerCandidates = (players: Player[]): Candidate[] => players
+    .filter(player => player.isIdentityManuallySet && player.name.trim().length > 0)
+    .map(player => ({
+        id: player.linkedPlayerId || `session-player:${player.id}`,
+        name: player.name.trim(),
+        linkedPlayerId: player.linkedPlayerId
+    }));
+
+export const prioritizePlayerCandidates = (
+    preferredCandidates: Candidate[],
+    recommendedCandidates: Candidate[]
+): Candidate[] => {
+    const seenIds = new Set<string>();
+
+    return [...preferredCandidates, ...recommendedCandidates].filter(candidate => {
+        const identityId = candidate.linkedPlayerId || candidate.id;
+        if (seenIds.has(identityId)) return false;
+
+        seenIds.add(identityId);
+        return true;
+    });
+};
+
+export const getPlayerCandidateLocks = (
+    manualCandidates: Candidate[],
+    selectedPlayers: SelectorPlayer[]
+): { lockedPlayerIds: string[]; lockedNames: string[] } => ({
+    lockedPlayerIds: Array.from(new Set([
+        ...manualCandidates.map(candidate => candidate.linkedPlayerId),
+        ...selectedPlayers.map(player => player.linkedPlayerId)
+    ].filter((id): id is string => !!id))),
+    lockedNames: Array.from(new Set([
+        ...manualCandidates.map(candidate => candidate.name),
+        ...selectedPlayers.map(player => player.text)
+    ]))
+});
 
 export const getFourCandidatesForTouch = (
     currentCandidates: Candidate[],
@@ -11,11 +49,19 @@ export const getFourCandidatesForTouch = (
     skippedIds: string[] = []
 ): Candidate[] => {
     const usedNamesInPlayers = new Set(players.map(player => player.text));
+    const usedCandidateIds = new Set(players
+        .map(player => player.candidateId)
+        .filter((id): id is string => !!id));
+    const legacyUsedNames = new Set(players
+        .filter(player => !player.candidateId)
+        .map(player => player.text));
     const skippedSet = new Set(skippedIds);
 
     // 一開始就強排除：已選玩家的名字與此位置被跳過的玩家 id
     const baseCandidates = currentCandidates.filter(
-        candidate => !usedNamesInPlayers.has(candidate.name) && !skippedSet.has(candidate.id)
+        candidate => !usedCandidateIds.has(candidate.id)
+            && !legacyUsedNames.has(candidate.name)
+            && !skippedSet.has(candidate.id)
     );
 
     const result: Candidate[] = [...baseCandidates];

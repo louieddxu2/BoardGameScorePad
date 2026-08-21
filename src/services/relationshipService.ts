@@ -8,6 +8,8 @@ import { ResolvedEntity } from './relationship/types';
 import { trainingContextResolver } from './relationship/TrainingContextResolver';
 import { relationTrainer } from './relationship/RelationTrainer';
 import { HistoryBatchProcessor } from './relationship/HistoryBatchProcessor';
+import { createLifecycleBucketItems, gameTemporalContextResolver, sortHistoryRecordsStable } from './relationship/GameTemporalContextResolver';
+import { predictionStrengthEvaluator } from './relationship/PredictionStrengthEvaluator';
 
 class RelationshipService {
 
@@ -15,9 +17,47 @@ class RelationshipService {
      * 批次處理歷史紀錄
      * 將邏輯委派給 HistoryBatchProcessor
      */
-    public async processHistoryBatch(records: HistoryRecord[]): Promise<void> {
+    public async rebuildAllModelsFromHistory(): Promise<void> {
+        const records = sortHistoryRecordsStable(await db.history.toArray());
+        await (db as any).transaction(
+            'rw',
+            db.savedPlayers,
+            db.savedLocations,
+            db.savedGames,
+            db.savedWeekdays,
+            db.savedTimeSlots,
+            db.savedPlayerCounts,
+            db.savedGameModes,
+            db.savedGameLifecycleContexts,
+            db.analyticsLogs,
+            async () => {
+                await Promise.all([
+                    db.analyticsLogs.clear(),
+                    db.savedPlayers.clear(),
+                    db.savedLocations.clear(),
+                    db.savedGames.clear(),
+                    db.savedWeekdays.clear(),
+                    db.savedTimeSlots.clear(),
+                    db.savedPlayerCounts.clear(),
+                    db.savedGameModes.clear(),
+                    db.savedGameLifecycleContexts.clear()
+                ]);
+                await db.savedGameLifecycleContexts.bulkAdd(createLifecycleBucketItems());
+            }
+        );
+
+        await Promise.all([
+            weightAdjustmentEngine.resetWeightsExcept(PLAYER_WEIGHTS_ID, DEFAULT_PLAYER_WEIGHTS, ['sessionContext']),
+            weightAdjustmentEngine.resetWeightsExcept(COUNT_WEIGHTS_ID, DEFAULT_COUNT_WEIGHTS, ['sessionContext']),
+            weightAdjustmentEngine.resetWeightsExcept(LOCATION_WEIGHTS_ID, DEFAULT_LOCATION_WEIGHTS, ['sessionContext']),
+            weightAdjustmentEngine.saveWeights(COLOR_WEIGHTS_ID, DEFAULT_COLOR_WEIGHTS)
+        ]);
+
         const processor = new HistoryBatchProcessor();
-        return processor.run(records);
+        const chunkSize = 200;
+        for (let index = 0; index < records.length; index += chunkSize) {
+            await processor.run(records.slice(index, index + chunkSize));
+        }
     }
 
     public async processGameEnd(record: HistoryRecord): Promise<void> {
@@ -49,10 +89,15 @@ class RelationshipService {
             console.log(`[RelationshipService] Processing mode: ${mode}`);
 
             // Transaction Scope
-            await (db as any).transaction('rw', db.savedPlayers, db.savedGames, db.savedLocations, db.savedWeekdays, db.savedTimeSlots, db.savedPlayerCounts, db.savedGameModes, db.savedCurrentSession, db.analyticsLogs, db.bggGames, db.weights, async () => {
+            await (db as any).transaction('rw', db.history, db.savedPlayers, db.savedGames, db.savedLocations, db.savedWeekdays, db.savedTimeSlots, db.savedPlayerCounts, db.savedGameModes, db.savedCurrentSession, db.savedGameLifecycleContexts, db.analyticsLogs, db.bggGames, db.weights, async () => {
                 
                 // --- 2. 解析實體 ---
                 const resolvedEntities = await trainingContextResolver.resolve(record, mode as 'full' | 'location_only');
+                if (mode === 'full') {
+                    const resolvedGame = resolvedEntities.find(entity => entity.type === 'game')?.item;
+                    const temporal = gameTemporalContextResolver.resolveFromSavedGameStats(resolvedGame, record.startTime);
+                    resolvedEntities.push(...await gameTemporalContextResolver.resolveBucketEntities(temporal));
+                }
                 const newContextEntities = resolvedEntities.filter(e => e.isNewContext);
 
                 // --- 3. 執行統計更新 ---
@@ -67,6 +112,19 @@ class RelationshipService {
                 let countWeightsDirty = false;
                 let locationWeightsDirty = false;
                 let colorWeightsDirty = false;
+
+                const predictionStrength = mode === 'full' ? predictionStrengthEvaluator.evaluate(
+                    record,
+                    resolvedEntities,
+                    await db.savedPlayers.toArray(),
+                    await db.savedLocations.toArray(),
+                    {
+                        player: globalPlayerWeights,
+                        count: globalCountWeights,
+                        location: globalLocationWeights,
+                        color: globalColorWeights
+                    }
+                ) : log?.predictionStrength;
 
                 if (resolvedEntities.length > 0) {
                     for (const source of resolvedEntities) {
@@ -142,7 +200,9 @@ class RelationshipService {
                 await db.analyticsLogs.put({
                     historyId: record.id,
                     status: newStatus,
-                    lastProcessedAt: Date.now()
+                    lastProcessedAt: Date.now(),
+                    referenceStartTime: record.startTime,
+                    predictionStrength
                 });
 
             });

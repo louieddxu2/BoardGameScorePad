@@ -43,6 +43,7 @@ export const applyRecommendationsToPlayers = async (
             if (suggestion && !isBogusSuggestion) {
                 newP.name = suggestion.name;
                 newP.linkedPlayerId = suggestion.id;
+                newP.isIdentityManuallySet = false;
             }
             return newP;
         });

@@ -2,6 +2,7 @@
 import React from 'react';
 import { Delete, Dot } from 'lucide-react';
 import { ScoreColumn } from '../../types';
+import { useTouchAction } from './useTouchAction';
 
 interface NumericKeypadContentProps {
   value: any;
@@ -14,6 +15,25 @@ interface NumericKeypadContentProps {
   setActiveFactorIdx: (v: 0 | 1) => void;
   playerId: string;
 }
+
+interface KeypadButtonProps {
+  children: React.ReactNode;
+  className: string;
+  onActivate: () => void;
+}
+
+const KeypadButton: React.FC<KeypadButtonProps> = ({ children, className, onActivate }) => {
+  const touchHandlers = useTouchAction<HTMLButtonElement>(() => onActivate());
+
+  return (
+    <button
+      {...touchHandlers}
+      className={className}
+    >
+      {children}
+    </button>
+  );
+};
 
 const NumericKeypad: React.FC<NumericKeypadContentProps> = (props) => {
   const {
@@ -173,16 +193,16 @@ const NumericKeypad: React.FC<NumericKeypadContentProps> = (props) => {
   return (
       <div className="grid grid-cols-3 grid-rows-4 gap-2 h-full">
         {[7, 8, 9, 4, 5, 6, 1, 2, 3].map(num => (
-          <button key={num} onClick={() => handleNumClick(num)} className={`text-[32px] leading-none font-bold rounded-xl shadow-sm transition-all touch-manipulation active:scale-95 h-full ${overwrite ? 'bg-keypad-active text-white shadow-brand-secondary/20 hover:opacity-90' : 'bg-keypad-bg text-keypad-text hover:bg-surface-hover border border-input-border'}`}>{num}</button>
+          <KeypadButton key={num} onActivate={() => handleNumClick(num)} className={`text-[32px] leading-none font-bold rounded-xl shadow-sm transition-all touch-manipulation active:scale-95 h-full ${overwrite ? 'bg-keypad-active text-white shadow-brand-secondary/20 hover:opacity-90' : 'bg-keypad-bg text-keypad-text hover:bg-surface-hover border border-input-border'}`}>{num}</KeypadButton>
         ))}
         <div className="bg-keypad-bg rounded-xl border border-input-border grid grid-rows-2 h-full overflow-hidden shadow-sm">
-            <button onClick={handleToggleSign} className={`hover:bg-surface-hover text-txt-muted flex items-center justify-center transition-colors active:scale-95 touch-manipulation font-bold ${!isToggleMode ? 'font-mono text-[28px] leading-none' : 'text-xl'}`}>
+            <KeypadButton onActivate={handleToggleSign} className={`hover:bg-surface-hover text-txt-muted flex items-center justify-center transition-colors active:scale-95 touch-manipulation font-bold ${!isToggleMode ? 'font-mono text-[28px] leading-none' : 'text-xl'}`}>
               {isToggleMode ? '+/-' : '-'}
-            </button>
-            <button onClick={handleDecimal} className="border-t border-input-border hover:bg-surface-hover text-keypad-text font-bold flex items-center justify-center transition-colors active:scale-95 touch-manipulation"><Dot size={32} /></button>
+            </KeypadButton>
+            <KeypadButton onActivate={handleDecimal} className="border-t border-input-border hover:bg-surface-hover text-keypad-text font-bold flex items-center justify-center transition-colors active:scale-95 touch-manipulation"><Dot size={32} /></KeypadButton>
         </div>
-        <button onClick={() => handleNumClick(0)} className={`text-[32px] leading-none font-bold rounded-xl touch-manipulation active:scale-95 transition-all h-full ${overwrite ? 'bg-keypad-active text-white shadow-brand-secondary/20' : 'bg-keypad-bg text-keypad-text border border-input-border hover:bg-surface-hover'}`}>0</button>
-        <button onClick={handleBackspace} className="bg-keypad-bg hover:bg-status-danger/10 text-status-danger rounded-xl flex items-center justify-center border border-input-border active:scale-95 transition-transform h-full"><Delete size={32} /></button>
+        <KeypadButton onActivate={() => handleNumClick(0)} className={`text-[32px] leading-none font-bold rounded-xl touch-manipulation active:scale-95 transition-all h-full ${overwrite ? 'bg-keypad-active text-white shadow-brand-secondary/20' : 'bg-keypad-bg text-keypad-text border border-input-border hover:bg-surface-hover'}`}>0</KeypadButton>
+        <KeypadButton onActivate={handleBackspace} className="bg-keypad-bg hover:bg-status-danger/10 text-status-danger rounded-xl flex items-center justify-center border border-input-border active:scale-95 transition-transform h-full"><Delete size={32} /></KeypadButton>
       </div>
   );
 };

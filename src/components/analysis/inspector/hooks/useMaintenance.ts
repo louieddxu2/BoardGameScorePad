@@ -5,6 +5,7 @@ import Dexie from 'dexie';
 import { relationshipService } from '../../../../services/relationshipService';
 import { useToast } from '../../../../hooks/useToast';
 import { useInspectorTranslation } from '../shared/InspectorCommon';
+import { createLifecycleBucketItems } from '../../../../services/relationship/GameTemporalContextResolver';
 
 export const useMaintenance = () => {
     const [isProcessing, setIsProcessing] = useState(false);
@@ -16,7 +17,7 @@ export const useMaintenance = () => {
         if (isProcessing) return;
         setIsProcessing(true);
         try {
-            await (db as any).transaction('rw', db.savedPlayers, db.savedLocations, db.savedGames, db.savedWeekdays, db.savedTimeSlots, db.savedPlayerCounts, db.savedGameModes, db.analyticsLogs, async () => {
+            await (db as any).transaction('rw', db.savedPlayers, db.savedLocations, db.savedGames, db.savedWeekdays, db.savedTimeSlots, db.savedPlayerCounts, db.savedGameModes, db.savedGameLifecycleContexts, db.analyticsLogs, async () => {
                 await db.analyticsLogs.clear();
                 await db.savedPlayers.clear();
                 await db.savedLocations.clear();
@@ -25,6 +26,8 @@ export const useMaintenance = () => {
                 await db.savedTimeSlots.clear();
                 await db.savedPlayerCounts.clear();
                 await db.savedGameModes.clear();
+                await db.savedGameLifecycleContexts.clear();
+                await db.savedGameLifecycleContexts.bulkAdd(createLifecycleBucketItems());
             });
             showToast({ message: t('toast_reset_success'), type: 'success' });
         } catch (error) {
@@ -40,18 +43,9 @@ export const useMaintenance = () => {
         setIsProcessing(true);
         setProgress(0);
         try {
-            const allHistory = await db.history.orderBy('endTime').toArray();
-            const total = allHistory.length;
-            let count = 0;
-            const CHUNK_SIZE = 200;
-
-            for (let i = 0; i < total; i += CHUNK_SIZE) {
-                const chunk = allHistory.slice(i, i + CHUNK_SIZE);
-                await relationshipService.processHistoryBatch(chunk);
-                count += chunk.length;
-                setProgress(Math.min(100, Math.round((count / total) * 100)));
-                await new Promise(resolve => setTimeout(resolve, 0));
-            }
+            const total = await db.history.count();
+            await relationshipService.rebuildAllModelsFromHistory();
+            setProgress(100);
 
             showToast({ message: t('toast_reprocess_success', { count: total }), type: 'success' });
         } catch (error) {

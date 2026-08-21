@@ -15,6 +15,7 @@ import {
 } from '../../../utils/scoreDisplay';
 import { useSessionTranslation } from '../../../i18n/session';
 import { injectSoftHyphens } from '../../../utils/text';
+import { useTouchAction } from '../../shared/useTouchAction';
 
 interface ScoreCellProps {
     player: Player;
@@ -333,6 +334,10 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
     const { player, playerIndex, column, allColumns, allPlayers, isActive, onClick, forceHeight, screenshotMode = false, baseImage, isEditMode, limitX, isAlt, previewValue, forceWidth, skipTextureRendering, isReadOnly = false, isEditable = false } = props;
     const { t } = useSessionTranslation();
     const scoreData: ScoreValue | undefined = player.scores[column.id];
+    const touchHandlers = useTouchAction<HTMLDivElement>((event) => {
+        event.stopPropagation();
+        onClick(event as React.MouseEvent<HTMLDivElement>);
+    }, { moveThreshold: 10 });
 
     if (baseImage && column.visuals?.cellRect) {
         return (
@@ -343,6 +348,7 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
                 rect={column.visuals.cellRect}
                 minHeight={screenshotMode ? '100%' : '3rem'}
                 skipTextureRendering={skipTextureRendering}
+                touchHandlers={touchHandlers}
             />
         );
     }
@@ -464,7 +470,7 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
     // Custom Layout Mode (Content Box)
     const finalContent = hasLayout ? (
         <div
-            onClick={(e) => { e.stopPropagation(); onClick(e); }}
+            {...touchHandlers}
             className={`
             absolute flex items-center justify-center 
             ${!screenshotMode ? `border-2 rounded-md transition-all pointer-events-auto ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}` : ''}
@@ -560,7 +566,7 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
 
     return (
         <div 
-            onClick={hasLayout ? undefined : onClick} 
+            {...(hasLayout ? {} : touchHandlers)}
             className={`${baseContainerClasses} ${visualClasses}`} 
             style={{ ...containerStyle, ...visualStyles }}
         >

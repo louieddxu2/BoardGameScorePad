@@ -10,6 +10,7 @@ export interface PredictionStrategy {
     strategy: 'fixed' | 'dynamic';
     limit: number; // Max Cap for dynamic, or Exact Value for fixed
     ratio?: number; // Only for dynamic
+    votingLimit?: number; // Existing number of relation ranks that cast votes, when different from prediction limit
 }
 
 // [Centralized Config]
@@ -29,7 +30,7 @@ export const RELATION_PREDICTION_CONFIG: Record<string, PredictionStrategy> = {
     gameModes: { strategy: 'fixed', limit: 2 },
     
     // 顏色
-    colors: { strategy: 'fixed', limit: 4 },
+    colors: { strategy: 'fixed', limit: 4, votingLimit: 20 },
     
     // 預設 fallback
     others: { strategy: 'dynamic', limit: 5, ratio: 0.25 }
@@ -52,6 +53,14 @@ export class RelationMapper {
         return Math.max(1, Math.min(config.limit, calculated));
     }
 
+    public static getVotingLimit(relationKey: string, totalPoolSize?: number): number {
+        const config = RELATION_PREDICTION_CONFIG[relationKey] || RELATION_PREDICTION_CONFIG.others;
+        if (config.strategy === 'dynamic' && totalPoolSize !== undefined) {
+            return this.getPredictionWindow(relationKey, totalPoolSize);
+        }
+        return config.votingLimit ?? config.limit;
+    }
+
     /**
      * 將實體類型映射到資料庫 meta.relations 中的 key
      * 例如: 'player' -> 'players', 'game' -> 'games'
@@ -66,6 +75,8 @@ export class RelationMapper {
             case 'playerCount': return 'playerCounts';
             case 'gameMode': return 'gameModes';
             case 'color': return 'colors';
+            case 'gamePlayStage': return 'gamePlayStages';
+            case 'gameRecency': return 'gameRecencies';
         }
         return 'others';
     }
@@ -77,6 +88,8 @@ export class RelationMapper {
     public static getRecommendationFactor(type: EntityType): PlayerRecommendationFactor | undefined {
         switch (type) {
             case 'game': return 'game';
+            case 'gamePlayStage': return 'gamePlayStage';
+            case 'gameRecency': return 'gameRecency';
             case 'location': return 'location';
             case 'weekday': return 'weekday';
             case 'timeslot': return 'timeSlot';
@@ -95,6 +108,8 @@ export class RelationMapper {
     public static getCountRecommendationFactor(type: EntityType): CountRecommendationFactor | undefined {
         switch (type) {
             case 'game': return 'game';
+            case 'gamePlayStage': return 'gamePlayStage';
+            case 'gameRecency': return 'gameRecency';
             case 'location': return 'location';
             case 'weekday': return 'weekday';
             case 'timeslot': return 'timeSlot';
@@ -111,6 +126,8 @@ export class RelationMapper {
     public static getLocationRecommendationFactor(type: EntityType): LocationRecommendationFactor | undefined {
         switch (type) {
             case 'game': return 'game';
+            case 'gamePlayStage': return 'gamePlayStage';
+            case 'gameRecency': return 'gameRecency';
             case 'playerCount': return 'playerCount';
             case 'weekday': return 'weekday';
             case 'timeslot': return 'timeSlot';

@@ -14,6 +14,7 @@ export const inspectorTranslations = {
     tab_time: "時間統計",
     tab_counts: "人數統計",
     tab_modes: "模式統計",
+    tab_lifecycle: "遊戲生命週期",
     tab_weights: "權重模型",
     tab_images: "圖片儲存",
     tab_bgg: "BGG 快取",
@@ -28,6 +29,19 @@ export const inspectorTranslations = {
     list_timeslots: "時段統計 (0-7)",
     list_counts: "玩家人數統計",
     list_modes: "遊戲模式統計",
+    list_lifecycle: "遊玩階段與距上次遊玩",
+    lifecycle_group_stage: "遊玩次數階段",
+    lifecycle_group_recency: "距上次完成遊玩",
+    lifecycle_stage_first: "第 1 局",
+    lifecycle_stage_second: "第 2 局",
+    lifecycle_stage_third_to_fourth: "第 3–4 局",
+    lifecycle_stage_fifth_to_ninth: "第 5–9 局",
+    lifecycle_stage_tenth_plus: "第 10 局以上",
+    lifecycle_recency_within_1_day: "24 小時內",
+    lifecycle_recency_within_7_days: "超過 24 小時，7 天內",
+    lifecycle_recency_within_30_days: "超過 7 天，30 天內",
+    lifecycle_recency_within_90_days: "超過 30 天，90 天內",
+    lifecycle_recency_over_90_days: "超過 90 天",
     list_images: "本地圖片庫",
     list_bgg: "BGG 資料庫",
     list_session: "本次會話 (Session Context)", // New
@@ -60,6 +74,10 @@ export const inspectorTranslations = {
     unit_minute: "分",
     unit_player: "人",
     confidence_hint: "信心值 (Confidence)",
+    relation_item: "關聯項目",
+    relation_rank: "關聯名次",
+    relation_count: "次數",
+    rank_vote_weight: "排名票權",
 
     // Weekdays
     day_0: "週日",
@@ -104,8 +122,13 @@ export const inspectorTranslations = {
 
     weight_factor: "影響因子",
     weight_value: "權重",
+    prediction_strength_recent: "近 10 場命中率",
+    prediction_strength_no_data: "尚無資料",
+    prediction_strength_detail: "{games} 場各自計算後平均",
 
     factor_game: "遊戲種類",
+    factor_gamePlayStage: "遊玩階段",
+    factor_gameRecency: "距上次遊玩",
     factor_location: "遊玩地點",
     factor_weekday: "星期幾",
     factor_timeSlot: "時段",
@@ -127,6 +150,8 @@ export const inspectorTranslations = {
     rel_timeslots: "熱門時段",
     rel_player_counts: "常開人數",
     rel_modes: "常玩模式", // New
+    rel_game_play_stages: "遊玩階段",
+    rel_game_recencies: "距上次遊玩",
 
     // Confirmations
     confirm_reset_title: "危險：清空統計資料庫",
@@ -177,6 +202,7 @@ export const inspectorTranslations = {
     tab_time: "Time Stats",
     tab_counts: "Player Counts",
     tab_modes: "Mode Stats",
+    tab_lifecycle: "Game Lifecycle",
     tab_weights: "Weights",
     tab_images: "Storage",
     tab_bgg: "BGG Cache",
@@ -191,6 +217,19 @@ export const inspectorTranslations = {
     list_timeslots: "Time Slots (0-7)",
     list_counts: "Player Count Stats",
     list_modes: "Game Mode Stats",
+    list_lifecycle: "Play Stage & Game Recency",
+    lifecycle_group_stage: "Play-count Stage",
+    lifecycle_group_recency: "Time Since Last Completed Play",
+    lifecycle_stage_first: "1st play",
+    lifecycle_stage_second: "2nd play",
+    lifecycle_stage_third_to_fourth: "3rd–4th play",
+    lifecycle_stage_fifth_to_ninth: "5th–9th play",
+    lifecycle_stage_tenth_plus: "10th play or later",
+    lifecycle_recency_within_1_day: "Within 24 hours",
+    lifecycle_recency_within_7_days: "Over 24 hours, within 7 days",
+    lifecycle_recency_within_30_days: "Over 7 days, within 30 days",
+    lifecycle_recency_within_90_days: "Over 30 days, within 90 days",
+    lifecycle_recency_over_90_days: "Over 90 days",
     list_images: "Local Images",
     list_bgg: "BGG Database",
     list_session: "Current Session Context", // New
@@ -222,6 +261,10 @@ export const inspectorTranslations = {
     unit_minute: "m",
     unit_player: "P",
     confidence_hint: "Confidence Score",
+    relation_item: "Relation",
+    relation_rank: "Relation Rank",
+    relation_count: "Count",
+    rank_vote_weight: "Rank Vote",
 
     // Weekdays
     day_0: "Sun",
@@ -266,8 +309,13 @@ export const inspectorTranslations = {
 
     weight_factor: "Factor",
     weight_value: "Weight",
+    prediction_strength_recent: "Last 10 hit rate",
+    prediction_strength_no_data: "No data yet",
+    prediction_strength_detail: "Average of {games} per-game rates",
 
     factor_game: "Game",
+    factor_gamePlayStage: "Play Stage",
+    factor_gameRecency: "Game Recency",
     factor_location: "Location",
     factor_weekday: "Weekday",
     factor_timeSlot: "Time Slot",
@@ -289,6 +337,8 @@ export const inspectorTranslations = {
     rel_timeslots: "Top Times",
     rel_player_counts: "Top Counts",
     rel_modes: "Top Modes", // New
+    rel_game_play_stages: "Play Stages",
+    rel_game_recencies: "Game Recencies",
 
     // Confirmations
     confirm_reset_title: "Danger: Reset Stats DB",

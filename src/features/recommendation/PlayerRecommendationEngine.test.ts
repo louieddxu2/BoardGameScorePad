@@ -3,6 +3,7 @@ import { db } from '../../db';
 import { contextResolver, Voter } from './ContextResolver';
 import { playerRecommendationEngine } from './PlayerRecommendationEngine';
 import { SavedListItem } from '../../types';
+import { gameTemporalContextResolver } from '../../services/relationship/GameTemporalContextResolver';
 
 afterEach(() => {
     vi.restoreAllMocks();
@@ -118,7 +119,7 @@ describe('PlayerRecommendationEngine.generateSuggestions', () => {
         expect(result.map(r => r.name)).toEqual(['Charlie', 'David', 'Eve', 'Frank']);
     });
 
-    it('uses the original five-player voting window by default', () => {
+    it('uses the dynamic 25% window as N and casts learned votes across at most 2N ranks', () => {
         const candidates = [
             'A', 'B', 'C', 'D', 'E', 'F'
         ].map((name, index) => ({
@@ -135,7 +136,9 @@ describe('PlayerRecommendationEngine.generateSuggestions', () => {
             meta: {
                 relations: {
                     players: candidates.map(candidate => ({ id: candidate.id, count: 1 }))
-                }
+                },
+                // Six saved players => N = ceil(6 * 25%) = 2, so only four ranks may vote.
+                rankWeights: { players: [4, 3, 1, 1] }
             }
         };
 
@@ -147,8 +150,10 @@ describe('PlayerRecommendationEngine.generateSuggestions', () => {
             sessionPlayers: []
         });
 
-        expect(result.slice(0, 5).map(candidate => candidate.name)).toEqual(['A', 'B', 'C', 'D', 'E']);
-        expect(result[5].name).toBe('F');
+        expect(result.slice(0, 2).map(candidate => candidate.name)).toEqual(['A', 'B']);
+        expect(new Set(result.slice(2, 4).map(candidate => candidate.name))).toEqual(new Set(['C', 'D']));
+        expect(result[4].name).toBe('F');
+        expect(result[5].name).toBe('E');
     });
 
     it('applies supplied dynamic weights to the single-pass vote', () => {
@@ -179,6 +184,8 @@ describe('PlayerRecommendationEngine.generateSuggestions', () => {
             sessionPlayers: [],
             weights: {
                 game: 0,
+                gamePlayStage: 1,
+                gameRecency: 1,
                 location: 1,
                 weekday: 1,
                 timeSlot: 1,
@@ -190,6 +197,56 @@ describe('PlayerRecommendationEngine.generateSuggestions', () => {
         });
 
         expect(result.map(candidate => candidate.name)).toEqual(['B', 'A']);
+    });
+
+    it('counts play-stage and recency voters in player scores', () => {
+        const candidates = [
+            { id: 'candidate-a', name: 'A', usageCount: 1, lastUsed: 1 },
+            { id: 'candidate-b', name: 'B', usageCount: 10, lastUsed: 10 }
+        ];
+        const lifecycleVoter = (id: string): SavedListItem => ({
+            id,
+            name: id,
+            usageCount: 1,
+            lastUsed: 1,
+            meta: {
+                relations: { players: [{ id: 'candidate-a', count: 1 }] },
+                confidence: { players: 1 }
+            }
+        });
+
+        const result = playerRecommendationEngine.generateSuggestions({
+            allSavedPlayers: candidates,
+            contextVoters: [
+                { item: lifecycleVoter('game_play_stage:second'), factor: 'gamePlayStage' },
+                { item: lifecycleVoter('game_recency:within_7_days'), factor: 'gameRecency' }
+            ],
+            lockedPlayerIds: [],
+            lockedNames: [],
+            sessionPlayers: []
+        });
+
+        expect(result.map(candidate => candidate.name)).toEqual(['A', 'B']);
+    });
+
+    it('adds resolved play-stage and recency buckets to player context', async () => {
+        const gameItem: SavedListItem = { id: 'game', name: 'Azul', usageCount: 1, lastUsed: 1 };
+        vi.spyOn(contextResolver, 'resolveBaseContext').mockResolvedValue([{ item: gameItem, factor: 'game' }]);
+        vi.spyOn(gameTemporalContextResolver, 'resolveFromSavedGameStats').mockReturnValue({
+            priorCount: 1,
+            lastCompletedAt: 100,
+            stageBucketId: 'game_play_stage:second',
+            recencyBucketId: 'game_recency:within_1_day'
+        });
+        vi.spyOn(gameTemporalContextResolver, 'resolveBucketEntities').mockResolvedValue([
+            { item: { id: 'game_play_stage:second', name: 'stage', usageCount: 1, lastUsed: 1 }, table: db.savedGameLifecycleContexts, type: 'gamePlayStage', isNewContext: true },
+            { item: { id: 'game_recency:within_1_day', name: 'recency', usageCount: 1, lastUsed: 1 }, table: db.savedGameLifecycleContexts, type: 'gameRecency', isNewContext: true }
+        ]);
+
+        const voters = await contextResolver.resolvePlayerContext({ gameName: 'Azul', timestamp: 1_000 });
+
+        expect(voters.map(voter => voter.factor)).toEqual(['game', 'gamePlayStage', 'gameRecency']);
+        expect(gameTemporalContextResolver.resolveFromSavedGameStats).toHaveBeenCalledWith(gameItem, 1_000);
     });
 
     it('builds initial player suggestions by chaining single-pass suggestions', async () => {
@@ -217,7 +274,7 @@ describe('PlayerRecommendationEngine.generateSuggestions', () => {
             factor: 'game'
         };
 
-        vi.spyOn(contextResolver, 'resolveBaseContext').mockResolvedValue([contextVoter]);
+        vi.spyOn(contextResolver, 'resolvePlayerContext').mockResolvedValue([contextVoter]);
         vi.spyOn(db.savedPlayers, 'toArray').mockResolvedValue(savedPlayers);
         const generateSuggestionsSpy = vi.spyOn(playerRecommendationEngine, 'generateSuggestions');
 

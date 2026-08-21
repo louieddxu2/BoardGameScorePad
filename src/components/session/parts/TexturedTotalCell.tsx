@@ -9,6 +9,7 @@ import { Crown, X } from 'lucide-react';
 import SmartTextureLayer from './SmartTextureLayer';
 import { COLORS } from '../../../colors';
 import { getRawValue } from '../../../utils/scoring';
+import { useTouchAction } from '../../shared/useTouchAction';
 // [Fix] 匯入堆疊查詢，用於判斷是否有「非輸入面板」的 Modal 正在開啟
 const INPUT_PANEL_IDS = ['session-input-panel', 'session-title-edit'];
 const hasOverlayModals = (): boolean => {
@@ -163,8 +164,10 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
   const [bgUrl, setBgUrl] = useState<string | null>(null);
   const cellRef = useRef<HTMLDivElement>(null);
 
-  const isCoop = scoringRule === 'COOP' || scoringRule === 'COOP_NO_SCORE';
-  const shouldShowCrown = isWinner && (hasMultiplePlayers || isCoop);
+  const effectiveScoringRule = scoringRule ?? 'HIGHEST_WINS';
+  const isCoop = effectiveScoringRule === 'COOP' || effectiveScoringRule === 'COOP_NO_SCORE';
+  const isCompetitive = effectiveScoringRule === 'HIGHEST_WINS' || effectiveScoringRule === 'LOWEST_WINS';
+  const shouldShowCrown = isWinner && (hasMultiplePlayers || isCoop || isCompetitive);
 
   useEffect(() => {
     let isMounted = true;
@@ -206,6 +209,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
 
   const hasBonus = !!player.bonusScore;
   const isForceLost = !!player.isForceLost;
+  const touchHandlers = useTouchAction<HTMLDivElement>(() => onClick?.(), { moveThreshold: 10 });
   
   // [Clean Mode Logic] If active, force disable visual effects of "Force Lost" (fading/coloring)
   const visualForceLost = cleanMode ? false : isForceLost;
@@ -244,7 +248,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
         ${onClick ? 'cursor-pointer hover:bg-surface-hover/10' : ''} 
         ${className}`}
       style={containerStyle}
-      onClick={onClick}
+      {...(onClick ? touchHandlers : {})}
     >
       {/* Active Indicator */}
       {!hasTexture && isActive && <div className="absolute inset-0 ring-2 ring-inset ring-[rgb(var(--c-grid-active-ring))] z-30 pointer-events-none"></div>}

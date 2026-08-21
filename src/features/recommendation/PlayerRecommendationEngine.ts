@@ -3,7 +3,7 @@ import { GameTemplate, SavedListItem } from '../../types';
 import { RecommendationContext, SuggestedPlayer, PlayerRecommendationWeights, DEFAULT_PLAYER_WEIGHTS, ColorRecommendationWeights, DEFAULT_COLOR_WEIGHTS } from './types';
 import { contextResolver, Voter } from './ContextResolver';
 import { votingEngine } from './VotingEngine';
-import { RELATION_PREDICTION_CONFIG } from '../../services/relationship/RelationMapper';
+import { RelationMapper } from '../../services/relationship/RelationMapper';
 import { Candidate } from '../../components/tools/player-selector/types';
 import { COLORS } from '../../colors';
 
@@ -67,7 +67,7 @@ export function predictColorsForPlayer(
         weights as any, 
         'colors', 
         [], // 排除規則在 getPlayerPaletteColors 中進行，此處保留完整推薦
-        20
+        RelationMapper.getVotingLimit('colors', COLORS.length)
     );
 
     // 5. Sort Result
@@ -114,8 +114,8 @@ function generateSuggestionsFromInputs({
     });
 
     // 2. 使用與進入遊戲流程相同的單次投票模型
-    // 未指定時沿用原型的前五名投票窗口；不在這裡執行迭代選取。
-    const limitToUse = candidateLimit ?? RELATION_PREDICTION_CONFIG.players.limit;
+    // 未指定時使用玩家池 25%（上限五名）的動態 N；不在這裡執行迭代選取。
+    const limitToUse = candidateLimit ?? RelationMapper.getVotingLimit('players', allSavedPlayers.length);
     const scoresMap = votingEngine.calculateScores(
         voters,
         weights as unknown as Record<string, number>,
@@ -191,11 +191,11 @@ export class PlayerRecommendationEngine {
         const selectedPlayerIds: string[] = [...(context.knownPlayerIds || [])];
         
         // 2. Resolve Base Context Voters (Game, Location, Time...) - Do this ONCE via ContextResolver
-        const baseVoters = await contextResolver.resolveBaseContext(context);
+        const baseVoters = await contextResolver.resolvePlayerContext(context);
         
         // 3. 一次性撈取所有存檔玩家，消除迴圈內與迴圈後的重複查詢
         const allSavedPlayers = await db.savedPlayers.toArray();
-        const candidateLimit = RELATION_PREDICTION_CONFIG.players.limit;
+        const candidateLimit = RelationMapper.getVotingLimit('players', allSavedPlayers.length);
 
         // 4. Iterative Selection Loop (Chained Prediction)
         for (let i = 0; i < limit; i++) {

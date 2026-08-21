@@ -302,6 +302,7 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                                     isWinner={winners.includes(p.id)}
                                     hasMultiplePlayers={session.players.length > 1}
                                     baseImage={baseImage || ''}
+                                    scoringRule={session.scoringRule}
                                     rect={template.globalVisuals?.totalRowRect}
                                     className="flex items-center justify-center relative"
                                     style={{

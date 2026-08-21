@@ -132,6 +132,13 @@ const getFirstScoreCell = () => {
   return cell;
 };
 
+const getInputPanel = () => {
+  const button = screen.getByRole('button', { name: '1' });
+  const panel = button.closest('.fixed') as HTMLElement | null;
+  if (!panel) throw new Error('input panel not found');
+  return panel;
+};
+
 const getScoreCell = (playerId: string) => {
   const cell = document.querySelector(`#row-col-1 .player-col-${playerId} > div`) as HTMLElement | null;
   if (!cell) throw new Error(`score cell not found for ${playerId}`);
@@ -216,6 +223,87 @@ describe('SessionView toolbox scroll behavior', () => {
 
     fireEvent.click(getScoreCell('p1'));
     expect(getScoreCell('p1').className).toContain('ring-2');
+  });
+
+  it('keeps immediate swipe navigation and accepts a touch keypad input afterwards', () => {
+    const onUpdateSession = vi.fn();
+    renderSession({ onUpdateSession });
+
+    fireEvent.click(getFirstScoreCell());
+    const panel = getInputPanel();
+
+    fireEvent.touchStart(panel, {
+      touches: [{ clientX: 200, clientY: 100 }],
+    });
+    fireEvent.touchMove(panel, {
+      touches: [{ clientX: 100, clientY: 100 }],
+    });
+    fireEvent.touchEnd(panel, {
+      changedTouches: [{ clientX: 100, clientY: 100 }],
+    });
+
+    const keypadButton = screen.getByRole('button', { name: '1' });
+    fireEvent.touchStart(keypadButton, {
+      touches: [{ clientX: 100, clientY: 100 }],
+    });
+    fireEvent.touchEnd(keypadButton, {
+      changedTouches: [{ clientX: 100, clientY: 100 }],
+    });
+
+    const latestCall = onUpdateSession.mock.calls[onUpdateSession.mock.calls.length - 1];
+    const latestSession = latestCall?.[0] as GameSession | undefined;
+    expect(latestSession?.players.find(player => player.id === 'p1')?.scores['col-1']?.parts ?? []).toEqual([]);
+    expect(latestSession?.players.find(player => player.id === 'p2')?.scores['col-1']?.parts).toEqual([1]);
+  });
+
+  it('does not turn a vertical-first panel gesture into player navigation', () => {
+    const onUpdateSession = vi.fn();
+    renderSession({ onUpdateSession });
+
+    fireEvent.click(getFirstScoreCell());
+    const panel = getInputPanel();
+
+    fireEvent.touchStart(panel, {
+      touches: [{ clientX: 200, clientY: 100 }],
+    });
+    fireEvent.touchMove(panel, {
+      touches: [{ clientX: 202, clientY: 120 }],
+    });
+    fireEvent.touchMove(panel, {
+      touches: [{ clientX: 240, clientY: 120 }],
+    });
+    fireEvent.touchEnd(panel, {
+      changedTouches: [{ clientX: 240, clientY: 120 }],
+    });
+
+    expect(getInputPanel().textContent).toContain('Player 1');
+  });
+
+  it('opens a score cell from a touch tap after the grid was scrolled without a compatibility click', () => {
+    renderSession();
+    const scroller = getGridScroller();
+
+    setScrollTop(scroller, 500);
+    fireEvent.touchStart(scroller, {
+      touches: [{ clientX: 120, clientY: 200 }],
+    });
+    setScrollTop(scroller, 560);
+    fireEvent.touchMove(scroller, {
+      touches: [{ clientX: 120, clientY: 140 }],
+    });
+    fireEvent.touchEnd(scroller, {
+      changedTouches: [{ clientX: 120, clientY: 140 }],
+    });
+
+    const cell = getFirstScoreCell();
+    fireEvent.touchStart(cell, {
+      touches: [{ clientX: 120, clientY: 140 }],
+    });
+    fireEvent.touchEnd(cell, {
+      changedTouches: [{ clientX: 120, clientY: 140 }],
+    });
+
+    expect(screen.getByRole('button', { name: '1' })).toBeInTheDocument();
   });
 
   it('opens permission settings for both claimed and unclaimed player headers', () => {

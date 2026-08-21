@@ -2,7 +2,7 @@
 import { RecommendationContext, CountRecommendationWeights, DEFAULT_COUNT_WEIGHTS } from './types';
 import { contextResolver } from './ContextResolver';
 import { votingEngine } from './VotingEngine';
-import { RELATION_PREDICTION_CONFIG } from '../../services/relationship/RelationMapper';
+import { RelationMapper } from '../../services/relationship/RelationMapper';
 
 /**
  * 人數推薦引擎 (Count Recommendation Engine)
@@ -18,11 +18,11 @@ export class CountRecommendationEngine {
     ): Promise<number[]> {
         
         // 1. Resolve Base Context Voters (Game, Location, Time...)
-        const voters = await contextResolver.resolveBaseContext(context);
+        const voters = await contextResolver.resolveCountContext(context);
 
         // 2. 執行投票 (針對 'playerCounts' 關聯)
         // [Refactor] 使用統一配置的 limit (3)
-        const limit = RELATION_PREDICTION_CONFIG.playerCounts.limit;
+        const limit = RelationMapper.getVotingLimit('playerCounts');
 
         const scoresMap = votingEngine.calculateScores(
             voters, 

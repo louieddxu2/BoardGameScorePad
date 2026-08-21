@@ -118,6 +118,7 @@ export interface Player {
   scores: Record<string, ScoreValue>;
   totalScore: number;
   isStarter?: boolean; // New: Starting player marker
+  isIdentityManuallySet?: boolean; // Player identity was explicitly entered or selected by the user
   linkedPlayerId?: string; // [New] 指向歷史紀錄的 UUID，用於關聯分析
   isColorManuallySet?: boolean; // [New] 指示此顏色是否為使用者手動選擇 (用於過濾雜訊)
 
@@ -296,11 +297,20 @@ export interface HistoryRecord {
 // [New Type] 資料處理狀態
 export type AnalyticsStatus = 'processed' | 'missing_location';
 
+export type PredictionModelKey = 'player' | 'count' | 'location' | 'color';
+
+export interface PredictionModelOutcome {
+  hits: number;
+  total: number;
+}
+
 // [New Interface] 統計處理記錄表 (Local Only)
 export interface AnalyticsLog {
   historyId: string; // PK
   status: AnalyticsStatus;
   lastProcessedAt: number;
+  referenceStartTime?: number;
+  predictionStrength?: Partial<Record<PredictionModelKey, PredictionModelOutcome>>;
 }
 
 // [New Interface] Dedicated BGG Game Data Storage
@@ -354,6 +364,7 @@ export interface SavedListItem extends GameIdentity {
     // key: 'players' | 'locations' | 'games' | 'colors' ...
     relations?: Record<string, any>;
     confidence?: Record<string, number>;
+    rankWeights?: Record<string, number[]>;
 
     // 注意：BGG Metadata 應優先從 bggGames 資料表讀取
     // 這裡僅保留作為快取或舊資料相容

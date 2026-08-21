@@ -2,7 +2,7 @@
 import { Table } from 'dexie';
 import { SavedListItem } from '../../types';
 
-export type EntityType = 'player' | 'game' | 'location' | 'weekday' | 'timeslot' | 'playerCount' | 'gameMode' | 'sessionContext' | 'color';
+export type EntityType = 'player' | 'game' | 'location' | 'weekday' | 'timeslot' | 'playerCount' | 'gameMode' | 'sessionContext' | 'color' | 'gamePlayStage' | 'gameRecency';
 
 export interface RelationItem {
     id: string;
@@ -13,5 +13,8 @@ export interface ResolvedEntity {
     item: SavedListItem;
     table: Table<SavedListItem>;
     type: EntityType;
+    relationTargetScope?: string[];
+    relationSourceScope?: string[];
+    canBeRelationTarget?: boolean;
     isNewContext: boolean; // 是否為本次「新出現」的情境 (例如新地點、新遊戲)，若是，則需要更新其關聯
 }
