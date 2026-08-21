@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { DEFAULT_COUNT_WEIGHTS, DEFAULT_LOCATION_WEIGHTS, DEFAULT_PLAYER_WEIGHTS } from '../../features/recommendation/types';
 import { HistoryRecord, Player, SavedListItem } from '../../types';
 import { RelationMapper } from './RelationMapper';
@@ -38,29 +38,15 @@ function savedItem(id: string, extra: Partial<SavedListItem> = {}): SavedListIte
     return { id, name: id, lastUsed: 0, usageCount: 0, meta: { relations: {}, confidence: {} }, ...extra };
 }
 
-async function trainSequence(input: HistoryRecord[], mode: 'single' | 'batch') {
+async function trainSequence(input: HistoryRecord[]) {
     const records = sortHistoryRecordsStable(input);
     const buckets = new Map(createLifecycleBucketItems().map(item => [item.id, item]));
     const players = new Map(['p1', 'p2'].map(id => [id, savedItem(id)]));
     const weights = { ...DEFAULT_PLAYER_WEIGHTS };
-    const state = gameTemporalContextResolver.createRunningState();
+    const game = savedItem('game-azul', { name: 'Azul' });
 
     for (const current of records) {
-        let temporal;
-        if (mode === 'single') {
-            const prior = records.filter(candidate =>
-                candidate.id !== current.id &&
-                candidate.startTime < current.startTime &&
-                candidate.endTime < current.startTime
-            );
-            const lastEnd = prior.reduce<number | undefined>(
-                (latest, candidate) => latest === undefined ? candidate.endTime : Math.max(latest, candidate.endTime),
-                undefined
-            );
-            temporal = classifyGameTemporalContext(prior.length, current.startTime, lastEnd);
-        } else {
-            temporal = gameTemporalContextResolver.resolveFromRunningState(state, current.startTime);
-        }
+        const temporal = gameTemporalContextResolver.resolveFromSavedGameStats(game, current.startTime);
 
         for (const bucketId of [temporal.stageBucketId, ...(temporal.recencyBucketId ? [temporal.recencyBucketId] : [])]) {
             const bucket = buckets.get(bucketId)!;
@@ -86,8 +72,8 @@ async function trainSequence(input: HistoryRecord[], mode: 'single' | 'batch') {
                 { players: players.size }
             );
         }
-
-        if (mode === 'batch') gameTemporalContextResolver.recordCompletion(state, current);
+        game.usageCount++;
+        game.lastUsed = Math.max(game.lastUsed, current.endTime);
     }
 
     return {
@@ -95,10 +81,6 @@ async function trainSequence(input: HistoryRecord[], mode: 'single' | 'batch') {
         weights
     };
 }
-
-afterEach(() => {
-    vi.restoreAllMocks();
-});
 
 describe('game lifecycle bucket boundaries', () => {
     it.each([
@@ -136,15 +118,6 @@ describe('game lifecycle bucket boundaries', () => {
     });
 });
 
-describe('game identity and temporal history', () => {
-    it('prefers BGG ID and lets older no-BGG records match the resolved game fallback', () => {
-        const resolved = savedItem('saved-azul', { name: 'Azul', bggId: '230802' });
-        const identity = gameTemporalContextResolver.resolveIdentity({ gameName: 'Azul' }, resolved);
-        expect(identity).toBe('bgg:230802');
-        expect(gameTemporalContextResolver.resolveIdentity({ gameName: '  AZUL  ' })).toBe('name:azul');
-    });
-});
-
 describe('lifecycle replay consistency', () => {
     const chronological = [
         record('a', 100, 200, [player('p1')]),
@@ -152,24 +125,17 @@ describe('lifecycle replay consistency', () => {
         record('c', 2_000, 2_100, [player('p1'), player('p2')])
     ];
 
-    it('produces identical relations, confidence and weights for sequential settlement and batch replay', async () => {
-        const single = await trainSequence(chronological, 'single');
-        const batch = await trainSequence(chronological, 'batch');
-        expect(batch).toEqual(single);
+    it('classifies each replayed record from accumulated saved game statistics', async () => {
+        const replay = await trainSequence(chronological);
+        expect(replay.buckets.find(bucket => bucket.id === 'game_play_stage:first')).toMatchObject({ usageCount: 1 });
+        expect(replay.buckets.find(bucket => bucket.id === 'game_play_stage:second')).toMatchObject({ usageCount: 1 });
+        expect(replay.buckets.find(bucket => bucket.id === 'game_play_stage:third_to_fourth')).toMatchObject({ usageCount: 1 });
     });
 
     it('produces the same model from unordered batch input', async () => {
-        const ordered = await trainSequence(chronological, 'batch');
-        const unordered = await trainSequence([chronological[2], chronological[0], chronological[1]], 'batch');
+        const ordered = await trainSequence(chronological);
+        const unordered = await trainSequence([chronological[2], chronological[0], chronological[1]]);
         expect(unordered).toEqual(ordered);
-    });
-
-    it('does not let equal-start records become prior to each other', () => {
-        const state = gameTemporalContextResolver.createRunningState();
-        expect(gameTemporalContextResolver.resolveFromRunningState(state, 100).priorCount).toBe(0);
-        gameTemporalContextResolver.recordCompletion(state, { id: 'a', endTime: 50 });
-        expect(gameTemporalContextResolver.resolveFromRunningState(state, 100).priorCount).toBe(0);
-        expect(gameTemporalContextResolver.resolveFromRunningState(state, 101).priorCount).toBe(1);
     });
 });
 

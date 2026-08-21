@@ -10,7 +10,7 @@ import { ResolvedEntity, EntityType } from './types';
 import { generateId } from '../../utils/idGenerator';
 import { DATA_LIMITS } from '../../dataLimits';
 import { getRecordScoringRule, getRecordBggId } from '../../utils/historyUtils';
-import { createLifecycleBucketItems, GAME_LIFECYCLE_RELATION_TARGET_SCOPE, gameTemporalContextResolver, GameTemporalRunningState, sortHistoryRecordsStable } from './GameTemporalContextResolver';
+import { createLifecycleBucketItems, GAME_LIFECYCLE_RELATION_TARGET_SCOPE, gameTemporalContextResolver, sortHistoryRecordsStable } from './GameTemporalContextResolver';
 import { predictionStrengthEvaluator } from './PredictionStrengthEvaluator';
 
 /**
@@ -19,8 +19,6 @@ import { predictionStrengthEvaluator } from './PredictionStrengthEvaluator';
  * 目的：將資料庫 I/O 從 O(N) 降為 O(1)，解決手機端效能瓶頸。
  */
 export class HistoryBatchProcessor {
-    private lifecycleStates = new Map<string, GameTemporalRunningState>();
-
     public async run(records: HistoryRecord[]): Promise<void> {
         if (records.length === 0) return;
 
@@ -350,13 +348,7 @@ export class HistoryBatchProcessor {
 
                     resolveFixed(rule, rule, 'gameMode', db.savedGameModes);
 
-                    const identity = gameTemporalContextResolver.resolveIdentity(record, itemGame || undefined);
-                    let state = this.lifecycleStates.get(identity);
-                    if (!state) {
-                        state = gameTemporalContextResolver.createRunningState();
-                        this.lifecycleStates.set(identity, state);
-                    }
-                    const temporal = gameTemporalContextResolver.resolveFromRunningState(state, record.startTime);
+                    const temporal = gameTemporalContextResolver.resolveFromSavedGameStats(itemGame || undefined, record.startTime);
                     const bucketIds = [temporal.stageBucketId, ...(temporal.recencyBucketId ? [temporal.recencyBucketId] : [])];
                     for (const id of bucketIds) {
                         const item = lifecycleMap.get(id)!;
@@ -448,11 +440,6 @@ export class HistoryBatchProcessor {
                             }
                         }
                     }
-                }
-
-                if (isFull && itemGame) {
-                    const identity = gameTemporalContextResolver.resolveIdentity(record, itemGame);
-                    gameTemporalContextResolver.recordCompletion(this.lifecycleStates.get(identity)!, record);
                 }
 
                 // Prepare Log Update

@@ -38,19 +38,7 @@ export interface GameTemporalContext {
     recencyBucketId?: GameRecencyBucketId;
 }
 
-export interface GameTemporalRunningState {
-    completedCount: number;
-    lastCompletedAt?: number;
-    pending: Array<{ endTime: number; id: string }>;
-    currentStartTime?: number;
-    sameStartPending: Array<{ endTime: number; id: string }>;
-}
-
 const DAY = 24 * 60 * 60 * 1000;
-
-export function normalizeGameName(name?: string): string {
-    return (name || '').trim().toLocaleLowerCase().replace(/\s+/g, ' ');
-}
 
 export function sortHistoryRecordsStable<T extends Pick<HistoryRecord, 'startTime' | 'endTime' | 'id'>>(records: T[]): T[] {
     return [...records].sort((a, b) => a.startTime - b.startTime || a.endTime - b.endTime || a.id.localeCompare(b.id));
@@ -98,40 +86,6 @@ export class GameTemporalContextResolver {
         const priorCount = savedGame?.usageCount ?? 0;
         const lastCompletedAt = priorCount > 0 ? savedGame?.lastUsed : undefined;
         return classifyGameTemporalContext(priorCount, referenceStartTime, lastCompletedAt);
-    }
-
-    public resolveIdentity(input: { bggId?: string; gameName?: string; templateId?: string }, resolvedGame?: SavedListItem): string {
-        const bggId = input.bggId || resolvedGame?.bggId;
-        if (bggId) return `bgg:${bggId}`;
-        if (resolvedGame?.id) return `game:${resolvedGame.id}`;
-        if (input.templateId) return `game:${input.templateId}`;
-        return `name:${normalizeGameName(input.gameName || resolvedGame?.name)}`;
-    }
-
-    public createRunningState(): GameTemporalRunningState {
-        return { completedCount: 0, pending: [], sameStartPending: [] };
-    }
-
-    public resolveFromRunningState(state: GameTemporalRunningState, referenceStartTime: number): GameTemporalContext {
-        if (state.currentStartTime !== referenceStartTime) {
-            state.pending.push(...state.sameStartPending);
-            state.sameStartPending = [];
-            state.currentStartTime = referenceStartTime;
-        }
-
-        const completed = state.pending.filter(item => item.endTime < referenceStartTime);
-        state.pending = state.pending.filter(item => item.endTime >= referenceStartTime);
-        state.completedCount += completed.length;
-        for (const item of completed) {
-            state.lastCompletedAt = state.lastCompletedAt === undefined
-                ? item.endTime
-                : Math.max(state.lastCompletedAt, item.endTime);
-        }
-        return classifyGameTemporalContext(state.completedCount, referenceStartTime, state.lastCompletedAt);
-    }
-
-    public recordCompletion(state: GameTemporalRunningState, record: Pick<HistoryRecord, 'id' | 'endTime'>): void {
-        state.sameStartPending.push({ id: record.id, endTime: record.endTime });
     }
 
     public async resolveBucketEntities(context: GameTemporalContext): Promise<ResolvedEntity[]> {
