@@ -1,7 +1,6 @@
 import { Table } from 'dexie';
 import { db } from '../../db';
 import { HistoryRecord, SavedListItem } from '../../types';
-import { getRecordBggId } from '../../utils/historyUtils';
 import { ResolvedEntity } from './types';
 
 export const GAME_PLAY_STAGE_BUCKET_IDS = [
@@ -107,37 +106,6 @@ export class GameTemporalContextResolver {
         if (resolvedGame?.id) return `game:${resolvedGame.id}`;
         if (input.templateId) return `game:${input.templateId}`;
         return `name:${normalizeGameName(input.gameName || resolvedGame?.name)}`;
-    }
-
-    public recordsMatchGame(record: HistoryRecord, identity: string, resolvedGame?: SavedListItem): boolean {
-        const expectedBggId = identity.startsWith('bgg:') ? identity.slice(4) : resolvedGame?.bggId;
-        const recordBggId = getRecordBggId(record);
-        if (expectedBggId && recordBggId) return expectedBggId === recordBggId;
-
-        if (identity.startsWith('game:') && record.templateId === identity.slice(5)) return true;
-        return normalizeGameName(record.gameName) === normalizeGameName(resolvedGame?.name || identity.replace(/^name:/, ''));
-    }
-
-    public async resolveFromHistory(args: {
-        referenceStartTime: number;
-        currentRecordId?: string;
-        bggId?: string;
-        gameName?: string;
-        templateId?: string;
-        resolvedGame?: SavedListItem;
-    }): Promise<GameTemporalContext> {
-        const identity = this.resolveIdentity(args, args.resolvedGame);
-        const history = await db.history.where('endTime').below(args.referenceStartTime).toArray();
-        const prior = history.filter(record =>
-            record.id !== args.currentRecordId &&
-            record.startTime < args.referenceStartTime &&
-            this.recordsMatchGame(record, identity, args.resolvedGame)
-        );
-        const lastCompletedAt = prior.reduce<number | undefined>(
-            (latest, record) => latest === undefined ? record.endTime : Math.max(latest, record.endTime),
-            undefined
-        );
-        return classifyGameTemporalContext(prior.length, args.referenceStartTime, lastCompletedAt);
     }
 
     public createRunningState(): GameTemporalRunningState {

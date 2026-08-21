@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { db } from '../../db';
 import { DEFAULT_COUNT_WEIGHTS, DEFAULT_LOCATION_WEIGHTS, DEFAULT_PLAYER_WEIGHTS } from '../../features/recommendation/types';
 import { HistoryRecord, Player, SavedListItem } from '../../types';
 import { RelationMapper } from './RelationMapper';
@@ -142,26 +141,7 @@ describe('game identity and temporal history', () => {
         const resolved = savedItem('saved-azul', { name: 'Azul', bggId: '230802' });
         const identity = gameTemporalContextResolver.resolveIdentity({ gameName: 'Azul' }, resolved);
         expect(identity).toBe('bgg:230802');
-        expect(gameTemporalContextResolver.recordsMatchGame(record('old', 1, 2), identity, resolved)).toBe(true);
-        expect(gameTemporalContextResolver.recordsMatchGame({ ...record('other', 1, 2), bggId: '999' }, identity, resolved)).toBe(false);
         expect(gameTemporalContextResolver.resolveIdentity({ gameName: '  AZUL  ' })).toBe('name:azul');
-    });
-
-    it('excludes current and future records even when they are already returned from storage', async () => {
-        const current = record('current', 1_000, 500);
-        const future = record('future', 3_000, 400);
-        const below = vi.fn().mockReturnValue({ toArray: vi.fn().mockResolvedValue([current, future]) });
-        vi.spyOn(db.history, 'where').mockReturnValue({ below } as never);
-
-        const result = await gameTemporalContextResolver.resolveFromHistory({
-            referenceStartTime: current.startTime,
-            currentRecordId: current.id,
-            gameName: current.gameName
-        });
-
-        expect(result.priorCount).toBe(0);
-        expect(result.stageBucketId).toBe('game_play_stage:first');
-        expect(result.recencyBucketId).toBeUndefined();
     });
 });
 
