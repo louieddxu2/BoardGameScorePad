@@ -242,7 +242,7 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
                       onNameSubmit(player.id, finalName, false, linkedId);
                       inputRef.current?.blur();
                     }}
-                    className="px-3 py-0.5 rounded-full text-base font-medium text-txt-primary hover:bg-brand-primary/20 hover:text-brand-primary transition-colors active:scale-95 bg-surface-bg border border-surface-border whitespace-nowrap"
+                    className="px-3 py-0.5 rounded-full text-base font-medium text-txt-primary hover:bg-brand-primary/20 hover:text-brand-primary transition-colors active:scale-95 bg-surface-bg border border-surface-border shadow-[inset_3px_0_0_rgb(var(--c-brand-primary)_/_0.35)] whitespace-nowrap"
                   >
                     {item.name}
                   </button>
