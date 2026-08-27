@@ -266,10 +266,9 @@ export const useSessionState = (props: SessionViewProps) => {
   const isPanelOpen = uiState.editingCell !== null || uiState.editingPlayerId !== null;
 
   // [Updated] If short list OR toolbox is open, force the panel space to be open
-  // at 40% of the currently visible viewport so Safari's expanded toolbar cannot
-  // push the bottom keypad row below the visible app surface. Keep a minimum
-  // height for the four keypad rows when the device is in a short/landscape view.
-  // This effectively centers the Total Bar and removes the gap.
+  // at 40% of the relevant viewport. iOS Safari uses the small viewport so its
+  // expanded browser chrome cannot push the bottom keypad row below the app
+  // surface. Keep a minimum height for the four keypad rows on short views.
   // [Updated] Differentiate height for Player Name vs Score Input
   const focusedHeight = uiState.editingPlayerId ? '200px' : '220px';
   const isIOSSafariBrowser = typeof document !== 'undefined' &&
