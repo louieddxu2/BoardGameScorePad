@@ -1,5 +1,6 @@
 export interface PlatformEnvironment {
   isIOS: boolean;
+  isAndroid: boolean;
   isStandalone: boolean;
   isIOSSafariBrowser: boolean;
 }
@@ -13,11 +14,13 @@ export const getPlatformEnvironment = (
   const isIOS =
     /iPad|iPhone|iPod/.test(userAgent) ||
     (/Macintosh/.test(userAgent) && hasTouchEnd);
+  const isAndroid = /Android/.test(userAgent);
   const isStandalone = standaloneMediaMatches || navigatorStandalone;
   const isSafari = /Safari/.test(userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(userAgent);
 
   return {
     isIOS,
+    isAndroid,
     isStandalone,
     isIOSSafariBrowser: isIOS && isSafari && !isStandalone,
   };
@@ -29,6 +32,7 @@ export const applyPlatformEnvironmentAttributes = (
   const environment = getPlatformEnvironment();
 
   root.dataset.ios = String(environment.isIOS);
+  root.dataset.android = String(environment.isAndroid);
   root.dataset.standalone = String(environment.isStandalone);
   root.dataset.iosSafariBrowser = String(environment.isIOSSafariBrowser);
 

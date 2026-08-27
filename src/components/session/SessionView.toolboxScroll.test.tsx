@@ -204,7 +204,7 @@ describe('SessionView toolbox scroll behavior', () => {
 
       expect(getInputSurface()).toHaveClass('absolute', 'inset-0');
       expect(getInputSurface()).not.toHaveClass('fixed');
-      expect(getInputSurface().style.paddingBottom).toBe('0px');
+      expect(getInputSurface().style.bottom).toBe('0px');
     } finally {
       if (previousValue === undefined) {
         delete document.documentElement.dataset.iosSafariBrowser;
@@ -214,15 +214,47 @@ describe('SessionView toolbox scroll behavior', () => {
     }
   });
 
-  it('keeps the input surface session-relative outside iOS Safari', () => {
+  it('keeps the Android browser input surface above the system navigation area', () => {
+    const previousAndroid = document.documentElement.dataset.android;
+    const previousStandalone = document.documentElement.dataset.standalone;
     delete document.documentElement.dataset.iosSafariBrowser;
+    document.documentElement.dataset.android = 'true';
+    document.documentElement.dataset.standalone = 'false';
 
-    renderSession();
-    fireEvent.click(getFirstScoreCell());
+    try {
+      renderSession();
+      fireEvent.click(getFirstScoreCell());
 
-    expect(getInputSurface()).toHaveClass('absolute', 'inset-0');
-    expect(getInputSurface()).not.toHaveClass('fixed');
-    expect(getInputSurface().style.paddingBottom).toBe('var(--bottom-ui-safe-gap)');
+      expect(getInputSurface()).toHaveClass('absolute', 'inset-0');
+      expect(getInputSurface()).not.toHaveClass('fixed');
+      expect(getInputSurface().style.bottom).toBe('var(--app-safe-area-bottom)');
+    } finally {
+      if (previousAndroid === undefined) delete document.documentElement.dataset.android;
+      else document.documentElement.dataset.android = previousAndroid;
+      if (previousStandalone === undefined) delete document.documentElement.dataset.standalone;
+      else document.documentElement.dataset.standalone = previousStandalone;
+    }
+  });
+
+  it('keeps standalone PWA input surface behavior unchanged', () => {
+    const previousAndroid = document.documentElement.dataset.android;
+    const previousStandalone = document.documentElement.dataset.standalone;
+    delete document.documentElement.dataset.iosSafariBrowser;
+    document.documentElement.dataset.android = 'true';
+    document.documentElement.dataset.standalone = 'true';
+
+    try {
+      renderSession();
+      fireEvent.click(getFirstScoreCell());
+
+      expect(getInputSurface()).toHaveClass('absolute', 'inset-0');
+      expect(getInputSurface().style.bottom).toBe('var(--bottom-ui-safe-gap)');
+    } finally {
+      if (previousAndroid === undefined) delete document.documentElement.dataset.android;
+      else document.documentElement.dataset.android = previousAndroid;
+      if (previousStandalone === undefined) delete document.documentElement.dataset.standalone;
+      else document.documentElement.dataset.standalone = previousStandalone;
+    }
   });
 
   it('detaches a multiplayer room without stopping its runtime when the view unmounts', () => {

@@ -952,7 +952,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
         <div
             data-session-input-surface="true"
             className="absolute inset-0 z-50 pointer-events-none flex flex-col overflow-hidden"
-            style={{ paddingBottom: bottomOffset }}
+            style={{ bottom: bottomOffset }}
         >
             <div className="flex-1 min-h-0" aria-hidden="true" />
 

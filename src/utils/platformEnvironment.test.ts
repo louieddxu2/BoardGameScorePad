@@ -8,6 +8,7 @@ describe('getPlatformEnvironment', () => {
   it('identifies iPhone Safari browser mode', () => {
     expect(getPlatformEnvironment(iphoneSafari, false, false, true)).toEqual({
       isIOS: true,
+      isAndroid: false,
       isStandalone: false,
       isIOSSafariBrowser: true,
     });
@@ -16,6 +17,7 @@ describe('getPlatformEnvironment', () => {
   it('identifies iOS standalone mode from display-mode', () => {
     expect(getPlatformEnvironment(iphoneSafari, true, false, true)).toEqual({
       isIOS: true,
+      isAndroid: false,
       isStandalone: true,
       isIOSSafariBrowser: false,
     });
@@ -31,6 +33,7 @@ describe('getPlatformEnvironment', () => {
 
     expect(getPlatformEnvironment(androidChrome, false, false, true)).toEqual({
       isIOS: false,
+      isAndroid: true,
       isStandalone: false,
       isIOSSafariBrowser: false,
     });
@@ -55,6 +58,7 @@ describe('getPlatformEnvironment', () => {
     applyPlatformEnvironmentAttributes(root);
 
     expect(root.dataset.ios).toBe('false');
+    expect(root.dataset.android).toBe('true');
     expect(root.dataset.iosSafariBrowser).toBe('false');
 
     Object.defineProperty(navigator, 'userAgent', {

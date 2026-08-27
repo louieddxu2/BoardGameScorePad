@@ -152,7 +152,14 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const isNativeKeyboardCompensationActive = isKeyboardOpen && sessionState.uiState.isInputFocused;
   const isIOSSafariBrowser = typeof document !== 'undefined' &&
     document.documentElement.dataset.iosSafariBrowser === 'true';
-  const sessionIdleDockOffset = isIOSSafariBrowser ? '0px' : 'var(--bottom-ui-safe-gap)';
+  const isAndroid = typeof document !== 'undefined' && document.documentElement.dataset.android === 'true';
+  const isStandalone = typeof document !== 'undefined' && document.documentElement.dataset.standalone === 'true';
+  const isAndroidBrowser = isAndroid && !isStandalone;
+  const sessionIdleDockOffset = isIOSSafariBrowser
+    ? '0px'
+    : isAndroidBrowser
+      ? 'var(--app-safe-area-bottom)'
+      : 'var(--bottom-ui-safe-gap)';
   const panelDockOffset = getSessionPanelDockOffset(keyboardOffset, isNativeKeyboardCompensationActive, sessionIdleDockOffset);
   const occupiedBottom = getSessionOccupiedBottom(sessionState.panelHeight, keyboardOffset, isNativeKeyboardCompensationActive, sessionIdleDockOffset);
 
