@@ -280,6 +280,7 @@ export const useSessionState = (props: SessionViewProps) => {
     uiState,
     setUiState,
     keyboardOffset,
+    isKeyboardOpen,
     closeFocusedPlayerNameInput,
     panelHeight,
     isShortList, // Export for InputPanel to know when to show placeholder
