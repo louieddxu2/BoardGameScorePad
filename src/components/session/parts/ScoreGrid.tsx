@@ -739,7 +739,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
             data-row-id={lastColId}
             onDragOver={(e) => { if (isEditMode && lastColId) dnd.handleDragOver(e, lastColId); }}
             onDrop={(e) => { if (isEditMode && lastColId) dnd.handleDrop(e, lastColId); }}
-            className={`w-full bg-app-bg ${(editingCell || editingPlayerId || (!baseImage && template.columns.length < 5) || isToolboxOpen) ? 'h-[40dvh]' : 'h-24'}`}
+            className={`w-full bg-app-bg ${(editingCell || editingPlayerId || (!baseImage && template.columns.length < 5) || isToolboxOpen) ? 'h-[min(100dvh,max(40dvh,240px))]' : 'h-24'}`}
             style={{ marginBottom: panelDockOffset }}
           />
         )}
