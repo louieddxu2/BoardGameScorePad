@@ -134,7 +134,7 @@ const getFirstScoreCell = () => {
 
 const getInputPanel = () => {
   const button = screen.getByRole('button', { name: '1' });
-  const panel = button.closest('.fixed') as HTMLElement | null;
+  const panel = button.closest('[data-session-input-panel="true"]') as HTMLElement | null;
   if (!panel) throw new Error('input panel not found');
   return panel;
 };

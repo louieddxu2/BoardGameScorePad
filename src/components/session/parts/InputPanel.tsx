@@ -951,7 +951,8 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
     return (
         <div
-            className={`fixed left-0 right-0 z-50 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgb(var(--c-black)_/_0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
+            data-session-input-panel="true"
+            className={`absolute left-0 right-0 z-50 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgb(var(--c-black)_/_0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
             style={{ height: panelHeight, bottom: bottomOffset }}
             // [Added] Joystick Touch Handlers
             onTouchStart={handleTouchStart}
