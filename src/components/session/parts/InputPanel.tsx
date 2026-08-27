@@ -238,9 +238,6 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     const { uiState, setUiState, panelHeight, isShortList } = sessionState;
     const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue, isEditingTitle, isToolboxOpen } = uiState;
     const { t } = useSessionTranslation();
-    const isIOSSafariBrowser = typeof document !== 'undefined' &&
-        document.documentElement.dataset.iosSafariBrowser === 'true';
-
     const [activeFactorIdx, setActiveFactorIdx] = useState<0 | 1>(0);
     const [showSwipeHint, setShowSwipeHint] = useState(false);
     const [recommendedColors, setRecommendedColors] = useState<string[]>([]);
@@ -951,12 +948,10 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     // If no cell/player is selected, but short list/toolbox forces panel height -> Placeholder
     const isPlaceholderMode = (isShortList || isToolboxOpen) && !isPanelOpen;
 
-    // iOS Safari owns the bottom browser-controls boundary; matching the
-    // full-screen editor's fixed surface keeps the panel on the visible side.
     return (
         <div
             data-session-input-surface="true"
-            className={`${isIOSSafariBrowser ? 'fixed' : 'absolute'} inset-0 z-50 pointer-events-none flex flex-col overflow-hidden`}
+            className="absolute inset-0 z-50 pointer-events-none flex flex-col overflow-hidden"
             style={{ paddingBottom: bottomOffset }}
         >
             <div className="flex-1 min-h-0" aria-hidden="true" />

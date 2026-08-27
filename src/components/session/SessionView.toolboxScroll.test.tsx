@@ -194,7 +194,7 @@ const swipeOn = (
 };
 
 describe('SessionView toolbox scroll behavior', () => {
-  it('uses a viewport-fixed input surface on iOS Safari', () => {
+  it('keeps the input surface session-relative on iOS Safari', () => {
     const previousValue = document.documentElement.dataset.iosSafariBrowser;
     document.documentElement.dataset.iosSafariBrowser = 'true';
 
@@ -202,8 +202,9 @@ describe('SessionView toolbox scroll behavior', () => {
       renderSession();
       fireEvent.click(getFirstScoreCell());
 
-      expect(getInputSurface()).toHaveClass('fixed', 'inset-0');
-      expect(getInputSurface()).not.toHaveClass('absolute');
+      expect(getInputSurface()).toHaveClass('absolute', 'inset-0');
+      expect(getInputSurface()).not.toHaveClass('fixed');
+      expect(getInputSurface().style.paddingBottom).toBe('0px');
     } finally {
       if (previousValue === undefined) {
         delete document.documentElement.dataset.iosSafariBrowser;
@@ -213,7 +214,7 @@ describe('SessionView toolbox scroll behavior', () => {
     }
   });
 
-  it('keeps the existing session-relative input surface outside iOS Safari', () => {
+  it('keeps the input surface session-relative outside iOS Safari', () => {
     delete document.documentElement.dataset.iosSafariBrowser;
 
     renderSession();
@@ -221,6 +222,7 @@ describe('SessionView toolbox scroll behavior', () => {
 
     expect(getInputSurface()).toHaveClass('absolute', 'inset-0');
     expect(getInputSurface()).not.toHaveClass('fixed');
+    expect(getInputSurface().style.paddingBottom).toBe('var(--bottom-ui-safe-gap)');
   });
 
   it('detaches a multiplayer room without stopping its runtime when the view unmounts', () => {

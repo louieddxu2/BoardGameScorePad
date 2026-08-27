@@ -150,8 +150,11 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     : null;
   const { setUiState, keyboardOffset, isKeyboardOpen, closeFocusedPlayerNameInput } = sessionState;
   const isNativeKeyboardCompensationActive = isKeyboardOpen && sessionState.uiState.isInputFocused;
-  const panelDockOffset = getSessionPanelDockOffset(keyboardOffset, isNativeKeyboardCompensationActive);
-  const occupiedBottom = getSessionOccupiedBottom(sessionState.panelHeight, keyboardOffset, isNativeKeyboardCompensationActive);
+  const isIOSSafariBrowser = typeof document !== 'undefined' &&
+    document.documentElement.dataset.iosSafariBrowser === 'true';
+  const sessionIdleDockOffset = isIOSSafariBrowser ? '0px' : 'var(--bottom-ui-safe-gap)';
+  const panelDockOffset = getSessionPanelDockOffset(keyboardOffset, isNativeKeyboardCompensationActive, sessionIdleDockOffset);
+  const occupiedBottom = getSessionOccupiedBottom(sessionState.panelHeight, keyboardOffset, isNativeKeyboardCompensationActive, sessionIdleDockOffset);
 
   // No special local state needed for photo preview anymore
   const eventHandlers = useSessionEvents({
