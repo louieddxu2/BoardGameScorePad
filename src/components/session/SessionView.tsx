@@ -148,9 +148,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const multiplayerPreviewPlayerNumber = capabilities.role === 'player'
     ? session.players.findIndex(player => player.id === capabilities.playerId) + 1
     : null;
-  const { setUiState, keyboardOffset, closeFocusedPlayerNameInput } = sessionState;
-  const panelDockOffset = getSessionPanelDockOffset(keyboardOffset);
-  const occupiedBottom = getSessionOccupiedBottom(sessionState.panelHeight, keyboardOffset);
+  const { setUiState, keyboardOffset, isKeyboardOpen, closeFocusedPlayerNameInput } = sessionState;
+  const panelDockOffset = getSessionPanelDockOffset(keyboardOffset, isKeyboardOpen);
+  const occupiedBottom = getSessionOccupiedBottom(sessionState.panelHeight, keyboardOffset, isKeyboardOpen);
 
   // No special local state needed for photo preview anymore
   const eventHandlers = useSessionEvents({

@@ -1,10 +1,18 @@
+const DEFAULT_SESSION_PANEL_HEIGHT = 'min(100dvh, max(40dvh, 240px))';
+const IOS_SAFARI_SESSION_PANEL_HEIGHT = 'min(100svh, max(40svh, 240px))';
+
+export const getSessionPanelHeight = (isIOSSafariBrowser: boolean): string =>
+  isIOSSafariBrowser ? IOS_SAFARI_SESSION_PANEL_HEIGHT : DEFAULT_SESSION_PANEL_HEIGHT;
+
 export const getSessionPanelDockOffset = (
   viewportBottomOffset: number,
-): string => viewportBottomOffset > 0
-  ? `max(${viewportBottomOffset}px, var(--bottom-ui-safe-gap))`
+  isKeyboardOpen = false,
+): string => isKeyboardOpen && viewportBottomOffset > 0
+  ? `${viewportBottomOffset}px`
   : 'var(--bottom-ui-safe-gap)';
 
 export const getSessionOccupiedBottom = (
   panelHeight: string,
   viewportBottomOffset: number,
-): string => `calc(${panelHeight} + ${getSessionPanelDockOffset(viewportBottomOffset)})`;
+  isKeyboardOpen = false,
+): string => `calc(${panelHeight} + ${getSessionPanelDockOffset(viewportBottomOffset, isKeyboardOpen)})`;

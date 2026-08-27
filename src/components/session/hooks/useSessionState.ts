@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { GameSession, GameTemplate, SavedListItem } from '../../../types';
 import { useKeyboardStatus } from '../../../hooks/useVisualViewportOffset';
+import { getSessionPanelHeight } from '../../../utils/sessionViewport';
 
 interface SessionViewProps {
   session: GameSession;
@@ -271,9 +272,12 @@ export const useSessionState = (props: SessionViewProps) => {
   // This effectively centers the Total Bar and removes the gap.
   // [Updated] Differentiate height for Player Name vs Score Input
   const focusedHeight = uiState.editingPlayerId ? '200px' : '220px';
+  const isIOSSafariBrowser = typeof document !== 'undefined' &&
+    document.documentElement.dataset.iosSafariBrowser === 'true';
+  const standardPanelHeight = getSessionPanelHeight(isIOSSafariBrowser);
 
   const panelHeight = (isPanelOpen || isShortList || uiState.isToolboxOpen)
-    ? (uiState.isInputFocused ? focusedHeight : 'min(100dvh, max(40dvh, 240px))')
+    ? (uiState.isInputFocused ? focusedHeight : standardPanelHeight)
     : '0px';
 
   return {

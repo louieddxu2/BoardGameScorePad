@@ -71,4 +71,32 @@ describe('useSessionState player-name keyboard dismissal', () => {
     expect(result.current.uiState.isInputFocused).toBe(false);
     expect(result.current.panelHeight).toBe('min(100dvh, max(40dvh, 240px))');
   });
+
+  it('uses the small viewport height for the non-keyboard iOS Safari panel', () => {
+    document.documentElement.dataset.iosSafariBrowser = 'true';
+
+    try {
+      const { result } = renderHook(() => useSessionState({
+        session,
+        template,
+        savedPlayers: [],
+        onUpdateSession: () => undefined,
+        onUpdateTemplate: () => undefined,
+        onUpdateSavedPlayer: () => undefined,
+        onExit: () => undefined,
+        onResetScores: () => undefined,
+      }));
+
+      act(() => {
+        result.current.setUiState((previous) => ({
+          ...previous,
+          editingCell: { playerId: 'player-1', colId: 'score' },
+        }));
+      });
+
+      expect(result.current.panelHeight).toBe('min(100svh, max(40svh, 240px))');
+    } finally {
+      delete document.documentElement.dataset.iosSafariBrowser;
+    }
+  });
 });
