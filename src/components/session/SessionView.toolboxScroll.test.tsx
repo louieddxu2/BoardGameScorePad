@@ -139,6 +139,13 @@ const getInputPanel = () => {
   return panel;
 };
 
+const getInputSurface = () => {
+  const panel = getInputPanel();
+  const surface = panel.closest('[data-session-input-surface="true"]') as HTMLElement | null;
+  if (!surface) throw new Error('input surface not found');
+  return surface;
+};
+
 const getScoreCell = (playerId: string) => {
   const cell = document.querySelector(`#row-col-1 .player-col-${playerId} > div`) as HTMLElement | null;
   if (!cell) throw new Error(`score cell not found for ${playerId}`);
@@ -187,6 +194,35 @@ const swipeOn = (
 };
 
 describe('SessionView toolbox scroll behavior', () => {
+  it('uses a viewport-fixed input surface on iOS Safari', () => {
+    const previousValue = document.documentElement.dataset.iosSafariBrowser;
+    document.documentElement.dataset.iosSafariBrowser = 'true';
+
+    try {
+      renderSession();
+      fireEvent.click(getFirstScoreCell());
+
+      expect(getInputSurface()).toHaveClass('fixed', 'inset-0');
+      expect(getInputSurface()).not.toHaveClass('absolute');
+    } finally {
+      if (previousValue === undefined) {
+        delete document.documentElement.dataset.iosSafariBrowser;
+      } else {
+        document.documentElement.dataset.iosSafariBrowser = previousValue;
+      }
+    }
+  });
+
+  it('keeps the existing session-relative input surface outside iOS Safari', () => {
+    delete document.documentElement.dataset.iosSafariBrowser;
+
+    renderSession();
+    fireEvent.click(getFirstScoreCell());
+
+    expect(getInputSurface()).toHaveClass('absolute', 'inset-0');
+    expect(getInputSurface()).not.toHaveClass('fixed');
+  });
+
   it('detaches a multiplayer room without stopping its runtime when the view unmounts', () => {
     const manager = createMultiplayerSessionManager();
     const runtime = { role: 'player' as const, stop: vi.fn(), start: vi.fn(), controller: {}, session: {} } as any;
