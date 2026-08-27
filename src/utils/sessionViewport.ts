@@ -1,10 +1,10 @@
 export const getSessionPanelDockOffset = (
-  keyboardOffset: number,
-  isKeyboardOpen: boolean,
-): string => isKeyboardOpen ? `${keyboardOffset}px` : 'var(--bottom-ui-safe-gap)';
+  viewportBottomOffset: number,
+): string => viewportBottomOffset > 0
+  ? `max(${viewportBottomOffset}px, var(--bottom-ui-safe-gap))`
+  : 'var(--bottom-ui-safe-gap)';
 
 export const getSessionOccupiedBottom = (
   panelHeight: string,
-  keyboardOffset: number,
-  isKeyboardOpen: boolean,
-): string => `calc(${panelHeight} + ${getSessionPanelDockOffset(keyboardOffset, isKeyboardOpen)})`;
+  viewportBottomOffset: number,
+): string => `calc(${panelHeight} + ${getSessionPanelDockOffset(viewportBottomOffset)})`;
