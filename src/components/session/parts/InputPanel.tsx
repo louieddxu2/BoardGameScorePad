@@ -951,48 +951,56 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
     return (
         <div
-            data-session-input-panel="true"
-            className={`absolute left-0 right-0 z-50 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgb(var(--c-black)_/_0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
-            style={{ height: panelHeight, bottom: bottomOffset }}
-            // [Added] Joystick Touch Handlers
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onTouchCancel={handleTouchCancel}
+            data-session-input-surface="true"
+            className="absolute inset-0 z-50 pointer-events-none flex flex-col overflow-hidden"
+            style={{ paddingBottom: bottomOffset }}
         >
-            {activePlayer && !isPlaceholderMode && (
-                <PanelHeader
-                    player={activePlayer}
-                    col={activeColumn}
-                    isEditingPlayer={isEditingPlayerName}
-                    onClear={handleClear}
-                    onDirectionToggle={handleDirectionToggle}
-                    direction={advanceDirection}
-                    isTotalMode={isTotalMode}
-                    isVoiceEnabled={isVoiceEnabled}
-                    onToggleVoice={onToggleVoice}
-                    showSwipeHint={showSwipeHint}
-                />
-            )}
+            <div className="flex-1 min-h-0" aria-hidden="true" />
 
-            <div className="flex-1 min-h-0 bg-modal-bg relative">
-                {mainContentNode && !isPlaceholderMode && (
-                    <InputPanelLayout onNext={onNextAction} nextButtonDirection={advanceDirection} sidebarContent={sidebarContentNode} nextButtonContent={nextButtonContent} isCompact={isInputFocused}>
-                        {mainContentNode}
-                    </InputPanelLayout>
-                )}
-
-                {/* Smart Spacer (Toolbox) Mode */}
-                {isPlaceholderMode && (
-                    <SmartSpacer
-                        session={session}
-                        template={template}
-                        onTakePhoto={onTakePhoto}
-                        onScreenshot={() => onScreenshotRequest?.('simple')} // Default to simple for quick screenshot
-                        onUpdateSession={onUpdateSession} // [Fix] Pass updater to allow order shuffling
-                        mediaOnly={mediaOnlyTools}
+            <div
+                data-session-input-panel="true"
+                className={`w-full shrink-0 pointer-events-auto bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgb(var(--c-black)_/_0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
+                style={{ height: panelHeight }}
+                // [Added] Joystick Touch Handlers
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                onTouchCancel={handleTouchCancel}
+            >
+                {activePlayer && !isPlaceholderMode && (
+                    <PanelHeader
+                        player={activePlayer}
+                        col={activeColumn}
+                        isEditingPlayer={isEditingPlayerName}
+                        onClear={handleClear}
+                        onDirectionToggle={handleDirectionToggle}
+                        direction={advanceDirection}
+                        isTotalMode={isTotalMode}
+                        isVoiceEnabled={isVoiceEnabled}
+                        onToggleVoice={onToggleVoice}
+                        showSwipeHint={showSwipeHint}
                     />
                 )}
+
+                <div className="flex-1 min-h-0 bg-modal-bg relative">
+                    {mainContentNode && !isPlaceholderMode && (
+                        <InputPanelLayout onNext={onNextAction} nextButtonDirection={advanceDirection} sidebarContent={sidebarContentNode} nextButtonContent={nextButtonContent} isCompact={isInputFocused}>
+                            {mainContentNode}
+                        </InputPanelLayout>
+                    )}
+
+                    {/* Smart Spacer (Toolbox) Mode */}
+                    {isPlaceholderMode && (
+                        <SmartSpacer
+                            session={session}
+                            template={template}
+                            onTakePhoto={onTakePhoto}
+                            onScreenshot={() => onScreenshotRequest?.('simple')} // Default to simple for quick screenshot
+                            onUpdateSession={onUpdateSession} // [Fix] Pass updater to allow order shuffling
+                            mediaOnly={mediaOnlyTools}
+                        />
+                    )}
+                </div>
             </div>
         </div>
     );
