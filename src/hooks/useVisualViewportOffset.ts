@@ -40,10 +40,7 @@ export const useKeyboardStatus = (): KeyboardStatus => {
 
     const handler = () => {
       const vv = window.visualViewport!;
-      // The root may intentionally use 100dvh, which can make clientHeight
-      // equal the visible viewport on iOS Safari. Keep the larger layout
-      // viewport as the reference so browser chrome is still compensated.
-      const layoutHeight = Math.max(document.documentElement.clientHeight, window.innerHeight);
+      const layoutHeight = document.documentElement.clientHeight;
       const visualHeight = vv.height;
       const visualTop = vv.offsetTop;
 

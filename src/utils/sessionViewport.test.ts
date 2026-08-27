@@ -4,8 +4,8 @@ import { getSessionOccupiedBottom, getSessionPanelDockOffset } from './sessionVi
 describe('session viewport layout', () => {
   it('uses the shared safe gap when the keyboard is closed', () => {
     expect(getSessionPanelDockOffset(0)).toBe('var(--bottom-ui-safe-gap)');
-    expect(getSessionOccupiedBottom('40vh', 0)).toBe(
-      'calc(40vh + var(--bottom-ui-safe-gap))',
+    expect(getSessionOccupiedBottom('40dvh', 0)).toBe(
+      'calc(40dvh + var(--bottom-ui-safe-gap))',
     );
   });
 

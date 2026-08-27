@@ -69,6 +69,6 @@ describe('useSessionState player-name keyboard dismissal', () => {
     act(() => setVisualViewportHeight(800));
 
     expect(result.current.uiState.isInputFocused).toBe(false);
-    expect(result.current.panelHeight).toBe('40vh');
+    expect(result.current.panelHeight).toBe('40dvh');
   });
 });
