@@ -25,13 +25,13 @@ describe('session viewport layout', () => {
     );
   });
 
-  it('allows Safari score input to avoid a duplicate small-viewport gap', () => {
+  it('allows iOS browser score input to avoid a duplicate small-viewport gap', () => {
     expect(getSessionPanelDockOffset(64, false, '0px')).toBe('0px');
     expect(getSessionOccupiedBottom('220px', 64, false, '0px')).toBe('calc(220px + 0px)');
     expect(getSessionPanelDockOffset(300, true, '0px')).toBe('300px');
   });
 
-  it('uses the conservative small viewport units for iOS Safari', () => {
+  it('uses the conservative small viewport units for iOS browsers', () => {
     expect(getSessionPanelHeight(true)).toBe('min(100svh, max(40svh, 240px))');
     expect(getSessionPanelHeight(false)).toBe('min(100dvh, max(40dvh, 240px))');
   });

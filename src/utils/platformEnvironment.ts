@@ -2,6 +2,7 @@ export interface PlatformEnvironment {
   isIOS: boolean;
   isAndroid: boolean;
   isStandalone: boolean;
+  isIOSBrowser: boolean;
   isIOSSafariBrowser: boolean;
 }
 
@@ -22,6 +23,7 @@ export const getPlatformEnvironment = (
     isIOS,
     isAndroid,
     isStandalone,
+    isIOSBrowser: isIOS && !isStandalone,
     isIOSSafariBrowser: isIOS && isSafari && !isStandalone,
   };
 };
@@ -34,6 +36,7 @@ export const applyPlatformEnvironmentAttributes = (
   root.dataset.ios = String(environment.isIOS);
   root.dataset.android = String(environment.isAndroid);
   root.dataset.standalone = String(environment.isStandalone);
+  root.dataset.iosBrowser = String(environment.isIOSBrowser);
   root.dataset.iosSafariBrowser = String(environment.isIOSSafariBrowser);
 
   return environment;

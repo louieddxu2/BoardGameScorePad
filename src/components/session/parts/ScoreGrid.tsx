@@ -87,8 +87,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
 }) => {
   const { t } = useSessionTranslation();
   const dnd = useColumnDragAndDrop({ template, onUpdateTemplate, scrollRef: scrollContainerRef });
-  const isIOSSafariBrowser = typeof document !== 'undefined' &&
-    document.documentElement.dataset.iosSafariBrowser === 'true';
+  const isIOSBrowser = typeof document !== 'undefined' &&
+    document.documentElement.dataset.iosBrowser === 'true';
 
   const isScoresEmpty = useMemo(() => {
     return session.players.every(p => {
@@ -745,7 +745,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
             className={`w-full bg-app-bg ${(editingCell || editingPlayerId || (!baseImage && template.columns.length < 5) || isToolboxOpen) ? '' : 'h-24'}`}
             style={{
               height: (editingCell || editingPlayerId || (!baseImage && template.columns.length < 5) || isToolboxOpen)
-                ? getSessionPanelHeight(isIOSSafariBrowser)
+                ? getSessionPanelHeight(isIOSBrowser)
                 : undefined,
               marginBottom: panelDockOffset,
             }}

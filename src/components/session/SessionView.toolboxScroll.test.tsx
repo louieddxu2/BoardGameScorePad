@@ -194,9 +194,9 @@ const swipeOn = (
 };
 
 describe('SessionView toolbox scroll behavior', () => {
-  it('keeps the input surface session-relative on iOS Safari', () => {
-    const previousValue = document.documentElement.dataset.iosSafariBrowser;
-    document.documentElement.dataset.iosSafariBrowser = 'true';
+  it('keeps the input surface session-relative in iOS browsers', () => {
+    const previousValue = document.documentElement.dataset.iosBrowser;
+    document.documentElement.dataset.iosBrowser = 'true';
 
     try {
       renderSession();
@@ -207,9 +207,9 @@ describe('SessionView toolbox scroll behavior', () => {
       expect(getInputSurface().style.bottom).toBe('0px');
     } finally {
       if (previousValue === undefined) {
-        delete document.documentElement.dataset.iosSafariBrowser;
+        delete document.documentElement.dataset.iosBrowser;
       } else {
-        document.documentElement.dataset.iosSafariBrowser = previousValue;
+        document.documentElement.dataset.iosBrowser = previousValue;
       }
     }
   });
@@ -217,7 +217,7 @@ describe('SessionView toolbox scroll behavior', () => {
   it('keeps the Android browser input surface above the system navigation area', () => {
     const previousAndroid = document.documentElement.dataset.android;
     const previousStandalone = document.documentElement.dataset.standalone;
-    delete document.documentElement.dataset.iosSafariBrowser;
+    delete document.documentElement.dataset.iosBrowser;
     document.documentElement.dataset.android = 'true';
     document.documentElement.dataset.standalone = 'false';
 
@@ -239,7 +239,7 @@ describe('SessionView toolbox scroll behavior', () => {
   it('keeps standalone PWA input surface behavior unchanged', () => {
     const previousAndroid = document.documentElement.dataset.android;
     const previousStandalone = document.documentElement.dataset.standalone;
-    delete document.documentElement.dataset.iosSafariBrowser;
+    delete document.documentElement.dataset.iosBrowser;
     document.documentElement.dataset.android = 'true';
     document.documentElement.dataset.standalone = 'true';
 

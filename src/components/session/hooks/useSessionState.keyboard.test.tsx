@@ -72,8 +72,8 @@ describe('useSessionState player-name keyboard dismissal', () => {
     expect(result.current.panelHeight).toBe('min(100dvh, max(40dvh, 240px))');
   });
 
-  it('uses the small viewport height for the non-keyboard iOS Safari panel', () => {
-    document.documentElement.dataset.iosSafariBrowser = 'true';
+  it('uses the small viewport height for a non-keyboard iOS browser panel', () => {
+    document.documentElement.dataset.iosBrowser = 'true';
 
     try {
       const { result } = renderHook(() => useSessionState({
@@ -96,7 +96,7 @@ describe('useSessionState player-name keyboard dismissal', () => {
 
       expect(result.current.panelHeight).toBe('min(100svh, max(40svh, 240px))');
     } finally {
-      delete document.documentElement.dataset.iosSafariBrowser;
+      delete document.documentElement.dataset.iosBrowser;
     }
   });
 });

@@ -291,15 +291,15 @@ html[data-theme='light'] {
 }
 
 /*
- * Safari's dynamic viewport can remain larger than the visible viewport while
- * its bottom browser chrome is expanded. The small viewport is the stable
- * CSS reference that fits content above that chrome. Keep Android and
- * standalone web-app layouts on their existing dynamic viewport behavior.
+ * iOS WebKit browsers can keep the dynamic viewport larger than the visible
+ * viewport while their bottom browser chrome is expanded. The small viewport
+ * is the stable CSS reference that fits content above that chrome. Keep
+ * Android and standalone web-app layouts on their existing dynamic viewport.
  */
 @supports (height: 100svh) {
-  html[data-ios-safari-browser='true'],
-  html[data-ios-safari-browser='true'] body,
-  html[data-ios-safari-browser='true'] #root {
+  html[data-ios-browser='true'],
+  html[data-ios-browser='true'] body,
+  html[data-ios-browser='true'] #root {
     height: 100svh;
   }
 }

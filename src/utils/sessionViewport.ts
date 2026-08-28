@@ -1,8 +1,8 @@
 const DEFAULT_SESSION_PANEL_HEIGHT = 'min(100dvh, max(40dvh, 240px))';
-const IOS_SAFARI_SESSION_PANEL_HEIGHT = 'min(100svh, max(40svh, 240px))';
+const IOS_BROWSER_SESSION_PANEL_HEIGHT = 'min(100svh, max(40svh, 240px))';
 
-export const getSessionPanelHeight = (isIOSSafariBrowser: boolean): string =>
-  isIOSSafariBrowser ? IOS_SAFARI_SESSION_PANEL_HEIGHT : DEFAULT_SESSION_PANEL_HEIGHT;
+export const getSessionPanelHeight = (isIOSBrowser: boolean): string =>
+  isIOSBrowser ? IOS_BROWSER_SESSION_PANEL_HEIGHT : DEFAULT_SESSION_PANEL_HEIGHT;
 
 export const getSessionPanelDockOffset = (
   viewportBottomOffset: number,

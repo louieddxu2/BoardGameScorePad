@@ -150,12 +150,12 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     : null;
   const { setUiState, keyboardOffset, isKeyboardOpen, closeFocusedPlayerNameInput } = sessionState;
   const isNativeKeyboardCompensationActive = isKeyboardOpen && sessionState.uiState.isInputFocused;
-  const isIOSSafariBrowser = typeof document !== 'undefined' &&
-    document.documentElement.dataset.iosSafariBrowser === 'true';
+  const isIOSBrowser = typeof document !== 'undefined' &&
+    document.documentElement.dataset.iosBrowser === 'true';
   const isAndroid = typeof document !== 'undefined' && document.documentElement.dataset.android === 'true';
   const isStandalone = typeof document !== 'undefined' && document.documentElement.dataset.standalone === 'true';
   const isAndroidBrowser = isAndroid && !isStandalone;
-  const sessionIdleDockOffset = isIOSSafariBrowser
+  const sessionIdleDockOffset = isIOSBrowser
     ? '0px'
     : isAndroidBrowser
       ? 'var(--app-safe-area-bottom)'
