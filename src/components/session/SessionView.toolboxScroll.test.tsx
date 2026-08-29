@@ -194,7 +194,7 @@ const swipeOn = (
 };
 
 describe('SessionView toolbox scroll behavior', () => {
-  it('keeps the input surface session-relative in iOS browsers', () => {
+  it('keeps the input surface above a visible iOS browser reserve', () => {
     const previousValue = document.documentElement.dataset.iosBrowser;
     document.documentElement.dataset.iosBrowser = 'true';
 
@@ -204,7 +204,11 @@ describe('SessionView toolbox scroll behavior', () => {
 
       expect(getInputSurface()).toHaveClass('absolute', 'inset-0');
       expect(getInputSurface()).not.toHaveClass('fixed');
-      expect(getInputSurface().style.bottom).toBe('0px');
+      expect(getInputSurface().style.bottom).toBe('clamp(80px, 8svh, 96px)');
+      const reserve = document.querySelector('[data-ios-browser-reserve="true"]') as HTMLElement | null;
+      expect(reserve).not.toBeNull();
+      expect(reserve?.style.height).toBe('clamp(80px, 8svh, 96px)');
+      expect(reserve?.querySelectorAll('span.block')).toHaveLength(2);
     } finally {
       if (previousValue === undefined) {
         delete document.documentElement.dataset.iosBrowser;
@@ -228,6 +232,7 @@ describe('SessionView toolbox scroll behavior', () => {
       expect(getInputSurface()).toHaveClass('absolute', 'inset-0');
       expect(getInputSurface()).not.toHaveClass('fixed');
       expect(getInputSurface().style.bottom).toBe('var(--app-safe-area-bottom)');
+      expect(document.querySelector('[data-ios-browser-reserve="true"]')).toBeNull();
     } finally {
       if (previousAndroid === undefined) delete document.documentElement.dataset.android;
       else document.documentElement.dataset.android = previousAndroid;
@@ -249,6 +254,7 @@ describe('SessionView toolbox scroll behavior', () => {
 
       expect(getInputSurface()).toHaveClass('absolute', 'inset-0');
       expect(getInputSurface().style.bottom).toBe('var(--bottom-ui-safe-gap)');
+      expect(document.querySelector('[data-ios-browser-reserve="true"]')).toBeNull();
     } finally {
       if (previousAndroid === undefined) delete document.documentElement.dataset.android;
       else document.documentElement.dataset.android = previousAndroid;

@@ -94,7 +94,9 @@ describe('useSessionState player-name keyboard dismissal', () => {
         }));
       });
 
-      expect(result.current.panelHeight).toBe('min(100svh, max(40svh, 240px))');
+      expect(result.current.panelHeight).toBe(
+        'min(calc(100svh - clamp(80px, 8svh, 96px)), max(calc(40svh - clamp(80px, 8svh, 96px)), 240px))',
+      );
     } finally {
       delete document.documentElement.dataset.iosBrowser;
     }

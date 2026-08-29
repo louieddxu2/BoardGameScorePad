@@ -3,6 +3,7 @@ import {
   getSessionOccupiedBottom,
   getSessionPanelDockOffset,
   getSessionPanelHeight,
+  IOS_BROWSER_BOTTOM_RESERVE,
 } from './sessionViewport';
 
 describe('session viewport layout', () => {
@@ -25,14 +26,18 @@ describe('session viewport layout', () => {
     );
   });
 
-  it('allows iOS browser score input to avoid a duplicate small-viewport gap', () => {
-    expect(getSessionPanelDockOffset(64, false, '0px')).toBe('0px');
-    expect(getSessionOccupiedBottom('220px', 64, false, '0px')).toBe('calc(220px + 0px)');
-    expect(getSessionPanelDockOffset(300, true, '0px')).toBe('300px');
+  it('reserves the iOS browser toolbar area while the keyboard is closed', () => {
+    expect(getSessionPanelDockOffset(64, false, IOS_BROWSER_BOTTOM_RESERVE)).toBe(IOS_BROWSER_BOTTOM_RESERVE);
+    expect(getSessionOccupiedBottom('220px', 64, false, IOS_BROWSER_BOTTOM_RESERVE)).toBe(
+      `calc(220px + ${IOS_BROWSER_BOTTOM_RESERVE})`,
+    );
+    expect(getSessionPanelDockOffset(300, true, IOS_BROWSER_BOTTOM_RESERVE)).toBe('300px');
   });
 
-  it('uses the conservative small viewport units for iOS browsers', () => {
-    expect(getSessionPanelHeight(true)).toBe('min(100svh, max(40svh, 240px))');
+  it('subtracts the reserved toolbar area from the iOS browser panel height', () => {
+    expect(getSessionPanelHeight(true)).toBe(
+      'min(calc(100svh - clamp(80px, 8svh, 96px)), max(calc(40svh - clamp(80px, 8svh, 96px)), 240px))',
+    );
     expect(getSessionPanelHeight(false)).toBe('min(100dvh, max(40dvh, 240px))');
   });
 });

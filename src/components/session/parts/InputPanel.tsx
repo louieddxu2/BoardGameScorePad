@@ -45,6 +45,7 @@ interface InputPanelProps {
     isVoiceEnabled?: boolean;
     onToggleVoice?: () => void;
     bottomOffset: string;
+    showIOSBrowserReserveNotice?: boolean;
     canEditScore?: (playerId: string, column: ScoreColumn | undefined) => boolean;
     canEditTotal?: (playerId: string) => boolean;
     canEditPlayers?: boolean;
@@ -234,7 +235,7 @@ const TotalAdjustmentSidebar: React.FC<{
 
 
 const InputPanel: React.FC<InputPanelProps> = (props) => {
-    const { sessionState, eventHandlers, session, template, savedPlayers, allSavedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice, bottomOffset, canEditScore = () => true, canEditTotal = () => true, canEditPlayers = true, mediaOnlyTools = false } = props;
+    const { sessionState, eventHandlers, session, template, savedPlayers, allSavedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice, bottomOffset, showIOSBrowserReserveNotice = false, canEditScore = () => true, canEditTotal = () => true, canEditPlayers = true, mediaOnlyTools = false } = props;
     const { uiState, setUiState, panelHeight, isShortList } = sessionState;
     const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue, isEditingTitle, isToolboxOpen } = uiState;
     const { t } = useSessionTranslation();
@@ -949,11 +950,12 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     const isPlaceholderMode = (isShortList || isToolboxOpen) && !isPanelOpen;
 
     return (
-        <div
-            data-session-input-surface="true"
-            className="absolute inset-0 z-50 pointer-events-none flex flex-col overflow-hidden"
-            style={{ bottom: bottomOffset }}
-        >
+        <>
+          <div
+              data-session-input-surface="true"
+              className="absolute inset-0 z-50 pointer-events-none flex flex-col overflow-hidden"
+              style={{ bottom: bottomOffset }}
+          >
             <div className="flex-1 min-h-0" aria-hidden="true" />
 
             <div
@@ -1001,7 +1003,21 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     )}
                 </div>
             </div>
-        </div>
+          </div>
+
+          {showIOSBrowserReserveNotice && (
+              <div
+                  data-ios-browser-reserve="true"
+                  className="absolute inset-x-0 bottom-0 z-50 pointer-events-none flex items-center justify-center bg-[rgb(var(--c-input-bg))] px-4 text-center text-[10px] leading-4 text-txt-muted"
+                  style={{ height: bottomOffset }}
+              >
+                  <span>
+                      <span className="block">{t('session_ios_browser_reserve_line1')}</span>
+                      <span className="block">{t('session_ios_browser_reserve_line2')}</span>
+                  </span>
+              </div>
+          )}
+        </>
     );
 };
 

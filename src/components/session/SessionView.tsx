@@ -35,7 +35,7 @@ import { useAiSimpleGenerator } from '../../features/ai-generator/hooks/useAiSim
 import { db } from '../../db';
 import { useAiGenerator } from '../../features/ai-generator/hooks/useAiGenerator';
 import { markPendingAiShare } from '../../utils/pendingAiShare';
-import { getSessionOccupiedBottom, getSessionPanelDockOffset } from '../../utils/sessionViewport';
+import { getSessionOccupiedBottom, getSessionPanelDockOffset, IOS_BROWSER_BOTTOM_RESERVE } from '../../utils/sessionViewport';
 import { useToolboxBoundaryGesture } from '../../hooks/useToolboxBoundaryGesture';
 import { createPlayerSessionCapabilities, hostSessionCapabilities, SessionCapabilities } from '../../features/multiplayer/sessionCapabilities';
 import { MultiplayerSessionManager, multiplayerSessionManager } from '../../features/multiplayer/multiplayerSessionManager';
@@ -156,7 +156,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const isStandalone = typeof document !== 'undefined' && document.documentElement.dataset.standalone === 'true';
   const isAndroidBrowser = isAndroid && !isStandalone;
   const sessionIdleDockOffset = isIOSBrowser
-    ? '0px'
+    ? IOS_BROWSER_BOTTOM_RESERVE
     : isAndroidBrowser
       ? 'var(--app-safe-area-bottom)'
       : 'var(--bottom-ui-safe-gap)';
@@ -942,6 +942,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         isVoiceEnabled={props.isVoiceEnabled}
         onToggleVoice={props.onToggleVoice}
         bottomOffset={panelDockOffset}
+        showIOSBrowserReserveNotice={isIOSBrowser && !isNativeKeyboardCompensationActive && sessionState.panelHeight !== '0px'}
         canEditScore={capabilities.canEditScore}
         canEditTotal={capabilities.canEditTotal}
         canEditPlayers={capabilities.canEditPlayers}
