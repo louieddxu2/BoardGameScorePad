@@ -50,6 +50,7 @@ const EXPORT_GRID_WIDTH = 1080;
 const PHOTO_RECAP_TILE_COUNT = 8;
 const PHOTO_RECAP_TILE_ASPECT = 16 / 9;
 const PHOTO_RECAP_CAPTION_HEIGHT_RATIO = 0.08;
+const PHOTO_RECAP_ROW_GAP_HEIGHT_RATIO = 0.02;
 const getLimitedCandidatePhotos = (item: HistoryPhotoGridItem) => (
   item.candidatePhotos.slice(0, DATA_LIMITS.QUERY.HISTORY_PHOTO_GRID_CANDIDATES)
 );
@@ -665,7 +666,8 @@ const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>((
     const rows = N % 2 !== 0 ? 2 + (N - 1) / 2 : N / 2;
     const photoOnlyAspect = (2 * PHOTO_RECAP_TILE_ASPECT) / rows;
     const captionHeight = shouldHideTileGameName ? 0 : rows * PHOTO_RECAP_CAPTION_HEIGHT_RATIO;
-    const aspect = 1 / (1 / photoOnlyAspect + captionHeight);
+    const rowGapHeight = Math.max(0, rows - 1) * PHOTO_RECAP_ROW_GAP_HEIGHT_RATIO;
+    const aspect = 1 / (1 / photoOnlyAspect + captionHeight + rowGapHeight);
     return { cols, rows, aspect };
   }, [N, shouldHideTileGameName]);
 
@@ -692,7 +694,7 @@ const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>((
       </div>
 
       <div
-        className="flex-1 min-h-0 grid gap-[0.8cqw]"
+        className="flex-1 min-h-0 grid gap-x-[0.8cqw] gap-y-[2cqw]"
         style={{
           gridTemplateColumns: `repeat(${layout.cols}, minmax(0, 1fr))`,
           gridTemplateRows: `repeat(${layout.rows}, minmax(0, 1fr))`
@@ -706,7 +708,7 @@ const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>((
               key={`${tile.id}-${index}`}
               onClick={() => onSelect?.(tiles.indexOf(tile))}
               disabled={!onSelect}
-              className={`bg-surface-recessed rounded-[1cqw] overflow-hidden select-none disabled:cursor-default active:scale-[0.99] transition-transform relative min-h-0 ${
+              className={`bg-app-bg-deep border border-surface-border rounded-[1cqw] overflow-hidden select-none disabled:cursor-default active:scale-[0.99] transition-transform relative min-h-0 ${
                 isLarge ? 'col-span-2 row-span-2' : 'col-span-1 row-span-1'
               }`}
             >
@@ -750,7 +752,7 @@ const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
 
 const PhotoTile: React.FC<{ tile: EditableGridTile; hideGameName?: boolean }> = ({ tile, hideGameName }) => {
   return (
-    <div className="relative w-full h-full flex flex-col overflow-hidden bg-surface-recessed">
+    <div className="relative w-full h-full flex flex-col overflow-hidden bg-app-bg-deep">
       <div className="relative min-h-0 flex-1 overflow-hidden bg-app-bg-deep">
         <PhotoImage tile={tile} />
         <div className="pointer-events-none absolute right-[1.5cqw] bottom-[1.5cqw] px-[1.2cqw] py-[0.8cqw] rounded-[0.8cqw] bg-black/55 text-white">
@@ -758,7 +760,7 @@ const PhotoTile: React.FC<{ tile: EditableGridTile; hideGameName?: boolean }> = 
         </div>
       </div>
       {!hideGameName && (
-        <div className="flex-none h-[8cqw] min-h-0 px-[2cqw] border-t-2 border-brand-primary/35 bg-app-bg-deep flex items-center">
+        <div className="flex-none h-[8cqw] min-h-0 px-[2cqw] bg-app-bg-deep flex items-center">
           <span className="min-w-0 flex-1 truncate text-left text-[3.2cqw] leading-none font-bold text-txt-primary">
             {tile.gameName}
           </span>
