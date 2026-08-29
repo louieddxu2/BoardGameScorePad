@@ -49,6 +49,7 @@ interface HistoryPhotoGridShareModalProps {
 const EXPORT_GRID_WIDTH = 1080;
 const PHOTO_RECAP_TILE_COUNT = 8;
 const PHOTO_RECAP_TILE_ASPECT = 16 / 9;
+const PHOTO_RECAP_CAPTION_HEIGHT_RATIO = 0.08;
 const getLimitedCandidatePhotos = (item: HistoryPhotoGridItem) => (
   item.candidatePhotos.slice(0, DATA_LIMITS.QUERY.HISTORY_PHOTO_GRID_CANDIDATES)
 );
@@ -662,9 +663,11 @@ const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>((
 
     const cols = 2;
     const rows = N % 2 !== 0 ? 2 + (N - 1) / 2 : N / 2;
-    const aspect = (2 * PHOTO_RECAP_TILE_ASPECT) / rows;
+    const photoOnlyAspect = (2 * PHOTO_RECAP_TILE_ASPECT) / rows;
+    const captionHeight = shouldHideTileGameName ? 0 : rows * PHOTO_RECAP_CAPTION_HEIGHT_RATIO;
+    const aspect = 1 / (1 / photoOnlyAspect + captionHeight);
     return { cols, rows, aspect };
-  }, [N]);
+  }, [N, shouldHideTileGameName]);
 
   if (N === 0) return null;
 
@@ -747,16 +750,18 @@ const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
 
 const PhotoTile: React.FC<{ tile: EditableGridTile; hideGameName?: boolean }> = ({ tile, hideGameName }) => {
   return (
-    <div className="relative w-full h-full overflow-hidden bg-app-bg-deep">
-      <PhotoImage tile={tile} />
-      {hideGameName ? (
-        <div className="absolute right-0 bottom-0 px-[2.5cqw] py-[1.8cqw] bg-black/55 text-white rounded-tl-[1cqw] flex items-center justify-center">
-          <span className="text-[2.2cqw] leading-none text-white/70 font-mono">{formatGridDate(tile.endTime)}</span>
+    <div className="relative w-full h-full flex flex-col overflow-hidden bg-surface-recessed">
+      <div className="relative min-h-0 flex-1 overflow-hidden bg-app-bg-deep">
+        <PhotoImage tile={tile} />
+        <div className="pointer-events-none absolute right-[1.5cqw] bottom-[1.5cqw] px-[1.2cqw] py-[0.8cqw] rounded-[0.8cqw] bg-black/55 text-white">
+          <span className="text-[2.2cqw] leading-none text-white/75 font-mono">{formatGridDate(tile.endTime)}</span>
         </div>
-      ) : (
-        <div className="absolute left-0 right-0 bottom-0 px-[2.5cqw] py-[1.8cqw] bg-black/55 text-white flex items-center gap-[2cqw]">
-          <span className="min-w-0 flex-1 text-[3.2cqw] leading-tight font-bold truncate text-left">{tile.gameName}</span>
-          <span className="shrink-0 text-[2.2cqw] leading-tight text-white/70 font-mono text-right">{formatGridDate(tile.endTime)}</span>
+      </div>
+      {!hideGameName && (
+        <div className="flex-none h-[8cqw] min-h-0 px-[2cqw] border-t-2 border-brand-primary/35 bg-app-bg-deep flex items-center">
+          <span className="min-w-0 flex-1 truncate text-left text-[3.2cqw] leading-none font-bold text-txt-primary">
+            {tile.gameName}
+          </span>
         </div>
       )}
     </div>
