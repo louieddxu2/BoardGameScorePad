@@ -23,6 +23,16 @@ const makeProps = () => ({
 });
 
 describe('NumericKeypad', () => {
+  it('allows the keypad grid and buttons to shrink within a height-constrained panel', () => {
+    render(<NumericKeypad {...makeProps()} />);
+
+    const button = screen.getByRole('button', { name: '1' });
+    const grid = button.closest('.grid-cols-3');
+
+    expect(grid).toHaveClass('min-h-0');
+    expect(button).toHaveClass('min-h-0');
+  });
+
   it('keeps the existing click behavior for a normal button activation', () => {
     const props = makeProps();
     render(<NumericKeypad {...props} />);
