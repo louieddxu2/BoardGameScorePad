@@ -24,8 +24,17 @@ interface SmartSpacerProps {
 const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhoto, onScreenshot, onUpdateSession, mode = 'session', mediaOnly = false }) => {
     const { t } = useSessionTranslation();
     const isHistory = mode === 'history';
+    const keepToolboxTouchLocal = (event: React.TouchEvent) => event.stopPropagation();
+
     return (
-        <div className="absolute inset-0 flex flex-col p-4 overflow-y-auto no-scrollbar">
+        <div
+            data-toolbox-scroller="true"
+            className="absolute inset-0 flex flex-col p-4 overflow-y-auto no-scrollbar touch-pan-y overscroll-contain"
+            onTouchStart={keepToolboxTouchLocal}
+            onTouchMove={keepToolboxTouchLocal}
+            onTouchEnd={keepToolboxTouchLocal}
+            onTouchCancel={keepToolboxTouchLocal}
+        >
             {/* Hint Text */}
             {!isHistory && !mediaOnly && (
                 <div className="flex items-center justify-center gap-2 text-txt-muted mb-6 mt-2 opacity-70 select-none">

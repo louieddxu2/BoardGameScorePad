@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import SmartSpacer from './SmartSpacer';
 import { LanguageProvider } from '../../../i18n';
 import { GameSession, GameTemplate } from '../../../types';
@@ -21,6 +21,24 @@ const renderSpacer = (mediaOnly: boolean) => render(
 );
 
 describe('SmartSpacer participant tools', () => {
+  it('keeps vertical scrolling owned by the toolbox instead of its input-panel ancestor', () => {
+    const onAncestorTouchMove = vi.fn();
+    const { container } = render(
+      <div onTouchMove={onAncestorTouchMove}>
+        <LanguageProvider>
+          <SmartSpacer session={session} template={template} onUpdateSession={vi.fn()} />
+        </LanguageProvider>
+      </div>,
+    );
+    const scroller = container.querySelector('[data-toolbox-scroller="true"]');
+
+    expect(scroller).toHaveClass('touch-pan-y', 'overscroll-contain');
+    fireEvent.touchMove(scroller!, {
+      touches: [{ clientX: 100, clientY: 100 }],
+    });
+    expect(onAncestorTouchMove).not.toHaveBeenCalled();
+  });
+
   it('shows only media tools in participant mode', () => {
     renderSpacer(true);
     expect(screen.getByText('media-tools')).toBeInTheDocument();

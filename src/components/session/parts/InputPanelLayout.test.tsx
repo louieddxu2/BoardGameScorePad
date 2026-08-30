@@ -21,4 +21,19 @@ describe('InputPanelLayout', () => {
       expect(layout).not.toHaveClass('h-full');
     },
   );
+
+  it('lets the full-mode grid size the right-side next button without h-full', () => {
+    const { container } = render(
+      <div className="relative">
+        <InputPanelLayout onNext={vi.fn()} sidebarContent={<div>sidebar</div>}>
+          <div>content</div>
+        </InputPanelLayout>
+      </div>,
+    );
+
+    const nextButton = container.querySelector('[data-input-panel-next="true"]');
+
+    expect(nextButton).toBeInTheDocument();
+    expect(nextButton).not.toHaveClass('h-full');
+  });
 });
