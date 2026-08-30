@@ -66,10 +66,8 @@ describe.skip('UI 互動與手機版面響應測試', () => {
     const clearButton = screen.getByText('清除');
     const panel = clearButton.closest('[data-session-input-panel="true"]') as HTMLElement;
 
-    const surface = clearButton.closest('[data-session-input-surface="true"]') as HTMLElement;
-
-    // 初始狀態：外層輸入表面定位在底部安全區域之上
-    expect(surface.style.bottom).toBe('var(--app-safe-area-bottom)');
+    // 初始狀態：fixed 面板定位在底部安全區域之上
+    expect(panel.style.bottom).toBe('var(--app-safe-area-bottom)');
 
     // --- 模擬手機行為：鍵盤彈出 ---
     // 這會觸發 useVisualViewportOffset Hook
@@ -90,9 +88,9 @@ describe.skip('UI 互動與手機版面響應測試', () => {
     });
 
     // --- 驗證 ---
-    // 外層輸入表面應該自動上移，避免被鍵盤擋住
+    // fixed 面板應該自動上移，避免被鍵盤擋住
     // 計算：800 - 500 = 300px
-    expect(surface.style.bottom).toBe('300px');
+    expect(panel.style.bottom).toBe('300px');
 
     // --- 模擬：鍵盤收起 ---
     act(() => {
@@ -103,7 +101,7 @@ describe.skip('UI 互動與手機版面響應測試', () => {
       }
     });
 
-    expect(surface.style.bottom).toBe('var(--app-safe-area-bottom)');
+    expect(panel.style.bottom).toBe('var(--app-safe-area-bottom)');
   });
 
   it('介面切換測試：點擊玩家標題應進入「玩家編輯模式」(面板變矮)', async () => {

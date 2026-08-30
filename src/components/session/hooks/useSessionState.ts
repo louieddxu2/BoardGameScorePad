@@ -2,7 +2,6 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { GameSession, GameTemplate, SavedListItem } from '../../../types';
 import { useKeyboardStatus } from '../../../hooks/useVisualViewportOffset';
-import { getSessionPanelHeight } from '../../../utils/sessionViewport';
 
 interface SessionViewProps {
   session: GameSession;
@@ -265,18 +264,13 @@ export const useSessionState = (props: SessionViewProps) => {
 
   const isPanelOpen = uiState.editingCell !== null || uiState.editingPlayerId !== null;
 
-  // [Updated] If short list OR toolbox is open, force the panel space to be open
-  // at 40% of the relevant viewport. iOS browsers use the small viewport so
-  // expanded browser chrome cannot push the bottom keypad row below the app
-  // surface. Keep a minimum height for the four keypad rows on short views.
+  // [Updated] If short list OR toolbox is open, force the panel space to be open (40vh) to push the Total Bar up.
+  // This effectively centers the Total Bar and removes the gap.
   // [Updated] Differentiate height for Player Name vs Score Input
   const focusedHeight = uiState.editingPlayerId ? '200px' : '220px';
-  const isIOSBrowser = typeof document !== 'undefined' &&
-    document.documentElement.dataset.iosBrowser === 'true';
-  const standardPanelHeight = getSessionPanelHeight(isIOSBrowser);
 
   const panelHeight = (isPanelOpen || isShortList || uiState.isToolboxOpen)
-    ? (uiState.isInputFocused ? focusedHeight : standardPanelHeight)
+    ? (uiState.isInputFocused ? focusedHeight : '40vh')
     : '0px';
 
   return {

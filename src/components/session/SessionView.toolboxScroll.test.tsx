@@ -139,13 +139,6 @@ const getInputPanel = () => {
   return panel;
 };
 
-const getInputSurface = () => {
-  const panel = getInputPanel();
-  const surface = panel.closest('[data-session-input-surface="true"]') as HTMLElement | null;
-  if (!surface) throw new Error('input surface not found');
-  return surface;
-};
-
 const getScoreCell = (playerId: string) => {
   const cell = document.querySelector(`#row-col-1 .player-col-${playerId} > div`) as HTMLElement | null;
   if (!cell) throw new Error(`score cell not found for ${playerId}`);
@@ -194,7 +187,7 @@ const swipeOn = (
 };
 
 describe('SessionView toolbox scroll behavior', () => {
-  it('keeps the input surface above a visible iOS browser reserve', () => {
+  it('uses the main-style viewport-fixed input panel on iOS without a guessed reserve', () => {
     const previousValue = document.documentElement.dataset.iosBrowser;
     document.documentElement.dataset.iosBrowser = 'true';
 
@@ -202,14 +195,11 @@ describe('SessionView toolbox scroll behavior', () => {
       renderSession();
       fireEvent.click(getFirstScoreCell());
 
-      expect(getInputSurface()).toHaveClass('absolute', 'inset-0');
-      expect(getInputSurface()).not.toHaveClass('fixed');
-      expect(getInputSurface().style.bottom).toBe('clamp(80px, 8svh, 96px)');
-      const reserve = document.querySelector('[data-ios-browser-reserve="true"]') as HTMLElement | null;
-      expect(reserve).not.toBeNull();
-      expect(reserve?.style.height).toBe('clamp(80px, 8svh, 96px)');
-      expect(reserve).toHaveAttribute('aria-hidden', 'true');
-      expect(reserve).toHaveTextContent('');
+      expect(getInputPanel()).toHaveClass('fixed', 'left-0', 'right-0');
+      expect(getInputPanel()).not.toHaveClass('absolute', 'inset-0');
+      expect(getInputPanel().style.height).toBe('40vh');
+      expect(getInputPanel().style.bottom).toBe('var(--bottom-ui-safe-gap)');
+      expect(document.querySelector('[data-ios-browser-reserve="true"]')).toBeNull();
     } finally {
       if (previousValue === undefined) {
         delete document.documentElement.dataset.iosBrowser;
@@ -230,9 +220,8 @@ describe('SessionView toolbox scroll behavior', () => {
       renderSession();
       fireEvent.click(getFirstScoreCell());
 
-      expect(getInputSurface()).toHaveClass('absolute', 'inset-0');
-      expect(getInputSurface()).not.toHaveClass('fixed');
-      expect(getInputSurface().style.bottom).toBe('var(--app-safe-area-bottom)');
+      expect(getInputPanel()).toHaveClass('fixed', 'left-0', 'right-0');
+      expect(getInputPanel().style.bottom).toBe('var(--app-safe-area-bottom)');
       expect(document.querySelector('[data-ios-browser-reserve="true"]')).toBeNull();
     } finally {
       if (previousAndroid === undefined) delete document.documentElement.dataset.android;
@@ -253,8 +242,8 @@ describe('SessionView toolbox scroll behavior', () => {
       renderSession();
       fireEvent.click(getFirstScoreCell());
 
-      expect(getInputSurface()).toHaveClass('absolute', 'inset-0');
-      expect(getInputSurface().style.bottom).toBe('var(--bottom-ui-safe-gap)');
+      expect(getInputPanel()).toHaveClass('fixed', 'left-0', 'right-0');
+      expect(getInputPanel().style.bottom).toBe('var(--bottom-ui-safe-gap)');
       expect(document.querySelector('[data-ios-browser-reserve="true"]')).toBeNull();
     } finally {
       if (previousAndroid === undefined) delete document.documentElement.dataset.android;

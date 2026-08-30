@@ -123,7 +123,7 @@ html[data-ios='true'] {
 }
 
 html[data-ios-safari-browser='true'] {
-  --bottom-ui-safe-gap: var(--app-safe-area-bottom);
+  --bottom-ui-safe-gap: max(16px, var(--app-safe-area-bottom));
 }
 
 /* ============================================================
@@ -287,20 +287,6 @@ html[data-theme='light'] {
   /* Force solid background for standard slate utilities to prevent legacy conflicts */
   .bg-slate-900 {
     background-color: rgb(var(--c-slate-900)) !important;
-  }
-}
-
-/*
- * iOS WebKit browsers can keep the dynamic viewport larger than the visible
- * viewport while their bottom browser chrome is expanded. The small viewport
- * is the stable CSS reference that fits content above that chrome. Keep
- * Android and standalone web-app layouts on their existing dynamic viewport.
- */
-@supports (height: 100svh) {
-  html[data-ios-browser='true'],
-  html[data-ios-browser='true'] body,
-  html[data-ios-browser='true'] #root {
-    height: 100svh;
   }
 }
 

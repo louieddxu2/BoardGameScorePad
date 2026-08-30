@@ -17,7 +17,6 @@ import { calculateDynamicFontSize } from '../../../utils/dynamicLayout';
 import { injectSoftHyphens } from '../../../utils/text';
 import { formatDisplayNumber } from '../../../utils/scoreDisplay';
 import TouchActionTarget from '../../shared/TouchActionTarget';
-import { getSessionPanelHeight } from '../../../utils/sessionViewport';
 
 interface ScoreGridProps {
   session: GameSession;
@@ -87,8 +86,6 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
 }) => {
   const { t } = useSessionTranslation();
   const dnd = useColumnDragAndDrop({ template, onUpdateTemplate, scrollRef: scrollContainerRef });
-  const isIOSBrowser = typeof document !== 'undefined' &&
-    document.documentElement.dataset.iosBrowser === 'true';
 
   const isScoresEmpty = useMemo(() => {
     return session.players.every(p => {
@@ -742,13 +739,8 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
             data-row-id={lastColId}
             onDragOver={(e) => { if (isEditMode && lastColId) dnd.handleDragOver(e, lastColId); }}
             onDrop={(e) => { if (isEditMode && lastColId) dnd.handleDrop(e, lastColId); }}
-            className={`w-full bg-app-bg ${(editingCell || editingPlayerId || (!baseImage && template.columns.length < 5) || isToolboxOpen) ? '' : 'h-24'}`}
-            style={{
-              height: (editingCell || editingPlayerId || (!baseImage && template.columns.length < 5) || isToolboxOpen)
-                ? getSessionPanelHeight(isIOSBrowser)
-                : undefined,
-              marginBottom: panelDockOffset,
-            }}
+            className={`w-full bg-app-bg ${(editingCell || editingPlayerId || (!baseImage && template.columns.length < 5) || isToolboxOpen) ? 'h-[40vh]' : 'h-24'}`}
+            style={{ marginBottom: panelDockOffset }}
           />
         )}
       </div>

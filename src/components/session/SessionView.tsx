@@ -35,7 +35,7 @@ import { useAiSimpleGenerator } from '../../features/ai-generator/hooks/useAiSim
 import { db } from '../../db';
 import { useAiGenerator } from '../../features/ai-generator/hooks/useAiGenerator';
 import { markPendingAiShare } from '../../utils/pendingAiShare';
-import { getSessionOccupiedBottom, getSessionPanelDockOffset, IOS_BROWSER_BOTTOM_RESERVE } from '../../utils/sessionViewport';
+import { getSessionOccupiedBottom, getSessionPanelDockOffset } from '../../utils/sessionViewport';
 import { useToolboxBoundaryGesture } from '../../hooks/useToolboxBoundaryGesture';
 import { createPlayerSessionCapabilities, hostSessionCapabilities, SessionCapabilities } from '../../features/multiplayer/sessionCapabilities';
 import { MultiplayerSessionManager, multiplayerSessionManager } from '../../features/multiplayer/multiplayerSessionManager';
@@ -150,16 +150,12 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     : null;
   const { setUiState, keyboardOffset, isKeyboardOpen, closeFocusedPlayerNameInput } = sessionState;
   const isNativeKeyboardCompensationActive = isKeyboardOpen && sessionState.uiState.isInputFocused;
-  const isIOSBrowser = typeof document !== 'undefined' &&
-    document.documentElement.dataset.iosBrowser === 'true';
   const isAndroid = typeof document !== 'undefined' && document.documentElement.dataset.android === 'true';
   const isStandalone = typeof document !== 'undefined' && document.documentElement.dataset.standalone === 'true';
   const isAndroidBrowser = isAndroid && !isStandalone;
-  const sessionIdleDockOffset = isIOSBrowser
-    ? IOS_BROWSER_BOTTOM_RESERVE
-    : isAndroidBrowser
-      ? 'var(--app-safe-area-bottom)'
-      : 'var(--bottom-ui-safe-gap)';
+  const sessionIdleDockOffset = isAndroidBrowser
+    ? 'var(--app-safe-area-bottom)'
+    : 'var(--bottom-ui-safe-gap)';
   const panelDockOffset = getSessionPanelDockOffset(keyboardOffset, isNativeKeyboardCompensationActive, sessionIdleDockOffset);
   const occupiedBottom = getSessionOccupiedBottom(sessionState.panelHeight, keyboardOffset, isNativeKeyboardCompensationActive, sessionIdleDockOffset);
 
@@ -942,7 +938,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         isVoiceEnabled={props.isVoiceEnabled}
         onToggleVoice={props.onToggleVoice}
         bottomOffset={panelDockOffset}
-        showIOSBrowserReserve={isIOSBrowser && !isNativeKeyboardCompensationActive && sessionState.panelHeight !== '0px'}
         canEditScore={capabilities.canEditScore}
         canEditTotal={capabilities.canEditTotal}
         canEditPlayers={capabilities.canEditPlayers}

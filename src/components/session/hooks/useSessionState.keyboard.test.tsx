@@ -69,10 +69,10 @@ describe('useSessionState player-name keyboard dismissal', () => {
     act(() => setVisualViewportHeight(800));
 
     expect(result.current.uiState.isInputFocused).toBe(false);
-    expect(result.current.panelHeight).toBe('min(100dvh, max(40dvh, 240px))');
+    expect(result.current.panelHeight).toBe('40vh');
   });
 
-  it('uses the small viewport height for a non-keyboard iOS browser panel', () => {
+  it('uses the same 40vh panel height for a non-keyboard iOS browser panel', () => {
     document.documentElement.dataset.iosBrowser = 'true';
 
     try {
@@ -94,9 +94,7 @@ describe('useSessionState player-name keyboard dismissal', () => {
         }));
       });
 
-      expect(result.current.panelHeight).toBe(
-        'min(calc(100svh - clamp(80px, 8svh, 96px)), max(calc(40svh - clamp(80px, 8svh, 96px)), 240px))',
-      );
+      expect(result.current.panelHeight).toBe('40vh');
     } finally {
       delete document.documentElement.dataset.iosBrowser;
     }
