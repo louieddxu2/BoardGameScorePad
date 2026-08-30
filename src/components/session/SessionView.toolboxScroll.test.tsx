@@ -187,7 +187,7 @@ const swipeOn = (
 };
 
 describe('SessionView toolbox scroll behavior', () => {
-  it('uses the main-style viewport-fixed input panel on iOS without a guessed reserve', () => {
+  it('anchors the iOS input panel to the same session surface as the collapsed totals bar', () => {
     const previousValue = document.documentElement.dataset.iosBrowser;
     document.documentElement.dataset.iosBrowser = 'true';
 
@@ -195,8 +195,8 @@ describe('SessionView toolbox scroll behavior', () => {
       renderSession();
       fireEvent.click(getFirstScoreCell());
 
-      expect(getInputPanel()).toHaveClass('fixed', 'left-0', 'right-0');
-      expect(getInputPanel()).not.toHaveClass('absolute', 'inset-0');
+      expect(getInputPanel()).toHaveClass('absolute', 'left-0', 'right-0');
+      expect(getInputPanel()).not.toHaveClass('fixed', 'inset-0');
       expect(getInputPanel().style.height).toBe('40vh');
       expect(getInputPanel().style.bottom).toBe('var(--bottom-ui-safe-gap)');
       expect(document.querySelector('[data-ios-browser-reserve="true"]')).toBeNull();
@@ -220,7 +220,7 @@ describe('SessionView toolbox scroll behavior', () => {
       renderSession();
       fireEvent.click(getFirstScoreCell());
 
-      expect(getInputPanel()).toHaveClass('fixed', 'left-0', 'right-0');
+      expect(getInputPanel()).toHaveClass('absolute', 'left-0', 'right-0');
       expect(getInputPanel().style.bottom).toBe('var(--app-safe-area-bottom)');
       expect(document.querySelector('[data-ios-browser-reserve="true"]')).toBeNull();
     } finally {
@@ -242,7 +242,7 @@ describe('SessionView toolbox scroll behavior', () => {
       renderSession();
       fireEvent.click(getFirstScoreCell());
 
-      expect(getInputPanel()).toHaveClass('fixed', 'left-0', 'right-0');
+      expect(getInputPanel()).toHaveClass('absolute', 'left-0', 'right-0');
       expect(getInputPanel().style.bottom).toBe('var(--bottom-ui-safe-gap)');
       expect(document.querySelector('[data-ios-browser-reserve="true"]')).toBeNull();
     } finally {
