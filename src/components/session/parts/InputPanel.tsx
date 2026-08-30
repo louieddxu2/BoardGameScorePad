@@ -974,7 +974,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                 />
             )}
 
-            <div className="flex-1 min-h-0 bg-modal-bg relative">
+            <div data-session-input-content="true" className="flex-1 min-h-0 bg-modal-bg relative">
                 {mainContentNode && !isPlaceholderMode && (
                     <InputPanelLayout onNext={onNextAction} nextButtonDirection={advanceDirection} sidebarContent={sidebarContentNode} nextButtonContent={nextButtonContent} isCompact={isInputFocused}>
                         {mainContentNode}

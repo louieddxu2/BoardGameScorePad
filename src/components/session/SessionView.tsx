@@ -17,6 +17,7 @@ import { calculateWinners } from '../../utils/templateUtils'; // [Refactor]
 import SessionHeader from './parts/SessionHeader';
 import ScoreGrid from './parts/ScoreGrid';
 import TotalsBar from './parts/TotalsBar';
+import SessionViewportDiagnostics from './parts/SessionViewportDiagnostics';
 import InputPanel from './parts/InputPanel';
 // Modals
 import ScreenshotModal from './modals/ScreenshotModal';
@@ -943,6 +944,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         canEditPlayers={capabilities.canEditPlayers}
         mediaOnlyTools={capabilities.role === 'player'}
       />
+
+      <SessionViewportDiagnostics />
 
       <ScreenshotModal
         isOpen={screenshotModal.isOpen}
