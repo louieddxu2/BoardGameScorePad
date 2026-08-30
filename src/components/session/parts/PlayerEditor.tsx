@@ -264,7 +264,7 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
 const PlayerSettingsPanel: React.FC<{ player: Player, onToggleStarter: (id: string) => void }> = ({ player, onToggleStarter }) => {
   const { t } = useSessionTranslation();
   return (
-    <div className="flex flex-col h-full text-txt-secondary text-xs">
+    <div className="flex flex-col flex-1 min-h-0 text-txt-secondary text-xs">
       <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-2 text-center flex flex-col justify-center">
         <button
           onMouseDown={(e) => e.preventDefault()}

@@ -195,7 +195,7 @@ const TotalAdjustmentSidebar: React.FC<{
 }> = ({ player, onUpdatePlayer }) => {
     const { t } = useSessionTranslation();
     return (
-        <div className="flex flex-col h-full p-2 gap-2">
+        <div className="flex flex-col flex-1 min-h-0 p-2 gap-2">
             <div className="text-[10px] text-txt-primary font-bold uppercase pb-1 border-b border-surface-border flex items-center justify-center gap-1 shrink-0">
                 {t('input_total_adjust')}
             </div>
@@ -755,7 +755,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                         </div>
                     );
                     sidebarContentNode = (
-                        <div className="flex flex-col h-full p-2 text-txt-secondary text-xs">
+                        <div className="flex flex-col flex-1 min-h-0 p-2 text-txt-secondary text-xs">
                             <div className="flex items-center gap-1 text-[10px] text-txt-muted font-bold uppercase pb-1 border-b border-surface-border shrink-0">
                                 <Calculator size={12} /> {t('input_auto_calc')}
                             </div>
@@ -791,7 +791,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     } else if (isSumPartsMode) {
                         sidebarContentNode = <ScoreInfoPanel column={activeColumn} value={cellScoreObject} onDeleteLastPart={handleDeleteLastPart} />;
                     } else {
-                        sidebarContentNode = (<div className="flex flex-col h-full p-2 text-txt-secondary text-xs"><div className="flex items-center gap-1 text-[10px] text-txt-muted font-bold uppercase pb-1 border-b border-surface-border shrink-0"><ListPlus size={12} /> {t('input_list_menu')}</div><div className="flex-1"></div></div>);
+                        sidebarContentNode = (<div className="flex flex-col flex-1 min-h-0 p-2 text-txt-secondary text-xs"><div className="flex items-center gap-1 text-[10px] text-txt-muted font-bold uppercase pb-1 border-b border-surface-border shrink-0"><ListPlus size={12} /> {t('input_list_menu')}</div><div className="flex-1"></div></div>);
                     }
                 } else {
                     if (isSumPartsMode) {

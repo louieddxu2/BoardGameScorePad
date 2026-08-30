@@ -52,7 +52,7 @@ const InfoProduct: React.FC<ScoreInfoPanelProps> = ({ column, value, activeFacto
     const isFactorBActive = activeFactorIdx === 1;
 
     return (
-        <div className="flex flex-col h-full p-2">
+        <div className="flex flex-col flex-1 min-h-0 p-2">
             <div className="text-[10px] text-txt-muted font-bold uppercase pb-1 border-b border-surface-border flex items-center gap-1 shrink-0"><Calculator size={12} /> {t('input_prod_title')}</div>
             <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar py-2 space-y-1">
                 <div
@@ -132,7 +132,7 @@ const InfoSumParts: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypa
     const isFactorBActive = activeFactorIdx === 1;
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col flex-1 min-h-0">
             <div className="text-[10px] text-txt-muted font-bold uppercase pb-1 border-b border-surface-border flex items-center gap-1 shrink-0 px-2 pt-2"><PlusSquare size={12} /> {t('input_sum_title')} {isProductSumParts ? `(${t('input_prod_title')})` : ''}</div>
 
             {/* History List */}
@@ -308,7 +308,7 @@ const InfoMapping: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypad
     }
 
     return (
-        <div className="flex flex-col h-full px-[2px] py-[2px] overflow-hidden">
+        <div className="flex flex-col flex-1 min-h-0 px-[2px] py-[2px] overflow-hidden">
             {/* 1. & 3. 移除了「範圍查表」框，改為對齊下方箭頭的單位列 */}
             <div className="flex items-center gap-[1px] text-[10px] text-txt-muted font-bold px-[2px] pb-[2px] border-b border-surface-border shrink-0">
                 <div className="flex-1 text-center">{unitStr}</div>
@@ -426,7 +426,7 @@ const InfoStandard: React.FC<ScoreInfoPanelProps> = ({ column }) => {
     const unit = column.unit || '';
 
     return (
-        <div className="flex flex-col gap-2 h-full p-2">
+        <div className="flex flex-col gap-2 flex-1 min-h-0 p-2">
             <div className="flex items-center gap-1 text-[10px] text-txt-muted font-bold uppercase pb-1 border-b border-surface-border shrink-0"><Calculator size={12} /> {t('input_calc_mode')}</div>
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 py-2">
                 <div className="bg-surface-recessed rounded p-2 border border-surface-border text-center">

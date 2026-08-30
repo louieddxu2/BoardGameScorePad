@@ -22,7 +22,7 @@ describe('InputPanelLayout', () => {
     },
   );
 
-  it('lets the full-mode grid size the right-side next button without h-full', () => {
+  it('gives the right-side panel a definite flex content area', () => {
     const { container } = render(
       <div className="relative">
         <InputPanelLayout onNext={vi.fn()} sidebarContent={<div>sidebar</div>}>
@@ -31,9 +31,8 @@ describe('InputPanelLayout', () => {
       </div>,
     );
 
-    const nextButton = container.querySelector('[data-input-panel-next="true"]');
+    const sidebar = container.querySelector('[data-input-panel-sidebar="true"]');
 
-    expect(nextButton).toBeInTheDocument();
-    expect(nextButton).not.toHaveClass('h-full');
+    expect(sidebar).toHaveClass('flex', 'flex-col', 'min-h-0');
   });
 });
