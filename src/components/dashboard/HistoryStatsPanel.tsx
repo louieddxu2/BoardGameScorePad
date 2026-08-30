@@ -342,7 +342,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
           {isPanelExpanded ? <ChevronDown size={22} /> : <ChevronUp size={22} />}
         </button>
 
-        <div className="flex-1 min-w-0 overflow-hidden flex flex-col bg-app-bg border-t border-surface-border shadow-ui-floating pointer-events-auto relative transition-all duration-300 h-full">
+        <div className="flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col bg-app-bg border-t border-surface-border shadow-ui-floating pointer-events-auto relative transition-all duration-300">
           <div className="absolute top-0 left-0 right-0 p-1 text-center pointer-events-none z-10 opacity-30">
             <ChevronUp size={12} className="text-txt-muted mx-auto" />
           </div>

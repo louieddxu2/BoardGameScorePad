@@ -82,7 +82,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
 
     if (actions.length === 0) {
         return (
-            <div className="h-full flex items-center justify-center text-txt-muted text-sm italic">
+            <div className="flex-1 min-h-0 flex items-center justify-center text-txt-muted text-sm italic">
                 {t('quick_button_empty')}
             </div>
         );
@@ -93,7 +93,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
     const minRowHeight = isListMode ? '3.5rem' : '4.5rem';
 
     return (
-        <div className="h-full overflow-y-auto no-scrollbar p-2">
+        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar p-2">
             <div
                 className="grid gap-2 relative"
                 style={{

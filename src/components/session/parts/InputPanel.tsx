@@ -745,7 +745,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
                 if (activeColumn.inputType === 'auto') {
                     mainContentNode = (
-                        <div className="h-full flex items-center justify-center bg-surface-recessed/50 rounded-xl border border-surface-border p-4">
+                        <div className="flex-1 min-h-0 flex items-center justify-center bg-surface-recessed/50 rounded-xl border border-surface-border p-4">
                             <AutoScorePanel
                                 column={activeColumn}
                                 player={activePlayer}

@@ -188,7 +188,7 @@ const NumericKeypad: React.FC<NumericKeypadContentProps> = (props) => {
   };
   
   return (
-      <div data-numeric-keypad="true" className="grid grid-cols-3 grid-rows-4 gap-2 h-full">
+      <div data-numeric-keypad="true" className="grid grid-cols-3 grid-rows-4 gap-2 flex-1 min-h-0">
         {[7, 8, 9, 4, 5, 6, 1, 2, 3].map(num => (
           <KeypadButton key={num} onActivate={() => handleNumClick(num)} className={`text-[32px] leading-none font-bold rounded-xl shadow-sm transition-all touch-manipulation active:scale-95 h-full ${overwrite ? 'bg-keypad-active text-white shadow-brand-secondary/20 hover:opacity-90' : 'bg-keypad-bg text-keypad-text hover:bg-surface-hover border border-input-border'}`}>{num}</KeypadButton>
         ))}

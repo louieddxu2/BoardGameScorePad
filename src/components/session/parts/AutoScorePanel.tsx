@@ -34,7 +34,7 @@ const AutoScorePanel: React.FC<AutoScorePanelProps> = ({ column, player, allColu
     const finalScore = calculateColumnScore(column, [], context);
 
     return (
-        <div className="flex flex-col h-full w-full bg-surface-recessed text-txt-primary select-text p-[6px]">
+        <div className="flex flex-col flex-1 min-h-0 w-full bg-surface-recessed text-txt-primary select-text p-[6px]">
             {/* Header Info - Use a more robust grid layout: auto for ends, 1fr for the flexible middle */}
             <div className="grid grid-cols-[auto_1fr_auto] items-center gap-[8px] pb-[6px] border-b border-surface-border mb-[6px] shrink-0">
 

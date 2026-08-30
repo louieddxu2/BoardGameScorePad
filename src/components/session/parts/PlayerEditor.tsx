@@ -130,8 +130,8 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
   const colorBarStyle = isMainTransparent ? undefined : { borderLeftColor: player.color };
 
   return (
-    <div className="h-full" onClick={e => e.stopPropagation()}>
-      <div className="flex flex-col h-full p-2 gap-2">
+    <div className="flex flex-col flex-1 min-h-0" onClick={e => e.stopPropagation()}>
+      <div className="flex flex-col flex-1 min-h-0 p-2 gap-2">
         {/* Integrated Color-Name Strip: Fixed height */}
         <div ref={colorPickerAreaRef} className={`flex-none h-12 relative z-50 flex items-stretch rounded-xl border-2 transition-all ${showColorPicker ? 'border-brand-primary' : 'border-surface-border'}`}>
           {/* Input with color bar on the left */}
