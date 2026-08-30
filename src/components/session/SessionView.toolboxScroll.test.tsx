@@ -208,7 +208,8 @@ describe('SessionView toolbox scroll behavior', () => {
       const reserve = document.querySelector('[data-ios-browser-reserve="true"]') as HTMLElement | null;
       expect(reserve).not.toBeNull();
       expect(reserve?.style.height).toBe('clamp(80px, 8svh, 96px)');
-      expect(reserve?.querySelectorAll('span.block')).toHaveLength(2);
+      expect(reserve).toHaveAttribute('aria-hidden', 'true');
+      expect(reserve).toHaveTextContent('');
     } finally {
       if (previousValue === undefined) {
         delete document.documentElement.dataset.iosBrowser;

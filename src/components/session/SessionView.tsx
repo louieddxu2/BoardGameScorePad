@@ -942,7 +942,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         isVoiceEnabled={props.isVoiceEnabled}
         onToggleVoice={props.onToggleVoice}
         bottomOffset={panelDockOffset}
-        showIOSBrowserReserveNotice={isIOSBrowser && !isNativeKeyboardCompensationActive && sessionState.panelHeight !== '0px'}
+        showIOSBrowserReserve={isIOSBrowser && !isNativeKeyboardCompensationActive && sessionState.panelHeight !== '0px'}
         canEditScore={capabilities.canEditScore}
         canEditTotal={capabilities.canEditTotal}
         canEditPlayers={capabilities.canEditPlayers}

@@ -45,7 +45,7 @@ interface InputPanelProps {
     isVoiceEnabled?: boolean;
     onToggleVoice?: () => void;
     bottomOffset: string;
-    showIOSBrowserReserveNotice?: boolean;
+    showIOSBrowserReserve?: boolean;
     canEditScore?: (playerId: string, column: ScoreColumn | undefined) => boolean;
     canEditTotal?: (playerId: string) => boolean;
     canEditPlayers?: boolean;
@@ -235,7 +235,7 @@ const TotalAdjustmentSidebar: React.FC<{
 
 
 const InputPanel: React.FC<InputPanelProps> = (props) => {
-    const { sessionState, eventHandlers, session, template, savedPlayers, allSavedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice, bottomOffset, showIOSBrowserReserveNotice = false, canEditScore = () => true, canEditTotal = () => true, canEditPlayers = true, mediaOnlyTools = false } = props;
+    const { sessionState, eventHandlers, session, template, savedPlayers, allSavedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice, bottomOffset, showIOSBrowserReserve = false, canEditScore = () => true, canEditTotal = () => true, canEditPlayers = true, mediaOnlyTools = false } = props;
     const { uiState, setUiState, panelHeight, isShortList } = sessionState;
     const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue, isEditingTitle, isToolboxOpen } = uiState;
     const { t } = useSessionTranslation();
@@ -1005,17 +1005,13 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             </div>
           </div>
 
-          {showIOSBrowserReserveNotice && (
+          {showIOSBrowserReserve && (
               <div
                   data-ios-browser-reserve="true"
-                  className="absolute inset-x-0 bottom-0 z-50 pointer-events-none flex items-center justify-center bg-[rgb(var(--c-input-bg))] px-4 text-center text-[10px] leading-4 text-txt-muted"
+                  aria-hidden="true"
+                  className="absolute inset-x-0 bottom-0 z-50 pointer-events-none bg-[rgb(var(--c-input-bg))]"
                   style={{ height: bottomOffset }}
-              >
-                  <span>
-                      <span className="block">{t('session_ios_browser_reserve_line1')}</span>
-                      <span className="block">{t('session_ios_browser_reserve_line2')}</span>
-                  </span>
-              </div>
+              />
           )}
         </>
     );
