@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { MousePointerClick, Wrench } from 'lucide-react';
+import { Wrench } from 'lucide-react';
 import { GameSession, GameTemplate } from '../../../types';
 
 // Import Modular Tools
@@ -35,14 +35,6 @@ const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhot
             onTouchEnd={keepToolboxTouchLocal}
             onTouchCancel={keepToolboxTouchLocal}
         >
-            {/* Hint Text */}
-            {!isHistory && !mediaOnly && (
-                <div className="flex items-center justify-center gap-2 text-txt-muted mb-6 mt-2 opacity-70 select-none">
-                    <MousePointerClick size={16} className="animate-bounce" />
-                    <span className="text-xs font-bold">{t('smart_spacer_hint')}</span>
-                </div>
-            )}
-
             {/* Toolbox Grid - Masonry-ish Layout */}
             <div className="grid grid-cols-4 gap-3 w-full max-w-sm mx-auto pb-20">
 

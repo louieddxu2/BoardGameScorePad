@@ -159,6 +159,14 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
     // This decouples navigation state from cloud logic as requested.
     useModalBackHandler(true, handleExitAndSync, 'history-root');
 
+    // Keep the history share popover in the same browser-back stack used by
+    // the active score sheet, so Back closes the popover before leaving.
+    const { zIndex: shareMenuZIndex } = useModalBackHandler(
+        showShareMenu,
+        () => setShowShareMenu(false),
+        'history-share-menu'
+    );
+
     // Load cloud image
     useEffect(() => {
         let active = true;
@@ -391,7 +399,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                         onOpenGallery={handleOpenGallery}
                         onTakePhoto={photos.openCamera}
                         photoCount={record.photos?.length || 0}
-                        zIndex={100}
+                        zIndex={shareMenuZIndex}
                     />
                 </div>
             </div>

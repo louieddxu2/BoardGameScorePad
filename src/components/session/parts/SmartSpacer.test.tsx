@@ -56,4 +56,9 @@ describe('SmartSpacer participant tools', () => {
     expect(screen.getByText('randomizer-tool')).toBeInTheDocument();
     expect(screen.getByText('memo-tool')).toBeInTheDocument();
   });
+
+  it('does not repeat the score-input hint inside the toolbox', () => {
+    renderSpacer(false);
+    expect(screen.queryByText(/點擊上方分數格開始輸入|Tap a score cell to start/)).not.toBeInTheDocument();
+  });
 });
