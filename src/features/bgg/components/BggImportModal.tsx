@@ -217,7 +217,7 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
     // Full-screen Staging View
     if (importState === 'staging' && analysisReport) {
         return (
-            <div className="fixed inset-0 z-[60] bg-app-bg flex flex-col animate-in fade-in duration-200">
+            <div className="absolute inset-0 z-[60] bg-app-bg flex flex-col animate-in fade-in duration-200">
                 <ImportStagingView
                     report={analysisReport}
                     onConfirm={handleStagingConfirm}

@@ -444,8 +444,8 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-app-bg-deep/95 backdrop-blur-sm flex flex-col animate-in fade-in duration-200" style={{ zIndex }}>
-      <div className="flex-none h-16 px-4 border-b border-surface-border bg-modal-bg flex items-center justify-between">
+    <div className="absolute inset-0 bg-app-bg-deep/95 backdrop-blur-sm flex flex-col animate-in fade-in duration-200" style={{ zIndex }}>
+      <div className="safe-area-top-medium flex-none min-h-16 px-4 py-3 border-b border-surface-border bg-modal-bg flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
           <div className="p-2 rounded-lg bg-brand-primary/10 text-brand-primary">
             <ImageIcon size={20} />
@@ -504,7 +504,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
             </div>
           </div>
 
-          <div className="flex-none border-t border-surface-border bg-modal-bg p-3 flex items-center gap-3">
+          <div className="safe-area-bottom-medium flex-none border-t border-surface-border bg-modal-bg p-3 flex items-center gap-3">
             <div className="min-w-0 flex-1 overflow-x-auto no-scrollbar flex items-center gap-2">
               {cropPhotoOptions.map(photo => (
                 <button
@@ -530,18 +530,18 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
         <>
           <div className="flex-1 min-h-0 overflow-y-auto p-4 flex flex-col items-center justify-center gap-3">
             <div className="w-full max-w-[520px] flex flex-col items-center justify-center">
-              <div className="relative rounded-xl overflow-hidden shadow-2xl border border-surface-border bg-app-bg-deep max-h-[70vh] flex items-center justify-center">
+              <div className="relative rounded-xl overflow-hidden shadow-2xl border border-surface-border bg-app-bg-deep max-h-[70dvh] flex items-center justify-center">
                 <img
                   src={generatedImageUrl}
                   alt="Generated Photo Grid"
-                  className="max-w-full max-h-[70vh] object-contain select-all"
+                  className="max-w-full max-h-[70dvh] object-contain select-all"
                   style={{ WebkitTouchCallout: 'default' } as React.CSSProperties}
                 />
               </div>
             </div>
           </div>
 
-          <div className="flex-none h-20 px-4 border-t border-surface-border bg-modal-bg flex items-center justify-end gap-3">
+          <div className="safe-area-bottom-medium flex-none min-h-20 px-4 py-3 border-t border-surface-border bg-modal-bg flex items-center justify-end gap-3">
             <button
               onClick={handleBackToEdit}
               className="flex items-center gap-2 px-4 py-3 rounded-xl bg-surface-bg border border-surface-border text-txt-primary font-bold text-sm active:scale-95 transition-all"
@@ -585,7 +585,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
             )}
           </div>
 
-          <div className="flex-none h-20 px-4 border-t border-surface-border bg-modal-bg flex items-center justify-end">
+          <div className="safe-area-bottom-medium flex-none min-h-20 px-4 py-3 border-t border-surface-border bg-modal-bg flex items-center justify-end">
             <button
               onClick={handleGenerateImage}
               disabled={tiles.length === 0 || isLoading || isExporting}
@@ -615,7 +615,7 @@ const getCropFrameStyle = (tile: EditableGridTile): React.CSSProperties => {
   const maxWidthByHeight = Number((64 * aspect).toFixed(4));
   return {
     aspectRatio: aspect,
-    width: `min(86vw, ${maxWidthByHeight}vh)`
+    width: `min(86vw, ${maxWidthByHeight}dvh)`
   };
 };
 

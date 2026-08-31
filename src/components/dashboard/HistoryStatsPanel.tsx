@@ -323,25 +323,26 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
 
   return (
     <>
+      <button
+        onClick={() => setIsExpanded(prev => !prev)}
+        className={`absolute right-2 top-1/2 -translate-y-1/2 z-50 w-11 h-11 flex items-center justify-center rounded-xl border shadow-ui-floating pointer-events-auto transition-all active:scale-95 ${
+          isPanelExpanded
+            ? 'bg-app-bg-deep text-brand-primary border-brand-primary'
+            : 'bg-app-bg-deep/95 text-txt-muted border-surface-border hover:border-txt-muted'
+        }`}
+        style={detailView && zIndex ? { zIndex: zIndex + 1 } : undefined}
+        title={isPanelExpanded ? t('stats_collapse') : t('stats_expand')}
+      >
+        {isPanelExpanded ? <ChevronDown size={22} /> : <ChevronUp size={22} />}
+      </button>
+
       <div
-        className={`fixed z-40 flex flex-col pointer-events-none transition-all duration-300 ease-in-out ${panelLayoutClass}`}
+        className={`absolute z-40 flex flex-col pointer-events-none transition-all duration-300 ease-in-out ${panelLayoutClass}`}
         style={{
           bottom: 'var(--bottom-ui-safe-gap)',
           ...(detailView && zIndex ? { zIndex } : {}),
         }}
       >
-        <button
-          onClick={() => setIsExpanded(prev => !prev)}
-          className={`fixed right-2 top-1/2 -translate-y-1/2 z-50 w-11 h-11 flex items-center justify-center rounded-xl border shadow-ui-floating pointer-events-auto transition-all active:scale-95 ${
-            isPanelExpanded
-              ? 'bg-app-bg-deep text-brand-primary border-brand-primary'
-              : 'bg-app-bg-deep/95 text-txt-muted border-surface-border hover:border-txt-muted'
-          }`}
-          title={isPanelExpanded ? t('stats_collapse') : t('stats_expand')}
-        >
-          {isPanelExpanded ? <ChevronDown size={22} /> : <ChevronUp size={22} />}
-        </button>
-
         <div className="flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col bg-app-bg border-t border-surface-border shadow-ui-floating pointer-events-auto relative transition-all duration-300">
           <div className="absolute top-0 left-0 right-0 p-1 text-center pointer-events-none z-10 opacity-30">
             <ChevronUp size={12} className="text-txt-muted mx-auto" />

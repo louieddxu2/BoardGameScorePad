@@ -84,7 +84,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     return (
         <div
             ref={ref}
-            className={`fixed z-40 flex flex-row items-end pointer-events-none transition-all duration-300 ease-in-out ${containerLayoutClass}`}
+            className={`absolute z-40 flex flex-row items-end pointer-events-none transition-all duration-300 ease-in-out ${containerLayoutClass}`}
             style={{ bottom: 'var(--bottom-ui-safe-gap)' }}
         >
 
