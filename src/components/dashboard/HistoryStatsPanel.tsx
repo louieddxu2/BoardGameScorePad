@@ -366,14 +366,14 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
             </div>
           )}
 
-          <div className="flex-1 min-h-0 overflow-auto no-scrollbar pb-2" ref={scrollContainerRef}>
+          <div className="flex flex-col flex-1 min-h-0 overflow-auto no-scrollbar pb-2" ref={scrollContainerRef}>
             {stats.games.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-txt-muted opacity-70 gap-2">
+              <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-txt-muted opacity-70 gap-2">
                 <BarChart3 size={32} />
                 <span className="text-sm font-bold">{t('stats_empty_records')}</span>
               </div>
             ) : detailView?.type === 'game' && specificStats ? (
-              <div className="flex flex-col w-full h-full min-h-0">
+              <div className="flex flex-col w-full flex-1 min-h-0">
                 {/* 遊戲名稱與返回列：使用 Flex 兩端對齊排版，避免強行分欄限制空間 */}
                 <div 
                   onClick={returnToOverview}
@@ -624,7 +624,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                 )}
               </div>
             ) : detailView?.type === 'player' && specificPlayerStats ? (
-              <div className="flex flex-col w-full h-full min-h-0">
+              <div className="flex flex-col w-full flex-1 min-h-0">
                 <div
                   onClick={returnToOverview}
                   className="flex items-center justify-between gap-3 pr-3 py-1.5 min-h-[46px] border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors cursor-pointer w-full shrink-0"

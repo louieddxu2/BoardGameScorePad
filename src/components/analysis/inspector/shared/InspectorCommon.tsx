@@ -38,7 +38,7 @@ export const InspectorDetailPanel = ({ selectedItem, icon: Icon, isBGG = false }
     }, [selectedItem, isBGG]);
 
     return (
-        <div className="flex-1 overflow-y-auto p-4 bg-app-bg">
+        <div className="flex flex-col flex-1 min-h-0 overflow-y-auto p-4 bg-app-bg">
             {selectedItem ? (
                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-200">
                     <div className="flex items-center gap-3 mb-4 pb-4 border-b border-surface-border">
@@ -158,7 +158,7 @@ export const InspectorDetailPanel = ({ selectedItem, icon: Icon, isBGG = false }
                     </div>
                 </div>
             ) : (
-                <div className="h-full flex flex-col items-center justify-center text-txt-muted gap-3">
+                <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-txt-muted gap-3">
                     <div className="w-16 h-16 rounded-full modal-bg-recessed flex items-center justify-center border-2 border-surface-border border-dashed">
                         <Database size={24} className="opacity-50" />
                     </div>

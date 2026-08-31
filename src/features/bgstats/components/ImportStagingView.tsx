@@ -121,7 +121,7 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
     };
 
     return (
-        <div className="flex flex-col h-full bg-app overflow-hidden">
+        <div className="flex flex-col flex-1 min-h-0 bg-app overflow-hidden">
 
             {/* Header Summary */}
             <div className="flex-none p-4 border-b border-surface-border bg-surface-bg/50">

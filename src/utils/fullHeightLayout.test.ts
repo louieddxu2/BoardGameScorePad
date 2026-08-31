@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import historyStats from '../components/dashboard/HistoryStatsPanel.tsx?raw';
 import dataManager from '../components/dashboard/modals/DataManagerModal.tsx?raw';
+import cloudLibrary from '../components/dashboard/modals/CloudLibraryModal.tsx?raw';
+import cloudManager from '../components/dashboard/modals/CloudManagerModal.tsx?raw';
+import inspectorShared from '../components/analysis/InspectorShared.tsx?raw';
+import inspectorCommon from '../components/analysis/inspector/shared/InspectorCommon.tsx?raw';
+import imageInspector from '../components/analysis/inspector/inspectors/ImageInspector.tsx?raw';
 import scanPreview from '../components/scanner/ScanPreview.tsx?raw';
 import screenshot from '../components/session/modals/ScreenshotModal.tsx?raw';
 import autoPanel from '../components/session/parts/AutoScorePanel.tsx?raw';
@@ -10,6 +15,7 @@ import playerEditor from '../components/session/parts/PlayerEditor.tsx?raw';
 import keypad from '../components/shared/NumericKeypad.tsx?raw';
 import quickPad from '../components/shared/QuickButtonPad.tsx?raw';
 import linkerList from '../features/bgstats/components/LinkerList.tsx?raw';
+import importStaging from '../features/bgstats/components/ImportStagingView.tsx?raw';
 import gameList from '../features/game-selector/components/GameListView.tsx?raw';
 import startPanel from '../features/game-selector/components/StartGamePanel.tsx?raw';
 
@@ -42,5 +48,18 @@ describe('full-height layout contracts', () => {
     expect(startPanel).not.toContain("isAdvancedMode ? 'h-full' : ''");
     expect(gameList).toContain('self-stretch');
     expect(gameList).not.toContain('duration-300 h-full');
+  });
+
+  it('keeps empty, detail, and preview states inside flex or scroll bounds', () => {
+    expect(historyStats).not.toContain('flex flex-col w-full h-full min-h-0');
+    expect(historyStats).not.toContain('className="h-full flex flex-col items-center justify-center');
+    expect(gameList).not.toContain('className="h-full flex flex-col items-center justify-center');
+    expect(cloudLibrary).not.toContain('className="h-full flex flex-col items-center justify-center');
+    expect(cloudManager).not.toContain('justify-between h-full gap-4');
+    expect(cloudManager).not.toContain('justify-center h-full gap-3');
+    expect(inspectorShared).not.toContain('className="h-full flex flex-col items-center justify-center');
+    expect(inspectorCommon).not.toContain('className="h-full flex flex-col items-center justify-center');
+    expect(imageInspector).not.toContain('gap-4 w-full h-full');
+    expect(importStaging).not.toContain('flex flex-col h-full bg-app overflow-hidden');
   });
 });

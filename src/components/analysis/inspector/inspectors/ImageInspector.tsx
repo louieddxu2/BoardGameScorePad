@@ -99,9 +99,9 @@ const ImageInspector = () => {
             </div>
 
             {/* Right: Preview */}
-            <div className="flex-1 bg-app-bg p-4 flex flex-col items-center justify-center overflow-hidden">
+            <div className="flex-1 min-h-0 bg-app-bg p-4 flex flex-col items-center justify-center overflow-hidden">
                 {selectedImage ? (
-                    <div className="flex flex-col items-center gap-4 w-full h-full animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div className="flex flex-col flex-1 min-h-0 items-center gap-4 w-full animate-in fade-in slide-in-from-right-4 duration-300">
                         <div className="relative flex-1 w-full min-h-0 rounded-xl overflow-hidden border border-surface-border bg-black/20 flex items-center justify-center shadow-inner">
                             {previewUrl && <img src={previewUrl} className="max-w-full max-h-full object-contain drop-shadow-2xl" alt="Preview" />}
                         </div>

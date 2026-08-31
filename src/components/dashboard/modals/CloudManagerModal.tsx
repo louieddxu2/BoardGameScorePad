@@ -542,11 +542,11 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                     </div>
                 </div>
 
-                <div className="flex-1 p-4 overflow-y-auto no-scrollbar bg-modal-bg relative transition-colors">
+                <div className="flex-1 min-h-0 p-4 overflow-y-auto no-scrollbar bg-modal-bg relative transition-colors">
 
                     {!isConnected ? (
                         // Offline State with Letter-Style
-                        <div className="flex flex-col items-center justify-between h-full gap-4 animate-in fade-in zoom-in-95 duration-300">
+                        <div className="flex flex-col items-center justify-between min-h-full gap-4 animate-in fade-in zoom-in-95 duration-300">
 
                             {/* Letter Container */}
                             <div className="w-full modal-bg-recessed p-6 rounded-2xl border border-surface-border text-txt-secondary text-sm leading-relaxed space-y-4 shadow-inner animate-in slide-in-from-bottom-4 duration-500">
@@ -574,9 +574,9 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                         // Connected State
                         <>
                             {isLoading ? (
-                                <div className="flex flex-col items-center justify-center h-full gap-3 text-txt-muted"><RefreshCw size={24} className="animate-spin" /><span className="text-xs">{tCommon('loading')}</span></div>
+                                <div className="flex flex-col items-center justify-center min-h-full gap-3 text-txt-muted"><RefreshCw size={24} className="animate-spin" /><span className="text-xs">{tCommon('loading')}</span></div>
                             ) : cloudFiles.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-full gap-3 text-txt-muted">{viewMode === 'trash' ? <Trash2 size={32} className="opacity-50" /> : <UploadCloud size={32} className="opacity-50" />}<span className="text-sm">{viewMode === 'trash' ? tCloud('cloud_empty_trash_list') : tCloud('cloud_empty_list')}</span></div>
+                                <div className="flex flex-col items-center justify-center min-h-full gap-3 text-txt-muted">{viewMode === 'trash' ? <Trash2 size={32} className="opacity-50" /> : <UploadCloud size={32} className="opacity-50" />}<span className="text-sm">{viewMode === 'trash' ? tCloud('cloud_empty_trash_list') : tCloud('cloud_empty_list')}</span></div>
                             ) : (
                                 <div className="space-y-2">
                                     {cloudFiles.map(file => (

@@ -46,7 +46,7 @@ export const GameListView: React.FC<GameListViewProps> = ({
             </div>
 
             {processedOptions.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-txt-muted opacity-50 pb-10">
+                <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-txt-muted opacity-50 pb-10">
                     <Search size={32} />
                     <span className="text-xs mt-2">{t('selector_no_results')}</span>
                     {showImportHint && onOpenBgStats && onOpenBggImport && (
