@@ -10,7 +10,6 @@ import SmartTextureLayer from './SmartTextureLayer';
 import { COLORS } from '../../../colors';
 import { getRawValue } from '../../../utils/scoring';
 import { useTouchAction } from '../../shared/useTouchAction';
-import { useSessionTranslation } from '../../../i18n/session';
 // [Fix] 匯入堆疊查詢，用於判斷是否有「非輸入面板」的 Modal 正在開啟
 const INPUT_PANEL_IDS = ['session-input-panel', 'session-title-edit'];
 const hasOverlayModals = (): boolean => {
@@ -107,7 +106,6 @@ interface TexturedTotalCellProps {
   onClick?: () => void;
   cleanMode?: boolean; // [New] If true, hides all icons (crown, x, arrows) and ignores fading
   scoringRule?: ScoringRule;
-  showOutcomeWhenAllScoresZero?: boolean;
 }
 
 // RESTORED & ADJUSTED: Annotation Arrow Visual
@@ -162,22 +160,14 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
   onClick,
   cleanMode = false,
   scoringRule,
-  showOutcomeWhenAllScoresZero = false,
 }) => {
   const [bgUrl, setBgUrl] = useState<string | null>(null);
   const cellRef = useRef<HTMLDivElement>(null);
-  const { t } = useSessionTranslation();
 
   const effectiveScoringRule = scoringRule ?? 'HIGHEST_WINS';
   const isCoop = effectiveScoringRule === 'COOP' || effectiveScoringRule === 'COOP_NO_SCORE';
   const isCompetitive = effectiveScoringRule === 'HIGHEST_WINS' || effectiveScoringRule === 'LOWEST_WINS';
-  const isScoredOutcomeMode = effectiveScoringRule === 'HIGHEST_WINS'
-      || effectiveScoringRule === 'LOWEST_WINS'
-      || effectiveScoringRule === 'COOP';
   const shouldShowCrown = isWinner && (hasMultiplePlayers || isCoop || isCompetitive);
-  const totalDisplay = showOutcomeWhenAllScoresZero && isScoredOutcomeMode && player.totalScore === 0
-      ? (isWinner ? t('screenshot_outcome_win') : t('screenshot_outcome_loss'))
-      : player.totalScore;
 
   useEffect(() => {
     let isMounted = true;
@@ -280,7 +270,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
         style={bgUrl ? inkStyle : { opacity: visualForceLost ? 0.5 : 1 }}
         isTextureMode={!!bgUrl}
       >
-        {totalDisplay}
+        {player.totalScore}
       </ContrastText>
 
       {/* Force Loss Marker - Hidden in Clean Mode */}

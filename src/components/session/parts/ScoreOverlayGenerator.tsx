@@ -1,6 +1,6 @@
 
 import React, { forwardRef } from 'react';
-import { Player } from '../../../types';
+import { Player, ScoringRule } from '../../../types';
 import { Crown, Calendar, Trophy } from 'lucide-react';
 import { isColorDark, getContrastTextStyles } from '../../../utils/ui';
 import { ContrastText } from '../../shared/ContrastText';
@@ -13,6 +13,7 @@ export interface OverlayData {
     endTime?: number; // 新增：結束時間 (可選)
     players: (Player & { isAnonymous?: boolean })[]; // Update to allow isAnonymous flag
     winners: string[];
+    scoringRule?: ScoringRule;
 }
 
 interface ScoreOverlayGeneratorProps {
@@ -28,6 +29,12 @@ const GAP_PX = 24;     // Fixed 24px (equivalent to gap-6 at 1rem=16px)
 const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorProps>(({ imageSrc, data }, ref) => {
     const displayTime = data.endTime || data.date;
     const { t, language } = useSessionTranslation();
+    const scoringRule = data.scoringRule || 'HIGHEST_WINS';
+    const isScoredOutcomeMode = scoringRule === 'HIGHEST_WINS'
+        || scoringRule === 'LOWEST_WINS'
+        || scoringRule === 'COOP';
+    const showOutcomeForZeroScores = isScoredOutcomeMode
+        && data.players.every(player => player.totalScore === 0);
 
     const dateStr = new Date(displayTime).toLocaleDateString(language, { year: 'numeric', month: '2-digit', day: '2-digit' });
     const timeStr = new Date(displayTime).toLocaleTimeString(language, { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -94,6 +101,9 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                 >
                     {data.players.map(p => {
                         const isWinner = data.winners.includes(p.id);
+                        const displayScore = showOutcomeForZeroScores
+                            ? (isWinner ? t('screenshot_outcome_win') : t('screenshot_outcome_loss'))
+                            : p.totalScore;
                         // Fallback color if transparent
                         const playerColor = p.color === 'transparent' ? 'var(--c-txt-muted)' : p.color;
                         const isDark = isColorDark(playerColor);
@@ -140,7 +150,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                 {/* Score Section */}
                                 <div className="p-5 flex items-center justify-center w-full">
                                     <span className="text-7xl font-black font-mono leading-none tracking-tight text-txt-title drop-shadow-md">
-                                        {p.totalScore}
+                                        {displayScore}
                                     </span>
                                 </div>
                             </div>

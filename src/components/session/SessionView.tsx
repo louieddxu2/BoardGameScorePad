@@ -532,8 +532,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     gameName: session.name || template.name, // [Identity Upgrade] Use Session Name
     date: session.startTime,
     players: session.players,
-    winners: winners
-  }), [session.name, template.name, session.startTime, session.players, winners]);
+    winners: winners,
+    scoringRule: session.scoringRule,
+  }), [session.name, template.name, session.startTime, session.players, winners, session.scoringRule]);
 
   const handleScreenshotRequest = useCallback((mode: 'full' | 'simple') => {
     const playerHeaderRowEl = document.querySelector('#live-player-header-row') as HTMLElement;
