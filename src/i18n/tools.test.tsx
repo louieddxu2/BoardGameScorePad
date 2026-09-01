@@ -19,10 +19,14 @@ describe('useToolsTranslation', () => {
     it('should return tools translations', () => {
         const { result } = renderWithProvider('zh-TW');
         expect(result.current.t('tools_title')).toBe('桌遊工具箱');
+        expect(result.current.t('order_shuffle')).toBe('隨機順位');
+        expect(result.current.t('order_visual_picker')).toBe('起始玩家決定器');
     });
 
     it('should return English tools translations', () => {
         const { result } = renderWithProvider('en');
         expect(result.current.t('tools_title')).toBe('Tools');
+        expect(result.current.t('order_shuffle')).toBe('Random Turn Order');
+        expect(result.current.t('order_visual_picker')).toBe('First Player Picker');
     });
 });
