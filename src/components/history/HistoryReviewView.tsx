@@ -20,6 +20,7 @@ import { getRecordScoringRule, getRecordTemplate } from '../../utils/historyUtil
 import { usePhotoManager } from '../../hooks/usePhotoManager';
 import { useToolboxBoundaryGesture } from '../../hooks/useToolboxBoundaryGesture';
 import SmartSpacer from '../session/parts/SmartSpacer';
+import HistoryPhotoStrip from './HistoryPhotoStrip';
 
 import { useHistoryTranslation } from '../../i18n/history';
 
@@ -65,6 +66,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
     const [showSettingsModal, setShowSettingsModal] = useState(false);
     const [showShareMenu, setShowShareMenu] = useState(false);
     const [showPhotoGallery, setShowPhotoGallery] = useState(false);
+    const [directPhotoId, setDirectPhotoId] = useState<string | null>(null);
     const [screenshotLayout, setScreenshotLayout] = useState<ScreenshotLayout | null>(null);
     
     // [Logic] Determine if the list is "Short" (auto-open toolbox)
@@ -85,6 +87,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
             setRecord(updated);
             isDirtyRef.current = true;
             setShowShareMenu(false);
+            setDirectPhotoId(null);
             setShowPhotoGallery(true);
         },
         onPhotoDeleted: async (ids) => {
@@ -338,7 +341,18 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
 
     const handleOpenGallery = () => {
         setShowShareMenu(false);
+        setDirectPhotoId(null);
         setShowPhotoGallery(true);
+    };
+
+    const handleOpenPhoto = (photoId: string) => {
+        setDirectPhotoId(photoId);
+        setShowPhotoGallery(true);
+    };
+
+    const handleClosePhotoGallery = () => {
+        setShowPhotoGallery(false);
+        setDirectPhotoId(null);
     };
 
     const panelDockOffset = 'var(--bottom-ui-safe-gap)';
@@ -472,18 +486,26 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                             setShowScreenshotModal(true);
                         }}
                         onUpdateSession={handleUpdateNote}
+                        topContent={
+                            <HistoryPhotoStrip
+                                photoIds={record.photos || []}
+                                onPhotoClick={handleOpenPhoto}
+                            />
+                        }
                     />
                 </div>
             </div>
 
             <PhotoGalleryModal
                 isOpen={showPhotoGallery}
-                onClose={() => setShowPhotoGallery(false)}
+                onClose={handleClosePhotoGallery}
                 photoIds={record.photos || []}
                 onUploadPhoto={photos.openPhotoLibrary}
                 onTakePhoto={photos.openCamera}
                 onDeletePhoto={photos.handleDeletePhoto}
                 overlayData={overlayData} // Pass context
+                initialPhotoId={directPhotoId}
+                entryMode={directPhotoId ? 'direct-lightbox' : 'gallery'}
             />
 
             <HistorySettingsModal

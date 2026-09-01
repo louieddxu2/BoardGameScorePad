@@ -61,4 +61,21 @@ describe('SmartSpacer participant tools', () => {
     renderSpacer(false);
     expect(screen.queryByText(/點擊上方分數格開始輸入|Tap a score cell to start/)).not.toBeInTheDocument();
   });
+
+  it('places optional history content before the media tools', () => {
+    render(
+      <LanguageProvider>
+        <SmartSpacer
+          session={session}
+          template={template}
+          onUpdateSession={vi.fn()}
+          topContent={<div>photo-strip</div>}
+        />
+      </LanguageProvider>,
+    );
+
+    const photoStrip = screen.getByText('photo-strip');
+    const mediaTools = screen.getByText('media-tools');
+    expect(photoStrip.compareDocumentPosition(mediaTools) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });

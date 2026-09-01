@@ -19,9 +19,10 @@ interface SmartSpacerProps {
     onUpdateSession: (session: GameSession) => void;
     mode?: 'session' | 'history'; // New prop
     mediaOnly?: boolean;
+    topContent?: React.ReactNode;
 }
 
-const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhoto, onScreenshot, onUpdateSession, mode = 'session', mediaOnly = false }) => {
+const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhoto, onScreenshot, onUpdateSession, mode = 'session', mediaOnly = false, topContent }) => {
     const { t } = useSessionTranslation();
     const isHistory = mode === 'history';
     const keepToolboxTouchLocal = (event: React.TouchEvent) => event.stopPropagation();
@@ -37,6 +38,12 @@ const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhot
         >
             {/* Toolbox Grid - Masonry-ish Layout */}
             <div className="grid grid-cols-4 gap-3 w-full max-w-sm mx-auto pb-20">
+
+                {topContent && (
+                    <div className="col-span-4 min-w-0">
+                        {topContent}
+                    </div>
+                )}
 
                 {/* Row 1: Media */}
                 <div className="col-span-4">
