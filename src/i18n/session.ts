@@ -289,7 +289,7 @@ export const sessionTranslations = {
     voice_units: "十百千",
     voice_negative: "負",
     screenshot_outcome_win: "勝",
-    screenshot_outcome_loss: "負",
+    screenshot_outcome_loss: "敗",
   },
   'en': {
     // --- Session View ---

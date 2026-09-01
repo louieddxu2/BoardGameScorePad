@@ -54,6 +54,18 @@ describe('ScoreOverlayGenerator zero-score outcomes', () => {
     expect(queryByText('負')).toBeNull();
   });
 
+  it('uses 敗 for a zero-score non-winner when the scoring result is decided', () => {
+    const players = [
+      createPlayer('p1', 'Alice', 0),
+      createPlayer('p2', 'Bob', 0),
+    ];
+
+    const { getByText, queryByText } = renderOverlay(baseData(players, ['p1'], 'HIGHEST_WINS'));
+
+    expect(getByText('敗')).toBeInTheDocument();
+    expect(queryByText('負')).toBeNull();
+  });
+
   it('keeps zero numeric in no-score modes', () => {
     const players = [
       createPlayer('p1', 'Alice', 0),
