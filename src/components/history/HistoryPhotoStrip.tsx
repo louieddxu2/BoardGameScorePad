@@ -51,22 +51,16 @@ const HistoryPhotoStrip: React.FC<HistoryPhotoStripProps> = ({ photoIds, onPhoto
 
     if (thumbnails.length === 0) return null;
 
-    const keepStripTouchLocal = (event: React.TouchEvent) => event.stopPropagation();
-
     return (
         <div
             data-history-photo-strip="true"
             className="flex gap-2 overflow-x-auto no-scrollbar touch-pan-x overscroll-x-contain snap-x snap-proximity pb-1"
-            onTouchStart={keepStripTouchLocal}
-            onTouchMove={keepStripTouchLocal}
-            onTouchEnd={keepStripTouchLocal}
-            onTouchCancel={keepStripTouchLocal}
         >
             {thumbnails.map((thumbnail, index) => (
                 <button
                     key={thumbnail.id}
                     type="button"
-                    className="w-20 h-16 shrink-0 snap-start overflow-hidden rounded-xl border border-surface-border bg-surface-recessed active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-secondary"
+                    className="w-24 h-20 shrink-0 snap-start overflow-hidden rounded-xl border border-surface-border bg-surface-recessed active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-secondary"
                     onClick={() => onPhotoClick(thumbnail.id)}
                     aria-label={`Session Photo ${index + 1}`}
                 >

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { Wrench } from 'lucide-react';
 import { GameSession, GameTemplate } from '../../../types';
 
@@ -25,7 +25,22 @@ interface SmartSpacerProps {
 const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhoto, onScreenshot, onUpdateSession, mode = 'session', mediaOnly = false, topContent }) => {
     const { t } = useSessionTranslation();
     const isHistory = mode === 'history';
-    const keepToolboxTouchLocal = (event: React.TouchEvent) => event.stopPropagation();
+    const isPinchingRef = useRef(false);
+    const keepToolboxTouchLocal = (event: React.TouchEvent) => {
+        if (event.touches.length >= 2) {
+            isPinchingRef.current = true;
+            return;
+        }
+
+        if (isPinchingRef.current) {
+            if (event.type === 'touchend' || event.type === 'touchcancel') {
+                isPinchingRef.current = false;
+            }
+            return;
+        }
+
+        event.stopPropagation();
+    };
 
     return (
         <div

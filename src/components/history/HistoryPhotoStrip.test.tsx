@@ -46,6 +46,7 @@ describe('HistoryPhotoStrip', () => {
 
         await waitFor(() => expect(screen.getAllByRole('button')).toHaveLength(2));
         const buttons = screen.getAllByRole('button');
+        expect(buttons[0]).toHaveClass('w-24', 'h-20');
         expect(vi.mocked(imageService.getImage).mock.calls.map(([id]) => id)).toEqual([
             'newest-photo',
             'missing',

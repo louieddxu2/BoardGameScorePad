@@ -4,6 +4,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import SmartSpacer from './SmartSpacer';
 import { LanguageProvider } from '../../../i18n';
 import { GameSession, GameTemplate } from '../../../types';
+import { useMobileZoom } from '../../../hooks/useMobileZoom';
 
 vi.mock('../../tools/MediaTool', () => ({ default: () => <div>media-tools</div> }));
 vi.mock('../../tools/RandomizerTool', () => ({ default: () => <div>randomizer-tool</div> }));
@@ -37,6 +38,34 @@ describe('SmartSpacer participant tools', () => {
       touches: [{ clientX: 100, clientY: 100 }],
     });
     expect(onAncestorTouchMove).not.toHaveBeenCalled();
+  });
+
+  it('lets a two-finger gesture reach the app zoom handler', () => {
+    const ZoomHarness = () => {
+      useMobileZoom();
+      return (
+        <LanguageProvider>
+          <SmartSpacer session={session} template={template} onUpdateSession={vi.fn()} />
+        </LanguageProvider>
+      );
+    };
+    const { container } = render(<ZoomHarness />);
+    const scroller = container.querySelector('[data-toolbox-scroller="true"]')!;
+
+    fireEvent.touchStart(scroller, {
+      touches: [
+        { clientX: 0, clientY: 0 },
+        { clientX: 100, clientY: 0 },
+      ],
+    });
+    fireEvent.touchMove(scroller, {
+      touches: [
+        { clientX: 0, clientY: 0 },
+        { clientX: 120, clientY: 0 },
+      ],
+    });
+
+    expect(document.documentElement.style.fontSize).toBe('19.2px');
   });
 
   it('shows only media tools in participant mode', () => {
