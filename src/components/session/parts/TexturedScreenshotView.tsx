@@ -36,6 +36,7 @@ interface ScreenshotViewProps {
 const TexturedScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
     const { id, className, style, session, template, zoomLevel, mode, layout, baseImage, customWinners } = props;
     const { t } = useSessionTranslation();
+    const allPlayersHaveZeroScore = session.players.every(player => player.totalScore === 0);
 
     // Calculate Winners
     let winners: string[] = [];
@@ -311,6 +312,7 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                                     }}
                                     limitX={X2}
                                     cleanMode={mode === 'simple'}
+                                    showOutcomeWhenAllScoresZero={allPlayersHaveZeroScore}
                                 />
                             ))}
                         </div>

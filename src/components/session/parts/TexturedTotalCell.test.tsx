@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
-import { LanguageProvider } from '../../../i18n';
+import { LanguageContext, LanguageProvider } from '../../../i18n';
 import { Player } from '../../../types';
 import TexturedTotalCell from './TexturedTotalCell';
 
@@ -13,17 +13,21 @@ const player: Player = {
   totalScore: 42,
 };
 
-const renderCell = (scoringRule?: 'HIGHEST_WINS' | 'LOWEST_WINS' | 'COMPETITIVE_NO_SCORE') => render(
-  <LanguageProvider>
+const renderCell = (
+  scoringRule?: 'HIGHEST_WINS' | 'LOWEST_WINS' | 'COOP' | 'COMPETITIVE_NO_SCORE',
+  options: { totalScore?: number; isWinner?: boolean; showOutcomeWhenAllScoresZero?: boolean } = {},
+) => render(
+  <LanguageContext.Provider value={{ language: 'zh-TW', setLanguage: () => undefined }}>
     <TexturedTotalCell
-      player={player}
+      player={{ ...player, totalScore: options.totalScore ?? player.totalScore }}
       playerIndex={0}
-      isWinner
+      isWinner={options.isWinner ?? true}
       hasMultiplePlayers={false}
       baseImage=""
       scoringRule={scoringRule}
+      showOutcomeWhenAllScoresZero={options.showOutcomeWhenAllScoresZero}
     />
-  </LanguageProvider>
+  </LanguageContext.Provider>
 );
 
 describe('TexturedTotalCell winner crown', () => {
@@ -49,5 +53,43 @@ describe('TexturedTotalCell winner crown', () => {
     const { container } = renderCell('COMPETITIVE_NO_SCORE');
 
     expect(container.querySelector('svg.lucide-crown')).toBeNull();
+  });
+
+  it('shows the win outcome instead of zero in a photo-style scoring screenshot', () => {
+    const { container, queryByText, getByText } = renderCell('HIGHEST_WINS', {
+      totalScore: 0,
+      showOutcomeWhenAllScoresZero: true,
+    });
+
+    expect(getByText('勝')).toBeInTheDocument();
+    expect(queryByText('0')).toBeNull();
+  });
+
+  it('shows the loss outcome for a zero-score non-winner', () => {
+    const { getByText, queryByText } = renderCell('LOWEST_WINS', {
+      totalScore: 0,
+      isWinner: false,
+      showOutcomeWhenAllScoresZero: true,
+    });
+
+    expect(getByText('負')).toBeInTheDocument();
+    expect(queryByText('0')).toBeNull();
+  });
+
+  it('keeps zero numeric when the all-scores-zero flag is false', () => {
+    const { getByText, queryByText } = renderCell('HIGHEST_WINS', { totalScore: 0 });
+
+    expect(getByText('0')).toBeInTheDocument();
+    expect(queryByText('勝')).toBeNull();
+  });
+
+  it('keeps zero numeric for no-score modes', () => {
+    const { getByText, queryByText } = renderCell('COMPETITIVE_NO_SCORE', {
+      totalScore: 0,
+      showOutcomeWhenAllScoresZero: true,
+    });
+
+    expect(getByText('0')).toBeInTheDocument();
+    expect(queryByText('勝')).toBeNull();
   });
 });
