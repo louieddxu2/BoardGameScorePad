@@ -56,7 +56,7 @@ export const useHistoryQuery = (searchQuery: string, savedPlayers?: SavedListIte
 
   return {
     historyRecords: filteredSummaries.slice(0, DATA_LIMITS.QUERY.HISTORY_RECORDS),
-    historyStatsRecords: activeSummaries,
+    historyStatsRecords: filteredSummaries,
     historyGameEntries,
     historyCount: isSearching ? filteredSummaries.length : activeSummaries.length,
     setPendingDeleteHistoryIds: setPendingDeleteIds

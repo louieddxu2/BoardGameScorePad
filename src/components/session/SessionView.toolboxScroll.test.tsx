@@ -134,7 +134,7 @@ const getFirstScoreCell = () => {
 
 const getInputPanel = () => {
   const button = screen.getByRole('button', { name: '1' });
-  const panel = button.closest('.fixed') as HTMLElement | null;
+  const panel = button.closest('[data-session-input-panel="true"]') as HTMLElement | null;
   if (!panel) throw new Error('input panel not found');
   return panel;
 };
@@ -187,6 +187,72 @@ const swipeOn = (
 };
 
 describe('SessionView toolbox scroll behavior', () => {
+  it('anchors the iOS input panel to the same session surface as the collapsed totals bar', () => {
+    const previousValue = document.documentElement.dataset.iosBrowser;
+    document.documentElement.dataset.iosBrowser = 'true';
+
+    try {
+      renderSession();
+      fireEvent.click(getFirstScoreCell());
+
+      expect(getInputPanel()).toHaveClass('absolute', 'left-0', 'right-0');
+      expect(getInputPanel()).not.toHaveClass('fixed', 'inset-0');
+      expect(getInputPanel().style.height).toBe('40vh');
+      expect(getInputPanel().style.bottom).toBe('var(--bottom-ui-safe-gap)');
+      expect(document.querySelector('[data-ios-browser-reserve="true"]')).toBeNull();
+    } finally {
+      if (previousValue === undefined) {
+        delete document.documentElement.dataset.iosBrowser;
+      } else {
+        document.documentElement.dataset.iosBrowser = previousValue;
+      }
+    }
+  });
+
+  it('keeps the Android browser input surface above the system navigation area', () => {
+    const previousAndroid = document.documentElement.dataset.android;
+    const previousStandalone = document.documentElement.dataset.standalone;
+    delete document.documentElement.dataset.iosBrowser;
+    document.documentElement.dataset.android = 'true';
+    document.documentElement.dataset.standalone = 'false';
+
+    try {
+      renderSession();
+      fireEvent.click(getFirstScoreCell());
+
+      expect(getInputPanel()).toHaveClass('absolute', 'left-0', 'right-0');
+      expect(getInputPanel().style.bottom).toBe('var(--app-safe-area-bottom)');
+      expect(document.querySelector('[data-ios-browser-reserve="true"]')).toBeNull();
+    } finally {
+      if (previousAndroid === undefined) delete document.documentElement.dataset.android;
+      else document.documentElement.dataset.android = previousAndroid;
+      if (previousStandalone === undefined) delete document.documentElement.dataset.standalone;
+      else document.documentElement.dataset.standalone = previousStandalone;
+    }
+  });
+
+  it('keeps standalone PWA input surface behavior unchanged', () => {
+    const previousAndroid = document.documentElement.dataset.android;
+    const previousStandalone = document.documentElement.dataset.standalone;
+    delete document.documentElement.dataset.iosBrowser;
+    document.documentElement.dataset.android = 'true';
+    document.documentElement.dataset.standalone = 'true';
+
+    try {
+      renderSession();
+      fireEvent.click(getFirstScoreCell());
+
+      expect(getInputPanel()).toHaveClass('absolute', 'left-0', 'right-0');
+      expect(getInputPanel().style.bottom).toBe('var(--bottom-ui-safe-gap)');
+      expect(document.querySelector('[data-ios-browser-reserve="true"]')).toBeNull();
+    } finally {
+      if (previousAndroid === undefined) delete document.documentElement.dataset.android;
+      else document.documentElement.dataset.android = previousAndroid;
+      if (previousStandalone === undefined) delete document.documentElement.dataset.standalone;
+      else document.documentElement.dataset.standalone = previousStandalone;
+    }
+  });
+
   it('detaches a multiplayer room without stopping its runtime when the view unmounts', () => {
     const manager = createMultiplayerSessionManager();
     const runtime = { role: 'player' as const, stop: vi.fn(), start: vi.fn(), controller: {}, session: {} } as any;

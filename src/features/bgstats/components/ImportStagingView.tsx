@@ -121,10 +121,10 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
     };
 
     return (
-        <div className="flex flex-col h-full bg-app overflow-hidden">
+        <div className="flex flex-col flex-1 min-h-0 bg-app overflow-hidden">
 
             {/* Header Summary */}
-            <div className="flex-none p-4 border-b border-surface-border bg-surface-bg/50">
+            <div className="safe-area-top-medium flex-none p-4 border-b border-surface-border bg-surface-bg/50">
                 <div className="flex items-center gap-3 mb-2">
                     <div className="p-2 bg-status-success/10 rounded-lg text-status-success border border-status-success/20">
                         <CheckCircle size={20} />
@@ -217,7 +217,7 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
             </div>
 
             {/* Footer */}
-            <div className="flex-none p-4 border-t border-surface-border bg-surface-bg flex justify-end gap-3">
+            <div className="safe-area-bottom-medium flex-none p-4 border-t border-surface-border bg-surface-bg flex justify-end gap-3">
                 <button
                     onClick={onCancel}
                     disabled={isProcessing}

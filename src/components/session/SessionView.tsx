@@ -17,6 +17,7 @@ import { calculateWinners } from '../../utils/templateUtils'; // [Refactor]
 import SessionHeader from './parts/SessionHeader';
 import ScoreGrid from './parts/ScoreGrid';
 import TotalsBar from './parts/TotalsBar';
+import SessionViewportDiagnostics from './parts/SessionViewportDiagnostics';
 import InputPanel from './parts/InputPanel';
 // Modals
 import ScreenshotModal from './modals/ScreenshotModal';
@@ -148,9 +149,16 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const multiplayerPreviewPlayerNumber = capabilities.role === 'player'
     ? session.players.findIndex(player => player.id === capabilities.playerId) + 1
     : null;
-  const { setUiState, keyboardOffset, closeFocusedPlayerNameInput } = sessionState;
-  const panelDockOffset = getSessionPanelDockOffset(keyboardOffset);
-  const occupiedBottom = getSessionOccupiedBottom(sessionState.panelHeight, keyboardOffset);
+  const { setUiState, keyboardOffset, isKeyboardOpen, closeFocusedPlayerNameInput } = sessionState;
+  const isNativeKeyboardCompensationActive = isKeyboardOpen && sessionState.uiState.isInputFocused;
+  const isAndroid = typeof document !== 'undefined' && document.documentElement.dataset.android === 'true';
+  const isStandalone = typeof document !== 'undefined' && document.documentElement.dataset.standalone === 'true';
+  const isAndroidBrowser = isAndroid && !isStandalone;
+  const sessionIdleDockOffset = isAndroidBrowser
+    ? 'var(--app-safe-area-bottom)'
+    : 'var(--bottom-ui-safe-gap)';
+  const panelDockOffset = getSessionPanelDockOffset(keyboardOffset, isNativeKeyboardCompensationActive, sessionIdleDockOffset);
+  const occupiedBottom = getSessionOccupiedBottom(sessionState.panelHeight, keyboardOffset, isNativeKeyboardCompensationActive, sessionIdleDockOffset);
 
   // No special local state needed for photo preview anymore
   const eventHandlers = useSessionEvents({
@@ -524,8 +532,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     gameName: session.name || template.name, // [Identity Upgrade] Use Session Name
     date: session.startTime,
     players: session.players,
-    winners: winners
-  }), [session.name, template.name, session.startTime, session.players, winners]);
+    winners: winners,
+    scoringRule: session.scoringRule,
+  }), [session.name, template.name, session.startTime, session.players, winners, session.scoringRule]);
 
   const handleScreenshotRequest = useCallback((mode: 'full' | 'simple') => {
     const playerHeaderRowEl = document.querySelector('#live-player-header-row') as HTMLElement;
@@ -936,6 +945,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         canEditPlayers={capabilities.canEditPlayers}
         mediaOnlyTools={capabilities.role === 'player'}
       />
+
+      <SessionViewportDiagnostics />
 
       <ScreenshotModal
         isOpen={screenshotModal.isOpen}

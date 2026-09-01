@@ -20,6 +20,7 @@ import { getRecordScoringRule, getRecordTemplate } from '../../utils/historyUtil
 import { usePhotoManager } from '../../hooks/usePhotoManager';
 import { useToolboxBoundaryGesture } from '../../hooks/useToolboxBoundaryGesture';
 import SmartSpacer from '../session/parts/SmartSpacer';
+import HistoryPhotoStrip from './HistoryPhotoStrip';
 
 import { useHistoryTranslation } from '../../i18n/history';
 
@@ -65,6 +66,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
     const [showSettingsModal, setShowSettingsModal] = useState(false);
     const [showShareMenu, setShowShareMenu] = useState(false);
     const [showPhotoGallery, setShowPhotoGallery] = useState(false);
+    const [directPhotoId, setDirectPhotoId] = useState<string | null>(null);
     const [screenshotLayout, setScreenshotLayout] = useState<ScreenshotLayout | null>(null);
     
     // [Logic] Determine if the list is "Short" (auto-open toolbox)
@@ -85,6 +87,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
             setRecord(updated);
             isDirtyRef.current = true;
             setShowShareMenu(false);
+            setDirectPhotoId(null);
             setShowPhotoGallery(true);
         },
         onPhotoDeleted: async (ids) => {
@@ -158,6 +161,14 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
     // 1. History Root Entry: Handles the final exit and cloud sync trigger.
     // This decouples navigation state from cloud logic as requested.
     useModalBackHandler(true, handleExitAndSync, 'history-root');
+
+    // Keep the history share popover in the same browser-back stack used by
+    // the active score sheet, so Back closes the popover before leaving.
+    const { zIndex: shareMenuZIndex } = useModalBackHandler(
+        showShareMenu,
+        () => setShowShareMenu(false),
+        'history-share-menu'
+    );
 
     // Load cloud image
     useEffect(() => {
@@ -264,8 +275,9 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
         date: record.startTime,
         endTime: record.endTime, // Pass endTime for accurate history timestamp
         players: record.players,
-        winners: winners
-    }), [record.gameName, record.startTime, record.endTime, record.players, winners]);
+        winners: winners,
+        scoringRule: getRecordScoringRule(record),
+    }), [record.gameName, record.startTime, record.endTime, record.players, winners, record.scoringRule, record.snapshotTemplate?.defaultScoringRule]);
 
     const handleScreenshotRequest = (mode: 'full' | 'simple') => {
         setShowShareMenu(false);
@@ -329,7 +341,18 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
 
     const handleOpenGallery = () => {
         setShowShareMenu(false);
+        setDirectPhotoId(null);
         setShowPhotoGallery(true);
+    };
+
+    const handleOpenPhoto = (photoId: string) => {
+        setDirectPhotoId(photoId);
+        setShowPhotoGallery(true);
+    };
+
+    const handleClosePhotoGallery = () => {
+        setShowPhotoGallery(false);
+        setDirectPhotoId(null);
     };
 
     const panelDockOffset = 'var(--bottom-ui-safe-gap)';
@@ -391,7 +414,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                         onOpenGallery={handleOpenGallery}
                         onTakePhoto={photos.openCamera}
                         photoCount={record.photos?.length || 0}
-                        zIndex={100}
+                        zIndex={shareMenuZIndex}
                     />
                 </div>
             </div>
@@ -449,7 +472,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
 
             {/* History Toolbox Drawer - No backdrop, matches Session InputPanel feel */}
             <div
-                className={`fixed left-0 right-0 z-40 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgb(var(--c-black)_/_0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isToolboxOpen ? 'translate-y-0' : 'translate-y-full'}`}
+                className={`absolute left-0 right-0 z-40 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgb(var(--c-black)_/_0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isToolboxOpen ? 'translate-y-0' : 'translate-y-full'}`}
                 style={{ height: '40vh', bottom: panelDockOffset }}
             >
                 <div className="flex-1 min-h-0 bg-modal-bg relative">
@@ -463,18 +486,26 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                             setShowScreenshotModal(true);
                         }}
                         onUpdateSession={handleUpdateNote}
+                        topContent={
+                            <HistoryPhotoStrip
+                                photoIds={record.photos || []}
+                                onPhotoClick={handleOpenPhoto}
+                            />
+                        }
                     />
                 </div>
             </div>
 
             <PhotoGalleryModal
                 isOpen={showPhotoGallery}
-                onClose={() => setShowPhotoGallery(false)}
+                onClose={handleClosePhotoGallery}
                 photoIds={record.photos || []}
                 onUploadPhoto={photos.openPhotoLibrary}
                 onTakePhoto={photos.openCamera}
                 onDeletePhoto={photos.handleDeletePhoto}
                 overlayData={overlayData} // Pass context
+                initialPhotoId={directPhotoId}
+                entryMode={directPhotoId ? 'direct-lightbox' : 'gallery'}
             />
 
             <HistorySettingsModal

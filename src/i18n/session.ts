@@ -288,6 +288,8 @@ export const sessionTranslations = {
     voice_digits: "零一二三四五六七八九",
     voice_units: "十百千",
     voice_negative: "負",
+    screenshot_outcome_win: "勝",
+    screenshot_outcome_loss: "敗",
   },
   'en': {
     // --- Session View ---
@@ -576,6 +578,8 @@ export const sessionTranslations = {
     voice_digits: "0123456789",
     voice_units: "HTK",
     voice_negative: "minus",
+    screenshot_outcome_win: "Win",
+    screenshot_outcome_loss: "Loss",
   },
 };
 

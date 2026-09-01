@@ -48,14 +48,14 @@ const InputPanelLayout: React.FC<InputPanelLayoutProps> = ({
   // Compact Mode (Focused Input): Explicit rows to prevent squashing
   if (isCompact) {
     return (
-      <div className="grid grid-cols-4 grid-rows-[1fr_48px] gap-2 p-2 select-none bg-[rgb(var(--c-input-bg))] h-full">
+      <div data-input-panel-layout="true" className="absolute inset-0 grid grid-cols-4 grid-rows-[1fr_48px] gap-2 p-2 select-none bg-[rgb(var(--c-input-bg))]">
         {/* Main content area (Left 3 columns, both rows) */}
-        <div className="col-span-3 row-span-2 h-full min-h-0">
+        <div className="col-span-3 row-span-2 flex flex-col min-h-0">
           {children}
         </div>
 
         {/* Sidebar (top area of last column - row 1) */}
-        <div className="col-start-4 row-start-1 overflow-hidden rounded-t-xl bg-[rgb(var(--c-input-header-bg)/0.3)] border-l border-t border-r border-[rgb(var(--c-input-border))] min-h-0">
+        <div data-input-panel-sidebar="true" className="col-start-4 row-start-1 overflow-hidden rounded-t-xl bg-[rgb(var(--c-input-header-bg)/0.3)] border-l border-t border-r border-[rgb(var(--c-input-border))] min-h-0 flex flex-col">
           {sidebarContent}
         </div>
 
@@ -73,14 +73,14 @@ const InputPanelLayout: React.FC<InputPanelLayoutProps> = ({
 
   // Full Mode: 4x4 Grid
   return (
-    <div className="grid grid-cols-4 grid-rows-4 gap-2 p-2 select-none bg-[rgb(var(--c-input-bg))] h-full">
+    <div data-input-panel-layout="true" className="absolute inset-0 grid grid-cols-4 grid-rows-4 gap-2 p-2 select-none bg-[rgb(var(--c-input-bg))]">
       {/* Main content area (Left 3 columns, all 4 rows) */}
-      <div className="col-span-3 row-span-4 h-full min-h-0">
+      <div className="col-span-3 row-span-4 flex flex-col min-h-0">
         {children}
       </div>
 
       {/* Sidebar (Top 3 rows of the last column) */}
-      <div className="col-start-4 row-start-1 row-span-3 overflow-hidden rounded-t-xl rounded-b-none bg-[rgb(var(--c-input-header-bg)/0.3)] border-l border-t border-r border-[rgb(var(--c-input-border))] min-h-0">
+      <div data-input-panel-sidebar="true" className="col-start-4 row-start-1 row-span-3 overflow-hidden rounded-t-xl rounded-b-none bg-[rgb(var(--c-input-header-bg)/0.3)] border-l border-t border-r border-[rgb(var(--c-input-border))] min-h-0 flex flex-col">
         {sidebarContent}
       </div>
 

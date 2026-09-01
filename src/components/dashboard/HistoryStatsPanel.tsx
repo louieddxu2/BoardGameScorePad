@@ -192,6 +192,12 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
     };
   }, [detailView, records, filteredRecords, savedPlayers]);
 
+  React.useEffect(() => {
+    if (detailView?.type === 'game' && records && !buildSpecificGameStats(detailView.key, records, { savedPlayers })) {
+      setDetailView(null);
+    }
+  }, [detailView, records, savedPlayers]);
+
   const specificPlayerStats = useMemo(() => {
     if (detailView?.type !== 'player' || !records) return null;
 
@@ -317,26 +323,27 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
 
   return (
     <>
+      <button
+        onClick={() => setIsExpanded(prev => !prev)}
+        className={`absolute right-2 top-1/2 -translate-y-1/2 z-50 w-11 h-11 flex items-center justify-center rounded-xl border shadow-ui-floating pointer-events-auto transition-all active:scale-95 ${
+          isPanelExpanded
+            ? 'bg-app-bg-deep text-brand-primary border-brand-primary'
+            : 'bg-app-bg-deep/95 text-txt-muted border-surface-border hover:border-txt-muted'
+        }`}
+        style={detailView && zIndex ? { zIndex: zIndex + 1 } : undefined}
+        title={isPanelExpanded ? t('stats_collapse') : t('stats_expand')}
+      >
+        {isPanelExpanded ? <ChevronDown size={22} /> : <ChevronUp size={22} />}
+      </button>
+
       <div
-        className={`fixed z-40 flex flex-col pointer-events-none transition-all duration-300 ease-in-out ${panelLayoutClass}`}
+        className={`absolute z-40 flex flex-col pointer-events-none transition-all duration-300 ease-in-out ${panelLayoutClass}`}
         style={{
           bottom: 'var(--bottom-ui-safe-gap)',
           ...(detailView && zIndex ? { zIndex } : {}),
         }}
       >
-        <button
-          onClick={() => setIsExpanded(prev => !prev)}
-          className={`fixed right-2 top-1/2 -translate-y-1/2 z-50 w-11 h-11 flex items-center justify-center rounded-xl border shadow-ui-floating pointer-events-auto transition-all active:scale-95 ${
-            isPanelExpanded
-              ? 'bg-app-bg-deep text-brand-primary border-brand-primary'
-              : 'bg-app-bg-deep/95 text-txt-muted border-surface-border hover:border-txt-muted'
-          }`}
-          title={isPanelExpanded ? t('stats_collapse') : t('stats_expand')}
-        >
-          {isPanelExpanded ? <ChevronDown size={22} /> : <ChevronUp size={22} />}
-        </button>
-
-        <div className="flex-1 min-w-0 overflow-hidden flex flex-col bg-app-bg border-t border-surface-border shadow-ui-floating pointer-events-auto relative transition-all duration-300 h-full">
+        <div className="flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col bg-app-bg border-t border-surface-border shadow-ui-floating pointer-events-auto relative transition-all duration-300">
           <div className="absolute top-0 left-0 right-0 p-1 text-center pointer-events-none z-10 opacity-30">
             <ChevronUp size={12} className="text-txt-muted mx-auto" />
           </div>
@@ -360,14 +367,14 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
             </div>
           )}
 
-          <div className="flex-1 min-h-0 overflow-auto no-scrollbar pb-2" ref={scrollContainerRef}>
+          <div className="flex flex-col flex-1 min-h-0 overflow-auto no-scrollbar pb-2" ref={scrollContainerRef}>
             {stats.games.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-txt-muted opacity-70 gap-2">
+              <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-txt-muted opacity-70 gap-2">
                 <BarChart3 size={32} />
                 <span className="text-sm font-bold">{t('stats_empty_records')}</span>
               </div>
             ) : detailView?.type === 'game' && specificStats ? (
-              <div className="flex flex-col w-full h-full min-h-0">
+              <div className="flex flex-col w-full flex-1 min-h-0">
                 {/* 遊戲名稱與返回列：使用 Flex 兩端對齊排版，避免強行分欄限制空間 */}
                 <div 
                   onClick={returnToOverview}
@@ -618,7 +625,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
                 )}
               </div>
             ) : detailView?.type === 'player' && specificPlayerStats ? (
-              <div className="flex flex-col w-full h-full min-h-0">
+              <div className="flex flex-col w-full flex-1 min-h-0">
                 <div
                   onClick={returnToOverview}
                   className="flex items-center justify-between gap-3 pr-3 py-1.5 min-h-[46px] border-b border-surface-border/70 bg-app-bg hover:bg-surface-hover transition-colors cursor-pointer w-full shrink-0"
@@ -961,7 +968,6 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
             </div>
 
             <div className={`absolute bottom-0 right-0 ${ACTION_ROW_WIDTH_CLASS} ${BOTTOM_ROW_HEIGHT_CLASS} flex border-t border-l border-surface-border z-20 bg-app-bg-deep pointer-events-auto`}>
-            {/* 未來如需啟用搜尋聯動，請將下方放大鏡按鈕註解解除：
             <button
               onClick={onSearchClick}
               className="w-[50px] h-full flex items-center justify-center bg-app-bg hover:bg-surface-bg text-brand-primary transition-colors active:brightness-90 border-r border-surface-border"
@@ -969,11 +975,10 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
             >
               <Search size={22} strokeWidth={2.5} />
             </button>
-            */}
 
             <button
               onClick={() => setShowPhotoGrid(true)}
-              className="w-full h-full flex flex-col items-center justify-center gap-0.5 transition-all active:brightness-90 bg-brand-primary hover:filter hover:brightness-110 text-white"
+              className="flex-1 min-w-0 h-full flex flex-col items-center justify-center gap-0.5 transition-all active:brightness-90 bg-brand-primary hover:filter hover:brightness-110 text-white"
               title={t('stats_photo_grid_title')}
             >
               <Images size={23} />

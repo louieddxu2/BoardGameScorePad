@@ -215,9 +215,9 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
           </div>
         </div>
 
-        <div className="modal-body flex-1 p-4 overflow-hidden flex flex-col h-full min-h-0">
+        <div className="modal-body flex-1 p-4 overflow-hidden flex flex-col min-h-0">
           {activeTab === 'import' && (
-            <div className="flex flex-col h-full gap-4">
+            <div className="flex flex-col flex-1 min-h-0 gap-4">
               <p className="text-sm text-txt-muted flex-none">{t('data_import_ph')}</p>
               <textarea
                 value={importJson}
@@ -266,7 +266,7 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
           )}
 
           {activeTab === 'export' && (
-            <div className="flex flex-col h-full gap-2">
+            <div className="flex flex-col flex-1 min-h-0 gap-2">
               <p className="text-sm text-txt-muted flex-none">{t('data_export_hint')}</p>
 
               <div className="flex-1 modal-bg-recessed rounded-xl border border-surface-border overflow-y-auto no-scrollbar p-2 space-y-1 min-h-0">

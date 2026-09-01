@@ -50,4 +50,5 @@ describe('TexturedTotalCell winner crown', () => {
 
     expect(container.querySelector('svg.lucide-crown')).toBeNull();
   });
+
 });

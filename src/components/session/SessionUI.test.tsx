@@ -47,7 +47,7 @@ describe.skip('UI 互動與手機版面響應測試', () => {
 
     // 驗證面板 CSS transform 狀態 (確保它是顯示的)
     // 注意：這裡依賴 Tailwind class 實作細節
-    const panel = clearButton.closest('.fixed');
+    const panel = clearButton.closest('[data-session-input-panel="true"]');
     expect(panel).toHaveClass('translate-y-0');
   });
 
@@ -64,10 +64,10 @@ describe.skip('UI 互動與手機版面響應測試', () => {
 
     // 抓取面板 DOM
     const clearButton = screen.getByText('清除');
-    const panel = clearButton.closest('.fixed') as HTMLElement;
+    const panel = clearButton.closest('[data-session-input-panel="true"]') as HTMLElement;
 
-    // 初始狀態：面板應該貼底 (bottom: 0px)
-    expect(panel.style.bottom).toBe('var(--bottom-ui-safe-gap)');
+    // 初始狀態：fixed 面板定位在底部安全區域之上
+    expect(panel.style.bottom).toBe('var(--app-safe-area-bottom)');
 
     // --- 模擬手機行為：鍵盤彈出 ---
     // 這會觸發 useVisualViewportOffset Hook
@@ -88,7 +88,7 @@ describe.skip('UI 互動與手機版面響應測試', () => {
     });
 
     // --- 驗證 ---
-    // 面板應該自動增加 bottom 距離，避免被鍵盤擋住
+    // fixed 面板應該自動上移，避免被鍵盤擋住
     // 計算：800 - 500 = 300px
     expect(panel.style.bottom).toBe('300px');
 
@@ -101,7 +101,7 @@ describe.skip('UI 互動與手機版面響應測試', () => {
       }
     });
 
-    expect(panel.style.bottom).toBe('var(--bottom-ui-safe-gap)');
+    expect(panel.style.bottom).toBe('var(--app-safe-area-bottom)');
   });
 
   it('介面切換測試：點擊玩家標題應進入「玩家編輯模式」(面板變矮)', async () => {
@@ -123,7 +123,7 @@ describe.skip('UI 互動與手機版面響應測試', () => {
     // 我們的邏輯是：編輯玩家名稱時，因為鍵盤一定會跳出來，所以面板會切換成「緊湊模式 (Compact Mode)」
     // 高度設定為 '112px' (Header + Compact Row)
     const clearButton = screen.getByText('清除');
-    const panel = clearButton.closest('.fixed') as HTMLElement;
+    const panel = clearButton.closest('[data-session-input-panel="true"]') as HTMLElement;
 
     // 因為在測試環境中 focus 狀態可能需要透過互動觸發，我們直接檢查是否進入了編輯狀態的 UI 特徵
     // 在 SessionView 中，點擊 header 會設定 editingPlayerId，這會觸发面板顯示

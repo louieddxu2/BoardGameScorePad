@@ -49,6 +49,8 @@ interface HistoryPhotoGridShareModalProps {
 const EXPORT_GRID_WIDTH = 1080;
 const PHOTO_RECAP_TILE_COUNT = 8;
 const PHOTO_RECAP_TILE_ASPECT = 16 / 9;
+const PHOTO_RECAP_CAPTION_HEIGHT_RATIO = 0.08;
+const PHOTO_RECAP_ROW_GAP_HEIGHT_RATIO = 0.02;
 const getLimitedCandidatePhotos = (item: HistoryPhotoGridItem) => (
   item.candidatePhotos.slice(0, DATA_LIMITS.QUERY.HISTORY_PHOTO_GRID_CANDIDATES)
 );
@@ -442,8 +444,8 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-app-bg-deep/95 backdrop-blur-sm flex flex-col animate-in fade-in duration-200" style={{ zIndex }}>
-      <div className="flex-none h-16 px-4 border-b border-surface-border bg-modal-bg flex items-center justify-between">
+    <div className="absolute inset-0 bg-app-bg-deep/95 backdrop-blur-sm flex flex-col animate-in fade-in duration-200" style={{ zIndex }}>
+      <div className="safe-area-top-medium flex-none min-h-16 px-4 py-3 border-b border-surface-border bg-modal-bg flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
           <div className="p-2 rounded-lg bg-brand-primary/10 text-brand-primary">
             <ImageIcon size={20} />
@@ -502,7 +504,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
             </div>
           </div>
 
-          <div className="flex-none border-t border-surface-border bg-modal-bg p-3 flex items-center gap-3">
+          <div className="safe-area-bottom-medium flex-none border-t border-surface-border bg-modal-bg p-3 flex items-center gap-3">
             <div className="min-w-0 flex-1 overflow-x-auto no-scrollbar flex items-center gap-2">
               {cropPhotoOptions.map(photo => (
                 <button
@@ -528,18 +530,18 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
         <>
           <div className="flex-1 min-h-0 overflow-y-auto p-4 flex flex-col items-center justify-center gap-3">
             <div className="w-full max-w-[520px] flex flex-col items-center justify-center">
-              <div className="relative rounded-xl overflow-hidden shadow-2xl border border-surface-border bg-app-bg-deep max-h-[70vh] flex items-center justify-center">
+              <div className="relative rounded-xl overflow-hidden shadow-2xl border border-surface-border bg-app-bg-deep max-h-[70dvh] flex items-center justify-center">
                 <img
                   src={generatedImageUrl}
                   alt="Generated Photo Grid"
-                  className="max-w-full max-h-[70vh] object-contain select-all"
+                  className="max-w-full max-h-[70dvh] object-contain select-all"
                   style={{ WebkitTouchCallout: 'default' } as React.CSSProperties}
                 />
               </div>
             </div>
           </div>
 
-          <div className="flex-none h-20 px-4 border-t border-surface-border bg-modal-bg flex items-center justify-end gap-3">
+          <div className="safe-area-bottom-medium flex-none min-h-20 px-4 py-3 border-t border-surface-border bg-modal-bg flex items-center justify-end gap-3">
             <button
               onClick={handleBackToEdit}
               className="flex items-center gap-2 px-4 py-3 rounded-xl bg-surface-bg border border-surface-border text-txt-primary font-bold text-sm active:scale-95 transition-all"
@@ -583,7 +585,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
             )}
           </div>
 
-          <div className="flex-none h-20 px-4 border-t border-surface-border bg-modal-bg flex items-center justify-end">
+          <div className="safe-area-bottom-medium flex-none min-h-20 px-4 py-3 border-t border-surface-border bg-modal-bg flex items-center justify-end">
             <button
               onClick={handleGenerateImage}
               disabled={tiles.length === 0 || isLoading || isExporting}
@@ -613,7 +615,7 @@ const getCropFrameStyle = (tile: EditableGridTile): React.CSSProperties => {
   const maxWidthByHeight = Number((64 * aspect).toFixed(4));
   return {
     aspectRatio: aspect,
-    width: `min(86vw, ${maxWidthByHeight}vh)`
+    width: `min(86vw, ${maxWidthByHeight}dvh)`
   };
 };
 
@@ -662,9 +664,12 @@ const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>((
 
     const cols = 2;
     const rows = N % 2 !== 0 ? 2 + (N - 1) / 2 : N / 2;
-    const aspect = (2 * PHOTO_RECAP_TILE_ASPECT) / rows;
+    const photoOnlyAspect = (2 * PHOTO_RECAP_TILE_ASPECT) / rows;
+    const captionHeight = shouldHideTileGameName ? 0 : rows * PHOTO_RECAP_CAPTION_HEIGHT_RATIO;
+    const rowGapHeight = Math.max(0, rows - 1) * PHOTO_RECAP_ROW_GAP_HEIGHT_RATIO;
+    const aspect = 1 / (1 / photoOnlyAspect + captionHeight + rowGapHeight);
     return { cols, rows, aspect };
-  }, [N]);
+  }, [N, shouldHideTileGameName]);
 
   if (N === 0) return null;
 
@@ -689,7 +694,7 @@ const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>((
       </div>
 
       <div
-        className="flex-1 min-h-0 grid gap-[0.8cqw]"
+        className="flex-1 min-h-0 grid gap-x-[0.8cqw] gap-y-[2cqw]"
         style={{
           gridTemplateColumns: `repeat(${layout.cols}, minmax(0, 1fr))`,
           gridTemplateRows: `repeat(${layout.rows}, minmax(0, 1fr))`
@@ -703,7 +708,7 @@ const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>((
               key={`${tile.id}-${index}`}
               onClick={() => onSelect?.(tiles.indexOf(tile))}
               disabled={!onSelect}
-              className={`bg-surface-recessed rounded-[1cqw] overflow-hidden select-none disabled:cursor-default active:scale-[0.99] transition-transform relative min-h-0 ${
+              className={`bg-app-bg-deep border border-surface-border rounded-[1cqw] overflow-hidden select-none disabled:cursor-default active:scale-[0.99] transition-transform relative min-h-0 ${
                 isLarge ? 'col-span-2 row-span-2' : 'col-span-1 row-span-1'
               }`}
             >
@@ -747,16 +752,18 @@ const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
 
 const PhotoTile: React.FC<{ tile: EditableGridTile; hideGameName?: boolean }> = ({ tile, hideGameName }) => {
   return (
-    <div className="relative w-full h-full overflow-hidden bg-app-bg-deep">
-      <PhotoImage tile={tile} />
-      {hideGameName ? (
-        <div className="absolute right-0 bottom-0 px-[2.5cqw] py-[1.8cqw] bg-black/55 text-white rounded-tl-[1cqw] flex items-center justify-center">
-          <span className="text-[2.2cqw] leading-none text-white/70 font-mono">{formatGridDate(tile.endTime)}</span>
+    <div className="relative w-full h-full flex flex-col overflow-hidden bg-app-bg-deep">
+      <div className="relative min-h-0 flex-1 overflow-hidden bg-app-bg-deep">
+        <PhotoImage tile={tile} />
+        <div className="pointer-events-none absolute right-[1.5cqw] bottom-[1.5cqw] px-[1.2cqw] py-[0.8cqw] rounded-[0.8cqw] bg-black/55 text-white">
+          <span className="text-[2.2cqw] leading-none text-white/75 font-mono">{formatGridDate(tile.endTime)}</span>
         </div>
-      ) : (
-        <div className="absolute left-0 right-0 bottom-0 px-[2.5cqw] py-[1.8cqw] bg-black/55 text-white flex items-center gap-[2cqw]">
-          <span className="min-w-0 flex-1 text-[3.2cqw] leading-tight font-bold truncate text-left">{tile.gameName}</span>
-          <span className="shrink-0 text-[2.2cqw] leading-tight text-white/70 font-mono text-right">{formatGridDate(tile.endTime)}</span>
+      </div>
+      {!hideGameName && (
+        <div className="flex-none h-[8cqw] min-h-0 px-[2cqw] bg-app-bg-deep flex items-center">
+          <span className="min-w-0 flex-1 truncate text-left text-[3.2cqw] leading-none font-bold text-txt-primary">
+            {tile.gameName}
+          </span>
         </div>
       )}
     </div>

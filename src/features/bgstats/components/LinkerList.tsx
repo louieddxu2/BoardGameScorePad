@@ -34,7 +34,7 @@ export const LinkerList: React.FC<LinkerListProps> = ({
   const finalEmptyMessage = emptyMessage || tCommon('none');
 
   return (
-    <div className={`flex flex-col h-full min-w-0 ${className}`}>
+    <div className={`flex flex-col flex-1 min-h-0 min-w-0 ${className}`}>
       <div className="p-2 border-b border-surface-border text-[10px] font-bold text-txt-muted uppercase flex items-center gap-1.5 sticky top-0 bg-app-bg z-10">
         {title}
       </div>

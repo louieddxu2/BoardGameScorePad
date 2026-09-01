@@ -195,7 +195,7 @@ const TotalAdjustmentSidebar: React.FC<{
 }> = ({ player, onUpdatePlayer }) => {
     const { t } = useSessionTranslation();
     return (
-        <div className="flex flex-col h-full p-2 gap-2">
+        <div className="flex flex-col flex-1 min-h-0 p-2 gap-2">
             <div className="text-[10px] text-txt-primary font-bold uppercase pb-1 border-b border-surface-border flex items-center justify-center gap-1 shrink-0">
                 {t('input_total_adjust')}
             </div>
@@ -238,7 +238,6 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     const { uiState, setUiState, panelHeight, isShortList } = sessionState;
     const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue, isEditingTitle, isToolboxOpen } = uiState;
     const { t } = useSessionTranslation();
-
     const [activeFactorIdx, setActiveFactorIdx] = useState<0 | 1>(0);
     const [showSwipeHint, setShowSwipeHint] = useState(false);
     const [recommendedColors, setRecommendedColors] = useState<string[]>([]);
@@ -746,7 +745,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
                 if (activeColumn.inputType === 'auto') {
                     mainContentNode = (
-                        <div className="h-full flex items-center justify-center bg-surface-recessed/50 rounded-xl border border-surface-border p-4">
+                        <div className="flex-1 min-h-0 flex items-center justify-center bg-surface-recessed/50 rounded-xl border border-surface-border p-4">
                             <AutoScorePanel
                                 column={activeColumn}
                                 player={activePlayer}
@@ -756,7 +755,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                         </div>
                     );
                     sidebarContentNode = (
-                        <div className="flex flex-col h-full p-2 text-txt-secondary text-xs">
+                        <div className="flex flex-col flex-1 min-h-0 p-2 text-txt-secondary text-xs">
                             <div className="flex items-center gap-1 text-[10px] text-txt-muted font-bold uppercase pb-1 border-b border-surface-border shrink-0">
                                 <Calculator size={12} /> {t('input_auto_calc')}
                             </div>
@@ -792,7 +791,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     } else if (isSumPartsMode) {
                         sidebarContentNode = <ScoreInfoPanel column={activeColumn} value={cellScoreObject} onDeleteLastPart={handleDeleteLastPart} />;
                     } else {
-                        sidebarContentNode = (<div className="flex flex-col h-full p-2 text-txt-secondary text-xs"><div className="flex items-center gap-1 text-[10px] text-txt-muted font-bold uppercase pb-1 border-b border-surface-border shrink-0"><ListPlus size={12} /> {t('input_list_menu')}</div><div className="flex-1"></div></div>);
+                        sidebarContentNode = (<div className="flex flex-col flex-1 min-h-0 p-2 text-txt-secondary text-xs"><div className="flex items-center gap-1 text-[10px] text-txt-muted font-bold uppercase pb-1 border-b border-surface-border shrink-0"><ListPlus size={12} /> {t('input_list_menu')}</div><div className="flex-1"></div></div>);
                     }
                 } else {
                     if (isSumPartsMode) {
@@ -951,9 +950,10 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
     return (
         <div
-            className={`fixed left-0 right-0 z-50 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgb(var(--c-black)_/_0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
+            data-session-input-panel="true"
+            className={`absolute left-0 right-0 z-50 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgb(var(--c-black)_/_0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
             style={{ height: panelHeight, bottom: bottomOffset }}
-            // [Added] Joystick Touch Handlers
+                // [Added] Joystick Touch Handlers
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
@@ -974,7 +974,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                 />
             )}
 
-            <div className="flex-1 min-h-0 bg-modal-bg relative">
+            <div data-session-input-content="true" className="flex-1 min-h-0 bg-modal-bg relative">
                 {mainContentNode && !isPlaceholderMode && (
                     <InputPanelLayout onNext={onNextAction} nextButtonDirection={advanceDirection} sidebarContent={sidebarContentNode} nextButtonContent={nextButtonContent} isCompact={isInputFocused}>
                         {mainContentNode}

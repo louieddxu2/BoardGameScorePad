@@ -137,7 +137,7 @@ const ScanPreview: React.FC<ScanPreviewProps> = ({ imageSrc, template, onBack, o
             </header>
 
             <main
-                className="flex-1 w-full h-full relative overflow-hidden bg-app-bg touch-none select-none"
+                className="flex-1 min-h-0 w-full relative overflow-hidden bg-app-bg touch-none select-none"
                 ref={containerRef}
                 onMouseDown={panZoomHandlers.onMouseDown}
                 onTouchStart={panZoomHandlers.onTouchStart}

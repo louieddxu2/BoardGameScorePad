@@ -130,8 +130,8 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
   const colorBarStyle = isMainTransparent ? undefined : { borderLeftColor: player.color };
 
   return (
-    <div className="h-full" onClick={e => e.stopPropagation()}>
-      <div className="flex flex-col h-full p-2 gap-2">
+    <div className="flex flex-col flex-1 min-h-0" onClick={e => e.stopPropagation()}>
+      <div className="flex flex-col flex-1 min-h-0 p-2 gap-2">
         {/* Integrated Color-Name Strip: Fixed height */}
         <div ref={colorPickerAreaRef} className={`flex-none h-12 relative z-50 flex items-stretch rounded-xl border-2 transition-all ${showColorPicker ? 'border-brand-primary' : 'border-surface-border'}`}>
           {/* Input with color bar on the left */}
@@ -242,7 +242,7 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
                       onNameSubmit(player.id, finalName, false, linkedId);
                       inputRef.current?.blur();
                     }}
-                    className="px-3 py-1.5 rounded-full text-sm font-medium text-txt-primary hover:bg-brand-primary/20 hover:text-brand-primary transition-colors active:scale-95 bg-surface-bg border border-surface-border whitespace-nowrap"
+                    className="px-3 py-0.5 rounded-full text-base font-medium text-txt-primary hover:bg-brand-primary/20 hover:text-brand-primary transition-colors active:scale-95 bg-surface-bg border border-surface-border shadow-[inset_4px_0_0_rgb(var(--c-txt-primary)_/_0.55)] whitespace-nowrap"
                   >
                     {item.name}
                   </button>
@@ -264,7 +264,7 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
 const PlayerSettingsPanel: React.FC<{ player: Player, onToggleStarter: (id: string) => void }> = ({ player, onToggleStarter }) => {
   const { t } = useSessionTranslation();
   return (
-    <div className="flex flex-col h-full text-txt-secondary text-xs">
+    <div className="flex flex-col flex-1 min-h-0 text-txt-secondary text-xs">
       <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-2 text-center flex flex-col justify-center">
         <button
           onMouseDown={(e) => e.preventDefault()}

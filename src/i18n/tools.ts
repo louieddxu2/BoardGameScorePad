@@ -7,7 +7,7 @@ export const toolsTranslations = {
 
         // Order Tool
         order_title: "順位與分組",
-        order_shuffle: "重新洗牌",
+        order_shuffle: "隨機順位",
         order_reset: "重置",
         order_first_player: "起始玩家",
 
@@ -73,7 +73,7 @@ export const toolsTranslations = {
         coin_result_tails: "反面 (Tails)",
 
         // Selector Prototype
-        order_visual_picker: "視覺起始決定器",
+        order_visual_picker: "起始玩家決定器",
         picker_prototype_title: "起始玩家決定器",
         picker_prototype_empty: "按下選擇玩家",
         picker_prototype_exit_hint: "連點三下退出此介面",
@@ -89,7 +89,7 @@ export const toolsTranslations = {
         tools_title: "Tools",
         // Order Tool
         order_title: "Seat Order & Teams",
-        order_shuffle: "Reshuffle",
+        order_shuffle: "Random Turn Order",
         order_reset: "Reset",
         order_first_player: "First Player",
 
@@ -151,7 +151,7 @@ export const toolsTranslations = {
         coin_result_tails: "Tails",
 
         // Selector Prototype
-        order_visual_picker: "Visual Selector",
+        order_visual_picker: "First Player Picker",
         picker_prototype_title: "First Player Selector",
         picker_prototype_empty: "Press to select players",
         picker_prototype_exit_hint: "Triple tap to exit this screen",

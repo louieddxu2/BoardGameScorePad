@@ -122,6 +122,37 @@ describe('HistoryStatsPanel navigation', () => {
     expect(screen.getByTitle('切換至玩家總覽')).toBeInTheDocument();
   });
 
+  it('returns from a game detail when search removes the selected game', () => {
+    const gameA = record({ id: 'a', gameName: 'Game A', endTime: 2000 });
+    const gameB = record({ id: 'b', gameName: 'Game B', endTime: 3000 });
+
+    const { rerender } = render(
+      <LanguageProvider>
+        <HistoryStatsPanel
+          entries={buildHistoryGameEntries([gameA])}
+          records={[gameA]}
+          onSearchClick={vi.fn()}
+        />
+      </LanguageProvider>
+    );
+
+    fireEvent.click(screen.getByText('Game A'));
+    expect(screen.getByText('Game A')).toBeInTheDocument();
+
+    rerender(
+      <LanguageProvider>
+        <HistoryStatsPanel
+          entries={buildHistoryGameEntries([gameB])}
+          records={[gameB]}
+          onSearchClick={vi.fn()}
+        />
+      </LanguageProvider>
+    );
+
+    expect(screen.getByTitle('切換至玩家總覽')).toBeInTheDocument();
+    expect(screen.getByText('Game B')).toBeInTheDocument();
+  });
+
   it('scopes photo recaps to the current detail page', () => {
     const records = [
       record({

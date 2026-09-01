@@ -218,12 +218,12 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({
         {/* Body */}
         <div className="modal-body flex-1 p-4 overflow-y-auto no-scrollbar min-h-0">
           {loading ? (
-            <div className="h-full flex flex-col items-center justify-center py-16 gap-3">
+            <div className="min-h-full flex flex-col items-center justify-center py-16 gap-3">
               <Loader2 size={36} className="text-brand-primary animate-spin" />
               <span className="text-sm font-semibold text-txt-secondary">{t('lib_loading')}</span>
             </div>
           ) : error ? (
-            <div className="h-full flex flex-col items-center justify-center text-center py-16 px-4">
+            <div className="min-h-full flex flex-col items-center justify-center text-center py-16 px-4">
               <div className="w-12 h-12 rounded-full bg-status-danger/15 flex items-center justify-center text-status-danger mb-3">
                 <HelpCircle size={24} />
               </div>
@@ -257,7 +257,7 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({
               </button>
             </div>
           ) : cloudItems.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center py-16 text-txt-muted">
+            <div className="min-h-full flex flex-col items-center justify-center py-16 text-txt-muted">
               <Cloud size={40} className="opacity-40 mb-2" />
               <span className="text-sm">{t('lib_no_data')}</span>
             </div>

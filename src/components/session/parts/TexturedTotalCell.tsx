@@ -159,7 +159,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
   previewValue,
   onClick,
   cleanMode = false,
-  scoringRule
+  scoringRule,
 }) => {
   const [bgUrl, setBgUrl] = useState<string | null>(null);
   const cellRef = useRef<HTMLDivElement>(null);

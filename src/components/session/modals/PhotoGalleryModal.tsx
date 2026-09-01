@@ -18,6 +18,8 @@ interface PhotoGalleryModalProps {
     onDeletePhoto: (id: string) => void;
     overlayData?: OverlayData; // [New] Data context for lightbox overlay
     autoEnterMode?: 'default' | 'lightbox_overlay'; // [New] Mode prop
+    initialPhotoId?: string | null;
+    entryMode?: 'gallery' | 'direct-lightbox';
 }
 
 export interface LoadedImage {
@@ -25,19 +27,21 @@ export interface LoadedImage {
     url: string;
 }
 
-const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, photoIds, onUploadPhoto, onTakePhoto, onDeletePhoto, overlayData, autoEnterMode = 'default' }) => {
+const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, photoIds, onUploadPhoto, onTakePhoto, onDeletePhoto, overlayData, autoEnterMode = 'default', initialPhotoId = null, entryMode = 'gallery' }) => {
     const [images, setImages] = useState<LoadedImage[]>([]);
     const [loading, setLoading] = useState(false);
     const [initialIndex, setInitialIndex] = useState<number | null>(null); // Changed: Store index instead of object
     const { t } = useSessionTranslation();
     const { t: tCommon } = useCommonTranslation();
     const { confirm } = useConfirm();
+    const isDirectLightbox = entryMode === 'direct-lightbox';
 
     // Load images when IDs change or modal opens
     useEffect(() => {
         if (!isOpen) {
-            images.forEach(img => URL.revokeObjectURL(img.url));
             setImages([]);
+            setInitialIndex(null);
+            setLoading(false);
             return;
         }
 
@@ -77,7 +81,10 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
                 // [Feature] Auto-Enter Lightbox logic
                 // Trigger only if mode matches AND we have images.
                 // This is safe because this effect runs after a camera capture updates photoIds.
-                if (autoEnterMode === 'lightbox_overlay' && loaded.length > 0) {
+                if (isDirectLightbox && initialPhotoId) {
+                    const selectedIndex = loaded.findIndex(image => image.id === initialPhotoId);
+                    setInitialIndex(selectedIndex >= 0 ? selectedIndex : null);
+                } else if (autoEnterMode === 'lightbox_overlay' && loaded.length > 0) {
                     setInitialIndex(0); // Open the first (newest) image
                 }
             } else {
@@ -91,22 +98,26 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
             active = false;
             generatedUrls.forEach(url => URL.revokeObjectURL(url));
         };
-    }, [isOpen, photoIds]); // Removed autoEnterMode from deps to prevent re-triggering logic unexpectedly
+    }, [isOpen, photoIds, initialPhotoId, isDirectLightbox]);
 
     // [Logic] Unified handler for closing Lightbox
     // If in 'lightbox_overlay' mode (Score Camera), closing lightbox means finishing the task -> Close Modal.
     // Otherwise, return to Gallery Grid.
     const handleCloseLightbox = useCallback(() => {
-        if (autoEnterMode === 'lightbox_overlay') {
+        if (autoEnterMode === 'lightbox_overlay' || isDirectLightbox) {
             onClose();
         } else {
             setInitialIndex(null);
         }
-    }, [autoEnterMode, onClose]);
+    }, [autoEnterMode, isDirectLightbox, onClose]);
 
     // [Refactored] Unified Back Button Interception
     // Now photo-lightbox handles its own history entry, so photo-gallery only manages its own close logic.
-    const { zIndex, triggerClose } = useModalBackHandler(isOpen, onClose, 'photo-gallery');
+    const { zIndex } = useModalBackHandler(
+        isOpen,
+        onClose,
+        isDirectLightbox ? 'photo-direct-lightbox' : 'photo-gallery'
+    );
 
     const handleDeletePhotoClick = async (id: string, triggerCloseLightbox?: (steps?: number) => void) => {
         const isConfirmed = await confirm({
@@ -129,7 +140,7 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
             onDeletePhoto(id);
 
             // [New Logic] If in single-shot mode (toolbox camera), deletion means the task is aborted/finished.
-            if (autoEnterMode === 'lightbox_overlay') {
+            if (autoEnterMode === 'lightbox_overlay' || isDirectLightbox) {
                 onClose();
             }
         }
@@ -151,6 +162,7 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
                     onDelete={handleDeletePhotoClick}
                     overlayData={overlayData} // Pass the context
                     initialShowOverlay={autoEnterMode === 'lightbox_overlay'} // Enable overlay if mode matches
+                    manageBackHistory={!isDirectLightbox}
                 />
             )}
 

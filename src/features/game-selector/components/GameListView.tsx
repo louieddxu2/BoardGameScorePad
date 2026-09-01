@@ -40,13 +40,13 @@ export const GameListView: React.FC<GameListViewProps> = ({
     const { t: tCloudLib } = useCloudLibraryTranslation();
 
     return (
-        <div className={`flex-1 flex flex-col bg-app-bg border-t border-surface-border shadow-ui-floating pointer-events-auto relative transition-all duration-300 h-full`}>
+        <div className={`flex-1 self-stretch flex flex-col bg-app-bg border-t border-surface-border shadow-ui-floating pointer-events-auto relative transition-all duration-300`}>
             <div className="absolute top-0 left-0 right-0 p-1 text-center pointer-events-none z-10 opacity-30">
                 <ChevronUp size={12} className="text-txt-muted mx-auto" />
             </div>
 
             {processedOptions.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-txt-muted opacity-50 pb-10">
+                <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-txt-muted opacity-50 pb-10">
                     <Search size={32} />
                     <span className="text-xs mt-2">{t('selector_no_results')}</span>
                     {showImportHint && onOpenBgStats && onOpenBggImport && (

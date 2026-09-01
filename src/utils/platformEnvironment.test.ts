@@ -8,15 +8,32 @@ describe('getPlatformEnvironment', () => {
   it('identifies iPhone Safari browser mode', () => {
     expect(getPlatformEnvironment(iphoneSafari, false, false, true)).toEqual({
       isIOS: true,
+      isAndroid: false,
       isStandalone: false,
+      isIOSBrowser: true,
       isIOSSafariBrowser: true,
+    });
+  });
+
+  it('identifies iPhone Chrome as an iOS browser without treating it as Safari', () => {
+    const iphoneChrome =
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/124.0.6367.69 Mobile/15E148 Safari/604.1';
+
+    expect(getPlatformEnvironment(iphoneChrome, false, false, true)).toEqual({
+      isIOS: true,
+      isAndroid: false,
+      isStandalone: false,
+      isIOSBrowser: true,
+      isIOSSafariBrowser: false,
     });
   });
 
   it('identifies iOS standalone mode from display-mode', () => {
     expect(getPlatformEnvironment(iphoneSafari, true, false, true)).toEqual({
       isIOS: true,
+      isAndroid: false,
       isStandalone: true,
+      isIOSBrowser: false,
       isIOSSafariBrowser: false,
     });
   });
@@ -31,7 +48,9 @@ describe('getPlatformEnvironment', () => {
 
     expect(getPlatformEnvironment(androidChrome, false, false, true)).toEqual({
       isIOS: false,
+      isAndroid: true,
       isStandalone: false,
+      isIOSBrowser: false,
       isIOSSafariBrowser: false,
     });
   });
@@ -55,6 +74,8 @@ describe('getPlatformEnvironment', () => {
     applyPlatformEnvironmentAttributes(root);
 
     expect(root.dataset.ios).toBe('false');
+    expect(root.dataset.android).toBe('true');
+    expect(root.dataset.iosBrowser).toBe('false');
     expect(root.dataset.iosSafariBrowser).toBe('false');
 
     Object.defineProperty(navigator, 'userAgent', {

@@ -16,11 +16,12 @@ interface PhotoLightboxProps {
     onDelete: (id: string, triggerCloseLightbox?: (steps?: number) => void) => void;
     overlayData?: OverlayData;
     initialShowOverlay?: boolean;
+    manageBackHistory?: boolean;
 }
 
-const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onClose, onDelete, overlayData, initialShowOverlay = false }) => {
+const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onClose, onDelete, overlayData, initialShowOverlay = false, manageBackHistory = true }) => {
     const { t } = useSessionTranslation();
-    const { triggerClose } = useModalBackHandler(true, onClose, 'photo-lightbox');
+    const { triggerClose } = useModalBackHandler(manageBackHistory, onClose, 'photo-lightbox');
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
     const [showOverlay, setShowOverlay] = useState(initialShowOverlay);
