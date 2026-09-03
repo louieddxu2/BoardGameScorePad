@@ -38,6 +38,7 @@ import { useAiGenerator } from '../../features/ai-generator/hooks/useAiGenerator
 import { markPendingAiShare } from '../../utils/pendingAiShare';
 import { getSessionOccupiedBottom, getSessionPanelDockOffset } from '../../utils/sessionViewport';
 import { useLatchedViewportOffset } from '../../hooks/useVisualViewportOffset';
+import HistoryPhotoStrip from '../history/HistoryPhotoStrip';
 import { useToolboxBoundaryGesture } from '../../hooks/useToolboxBoundaryGesture';
 import { createPlayerSessionCapabilities, hostSessionCapabilities, SessionCapabilities } from '../../features/multiplayer/sessionCapabilities';
 import { MultiplayerSessionManager, multiplayerSessionManager } from '../../features/multiplayer/multiplayerSessionManager';
@@ -686,13 +687,15 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       {/* Photo Gallery Modal */}
       <PhotoGalleryModal
         isOpen={isPhotoGalleryOpen}
-        onClose={() => setUiState(p => ({ ...p, isPhotoGalleryOpen: false }))}
+        onClose={() => setUiState(p => ({ ...p, isPhotoGalleryOpen: false, galleryParams: { mode: 'default' } }))}
         photoIds={session.photos || []}
         onUploadPhoto={media.openPhotoLibrary}
         onTakePhoto={media.openCamera} // Standard camera (from within gallery)
         onDeletePhoto={media.handleDeletePhoto}
         overlayData={overlayData} // Pass context for score overlay
         autoEnterMode={sessionState.uiState.galleryParams?.mode} // [New] Pass auto-open mode
+        initialPhotoId={sessionState.uiState.galleryParams?.initialPhotoId}
+        entryMode={sessionState.uiState.galleryParams?.entryMode ?? 'gallery'}
       />
 
       {/* [New] General Camera Overlay */}
@@ -951,6 +954,20 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         canEditPlayers={capabilities.canEditPlayers}
         mediaOnlyTools={capabilities.role === 'player'}
         onToolboxInputFocusChange={setIsToolboxInputFocused}
+        toolboxTopContent={session.photos?.length ? (
+          <HistoryPhotoStrip
+            photoIds={session.photos}
+            onPhotoClick={(photoId) => setUiState(p => ({
+              ...p,
+              isPhotoGalleryOpen: true,
+              galleryParams: {
+                mode: 'default',
+                initialPhotoId: photoId,
+                entryMode: 'direct-lightbox',
+              },
+            }))}
+          />
+        ) : undefined}
       />
 
       <SessionViewportDiagnostics />

@@ -42,6 +42,8 @@ export interface UIState {
   // [New] Controls gallery behavior (e.g. auto open lightbox with overlay)
   galleryParams?: {
     mode: 'default' | 'lightbox_overlay';
+    initialPhotoId?: string | null;
+    entryMode?: 'gallery' | 'direct-lightbox';
   };
 
   isImageUploadModalOpen: boolean;

@@ -31,10 +31,11 @@ describe('MemoTool keyboard visibility', () => {
         const textarea = screen.getByRole('textbox');
         fireEvent.pointerDown(textarea);
 
-        expect(onFocusChange).toHaveBeenCalledWith(true);
+        expect(onFocusChange).not.toHaveBeenCalled();
 
         fireEvent.focus(textarea);
 
+        expect(onFocusChange).toHaveBeenCalledWith(true);
         expect(textarea).toHaveClass('text-sm');
         expect(window.HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
     });

@@ -108,7 +108,7 @@ describe('SmartSpacer participant tools', () => {
     fireEvent.focus(screen.getByText('memo-tool'));
 
     expect(scroller.scrollTop).toBe(0);
-    expect(container.querySelector('[data-toolbox-memo-row="true"]')).toHaveClass('order-first');
+    expect(container.querySelector('[data-toolbox-memo-row="true"]')).toHaveClass('focus-within:order-first');
     expect(onMemoFocusChange).toHaveBeenCalledWith(true);
     expect(window.HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
 

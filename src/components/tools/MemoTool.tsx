@@ -79,7 +79,6 @@ const MemoTool: React.FC<MemoToolProps> = ({ session, onUpdateSession, onFocusCh
             <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                onPointerDown={handleFocus}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
                 placeholder={t('memo_placeholder')}

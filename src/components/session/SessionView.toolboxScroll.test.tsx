@@ -51,6 +51,20 @@ vi.mock('./hooks/useSessionMedia', async () => {
   };
 });
 
+vi.mock('../history/HistoryPhotoStrip', () => ({
+  default: ({ photoIds, onPhotoClick }: { photoIds: string[]; onPhotoClick: (id: string) => void }) => (
+    <button type="button" aria-label="session-photo-strip" onClick={() => onPhotoClick(photoIds[0])}>
+      {photoIds.join(',')}
+    </button>
+  ),
+}));
+
+vi.mock('./modals/PhotoGalleryModal', () => ({
+  default: ({ isOpen, initialPhotoId, entryMode }: { isOpen: boolean; initialPhotoId?: string | null; entryMode?: string }) => (
+    isOpen ? <div data-testid="photo-gallery-entry">{initialPhotoId}:{entryMode}</div> : null
+  ),
+}));
+
 const makeTemplate = (): GameTemplate => ({
   id: 'template-1',
   name: 'Scroll Test',
@@ -187,6 +201,18 @@ const swipeOn = (
 };
 
 describe('SessionView toolbox scroll behavior', () => {
+  it('shows session photos in the toolbox and opens a thumbnail directly in the lightbox', () => {
+    const session = { ...makeSession(), photos: ['photo-1'] };
+    renderSession({ session });
+    const toolboxButton = document.querySelector('[title="Toggle Toolbox"]') as HTMLButtonElement | null;
+    if (!toolboxButton) throw new Error('toolbox button not found');
+
+    fireEvent.click(toolboxButton);
+    fireEvent.click(screen.getByRole('button', { name: 'session-photo-strip' }));
+
+    expect(screen.getByTestId('photo-gallery-entry')).toHaveTextContent('photo-1:direct-lightbox');
+  });
+
   it('anchors the iOS input panel to the same session surface as the collapsed totals bar', () => {
     const previousValue = document.documentElement.dataset.iosBrowser;
     document.documentElement.dataset.iosBrowser = 'true';
