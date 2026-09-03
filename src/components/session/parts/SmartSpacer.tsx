@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Wrench } from 'lucide-react';
 import { GameSession, GameTemplate } from '../../../types';
 
@@ -29,14 +29,15 @@ const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhot
     const isPinchingRef = useRef(false);
     const scrollerRef = useRef<HTMLDivElement>(null);
     const isMemoFocusedRef = useRef(false);
+    const [isMemoFocused, setIsMemoFocused] = useState(false);
 
-    const pinMemoToBottom = () => {
+    const pinMemoToTop = () => {
         if (!isMemoFocusedRef.current || !scrollerRef.current) return;
-        scrollerRef.current.scrollTop = scrollerRef.current.scrollHeight;
+        scrollerRef.current.scrollTop = 0;
     };
 
     useEffect(() => {
-        const handleViewportChange = () => pinMemoToBottom();
+        const handleViewportChange = () => pinMemoToTop();
         window.visualViewport?.addEventListener('resize', handleViewportChange);
         window.visualViewport?.addEventListener('scroll', handleViewportChange);
         return () => {
@@ -47,7 +48,8 @@ const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhot
 
     const handleMemoFocusChange = (focused: boolean) => {
         isMemoFocusedRef.current = focused;
-        if (focused) pinMemoToBottom();
+        setIsMemoFocused(focused);
+        if (focused) pinMemoToTop();
         onMemoFocusChange?.(focused);
     };
 
@@ -119,7 +121,7 @@ const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhot
                 )}
 
                 {/* Row 5: Notes */}
-                {!mediaOnly && <div className="col-span-4">
+                {!mediaOnly && <div data-toolbox-memo-row="true" className={`col-span-4 ${isMemoFocused ? 'order-first' : ''}`}>
                     <MemoTool session={session} onUpdateSession={onUpdateSession} onFocusChange={handleMemoFocusChange} />
                 </div>}
 

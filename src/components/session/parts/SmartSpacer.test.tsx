@@ -90,7 +90,7 @@ describe('SmartSpacer participant tools', () => {
     expect(screen.getByText('memo-tool')).toBeInTheDocument();
   });
 
-  it('scrolls only the toolbox container to its final memo row on focus', () => {
+  it('moves the focused memo to the top of the toolbox viewport', () => {
     const onMemoFocusChange = vi.fn();
     const { container } = render(
       <LanguageProvider>
@@ -103,17 +103,18 @@ describe('SmartSpacer participant tools', () => {
       </LanguageProvider>,
     );
     const scroller = container.querySelector('[data-toolbox-scroller="true"]') as HTMLElement;
-    Object.defineProperty(scroller, 'scrollHeight', { configurable: true, value: 720 });
+    scroller.scrollTop = 360;
 
     fireEvent.focus(screen.getByText('memo-tool'));
 
-    expect(scroller.scrollTop).toBe(720);
+    expect(scroller.scrollTop).toBe(0);
+    expect(container.querySelector('[data-toolbox-memo-row="true"]')).toHaveClass('order-first');
     expect(onMemoFocusChange).toHaveBeenCalledWith(true);
     expect(window.HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
 
-    scroller.scrollTop = 0;
+    scroller.scrollTop = 240;
     window.visualViewport?.dispatchEvent(new Event('resize'));
-    expect(scroller.scrollTop).toBe(720);
+    expect(scroller.scrollTop).toBe(0);
   });
 
   it('does not repeat the score-input hint inside the toolbox', () => {
