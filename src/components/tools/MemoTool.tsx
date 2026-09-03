@@ -16,6 +16,7 @@ const MemoTool: React.FC<MemoToolProps> = ({ session, onUpdateSession, onFocusCh
     const onUpdateRef = useRef(onUpdateSession);
     const sessionRef = useRef(session);
     const textRef = useRef(text);
+    const focusReportedRef = useRef(false);
     
     onUpdateRef.current = onUpdateSession;
     sessionRef.current = session;
@@ -48,10 +49,13 @@ const MemoTool: React.FC<MemoToolProps> = ({ session, onUpdateSession, onFocusCh
     };
 
     const handleFocus = () => {
+        if (focusReportedRef.current) return;
+        focusReportedRef.current = true;
         onFocusChange?.(true);
     };
 
     const handleBlur = () => {
+        focusReportedRef.current = false;
         onFocusChange?.(false);
         flushUpdate();
     };
@@ -75,6 +79,7 @@ const MemoTool: React.FC<MemoToolProps> = ({ session, onUpdateSession, onFocusCh
             <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
+                onPointerDown={handleFocus}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
                 placeholder={t('memo_placeholder')}

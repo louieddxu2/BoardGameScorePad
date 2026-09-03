@@ -21,13 +21,18 @@ describe('MemoTool keyboard visibility', () => {
     });
 
     it('leaves viewport scrolling to its toolbox owner', () => {
+        const onFocusChange = vi.fn();
         render(
             <LanguageProvider>
-                <MemoTool session={session} onUpdateSession={vi.fn()} />
+                <MemoTool session={session} onUpdateSession={vi.fn()} onFocusChange={onFocusChange} />
             </LanguageProvider>,
         );
 
         const textarea = screen.getByRole('textbox');
+        fireEvent.pointerDown(textarea);
+
+        expect(onFocusChange).toHaveBeenCalledWith(true);
+
         fireEvent.focus(textarea);
 
         expect(textarea).toHaveClass('text-sm');

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface KeyboardStatus {
   /** 鍵盤是否已開啟（封裝了平台差異與閾值判定） */
@@ -92,3 +92,20 @@ export const useKeyboardStatus = (): KeyboardStatus => {
 
 /** @deprecated 改用 useKeyboardStatus() */
 export const useVisualViewportOffset = () => useKeyboardStatus().offset;
+
+/**
+ * While an input remains focused, keep the largest reported obstruction.
+ * Mobile browsers can emit a smaller intermediate offset while panning the
+ * visual viewport, which would otherwise make a docked panel bounce downward.
+ */
+export const useLatchedViewportOffset = (offset: number, active: boolean): number => {
+  const maximumRef = useRef(0);
+
+  if (active) {
+    maximumRef.current = Math.max(maximumRef.current, offset);
+  } else {
+    maximumRef.current = 0;
+  }
+
+  return active ? maximumRef.current : offset;
+};

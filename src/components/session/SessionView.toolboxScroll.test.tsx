@@ -518,6 +518,13 @@ describe('SessionView toolbox scroll behavior', () => {
       });
 
       expect(panel.style.bottom).toBe('260px');
+
+      act(() => {
+        viewport.offsetTop = 40;
+        viewport.dispatchEvent(new Event('scroll'));
+      });
+      expect(panel.style.bottom).toBe('260px');
+
       fireEvent.blur(textarea);
       expect(panel.style.bottom).toBe('var(--bottom-ui-safe-gap)');
     } finally {

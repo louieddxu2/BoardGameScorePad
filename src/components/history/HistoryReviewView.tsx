@@ -21,7 +21,7 @@ import { usePhotoManager } from '../../hooks/usePhotoManager';
 import { useToolboxBoundaryGesture } from '../../hooks/useToolboxBoundaryGesture';
 import SmartSpacer from '../session/parts/SmartSpacer';
 import HistoryPhotoStrip from './HistoryPhotoStrip';
-import { useKeyboardStatus } from '../../hooks/useVisualViewportOffset';
+import { useKeyboardStatus, useLatchedViewportOffset } from '../../hooks/useVisualViewportOffset';
 import { getSessionPanelDockOffset } from '../../utils/sessionViewport';
 
 import { useHistoryTranslation } from '../../i18n/history';
@@ -80,6 +80,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
     const [isToolboxOpen, setIsToolboxOpen] = useState(isShortList);
     const { showToast } = useToast();
     const { offset: keyboardOffset, isKeyboardOpen } = useKeyboardStatus();
+    const stableKeyboardOffset = useLatchedViewportOffset(keyboardOffset, isToolboxInputFocused);
 
     // === 照片管理（與計分板共用 usePhotoManager） ===
     const photos = usePhotoManager({
@@ -361,7 +362,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
     };
 
     const panelDockOffset = getSessionPanelDockOffset(
-        keyboardOffset,
+        stableKeyboardOffset,
         isKeyboardOpen && isToolboxInputFocused,
     );
     const occupiedBottom = isToolboxOpen

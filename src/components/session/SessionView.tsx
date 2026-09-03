@@ -37,6 +37,7 @@ import { db } from '../../db';
 import { useAiGenerator } from '../../features/ai-generator/hooks/useAiGenerator';
 import { markPendingAiShare } from '../../utils/pendingAiShare';
 import { getSessionOccupiedBottom, getSessionPanelDockOffset } from '../../utils/sessionViewport';
+import { useLatchedViewportOffset } from '../../hooks/useVisualViewportOffset';
 import { useToolboxBoundaryGesture } from '../../hooks/useToolboxBoundaryGesture';
 import { createPlayerSessionCapabilities, hostSessionCapabilities, SessionCapabilities } from '../../features/multiplayer/sessionCapabilities';
 import { MultiplayerSessionManager, multiplayerSessionManager } from '../../features/multiplayer/multiplayerSessionManager';
@@ -151,6 +152,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     ? session.players.findIndex(player => player.id === capabilities.playerId) + 1
     : null;
   const { setUiState, keyboardOffset, isKeyboardOpen, closeFocusedPlayerNameInput } = sessionState;
+  const stableKeyboardOffset = useLatchedViewportOffset(keyboardOffset, isToolboxInputFocused);
   const isNativeKeyboardCompensationActive = isKeyboardOpen && (
     sessionState.uiState.isInputFocused || isToolboxInputFocused
   );
@@ -160,8 +162,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   const sessionIdleDockOffset = isAndroidBrowser
     ? 'var(--app-safe-area-bottom)'
     : 'var(--bottom-ui-safe-gap)';
-  const panelDockOffset = getSessionPanelDockOffset(keyboardOffset, isNativeKeyboardCompensationActive, sessionIdleDockOffset);
-  const occupiedBottom = getSessionOccupiedBottom(sessionState.panelHeight, keyboardOffset, isNativeKeyboardCompensationActive, sessionIdleDockOffset);
+  const panelDockOffset = getSessionPanelDockOffset(stableKeyboardOffset, isNativeKeyboardCompensationActive, sessionIdleDockOffset);
+  const occupiedBottom = getSessionOccupiedBottom(sessionState.panelHeight, stableKeyboardOffset, isNativeKeyboardCompensationActive, sessionIdleDockOffset);
 
   // No special local state needed for photo preview anymore
   const eventHandlers = useSessionEvents({
