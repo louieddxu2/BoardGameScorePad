@@ -16,6 +16,10 @@ const ALLOWED_MODELS = new Set([
 ]);
 const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 const TURNSTILE_AI_ACTION = 'ai_generate';
+const MAX_REQUEST_BYTES = 10 * 1024 * 1024;
+const MAX_IMAGE_COUNT = 5;
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const SAFETY_SETTINGS = [
   { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
   { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -113,6 +117,14 @@ export default async function handler(req) {
     );
   }
 
+  const contentLength = Number(req.headers.get('content-length'));
+  if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
+    return new Response(
+      JSON.stringify({ error: 'request_too_large' }),
+      { status: 413, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
   try {
     // 1. 使用原生的 req.formData() 解析上傳的資料與圖片
     const formData = await req.formData();
@@ -121,6 +133,37 @@ export default async function handler(req) {
     const language = formData.get('language');
     const requestedModel = resolveModel(formData.get('modelName'));
     const systemPrompt = resolveSystemPrompt(language);
+
+    const imageFiles = [];
+    let totalImageBytes = 0;
+    for (const [key, value] of formData.entries()) {
+      if (!key.startsWith('image_')) continue;
+      if (!(value instanceof File)
+        || !ALLOWED_IMAGE_TYPES.has(value.type)
+        || value.size > MAX_IMAGE_BYTES) {
+        return new Response(
+          JSON.stringify({ error: 'invalid_image_upload' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      imageFiles.push(value);
+      totalImageBytes += value.size;
+    }
+
+    if (imageFiles.length > MAX_IMAGE_COUNT) {
+      return new Response(
+        JSON.stringify({ error: 'too_many_images' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (totalImageBytes > MAX_REQUEST_BYTES) {
+      return new Response(
+        JSON.stringify({ error: 'request_too_large' }),
+        { status: 413, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     const verification = await verifyTurnstileToken(formData.get('turnstileToken'));
     if (!verification.ok) {
       return new Response(
@@ -136,19 +179,16 @@ export default async function handler(req) {
     // 2. 處理圖片檔案
     const geminiParts = [];
     
-    // 遍歷所有 FormData 中的 image_ 開頭欄位
-    for (const [key, value] of formData.entries()) {
-      if (key.startsWith('image_') && value instanceof File) {
-        const arrayBuffer = await value.arrayBuffer();
-        const base64 = arrayBufferToBase64(arrayBuffer);
-        
-        geminiParts.push({
-          inlineData: {
-            mimeType: value.type || "image/jpeg",
-            data: base64
-          }
-        });
-      }
+    for (const value of imageFiles) {
+      const arrayBuffer = await value.arrayBuffer();
+      const base64 = arrayBufferToBase64(arrayBuffer);
+
+      geminiParts.push({
+        inlineData: {
+          mimeType: value.type,
+          data: base64
+        }
+      });
     }
 
     // 3. 加入最終文字指引
@@ -185,8 +225,11 @@ export default async function handler(req) {
     }
 
     if (!apiResponse.ok) {
-      const errorBody = await apiResponse.text();
-      return new Response(`Gemini API error: ${errorBody}`, { status: apiResponse.status });
+      console.error(`[Gemini API Error] HTTP ${apiResponse.status}`);
+      return new Response(
+        JSON.stringify({ error: 'upstream_service_error' }),
+        { status: apiResponse.status, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
     // 🌟 將 Gemini 回傳的 EventStream 原封不動地 pipe 回前端
@@ -203,11 +246,7 @@ export default async function handler(req) {
     console.error('[Edge API Error]', error);
     // 🛡️ 錯誤診斷
     return new Response(
-      JSON.stringify({ 
-        error: 'server_error', 
-        message: error.message,
-        stack: error.stack
-      }),
+      JSON.stringify({ error: 'server_error' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
