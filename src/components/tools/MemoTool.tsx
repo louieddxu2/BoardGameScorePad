@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PenLine, Eraser } from 'lucide-react';
 import { GameSession } from '../../types';
 import { useToolsTranslation } from '../../i18n/tools';
@@ -16,8 +16,6 @@ const MemoTool: React.FC<MemoToolProps> = ({ session, onUpdateSession, onFocusCh
     const onUpdateRef = useRef(onUpdateSession);
     const sessionRef = useRef(session);
     const textRef = useRef(text);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const isFocusedRef = useRef(false);
     
     onUpdateRef.current = onUpdateSession;
     sessionRef.current = session;
@@ -49,38 +47,11 @@ const MemoTool: React.FC<MemoToolProps> = ({ session, onUpdateSession, onFocusCh
         setText('');
     };
 
-    const scrollMemoIntoView = useCallback(() => {
-        textareaRef.current?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-            inline: 'nearest',
-        });
-    }, []);
-
-    useEffect(() => {
-        const handleViewportChange = () => {
-            if (!isFocusedRef.current) return;
-            window.requestAnimationFrame(scrollMemoIntoView);
-        };
-
-        window.visualViewport?.addEventListener('resize', handleViewportChange);
-        window.visualViewport?.addEventListener('scroll', handleViewportChange);
-        window.addEventListener('resize', handleViewportChange);
-        return () => {
-            window.visualViewport?.removeEventListener('resize', handleViewportChange);
-            window.visualViewport?.removeEventListener('scroll', handleViewportChange);
-            window.removeEventListener('resize', handleViewportChange);
-        };
-    }, [scrollMemoIntoView]);
-
     const handleFocus = () => {
-        isFocusedRef.current = true;
         onFocusChange?.(true);
-        scrollMemoIntoView();
     };
 
     const handleBlur = () => {
-        isFocusedRef.current = false;
         onFocusChange?.(false);
         flushUpdate();
     };
@@ -102,13 +73,12 @@ const MemoTool: React.FC<MemoToolProps> = ({ session, onUpdateSession, onFocusCh
             </div>
 
             <textarea
-                ref={textareaRef}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
                 placeholder={t('memo_placeholder')}
-                className="flex-1 bg-transparent border-none outline-none resize-none text-sm text-txt-primary placeholder-txt-muted/50 leading-relaxed no-scrollbar"
+                className="flex-1 bg-transparent border-none outline-none resize-none text-base text-txt-primary placeholder-txt-muted/50 leading-relaxed no-scrollbar"
                 spellCheck={false}
             />
 

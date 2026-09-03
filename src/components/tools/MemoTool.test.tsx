@@ -20,19 +20,17 @@ describe('MemoTool keyboard visibility', () => {
         vi.mocked(window.HTMLElement.prototype.scrollIntoView).mockClear();
     });
 
-    it('scrolls the memo into view when its textarea receives focus', () => {
+    it('avoids iOS focus zoom without fighting the browser scroll position', () => {
         render(
             <LanguageProvider>
                 <MemoTool session={session} onUpdateSession={vi.fn()} />
             </LanguageProvider>,
         );
 
-        fireEvent.focus(screen.getByRole('textbox'));
+        const textarea = screen.getByRole('textbox');
+        fireEvent.focus(textarea);
 
-        expect(window.HTMLElement.prototype.scrollIntoView).toHaveBeenCalledWith({
-            behavior: 'smooth',
-            block: 'center',
-            inline: 'nearest',
-        });
+        expect(textarea).toHaveClass('text-base');
+        expect(window.HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
     });
 });
