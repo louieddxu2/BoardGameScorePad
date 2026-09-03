@@ -21,6 +21,8 @@ import { usePhotoManager } from '../../hooks/usePhotoManager';
 import { useToolboxBoundaryGesture } from '../../hooks/useToolboxBoundaryGesture';
 import SmartSpacer from '../session/parts/SmartSpacer';
 import HistoryPhotoStrip from './HistoryPhotoStrip';
+import { useKeyboardStatus } from '../../hooks/useVisualViewportOffset';
+import { getSessionPanelDockOffset } from '../../utils/sessionViewport';
 
 import { useHistoryTranslation } from '../../i18n/history';
 
@@ -67,6 +69,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
     const [showShareMenu, setShowShareMenu] = useState(false);
     const [showPhotoGallery, setShowPhotoGallery] = useState(false);
     const [directPhotoId, setDirectPhotoId] = useState<string | null>(null);
+    const [isToolboxInputFocused, setIsToolboxInputFocused] = useState(false);
     const [screenshotLayout, setScreenshotLayout] = useState<ScreenshotLayout | null>(null);
     
     // [Logic] Determine if the list is "Short" (auto-open toolbox)
@@ -76,6 +79,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
 
     const [isToolboxOpen, setIsToolboxOpen] = useState(isShortList);
     const { showToast } = useToast();
+    const { offset: keyboardOffset, isKeyboardOpen } = useKeyboardStatus();
 
     // === 照片管理（與計分板共用 usePhotoManager） ===
     const photos = usePhotoManager({
@@ -203,7 +207,8 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
         showSettingsModal ||
         showShareMenu ||
         showPhotoGallery ||
-        photos.isCameraOpen;
+        photos.isCameraOpen ||
+        isToolboxInputFocused;
 
     const handleAutoOpenToolbox = useCallback(() => {
         setIsToolboxOpen(true);
@@ -355,7 +360,10 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
         setDirectPhotoId(null);
     };
 
-    const panelDockOffset = 'var(--bottom-ui-safe-gap)';
+    const panelDockOffset = getSessionPanelDockOffset(
+        keyboardOffset,
+        isKeyboardOpen && isToolboxInputFocused,
+    );
     const occupiedBottom = isToolboxOpen
         ? `calc(40vh + ${panelDockOffset})`
         : panelDockOffset;
@@ -486,6 +494,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                             setShowScreenshotModal(true);
                         }}
                         onUpdateSession={handleUpdateNote}
+                        onMemoFocusChange={setIsToolboxInputFocused}
                         topContent={
                             <HistoryPhotoStrip
                                 photoIds={record.photos || []}

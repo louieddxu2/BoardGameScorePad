@@ -20,9 +20,10 @@ interface SmartSpacerProps {
     mode?: 'session' | 'history'; // New prop
     mediaOnly?: boolean;
     topContent?: React.ReactNode;
+    onMemoFocusChange?: (focused: boolean) => void;
 }
 
-const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhoto, onScreenshot, onUpdateSession, mode = 'session', mediaOnly = false, topContent }) => {
+const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhoto, onScreenshot, onUpdateSession, mode = 'session', mediaOnly = false, topContent, onMemoFocusChange }) => {
     const { t } = useSessionTranslation();
     const isHistory = mode === 'history';
     const isPinchingRef = useRef(false);
@@ -94,7 +95,7 @@ const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhot
 
                 {/* Row 5: Notes */}
                 {!mediaOnly && <div className="col-span-4">
-                    <MemoTool session={session} onUpdateSession={onUpdateSession} />
+                    <MemoTool session={session} onUpdateSession={onUpdateSession} onFocusChange={onMemoFocusChange} />
                 </div>}
 
             </div>

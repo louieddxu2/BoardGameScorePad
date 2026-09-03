@@ -495,4 +495,37 @@ describe('SessionView toolbox scroll behavior', () => {
 
     expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
   });
+
+  it('moves the toolbox above the virtual keyboard while its memo is focused', () => {
+    renderSession();
+    const toolboxButton = document.querySelector('[title="Toggle Toolbox"]') as HTMLButtonElement | null;
+    if (!toolboxButton || !window.visualViewport) throw new Error('toolbox or visual viewport unavailable');
+
+    fireEvent.click(toolboxButton);
+    const textarea = screen.getByRole('textbox');
+    const panel = document.querySelector('[data-session-input-panel="true"]') as HTMLElement;
+    const viewport = window.visualViewport as VisualViewport & { height: number; offsetTop: number };
+    const originalHeight = viewport.height;
+    const originalOffsetTop = viewport.offsetTop;
+    const layoutHeight = Math.max(document.documentElement.clientHeight, window.innerHeight);
+
+    try {
+      fireEvent.focus(textarea);
+      act(() => {
+        viewport.height = layoutHeight - 260;
+        viewport.offsetTop = 0;
+        viewport.dispatchEvent(new Event('resize'));
+      });
+
+      expect(panel.style.bottom).toBe('260px');
+      fireEvent.blur(textarea);
+      expect(panel.style.bottom).toBe('var(--bottom-ui-safe-gap)');
+    } finally {
+      act(() => {
+        viewport.height = originalHeight;
+        viewport.offsetTop = originalOffsetTop;
+        viewport.dispatchEvent(new Event('resize'));
+      });
+    }
+  });
 });

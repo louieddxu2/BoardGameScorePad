@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { PenLine, Eraser } from 'lucide-react';
 import { GameSession } from '../../types';
 import { useToolsTranslation } from '../../i18n/tools';
@@ -6,15 +6,18 @@ import { useToolsTranslation } from '../../i18n/tools';
 interface MemoToolProps {
     session?: GameSession; // Optional for backward compatibility, but required for sync
     onUpdateSession?: (session: GameSession) => void;
+    onFocusChange?: (focused: boolean) => void;
 }
 
-const MemoTool: React.FC<MemoToolProps> = ({ session, onUpdateSession }) => {
+const MemoTool: React.FC<MemoToolProps> = ({ session, onUpdateSession, onFocusChange }) => {
     const { t } = useToolsTranslation();
     // Initialize with session note if available
     const [text, setText] = useState(session?.note || '');
     const onUpdateRef = useRef(onUpdateSession);
     const sessionRef = useRef(session);
     const textRef = useRef(text);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const isFocusedRef = useRef(false);
     
     onUpdateRef.current = onUpdateSession;
     sessionRef.current = session;
@@ -46,6 +49,42 @@ const MemoTool: React.FC<MemoToolProps> = ({ session, onUpdateSession }) => {
         setText('');
     };
 
+    const scrollMemoIntoView = useCallback(() => {
+        textareaRef.current?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'nearest',
+        });
+    }, []);
+
+    useEffect(() => {
+        const handleViewportChange = () => {
+            if (!isFocusedRef.current) return;
+            window.requestAnimationFrame(scrollMemoIntoView);
+        };
+
+        window.visualViewport?.addEventListener('resize', handleViewportChange);
+        window.visualViewport?.addEventListener('scroll', handleViewportChange);
+        window.addEventListener('resize', handleViewportChange);
+        return () => {
+            window.visualViewport?.removeEventListener('resize', handleViewportChange);
+            window.visualViewport?.removeEventListener('scroll', handleViewportChange);
+            window.removeEventListener('resize', handleViewportChange);
+        };
+    }, [scrollMemoIntoView]);
+
+    const handleFocus = () => {
+        isFocusedRef.current = true;
+        onFocusChange?.(true);
+        scrollMemoIntoView();
+    };
+
+    const handleBlur = () => {
+        isFocusedRef.current = false;
+        onFocusChange?.(false);
+        flushUpdate();
+    };
+
     return (
         <div className="w-full h-full bg-[rgb(var(--c-input-bg))] rounded-2xl border border-[rgb(var(--c-input-border))] p-3 flex flex-col min-h-[140px] relative group shadow-sm">
             <div className="flex justify-between items-center mb-2">
@@ -63,9 +102,11 @@ const MemoTool: React.FC<MemoToolProps> = ({ session, onUpdateSession }) => {
             </div>
 
             <textarea
+                ref={textareaRef}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                onBlur={flushUpdate}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
                 placeholder={t('memo_placeholder')}
                 className="flex-1 bg-transparent border-none outline-none resize-none text-sm text-txt-primary placeholder-txt-muted/50 leading-relaxed no-scrollbar"
                 spellCheck={false}

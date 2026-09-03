@@ -1,5 +1,5 @@
 
-import React, { useCallback, useRef, useMemo } from 'react';
+import React, { useCallback, useRef, useMemo, useState } from 'react';
 import { ArrowDown } from 'lucide-react';
 import { GameSession, GameTemplate, SavedListItem } from '../../types';
 import { useSessionState, ScreenshotLayout } from './hooks/useSessionState';
@@ -138,6 +138,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   }, [aiSimpleGenerator.simpleStatus, aiGenerator.status]);
 
   const sessionState = useSessionState({ ...props, onUpdateTemplate: handleTemplateUpdate });
+  const [isToolboxInputFocused, setIsToolboxInputFocused] = useState(false);
   const capabilities = useMemo(() => {
     if (props.multiplayerCapabilities) return props.multiplayerCapabilities;
     const player = session.players[multiplayerPreviewIndex];
@@ -150,7 +151,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     ? session.players.findIndex(player => player.id === capabilities.playerId) + 1
     : null;
   const { setUiState, keyboardOffset, isKeyboardOpen, closeFocusedPlayerNameInput } = sessionState;
-  const isNativeKeyboardCompensationActive = isKeyboardOpen && sessionState.uiState.isInputFocused;
+  const isNativeKeyboardCompensationActive = isKeyboardOpen && (
+    sessionState.uiState.isInputFocused || isToolboxInputFocused
+  );
   const isAndroid = typeof document !== 'undefined' && document.documentElement.dataset.android === 'true';
   const isStandalone = typeof document !== 'undefined' && document.documentElement.dataset.standalone === 'true';
   const isAndroidBrowser = isAndroid && !isStandalone;
@@ -260,6 +263,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     editingColumn !== null ||
     isEditingTitle ||
     isInputFocused ||
+    isToolboxInputFocused ||
     isAddColumnModalOpen ||
     isGameSettingsOpen ||
     isImageUploadModalOpen ||
@@ -944,6 +948,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         canEditTotal={capabilities.canEditTotal}
         canEditPlayers={capabilities.canEditPlayers}
         mediaOnlyTools={capabilities.role === 'player'}
+        onToolboxInputFocusChange={setIsToolboxInputFocused}
       />
 
       <SessionViewportDiagnostics />
