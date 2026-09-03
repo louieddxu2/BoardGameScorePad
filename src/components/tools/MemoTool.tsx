@@ -78,7 +78,7 @@ const MemoTool: React.FC<MemoToolProps> = ({ session, onUpdateSession, onFocusCh
                 onFocus={handleFocus}
                 onBlur={handleBlur}
                 placeholder={t('memo_placeholder')}
-                className="flex-1 bg-transparent border-none outline-none resize-none text-base text-txt-primary placeholder-txt-muted/50 leading-relaxed no-scrollbar"
+                className="flex-1 bg-transparent border-none outline-none resize-none text-sm text-txt-primary placeholder-txt-muted/50 leading-relaxed no-scrollbar"
                 spellCheck={false}
             />
 

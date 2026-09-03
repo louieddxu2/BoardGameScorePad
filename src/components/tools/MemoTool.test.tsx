@@ -20,7 +20,7 @@ describe('MemoTool keyboard visibility', () => {
         vi.mocked(window.HTMLElement.prototype.scrollIntoView).mockClear();
     });
 
-    it('avoids iOS focus zoom without fighting the browser scroll position', () => {
+    it('leaves viewport scrolling to its toolbox owner', () => {
         render(
             <LanguageProvider>
                 <MemoTool session={session} onUpdateSession={vi.fn()} />
@@ -30,7 +30,7 @@ describe('MemoTool keyboard visibility', () => {
         const textarea = screen.getByRole('textbox');
         fireEvent.focus(textarea);
 
-        expect(textarea).toHaveClass('text-base');
+        expect(textarea).toHaveClass('text-sm');
         expect(window.HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
     });
 });

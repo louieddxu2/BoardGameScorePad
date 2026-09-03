@@ -10,7 +10,11 @@ vi.mock('../../tools/MediaTool', () => ({ default: () => <div>media-tools</div> 
 vi.mock('../../tools/RandomizerTool', () => ({ default: () => <div>randomizer-tool</div> }));
 vi.mock('../../tools/CountdownTool', () => ({ default: () => <div>countdown-tool</div> }));
 vi.mock('../../tools/OrderTool', () => ({ default: () => <div>order-tool</div> }));
-vi.mock('../../tools/MemoTool', () => ({ default: () => <div>memo-tool</div> }));
+vi.mock('../../tools/MemoTool', () => ({
+  default: ({ onFocusChange }: { onFocusChange?: (focused: boolean) => void }) => (
+    <button onFocus={() => onFocusChange?.(true)}>memo-tool</button>
+  ),
+}));
 
 const template: GameTemplate = { id: 'template-1', name: 'Template', columns: [], createdAt: 1, updatedAt: 1 };
 const session: GameSession = { id: 'session-1', templateId: 'template-1', name: 'Template', startTime: 1, players: [], status: 'active' };
@@ -84,6 +88,32 @@ describe('SmartSpacer participant tools', () => {
     expect(screen.getByText('countdown-tool')).toBeInTheDocument();
     expect(screen.getByText('randomizer-tool')).toBeInTheDocument();
     expect(screen.getByText('memo-tool')).toBeInTheDocument();
+  });
+
+  it('scrolls only the toolbox container to its final memo row on focus', () => {
+    const onMemoFocusChange = vi.fn();
+    const { container } = render(
+      <LanguageProvider>
+        <SmartSpacer
+          session={session}
+          template={template}
+          onUpdateSession={vi.fn()}
+          onMemoFocusChange={onMemoFocusChange}
+        />
+      </LanguageProvider>,
+    );
+    const scroller = container.querySelector('[data-toolbox-scroller="true"]') as HTMLElement;
+    Object.defineProperty(scroller, 'scrollHeight', { configurable: true, value: 720 });
+
+    fireEvent.focus(screen.getByText('memo-tool'));
+
+    expect(scroller.scrollTop).toBe(720);
+    expect(onMemoFocusChange).toHaveBeenCalledWith(true);
+    expect(window.HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
+
+    scroller.scrollTop = 0;
+    window.visualViewport?.dispatchEvent(new Event('resize'));
+    expect(scroller.scrollTop).toBe(720);
   });
 
   it('does not repeat the score-input hint inside the toolbox', () => {

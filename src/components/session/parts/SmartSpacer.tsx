@@ -1,5 +1,5 @@
 
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Wrench } from 'lucide-react';
 import { GameSession, GameTemplate } from '../../../types';
 
@@ -27,6 +27,30 @@ const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhot
     const { t } = useSessionTranslation();
     const isHistory = mode === 'history';
     const isPinchingRef = useRef(false);
+    const scrollerRef = useRef<HTMLDivElement>(null);
+    const isMemoFocusedRef = useRef(false);
+
+    const pinMemoToBottom = () => {
+        if (!isMemoFocusedRef.current || !scrollerRef.current) return;
+        scrollerRef.current.scrollTop = scrollerRef.current.scrollHeight;
+    };
+
+    useEffect(() => {
+        const handleViewportChange = () => pinMemoToBottom();
+        window.visualViewport?.addEventListener('resize', handleViewportChange);
+        window.visualViewport?.addEventListener('scroll', handleViewportChange);
+        return () => {
+            window.visualViewport?.removeEventListener('resize', handleViewportChange);
+            window.visualViewport?.removeEventListener('scroll', handleViewportChange);
+        };
+    }, []);
+
+    const handleMemoFocusChange = (focused: boolean) => {
+        isMemoFocusedRef.current = focused;
+        if (focused) pinMemoToBottom();
+        onMemoFocusChange?.(focused);
+    };
+
     const keepToolboxTouchLocal = (event: React.TouchEvent) => {
         if (event.touches.length >= 2) {
             isPinchingRef.current = true;
@@ -45,6 +69,7 @@ const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhot
 
     return (
         <div
+            ref={scrollerRef}
             data-toolbox-scroller="true"
             className="absolute inset-0 flex flex-col p-4 overflow-y-auto no-scrollbar touch-pan-y overscroll-contain"
             onTouchStart={keepToolboxTouchLocal}
@@ -95,7 +120,7 @@ const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhot
 
                 {/* Row 5: Notes */}
                 {!mediaOnly && <div className="col-span-4">
-                    <MemoTool session={session} onUpdateSession={onUpdateSession} onFocusChange={onMemoFocusChange} />
+                    <MemoTool session={session} onUpdateSession={onUpdateSession} onFocusChange={handleMemoFocusChange} />
                 </div>}
 
             </div>
