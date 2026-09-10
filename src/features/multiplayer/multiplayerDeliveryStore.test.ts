@@ -58,6 +58,49 @@ describe('multiplayer delivery store helpers', () => {
     }
   });
 
+  it('does not leave a sequence behind when the outbox write fails', async () => {
+    records.clear();
+    outboxRecords.clear();
+    const baseStore = createStore();
+    const store: MultiplayerDeliveryStore = {
+      ...baseStore,
+      putOutbox: async () => { throw new Error('outbox write failed'); },
+    };
+    const transactionSpy = vi.spyOn(db, 'transaction').mockImplementation(((...args: any[]) => {
+      const recordsBefore = new Map(records);
+      const outboxRecordsBefore = new Map(outboxRecords);
+      return Promise.resolve(args[args.length - 1]()).catch((error) => {
+        records.clear();
+        recordsBefore.forEach((value, key) => records.set(key, value));
+        outboxRecords.clear();
+        outboxRecordsBefore.forEach((value, key) => outboxRecords.set(key, value));
+        throw error;
+      });
+    }) as any);
+    vi.stubGlobal('indexedDB', {});
+
+    try {
+      await expect(reserveSequenceAndPutOutbox({
+        store,
+        key: 'room:device:p1:points',
+        now: () => 30,
+        createMessage: (sequence) => ({
+          type: 'score:valuePatch' as const,
+          roomId: 'room', sessionId: 'session', opId: 'op-failed', deviceId: 'device', sequence,
+          patch: { actor: { role: 'player' as const, playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: null },
+          updatedAt: 40,
+        }),
+      })).rejects.toThrow('outbox write failed');
+
+      expect(transactionSpy).toHaveBeenCalledTimes(1);
+      expect(records.has('sequence:room:device:p1:points')).toBe(false);
+      expect(outboxRecords.size).toBe(0);
+    } finally {
+      transactionSpy.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('keys delivery operations by room, source device, and operation id', () => {
     expect(scorePatchOperationKey('room-1', 'device-1', 'op-1')).toBe('room-1:device-1:op-1');
   });
