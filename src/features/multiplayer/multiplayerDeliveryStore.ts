@@ -51,6 +51,19 @@ export const scorePatchSequenceKey = (message: Pick<ScoreValuePatchMessage, 'roo
   return `${message.roomId}:${message.deviceId}:${actorId}:${message.patch.targetPlayerId}:${message.patch.colId}`;
 };
 
+export const scorePatchOperationKey = (roomId: string, deviceId: string, opId: string): string => `${roomId}:${deviceId}:${opId}`;
+
+export const createOutboxRecord = (message: ScoreValuePatchMessage | TotalAdjustmentPatchMessage): MultiplayerOutboxRecord => ({
+  id: scorePatchOperationKey(message.roomId, message.deviceId, message.opId),
+  roomId: message.roomId,
+  sessionId: message.sessionId,
+  deviceId: message.deviceId,
+  opId: message.opId,
+  message,
+  createdAt: message.updatedAt,
+  updatedAt: message.updatedAt,
+});
+
 export const reserveScorePatchSequence = async (options: {
   store?: MultiplayerDeliveryStore;
   key: string;
@@ -77,15 +90,31 @@ export const reserveScorePatchSequence = async (options: {
   }
 };
 
-export const scorePatchOperationKey = (roomId: string, deviceId: string, opId: string): string => `${roomId}:${deviceId}:${opId}`;
-
-export const createOutboxRecord = (message: ScoreValuePatchMessage | TotalAdjustmentPatchMessage): MultiplayerOutboxRecord => ({
-  id: scorePatchOperationKey(message.roomId, message.deviceId, message.opId),
-  roomId: message.roomId,
-  sessionId: message.sessionId,
-  deviceId: message.deviceId,
-  opId: message.opId,
-  message,
-  createdAt: message.updatedAt,
-  updatedAt: message.updatedAt,
-});
+export const reserveSequenceAndPutOutbox = async <T extends ScoreValuePatchMessage | TotalAdjustmentPatchMessage>(options: {
+  store?: MultiplayerDeliveryStore;
+  key: string;
+  createMessage: (sequence: number) => T;
+  now?: () => number;
+}): Promise<T> => {
+  const store = options.store ?? multiplayerDeliveryStore;
+  const now = options.now ?? Date.now;
+  const execute = async (): Promise<T> => {
+    const current = await store.getSequence(options.key);
+    const sequence = current?.nextSequence ?? 1;
+    const message = options.createMessage(sequence);
+    await store.putSequence({ id: options.key, nextSequence: sequence + 1, updatedAt: now() });
+    await store.putOutbox(createOutboxRecord(message));
+    return message;
+  };
+  if (typeof indexedDB === 'undefined') {
+    return execute();
+  }
+  try {
+    return await db.transaction('rw', db.multiplayerSequences, db.multiplayerOutbox, execute);
+  } catch (err: any) {
+    if (err?.name === 'MissingAPIError' || err?.message?.includes('IndexedDB API missing')) {
+      return execute();
+    }
+    throw err;
+  }
+};
