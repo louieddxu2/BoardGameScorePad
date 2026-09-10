@@ -41,6 +41,12 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
   updateRoomRevision(roomId: string, revision: number, updatedAt: number) {
     return db.multiplayerRooms.update(roomId, { revision, updatedAt });
   },
+  persistSnapshot({ session, roomId, revision, updatedAt }) {
+    return db.transaction('rw', [db.sessions, db.multiplayerRooms], async () => {
+      await db.sessions.put(session);
+      await db.multiplayerRooms.update(roomId, { revision, updatedAt });
+    });
+  },
   putHistory(record: HistoryRecord) {
     return db.history.put(record);
   },

@@ -110,6 +110,35 @@ describe('multiplayer local persistence', () => {
     expect(updateRoomRevision).toHaveBeenCalledWith('room-1', 4, 40);
   });
 
+  it('uses the atomic snapshot writer when the store provides one', async () => {
+    const persistSnapshot = vi.fn(async () => undefined);
+    const putSession = vi.fn(async () => undefined);
+    const updateRoomRevision = vi.fn(async () => undefined);
+    const snapshot = {
+      type: 'session:snapshot' as const,
+      roomId: 'room-1',
+      sessionId: 'session-1',
+      session: createSession(),
+      revision: 5,
+      updatedAt: 50,
+    };
+
+    await persistMultiplayerSnapshot(snapshot, {
+      putSession,
+      updateRoomRevision,
+      persistSnapshot,
+    });
+
+    expect(persistSnapshot).toHaveBeenCalledWith({
+      session: snapshot.session,
+      roomId: 'room-1',
+      revision: 5,
+      updatedAt: 50,
+    });
+    expect(putSession).not.toHaveBeenCalled();
+    expect(updateRoomRevision).not.toHaveBeenCalled();
+  });
+
   it('retains a terminal snapshot for participants reconnecting after host completion', async () => {
     const putSession = vi.fn(async () => undefined);
     const putRoom = vi.fn(async () => undefined);

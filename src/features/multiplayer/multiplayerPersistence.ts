@@ -32,6 +32,12 @@ export interface MultiplayerSnapshotStore {
   putSession(session: GameSession): Promise<unknown>;
   putTemplate?(template: GameTemplate): Promise<unknown>;
   updateRoomRevision(roomId: string, revision: number, updatedAt: number): Promise<unknown>;
+  persistSnapshot?(options: {
+    session: GameSession;
+    roomId: string;
+    revision: number;
+    updatedAt: number;
+  }): Promise<unknown>;
 }
 
 export interface PersistedBootstrapImport {
@@ -137,8 +143,17 @@ export const persistMultiplayerSnapshot = async (
   }
 
   const session = cloneJson(message.session);
-  await store.putSession(session);
-  await store.updateRoomRevision(message.roomId, message.revision, message.updatedAt);
+  if (store.persistSnapshot) {
+    await store.persistSnapshot({
+      session,
+      roomId: message.roomId,
+      revision: message.revision,
+      updatedAt: message.updatedAt,
+    });
+  } else {
+    await store.putSession(session);
+    await store.updateRoomRevision(message.roomId, message.revision, message.updatedAt);
+  }
   return session;
 };
 

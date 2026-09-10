@@ -15,7 +15,7 @@ import { COLORS } from '../colors';
 import { useLibrary } from './useLibrary';
 import { useSessionTranslation } from '../i18n/session';
 import { isDisposableTemplate, calculateWinners, prepareTemplateForSave, createVirtualTemplate } from '../utils/templateUtils';
-import { deleteSessionRecord, deleteSessionRecords } from '../features/multiplayer/sessionDeletionEvents';
+import { deleteSessionRecord, deleteSessionRecords, notifySessionDeleted } from '../features/multiplayer/sessionDeletionEvents';
 
 interface UseSessionManagerProps {
     getTemplate: (id: string) => Promise<GameTemplate | null>;
@@ -457,8 +457,11 @@ export const useSessionManager = ({
                 scoringRule: rule
             };
 
-            await db.history.put(record);
-            await deleteSessionRecord(currentSession.id);
+            await db.transaction('rw', db.history, db.sessions, async () => {
+                await db.history.put(record);
+                await db.sessions.delete(currentSession.id);
+            });
+            notifySessionDeleted(currentSession.id);
 
             try {
                 await relationshipService.processGameEnd(record);

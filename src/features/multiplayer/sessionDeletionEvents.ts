@@ -2,7 +2,7 @@ import { db } from '../../db';
 
 const listeners = new Set<(sessionId: string) => void>();
 
-const notifySessionDeleted = (sessionId: string) => {
+export const notifySessionDeleted = (sessionId: string) => {
   for (const listener of [...listeners]) listener(sessionId);
 };
 

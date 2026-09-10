@@ -12,6 +12,9 @@ const hoisted = vi.hoisted(() => {
   const templatePrefStore = new Map<string, any>();
 
   const dbMock = {
+    transaction: vi.fn(async (_mode: string, _historyTable: unknown, _sessionsTable: unknown, callback: () => Promise<void>) => {
+      await callback();
+    }),
     templatePrefs: {
       put: vi.fn(async (pref: any) => {
         templatePrefStore.set(pref.templateId, pref);
@@ -188,6 +191,12 @@ describe('useSessionManager', () => {
 
     expect(hoisted.dbMock.history.put).toHaveBeenCalledTimes(1);
     expect(hoisted.dbMock.sessions.delete).toHaveBeenCalledWith(sessionId);
+    expect(hoisted.dbMock.transaction).toHaveBeenCalledWith(
+      'rw',
+      hoisted.dbMock.history,
+      hoisted.dbMock.sessions,
+      expect.any(Function),
+    );
     expect(hoisted.historyStore.has(sessionId!)).toBe(true);
 
     const saved = hoisted.historyStore.get(sessionId!)!;
