@@ -50,6 +50,31 @@ describe('multiplayer local persistence', () => {
     expect(putTemplate).toHaveBeenCalledWith(expect.objectContaining({ id: 'template-1', updatedAt: 200 }));
   });
 
+  it('uses the atomic bootstrap writer when the store provides one', async () => {
+    const persistBootstrap = vi.fn(async () => undefined);
+    const putTemplate = vi.fn(async () => undefined);
+    const putSession = vi.fn(async () => undefined);
+    const putRoom = vi.fn(async () => undefined);
+
+    const result = await persistMultiplayerBootstrap(createMessage(), {
+      getTemplate: async () => undefined,
+      putTemplate,
+      putSession,
+      putRoom,
+      persistBootstrap,
+    });
+
+    expect(result.decision.action).toBe('add-new');
+    expect(persistBootstrap).toHaveBeenCalledWith({
+      template: expect.objectContaining({ id: 'template-1' }),
+      session: expect.objectContaining({ id: 'session-1', templateId: 'template-1' }),
+      room: expect.objectContaining({ roomId: 'room-1', sessionId: 'session-1', role: 'player' }),
+    });
+    expect(putTemplate).not.toHaveBeenCalled();
+    expect(putSession).not.toHaveBeenCalled();
+    expect(putRoom).not.toHaveBeenCalled();
+  });
+
   it('keeps a newer local template and creates one deterministic template copy for this session', async () => {
     const putTemplate = vi.fn(async () => undefined);
     const putSession = vi.fn(async () => undefined);

@@ -2,6 +2,7 @@ import { db } from '../../db';
 import { GameSession, GameTemplate, HistoryRecord, MultiplayerRoomRecord } from '../../types';
 import {
   MultiplayerBootstrapStore,
+  MultiplayerBootstrapRecords,
   MultiplayerHistoryStore,
   MultiplayerSnapshotStore,
   PersistedBootstrapImport,
@@ -28,6 +29,16 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
   },
   putRoom(room: MultiplayerRoomRecord) {
     return db.multiplayerRooms.put(room);
+  },
+  persistBootstrap({ template, session, room }: MultiplayerBootstrapRecords) {
+    const tables = template
+      ? [db.templates, db.sessions, db.multiplayerRooms]
+      : [db.sessions, db.multiplayerRooms];
+    return db.transaction('rw', tables, async () => {
+      if (template) await db.templates.put(template);
+      await db.sessions.put(session);
+      await db.multiplayerRooms.put(room);
+    });
   },
   getRoom(roomId: string) {
     return db.multiplayerRooms.get(roomId);

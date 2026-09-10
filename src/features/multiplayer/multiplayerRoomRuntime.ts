@@ -1,7 +1,7 @@
 import { GameSession, GameTemplate, MultiplayerRoomRecord } from '../../types';
 import { MultiplayerDeliveryStore } from './multiplayerDeliveryStore';
 import { MultiplayerParticipantBindingStore, participantBindingKey, saveParticipantBinding } from './multiplayerParticipantBinding';
-import { MultiplayerBootstrapStore, MultiplayerCompletionReleaseStore, MultiplayerSnapshotStore, createMultiplayerRoomRecord, persistMultiplayerBootstrap, releaseMultiplayerRoomOwnership } from './multiplayerPersistence';
+import { MultiplayerBootstrapStore, MultiplayerCompletionReleaseStore, MultiplayerSnapshotStore, createMultiplayerRoomRecord, persistMultiplayerBootstrap, persistMultiplayerBootstrapRecords, releaseMultiplayerRoomOwnership } from './multiplayerPersistence';
 import { MultiplayerRoomTransport, ParticipantClaimCounts, createMultiplayerPlayerRoomController, createMultiplayerRoomController } from './multiplayerRoomController';
 import { createMultiplayerHostSession, createMultiplayerPlayerSessionFromBootstrap } from './multiplayerSession';
 import { BootstrapPackageMessage, MULTIPLAYER_PROTOCOL_VERSION } from './protocol';
@@ -73,15 +73,17 @@ export const createMultiplayerHostRoomRuntime = async (options: {
 }): Promise<MultiplayerHostRoomRuntime> => {
   const now = options.now ?? Date.now;
   const hostSession = createMultiplayerHostSession(options);
-  await options.store.putTemplate(hostSession.template);
-  await options.store.putSession(hostSession.session);
-  await options.store.putRoom(createMultiplayerRoomRecord({
-    room: hostSession.room,
+  await persistMultiplayerBootstrapRecords(options.store, {
+    template: hostSession.template,
     session: hostSession.session,
-    revision: hostSession.revision,
-    role: 'host',
-    updatedAt: now(),
-  }));
+    room: createMultiplayerRoomRecord({
+      room: hostSession.room,
+      session: hostSession.session,
+      revision: hostSession.revision,
+      role: 'host',
+      updatedAt: now(),
+    }),
+  });
   const controller = createMultiplayerRoomController({
     role: 'host', hostSession, deliveryStore: options.deliveryStore,
     snapshotStore: options.store, transport: options.transport, now,

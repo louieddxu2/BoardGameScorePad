@@ -16,6 +16,13 @@ export interface MultiplayerBootstrapStore {
   putTemplate(template: GameTemplate): Promise<unknown>;
   putSession(session: GameSession): Promise<unknown>;
   putRoom(room: MultiplayerRoomRecord): Promise<unknown>;
+  persistBootstrap?(records: MultiplayerBootstrapRecords): Promise<unknown>;
+}
+
+export interface MultiplayerBootstrapRecords {
+  template?: GameTemplate;
+  session: GameSession;
+  room: MultiplayerRoomRecord;
 }
 
 export interface MultiplayerHistoryStore {
@@ -66,6 +73,20 @@ export const createMultiplayerRoomRecord = (options: {
   updatedAt: options.updatedAt,
 });
 
+export const persistMultiplayerBootstrapRecords = async (
+  store: MultiplayerBootstrapStore,
+  records: MultiplayerBootstrapRecords,
+): Promise<void> => {
+  if (store.persistBootstrap) {
+    await store.persistBootstrap(records);
+    return;
+  }
+
+  if (records.template) await store.putTemplate(records.template);
+  await store.putSession(records.session);
+  await store.putRoom(records.room);
+};
+
 /**
  * Keeps a completed host room available briefly so a temporarily offline
  * participant can receive the terminal snapshot after reconnecting.
@@ -110,22 +131,25 @@ export const persistMultiplayerBootstrap = async (
   const localTemplate = await store.getTemplate(message.package.template.id);
   const resolved = resolveBootstrapImport(message.package, localTemplate);
 
-  if (
+  const templateToPersist = (
     resolved.decision.action === 'add-new' ||
     resolved.decision.action === 'overwrite-local' ||
     resolved.decision.action === 'add-session-copy'
-  ) {
-    await store.putTemplate(cloneJson(resolved.templateForSession));
-  }
+  ) ? cloneJson(resolved.templateForSession) : undefined;
 
-  await store.putSession(cloneJson(resolved.session));
-  await store.putRoom(createMultiplayerRoomRecord({
+  const sessionToPersist = cloneJson(resolved.session);
+  const roomToPersist = createMultiplayerRoomRecord({
     room: message.package.room,
-    session: resolved.session,
+    session: sessionToPersist,
     revision: message.package.revision,
     role,
     updatedAt: message.package.exportedAt,
-  }));
+  });
+  await persistMultiplayerBootstrapRecords(store, {
+    template: templateToPersist,
+    session: sessionToPersist,
+    room: roomToPersist,
+  });
 
   return {
     decision: resolved.decision,
