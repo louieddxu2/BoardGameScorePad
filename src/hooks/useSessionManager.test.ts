@@ -159,6 +159,7 @@ describe('useSessionManager', () => {
         getTemplate,
         activeSessions: [],
         isCloudEnabled: () => false,
+        pinnedIds: [],
       })
     );
 
@@ -209,13 +210,42 @@ describe('useSessionManager', () => {
     expect(result.current.activeTemplate).toBeNull();
   });
 
+  it('keeps a pinned simple template when saving a game to history', async () => {
+    const template: GameTemplate = {
+      id: 'tpl_pinned_simple',
+      name: 'Pinned Simple Game',
+      columns: [],
+      createdAt: Date.now(),
+    };
+
+    const { result } = renderHook(() =>
+      useSessionManager({
+        getTemplate: async () => template,
+        activeSessions: [],
+        isCloudEnabled: () => false,
+        pinnedIds: [template.id],
+      })
+    );
+
+    let sessionId: string | null = null;
+    await act(async () => {
+      sessionId = await result.current.startSession(template, 2);
+    });
+    await act(async () => { await result.current.saveToHistory(); });
+
+    expect(hoisted.cleanupDisposableTemplateMock).toHaveBeenCalledWith(template.id, [template.id]);
+    expect(hoisted.historyStore.get(sessionId!)?.snapshotTemplate).toEqual(
+      expect.objectContaining({ id: template.id })
+    );
+  });
+
   it('does not restore an active session from a pending autosave after saving history', async () => {
     vi.useFakeTimers();
     try {
       const template: GameTemplate = {
         id: 'tpl_autosave', name: 'Autosave', columns: [{ id: 'score', name: 'Score', formula: 'a1', inputType: 'keypad', isScoring: true }], createdAt: Date.now(),
       };
-      const { result } = renderHook(() => useSessionManager({ getTemplate: async () => template, activeSessions: [], isCloudEnabled: () => false }));
+      const { result } = renderHook(() => useSessionManager({ getTemplate: async () => template, activeSessions: [], isCloudEnabled: () => false, pinnedIds: [] }));
 
       let sessionId: string | null = null;
       await act(async () => { sessionId = await result.current.startSession(template, 1); });
@@ -237,7 +267,7 @@ describe('useSessionManager', () => {
       const template: GameTemplate = {
         id: 'tpl_discard', name: 'Discard', columns: [], createdAt: Date.now(),
       };
-      const { result } = renderHook(() => useSessionManager({ getTemplate: async () => template, activeSessions: [], isCloudEnabled: () => false }));
+      const { result } = renderHook(() => useSessionManager({ getTemplate: async () => template, activeSessions: [], isCloudEnabled: () => false, pinnedIds: [] }));
 
       let sessionId: string | null = null;
       await act(async () => { sessionId = await result.current.startSession(template, 1); });
@@ -274,6 +304,7 @@ describe('useSessionManager', () => {
         getTemplate: async () => template,
         activeSessions: [firstSession, requestedSession],
         isCloudEnabled: () => false,
+        pinnedIds: [],
       })
     );
 

@@ -70,7 +70,8 @@ export const useAppData = () => {
     const sessionManager = useSessionManager({
         getTemplate: queries.getTemplate,
         activeSessions: queries.activeSessions,
-        isCloudEnabled
+        isCloudEnabled,
+        pinnedIds
     });
 
     // --- 3. LocalStorage Settings & Global Actions ---
