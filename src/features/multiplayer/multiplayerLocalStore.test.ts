@@ -3,6 +3,49 @@ import { db } from '../../db';
 import { multiplayerLocalStore } from './multiplayerLocalStore';
 
 describe('multiplayerLocalStore purgeRoomData & deleteRoom', () => {
+  it('returns room ownership and purges room data in one transaction', async () => {
+    const putSessionSpy = vi.spyOn(db.sessions, 'put').mockResolvedValue('session-1' as any);
+    const deleteRoomSpy = vi.spyOn(db.multiplayerRooms, 'delete').mockResolvedValue(undefined as any);
+    const outboxWhereSpy = vi.spyOn(db.multiplayerOutbox, 'where').mockReturnValue({ equals: vi.fn().mockReturnValue({ delete: vi.fn().mockResolvedValue(1) }) } as any);
+    const bindingWhereSpy = vi.spyOn(db.multiplayerParticipantBindings, 'where').mockReturnValue({ equals: vi.fn().mockReturnValue({ delete: vi.fn().mockResolvedValue(1) }) } as any);
+    const receiptWhereSpy = vi.spyOn(db.multiplayerPatchReceipts, 'where').mockReturnValue({ equals: vi.fn().mockReturnValue({ delete: vi.fn().mockResolvedValue(1) }) } as any);
+    const sequenceWhereSpy = vi.spyOn(db.multiplayerSequences, 'where').mockReturnValue({
+      startsWith: vi.fn().mockReturnValue({ delete: vi.fn().mockResolvedValue(1) }),
+      equals: vi.fn().mockReturnValue({ delete: vi.fn().mockResolvedValue(1) }),
+    } as any);
+    const transactionSpy = vi.spyOn(db, 'transaction').mockImplementation(((mode: unknown, tables: unknown, callback: () => Promise<unknown>) => {
+      expect(mode).toBe('rw');
+      expect(tables).toEqual([
+        db.sessions,
+        db.multiplayerRooms,
+        db.multiplayerOutbox,
+        db.multiplayerParticipantBindings,
+        db.multiplayerPatchReceipts,
+        db.multiplayerSequences,
+      ]);
+      return callback();
+    }) as any);
+
+    try {
+      await multiplayerLocalStore.releaseRoomOwnership!({ roomId: 'room-1', session: { id: 'session-1' } as any });
+
+      expect(putSessionSpy).toHaveBeenCalledWith(expect.objectContaining({ id: 'session-1' }));
+      expect(deleteRoomSpy).toHaveBeenCalledWith('room-1');
+      expect(outboxWhereSpy).toHaveBeenCalledWith('roomId');
+      expect(bindingWhereSpy).toHaveBeenCalledWith('roomId');
+      expect(receiptWhereSpy).toHaveBeenCalledWith('roomId');
+      expect(sequenceWhereSpy).toHaveBeenCalledWith('id');
+    } finally {
+      transactionSpy.mockRestore();
+      putSessionSpy.mockRestore();
+      deleteRoomSpy.mockRestore();
+      outboxWhereSpy.mockRestore();
+      bindingWhereSpy.mockRestore();
+      receiptWhereSpy.mockRestore();
+      sequenceWhereSpy.mockRestore();
+    }
+  });
+
   it('persists bootstrap records in one transaction', async () => {
     const putTemplateSpy = vi.spyOn(db.templates, 'put').mockResolvedValue('template-1' as any);
     const putSessionSpy = vi.spyOn(db.sessions, 'put').mockResolvedValue('session-1' as any);

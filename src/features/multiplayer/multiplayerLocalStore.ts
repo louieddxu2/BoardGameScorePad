@@ -3,6 +3,7 @@ import { GameSession, GameTemplate, HistoryRecord, MultiplayerRoomRecord } from 
 import {
   MultiplayerBootstrapStore,
   MultiplayerBootstrapRecords,
+  MultiplayerCompletionReleaseStore,
   MultiplayerHistoryStore,
   MultiplayerSnapshotStore,
   PersistedBootstrapImport,
@@ -11,7 +12,24 @@ import {
 import type { SessionCompletedMessage } from './protocol';
 import { createScoreStateSyncAdapter } from './scoreStateSyncAdapter';
 
-export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHistoryStore & MultiplayerSnapshotStore & {
+const multiplayerRoomCleanupTables = [
+  db.multiplayerRooms,
+  db.multiplayerOutbox,
+  db.multiplayerParticipantBindings,
+  db.multiplayerPatchReceipts,
+  db.multiplayerSequences,
+];
+
+const purgeMultiplayerRoomData = async (roomId: string): Promise<void> => {
+  await db.multiplayerRooms.delete(roomId);
+  await db.multiplayerOutbox.where('roomId').equals(roomId).delete();
+  await db.multiplayerParticipantBindings.where('roomId').equals(roomId).delete();
+  await db.multiplayerPatchReceipts.where('roomId').equals(roomId).delete();
+  await db.multiplayerSequences.where('id').startsWith(`${roomId}:`).delete();
+  await db.multiplayerSequences.where('id').equals(roomId).delete();
+};
+
+export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHistoryStore & MultiplayerSnapshotStore & MultiplayerCompletionReleaseStore & {
   getRoom(roomId: string): Promise<MultiplayerRoomRecord | undefined>;
   getRoomBySessionId(sessionId: string): Promise<MultiplayerRoomRecord | undefined>;
   getSession(sessionId: string): Promise<GameSession | undefined>;
@@ -66,21 +84,14 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
     // transactional cleanup; external deletion paths use sessionDeletionEvents.
     return db.sessions.delete(sessionId);
   },
-  async purgeRoomData(roomId: string): Promise<void> {
-    await db.transaction('rw', [
-      db.multiplayerRooms,
-      db.multiplayerOutbox,
-      db.multiplayerParticipantBindings,
-      db.multiplayerPatchReceipts,
-      db.multiplayerSequences,
-    ], async () => {
-      await db.multiplayerRooms.delete(roomId);
-      await db.multiplayerOutbox.where('roomId').equals(roomId).delete();
-      await db.multiplayerParticipantBindings.where('roomId').equals(roomId).delete();
-      await db.multiplayerPatchReceipts.where('roomId').equals(roomId).delete();
-      await db.multiplayerSequences.where('id').startsWith(`${roomId}:`).delete();
-      await db.multiplayerSequences.where('id').equals(roomId).delete();
+  async releaseRoomOwnership({ roomId, session }: { roomId: string; session: GameSession }): Promise<void> {
+    await db.transaction('rw', [db.sessions, ...multiplayerRoomCleanupTables], async () => {
+      await db.sessions.put(session);
+      await purgeMultiplayerRoomData(roomId);
     });
+  },
+  async purgeRoomData(roomId: string): Promise<void> {
+    await db.transaction('rw', multiplayerRoomCleanupTables, () => purgeMultiplayerRoomData(roomId));
   },
   deleteRoom(roomId: string): Promise<void> {
     return this.purgeRoomData(roomId);

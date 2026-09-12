@@ -33,6 +33,7 @@ export interface MultiplayerHistoryStore {
 
 export interface MultiplayerCompletionReleaseStore extends MultiplayerHistoryStore {
   putSession(session: GameSession): Promise<unknown>;
+  releaseRoomOwnership?(options: { roomId: string; session: GameSession }): Promise<unknown>;
 }
 
 export interface MultiplayerSnapshotStore {
@@ -234,7 +235,7 @@ export const persistMultiplayerCompletion = async (options: {
 
 /** Returns ownership of a completed room session to the local device. */
 export const releaseMultiplayerRoomOwnership = async (options: {
-  store: Pick<MultiplayerCompletionReleaseStore, 'putSession' | 'deleteRoom'>;
+  store: Pick<MultiplayerCompletionReleaseStore, 'putSession' | 'deleteRoom' | 'releaseRoomOwnership'>;
   roomId: string;
   session: GameSession;
   completedAt: number;
@@ -244,7 +245,11 @@ export const releaseMultiplayerRoomOwnership = async (options: {
     status: 'active',
     lastUpdatedAt: options.completedAt,
   };
-  await options.store.putSession(localSession);
-  await options.store.deleteRoom(options.roomId);
+  if (options.store.releaseRoomOwnership) {
+    await options.store.releaseRoomOwnership({ roomId: options.roomId, session: localSession });
+  } else {
+    await options.store.putSession(localSession);
+    await options.store.deleteRoom(options.roomId);
+  }
   return localSession;
 };

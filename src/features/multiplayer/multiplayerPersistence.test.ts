@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { GameSession, GameTemplate, Player, ScoreColumn } from '../../types';
-import { persistMultiplayerBootstrap, persistMultiplayerCompletion, persistMultiplayerSnapshot, retainMultiplayerCompletionRelay } from './multiplayerPersistence';
+import { persistMultiplayerBootstrap, persistMultiplayerCompletion, persistMultiplayerSnapshot, releaseMultiplayerRoomOwnership, retainMultiplayerCompletionRelay } from './multiplayerPersistence';
 import { createSessionBootstrapPackage } from './sessionBootstrap';
 
 const createColumn = (): ScoreColumn => ({
@@ -114,6 +114,25 @@ describe('multiplayer local persistence', () => {
     expect(putHistory).toHaveBeenCalledWith(record);
     expect(deleteSession).toHaveBeenCalledWith('session-1');
     expect(deleteRoom).toHaveBeenCalledWith('room-1');
+  });
+
+  it('uses the atomic ownership writer when the store provides one', async () => {
+    const releaseRoomOwnership = vi.fn(async () => undefined);
+    const putSession = vi.fn(async () => undefined);
+    const deleteRoom = vi.fn(async () => undefined);
+    const completedSession = { ...createSession(), status: 'completed' as const };
+
+    const localSession = await releaseMultiplayerRoomOwnership({
+      store: { putSession, deleteRoom, releaseRoomOwnership },
+      roomId: 'room-1',
+      session: completedSession,
+      completedAt: 30,
+    });
+
+    expect(localSession).toMatchObject({ id: 'session-1', status: 'active', lastUpdatedAt: 30 });
+    expect(releaseRoomOwnership).toHaveBeenCalledWith({ roomId: 'room-1', session: localSession });
+    expect(putSession).not.toHaveBeenCalled();
+    expect(deleteRoom).not.toHaveBeenCalled();
   });
 
   it('persists a valid host snapshot as the local active session', async () => {
