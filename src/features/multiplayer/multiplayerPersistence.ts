@@ -16,7 +16,7 @@ export interface MultiplayerBootstrapStore {
   putTemplate(template: GameTemplate): Promise<unknown>;
   putSession(session: GameSession): Promise<unknown>;
   putRoom(room: MultiplayerRoomRecord): Promise<unknown>;
-  persistBootstrap?(records: MultiplayerBootstrapRecords): Promise<unknown>;
+  persistBootstrap(records: MultiplayerBootstrapRecords): Promise<unknown>;
 }
 
 export interface MultiplayerBootstrapRecords {
@@ -78,14 +78,7 @@ export const persistMultiplayerBootstrapRecords = async (
   store: MultiplayerBootstrapStore,
   records: MultiplayerBootstrapRecords,
 ): Promise<void> => {
-  if (store.persistBootstrap) {
-    await store.persistBootstrap(records);
-    return;
-  }
-
-  if (records.template) await store.putTemplate(records.template);
-  await store.putSession(records.session);
-  await store.putRoom(records.room);
+  await store.persistBootstrap(records);
 };
 
 /**

@@ -125,8 +125,7 @@ export const useAppData = () => {
 
         await db.templates.put(finalTemplate);
 
-        // [Filter Logic] Do not backup disposable templates to cloud
-        // Pass pinnedIds to isDisposableTemplate to avoid backing up pinned simple templates (which are technically disposable structure-wise)
+        // Do not back up disposable templates; pinned simple templates remain eligible.
         if (!options.skipCloud && isCloudEnabled() && !isDisposableTemplate(finalTemplate, pinnedIds)) {
             googleDriveService.backupTemplate(finalTemplate).then((updated) => {
                 if (updated) {

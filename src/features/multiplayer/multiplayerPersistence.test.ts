@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { GameSession, GameTemplate, Player, ScoreColumn } from '../../types';
+import { GameSession, GameTemplate, MultiplayerRoomRecord, Player, ScoreColumn } from '../../types';
 import { persistMultiplayerBootstrap, persistMultiplayerCompletion, persistMultiplayerSnapshot, releaseMultiplayerRoomOwnership, retainMultiplayerCompletionRelay } from './multiplayerPersistence';
 import { createSessionBootstrapPackage } from './sessionBootstrap';
 
@@ -25,11 +25,16 @@ const createMessage = (template = createTemplate(100)) => ({
 
 describe('multiplayer local persistence', () => {
   it('reuses an equal local template and only persists the session', async () => {
-    const putTemplate = vi.fn(async () => undefined);
-    const putSession = vi.fn(async () => undefined);
-    const putRoom = vi.fn(async () => undefined);
+    const putTemplate = vi.fn<[GameTemplate], Promise<void>>(async () => undefined);
+    const putSession = vi.fn<[GameSession], Promise<void>>(async () => undefined);
+    const putRoom = vi.fn<[MultiplayerRoomRecord], Promise<void>>(async () => undefined);
     const result = await persistMultiplayerBootstrap(createMessage(), {
       getTemplate: async () => createTemplate(100), putTemplate, putSession, putRoom,
+      persistBootstrap: async ({ template, session, room }) => {
+        if (template) await putTemplate(template);
+        await putSession(session);
+        await putRoom(room);
+      },
     });
 
     expect(result.decision.action).toBe('reuse-local');
@@ -41,9 +46,16 @@ describe('multiplayer local persistence', () => {
   });
 
   it('overwrites only when the host template is newer', async () => {
-    const putTemplate = vi.fn(async () => undefined);
+    const putTemplate = vi.fn<[GameTemplate], Promise<void>>(async () => undefined);
+    const putSession = vi.fn<[GameSession], Promise<void>>(async () => undefined);
+    const putRoom = vi.fn<[MultiplayerRoomRecord], Promise<void>>(async () => undefined);
     const result = await persistMultiplayerBootstrap(createMessage(createTemplate(200)), {
-      getTemplate: async () => createTemplate(100), putTemplate, putSession: async () => undefined, putRoom: async () => undefined,
+      getTemplate: async () => createTemplate(100), putTemplate, putSession, putRoom,
+      persistBootstrap: async ({ template, session, room }) => {
+        if (template) await putTemplate(template);
+        await putSession(session);
+        await putRoom(room);
+      },
     });
 
     expect(result.decision.action).toBe('overwrite-local');
@@ -52,9 +64,9 @@ describe('multiplayer local persistence', () => {
 
   it('uses the atomic bootstrap writer when the store provides one', async () => {
     const persistBootstrap = vi.fn(async () => undefined);
-    const putTemplate = vi.fn(async () => undefined);
-    const putSession = vi.fn(async () => undefined);
-    const putRoom = vi.fn(async () => undefined);
+    const putTemplate = vi.fn<[GameTemplate], Promise<void>>(async () => undefined);
+    const putSession = vi.fn<[GameSession], Promise<void>>(async () => undefined);
+    const putRoom = vi.fn<[MultiplayerRoomRecord], Promise<void>>(async () => undefined);
 
     const result = await persistMultiplayerBootstrap(createMessage(), {
       getTemplate: async () => undefined,
@@ -76,10 +88,16 @@ describe('multiplayer local persistence', () => {
   });
 
   it('keeps a newer local template and creates one deterministic template copy for this session', async () => {
-    const putTemplate = vi.fn(async () => undefined);
-    const putSession = vi.fn(async () => undefined);
+    const putTemplate = vi.fn<[GameTemplate], Promise<void>>(async () => undefined);
+    const putSession = vi.fn<[GameSession], Promise<void>>(async () => undefined);
+    const putRoom = vi.fn<[MultiplayerRoomRecord], Promise<void>>(async () => undefined);
     const result = await persistMultiplayerBootstrap(createMessage(createTemplate(100)), {
-      getTemplate: async () => createTemplate(200), putTemplate, putSession, putRoom: async () => undefined,
+      getTemplate: async () => createTemplate(200), putTemplate, putSession, putRoom,
+      persistBootstrap: async ({ template, session, room }) => {
+        if (template) await putTemplate(template);
+        await putSession(session);
+        await putRoom(room);
+      },
     });
 
     expect(result.decision).toEqual({
