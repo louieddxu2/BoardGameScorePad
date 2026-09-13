@@ -1,15 +1,17 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { GameTemplate, GameSession, ScoringRule } from '../../../types';
-import { X, History, Play, Minus, Plus, Clock, Trophy, ChevronDown, Check } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { GameTemplate, GameSession, ScoringRule, SavedListItem } from '../../../types';
+import { X, History, Play, Minus, Plus, Clock, Trophy, ChevronDown, Check, MapPin } from 'lucide-react';
 import { useGameFlowTranslation } from '../../../i18n/game_flow'; // Changed Import
+import { recommendationService } from '../../../features/recommendation/RecommendationService';
 
 interface GameSetupModalProps {
     template: GameTemplate;
     previewSession: GameSession | null;
     sessionPlayerCount?: number | null;
+    savedLocations?: SavedListItem[];
     onClose: () => void;
-    onStart: (playerCount: number, options: { startTimeStr: string, scoringRule: ScoringRule }) => void;
+    onStart: (playerCount: number, options: { startTimeStr: string, scoringRule: ScoringRule, location: string, locationId?: string }) => void;
     onResume: () => void;
 }
 
@@ -17,6 +19,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
     template,
     previewSession,
     sessionPlayerCount,
+    savedLocations = [],
     onClose,
     onStart,
     onResume
@@ -38,6 +41,10 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
     };
 
     const [playerCount, setPlayerCount] = useState(getInitialCount);
+    const [location, setLocation] = useState('');
+    const [locationId, setLocationId] = useState<string | undefined>();
+    const playerCountWasChanged = useRef(false);
+    const locationWasChanged = useRef(false);
 
     // Options State
     const [startTimeStr, setStartTimeStr] = useState('');
@@ -59,8 +66,54 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
         setStartTimeStr(`${hours}:${minutes}`);
     }, []);
 
+    // Keep the dashboard launch flow aligned with the search panel: game -> location -> player count.
+    // User edits win over delayed prediction responses.
+    useEffect(() => {
+        let cancelled = false;
+
+        const applyPredictions = async () => {
+            try {
+                const timestamp = Date.now();
+                const locations = await recommendationService.getSuggestedLocations({
+                    gameName: template.name,
+                    bggId: template.bggId,
+                    timestamp,
+                });
+                const suggestedLocation = locations[0] || '';
+
+                if (!cancelled && suggestedLocation && !locationWasChanged.current) {
+                    const savedLocation = savedLocations.find(item => item.name.trim().toLocaleLowerCase() === suggestedLocation.trim().toLocaleLowerCase());
+                    setLocation(suggestedLocation);
+                    setLocationId(savedLocation?.id ?? savedLocation?.meta?.uuid);
+                }
+
+                const counts = await recommendationService.getSuggestedPlayerCounts({
+                    gameName: template.name,
+                    bggId: template.bggId,
+                    locationName: suggestedLocation || undefined,
+                    timestamp,
+                });
+
+                if (!cancelled && counts[0] && !playerCountWasChanged.current) {
+                    setPlayerCount(counts[0]);
+                }
+            } catch (error) {
+                console.warn('[GameSetupModal] Failed to load setup predictions', error);
+            }
+        };
+
+        applyPredictions();
+        return () => { cancelled = true; };
+    }, [template.id, template.name, template.bggId, savedLocations]);
+
     const handleStartClick = () => {
-        onStart(playerCount, { startTimeStr, scoringRule });
+        const matchedLocation = savedLocations.find(item => item.name.trim().toLocaleLowerCase() === location.trim().toLocaleLowerCase());
+        onStart(playerCount, {
+            startTimeStr,
+            scoringRule,
+            location,
+            locationId: locationId ?? matchedLocation?.id ?? matchedLocation?.meta?.uuid,
+        });
     };
 
     // Helper to force open picker
@@ -153,6 +206,23 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
 
                                 {/* Bottom Left: Setup (2/3) - Added rounded-bl-2xl */}
                                 <div className="col-span-2 row-span-1 p-1.5 border-r border-surface-border flex flex-col justify-center items-center gap-1.5 overflow-visible rounded-bl-2xl">
+                                    <div className="w-full flex items-center gap-1 rounded-lg bg-surface-bg-alt border border-surface-border px-2 py-1">
+                                        <MapPin size={12} className="text-txt-muted shrink-0" />
+                                        <input
+                                            value={location}
+                                            onChange={(event) => {
+                                                locationWasChanged.current = true;
+                                                setLocation(event.target.value);
+                                                setLocationId(undefined);
+                                            }}
+                                            placeholder={t('setup_location_ph')}
+                                            className="min-w-0 w-full bg-transparent text-xs font-medium text-txt-primary outline-none"
+                                            list="game-setup-location-list"
+                                        />
+                                        <datalist id="game-setup-location-list">
+                                            {savedLocations.map(savedLocation => <option key={savedLocation.id} value={savedLocation.name} />)}
+                                        </datalist>
+                                    </div>
                                     {/* Options Row (2/3 Time, 1/3 Rule) - Reduced inner padding p-1 -> p-0.5 */}
                                     <div className="flex gap-2 w-full relative z-20">
                                         {/* Time Input with Surface BG */}
@@ -202,7 +272,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                     <div className="flex items-center justify-center gap-2 w-full z-10">
                                         <button
                                             disabled={playerCount <= 1}
-                                            onClick={() => setPlayerCount(c => Math.max(1, c - 1))}
+                                            onClick={() => { playerCountWasChanged.current = true; setPlayerCount(c => Math.max(1, c - 1)); }}
                                             className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-95 shadow-lg border ${playerCount <= 1 ? 'opacity-20 cursor-not-allowed bg-surface-bg-alt border-surface-border' : 'bg-status-danger/10 border-status-danger/30 text-status-danger hover:bg-status-danger/20'}`}
                                         >
                                             <Minus size={20} strokeWidth={3} />
@@ -215,7 +285,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
 
                                         <button
                                             disabled={playerCount >= 12}
-                                            onClick={() => setPlayerCount(c => Math.min(12, c + 1))}
+                                            onClick={() => { playerCountWasChanged.current = true; setPlayerCount(c => Math.min(12, c + 1)); }}
                                             className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-95 shadow-lg border ${playerCount >= 12 ? 'opacity-20 cursor-not-allowed bg-surface-bg-alt border-surface-border' : 'bg-status-success/10 border-status-success/30 text-status-success hover:bg-status-success/20'}`}
                                         >
                                             <Plus size={20} strokeWidth={3} />
@@ -295,12 +365,29 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                 </div>
 
                                 {/* Player Count */}
+                                <div className="w-full flex flex-col gap-1 z-10">
+                                    <span className="text-xs text-txt-muted font-bold uppercase tracking-widest flex items-center gap-1"><MapPin size={12} /> {t('setup_location')}</span>
+                                    <input
+                                        value={location}
+                                        onChange={(event) => {
+                                            locationWasChanged.current = true;
+                                            setLocation(event.target.value);
+                                            setLocationId(undefined);
+                                        }}
+                                        placeholder={t('setup_location_ph')}
+                                        className="modal-bg-elevated px-3 py-2 w-full border border-surface-border rounded-lg text-sm font-medium text-txt-primary outline-none focus:border-brand-primary"
+                                        list="game-setup-location-list"
+                                    />
+                                    <datalist id="game-setup-location-list">
+                                        {savedLocations.map(savedLocation => <option key={savedLocation.id} value={savedLocation.name} />)}
+                                    </datalist>
+                                </div>
                                 <div className="w-full max-w-[200px] flex flex-col items-center gap-1 z-10">
                                     <span className="text-xs text-txt-muted font-bold uppercase tracking-widest">{t('setup_players')}</span>
                                     <div className="flex items-center justify-between w-full modal-bg-elevated p-1 shadow-inner border border-surface-border rounded-xl">
                                         <button
                                             disabled={playerCount <= 1}
-                                            onClick={() => setPlayerCount(c => Math.max(1, c - 1))}
+                                            onClick={() => { playerCountWasChanged.current = true; setPlayerCount(c => Math.max(1, c - 1)); }}
                                             className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all active:scale-95 ${playerCount <= 1 ? 'opacity-20 cursor-not-allowed' : 'bg-status-danger/10 text-status-danger hover:bg-status-danger/20'}`}
                                         >
                                             <Minus size={20} />
@@ -308,7 +395,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                         <span className="text-3xl font-black font-mono modal-title leading-none">{playerCount}</span>
                                         <button
                                             disabled={playerCount >= 12}
-                                            onClick={() => setPlayerCount(c => Math.min(12, c + 1))}
+                                            onClick={() => { playerCountWasChanged.current = true; setPlayerCount(c => Math.min(12, c + 1)); }}
                                             className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all active:scale-95 ${playerCount >= 12 ? 'opacity-20 cursor-not-allowed' : 'bg-status-success/10 text-status-success hover:bg-status-success/20'}`}
                                         >
                                             <Plus size={20} />

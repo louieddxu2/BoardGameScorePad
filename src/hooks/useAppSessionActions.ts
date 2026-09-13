@@ -125,7 +125,7 @@ export const useAppSessionActions = ({
     }
   }, [isMultiplayerTransitioning, releaseParticipantMultiplayerRoom]);
 
-  const handleStartNewGame = useCallback(async (template: GameTemplate, count: number, options: { startTimeStr: string; scoringRule: ScoringRule }) => {
+  const handleStartNewGame = useCallback(async (template: GameTemplate, count: number, options: { startTimeStr: string; scoringRule: ScoringRule; location: string; locationId?: string }) => {
     if (!template) return;
 
     if (appData.activeSessionIds.includes(template.id)) {
