@@ -682,6 +682,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onDiscard={props.onDiscard}
         savedLocations={props.savedLocations} // Updated Prop Name
         initialLocation={session.location} // Pass current session location
+        gameName={session.name}
+        bggId={session.bggId}
+        playerCount={session.players.length}
       />
 
       {/* Photo Gallery Modal */}

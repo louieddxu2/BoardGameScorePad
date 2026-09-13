@@ -225,7 +225,6 @@ const AppWorkspace: React.FC<AppWorkspaceProps> = ({
           template={pendingTemplate}
           previewSession={pendingSessionPreview}
           sessionPlayerCount={appData.sessionPlayerCount}
-          savedLocations={appData.savedLocations}
           onClose={() => setPendingTemplate(null)}
           onStart={(count, options) => actions.handleStartNewGame(pendingTemplate, count, options)}
           onResume={() => actions.handleResumeGame(pendingTemplate.id)}

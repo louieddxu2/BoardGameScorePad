@@ -6,6 +6,7 @@ import { useCommonTranslation } from '../../../i18n/common';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { SavedListItem } from '../../../types';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
+import { recommendationService } from '../../../features/recommendation/RecommendationService';
 
 interface SessionExitModalProps {
     isOpen: boolean;
@@ -15,6 +16,9 @@ interface SessionExitModalProps {
     onDiscard?: () => void;
     savedLocations?: SavedListItem[]; // Renamed from locationHistory
     initialLocation?: string;
+    gameName?: string;
+    bggId?: string;
+    playerCount?: number;
 }
 
 const SessionExitModal: React.FC<SessionExitModalProps> = ({
@@ -24,7 +28,10 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
     onSaveHistory,
     onDiscard,
     savedLocations = [], // Renamed
-    initialLocation = ''
+    initialLocation = '',
+    gameName,
+    bggId,
+    playerCount,
 }) => {
     const { t } = useGameFlowTranslation(); // Use new hook
     const { t: tCommon } = useCommonTranslation();
@@ -33,13 +40,40 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
     const [location, setLocation] = useState(initialLocation);
     const [showLocationMenu, setShowLocationMenu] = useState(false);
     const listRef = useRef<HTMLDivElement>(null);
+    const locationWasChanged = useRef(false);
 
     // Sync state when modal opens or initialLocation changes
     useEffect(() => {
         if (isOpen) {
             setLocation(initialLocation || '');
+            locationWasChanged.current = Boolean(initialLocation.trim());
         }
     }, [isOpen, initialLocation]);
+
+    // Match the search panel's location predictor, but never replace an existing or newly typed location.
+    useEffect(() => {
+        if (!isOpen || initialLocation.trim()) return;
+        let cancelled = false;
+
+        const suggestLocation = async () => {
+            try {
+                const suggestions = await recommendationService.getSuggestedLocations({
+                    gameName,
+                    bggId,
+                    playerCount,
+                    timestamp: Date.now(),
+                });
+                if (!cancelled && !locationWasChanged.current && suggestions[0]) {
+                    setLocation(suggestions[0]);
+                }
+            } catch (error) {
+                console.warn('[SessionExitModal] Failed to load location prediction', error);
+            }
+        };
+
+        suggestLocation();
+        return () => { cancelled = true; };
+    }, [isOpen, initialLocation, gameName, bggId, playerCount]);
 
     // Sorting: Oldest to Newest (Ascending)
     const sortedLocations = useMemo(() => {
@@ -113,7 +147,7 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
                             <input
                                 type="text"
                                 value={location}
-                                onChange={(e) => setLocation(e.target.value)}
+                                onChange={(e) => { locationWasChanged.current = true; setLocation(e.target.value); }}
                                 placeholder={t('exit_location_ph')}
                                 className="flex-1 bg-transparent h-12 text-txt-title placeholder-txt-muted text-sm outline-none font-bold min-w-0"
                             />
@@ -137,7 +171,7 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
                                 {sortedLocations.map(loc => (
                                     <button
                                         key={loc.id}
-                                        onClick={() => { setLocation(loc.name); setShowLocationMenu(false); }}
+                                        onClick={() => { locationWasChanged.current = true; setLocation(loc.name); setShowLocationMenu(false); }}
                                         className="w-full text-left px-4 py-3 text-sm text-txt-tertiary hover:bg-surface-hover/50 hover:text-txt-title border-b border-surface-border/50 last:border-0 truncate font-medium"
                                     >
                                         {loc.name}
