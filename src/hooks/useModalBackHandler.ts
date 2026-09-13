@@ -125,10 +125,7 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
 
         if (isPoppedRef.current || isRemovedByCoordinator) {
           // [Popstate or Coordinated UI triggered] skip back, just clean memory
-          // A browser back action can be repeated before a timer runs. Release the
-          // modal stack in this event turn so the app can replenish its history wall
-          // before a second back press is processed.
-          queueMicrotask(cleanupStack);
+          setTimeout(cleanupStack, 0);
         } else {
           // [Passive/Direct Single UI triggered] Clean memory and back
           cleanupStack();

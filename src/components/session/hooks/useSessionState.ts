@@ -71,21 +71,9 @@ export const useSessionState = (props: SessionViewProps) => {
     const initialEditMode = typeof window !== 'undefined' ? localStorage.getItem('app_edit_mode') !== 'false' : true;
     const savedDirection = (typeof window !== 'undefined' ? localStorage.getItem('sm_pref_advance_direction') : null) as 'horizontal' | 'vertical';
 
-    // [Feature] Auto-open first player editor for Zero-Column templates (Simple Counter Mode)
-    // Behavior: Open the panel fully (editingPlayerId set) but do NOT focus input (isInputFocused false)
-    // so the user sees the full interface (Color Palette, History).
-    let initialEditingPlayerId = null;
-    let initialTempName = '';
-
-    if (props.template.columns.length === 0 && props.session.players.length > 0) {
-      const firstPlayer = props.session.players[0];
-      initialEditingPlayerId = firstPlayer.id;
-      initialTempName = firstPlayer.name;
-    }
-
     return {
       editingCell: null,
-      editingPlayerId: initialEditingPlayerId,
+      editingPlayerId: null,
       editingColumn: null,
       isEditingTitle: false,
       isGameSettingsOpen: false, // [New]
@@ -104,7 +92,7 @@ export const useSessionState = (props: SessionViewProps) => {
       advanceDirection: savedDirection || 'vertical', // Default to vertical if no preference saved
       overwriteMode: true,
       isInputFocused: false,
-      tempPlayerName: initialTempName,
+      tempPlayerName: '',
       isEditMode: initialEditMode,
       previewValue: 0,
     };
@@ -118,6 +106,25 @@ export const useSessionState = (props: SessionViewProps) => {
 
   const { offset: keyboardOffset, isKeyboardOpen } = useKeyboardStatus();
   const wasKeyboardOpenRef = useRef(false);
+  const hasAutoOpenedSimplePlayerRef = useRef(false);
+
+  // Let App establish the active-session history wall before the simple-board
+  // player editor adds its own existing modal history entry.
+  useEffect(() => {
+    if (hasAutoOpenedSimplePlayerRef.current || props.template.columns.length !== 0 || props.session.players.length === 0) return;
+
+    const firstPlayer = props.session.players[0];
+    const timer = window.setTimeout(() => {
+      hasAutoOpenedSimplePlayerRef.current = true;
+      setUiState(current => ({
+        ...current,
+        editingPlayerId: firstPlayer.id,
+        tempPlayerName: firstPlayer.name,
+      }));
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [props.session.players, props.template.columns.length]);
 
   // Keep every player-name close path identical: blur the native input first so
   // its existing onBlur commit runs, then leave compact mode explicitly.

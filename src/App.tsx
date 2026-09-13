@@ -237,10 +237,6 @@ const App: React.FC = () => {
     if (historyWallDepth.current < targetDepth) {
       let countToAdd = targetDepth - historyWallDepth.current;
 
-      if (view === AppView.ACTIVE_SESSION || view === AppView.HISTORY_REVIEW) {
-        countToAdd = 1;
-      }
-
       if (countToAdd > 0) {
         const baseTime = performance.now();
         for (let i = 0; i < countToAdd; i++) {

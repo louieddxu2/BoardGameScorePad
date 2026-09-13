@@ -1,6 +1,5 @@
 
 import { renderHook, act } from '@testing-library/react';
-import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useModalBackHandler, _resetActiveCountForTesting, dismissActiveModalsForViewChange, hasActiveModals } from './useModalBackHandler';
 
@@ -63,30 +62,6 @@ describe('useModalBackHandler', () => {
     // ONLY the top modal should have closed!
     expect(onCloseTop).toHaveBeenCalled();
     expect(onCloseBottom).not.toHaveBeenCalled();
-    vi.useRealTimers();
-  });
-
-  it('releases a back-dismissed modal before the next browser back action', async () => {
-    vi.useFakeTimers();
-    const { result } = renderHook(() => {
-      const [isOpen, setIsOpen] = useState(true);
-      useModalBackHandler(isOpen, () => setIsOpen(false), 'rapid-back-modal');
-      return isOpen;
-    });
-
-    expect(window.history.pushState).toHaveBeenCalledTimes(1);
-
-    act(() => {
-      vi.advanceTimersByTime(300);
-    });
-    await act(async () => {
-      window.dispatchEvent(new PopStateEvent('popstate'));
-      await Promise.resolve();
-    });
-
-    expect(result.current).toBe(false);
-    expect(hasActiveModals()).toBe(false);
-    expect(window.history.pushState).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
   });
 
