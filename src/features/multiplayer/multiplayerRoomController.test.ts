@@ -61,6 +61,38 @@ describe('multiplayer room controller', () => {
     expect((await store.listOutbox('room-1', 'session-1'))).toHaveLength(0);
   });
 
+  it.each(['ack-first', 'broadcast-first'] as const)('applies an acknowledged snapshot only once when delivery is %s', async (order) => {
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
+    const playerSession = createMultiplayerPlayerSessionFromBootstrap({ bootstrapMessage: host.createBootstrapMessage(), now: () => 10 });
+    const deliveryStore = createDeliveryStore();
+    const putSession = vi.fn(async () => undefined);
+    const updateRoomRevision = vi.fn(async () => undefined);
+    const onSnapshot = vi.fn();
+    const controller = createMultiplayerPlayerRoomController({
+      playerSession, deviceId: 'device-1', deliveryStore,
+      snapshotStore: { putSession, updateRoomRevision },
+      transport: { sendToHost: () => true, sendToConnection: () => false, broadcastLocalChanges: async () => undefined },
+      onSnapshot,
+    });
+    const patch = await controller.queueScoreValuePatch({
+      actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [7] },
+    });
+    const updatedSession = { ...session, players: [{ ...player, scores: { points: { parts: [7] } }, totalScore: 7 }] };
+    const snapshot = { type: 'session:snapshot' as const, roomId: 'room-1', sessionId: 'session-1', session: updatedSession, revision: 2, updatedAt: 20 };
+    const acknowledgement = { type: 'score:patch-result' as const, roomId: 'room-1', sessionId: 'session-1', opId: patch.opId, accepted: true, snapshot };
+
+    for (const message of order === 'ack-first' ? [acknowledgement, snapshot] : [snapshot, acknowledgement]) {
+      await controller.receive(message);
+    }
+
+    expect(playerSession.revision).toBe(2);
+    expect(playerSession.session.players[0].scores.points).toEqual({ parts: [7] });
+    expect(putSession).toHaveBeenCalledTimes(1);
+    expect(updateRoomRevision).toHaveBeenCalledTimes(1);
+    expect(onSnapshot).toHaveBeenCalledTimes(1);
+    expect(await deliveryStore.listOutbox('room-1', 'session-1')).toHaveLength(0);
+  });
+
   it('applies a broadcast session snapshot without requesting a new board package', async () => {
     const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
     const playerSession = createMultiplayerPlayerSessionFromBootstrap({ bootstrapMessage: host.createBootstrapMessage(), now: () => 10 });
@@ -92,11 +124,14 @@ describe('multiplayer room controller', () => {
     const playerADelivery = createDeliveryStore();
     const sentByA: unknown[] = [];
     const inFlightDeliveries: Promise<unknown>[] = [];
+    const putPlayerASession = vi.fn(async () => undefined);
+    const onPlayerASnapshot = vi.fn();
     const onPlayerBSnapshot = vi.fn();
     const playerA = createMultiplayerPlayerRoomController({
       playerSession: playerASession, deviceId: 'device-a', deliveryStore: playerADelivery,
-      snapshotStore: { putSession: async () => undefined, updateRoomRevision: async () => undefined },
+      snapshotStore: { putSession: putPlayerASession, updateRoomRevision: async () => undefined },
       transport: { sendToHost: (message) => { sentByA.push(message); return true; }, sendToConnection: () => false, broadcastLocalChanges: async () => undefined },
+      onSnapshot: onPlayerASnapshot,
     });
     const playerB = createMultiplayerPlayerRoomController({
       playerSession: playerBSession, deviceId: 'device-b', deliveryStore: createDeliveryStore(),
@@ -133,6 +168,8 @@ describe('multiplayer room controller', () => {
     expect(playerBSession.session.players[0].scores.points).toEqual({ parts: [7] });
     expect(playerBSession.revision).toBe(2);
     expect(onPlayerBSnapshot).toHaveBeenCalledWith(expect.objectContaining({ revision: 2 }));
+    expect(putPlayerASession).toHaveBeenCalledTimes(1);
+    expect(onPlayerASnapshot).toHaveBeenCalledTimes(1);
     expect(await playerADelivery.listOutbox('room-1', 'session-1')).toHaveLength(0);
 
     await playerA.queueTotalAdjustment({ playerId: 'p1', targetTotal: 11 });
@@ -142,6 +179,8 @@ describe('multiplayer room controller', () => {
     expect(playerBSession.session.players[0].totalScore).toBe(11);
     expect(playerBSession.revision).toBe(3);
     expect(onPlayerBSnapshot).toHaveBeenCalledWith(expect.objectContaining({ revision: 3 }));
+    expect(putPlayerASession).toHaveBeenCalledTimes(2);
+    expect(onPlayerASnapshot).toHaveBeenCalledTimes(2);
     expect(broadcast).toHaveBeenCalledTimes(2);
   });
 
