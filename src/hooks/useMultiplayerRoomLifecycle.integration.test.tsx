@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useMultiplayerRoomLifecycle } from './useMultiplayerRoomLifecycle';
-import { createMultiplayerPlayerRoomRuntime, restoreMultiplayerPlayerRoomRuntime } from '../features/multiplayer/multiplayerRoomRuntime';
+import { createMultiplayerPlayerRoomRuntime, restoreMultiplayerHostRoomRuntime, restoreMultiplayerPlayerRoomRuntime } from '../features/multiplayer/multiplayerRoomRuntime';
 import { multiplayerSessionManager } from '../features/multiplayer/multiplayerSessionManager';
 
 const mocks = vi.hoisted(() => {
@@ -131,6 +131,8 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     mocks.runtime.start.mockReset();
     mocks.runtime.leaveRoom.mockReset();
     vi.mocked(createMultiplayerPlayerRoomRuntime).mockClear();
+    vi.mocked(restoreMultiplayerHostRoomRuntime).mockClear();
+    vi.mocked(restoreMultiplayerPlayerRoomRuntime).mockClear();
     mocks.closeRoom.mockClear();
     mocks.register.mockClear();
     mocks.claim.mockClear();
@@ -388,6 +390,39 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     await act(async () => { await result.current.tryRestoreMultiplayerRoom('session-1'); });
 
     expect(result.current.activeMultiplayerRoom).toEqual({ roomId: 'room-1', role: 'host' });
+  });
+
+  it('starts and registers a persisted host room that has no running runtime', async () => {
+    mocks.roomRecord = {
+      roomId: 'room-1', sessionId: 'session-1', templateId: 'template-1', hostDeviceId: 'host-1',
+      role: 'host', status: 'active', revision: 2, createdAt: 1, updatedAt: 2,
+    };
+    const runtime = { role: 'host', start: vi.fn(), stop: vi.fn(), session: mocks.runtime.session } as any;
+    vi.mocked(restoreMultiplayerHostRoomRuntime).mockResolvedValueOnce(runtime);
+    const { result } = renderLifecycle();
+
+    await act(async () => { expect(await result.current.tryRestoreMultiplayerRoom('session-1')).toBe(true); });
+
+    expect(mocks.register).toHaveBeenCalledWith('room-1', runtime, 'connecting');
+    expect(runtime.start).toHaveBeenCalledTimes(1);
+    expect(result.current.activeMultiplayerRoom).toEqual({ roomId: 'room-1', role: 'host' });
+  });
+
+  it('reclaims a persisted participant room before displaying it', async () => {
+    mocks.roomRecord = {
+      roomId: 'room-1', sessionId: 'session-1', templateId: 'template-1', hostDeviceId: 'host-1',
+      role: 'player', status: 'active', revision: 2, createdAt: 1, updatedAt: 2,
+    };
+    vi.mocked(restoreMultiplayerPlayerRoomRuntime).mockResolvedValueOnce(mocks.runtime as any);
+    const { result } = renderLifecycle();
+
+    await act(async () => { expect(await result.current.tryRestoreMultiplayerRoom('session-1')).toBe(true); });
+
+    expect(mocks.claim).toHaveBeenCalledWith('room-1');
+    expect(mocks.register).toHaveBeenCalledWith('room-1', mocks.runtime, 'connecting');
+    expect(mocks.runtime.start).toHaveBeenCalledTimes(1);
+    expect(mocks.runtime.restoreParticipantBinding).toHaveBeenCalledTimes(1);
+    expect(result.current.activeMultiplayerRoom).toEqual({ roomId: 'room-1', role: 'player', playerIds: [] });
   });
 
   it('does not resurrect a participant room when another tab supersedes an in-flight restore', async () => {
