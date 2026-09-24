@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useMultiplayerRoomLifecycle } from './useMultiplayerRoomLifecycle';
 import { createMultiplayerPlayerRoomRuntime, restoreMultiplayerHostRoomRuntime, restoreMultiplayerPlayerRoomRuntime } from '../features/multiplayer/multiplayerRoomRuntime';
 import { multiplayerSessionManager } from '../features/multiplayer/multiplayerSessionManager';
+import { saveParticipantBinding } from '../features/multiplayer/multiplayerParticipantBinding';
 
 const mocks = vi.hoisted(() => {
   const transport = {
@@ -108,6 +109,10 @@ const enterActiveSession = vi.fn();
 const returnToDashboard = vi.fn();
 const showToast = vi.fn();
 const tApp = ((key: string) => key) as any;
+const bindingRecord = {
+  id: 'binding-1', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-1',
+  playerId: 'p1', playerIds: ['p1'], updatedAt: 1,
+};
 
 const renderLifecycle = () => renderHook(() => useMultiplayerRoomLifecycle({
   appData,
@@ -127,9 +132,11 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     mocks.roomRecord = null;
     mocks.transport.joinRoom.mockReset();
     mocks.transport.stop.mockReset();
+    mocks.transport.setConnectionChangeHandler.mockClear();
     mocks.runtime.stop.mockReset();
     mocks.runtime.start.mockReset();
     mocks.runtime.leaveRoom.mockReset();
+    mocks.runtime.restoreParticipantBinding.mockReset().mockResolvedValue(true);
     vi.mocked(createMultiplayerPlayerRoomRuntime).mockClear();
     vi.mocked(restoreMultiplayerHostRoomRuntime).mockClear();
     vi.mocked(restoreMultiplayerPlayerRoomRuntime).mockClear();
@@ -139,12 +146,137 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     enterActiveSession.mockClear();
     returnToDashboard.mockClear();
     showToast.mockClear();
+    appData.resumeSessionById.mockClear();
+    vi.mocked(saveParticipantBinding).mockReset().mockResolvedValue(bindingRecord);
     vi.mocked(multiplayerSessionManager.setConnectionStatus).mockClear();
     sessionStorage.clear();
     delete (window as typeof window & { __boardGameScorePadMultiplayerJoinRoomId?: string }).__boardGameScorePadMultiplayerJoinRoomId;
     window.history.replaceState({}, '', '/');
     appData.isDbReady = true;
     appData.activeSessions = [];
+  });
+
+  const startPendingJoin = async () => {
+    appData.activeSessions = [{ id: 'session-1', status: 'active' }] as any;
+    window.history.replaceState({}, '', '/?room=room-1');
+    const { result } = renderLifecycle();
+    await waitFor(() => expect(mocks.transport.joinRoom).toHaveBeenCalledWith('room-1'));
+    await act(async () => {
+      await mocks.adapterOptions.onRemoteBootstrap(
+        { package: { revision: 1 } },
+        { templateForSession: { id: 'template-1' }, session: { id: 'session-1', status: 'active' } },
+      );
+    });
+    await waitFor(() => expect(result.current.pendingMultiplayerJoin?.roomId).toBe('room-1'));
+    return result;
+  };
+
+  it('confirms a player once without creating another runtime after bootstrap', async () => {
+    const result = await startPendingJoin();
+
+    await act(async () => { await result.current.handleConfirmMultiplayerPlayers(['p1', 'p1']); });
+
+    expect(saveParticipantBinding).toHaveBeenCalledWith(expect.objectContaining({ playerIds: ['p1'] }));
+    expect(saveParticipantBinding).toHaveBeenCalledTimes(1);
+    expect(mocks.runtime.restoreParticipantBinding).toHaveBeenCalledTimes(1);
+    expect(createMultiplayerPlayerRoomRuntime).toHaveBeenCalledTimes(1);
+    expect(mocks.register).toHaveBeenCalledTimes(1);
+    expect(mocks.transport.setConnectionChangeHandler).toHaveBeenCalledTimes(1);
+    expect(appData.resumeSessionById).toHaveBeenCalledTimes(1);
+    expect(enterActiveSession).toHaveBeenCalledOnce();
+    expect(result.current.activeMultiplayerRoom).toEqual({ roomId: 'room-1', role: 'player', playerIds: ['p1'] });
+    expect(result.current.pendingMultiplayerJoin).toBeNull();
+  });
+
+  it('retains the connecting-runtime fallback when the bootstrap runtime is no longer registered', async () => {
+    const result = await startPendingJoin();
+    mocks.managedRoom = null;
+
+    await act(async () => { await result.current.handleConfirmMultiplayerPlayers(['p1']); });
+
+    expect(createMultiplayerPlayerRoomRuntime).toHaveBeenCalledTimes(2);
+    expect(mocks.register).toHaveBeenLastCalledWith('room-1', mocks.runtime, 'connecting');
+    expect(mocks.transport.setConnectionChangeHandler).toHaveBeenCalledTimes(2);
+    expect(saveParticipantBinding).toHaveBeenCalledTimes(1);
+    expect(mocks.runtime.restoreParticipantBinding).toHaveBeenCalledTimes(1);
+    expect(result.current.activeMultiplayerRoom?.role).toBe('player');
+  });
+
+  it('does not reopen a cancelled join after participant binding finishes', async () => {
+    const result = await startPendingJoin();
+    let finishSave!: () => void;
+    vi.mocked(saveParticipantBinding).mockImplementationOnce(() => new Promise((resolve) => { finishSave = () => resolve(bindingRecord); }));
+
+    let confirmation!: Promise<void>;
+    act(() => { confirmation = result.current.handleConfirmMultiplayerPlayers(['p1']); });
+    await waitFor(() => expect(saveParticipantBinding).toHaveBeenCalledTimes(1));
+    act(() => result.current.handleCancelMultiplayerJoin());
+    await act(async () => { finishSave(); await confirmation; });
+
+    expect(result.current.activeMultiplayerRoom).toBeNull();
+    expect(result.current.pendingMultiplayerJoin).toBeNull();
+    expect(appData.resumeSessionById).not.toHaveBeenCalled();
+    expect(enterActiveSession).not.toHaveBeenCalled();
+    expect(createMultiplayerPlayerRoomRuntime).toHaveBeenCalledTimes(1);
+    expect(mocks.runtime.leaveRoom).not.toHaveBeenCalled();
+    expect(mocks.closeRoom).toHaveBeenCalled();
+  });
+
+  it('does not reopen a join superseded by another tab during participant binding', async () => {
+    const result = await startPendingJoin();
+    let finishSave!: () => void;
+    vi.mocked(saveParticipantBinding).mockImplementationOnce(() => new Promise((resolve) => { finishSave = () => resolve(bindingRecord); }));
+
+    let confirmation!: Promise<void>;
+    act(() => { confirmation = result.current.handleConfirmMultiplayerPlayers(['p1']); });
+    await waitFor(() => expect(saveParticipantBinding).toHaveBeenCalledTimes(1));
+    mocks.isCurrentClaim = false;
+    act(() => mocks.supersedeListener({ ownerId: 'tab-2', generation: 'new', roomId: 'room-1', claimedAt: 2 }));
+    await act(async () => { finishSave(); await confirmation; });
+
+    expect(result.current.activeMultiplayerRoom).toBeNull();
+    expect(result.current.pendingMultiplayerJoin).toBeNull();
+    expect(appData.resumeSessionById).not.toHaveBeenCalled();
+    expect(enterActiveSession).not.toHaveBeenCalled();
+    expect(returnToDashboard).toHaveBeenCalledTimes(1);
+  });
+
+  it('cleans up when saved participant claims cannot be restored', async () => {
+    const result = await startPendingJoin();
+    mocks.runtime.restoreParticipantBinding.mockResolvedValueOnce(false);
+
+    await act(async () => { await result.current.handleConfirmMultiplayerPlayers(['p1']); });
+
+    expect(mocks.closeRoom).toHaveBeenCalledWith('room-1', { deleteLocalRoom: true });
+    expect(result.current.activeMultiplayerRoom).toBeNull();
+    expect(result.current.pendingMultiplayerJoin).toBeNull();
+    expect(appData.resumeSessionById).not.toHaveBeenCalled();
+    expect(enterActiveSession).not.toHaveBeenCalled();
+  });
+
+  it('leaves a confirmed participant room with one runtime close', async () => {
+    const result = await startPendingJoin();
+    await act(async () => { await result.current.handleConfirmMultiplayerPlayers(['p1']); });
+
+    await act(async () => { await result.current.releaseParticipantMultiplayerRoom(); });
+
+    expect(mocks.runtime.leaveRoom).toHaveBeenCalledTimes(1);
+    expect(mocks.closeRoom).toHaveBeenCalledTimes(1);
+    expect(result.current.activeMultiplayerRoom).toBeNull();
+    expect(createMultiplayerPlayerRoomRuntime).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes a confirmed participant room when its session is deleted', async () => {
+    const result = await startPendingJoin();
+    await act(async () => { await result.current.handleConfirmMultiplayerPlayers(['p1']); });
+    mocks.roomRecord = { roomId: 'room-1', sessionId: 'session-1', role: 'player' };
+
+    await act(async () => { await result.current.releaseMultiplayerRoomForSession('session-1'); });
+
+    expect(mocks.runtime.leaveRoom).toHaveBeenCalledTimes(1);
+    expect(mocks.closeRoom).toHaveBeenCalledTimes(1);
+    expect(mocks.closeRoom).toHaveBeenCalledWith('room-1', { deleteLocalRoom: true });
+    expect(result.current.activeMultiplayerRoom).toBeNull();
   });
 
   it('does not replay a stored join intent after a page reload without a QR URL', async () => {
