@@ -6,8 +6,19 @@ import { searchService } from '../../services/searchService';
 import { SavedListItem } from '../../types';
 import { extractHistorySummary } from '../../utils/extractDataSummaries';
 import { buildHistoryGameEntries } from '../../utils/historyGameEntries';
+import { selectRecentTemplateIds } from '../../utils/recentTemplateIds';
 
-export const useHistoryQuery = (searchQuery: string, savedPlayers?: SavedListItem[]) => {
+interface RecentTemplateOptions {
+  pinnedIds: string[];
+  activeSessionIds: string[];
+  availableTemplateIds: ReadonlySet<string>;
+}
+
+export const useHistoryQuery = (
+  searchQuery: string,
+  savedPlayers: SavedListItem[] | undefined,
+  recentTemplateOptions: RecentTemplateOptions
+) => {
   const isSearching = searchQuery && searchQuery.trim().length > 0;
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
 
@@ -30,6 +41,38 @@ export const useHistoryQuery = (searchQuery: string, savedPlayers?: SavedListIte
       ? allSummaries.filter(record => !pendingDeleteIds.includes(record.id))
       : allSummaries;
   }, [allSummaries, pendingDeleteIds]);
+
+  const recentTemplateIdCandidates = useMemo(() => {
+    const seenTemplateIds = new Set<string>();
+    const templateIds: string[] = [];
+
+    for (const { templateId } of activeSummaries) {
+      if (!templateId || seenTemplateIds.has(templateId)) continue;
+      seenTemplateIds.add(templateId);
+      templateIds.push(templateId);
+    }
+
+    return templateIds;
+  }, [activeSummaries]);
+
+  const recentlyPlayedTemplateIds = useMemo(() => {
+    const excludedTemplateIds = new Set([
+      ...recentTemplateOptions.pinnedIds,
+      ...recentTemplateOptions.activeSessionIds
+    ]);
+
+    return selectRecentTemplateIds(
+      recentTemplateIdCandidates,
+      recentTemplateOptions.availableTemplateIds,
+      excludedTemplateIds,
+      DATA_LIMITS.QUERY.RECENT_GAMES
+    );
+  }, [
+    recentTemplateIdCandidates,
+    recentTemplateOptions.pinnedIds,
+    recentTemplateOptions.activeSessionIds,
+    recentTemplateOptions.availableTemplateIds
+  ]);
 
   const historyGameEntries = useMemo(() => {
     return buildHistoryGameEntries(activeSummaries, { savedPlayers });
@@ -58,6 +101,7 @@ export const useHistoryQuery = (searchQuery: string, savedPlayers?: SavedListIte
     historyRecords: filteredSummaries.slice(0, DATA_LIMITS.QUERY.HISTORY_RECORDS),
     historyStatsRecords: filteredSummaries,
     historyGameEntries,
+    recentlyPlayedTemplateIds,
     historyCount: isSearching ? filteredSummaries.length : activeSummaries.length,
     setPendingDeleteHistoryIds: setPendingDeleteIds
   };

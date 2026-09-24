@@ -33,7 +33,11 @@ export const useAppQueries = (searchQuery: string, pinnedIds: string[]) => {
   // 2. Global / Context Queries (No search dependency)
   const sessionData = useSessionQuery();
   const libraryData = useLibraryQuery();
-  const historyData = useHistoryQuery(searchQuery, libraryData.savedPlayersAll);
+  const historyData = useHistoryQuery(searchQuery, libraryData.savedPlayersAll, {
+    pinnedIds,
+    activeSessionIds: sessionData.activeSessionIds,
+    availableTemplateIds: templateData.availableTemplateIds
+  });
 
   // 3. Start Game Panel Query (Merge then Search)
   // 這是一個專門的 Hook，負責處理「開始新遊戲」時的候選名單邏輯

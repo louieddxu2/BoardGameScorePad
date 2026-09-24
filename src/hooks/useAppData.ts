@@ -439,6 +439,7 @@ export const useAppData = () => {
         historyRecords: queries.historyRecords,
         historyStatsRecords: queries.historyStatsRecords,
         historyGameEntries: queries.historyGameEntries,
+        recentlyPlayedTemplateIds: queries.recentlyPlayedTemplateIds,
         historyCount: queries.historyCount,
 
         savedPlayers: queries.savedPlayers,

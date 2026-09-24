@@ -5,7 +5,7 @@ import { useDashboardTranslation } from '../../../i18n/dashboard';
 
 interface GameCardProps {
   template: GameTemplate;
-  mode: 'active' | 'pinned' | 'user' | 'system';
+  mode: 'active' | 'pinned' | 'recent' | 'user' | 'system';
   onClick: () => void;
   // Actions
   onDelete?: (e: React.MouseEvent) => void;
@@ -72,8 +72,9 @@ const GameCard: React.FC<GameCardProps> = ({
 
   const baseClasses = "bg-surface-bg rounded-xl border border-surface-border p-3 shadow-ui-soft hover:bg-surface-hover transition-all cursor-pointer relative flex flex-col h-20 group";
 
-  if (mode === 'active' || mode === 'pinned') {
+  if (mode === 'active' || mode === 'pinned' || mode === 'recent') {
     const isActive = mode === 'active';
+    const isPinned = mode === 'pinned';
     return (
       <div
         onClick={onClick}
@@ -100,7 +101,7 @@ const GameCard: React.FC<GameCardProps> = ({
           )
         ) : (
           <>
-            {onCopyLink && (
+            {isPinned && onCopyLink && (
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onCopyLink(e); }}
@@ -115,11 +116,11 @@ const GameCard: React.FC<GameCardProps> = ({
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onPin(e); }}
-                aria-label={t('card_unpin')}
-                title={t('card_unpin')}
-                className="flex h-full w-12 shrink-0 items-center justify-center rounded-r-xl text-status-warning transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                aria-label={t(isPinned ? 'card_unpin' : 'card_pin')}
+                title={t(isPinned ? 'card_unpin' : 'card_pin')}
+                className={`flex h-full w-12 shrink-0 items-center justify-center rounded-r-xl transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${isPinned ? 'text-status-warning' : 'text-txt-muted hover:text-status-warning'}`}
               >
-                <Pin size={16} fill="currentColor" aria-hidden="true" />
+                <Pin size={16} fill={isPinned ? 'currentColor' : 'none'} aria-hidden="true" />
               </button>
             )}
           </>

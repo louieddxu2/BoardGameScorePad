@@ -7,6 +7,7 @@ interface UseDashboardDataProps {
   userTemplates: GameTemplate[];
   systemTemplates: GameTemplate[];
   pinnedIds: string[];
+  recentlyPlayedTemplateIds: string[];
   activeSessionIds: string[];
   activeSessions: GameSession[] | undefined; 
   getSessionPreview: (templateId: string) => GameSession | null;
@@ -16,10 +17,12 @@ export const useDashboardData = ({
   userTemplates,
   systemTemplates,
   pinnedIds,
+  recentlyPlayedTemplateIds,
   activeSessions, 
 }: UseDashboardDataProps) => {
 
   const allTemplates = useMemo(() => [...userTemplates, ...systemTemplates], [userTemplates, systemTemplates]);
+  const templatesById = useMemo(() => new Map(allTemplates.map(template => [template.id, template])), [allTemplates]);
 
   // 1. Active Sessions
   // 直接對 Session 進行時間排序，完全不依賴 Template 資料
@@ -35,9 +38,15 @@ export const useDashboardData = ({
   // 2. Pinned
   const pinnedTemplates = useMemo(() => {
     return pinnedIds
-      .map(id => allTemplates.find(t => t.id === id))
+      .map(id => templatesById.get(id))
       .filter((t): t is GameTemplate => t !== undefined);
-  }, [pinnedIds, allTemplates]);
+  }, [pinnedIds, templatesById]);
+
+  const recentTemplates = useMemo(() => {
+    return recentlyPlayedTemplateIds
+      .map(id => templatesById.get(id))
+      .filter((template): template is GameTemplate => template !== undefined);
+  }, [recentlyPlayedTemplateIds, templatesById]);
   
   // 3. User Library (Filtered & Sliced for UI)
   const userTemplatesToShow = useMemo(() => {
@@ -62,6 +71,7 @@ export const useDashboardData = ({
   return {
     sortedActiveSessions,
     pinnedTemplates,
+    recentTemplates,
     userTemplatesToShow,
     systemTemplatesToShow,
     allVisibleTemplates

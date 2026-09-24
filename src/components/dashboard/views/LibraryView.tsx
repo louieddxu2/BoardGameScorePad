@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { GameTemplate, GameSession } from '../../../types';
-import { Activity, Pin, LayoutGrid, ArrowRightLeft, Plus, Library, Sparkles, Cloud } from 'lucide-react';
+import { Activity, Pin, LayoutGrid, ArrowRightLeft, Plus, Library, Sparkles, Cloud, Zap } from 'lucide-react';
 import DashboardSection from '../parts/DashboardSection';
 import GameCard from '../parts/GameCard';
 import { useDashboardTranslation } from '../../../i18n/dashboard';
@@ -11,6 +11,7 @@ interface LibraryViewProps {
     // Data
     activeSessions: GameSession[];
     pinnedTemplates: GameTemplate[];
+    recentTemplates: GameTemplate[];
     userTemplates: GameTemplate[];
     userTemplatesTotal: number;
     systemTemplates: GameTemplate[];
@@ -54,6 +55,7 @@ const TruncationFooter: React.FC<{ displayed: number, total: number, label: stri
 export const LibraryView: React.FC<LibraryViewProps> = ({
     activeSessions,
     pinnedTemplates,
+    recentTemplates,
     userTemplates,
     userTemplatesTotal,
     systemTemplates,
@@ -86,7 +88,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
     // Section Toggles
     const [isActiveLibOpen, setIsActiveLibOpen] = useState(true);
-    const [isPinnedLibOpen, setIsPinnedLibOpen] = useState(true);
+    const [isQuickStartOpen, setIsQuickStartOpen] = useState(true);
     const [isUserLibOpen, setIsUserLibOpen] = useState(true);
     const [isSystemLibOpen, setIsSystemLibOpen] = useState(true);
 
@@ -130,13 +132,13 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             )}
 
             <DashboardSection
-                title={t('dash_pinned')}
-                icon={<Pin size={16} />}
-                count={pinnedTemplates.length}
+                title={t('dash_quick_start')}
+                icon={<Zap size={16} />}
+                count={pinnedTemplates.length + recentTemplates.length}
                 compact
-                iconColorClass="text-status-warning"
-                isOpen={isPinnedLibOpen}
-                onToggle={() => setIsPinnedLibOpen(!isPinnedLibOpen)}
+                iconColorClass="text-brand-primary"
+                isOpen={isQuickStartOpen}
+                onToggle={() => setIsQuickStartOpen(!isQuickStartOpen)}
             >
                 <div className={`grid grid-cols-1 gap-2 mt-2 ${animClass}`}>
                     {pinnedTemplates.map(tData => (
@@ -150,6 +152,15 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                             isCopied={copiedId === tData.id}
                             isConnected={isConnected}
                             isAutoConnectEnabled={isAutoConnectEnabled}
+                        />
+                    ))}
+                    {recentTemplates.map(tData => (
+                        <GameCard
+                            key={`recent-${tData.id}`}
+                            template={tData}
+                            mode="recent"
+                            onClick={() => onTemplateSelect(tData)}
+                            onPin={(e) => { e.stopPropagation(); onPin(tData.id); }}
                         />
                     ))}
                 </div>

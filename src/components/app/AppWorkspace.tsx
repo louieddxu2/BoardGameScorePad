@@ -128,6 +128,7 @@ const AppWorkspace: React.FC<AppWorkspaceProps> = ({
           historyRecords={appData.historyRecords}
           historyStatsRecords={appData.historyStatsRecords}
           historyGameEntries={appData.historyGameEntries}
+          recentlyPlayedTemplateIds={appData.recentlyPlayedTemplateIds}
           historyCount={appData.historyCount}
           savedPlayers={appData.savedPlayers}
           searchQuery={appData.searchQuery}

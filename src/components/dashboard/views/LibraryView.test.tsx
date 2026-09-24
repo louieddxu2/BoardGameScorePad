@@ -21,9 +21,17 @@ const pinnedTemplate: GameTemplate = {
     createdAt: 1
 };
 
+const recentTemplate: GameTemplate = {
+    id: 'recent-1',
+    name: 'Recent Game',
+    columns: [],
+    createdAt: 1
+};
+
 const makeProps = (): React.ComponentProps<typeof LibraryView> => ({
     activeSessions: [activeSession],
     pinnedTemplates: [pinnedTemplate],
+    recentTemplates: [recentTemplate],
     userTemplates: [],
     userTemplatesTotal: 0,
     systemTemplates: [],
@@ -53,7 +61,7 @@ const makeProps = (): React.ComponentProps<typeof LibraryView> => ({
 describe('LibraryView compact active and pinned rows', () => {
     beforeEach(() => localStorage.setItem('app_language', 'zh-TW'));
 
-    it('uses single-column, 48px rows only for active and pinned games', () => {
+    it('uses single-column, 48px rows for active, pinned, and recent games', () => {
         const props = makeProps();
         props.userTemplates = [{ ...pinnedTemplate, id: 'user-1', name: 'Library Game' }];
         props.userTemplatesTotal = 1;
@@ -61,10 +69,13 @@ describe('LibraryView compact active and pinned rows', () => {
 
         const activeButton = screen.getByRole('button', { name: '繼續遊戲: Active Game' });
         const pinnedButton = screen.getByRole('button', { name: '開始新遊戲: Pinned Game' });
+        const recentButton = screen.getByRole('button', { name: '開始新遊戲: Recent Game' });
         expect(activeButton.parentElement).toHaveClass('h-12');
         expect(pinnedButton.parentElement).toHaveClass('h-12');
+        expect(recentButton.parentElement).toHaveClass('h-12');
         expect(activeButton.closest('.grid')).toHaveClass('grid-cols-1');
         expect(pinnedButton.closest('.grid')).toHaveClass('grid-cols-1');
+        expect(recentButton.closest('.grid')).toHaveClass('grid-cols-1');
         expect(screen.getByText('Library Game').closest('.grid')).toHaveClass('grid-cols-2');
         expect(screen.getByText('我的遊戲庫').parentElement?.parentElement).toHaveClass('p-2.5');
 
@@ -74,6 +85,10 @@ describe('LibraryView compact active and pinned rows', () => {
         expect(activeRow.children[activeRow.children.length - 2]).toHaveAttribute('aria-label', '刪除');
         expect(pinnedRow.lastElementChild).toHaveAttribute('aria-label', '取消釘選');
         expect(pinnedRow.children[pinnedRow.children.length - 2]).toHaveAttribute('aria-label', '複製連結');
+
+        const recentRow = recentButton.parentElement!;
+        expect(recentRow.lastElementChild).toHaveAttribute('aria-label', '釘選');
+        expect(recentRow.querySelectorAll('svg')).toHaveLength(1);
     });
 
     it('keeps compact sections collapsible and clear-all available', () => {
@@ -81,7 +96,7 @@ describe('LibraryView compact active and pinned rows', () => {
         render(<LanguageProvider><LibraryView {...props} /></LanguageProvider>);
 
         const activeHeading = screen.getByText('進行中遊戲');
-        const pinnedHeading = screen.getByText('已釘選');
+        const pinnedHeading = screen.getByText('快速開始');
         expect(activeHeading.parentElement?.parentElement).toHaveClass('min-h-9');
         expect(pinnedHeading.parentElement?.parentElement).toHaveClass('min-h-9');
         expect(activeHeading.closest('.mb-4')).toBeInTheDocument();
@@ -94,8 +109,10 @@ describe('LibraryView compact active and pinned rows', () => {
 
         fireEvent.click(pinnedHeading);
         expect(screen.queryByRole('button', { name: '開始新遊戲: Pinned Game' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: '開始新遊戲: Recent Game' })).not.toBeInTheDocument();
         fireEvent.click(pinnedHeading);
         expect(screen.getByRole('button', { name: '開始新遊戲: Pinned Game' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '開始新遊戲: Recent Game' })).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: '全部清空' }));
         expect(props.onClearAllSessions).toHaveBeenCalledOnce();
@@ -130,5 +147,15 @@ describe('LibraryView compact active and pinned rows', () => {
         fireEvent.click(screen.getByRole('button', { name: '複製連結' }));
         expect(props.onCopyTemplateShareLink).toHaveBeenCalledWith(pinnedTemplate, expect.any(Object));
         expect(props.onTemplateSelect).toHaveBeenCalledTimes(2);
+
+        const recentButton = screen.getByRole('button', { name: '開始新遊戲: Recent Game' });
+        fireEvent.click(recentButton);
+        fireEvent.click(recentButton.parentElement!);
+        expect(props.onTemplateSelect).toHaveBeenCalledWith(recentTemplate);
+        expect(props.onTemplateSelect).toHaveBeenCalledTimes(4);
+
+        fireEvent.click(screen.getByRole('button', { name: '釘選' }));
+        expect(props.onPin).toHaveBeenCalledWith('recent-1');
+        expect(props.onTemplateSelect).toHaveBeenCalledTimes(4);
     });
 });

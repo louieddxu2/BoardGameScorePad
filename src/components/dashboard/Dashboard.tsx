@@ -47,6 +47,7 @@ interface DashboardProps {
   historyRecords?: HistorySummary[] | HistoryRecord[];
   historyStatsRecords?: HistorySummary[];
   historyGameEntries?: HistoryGameEntry[];
+  recentlyPlayedTemplateIds: string[];
   historyCount?: number;
   savedPlayers?: SavedListItem[];
   searchQuery: string;
@@ -100,6 +101,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   historyRecords,
   historyStatsRecords,
   historyGameEntries,
+  recentlyPlayedTemplateIds,
   historyCount,
   savedPlayers,
   searchQuery,
@@ -169,6 +171,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   const {
     sortedActiveSessions,
     pinnedTemplates,
+    recentTemplates,
     userTemplatesToShow,
     systemTemplatesToShow,
     allVisibleTemplates
@@ -176,6 +179,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
     userTemplates,
     systemTemplates,
     pinnedIds,
+    recentlyPlayedTemplateIds,
     activeSessionIds,
     activeSessions,
     getSessionPreview
@@ -339,6 +343,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
             <LibraryView
               activeSessions={sortedActiveSessions}
               pinnedTemplates={pinnedTemplates}
+              recentTemplates={recentTemplates}
               userTemplates={userTemplatesToShow}
               userTemplatesTotal={userTemplatesCount}
               systemTemplates={systemTemplatesToShow}
