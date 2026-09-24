@@ -2,12 +2,19 @@
 import { useMemo } from 'react';
 import { GameTemplate, GameSession } from '../../../types';
 import { DATA_LIMITS } from '../../../dataLimits';
+import { createVirtualTemplate } from '../../../utils/templateUtils';
+import type { RecentGameSummary } from '../../../utils/recentTemplateIds';
+
+export interface RecentTemplateShortcut {
+  template: GameTemplate;
+  needsResolution: boolean;
+}
 
 interface UseDashboardDataProps {
   userTemplates: GameTemplate[];
   systemTemplates: GameTemplate[];
   pinnedIds: string[];
-  recentlyPlayedTemplateIds: string[];
+  recentlyPlayedGames: RecentGameSummary[];
   activeSessionIds: string[];
   activeSessions: GameSession[] | undefined; 
   getSessionPreview: (templateId: string) => GameSession | null;
@@ -17,7 +24,7 @@ export const useDashboardData = ({
   userTemplates,
   systemTemplates,
   pinnedIds,
-  recentlyPlayedTemplateIds,
+  recentlyPlayedGames,
   activeSessions, 
 }: UseDashboardDataProps) => {
 
@@ -43,10 +50,14 @@ export const useDashboardData = ({
   }, [pinnedIds, templatesById]);
 
   const recentTemplates = useMemo(() => {
-    return recentlyPlayedTemplateIds
-      .map(id => templatesById.get(id))
-      .filter((template): template is GameTemplate => template !== undefined);
-  }, [recentlyPlayedTemplateIds, templatesById]);
+    return recentlyPlayedGames.map(game => {
+      const template = templatesById.get(game.templateId);
+      return {
+        template: template ?? createVirtualTemplate(game.templateId, game.gameName, game.bggId),
+        needsResolution: !template
+      };
+    });
+  }, [recentlyPlayedGames, templatesById]);
   
   // 3. User Library (Filtered & Sliced for UI)
   const userTemplatesToShow = useMemo(() => {

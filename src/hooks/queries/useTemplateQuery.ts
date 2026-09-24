@@ -113,14 +113,6 @@ export const useTemplateQuery = (searchQuery: string, pinnedIds: string[]) => {
         });
     }, [allBuiltinsRaw, tApp]);
 
-    const availableTemplateIds = useMemo(() => {
-        const ids = new Set<string>();
-        allUserTemplatesData?.forEach(template => ids.add(template.id));
-        allBuiltinsData.forEach(template => ids.add(template.id));
-        return ids;
-    }, [allUserTemplatesData, allBuiltinsData]);
-
-
     const getBuiltinTemplateByShortId = async (shortId: string): Promise<GameTemplate | null> => {
         // 1. Try direct lookup (fastest)
         const fullId = toBuiltinFullId(shortId);
@@ -167,7 +159,6 @@ export const useTemplateQuery = (searchQuery: string, pinnedIds: string[]) => {
         systemTemplates,
         systemTemplatesCount: filteredBuiltins.total,
         systemOverrides: shadowTemplatesMap,
-        availableTemplateIds,
         getTemplate,
         getBuiltinTemplateByShortId
     };

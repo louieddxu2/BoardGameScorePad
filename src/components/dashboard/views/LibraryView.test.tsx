@@ -31,7 +31,7 @@ const recentTemplate: GameTemplate = {
 const makeProps = (): React.ComponentProps<typeof LibraryView> => ({
     activeSessions: [activeSession],
     pinnedTemplates: [pinnedTemplate],
-    recentTemplates: [recentTemplate],
+    recentTemplates: [{ template: recentTemplate, needsResolution: true }],
     userTemplates: [],
     userTemplatesTotal: 0,
     systemTemplates: [],
@@ -42,10 +42,12 @@ const makeProps = (): React.ComponentProps<typeof LibraryView> => ({
     isConnected: false,
     isAutoConnectEnabled: false,
     onTemplateSelect: vi.fn(),
+    onRecentTemplateSelect: vi.fn(),
     onDirectResume: vi.fn(),
     onDeleteSession: vi.fn(),
     onClearAllSessions: vi.fn(),
     onPin: vi.fn(),
+    onPinRecentTemplate: vi.fn(),
     onDeleteTemplate: vi.fn(),
     onCopyJSON: vi.fn(),
     onCopyTemplateShareLink: vi.fn(),
@@ -151,11 +153,12 @@ describe('LibraryView compact active and pinned rows', () => {
         const recentButton = screen.getByRole('button', { name: '開始新遊戲: Recent Game' });
         fireEvent.click(recentButton);
         fireEvent.click(recentButton.parentElement!);
-        expect(props.onTemplateSelect).toHaveBeenCalledWith(recentTemplate);
-        expect(props.onTemplateSelect).toHaveBeenCalledTimes(4);
+        expect(props.onRecentTemplateSelect).toHaveBeenCalledWith(props.recentTemplates[0]);
+        expect(props.onRecentTemplateSelect).toHaveBeenCalledTimes(2);
+        expect(props.onTemplateSelect).toHaveBeenCalledTimes(2);
 
         fireEvent.click(screen.getByRole('button', { name: '釘選' }));
-        expect(props.onPin).toHaveBeenCalledWith('recent-1');
-        expect(props.onTemplateSelect).toHaveBeenCalledTimes(4);
+        expect(props.onPinRecentTemplate).toHaveBeenCalledWith(props.recentTemplates[0]);
+        expect(props.onTemplateSelect).toHaveBeenCalledTimes(2);
     });
 });

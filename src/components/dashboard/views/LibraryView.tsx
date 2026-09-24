@@ -6,12 +6,13 @@ import DashboardSection from '../parts/DashboardSection';
 import GameCard from '../parts/GameCard';
 import { useDashboardTranslation } from '../../../i18n/dashboard';
 import { useCloudLibraryTranslation } from '../../../i18n/cloud_library';
+import type { RecentTemplateShortcut } from '../hooks/useDashboardData';
 
 interface LibraryViewProps {
     // Data
     activeSessions: GameSession[];
     pinnedTemplates: GameTemplate[];
-    recentTemplates: GameTemplate[];
+    recentTemplates: RecentTemplateShortcut[];
     userTemplates: GameTemplate[];
     userTemplatesTotal: number;
     systemTemplates: GameTemplate[];
@@ -24,10 +25,12 @@ interface LibraryViewProps {
     isAutoConnectEnabled: boolean;
     // Handlers
     onTemplateSelect: (template: GameTemplate) => void;
+    onRecentTemplateSelect: (shortcut: RecentTemplateShortcut) => void;
     onDirectResume: (id: string) => void;
     onDeleteSession: (id: string) => void;
     onClearAllSessions: () => void;
     onPin: (id: string) => void;
+    onPinRecentTemplate: (shortcut: RecentTemplateShortcut) => void;
     onDeleteTemplate: (id: string) => void;
     onCopyJSON: (template: GameTemplate, e: React.MouseEvent) => void;
     onCopyTemplateShareLink: (template: GameTemplate, e: React.MouseEvent) => void;
@@ -66,10 +69,12 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     isConnected,
     isAutoConnectEnabled,
     onTemplateSelect,
+    onRecentTemplateSelect,
     onDirectResume,
     onDeleteSession,
     onClearAllSessions,
     onPin,
+    onPinRecentTemplate,
     onDeleteTemplate,
     onCopyJSON,
     onCopyTemplateShareLink,
@@ -154,13 +159,13 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                             isAutoConnectEnabled={isAutoConnectEnabled}
                         />
                     ))}
-                    {recentTemplates.map(tData => (
+                    {recentTemplates.map(shortcut => (
                         <GameCard
-                            key={`recent-${tData.id}`}
-                            template={tData}
+                            key={`recent-${shortcut.template.id}`}
+                            template={shortcut.template}
                             mode="recent"
-                            onClick={() => onTemplateSelect(tData)}
-                            onPin={(e) => { e.stopPropagation(); onPin(tData.id); }}
+                            onClick={() => { void onRecentTemplateSelect(shortcut); }}
+                            onPin={(e) => { e.stopPropagation(); void onPinRecentTemplate(shortcut); }}
                         />
                     ))}
                 </div>
