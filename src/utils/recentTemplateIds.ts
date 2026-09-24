@@ -8,15 +8,34 @@ export const normalizeRecentGameName = (name: string): string => {
   return name.trim().replace(/\s+/g, ' ').toLowerCase();
 };
 
-const getGameKey = (game: RecentGameSummary, bggId = game.bggId): string => {
-  const normalizedBggId = bggId?.trim();
-  if (normalizedBggId) return `bgg:${normalizedBggId}`;
+interface IdentityBucket {
+  hasGameWithoutBggId: boolean;
+  bggIds: Set<string>;
+}
 
-  const localGameId = game.templateId?.trim();
-  if (localGameId) return `local:${localGameId}`;
+const normalizeBggId = (bggId?: string): string => bggId?.trim().toLowerCase() ?? '';
 
-  const normalizedName = normalizeRecentGameName(game.gameName);
-  return normalizedName ? `name:${normalizedName}` : '';
+const addToIdentityIndex = (
+  index: Map<string, IdentityBucket>,
+  key: string,
+  bggId: string
+): void => {
+  if (!key) return;
+
+  let bucket = index.get(key);
+  if (!bucket) {
+    bucket = { hasGameWithoutBggId: false, bggIds: new Set() };
+    index.set(key, bucket);
+  }
+
+  if (bggId) bucket.bggIds.add(bggId);
+  else bucket.hasGameWithoutBggId = true;
+};
+
+const identityBucketMatches = (bucket: IdentityBucket | undefined, bggId: string): boolean => {
+  if (!bucket) return false;
+  if (!bggId) return bucket.hasGameWithoutBggId || bucket.bggIds.size > 0;
+  return bucket.hasGameWithoutBggId || bucket.bggIds.has(bggId);
 };
 
 export const selectRecentGames = <T extends RecentGameSummary>(
@@ -29,19 +48,40 @@ export const selectRecentGames = <T extends RecentGameSummary>(
   if (limit <= 0) return [];
 
   const selectedGames: T[] = [];
-  const seenGameKeys = new Set(excludedGames.map(game => getGameKey(game)).filter(Boolean));
+  const seenBggIds = new Set<string>();
+  const seenLocalIds = new Map<string, IdentityBucket>();
+  const seenNames = new Map<string, IdentityBucket>();
+
+  const rememberGame = (game: RecentGameSummary, bggId: string): void => {
+    if (bggId) seenBggIds.add(bggId);
+    addToIdentityIndex(seenLocalIds, game.templateId?.trim() ?? '', bggId);
+    addToIdentityIndex(seenNames, normalizeRecentGameName(game.gameName), bggId);
+  };
+
+  excludedGames.forEach(game => rememberGame(game, normalizeBggId(game.bggId)));
 
   for (const game of mostRecentFirst) {
     const localGameId = game.templateId?.trim();
-    if (!localGameId && !normalizeRecentGameName(game.gameName)) continue;
+    const normalizedName = normalizeRecentGameName(game.gameName);
+    if (!localGameId && !normalizedName) continue;
 
-    const bggId = getBggId(game);
-    if (!bggId?.trim() && localGameId && excludedTemplateIds.has(localGameId)) continue;
+    const bggId = normalizeBggId(getBggId(game));
+    if (bggId && seenBggIds.has(bggId)) continue;
 
-    const gameKey = getGameKey(game, bggId);
-    if (!gameKey || seenGameKeys.has(gameKey)) continue;
+    if (localGameId && excludedTemplateIds.has(localGameId)) {
+      if (bggId) seenBggIds.add(bggId);
+      continue;
+    }
 
-    seenGameKeys.add(gameKey);
+    const isDuplicate = identityBucketMatches(seenLocalIds.get(localGameId ?? ''), bggId)
+      || identityBucketMatches(seenNames.get(normalizedName), bggId);
+    if (isDuplicate) {
+      // Preserve the BGG identity even when this row was collapsed by its local ID or name.
+      if (bggId) seenBggIds.add(bggId);
+      continue;
+    }
+
+    rememberGame(game, bggId);
     selectedGames.push(game);
     if (selectedGames.length === limit) break;
   }

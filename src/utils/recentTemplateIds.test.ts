@@ -9,14 +9,14 @@ describe('selectRecentGames', () => {
     bggId?: string
   ): RecentGameSummary => ({ templateId, gameName, bggId });
 
-  it('deduplicates by BGG ID and keeps the most recent template', () => {
+  it('deduplicates case-insensitive BGG IDs and keeps the most recent template', () => {
     const newest = game('recent-new', 'Local Name', '123');
-    const games = [newest, game('recent-copy', 'BGG Name', '123'), game('other', 'Other', '456')];
+    const games = [newest, game('recent-copy', 'BGG Name', ' 123 '), game('other', 'Other', '456')];
 
     expect(selectRecentGames(games, new Set(), 5)).toEqual([newest, games[2]]);
   });
 
-  it('uses local game IDs after BGG IDs, preserving same-name games with different local IDs', () => {
+  it('deduplicates no-BGG games by local ID and then by normalized name', () => {
     const newestSimpleGame = game('simple-id', '  Enchanted   Ivy ');
     const games = [
       newestSimpleGame,
@@ -28,13 +28,21 @@ describe('selectRecentGames', () => {
 
     expect(selectRecentGames(games, new Set(), 5)).toEqual([
       newestSimpleGame,
-      games[2],
       games[3],
       games[4]
     ]);
   });
 
-  it('falls back to normalized names only when a local game ID is absent', () => {
+  it('keeps distinct known BGG IDs even when local IDs and names match', () => {
+    const games = [
+      game('same-local-id', 'Same Name', '100'),
+      game('same-local-id', 'same name', '200')
+    ];
+
+    expect(selectRecentGames(games, new Set(), 5)).toEqual(games);
+  });
+
+  it('falls back to normalized names when local IDs are absent', () => {
     const games = [
       game('', '  Enchanted   Ivy '),
       game('', 'enchanted ivy')
@@ -43,7 +51,7 @@ describe('selectRecentGames', () => {
     expect(selectRecentGames(games, new Set(), 5)).toEqual([games[0]]);
   });
 
-  it('excludes pinned and active games by BGG or local ID, not merely by name', () => {
+  it('excludes pinned and active games by BGG ID, local ID, or name fallback', () => {
     const games = [
       game('pinned-copy', 'Pinned Game', '123'),
       game('active-template', 'Active Game'),
@@ -60,7 +68,7 @@ describe('selectRecentGames', () => {
         game('active-template', ' active   game '),
         game('no-bgg-pin', 'No BGG pin')
       ]
-    )).toEqual([games[2], games[3]]);
+    )).toEqual([games[3]]);
   });
 
   it('uses a recent-only BGG ID fallback when the extracted history summary omitted it', () => {
