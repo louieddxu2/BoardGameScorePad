@@ -72,23 +72,62 @@ const GameCard: React.FC<GameCardProps> = ({
 
   const baseClasses = "bg-surface-bg rounded-xl border border-surface-border p-3 shadow-ui-soft hover:bg-surface-hover transition-all cursor-pointer relative flex flex-col h-20 group";
 
-  if (mode === 'active') {
+  if (mode === 'active' || mode === 'pinned') {
+    const isActive = mode === 'active';
     return (
-      <div onClick={onClick} className={`${baseClasses} border-brand-primary/40 hover:border-surface-border-hover`}>
-        <div className="flex items-start justify-between gap-1 pr-10">
-          <h3 className="text-sm font-bold text-txt-primary leading-tight line-clamp-2 group-hover:text-txt-card-hover transition-colors">{template.name}</h3>
-        </div>
-        <div className="absolute top-1/2 right-3 -translate-y-1/2 text-brand-primary/80">
-          <PlayCircle size={36} strokeWidth={1.5} />
-        </div>
-        <button onClick={onDelete} className="absolute bottom-1 left-1 p-1.5 text-txt-muted hover:text-status-danger hover:bg-surface-hover rounded-md transition-colors">
-          <Trash2 size={16} />
+      <div className={`flex h-12 items-center rounded-xl border bg-surface-bg shadow-ui-soft transition-colors hover:bg-surface-hover ${isActive ? 'border-brand-primary/40' : 'border-surface-border'}`}>
+        <button
+          type="button"
+          onClick={onClick}
+          aria-label={`${t(isActive ? 'card_resume' : 'card_start_new')}: ${template.name}`}
+          className="flex h-full min-w-0 flex-1 items-center justify-between gap-2 rounded-l-xl px-3 text-left text-sm font-bold text-txt-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+        >
+          <span className="truncate">{template.name}</span>
+          {isActive && <PlayCircle size={20} strokeWidth={1.5} className="shrink-0 text-brand-primary/80" aria-hidden="true" />}
         </button>
+        {isActive ? (
+          onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              aria-label={t('card_delete')}
+              title={t('card_delete')}
+              className="flex h-full w-12 shrink-0 items-center justify-center rounded-r-xl text-txt-muted transition-colors hover:bg-surface-hover hover:text-status-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+            >
+              <Trash2 size={16} aria-hidden="true" />
+            </button>
+          )
+        ) : (
+          <>
+            {onPin && (
+              <button
+                type="button"
+                onClick={onPin}
+                aria-label={t('card_unpin')}
+                title={t('card_unpin')}
+                className="flex h-full w-12 shrink-0 items-center justify-center text-status-warning transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+              >
+                <Pin size={16} fill="currentColor" aria-hidden="true" />
+              </button>
+            )}
+            {onCopyLink && (
+              <button
+                type="button"
+                onClick={onCopyLink}
+                aria-label={t('card_copy_share_link')}
+                title={t('card_copy_share_link')}
+                className="flex h-full w-12 shrink-0 items-center justify-center rounded-r-xl text-txt-muted transition-colors hover:bg-surface-hover hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+              >
+                {isCopied ? <Check size={16} className="text-brand-primary" aria-hidden="true" /> : <Link2 size={16} aria-hidden="true" />}
+              </button>
+            )}
+          </>
+        )}
       </div>
     );
   }
 
-  // Common Layout for Pinned, User, System
+  // Common Layout for User and System
   return (
     <div 
       onClick={onClick} 
@@ -102,9 +141,9 @@ const GameCard: React.FC<GameCardProps> = ({
       {onPin && (
         <button
           onClick={onPin}
-          className={`absolute top-1 right-1 p-1.5 rounded-md transition-colors ${mode === 'pinned' ? 'text-status-warning bg-surface-hover/50 hover:bg-surface-hover' : 'text-txt-muted hover:text-status-warning hover:bg-surface-hover'}`}
+          className="absolute top-1 right-1 p-1.5 rounded-md text-txt-muted transition-colors hover:bg-surface-hover hover:text-status-warning"
         >
-          <Pin size={16} fill={mode === 'pinned' ? "currentColor" : "none"} />
+          <Pin size={16} fill="none" />
         </button>
       )}
 

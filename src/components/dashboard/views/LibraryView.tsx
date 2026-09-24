@@ -110,7 +110,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                         </button>
                     }
                 >
-                    <div className={`grid grid-cols-2 gap-4 mt-4 ${animClass}`}>
+                    <div className={`grid grid-cols-1 gap-2 mt-3 ${animClass}`}>
                         {activeSessions.map(session => (
                             <GameCard
                                 key={`active-${session.id}`}
@@ -136,7 +136,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 isOpen={isPinnedLibOpen}
                 onToggle={() => setIsPinnedLibOpen(!isPinnedLibOpen)}
             >
-                <div className={`grid grid-cols-2 gap-4 mt-4 ${animClass}`}>
+                <div className={`grid grid-cols-1 gap-2 mt-3 ${animClass}`}>
                     {pinnedTemplates.map(tData => (
                         <GameCard
                             key={`pinned-${tData.id}`}
