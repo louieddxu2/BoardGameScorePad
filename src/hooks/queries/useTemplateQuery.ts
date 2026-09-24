@@ -9,6 +9,8 @@ import { extractTemplateSummary, TemplateSummary } from '../../utils/extractData
 import { isDisposableTemplate } from '../../utils/templateUtils';
 import { toBuiltinFullId, toBuiltinShortId } from '../../utils/deepLink';
 import { useAppTranslation } from '../../i18n/app';
+import { resolveRecentGameTemplate } from '../../utils/recentTemplateResolution';
+import type { RecentGameTemplateIdentity } from '../../utils/recentTemplateResolution';
 
 export const useTemplateQuery = (searchQuery: string, pinnedIds: string[]) => {
     // --- PREFERENCES & HELPERS ---
@@ -33,12 +35,26 @@ export const useTemplateQuery = (searchQuery: string, pinnedIds: string[]) => {
         } as GameTemplate;
     }, []);
 
-    const getTemplate = async (id: string): Promise<GameTemplate | null> => {
+    const getTemplate = async (id: string, identity?: RecentGameTemplateIdentity): Promise<GameTemplate | null> => {
         let t = await db.templates.get(id);
         if (t) return mergePrefs(t, prefsMap);
         t = await db.builtins.get(id);
         if (t) return mergePrefs(t, prefsMap);
-        return null;
+
+        if (!identity || !identity.gameName.trim()) return null;
+        const gameName = identity.gameName.trim();
+
+        // Name is indexed on both tables, so an ID-repair lookup stays bounded to
+        // same-name candidates instead of scanning the template library.
+        const [userCandidates, builtinCandidates] = await Promise.all([
+            db.templates.where('name').equalsIgnoreCase(gameName).toArray(),
+            db.builtins.where('name').equalsIgnoreCase(gameName).toArray()
+        ]);
+        const resolved = resolveRecentGameTemplate(
+            [...userCandidates, ...builtinCandidates],
+            identity
+        );
+        return resolved ? mergePrefs(resolved, prefsMap) : null;
     };
 
     // --- TEMPLATES (User) ---

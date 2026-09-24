@@ -4,14 +4,20 @@ import { db } from '../../db';
 import { DATA_LIMITS } from '../../dataLimits';
 import { searchService } from '../../services/searchService';
 import { SavedListItem } from '../../types';
+import type { GameSession } from '../../types';
 import { extractHistorySummary } from '../../utils/extractDataSummaries';
 import { buildHistoryGameEntries } from '../../utils/historyGameEntries';
 import { selectRecentGames } from '../../utils/recentTemplateIds';
 import type { RecentGameSummary } from '../../utils/recentTemplateIds';
+import type { HistorySummary } from '../../utils/extractDataSummaries';
 
 interface RecentTemplateOptions {
   pinnedIds: string[];
-  activeSessionIds: string[];
+  activeSessions: Pick<GameSession, 'templateId' | 'name' | 'bggId'>[] | undefined;
+}
+
+interface RecentHistorySummary extends HistorySummary {
+  recentBggId?: string;
 }
 
 export const useHistoryQuery = (
@@ -22,10 +28,36 @@ export const useHistoryQuery = (
   const isSearching = searchQuery && searchQuery.trim().length > 0;
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
 
-  const allSummaries = useLiveQuery(async () => {
+  const allSummaries = useLiveQuery(async (): Promise<RecentHistorySummary[]> => {
     const records = await db.history.orderBy('endTime').reverse().toArray();
-    return records.map(extractHistorySummary);
+    return records.map(record => ({
+      ...extractHistorySummary(record),
+      // Keep snapshot fallback scoped to the new recent-games shortcut; other
+      // history grouping continues to use the established summary identity.
+      recentBggId: record.bggId?.trim() || record.snapshotTemplate?.bggId?.trim() || undefined
+    }));
   }, [], []);
+
+  const pinnedGames = useLiveQuery(async (): Promise<RecentGameSummary[]> => {
+    const pinnedIds = [...new Set(recentTemplateOptions.pinnedIds)];
+    if (pinnedIds.length === 0) return [];
+
+    const [userTemplates, builtins] = await Promise.all([
+      db.templates.bulkGet(pinnedIds),
+      db.builtins.bulkGet(pinnedIds)
+    ]);
+    const templatesById = new Map<string, RecentGameSummary>();
+    [...userTemplates, ...builtins].forEach(template => {
+      if (template && !templatesById.has(template.id)) {
+        templatesById.set(template.id, {
+          templateId: template.id,
+          gameName: template.name,
+          bggId: template.bggId
+        });
+      }
+    });
+    return [...templatesById.values()];
+  }, [recentTemplateOptions.pinnedIds], []);
 
   useEffect(() => {
     if (!allSummaries || pendingDeleteIds.length === 0) return;
@@ -42,35 +74,34 @@ export const useHistoryQuery = (
       : allSummaries;
   }, [allSummaries, pendingDeleteIds]);
 
-  const recentHistoryCandidates = useMemo(() => {
-    const seenTemplateIds = new Set<string>();
-    const candidates: typeof activeSummaries = [];
-
-    for (const summary of activeSummaries) {
-      const { templateId } = summary;
-      if (!templateId || seenTemplateIds.has(templateId)) continue;
-      seenTemplateIds.add(templateId);
-      candidates.push(summary);
-    }
-
-    return candidates;
-  }, [activeSummaries]);
-
   const recentlyPlayedGames = useMemo<RecentGameSummary[]>(() => {
+    const activeSessions = recentTemplateOptions.activeSessions ?? [];
     const excludedTemplateIds = new Set([
       ...recentTemplateOptions.pinnedIds,
-      ...recentTemplateOptions.activeSessionIds
+      ...activeSessions.map(session => session.templateId)
     ]);
+    const activeGames = activeSessions.map(session => ({
+      templateId: session.templateId,
+      gameName: session.name,
+      bggId: session.bggId
+    }));
 
     return selectRecentGames(
-      recentHistoryCandidates,
+      activeSummaries,
       excludedTemplateIds,
-      DATA_LIMITS.QUERY.RECENT_GAMES
-    ).map(({ templateId, gameName, bggId }) => ({ templateId, gameName, bggId }));
+      DATA_LIMITS.QUERY.RECENT_GAMES,
+      [...(pinnedGames ?? []), ...activeGames],
+      summary => summary.recentBggId ?? summary.bggId
+    ).map(({ templateId, gameName, recentBggId, bggId }) => ({
+      templateId,
+      gameName,
+      bggId: recentBggId ?? bggId
+    }));
   }, [
-    recentHistoryCandidates,
+    activeSummaries,
     recentTemplateOptions.pinnedIds,
-    recentTemplateOptions.activeSessionIds
+    recentTemplateOptions.activeSessions,
+    pinnedGames
   ]);
 
   const historyGameEntries = useMemo(() => {

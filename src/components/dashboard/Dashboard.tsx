@@ -29,6 +29,7 @@ import { uploadTemplateToCloud } from '../../services/templateShareService';
 // Hooks
 import { useDashboardData } from './hooks/useDashboardData';
 import type { RecentTemplateShortcut } from './hooks/useDashboardData';
+import type { RecentGameTemplateIdentity } from '../../utils/recentTemplateResolution';
 import { useGameLauncher } from '../../features/game-selector/hooks/useGameLauncher';
 import { useDashboardModals } from './hooks/useDashboardModals';
 import { useDebugGestures } from './hooks/useDebugGestures';
@@ -69,7 +70,7 @@ interface DashboardProps {
   onTogglePinOption: (option: GameOption) => void;
   onClearNewBadges: () => void;
   onRestoreSystem: (id: string) => void;
-  onGetFullTemplate: (id: string) => Promise<GameTemplate | null>;
+  onGetFullTemplate: (id: string, identity?: RecentGameTemplateIdentity) => Promise<GameTemplate | null>;
   onDeleteHistory: (id: string) => void;
   onHistorySelect: (record: HistoryRecord | HistorySummary) => void;
   isInstalled: boolean;
@@ -195,7 +196,10 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
 
     let storedTemplate: GameTemplate | null = null;
     try {
-      storedTemplate = await onGetFullTemplate(shortcut.template.id);
+      storedTemplate = await onGetFullTemplate(shortcut.template.id, {
+        gameName: shortcut.template.name,
+        bggId: shortcut.template.bggId
+      });
     } catch (error) {
       console.error('Failed to resolve recent game template:', error);
     }
@@ -211,11 +215,14 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         return;
       }
 
-      const storedTemplate = await onGetFullTemplate(shortcut.template.id);
+      const storedTemplate = await onGetFullTemplate(shortcut.template.id, {
+        gameName: shortcut.template.name,
+        bggId: shortcut.template.bggId
+      });
       if (!storedTemplate) {
         await onTemplateSave(shortcut.template, { skipCloud: true });
       }
-      await onTogglePin(shortcut.template.id);
+      await onTogglePin((storedTemplate ?? shortcut.template).id);
     } catch (error) {
       console.error('Failed to pin recent game:', error);
     }

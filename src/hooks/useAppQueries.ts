@@ -35,7 +35,7 @@ export const useAppQueries = (searchQuery: string, pinnedIds: string[]) => {
   const libraryData = useLibraryQuery();
   const historyData = useHistoryQuery(searchQuery, libraryData.savedPlayersAll, {
     pinnedIds,
-    activeSessionIds: sessionData.activeSessionIds
+    activeSessions: sessionData.activeSessions
   });
 
   // 3. Start Game Panel Query (Merge then Search)
