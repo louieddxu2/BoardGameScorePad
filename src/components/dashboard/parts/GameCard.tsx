@@ -75,10 +75,12 @@ const GameCard: React.FC<GameCardProps> = ({
   if (mode === 'active' || mode === 'pinned') {
     const isActive = mode === 'active';
     return (
-      <div className={`flex h-12 items-center rounded-xl border bg-surface-bg shadow-ui-soft transition-colors hover:bg-surface-hover ${isActive ? 'border-brand-primary/40' : 'border-surface-border'}`}>
+      <div
+        onClick={onClick}
+        className={`flex h-12 cursor-pointer items-center rounded-xl border bg-surface-bg shadow-ui-soft transition-colors hover:bg-surface-hover ${isActive ? 'border-brand-primary/40' : 'border-surface-border'}`}
+      >
         <button
           type="button"
-          onClick={onClick}
           aria-label={`${t(isActive ? 'card_resume' : 'card_start_new')}: ${template.name}`}
           className="flex h-full min-w-0 flex-1 items-center justify-between gap-2 rounded-l-xl px-3 text-left text-sm font-bold text-txt-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
         >
@@ -89,7 +91,7 @@ const GameCard: React.FC<GameCardProps> = ({
           onDelete && (
             <button
               type="button"
-              onClick={onDelete}
+              onClick={(e) => { e.stopPropagation(); onDelete(e); }}
               aria-label={t('card_delete')}
               title={t('card_delete')}
               className="flex h-full w-12 shrink-0 items-center justify-center rounded-r-xl text-txt-muted transition-colors hover:bg-surface-hover hover:text-status-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
@@ -102,7 +104,7 @@ const GameCard: React.FC<GameCardProps> = ({
             {onPin && (
               <button
                 type="button"
-                onClick={onPin}
+                onClick={(e) => { e.stopPropagation(); onPin(e); }}
                 aria-label={t('card_unpin')}
                 title={t('card_unpin')}
                 className="flex h-full w-12 shrink-0 items-center justify-center text-status-warning transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
@@ -113,7 +115,7 @@ const GameCard: React.FC<GameCardProps> = ({
             {onCopyLink && (
               <button
                 type="button"
-                onClick={onCopyLink}
+                onClick={(e) => { e.stopPropagation(); onCopyLink(e); }}
                 aria-label={t('card_copy_share_link')}
                 title={t('card_copy_share_link')}
                 className="flex h-full w-12 shrink-0 items-center justify-center rounded-r-xl text-txt-muted transition-colors hover:bg-surface-hover hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"

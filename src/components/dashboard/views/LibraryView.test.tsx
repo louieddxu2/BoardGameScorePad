@@ -72,22 +72,28 @@ describe('LibraryView compact active and pinned rows', () => {
         const props = makeProps();
         render(<LanguageProvider><LibraryView {...props} /></LanguageProvider>);
 
-        fireEvent.click(screen.getByRole('button', { name: '繼續遊戲: Active Game' }));
+        const activeButton = screen.getByRole('button', { name: '繼續遊戲: Active Game' });
+        fireEvent.click(activeButton);
+        fireEvent.click(activeButton.parentElement!);
         expect(props.onDirectResume).toHaveBeenCalledWith('active-1');
+        expect(props.onDirectResume).toHaveBeenCalledTimes(2);
 
         fireEvent.click(screen.getByRole('button', { name: '刪除' }));
         expect(props.onDeleteSession).toHaveBeenCalledWith('active-1');
-        expect(props.onDirectResume).toHaveBeenCalledTimes(1);
+        expect(props.onDirectResume).toHaveBeenCalledTimes(2);
 
-        fireEvent.click(screen.getByRole('button', { name: '開始新遊戲: Pinned Game' }));
+        const pinnedButton = screen.getByRole('button', { name: '開始新遊戲: Pinned Game' });
+        fireEvent.click(pinnedButton);
+        fireEvent.click(pinnedButton.parentElement!);
         expect(props.onTemplateSelect).toHaveBeenCalledWith(pinnedTemplate);
+        expect(props.onTemplateSelect).toHaveBeenCalledTimes(2);
 
         fireEvent.click(screen.getByRole('button', { name: '取消釘選' }));
         expect(props.onPin).toHaveBeenCalledWith('pinned-1');
-        expect(props.onTemplateSelect).toHaveBeenCalledTimes(1);
+        expect(props.onTemplateSelect).toHaveBeenCalledTimes(2);
 
         fireEvent.click(screen.getByRole('button', { name: '複製連結' }));
         expect(props.onCopyTemplateShareLink).toHaveBeenCalledWith(pinnedTemplate, expect.any(Object));
-        expect(props.onTemplateSelect).toHaveBeenCalledTimes(1);
+        expect(props.onTemplateSelect).toHaveBeenCalledTimes(2);
     });
 });
