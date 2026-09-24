@@ -82,10 +82,9 @@ const GameCard: React.FC<GameCardProps> = ({
         <button
           type="button"
           aria-label={`${t(isActive ? 'card_resume' : 'card_start_new')}: ${template.name}`}
-          className="flex h-full min-w-0 flex-1 items-center justify-between gap-2 rounded-l-xl px-3 text-left text-sm font-bold text-txt-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+          className="flex h-full min-w-0 flex-1 items-center rounded-l-xl px-3 text-left text-sm font-bold text-txt-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
         >
           <span className="truncate">{template.name}</span>
-          {isActive && <PlayCircle size={20} strokeWidth={1.5} className="shrink-0 text-brand-primary/80" aria-hidden="true" />}
         </button>
         {isActive ? (
           onDelete && (
@@ -94,36 +93,41 @@ const GameCard: React.FC<GameCardProps> = ({
               onClick={(e) => { e.stopPropagation(); onDelete(e); }}
               aria-label={t('card_delete')}
               title={t('card_delete')}
-              className="flex h-full w-12 shrink-0 items-center justify-center rounded-r-xl text-txt-muted transition-colors hover:bg-surface-hover hover:text-status-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+              className="flex h-full w-12 shrink-0 items-center justify-center text-txt-muted transition-colors hover:bg-surface-hover hover:text-status-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
             >
               <Trash2 size={16} aria-hidden="true" />
             </button>
           )
         ) : (
           <>
-            {onPin && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onPin(e); }}
-                aria-label={t('card_unpin')}
-                title={t('card_unpin')}
-                className="flex h-full w-12 shrink-0 items-center justify-center text-status-warning transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
-              >
-                <Pin size={16} fill="currentColor" aria-hidden="true" />
-              </button>
-            )}
             {onCopyLink && (
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onCopyLink(e); }}
                 aria-label={t('card_copy_share_link')}
                 title={t('card_copy_share_link')}
-                className="flex h-full w-12 shrink-0 items-center justify-center rounded-r-xl text-txt-muted transition-colors hover:bg-surface-hover hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                className="flex h-full w-12 shrink-0 items-center justify-center text-txt-muted transition-colors hover:bg-surface-hover hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
               >
                 {isCopied ? <Check size={16} className="text-brand-primary" aria-hidden="true" /> : <Link2 size={16} aria-hidden="true" />}
               </button>
             )}
+            {onPin && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onPin(e); }}
+                aria-label={t('card_unpin')}
+                title={t('card_unpin')}
+                className="flex h-full w-12 shrink-0 items-center justify-center rounded-r-xl text-status-warning transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+              >
+                <Pin size={16} fill="currentColor" aria-hidden="true" />
+              </button>
+            )}
           </>
+        )}
+        {isActive && (
+          <div className="flex h-full w-12 shrink-0 items-center justify-center rounded-r-xl text-brand-primary/80" title={t('card_resume')} aria-hidden="true">
+            <PlayCircle size={20} strokeWidth={1.5} aria-hidden="true" />
+          </div>
         )}
       </div>
     );

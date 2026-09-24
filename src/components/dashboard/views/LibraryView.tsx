@@ -99,8 +99,9 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             {activeSessions.length > 0 && (
                 <DashboardSection
                     title={t('dash_active_sessions')}
-                    icon={<Activity size={18} />}
+                    icon={<Activity size={16} />}
                     count={activeSessions.length}
+                    compact
                     iconColorClass="text-brand-primary"
                     isOpen={isActiveLibOpen}
                     onToggle={() => setIsActiveLibOpen(!isActiveLibOpen)}
@@ -110,7 +111,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                         </button>
                     }
                 >
-                    <div className={`grid grid-cols-1 gap-2 mt-3 ${animClass}`}>
+                    <div className={`grid grid-cols-1 gap-2 mt-2 ${animClass}`}>
                         {activeSessions.map(session => (
                             <GameCard
                                 key={`active-${session.id}`}
@@ -130,13 +131,14 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
             <DashboardSection
                 title={t('dash_pinned')}
-                icon={<Pin size={18} />}
+                icon={<Pin size={16} />}
                 count={pinnedTemplates.length}
+                compact
                 iconColorClass="text-status-warning"
                 isOpen={isPinnedLibOpen}
                 onToggle={() => setIsPinnedLibOpen(!isPinnedLibOpen)}
             >
-                <div className={`grid grid-cols-1 gap-2 mt-3 ${animClass}`}>
+                <div className={`grid grid-cols-1 gap-2 mt-2 ${animClass}`}>
                     {pinnedTemplates.map(tData => (
                         <GameCard
                             key={`pinned-${tData.id}`}

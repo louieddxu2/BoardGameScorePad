@@ -13,6 +13,7 @@ interface DashboardSectionProps {
   actionButton?: React.ReactNode;
   children: React.ReactNode;
   highlight?: boolean; // For new badge logic
+  compact?: boolean;
 }
 
 const DashboardSection: React.FC<DashboardSectionProps> = ({
@@ -25,15 +26,16 @@ const DashboardSection: React.FC<DashboardSectionProps> = ({
   iconColorClass = "text-txt-muted",
   actionButton,
   children,
-  highlight = false
+  highlight = false,
+  compact = false
 }) => {
   if (count === 0 && !actionButton) return null;
 
   return (
-    <div className="mb-8 last:mb-5 animate-in fade-in duration-500">
+    <div className={`${compact ? 'mb-4 last:mb-4' : 'mb-8 last:mb-5'} animate-in fade-in duration-500`}>
       <div 
         onClick={onToggle} 
-        className="flex items-center justify-between bg-surface-alt p-2.5 px-4 rounded-full border border-surface-border cursor-pointer hover:bg-surface-alt hover:shadow-ui-soft transition-all active:scale-[0.99]"
+        className={`flex items-center justify-between bg-surface-alt rounded-full border border-surface-border cursor-pointer hover:bg-surface-alt hover:shadow-ui-soft transition-all active:scale-[0.99] ${compact ? 'min-h-9 px-3' : 'p-2.5 px-4'}`}
       >
         <div className="flex items-center gap-2">
           {isOpen ? <ChevronDown size={18} className={iconColorClass}/> : <ChevronRight size={18} className="text-txt-muted"/>}

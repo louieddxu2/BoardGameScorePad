@@ -66,6 +66,40 @@ describe('LibraryView compact active and pinned rows', () => {
         expect(activeButton.closest('.grid')).toHaveClass('grid-cols-1');
         expect(pinnedButton.closest('.grid')).toHaveClass('grid-cols-1');
         expect(screen.getByText('Library Game').closest('.grid')).toHaveClass('grid-cols-2');
+        expect(screen.getByText('我的遊戲庫').parentElement?.parentElement).toHaveClass('p-2.5');
+
+        const activeRow = activeButton.parentElement!;
+        const pinnedRow = pinnedButton.parentElement!;
+        expect(activeRow.lastElementChild).toHaveAttribute('title', '繼續遊戲');
+        expect(activeRow.children[activeRow.children.length - 2]).toHaveAttribute('aria-label', '刪除');
+        expect(pinnedRow.lastElementChild).toHaveAttribute('aria-label', '取消釘選');
+        expect(pinnedRow.children[pinnedRow.children.length - 2]).toHaveAttribute('aria-label', '複製連結');
+    });
+
+    it('keeps compact sections collapsible and clear-all available', () => {
+        const props = makeProps();
+        render(<LanguageProvider><LibraryView {...props} /></LanguageProvider>);
+
+        const activeHeading = screen.getByText('進行中遊戲');
+        const pinnedHeading = screen.getByText('已釘選');
+        expect(activeHeading.parentElement?.parentElement).toHaveClass('min-h-9');
+        expect(pinnedHeading.parentElement?.parentElement).toHaveClass('min-h-9');
+        expect(activeHeading.closest('.mb-4')).toBeInTheDocument();
+        expect(pinnedHeading.closest('.mb-4')).toBeInTheDocument();
+
+        fireEvent.click(activeHeading);
+        expect(screen.queryByRole('button', { name: '繼續遊戲: Active Game' })).not.toBeInTheDocument();
+        fireEvent.click(activeHeading);
+        expect(screen.getByRole('button', { name: '繼續遊戲: Active Game' })).toBeInTheDocument();
+
+        fireEvent.click(pinnedHeading);
+        expect(screen.queryByRole('button', { name: '開始新遊戲: Pinned Game' })).not.toBeInTheDocument();
+        fireEvent.click(pinnedHeading);
+        expect(screen.getByRole('button', { name: '開始新遊戲: Pinned Game' })).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: '全部清空' }));
+        expect(props.onClearAllSessions).toHaveBeenCalledOnce();
+        expect(screen.getByRole('button', { name: '繼續遊戲: Active Game' })).toBeInTheDocument();
     });
 
     it('keeps primary and secondary actions separate', () => {
@@ -75,12 +109,13 @@ describe('LibraryView compact active and pinned rows', () => {
         const activeButton = screen.getByRole('button', { name: '繼續遊戲: Active Game' });
         fireEvent.click(activeButton);
         fireEvent.click(activeButton.parentElement!);
+        fireEvent.click(activeButton.parentElement!.lastElementChild!);
         expect(props.onDirectResume).toHaveBeenCalledWith('active-1');
-        expect(props.onDirectResume).toHaveBeenCalledTimes(2);
+        expect(props.onDirectResume).toHaveBeenCalledTimes(3);
 
         fireEvent.click(screen.getByRole('button', { name: '刪除' }));
         expect(props.onDeleteSession).toHaveBeenCalledWith('active-1');
-        expect(props.onDirectResume).toHaveBeenCalledTimes(2);
+        expect(props.onDirectResume).toHaveBeenCalledTimes(3);
 
         const pinnedButton = screen.getByRole('button', { name: '開始新遊戲: Pinned Game' });
         fireEvent.click(pinnedButton);
