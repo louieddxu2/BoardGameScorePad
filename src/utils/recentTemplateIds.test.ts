@@ -16,11 +16,12 @@ describe('selectRecentGames', () => {
     expect(selectRecentGames(games, new Set(), 5)).toEqual([newest, games[2]]);
   });
 
-  it('uses normalized names when BGG IDs are missing, without merging different known IDs', () => {
-    const newestSimpleGame = game('simple-new', '  Enchanted   Ivy ');
+  it('uses local game IDs after BGG IDs, preserving same-name games with different local IDs', () => {
+    const newestSimpleGame = game('simple-id', '  Enchanted   Ivy ');
     const games = [
       newestSimpleGame,
-      game('simple-copy', 'enchanted ivy'),
+      game('simple-id', 'Renamed Enchanted Ivy'),
+      game('simple-copy-id', 'enchanted ivy'),
       game('variant-a', 'Same Name', '100'),
       game('variant-b', 'same name', '200')
     ];
@@ -28,14 +29,24 @@ describe('selectRecentGames', () => {
     expect(selectRecentGames(games, new Set(), 5)).toEqual([
       newestSimpleGame,
       games[2],
-      games[3]
+      games[3],
+      games[4]
     ]);
   });
 
-  it('excludes pinned and active games by identity even when their template IDs differ', () => {
+  it('falls back to normalized names only when a local game ID is absent', () => {
+    const games = [
+      game('', '  Enchanted   Ivy '),
+      game('', 'enchanted ivy')
+    ];
+
+    expect(selectRecentGames(games, new Set(), 5)).toEqual([games[0]]);
+  });
+
+  it('excludes pinned and active games by BGG or local ID, not merely by name', () => {
     const games = [
       game('pinned-copy', 'Pinned Game', '123'),
-      game('active-copy', 'Active Game'),
+      game('active-template', 'Active Game'),
       game('no-bgg-pin-copy', 'No BGG pin', '789'),
       game('recent', 'Recent Game', '456')
     ];
@@ -49,7 +60,7 @@ describe('selectRecentGames', () => {
         game('active-template', ' active   game '),
         game('no-bgg-pin', 'No BGG pin')
       ]
-    )).toEqual([games[3]]);
+    )).toEqual([games[2], games[3]]);
   });
 
   it('uses a recent-only BGG ID fallback when the extracted history summary omitted it', () => {
@@ -63,7 +74,7 @@ describe('selectRecentGames', () => {
   });
 
   it('returns fewer than the limit when fewer distinct eligible games exist', () => {
-    const games = [game('pinned'), game('recent'), game('recent-copy', 'Game recent')];
+    const games = [game('pinned'), game('recent'), game('recent')];
     expect(selectRecentGames(games, new Set(['pinned']), 5)).toEqual([games[1]]);
   });
 

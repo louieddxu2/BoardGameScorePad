@@ -8,6 +8,17 @@ export const normalizeRecentGameName = (name: string): string => {
   return name.trim().replace(/\s+/g, ' ').toLowerCase();
 };
 
+const getGameKey = (game: RecentGameSummary, bggId = game.bggId): string => {
+  const normalizedBggId = bggId?.trim();
+  if (normalizedBggId) return `bgg:${normalizedBggId}`;
+
+  const localGameId = game.templateId?.trim();
+  if (localGameId) return `local:${localGameId}`;
+
+  const normalizedName = normalizeRecentGameName(game.gameName);
+  return normalizedName ? `name:${normalizedName}` : '';
+};
+
 export const selectRecentGames = <T extends RecentGameSummary>(
   mostRecentFirst: readonly T[],
   excludedTemplateIds: ReadonlySet<string>,
@@ -18,38 +29,19 @@ export const selectRecentGames = <T extends RecentGameSummary>(
   if (limit <= 0) return [];
 
   const selectedGames: T[] = [];
-  const seenBggIds = new Set<string>();
-  const seenNames = new Set<string>();
-  const seenNamesWithoutBggId = new Set<string>();
-  const seenFallbackTemplateIds = new Set<string>();
-
-  const rememberGame = (game: RecentGameSummary, bggId = game.bggId) => {
-    const normalizedBggId = bggId?.trim();
-    const normalizedName = normalizeRecentGameName(game.gameName);
-    if (normalizedBggId) seenBggIds.add(normalizedBggId);
-    if (normalizedName) {
-      seenNames.add(normalizedName);
-      if (!normalizedBggId) seenNamesWithoutBggId.add(normalizedName);
-    } else if (!normalizedBggId) {
-      seenFallbackTemplateIds.add(game.templateId);
-    }
-  };
-
-  excludedGames.forEach(game => rememberGame(game));
+  const seenGameKeys = new Set(excludedGames.map(game => getGameKey(game)).filter(Boolean));
 
   for (const game of mostRecentFirst) {
-    if (!game.templateId || excludedTemplateIds.has(game.templateId)) continue;
+    const localGameId = game.templateId?.trim();
+    if (!localGameId && !normalizeRecentGameName(game.gameName)) continue;
 
-    const bggId = getBggId(game)?.trim();
-    const normalizedName = normalizeRecentGameName(game.gameName);
-    const isDuplicate = bggId
-      ? seenBggIds.has(bggId) || (!!normalizedName && seenNamesWithoutBggId.has(normalizedName))
-      : normalizedName
-        ? seenNames.has(normalizedName)
-        : seenFallbackTemplateIds.has(game.templateId);
-    if (isDuplicate) continue;
+    const bggId = getBggId(game);
+    if (!bggId?.trim() && localGameId && excludedTemplateIds.has(localGameId)) continue;
 
-    rememberGame(game, bggId);
+    const gameKey = getGameKey(game, bggId);
+    if (!gameKey || seenGameKeys.has(gameKey)) continue;
+
+    seenGameKeys.add(gameKey);
     selectedGames.push(game);
     if (selectedGames.length === limit) break;
   }
