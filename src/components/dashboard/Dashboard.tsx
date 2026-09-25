@@ -38,6 +38,7 @@ interface DashboardProps {
   isVisible: boolean;
   currentView?: AppView;
   userTemplates: GameTemplate[];
+  shareableTemplateIds: ReadonlySet<string>;
   userTemplatesCount: number;
   systemOverrides: Record<string, GameTemplate>;
   systemTemplates: GameTemplate[];
@@ -92,6 +93,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   isVisible,
   currentView,
   userTemplates,
+  shareableTemplateIds,
   userTemplatesCount,
   systemOverrides,
   systemTemplates,
@@ -386,6 +388,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
               activeSessions={sortedActiveSessions}
               pinnedTemplates={pinnedTemplates}
               recentTemplates={recentTemplates}
+              shareableTemplateIds={shareableTemplateIds}
               userTemplates={userTemplatesToShow}
               userTemplatesTotal={userTemplatesCount}
               systemTemplates={systemTemplatesToShow}

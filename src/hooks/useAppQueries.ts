@@ -29,7 +29,6 @@ export const useAppQueries = (searchQuery: string, pinnedIds: string[]) => {
 
   // 1. Dashboard View Queries (Library & History)
   // 這些 Hook 內部已經實作了針對各自資料類型的搜尋過濾邏輯
-  const templateData = useTemplateQuery(searchQuery, pinnedIds);
   const savedGameData = useSavedGameQuery(searchQuery);
 
   // 2. Global / Context Queries (No search dependency)
@@ -47,6 +46,11 @@ export const useAppQueries = (searchQuery: string, pinnedIds: string[]) => {
     const activeTemplateIds = new Set((sessionData.activeSessions ?? []).map(session => session.templateId));
     return getRecentOptions(gameOptionData.allOptions, DATA_LIMITS.QUERY.RECENT_GAMES, activeTemplateIds);
   }, [gameOptionData.allOptions, sessionData.activeSessions]);
+  const recentTemplateIds = useMemo(
+    () => [...new Set(recentlyPlayedGames.flatMap(game => game.templateId ? [game.templateId] : []))],
+    [recentlyPlayedGames]
+  );
+  const templateData = useTemplateQuery(searchQuery, pinnedIds, true, recentTemplateIds);
 
   return {
     // Spread all data props from sub-hooks

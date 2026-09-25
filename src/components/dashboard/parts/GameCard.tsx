@@ -15,6 +15,7 @@ interface GameCardProps {
   onCloudBackup?: (e: React.MouseEvent) => void;
   onSystemCopy?: (e: React.MouseEvent) => void;
   onSystemRestore?: (e: React.MouseEvent) => void;
+  isShareable?: boolean;
   // State
   isCopied?: boolean;
   systemOverride?: boolean;
@@ -34,6 +35,7 @@ const GameCard: React.FC<GameCardProps> = ({
   onCloudBackup,
   onSystemCopy,
   onSystemRestore,
+  isShareable,
   isCopied,
   systemOverride,
   isConnected,
@@ -49,7 +51,7 @@ const GameCard: React.FC<GameCardProps> = ({
   // isLocalImageAvailable (injected by hook) tells us if the file exists.
   const hasGrid = !!template.globalVisuals;
   const isLocalImageReady = (template as any).isLocalImageAvailable;
-  const canShare = (template.columns?.length ?? 0) > 0;
+  const canShare = isShareable ?? (template.columns?.length ?? 0) > 0;
 
   const renderImageStatus = () => {
     if (!hasGrid) return null;

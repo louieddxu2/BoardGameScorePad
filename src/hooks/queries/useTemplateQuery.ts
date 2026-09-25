@@ -12,7 +12,17 @@ import { useAppTranslation } from '../../i18n/app';
 import { resolveRecentGameTemplate } from '../../utils/recentTemplateResolution';
 import type { RecentGameTemplateIdentity } from '../../utils/recentTemplateResolution';
 
-export const useTemplateQuery = (searchQuery: string, pinnedIds: string[]) => {
+interface TemplateSummaryData {
+    templates: TemplateSummary[];
+    shareableTemplateIds: string[];
+}
+
+export const useTemplateQuery = (
+    searchQuery: string,
+    pinnedIds: string[],
+    includeShareableTemplateIds = false,
+    additionalTemplateIds: string[] = []
+) => {
     // --- PREFERENCES & HELPERS ---
     const allPrefs = useLiveQuery(() => db.templatePrefs.toArray(), [], []);
 
@@ -58,7 +68,7 @@ export const useTemplateQuery = (searchQuery: string, pinnedIds: string[]) => {
     };
 
     // --- TEMPLATES (User) ---
-    const allUserTemplatesData = useLiveQuery<TemplateSummary[]>(async () => {
+    const allUserTemplatesData = useLiveQuery<TemplateSummaryData>(async () => {
         let collection = db.templates.orderBy('updatedAt').reverse();
         const fetchLimit = DATA_LIMITS.QUERY.FETCH_CAP;
         const existingImageIds = await db.images.toCollection().primaryKeys();
@@ -70,16 +80,33 @@ export const useTemplateQuery = (searchQuery: string, pinnedIds: string[]) => {
         // Now using pinnedIds to rescue pinned simple templates
         const filteredItems = rawItems.filter(t => !isDisposableTemplate(t, pinnedIds));
 
+        // Recent-game shortcuts can reference older templates outside the bounded
+        // library query. Resolve only those IDs so their shareability is based on
+        // the full template rather than a projected summary or missing list row.
+        const loadedIds = new Set(rawItems.map(template => template.id));
+        const additionalTemplates = includeShareableTemplateIds
+            ? (await db.templates.bulkGet(additionalTemplateIds.filter(id => !loadedIds.has(id))))
+                .filter((template): template is GameTemplate => template !== undefined)
+            : [];
+
         // Inject properties using centralized extractor
         const mappedItems = filteredItems.map(t => extractTemplateSummary(t, imageSet));
 
-        return mappedItems;
-    }, [pinnedIds]); // Re-run when pinnedIds change
+        return {
+            templates: mappedItems,
+            shareableTemplateIds: includeShareableTemplateIds
+                ? [
+                    ...filteredItems.filter(template => !isDisposableTemplate(template)).map(template => template.id),
+                    ...additionalTemplates.filter(template => !isDisposableTemplate(template)).map(template => template.id)
+                ]
+                : []
+        };
+    }, [pinnedIds, includeShareableTemplateIds, additionalTemplateIds]); // Re-run when pins or shareability metadata changes
 
     const filteredUserTemplates = useMemo<TemplateSummary[]>(() => {
         if (!allUserTemplatesData) return [];
         // [Update] Use _searchName architecture
-        return searchService.search<TemplateSummary>(allUserTemplatesData, searchQuery, [
+        return searchService.search<TemplateSummary>(allUserTemplatesData.templates, searchQuery, [
             { name: '_searchName', weight: 1.0 }
         ]);
     }, [allUserTemplatesData, searchQuery]);
@@ -112,18 +139,23 @@ export const useTemplateQuery = (searchQuery: string, pinnedIds: string[]) => {
     const { t: tApp } = useAppTranslation();
 
     // --- TEMPLATES (Built-in) ---
-    const allBuiltinsRaw = useLiveQuery<TemplateSummary[]>(async () => {
+    const allBuiltinsRaw = useLiveQuery<TemplateSummaryData>(async () => {
         const raw = await db.builtins.toArray();
         // Standardize Built-ins to TemplateSummary for consistent search architecture
-        return raw.map(t => extractTemplateSummary(t, new Set()));
-    }, []); // Load once from DB
+        return {
+            templates: raw.map(t => extractTemplateSummary(t, new Set())),
+            shareableTemplateIds: includeShareableTemplateIds
+                ? raw.filter(template => !isDisposableTemplate(template)).map(template => template.id)
+                : []
+        };
+    }, [includeShareableTemplateIds]); // Load once from DB
 
     const allBuiltinsData = useMemo<TemplateSummary[]>(() => {
         if (!allBuiltinsRaw) return [];
         const lang = tApp('app_lang_code') || 'zh-TW';
         const isEn = lang.startsWith('en');
 
-        return allBuiltinsRaw.filter(t => {
+        return allBuiltinsRaw.templates.filter(t => {
              const isEnTemplate = t.id.startsWith('Built-in-EN-');
              return isEn ? isEnTemplate : !isEnTemplate;
         });
@@ -169,12 +201,18 @@ export const useTemplateQuery = (searchQuery: string, pinnedIds: string[]) => {
         });
     }, [filteredBuiltins.items, shadowTemplatesMap, prefsMap, mergePrefs]);
 
+    const shareableTemplateIds = useMemo(() => new Set([
+        ...(allUserTemplatesData?.shareableTemplateIds ?? []),
+        ...(allBuiltinsRaw?.shareableTemplateIds ?? [])
+    ]), [allUserTemplatesData, allBuiltinsRaw]);
+
     return {
         templates: userTemplates,
         userTemplatesCount: userTemplatesTotal,
         systemTemplates,
         systemTemplatesCount: filteredBuiltins.total,
         systemOverrides: shadowTemplatesMap,
+        shareableTemplateIds,
         getTemplate,
         getBuiltinTemplateByShortId
     };

@@ -13,6 +13,7 @@ interface LibraryViewProps {
     activeSessions: GameSession[];
     pinnedTemplates: GameTemplate[];
     recentTemplates: RecentTemplateShortcut[];
+    shareableTemplateIds: ReadonlySet<string>;
     userTemplates: GameTemplate[];
     userTemplatesTotal: number;
     systemTemplates: GameTemplate[];
@@ -59,6 +60,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     activeSessions,
     pinnedTemplates,
     recentTemplates,
+    shareableTemplateIds,
     userTemplates,
     userTemplatesTotal,
     systemTemplates,
@@ -155,6 +157,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                                 onClick={() => onTemplateSelect(tData)}
                                 onPin={(e) => { e.stopPropagation(); onPin(tData.id); }}
                                 onCopyLink={(e) => { e.stopPropagation(); onCopyTemplateShareLink(tData, e); }}
+                                isShareable={shareableTemplateIds.has(tData.id)}
                                 isCopied={copiedId === tData.id}
                                 isConnected={isConnected}
                                 isAutoConnectEnabled={isAutoConnectEnabled}
@@ -168,6 +171,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                                 onClick={() => { void onRecentTemplateSelect(shortcut); }}
                                 onPin={(e) => { e.stopPropagation(); void onPinRecentTemplate(shortcut); }}
                                 onCopyLink={(e) => { e.stopPropagation(); onCopyTemplateShareLink(shortcut.template, e); }}
+                                isShareable={shareableTemplateIds.has(shortcut.template.id)}
                                 isCopied={copiedId === shortcut.template.id}
                             />
                         ))}
@@ -221,6 +225,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                             onPin={(e) => { e.stopPropagation(); onPin(tData.id); }}
                             onDelete={(e) => { e.stopPropagation(); onDeleteTemplate(tData.id); }}
                             onCopyLink={(e) => { e.stopPropagation(); onCopyTemplateShareLink(tData, e); }}
+                            isShareable={shareableTemplateIds.has(tData.id)}
                             onCloudBackup={(e) => { e.stopPropagation(); onCloudBackup(tData, e); }}
                             isCopied={copiedId === tData.id}
                             isConnected={isConnected}
@@ -265,6 +270,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                                         if (tData.sourceTemplateId) onCopyTemplateShareLink(tData, e);
                                         else onCopyShareLink(tData, e);
                                     }}
+                                    isShareable={shareableTemplateIds.has(tData.id)}
                                     onSystemCopy={(e) => { e.stopPropagation(); onSystemCopy(tData, e); }}
                                     onSystemRestore={(e) => { e.stopPropagation(); onSystemRestore(tData, e); }}
                                     isCopied={copiedId === tData.id}

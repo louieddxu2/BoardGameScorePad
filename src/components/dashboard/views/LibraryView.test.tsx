@@ -32,6 +32,7 @@ const makeProps = (): React.ComponentProps<typeof LibraryView> => ({
     activeSessions: [activeSession],
     pinnedTemplates: [pinnedTemplate],
     recentTemplates: [{ template: recentTemplate, needsResolution: true }],
+    shareableTemplateIds: new Set(['pinned-1']),
     userTemplates: [],
     userTemplatesTotal: 0,
     systemTemplates: [],
@@ -98,10 +99,12 @@ describe('LibraryView compact active and pinned rows', () => {
         const simplePinnedTemplate = { ...pinnedTemplate, columns: [] };
         const fullRecentTemplate = {
             ...recentTemplate,
-            columns: [{ id: 'score', name: 'Score', formula: 'a1', inputType: 'keypad' as const, isScoring: true }]
+            // The list item is a lightweight projection; eligibility comes from its UUID lookup.
+            columns: []
         };
         props.pinnedTemplates = [simplePinnedTemplate];
         props.recentTemplates = [{ template: fullRecentTemplate, needsResolution: false }];
+        props.shareableTemplateIds = new Set([fullRecentTemplate.id]);
         render(<LanguageProvider><LibraryView {...props} /></LanguageProvider>);
 
         const pinnedRow = screen.getByRole('button', { name: '開始新遊戲: Pinned Game' }).parentElement!;
@@ -111,6 +114,22 @@ describe('LibraryView compact active and pinned rows', () => {
 
         fireEvent.click(recentRow.querySelector('[aria-label="複製連結"]')!);
         expect(props.onCopyTemplateShareLink).toHaveBeenCalledWith(fullRecentTemplate, expect.any(Object));
+    });
+
+    it('uses UUID eligibility for library cards whose columns were projected away', () => {
+        const props = makeProps();
+        props.activeSessions = [];
+        props.pinnedTemplates = [];
+        props.recentTemplates = [];
+        props.userTemplates = [
+            { ...pinnedTemplate, id: 'full-library-template', columns: [] },
+            { ...recentTemplate, id: 'simple-library-template' }
+        ];
+        props.userTemplatesTotal = props.userTemplates.length;
+        props.shareableTemplateIds = new Set(['full-library-template']);
+        render(<LanguageProvider><LibraryView {...props} /></LanguageProvider>);
+
+        expect(screen.getAllByTitle('複製連結')).toHaveLength(1);
     });
 
     it('keeps compact sections collapsible and clear-all available', () => {

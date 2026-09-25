@@ -117,6 +117,7 @@ const AppWorkspace: React.FC<AppWorkspaceProps> = ({
           isVisible={view === AppView.DASHBOARD}
           currentView={view}
           userTemplates={appData.templates}
+          shareableTemplateIds={appData.shareableTemplateIds}
           userTemplatesCount={appData.userTemplatesCount}
           systemOverrides={appData.systemOverrides}
           systemTemplates={appData.systemTemplates}

@@ -1,6 +1,6 @@
 
 import { describe, it, expect } from 'vitest';
-import { calculateWinners } from './templateUtils';
+import { calculateWinners, isDisposableTemplate } from './templateUtils';
 import { Player } from '../types';
 
 // Helper to create a mock player
@@ -124,6 +124,24 @@ describe('遊戲贏家計算測試 (Winner Calculation)', () => {
             const players = [createPlayer('A', 5, { isForceLost: true })];
             expect(calculateWinners(players, 'HIGHEST_WINS')).toEqual([]);
         });
+    });
+});
+
+describe('Disposable template classification for share eligibility', () => {
+    it('classifies a simple template the same regardless of pinning when no pinned IDs are supplied', () => {
+        const simpleTemplate = { id: 'simple', name: 'Simple', columns: [], createdAt: 1 };
+        expect(isDisposableTemplate(simpleTemplate)).toBe(true);
+        expect(isDisposableTemplate(simpleTemplate, [])).toBe(true);
+    });
+
+    it('does not classify a full scoreboard as disposable', () => {
+        const fullTemplate = {
+            id: 'full',
+            name: 'Full',
+            columns: [{ id: 'score', name: 'Score', formula: 'a1', inputType: 'keypad' as const, isScoring: true }],
+            createdAt: 1
+        };
+        expect(isDisposableTemplate(fullTemplate)).toBe(false);
     });
 });
 

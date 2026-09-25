@@ -430,6 +430,7 @@ export const useAppData = () => {
         systemTemplates: queries.systemTemplates,
         systemTemplatesCount: queries.systemTemplatesCount,
         systemOverrides: queries.systemOverrides,
+        shareableTemplateIds: queries.shareableTemplateIds,
 
         // [NEW] Merged Options (renamed from Candidates)
         gameOptions: queries.gameOptions,
