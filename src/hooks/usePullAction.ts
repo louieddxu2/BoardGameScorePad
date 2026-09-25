@@ -133,7 +133,12 @@ export const usePullAction = (
               setPullX(effectiveX);
           }
       } else if (axisLockRef.current === 'h') {
-          // 如果鎖定為水平(或其他斜向)，確保不觸發 Pull Action，讓 Swipe Hook 或原生捲動接手
+          // 這裡是既有的 non-passive listener；水平手勢要在此取消瀏覽器
+          // 後續合成的 click，避免近期簡易計分板的非同步點擊處理被誤觸。
+          // 僅取消水平主導的移動，保留斜向／垂直手勢的原生捲動。
+          if (Math.abs(deltaX) > Math.abs(deltaY) && e.cancelable) e.preventDefault();
+
+          // 如果鎖定為水平(或其他斜向)，確保不觸發 Pull Action，讓 Swipe Hook 接手
           if (isPullingRef.current) {
               isPullingRef.current = false;
               setIsPulling(false);
