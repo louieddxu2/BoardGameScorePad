@@ -6,7 +6,6 @@ import { useModalBackHandler } from '../../hooks/useModalBackHandler';
 import { useKeyboardStatus } from '../../hooks/useVisualViewportOffset';
 import { HistorySummary } from '../../utils/extractDataSummaries';
 import { HistoryGameEntry } from '../../utils/historyGameEntries';
-import type { RecentGameSummary } from '../../utils/recentTemplateIds';
 import { BgStatsExport, ImportManualLinks } from '../../features/bgstats/types';
 import { GameOption } from '../../features/game-selector/types';
 
@@ -50,7 +49,7 @@ interface DashboardProps {
   historyRecords?: HistorySummary[] | HistoryRecord[];
   historyStatsRecords?: HistorySummary[];
   historyGameEntries?: HistoryGameEntry[];
-  recentlyPlayedGames: RecentGameSummary[];
+  recentlyPlayedGames: GameOption[];
   historyCount?: number;
   savedPlayers?: SavedListItem[];
   searchQuery: string;
@@ -438,6 +437,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         <StartGamePanel
           ref={setupPanelRef}
           options={gameOptions}
+          activeSessionIds={activeSessionIds}
           locations={savedLocations}
           onStart={handlePanelStart}
           onSearchClick={handlePanelSearchFocus}

@@ -58,18 +58,45 @@ export const applySort = (items: GameOption[], ...strategies: Comparator[]): Gam
 };
 
 /**
+ * Select the most recently used options without sorting the full collection.
+ * The bounded insertion list keeps this O(n * limit), which matters when the
+ * option source includes the full BGG dictionary.
+ */
+export const getRecentOptions = (
+  options: GameOption[],
+  limit: number,
+  excludedTemplateIds: ReadonlySet<string> = new Set()
+): GameOption[] => {
+  if (limit <= 0) return [];
+
+  const recent: GameOption[] = [];
+  for (const option of options) {
+    if (option.isPinned || (option.templateId && excludedTemplateIds.has(option.templateId))) continue;
+
+    const insertAt = recent.findIndex(existing => byRecency(option, existing) < 0);
+    if (insertAt < 0) recent.push(option);
+    else recent.splice(insertAt, 0, option);
+
+    if (recent.length > limit) recent.pop();
+  }
+
+  return recent;
+};
+
+/**
  * 推薦函式 (Recommendation Logic)
  * 邏輯：取「使用時間最新」的前 2 筆，剩下的取「使用次數最多」的前 3 筆。
  * 總共回傳最多 5 筆，不需再額外排序。
  * [New] 若顯示名稱與 BGG 原名不同，自動格式化為 "顯示名稱 (BGG原名)"。
  */
-export const getRecommendations = (options: GameOption[]): GameOption[] => {
+export const getRecommendations = (
+  options: GameOption[],
+  excludedTemplateIds: ReadonlySet<string> = new Set()
+): GameOption[] => {
   if (options.length === 0) return [];
 
-  // 1. 取出最新的 2 筆 (Recent)
-  // 復用 applySort 與 byRecency
-  const sortedByTime = applySort(options, byRecency);
-  const recents = sortedByTime.slice(0, 2);
+  // 1. 取出最新的 2 筆 (Recent)，與首頁捷徑共用選取邏輯。
+  const recents = getRecentOptions(options, 2, excludedTemplateIds);
 
   // 用 Set 紀錄 ID 以便排除
   const recentIds = new Set(recents.map(r => r.uid));

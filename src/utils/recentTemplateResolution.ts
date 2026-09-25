@@ -1,5 +1,8 @@
 import type { GameTemplate } from '../types';
-import { normalizeRecentGameName } from './recentTemplateIds';
+
+const normalizeRecentGameName = (name: string): string => {
+  return name.trim().replace(/\s+/g, ' ').toLowerCase();
+};
 
 export interface RecentGameTemplateIdentity {
   gameName: string;

@@ -12,8 +12,8 @@ import { extractBggGameSummary } from '../../utils/extractDataSummaries';
 /**
  * Game Options Query Hook
  * 
- * 職責：專門為「開始新遊戲」面板提供選項列表。
- * 策略：整合 Templates、SavedGames 與 BggGames (字典)。
+ * 職責：整合 Templates、SavedGames 與 BggGames (字典)，
+ * 同時提供搜尋後的開始面板選項與未搜尋的共用候選清單。
  */
 export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], enabled = true) => {
   // 1. Fetch Local Data
@@ -80,5 +80,9 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
     });
   }, [aggregatedOptions, searchQuery, enabled]);
 
-  return gameOptions;
+  return {
+    gameOptions,
+    // Keep this unsearched list as the single source for both surfaces' recency ordering.
+    allOptions: aggregatedOptions
+  };
 };

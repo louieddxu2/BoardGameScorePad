@@ -1,9 +1,10 @@
 
 import { useMemo } from 'react';
-import { GameTemplate, GameSession } from '../../../types';
+import { GameTemplate, GameSession, ScoringRule } from '../../../types';
 import { DATA_LIMITS } from '../../../dataLimits';
 import { createVirtualTemplate } from '../../../utils/templateUtils';
-import type { RecentGameSummary } from '../../../utils/recentTemplateIds';
+import { generateId } from '../../../utils/idGenerator';
+import type { GameOption } from '../../../features/game-selector/types';
 
 export interface RecentTemplateShortcut {
   template: GameTemplate;
@@ -14,7 +15,7 @@ interface UseDashboardDataProps {
   userTemplates: GameTemplate[];
   systemTemplates: GameTemplate[];
   pinnedIds: string[];
-  recentlyPlayedGames: RecentGameSummary[];
+  recentlyPlayedGames: GameOption[];
   activeSessionIds: string[];
   activeSessions: GameSession[] | undefined; 
   getSessionPreview: (templateId: string) => GameSession | null;
@@ -51,9 +52,17 @@ export const useDashboardData = ({
 
   const recentTemplates = useMemo(() => {
     return recentlyPlayedGames.map(game => {
-      const template = templatesById.get(game.templateId);
+      const template = game.templateId ? templatesById.get(game.templateId) : undefined;
       return {
-        template: template ?? createVirtualTemplate(game.templateId, game.gameName, game.bggId),
+        template: template ?? createVirtualTemplate(
+          // A savedGame ID identifies usage stats, not a scoreboard/template.
+          game.templateId || generateId(),
+          game.cleanName || game.displayName,
+          game.bggId,
+          Date.now(),
+          game.defaultPlayerCount,
+          game.defaultScoringRule as ScoringRule
+        ),
         needsResolution: !template
       };
     });

@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { GameOption, SearchFilters } from '../types';
 import { getSearchResults, getRecommendations, applySort, byYearPublished, filterOptionsByCriteria, byMatchScore } from '../utils/sortStrategies';
 
+const EMPTY_ACTIVE_SESSION_IDS: string[] = [];
+
 /**
  * useGameSelectorLogic
  * 封裝搜尋模式、篩選器狀態、搜尋/推薦結果派生。
@@ -16,7 +18,8 @@ export const useGameSelectorLogic = (
     searchQuery: string,
     userSelectedUid: string | null,
     setUserSelectedUid: (uid: string | null) => void,
-    playerCount: number = 4
+    playerCount: number = 4,
+    activeSessionIds: string[] = EMPTY_ACTIVE_SESSION_IDS
 ) => {
     // --- Advanced Mode ---
     const [isAdvancedMode, setIsAdvancedMode] = useState<boolean>(() => {
@@ -83,8 +86,8 @@ export const useGameSelectorLogic = (
         }
 
         // 情境 A（無關鍵字 ＋ 無篩選）：提取原有「智慧推薦」
-        return getRecommendations(filteredOptions);
-    }, [filteredOptions, isSearching, searchQuery, isAdvancedMode, displayLimit, searchFilters, playerCount]);
+        return getRecommendations(filteredOptions, new Set(activeSessionIds));
+    }, [filteredOptions, isSearching, searchQuery, isAdvancedMode, displayLimit, searchFilters, playerCount, activeSessionIds]);
 
     // 階段三：動態數量輸出 (Dynamic Limit Output)
     const processedOptions = useMemo(() => {

@@ -4,60 +4,21 @@ import { db } from '../../db';
 import { DATA_LIMITS } from '../../dataLimits';
 import { searchService } from '../../services/searchService';
 import { SavedListItem } from '../../types';
-import type { GameSession } from '../../types';
 import { extractHistorySummary } from '../../utils/extractDataSummaries';
 import { buildHistoryGameEntries } from '../../utils/historyGameEntries';
-import { selectRecentGames } from '../../utils/recentTemplateIds';
-import type { RecentGameSummary } from '../../utils/recentTemplateIds';
 import type { HistorySummary } from '../../utils/extractDataSummaries';
-
-interface RecentTemplateOptions {
-  pinnedIds: string[];
-  activeSessions: Pick<GameSession, 'templateId' | 'name' | 'bggId'>[] | undefined;
-}
-
-interface RecentHistorySummary extends HistorySummary {
-  recentBggId?: string;
-}
 
 export const useHistoryQuery = (
   searchQuery: string,
-  savedPlayers: SavedListItem[] | undefined,
-  recentTemplateOptions: RecentTemplateOptions
+  savedPlayers: SavedListItem[] | undefined
 ) => {
   const isSearching = searchQuery && searchQuery.trim().length > 0;
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
 
-  const allSummaries = useLiveQuery(async (): Promise<RecentHistorySummary[]> => {
+  const allSummaries = useLiveQuery(async (): Promise<HistorySummary[]> => {
     const records = await db.history.orderBy('endTime').reverse().toArray();
-    return records.map(record => ({
-      ...extractHistorySummary(record),
-      // Keep snapshot fallback scoped to the new recent-games shortcut; other
-      // history grouping continues to use the established summary identity.
-      recentBggId: record.bggId?.trim() || record.snapshotTemplate?.bggId?.trim() || undefined
-    }));
+    return records.map(extractHistorySummary);
   }, [], []);
-
-  const pinnedGames = useLiveQuery(async (): Promise<RecentGameSummary[]> => {
-    const pinnedIds = [...new Set(recentTemplateOptions.pinnedIds)];
-    if (pinnedIds.length === 0) return [];
-
-    const [userTemplates, builtins] = await Promise.all([
-      db.templates.bulkGet(pinnedIds),
-      db.builtins.bulkGet(pinnedIds)
-    ]);
-    const templatesById = new Map<string, RecentGameSummary>();
-    [...userTemplates, ...builtins].forEach(template => {
-      if (template && !templatesById.has(template.id)) {
-        templatesById.set(template.id, {
-          templateId: template.id,
-          gameName: template.name,
-          bggId: template.bggId
-        });
-      }
-    });
-    return [...templatesById.values()];
-  }, [recentTemplateOptions.pinnedIds], []);
 
   useEffect(() => {
     if (!allSummaries || pendingDeleteIds.length === 0) return;
@@ -73,36 +34,6 @@ export const useHistoryQuery = (
       ? allSummaries.filter(record => !pendingDeleteIds.includes(record.id))
       : allSummaries;
   }, [allSummaries, pendingDeleteIds]);
-
-  const recentlyPlayedGames = useMemo<RecentGameSummary[]>(() => {
-    const activeSessions = recentTemplateOptions.activeSessions ?? [];
-    const excludedTemplateIds = new Set([
-      ...recentTemplateOptions.pinnedIds,
-      ...activeSessions.map(session => session.templateId)
-    ]);
-    const activeGames = activeSessions.map(session => ({
-      templateId: session.templateId,
-      gameName: session.name,
-      bggId: session.bggId
-    }));
-
-    return selectRecentGames(
-      activeSummaries,
-      excludedTemplateIds,
-      DATA_LIMITS.QUERY.RECENT_GAMES,
-      [...(pinnedGames ?? []), ...activeGames],
-      summary => summary.recentBggId ?? summary.bggId
-    ).map(({ templateId, gameName, recentBggId, bggId }) => ({
-      templateId,
-      gameName,
-      bggId: recentBggId ?? bggId
-    }));
-  }, [
-    activeSummaries,
-    recentTemplateOptions.pinnedIds,
-    recentTemplateOptions.activeSessions,
-    pinnedGames
-  ]);
 
   const historyGameEntries = useMemo(() => {
     return buildHistoryGameEntries(activeSummaries, { savedPlayers });
@@ -131,7 +62,6 @@ export const useHistoryQuery = (
     historyRecords: filteredSummaries.slice(0, DATA_LIMITS.QUERY.HISTORY_RECORDS),
     historyStatsRecords: filteredSummaries,
     historyGameEntries,
-    recentlyPlayedGames,
     historyCount: isSearching ? filteredSummaries.length : activeSummaries.length,
     setPendingDeleteHistoryIds: setPendingDeleteIds
   };
