@@ -49,6 +49,7 @@ const GameCard: React.FC<GameCardProps> = ({
   // isLocalImageAvailable (injected by hook) tells us if the file exists.
   const hasGrid = !!template.globalVisuals;
   const isLocalImageReady = (template as any).isLocalImageAvailable;
+  const canShare = (template.columns?.length ?? 0) > 0;
 
   const renderImageStatus = () => {
     if (!hasGrid) return null;
@@ -101,7 +102,7 @@ const GameCard: React.FC<GameCardProps> = ({
           )
         ) : (
           <>
-            {isPinned && onCopyLink && (
+            {canShare && onCopyLink && (
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onCopyLink(e); }}
@@ -195,7 +196,7 @@ const GameCard: React.FC<GameCardProps> = ({
             <UploadCloud size={14} />
           </button>
         )}
-        {onCopyLink ? (
+        {canShare && onCopyLink ? (
           <button
             onClick={(e) => { e.stopPropagation(); onCopyLink(e); }}
             className="p-1.5 text-txt-muted hover:text-brand-primary rounded transition-colors"

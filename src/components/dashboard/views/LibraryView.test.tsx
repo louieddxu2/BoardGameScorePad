@@ -17,7 +17,7 @@ const activeSession: GameSession = {
 const pinnedTemplate: GameTemplate = {
     id: 'pinned-1',
     name: 'Pinned Game',
-    columns: [],
+    columns: [{ id: 'score', name: 'Score', formula: 'a1', inputType: 'keypad', isScoring: true }],
     createdAt: 1
 };
 
@@ -91,6 +91,26 @@ describe('LibraryView compact active and pinned rows', () => {
         const recentRow = recentButton.parentElement!;
         expect(recentRow.lastElementChild).toHaveAttribute('aria-label', '釘選');
         expect(recentRow.querySelectorAll('svg')).toHaveLength(1);
+    });
+
+    it('shows sharing based on scoreboard type rather than pinned or recent status', () => {
+        const props = makeProps();
+        const simplePinnedTemplate = { ...pinnedTemplate, columns: [] };
+        const fullRecentTemplate = {
+            ...recentTemplate,
+            columns: [{ id: 'score', name: 'Score', formula: 'a1', inputType: 'keypad' as const, isScoring: true }]
+        };
+        props.pinnedTemplates = [simplePinnedTemplate];
+        props.recentTemplates = [{ template: fullRecentTemplate, needsResolution: false }];
+        render(<LanguageProvider><LibraryView {...props} /></LanguageProvider>);
+
+        const pinnedRow = screen.getByRole('button', { name: '開始新遊戲: Pinned Game' }).parentElement!;
+        const recentRow = screen.getByRole('button', { name: '開始新遊戲: Recent Game' }).parentElement!;
+        expect(pinnedRow.querySelector('[aria-label="複製連結"]')).not.toBeInTheDocument();
+        expect(recentRow.querySelector('[aria-label="複製連結"]')).toBeInTheDocument();
+
+        fireEvent.click(recentRow.querySelector('[aria-label="複製連結"]')!);
+        expect(props.onCopyTemplateShareLink).toHaveBeenCalledWith(fullRecentTemplate, expect.any(Object));
     });
 
     it('keeps compact sections collapsible and clear-all available', () => {

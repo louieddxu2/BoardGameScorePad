@@ -167,6 +167,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                                 mode="recent"
                                 onClick={() => { void onRecentTemplateSelect(shortcut); }}
                                 onPin={(e) => { e.stopPropagation(); void onPinRecentTemplate(shortcut); }}
+                                onCopyLink={(e) => { e.stopPropagation(); onCopyTemplateShareLink(shortcut.template, e); }}
+                                isCopied={copiedId === shortcut.template.id}
                             />
                         ))}
                     </div>
