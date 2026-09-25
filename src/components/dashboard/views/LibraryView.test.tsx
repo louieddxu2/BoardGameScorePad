@@ -95,12 +95,10 @@ describe('LibraryView compact active and pinned rows', () => {
 
     it('shows sharing based on scoreboard type rather than pinned or recent status', () => {
         const props = makeProps();
-        const simplePinnedTemplate = { ...pinnedTemplate, columns: [], hasScoringColumns: false };
+        const simplePinnedTemplate = { ...pinnedTemplate, columns: [] };
         const fullRecentTemplate = {
             ...recentTemplate,
-            // Dashboard summaries strip columns to save memory, but retain the structural bit.
-            columns: [],
-            hasScoringColumns: true
+            columns: [{ id: 'score', name: 'Score', formula: 'a1', inputType: 'keypad' as const, isScoring: true }]
         };
         props.pinnedTemplates = [simplePinnedTemplate];
         props.recentTemplates = [{ template: fullRecentTemplate, needsResolution: false }];

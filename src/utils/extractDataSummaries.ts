@@ -67,7 +67,6 @@ export interface TemplateSummary extends BaseSummary<TemplateSearchIndex>, Templ
 
   // [Optimization]
   globalVisuals?: any;
-  hasScoringColumns: boolean;
   columns: ScoreColumn[];
 }
 
@@ -201,7 +200,6 @@ export const extractTemplateSummary = (
 
     // [Memory Optimization] 
     // 列表顯示不需要詳細欄位資料，清空以節省記憶體。
-    hasScoringColumns: (template.columns?.length ?? 0) > 0,
     columns: [],
 
     isLocalImageAvailable: template.imageId ? availableImageIds.has(template.imageId) : false,
