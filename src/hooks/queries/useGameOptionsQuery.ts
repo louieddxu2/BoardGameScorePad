@@ -7,7 +7,12 @@ import { useSavedGameQuery } from './useSavedGameQuery';
 import { useGameOptionAggregator } from '../../features/game-selector/hooks/useGameOptionAggregator';
 import { searchService } from '../../services/searchService';
 import { GameOption } from '../../features/game-selector/types';
-import { extractBggGameSummary } from '../../utils/extractDataSummaries';
+import { BggGameSummary, extractBggGameSummary } from '../../utils/extractDataSummaries';
+import { GameTemplate, SavedListItem } from '../../types';
+
+const EMPTY_TEMPLATES: GameTemplate[] = [];
+const EMPTY_SAVED_GAMES: SavedListItem[] = [];
+const EMPTY_BGG_GAMES: BggGameSummary[] = [];
 
 /**
  * Game Options Query Hook
@@ -38,10 +43,14 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
   // 3. Aggregate Data (Merge & Deduplicate)
   // 將 BGG Summary 傳入，讓 Aggregator 進行名稱匹配與搜尋索引補完
   // [Update] Pass pinnedIds so Aggregator can determine isPinned status
+  const templatesForOptions = useMemo(
+    () => enabled ? [...allTemplates, ...allSystemTemplates] : EMPTY_TEMPLATES,
+    [enabled, allTemplates, allSystemTemplates]
+  );
   const aggregatedOptions = useGameOptionAggregator(
-    enabled ? [...allTemplates, ...allSystemTemplates] : [],
-    enabled ? allSavedGames : [],
-    enabled ? (allBggGames || []) : [],
+    templatesForOptions,
+    enabled ? allSavedGames : EMPTY_SAVED_GAMES,
+    enabled ? allBggGames ?? EMPTY_BGG_GAMES : EMPTY_BGG_GAMES,
     pinnedIds
   );
 

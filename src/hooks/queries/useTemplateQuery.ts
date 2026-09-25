@@ -17,6 +17,8 @@ interface TemplateSummaryData {
     shareableTemplateIds: string[];
 }
 
+const EMPTY_TEMPLATE_IDS: string[] = [];
+
 export const selectVisibleUserTemplates = (
     rawItems: GameTemplate[],
     additionalTemplates: GameTemplate[],
@@ -33,11 +35,18 @@ export const selectVisibleUserTemplates = (
     return [...visibleItems, ...missingPinnedItems];
 };
 
+export const getAvailableImageIds = async (templates: GameTemplate[]): Promise<Set<string>> => {
+    const imageIds = [...new Set(templates.flatMap(template => template.imageId ? [template.imageId] : []))];
+    if (imageIds.length === 0) return new Set();
+    const existingIds = await db.images.where('id').anyOf(imageIds).primaryKeys();
+    return new Set(existingIds as string[]);
+};
+
 export const useTemplateQuery = (
     searchQuery: string,
     pinnedIds: string[],
     includeShareableTemplateIds = false,
-    additionalTemplateIds: string[] = []
+    additionalTemplateIds: string[] = EMPTY_TEMPLATE_IDS
 ) => {
     // --- PREFERENCES & HELPERS ---
     const allPrefs = useLiveQuery(() => db.templatePrefs.toArray(), [], []);
@@ -87,8 +96,6 @@ export const useTemplateQuery = (
     const allUserTemplatesData = useLiveQuery<TemplateSummaryData>(async () => {
         let collection = db.templates.orderBy('updatedAt').reverse();
         const fetchLimit = DATA_LIMITS.QUERY.FETCH_CAP;
-        const existingImageIds = await db.images.toCollection().primaryKeys();
-        const imageSet = new Set(existingImageIds as string[]);
 
         const rawItems = await collection.limit(fetchLimit).toArray();
 
@@ -105,6 +112,7 @@ export const useTemplateQuery = (
             : [];
         const visibleItems = selectVisibleUserTemplates(rawItems, additionalTemplates, pinnedIds);
         const shareabilityCandidates = [...rawItems, ...additionalTemplates];
+        const imageSet = await getAvailableImageIds(visibleItems);
 
         // Inject properties using centralized extractor
         const mappedItems = visibleItems.map(t => extractTemplateSummary(t, imageSet));
