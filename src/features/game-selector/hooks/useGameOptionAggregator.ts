@@ -93,7 +93,6 @@ export const useGameOptionAggregator = (
           existing.templateId = t.id;
           // Use pinnedIds to determine status
           existing.isPinned = pinnedIds.includes(t.id);
-          existing.lastUsed = Math.max(existing.lastUsed, t.updatedAt || 0);
           
           existing.defaultPlayerCount = t.lastPlayerCount || 4;
           existing.defaultScoringRule = t.defaultScoringRule || 'HIGHEST_WINS';

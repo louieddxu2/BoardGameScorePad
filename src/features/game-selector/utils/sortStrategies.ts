@@ -71,6 +71,8 @@ export const getRecentOptions = (
 
   const recent: GameOption[] = [];
   for (const option of options) {
+    // Recent means a game with a recorded play, not a template edit or a catalog entry.
+    if (!option.savedGameId || option.lastUsed <= 0) continue;
     if (option.isPinned || (option.templateId && excludedTemplateIds.has(option.templateId))) continue;
 
     const insertAt = recent.findIndex(existing => byRecency(option, existing) < 0);

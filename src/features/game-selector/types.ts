@@ -40,7 +40,7 @@ export interface GameOption {
 
   // --- 3. 排序權重 (Sorting Weights) ---
 
-  /** 排序依據 (Recency)。取 Template 修改時間與 SavedGame 遊玩時間的較大者。 */
+  /** 最近遊玩時間；只由 savedGames 的實際遊玩紀錄提供。 */
   lastUsed: number;
 
   /** 排序依據 (Frequency) */

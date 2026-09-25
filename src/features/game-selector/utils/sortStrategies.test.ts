@@ -4,6 +4,7 @@ import { getRecentOptions, getRecommendations } from './sortStrategies';
 
 const option = (uid: string, lastUsed: number, usageCount = 0, overrides: Partial<GameOption> = {}): GameOption => ({
   uid,
+  savedGameId: uid,
   displayName: uid,
   lastUsed,
   usageCount,
@@ -29,6 +30,16 @@ describe('getRecentOptions', () => {
 
   it('returns no items for a non-positive limit', () => {
     expect(getRecentOptions([option('game', 1)], 0)).toEqual([]);
+  });
+
+  it('does not treat unplayed saved games, templates, or catalog entries as recent', () => {
+    const options = [
+      option('unplayed-saved-game', 0, 0),
+      option('edited-template', 9000, 0, { savedGameId: undefined, templateId: 'edited-template' }),
+      option('catalog-game', 0, 0, { savedGameId: undefined, bggId: '12345' })
+    ];
+
+    expect(getRecentOptions(options, 5)).toEqual([]);
   });
 
   it('excludes pinned and active-template options consistently', () => {
