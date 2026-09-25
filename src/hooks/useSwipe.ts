@@ -33,9 +33,11 @@ export const useSwipe = (
   const axisLock = useRef<'h' | 'v' | null>(null);
 
   const onTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches?.[0] || e.targetTouches?.[0];
+    if (!touch) return;
     touchStart.current = {
-      x: e.targetTouches[0].clientX,
-      y: e.targetTouches[0].clientY
+      x: touch.clientX,
+      y: touch.clientY
     };
     touchStartTime.current = Date.now();
     axisLock.current = null;
@@ -46,8 +48,11 @@ export const useSwipe = (
   const onTouchMove = (e: React.TouchEvent) => {
     if (!touchStart.current) return;
 
-    const currentX = e.targetTouches[0].clientX;
-    const currentY = e.targetTouches[0].clientY;
+    const touch = e.touches?.[0] || e.targetTouches?.[0];
+    if (!touch) return;
+
+    const currentX = touch.clientX;
+    const currentY = touch.clientY;
     
     const distanceX = currentX - touchStart.current.x;
     const distanceY = currentY - touchStart.current.y;

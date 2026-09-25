@@ -58,8 +58,8 @@ describe('useDashboardData recent shortcuts', () => {
     expect(result.current.recentTemplates).toEqual([{ template, needsResolution: false }]);
   });
 
-  it('does not treat a saved-game ID as a template ID when no scoreboard exists', () => {
-    const { result } = renderHook(() => useDashboardData({
+  it('uses a stable deterministic shortcut ID without generating random UUIDs', () => {
+    const props = {
       userTemplates: [],
       systemTemplates: [],
       pinnedIds: [],
@@ -67,16 +67,24 @@ describe('useDashboardData recent shortcuts', () => {
         uid: 'saved-game-1',
         savedGameId: 'saved-game-1',
         displayName: 'Simple Game',
-        bggId: '12345'
+        bggId: '12345',
+        lastUsed: 1000
       })],
       activeSessionIds: [],
       activeSessions: [],
       getSessionPreview: vi.fn(() => null)
-    }));
+    };
+    const { result, rerender } = renderHook(() => useDashboardData(props));
 
     const shortcut = result.current.recentTemplates[0];
     expect(shortcut.needsResolution).toBe(true);
+    expect(shortcut.template.id).toBe('shortcut:saved-game-1');
     expect(shortcut.template.id).not.toBe('saved-game-1');
+    expect(shortcut.template.createdAt).toBe(1000);
     expect(shortcut.template).toMatchObject({ name: 'Simple Game', bggId: '12345', columns: [] });
+
+    // Verify stability across rerenders
+    rerender();
+    expect(result.current.recentTemplates[0].template.id).toBe('shortcut:saved-game-1');
   });
 });

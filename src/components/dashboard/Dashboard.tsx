@@ -24,6 +24,7 @@ import SearchTemplateOnlineModal from './modals/SearchTemplateOnlineModal';
 import { useDashboardTranslation } from '../../i18n/dashboard';
 import { db } from '../../db';
 import { uploadTemplateToCloud } from '../../services/templateShareService';
+import { generateId } from '../../utils/idGenerator';
 
 // Hooks
 import { useDashboardData } from './hooks/useDashboardData';
@@ -204,7 +205,13 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
     } catch (error) {
       console.error('Failed to resolve recent game template:', error);
     }
-    onTemplateSelect(storedTemplate ?? shortcut.template, {
+    const templateToUse = storedTemplate ?? {
+      ...shortcut.template,
+      id: generateId(),
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    onTemplateSelect(templateToUse, {
       persistIfMissing: !storedTemplate
     });
   }, [onGetFullTemplate, onTemplateSelect]);
@@ -220,10 +227,16 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         gameName: shortcut.template.name,
         bggId: shortcut.template.bggId
       });
+      const templateToPin = storedTemplate ?? {
+        ...shortcut.template,
+        id: generateId(),
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
       if (!storedTemplate) {
-        await onTemplateSave(shortcut.template, { skipCloud: true });
+        await onTemplateSave(templateToPin, { skipCloud: true });
       }
-      await onTogglePin((storedTemplate ?? shortcut.template).id);
+      await onTogglePin(templateToPin.id);
     } catch (error) {
       console.error('Failed to pin recent game:', error);
     }

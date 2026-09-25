@@ -3,7 +3,6 @@ import { useMemo } from 'react';
 import { GameTemplate, GameSession, ScoringRule } from '../../../types';
 import { DATA_LIMITS } from '../../../dataLimits';
 import { createVirtualTemplate } from '../../../utils/templateUtils';
-import { generateId } from '../../../utils/idGenerator';
 import type { GameOption } from '../../../features/game-selector/types';
 
 export interface RecentTemplateShortcut {
@@ -53,13 +52,13 @@ export const useDashboardData = ({
   const recentTemplates = useMemo(() => {
     return recentlyPlayedGames.map(game => {
       const template = game.templateId ? templatesById.get(game.templateId) : undefined;
+      const shortcutId = game.templateId || `shortcut:${game.savedGameId || game.bggId || game.cleanName || game.displayName}`;
       return {
         template: template ?? createVirtualTemplate(
-          // A savedGame ID identifies usage stats, not a scoreboard/template.
-          game.templateId || generateId(),
+          shortcutId,
           game.cleanName || game.displayName,
           game.bggId,
-          Date.now(),
+          game.lastUsed || 0,
           game.defaultPlayerCount,
           game.defaultScoringRule as ScoringRule
         ),
