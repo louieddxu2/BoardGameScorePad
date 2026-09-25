@@ -81,7 +81,7 @@ const GameCard: React.FC<GameCardProps> = ({
     return (
       <div
         onClick={onClick}
-        className={`flex h-12 cursor-pointer items-center rounded-xl border bg-surface-bg shadow-ui-soft transition-colors hover:bg-surface-hover ${isActive ? 'border-brand-primary/40' : 'border-surface-border'}`}
+        className={`flex h-12 touch-pan-y cursor-pointer items-center rounded-xl border bg-surface-bg shadow-ui-soft transition-colors hover:bg-surface-hover ${isActive ? 'border-brand-primary/40' : 'border-surface-border'}`}
       >
         <button
           type="button"

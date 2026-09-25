@@ -76,6 +76,9 @@ describe('LibraryView compact active and pinned rows', () => {
         expect(activeButton.parentElement).toHaveClass('h-12');
         expect(pinnedButton.parentElement).toHaveClass('h-12');
         expect(recentButton.parentElement).toHaveClass('h-12');
+        expect(activeButton.parentElement).toHaveClass('touch-pan-y');
+        expect(pinnedButton.parentElement).toHaveClass('touch-pan-y');
+        expect(recentButton.parentElement).toHaveClass('touch-pan-y');
         expect(activeButton.closest('.grid')).toHaveClass('grid-cols-1');
         expect(pinnedButton.closest('.grid')).toHaveClass('grid-cols-1');
         expect(recentButton.closest('.grid')).toHaveClass('grid-cols-1');

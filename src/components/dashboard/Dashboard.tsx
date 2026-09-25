@@ -362,6 +362,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         onTouchStart={debugGestures.handleDebugTouchStart}
         onTouchMove={debugGestures.handleDebugTouchMove}
         onTouchEnd={debugGestures.handleDebugTouchEnd}
+        onTouchCancel={debugGestures.handleDebugTouchEnd}
       >
         <PullActionIsland
           pullY={pullY}
