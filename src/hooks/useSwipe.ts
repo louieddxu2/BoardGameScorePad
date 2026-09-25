@@ -25,6 +25,7 @@ export const useSwipe = (
   
   const touchStart = useRef<{ x: number, y: number } | null>(null);
   const touchStartTime = useRef<number>(0);
+  const currentOffset = useRef(0);
   const [swipeOffset, setSwipeOffset] = useState(0);
   
   // 用來鎖定本次觸控的方向，避免斜向滑動時兩邊都在動
@@ -38,6 +39,7 @@ export const useSwipe = (
     };
     touchStartTime.current = Date.now();
     axisLock.current = null;
+    currentOffset.current = 0;
     setSwipeOffset(0);
   };
 
@@ -70,6 +72,7 @@ export const useSwipe = (
     // 如果判定為水平滑動，則阻止瀏覽器預設行為 (如上一頁/下一頁手勢)，並更新位移
     if (axisLock.current === 'h') {
         if (e.cancelable) e.preventDefault(); // 關鍵：防止與頁面捲動衝突
+        currentOffset.current = distanceX;
         setSwipeOffset(distanceX);
     }
   };
@@ -79,15 +82,17 @@ export const useSwipe = (
     
     // 計算滑動時間與速度
     const timeDiff = Date.now() - touchStartTime.current;
-    const velocity = Math.abs(swipeOffset) / timeDiff; // px per ms
-    const isFlick = velocity > flickThreshold && Math.abs(swipeOffset) > minFlickDistance;
+    // touchend may run before React flushes touchmove's state update.
+    const finalOffset = currentOffset.current;
+    const velocity = Math.abs(finalOffset) / timeDiff; // px per ms
+    const isFlick = velocity > flickThreshold && Math.abs(finalOffset) > minFlickDistance;
 
     // 只有在鎖定為水平滑動時才觸發切換
     if (axisLock.current === 'h') {
         // 觸發條件：(距離足夠) 或者 (速度夠快且有一定距離)
-        if (swipeOffset > minSwipeDistance || (isFlick && swipeOffset > 0)) {
+        if (finalOffset > minSwipeDistance || (isFlick && finalOffset > 0)) {
             onSwipeRight && onSwipeRight();
-        } else if (swipeOffset < -minSwipeDistance || (isFlick && swipeOffset < 0)) {
+        } else if (finalOffset < -minSwipeDistance || (isFlick && finalOffset < 0)) {
             onSwipeLeft && onSwipeLeft();
         }
     }
@@ -95,6 +100,7 @@ export const useSwipe = (
     // 重置
     touchStart.current = null;
     axisLock.current = null;
+    currentOffset.current = 0;
     setSwipeOffset(0);
   };
 

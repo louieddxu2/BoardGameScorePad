@@ -1,9 +1,10 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../../../i18n';
 import { GameSession, GameTemplate } from '../../../types';
 import { LibraryView } from './LibraryView';
+import { useDebugGestures } from '../hooks/useDebugGestures';
 
 const activeSession: GameSession = {
     id: 'session-1',
@@ -61,8 +62,41 @@ const makeProps = (): React.ComponentProps<typeof LibraryView> => ({
     onSystemRestore: vi.fn()
 });
 
+const SwipeLibraryHarness: React.FC<{ props: React.ComponentProps<typeof LibraryView> }> = ({ props }) => {
+    const [viewMode, setViewMode] = React.useState<'library' | 'history'>('library');
+    const gestures = useDebugGestures({ viewMode, setViewMode, onTriggerInspector: vi.fn() });
+    return (
+        <div
+            onTouchStart={gestures.handleDebugTouchStart}
+            onTouchMove={gestures.handleDebugTouchMove}
+            onTouchEnd={gestures.handleDebugTouchEnd}
+        >
+            <LanguageProvider><LibraryView {...props} /></LanguageProvider>
+            <output>{viewMode}</output>
+        </div>
+    );
+};
+
 describe('LibraryView compact active and pinned rows', () => {
     beforeEach(() => localStorage.setItem('app_language', 'zh-TW'));
+
+    it.each(['Pinned Game', 'Recent Game'])('switches to history on a quick swipe from %s', name => {
+        const props = makeProps();
+        render(<SwipeLibraryHarness props={props} />);
+        const button = screen.getByRole('button', { name: `開始新遊戲: ${name}` });
+        const start = { clientX: 120, clientY: 80 };
+        const end = { clientX: 60, clientY: 80 };
+
+        act(() => {
+            fireEvent.touchStart(button, { touches: [start], targetTouches: [start] });
+            fireEvent.touchMove(button, { touches: [end], targetTouches: [end] });
+            fireEvent.touchEnd(button, { changedTouches: [end] });
+        });
+
+        expect(screen.getByText('history')).toBeInTheDocument();
+        expect(props.onTemplateSelect).not.toHaveBeenCalled();
+        expect(props.onRecentTemplateSelect).not.toHaveBeenCalled();
+    });
 
     it('uses single-column, 48px rows for active, pinned, and recent games', () => {
         const props = makeProps();
