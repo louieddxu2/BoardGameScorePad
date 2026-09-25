@@ -17,6 +17,22 @@ interface TemplateSummaryData {
     shareableTemplateIds: string[];
 }
 
+export const selectVisibleUserTemplates = (
+    rawItems: GameTemplate[],
+    additionalTemplates: GameTemplate[],
+    pinnedIds: string[]
+): GameTemplate[] => {
+    const loadedIds = new Set(rawItems.map(template => template.id));
+    const visibleItems = rawItems.filter(template => !isDisposableTemplate(template, pinnedIds));
+    const missingPinnedItems = additionalTemplates.filter(template =>
+        pinnedIds.includes(template.id) &&
+        !loadedIds.has(template.id) &&
+        !isDisposableTemplate(template, pinnedIds)
+    );
+
+    return [...visibleItems, ...missingPinnedItems];
+};
+
 export const useTemplateQuery = (
     searchQuery: string,
     pinnedIds: string[],
@@ -76,29 +92,27 @@ export const useTemplateQuery = (
 
         const rawItems = await collection.limit(fetchLimit).toArray();
 
-        // [Filter] Directly discard disposable templates at source
-        // Now using pinnedIds to rescue pinned simple templates
-        const filteredItems = rawItems.filter(t => !isDisposableTemplate(t, pinnedIds));
-
-        // Recent-game shortcuts can reference older templates outside the bounded
-        // library query. Resolve only those IDs so their shareability is based on
-        // the full template rather than a projected summary or missing list row.
+        // Recent-game shortcuts and pinned templates can reference older records
+        // outside the bounded library query. Resolve only those IDs. Pinned simple
+        // templates must remain visible even when they fall beyond the fetch cap.
         const loadedIds = new Set(rawItems.map(template => template.id));
-        const additionalTemplates = includeShareableTemplateIds
-            ? (await db.templates.bulkGet(additionalTemplateIds.filter(id => !loadedIds.has(id))))
-                .filter((template): template is GameTemplate => template !== undefined)
+        const lookupIds = [...new Set([
+            ...pinnedIds,
+            ...(includeShareableTemplateIds ? additionalTemplateIds : [])
+        ])].filter(id => !loadedIds.has(id));
+        const additionalTemplates = lookupIds.length > 0
+            ? (await db.templates.bulkGet(lookupIds)).filter((template): template is GameTemplate => template !== undefined)
             : [];
+        const visibleItems = selectVisibleUserTemplates(rawItems, additionalTemplates, pinnedIds);
+        const shareabilityCandidates = [...rawItems, ...additionalTemplates];
 
         // Inject properties using centralized extractor
-        const mappedItems = filteredItems.map(t => extractTemplateSummary(t, imageSet));
+        const mappedItems = visibleItems.map(t => extractTemplateSummary(t, imageSet));
 
         return {
             templates: mappedItems,
             shareableTemplateIds: includeShareableTemplateIds
-                ? [
-                    ...filteredItems.filter(template => !isDisposableTemplate(template)).map(template => template.id),
-                    ...additionalTemplates.filter(template => !isDisposableTemplate(template)).map(template => template.id)
-                ]
+                ? shareabilityCandidates.filter(template => !isDisposableTemplate(template)).map(template => template.id)
                 : []
         };
     }, [pinnedIds, includeShareableTemplateIds, additionalTemplateIds]); // Re-run when pins or shareability metadata changes
