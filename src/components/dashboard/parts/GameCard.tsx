@@ -4,7 +4,7 @@ import { Copy, RefreshCw, Trash2, Pin, Check, Share2, UploadCloud, ImageIcon, Pl
 import { useDashboardTranslation } from '../../../i18n/dashboard';
 
 interface GameCardProps {
-  template: GameTemplate;
+  template: GameTemplate & { hasScoringColumns?: boolean };
   mode: 'active' | 'pinned' | 'recent' | 'user' | 'system';
   onClick: () => void;
   // Actions
@@ -49,7 +49,7 @@ const GameCard: React.FC<GameCardProps> = ({
   // isLocalImageAvailable (injected by hook) tells us if the file exists.
   const hasGrid = !!template.globalVisuals;
   const isLocalImageReady = (template as any).isLocalImageAvailable;
-  const canShare = (template.columns?.length ?? 0) > 0;
+  const canShare = template.hasScoringColumns ?? (template.columns?.length ?? 0) > 0;
 
   const renderImageStatus = () => {
     if (!hasGrid) return null;
