@@ -136,40 +136,42 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 </DashboardSection>
             )}
 
-            <DashboardSection
-                title={t('dash_quick_start')}
-                icon={<Zap size={16} />}
-                count={pinnedTemplates.length + recentTemplates.length}
-                compact
-                iconColorClass="text-brand-primary"
-                isOpen={isQuickStartOpen}
-                onToggle={() => setIsQuickStartOpen(!isQuickStartOpen)}
-            >
-                <div className={`grid grid-cols-1 gap-2 mt-2 ${animClass}`}>
-                    {pinnedTemplates.map(tData => (
-                        <GameCard
-                            key={`pinned-${tData.id}`}
-                            template={tData}
-                            mode="pinned"
-                            onClick={() => onTemplateSelect(tData)}
-                            onPin={(e) => { e.stopPropagation(); onPin(tData.id); }}
-                            onCopyLink={(e) => { e.stopPropagation(); onCopyTemplateShareLink(tData, e); }}
-                            isCopied={copiedId === tData.id}
-                            isConnected={isConnected}
-                            isAutoConnectEnabled={isAutoConnectEnabled}
-                        />
-                    ))}
-                    {recentTemplates.map(shortcut => (
-                        <GameCard
-                            key={`recent-${shortcut.template.id}`}
-                            template={shortcut.template}
-                            mode="recent"
-                            onClick={() => { void onRecentTemplateSelect(shortcut); }}
-                            onPin={(e) => { e.stopPropagation(); void onPinRecentTemplate(shortcut); }}
-                        />
-                    ))}
-                </div>
-            </DashboardSection>
+            {(pinnedTemplates.length > 0 || recentTemplates.length > 0) && (
+                <DashboardSection
+                    title={t('dash_quick_start')}
+                    icon={<Zap size={16} />}
+                    count={pinnedTemplates.length + recentTemplates.length}
+                    compact
+                    iconColorClass="text-brand-primary"
+                    isOpen={isQuickStartOpen}
+                    onToggle={() => setIsQuickStartOpen(!isQuickStartOpen)}
+                >
+                    <div className={`grid grid-cols-1 gap-2 mt-2 ${animClass}`}>
+                        {pinnedTemplates.map(tData => (
+                            <GameCard
+                                key={`pinned-${tData.id}`}
+                                template={tData}
+                                mode="pinned"
+                                onClick={() => onTemplateSelect(tData)}
+                                onPin={(e) => { e.stopPropagation(); onPin(tData.id); }}
+                                onCopyLink={(e) => { e.stopPropagation(); onCopyTemplateShareLink(tData, e); }}
+                                isCopied={copiedId === tData.id}
+                                isConnected={isConnected}
+                                isAutoConnectEnabled={isAutoConnectEnabled}
+                            />
+                        ))}
+                        {recentTemplates.map(shortcut => (
+                            <GameCard
+                                key={`recent-${shortcut.template.id}`}
+                                template={shortcut.template}
+                                mode="recent"
+                                onClick={() => { void onRecentTemplateSelect(shortcut); }}
+                                onPin={(e) => { e.stopPropagation(); void onPinRecentTemplate(shortcut); }}
+                            />
+                        ))}
+                    </div>
+                </DashboardSection>
+            )}
 
             <DashboardSection
                 title={t('dash_my_library')}

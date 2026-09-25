@@ -121,6 +121,15 @@ describe('LibraryView compact active and pinned rows', () => {
         expect(screen.getByRole('button', { name: '繼續遊戲: Active Game' })).toBeInTheDocument();
     });
 
+    it('hides quick start when there are no pinned or recent games', () => {
+        const props = makeProps();
+        props.pinnedTemplates = [];
+        props.recentTemplates = [];
+        render(<LanguageProvider><LibraryView {...props} /></LanguageProvider>);
+
+        expect(screen.queryByText('快速開始')).not.toBeInTheDocument();
+    });
+
     it('keeps primary and secondary actions separate', () => {
         const props = makeProps();
         render(<LanguageProvider><LibraryView {...props} /></LanguageProvider>);
