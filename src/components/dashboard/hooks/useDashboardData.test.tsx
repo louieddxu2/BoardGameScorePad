@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { GameOption } from '../../../features/game-selector/types';
+import type { GameTemplate } from '../../../types';
 import { useDashboardData } from './useDashboardData';
 
 const recentOption = (overrides: Partial<GameOption> = {}): GameOption => ({
@@ -60,7 +61,7 @@ describe('useDashboardData recent shortcuts', () => {
 
   it('uses a stable deterministic shortcut ID without generating random UUIDs', () => {
     const props = {
-      userTemplates: [],
+      userTemplates: [] as GameTemplate[],
       systemTemplates: [],
       pinnedIds: [],
       recentlyPlayedGames: [recentOption({
@@ -74,17 +75,22 @@ describe('useDashboardData recent shortcuts', () => {
       activeSessions: [],
       getSessionPreview: vi.fn(() => null)
     };
-    const { result, rerender } = renderHook(() => useDashboardData(props));
+    const { result, rerender } = renderHook(
+      ({ userTemplates }) => useDashboardData({ ...props, userTemplates }),
+      { initialProps: { userTemplates: props.userTemplates } }
+    );
 
-    const shortcut = result.current.recentTemplates[0];
+    const initialShortcuts = result.current.recentTemplates;
+    const shortcut = initialShortcuts[0];
     expect(shortcut.needsResolution).toBe(true);
     expect(shortcut.template.id).toBe('shortcut:saved-game-1');
     expect(shortcut.template.id).not.toBe('saved-game-1');
     expect(shortcut.template.createdAt).toBe(1000);
     expect(shortcut.template).toMatchObject({ name: 'Simple Game', bggId: '12345', columns: [] });
 
-    // Verify stability across rerenders
-    rerender();
+    // Changing the template index dependency forces recentTemplates to recompute.
+    rerender({ userTemplates: [{ id: 'unrelated-template', name: 'Other Game', columns: [], createdAt: 1 }] });
+    expect(result.current.recentTemplates).not.toBe(initialShortcuts);
     expect(result.current.recentTemplates[0].template.id).toBe('shortcut:saved-game-1');
   });
 
