@@ -87,4 +87,51 @@ describe('useDashboardData recent shortcuts', () => {
     rerender();
     expect(result.current.recentTemplates[0].template.id).toBe('shortcut:saved-game-1');
   });
+
+  it('fills the quick-start section to five games after pinned games', () => {
+    const pinnedTemplates = [
+      { id: 'pinned-1', name: 'Pinned One', columns: [], createdAt: 1 },
+      { id: 'pinned-2', name: 'Pinned Two', columns: [], createdAt: 1 }
+    ];
+    const recentGames = Array.from({ length: 5 }, (_, index) => recentOption({
+      uid: `recent-${index}`,
+      savedGameId: `saved-${index}`,
+      displayName: `Recent ${index}`,
+      lastUsed: 1000 - index
+    }));
+    const { result } = renderHook(() => useDashboardData({
+      userTemplates: pinnedTemplates,
+      systemTemplates: [],
+      pinnedIds: ['pinned-1', 'pinned-2'],
+      recentlyPlayedGames: recentGames,
+      activeSessionIds: [],
+      activeSessions: [],
+      getSessionPreview: vi.fn(() => null)
+    }));
+
+    expect(result.current.pinnedTemplates).toHaveLength(2);
+    expect(result.current.recentTemplates).toHaveLength(3);
+  });
+
+  it('keeps all pinned games when they exceed five and hides recent games', () => {
+    const pinnedTemplates = Array.from({ length: 6 }, (_, index) => ({
+      id: `pinned-${index}`,
+      name: `Pinned ${index}`,
+      columns: [],
+      createdAt: 1
+    }));
+    const recentGames = [recentOption({ savedGameId: 'saved-1', lastUsed: 1000 })];
+    const { result } = renderHook(() => useDashboardData({
+      userTemplates: pinnedTemplates,
+      systemTemplates: [],
+      pinnedIds: pinnedTemplates.map(template => template.id),
+      recentlyPlayedGames: recentGames,
+      activeSessionIds: [],
+      activeSessions: [],
+      getSessionPreview: vi.fn(() => null)
+    }));
+
+    expect(result.current.pinnedTemplates).toHaveLength(6);
+    expect(result.current.recentTemplates).toHaveLength(0);
+  });
 });

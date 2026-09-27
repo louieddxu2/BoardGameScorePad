@@ -49,8 +49,9 @@ export const useDashboardData = ({
       .filter((t): t is GameTemplate => t !== undefined);
   }, [pinnedIds, templatesById]);
 
+  const recentShortcutLimit = Math.max(0, DATA_LIMITS.DISPLAY.HOME_QUICK_START_GAMES - pinnedTemplates.length);
   const recentTemplates = useMemo(() => {
-    return recentlyPlayedGames.map(game => {
+    return recentlyPlayedGames.slice(0, recentShortcutLimit).map(game => {
       const template = game.templateId ? templatesById.get(game.templateId) : undefined;
       const shortcutId = game.templateId || `shortcut:${game.savedGameId || game.bggId || game.cleanName || game.displayName}`;
       return {
@@ -65,7 +66,7 @@ export const useDashboardData = ({
         needsResolution: !template
       };
     });
-  }, [recentlyPlayedGames, templatesById]);
+  }, [recentlyPlayedGames, recentShortcutLimit, templatesById]);
   
   // 3. User Library (Filtered & Sliced for UI)
   const userTemplatesToShow = useMemo(() => {

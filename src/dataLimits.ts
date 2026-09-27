@@ -41,6 +41,12 @@ export const DATA_LIMITS = {
     FETCH_CAP: 1000,
   },
 
+  // --- 介面顯示限制 ---
+  DISPLAY: {
+    /** 首頁快速開始區遊戲總數上限；釘選遊戲超出時仍全部顯示 */
+    HOME_QUICK_START_GAMES: 5,
+  },
+
   // --- 編輯器限制 (Template Editor) ---
   EDITOR: {
     /** 單一計分板允許的最大欄位數量 (避免版面崩潰或效能問題) */
