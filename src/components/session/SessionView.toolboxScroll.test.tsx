@@ -160,6 +160,10 @@ const getScoreCell = (playerId: string) => {
 };
 
 const setScrollTop = (element: HTMLElement, value: number) => {
+  Object.defineProperties(element, {
+    clientHeight: { configurable: true, value: 300 },
+    scrollHeight: { configurable: true, value: 1000 },
+  });
   Object.defineProperty(element, 'scrollTop', {
     configurable: true,
     writable: true,
@@ -434,6 +438,18 @@ describe('SessionView toolbox scroll behavior', () => {
     swipeOn(scroller, { startY: 200, endY: 130, moveScrollTop: 530 });
 
     expect(screen.queryByText('Game Toolbox')).not.toBeInTheDocument();
+  });
+
+  it('requires a separate upward swipe after the score grid reaches the bottom', () => {
+    renderSession();
+    const scroller = getGridScroller();
+
+    setScrollTop(scroller, 500);
+    swipeOn(scroller, { startY: 200, endY: 130, moveScrollTop: 700 });
+    expect(screen.queryByText('Game Toolbox')).not.toBeInTheDocument();
+
+    swipeOn(scroller, { startY: 200, endY: 130 });
+    expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
   });
 
   it('does not open for horizontal or shallow diagonal swipes', () => {
