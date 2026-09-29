@@ -57,10 +57,50 @@ export const applySort = (items: GameOption[], ...strategies: Comparator[]): Gam
   });
 };
 
+interface RecentOptionIdentity {
+  bggId: string;
+  localIds: string[];
+  name: string;
+}
+
+const getRecentIdentity = (option: GameOption): RecentOptionIdentity => ({
+  bggId: option.bggId?.trim().toLowerCase() || '',
+  localIds: [option.savedGameId, option.templateId]
+    .filter((id): id is string => !!id?.trim())
+    .map(id => id.trim().toLowerCase()),
+  name: (option.cleanName || option.displayName).trim().replace(/\s+/g, ' ').toLowerCase()
+});
+
+const isSameGame = (a: RecentOptionIdentity, b: RecentOptionIdentity): boolean => {
+  // Conflicting known BGG IDs must never be collapsed by a shared name or local ID.
+  if (a.bggId && b.bggId) return a.bggId === b.bggId;
+  if (a.localIds.some(id => b.localIds.includes(id))) return true;
+  return !!a.name && a.name === b.name;
+};
+
+interface ExcludedIdentityBucket {
+  bggIds: Set<string>;
+  hasUnknownBgg: boolean;
+}
+
+const addExcludedIdentity = (index: Map<string, ExcludedIdentityBucket>, key: string, bggId: string): void => {
+  if (!key) return;
+  let bucket = index.get(key);
+  if (!bucket) {
+    bucket = { bggIds: new Set(), hasUnknownBgg: false };
+    index.set(key, bucket);
+  }
+  if (bggId) bucket.bggIds.add(bggId);
+  else bucket.hasUnknownBgg = true;
+};
+
+const matchesExcludedIdentity = (bucket: ExcludedIdentityBucket | undefined, bggId: string): boolean =>
+  !!bucket && (!bggId || bucket.hasUnknownBgg || bucket.bggIds.has(bggId));
+
 /**
- * Select the most recently used options without sorting the full collection.
- * The bounded insertion list keeps this O(n * limit), which matters when the
- * option source includes the full BGG dictionary.
+ * Select distinct recently played games before applying the display limit.
+ * Only played options are retained; the full BGG dictionary is never sorted.
+ * The exclusion indexes and bounded insertion keep this O(n + played * limit).
  */
 export const getRecentOptions = (
   options: GameOption[],
@@ -69,20 +109,44 @@ export const getRecentOptions = (
 ): GameOption[] => {
   if (limit <= 0) return [];
 
-  const recent: GameOption[] = [];
+  const excludedBggIds = new Set<string>();
+  const excludedLocalIds = new Map<string, ExcludedIdentityBucket>();
+  const excludedNames = new Map<string, ExcludedIdentityBucket>();
+  const candidates: { option: GameOption; identity: RecentOptionIdentity }[] = [];
   for (const option of options) {
-    // Recent means a game with a recorded play, not a template edit or a catalog entry.
-    if (!option.savedGameId || option.lastUsed <= 0) continue;
-    if (option.isPinned || (option.templateId && excludedTemplateIds.has(option.templateId))) continue;
+    const isExcluded = option.isPinned || !!(option.templateId && excludedTemplateIds.has(option.templateId));
+    if (!isExcluded && (!option.savedGameId || option.lastUsed <= 0)) continue;
+    const identity = getRecentIdentity(option);
+    if (isExcluded) {
+      if (identity.bggId) excludedBggIds.add(identity.bggId);
+      identity.localIds.forEach(id => addExcludedIdentity(excludedLocalIds, id, identity.bggId));
+      addExcludedIdentity(excludedNames, identity.name, identity.bggId);
+    } else {
+      candidates.push({ option, identity });
+    }
+  }
 
-    const insertAt = recent.findIndex(existing => byRecency(option, existing) < 0);
-    if (insertAt < 0) recent.push(option);
-    else recent.splice(insertAt, 0, option);
+  const recent: typeof candidates = [];
+  for (const candidate of candidates) {
+    const { bggId, localIds, name } = candidate.identity;
+    if ((bggId && excludedBggIds.has(bggId))
+      || localIds.some(id => matchesExcludedIdentity(excludedLocalIds.get(id), bggId))
+      || matchesExcludedIdentity(excludedNames.get(name), bggId)) continue;
+
+    const duplicateAt = recent.findIndex(existing => isSameGame(candidate.identity, existing.identity));
+    if (duplicateAt >= 0) {
+      if (candidate.option.lastUsed <= recent[duplicateAt].option.lastUsed) continue;
+      recent.splice(duplicateAt, 1);
+    }
+
+    const insertAt = recent.findIndex(existing => candidate.option.lastUsed > existing.option.lastUsed);
+    if (insertAt < 0) recent.push(candidate);
+    else recent.splice(insertAt, 0, candidate);
 
     if (recent.length > limit) recent.pop();
   }
 
-  return recent;
+  return recent.map(({ option }) => option);
 };
 
 /**
@@ -100,14 +164,16 @@ export const getRecommendations = (
   // 1. 取出最新的 2 筆 (Recent)，與首頁捷徑共用選取邏輯。
   const recents = getRecentOptions(options, 2, excludedTemplateIds);
 
-  // 用 Set 紀錄 ID 以便排除
-  const recentIds = new Set(recents.map(r => r.uid));
-
   // 2. 從剩下的項目中，取出最常用的 3 筆 (Popular)
-  const remaining = options.filter(r => !recentIds.has(r.uid));
-  // 復用 applySort 與 byUsage
-  const sortedByUsage = applySort(remaining, byUsage);
-  const populars = sortedByUsage.slice(0, 3);
+  const usedIdentities = recents.map(getRecentIdentity);
+  const populars: GameOption[] = [];
+  for (const option of applySort(options, byUsage)) {
+    const identity = getRecentIdentity(option);
+    if (usedIdentities.some(used => isSameGame(identity, used))) continue;
+    populars.push(option);
+    usedIdentities.push(identity);
+    if (populars.length === 3) break;
+  }
 
   // 3. 合併結果
   const results = [...recents, ...populars];
