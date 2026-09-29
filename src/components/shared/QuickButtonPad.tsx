@@ -114,7 +114,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
                     // --- New Dynamic Style Logic ---
 
                     // 1. Text Color (for both label and badge number)
-                    const textColor = isLightBg ? 'rgb(var(--c-txt-primary))' : 'rgb(var(--c-surface-bg))';
+                    const textColor = isLightBg ? 'rgb(var(--c-slate-900))' : 'rgb(var(--c-slate-50))';
 
                     // 2. Modifier Border Style
                     const borderClass = isModifier
