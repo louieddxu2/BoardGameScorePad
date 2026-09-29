@@ -131,7 +131,8 @@ export const getRecentOptions = (
     const { bggId, localIds, name } = candidate.identity;
     if ((bggId && excludedBggIds.has(bggId))
       || localIds.some(id => matchesExcludedIdentity(excludedLocalIds.get(id), bggId))
-      || matchesExcludedIdentity(excludedNames.get(name), bggId)) continue;
+      // A same-name pinned board cannot identify a BGG-less ambiguous history entry.
+      || (!candidate.option.ambiguousName && matchesExcludedIdentity(excludedNames.get(name), bggId))) continue;
 
     const duplicateAt = recent.findIndex(existing => isSameGame(candidate.identity, existing.identity));
     if (duplicateAt >= 0) {

@@ -35,6 +35,13 @@ describe('resolveRecentGameTemplate', () => {
     expect(resolveRecentGameTemplate([matching], { gameName: 'simple game' })).toBe(matching);
   });
 
+  it('does not use a unique template name when the catalog makes that name ambiguous', () => {
+    expect(resolveRecentGameTemplate(
+      [template('board-123', 'Shared Name', '123')],
+      { gameName: 'Shared Name', ambiguousName: true }
+    )).toBeNull();
+  });
+
   it('does not guess when the only name match has a conflicting BGG ID', () => {
     expect(resolveRecentGameTemplate(
       [template('different-game', 'Sky Totems', '456')],

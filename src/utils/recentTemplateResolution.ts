@@ -7,6 +7,8 @@ const normalizeRecentGameName = (name: string): string => {
 export interface RecentGameTemplateIdentity {
   gameName: string;
   bggId?: string;
+  ambiguousName?: boolean;
+  nameMatchPending?: boolean;
 }
 
 /** Resolve a recent history item only when its name/BoardGameGeek identity is unambiguous. */
@@ -14,6 +16,7 @@ export const resolveRecentGameTemplate = (
   templates: readonly GameTemplate[],
   identity: RecentGameTemplateIdentity
 ): GameTemplate | null => {
+  if (identity.ambiguousName) return null;
   const normalizedName = normalizeRecentGameName(identity.gameName);
   if (!normalizedName) return null;
 

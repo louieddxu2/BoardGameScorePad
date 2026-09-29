@@ -85,3 +85,62 @@ describe('template query efficiency', () => {
         expect(primaryKeys).toHaveBeenCalledOnce();
     });
 });
+
+describe('recent template identity lookup', () => {
+    afterEach(() => { vi.restoreAllMocks(); });
+
+    it('skips name-based lookup for an ambiguous recent game', async () => {
+        vi.spyOn(db.templates, 'get').mockResolvedValue(undefined);
+        vi.spyOn(db.builtins, 'get').mockResolvedValue(undefined);
+        const userWhere = vi.spyOn(db.templates, 'where');
+        const builtinWhere = vi.spyOn(db.builtins, 'where');
+        const { result } = renderHook(() => useTemplateQuery('', []), { wrapper: LanguageProvider });
+
+        expect(await result.current.getTemplate('shortcut:saved-game', {
+            gameName: 'Shared Name', ambiguousName: true
+        })).toBeNull();
+        expect(userWhere).not.toHaveBeenCalled();
+        expect(builtinWhere).not.toHaveBeenCalled();
+    });
+
+    it('still accepts a direct template ID when the name is ambiguous', async () => {
+        const matching = simpleTemplate('known-id');
+        vi.spyOn(db.templates, 'get').mockResolvedValue(matching);
+        const { result } = renderHook(() => useTemplateQuery('', []), { wrapper: LanguageProvider });
+
+        expect(await result.current.getTemplate('known-id', {
+            gameName: 'Shared Name', ambiguousName: true
+        })).toEqual(matching);
+    });
+
+    it('uses indexed candidate and catalog lookups for a loading-state shortcut', async () => {
+        const board = { ...simpleTemplate('board-123'), name: 'Shared Name', bggId: '123' };
+        const catalogIds = ['123'];
+        vi.spyOn(db.templates, 'get').mockResolvedValue(undefined);
+        vi.spyOn(db.builtins, 'get').mockResolvedValue(undefined);
+        vi.spyOn(db.templates, 'where').mockReturnValue({
+            equalsIgnoreCase: () => ({ toArray: async () => [board] })
+        } as any);
+        vi.spyOn(db.builtins, 'where').mockReturnValue({
+            equalsIgnoreCase: () => ({ toArray: async () => [] })
+        } as any);
+        const bggWhere = vi.spyOn(db.bggGames, 'where').mockImplementation((field) => ({
+            equalsIgnoreCase: () => ({
+                toArray: async () => String(field) === 'name' ? catalogIds.map(id => ({ id })) : []
+            })
+        }) as any);
+        const { result } = renderHook(() => useTemplateQuery('', []), { wrapper: LanguageProvider });
+        const identity = { gameName: 'Shared Name', ambiguousName: true, nameMatchPending: true };
+
+        expect(await result.current.getTemplate('shortcut:saved-game', identity)).toEqual(board);
+        expect(bggWhere).toHaveBeenCalledWith('name');
+        expect(bggWhere).toHaveBeenCalledWith('altNames');
+
+        catalogIds[0] = '456';
+        expect(await result.current.getTemplate('shortcut:saved-game', identity)).toBeNull();
+
+        catalogIds[0] = '123';
+        catalogIds.push('456');
+        expect(await result.current.getTemplate('shortcut:saved-game', identity)).toBeNull();
+    });
+});

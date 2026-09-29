@@ -200,7 +200,9 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
     try {
       storedTemplate = await onGetFullTemplate(shortcut.template.id, {
         gameName: shortcut.template.name,
-        bggId: shortcut.template.bggId
+        bggId: shortcut.template.bggId,
+        ambiguousName: shortcut.ambiguousName,
+        nameMatchPending: shortcut.nameMatchPending
       });
     } catch (error) {
       console.error('Failed to resolve recent game template:', error);
@@ -225,7 +227,9 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
 
       const storedTemplate = await onGetFullTemplate(shortcut.template.id, {
         gameName: shortcut.template.name,
-        bggId: shortcut.template.bggId
+        bggId: shortcut.template.bggId,
+        ambiguousName: shortcut.ambiguousName,
+        nameMatchPending: shortcut.nameMatchPending
       });
       const templateToPin = storedTemplate ?? {
         ...shortcut.template,

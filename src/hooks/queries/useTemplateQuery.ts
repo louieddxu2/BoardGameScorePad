@@ -76,7 +76,7 @@ export const useTemplateQuery = (
         t = await db.builtins.get(id);
         if (t) return mergePrefs(t, prefsMap);
 
-        if (!identity || !identity.gameName.trim()) return null;
+        if (!identity || (identity.ambiguousName && !identity.nameMatchPending) || !identity.gameName.trim()) return null;
         const gameName = identity.gameName.trim();
 
         // Name is indexed on both tables, so an ID-repair lookup stays bounded to
@@ -87,9 +87,21 @@ export const useTemplateQuery = (
         ]);
         const resolved = resolveRecentGameTemplate(
             [...userCandidates, ...builtinCandidates],
-            identity
+            identity.nameMatchPending ? { ...identity, ambiguousName: false } : identity
         );
-        return resolved ? mergePrefs(resolved, prefsMap) : null;
+        if (!resolved) return null;
+        if (identity.nameMatchPending) {
+            // While the catalog query is loading, check its indexed names at click time
+            // before trusting a unique same-name board.
+            const [primaryGames, aliasGames] = await Promise.all([
+                db.bggGames.where('name').equalsIgnoreCase(gameName).toArray(),
+                db.bggGames.where('altNames').equalsIgnoreCase(gameName).toArray()
+            ]);
+            const catalogIds = new Set([...primaryGames, ...aliasGames].map(game => game.id.trim().toLowerCase()));
+            const boardId = resolved.bggId?.trim().toLowerCase();
+            if (catalogIds.size > 1 || (catalogIds.size === 1 && boardId && !catalogIds.has(boardId))) return null;
+        }
+        return mergePrefs(resolved, prefsMap);
     };
 
     // --- TEMPLATES (User) ---
@@ -230,6 +242,7 @@ export const useTemplateQuery = (
 
     return {
         templates: userTemplates,
+        templatesLoaded: allUserTemplatesData !== undefined && allBuiltinsRaw !== undefined,
         userTemplatesCount: userTemplatesTotal,
         systemTemplates,
         systemTemplatesCount: filteredBuiltins.total,

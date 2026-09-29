@@ -94,6 +94,26 @@ describe('useDashboardData recent shortcuts', () => {
     expect(result.current.recentTemplates[0].template.id).toBe('shortcut:saved-game-1');
   });
 
+  it('carries ambiguous-name status into a recent shortcut for click-time resolution', () => {
+    const { result } = renderHook(() => useDashboardData({
+      userTemplates: [],
+      systemTemplates: [],
+      pinnedIds: [],
+      recentlyPlayedGames: [recentOption({
+        savedGameId: 'saved-game', displayName: 'Shared Name',
+        ambiguousName: true, nameMatchPending: true
+      })],
+      activeSessionIds: [],
+      activeSessions: [],
+      getSessionPreview: vi.fn(() => null)
+    }));
+
+    expect(result.current.recentTemplates[0]).toMatchObject({
+      needsResolution: true, ambiguousName: true, nameMatchPending: true,
+      template: { id: 'shortcut:saved-game', name: 'Shared Name' }
+    });
+  });
+
   it('fills the quick-start section to five games after pinned games', () => {
     const pinnedTemplates = [
       { id: 'pinned-1', name: 'Pinned One', columns: [], createdAt: 1 },

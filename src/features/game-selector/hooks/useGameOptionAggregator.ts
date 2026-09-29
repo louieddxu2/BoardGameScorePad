@@ -22,7 +22,8 @@ export const useGameOptionAggregator = (
   templates: GameTemplate[],
   savedGames: SavedListItem[],
   bggGames: BggGameSummary[] = [],
-  pinnedIds: string[] = [] // [New] Pass pinned list
+  pinnedIds: string[] = [], // [New] Pass pinned list
+  allowNameOnlyMatches = true
 ) => {
   const allOptions = useMemo<GameOption[]>(() => {
     // Primary Index: Name -> Option
@@ -38,18 +39,56 @@ export const useGameOptionAggregator = (
     const hasBggConflict = (a?: string, b?: string) =>
       !!getBggKey(a) && !!getBggKey(b) && getBggKey(a) !== getBggKey(b);
 
+    // Resolve name-only history entries only when all available sources agree on
+    // one identity. This must be known before the first template/dictionary merge.
+    const unidentifiedNames = new Set(savedGames
+      .filter(game => !getBggKey(game.bggId))
+      .map(game => getKey(game.name))
+      .filter(Boolean));
+    const ambiguousNames = new Set<string>(allowNameOnlyMatches ? [] : unidentifiedNames);
+    if (allowNameOnlyMatches && unidentifiedNames.size > 0) {
+      const templateIdsByName = new Map<string, string>();
+      const bggIdsByName = new Map<string, string>();
+      const rememberBggId = (key: string, bggId: string) => {
+        if (!unidentifiedNames.has(key) || !bggId) return;
+        const previous = bggIdsByName.get(key);
+        if (previous && previous !== bggId) ambiguousNames.add(key);
+        else bggIdsByName.set(key, bggId);
+      };
+
+      savedGames.forEach(game => rememberBggId(getKey(game.name), getBggKey(game.bggId)));
+      templates.forEach(template => {
+        const key = getKey(template.name);
+        if (!unidentifiedNames.has(key)) return;
+        const previous = templateIdsByName.get(key);
+        if (previous && previous !== template.id) ambiguousNames.add(key);
+        else templateIdsByName.set(key, template.id);
+        rememberBggId(key, getBggKey(template.bggId));
+      });
+      bggGames.forEach(game => {
+        const bggId = getBggKey(game.id);
+        rememberBggId(getKey(game.name), bggId);
+        game.altNames?.forEach(name => rememberBggId(getKey(name), bggId));
+      });
+    }
+
     const findNameMatch = (key: string, bggId?: string): GameOption | undefined => {
+      if (!allowNameOnlyMatches) return undefined;
       const candidate = nameMap.get(key);
       if (!candidate || hasBggConflict(candidate.bggId, bggId)) return undefined;
-      // A name shared by different known BGG games cannot identify a board on its own.
-      if (conflictedNames.has(key) && (!getBggKey(bggId) || !getBggKey(candidate.bggId))) return undefined;
+      // Name-only matching is unsafe when multiple boards or BGG games use this name.
+      if ((conflictedNames.has(key) || ambiguousNames.has(key))
+        && (!getBggKey(bggId) || !getBggKey(candidate.bggId))) return undefined;
       return candidate;
     };
 
     // Helper: Register option to maps
     const registerOption = (key: string, option: GameOption) => {
         const previous = nameMap.get(key);
-        if (previous?.savedGameId && option.savedGameId && !hasBggConflict(previous.bggId, option.bggId)) {
+        const uncertainIdentity = !!previous && (!allowNameOnlyMatches || ambiguousNames.has(key))
+            && (!getBggKey(previous.bggId) || !getBggKey(option.bggId));
+        if (previous?.savedGameId && option.savedGameId
+            && !hasBggConflict(previous.bggId, option.bggId) && !uncertainIdentity) {
             // Keep the newest record when saved games share a name, regardless of usage-count order.
             const newest = previous.lastUsed >= option.lastUsed ? previous : option;
             if (!newest.bggId) newest.bggId = (newest === previous ? option : previous).bggId;
@@ -58,9 +97,10 @@ export const useGameOptionAggregator = (
                 return;
             }
         }
-        if (previous && previous !== option && (hasBggConflict(previous.bggId, option.bggId) || conflictedNames.has(key))) {
+        if (previous && previous !== option
+            && (hasBggConflict(previous.bggId, option.bggId) || uncertainIdentity || conflictedNames.has(key))) {
             conflictingOptions.add(previous);
-            if (hasBggConflict(previous.bggId, option.bggId)) conflictedNames.add(key);
+            if (hasBggConflict(previous.bggId, option.bggId) || uncertainIdentity) conflictedNames.add(key);
         }
         nameMap.set(key, option);
         if (option.bggId) {
@@ -85,6 +125,8 @@ export const useGameOptionAggregator = (
         templateId: undefined, // 預設無模板
         savedGameId: g.id,
         bggId: g.bggId,
+        ambiguousName: !getBggKey(g.bggId) && ambiguousNames.has(key),
+        nameMatchPending: !getBggKey(g.bggId) && !allowNameOnlyMatches,
         displayName: g.name,
         // [New] 嘗試將已存的別名(通常是匯入時的英文名)設為 BGG Name 初值
         bggName: (g as any).altName, 
@@ -269,7 +311,7 @@ export const useGameOptionAggregator = (
 
     // Return unique values
     return Array.from(new Set([...nameMap.values(), ...conflictingOptions]));
-  }, [templates, savedGames, bggGames, pinnedIds]);
+  }, [templates, savedGames, bggGames, pinnedIds, allowNameOnlyMatches]);
 
   return allOptions;
 };

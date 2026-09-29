@@ -8,6 +8,8 @@ import type { GameOption } from '../../../features/game-selector/types';
 export interface RecentTemplateShortcut {
   template: GameTemplate;
   needsResolution: boolean;
+  ambiguousName?: boolean;
+  nameMatchPending?: boolean;
 }
 
 interface UseDashboardDataProps {
@@ -63,7 +65,9 @@ export const useDashboardData = ({
           game.defaultPlayerCount,
           game.defaultScoringRule as ScoringRule
         ),
-        needsResolution: !template
+        needsResolution: !template,
+        ...(game.ambiguousName && { ambiguousName: true }),
+        ...(game.nameMatchPending && { nameMatchPending: true })
       };
     });
   }, [recentlyPlayedGames, recentShortcutLimit, templatesById]);

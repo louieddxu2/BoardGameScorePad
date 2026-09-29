@@ -21,6 +21,12 @@ export interface GameOption {
    */
   bggId?: string;
 
+  /** Name alone cannot safely identify this saved game among available candidates. */
+  ambiguousName?: boolean;
+
+  /** Identity sources are still loading; verify by indexed lookup before starting. */
+  nameMatchPending?: boolean;
+
   // --- 2. 顯示資訊 (Display Info) ---
 
   /** React 列表渲染用的唯一 Key (通常由 templateId 或 savedGameId 充當) */

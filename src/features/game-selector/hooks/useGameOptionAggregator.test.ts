@@ -94,6 +94,113 @@ describe('useGameOptionAggregator recency', () => {
     });
   });
 
+  it('does not guess a board for a BGG-less play when same-name boards have different IDs', () => {
+    const templates: GameTemplate[] = [
+      { id: 'board-123', name: 'Shared Name', bggId: '123', columns: [], createdAt: 1 },
+      { id: 'board-456', name: 'Shared Name', bggId: '456', columns: [], createdAt: 1 }
+    ];
+    const savedGames: SavedListItem[] = [
+      { id: 'saved-game', name: 'Shared Name', lastUsed: 5000, usageCount: 1 }
+    ];
+
+    for (const order of [templates, [...templates].reverse()]) {
+      const { result, unmount } = renderHook(() => useGameOptionAggregator(order, savedGames));
+
+      expect(result.current.find(option => option.savedGameId === 'saved-game')).toMatchObject({
+        bggId: undefined, templateId: undefined, ambiguousName: true
+      });
+      expect(result.current.filter(option => option.templateId?.startsWith('board-'))).toHaveLength(2);
+      expect(getRecentOptions(result.current, 5).map(option => option.savedGameId)).toEqual(['saved-game']);
+      unmount();
+    }
+  });
+
+  it('also refuses a name-only board match when the BGG dictionary has another identity', () => {
+    const templates: GameTemplate[] = [
+      { id: 'board-123', name: 'Shared Name', bggId: '123', columns: [], createdAt: 1 }
+    ];
+    const savedGames: SavedListItem[] = [
+      { id: 'saved-game', name: 'Shared Name', lastUsed: 5000, usageCount: 1 }
+    ];
+    const bggGames = [{
+      id: '456', name: 'Different Name', altNames: ['Shared Name'],
+      _searchName: 'Different Name', _altNames: 'Shared Name'
+    }];
+
+    const { result } = renderHook(() => useGameOptionAggregator(templates, savedGames, bggGames));
+
+    expect(result.current.find(option => option.savedGameId === 'saved-game')).toMatchObject({
+      bggId: undefined, templateId: undefined, ambiguousName: true, nameMatchPending: false
+    });
+    expect(result.current.find(option => option.templateId === 'board-123')?.savedGameId).toBeUndefined();
+  });
+
+  it('does not assign a BGG ID from the first of two same-name dictionary entries', () => {
+    const savedGames: SavedListItem[] = [
+      { id: 'saved-game', name: 'Shared Name', lastUsed: 5000, usageCount: 1 }
+    ];
+    const bggGames = ['123', '456'].map(id => ({
+      id, name: 'Shared Name', altNames: [], _searchName: 'Shared Name', _altNames: ''
+    }));
+
+    const { result } = renderHook(() => useGameOptionAggregator([], savedGames, bggGames));
+
+    expect(result.current.find(option => option.savedGameId === 'saved-game')).toMatchObject({
+      bggId: undefined, ambiguousName: true
+    });
+    expect(result.current.filter(option => option.uid.startsWith('bgg_'))).toHaveLength(2);
+  });
+
+  it('keeps a BGG-less play separate from multiple same-name templates without BGG IDs', () => {
+    const templates: GameTemplate[] = [
+      { id: 'first-board', name: 'Shared Name', columns: [], createdAt: 1 },
+      { id: 'second-board', name: 'Shared Name', columns: [], createdAt: 1 }
+    ];
+    const savedGames: SavedListItem[] = [
+      { id: 'saved-game', name: 'Shared Name', lastUsed: 5000, usageCount: 1 }
+    ];
+
+    const { result } = renderHook(() => useGameOptionAggregator(templates, savedGames));
+
+    expect(result.current.find(option => option.savedGameId === 'saved-game')?.templateId).toBeUndefined();
+    expect(result.current.filter(option => option.templateId)).toHaveLength(2);
+  });
+
+  it('still matches a unique same-name board when dictionary and template agree', () => {
+    const templates: GameTemplate[] = [
+      { id: 'board-123', name: 'Unique Name', bggId: '123', columns: [], createdAt: 1 }
+    ];
+    const savedGames: SavedListItem[] = [
+      { id: 'saved-game', name: 'Unique Name', lastUsed: 5000, usageCount: 1 }
+    ];
+    const bggGames = [{
+      id: '123', name: 'Different BGG Name', altNames: ['Unique Name'],
+      _searchName: 'Different BGG Name', _altNames: 'Unique Name'
+    }];
+
+    const { result } = renderHook(() => useGameOptionAggregator(templates, savedGames, bggGames));
+
+    expect(result.current.find(option => option.savedGameId === 'saved-game')).toMatchObject({
+      templateId: 'board-123', bggId: '123', ambiguousName: false
+    });
+  });
+
+  it('does not trust a name-only match until all identity sources have loaded', () => {
+    const templates: GameTemplate[] = [
+      { id: 'board-123', name: 'Shared Name', bggId: '123', columns: [], createdAt: 1 }
+    ];
+    const savedGames: SavedListItem[] = [
+      { id: 'saved-game', name: 'Shared Name', lastUsed: 5000, usageCount: 1 }
+    ];
+
+    const { result } = renderHook(() => useGameOptionAggregator(templates, savedGames, [], [], false));
+
+    expect(result.current.find(option => option.savedGameId === 'saved-game')).toMatchObject({
+      bggId: undefined, templateId: undefined, ambiguousName: true, nameMatchPending: true
+    });
+    expect(result.current.find(option => option.templateId === 'board-123')?.savedGameId).toBeUndefined();
+  });
+
   it('attaches a matching BGG board to the most recently played alias', () => {
     const templates: GameTemplate[] = [
       { id: 'board-123', name: 'Board Title', bggId: '123', columns: [], createdAt: 1 }

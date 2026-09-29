@@ -99,6 +99,24 @@ describe('getRecentOptions', () => {
       .toEqual(['different-bgg', 'eligible']);
   });
 
+  it('keeps ambiguous BGG-less history visible beside a same-name pinned board', () => {
+    const options = [
+      option('pinned-board', 0, 0, {
+        savedGameId: undefined, templateId: 'board-123', displayName: 'Shared Name',
+        bggId: '123', isPinned: true
+      }),
+      option('uncertain-history', 5000, 1, {
+        displayName: 'Shared Name', bggId: undefined, ambiguousName: true
+      }),
+      option('linked-history', 4000, 1, {
+        templateId: 'board-123', displayName: 'Shared Name', bggId: undefined,
+        ambiguousName: true
+      })
+    ];
+
+    expect(getRecentOptions(options, 5).map(item => item.uid)).toEqual(['uncertain-history']);
+  });
+
   it('keeps the recommendation panel recent entries on the shared ordering', () => {
     const options = [
       option('frequent-old', 1000, 10),

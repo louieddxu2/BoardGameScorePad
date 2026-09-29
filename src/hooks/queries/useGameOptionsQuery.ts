@@ -25,11 +25,13 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
   // Pass pinnedIds to ensure pinned simple templates are visible
   const {
     templates: allTemplates,
-    systemTemplates: allSystemTemplates
+    systemTemplates: allSystemTemplates,
+    templatesLoaded
   } = useTemplateQuery('', pinnedIds);
 
   const {
-    savedGames: allSavedGames
+    savedGames: allSavedGames,
+    savedGamesLoaded
   } = useSavedGameQuery('');
 
   // 2. Fetch BGG Dictionary (Lite Summary)
@@ -38,7 +40,7 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
     if (!enabled) return [];
     const rawGames = await db.bggGames.toArray();
     return rawGames.map(extractBggGameSummary);
-  }, [enabled], []);
+  }, [enabled]);
 
   // 3. Aggregate Data (Merge & Deduplicate)
   // 將 BGG Summary 傳入，讓 Aggregator 進行名稱匹配與搜尋索引補完
@@ -51,7 +53,8 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
     templatesForOptions,
     enabled ? allSavedGames : EMPTY_SAVED_GAMES,
     enabled ? allBggGames ?? EMPTY_BGG_GAMES : EMPTY_BGG_GAMES,
-    pinnedIds
+    pinnedIds,
+    !!(templatesLoaded && savedGamesLoaded && allBggGames !== undefined)
   );
 
   // 4. Search
