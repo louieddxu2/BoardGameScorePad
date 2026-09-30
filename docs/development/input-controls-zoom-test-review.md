@@ -1,5 +1,7 @@
 # Input-control zoom test review
 
+This records the original `03de2b6` review (28 cases). In the subsequent keypad-format correction, the regression file has 30 cases: `-` and `+/-` now share the digits' fixed 32px typography at all three zoom levels. The original mutation results below concern the quick-option font change, not this later keypad correction. Real-device layout verification is still required.
+
 Scope: `src/components/shared/InputControls.zoom.test.tsx` and the two font-unit changes in `QuickButtonPad.tsx`.
 
 | Reviewed file | Severity | Finding and disposition |

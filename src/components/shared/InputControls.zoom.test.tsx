@@ -165,19 +165,20 @@ describe('input controls with app zoom', () => {
 
     expect(document.documentElement.style.fontSize).toBe(rootFontSize);
     expect(window.getComputedStyle(digit).fontSize).toBe('32px');
-    expect(window.getComputedStyle(screen.getByRole('button', { name: '-' })).fontSize).toBe('28px');
+    expect(window.getComputedStyle(screen.getByRole('button', { name: '-' })).fontSize).toBe('32px');
     expect(digit.closest('[data-numeric-keypad="true"]')).toHaveClass('flex-1', 'min-h-0', 'grid-rows-4');
   });
 
-  it('preserves the existing root-relative +/- text', () => {
+  it.each(zoomCases)('keeps +/- on the same fixed font size as the digits at $name zoom', ({ distance, rootFontSize }) => {
     renderHook(() => useMobileZoom());
     render(<NumericKeypad {...makeNumericProps(1)} />);
     const sign = screen.getByRole('button', { name: '+/-' });
 
-    pinch(sign, 180);
+    pinch(sign, distance);
 
-    expect(document.documentElement.style.fontSize).toBe('20.8px');
-    expect(window.getComputedStyle(sign).fontSize).toBe('1.25rem');
+    expect(document.documentElement.style.fontSize).toBe(rootFontSize);
+    expect(window.getComputedStyle(sign).fontSize).toBe('32px');
+    expect(window.getComputedStyle(sign).fontSize).toBe(window.getComputedStyle(screen.getByRole('button', { name: '1' })).fontSize);
   });
 
   it('does not type a digit while pinching and still accepts the next tap', () => {

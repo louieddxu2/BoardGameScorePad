@@ -230,6 +230,11 @@ describe('SessionView toolbox scroll behavior', () => {
       expect(getInputPanel().style.height).toBe('40vh');
       expect(getInputPanel().style.bottom).toBe('var(--bottom-ui-safe-gap)');
       expect(document.querySelector('[data-ios-browser-reserve="true"]')).toBeNull();
+      const bottomFill = document.querySelector('[data-input-panel-bottom-fill="true"]') as HTMLElement;
+      expect(bottomFill).toHaveClass('absolute', 'inset-x-0', 'bottom-0', 'z-50', 'bg-input-bg');
+      expect(bottomFill).not.toHaveClass('pointer-events-none');
+      expect(bottomFill).toHaveAttribute('aria-hidden', 'true');
+      expect(bottomFill.style.height).toBe(getInputPanel().style.bottom);
     } finally {
       if (previousValue === undefined) {
         delete document.documentElement.dataset.iosBrowser;
@@ -253,6 +258,9 @@ describe('SessionView toolbox scroll behavior', () => {
       expect(getInputPanel()).toHaveClass('absolute', 'left-0', 'right-0');
       expect(getInputPanel().style.bottom).toBe('var(--app-safe-area-bottom)');
       expect(document.querySelector('[data-ios-browser-reserve="true"]')).toBeNull();
+      const bottomFill = document.querySelector('[data-input-panel-bottom-fill="true"]') as HTMLElement;
+      expect(bottomFill).toHaveClass('bg-input-bg');
+      expect(bottomFill.style.height).toBe(getInputPanel().style.bottom);
     } finally {
       if (previousAndroid === undefined) delete document.documentElement.dataset.android;
       else document.documentElement.dataset.android = previousAndroid;
@@ -261,11 +269,11 @@ describe('SessionView toolbox scroll behavior', () => {
     }
   });
 
-  it('keeps standalone PWA input surface behavior unchanged', () => {
+  it.each([true, false])('keeps standalone PWA input surface behavior unchanged with Android %s', (isAndroid) => {
     const previousAndroid = document.documentElement.dataset.android;
     const previousStandalone = document.documentElement.dataset.standalone;
     delete document.documentElement.dataset.iosBrowser;
-    document.documentElement.dataset.android = 'true';
+    document.documentElement.dataset.android = String(isAndroid);
     document.documentElement.dataset.standalone = 'true';
 
     try {
@@ -275,9 +283,38 @@ describe('SessionView toolbox scroll behavior', () => {
       expect(getInputPanel()).toHaveClass('absolute', 'left-0', 'right-0');
       expect(getInputPanel().style.bottom).toBe('var(--bottom-ui-safe-gap)');
       expect(document.querySelector('[data-ios-browser-reserve="true"]')).toBeNull();
+      expect(document.querySelector('[data-input-panel-bottom-fill="true"]')).toBeNull();
     } finally {
       if (previousAndroid === undefined) delete document.documentElement.dataset.android;
       else document.documentElement.dataset.android = previousAndroid;
+      if (previousStandalone === undefined) delete document.documentElement.dataset.standalone;
+      else document.documentElement.dataset.standalone = previousStandalone;
+    }
+  });
+
+  it('shows the browser bottom fill only while the toolbox is visible without changing its dock', () => {
+    const previousStandalone = document.documentElement.dataset.standalone;
+    document.documentElement.dataset.standalone = 'false';
+
+    try {
+      renderSession();
+      expect(document.querySelector('[data-input-panel-bottom-fill="true"]')).toBeNull();
+      const toolboxButton = document.querySelector('[title="Toggle Toolbox"]') as HTMLButtonElement;
+
+      fireEvent.click(toolboxButton);
+
+      const panel = document.querySelector('[data-session-input-panel="true"]') as HTMLElement;
+      const bottomFill = document.querySelector('[data-input-panel-bottom-fill="true"]') as HTMLElement;
+      expect(panel.style.height).toBe('40vh');
+      expect(bottomFill).toBeInTheDocument();
+      expect(bottomFill.style.height).toBe(panel.style.bottom);
+      expect(bottomFill.parentElement).toBe(panel.parentElement);
+      expect(bottomFill.querySelector('button, input, textarea')).toBeNull();
+
+      fireEvent.click(toolboxButton);
+
+      expect(document.querySelector('[data-input-panel-bottom-fill="true"]')).toBeNull();
+    } finally {
       if (previousStandalone === undefined) delete document.documentElement.dataset.standalone;
       else document.documentElement.dataset.standalone = previousStandalone;
     }
@@ -560,15 +597,19 @@ describe('SessionView toolbox scroll behavior', () => {
       });
 
       expect(panel.style.bottom).toBe('260px');
+      const bottomFill = document.querySelector('[data-input-panel-bottom-fill="true"]') as HTMLElement;
+      expect(bottomFill.style.height).toBe('260px');
 
       act(() => {
         viewport.offsetTop = 40;
         viewport.dispatchEvent(new Event('scroll'));
       });
       expect(panel.style.bottom).toBe('260px');
+      expect(bottomFill.style.height).toBe('260px');
 
       fireEvent.blur(textarea);
       expect(panel.style.bottom).toBe('var(--bottom-ui-safe-gap)');
+      expect(bottomFill.style.height).toBe(panel.style.bottom);
     } finally {
       act(() => {
         viewport.height = originalHeight;
