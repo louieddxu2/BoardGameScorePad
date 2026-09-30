@@ -19,6 +19,7 @@ interface QuickActionButtonProps {
     action: QuickAction;
     isSelected: boolean;
     isListMode: boolean;
+    showActionValue: boolean;
     isStandardSumParts: boolean;
     backgroundColor: string;
     textColor: string;
@@ -31,6 +32,7 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
     action,
     isSelected,
     isListMode,
+    showActionValue,
     isStandardSumParts,
     backgroundColor,
     textColor,
@@ -61,17 +63,19 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
             )}
 
             <span
-                className={`font-bold leading-tight break-words whitespace-pre-wrap pointer-events-none hyphenate ${isListMode ? 'text-[20px] text-left flex-1 min-w-0' : 'text-[16px] text-center w-full mb-1'}`}
+                className={`font-bold leading-tight break-words whitespace-pre-wrap pointer-events-none hyphenate ${isListMode ? 'text-[20px] text-left flex-1 min-w-0' : 'text-[16px] text-center w-full'} ${!isListMode && showActionValue ? 'mb-1' : ''}`}
                 style={{ color: textColor }}
             >
                 {injectSoftHyphens(action.label)}
             </span>
-            <span
-                className={`font-mono font-bold rounded-full flex items-center justify-center shrink-0 pointer-events-none ${isListMode ? 'text-[16px] px-3 py-1 ml-2' : 'text-[14px] px-2 py-0.5'} ${badgeBackgroundClass}`}
-                style={{ color: textColor }}
-            >
-                {isStandardSumParts && action.value > 0 ? '+' : ''}{action.value}
-            </span>
+            {showActionValue && (
+                <span
+                    className={`font-mono font-bold rounded-full flex items-center justify-center shrink-0 pointer-events-none ${isListMode ? 'text-[16px] px-3 py-1 ml-2' : 'text-[14px] px-2 py-0.5'} ${badgeBackgroundClass}`}
+                    style={{ color: textColor }}
+                >
+                    {isStandardSumParts && action.value > 0 ? '+' : ''}{action.value}
+                </span>
+            )}
         </button>
     );
 };
@@ -90,6 +94,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
 
     const cols = column.buttonGridColumns || 1;
     const isListMode = cols <= 1;
+    const showActionValue = column.renderMode !== 'label_only';
     const minRowHeight = isListMode ? '3.5rem' : '4.5rem';
 
     return (
@@ -113,7 +118,8 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
 
                     // --- New Dynamic Style Logic ---
 
-                    // 1. Text Color (for both label and badge number)
+                    // Contrast is against a game-selected background, not the app surface.
+                    // Keep fixed palette tokens here: semantic UI colors change with theme.
                     const textColor = isLightBg ? 'rgb(var(--c-slate-900))' : 'rgb(var(--c-slate-50))';
 
                     // 2. Modifier Border Style
@@ -132,6 +138,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
                             action={action}
                             isSelected={isSelected}
                             isListMode={isListMode}
+                            showActionValue={showActionValue}
                             isStandardSumParts={isStandardSumParts}
                             backgroundColor={bg}
                             textColor={textColor}
