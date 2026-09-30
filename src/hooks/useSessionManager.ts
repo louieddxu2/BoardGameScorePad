@@ -15,18 +15,20 @@ import { COLORS } from '../colors';
 import { useLibrary } from './useLibrary';
 import { useSessionTranslation } from '../i18n/session';
 import { isDisposableTemplate, calculateWinners, prepareTemplateForSave, createVirtualTemplate } from '../utils/templateUtils';
-import { deleteSessionRecord, deleteSessionRecords } from '../features/multiplayer/sessionDeletionEvents';
+import { deleteSessionRecord, deleteSessionRecords, notifySessionDeleted } from '../features/multiplayer/sessionDeletionEvents';
 
 interface UseSessionManagerProps {
     getTemplate: (id: string) => Promise<GameTemplate | null>;
     activeSessions: GameSession[] | undefined;
     isCloudEnabled: () => boolean;
+    pinnedIds: string[];
 }
 
 export const useSessionManager = ({
     getTemplate,
     activeSessions,
-    isCloudEnabled
+    isCloudEnabled,
+    pinnedIds
 }: UseSessionManagerProps) => {
 
     const { showToast } = useToast();
@@ -273,7 +275,7 @@ export const useSessionManager = ({
         }
         await cleanupService.cleanSessionArtifacts(session.id, session.cloudFolderId);
         await deleteSessionRecord(session.id);
-        await cleanupService.cleanupDisposableTemplate(session.templateId);
+        await cleanupService.cleanupDisposableTemplate(session.templateId, pinnedIds);
 
         if (currentSession?.id === session.id) {
             setCurrentSession(null);
@@ -376,7 +378,7 @@ export const useSessionManager = ({
             await deleteSessionRecord(sessionToSave.id);
 
             if (activeTemplate) {
-                await cleanupService.cleanupDisposableTemplate(activeTemplate.id);
+                await cleanupService.cleanupDisposableTemplate(activeTemplate.id, pinnedIds);
             }
         } else {
             const finalSession = { ...sessionToSave, lastUpdatedAt: Date.now() };
@@ -405,7 +407,7 @@ export const useSessionManager = ({
 
         const isPureBuiltin = !!(await db.builtins.get(activeTemplate!.id)) && !activeTemplate!.sourceTemplateId;
 
-        if (activeTemplate && !isPureBuiltin && isCloudEnabled() && isImageDirtyRef.current && !isDisposableTemplate(activeTemplate)) {
+        if (activeTemplate && !isPureBuiltin && isCloudEnabled() && isImageDirtyRef.current && !isDisposableTemplate(activeTemplate, pinnedIds)) {
             googleDriveService.backupTemplate(activeTemplate).then((updated) => {
                 if (updated) {
                     db.templates.update(updated.id, { lastSyncedAt: updated.updatedAt || Date.now() });
@@ -431,7 +433,7 @@ export const useSessionManager = ({
 
             const winnerIds = calculateWinners(currentSession.players, rule);
 
-            const snapshotTemplate = isDisposableTemplate(activeTemplate)
+            const snapshotTemplate = isDisposableTemplate(activeTemplate, pinnedIds)
                 ? undefined
                 : JSON.parse(JSON.stringify(activeTemplate));
 
@@ -457,8 +459,11 @@ export const useSessionManager = ({
                 scoringRule: rule
             };
 
-            await db.history.put(record);
-            await deleteSessionRecord(currentSession.id);
+            await db.transaction('rw', db.history, db.sessions, async () => {
+                await db.history.put(record);
+                await db.sessions.delete(currentSession.id);
+            });
+            notifySessionDeleted(currentSession.id);
 
             try {
                 await relationshipService.processGameEnd(record);
@@ -486,7 +491,7 @@ export const useSessionManager = ({
             }
 
             if (activeTemplate) {
-                await cleanupService.cleanupDisposableTemplate(activeTemplate.id);
+                await cleanupService.cleanupDisposableTemplate(activeTemplate.id, pinnedIds);
             }
 
             setCurrentSession(null);
@@ -573,7 +578,7 @@ export const useSessionManager = ({
 
         setActiveTemplate(finalTemplate);
 
-        if (isCloudEnabled() && !isDisposableTemplate(finalTemplate)) {
+        if (isCloudEnabled() && !isDisposableTemplate(finalTemplate, pinnedIds)) {
             googleDriveService.backupTemplate(finalTemplate).then((updated) => {
                 if (updated) {
                     db.templates.update(updated.id, { lastSyncedAt: updated.updatedAt || Date.now() });

@@ -99,6 +99,9 @@ describe('createP2PHandshakeSync reconnect lifecycle', () => {
 
     const secondConnection = await openClientConnection(FakePeer.instances[1]);
     expect(secondConnection.sent[0]).toEqual(expect.objectContaining({ type: 'HELLO' }));
+    secondConnection.emit('data', { type: 'MY_METAS', metas: [{ id: 'session-1', version: 2 }] });
+    await Promise.resolve();
+    expect(secondConnection.sent).toContainEqual({ type: 'REQUEST_ITEMS', ids: ['session-1'] });
     secondConnection.emit('data', { type: 'score:valuePatch', opId: 'patch-1' });
     await Promise.resolve();
     expect(onMessage).toHaveBeenCalledWith({ type: 'score:valuePatch', opId: 'patch-1' }, secondConnection);

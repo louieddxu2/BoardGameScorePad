@@ -21,6 +21,12 @@ export interface GameOption {
    */
   bggId?: string;
 
+  /** Name alone cannot safely identify this saved game among available candidates. */
+  ambiguousName?: boolean;
+
+  /** Identity sources are still loading; verify by indexed lookup before starting. */
+  nameMatchPending?: boolean;
+
   // --- 2. 顯示資訊 (Display Info) ---
 
   /** React 列表渲染用的唯一 Key (通常由 templateId 或 savedGameId 充當) */
@@ -40,7 +46,7 @@ export interface GameOption {
 
   // --- 3. 排序權重 (Sorting Weights) ---
 
-  /** 排序依據 (Recency)。取 Template 修改時間與 SavedGame 遊玩時間的較大者。 */
+  /** 最近遊玩時間；只由 savedGames 的實際遊玩紀錄提供。 */
   lastUsed: number;
 
   /** 排序依據 (Frequency) */

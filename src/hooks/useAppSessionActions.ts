@@ -54,6 +54,7 @@ export const useAppSessionActions = ({
   setIsIOSPwaGuideVisible,
 }: UseAppSessionActionsOptions) => {
   const sessionTransitionInFlightRef = useRef(false);
+  const persistMissingTemplateOnStartRef = useRef<string | null>(null);
   // Room teardown can clear activeMultiplayerRoom before the host's local
   // session has finished resuming. Keep exit actions blocked across that gap.
   const multiplayerRoomTransitionInFlightRef = useRef(false);
@@ -64,7 +65,8 @@ export const useAppSessionActions = ({
     showToast({ message: tApp('app_toast_multiplayer_exit_requires_disconnect'), type: 'warning' });
   }, [showToast, tApp]);
 
-  const initSetup = useCallback((template: GameTemplate) => {
+  const initSetup = useCallback((template: GameTemplate, options?: { persistIfMissing?: boolean }) => {
+    persistMissingTemplateOnStartRef.current = options?.persistIfMissing ? template.id : null;
     setPendingTemplate(template);
   }, [setPendingTemplate]);
 
@@ -127,12 +129,18 @@ export const useAppSessionActions = ({
 
   const handleStartNewGame = useCallback(async (template: GameTemplate, count: number, options: { startTimeStr: string; scoringRule: ScoringRule }) => {
     if (!template) return;
+    const shouldPersistMissingTemplate = persistMissingTemplateOnStartRef.current === template.id;
 
     if (appData.activeSessionIds.includes(template.id)) {
       await appData.discardSession(template.id);
     }
 
+    if (shouldPersistMissingTemplate && !await appData.getTemplate(template.id)) {
+      await appData.saveTemplate(template, { skipCloud: true });
+    }
+
     await appData.startSession(template, count, options);
+    persistMissingTemplateOnStartRef.current = null;
     enterActiveSession('start-new-session');
     setPendingTemplate(null);
   }, [appData, enterActiveSession, setPendingTemplate]);

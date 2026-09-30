@@ -70,7 +70,8 @@ export const useAppData = () => {
     const sessionManager = useSessionManager({
         getTemplate: queries.getTemplate,
         activeSessions: queries.activeSessions,
-        isCloudEnabled
+        isCloudEnabled,
+        pinnedIds
     });
 
     // --- 3. LocalStorage Settings & Global Actions ---
@@ -124,8 +125,7 @@ export const useAppData = () => {
 
         await db.templates.put(finalTemplate);
 
-        // [Filter Logic] Do not backup disposable templates to cloud
-        // Pass pinnedIds to isDisposableTemplate to avoid backing up pinned simple templates (which are technically disposable structure-wise)
+        // Do not back up disposable templates; pinned simple templates remain eligible.
         if (!options.skipCloud && isCloudEnabled() && !isDisposableTemplate(finalTemplate, pinnedIds)) {
             googleDriveService.backupTemplate(finalTemplate).then((updated) => {
                 if (updated) {
@@ -430,6 +430,7 @@ export const useAppData = () => {
         systemTemplates: queries.systemTemplates,
         systemTemplatesCount: queries.systemTemplatesCount,
         systemOverrides: queries.systemOverrides,
+        shareableTemplateIds: queries.shareableTemplateIds,
 
         // [NEW] Merged Options (renamed from Candidates)
         gameOptions: queries.gameOptions,
@@ -439,6 +440,7 @@ export const useAppData = () => {
         historyRecords: queries.historyRecords,
         historyStatsRecords: queries.historyStatsRecords,
         historyGameEntries: queries.historyGameEntries,
+        recentlyPlayedGames: queries.recentlyPlayedGames,
         historyCount: queries.historyCount,
 
         savedPlayers: queries.savedPlayers,

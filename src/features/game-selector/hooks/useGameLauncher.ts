@@ -6,10 +6,11 @@ import { db } from '../../../db';
 import { generateId } from '../../../utils/idGenerator';
 import { useAppTranslation } from '../../../i18n/app';
 import { createTemplateFromOption } from '../../../utils/templateUtils';
+import type { RecentGameTemplateIdentity } from '../../../utils/recentTemplateResolution';
 
 interface UseGameLauncherProps {
   allVisibleTemplates: GameTemplate[];
-  onGetFullTemplate: (id: string) => Promise<GameTemplate | null>;
+  onGetFullTemplate: (id: string, identity?: RecentGameTemplateIdentity) => Promise<GameTemplate | null>;
   onTemplateSave: (template: GameTemplate, options?: { skipCloud?: boolean; preserveTimestamps?: boolean }) => void;
   onGameStart: (template: GameTemplate, playerCount: number, location: string, locationId?: string, extra?: { startTimeStr?: string, scoringRule?: ScoringRule }) => void;
 }
@@ -43,6 +44,7 @@ export const useGameLauncher = ({
   ) => {
     const { option, playerCount, location, locationId, extra } = data;
     let templateToStart: GameTemplate;
+    let resolvedPendingTemplate = false;
 
     // 1. 解析 Template 來源
     if (option.templateId) {
@@ -56,21 +58,36 @@ export const useGameLauncher = ({
         return;
       }
     } else {
-      // 建立新模板
-      templateToStart = createTemplateFromOption(option, {
-        lastPlayerCount: playerCount
-      });
-      
-      // 如果有 AI 注入的欄位，在此時填入
-      if (injectedColumns && injectedColumns.length > 0) {
-        templateToStart.columns = injectedColumns;
-      }
+      // A loading-state option may have a real board. Resolve it by indexed
+      // name/catalog lookup at click time before creating a disposable board.
+      const pendingMatch = option.nameMatchPending
+        ? await onGetFullTemplate(`shortcut:${option.savedGameId || option.uid}`, {
+            gameName: option.cleanName || option.displayName,
+            bggId: option.bggId,
+            ambiguousName: option.ambiguousName,
+            nameMatchPending: true
+          })
+        : null;
+      if (pendingMatch) {
+        templateToStart = pendingMatch;
+        resolvedPendingTemplate = true;
+      } else {
+        // 建立新模板
+        templateToStart = createTemplateFromOption(option, {
+          lastPlayerCount: playerCount
+        });
 
-      await onTemplateSave(templateToStart, { skipCloud: true });
+        // 如果有 AI 注入的欄位，在此時填入
+        if (injectedColumns && injectedColumns.length > 0) {
+          templateToStart.columns = injectedColumns;
+        }
+
+        await onTemplateSave(templateToStart, { skipCloud: true });
+      }
     }
 
     // 如果是現有模板，但這次透過 AI 掃描注入了欄位
-    if (injectedColumns && injectedColumns.length > 0 && templateToStart.id === option.templateId) {
+    if (injectedColumns && injectedColumns.length > 0 && (templateToStart.id === option.templateId || resolvedPendingTemplate)) {
         templateToStart = { ...templateToStart, columns: injectedColumns };
         await onTemplateSave(templateToStart, { skipCloud: true });
     }

@@ -30,6 +30,7 @@ export const useSavedGameQuery = (searchQuery: string) => {
   }, [allSavedGames, searchQuery]);
 
   return {
-      savedGames: filteredSavedGames
+      savedGames: filteredSavedGames,
+      savedGamesLoaded: allSavedGames !== undefined
   };
 };

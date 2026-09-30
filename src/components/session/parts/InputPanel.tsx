@@ -49,6 +49,8 @@ interface InputPanelProps {
     canEditTotal?: (playerId: string) => boolean;
     canEditPlayers?: boolean;
     mediaOnlyTools?: boolean;
+    onToolboxInputFocusChange?: (focused: boolean) => void;
+    toolboxTopContent?: React.ReactNode;
 }
 
 import { injectSoftHyphens } from '../../../utils/text';
@@ -234,7 +236,7 @@ const TotalAdjustmentSidebar: React.FC<{
 
 
 const InputPanel: React.FC<InputPanelProps> = (props) => {
-    const { sessionState, eventHandlers, session, template, savedPlayers, allSavedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice, bottomOffset, canEditScore = () => true, canEditTotal = () => true, canEditPlayers = true, mediaOnlyTools = false } = props;
+    const { sessionState, eventHandlers, session, template, savedPlayers, allSavedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice, bottomOffset, canEditScore = () => true, canEditTotal = () => true, canEditPlayers = true, mediaOnlyTools = false, onToolboxInputFocusChange, toolboxTopContent } = props;
     const { uiState, setUiState, panelHeight, isShortList } = sessionState;
     const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue, isEditingTitle, isToolboxOpen } = uiState;
     const { t } = useSessionTranslation();
@@ -990,6 +992,8 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                         onScreenshot={() => onScreenshotRequest?.('simple')} // Default to simple for quick screenshot
                         onUpdateSession={onUpdateSession} // [Fix] Pass updater to allow order shuffling
                         mediaOnly={mediaOnlyTools}
+                        onMemoFocusChange={onToolboxInputFocusChange}
+                        topContent={toolboxTopContent}
                     />
                 )}
             </div>

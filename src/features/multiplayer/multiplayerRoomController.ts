@@ -25,9 +25,8 @@ import {
 } from './protocol';
 import { ScorePatchActor } from './scoreValuePatch';
 import {
-  createOutboxRecord,
   MultiplayerDeliveryStore,
-  reserveScorePatchSequence,
+  reserveSequenceAndPutOutbox,
   scorePatchOperationKey,
   scorePatchSequenceKey,
 } from './multiplayerDeliveryStore';
@@ -266,11 +265,12 @@ export const createMultiplayerPlayerRoomController = (options: {
       scoreValue: ScoreValue | null;
     }): Promise<ScoreValuePatchMessage> {
       const draft = options.playerSession.createScoreValuePatchMessage({ ...input, deviceId: options.deviceId, opId: generateId(), sequence: 1 });
-      const sequence = await reserveScorePatchSequence({
-        store: options.deliveryStore, key: scorePatchSequenceKey(draft), now,
+      const message = await reserveSequenceAndPutOutbox({
+        store: options.deliveryStore,
+        key: scorePatchSequenceKey(draft),
+        now,
+        createMessage: (sequence) => ({ ...draft, sequence, updatedAt: now() }),
       });
-      const message = { ...draft, sequence, updatedAt: now() };
-      await options.deliveryStore.putOutbox(createOutboxRecord(message));
       send(message);
       return message;
     },
@@ -304,9 +304,12 @@ export const createMultiplayerPlayerRoomController = (options: {
         opId: generateId(), deviceId: options.deviceId, sequence: 1, actor: { role: 'player', playerId: input.playerId },
         targetPlayerId: input.playerId, targetTotal: input.targetTotal, updatedAt: now(),
       };
-      const sequence = await reserveScorePatchSequence({ store: options.deliveryStore, key: `${draft.roomId}:${draft.deviceId}:${input.playerId}:__TOTAL__`, now });
-      const message = { ...draft, sequence, updatedAt: now() };
-      await options.deliveryStore.putOutbox(createOutboxRecord(message));
+      const message = await reserveSequenceAndPutOutbox({
+        store: options.deliveryStore,
+        key: `${draft.roomId}:${draft.deviceId}:${input.playerId}:__TOTAL__`,
+        now,
+        createMessage: (sequence) => ({ ...draft, sequence, updatedAt: now() }),
+      });
       send(message);
       return message;
     },

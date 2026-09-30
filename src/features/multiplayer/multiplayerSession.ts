@@ -253,7 +253,8 @@ export const createMultiplayerPlayerSessionFromBootstrap = (options: {
       if (message.type !== 'session:snapshot' || message.roomId !== state.room.roomId || message.sessionId !== state.session.id) {
         return false;
       }
-      if (message.revision < state.revision) return false;
+      // The acknowledgement and host broadcast can contain the same revision.
+      if (message.revision <= state.revision) return false;
 
       state.session = cloneJson(message.session);
       state.revision = message.revision;

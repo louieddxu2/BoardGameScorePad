@@ -117,6 +117,7 @@ const AppWorkspace: React.FC<AppWorkspaceProps> = ({
           isVisible={view === AppView.DASHBOARD}
           currentView={view}
           userTemplates={appData.templates}
+          shareableTemplateIds={appData.shareableTemplateIds}
           userTemplatesCount={appData.userTemplatesCount}
           systemOverrides={appData.systemOverrides}
           systemTemplates={appData.systemTemplates}
@@ -128,6 +129,7 @@ const AppWorkspace: React.FC<AppWorkspaceProps> = ({
           historyRecords={appData.historyRecords}
           historyStatsRecords={appData.historyStatsRecords}
           historyGameEntries={appData.historyGameEntries}
+          recentlyPlayedGames={appData.recentlyPlayedGames}
           historyCount={appData.historyCount}
           savedPlayers={appData.savedPlayers}
           searchQuery={appData.searchQuery}

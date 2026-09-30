@@ -1,16 +1,19 @@
 
 import React, { useState } from 'react';
 import { GameTemplate, GameSession } from '../../../types';
-import { Activity, Pin, LayoutGrid, ArrowRightLeft, Plus, Library, Sparkles, Cloud } from 'lucide-react';
+import { Activity, Pin, LayoutGrid, ArrowRightLeft, Plus, Library, Sparkles, Cloud, Zap } from 'lucide-react';
 import DashboardSection from '../parts/DashboardSection';
 import GameCard from '../parts/GameCard';
 import { useDashboardTranslation } from '../../../i18n/dashboard';
 import { useCloudLibraryTranslation } from '../../../i18n/cloud_library';
+import type { RecentTemplateShortcut } from '../hooks/useDashboardData';
 
 interface LibraryViewProps {
     // Data
     activeSessions: GameSession[];
     pinnedTemplates: GameTemplate[];
+    recentTemplates: RecentTemplateShortcut[];
+    shareableTemplateIds: ReadonlySet<string>;
     userTemplates: GameTemplate[];
     userTemplatesTotal: number;
     systemTemplates: GameTemplate[];
@@ -23,10 +26,12 @@ interface LibraryViewProps {
     isAutoConnectEnabled: boolean;
     // Handlers
     onTemplateSelect: (template: GameTemplate) => void;
+    onRecentTemplateSelect: (shortcut: RecentTemplateShortcut) => void;
     onDirectResume: (id: string) => void;
     onDeleteSession: (id: string) => void;
     onClearAllSessions: () => void;
     onPin: (id: string) => void;
+    onPinRecentTemplate: (shortcut: RecentTemplateShortcut) => void;
     onDeleteTemplate: (id: string) => void;
     onCopyJSON: (template: GameTemplate, e: React.MouseEvent) => void;
     onCopyTemplateShareLink: (template: GameTemplate, e: React.MouseEvent) => void;
@@ -54,6 +59,8 @@ const TruncationFooter: React.FC<{ displayed: number, total: number, label: stri
 export const LibraryView: React.FC<LibraryViewProps> = ({
     activeSessions,
     pinnedTemplates,
+    recentTemplates,
+    shareableTemplateIds,
     userTemplates,
     userTemplatesTotal,
     systemTemplates,
@@ -64,10 +71,12 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     isConnected,
     isAutoConnectEnabled,
     onTemplateSelect,
+    onRecentTemplateSelect,
     onDirectResume,
     onDeleteSession,
     onClearAllSessions,
     onPin,
+    onPinRecentTemplate,
     onDeleteTemplate,
     onCopyJSON,
     onCopyTemplateShareLink,
@@ -86,7 +95,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
     // Section Toggles
     const [isActiveLibOpen, setIsActiveLibOpen] = useState(true);
-    const [isPinnedLibOpen, setIsPinnedLibOpen] = useState(true);
+    const [isQuickStartOpen, setIsQuickStartOpen] = useState(true);
     const [isUserLibOpen, setIsUserLibOpen] = useState(true);
     const [isSystemLibOpen, setIsSystemLibOpen] = useState(true);
 
@@ -99,8 +108,9 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             {activeSessions.length > 0 && (
                 <DashboardSection
                     title={t('dash_active_sessions')}
-                    icon={<Activity size={18} />}
+                    icon={<Activity size={16} />}
                     count={activeSessions.length}
+                    compact
                     iconColorClass="text-brand-primary"
                     isOpen={isActiveLibOpen}
                     onToggle={() => setIsActiveLibOpen(!isActiveLibOpen)}
@@ -110,7 +120,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                         </button>
                     }
                 >
-                    <div className={`grid grid-cols-2 gap-4 mt-4 ${animClass}`}>
+                    <div className={`grid grid-cols-1 gap-2 mt-2 ${animClass}`}>
                         {activeSessions.map(session => (
                             <GameCard
                                 key={`active-${session.id}`}
@@ -128,30 +138,46 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 </DashboardSection>
             )}
 
-            <DashboardSection
-                title={t('dash_pinned')}
-                icon={<Pin size={18} />}
-                count={pinnedTemplates.length}
-                iconColorClass="text-status-warning"
-                isOpen={isPinnedLibOpen}
-                onToggle={() => setIsPinnedLibOpen(!isPinnedLibOpen)}
-            >
-                <div className={`grid grid-cols-2 gap-4 mt-4 ${animClass}`}>
-                    {pinnedTemplates.map(tData => (
-                        <GameCard
-                            key={`pinned-${tData.id}`}
-                            template={tData}
-                            mode="pinned"
-                            onClick={() => onTemplateSelect(tData)}
-                            onPin={(e) => { e.stopPropagation(); onPin(tData.id); }}
-                            onCopyLink={(e) => { e.stopPropagation(); onCopyTemplateShareLink(tData, e); }}
-                            isCopied={copiedId === tData.id}
-                            isConnected={isConnected}
-                            isAutoConnectEnabled={isAutoConnectEnabled}
-                        />
-                    ))}
-                </div>
-            </DashboardSection>
+            {(pinnedTemplates.length > 0 || recentTemplates.length > 0) && (
+                <DashboardSection
+                    title={t('dash_quick_start')}
+                    icon={<Zap size={16} />}
+                    count={pinnedTemplates.length + recentTemplates.length}
+                    compact
+                    iconColorClass="text-brand-primary"
+                    isOpen={isQuickStartOpen}
+                    onToggle={() => setIsQuickStartOpen(!isQuickStartOpen)}
+                >
+                    <div className={`grid grid-cols-1 gap-2 mt-2 ${animClass}`}>
+                        {pinnedTemplates.map(tData => (
+                            <GameCard
+                                key={`pinned-${tData.id}`}
+                                template={tData}
+                                mode="pinned"
+                                onClick={() => onTemplateSelect(tData)}
+                                onPin={(e) => { e.stopPropagation(); onPin(tData.id); }}
+                                onCopyLink={(e) => { e.stopPropagation(); onCopyTemplateShareLink(tData, e); }}
+                                isShareable={shareableTemplateIds.has(tData.id)}
+                                isCopied={copiedId === tData.id}
+                                isConnected={isConnected}
+                                isAutoConnectEnabled={isAutoConnectEnabled}
+                            />
+                        ))}
+                        {recentTemplates.map(shortcut => (
+                            <GameCard
+                                key={`recent-${shortcut.template.id}`}
+                                template={shortcut.template}
+                                mode="recent"
+                                onClick={() => { void onRecentTemplateSelect(shortcut); }}
+                                onPin={(e) => { e.stopPropagation(); void onPinRecentTemplate(shortcut); }}
+                                onCopyLink={(e) => { e.stopPropagation(); onCopyTemplateShareLink(shortcut.template, e); }}
+                                isShareable={shareableTemplateIds.has(shortcut.template.id)}
+                                isCopied={copiedId === shortcut.template.id}
+                            />
+                        ))}
+                    </div>
+                </DashboardSection>
+            )}
 
             <DashboardSection
                 title={t('dash_my_library')}
@@ -199,6 +225,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                             onPin={(e) => { e.stopPropagation(); onPin(tData.id); }}
                             onDelete={(e) => { e.stopPropagation(); onDeleteTemplate(tData.id); }}
                             onCopyLink={(e) => { e.stopPropagation(); onCopyTemplateShareLink(tData, e); }}
+                            isShareable={shareableTemplateIds.has(tData.id)}
                             onCloudBackup={(e) => { e.stopPropagation(); onCloudBackup(tData, e); }}
                             isCopied={copiedId === tData.id}
                             isConnected={isConnected}
@@ -243,6 +270,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                                         if (tData.sourceTemplateId) onCopyTemplateShareLink(tData, e);
                                         else onCopyShareLink(tData, e);
                                     }}
+                                    isShareable={shareableTemplateIds.has(tData.id)}
                                     onSystemCopy={(e) => { e.stopPropagation(); onSystemCopy(tData, e); }}
                                     onSystemRestore={(e) => { e.stopPropagation(); onSystemRestore(tData, e); }}
                                     isCopied={copiedId === tData.id}

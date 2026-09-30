@@ -13,6 +13,8 @@ import { GameListView } from './GameListView';
 import { GameLaunchActions } from './GameLaunchActions';
 import { StartGameOverlays } from './StartGameOverlays';
 
+const EMPTY_ACTIVE_SESSION_IDS: string[] = [];
+
 interface StartGamePanelProps {
     options: GameOption[];
     locations?: SavedListItem[];
@@ -21,6 +23,7 @@ interface StartGamePanelProps {
     onPin: (option: GameOption) => void;
     isSearching?: boolean;
     searchQuery?: string;
+    activeSessionIds?: string[];
     onOpenBgStats?: () => void;
     onOpenBggImport?: () => void;
 }
@@ -35,6 +38,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     onPin,
     isSearching = false,
     searchQuery = '',
+    activeSessionIds = EMPTY_ACTIVE_SESSION_IDS,
     onOpenBgStats,
     onOpenBggImport
 }, ref) => {
@@ -67,7 +71,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
         handleLocationSelect, handleLocationChange,
         switchToList, openMenu, handleTimeClick
     } = useStartGamePanelController({
-        options, locations, onStart, isSearching, searchQuery
+        options, locations, onStart, isSearching, searchQuery, activeSessionIds
     });
 
     // Constants

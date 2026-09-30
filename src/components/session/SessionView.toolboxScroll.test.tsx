@@ -51,6 +51,20 @@ vi.mock('./hooks/useSessionMedia', async () => {
   };
 });
 
+vi.mock('../history/HistoryPhotoStrip', () => ({
+  default: ({ photoIds, onPhotoClick }: { photoIds: string[]; onPhotoClick: (id: string) => void }) => (
+    <button type="button" aria-label="session-photo-strip" onClick={() => onPhotoClick(photoIds[0])}>
+      {photoIds.join(',')}
+    </button>
+  ),
+}));
+
+vi.mock('./modals/PhotoGalleryModal', () => ({
+  default: ({ isOpen, initialPhotoId, entryMode }: { isOpen: boolean; initialPhotoId?: string | null; entryMode?: string }) => (
+    isOpen ? <div data-testid="photo-gallery-entry">{initialPhotoId}:{entryMode}</div> : null
+  ),
+}));
+
 const makeTemplate = (): GameTemplate => ({
   id: 'template-1',
   name: 'Scroll Test',
@@ -146,6 +160,10 @@ const getScoreCell = (playerId: string) => {
 };
 
 const setScrollTop = (element: HTMLElement, value: number) => {
+  Object.defineProperties(element, {
+    clientHeight: { configurable: true, value: 300 },
+    scrollHeight: { configurable: true, value: 1000 },
+  });
   Object.defineProperty(element, 'scrollTop', {
     configurable: true,
     writable: true,
@@ -187,6 +205,18 @@ const swipeOn = (
 };
 
 describe('SessionView toolbox scroll behavior', () => {
+  it('shows session photos in the toolbox and opens a thumbnail directly in the lightbox', () => {
+    const session = { ...makeSession(), photos: ['photo-1'] };
+    renderSession({ session });
+    const toolboxButton = document.querySelector('[title="Toggle Toolbox"]') as HTMLButtonElement | null;
+    if (!toolboxButton) throw new Error('toolbox button not found');
+
+    fireEvent.click(toolboxButton);
+    fireEvent.click(screen.getByRole('button', { name: 'session-photo-strip' }));
+
+    expect(screen.getByTestId('photo-gallery-entry')).toHaveTextContent('photo-1:direct-lightbox');
+  });
+
   it('anchors the iOS input panel to the same session surface as the collapsed totals bar', () => {
     const previousValue = document.documentElement.dataset.iosBrowser;
     document.documentElement.dataset.iosBrowser = 'true';
@@ -410,6 +440,18 @@ describe('SessionView toolbox scroll behavior', () => {
     expect(screen.queryByText('Game Toolbox')).not.toBeInTheDocument();
   });
 
+  it('requires a separate upward swipe after the score grid reaches the bottom', () => {
+    renderSession();
+    const scroller = getGridScroller();
+
+    setScrollTop(scroller, 500);
+    swipeOn(scroller, { startY: 200, endY: 130, moveScrollTop: 700 });
+    expect(screen.queryByText('Game Toolbox')).not.toBeInTheDocument();
+
+    swipeOn(scroller, { startY: 200, endY: 130 });
+    expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
+  });
+
   it('does not open for horizontal or shallow diagonal swipes', () => {
     renderSession();
     const scroller = getGridScroller();
@@ -494,5 +536,45 @@ describe('SessionView toolbox scroll behavior', () => {
     swipeOn(scroller, { startY: 130, endY: 200, moveScrollTop: 70 });
 
     expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
+  });
+
+  it('moves the toolbox above the virtual keyboard while its memo is focused', () => {
+    renderSession();
+    const toolboxButton = document.querySelector('[title="Toggle Toolbox"]') as HTMLButtonElement | null;
+    if (!toolboxButton || !window.visualViewport) throw new Error('toolbox or visual viewport unavailable');
+
+    fireEvent.click(toolboxButton);
+    const textarea = screen.getByRole('textbox');
+    const panel = document.querySelector('[data-session-input-panel="true"]') as HTMLElement;
+    const viewport = window.visualViewport as VisualViewport & { height: number; offsetTop: number };
+    const originalHeight = viewport.height;
+    const originalOffsetTop = viewport.offsetTop;
+    const layoutHeight = Math.max(document.documentElement.clientHeight, window.innerHeight);
+
+    try {
+      fireEvent.focus(textarea);
+      act(() => {
+        viewport.height = layoutHeight - 260;
+        viewport.offsetTop = 0;
+        viewport.dispatchEvent(new Event('resize'));
+      });
+
+      expect(panel.style.bottom).toBe('260px');
+
+      act(() => {
+        viewport.offsetTop = 40;
+        viewport.dispatchEvent(new Event('scroll'));
+      });
+      expect(panel.style.bottom).toBe('260px');
+
+      fireEvent.blur(textarea);
+      expect(panel.style.bottom).toBe('var(--bottom-ui-safe-gap)');
+    } finally {
+      act(() => {
+        viewport.height = originalHeight;
+        viewport.offsetTop = originalOffsetTop;
+        viewport.dispatchEvent(new Event('resize'));
+      });
+    }
   });
 });

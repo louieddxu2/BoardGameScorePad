@@ -6,12 +6,16 @@ import { searchService } from '../../services/searchService';
 import { SavedListItem } from '../../types';
 import { extractHistorySummary } from '../../utils/extractDataSummaries';
 import { buildHistoryGameEntries } from '../../utils/historyGameEntries';
+import type { HistorySummary } from '../../utils/extractDataSummaries';
 
-export const useHistoryQuery = (searchQuery: string, savedPlayers?: SavedListItem[]) => {
+export const useHistoryQuery = (
+  searchQuery: string,
+  savedPlayers: SavedListItem[] | undefined
+) => {
   const isSearching = searchQuery && searchQuery.trim().length > 0;
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
 
-  const allSummaries = useLiveQuery(async () => {
+  const allSummaries = useLiveQuery(async (): Promise<HistorySummary[]> => {
     const records = await db.history.orderBy('endTime').reverse().toArray();
     return records.map(extractHistorySummary);
   }, [], []);

@@ -1,5 +1,5 @@
 
-import React, { useCallback, useRef, useMemo } from 'react';
+import React, { useCallback, useRef, useMemo, useState } from 'react';
 import { ArrowDown } from 'lucide-react';
 import { GameSession, GameTemplate, SavedListItem } from '../../types';
 import { useSessionState, ScreenshotLayout } from './hooks/useSessionState';
@@ -37,6 +37,8 @@ import { db } from '../../db';
 import { useAiGenerator } from '../../features/ai-generator/hooks/useAiGenerator';
 import { markPendingAiShare } from '../../utils/pendingAiShare';
 import { getSessionOccupiedBottom, getSessionPanelDockOffset } from '../../utils/sessionViewport';
+import { useLatchedViewportOffset } from '../../hooks/useVisualViewportOffset';
+import HistoryPhotoStrip from '../history/HistoryPhotoStrip';
 import { useToolboxBoundaryGesture } from '../../hooks/useToolboxBoundaryGesture';
 import { createPlayerSessionCapabilities, hostSessionCapabilities, SessionCapabilities } from '../../features/multiplayer/sessionCapabilities';
 import { MultiplayerSessionManager, multiplayerSessionManager } from '../../features/multiplayer/multiplayerSessionManager';
@@ -138,6 +140,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   }, [aiSimpleGenerator.simpleStatus, aiGenerator.status]);
 
   const sessionState = useSessionState({ ...props, onUpdateTemplate: handleTemplateUpdate });
+  const [isToolboxInputFocused, setIsToolboxInputFocused] = useState(false);
   const capabilities = useMemo(() => {
     if (props.multiplayerCapabilities) return props.multiplayerCapabilities;
     const player = session.players[multiplayerPreviewIndex];
@@ -150,15 +153,18 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     ? session.players.findIndex(player => player.id === capabilities.playerId) + 1
     : null;
   const { setUiState, keyboardOffset, isKeyboardOpen, closeFocusedPlayerNameInput } = sessionState;
-  const isNativeKeyboardCompensationActive = isKeyboardOpen && sessionState.uiState.isInputFocused;
+  const stableKeyboardOffset = useLatchedViewportOffset(keyboardOffset, isToolboxInputFocused);
+  const isNativeKeyboardCompensationActive = isKeyboardOpen && (
+    sessionState.uiState.isInputFocused || isToolboxInputFocused
+  );
   const isAndroid = typeof document !== 'undefined' && document.documentElement.dataset.android === 'true';
   const isStandalone = typeof document !== 'undefined' && document.documentElement.dataset.standalone === 'true';
   const isAndroidBrowser = isAndroid && !isStandalone;
   const sessionIdleDockOffset = isAndroidBrowser
     ? 'var(--app-safe-area-bottom)'
     : 'var(--bottom-ui-safe-gap)';
-  const panelDockOffset = getSessionPanelDockOffset(keyboardOffset, isNativeKeyboardCompensationActive, sessionIdleDockOffset);
-  const occupiedBottom = getSessionOccupiedBottom(sessionState.panelHeight, keyboardOffset, isNativeKeyboardCompensationActive, sessionIdleDockOffset);
+  const panelDockOffset = getSessionPanelDockOffset(stableKeyboardOffset, isNativeKeyboardCompensationActive, sessionIdleDockOffset);
+  const occupiedBottom = getSessionOccupiedBottom(sessionState.panelHeight, stableKeyboardOffset, isNativeKeyboardCompensationActive, sessionIdleDockOffset);
 
   // No special local state needed for photo preview anymore
   const eventHandlers = useSessionEvents({
@@ -260,6 +266,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     editingColumn !== null ||
     isEditingTitle ||
     isInputFocused ||
+    isToolboxInputFocused ||
     isAddColumnModalOpen ||
     isGameSettingsOpen ||
     isImageUploadModalOpen ||
@@ -675,18 +682,23 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onDiscard={props.onDiscard}
         savedLocations={props.savedLocations} // Updated Prop Name
         initialLocation={session.location} // Pass current session location
+        gameName={session.name}
+        bggId={session.bggId}
+        playerCount={session.players.length}
       />
 
       {/* Photo Gallery Modal */}
       <PhotoGalleryModal
         isOpen={isPhotoGalleryOpen}
-        onClose={() => setUiState(p => ({ ...p, isPhotoGalleryOpen: false }))}
+        onClose={() => setUiState(p => ({ ...p, isPhotoGalleryOpen: false, galleryParams: { mode: 'default' } }))}
         photoIds={session.photos || []}
         onUploadPhoto={media.openPhotoLibrary}
         onTakePhoto={media.openCamera} // Standard camera (from within gallery)
         onDeletePhoto={media.handleDeletePhoto}
         overlayData={overlayData} // Pass context for score overlay
         autoEnterMode={sessionState.uiState.galleryParams?.mode} // [New] Pass auto-open mode
+        initialPhotoId={sessionState.uiState.galleryParams?.initialPhotoId}
+        entryMode={sessionState.uiState.galleryParams?.entryMode ?? 'gallery'}
       />
 
       {/* [New] General Camera Overlay */}
@@ -944,6 +956,21 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         canEditTotal={capabilities.canEditTotal}
         canEditPlayers={capabilities.canEditPlayers}
         mediaOnlyTools={capabilities.role === 'player'}
+        onToolboxInputFocusChange={setIsToolboxInputFocused}
+        toolboxTopContent={session.photos?.length ? (
+          <HistoryPhotoStrip
+            photoIds={session.photos}
+            onPhotoClick={(photoId) => setUiState(p => ({
+              ...p,
+              isPhotoGalleryOpen: true,
+              galleryParams: {
+                mode: 'default',
+                initialPhotoId: photoId,
+                entryMode: 'direct-lightbox',
+              },
+            }))}
+          />
+        ) : undefined}
       />
 
       <SessionViewportDiagnostics />

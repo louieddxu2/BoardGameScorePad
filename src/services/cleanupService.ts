@@ -38,12 +38,13 @@ export const cleanupService = {
    * 通常在該模板的 Session 結束或捨棄時呼叫。
    * 
    * @param templateId 模板 ID
+   * @param pinnedIds 已釘選的模板 ID，釘選模板不可被視為免洗模板
    */
-  async cleanupDisposableTemplate(templateId: string) {
+  async cleanupDisposableTemplate(templateId: string, pinnedIds: string[] = []) {
     try {
       const template = await db.templates.get(templateId);
       const isMultiplayerSessionTemplate = templateId.startsWith('Multiplayer-');
-      if (template && (isDisposableTemplate(template) || isMultiplayerSessionTemplate)) {
+      if (template && !pinnedIds.includes(templateId) && (isDisposableTemplate(template, pinnedIds) || isMultiplayerSessionTemplate)) {
         await db.templates.delete(templateId);
         await db.templatePrefs.delete(templateId);
 

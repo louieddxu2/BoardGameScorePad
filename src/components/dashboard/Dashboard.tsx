@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GameTemplate, GameSession, HistoryRecord, SavedListItem, ScoringRule, AppView } from '../../types';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 import { usePullAction } from '../../hooks/usePullAction';
@@ -24,9 +24,12 @@ import SearchTemplateOnlineModal from './modals/SearchTemplateOnlineModal';
 import { useDashboardTranslation } from '../../i18n/dashboard';
 import { db } from '../../db';
 import { uploadTemplateToCloud } from '../../services/templateShareService';
+import { generateId } from '../../utils/idGenerator';
 
 // Hooks
 import { useDashboardData } from './hooks/useDashboardData';
+import type { RecentTemplateShortcut } from './hooks/useDashboardData';
+import type { RecentGameTemplateIdentity } from '../../utils/recentTemplateResolution';
 import { useGameLauncher } from '../../features/game-selector/hooks/useGameLauncher';
 import { useDashboardModals } from './hooks/useDashboardModals';
 import { useDebugGestures } from './hooks/useDebugGestures';
@@ -36,6 +39,7 @@ interface DashboardProps {
   isVisible: boolean;
   currentView?: AppView;
   userTemplates: GameTemplate[];
+  shareableTemplateIds: ReadonlySet<string>;
   userTemplatesCount: number;
   systemOverrides: Record<string, GameTemplate>;
   systemTemplates: GameTemplate[];
@@ -47,26 +51,27 @@ interface DashboardProps {
   historyRecords?: HistorySummary[] | HistoryRecord[];
   historyStatsRecords?: HistorySummary[];
   historyGameEntries?: HistoryGameEntry[];
+  recentlyPlayedGames: GameOption[];
   historyCount?: number;
   savedPlayers?: SavedListItem[];
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   themeMode: 'dark' | 'light';
   onToggleTheme: () => void;
-  onTemplateSelect: (template: GameTemplate) => void;
+  onTemplateSelect: (template: GameTemplate, options?: { persistIfMissing?: boolean }) => void;
   onDirectResume: (templateId: string) => void;
   onDiscardSession: (templateId: string) => void;
   onClearAllActiveSessions: () => void;
   getSessionPreview: (templateId: string) => GameSession | null;
   onTemplateCreate: (initialName?: string) => void;
   onTemplateDelete: (id: string) => void;
-  onTemplateSave: (template: GameTemplate, options?: { skipCloud?: boolean, preserveTimestamps?: boolean }) => void;
+  onTemplateSave: (template: GameTemplate, options?: { skipCloud?: boolean, preserveTimestamps?: boolean }) => void | Promise<void>;
   onBatchImport: (templates: GameTemplate[]) => void;
-  onTogglePin: (id: string) => void;
+  onTogglePin: (id: string) => void | Promise<void>;
   onTogglePinOption: (option: GameOption) => void;
   onClearNewBadges: () => void;
   onRestoreSystem: (id: string) => void;
-  onGetFullTemplate: (id: string) => Promise<GameTemplate | null>;
+  onGetFullTemplate: (id: string, identity?: RecentGameTemplateIdentity) => Promise<GameTemplate | null>;
   onDeleteHistory: (id: string) => void;
   onHistorySelect: (record: HistoryRecord | HistorySummary) => void;
   isInstalled: boolean;
@@ -89,6 +94,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   isVisible,
   currentView,
   userTemplates,
+  shareableTemplateIds,
   userTemplatesCount,
   systemOverrides,
   systemTemplates,
@@ -100,6 +106,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   historyRecords,
   historyStatsRecords,
   historyGameEntries,
+  recentlyPlayedGames,
   historyCount,
   savedPlayers,
   searchQuery,
@@ -169,6 +176,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   const {
     sortedActiveSessions,
     pinnedTemplates,
+    recentTemplates,
     userTemplatesToShow,
     systemTemplatesToShow,
     allVisibleTemplates
@@ -176,10 +184,67 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
     userTemplates,
     systemTemplates,
     pinnedIds,
+    recentlyPlayedGames,
     activeSessionIds,
     activeSessions,
     getSessionPreview
   });
+
+  const handleRecentTemplateSelect = useCallback(async (shortcut: RecentTemplateShortcut) => {
+    if (!shortcut.needsResolution) {
+      onTemplateSelect(shortcut.template);
+      return;
+    }
+
+    let storedTemplate: GameTemplate | null = null;
+    try {
+      storedTemplate = await onGetFullTemplate(shortcut.template.id, {
+        gameName: shortcut.template.name,
+        bggId: shortcut.template.bggId,
+        ambiguousName: shortcut.ambiguousName,
+        nameMatchPending: shortcut.nameMatchPending
+      });
+    } catch (error) {
+      console.error('Failed to resolve recent game template:', error);
+    }
+    const templateToUse = storedTemplate ?? {
+      ...shortcut.template,
+      id: generateId(),
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    onTemplateSelect(templateToUse, {
+      persistIfMissing: !storedTemplate
+    });
+  }, [onGetFullTemplate, onTemplateSelect]);
+
+  const handleRecentTemplatePin = useCallback(async (shortcut: RecentTemplateShortcut) => {
+    try {
+      if (!shortcut.needsResolution) {
+        await onTogglePin(shortcut.template.id);
+        return;
+      }
+
+      const storedTemplate = await onGetFullTemplate(shortcut.template.id, {
+        gameName: shortcut.template.name,
+        bggId: shortcut.template.bggId,
+        ambiguousName: shortcut.ambiguousName,
+        nameMatchPending: shortcut.nameMatchPending
+      });
+      const templateToPin = storedTemplate ?? {
+        ...shortcut.template,
+        id: generateId(),
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      if (!storedTemplate) {
+        await onTemplateSave(templateToPin, { skipCloud: true });
+      }
+      await onTogglePin(templateToPin.id);
+    } catch (error) {
+      console.error('Failed to pin recent game:', error);
+    }
+  }, [onGetFullTemplate, onTemplateSave, onTogglePin]);
 
   const { 
     handlePanelStart,
@@ -314,6 +379,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         onTouchStart={debugGestures.handleDebugTouchStart}
         onTouchMove={debugGestures.handleDebugTouchMove}
         onTouchEnd={debugGestures.handleDebugTouchEnd}
+        onTouchCancel={debugGestures.handleDebugTouchEnd}
       >
         <PullActionIsland
           pullY={pullY}
@@ -339,6 +405,8 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
             <LibraryView
               activeSessions={sortedActiveSessions}
               pinnedTemplates={pinnedTemplates}
+              recentTemplates={recentTemplates}
+              shareableTemplateIds={shareableTemplateIds}
               userTemplates={userTemplatesToShow}
               userTemplatesTotal={userTemplatesCount}
               systemTemplates={systemTemplatesToShow}
@@ -350,10 +418,12 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
               userEmail={userEmail}
               isAutoConnectEnabled={isAutoConnectEnabled}
               onTemplateSelect={onTemplateSelect}
+              onRecentTemplateSelect={handleRecentTemplateSelect}
               onDirectResume={onDirectResume}
               onDeleteSession={dashboardActions.handleDiscardSessionConfirmed}
               onClearAllSessions={dashboardActions.handleClearAllSessionsConfirmed}
               onPin={onTogglePin}
+              onPinRecentTemplate={handleRecentTemplatePin}
               onDeleteTemplate={dashboardActions.handleDeleteTemplateConfirmed}
               onCopyJSON={dashboardActions.handleCopyJSON}
               onCopyTemplateShareLink={dashboardActions.handleCopyTemplateShareLink}
@@ -388,6 +458,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         <StartGamePanel
           ref={setupPanelRef}
           options={gameOptions}
+          activeSessionIds={activeSessionIds}
           locations={savedLocations}
           onStart={handlePanelStart}
           onSearchClick={handlePanelSearchFocus}

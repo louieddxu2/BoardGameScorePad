@@ -6,12 +6,15 @@ import { useCommonTranslation } from '../../../i18n/common';
 import { useGameSelectorLogic } from './useGameSelectorLogic';
 import { useRecommendedGameSetup } from './useRecommendedGameSetup';
 
+const EMPTY_ACTIVE_SESSION_IDS: string[] = [];
+
 export interface UseStartGamePanelControllerProps {
     options: GameOption[];
     locations?: SavedListItem[];
     onStart: (option: GameOption, playerCount: number, location: string, locationId?: string, extra?: { startTimeStr?: string, scoringRule?: ScoringRule }) => void;
     isSearching?: boolean;
     searchQuery?: string;
+    activeSessionIds?: string[];
 }
 
 export const useStartGamePanelController = ({
@@ -19,7 +22,8 @@ export const useStartGamePanelController = ({
     locations = [],
     onStart,
     isSearching = false,
-    searchQuery = ''
+    searchQuery = '',
+    activeSessionIds = EMPTY_ACTIVE_SESSION_IDS
 }: UseStartGamePanelControllerProps) => {
     const { t } = useIntegrationTranslation();
     const { t: tCommon } = useCommonTranslation();
@@ -57,7 +61,7 @@ export const useStartGamePanelController = ({
         searchFilters, setSearchFilters, resetFilter,
         processedOptions,
         predictionTarget
-    } = useGameSelectorLogic(options, isSearching, searchQuery, userSelectedUid, setUserSelectedUid, playerCount);
+    } = useGameSelectorLogic(options, isSearching, searchQuery, userSelectedUid, setUserSelectedUid, playerCount, activeSessionIds);
 
     // Sync prediction target to resolve circular hook dependency
     useEffect(() => {

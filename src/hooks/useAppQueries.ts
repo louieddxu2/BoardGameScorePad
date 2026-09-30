@@ -1,5 +1,7 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { DATA_LIMITS } from '../dataLimits';
+import { getRecentOptions } from '../features/game-selector/utils/sortStrategies';
 import { useTemplateQuery } from './queries/useTemplateQuery';
 import { useHistoryQuery } from './queries/useHistoryQuery';
 import { useSessionQuery } from './queries/useSessionQuery';
@@ -27,7 +29,6 @@ export const useAppQueries = (searchQuery: string, pinnedIds: string[]) => {
 
   // 1. Dashboard View Queries (Library & History)
   // 這些 Hook 內部已經實作了針對各自資料類型的搜尋過濾邏輯
-  const templateData = useTemplateQuery(searchQuery, pinnedIds);
   const savedGameData = useSavedGameQuery(searchQuery);
 
   // 2. Global / Context Queries (No search dependency)
@@ -37,7 +38,19 @@ export const useAppQueries = (searchQuery: string, pinnedIds: string[]) => {
 
   // 3. Start Game Panel Query (Merge then Search)
   // 這是一個專門的 Hook，負責處理「開始新遊戲」時的候選名單邏輯
-  const gameOptions = useGameOptionsQuery(searchQuery, pinnedIds, shouldLoadGameOptions);
+  const gameOptionData = useGameOptionsQuery(searchQuery, pinnedIds, shouldLoadGameOptions);
+  // Home and the FAB share getRecentOptions; Home skips pinned/active rows because
+  // those already have dedicated rows in its quick-start section. The FAB passes
+  // the same active-session IDs to its recent slice.
+  const recentlyPlayedGames = useMemo(() => {
+    const activeTemplateIds = new Set((sessionData.activeSessions ?? []).map(session => session.templateId));
+    return getRecentOptions(gameOptionData.allOptions, DATA_LIMITS.QUERY.RECENT_GAMES, activeTemplateIds);
+  }, [gameOptionData.allOptions, sessionData.activeSessions]);
+  const recentTemplateIds = useMemo(
+    () => [...new Set(recentlyPlayedGames.flatMap(game => game.templateId ? [game.templateId] : []))],
+    [recentlyPlayedGames]
+  );
+  const templateData = useTemplateQuery(searchQuery, pinnedIds, true, recentTemplateIds);
 
   return {
     // Spread all data props from sub-hooks
@@ -48,7 +61,8 @@ export const useAppQueries = (searchQuery: string, pinnedIds: string[]) => {
     ...libraryData,
 
     // The merged options list
-    gameOptions,
+    gameOptions: gameOptionData.gameOptions,
+    recentlyPlayedGames,
 
     // Optimistic UI actions
     setPendingDeleteHistoryIds: historyData.setPendingDeleteHistoryIds

@@ -4,6 +4,7 @@ interface ToolboxTouchState {
   startX: number;
   startY: number;
   startScrollTop: number;
+  startedAtBottom: boolean;
   minScrollTop: number;
   maxScrollTop: number;
   axis: 'vertical' | 'horizontal' | null;
@@ -19,7 +20,7 @@ interface UseToolboxBoundaryGestureOptions {
 }
 
 /**
- * Opens a toolbox when an upward swipe reaches the scroll container's bottom
+ * Opens a toolbox when an upward swipe starts at the scroll container's bottom
  * boundary, and closes only a toolbox opened by that gesture at the top
  * boundary. Manual toolbox toggles are deliberately left alone.
  */
@@ -49,6 +50,9 @@ export const useToolboxBoundaryGesture = ({
     const minTriggerDistance = 48;
     const scrollMovementTolerance = 1;
 
+    const isAtBottom = () => scrollContainer.clientHeight > 0 && scrollContainer.scrollHeight > 0
+      && scrollContainer.scrollHeight - scrollContainer.clientHeight - scrollContainer.scrollTop <= scrollMovementTolerance;
+
     const openAutoToolbox = () => {
       if (!canAutoOpenToolbox || isToolboxOpen || isInputInterfaceOpen) return;
 
@@ -63,12 +67,14 @@ export const useToolboxBoundaryGesture = ({
       }
 
       const touch = event.touches[0];
+      const startScrollTop = scrollContainer.scrollTop;
       touchRef.current = {
         startX: touch.clientX,
         startY: touch.clientY,
-        startScrollTop: scrollContainer.scrollTop,
-        minScrollTop: scrollContainer.scrollTop,
-        maxScrollTop: scrollContainer.scrollTop,
+        startScrollTop,
+        startedAtBottom: isAtBottom(),
+        minScrollTop: startScrollTop,
+        maxScrollTop: startScrollTop,
         axis: null,
       };
     };
@@ -110,7 +116,7 @@ export const useToolboxBoundaryGesture = ({
       const didNotScrollDown = state.maxScrollTop <= state.startScrollTop + scrollMovementTolerance;
       const didNotScrollUp = state.minScrollTop >= state.startScrollTop - scrollMovementTolerance;
 
-      if (state.axis === 'vertical' && fingerMovedUpEnough && didNotScrollDown) {
+      if (state.axis === 'vertical' && fingerMovedUpEnough && state.startedAtBottom && isAtBottom() && didNotScrollDown) {
         openAutoToolbox();
       }
 

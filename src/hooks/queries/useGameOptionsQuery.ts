@@ -7,24 +7,32 @@ import { useSavedGameQuery } from './useSavedGameQuery';
 import { useGameOptionAggregator } from '../../features/game-selector/hooks/useGameOptionAggregator';
 import { searchService } from '../../services/searchService';
 import { GameOption } from '../../features/game-selector/types';
-import { extractBggGameSummary } from '../../utils/extractDataSummaries';
+import { BggGameSummary, extractBggGameSummary } from '../../utils/extractDataSummaries';
+import { GameTemplate, SavedListItem } from '../../types';
+
+const EMPTY_TEMPLATES: GameTemplate[] = [];
+const EMPTY_SAVED_GAMES: SavedListItem[] = [];
+const EMPTY_BGG_GAMES: BggGameSummary[] = [];
 
 /**
  * Game Options Query Hook
  * 
- * 職責：專門為「開始新遊戲」面板提供選項列表。
- * 策略：整合 Templates、SavedGames 與 BggGames (字典)。
+ * 職責：整合 Templates、SavedGames 與 BggGames (字典)，
+ * 同時提供搜尋後的開始面板選項與未搜尋的共用候選清單。
  */
 export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], enabled = true) => {
   // 1. Fetch Local Data
   // Pass pinnedIds to ensure pinned simple templates are visible
   const {
     templates: allTemplates,
-    systemTemplates: allSystemTemplates
+    systemTemplates: allSystemTemplates,
+    hiddenTemplateIdentities,
+    templatesLoaded
   } = useTemplateQuery('', pinnedIds);
 
   const {
-    savedGames: allSavedGames
+    savedGames: allSavedGames,
+    savedGamesLoaded
   } = useSavedGameQuery('');
 
   // 2. Fetch BGG Dictionary (Lite Summary)
@@ -33,16 +41,22 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
     if (!enabled) return [];
     const rawGames = await db.bggGames.toArray();
     return rawGames.map(extractBggGameSummary);
-  }, [enabled], []);
+  }, [enabled]);
 
   // 3. Aggregate Data (Merge & Deduplicate)
   // 將 BGG Summary 傳入，讓 Aggregator 進行名稱匹配與搜尋索引補完
   // [Update] Pass pinnedIds so Aggregator can determine isPinned status
+  const templatesForOptions = useMemo(
+    () => enabled ? [...allTemplates, ...allSystemTemplates] : EMPTY_TEMPLATES,
+    [enabled, allTemplates, allSystemTemplates]
+  );
   const aggregatedOptions = useGameOptionAggregator(
-    enabled ? [...allTemplates, ...allSystemTemplates] : [],
-    enabled ? allSavedGames : [],
-    enabled ? (allBggGames || []) : [],
-    pinnedIds
+    templatesForOptions,
+    enabled ? allSavedGames : EMPTY_SAVED_GAMES,
+    enabled ? allBggGames ?? EMPTY_BGG_GAMES : EMPTY_BGG_GAMES,
+    pinnedIds,
+    !!(templatesLoaded && savedGamesLoaded && allBggGames !== undefined),
+    hiddenTemplateIdentities
   );
 
   // 4. Search
@@ -80,5 +94,9 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
     });
   }, [aggregatedOptions, searchQuery, enabled]);
 
-  return gameOptions;
+  return {
+    gameOptions,
+    // Keep this unsearched list as the single source for both surfaces' recency ordering.
+    allOptions: aggregatedOptions
+  };
 };

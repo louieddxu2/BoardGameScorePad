@@ -74,3 +74,33 @@ describe('useAppSessionActions multiplayer resume', () => {
     expect(options.enterActiveSession).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('useAppSessionActions recent template launch', () => {
+  it('persists a missing recent template only after discarding an existing session and confirming start', async () => {
+    const sequence: string[] = [];
+    const template = { id: 'template-1', name: 'Recent game', columns: [], createdAt: 1 };
+    const options = createOptions({
+      appData: {
+        activeSessionIds: ['template-1'],
+        discardSession: vi.fn(async () => { sequence.push('discard'); }),
+        getTemplate: vi.fn(async () => { sequence.push('lookup'); return null; }),
+        saveTemplate: vi.fn(async () => { sequence.push('persist'); }),
+        startSession: vi.fn(async () => { sequence.push('start'); })
+      }
+    });
+    const { result } = renderHook(() => useAppSessionActions(options));
+
+    act(() => result.current.initSetup(template, { persistIfMissing: true }));
+    expect(options.appData.saveTemplate).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.handleStartNewGame(template, 4, {
+        startTimeStr: '12:00',
+        scoringRule: 'HIGHEST_WINS'
+      });
+    });
+
+    expect(sequence).toEqual(['discard', 'lookup', 'persist', 'start']);
+    expect(options.enterActiveSession).toHaveBeenCalledWith('start-new-session');
+  });
+});

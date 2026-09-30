@@ -3,6 +3,78 @@ import { db } from '../../db';
 import { multiplayerLocalStore } from './multiplayerLocalStore';
 
 describe('multiplayerLocalStore purgeRoomData & deleteRoom', () => {
+  it('returns room ownership and purges room data in one transaction', async () => {
+    const putSessionSpy = vi.spyOn(db.sessions, 'put').mockResolvedValue('session-1' as any);
+    const deleteRoomSpy = vi.spyOn(db.multiplayerRooms, 'delete').mockResolvedValue(undefined as any);
+    const outboxWhereSpy = vi.spyOn(db.multiplayerOutbox, 'where').mockReturnValue({ equals: vi.fn().mockReturnValue({ delete: vi.fn().mockResolvedValue(1) }) } as any);
+    const bindingWhereSpy = vi.spyOn(db.multiplayerParticipantBindings, 'where').mockReturnValue({ equals: vi.fn().mockReturnValue({ delete: vi.fn().mockResolvedValue(1) }) } as any);
+    const receiptWhereSpy = vi.spyOn(db.multiplayerPatchReceipts, 'where').mockReturnValue({ equals: vi.fn().mockReturnValue({ delete: vi.fn().mockResolvedValue(1) }) } as any);
+    const sequenceWhereSpy = vi.spyOn(db.multiplayerSequences, 'where').mockReturnValue({
+      startsWith: vi.fn().mockReturnValue({ delete: vi.fn().mockResolvedValue(1) }),
+      equals: vi.fn().mockReturnValue({ delete: vi.fn().mockResolvedValue(1) }),
+    } as any);
+    const transactionSpy = vi.spyOn(db, 'transaction').mockImplementation(((mode: unknown, tables: unknown, callback: () => Promise<unknown>) => {
+      expect(mode).toBe('rw');
+      expect(tables).toEqual([
+        db.sessions,
+        db.multiplayerRooms,
+        db.multiplayerOutbox,
+        db.multiplayerParticipantBindings,
+        db.multiplayerPatchReceipts,
+        db.multiplayerSequences,
+      ]);
+      return callback();
+    }) as any);
+
+    try {
+      await multiplayerLocalStore.releaseRoomOwnership!({ roomId: 'room-1', session: { id: 'session-1' } as any });
+
+      expect(putSessionSpy).toHaveBeenCalledWith(expect.objectContaining({ id: 'session-1' }));
+      expect(deleteRoomSpy).toHaveBeenCalledWith('room-1');
+      expect(outboxWhereSpy).toHaveBeenCalledWith('roomId');
+      expect(bindingWhereSpy).toHaveBeenCalledWith('roomId');
+      expect(receiptWhereSpy).toHaveBeenCalledWith('roomId');
+      expect(sequenceWhereSpy).toHaveBeenCalledWith('id');
+    } finally {
+      transactionSpy.mockRestore();
+      putSessionSpy.mockRestore();
+      deleteRoomSpy.mockRestore();
+      outboxWhereSpy.mockRestore();
+      bindingWhereSpy.mockRestore();
+      receiptWhereSpy.mockRestore();
+      sequenceWhereSpy.mockRestore();
+    }
+  });
+
+  it('persists bootstrap records in one transaction', async () => {
+    const putTemplateSpy = vi.spyOn(db.templates, 'put').mockResolvedValue('template-1' as any);
+    const putSessionSpy = vi.spyOn(db.sessions, 'put').mockResolvedValue('session-1' as any);
+    const putRoomSpy = vi.spyOn(db.multiplayerRooms, 'put').mockResolvedValue('room-1' as any);
+    const transactionSpy = vi.spyOn(db, 'transaction').mockImplementation(((mode: unknown, tables: unknown, callback: () => Promise<unknown>) => {
+      expect(mode).toBe('rw');
+      expect(tables).toEqual([db.templates, db.sessions, db.multiplayerRooms]);
+      return callback();
+    }) as any);
+
+    try {
+      await multiplayerLocalStore.persistBootstrap!({
+        template: { id: 'template-1' } as any,
+        session: { id: 'session-1', templateId: 'template-1' } as any,
+        room: { roomId: 'room-1', sessionId: 'session-1' } as any,
+      });
+
+      expect(transactionSpy).toHaveBeenCalledTimes(1);
+      expect(putTemplateSpy).toHaveBeenCalledWith(expect.objectContaining({ id: 'template-1' }));
+      expect(putSessionSpy).toHaveBeenCalledWith(expect.objectContaining({ id: 'session-1' }));
+      expect(putRoomSpy).toHaveBeenCalledWith(expect.objectContaining({ roomId: 'room-1' }));
+    } finally {
+      transactionSpy.mockRestore();
+      putTemplateSpy.mockRestore();
+      putSessionSpy.mockRestore();
+      putRoomSpy.mockRestore();
+    }
+  });
+
   it('purges orphan data across all 5 multiplayer tables for a specified roomId', async () => {
     const deleteRoomSpy = vi.spyOn(db.multiplayerRooms, 'delete').mockResolvedValue(undefined as any);
 

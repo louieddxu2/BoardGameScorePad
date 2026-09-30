@@ -18,7 +18,10 @@ vi.mock('../db', () => ({
             })),
             bulkDelete: vi.fn()
         },
-        templates: { delete: vi.fn() },
+        templates: {
+            get: vi.fn(async () => undefined),
+            delete: vi.fn(),
+        },
         templatePrefs: { delete: vi.fn() },
         templateShareCache: { delete: vi.fn() },
         history: { delete: vi.fn() }, // [NEW] Add history mock to verify it's NOT called
@@ -79,5 +82,39 @@ describe('cleanupService.fullTemplateCleanup', () => {
         // 6. [Safety Check] Ensure it only deleted the 2 related sessions found
         expect(db.sessions.bulkDelete).toHaveBeenCalledWith(['s1', 's2']);
         expect(db.sessions.bulkDelete).not.toHaveBeenCalledWith(expect.arrayContaining(['unrelated_s']));
+    });
+});
+
+describe('cleanupService.cleanupDisposableTemplate', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('keeps a pinned simple template', async () => {
+        const template = {
+            id: 'tpl_pinned_simple',
+            name: 'Pinned Simple Game',
+            columns: [],
+            createdAt: 1,
+        };
+        vi.mocked(db.templates.get).mockResolvedValue(template as any);
+
+        await cleanupService.cleanupDisposableTemplate(template.id, [template.id]);
+
+        expect(db.templates.delete).not.toHaveBeenCalled();
+    });
+
+    it('removes an unpinned simple template', async () => {
+        const template = {
+            id: 'tpl_unpinned_simple',
+            name: 'Unpinned Simple Game',
+            columns: [],
+            createdAt: 1,
+        };
+        vi.mocked(db.templates.get).mockResolvedValue(template as any);
+
+        await cleanupService.cleanupDisposableTemplate(template.id, []);
+
+        expect(db.templates.delete).toHaveBeenCalledWith(template.id);
     });
 });

@@ -29,6 +29,10 @@ const GestureHarness: React.FC<{ initiallyOpen?: boolean; blocked?: boolean }> =
 };
 
 const setScrollTop = (element: HTMLElement, value: number) => {
+  Object.defineProperties(element, {
+    clientHeight: { configurable: true, value: 300 },
+    scrollHeight: { configurable: true, value: 1000 },
+  });
   Object.defineProperty(element, 'scrollTop', {
     configurable: true,
     writable: true,
@@ -59,6 +63,50 @@ describe('useToolboxBoundaryGesture', () => {
     swipeOn(scroller, 200, 130);
 
     expect(screen.getByText('open')).toBeInTheDocument();
+  });
+
+  it('requires the swipe to start at the bottom even if no scroll is reported during it', () => {
+    render(<GestureHarness />);
+    const scroller = screen.getByTestId('scroll-container');
+
+    setScrollTop(scroller, 500);
+    swipeOn(scroller, 200, 130);
+    expect(screen.getByText('closed')).toBeInTheDocument();
+
+    setScrollTop(scroller, 700);
+    swipeOn(scroller, 200, 130);
+    expect(screen.getByText('open')).toBeInTheDocument();
+  });
+
+  it('does not open when an upward swipe first reaches the bottom', () => {
+    render(<GestureHarness />);
+    const scroller = screen.getByTestId('scroll-container');
+
+    setScrollTop(scroller, 500);
+    act(() => {
+      fireEvent.touchStart(scroller, { touches: [{ clientX: 120, clientY: 200 }] });
+      setScrollTop(scroller, 700);
+      fireEvent.touchMove(scroller, { touches: [{ clientX: 120, clientY: 130 }] });
+      fireEvent.touchEnd(scroller, { changedTouches: [{ clientX: 120, clientY: 130 }] });
+    });
+
+    expect(screen.getByText('closed')).toBeInTheDocument();
+  });
+
+  it('does not open if content grows below the touch-start boundary before release', () => {
+    render(<GestureHarness />);
+    const scroller = screen.getByTestId('scroll-container');
+
+    setScrollTop(scroller, 0);
+    Object.defineProperty(scroller, 'scrollHeight', { configurable: true, value: 300 });
+    act(() => {
+      fireEvent.touchStart(scroller, { touches: [{ clientX: 120, clientY: 200 }] });
+      Object.defineProperty(scroller, 'scrollHeight', { configurable: true, value: 1000 });
+      fireEvent.touchMove(scroller, { touches: [{ clientX: 120, clientY: 130 }] });
+      fireEvent.touchEnd(scroller, { changedTouches: [{ clientX: 120, clientY: 130 }] });
+    });
+
+    expect(screen.getByText('closed')).toBeInTheDocument();
   });
 
   it('closes an auto-opened toolbox at the top boundary', () => {

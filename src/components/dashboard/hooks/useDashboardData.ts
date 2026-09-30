@@ -1,12 +1,22 @@
 
 import { useMemo } from 'react';
-import { GameTemplate, GameSession } from '../../../types';
+import { GameTemplate, GameSession, ScoringRule } from '../../../types';
 import { DATA_LIMITS } from '../../../dataLimits';
+import { createVirtualTemplate } from '../../../utils/templateUtils';
+import type { GameOption } from '../../../features/game-selector/types';
+
+export interface RecentTemplateShortcut {
+  template: GameTemplate;
+  needsResolution: boolean;
+  ambiguousName?: boolean;
+  nameMatchPending?: boolean;
+}
 
 interface UseDashboardDataProps {
   userTemplates: GameTemplate[];
   systemTemplates: GameTemplate[];
   pinnedIds: string[];
+  recentlyPlayedGames: GameOption[];
   activeSessionIds: string[];
   activeSessions: GameSession[] | undefined; 
   getSessionPreview: (templateId: string) => GameSession | null;
@@ -16,10 +26,12 @@ export const useDashboardData = ({
   userTemplates,
   systemTemplates,
   pinnedIds,
+  recentlyPlayedGames,
   activeSessions, 
 }: UseDashboardDataProps) => {
 
   const allTemplates = useMemo(() => [...userTemplates, ...systemTemplates], [userTemplates, systemTemplates]);
+  const templatesById = useMemo(() => new Map(allTemplates.map(template => [template.id, template])), [allTemplates]);
 
   // 1. Active Sessions
   // 直接對 Session 進行時間排序，完全不依賴 Template 資料
@@ -35,9 +47,30 @@ export const useDashboardData = ({
   // 2. Pinned
   const pinnedTemplates = useMemo(() => {
     return pinnedIds
-      .map(id => allTemplates.find(t => t.id === id))
+      .map(id => templatesById.get(id))
       .filter((t): t is GameTemplate => t !== undefined);
-  }, [pinnedIds, allTemplates]);
+  }, [pinnedIds, templatesById]);
+
+  const recentShortcutLimit = Math.max(0, DATA_LIMITS.DISPLAY.HOME_QUICK_START_GAMES - pinnedTemplates.length);
+  const recentTemplates = useMemo(() => {
+    return recentlyPlayedGames.slice(0, recentShortcutLimit).map(game => {
+      const template = game.templateId ? templatesById.get(game.templateId) : undefined;
+      const shortcutId = game.templateId || `shortcut:${game.savedGameId || game.bggId || game.cleanName || game.displayName}`;
+      return {
+        template: template ?? createVirtualTemplate(
+          shortcutId,
+          game.cleanName || game.displayName,
+          game.bggId,
+          game.lastUsed || 0,
+          game.defaultPlayerCount,
+          game.defaultScoringRule as ScoringRule
+        ),
+        needsResolution: !template,
+        ...(game.ambiguousName && { ambiguousName: true }),
+        ...(game.nameMatchPending && { nameMatchPending: true })
+      };
+    });
+  }, [recentlyPlayedGames, recentShortcutLimit, templatesById]);
   
   // 3. User Library (Filtered & Sliced for UI)
   const userTemplatesToShow = useMemo(() => {
@@ -62,6 +95,7 @@ export const useDashboardData = ({
   return {
     sortedActiveSessions,
     pinnedTemplates,
+    recentTemplates,
     userTemplatesToShow,
     systemTemplatesToShow,
     allVisibleTemplates

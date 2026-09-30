@@ -23,6 +23,8 @@ export const DATA_LIMITS = {
     BUILTIN_TEMPLATES: 50,
     /** 歷史紀錄列表 顯示上限 */
     HISTORY_RECORDS: 50,
+    /** 首頁近期遊戲捷徑上限 */
+    RECENT_GAMES: 5,
     /** 歷史統計面板遊戲排行顯示上限；完整統計仍使用全量資料 */
     HISTORY_STATS_GAMES: 50,
     /** 歷史統計面板玩家排行顯示上限；完整統計仍使用全量資料 */
@@ -37,6 +39,12 @@ export const DATA_LIMITS = {
      * 用於搜尋與統計總數。需大於顯示上限，以確保能搜尋到較舊的資料並計算正確的總筆數。
      */
     FETCH_CAP: 1000,
+  },
+
+  // --- 介面顯示限制 ---
+  DISPLAY: {
+    /** 首頁快速開始區遊戲總數上限；釘選遊戲超出時仍全部顯示 */
+    HOME_QUICK_START_GAMES: 5,
   },
 
   // --- 編輯器限制 (Template Editor) ---

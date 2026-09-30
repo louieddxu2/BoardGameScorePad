@@ -9,8 +9,55 @@ import { extractTemplateSummary, TemplateSummary } from '../../utils/extractData
 import { isDisposableTemplate } from '../../utils/templateUtils';
 import { toBuiltinFullId, toBuiltinShortId } from '../../utils/deepLink';
 import { useAppTranslation } from '../../i18n/app';
+import { resolveRecentGameTemplate } from '../../utils/recentTemplateResolution';
+import type { RecentGameTemplateIdentity } from '../../utils/recentTemplateResolution';
 
-export const useTemplateQuery = (searchQuery: string, pinnedIds: string[]) => {
+interface TemplateSummaryData {
+    templates: TemplateSummary[];
+    shareableTemplateIds: string[];
+    hiddenTemplateIdentities?: Pick<GameTemplate, 'id' | 'name' | 'bggId'>[];
+}
+
+const EMPTY_TEMPLATE_IDS: string[] = [];
+const EMPTY_TEMPLATE_IDENTITIES: Pick<GameTemplate, 'id' | 'name' | 'bggId'>[] = [];
+
+export const selectUserTemplateVisibility = (
+    rawItems: GameTemplate[],
+    additionalTemplates: GameTemplate[],
+    pinnedIds: string[]
+): { visibleItems: GameTemplate[]; hiddenTemplateIdentities: Pick<GameTemplate, 'id' | 'name' | 'bggId'>[] } => {
+    const loadedIds = new Set(rawItems.map(template => template.id));
+    const visibleItems: GameTemplate[] = [];
+    const hiddenTemplateIdentities: Pick<GameTemplate, 'id' | 'name' | 'bggId'>[] = [];
+    for (const template of rawItems) {
+        if (isDisposableTemplate(template, pinnedIds)) {
+            hiddenTemplateIdentities.push({ id: template.id, name: template.name, bggId: template.bggId });
+        } else {
+            visibleItems.push(template);
+        }
+    }
+    const missingPinnedItems = additionalTemplates.filter(template =>
+        pinnedIds.includes(template.id) &&
+        !loadedIds.has(template.id) &&
+        !isDisposableTemplate(template, pinnedIds)
+    );
+
+    return { visibleItems: [...visibleItems, ...missingPinnedItems], hiddenTemplateIdentities };
+};
+
+export const getAvailableImageIds = async (templates: GameTemplate[]): Promise<Set<string>> => {
+    const imageIds = [...new Set(templates.flatMap(template => template.imageId ? [template.imageId] : []))];
+    if (imageIds.length === 0) return new Set();
+    const existingIds = await db.images.where('id').anyOf(imageIds).primaryKeys();
+    return new Set(existingIds as string[]);
+};
+
+export const useTemplateQuery = (
+    searchQuery: string,
+    pinnedIds: string[],
+    includeShareableTemplateIds = false,
+    additionalTemplateIds: string[] = EMPTY_TEMPLATE_IDS
+) => {
     // --- PREFERENCES & HELPERS ---
     const allPrefs = useLiveQuery(() => db.templatePrefs.toArray(), [], []);
 
@@ -33,37 +80,78 @@ export const useTemplateQuery = (searchQuery: string, pinnedIds: string[]) => {
         } as GameTemplate;
     }, []);
 
-    const getTemplate = async (id: string): Promise<GameTemplate | null> => {
+    const getTemplate = async (id: string, identity?: RecentGameTemplateIdentity): Promise<GameTemplate | null> => {
         let t = await db.templates.get(id);
         if (t) return mergePrefs(t, prefsMap);
         t = await db.builtins.get(id);
         if (t) return mergePrefs(t, prefsMap);
-        return null;
+
+        if (!identity || (identity.ambiguousName && !identity.nameMatchPending) || !identity.gameName.trim()) return null;
+        const gameName = identity.gameName.trim();
+
+        // Name is indexed on both tables, so an ID-repair lookup stays bounded to
+        // same-name candidates instead of scanning the template library.
+        const [userCandidates, builtinCandidates] = await Promise.all([
+            db.templates.where('name').equalsIgnoreCase(gameName).toArray(),
+            db.builtins.where('name').equalsIgnoreCase(gameName).toArray()
+        ]);
+        const resolved = resolveRecentGameTemplate(
+            [...userCandidates, ...builtinCandidates],
+            identity.nameMatchPending ? { ...identity, ambiguousName: false } : identity
+        );
+        if (!resolved) return null;
+        if (identity.nameMatchPending) {
+            // While the catalog query is loading, check its indexed names at click time
+            // before trusting a unique same-name board.
+            const [primaryGames, aliasGames] = await Promise.all([
+                db.bggGames.where('name').equalsIgnoreCase(gameName).toArray(),
+                db.bggGames.where('altNames').equalsIgnoreCase(gameName).toArray()
+            ]);
+            const catalogIds = new Set([...primaryGames, ...aliasGames].map(game => game.id.trim().toLowerCase()));
+            const boardId = resolved.bggId?.trim().toLowerCase();
+            if (catalogIds.size > 1 || (catalogIds.size === 1 && boardId && !catalogIds.has(boardId))) return null;
+        }
+        return mergePrefs(resolved, prefsMap);
     };
 
     // --- TEMPLATES (User) ---
-    const allUserTemplatesData = useLiveQuery<TemplateSummary[]>(async () => {
+    const allUserTemplatesData = useLiveQuery<TemplateSummaryData>(async () => {
         let collection = db.templates.orderBy('updatedAt').reverse();
         const fetchLimit = DATA_LIMITS.QUERY.FETCH_CAP;
-        const existingImageIds = await db.images.toCollection().primaryKeys();
-        const imageSet = new Set(existingImageIds as string[]);
 
         const rawItems = await collection.limit(fetchLimit).toArray();
 
-        // [Filter] Directly discard disposable templates at source
-        // Now using pinnedIds to rescue pinned simple templates
-        const filteredItems = rawItems.filter(t => !isDisposableTemplate(t, pinnedIds));
+        // Recent-game shortcuts and pinned templates can reference older records
+        // outside the bounded library query. Resolve only those IDs. Pinned simple
+        // templates must remain visible even when they fall beyond the fetch cap.
+        const loadedIds = new Set(rawItems.map(template => template.id));
+        const lookupIds = [...new Set([
+            ...pinnedIds,
+            ...(includeShareableTemplateIds ? additionalTemplateIds : [])
+        ])].filter(id => !loadedIds.has(id));
+        const additionalTemplates = lookupIds.length > 0
+            ? (await db.templates.bulkGet(lookupIds)).filter((template): template is GameTemplate => template !== undefined)
+            : [];
+        const { visibleItems, hiddenTemplateIdentities } = selectUserTemplateVisibility(rawItems, additionalTemplates, pinnedIds);
+        const shareabilityCandidates = [...rawItems, ...additionalTemplates];
+        const imageSet = await getAvailableImageIds(visibleItems);
 
         // Inject properties using centralized extractor
-        const mappedItems = filteredItems.map(t => extractTemplateSummary(t, imageSet));
+        const mappedItems = visibleItems.map(t => extractTemplateSummary(t, imageSet));
 
-        return mappedItems;
-    }, [pinnedIds]); // Re-run when pinnedIds change
+        return {
+            templates: mappedItems,
+            hiddenTemplateIdentities,
+            shareableTemplateIds: includeShareableTemplateIds
+                ? shareabilityCandidates.filter(template => !isDisposableTemplate(template)).map(template => template.id)
+                : []
+        };
+    }, [pinnedIds, includeShareableTemplateIds, additionalTemplateIds]); // Re-run when pins or shareability metadata changes
 
     const filteredUserTemplates = useMemo<TemplateSummary[]>(() => {
         if (!allUserTemplatesData) return [];
         // [Update] Use _searchName architecture
-        return searchService.search<TemplateSummary>(allUserTemplatesData, searchQuery, [
+        return searchService.search<TemplateSummary>(allUserTemplatesData.templates, searchQuery, [
             { name: '_searchName', weight: 1.0 }
         ]);
     }, [allUserTemplatesData, searchQuery]);
@@ -96,23 +184,27 @@ export const useTemplateQuery = (searchQuery: string, pinnedIds: string[]) => {
     const { t: tApp } = useAppTranslation();
 
     // --- TEMPLATES (Built-in) ---
-    const allBuiltinsRaw = useLiveQuery<TemplateSummary[]>(async () => {
+    const allBuiltinsRaw = useLiveQuery<TemplateSummaryData>(async () => {
         const raw = await db.builtins.toArray();
         // Standardize Built-ins to TemplateSummary for consistent search architecture
-        return raw.map(t => extractTemplateSummary(t, new Set()));
-    }, []); // Load once from DB
+        return {
+            templates: raw.map(t => extractTemplateSummary(t, new Set())),
+            shareableTemplateIds: includeShareableTemplateIds
+                ? raw.filter(template => !isDisposableTemplate(template)).map(template => template.id)
+                : []
+        };
+    }, [includeShareableTemplateIds]); // Load once from DB
 
     const allBuiltinsData = useMemo<TemplateSummary[]>(() => {
         if (!allBuiltinsRaw) return [];
         const lang = tApp('app_lang_code') || 'zh-TW';
         const isEn = lang.startsWith('en');
 
-        return allBuiltinsRaw.filter(t => {
+        return allBuiltinsRaw.templates.filter(t => {
              const isEnTemplate = t.id.startsWith('Built-in-EN-');
              return isEn ? isEnTemplate : !isEnTemplate;
         });
     }, [allBuiltinsRaw, tApp]);
-
 
     const getBuiltinTemplateByShortId = async (shortId: string): Promise<GameTemplate | null> => {
         // 1. Try direct lookup (fastest)
@@ -154,12 +246,20 @@ export const useTemplateQuery = (searchQuery: string, pinnedIds: string[]) => {
         });
     }, [filteredBuiltins.items, shadowTemplatesMap, prefsMap, mergePrefs]);
 
+    const shareableTemplateIds = useMemo(() => new Set([
+        ...(allUserTemplatesData?.shareableTemplateIds ?? []),
+        ...(allBuiltinsRaw?.shareableTemplateIds ?? [])
+    ]), [allUserTemplatesData, allBuiltinsRaw]);
+
     return {
         templates: userTemplates,
+        hiddenTemplateIdentities: allUserTemplatesData?.hiddenTemplateIdentities ?? EMPTY_TEMPLATE_IDENTITIES,
+        templatesLoaded: allUserTemplatesData !== undefined && allBuiltinsRaw !== undefined,
         userTemplatesCount: userTemplatesTotal,
         systemTemplates,
         systemTemplatesCount: filteredBuiltins.total,
         systemOverrides: shadowTemplatesMap,
+        shareableTemplateIds,
         getTemplate,
         getBuiltinTemplateByShortId
     };

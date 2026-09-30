@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { GameSession, GameTemplate, Player, ScoreColumn } from '../../types';
-import { persistMultiplayerBootstrap, persistMultiplayerCompletion, persistMultiplayerSnapshot, retainMultiplayerCompletionRelay } from './multiplayerPersistence';
+import { GameSession, GameTemplate, MultiplayerRoomRecord, Player, ScoreColumn } from '../../types';
+import { persistMultiplayerBootstrap, persistMultiplayerCompletion, persistMultiplayerSnapshot, releaseMultiplayerRoomOwnership, retainMultiplayerCompletionRelay } from './multiplayerPersistence';
 import { createSessionBootstrapPackage } from './sessionBootstrap';
 
 const createColumn = (): ScoreColumn => ({
@@ -25,11 +25,16 @@ const createMessage = (template = createTemplate(100)) => ({
 
 describe('multiplayer local persistence', () => {
   it('reuses an equal local template and only persists the session', async () => {
-    const putTemplate = vi.fn(async () => undefined);
-    const putSession = vi.fn(async () => undefined);
-    const putRoom = vi.fn(async () => undefined);
+    const putTemplate = vi.fn<[GameTemplate], Promise<void>>(async () => undefined);
+    const putSession = vi.fn<[GameSession], Promise<void>>(async () => undefined);
+    const putRoom = vi.fn<[MultiplayerRoomRecord], Promise<void>>(async () => undefined);
     const result = await persistMultiplayerBootstrap(createMessage(), {
       getTemplate: async () => createTemplate(100), putTemplate, putSession, putRoom,
+      persistBootstrap: async ({ template, session, room }) => {
+        if (template) await putTemplate(template);
+        await putSession(session);
+        await putRoom(room);
+      },
     });
 
     expect(result.decision.action).toBe('reuse-local');
@@ -41,20 +46,58 @@ describe('multiplayer local persistence', () => {
   });
 
   it('overwrites only when the host template is newer', async () => {
-    const putTemplate = vi.fn(async () => undefined);
+    const putTemplate = vi.fn<[GameTemplate], Promise<void>>(async () => undefined);
+    const putSession = vi.fn<[GameSession], Promise<void>>(async () => undefined);
+    const putRoom = vi.fn<[MultiplayerRoomRecord], Promise<void>>(async () => undefined);
     const result = await persistMultiplayerBootstrap(createMessage(createTemplate(200)), {
-      getTemplate: async () => createTemplate(100), putTemplate, putSession: async () => undefined, putRoom: async () => undefined,
+      getTemplate: async () => createTemplate(100), putTemplate, putSession, putRoom,
+      persistBootstrap: async ({ template, session, room }) => {
+        if (template) await putTemplate(template);
+        await putSession(session);
+        await putRoom(room);
+      },
     });
 
     expect(result.decision.action).toBe('overwrite-local');
     expect(putTemplate).toHaveBeenCalledWith(expect.objectContaining({ id: 'template-1', updatedAt: 200 }));
   });
 
+  it('uses the atomic bootstrap writer when the store provides one', async () => {
+    const persistBootstrap = vi.fn(async () => undefined);
+    const putTemplate = vi.fn<[GameTemplate], Promise<void>>(async () => undefined);
+    const putSession = vi.fn<[GameSession], Promise<void>>(async () => undefined);
+    const putRoom = vi.fn<[MultiplayerRoomRecord], Promise<void>>(async () => undefined);
+
+    const result = await persistMultiplayerBootstrap(createMessage(), {
+      getTemplate: async () => undefined,
+      putTemplate,
+      putSession,
+      putRoom,
+      persistBootstrap,
+    });
+
+    expect(result.decision.action).toBe('add-new');
+    expect(persistBootstrap).toHaveBeenCalledWith({
+      template: expect.objectContaining({ id: 'template-1' }),
+      session: expect.objectContaining({ id: 'session-1', templateId: 'template-1' }),
+      room: expect.objectContaining({ roomId: 'room-1', sessionId: 'session-1', role: 'player' }),
+    });
+    expect(putTemplate).not.toHaveBeenCalled();
+    expect(putSession).not.toHaveBeenCalled();
+    expect(putRoom).not.toHaveBeenCalled();
+  });
+
   it('keeps a newer local template and creates one deterministic template copy for this session', async () => {
-    const putTemplate = vi.fn(async () => undefined);
-    const putSession = vi.fn(async () => undefined);
+    const putTemplate = vi.fn<[GameTemplate], Promise<void>>(async () => undefined);
+    const putSession = vi.fn<[GameSession], Promise<void>>(async () => undefined);
+    const putRoom = vi.fn<[MultiplayerRoomRecord], Promise<void>>(async () => undefined);
     const result = await persistMultiplayerBootstrap(createMessage(createTemplate(100)), {
-      getTemplate: async () => createTemplate(200), putTemplate, putSession, putRoom: async () => undefined,
+      getTemplate: async () => createTemplate(200), putTemplate, putSession, putRoom,
+      persistBootstrap: async ({ template, session, room }) => {
+        if (template) await putTemplate(template);
+        await putSession(session);
+        await putRoom(room);
+      },
     });
 
     expect(result.decision).toEqual({
@@ -91,6 +134,25 @@ describe('multiplayer local persistence', () => {
     expect(deleteRoom).toHaveBeenCalledWith('room-1');
   });
 
+  it('uses the atomic ownership writer when the store provides one', async () => {
+    const releaseRoomOwnership = vi.fn(async () => undefined);
+    const putSession = vi.fn(async () => undefined);
+    const deleteRoom = vi.fn(async () => undefined);
+    const completedSession = { ...createSession(), status: 'completed' as const };
+
+    const localSession = await releaseMultiplayerRoomOwnership({
+      store: { putSession, deleteRoom, releaseRoomOwnership },
+      roomId: 'room-1',
+      session: completedSession,
+      completedAt: 30,
+    });
+
+    expect(localSession).toMatchObject({ id: 'session-1', status: 'active', lastUpdatedAt: 30 });
+    expect(releaseRoomOwnership).toHaveBeenCalledWith({ roomId: 'room-1', session: localSession });
+    expect(putSession).not.toHaveBeenCalled();
+    expect(deleteRoom).not.toHaveBeenCalled();
+  });
+
   it('persists a valid host snapshot as the local active session', async () => {
     const putSession = vi.fn(async () => undefined);
     const updateRoomRevision = vi.fn(async () => undefined);
@@ -108,6 +170,35 @@ describe('multiplayer local persistence', () => {
     expect(persisted).toEqual(snapshot.session);
     expect(putSession).toHaveBeenCalledWith(snapshot.session);
     expect(updateRoomRevision).toHaveBeenCalledWith('room-1', 4, 40);
+  });
+
+  it('uses the atomic snapshot writer when the store provides one', async () => {
+    const persistSnapshot = vi.fn(async () => undefined);
+    const putSession = vi.fn(async () => undefined);
+    const updateRoomRevision = vi.fn(async () => undefined);
+    const snapshot = {
+      type: 'session:snapshot' as const,
+      roomId: 'room-1',
+      sessionId: 'session-1',
+      session: createSession(),
+      revision: 5,
+      updatedAt: 50,
+    };
+
+    await persistMultiplayerSnapshot(snapshot, {
+      putSession,
+      updateRoomRevision,
+      persistSnapshot,
+    });
+
+    expect(persistSnapshot).toHaveBeenCalledWith({
+      session: snapshot.session,
+      roomId: 'room-1',
+      revision: 5,
+      updatedAt: 50,
+    });
+    expect(putSession).not.toHaveBeenCalled();
+    expect(updateRoomRevision).not.toHaveBeenCalled();
   });
 
   it('retains a terminal snapshot for participants reconnecting after host completion', async () => {

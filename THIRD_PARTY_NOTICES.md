@@ -13,7 +13,6 @@ remain tracked by `package-lock.json` and retain their own upstream notices.
 | --- | ---: | --- | --- | --- |
 | `dexie` | 3.2.7 | IndexedDB persistence | Apache-2.0 | [Dexie.js](https://github.com/dfahlander/Dexie.js) |
 | `dexie-react-hooks` | 1.1.7 | React hooks for Dexie queries | Apache-2.0 | [Dexie.js](https://github.com/dexie/Dexie.js) |
-| `formidable` | 3.5.4 | Multipart form parsing in the API | MIT | [formidable](https://github.com/node-formidable/formidable) |
 | `fuse.js` | 7.1.0 | Fuzzy search and matching | Apache-2.0 | [Fuse.js](https://github.com/krisk/Fuse) |
 | `html-to-image` | 1.11.13 | Converting rendered UI to images | MIT | [html-to-image](https://github.com/bubkoo/html-to-image) |
 | `hyphenation.en-us` | 0.2.1 | English hyphenation patterns for Hypher | Not declared in package metadata | [npm package](https://www.npmjs.com/package/hyphenation.en-us) |
@@ -37,7 +36,7 @@ remain tracked by `package-lock.json` and retain their own upstream notices.
 | `autoprefixer` | 10.4.24 | CSS vendor-prefix processing | MIT | [Autoprefixer](https://github.com/postcss/autoprefixer) |
 | `jsdom` | 24.1.3 | Browser-like test environment | MIT | [jsdom](https://github.com/jsdom/jsdom) |
 | `opencc-js` | 1.3.1 | Traditional/Simplified Chinese conversion in data tooling | MIT | [opencc-js](https://github.com/nk2028/opencc-js) |
-| `postcss` | 8.5.6 | CSS transformation pipeline | MIT | [PostCSS](https://github.com/postcss/postcss) |
+| `postcss` | 8.5.28 | CSS transformation pipeline | MIT | [PostCSS](https://github.com/postcss/postcss) |
 | `tailwindcss` | 3.4.19 | Utility-first CSS build tooling | MIT | [Tailwind CSS](https://github.com/tailwindlabs/tailwindcss) |
 | `typescript` | 5.9.3 | Type checking and compilation | Apache-2.0 | [TypeScript](https://github.com/microsoft/TypeScript) |
 | `vite` | 5.4.21 | Frontend development server and bundler | MIT | [Vite](https://github.com/vitejs/vite) |

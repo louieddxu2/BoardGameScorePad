@@ -16,6 +16,13 @@ export interface MultiplayerBootstrapStore {
   putTemplate(template: GameTemplate): Promise<unknown>;
   putSession(session: GameSession): Promise<unknown>;
   putRoom(room: MultiplayerRoomRecord): Promise<unknown>;
+  persistBootstrap(records: MultiplayerBootstrapRecords): Promise<unknown>;
+}
+
+export interface MultiplayerBootstrapRecords {
+  template?: GameTemplate;
+  session: GameSession;
+  room: MultiplayerRoomRecord;
 }
 
 export interface MultiplayerHistoryStore {
@@ -26,12 +33,19 @@ export interface MultiplayerHistoryStore {
 
 export interface MultiplayerCompletionReleaseStore extends MultiplayerHistoryStore {
   putSession(session: GameSession): Promise<unknown>;
+  releaseRoomOwnership?(options: { roomId: string; session: GameSession }): Promise<unknown>;
 }
 
 export interface MultiplayerSnapshotStore {
   putSession(session: GameSession): Promise<unknown>;
   putTemplate?(template: GameTemplate): Promise<unknown>;
   updateRoomRevision(roomId: string, revision: number, updatedAt: number): Promise<unknown>;
+  persistSnapshot?(options: {
+    session: GameSession;
+    roomId: string;
+    revision: number;
+    updatedAt: number;
+  }): Promise<unknown>;
 }
 
 export interface PersistedBootstrapImport {
@@ -59,6 +73,13 @@ export const createMultiplayerRoomRecord = (options: {
   createdAt: options.room.createdAt,
   updatedAt: options.updatedAt,
 });
+
+export const persistMultiplayerBootstrapRecords = async (
+  store: MultiplayerBootstrapStore,
+  records: MultiplayerBootstrapRecords,
+): Promise<void> => {
+  await store.persistBootstrap(records);
+};
 
 /**
  * Keeps a completed host room available briefly so a temporarily offline
@@ -104,22 +125,25 @@ export const persistMultiplayerBootstrap = async (
   const localTemplate = await store.getTemplate(message.package.template.id);
   const resolved = resolveBootstrapImport(message.package, localTemplate);
 
-  if (
+  const templateToPersist = (
     resolved.decision.action === 'add-new' ||
     resolved.decision.action === 'overwrite-local' ||
     resolved.decision.action === 'add-session-copy'
-  ) {
-    await store.putTemplate(cloneJson(resolved.templateForSession));
-  }
+  ) ? cloneJson(resolved.templateForSession) : undefined;
 
-  await store.putSession(cloneJson(resolved.session));
-  await store.putRoom(createMultiplayerRoomRecord({
+  const sessionToPersist = cloneJson(resolved.session);
+  const roomToPersist = createMultiplayerRoomRecord({
     room: message.package.room,
-    session: resolved.session,
+    session: sessionToPersist,
     revision: message.package.revision,
     role,
     updatedAt: message.package.exportedAt,
-  }));
+  });
+  await persistMultiplayerBootstrapRecords(store, {
+    template: templateToPersist,
+    session: sessionToPersist,
+    room: roomToPersist,
+  });
 
   return {
     decision: resolved.decision,
@@ -137,8 +161,17 @@ export const persistMultiplayerSnapshot = async (
   }
 
   const session = cloneJson(message.session);
-  await store.putSession(session);
-  await store.updateRoomRevision(message.roomId, message.revision, message.updatedAt);
+  if (store.persistSnapshot) {
+    await store.persistSnapshot({
+      session,
+      roomId: message.roomId,
+      revision: message.revision,
+      updatedAt: message.updatedAt,
+    });
+  } else {
+    await store.putSession(session);
+    await store.updateRoomRevision(message.roomId, message.revision, message.updatedAt);
+  }
   return session;
 };
 
@@ -195,7 +228,7 @@ export const persistMultiplayerCompletion = async (options: {
 
 /** Returns ownership of a completed room session to the local device. */
 export const releaseMultiplayerRoomOwnership = async (options: {
-  store: Pick<MultiplayerCompletionReleaseStore, 'putSession' | 'deleteRoom'>;
+  store: Pick<MultiplayerCompletionReleaseStore, 'putSession' | 'deleteRoom' | 'releaseRoomOwnership'>;
   roomId: string;
   session: GameSession;
   completedAt: number;
@@ -205,7 +238,11 @@ export const releaseMultiplayerRoomOwnership = async (options: {
     status: 'active',
     lastUpdatedAt: options.completedAt,
   };
-  await options.store.putSession(localSession);
-  await options.store.deleteRoom(options.roomId);
+  if (options.store.releaseRoomOwnership) {
+    await options.store.releaseRoomOwnership({ roomId: options.roomId, session: localSession });
+  } else {
+    await options.store.putSession(localSession);
+    await options.store.deleteRoom(options.roomId);
+  }
   return localSession;
 };

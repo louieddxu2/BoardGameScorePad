@@ -20,6 +20,11 @@ const createRuntimeStore = (): MultiplayerRoomRecoveryStore & MultiplayerPlayerR
     putTemplate: async (value) => { templates.set(value.id, value); },
     putSession: async (value) => { sessions.set(value.id, value); },
     putRoom: async (value) => { rooms.set(value.roomId, value); },
+    persistBootstrap: async ({ template: bootstrapTemplate, session: bootstrapSession, room: bootstrapRoom }) => {
+      if (bootstrapTemplate) templates.set(bootstrapTemplate.id, bootstrapTemplate);
+      sessions.set(bootstrapSession.id, bootstrapSession);
+      rooms.set(bootstrapRoom.roomId, bootstrapRoom);
+    },
     updateRoomRevision: async (roomId, revision, updatedAt) => { const room = rooms.get(roomId); if (room) rooms.set(roomId, { ...room, revision, updatedAt }); },
     deleteRoom: async (id) => { rooms.delete(id); },
   };

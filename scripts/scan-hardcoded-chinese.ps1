@@ -1,25 +1,25 @@
-# Hardcoded Chinese Character Scanner
+﻿# Hardcoded Chinese Character Scanner
 # Purpose: Find hardcoded Chinese UI strings in .tsx/.ts files that should be in i18n dictionaries.
 #          Excludes: i18n dictionary files, comments, console.log, alert(), and type files.
 # Usage:   Run from project root: .\scripts\scan-hardcoded-chinese.ps1
 
 # File-level exclusions: skip entire files/directories matching these partial paths
 $excludeFileSubstrings = @(
-    "\src\i18n\",
-    "\node_modules\",
-    "\dist\",
-    "\data\",
-    "\ErrorBoundary.tsx",  # 安全網元件：刻意使用硬編碼雙語字串，不依賴 LanguageProvider
+    "/src/i18n/",
+    "/node_modules/",
+    "/dist/",
+    "/data/",
+    "/ErrorBoundary.tsx",  # 安全網元件：刻意使用硬編碼雙語字串，不依賴 LanguageProvider
     ".test.ts",
     ".test.tsx",
-    "\mocks\",
-    "\tests\",
-    "\services\cloud\googleDriveClient.ts", # 內部開發用錯誤訊息，非對外 UI
-    "\services\relationship\", # 底層 Regex 檢查名稱規則
-    "\features\bgstats\services\historyBatchUtils.ts", # 歷史批次預設玩家名稱（寫入用，不在此翻譯）
-    "\features\recommendation\SessionPlayerInitializer.ts", # 判斷預設名稱的正則表達式
-    "\utils\dataMigration.ts", # 歷史資料庫轉移用標籤
-    "\features\ai-generator\aiSystemPrompt.ts" # AI 提示詞常數（非 UI 字串）
+    "/mocks/",
+    "/tests/",
+    "/services/cloud/googleDriveClient.ts", # 內部開發用錯誤訊息，非對外 UI
+    "/services/relationship/", # 底層 Regex 檢查名稱規則
+    "/features/bgstats/services/historyBatchUtils.ts", # 歷史批次預設玩家名稱（寫入用，不在此翻譯）
+    "/features/recommendation/SessionPlayerInitializer.ts", # 判斷預設名稱的正則表達式
+    "/utils/dataMigration.ts", # 歷史資料庫轉移用標籤
+    "/features/ai-generator/aiSystemPrompt.ts" # AI 提示詞常數（非 UI 字串）
 )
 
 # Line-level exclusions: skip lines matching these patterns (comments, dev-only calls, etc.)
@@ -41,13 +41,16 @@ $excludeLinePatterns = @(
 )
 
 $allFiles = Get-ChildItem -Path "src" -Recurse -Include "*.tsx", "*.ts" -ErrorAction SilentlyContinue
+$rootPath = (Get-Location).Path
+$normalizedRoot = $rootPath.Replace([char]92, [char]47)
 
 $results = foreach ($file in $allFiles) {
     # Skip excluded files/directories
-    $shouldSkip = $excludeFileSubstrings | Where-Object { $file.FullName.Contains($_) }
+    $normalizedPath = $file.FullName.Replace([char]92, [char]47)
+    $shouldSkip = $excludeFileSubstrings | Where-Object { $normalizedPath.Contains($_) }
     if ($shouldSkip) { continue }
 
-    $lines = Get-Content $file.FullName -ErrorAction SilentlyContinue
+    $lines = Get-Content $file.FullName -Encoding UTF8 -ErrorAction SilentlyContinue
     if (-not $lines) { continue }
 
     $lineNum = 0
@@ -62,7 +65,7 @@ $results = foreach ($file in $allFiles) {
         if ($isExcluded) { continue }
 
         [PSCustomObject]@{
-            File    = $file.FullName.Replace((Get-Location).Path + "\", "")
+            File    = $normalizedPath.Substring($normalizedRoot.Length).TrimStart([char]47)
             Line    = $lineNum
             Content = $line.Trim().Substring(0, [Math]::Min(90, $line.Trim().Length))
         }
