@@ -45,6 +45,7 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
         onAction(action);
     }, { moveThreshold: 10 });
 
+    // App zoom changes the root font size; rem preserves the 100% text sizes.
     return (
         <button
             {...touchHandlers}
@@ -63,14 +64,14 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
             )}
 
             <span
-                className={`font-bold leading-tight break-words whitespace-pre-wrap pointer-events-none hyphenate ${isListMode ? 'text-[20px] text-left flex-1 min-w-0' : 'text-[16px] text-center w-full'} ${!isListMode && showActionValue ? 'mb-1' : ''}`}
+                className={`font-bold leading-tight break-words whitespace-pre-wrap pointer-events-none hyphenate ${isListMode ? 'text-[1.25rem] text-left flex-1 min-w-0' : 'text-[1rem] text-center w-full'} ${!isListMode && showActionValue ? 'mb-1' : ''}`}
                 style={{ color: textColor }}
             >
                 {injectSoftHyphens(action.label)}
             </span>
             {showActionValue && (
                 <span
-                    className={`font-mono font-bold rounded-full flex items-center justify-center shrink-0 pointer-events-none ${isListMode ? 'text-[16px] px-3 py-1 ml-2' : 'text-[14px] px-2 py-0.5'} ${badgeBackgroundClass}`}
+                    className={`font-mono font-bold rounded-full flex items-center justify-center shrink-0 pointer-events-none ${isListMode ? 'text-[1rem] px-3 py-1 ml-2' : 'text-[0.875rem] px-2 py-0.5'} ${badgeBackgroundClass}`}
                     style={{ color: textColor }}
                 >
                     {isStandardSumParts && action.value > 0 ? '+' : ''}{action.value}
