@@ -26,6 +26,7 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
   const {
     templates: allTemplates,
     systemTemplates: allSystemTemplates,
+    hiddenTemplateIdentities,
     templatesLoaded
   } = useTemplateQuery('', pinnedIds);
 
@@ -54,7 +55,8 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
     enabled ? allSavedGames : EMPTY_SAVED_GAMES,
     enabled ? allBggGames ?? EMPTY_BGG_GAMES : EMPTY_BGG_GAMES,
     pinnedIds,
-    !!(templatesLoaded && savedGamesLoaded && allBggGames !== undefined)
+    !!(templatesLoaded && savedGamesLoaded && allBggGames !== undefined),
+    hiddenTemplateIdentities
   );
 
   // 4. Search

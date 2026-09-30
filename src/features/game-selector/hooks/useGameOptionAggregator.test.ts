@@ -115,6 +115,48 @@ describe('useGameOptionAggregator recency', () => {
     }
   });
 
+  it('does not attach a visible board when a filtered simple board has the same name', () => {
+    const visibleBoard: GameTemplate = {
+      id: 'visible-board', name: 'Shared Name', bggId: '123',
+      columns: [{ id: 'score', name: 'Score', formula: 'a1', inputType: 'keypad', isScoring: true }],
+      createdAt: 1
+    };
+    const savedGames: SavedListItem[] = [
+      { id: 'saved-game', name: 'Shared Name', lastUsed: 5000, usageCount: 1 }
+    ];
+    const hiddenSimple = [{ id: 'hidden-simple', name: 'Shared Name', bggId: '456' }];
+
+    const { result } = renderHook(() => useGameOptionAggregator(
+      [visibleBoard], savedGames, [], [], true, hiddenSimple
+    ));
+
+    expect(result.current.find(option => option.savedGameId === 'saved-game')).toMatchObject({
+      templateId: undefined, bggId: undefined, ambiguousName: true
+    });
+    expect(result.current.find(option => option.templateId === visibleBoard.id)?.savedGameId).toBeUndefined();
+    expect(result.current.find(option => option.templateId === hiddenSimple[0].id)).toBeUndefined();
+  });
+
+  it('still uses a known BGG ID when a filtered simple board shares the name', () => {
+    const visibleBoard: GameTemplate = {
+      id: 'visible-board', name: 'Shared Name', bggId: '123', columns: [], createdAt: 1
+    };
+    const savedGames: SavedListItem[] = [
+      { id: 'saved-game', name: 'Shared Name', bggId: '123', lastUsed: 5000, usageCount: 1 }
+    ];
+
+    const { result } = renderHook(() => useGameOptionAggregator(
+      [visibleBoard], savedGames, [], [], true,
+      [{ id: 'hidden-simple', name: 'Shared Name', bggId: '456' }]
+    ));
+
+    expect(result.current.find(option => option.savedGameId === 'saved-game')).toMatchObject({
+      templateId: 'visible-board', bggId: '123'
+    });
+  });
+
+
+
   it('also refuses a name-only board match when the BGG dictionary has another identity', () => {
     const templates: GameTemplate[] = [
       { id: 'board-123', name: 'Shared Name', bggId: '123', columns: [], createdAt: 1 }

@@ -15,24 +15,34 @@ import type { RecentGameTemplateIdentity } from '../../utils/recentTemplateResol
 interface TemplateSummaryData {
     templates: TemplateSummary[];
     shareableTemplateIds: string[];
+    hiddenTemplateIdentities?: Pick<GameTemplate, 'id' | 'name' | 'bggId'>[];
 }
 
 const EMPTY_TEMPLATE_IDS: string[] = [];
+const EMPTY_TEMPLATE_IDENTITIES: Pick<GameTemplate, 'id' | 'name' | 'bggId'>[] = [];
 
-export const selectVisibleUserTemplates = (
+export const selectUserTemplateVisibility = (
     rawItems: GameTemplate[],
     additionalTemplates: GameTemplate[],
     pinnedIds: string[]
-): GameTemplate[] => {
+): { visibleItems: GameTemplate[]; hiddenTemplateIdentities: Pick<GameTemplate, 'id' | 'name' | 'bggId'>[] } => {
     const loadedIds = new Set(rawItems.map(template => template.id));
-    const visibleItems = rawItems.filter(template => !isDisposableTemplate(template, pinnedIds));
+    const visibleItems: GameTemplate[] = [];
+    const hiddenTemplateIdentities: Pick<GameTemplate, 'id' | 'name' | 'bggId'>[] = [];
+    for (const template of rawItems) {
+        if (isDisposableTemplate(template, pinnedIds)) {
+            hiddenTemplateIdentities.push({ id: template.id, name: template.name, bggId: template.bggId });
+        } else {
+            visibleItems.push(template);
+        }
+    }
     const missingPinnedItems = additionalTemplates.filter(template =>
         pinnedIds.includes(template.id) &&
         !loadedIds.has(template.id) &&
         !isDisposableTemplate(template, pinnedIds)
     );
 
-    return [...visibleItems, ...missingPinnedItems];
+    return { visibleItems: [...visibleItems, ...missingPinnedItems], hiddenTemplateIdentities };
 };
 
 export const getAvailableImageIds = async (templates: GameTemplate[]): Promise<Set<string>> => {
@@ -122,7 +132,7 @@ export const useTemplateQuery = (
         const additionalTemplates = lookupIds.length > 0
             ? (await db.templates.bulkGet(lookupIds)).filter((template): template is GameTemplate => template !== undefined)
             : [];
-        const visibleItems = selectVisibleUserTemplates(rawItems, additionalTemplates, pinnedIds);
+        const { visibleItems, hiddenTemplateIdentities } = selectUserTemplateVisibility(rawItems, additionalTemplates, pinnedIds);
         const shareabilityCandidates = [...rawItems, ...additionalTemplates];
         const imageSet = await getAvailableImageIds(visibleItems);
 
@@ -131,6 +141,7 @@ export const useTemplateQuery = (
 
         return {
             templates: mappedItems,
+            hiddenTemplateIdentities,
             shareableTemplateIds: includeShareableTemplateIds
                 ? shareabilityCandidates.filter(template => !isDisposableTemplate(template)).map(template => template.id)
                 : []
@@ -242,6 +253,7 @@ export const useTemplateQuery = (
 
     return {
         templates: userTemplates,
+        hiddenTemplateIdentities: allUserTemplatesData?.hiddenTemplateIdentities ?? EMPTY_TEMPLATE_IDENTITIES,
         templatesLoaded: allUserTemplatesData !== undefined && allBuiltinsRaw !== undefined,
         userTemplatesCount: userTemplatesTotal,
         systemTemplates,

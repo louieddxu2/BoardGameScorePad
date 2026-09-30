@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GameTemplate } from '../../types';
 import { db } from '../../db';
 import { LanguageProvider } from '../../i18n';
-import { getAvailableImageIds, selectVisibleUserTemplates, useTemplateQuery } from './useTemplateQuery';
+import { getAvailableImageIds, selectUserTemplateVisibility, useTemplateQuery } from './useTemplateQuery';
 
 vi.mock('dexie-react-hooks', () => ({ useLiveQuery: vi.fn() }));
 
@@ -15,7 +15,24 @@ const simpleTemplate = (id: string): GameTemplate => ({
     createdAt: 1
 } as GameTemplate);
 
-describe('selectVisibleUserTemplates', () => {
+describe('selectUserTemplateVisibility', () => {
+    it('retains filtered simple-board identities for name ambiguity checks', () => {
+        const fullTemplate = {
+            ...simpleTemplate('full'),
+            name: 'Shared Name',
+            columns: [{ id: 'score', name: 'Score', formula: 'a1', inputType: 'keypad' as const, isScoring: true }]
+        } as GameTemplate;
+        const hiddenSimple = { ...simpleTemplate('hidden'), name: 'Shared Name', bggId: '456' };
+        const pinnedSimple = { ...simpleTemplate('pinned'), name: 'Pinned Name' };
+
+        const { visibleItems, hiddenTemplateIdentities } = selectUserTemplateVisibility(
+            [fullTemplate, hiddenSimple, pinnedSimple], [], [pinnedSimple.id]
+        );
+
+        expect(visibleItems).toEqual([fullTemplate, pinnedSimple]);
+        expect(hiddenTemplateIdentities).toEqual([{ id: 'hidden', name: 'Shared Name', bggId: '456' }]);
+    });
+
     it('keeps pinned simple templates fetched by ID beyond the regular fetch cap', () => {
         const newestTemplate = {
             ...simpleTemplate('newest'),
@@ -24,7 +41,7 @@ describe('selectVisibleUserTemplates', () => {
         const olderPinnedTemplate = simpleTemplate('older-pinned');
         const olderUnpinnedTemplate = simpleTemplate('older-unpinned');
 
-        const visible = selectVisibleUserTemplates(
+        const { visibleItems: visible } = selectUserTemplateVisibility(
             [newestTemplate],
             [olderPinnedTemplate, olderUnpinnedTemplate],
             [olderPinnedTemplate.id]
@@ -36,7 +53,7 @@ describe('selectVisibleUserTemplates', () => {
     it('does not duplicate a pinned template already in the regular query results', () => {
         const pinnedTemplate = simpleTemplate('pinned');
 
-        const visible = selectVisibleUserTemplates(
+        const { visibleItems: visible } = selectUserTemplateVisibility(
             [pinnedTemplate],
             [pinnedTemplate],
             [pinnedTemplate.id]

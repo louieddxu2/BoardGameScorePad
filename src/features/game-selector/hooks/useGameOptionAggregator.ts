@@ -4,6 +4,9 @@ import { GameTemplate, SavedListItem } from '../../../types';
 import { BggGameSummary } from '../../../utils/extractDataSummaries';
 import { GameOption } from '../types';
 
+type TemplateIdentity = Pick<GameTemplate, 'id' | 'name' | 'bggId'>;
+const EMPTY_TEMPLATE_IDENTITIES: TemplateIdentity[] = [];
+
 /**
  * Game Option Aggregator
  * 
@@ -23,7 +26,8 @@ export const useGameOptionAggregator = (
   savedGames: SavedListItem[],
   bggGames: BggGameSummary[] = [],
   pinnedIds: string[] = [], // [New] Pass pinned list
-  allowNameOnlyMatches = true
+  allowNameOnlyMatches = true,
+  hiddenTemplateIdentities: TemplateIdentity[] = EMPTY_TEMPLATE_IDENTITIES
 ) => {
   const allOptions = useMemo<GameOption[]>(() => {
     // Primary Index: Name -> Option
@@ -57,14 +61,16 @@ export const useGameOptionAggregator = (
       };
 
       savedGames.forEach(game => rememberBggId(getKey(game.name), getBggKey(game.bggId)));
-      templates.forEach(template => {
+      const rememberTemplateIdentity = (template: TemplateIdentity) => {
         const key = getKey(template.name);
         if (!unidentifiedNames.has(key)) return;
         const previous = templateIdsByName.get(key);
         if (previous && previous !== template.id) ambiguousNames.add(key);
         else templateIdsByName.set(key, template.id);
         rememberBggId(key, getBggKey(template.bggId));
-      });
+      };
+      templates.forEach(rememberTemplateIdentity);
+      hiddenTemplateIdentities.forEach(rememberTemplateIdentity);
       bggGames.forEach(game => {
         const bggId = getBggKey(game.id);
         rememberBggId(getKey(game.name), bggId);
@@ -311,7 +317,7 @@ export const useGameOptionAggregator = (
 
     // Return unique values
     return Array.from(new Set([...nameMap.values(), ...conflictingOptions]));
-  }, [templates, savedGames, bggGames, pinnedIds, allowNameOnlyMatches]);
+  }, [templates, savedGames, bggGames, pinnedIds, allowNameOnlyMatches, hiddenTemplateIdentities]);
 
   return allOptions;
 };
