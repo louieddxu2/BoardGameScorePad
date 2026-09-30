@@ -6,6 +6,8 @@ The available-space typography follow-up adds `QuickButtonPad.sizing.test.tsx`. 
 
 The label flex item is an inline-size query container, so a side-by-side badge excludes its actual width from the label slot. Stacked badges instead reserve their line height, padding, and gap against the unchanged nominal row height. The CSS cap uses that nominal height, never content-driven height units; long labels retain wrapping and scrolling. No observers, resize handlers, font-fitting loops, database changes, or new runtime dependencies were added. Check narrow-screen Safari with badges and label-only options on a real device before treating visual fit as verified.
 
+The label-only refinement keeps standard label/badge sizing unchanged. Supported browsers cap label-only text at `1.75rem` (28px at 100% zoom) and `24cqi`, leaving 4% of the label slot after four nominal 1em full-width glyph advances. The existing nominal-height cap still applies. Wide labels follow the root-relative cap; narrow labels prioritize the four-glyph width budget rather than growing past the slot when zoom increases. Nine additional model cases cover all three column counts and root sizes with 48–160px width fixtures. These verify the declared arithmetic, not real font metrics or rendered line breaks; fallback typography and multiline wrapping remain unchanged.
+
 Scope: `src/components/shared/InputControls.zoom.test.tsx` and the two font-unit changes in `QuickButtonPad.tsx`.
 
 | Reviewed file | Severity | Finding and disposition |

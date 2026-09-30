@@ -479,6 +479,16 @@ html[data-theme='light'] {
         clamp(1.125rem, calc(1.25rem + 10cqi), 2rem)
       );
     }
+
+    .quick-button-label-only > .quick-button-label-text {
+      /* Budget four full-width glyph advances with 4% spare width.
+         The smaller rem cap still follows app zoom when width permits. */
+      font-size: min(
+        calc(var(--quick-button-label-height) / 1.25),
+        24cqi,
+        1.75rem
+      );
+    }
   }
 
   .hyphenate {

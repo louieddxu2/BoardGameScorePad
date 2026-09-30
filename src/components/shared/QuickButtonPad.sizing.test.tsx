@@ -24,9 +24,16 @@ const getRule = (selector: string) => {
 // Model only the declared font-size arithmetic with explicit fixture widths.
 // JSDOM cannot measure container queries, wrapping, or real Safari geometry.
 const modelFontSize = (label: HTMLElement, rootFontSize: number, availableWidth: number) => {
-  const rule = getRule('.quick-button-label > .quick-button-label-text');
   let expression = '';
-  rule.walkDecls('font-size', declaration => { expression = declaration.value; });
+  const fontSelectors = new Set([
+    '.quick-button-label > .quick-button-label-text',
+    '.quick-button-label-only > .quick-button-label-text',
+  ]);
+  stylesheet.walkRules(rule => {
+    if (fontSelectors.has(rule.selector) && label.matches(rule.selector)) {
+      rule.walkDecls('font-size', declaration => { expression = declaration.value; });
+    }
+  });
   expect(expression).not.toBe('');
   const properties = new Map<string, string>();
   for (let element: HTMLElement | null = label; element; element = element.parentElement) {
@@ -58,7 +65,7 @@ const renderPad = (buttonGridColumns: number, renderMode: 'standard' | 'label_on
   const onAction = vi.fn();
   render(<LanguageProvider><QuickButtonPad column={{ ...column, buttonGridColumns, renderMode, ...extra }} onAction={onAction} /></LanguageProvider>);
   const button = screen.getByRole('button');
-  return { button, label: within(button).getByText('One'), onAction };
+  return { button, label: within(button).getByText(extra.quickActions?.[0]?.label ?? 'One'), onAction };
 };
 
 describe('QuickButtonPad available-space typography', () => {
@@ -77,6 +84,11 @@ describe('QuickButtonPad available-space typography', () => {
       expect(declaration.value).toContain('cqi');
       expect(declaration.value).not.toMatch(/\bcq(?:h|b|min|max)\b/);
     });
+    const labelOnlyRule = getRule('.quick-button-label-only > .quick-button-label-text');
+    expect(labelOnlyRule.parent).toBe(containerRule.parent);
+    labelOnlyRule.walkDecls('font-size', declaration => {
+      expect(declaration.value).not.toMatch(/\bcq(?:h|b|min|max)\b/);
+    });
   });
 
   describe.each([1, 2, 3])('%i columns', (cols) => {
@@ -84,6 +96,8 @@ describe('QuickButtonPad available-space typography', () => {
       const { button, label } = renderPad(cols, mode);
       const wrapper = label.parentElement!;
       expect(wrapper).toHaveClass('quick-button-label', 'pointer-events-none');
+      if (mode === 'label_only') expect(wrapper).toHaveClass('quick-button-label-only');
+      else expect(wrapper).not.toHaveClass('quick-button-label-only');
       expect(label).toHaveClass('quick-button-label-text', 'break-words', 'whitespace-pre-wrap');
       expect(button.parentElement!.style.getPropertyValue('--quick-button-row-height')).toBe(cols === 1 ? '3.5rem' : '4.5rem');
       expect(button.style.getPropertyValue('--quick-button-value-reserve')).toBe(cols > 1 && mode === 'standard' ? '1.8125rem' : '0rem');
@@ -110,11 +124,27 @@ describe('QuickButtonPad available-space typography', () => {
       const standard = within(screen.getByRole('button', { name: 'One 1' })).getByText('One');
       const labelOnly = within(screen.getByRole('button', { name: 'One' })).getByText('One');
       expect(modelFontSize(standard, root, 160)).toBeCloseTo(cols === 1 ? listWide : gridStandard);
-      expect(modelFontSize(labelOnly, root, 160)).toBeCloseTo(cols === 1 ? listWide : 2 * root);
+      expect(modelFontSize(labelOnly, root, 160)).toBeCloseTo(1.75 * root);
       expect(modelFontSize(labelOnly, root, 64)).toBeGreaterThan(modelFontSize(labelOnly, root, 32));
       expect(modelFontSize(labelOnly, root, 64)).toBeLessThanOrEqual(modelFontSize(labelOnly, root, 160));
-      expect(modelFontSize(labelOnly, root, 64)).toBeLessThanOrEqual(2 * root);
-      if (cols > 1) expect(modelFontSize(labelOnly, root, 64)).toBeGreaterThan(modelFontSize(standard, root, 64));
+      expect(modelFontSize(labelOnly, root, 64)).toBeLessThanOrEqual(1.75 * root);
+      if (cols > 1) expect(modelFontSize(labelOnly, root, 160)).toBeGreaterThan(modelFontSize(standard, root, 160));
+    });
+
+    it.each([12, 16, 20.8])('budgets four full-width glyph advances with spare width at root %s px', (root) => {
+      const { label } = renderPad(cols, 'label_only', {
+        quickActions: [{ ...column.quickActions[0], label: '五座帳篷' }],
+      });
+      expect(label.textContent).toBe('五座帳篷');
+
+      for (const availableWidth of [48, 64, 80, 96, 112, 160]) {
+        const fontSize = modelFontSize(label, root, availableWidth);
+        // Full-width glyphs nominally advance by 1em; this is a size budget,
+        // not a claim that JSDOM measures font metrics or rendered wrapping.
+        expect(fontSize * 4, `four glyphs at ${availableWidth}px label width`).toBeLessThanOrEqual(availableWidth * 0.96 + 0.001);
+        expect(fontSize).toBeLessThanOrEqual(1.75 * root);
+        expect(fontSize).toBeGreaterThan(0);
+      }
     });
   });
 
@@ -137,7 +167,7 @@ describe('QuickButtonPad available-space typography', () => {
     expect(label).not.toHaveClass('overflow-hidden');
     expect(button.parentElement!.style.gridAutoRows).toBe('minmax(4.5rem, auto)');
     expect(button.closest('.overflow-y-auto')).toHaveClass('flex-1', 'min-h-0');
-    expect(modelFontSize(label, 16, 64)).toBeCloseTo(26.4);
+    expect(modelFontSize(label, 16, 64)).toBeCloseTo(15.36);
     fireEvent.click(label);
     expect(onAction).toHaveBeenCalledTimes(1);
     expect(onAction).toHaveBeenCalledWith(action);

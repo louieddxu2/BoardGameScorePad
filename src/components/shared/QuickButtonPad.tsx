@@ -70,7 +70,7 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
             )}
 
             <span
-                className={`quick-button-label pointer-events-none ${isListMode ? 'text-left flex-1 min-w-0' : 'text-center w-full'} ${!isListMode && showActionValue ? 'mb-1' : ''}`}
+                className={`quick-button-label pointer-events-none ${!showActionValue ? 'quick-button-label-only' : ''} ${isListMode ? 'text-left flex-1 min-w-0' : 'text-center w-full'} ${!isListMode && showActionValue ? 'mb-1' : ''}`}
             >
                 <span
                     className={`quick-button-label-text block font-bold leading-tight break-words whitespace-pre-wrap pointer-events-none hyphenate ${isListMode ? 'text-[1.25rem]' : 'text-[1rem]'}`}
