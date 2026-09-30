@@ -88,7 +88,7 @@ describe('input controls with app zoom', () => {
     { cols: 2, labelFontSize: '1rem', badgeFontSize: '0.875rem' },
     { cols: 3, labelFontSize: '1rem', badgeFontSize: '0.875rem' },
   ])('$cols quick-button columns', ({ cols, labelFontSize, badgeFontSize }) => {
-    it.each(zoomCases)('keeps label-only text root-relative at $name zoom', ({ distance, rootFontSize }) => {
+    it.each(zoomCases)('keeps label-only fallback text root-relative at $name zoom', ({ distance, rootFontSize }) => {
       renderHook(() => useMobileZoom());
       render(
         <LanguageProvider>
@@ -104,7 +104,7 @@ describe('input controls with app zoom', () => {
       expect(screen.getByText('One')).toBe(label);
     });
 
-    it.each(zoomCases)('keeps standard labels and badges root-relative at $name zoom', ({ distance, rootFontSize }) => {
+    it.each(zoomCases)('keeps standard fallback labels and badges root-relative at $name zoom', ({ distance, rootFontSize }) => {
       renderHook(() => useMobileZoom());
       render(
         <LanguageProvider>

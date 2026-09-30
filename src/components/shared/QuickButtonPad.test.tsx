@@ -79,7 +79,7 @@ describe('QuickButtonPad', () => {
 
       expect(button).toHaveAccessibleName('Stage 2');
       expect(within(button).queryByText(String(value))).not.toBeInTheDocument();
-      expect(within(button).getByText('Stage 2')).not.toHaveClass('mb-1');
+      expect(within(button).getByText('Stage 2').parentElement).not.toHaveClass('mb-1');
 
       fireEvent.click(button);
 

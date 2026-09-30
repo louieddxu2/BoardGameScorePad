@@ -2,6 +2,10 @@
 
 This records the original `03de2b6` review (28 cases). In the subsequent keypad-format correction, the regression file has 30 cases: `-` and `+/-` now share the digits' fixed 32px typography at all three zoom levels. The original mutation results below concern the quick-option font change, not this later keypad correction. Real-device layout verification is still required.
 
+The available-space typography follow-up adds `QuickButtonPad.sizing.test.tsx`. It checks the real CSS declaration and the custom properties rendered by the component for one, two, and three columns at 75%, 100%, and 130% root font sizes. Its explicit container-width fixtures model CSS arithmetic, not measured layout. The existing zoom tests now name their label checks as fallback typography: JSDOM does not apply the supported container-query branch.
+
+The label flex item is an inline-size query container, so a side-by-side badge excludes its actual width from the label slot. Stacked badges instead reserve their line height, padding, and gap against the unchanged nominal row height. The CSS cap uses that nominal height, never content-driven height units; long labels retain wrapping and scrolling. No observers, resize handlers, font-fitting loops, database changes, or new runtime dependencies were added. Check narrow-screen Safari with badges and label-only options on a real device before treating visual fit as verified.
+
 Scope: `src/components/shared/InputControls.zoom.test.tsx` and the two font-unit changes in `QuickButtonPad.tsx`.
 
 | Reviewed file | Severity | Finding and disposition |
