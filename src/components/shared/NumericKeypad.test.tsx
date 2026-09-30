@@ -22,7 +22,80 @@ const makeProps = () => ({
   playerId: 'p1',
 });
 
+const getDecimalButton = (container: HTMLElement) => {
+  const button = container.querySelector('svg.lucide-dot')?.closest('button');
+  if (!button) throw new Error('Decimal button was not rendered');
+  return button;
+};
+
 describe('NumericKeypad', () => {
+  it.each([true, false])('matches the decimal key theme to the digits with overwrite %s', (overwrite) => {
+    const { container } = render(<NumericKeypad {...makeProps()} overwrite={overwrite} />);
+    const decimal = getDecimalButton(container);
+    const theme = overwrite ? ['bg-keypad-active', 'text-white'] : ['bg-keypad-bg', 'text-keypad-text'];
+    const otherTheme = overwrite ? ['bg-keypad-bg', 'text-keypad-text'] : ['bg-keypad-active', 'text-white'];
+
+    expect(decimal).toHaveClass(...theme);
+    expect(screen.getByRole('button', { name: '1' })).toHaveClass(...theme);
+    otherTheme.forEach((className) => expect(decimal).not.toHaveClass(className));
+  });
+
+  it('clears the decimal highlight after first input and restores it for the next overwrite', () => {
+    const props = makeProps();
+    const { container, rerender } = render(<NumericKeypad {...props} value={12} />);
+    const decimal = getDecimalButton(container);
+    expect(decimal).toHaveClass('bg-keypad-active', 'text-white');
+
+    fireEvent.click(decimal);
+
+    expect(props.onChange).toHaveBeenCalledTimes(1);
+    expect(props.onChange).toHaveBeenCalledWith({ value: '0.', history: ['0.'] });
+    expect(props.setOverwrite).toHaveBeenCalledWith(false);
+    rerender(<NumericKeypad {...props} value={{ value: '0.', history: ['0.'] }} overwrite={false} />);
+    expect(decimal).toHaveClass('bg-keypad-bg', 'text-keypad-text');
+    expect(decimal).not.toHaveClass('bg-keypad-active');
+    expect(decimal).not.toHaveClass('text-white');
+
+    rerender(<NumericKeypad {...props} value={37} overwrite={true} />);
+    expect(decimal).toHaveClass('bg-keypad-active', 'text-white');
+    expect(props.onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    { value: { value: '12' }, expected: '12.' },
+    { value: { value: '12.5' }, expected: '12.5' },
+    { value: { value: -0 }, expected: '-0.' },
+  ])('preserves decimal input for $expected without overwrite', ({ value, expected }) => {
+    const props = makeProps();
+    const { container } = render(<NumericKeypad {...props} value={value} overwrite={false} />);
+
+    fireEvent.click(getDecimalButton(container));
+
+    expect(props.onChange).toHaveBeenCalledTimes(1);
+    expect(props.onChange).toHaveBeenCalledWith({ value: expected, history: [expected] });
+    expect(props.setOverwrite).toHaveBeenCalledWith(false);
+  });
+
+  it.each([0, 1] as const)('highlights and overwrites only the active product factor %s', (activeFactorIdx) => {
+    const props = makeProps();
+    const column = { ...props.column, formula: 'a1×a2' };
+    const value = { value: 24, factors: ['12', '2'], history: [] };
+    const { container, rerender } = render(<NumericKeypad {...props} column={column} value={value} activeFactorIdx={activeFactorIdx} />);
+    const decimal = getDecimalButton(container);
+    expect(decimal).toHaveClass('bg-keypad-active', 'text-white');
+
+    fireEvent.click(decimal);
+
+    const updatedValue = { value: 0, factors: activeFactorIdx === 0 ? ['0.', '2'] : ['12', '0.'], history: [] };
+    expect(props.onChange).toHaveBeenCalledTimes(1);
+    expect(props.onChange).toHaveBeenCalledWith(updatedValue);
+    expect(props.setOverwrite).toHaveBeenCalledWith(false);
+    rerender(<NumericKeypad {...props} column={column} value={updatedValue} activeFactorIdx={activeFactorIdx} overwrite={false} />);
+    expect(decimal).toHaveClass('bg-keypad-bg', 'text-keypad-text');
+    expect(decimal).not.toHaveClass('bg-keypad-active');
+    expect(decimal).not.toHaveClass('text-white');
+  });
+
   it.each([
     { value: 0, overwrite: false, name: '-' },
     { value: 12, overwrite: false, name: '+/-' },
