@@ -1,8 +1,9 @@
 import React from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, renderHook, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import postcss from 'postcss';
 import { LanguageProvider } from '../../i18n';
+import { useMobileZoom } from '../../hooks/useMobileZoom';
 import { evaluateFormula } from '../../utils/formulaEvaluator';
 import type { ScoreColumn } from '../../types';
 import appCss from '../../index.css?raw';
@@ -38,14 +39,14 @@ const modelFontSize = (label: HTMLElement, rootFontSize: number, availableWidth:
   const properties = new Map<string, string>();
   for (let element: HTMLElement | null = label; element; element = element.parentElement) {
     for (const property of Array.from(element.style)) {
-      if (property.startsWith('--quick-button-') && !properties.has(property)) {
+      if ((property.startsWith('--quick-button-') || property === '--app-zoom-level') && !properties.has(property)) {
         properties.set(property, element.style.getPropertyValue(property));
       }
     }
   }
   for (let pass = 0; pass < 8 && expression.includes('var('); pass++) {
-    expression = expression.replace(/var\((--[\w-]+)\)/g, (_, name: string) => {
-      const value = properties.get(name);
+    expression = expression.replace(/var\((--[\w-]+)(?:,\s*([^()]+))?\)/g, (_, name: string, fallback?: string) => {
+      const value = properties.get(name) ?? fallback;
       if (!value) throw new Error(`Missing sizing property ${name}`);
       return `(${value})`;
     });
@@ -69,6 +70,28 @@ const renderPad = (buttonGridColumns: number, renderMode: 'standard' | 'label_on
 };
 
 describe('QuickButtonPad available-space typography', () => {
+  let previousFontSize: string;
+  let previousZoomProperty: string;
+  let previousSavedZoom: string | null;
+
+  beforeEach(() => {
+    previousFontSize = document.documentElement.style.fontSize;
+    previousZoomProperty = document.documentElement.style.getPropertyValue('--app-zoom-level');
+    previousSavedZoom = localStorage.getItem('app_zoom_level');
+    document.documentElement.style.fontSize = '16px';
+    document.documentElement.style.removeProperty('--app-zoom-level');
+    localStorage.removeItem('app_zoom_level');
+  });
+
+  afterEach(() => {
+    cleanup();
+    document.documentElement.style.fontSize = previousFontSize;
+    if (previousZoomProperty) document.documentElement.style.setProperty('--app-zoom-level', previousZoomProperty);
+    else document.documentElement.style.removeProperty('--app-zoom-level');
+    if (previousSavedZoom === null) localStorage.removeItem('app_zoom_level');
+    else localStorage.setItem('app_zoom_level', previousSavedZoom);
+  });
+
   it('queries only the label width and does not use content-driven height units', () => {
     const containerRule = getRule('.quick-button-label');
     const fontRule = getRule('.quick-button-label > .quick-button-label-text');
@@ -115,6 +138,8 @@ describe('QuickButtonPad available-space typography', () => {
       { root: 16, listWide: 30.4, gridStandard: 20 },
       { root: 20.8, listWide: 40, gridStandard: 26.48 },
     ])('models the production size formula at root $root px', ({ root, listWide, gridStandard }) => {
+      localStorage.setItem('app_zoom_level', String(root / 16));
+      renderHook(() => useMobileZoom());
       render(
         <LanguageProvider>
           <QuickButtonPad column={{ ...column, buttonGridColumns: cols, renderMode: 'standard' }} onAction={vi.fn()} />
@@ -128,23 +153,54 @@ describe('QuickButtonPad available-space typography', () => {
       expect(modelFontSize(labelOnly, root, 64)).toBeGreaterThan(modelFontSize(labelOnly, root, 32));
       expect(modelFontSize(labelOnly, root, 64)).toBeLessThanOrEqual(modelFontSize(labelOnly, root, 160));
       expect(modelFontSize(labelOnly, root, 64)).toBeLessThanOrEqual(1.75 * root);
+      expect(modelFontSize(labelOnly, root, 64)).toBeCloseTo(15.36 * (root / 16));
       if (cols > 1) expect(modelFontSize(labelOnly, root, 160)).toBeGreaterThan(modelFontSize(standard, root, 160));
     });
 
-    it.each([12, 16, 20.8])('budgets four full-width glyph advances with spare width at root %s px', (root) => {
+    it('budgets four full-width glyph advances with spare width at default zoom', () => {
       const { label } = renderPad(cols, 'label_only', {
         quickActions: [{ ...column.quickActions[0], label: '五座帳篷' }],
       });
       expect(label.textContent).toBe('五座帳篷');
 
       for (const availableWidth of [48, 64, 80, 96, 112, 160]) {
-        const fontSize = modelFontSize(label, root, availableWidth);
+        const fontSize = modelFontSize(label, 16, availableWidth);
         // Full-width glyphs nominally advance by 1em; this is a size budget,
         // not a claim that JSDOM measures font metrics or rendered wrapping.
         expect(fontSize * 4, `four glyphs at ${availableWidth}px label width`).toBeLessThanOrEqual(availableWidth * 0.96 + 0.001);
-        expect(fontSize).toBeLessThanOrEqual(1.75 * root);
+        expect(fontSize).toBeLessThanOrEqual(28);
         expect(fontSize).toBeGreaterThan(0);
       }
+    });
+
+    it('enlarges narrow labels when pinching instead of preserving four glyphs per line', () => {
+      renderHook(() => useMobileZoom());
+      const { button, label, onAction } = renderPad(cols, 'label_only', {
+        quickActions: [{ ...column.quickActions[0], label: '五座帳篷' }],
+      });
+      const defaultSize = modelFontSize(label, 16, 64);
+
+      fireEvent.touchStart(button, { touches: [{ clientX: 0, clientY: 0 }, { clientX: 100, clientY: 0 }] });
+      fireEvent.touchMove(button, { touches: [{ clientX: 0, clientY: 0 }, { clientX: 180, clientY: 0 }] });
+      fireEvent.touchEnd(button, { touches: [], changedTouches: [{ clientX: 0, clientY: 0 }, { clientX: 180, clientY: 0 }] });
+
+      expect(document.documentElement.style.fontSize).toBe('20.8px');
+      const enlargedSize = modelFontSize(label, 20.8, 64);
+      expect(enlargedSize).toBeCloseTo(defaultSize * 1.3);
+      expect(enlargedSize).toBeGreaterThan(defaultSize);
+      expect(enlargedSize * 4).toBeGreaterThan(64);
+      expect(label).toHaveClass('break-words', 'whitespace-pre-wrap');
+      expect(label).not.toHaveClass('truncate');
+      expect(button.parentElement!.style.gridAutoRows).toBe(cols === 1 ? 'minmax(3.5rem, auto)' : 'minmax(4.5rem, auto)');
+      expect(onAction).not.toHaveBeenCalled();
+
+      fireEvent.touchStart(button, { touches: [{ clientX: 0, clientY: 0 }, { clientX: 100, clientY: 0 }] });
+      fireEvent.touchMove(button, { touches: [{ clientX: 0, clientY: 0 }, { clientX: 50, clientY: 0 }] });
+      fireEvent.touchEnd(button, { touches: [], changedTouches: [{ clientX: 0, clientY: 0 }, { clientX: 50, clientY: 0 }] });
+
+      expect(document.documentElement.style.fontSize).toBe('12px');
+      expect(modelFontSize(label, 12, 64)).toBeCloseTo(defaultSize * 0.75);
+      expect(onAction).not.toHaveBeenCalled();
     });
   });
 

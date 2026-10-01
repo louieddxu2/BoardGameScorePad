@@ -55,6 +55,7 @@ describe('input controls with app zoom', () => {
   const style = document.createElement('style');
   let previousFontSize: string;
   let previousZoom: string | null;
+  let previousZoomProperty: string;
 
   beforeAll(async () => {
     // Generate the real font utilities from the production class names.
@@ -72,13 +73,17 @@ describe('input controls with app zoom', () => {
   beforeEach(() => {
     previousFontSize = document.documentElement.style.fontSize;
     previousZoom = localStorage.getItem('app_zoom_level');
+    previousZoomProperty = document.documentElement.style.getPropertyValue('--app-zoom-level');
     localStorage.removeItem('app_zoom_level');
+    document.documentElement.style.removeProperty('--app-zoom-level');
     document.documentElement.style.fontSize = '16px';
   });
 
   afterEach(() => {
     cleanup();
     document.documentElement.style.fontSize = previousFontSize;
+    if (previousZoomProperty) document.documentElement.style.setProperty('--app-zoom-level', previousZoomProperty);
+    else document.documentElement.style.removeProperty('--app-zoom-level');
     if (previousZoom === null) localStorage.removeItem('app_zoom_level');
     else localStorage.setItem('app_zoom_level', previousZoom);
   });

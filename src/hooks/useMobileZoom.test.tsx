@@ -1,5 +1,5 @@
-import { act, renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { act, cleanup, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useMobileZoom } from './useMobileZoom';
 
 const dispatchTouchEvent = (
@@ -16,9 +16,35 @@ const dispatchTouchEvent = (
 };
 
 describe('useMobileZoom', () => {
+  let previousFontSize: string;
+  let previousZoomProperty: string;
+  let previousSavedZoom: string | null;
+
   beforeEach(() => {
-    localStorage.clear();
+    previousFontSize = document.documentElement.style.fontSize;
+    previousZoomProperty = document.documentElement.style.getPropertyValue('--app-zoom-level');
+    previousSavedZoom = localStorage.getItem('app_zoom_level');
+    localStorage.removeItem('app_zoom_level');
     document.documentElement.style.fontSize = '';
+    document.documentElement.style.removeProperty('--app-zoom-level');
+  });
+
+  afterEach(() => {
+    cleanup();
+    document.documentElement.style.fontSize = previousFontSize;
+    if (previousZoomProperty) document.documentElement.style.setProperty('--app-zoom-level', previousZoomProperty);
+    else document.documentElement.style.removeProperty('--app-zoom-level');
+    if (previousSavedZoom === null) localStorage.removeItem('app_zoom_level');
+    else localStorage.setItem('app_zoom_level', previousSavedZoom);
+  });
+
+  it.each([0.75, 1, 1.3])('restores the saved %s zoom to both font size and CSS factor', (zoom) => {
+    localStorage.setItem('app_zoom_level', String(zoom));
+    const { result } = renderHook(() => useMobileZoom());
+
+    expect(result.current).toBe(zoom);
+    expect(document.documentElement.style.fontSize).toBe(`${16 * zoom}px`);
+    expect(document.documentElement.style.getPropertyValue('--app-zoom-level')).toBe(String(zoom));
   });
 
   it('updates app zoom for normal two-finger gestures', () => {
@@ -37,6 +63,7 @@ describe('useMobileZoom', () => {
 
     expect(localStorage.getItem('app_zoom_level')).toBe('1.2');
     expect(document.documentElement.style.fontSize).toBe('19.2px');
+    expect(document.documentElement.style.getPropertyValue('--app-zoom-level')).toBe('1.2');
   });
 
   it('ignores two-finger gestures that start inside local photo crop editors', () => {
@@ -59,6 +86,7 @@ describe('useMobileZoom', () => {
 
     expect(localStorage.getItem('app_zoom_level')).toBe('1');
     expect(document.documentElement.style.fontSize).toBe('16px');
+    expect(document.documentElement.style.getPropertyValue('--app-zoom-level')).toBe('1');
     cropSurface.remove();
   });
 });

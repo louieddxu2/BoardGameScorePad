@@ -29,6 +29,7 @@ export const useMobileZoom = () => {
 
   useEffect(() => {
     document.documentElement.style.fontSize = `${16 * zoomLevel}px`;
+    document.documentElement.style.setProperty('--app-zoom-level', String(zoomLevel));
     localStorage.setItem('app_zoom_level', String(zoomLevel));
     zoomLevelRef.current = zoomLevel;
   }, [zoomLevel]);
