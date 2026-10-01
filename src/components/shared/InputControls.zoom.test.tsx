@@ -25,6 +25,7 @@ const zoomCases = [
   { name: 'default', distance: 100, rootFontSize: '16px' },
   { name: 'maximum', distance: 180, rootFontSize: '20.8px' },
 ];
+const fallbackZoomCases = [zoomCases[0], zoomCases[2]];
 
 const pinch = (target: HTMLElement, distance: number) => {
   fireEvent.touchStart(target, {
@@ -88,13 +89,14 @@ describe('input controls with app zoom', () => {
     else localStorage.setItem('app_zoom_level', previousZoom);
   });
 
+  // One list and one grid cover the two fallback-font branches at both zoom
+  // limits. Per-column sizing belongs in QuickButtonPad.sizing.test.tsx;
+  // gesture ownership and genuine next taps belong in InputControls.pinch.test.tsx.
   describe.each([
     { cols: 1, labelFontSize: '1.25rem', badgeFontSize: '1rem' },
-    { cols: 2, labelFontSize: '1rem', badgeFontSize: '0.875rem' },
     { cols: 3, labelFontSize: '1rem', badgeFontSize: '0.875rem' },
-    { cols: 4, labelFontSize: '1rem', badgeFontSize: '0.875rem' },
   ])('$cols quick-button columns', ({ cols, labelFontSize, badgeFontSize }) => {
-    it.each(zoomCases)('keeps label-only fallback text root-relative at $name zoom', ({ distance, rootFontSize }) => {
+    it.each(fallbackZoomCases)('keeps label-only fallback text root-relative at $name zoom', ({ distance, rootFontSize }) => {
       renderHook(() => useMobileZoom());
       render(
         <LanguageProvider>
@@ -110,7 +112,7 @@ describe('input controls with app zoom', () => {
       expect(screen.getByText('One')).toBe(label);
     });
 
-    it.each(zoomCases)('keeps standard fallback labels and badges root-relative at $name zoom', ({ distance, rootFontSize }) => {
+    it.each(fallbackZoomCases)('keeps standard fallback labels and badges root-relative at $name zoom', ({ distance, rootFontSize }) => {
       renderHook(() => useMobileZoom());
       render(
         <LanguageProvider>
@@ -146,22 +148,6 @@ describe('input controls with app zoom', () => {
     expect(button.parentElement).toHaveStyle({ gridAutoRows: 'minmax(4.5rem, auto)' });
   });
 
-  describe.each([1, 3, 4])('pinching with %i quick-button columns', (buttonGridColumns) => {
-    it.each(['standard', 'label_only'] as const)('does not select an option in %s mode', (renderMode) => {
-      const onAction = vi.fn();
-      renderHook(() => useMobileZoom());
-      render(
-        <LanguageProvider>
-          <QuickButtonPad column={{ ...column, buttonGridColumns, renderMode }} onAction={onAction} />
-        </LanguageProvider>,
-      );
-
-      pinch(screen.getByRole('button'), 180);
-
-      expect(onAction).not.toHaveBeenCalled();
-    });
-  });
-
   it.each(zoomCases)('preserves fixed keypad digit and minus sizes at $name zoom', ({ distance, rootFontSize }) => {
     renderHook(() => useMobileZoom());
     render(<NumericKeypad {...makeNumericProps()} />);
@@ -185,19 +171,5 @@ describe('input controls with app zoom', () => {
     expect(document.documentElement.style.fontSize).toBe(rootFontSize);
     expect(window.getComputedStyle(sign).fontSize).toBe('32px');
     expect(window.getComputedStyle(sign).fontSize).toBe(window.getComputedStyle(screen.getByRole('button', { name: '1' })).fontSize);
-  });
-
-  it('does not type a digit while pinching and still accepts the next tap', () => {
-    const props = makeNumericProps();
-    renderHook(() => useMobileZoom());
-    render(<NumericKeypad {...props} />);
-    const digit = screen.getByRole('button', { name: '1' });
-
-    pinch(digit, 180);
-    expect(props.onChange).not.toHaveBeenCalled();
-
-    fireEvent.click(digit);
-    expect(props.onChange).toHaveBeenCalledTimes(1);
-    expect(props.onChange).toHaveBeenCalledWith({ value: 1, history: ['1'] });
   });
 });

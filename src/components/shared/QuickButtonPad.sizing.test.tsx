@@ -20,6 +20,12 @@ const column = {
   quickActions: [{ id: 'one', label: 'One', value: 1 }],
 } satisfies ScoreColumn;
 
+const fontSizeCases = [
+  { root: 12, listWide: 22.8, gridStandard: 15 },
+  { root: 16, listWide: 30.4, gridStandard: 20 },
+  { root: 20.8, listWide: 39.52, gridStandard: 26 },
+];
+
 const stylesheet = postcss.parse(appCss);
 let spacingStylesheet: postcss.Root;
 beforeAll(async () => {
@@ -161,7 +167,8 @@ describe('QuickButtonPad available-space typography', () => {
     expect(labelOnlyOverrides).toHaveLength(0);
   });
 
-  describe.each([1, 2, 3, 4])('%i columns', (cols) => {
+  // Spacing and badge placement share two structures: a list and a grid.
+  describe.each([1, 3])('%i-column layout structure', (cols) => {
     it.each(['standard', 'label_only'] as const)('keeps %s padding and gaps fixed while zooming', (mode) => {
       const { button, label } = renderPad(cols, mode);
       const grid = button.parentElement!;
@@ -199,12 +206,17 @@ describe('QuickButtonPad available-space typography', () => {
       else expect(wrapper).not.toHaveClass('mb-[4px]');
       if (mode === 'standard') expect(within(button).getByText('1')).toHaveClass('leading-normal', 'shrink-0');
     });
+  });
 
-    it.each([
-      { root: 12, listWide: 22.8, gridStandard: 15 },
-      { root: 16, listWide: 30.4, gridStandard: 20 },
-      { root: 20.8, listWide: 39.52, gridStandard: 26 },
-    ])('models the production size formula at root $root px', ({ root, listWide, gridStandard }) => {
+  // Keep every column's baseline; exercise both zoom limits on the two
+  // structures. Narrow three/four-column panel geometry is covered below.
+  describe.each([
+    { cols: 1, sizes: fontSizeCases },
+    { cols: 2, sizes: [fontSizeCases[1]] },
+    { cols: 3, sizes: fontSizeCases },
+    { cols: 4, sizes: [fontSizeCases[1]] },
+  ])('$cols columns', ({ cols, sizes }) => {
+    it.each(sizes)('models the production size formula at root $root px', ({ root, listWide, gridStandard }) => {
       localStorage.setItem('app_zoom_level', String(root / 16));
       renderHook(() => useMobileZoom());
       render(
@@ -365,41 +377,49 @@ describe('QuickButtonPad available-space typography', () => {
     expect(button.style.getPropertyValue('--quick-button-line-capacity')).toBe('3');
   });
 
-  describe.each([false, true])('input layout compact=%s', (isCompact) => {
-    describe.each([3, 4])('%i narrow columns', (cols) => {
-      it.each([320, 375, 430, 768])('enlarges text across the real spacing chain at %ipx panel width', (panelWidth) => {
-        renderHook(() => useMobileZoom());
-        const onAction = vi.fn();
-        render(
-          <LanguageProvider>
-            <InputPanelLayout isCompact={isCompact} onNext={vi.fn()}>
-              <QuickButtonPad column={{ ...column, buttonGridColumns: cols, renderMode: 'label_only', quickActions: [
-                { ...column.quickActions[0], label: '五座帳篷' },
-              ] }} onAction={onAction} />
-            </InputPanelLayout>
-          </LanguageProvider>,
-        );
-        const button = screen.getByRole('button', { name: '五座帳篷' });
-        const label = within(button).getByText('五座帳篷');
-        const defaultWidth = modelPanelLabelWidth(button, panelWidth, cols, 16);
-        const defaultSize = modelFontSize(label, 16, defaultWidth);
-        expect(defaultWidth).toBeGreaterThan(0);
-        expect(defaultSize * (cols === 4 ? 3 : 4)).toBeLessThanOrEqual(defaultWidth * 0.96 + 0.001);
+  // Cover the narrow/wide limits for both layouts and column counts, plus the
+  // original four-column 375px reproduction. Intermediate widths add no branch.
+  it.each([
+    { isCompact: false, cols: 3, panelWidth: 320 },
+    { isCompact: false, cols: 3, panelWidth: 768 },
+    { isCompact: false, cols: 4, panelWidth: 320 },
+    { isCompact: false, cols: 4, panelWidth: 375 },
+    { isCompact: false, cols: 4, panelWidth: 768 },
+    { isCompact: true, cols: 3, panelWidth: 320 },
+    { isCompact: true, cols: 3, panelWidth: 768 },
+    { isCompact: true, cols: 4, panelWidth: 320 },
+    { isCompact: true, cols: 4, panelWidth: 768 },
+  ])('enlarges text across the real spacing chain: compact=$isCompact, $cols columns, $panelWidth px', ({ isCompact, cols, panelWidth }) => {
+    renderHook(() => useMobileZoom());
+    const onAction = vi.fn();
+    render(
+      <LanguageProvider>
+        <InputPanelLayout isCompact={isCompact} onNext={vi.fn()}>
+          <QuickButtonPad column={{ ...column, buttonGridColumns: cols, renderMode: 'label_only', quickActions: [
+            { ...column.quickActions[0], label: '五座帳篷' },
+          ] }} onAction={onAction} />
+        </InputPanelLayout>
+      </LanguageProvider>,
+    );
+    const button = screen.getByRole('button', { name: '五座帳篷' });
+    const label = within(button).getByText('五座帳篷');
+    const defaultWidth = modelPanelLabelWidth(button, panelWidth, cols, 16);
+    const defaultSize = modelFontSize(label, 16, defaultWidth);
+    expect(defaultWidth).toBeGreaterThan(0);
+    expect(defaultSize * (cols === 4 ? 3 : 4)).toBeLessThanOrEqual(defaultWidth * 0.96 + 0.001);
 
-        for (const [distance, zoom] of [[180, 1.3], [50, 0.75]]) {
-          fireEvent.touchStart(button, { touches: [{ clientX: 0, clientY: 0 }, { clientX: 100, clientY: 0 }] });
-          fireEvent.touchMove(button, { touches: [{ clientX: 0, clientY: 0 }, { clientX: distance, clientY: 0 }] });
-          fireEvent.touchEnd(button, { touches: [], changedTouches: [{ clientX: 0, clientY: 0 }, { clientX: distance, clientY: 0 }] });
-          const root = 16 * zoom;
-          expect(document.documentElement.style.fontSize).toBe(`${root}px`);
-          const width = modelPanelLabelWidth(button, panelWidth, cols, root);
-          // App zoom must enlarge text, not consume its horizontal space.
-          expect(width, `${cols} columns at ${zoom} zoom`).toBeCloseTo(defaultWidth);
-          expect(modelFontSize(label, root, width)).toBeCloseTo(defaultSize * zoom);
-          expect(onAction).not.toHaveBeenCalled();
-        }
-      });
-    });
+    for (const [distance, zoom] of [[180, 1.3], [50, 0.75]]) {
+      fireEvent.touchStart(button, { touches: [{ clientX: 0, clientY: 0 }, { clientX: 100, clientY: 0 }] });
+      fireEvent.touchMove(button, { touches: [{ clientX: 0, clientY: 0 }, { clientX: distance, clientY: 0 }] });
+      fireEvent.touchEnd(button, { touches: [], changedTouches: [{ clientX: 0, clientY: 0 }, { clientX: distance, clientY: 0 }] });
+      const root = 16 * zoom;
+      expect(document.documentElement.style.fontSize).toBe(`${root}px`);
+      const width = modelPanelLabelWidth(button, panelWidth, cols, root);
+      // App zoom must enlarge text, not consume its horizontal space.
+      expect(width, `${cols} columns at ${zoom} zoom`).toBeCloseTo(defaultWidth);
+      expect(modelFontSize(label, root, width)).toBeCloseTo(defaultSize * zoom);
+      expect(onAction).not.toHaveBeenCalled();
+    }
   });
 
   it('accounts for the existing thicker modifier border', () => {

@@ -1,5 +1,50 @@
 # Input-control zoom test review
 
+## 2026-10-01: first-stage test-matrix pruning
+
+This change removes 42 redundant cases from two existing typography regression files. It does not change application behavior, production styles, dependencies, database versions, or built-in templates. A separate 14-case color/keypad-style candidate remains deferred; no tests are skipped or hidden behind a runtime name filter.
+
+| Reviewed file | Severity | Before / after | Finding and disposition |
+| --- | --- | ---: | --- |
+| `src/components/shared/InputControls.zoom.test.tsx` | Medium, addressed | 38 / 15 | Keep the list and representative grid fallback-font branches in both display modes at both zoom limits. Remove duplicate default/grid permutations and seven basic gesture cases already covered more precisely by the dedicated pinch suite. Keep multiline/scroll bounds and all three keypad font-size zoom levels. |
+| `src/components/shared/QuickButtonPad.sizing.test.tsx` | Medium, addressed | 62 / 43 | Keep list/grid spacing and badge structure, every column's default formula, and list/three-column formula zoom limits. Replace the panel-width Cartesian product with nine explicit cases: narrow/wide widths for both layouts and three/four columns, plus the original full-layout four-column 375px reproduction. Keep capacity, manual-line, height, memoization, border and clipping contracts. |
+
+### Readability
+
+Case tables now identify the distinct structure or geometry being protected. The panel cases name compact mode, column count and width directly. Comments explain why the omitted permutations share a branch and where gesture-specific coverage lives.
+
+### Reliability
+
+The nine-file review scope passed 246/246 cases in three independent normal Vitest runs, with no skipped cases or unhandled errors. Per-test durations were inspected; the slowest cases were 143ms, 110ms and 115ms respectively. Existing cleanup, root font/CSS property restoration and localStorage isolation are unchanged. These runs are evidence against observed flakiness, not a guarantee of all future environments.
+
+### Diagnostic value
+
+Retained cases keep their existing exact size, callback-count and payload assertions. This is actual case removal, not bundling the deleted parameter combinations into one large test or disabling them. Production-component and generated-Tailwind inputs remain intact; arithmetic models still do not measure rendered font metrics.
+
+### Design
+
+Only test registration and representative case selection change. Distinct list/grid structures, both display modes, all column capacities, both input layouts and zoom boundaries remain represented. All 43 dedicated pinch cases and nine zoom-hook cases are unchanged, including cross-target ownership and the next genuine tap. No testing framework, production fitting loop or additional CI gate is introduced.
+
+### AI-generated
+
+Five targeted faults were injected only in memory in separate Vitest contexts, using the existing runner and Vite transform API. Regular and `?raw` component inputs were transformed consistently. None was written to disk; every fault run had zero skipped cases and unhandled errors.
+
+| Injected fault | Cases run | Failing cases |
+| --- | ---: | ---: |
+| Restore fixed-pixel fallback text | 58 | 6 |
+| Remove the container-font app zoom factor | 58 | 17 |
+| Restore zoom-dependent option padding | 58 | 13 |
+| Remove touchend pinch ownership | 67 | 13 |
+| Replace fixed foreground with a theme-dependent token | 44 | 15 |
+
+All five sampled faults were detected after pruning (5/5). This is a targeted fault-detection result, not an exhaustive Stryker mutation score or proof that every conceivable future change has equivalent coverage.
+
+### Coverage
+
+The core suite now passes 887 cases in the same 117 files (previously 929). Type-check, production build and `git diff --check` passed. The 38 Unicode/line-capacity helper cases, numeric-input behavior, scoring and SessionView integration regressions are unchanged. Only the approved first-stage 42 cases were removed.
+
+Browser/device rendering remains unverified: project rules require explicit permission for browser verification. JSDOM event simulation and CSS arithmetic cannot establish real iOS compatibility-click synthesis or exact font wrapping. No runtime-performance claim follows from a smaller test count; production code is unchanged.
+
 ## 2026-10-01: pinch completion must not activate input
 
 A stationary finger could begin on an input control while the other finger started on a different element. The control's local handlers never saw that second `touchstart`, and the global zoom hook released ownership on the first lift. The local `touchend` could therefore invoke the input callback directly; canceling browser defaults alone did not prevent it. This also affected score-cell activation, not just the visible input panel.
