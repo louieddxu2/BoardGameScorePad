@@ -1,8 +1,10 @@
 import React, { useRef } from 'react';
+import { getMobileZoomGestureState } from '../../hooks/useMobileZoom';
 
 export const DEFAULT_TOUCH_ACTION_MOVE_THRESHOLD = 30;
 
 export interface TouchActionHandlers<T extends HTMLElement> {
+  onPointerDown: React.PointerEventHandler<T>;
   onTouchStart: React.TouchEventHandler<T>;
   onTouchMove: React.TouchEventHandler<T>;
   onTouchEnd: React.TouchEventHandler<T>;
@@ -16,33 +18,48 @@ interface UseTouchActionOptions {
 
 /**
  * Resolves a tap from its touch sequence and suppresses the compatibility
- * click for that same gesture. A moved touch remains a gesture, not an action.
+ * click for that same gesture. A moved or multitouch sequence is not an action.
  */
 export const useTouchAction = <T extends HTMLElement>(
   onActivate: (event: React.SyntheticEvent<T>) => void,
   { moveThreshold = DEFAULT_TOUCH_ACTION_MOVE_THRESHOLD }: UseTouchActionOptions = {},
 ): TouchActionHandlers<T> => {
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number; identifier: number; zoomSequence: number } | null>(null);
   const touchMovedRef = useRef(false);
-  const touchActivationRef = useRef(false);
+  const touchHandledRef = useRef(false);
+  const nonTouchPointerRef = useRef(false);
   const onActivateRef = useRef(onActivate);
   onActivateRef.current = onActivate;
 
+  const handlePointerDown: React.PointerEventHandler<T> = (event) => {
+    nonTouchPointerRef.current = event.pointerType === 'mouse' || event.pointerType === 'pen';
+    if (nonTouchPointerRef.current) touchHandledRef.current = false;
+  };
+
   const handleTouchStart: React.TouchEventHandler<T> = (event) => {
+    const gesture = getMobileZoomGestureState();
     const touch = event.touches[0];
-    if (!touch || event.touches.length !== 1) {
+    nonTouchPointerRef.current = false;
+    if (!touch || event.touches.length !== 1 || gesture.active) {
       touchStartRef.current = null;
       touchMovedRef.current = true;
-      touchActivationRef.current = false;
+      touchHandledRef.current = true;
       return;
     }
 
-    touchActivationRef.current = false;
+    touchHandledRef.current = false;
     touchMovedRef.current = false;
-    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+    touchStartRef.current = {
+      x: touch.clientX, y: touch.clientY, identifier: touch.identifier, zoomSequence: gesture.sequence,
+    };
   };
 
   const handleTouchMove: React.TouchEventHandler<T> = (event) => {
+    if (event.touches.length !== 1 || getMobileZoomGestureState().active) {
+      touchMovedRef.current = true;
+      touchHandledRef.current = true;
+      return;
+    }
     const start = touchStartRef.current;
     const touch = event.touches[0];
     if (!start || !touch || touchMovedRef.current) return;
@@ -55,18 +72,26 @@ export const useTouchAction = <T extends HTMLElement>(
   };
 
   const handleTouchEnd: React.TouchEventHandler<T> = (event) => {
+    const gesture = getMobileZoomGestureState();
     const start = touchStartRef.current;
     const touch = event.changedTouches[0];
-    const moved = touchMovedRef.current || !start || !touch || (
+    // Sequence survives the final window-capture touchend, when active is
+    // already false. A stationary finger cannot escape pinch ownership.
+    const pinched = gesture.active || Boolean(start && start.zoomSequence !== gesture.sequence);
+    const moved = pinched || event.touches.length !== 0 || event.changedTouches.length !== 1
+      || touchMovedRef.current || !start || !touch || touch.identifier !== start.identifier || (
       Math.max(Math.abs(touch.clientX - start.x), Math.abs(touch.clientY - start.y)) > moveThreshold
     );
 
     touchStartRef.current = null;
     touchMovedRef.current = false;
+    touchHandledRef.current = true;
 
-    if (moved) return;
+    if (moved) {
+      if (pinched && event.cancelable) event.preventDefault();
+      return;
+    }
 
-    touchActivationRef.current = true;
     if (event.cancelable) event.preventDefault();
     onActivateRef.current(event);
   };
@@ -74,26 +99,36 @@ export const useTouchAction = <T extends HTMLElement>(
   const handleTouchCancel: React.TouchEventHandler<T> = () => {
     touchStartRef.current = null;
     touchMovedRef.current = false;
-    touchActivationRef.current = false;
+    touchHandledRef.current = true;
   };
 
   const handleClick: React.MouseEventHandler<T> = (event) => {
     const nativeEvent = event.nativeEvent as MouseEvent & {
       sourceCapabilities?: { firesTouchEvents?: boolean } | null;
+      pointerType?: string;
     };
+    const gesture = getMobileZoomGestureState();
     const isTouchCompatibilityClick = nativeEvent.sourceCapabilities?.firesTouchEvents === true
-      || (touchActivationRef.current && event.detail > 0);
+      || nativeEvent.pointerType === 'touch'
+      || (nativeEvent.sourceCapabilities?.firesTouchEvents !== false
+        && nativeEvent.pointerType !== 'mouse' && nativeEvent.pointerType !== 'pen'
+        && !nonTouchPointerRef.current && event.detail > 0);
+    nonTouchPointerRef.current = false;
 
-    if (touchActivationRef.current && isTouchCompatibilityClick) {
-      touchActivationRef.current = false;
+    if (isTouchCompatibilityClick && (touchHandledRef.current || gesture.active || gesture.suppressClick)) {
+      touchHandledRef.current = false;
+      // A suppressed gesture must not activate an ancestor click handler either.
+      event.preventDefault();
+      event.stopPropagation();
       return;
     }
 
-    touchActivationRef.current = false;
+    touchHandledRef.current = false;
     onActivateRef.current(event);
   };
 
   return {
+    onPointerDown: handlePointerDown,
     onTouchStart: handleTouchStart,
     onTouchMove: handleTouchMove,
     onTouchEnd: handleTouchEnd,

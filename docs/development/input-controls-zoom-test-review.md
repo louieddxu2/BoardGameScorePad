@@ -1,5 +1,15 @@
 # Input-control zoom test review
 
+## 2026-10-01: pinch completion must not activate input
+
+A stationary finger could begin on an input control while the other finger started on a different element. The control's local handlers never saw that second `touchstart`, and the global zoom hook released ownership on the first lift. The local `touchend` could therefore invoke the input callback directly; canceling browser defaults alone did not prevent it. This also affected score-cell activation, not just the visible input panel.
+
+The existing App-owned touch listeners now run in capture and retain multitouch ownership until every finger leaves, including cancellation and finger replacement. A sequence counter lets a control reject the final lift even after the global listener has cleared the active flag. Touch-origin compatibility clicks remain blocked until a fresh single-finger gesture; mouse, pen, keyboard and assistive activation remain eligible. No new per-control window listeners, timers, observers, layout measurements or runtime dependencies were added. Photo crop editors still handle their own gestures without app-zoom default cancellation.
+
+The new production-component regressions cover standard and label-only quick options, the numeric keypad and score cells: separate/same targets, both lift orders, stationary/small movement, stopped bubbling, partial cancellation, finger replacement, retargeted compatibility clicks, and the next genuine tap without duplicate activation. The initial 37-case run against the old implementation failed 29 cases. The completed file has 43 cases; the zoom hook has nine, including residual-finger ownership and listener cleanup.
+
+Final verification: 929 core tests passed in 117 files. Type-check, production build, the hardcoded-Chinese UI scan and `git diff --check` passed. Event simulation does not establish actual iOS browser click synthesis; physical-device verification remains outstanding. No database, service-worker, package or built-in-template changes are required for this local fix; publishing remains a separate explicit request.
+
 ## 2026-10-01: label-aware line-capacity sizing
 
 The new 100%-zoom line-capacity contract is two columns / five full-width equivalents, three / four, and four / three. Single-column list mode uses the previously proposed eight-character baseline. Labels shorter than the capacity use their own estimated width instead of a universal four-character divisor. Longer labels use the capacity and a theoretical wrapped-line count. Standard and label-only options share the same sizing rule; omitting a stacked value badge increases the available nominal height.
