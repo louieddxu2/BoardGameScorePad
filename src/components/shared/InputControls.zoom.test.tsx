@@ -92,6 +92,7 @@ describe('input controls with app zoom', () => {
     { cols: 1, labelFontSize: '1.25rem', badgeFontSize: '1rem' },
     { cols: 2, labelFontSize: '1rem', badgeFontSize: '0.875rem' },
     { cols: 3, labelFontSize: '1rem', badgeFontSize: '0.875rem' },
+    { cols: 4, labelFontSize: '1rem', badgeFontSize: '0.875rem' },
   ])('$cols quick-button columns', ({ cols, labelFontSize, badgeFontSize }) => {
     it.each(zoomCases)('keeps label-only fallback text root-relative at $name zoom', ({ distance, rootFontSize }) => {
       renderHook(() => useMobileZoom());
@@ -145,7 +146,7 @@ describe('input controls with app zoom', () => {
     expect(button.parentElement).toHaveStyle({ gridAutoRows: 'minmax(4.5rem, auto)' });
   });
 
-  describe.each([1, 3])('pinching with %i quick-button columns', (buttonGridColumns) => {
+  describe.each([1, 3, 4])('pinching with %i quick-button columns', (buttonGridColumns) => {
     it.each(['standard', 'label_only'] as const)('does not select an option in %s mode', (renderMode) => {
       const onAction = vi.fn();
       renderHook(() => useMobileZoom());

@@ -46,31 +46,33 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
     }, { moveThreshold: 10 });
 
     // Use the planned row height, never the height produced by wrapping text.
-    // A stacked badge uses 1.5 line-height plus its padding and label gap.
+    // Only text and nominal row height scale: fixed padding/gaps must not
+    // consume the label's width during zoom. A stacked badge reserves its
+    // root-relative line height plus 8px of fixed padding and label gap.
     return (
         <button
             {...touchHandlers}
             className={`
-                    rounded-xl flex items-center p-2 shadow-sm transition-all relative h-full
-                    ${isListMode ? 'flex-row justify-between px-4' : 'flex-col justify-center'}
+                    rounded-xl flex items-center p-[8px] shadow-sm transition-all relative h-full
+                    ${isListMode ? 'flex-row justify-between px-[16px]' : 'flex-col justify-center'}
                     ${borderClass}
                     ${isSelected ? 'ring-2 ring-[rgb(var(--c-txt-primary))] ring-offset-2 ring-offset-[rgb(var(--c-surface-bg))] z-10 scale-[1.02]' : 'active:scale-95 z-10'}
                 `}
             style={{
                 backgroundColor,
                 '--quick-button-border-height': borderClass.includes('border-2') ? '4px' : '2px',
-                '--quick-button-value-reserve': !isListMode && showActionValue ? '1.8125rem' : '0rem',
-                '--quick-button-label-height': 'calc(var(--quick-button-row-height) - 1rem - var(--quick-button-border-height) - var(--quick-button-value-reserve))',
+                '--quick-button-value-reserve': !isListMode && showActionValue ? 'calc(1.3125rem + 8px)' : '0rem',
+                '--quick-button-label-height': 'calc(var(--quick-button-row-height) - 16px - var(--quick-button-border-height) - var(--quick-button-value-reserve))',
             } as React.CSSProperties}
         >
             {isSelected && (
-                <div className="absolute -top-1.5 -right-1.5 bg-white text-status-success rounded-full p-0.5 shadow-md animate-in zoom-in duration-200 z-20">
+                <div className="absolute -top-1.5 -right-1.5 bg-white text-status-success rounded-full p-[2px] shadow-md animate-in zoom-in duration-200 z-20">
                     <Check strokeWidth={4} size={12} />
                 </div>
             )}
 
             <span
-                className={`quick-button-label pointer-events-none ${!showActionValue ? 'quick-button-label-only' : ''} ${isListMode ? 'text-left flex-1 min-w-0' : 'text-center w-full'} ${!isListMode && showActionValue ? 'mb-1' : ''}`}
+                className={`quick-button-label pointer-events-none ${!showActionValue ? 'quick-button-label-only' : ''} ${isListMode ? 'text-left flex-1 min-w-0' : 'text-center w-full'} ${!isListMode && showActionValue ? 'mb-[4px]' : ''}`}
             >
                 <span
                     className={`quick-button-label-text block font-bold leading-tight break-words whitespace-pre-wrap pointer-events-none hyphenate ${isListMode ? 'text-[1.25rem]' : 'text-[1rem]'}`}
@@ -81,7 +83,7 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
             </span>
             {showActionValue && (
                 <span
-                    className={`font-mono font-bold leading-normal rounded-full flex items-center justify-center shrink-0 pointer-events-none ${isListMode ? 'text-[1rem] px-3 py-1 ml-2' : 'text-[0.875rem] px-2 py-0.5'} ${badgeBackgroundClass}`}
+                    className={`font-mono font-bold leading-normal rounded-full flex items-center justify-center shrink-0 pointer-events-none ${isListMode ? 'text-[1rem] px-[12px] py-[4px] ml-[8px]' : 'text-[0.875rem] px-[8px] py-[2px]'} ${badgeBackgroundClass}`}
                     style={{ color: textColor }}
                 >
                     {isStandardSumParts && action.value > 0 ? '+' : ''}{action.value}
@@ -109,9 +111,9 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
     const minRowHeight = isListMode ? '3.5rem' : '4.5rem';
 
     return (
-        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar p-2">
+        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar p-[8px]">
             <div
-                className="grid gap-2 relative"
+                className="grid gap-[8px] relative"
                 style={{
                     gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
                     gridAutoRows: `minmax(${minRowHeight}, auto)`,
