@@ -471,22 +471,16 @@ html[data-theme='light'] {
     }
 
     .quick-button-label > .quick-button-label-text {
-      /* Height is a nominal row budget, not cqh: wrapping cannot enlarge
-         the font again. rem bounds keep app zoom active without double scaling.
-         Specificity overrides fallback font utilities only when supported. */
-      font-size: min(
-        calc(var(--quick-button-label-height) / 1.25),
-        clamp(1.125rem, calc(1.25rem + 10cqi), 2rem)
-      );
-    }
-
-    .quick-button-label-only > .quick-button-label-text {
-      /* Four full-width glyphs are the default-zoom baseline, not a fit limit.
-         Scale the width-derived size too; enlarged labels may wrap. */
-      font-size: min(
-        calc(var(--quick-button-label-height) / 1.25),
-        calc(24cqi * var(--app-zoom-level, 1)),
-        1.75rem
+      /* Fit a 100%-zoom baseline: short labels use their own width; longer
+         labels use the column's line capacity. Explicit lines share a nominal
+         height budget, never a content-grown height (no sizing feedback loop).
+         At many lines, prefer row growth to endless height-driven shrinking.
+         Apply app zoom last so narrow columns cannot cancel enlargement. */
+      font-size: calc(
+        min(
+          calc(96cqi / var(--quick-button-label-width-units)),
+          max(16px, calc(var(--quick-button-label-height) / (var(--quick-button-label-lines) * 1.25)))
+        ) * var(--app-zoom-level, 1)
       );
     }
   }

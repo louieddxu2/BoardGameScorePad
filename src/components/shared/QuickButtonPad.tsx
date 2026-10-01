@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { QuickAction, ScoreColumn } from '../../types';
 import { isColorTooLight } from '../../utils/ui';
 import { Check } from 'lucide-react';
@@ -7,6 +7,7 @@ import { useSessionTranslation } from '../../i18n/session';
 import { useTouchAction } from './useTouchAction';
 
 import { injectSoftHyphens } from '../../utils/text';
+import { getQuickButtonTypography } from './quickButtonTypography';
 
 interface QuickButtonPadProps {
     column: ScoreColumn;
@@ -18,6 +19,7 @@ interface QuickButtonPadProps {
 interface QuickActionButtonProps {
     action: QuickAction;
     isSelected: boolean;
+    columns: number;
     isListMode: boolean;
     showActionValue: boolean;
     isStandardSumParts: boolean;
@@ -31,6 +33,7 @@ interface QuickActionButtonProps {
 const QuickActionButton: React.FC<QuickActionButtonProps> = ({
     action,
     isSelected,
+    columns,
     isListMode,
     showActionValue,
     isStandardSumParts,
@@ -40,15 +43,21 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
     badgeBackgroundClass,
     onAction,
 }) => {
+    const typography = useMemo(() => {
+        const metrics = getQuickButtonTypography(action.label, columns);
+        return { ...metrics, displayText: injectSoftHyphens(metrics.text) };
+    }, [action.label, columns]);
     const touchHandlers = useTouchAction<HTMLButtonElement>(() => {
         if (navigator.vibrate) navigator.vibrate(10);
         onAction(action);
     }, { moveThreshold: 10 });
 
-    // Use the planned row height, never the height produced by wrapping text.
-    // Only text and nominal row height scale: fixed padding/gaps must not
-    // consume the label's width during zoom. A stacked badge reserves its
-    // root-relative line height plus 8px of fixed padding and label gap.
+    // Establish the 100%-zoom budget once, then scale its font in CSS. Never
+    // fit against a text-grown row or the current zoomed height. A stacked
+    // badge reserves 21px line height + 4px padding + 4px label gap at 100%.
+    const borderHeight = borderClass.includes('border-2') ? 4 : 2;
+    const labelHeight = (isListMode ? 56 : 72) - 16 - borderHeight
+        - (!isListMode && showActionValue ? 29 : 0);
     return (
         <button
             {...touchHandlers}
@@ -60,9 +69,11 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
                 `}
             style={{
                 backgroundColor,
-                '--quick-button-border-height': borderClass.includes('border-2') ? '4px' : '2px',
-                '--quick-button-value-reserve': !isListMode && showActionValue ? 'calc(1.3125rem + 8px)' : '0rem',
-                '--quick-button-label-height': 'calc(var(--quick-button-row-height) - 16px - var(--quick-button-border-height) - var(--quick-button-value-reserve))',
+                '--quick-button-border-height': `${borderHeight}px`,
+                '--quick-button-label-height': `${labelHeight}px`,
+                '--quick-button-line-capacity': typography.lineCapacity,
+                '--quick-button-label-width-units': typography.widthUnits,
+                '--quick-button-label-lines': typography.lineCount,
             } as React.CSSProperties}
         >
             {isSelected && (
@@ -78,7 +89,7 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
                     className={`quick-button-label-text block font-bold leading-tight break-words whitespace-pre-wrap pointer-events-none hyphenate ${isListMode ? 'text-[1.25rem]' : 'text-[1rem]'}`}
                     style={{ color: textColor }}
                 >
-                    {injectSoftHyphens(action.label)}
+                    {typography.displayText}
                 </span>
             </span>
             {showActionValue && (
@@ -117,7 +128,6 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
                 style={{
                     gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
                     gridAutoRows: `minmax(${minRowHeight}, auto)`,
-                    '--quick-button-row-height': minRowHeight,
                 } as React.CSSProperties}
             >
                 <div className="absolute inset-0 bg-[rgb(var(--c-black)_/_0.05)] dark:bg-[rgb(var(--c-black)_/_0.15)] pointer-events-none z-0"></div>
@@ -151,6 +161,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
                             key={action.id}
                             action={action}
                             isSelected={isSelected}
+                            columns={cols}
                             isListMode={isListMode}
                             showActionValue={showActionValue}
                             isStandardSumParts={isStandardSumParts}

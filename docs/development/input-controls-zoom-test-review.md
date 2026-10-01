@@ -1,5 +1,23 @@
 # Input-control zoom test review
 
+## 2026-10-01: label-aware line-capacity sizing
+
+The new 100%-zoom line-capacity contract is two columns / five full-width equivalents, three / four, and four / three. Single-column list mode uses the previously proposed eight-character baseline. Labels shorter than the capacity use their own estimated width instead of a universal four-character divisor. Longer labels use the capacity and a theoretical wrapped-line count. Standard and label-only options share the same sizing rule; omitting a stacked value badge increases the available nominal height.
+
+`quickButtonTypography.ts` calculates conservative equivalent widths in integer twentieths of an em. Full-width characters count as one unit; ASCII widths vary by character class. Grapheme segmentation prevents emoji sequences and combining marks from being counted as multiple visible characters; a feature-detected code-point fallback requires no polyfill. Soft hyphens and zero-width controls have no width. These estimates do not measure a loaded font and cannot guarantee exact Latin word wrapping.
+
+Manual paragraphs are evaluated separately, with CRLF/CR normalized to LF for display only. Leading and intermediate empty lines remain in both the display string and the line budget. Only a final empty segment after a terminal newline is excluded from the estimated line count, following the existing `pre-wrap` renderer's [preserved-break processing](https://www.w3.org/TR/css-text-3/#white-space-property) and [phantom-line-box rule](https://www.w3.org/TR/css-inline-3/#phantom-line-boxes). Stored action labels and callbacks are unchanged.
+
+The font calculation now fits width and estimated lines against the 100%-zoom nominal height, then applies the app zoom factor exactly once. The old fixed 28px cap is removed. A 16px preferred height floor lets existing auto-growing rows and scrolling handle many lines rather than shrinking indefinitely; the final width bound may still yield a smaller font on narrow screens. All option padding and gaps remain fixed pixels. NumericKeypad is unchanged.
+
+Text analysis and existing hyphenation are memoized together per button by label and column count. Selection/value changes and pinch zoom do not reparse text. No new state, observers, layout measurements, gesture handlers, fitting loops, or runtime dependencies were added. The width container still excludes a side-by-side value badge, and content-grown heights never feed back into font size.
+
+Regression coverage includes capacity boundaries, short-label enlargement, mixed-width/combining/emoji text, invisible characters, blank/manual lines, newline normalization, old-browser fallback, memo invalidation, default-zoom height budgets, and 75%/130% pinch behavior in both input layouts. Sizing tests use production CSS/Tailwind declarations but model arithmetic rather than browser layout. The pre-implementation contract run failed all five new sizing cases, confirming the prior behavior did not satisfy the new contract.
+
+Final verification: 882 core tests passed in 116 files, including 38 typography-helper cases and 62 sizing cases. `npx tsc --noEmit`, the production build, the hardcoded-Chinese UI scan, and `git diff --check` passed. No database, service-worker, package, or built-in-template version/content changes are required for this local implementation; publishing remains a separate explicit request.
+
+Browser/device rendering remains unverified: project rules require explicit permission for browser verification. In particular, assess mixed-script line breaks and long manual labels in iOS Safari after release; passing arithmetic tests is not a device-fit claim.
+
 ## 2026-10-01: narrow-column zoom cancellation
 
 Reproduction scope: label-only quick options with three or four columns, app zoom from 100% to 130%, in the existing full or compact input layout. The user confirmed that fewer columns already enlarged. At a 375px panel width with four columns, the old spacing chain reduced the label width from 38.8125px to 29.9625px; the width-derived font therefore changed from 9.315px to just 9.3483px despite 130% zoom. These are declared CSS/grid calculations, not measurements from the user's device.

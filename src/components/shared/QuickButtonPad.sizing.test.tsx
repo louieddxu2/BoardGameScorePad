@@ -6,6 +6,8 @@ import tailwindcss from 'tailwindcss';
 import { LanguageProvider } from '../../i18n';
 import { useMobileZoom } from '../../hooks/useMobileZoom';
 import { evaluateFormula } from '../../utils/formulaEvaluator';
+import * as textUtils from '../../utils/text';
+import * as typographyUtils from './quickButtonTypography';
 import type { ScoreColumn } from '../../types';
 import appCss from '../../index.css?raw';
 import QuickButtonPad from './QuickButtonPad';
@@ -74,10 +76,7 @@ const getRule = (selector: string) => {
 // JSDOM cannot measure container queries, wrapping, or real Safari geometry.
 const modelFontSize = (label: HTMLElement, rootFontSize: number, availableWidth: number) => {
   let expression = '';
-  const fontSelectors = new Set([
-    '.quick-button-label > .quick-button-label-text',
-    '.quick-button-label-only > .quick-button-label-text',
-  ]);
+  const fontSelectors = new Set(['.quick-button-label > .quick-button-label-text']);
   stylesheet.walkRules(rule => {
     if (fontSelectors.has(rule.selector) && label.matches(rule.selector)) {
       rule.walkDecls('font-size', declaration => { expression = declaration.value; });
@@ -103,10 +102,11 @@ const modelFontSize = (label: HTMLElement, rootFontSize: number, availableWidth:
   expression = expression
     .replace(/(\d+(?:\.\d+)?)(rem|cqi|px)\b/g, (_, value: string, unit: string) =>
       String(Number(value) * (unit === 'rem' ? rootFontSize : unit === 'cqi' ? availableWidth / 100 : 1)))
-    .replace(/\bcalc\(/g, '(').replace(/\bmin\(/g, 'f1(').replace(/\bclamp\(/g, 'f2(');
+    .replace(/\bcalc\(/g, '(').replace(/\bmin\(/g, 'f1(').replace(/\bclamp\(/g, 'f2(').replace(/\bmax\(/g, 'f3(');
   return evaluateFormula(expression, {}, {
     f1: Math.min,
     f2: (minimum: number, preferred: number, maximum: number) => Math.max(minimum, Math.min(preferred, maximum)),
+    f3: Math.max,
   });
 };
 
@@ -114,7 +114,7 @@ const renderPad = (buttonGridColumns: number, renderMode: 'standard' | 'label_on
   const onAction = vi.fn();
   render(<LanguageProvider><QuickButtonPad column={{ ...column, buttonGridColumns, renderMode, ...extra }} onAction={onAction} /></LanguageProvider>);
   const button = screen.getByRole('button');
-  return { button, label: within(button).getByText(extra.quickActions?.[0]?.label ?? 'One'), onAction };
+  return { button, label: button.querySelector<HTMLElement>('.quick-button-label-text')!, onAction };
 };
 
 describe('QuickButtonPad available-space typography', () => {
@@ -133,6 +133,7 @@ describe('QuickButtonPad available-space typography', () => {
 
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
     document.documentElement.style.fontSize = previousFontSize;
     if (previousZoomProperty) document.documentElement.style.setProperty('--app-zoom-level', previousZoomProperty);
     else document.documentElement.style.removeProperty('--app-zoom-level');
@@ -155,11 +156,9 @@ describe('QuickButtonPad available-space typography', () => {
       expect(declaration.value).toContain('cqi');
       expect(declaration.value).not.toMatch(/\bcq(?:h|b|min|max)\b/);
     });
-    const labelOnlyRule = getRule('.quick-button-label-only > .quick-button-label-text');
-    expect(labelOnlyRule.parent).toBe(containerRule.parent);
-    labelOnlyRule.walkDecls('font-size', declaration => {
-      expect(declaration.value).not.toMatch(/\bcq(?:h|b|min|max)\b/);
-    });
+    const labelOnlyOverrides: postcss.Rule[] = [];
+    stylesheet.walkRules('.quick-button-label-only > .quick-button-label-text', rule => { labelOnlyOverrides.push(rule); });
+    expect(labelOnlyOverrides).toHaveLength(0);
   });
 
   describe.each([1, 2, 3, 4])('%i columns', (cols) => {
@@ -190,8 +189,8 @@ describe('QuickButtonPad available-space typography', () => {
       if (mode === 'label_only') expect(wrapper).toHaveClass('quick-button-label-only');
       else expect(wrapper).not.toHaveClass('quick-button-label-only');
       expect(label).toHaveClass('quick-button-label-text', 'break-words', 'whitespace-pre-wrap');
-      expect(button.parentElement!.style.getPropertyValue('--quick-button-row-height')).toBe(cols === 1 ? '3.5rem' : '4.5rem');
-      expect(button.style.getPropertyValue('--quick-button-value-reserve')).toBe(cols > 1 && mode === 'standard' ? 'calc(1.3125rem + 8px)' : '0rem');
+      expect(button.parentElement!.style.gridAutoRows).toBe(cols === 1 ? 'minmax(3.5rem, auto)' : 'minmax(4.5rem, auto)');
+      expect(button.style.getPropertyValue('--quick-button-label-height')).toBe(cols === 1 ? '38px' : mode === 'standard' ? '25px' : '54px');
       expect(wrapper.style.height).toBe('');
       expect(wrapper).not.toHaveClass('h-full', 'overflow-hidden');
       if (cols === 1) expect(wrapper).toHaveClass('flex-1', 'min-w-0');
@@ -202,9 +201,9 @@ describe('QuickButtonPad available-space typography', () => {
     });
 
     it.each([
-      { root: 12, listWide: 19.2, gridStandard: 9.8 },
+      { root: 12, listWide: 22.8, gridStandard: 15 },
       { root: 16, listWide: 30.4, gridStandard: 20 },
-      { root: 20.8, listWide: 41.6, gridStandard: 32.24 },
+      { root: 20.8, listWide: 39.52, gridStandard: 26 },
     ])('models the production size formula at root $root px', ({ root, listWide, gridStandard }) => {
       localStorage.setItem('app_zoom_level', String(root / 16));
       renderHook(() => useMobileZoom());
@@ -217,26 +216,28 @@ describe('QuickButtonPad available-space typography', () => {
       const standard = within(screen.getByRole('button', { name: 'One 1' })).getByText('One');
       const labelOnly = within(screen.getByRole('button', { name: 'One' })).getByText('One');
       expect(modelFontSize(standard, root, 160)).toBeCloseTo(cols === 1 ? listWide : gridStandard);
-      expect(modelFontSize(labelOnly, root, 160)).toBeCloseTo(cols === 1 && root === 12 ? 19.2 : 1.75 * root);
+      expect(modelFontSize(labelOnly, root, 160)).toBeCloseTo(cols === 1 ? listWide : 43.2 * (root / 16));
       expect(modelFontSize(labelOnly, root, 64)).toBeGreaterThan(modelFontSize(labelOnly, root, 32));
       expect(modelFontSize(labelOnly, root, 64)).toBeLessThanOrEqual(modelFontSize(labelOnly, root, 160));
-      expect(modelFontSize(labelOnly, root, 64)).toBeLessThanOrEqual(1.75 * root);
-      expect(modelFontSize(labelOnly, root, 64)).toBeCloseTo(15.36 * (root / 16));
+      // 'One' has a conservative 2.1 full-width equivalent, not four glyphs.
+      expect(modelFontSize(labelOnly, root, 64)).toBeCloseTo((64 * 0.96 / 2.1) * (root / 16));
       if (cols > 1) expect(modelFontSize(labelOnly, root, 160)).toBeGreaterThan(modelFontSize(standard, root, 160));
     });
 
-    it('budgets four full-width glyph advances with spare width at default zoom', () => {
+    it('budgets the column capacity rather than fitting an entire long label on one line', () => {
       const { label } = renderPad(cols, 'label_only', {
         quickActions: [{ ...column.quickActions[0], label: '五座帳篷' }],
       });
       expect(label.textContent).toBe('五座帳篷');
+      const expectedLineWidth = cols === 4 ? 3 : 4;
+      expect(label.closest('button')!.style.getPropertyValue('--quick-button-label-lines')).toBe(cols === 4 ? '2' : '1');
 
       for (const availableWidth of [48, 64, 80, 96, 112, 160]) {
         const fontSize = modelFontSize(label, 16, availableWidth);
         // Full-width glyphs nominally advance by 1em; this is a size budget,
         // not a claim that JSDOM measures font metrics or rendered wrapping.
-        expect(fontSize * 4, `four glyphs at ${availableWidth}px label width`).toBeLessThanOrEqual(availableWidth * 0.96 + 0.001);
-        expect(fontSize).toBeLessThanOrEqual(28);
+        expect(fontSize * expectedLineWidth, `${expectedLineWidth} glyphs at ${availableWidth}px label width`).toBeLessThanOrEqual(availableWidth * 0.96 + 0.001);
+        expect(fontSize).toBeLessThanOrEqual(cols === 1 ? 30.4 : cols === 4 ? 21.6 : 43.2);
         expect(fontSize).toBeGreaterThan(0);
       }
     });
@@ -272,6 +273,98 @@ describe('QuickButtonPad available-space typography', () => {
     });
   });
 
+  it.each([[2, 5], [3, 4], [4, 3]])('publishes %i-column line capacity %i for both display modes', (cols, capacity) => {
+    render(
+      <LanguageProvider>
+        <QuickButtonPad column={{ ...column, buttonGridColumns: cols }} onAction={vi.fn()} />
+        <QuickButtonPad column={{ ...column, buttonGridColumns: cols, renderMode: 'label_only' }} onAction={vi.fn()} />
+      </LanguageProvider>,
+    );
+    for (const button of screen.getAllByRole('button')) {
+      expect(button.style.getPropertyValue('--quick-button-line-capacity')).toBe(String(capacity));
+    }
+  });
+
+  it('makes short full-width labels larger without changing their one-line text', () => {
+    render(
+      <LanguageProvider>
+        <QuickButtonPad column={{ ...column, buttonGridColumns: 3, renderMode: 'label_only', quickActions: [
+          { id: 'short', label: '森林', value: 1 }, { id: 'long', label: '五座帳篷', value: 2 },
+        ] }} onAction={vi.fn()} />
+      </LanguageProvider>,
+    );
+    const short = screen.getByText('森林');
+    const long = screen.getByText('五座帳篷');
+    const shortFont = modelFontSize(short, 16, 64);
+    expect(shortFont).toBeGreaterThan(28);
+    expect(shortFont).toBeCloseTo(modelFontSize(long, 16, 64) * 2);
+    expect(shortFont * 2).toBeLessThanOrEqual(64 * 0.96 + 0.001);
+  });
+
+  it('budgets manual lines separately and keeps the original action unchanged', () => {
+    const action = { id: 'manual', label: '森林\r\n\r\n山谷\r\n', value: 1 };
+    const { button, label, onAction } = renderPad(3, 'label_only', { quickActions: [action] });
+    expect(label.textContent).toBe('森林\n\n山谷\n');
+    expect(button.style.getPropertyValue('--quick-button-label-width-units')).toBe('2');
+    expect(button.style.getPropertyValue('--quick-button-label-lines')).toBe('3');
+    fireEvent.click(button);
+    expect(onAction).toHaveBeenCalledTimes(1);
+    expect(onAction).toHaveBeenCalledWith(action);
+    expect(action.label).toBe('森林\r\n\r\n山谷\r\n');
+  });
+
+  it('shares the nominal height between manual lines without shrinking indefinitely', () => {
+    render(
+      <LanguageProvider>
+        <QuickButtonPad column={{ ...column, buttonGridColumns: 3, renderMode: 'label_only', quickActions: [
+          { id: 'single', label: '森林', value: 1 },
+          { id: 'double', label: '森林\n山谷', value: 2 },
+          { id: 'many', label: '森林\n\n山谷\n\n山谷', value: 3 },
+        ] }} onAction={vi.fn()} />
+      </LanguageProvider>,
+    );
+    const labels = screen.getAllByRole('button').map(button => button.querySelector<HTMLElement>('.quick-button-label-text')!);
+    expect(modelFontSize(labels[0], 16, 160)).toBeCloseTo(43.2);
+    expect(modelFontSize(labels[1], 16, 160)).toBeCloseTo(21.6);
+    expect(modelFontSize(labels[2], 16, 160)).toBeCloseTo(16);
+    expect(labels[2].closest('button')!.parentElement!.style.gridAutoRows).toBe('minmax(4.5rem, auto)');
+  });
+
+  it('reuses text analysis through zoom, selection and value changes, but refreshes changed labels or columns', () => {
+    const analyze = vi.spyOn(typographyUtils, 'getQuickButtonTypography');
+    const hyphenate = vi.spyOn(textUtils, 'injectSoftHyphens');
+    const onAction = vi.fn();
+    const initial = { ...column, buttonGridColumns: 3, renderMode: 'label_only' as const };
+    const pad = (current: ScoreColumn, selected?: string) => (
+      <LanguageProvider><QuickButtonPad column={current} currentOptionId={selected} onAction={onAction} /></LanguageProvider>
+    );
+    renderHook(() => useMobileZoom());
+    const { rerender } = render(pad(initial));
+    expect(analyze).toHaveBeenCalledTimes(1);
+    expect(hyphenate).toHaveBeenCalledTimes(1);
+
+    const button = screen.getByRole('button');
+    fireEvent.touchStart(button, { touches: [{ clientX: 0, clientY: 0 }, { clientX: 100, clientY: 0 }] });
+    fireEvent.touchMove(button, { touches: [{ clientX: 0, clientY: 0 }, { clientX: 180, clientY: 0 }] });
+    fireEvent.touchEnd(button, { touches: [], changedTouches: [{ clientX: 0, clientY: 0 }, { clientX: 180, clientY: 0 }] });
+    rerender(pad({ ...initial, quickActions: [{ ...column.quickActions[0], value: 99 }] }, 'one'));
+    expect(document.documentElement.style.fontSize).toBe('20.8px');
+    expect(analyze).toHaveBeenCalledTimes(1);
+    expect(hyphenate).toHaveBeenCalledTimes(1);
+    expect(onAction).not.toHaveBeenCalled();
+
+    const changed = { ...initial, quickActions: [{ ...column.quickActions[0], label: '森林\n山谷' }] };
+    rerender(pad(changed));
+    expect(analyze).toHaveBeenCalledTimes(2);
+    expect(hyphenate).toHaveBeenCalledTimes(2);
+    expect(button.style.getPropertyValue('--quick-button-label-width-units')).toBe('2');
+    expect(button.style.getPropertyValue('--quick-button-label-lines')).toBe('2');
+    rerender(pad({ ...changed, buttonGridColumns: 4 }));
+    expect(analyze).toHaveBeenCalledTimes(3);
+    expect(hyphenate).toHaveBeenCalledTimes(3);
+    expect(button.style.getPropertyValue('--quick-button-line-capacity')).toBe('3');
+  });
+
   describe.each([false, true])('input layout compact=%s', (isCompact) => {
     describe.each([3, 4])('%i narrow columns', (cols) => {
       it.each([320, 375, 430, 768])('enlarges text across the real spacing chain at %ipx panel width', (panelWidth) => {
@@ -280,16 +373,18 @@ describe('QuickButtonPad available-space typography', () => {
         render(
           <LanguageProvider>
             <InputPanelLayout isCompact={isCompact} onNext={vi.fn()}>
-              <QuickButtonPad column={{ ...column, buttonGridColumns: cols, renderMode: 'label_only' }} onAction={onAction} />
+              <QuickButtonPad column={{ ...column, buttonGridColumns: cols, renderMode: 'label_only', quickActions: [
+                { ...column.quickActions[0], label: '五座帳篷' },
+              ] }} onAction={onAction} />
             </InputPanelLayout>
           </LanguageProvider>,
         );
-        const button = screen.getByRole('button', { name: 'One' });
-        const label = within(button).getByText('One');
+        const button = screen.getByRole('button', { name: '五座帳篷' });
+        const label = within(button).getByText('五座帳篷');
         const defaultWidth = modelPanelLabelWidth(button, panelWidth, cols, 16);
         const defaultSize = modelFontSize(label, 16, defaultWidth);
         expect(defaultWidth).toBeGreaterThan(0);
-        expect(defaultSize * 4).toBeLessThanOrEqual(defaultWidth * 0.96 + 0.001);
+        expect(defaultSize * (cols === 4 ? 3 : 4)).toBeLessThanOrEqual(defaultWidth * 0.96 + 0.001);
 
         for (const [distance, zoom] of [[180, 1.3], [50, 0.75]]) {
           fireEvent.touchStart(button, { touches: [{ clientX: 0, clientY: 0 }, { clientX: 100, clientY: 0 }] });
