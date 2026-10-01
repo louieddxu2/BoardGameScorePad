@@ -6,12 +6,24 @@ compatibility on `V3test` before a production release.
 
 ## Routine updates
 
-- npm dependencies are checked weekly, on Monday at 02:00 Asia/Taipei.
-- GitHub Actions are checked monthly.
-- Both ecosystems inspect manifests on `V3test` and open PRs targeting `V3test`.
-- Major version updates are excluded from routine proposals. Development
-  dependency minor and patch updates retain their existing group.
-- PR limits remain five for npm and three for GitHub Actions.
+- npm dependencies and GitHub Actions share the native multi-ecosystem group
+  `routine-v3test`, checked weekly on Monday at 02:00 Asia/Taipei. GitHub Actions
+  now follows the same weekly cadence instead of a separate monthly schedule.
+- Both ecosystems include all dependencies in that one group. Runtime and
+  development dependencies are not split into separate proposals.
+- The group inspects manifests on `V3test` and opens its consolidated PR targeting
+  `V3test`. Its target branch and schedule are set at group level, not repeated
+  in the ecosystem entries.
+- Each ecosystem's version-update PR limit is one. The single cross-ecosystem
+  group, rather than two independent limits, combines both ecosystems into one
+  routine update proposal. There are no ungrouped dependency patterns.
+- Major version updates remain excluded from routine proposals.
+
+Use Dependabot's built-in grouping; do not add an automatic merge or a custom
+branch-reuse workflow. "One branch" means one active routine update proposal,
+not a permanent branch name. Remove its head branch after it is merged or closed.
+Existing PRs and old head branches are not cleaned up by changing this file;
+review and close obsolete proposals separately.
 
 GitHub reads `.github/dependabot.yml` from the repository's default branch,
 currently `main`. A configuration change on `V3test` must be reviewed and
@@ -19,9 +31,22 @@ validated there, but GitHub's hosted Dependabot adopts it only after the
 configuration reaches the default branch. `target-branch: V3test` controls the
 dependency manifests inspected and the destination of version-update PRs.
 
-Dependabot security-update PRs are a separate repository setting and target the
-default branch. They are currently disabled; changing this file does not enable
-them. Production dependency security checks remain part of CI on `V3test`.
+Dependabot security-update PRs are a separate repository setting, target the
+default branch, and are not bound by the version-update PR limits. Keep automatic
+security-update PRs and auto-triage rules that open PRs disabled to preserve the
+one-proposal, `V3test`-only policy. Changing this file does not enforce those
+repository settings. Keep vulnerability alerts enabled and handle necessary
+security fixes promptly on `V3test`; production dependency security checks remain
+part of CI there.
+
+After the verified configuration reaches `main`, confirm the `routine-v3test`
+group appears in GitHub's Dependency graph / Dependabot view. Check its first
+scheduled proposal for a `V3test` base branch and consolidated updates before
+considering the hosted configuration verified.
+
+GitHub's native multi-ecosystem configuration and option restrictions are
+documented in [multi-ecosystem updates](https://docs.github.com/en/code-security/concepts/supply-chain-security/multi-ecosystem-updates)
+and [configuring multi-ecosystem updates](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/configuring-multi-ecosystem-updates).
 
 ## Major upgrades
 
