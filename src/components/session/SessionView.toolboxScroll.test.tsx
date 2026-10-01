@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import SessionView from './SessionView';
 import { ConfirmationProvider } from '../../hooks/useConfirm';
@@ -8,6 +8,7 @@ import { LanguageProvider } from '../../i18n';
 import { GameSession, GameTemplate } from '../../types';
 import { createMultiplayerSessionManager } from '../../features/multiplayer/multiplayerSessionManager';
 import { createPlayerSessionCapabilities } from '../../features/multiplayer/sessionCapabilities';
+import { useMobileZoom } from '../../hooks/useMobileZoom';
 
 vi.mock('../../features/ai-generator/hooks/useAiGenerator', () => ({
   useAiGenerator: () => ({
@@ -410,6 +411,31 @@ describe('SessionView toolbox scroll behavior', () => {
     });
 
     expect(getInputPanel().textContent).toContain('Player 1');
+  });
+
+  it('does not turn the remaining pinch finger into a player swipe and immediately accepts the next tap', () => {
+    renderHook(() => useMobileZoom());
+    const onUpdateSession = vi.fn();
+    renderSession({ onUpdateSession });
+    fireEvent.click(getFirstScoreCell());
+    const panel = getInputPanel();
+    const outside = getFirstScoreCell();
+    const first = { identifier: 1, clientX: 200, clientY: 100 };
+    const second = { identifier: 2, clientX: 300, clientY: 100 };
+    fireEvent.touchStart(panel, { touches: [first], changedTouches: [first] });
+    fireEvent.touchStart(outside, { touches: [first, second], changedTouches: [second] });
+    fireEvent.touchEnd(outside, { touches: [first], changedTouches: [second] });
+    const moved = { ...first, clientX: 100 };
+    fireEvent.touchMove(panel, { touches: [moved], changedTouches: [moved] });
+    fireEvent.touchEnd(panel, { touches: [], changedTouches: [moved] });
+    expect(getInputPanel().textContent).toContain('Player 1');
+
+    const key = screen.getByRole('button', { name: '1' });
+    fireEvent.touchStart(key, { touches: [first], changedTouches: [first] });
+    fireEvent.touchEnd(key, { touches: [], changedTouches: [first] });
+    const latest = onUpdateSession.mock.calls[onUpdateSession.mock.calls.length - 1]?.[0] as GameSession;
+    expect(latest.players.find(player => player.id === 'p1')?.scores['col-1']?.parts).toEqual([1]);
+    expect(latest.players.find(player => player.id === 'p2')?.scores['col-1']?.parts ?? []).toEqual([]);
   });
 
   it('opens a score cell from a touch tap after the grid was scrolled without a compatibility click', () => {

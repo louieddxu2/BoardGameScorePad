@@ -143,7 +143,9 @@ describe('pinch gesture ownership across touch targets', () => {
       const { first, second } = beginPinch(other, target);
       endPinch(first, second, false);
       expect(activate).toHaveBeenCalledTimes(0);
-      fireEvent.click(target, { detail: 0 }); // Keyboard / assistive activation.
+      fireEvent.keyDown(target, { key: 'Enter' });
+      fireEvent.click(target, { detail: 0 }); // Native activation following a real key.
+      fireEvent.keyUp(target, { key: 'Enter' });
       expect(activate).toHaveBeenCalledTimes(1);
       let activationCount = 1;
       for (const pointerType of ['mouse', 'pen']) {
@@ -186,6 +188,26 @@ describe('pinch gesture ownership across touch targets', () => {
       fireEvent(target, click);
       expect(activate).toHaveBeenCalledTimes(0);
       expect(click.defaultPrevented).toBe(true);
+    });
+
+    it.each([0, 1])('rejects a pinch click without source metadata, detail=%s', (detail) => {
+      const { activate, ancestorClick, target, other } = makeControl(kind);
+      const { first, second } = beginPinch(target, other);
+      endPinch(first, second, false);
+      fireEvent.click(target, { detail });
+      expect(activate).not.toHaveBeenCalled();
+      expect(ancestorClick).not.toHaveBeenCalled();
+    });
+
+    it.each([false, true])('accepts every rapid tap without a cooldown, compatibilityClick=%s', (compatibilityClick) => {
+      const { activate, target, other } = makeControl(kind);
+      const { first, second } = beginPinch(target, other);
+      endPinch(first, second, false);
+      for (let index = 1; index <= 20; index++) {
+        tap(target);
+        if (compatibilityClick) fireEvent.click(target, { detail: 1 });
+        expect(activate).toHaveBeenCalledTimes(index);
+      }
     });
   });
 

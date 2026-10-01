@@ -216,6 +216,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
       onTouchStart: (e: any) => dnd.handleTouchStart(e, colId),
       onTouchMove: dnd.handleTouchMove,
       onTouchEnd: dnd.handleTouchEnd,
+      onTouchCancel: dnd.handleTouchCancel,
     };
   };
 

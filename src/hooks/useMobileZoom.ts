@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { getTouchDistance } from '../utils/ui';
+import { touchGestureGuard } from '../utils/touchGesture';
 
 const MOBILE_ZOOM_IGNORE_SELECTOR = '[data-mobile-zoom-ignore="true"]';
 
-// The App's existing listeners own this record. Buttons only read it: no
-// per-button window listeners, React updates or timing-based tap lockouts.
-const mobileZoomGesture = { sequence: 0, active: false, suppressClick: false };
-export const getMobileZoomGestureState = (): Readonly<typeof mobileZoomGesture> => mobileZoomGesture;
+export const getMobileZoomGestureState = touchGestureGuard.getState;
 
 const shouldIgnoreMobileZoomEvent = (event: TouchEvent): boolean => {
   const target = event.target;
@@ -40,20 +38,8 @@ export const useMobileZoom = () => {
   }, [zoomLevel]);
 
   useEffect(() => {
-    const claimMultitouch = (e: TouchEvent) => {
-      if (e.touches.length > 1) {
-        if (!mobileZoomGesture.active) mobileZoomGesture.sequence++;
-        mobileZoomGesture.active = true;
-        mobileZoomGesture.suppressClick = true;
-      }
-    };
-
     const handleTouchStart = (e: TouchEvent) => {
-      claimMultitouch(e);
-      if (e.touches.length === 1 && !mobileZoomGesture.active) {
-        // Only a fresh touch, after all old fingers lifted, rearms input.
-        mobileZoomGesture.suppressClick = false;
-      }
+      touchGestureGuard.start(e.touches.length);
       if (shouldIgnoreMobileZoomEvent(e)) {
         isZooming.current = false;
         touchStartDist.current = 0;
@@ -65,7 +51,7 @@ export const useMobileZoom = () => {
         if (e.cancelable) e.preventDefault();
         touchStartDist.current = getTouchDistance(e.touches);
         initialZoomRef.current = zoomLevelRef.current;
-      } else if (!mobileZoomGesture.active) {
+      } else if (!touchGestureGuard.getState().active) {
         isZooming.current = false;
         touchStartDist.current = 0;
       } else {
@@ -74,7 +60,7 @@ export const useMobileZoom = () => {
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      claimMultitouch(e);
+      touchGestureGuard.move(e.touches.length);
       if (shouldIgnoreMobileZoomEvent(e)) {
         isZooming.current = false;
         touchStartDist.current = 0;
@@ -93,17 +79,19 @@ export const useMobileZoom = () => {
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
-      if (mobileZoomGesture.active && isZooming.current && !shouldIgnoreMobileZoomEvent(e) && e.cancelable) {
+      if (touchGestureGuard.getState().active && isZooming.current && !shouldIgnoreMobileZoomEvent(e) && e.cancelable) {
         e.preventDefault();
       }
+      touchGestureGuard.end(e.touches.length, e.type === 'touchcancel');
       if (e.touches.length === 0) {
-        mobileZoomGesture.active = false;
         isZooming.current = false;
         touchStartDist.current = 0;
       } else if (e.touches.length !== 2) {
         touchStartDist.current = 0;
       }
     };
+    const handlePointerDown = (e: PointerEvent) => touchGestureGuard.pointerDown(e);
+    const handleKeyDown = (e: KeyboardEvent) => touchGestureGuard.keyDown(e);
 
     // Capture sees both targets before React's button handlers, including the
     // final lift whose local handler may stop bubbling to the window.
@@ -112,14 +100,17 @@ export const useMobileZoom = () => {
     window.addEventListener('touchmove', handleTouchMove, listenerOptions);
     window.addEventListener('touchend', handleTouchEnd, listenerOptions);
     window.addEventListener('touchcancel', handleTouchEnd, listenerOptions);
+    window.addEventListener('pointerdown', handlePointerDown, true);
+    window.addEventListener('keydown', handleKeyDown, true);
 
     return () => {
       window.removeEventListener('touchstart', handleTouchStart, listenerOptions);
       window.removeEventListener('touchmove', handleTouchMove, listenerOptions);
       window.removeEventListener('touchend', handleTouchEnd, listenerOptions);
       window.removeEventListener('touchcancel', handleTouchEnd, listenerOptions);
-      mobileZoomGesture.active = false;
-      mobileZoomGesture.suppressClick = false;
+      window.removeEventListener('pointerdown', handlePointerDown, true);
+      window.removeEventListener('keydown', handleKeyDown, true);
+      touchGestureGuard.reset();
     };
   }, []);
 

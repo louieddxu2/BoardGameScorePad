@@ -111,7 +111,7 @@ describe('useMobileZoom', () => {
       dispatchTouchEvent(window, 'touchmove', [first, { ...second, clientX: 120 }]);
     });
     expect(document.documentElement.style.fontSize).toBe('19.2px');
-    expect(getMobileZoomGestureState()).toEqual({ sequence: sequenceBefore + 1, active: true, suppressClick: true });
+    expect(getMobileZoomGestureState()).toMatchObject({ sequence: sequenceBefore + 1, active: true, suppressClick: true });
 
     act(() => { dispatchTouchEvent(window, ending, [first]); });
     expect(getMobileZoomGestureState().active).toBe(true);
@@ -122,12 +122,14 @@ describe('useMobileZoom', () => {
     expect(document.documentElement.style.fontSize).toBe('19.2px');
 
     act(() => { dispatchTouchEvent(window, ending, []); });
-    expect(getMobileZoomGestureState()).toEqual({ sequence: sequenceBefore + 1, active: false, suppressClick: true });
+    expect(getMobileZoomGestureState()).toMatchObject({ sequence: sequenceBefore + 1, active: false, suppressClick: true });
     act(() => {
       const newTap = dispatchTouchEvent(window, 'touchstart', [first]);
       expect(newTap.defaultPrevented).toBe(false);
     });
-    expect(getMobileZoomGestureState().suppressClick).toBe(false);
+    expect(getMobileZoomGestureState().suppressClick).toBe(true);
+    act(() => { dispatchTouchEvent(window, ending, []); });
+    expect(getMobileZoomGestureState().suppressClick).toBe(ending === 'touchcancel');
   });
 
   it('can continue zooming with a replacement finger without releasing gesture ownership', () => {
@@ -144,7 +146,7 @@ describe('useMobileZoom', () => {
       dispatchTouchEvent(window, 'touchmove', [first, { clientX: 150, clientY: 0 }]);
     });
     expect(document.documentElement.style.fontSize).toBe('20.8px');
-    expect(getMobileZoomGestureState()).toEqual({ sequence, active: true, suppressClick: true });
+    expect(getMobileZoomGestureState()).toMatchObject({ sequence, active: true, suppressClick: true });
   });
 
   it('cleans up capture listeners and ownership on unmount', () => {
@@ -155,8 +157,8 @@ describe('useMobileZoom', () => {
     expect(getMobileZoomGestureState().active).toBe(true);
     const sequence = getMobileZoomGestureState().sequence;
     unmount();
-    expect(getMobileZoomGestureState()).toEqual({ sequence, active: false, suppressClick: false });
+    expect(getMobileZoomGestureState()).toMatchObject({ sequence, active: false, suppressClick: false });
     dispatchTouchEvent(window, 'touchstart', [{ clientX: 0, clientY: 0 }, { clientX: 100, clientY: 0 }]);
-    expect(getMobileZoomGestureState()).toEqual({ sequence, active: false, suppressClick: false });
+    expect(getMobileZoomGestureState()).toMatchObject({ sequence, active: false, suppressClick: false });
   });
 });

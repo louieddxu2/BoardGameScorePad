@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GameTemplate } from '../../../types';
+import { touchGestureGuard } from '../../../utils/touchGesture';
 
 interface DragAndDropProps {
   template: GameTemplate;
@@ -14,6 +15,7 @@ export const useColumnDragAndDrop = ({ template, onUpdateTemplate, scrollRef }: 
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartY = useRef<number>(0);
   const isDraggingRef = useRef(false);
+  const touchRoundRef = useRef<number | null>(null);
   
   // Auto-scroll logic
   const scrollInterval = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -25,6 +27,14 @@ export const useColumnDragAndDrop = ({ template, onUpdateTemplate, scrollRef }: 
       }
   };
 
+  const scrollStep = (amount: number) => {
+      if (touchRoundRef.current !== null && !touchGestureGuard.isAllowed(touchRoundRef.current)) {
+          cleanupScroll();
+          return;
+      }
+      if (scrollRef.current) scrollRef.current.scrollTop += amount;
+  };
+
   const checkAutoScroll = (clientY: number) => {
       if (!scrollRef.current) return;
       const { top, bottom } = scrollRef.current.getBoundingClientRect();
@@ -34,13 +44,9 @@ export const useColumnDragAndDrop = ({ template, onUpdateTemplate, scrollRef }: 
       cleanupScroll();
 
       if (clientY < top + zone) {
-          scrollInterval.current = setInterval(() => {
-              if (scrollRef.current) scrollRef.current.scrollTop -= speed;
-          }, 16);
+          scrollInterval.current = setInterval(() => scrollStep(-speed), 16);
       } else if (clientY > bottom - zone) {
-          scrollInterval.current = setInterval(() => {
-              if (scrollRef.current) scrollRef.current.scrollTop += speed;
-          }, 16);
+          scrollInterval.current = setInterval(() => scrollStep(speed), 16);
       }
   };
 
@@ -96,11 +102,27 @@ export const useColumnDragAndDrop = ({ template, onUpdateTemplate, scrollRef }: 
 
   // --- Touch Handlers ---
 
+  const cancelTouchDrag = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    longPressTimer.current = null;
+    cleanupScroll();
+    touchRoundRef.current = null;
+    isDraggingRef.current = false;
+    setDraggingId(null);
+    setDropTargetId(null);
+  };
+
   const handleTouchStart = (e: React.TouchEvent, colId: string) => {
+    cancelTouchDrag();
+    const round = touchGestureGuard.getState().round;
+    if (e.touches.length !== 1 || !touchGestureGuard.isAllowed(round)) return;
+    touchRoundRef.current = round;
     touchStartY.current = e.touches[0].clientY;
     isDraggingRef.current = false;
     
     longPressTimer.current = setTimeout(() => {
+      longPressTimer.current = null;
+      if (touchRoundRef.current !== round || !touchGestureGuard.isAllowed(round)) return;
       setDraggingId(colId);
       setDropTargetId(colId);
       isDraggingRef.current = true;
@@ -109,6 +131,11 @@ export const useColumnDragAndDrop = ({ template, onUpdateTemplate, scrollRef }: 
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1 || touchRoundRef.current === null
+      || !touchGestureGuard.isAllowed(touchRoundRef.current)) {
+      cancelTouchDrag();
+      return;
+    }
     if (!isDraggingRef.current) {
       if (Math.abs(e.touches[0].clientY - touchStartY.current) > 10) {
         if (longPressTimer.current) clearTimeout(longPressTimer.current);
@@ -131,22 +158,24 @@ export const useColumnDragAndDrop = ({ template, onUpdateTemplate, scrollRef }: 
     }
   };
 
-  const handleTouchEnd = () => {
-    if (longPressTimer.current) clearTimeout(longPressTimer.current);
-    cleanupScroll();
-    
-    if (isDraggingRef.current && draggingId && dropTargetId) {
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length === 0 && touchRoundRef.current !== null
+      && touchGestureGuard.isAllowed(touchRoundRef.current)
+      && isDraggingRef.current && draggingId && dropTargetId) {
       moveColumn(draggingId, dropTargetId);
     }
-    
-    setDraggingId(null);
-    setDropTargetId(null);
-    isDraggingRef.current = false;
+    cancelTouchDrag();
   };
   
   // Cleanup effect
   useEffect(() => {
-      return () => cleanupScroll();
+      return () => {
+        if (longPressTimer.current) clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+        touchRoundRef.current = null;
+        isDraggingRef.current = false;
+        cleanupScroll();
+      };
   }, []);
   
   return {
@@ -159,5 +188,6 @@ export const useColumnDragAndDrop = ({ template, onUpdateTemplate, scrollRef }: 
     handleTouchStart,
     handleTouchMove,
     handleTouchEnd,
+    handleTouchCancel: cancelTouchDrag,
   };
 };
