@@ -2,6 +2,35 @@ import { describe, expect, it, vi } from 'vitest';
 import { createTouchGestureGuard, suppressInvalidTouchClick, touchGestureGuard } from './touchGesture';
 
 describe('touch gesture activation contract', () => {
+  it('distinguishes a native handoff cancellation from real multitouch without allowing its click', () => {
+    const guard = createTouchGestureGuard();
+    guard.start(1);
+    guard.end(0, true);
+    expect(guard.getMultitouchSequence()).toBe(0);
+    expect(guard.shouldSuppressClick({ pointerType: 'touch' })).toBe(true);
+    guard.start(1);
+    guard.end(0);
+    expect(guard.shouldSuppressClick({})).toBe(false);
+  });
+
+  it('counts each multitouch round once, including one that was already canceled', () => {
+    const guard = createTouchGestureGuard();
+    guard.start(1);
+    guard.end(1, true);
+    guard.move(2);
+    expect(guard.getMultitouchSequence()).toBe(1);
+    guard.start(2);
+    guard.end(2);
+    guard.end(1);
+    guard.start(2);
+    expect(guard.getMultitouchSequence()).toBe(1);
+    guard.end(0);
+    guard.start(2);
+    expect(guard.getMultitouchSequence()).toBe(2);
+    guard.reset();
+    expect(guard.getMultitouchSequence()).toBe(2);
+  });
+
   it('owns a whole multitouch round, including replacement fingers and the final lift', () => {
     const guard = createTouchGestureGuard();
     guard.start(1);

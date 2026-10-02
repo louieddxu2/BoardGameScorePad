@@ -17,6 +17,8 @@ export const createTouchGestureGuard = () => {
   const state = { round: 0, sequence: 0, active: false, suppressClick: false };
   let touchCount = 0;
   let invalid = false;
+  let hadMultitouch = false;
+  let multitouchSequence = 0;
   let handled = false;
   let hasRound = false;
   let nonTouchInput = false;
@@ -40,12 +42,23 @@ export const createTouchGestureGuard = () => {
     for (const id of roundPointerIds) remember(rejectedPointerIds, id);
   };
 
+  // Native dragging cancels its touch stream too. Keep real multitouch
+  // distinguishable without relaxing the shared click rejection policy.
+  const claimMultitouch = () => {
+    if (!hadMultitouch) {
+      hadMultitouch = true;
+      multitouchSequence++;
+    }
+    invalidate();
+  };
+
   const start = (count: number) => {
     if (count === 0) return;
     if (touchCount === 0) {
       state.round++;
       hasRound = true;
       invalid = false;
+      hadMultitouch = false;
       handled = false;
       roundPointerIds.clear();
       for (const id of pendingPointerIds) remember(roundPointerIds, id);
@@ -55,19 +68,20 @@ export const createTouchGestureGuard = () => {
     }
     nonTouchInput = false;
     touchCount = count;
-    if (count > 1) invalidate();
+    if (count > 1) claimMultitouch();
     state.active = invalid;
   };
 
   const move = (count: number) => {
     touchCount = count;
-    if (count > 1) invalidate();
+    if (count > 1) claimMultitouch();
     state.active = invalid && count > 0;
   };
 
   const end = (count: number, cancelled = false) => {
     touchCount = count;
-    if (cancelled || count > 1) invalidate();
+    if (cancelled) invalidate();
+    if (count > 1) claimMultitouch();
     state.active = invalid && count > 0;
     if (count === 0 && !invalid) state.suppressClick = false;
   };
@@ -127,6 +141,7 @@ export const createTouchGestureGuard = () => {
   const reset = () => {
     touchCount = 0;
     invalid = false;
+    hadMultitouch = false;
     handled = false;
     hasRound = false;
     nonTouchInput = false;
@@ -140,7 +155,8 @@ export const createTouchGestureGuard = () => {
     state.round++;
   };
 
-  return { getState: (): Readonly<typeof state> => state, start, move, end, pointerDown, keyDown,
+  return { getState: (): Readonly<typeof state> => state, getMultitouchSequence: () => multitouchSequence,
+    start, move, end, pointerDown, keyDown,
     isAllowed, markHandled, shouldSuppressClick, runAction, reset };
 };
 

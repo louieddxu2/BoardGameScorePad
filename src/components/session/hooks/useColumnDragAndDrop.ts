@@ -14,8 +14,14 @@ export const useColumnDragAndDrop = ({ template, onUpdateTemplate, scrollRef }: 
   
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartY = useRef<number>(0);
-  const isDraggingRef = useRef(false);
   const touchRoundRef = useRef<number | null>(null);
+  // Event ownership must change synchronously, independently of UI renders.
+  const activeDragRef = useRef<{
+    mode: 'touch' | 'native';
+    fromId: string;
+    targetId: string;
+    multitouchSequence: number;
+  } | null>(null);
   
   // Auto-scroll logic
   const scrollInterval = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -28,6 +34,7 @@ export const useColumnDragAndDrop = ({ template, onUpdateTemplate, scrollRef }: 
   };
 
   const scrollStep = (amount: number) => {
+      if (activeDragRef.current?.mode === 'native' && !getValidNativeDrag()) return;
       if (touchRoundRef.current !== null && !touchGestureGuard.isAllowed(touchRoundRef.current)) {
           cleanupScroll();
           return;
@@ -63,80 +70,127 @@ export const useColumnDragAndDrop = ({ template, onUpdateTemplate, scrollRef }: 
     }
   };
 
-  // --- Mouse Drag Handlers ---
+  const clearTouchTracking = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    longPressTimer.current = null;
+    touchRoundRef.current = null;
+  };
+
+  const resetDrag = () => {
+    clearTouchTracking();
+    cleanupScroll();
+    activeDragRef.current = null;
+    setDraggingId(null);
+    setDropTargetId(null);
+  };
+
+  const startDrag = (mode: 'touch' | 'native', colId: string) => {
+    activeDragRef.current = {
+      mode, fromId: colId, targetId: colId,
+      multitouchSequence: touchGestureGuard.getMultitouchSequence(),
+    };
+    setDraggingId(colId);
+    setDropTargetId(colId);
+  };
+
+  const updateDropTarget = (colId: string) => {
+    const drag = activeDragRef.current;
+    if (drag && drag.targetId !== colId) {
+      drag.targetId = colId;
+      setDropTargetId(colId);
+    }
+  };
+
+  const getValidNativeDrag = () => {
+    const drag = activeDragRef.current;
+    if (drag?.mode !== 'native') return null;
+    if (drag.multitouchSequence !== touchGestureGuard.getMultitouchSequence()) {
+      resetDrag();
+      return null;
+    }
+    return drag;
+  };
+
+  // --- Native Drag Handlers (mouse or browser-owned touch drag) ---
 
   const handleDragStart = (e: React.DragEvent, colId: string) => {
-    setDraggingId(colId);
-    // Set drop target to self initially so indicators show up immediately if needed
-    setDropTargetId(colId);
+    if (touchGestureGuard.getState().active) {
+      e.preventDefault();
+      resetDrag();
+      return;
+    }
+    // The browser can take over before or after our long-press timer fires.
+    // Its later touchcancel must not cancel the new native owner.
+    clearTouchTracking();
+    cleanupScroll();
+    startDrag('native', colId);
     e.dataTransfer.effectAllowed = "move";
     // Optional: Hide default ghost or set custom one if needed, 
     // but standard behavior is usually fine.
   };
 
   const handleDragOver = (e: React.DragEvent, colId: string) => {
+    if (!getValidNativeDrag()) return;
     e.preventDefault(); // Necessary to allow dropping
-    
-    // We update target even if it is self (to show in-place indicator)
-    if (dropTargetId !== colId) {
-        setDropTargetId(colId);
-    }
-    
+    updateDropTarget(colId);
     checkAutoScroll(e.clientY);
   };
 
   const handleDrop = (e: React.DragEvent, colId: string) => {
+    if (activeDragRef.current?.mode !== 'native') return;
     e.preventDefault();
-    cleanupScroll();
-    if (draggingId && draggingId !== colId) {
-        moveColumn(draggingId, colId);
-    }
-    // State reset is handled in DragEnd to cover all cases (drop outside, cancel, etc.)
+    const drag = getValidNativeDrag();
+    if (!drag) return;
+    resetDrag();
+    moveColumn(drag.fromId, colId);
   };
 
   const handleDragEnd = () => {
-    cleanupScroll();
-    setDraggingId(null);
-    setDropTargetId(null);
+    if (activeDragRef.current?.mode === 'native') resetDrag();
   };
 
   // --- Touch Handlers ---
 
   const cancelTouchDrag = () => {
-    if (longPressTimer.current) clearTimeout(longPressTimer.current);
-    longPressTimer.current = null;
-    cleanupScroll();
-    touchRoundRef.current = null;
-    isDraggingRef.current = false;
-    setDraggingId(null);
-    setDropTargetId(null);
+    if (activeDragRef.current?.mode === 'native') {
+      if (getValidNativeDrag()) clearTouchTracking();
+    } else resetDrag();
   };
 
   const handleTouchStart = (e: React.TouchEvent, colId: string) => {
+    if (activeDragRef.current?.mode === 'native') {
+      if (e.touches.length > 1) {
+        resetDrag();
+        return;
+      }
+      if (getValidNativeDrag()) return;
+    }
     cancelTouchDrag();
     const round = touchGestureGuard.getState().round;
     if (e.touches.length !== 1 || !touchGestureGuard.isAllowed(round)) return;
     touchRoundRef.current = round;
     touchStartY.current = e.touches[0].clientY;
-    isDraggingRef.current = false;
     
     longPressTimer.current = setTimeout(() => {
       longPressTimer.current = null;
       if (touchRoundRef.current !== round || !touchGestureGuard.isAllowed(round)) return;
-      setDraggingId(colId);
-      setDropTargetId(colId);
-      isDraggingRef.current = true;
+      startDrag('touch', colId);
       if (navigator.vibrate) navigator.vibrate(50);
     }, 500);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    if (activeDragRef.current?.mode === 'native') {
+      if (e.touches.length > 1) resetDrag();
+      else getValidNativeDrag();
+      return;
+    }
     if (e.touches.length !== 1 || touchRoundRef.current === null
       || !touchGestureGuard.isAllowed(touchRoundRef.current)) {
       cancelTouchDrag();
       return;
     }
-    if (!isDraggingRef.current) {
+    if (activeDragRef.current?.mode !== 'touch') {
       if (Math.abs(e.touches[0].clientY - touchStartY.current) > 10) {
         if (longPressTimer.current) clearTimeout(longPressTimer.current);
       }
@@ -154,26 +208,32 @@ export const useColumnDragAndDrop = ({ template, onUpdateTemplate, scrollRef }: 
     
     if (rowEl) {
       const targetId = rowEl.getAttribute('data-row-id');
-      if (targetId) setDropTargetId(targetId);
+      if (targetId) updateDropTarget(targetId);
     }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
+    const drag = activeDragRef.current;
     if (e.touches.length === 0 && touchRoundRef.current !== null
       && touchGestureGuard.isAllowed(touchRoundRef.current)
-      && isDraggingRef.current && draggingId && dropTargetId) {
-      moveColumn(draggingId, dropTargetId);
+      && drag?.mode === 'touch') {
+      moveColumn(drag.fromId, drag.targetId);
     }
     cancelTouchDrag();
+  };
+
+  const handleTouchCancel = (e: React.TouchEvent) => {
+    // Remaining fingers indicate an interrupted/multitouch gesture, not a
+    // completed single-touch handoff to the browser's native drag lifecycle.
+    if (activeDragRef.current?.mode === 'native' && e.touches.length > 0) resetDrag();
+    else cancelTouchDrag();
   };
   
   // Cleanup effect
   useEffect(() => {
       return () => {
-        if (longPressTimer.current) clearTimeout(longPressTimer.current);
-        longPressTimer.current = null;
-        touchRoundRef.current = null;
-        isDraggingRef.current = false;
+        clearTouchTracking();
+        activeDragRef.current = null;
         cleanupScroll();
       };
   }, []);
@@ -188,6 +248,6 @@ export const useColumnDragAndDrop = ({ template, onUpdateTemplate, scrollRef }: 
     handleTouchStart,
     handleTouchMove,
     handleTouchEnd,
-    handleTouchCancel: cancelTouchDrag,
+    handleTouchCancel,
   };
 };

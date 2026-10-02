@@ -306,6 +306,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
 
             <div
                 ref={containerRef}
+                data-mobile-zoom-ignore="true"
                 className="flex-1 w-full min-h-0 overflow-hidden touch-none flex items-center justify-center bg-app-bg-deep relative"
                 onMouseDown={handlePointerDown}
                 onTouchStart={handlePointerDown}
