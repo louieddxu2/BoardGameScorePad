@@ -129,20 +129,21 @@ export const useColumnDragAndDrop = ({ template, onUpdateTemplate, scrollRef }: 
     // but standard behavior is usually fine.
   };
 
-  const handleDragOver = (e: React.DragEvent, colId: string) => {
+  const handleDragOver = (e: React.DragEvent, colId?: string) => {
     if (!getValidNativeDrag()) return;
     e.preventDefault(); // Necessary to allow dropping
-    updateDropTarget(colId);
+    // Controls/backgrounds retain the same target as the visible drop line.
+    if (colId !== undefined) updateDropTarget(colId);
     checkAutoScroll(e.clientY);
   };
 
-  const handleDrop = (e: React.DragEvent, colId: string) => {
+  const handleDrop = (e: React.DragEvent, colId?: string) => {
     if (activeDragRef.current?.mode !== 'native') return;
     e.preventDefault();
     const drag = getValidNativeDrag();
     if (!drag) return;
     resetDrag();
-    moveColumn(drag.fromId, colId);
+    moveColumn(drag.fromId, colId ?? drag.targetId);
   };
 
   const handleDragEnd = () => {
@@ -217,7 +218,11 @@ export const useColumnDragAndDrop = ({ template, onUpdateTemplate, scrollRef }: 
     if (e.touches.length === 0 && touchRoundRef.current !== null
       && touchGestureGuard.isAllowed(touchRoundRef.current)
       && drag?.mode === 'touch') {
+      if (e.cancelable) e.preventDefault();
+      touchGestureGuard.markHandled(touchRoundRef.current);
+      resetDrag();
       moveColumn(drag.fromId, drag.targetId);
+      return;
     }
     cancelTouchDrag();
   };

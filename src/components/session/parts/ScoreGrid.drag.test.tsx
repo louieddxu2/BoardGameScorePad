@@ -1,37 +1,59 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../../../i18n';
 import { useMobileZoom } from '../../../hooks/useMobileZoom';
 import type { GameTemplate } from '../../../types';
+import { suppressInvalidTouchClick } from '../../../utils/touchGesture';
 import ScoreGrid from './ScoreGrid';
 
 const template: GameTemplate = { id: 'drag-test', name: 'Drag', createdAt: 1, columns: [
   { id: 'one', name: 'One', inputType: 'keypad', formula: 'a1', isScoring: true },
   { id: 'two', name: 'Two', inputType: 'keypad', formula: 'a1', isScoring: true },
 ] };
-const Harness = ({ update }: { update: (template: GameTemplate) => void }) => {
+const longTemplate: GameTemplate = { ...template, columns: [...template.columns,
+  ...['three', 'four', 'five'].map(id => ({ ...template.columns[0], id, name: id })),
+] };
+const Harness = ({ update, activate, initialTemplate, isEditMode }: {
+  update: (template: GameTemplate) => void;
+  activate: () => void;
+  initialTemplate: GameTemplate;
+  isEditMode: boolean;
+}) => {
   useMobileZoom();
+  // Mirror App's existing capture listener, including compatibility clicks.
+  useEffect(() => {
+    window.addEventListener('click', suppressInvalidTouchClick, true);
+    return () => window.removeEventListener('click', suppressInvalidTouchClick, true);
+  }, []);
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const [currentTemplate, setCurrentTemplate] = useState(template);
+  const [currentTemplate, setCurrentTemplate] = useState(initialTemplate);
   return <LanguageProvider><div ref={scrollRef} data-testid="scroller">
     <ScoreGrid template={currentTemplate} session={{
       id: 'session', templateId: template.id, name: template.name,
-      startTime: 1, status: 'active', players: [],
+      startTime: 1, status: 'active', players: [
+        { id: 'player', name: 'Alice', color: '#ff0000', scores: {}, totalScore: 0 },
+      ],
     }} editingCell={null} editingPlayerId={null}
-      onCellClick={() => {}} onPlayerHeaderClick={() => {}} onColumnHeaderClick={() => {}}
+      onCellClick={activate} onPlayerHeaderClick={activate} onColumnHeaderClick={activate}
       onUpdateTemplate={next => { setCurrentTemplate(next); update(next); }}
-      onAddColumn={() => {}} scrollContainerRef={scrollRef}
-      contentRef={contentRef} isEditMode={true} zoomLevel={1} panelDockOffset="0px" />
+      onAddColumn={activate} onOpenBatchAdd={activate} onOpenSettings={activate}
+      onToggleToolbox={activate} scrollContainerRef={scrollRef}
+      contentRef={contentRef} isEditMode={isEditMode} zoomLevel={1} panelDockOffset="0px" />
   </div><div data-testid="outside" /></LanguageProvider>;
 };
 
 const first = { identifier: 1, clientX: 100, clientY: 100 };
 const second = { identifier: 2, clientX: 200, clientY: 100 };
-const setupGrid = () => {
+const setupGrid = ({ initialTemplate = template, isEditMode = true }: {
+  initialTemplate?: GameTemplate;
+  isEditMode?: boolean;
+} = {}) => {
   const update = vi.fn();
-  const view = render(<Harness update={update} />);
+  const activate = vi.fn();
+  const view = render(<Harness update={update} activate={activate}
+    initialTemplate={initialTemplate} isEditMode={isEditMode} />);
   const from = view.container.querySelector('#row-one [draggable="true"]') as HTMLElement;
   const to = view.container.querySelector('#row-two') as HTMLElement;
   const scroller = view.getByTestId('scroller');
@@ -42,25 +64,26 @@ const setupGrid = () => {
   });
   const dataTransfer = { effectAllowed: 'uninitialized' };
   const hasDropLine = () => to.querySelector('.bg-brand-primary.pointer-events-none') !== null;
-  return { ...view, update, from, to, scroller, dataTransfer, hasDropLine };
+  return { ...view, update, activate, from, to, scroller, dataTransfer, hasDropLine };
 };
 const touchStart = (from: HTMLElement) => {
   fireEvent.touchStart(from, { touches: [first], changedTouches: [first] });
 };
-const dragOver = (target: HTMLElement, dataTransfer: { effectAllowed: string }, clientY = 120) => {
+const dragOver = (target: Element, dataTransfer: { effectAllowed: string }, clientY = 120) => {
   // JSDOM lacks DragEvent; an explicit MouseEvent preserves drag coordinates.
   const event = new MouseEvent('dragover', { bubbles: true, cancelable: true, clientY });
   Object.defineProperty(event, 'dataTransfer', { value: dataTransfer });
   fireEvent(target, event);
+  return event;
 };
 const touchMoveTo = (from: HTMLElement, to: HTMLElement) => {
   document.elementFromPoint = vi.fn(() => to.querySelector('[draggable="true"]'));
   const moved = { ...first, clientY: 120 };
   fireEvent.touchMove(from, { touches: [moved], changedTouches: [moved] });
 };
-const expectReorderedOnce = (update: ReturnType<typeof vi.fn>) => {
+const expectReorderedOnce = (update: ReturnType<typeof vi.fn>, expectedIds = ['two', 'one']) => {
   expect(update).toHaveBeenCalledTimes(1);
-  expect(update.mock.calls[0][0].columns.map((column: { id: string }) => column.id)).toEqual(['two', 'one']);
+  expect(update.mock.calls[0][0].columns.map((column: { id: string }) => column.id)).toEqual(expectedIds);
   expect(Array.from(document.querySelectorAll('#row-one, #row-two'))
     .map(row => row.getAttribute('data-row-id'))).toEqual(['two', 'one']);
 };
@@ -70,6 +93,7 @@ describe('actual score grid drag ownership', () => {
   let previousFontSize: string;
   let previousZoomProperty: string;
   let previousSavedZoom: string | null;
+  let previousLanguage: string | null;
   beforeEach(() => {
     vi.useFakeTimers();
     originalElementFromPoint = document.elementFromPoint;
@@ -77,6 +101,8 @@ describe('actual score grid drag ownership', () => {
     previousZoomProperty = document.documentElement.style.getPropertyValue('--app-zoom-level');
     previousSavedZoom = localStorage.getItem('app_zoom_level');
     localStorage.removeItem('app_zoom_level');
+    previousLanguage = localStorage.getItem('app_language');
+    localStorage.setItem('app_language', 'en');
   });
   afterEach(() => {
     cleanup();
@@ -86,6 +112,8 @@ describe('actual score grid drag ownership', () => {
     else document.documentElement.style.removeProperty('--app-zoom-level');
     if (previousSavedZoom === null) localStorage.removeItem('app_zoom_level');
     else localStorage.setItem('app_zoom_level', previousSavedZoom);
+    if (previousLanguage === null) localStorage.removeItem('app_language');
+    else localStorage.setItem('app_language', previousLanguage);
     vi.useRealTimers();
   });
 
@@ -97,6 +125,130 @@ describe('actual score grid drag ownership', () => {
     fireEvent.drop(to, { dataTransfer });
     fireEvent.dragEnd(from, { dataTransfer });
     expectReorderedOnce(update);
+    expect(hasDropLine()).toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each(['add', 'copy', 'toolbox', 'player', 'settings', 'footer space', 'content', 'viewport'])
+    ('drops at the shown line when released over %s instead of a row', (area) => {
+      const grid = setupGrid({ initialTemplate: area === 'toolbox' ? longTemplate : template });
+      const { from, to, dataTransfer, update, activate, hasDropLine } = grid;
+      const add = grid.getByRole('button', { name: 'Create new blank item' });
+      const targets: Record<string, () => Element> = {
+        add: () => add.querySelector('svg')!,
+        copy: () => grid.getByRole('button', { name: 'Copy existing:' }),
+        toolbox: () => grid.getByTitle('Toggle Toolbox'),
+        player: () => grid.container.querySelector('#header-player')!,
+        settings: () => grid.getByText('Player'),
+        'footer space': () => add.closest('.animate-in')!.children[1],
+        content: () => grid.container.querySelector('#live-grid-container')!,
+        viewport: () => grid.container.querySelector('#live-grid-container')!.parentElement!,
+      };
+      const target = targets[area]();
+      fireEvent.dragStart(from, { dataTransfer });
+      dragOver(to, dataTransfer);
+      expect(hasDropLine()).toBe(true);
+      expect(dragOver(target, dataTransfer).defaultPrevented).toBe(true);
+      expect(hasDropLine()).toBe(true);
+      fireEvent.drop(target, { dataTransfer });
+      fireEvent.dragEnd(from, { dataTransfer });
+      expectReorderedOnce(update, area === 'toolbox' ? ['two', 'one', 'three', 'four', 'five'] : undefined);
+      expect(activate).not.toHaveBeenCalled();
+      expect(hasDropLine()).toBe(false);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+  it('suppresses a touch drag release click on a control but accepts the next tap immediately', () => {
+    const { from, to, update, activate, getByRole, hasDropLine } = setupGrid();
+    const add = getByRole('button', { name: 'Create new blank item' });
+    touchStart(from);
+    act(() => { vi.advanceTimersByTime(500); });
+    touchMoveTo(from, to);
+    // Controls have no row id: keep the existing line while the finger crosses them.
+    document.elementFromPoint = vi.fn(() => add.querySelector('svg'));
+    fireEvent.touchMove(from, { touches: [first], changedTouches: [first] });
+    expect(hasDropLine()).toBe(true);
+    expect(fireEvent.touchEnd(from, { touches: [], changedTouches: [first] })).toBe(false);
+    expectReorderedOnce(update);
+    expect(fireEvent.click(add)).toBe(false);
+    expect(activate).not.toHaveBeenCalled();
+    fireEvent.touchStart(add, { touches: [first], changedTouches: [first] });
+    fireEvent.touchEnd(add, { touches: [], changedTouches: [first] });
+    fireEvent.click(add);
+    expect(activate).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('preserves native touch handoff and auto-scroll over footer controls', () => {
+    const { from, to, dataTransfer, update, activate, scroller, getByRole, hasDropLine } = setupGrid();
+    const add = getByRole('button', { name: 'Create new blank item' });
+    touchStart(from);
+    fireEvent.dragStart(from, { dataTransfer });
+    fireEvent.touchCancel(from, { touches: [], changedTouches: [first] });
+    dragOver(to, dataTransfer);
+    expect(dragOver(add, dataTransfer, 490).defaultPrevented).toBe(true);
+    act(() => { vi.advanceTimersByTime(32); });
+    expect(scroller.scrollTop).toBeGreaterThan(0);
+    expect(hasDropLine()).toBe(true);
+    fireEvent.drop(add, { dataTransfer });
+    fireEvent.dragEnd(from, { dataTransfer });
+    expectReorderedOnce(update);
+    expect(fireEvent.click(add)).toBe(false);
+    expect(activate).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('rejects a control-area drop after an outside pinch invalidates the native drag', () => {
+    const { from, to, dataTransfer, update, activate, getByRole, getByTestId, hasDropLine } = setupGrid();
+    fireEvent.dragStart(from, { dataTransfer });
+    dragOver(to, dataTransfer);
+    const outside = getByTestId('outside');
+    fireEvent.touchStart(outside, { touches: [first, second], changedTouches: [first, second] });
+    fireEvent.touchEnd(outside, { touches: [], changedTouches: [first, second] });
+    const add = getByRole('button', { name: 'Create new blank item' });
+    expect(dragOver(add, dataTransfer).defaultPrevented).toBe(false);
+    fireEvent.drop(add, { dataTransfer });
+    fireEvent.dragEnd(from, { dataTransfer });
+    expect(update).not.toHaveBeenCalled();
+    expect(activate).not.toHaveBeenCalled();
+    expect(hasDropLine()).toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('does not invent a new insertion target when dragged straight onto a control', () => {
+    const { from, dataTransfer, update, activate, getByRole, hasDropLine } = setupGrid();
+    const add = getByRole('button', { name: 'Create new blank item' });
+    fireEvent.dragStart(from, { dataTransfer });
+    expect(dragOver(add, dataTransfer).defaultPrevented).toBe(true);
+    expect(hasDropLine()).toBe(false);
+    fireEvent.drop(add, { dataTransfer });
+    fireEvent.dragEnd(from, { dataTransfer });
+    expect(update).not.toHaveBeenCalled();
+    expect(activate).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('does not accept foreign drops or affect ordinary control clicks', () => {
+    const { update, activate, getByRole, dataTransfer } = setupGrid();
+    const add = getByRole('button', { name: 'Create new blank item' });
+    expect(dragOver(add, dataTransfer).defaultPrevented).toBe(false);
+    expect(fireEvent.drop(add, { dataTransfer })).toBe(true);
+    fireEvent.click(add);
+    expect(activate).toHaveBeenCalledTimes(1);
+    expect(update).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('cancels a native drag dropped outside the grid even with a visible line', () => {
+    const { from, to, dataTransfer, update, hasDropLine, getByTestId } = setupGrid();
+    fireEvent.dragStart(from, { dataTransfer });
+    dragOver(to, dataTransfer);
+    expect(hasDropLine()).toBe(true);
+    const outside = getByTestId('outside');
+    expect(dragOver(outside, dataTransfer).defaultPrevented).toBe(false);
+    fireEvent.drop(outside, { dataTransfer });
+    fireEvent.dragEnd(from, { dataTransfer });
+    expect(update).not.toHaveBeenCalled();
     expect(hasDropLine()).toBe(false);
     expect(vi.getTimerCount()).toBe(0);
   });
