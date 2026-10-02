@@ -55,9 +55,28 @@ describe('searchService 核心邏輯測試', () => {
                 { name: 'name', weight: 2 },
                 { name: '_searchTokens', weight: 1 }
             ];
-            // 搜尋 'Mars'，'name' 欄位有精確匹配，權重應更高
-            const results = searchService.search(mockGames, 'Mars', keys);
-            expect(results[0].name).toBe('Terraforming Mars');
+            // Both entries match exactly; field weight must override input order.
+            const games = [
+                { id: 'alias-match', name: 'Terraforming', _searchTokens: ['Mars'] },
+                { id: 'name-match', name: 'Mars', _searchTokens: [] }
+            ];
+            const results = searchService.search(games, 'Mars', keys);
+            expect(results.map(game => game.id)).toEqual(['name-match', 'alias-match']);
         });
+
+        it.each(['Orchard Comets', ' \tOrchard \n Comets  '])(
+            'requires every query token to match, including across fields: %j',
+            query => {
+                const games = [
+                    { id: 'both', name: 'Orchard', _searchTokens: ['Comets'] },
+                    { id: 'name-only', name: 'Orchard', _searchTokens: ['Tides'] },
+                    { id: 'alias-only', name: 'Lagoon', _searchTokens: ['Comets'] }
+                ];
+
+                const results = searchService.search(games, query, ['name', '_searchTokens']);
+
+                expect(results.map(game => game.id)).toEqual(['both']);
+            }
+        );
     });
 });

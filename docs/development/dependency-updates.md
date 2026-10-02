@@ -36,8 +36,8 @@ default branch, and are not bound by the version-update PR limits. Keep automati
 security-update PRs and auto-triage rules that open PRs disabled to preserve the
 one-proposal, `V3test`-only policy. Changing this file does not enforce those
 repository settings. Keep vulnerability alerts enabled and handle necessary
-security fixes promptly on `V3test`; production dependency security checks remain
-part of CI there.
+security fixes promptly on `V3test`; runtime and development dependency security
+checks remain part of CI there.
 
 After the verified configuration reaches `main`, confirm the `routine-v3test`
 group appears in GitHub's Dependency graph / Dependabot view. Check its first
@@ -59,7 +59,7 @@ routine major updates is not a reason to defer a required security fix.
 
 1. Make dependency and configuration changes on `V3test` or in a PR targeting it.
 2. CI validates PRs targeting `V3test` and pushes to `V3test`: locked dependency
-   installation, production dependency audit, type-check, core tests, visible
+   installation, full dependency audit, type-check, core tests, visible
    Chinese text scan, and production build.
 3. After publishing `V3test`, confirm CI and the Vercel preview deployment succeed
    for the release commit before merging it into `main`.
@@ -72,3 +72,30 @@ routine major updates is not a reason to defer a required security fix.
 Use the existing `npm run publish:v3test` command for an explicitly requested
 `V3test` publication. Its local checks do not replace confirming CI and the
 preview deployment before the production release.
+
+## Security maintenance decisions
+
+- Vite 6 and Vitest 4 are deliberate, patched major upgrades rather than routine
+  version bumps. Keep the existing Rollup/esbuild build and thread-based test
+  pool; verify type-checks, the core suite, and the production bundle together.
+  Vitest 3 remains affected by the redirect-mock file-read advisory; use at least
+  Vitest 4.1.11 for its fix.
+- jsdom 27.4 replaces its deprecated encoding dependency with `@exodus/bytes`.
+  This changes only the simulated DOM used by tests, not the browser bundle.
+  CI and local maintenance use Node.js 24, which meets its engine requirement.
+- SheetJS (`xlsx`) is installed from the pinned official 0.20.3 tarball. The
+  public npm package remains on the vulnerable 0.18.5 release. Keep the lockfile
+  integrity hash and compare the offline data-sync output when updating it.
+  See the [official Node.js installation guide](https://docs.sheetjs.com/docs/getting-started/installation/nodejs/).
+- Lifecycle approval is restricted to the exact locked esbuild version in
+  `allowScripts`; update that entry together with esbuild, not with a wildcard.
+  npm 11.8 does not expose `install-scripts`; use a compatible newer npm for that
+  read-only approval check. This change was also verified with a clean install
+  using npm 11.21, without changing the globally installed CLI.
+- Audit all dependencies in the existing CI job so build, test, and offline
+  tooling warnings are not hidden by `--omit=dev`; moderate-or-higher findings
+  fail that check. No second scheduled check or automatic merge is added.
+- Lucide's broad 0.x icon update is deferred; user-event stays unchanged because
+  the project does not currently use it. A routine PR is a proposal, not a reason
+  to accept every package change. Review them separately if there is a concrete
+  need, including visual checks for changed icons.

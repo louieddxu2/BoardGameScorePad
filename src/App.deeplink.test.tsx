@@ -7,7 +7,7 @@ import type { GameTemplate } from './types';
 const hoisted = vi.hoisted(() => {
   const showToast = vi.fn();
   const nativeActivate = vi.fn();
-  const getBuiltinTemplateByShortId = vi.fn<[string], Promise<GameTemplate | null>>();
+  const getBuiltinTemplateByShortId = vi.fn<(shortId: string) => Promise<GameTemplate | null>>();
 
   const appData = {
     isDbReady: true,

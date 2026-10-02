@@ -119,7 +119,7 @@ describe('input controls with app zoom', () => {
           <QuickButtonPad column={{ ...column, buttonGridColumns: cols }} onAction={vi.fn()} />
         </LanguageProvider>,
       );
-      const button = screen.getByRole('button', { name: 'One 1' });
+      const button = screen.getByRole('button', { name: /^One\s*1$/ });
 
       pinch(button, distance);
 

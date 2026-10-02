@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../../../i18n';
 import { imageService } from '../../../services/imageService';
@@ -84,13 +84,14 @@ describe('PhotoGalleryModal entry modes', () => {
         );
     });
 
-    it('keeps the existing gallery history layer in normal entry mode', () => {
+    it('keeps the existing gallery history layer in normal entry mode', async () => {
         render(
             <LanguageProvider>
                 <PhotoGalleryModal {...defaultProps} />
             </LanguageProvider>,
         );
 
+        await waitFor(() => expect(screen.getAllByRole('img', { name: 'Session Photo' })).toHaveLength(3));
         expect(mocks.backHandler).toHaveBeenCalledWith(
             true,
             defaultProps.onClose,

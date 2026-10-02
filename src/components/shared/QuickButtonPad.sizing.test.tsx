@@ -225,7 +225,7 @@ describe('QuickButtonPad available-space typography', () => {
           <QuickButtonPad column={{ ...column, buttonGridColumns: cols, renderMode: 'label_only' }} onAction={vi.fn()} />
         </LanguageProvider>,
       );
-      const standard = within(screen.getByRole('button', { name: 'One 1' })).getByText('One');
+      const standard = within(screen.getByRole('button', { name: /^One\s*1$/ })).getByText('One');
       const labelOnly = within(screen.getByRole('button', { name: 'One' })).getByText('One');
       expect(modelFontSize(standard, root, 160)).toBeCloseTo(cols === 1 ? listWide : gridStandard);
       expect(modelFontSize(labelOnly, root, 160)).toBeCloseTo(cols === 1 ? listWide : 43.2 * (root / 16));

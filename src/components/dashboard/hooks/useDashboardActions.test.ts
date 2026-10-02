@@ -6,7 +6,7 @@ import type { GameTemplate } from '../../../types';
 const hoisted = vi.hoisted(() => {
   const showToast = vi.fn();
   const t = vi.fn((key: string) => key);
-  const writeText = vi.fn<[string], Promise<void>>(async () => undefined);
+  const writeText = vi.fn<(text: string) => Promise<void>>(async () => undefined);
 
   return {
     showToast,

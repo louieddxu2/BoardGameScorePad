@@ -18,11 +18,13 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // 模擬 ResizeObserver
-(globalThis as any).ResizeObserver = vi.fn().mockImplementation(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn(),
-}));
+(globalThis as any).ResizeObserver = vi.fn().mockImplementation(function () {
+  return {
+    observe: vi.fn(),
+    unobserve: vi.fn(),
+    disconnect: vi.fn(),
+  };
+});
 
 // 模擬 window.visualViewport (這是您 App 最核心的 Mobile 鍵盤偵測邏輯)
 // 預設為全螢幕

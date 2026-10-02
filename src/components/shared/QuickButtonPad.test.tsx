@@ -92,8 +92,12 @@ describe('QuickButtonPad', () => {
   it.each([undefined, 'standard', 'value_only'] as const)('keeps numeric badges in %s mode', (renderMode) => {
     render(<LanguageProvider><QuickButtonPad column={{ ...column, renderMode }} onAction={vi.fn()} /></LanguageProvider>);
 
-    expect(screen.getByRole('button', { name: 'One 1' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Two 2' })).toBeInTheDocument();
+    // Adjacent spans may have no accessible-name separator in newer DOM engines.
+    // Still require both the exact label and its separately rendered numeric badge.
+    const one = screen.getByRole('button', { name: /^One\s*1$/ });
+    const two = screen.getByRole('button', { name: /^Two\s*2$/ });
+    expect(within(one).getByText('1')).toBeInTheDocument();
+    expect(within(two).getByText('2')).toBeInTheDocument();
   });
 
   it.each([

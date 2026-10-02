@@ -44,7 +44,7 @@ const makeControl = (kind: ControlKind, stopOtherPropagation = false) => {
   );
   const target = kind === 'keypad' ? screen.getByRole('button', { name: '1' })
     : kind === 'score-cell' ? screen.getByTestId('control-shell').firstElementChild as HTMLElement
-      : screen.getByRole('button', { name: kind === 'label_only' ? 'One' : 'One 1' });
+      : screen.getByRole('button', { name: kind === 'label_only' ? 'One' : /^One\s*1$/ });
   return { activate, ancestorClick, target, other: screen.getByTestId('other-surface') };
 };
 
