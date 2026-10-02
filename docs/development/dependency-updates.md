@@ -14,9 +14,9 @@ compatibility on `V3test` before a production release.
 - The group inspects manifests on `V3test` and opens its consolidated PR targeting
   `V3test`. Its target branch and schedule are set at group level, not repeated
   in the ecosystem entries.
-- Each ecosystem's version-update PR limit is one. The single cross-ecosystem
-  group, rather than two independent limits, combines both ecosystems into one
-  routine update proposal. There are no ungrouped dependency patterns.
+- The shared group's version-update PR limit is one, set at group level rather
+  than in the ecosystem entries. Both ecosystems use that same limit and combine
+  into one routine update proposal. There are no ungrouped dependency patterns.
 - Major version updates remain excluded from routine proposals.
 
 Use Dependabot's built-in grouping; do not add an automatic merge or a custom
