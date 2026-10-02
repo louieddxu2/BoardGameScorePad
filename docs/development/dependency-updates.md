@@ -95,7 +95,15 @@ preview deployment before the production release.
 - Audit all dependencies in the existing CI job so build, test, and offline
   tooling warnings are not hidden by `--omit=dev`; moderate-or-higher findings
   fail that check. No second scheduled check or automatic merge is added.
-- Lucide's broad 0.x icon update is deferred; user-event stays unchanged because
-  the project does not currently use it. A routine PR is a proposal, not a reason
-  to accept every package change. Review them separately if there is a concrete
-  need, including visual checks for changed icons.
+- Lucide 0.577.0 was reviewed separately from the tooling updates. All 157 icon
+  exports used across 107 source files retain compatible sizing, styling, and
+  named-import aliases. Local SVG comparisons cover the 74 changed drawings,
+  including filled action icons and player stickers. Sixteen generated icon
+  class names change, but the application does not select those classes; the
+  existing `lucide-dot` and `lucide-crown` test selectors remain compatible.
+  This update adds 1,714 bytes to the gzip-compressed production JavaScript
+  total (0.34%); CSS, React, database, and built-in template chunks are unchanged.
+  Keep named imports for tree-shaking and compare the production bundle when
+  upgrading again. Local SVG checks do not replace testing the actual mobile UI.
+- user-event stays unchanged because the project does not currently use it.
+  A routine PR is a proposal, not a reason to accept every package change.
