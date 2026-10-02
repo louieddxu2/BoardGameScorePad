@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { AppView, GameTemplate } from './types';
 import { useAppData } from './hooks/useAppData';
 import { useMobileZoom } from './hooks/useMobileZoom';
+import { suppressInvalidTouchClick } from './utils/touchGesture';
 import { useLandscapeOrientation } from './hooks/useLandscapeOrientation';
 import { usePwaInstall } from './hooks/usePwaInstall';
 import { getTargetHistoryDepth } from './config/historyStrategy'; // Import Strategy
@@ -271,7 +272,8 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const handleInteraction = () => {
+    const handleInteraction = (event: Event) => {
+      if (event.type === 'click' && suppressInvalidTouchClick(event as MouseEvent)) return;
       // [Fix] Modal 開啟時不補牆，避免 capture 階段塞入的歷史狀態
       // 干擾 useModalBackHandler cleanup 的 history.back()
       if (hasActiveModals()) return;

@@ -463,6 +463,28 @@ html[data-theme='light'] {
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+  @supports (container-type: inline-size) and (font-size: 1cqi) {
+    /* The label flex item already excludes a side-by-side badge's width.
+       Inline-only containment keeps multiline labels able to grow the row. */
+    .quick-button-label {
+      container-type: inline-size;
+    }
+
+    .quick-button-label > .quick-button-label-text {
+      /* Fit a 100%-zoom baseline: short labels use their own width; longer
+         labels use the column's line capacity. Explicit lines share a nominal
+         height budget, never a content-grown height (no sizing feedback loop).
+         At many lines, prefer row growth to endless height-driven shrinking.
+         Apply app zoom last so narrow columns cannot cancel enlargement. */
+      font-size: calc(
+        min(
+          calc(96cqi / var(--quick-button-label-width-units)),
+          max(16px, calc(var(--quick-button-label-height) / (var(--quick-button-label-lines) * 1.25)))
+        ) * var(--app-zoom-level, 1)
+      );
+    }
+  }
+
   .hyphenate {
     overflow-wrap: break-word;
     word-wrap: break-word;

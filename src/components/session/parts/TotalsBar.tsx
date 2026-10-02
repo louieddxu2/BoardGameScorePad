@@ -5,6 +5,7 @@ import { GameTemplate, Player, ScoringRule } from '../../../types';
 import TexturedTotalCell from './TexturedTotalCell';
 import TexturedBlock from './TexturedBlock';
 import { useSessionTranslation } from '../../../i18n/session';
+import { useTouchAction } from '../../shared/useTouchAction';
 
 interface TotalsBarProps {
   players: Player[];
@@ -46,6 +47,10 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
   const { t } = useSessionTranslation();
   const [imageDims, setImageDims] = useState<{ width: number, height: number } | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const resetTouchHandlers = useTouchAction<HTMLButtonElement>((event) => {
+    event.stopPropagation();
+    onReset?.();
+  });
 
   // [Simplified Logic] Mode depends strictly on baseImage presence.
   const isTextureMode = !!baseImage;
@@ -119,10 +124,7 @@ const TotalsBar: React.FC<TotalsBarProps> = ({
         {onReset && (
           <button
             type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onReset();
-            }}
+            {...resetTouchHandlers}
             className="absolute left-1 top-1 z-50 flex h-5 w-5 items-center justify-center rounded text-status-warning drop-shadow-md transition-colors hover:bg-modal-bg/70 hover:text-status-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-warning/70"
             title={t('input_reset')}
             aria-label={t('input_reset')}

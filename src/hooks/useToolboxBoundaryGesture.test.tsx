@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { useToolboxBoundaryGesture } from './useToolboxBoundaryGesture';
+import { useMobileZoom } from './useMobileZoom';
 
 const GestureHarness: React.FC<{ initiallyOpen?: boolean; blocked?: boolean }> = ({ initiallyOpen = false, blocked = false }) => {
   const [isToolboxOpen, setIsToolboxOpen] = useState(initiallyOpen);
@@ -140,6 +141,24 @@ describe('useToolboxBoundaryGesture', () => {
     setScrollTop(scroller, 0);
     swipeOn(scroller, 130, 200);
 
+    expect(screen.getByText('open')).toBeInTheDocument();
+  });
+
+  it('does not reuse a pinch finger as an upward boundary swipe, but permits the next swipe', () => {
+    renderHook(() => useMobileZoom());
+    render(<GestureHarness />);
+    const scroller = screen.getByTestId('scroll-container');
+    setScrollTop(scroller, 700);
+    const first = { identifier: 1, clientX: 120, clientY: 200 };
+    const second = { identifier: 2, clientX: 220, clientY: 200 };
+    fireEvent.touchStart(scroller, { touches: [first], changedTouches: [first] });
+    fireEvent.touchStart(document.body, { touches: [first, second], changedTouches: [second] });
+    fireEvent.touchEnd(document.body, { touches: [first], changedTouches: [second] });
+    const moved = { ...first, clientY: 130 };
+    fireEvent.touchMove(scroller, { touches: [moved], changedTouches: [moved] });
+    fireEvent.touchEnd(scroller, { touches: [], changedTouches: [moved] });
+    expect(screen.getByText('closed')).toBeInTheDocument();
+    swipeOn(scroller, 200, 130);
     expect(screen.getByText('open')).toBeInTheDocument();
   });
 });

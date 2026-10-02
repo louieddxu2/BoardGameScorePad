@@ -3,11 +3,9 @@ name: CI
 on:
   pull_request:
     branches:
-      - main
       - V3test
   push:
     branches:
-      - main
       - V3test
 
 permissions:

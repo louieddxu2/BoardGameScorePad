@@ -1,8 +1,8 @@
 
 
 import { describe, it, expect } from 'vitest';
-import { calculateColumnScore, getRawValue, getScoreHistory } from './scoring';
-import { ScoreColumn } from '../types';
+import { calculateColumnScore, getRawValue, getScoreHistory, syncPartsFromIds } from './scoring';
+import type { ScoreColumn, ScoreValue } from '../types';
 
 // 建立一個產生假 Column 的 helper，方便測試
 const createColumn = (overrides: Partial<ScoreColumn> = {}): ScoreColumn => ({
@@ -94,6 +94,38 @@ describe('計分邏輯測試 (Scoring Logic)', () => {
   });
 
   describe('特殊計算模式 (Special Calculation Types)', () => {
+    it.each([
+      { name: 'single-select', isMultiSelect: false, selectedIds: ['first'], selectedValue: { optionId: 'first' }, expected: 6 },
+      { name: 'multi-select', isMultiSelect: true, selectedIds: ['first', 'second'], selectedValue: { multiOptionIds: ['first', 'second'] }, expected: 20 },
+    ])('keeps label-only $name values available to dependent formulas', ({ isMultiSelect, selectedIds, selectedValue, expected }) => {
+      const selection = createColumn({
+        id: 'selection',
+        inputType: 'clicker',
+        renderMode: 'label_only',
+        isMultiSelect,
+        quickActions: [
+          { id: 'first', label: 'First stage', value: 3 },
+          { id: 'second', label: 'Second stage', value: 7 },
+        ],
+      });
+      const dependent = createColumn({
+        id: 'dependent',
+        inputType: 'auto',
+        isAuto: true,
+        formula: 'x1*2',
+        variableMap: { x1: { id: selection.id, name: selection.name } },
+      });
+      const scoreValue: ScoreValue = {
+        ...selectedValue,
+        parts: syncPartsFromIds(selection, selectedIds),
+      };
+
+      expect(calculateColumnScore(dependent, [], {
+        allColumns: [selection, dependent],
+        playerScores: { [selection.id]: scoreValue },
+      })).toBe(expected);
+    });
+
     it('乘積模式 (Product): 應計算數值', () => {
       const prodCol = createColumn({ formula: 'a1×a2' }); 
       expect(calculateColumnScore(prodCol, [5, 5])).toBe(25);

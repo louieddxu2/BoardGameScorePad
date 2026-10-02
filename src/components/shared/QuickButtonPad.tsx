@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { QuickAction, ScoreColumn } from '../../types';
 import { isColorTooLight } from '../../utils/ui';
 import { Check } from 'lucide-react';
@@ -7,6 +7,7 @@ import { useSessionTranslation } from '../../i18n/session';
 import { useTouchAction } from './useTouchAction';
 
 import { injectSoftHyphens } from '../../utils/text';
+import { getQuickButtonTypography } from './quickButtonTypography';
 
 interface QuickButtonPadProps {
     column: ScoreColumn;
@@ -18,7 +19,9 @@ interface QuickButtonPadProps {
 interface QuickActionButtonProps {
     action: QuickAction;
     isSelected: boolean;
+    columns: number;
     isListMode: boolean;
+    showActionValue: boolean;
     isStandardSumParts: boolean;
     backgroundColor: string;
     textColor: string;
@@ -30,7 +33,9 @@ interface QuickActionButtonProps {
 const QuickActionButton: React.FC<QuickActionButtonProps> = ({
     action,
     isSelected,
+    columns,
     isListMode,
+    showActionValue,
     isStandardSumParts,
     backgroundColor,
     textColor,
@@ -38,40 +43,63 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
     badgeBackgroundClass,
     onAction,
 }) => {
+    const typography = useMemo(() => {
+        const metrics = getQuickButtonTypography(action.label, columns);
+        return { ...metrics, displayText: injectSoftHyphens(metrics.text) };
+    }, [action.label, columns]);
     const touchHandlers = useTouchAction<HTMLButtonElement>(() => {
         if (navigator.vibrate) navigator.vibrate(10);
         onAction(action);
     }, { moveThreshold: 10 });
 
+    // Establish the 100%-zoom budget once, then scale its font in CSS. Never
+    // fit against a text-grown row or the current zoomed height. A stacked
+    // badge reserves 21px line height + 4px padding + 4px label gap at 100%.
+    const borderHeight = borderClass.includes('border-2') ? 4 : 2;
+    const labelHeight = (isListMode ? 56 : 72) - 16 - borderHeight
+        - (!isListMode && showActionValue ? 29 : 0);
     return (
         <button
             {...touchHandlers}
             className={`
-                    rounded-xl flex items-center p-2 shadow-sm transition-all relative h-full
-                    ${isListMode ? 'flex-row justify-between px-4' : 'flex-col justify-center'}
+                    rounded-xl flex items-center p-[8px] shadow-sm transition-all relative h-full
+                    ${isListMode ? 'flex-row justify-between px-[16px]' : 'flex-col justify-center'}
                     ${borderClass}
                     ${isSelected ? 'ring-2 ring-[rgb(var(--c-txt-primary))] ring-offset-2 ring-offset-[rgb(var(--c-surface-bg))] z-10 scale-[1.02]' : 'active:scale-95 z-10'}
                 `}
-            style={{ backgroundColor }}
+            style={{
+                backgroundColor,
+                '--quick-button-border-height': `${borderHeight}px`,
+                '--quick-button-label-height': `${labelHeight}px`,
+                '--quick-button-line-capacity': typography.lineCapacity,
+                '--quick-button-label-width-units': typography.widthUnits,
+                '--quick-button-label-lines': typography.lineCount,
+            } as React.CSSProperties}
         >
             {isSelected && (
-                <div className="absolute -top-1.5 -right-1.5 bg-white text-status-success rounded-full p-0.5 shadow-md animate-in zoom-in duration-200 z-20">
+                <div className="absolute -top-1.5 -right-1.5 bg-white text-status-success rounded-full p-[2px] shadow-md animate-in zoom-in duration-200 z-20">
                     <Check strokeWidth={4} size={12} />
                 </div>
             )}
 
             <span
-                className={`font-bold leading-tight break-words whitespace-pre-wrap pointer-events-none hyphenate ${isListMode ? 'text-[20px] text-left flex-1 min-w-0' : 'text-[16px] text-center w-full mb-1'}`}
-                style={{ color: textColor }}
+                className={`quick-button-label pointer-events-none ${!showActionValue ? 'quick-button-label-only' : ''} ${isListMode ? 'text-left flex-1 min-w-0' : 'text-center w-full'} ${!isListMode && showActionValue ? 'mb-[4px]' : ''}`}
             >
-                {injectSoftHyphens(action.label)}
+                <span
+                    className={`quick-button-label-text block font-bold leading-tight break-words whitespace-pre-wrap pointer-events-none hyphenate ${isListMode ? 'text-[1.25rem]' : 'text-[1rem]'}`}
+                    style={{ color: textColor }}
+                >
+                    {typography.displayText}
+                </span>
             </span>
-            <span
-                className={`font-mono font-bold rounded-full flex items-center justify-center shrink-0 pointer-events-none ${isListMode ? 'text-[16px] px-3 py-1 ml-2' : 'text-[14px] px-2 py-0.5'} ${badgeBackgroundClass}`}
-                style={{ color: textColor }}
-            >
-                {isStandardSumParts && action.value > 0 ? '+' : ''}{action.value}
-            </span>
+            {showActionValue && (
+                <span
+                    className={`font-mono font-bold leading-normal rounded-full flex items-center justify-center shrink-0 pointer-events-none ${isListMode ? 'text-[1rem] px-[12px] py-[4px] ml-[8px]' : 'text-[0.875rem] px-[8px] py-[2px]'} ${badgeBackgroundClass}`}
+                    style={{ color: textColor }}
+                >
+                    {isStandardSumParts && action.value > 0 ? '+' : ''}{action.value}
+                </span>
+            )}
         </button>
     );
 };
@@ -90,16 +118,17 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
 
     const cols = column.buttonGridColumns || 1;
     const isListMode = cols <= 1;
+    const showActionValue = column.renderMode !== 'label_only';
     const minRowHeight = isListMode ? '3.5rem' : '4.5rem';
 
     return (
-        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar p-2">
+        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar p-[8px]">
             <div
-                className="grid gap-2 relative"
+                className="grid gap-[8px] relative"
                 style={{
                     gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-                    gridAutoRows: `minmax(${minRowHeight}, auto)`
-                }}
+                    gridAutoRows: `minmax(${minRowHeight}, auto)`,
+                } as React.CSSProperties}
             >
                 <div className="absolute inset-0 bg-[rgb(var(--c-black)_/_0.05)] dark:bg-[rgb(var(--c-black)_/_0.15)] pointer-events-none z-0"></div>
 
@@ -113,7 +142,8 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
 
                     // --- New Dynamic Style Logic ---
 
-                    // 1. Text Color (for both label and badge number)
+                    // Contrast is against a game-selected background, not the app surface.
+                    // Keep fixed palette tokens here: semantic UI colors change with theme.
                     const textColor = isLightBg ? 'rgb(var(--c-slate-900))' : 'rgb(var(--c-slate-50))';
 
                     // 2. Modifier Border Style
@@ -131,7 +161,9 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
                             key={action.id}
                             action={action}
                             isSelected={isSelected}
+                            columns={cols}
                             isListMode={isListMode}
+                            showActionValue={showActionValue}
                             isStandardSumParts={isStandardSumParts}
                             backgroundColor={bg}
                             textColor={textColor}

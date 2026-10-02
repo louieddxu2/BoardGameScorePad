@@ -1,11 +1,12 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 import type { GameTemplate } from './types';
 
 const hoisted = vi.hoisted(() => {
   const showToast = vi.fn();
+  const nativeActivate = vi.fn();
   const getBuiltinTemplateByShortId = vi.fn<[string], Promise<GameTemplate | null>>();
 
   const appData = {
@@ -68,6 +69,7 @@ const hoisted = vi.hoisted(() => {
 
   return {
     showToast,
+    nativeActivate,
     getBuiltinTemplateByShortId,
     appData
   };
@@ -100,7 +102,9 @@ vi.mock('./services/templateShareService', () => ({
 }));
 
 vi.mock('./components/dashboard/Dashboard', () => ({
-  default: () => <div data-testid="dashboard-view">dashboard</div>
+  default: () => <div data-testid="dashboard-view">dashboard
+    <button onClick={hoisted.nativeActivate}>Native action</button>
+  </div>
 }));
 
 vi.mock('./components/editor/TemplateEditor', () => ({
@@ -165,4 +169,53 @@ describe('App deep-link flow', () => {
     expect(window.location.hash).toBe('');
   });
 
+});
+
+const pinchNativeAction = () => {
+  const button = screen.getByRole('button', { name: 'Native action' });
+  const outside = screen.getByTestId('dashboard-view');
+  const first = { identifier: 1, clientX: 100, clientY: 100 };
+  const second = { identifier: 2, clientX: 200, clientY: 100 };
+  fireEvent.touchStart(button, { touches: [first], changedTouches: [first] });
+  fireEvent.touchStart(outside, { touches: [first, second], changedTouches: [second] });
+  fireEvent.touchEnd(outside, { touches: [first], changedTouches: [second] });
+  fireEvent.touchEnd(button, { touches: [], changedTouches: [first] });
+  return button;
+};
+
+describe('App capture protects native click actions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.location.hash = '';
+  });
+
+  it.each([0, 1])('prevents a pinch click before the native React handler, detail=%s', (detail) => {
+    render(<App />);
+    const button = pinchNativeAction();
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true, detail });
+    fireEvent(button, click);
+    expect(click.defaultPrevented).toBe(true);
+    expect(hoisted.nativeActivate).not.toHaveBeenCalled();
+  });
+
+  it('accepts every fresh native tap immediately after a pinch', () => {
+    render(<App />);
+    const button = pinchNativeAction();
+    for (let index = 1; index <= 20; index++) {
+      const touch = { identifier: index + 2, clientX: 100, clientY: 100 };
+      fireEvent.touchStart(button, { touches: [touch], changedTouches: [touch] });
+      fireEvent.touchEnd(button, { touches: [], changedTouches: [touch] });
+      fireEvent.click(button, { detail: 1 });
+      expect(hoisted.nativeActivate).toHaveBeenCalledTimes(index);
+    }
+  });
+
+  it('preserves keyboard activation at the capture boundary after a pinch', () => {
+    render(<App />);
+    const button = pinchNativeAction();
+    fireEvent.keyDown(button, { key: 'Enter' });
+    fireEvent.click(button, { detail: 0 });
+    fireEvent.keyUp(button, { key: 'Enter' });
+    expect(hoisted.nativeActivate).toHaveBeenCalledTimes(1);
+  });
 });

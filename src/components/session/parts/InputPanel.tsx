@@ -20,6 +20,7 @@ import { colorRecommendationEngine } from '../../../features/recommendation/Colo
 import { applyScoreValuePatch } from '../../../features/multiplayer/scoreValuePatch';
 import { voiceService } from '../../../services/voiceService';
 import { getInitialScoreInputPreviewValue } from '../scoreInputPreview';
+import { touchGestureGuard } from '../../../utils/touchGesture';
 
 // Helper for extracting factors from score value
 const getFactors = (value: any): [string | number, string | number] => {
@@ -468,24 +469,30 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     };
 
     // --- Joystick Logic (Swipe to Switch Players) ---
-    const touchStartRef = useRef<{ x: number, y: number } | null>(null);
+    const touchStartRef = useRef<{ x: number, y: number, round: number } | null>(null);
     const hasTriggeredRef = useRef(false);
     const touchAxisRef = useRef<'horizontal' | 'vertical' | null>(null);
 
     const handleTouchStart = (e: React.TouchEvent) => {
-        if (e.touches.length !== 1) {
+        const round = touchGestureGuard.getState().round;
+        if (e.touches.length !== 1 || !touchGestureGuard.isAllowed(round)) {
             touchStartRef.current = null;
             hasTriggeredRef.current = false;
             touchAxisRef.current = null;
             return;
         }
-        touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, round };
         hasTriggeredRef.current = false;
         touchAxisRef.current = null;
     };
 
     const handleTouchMove = (e: React.TouchEvent) => {
         // 1. Basic Guards
+        if (touchStartRef.current && !touchGestureGuard.isAllowed(touchStartRef.current.round)) {
+            touchStartRef.current = null;
+            touchAxisRef.current = null;
+            return;
+        }
         if (!touchStartRef.current || hasTriggeredRef.current || !isPanelOpen || e.touches.length !== 1) return;
 
         const touch = e.touches[0];
@@ -945,12 +952,23 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     // [New] Show panel if it's explicitly open OR if it's forced by short list logic OR Toolbox is toggled on
     // [Fix] Hide panel even in short-list/toolbox mode if we are editing title (keyboard open)
     const isVisible = (isPanelOpen || isShortList || isToolboxOpen) && !isEditingTitle;
+    const isStandalone = typeof document !== 'undefined' && document.documentElement.dataset.standalone === 'true';
 
     // Logic: Are we in a state where the panel is just a placeholder spacer?
     // If no cell/player is selected, but short list/toolbox forces panel height -> Placeholder
     const isPlaceholderMode = (isShortList || isToolboxOpen) && !isPanelOpen;
 
     return (
+        <>
+        {/* Cover the browser dock gap without changing the panel or keypad dimensions. */}
+        {isVisible && !isStandalone ? (
+            <div
+                data-input-panel-bottom-fill="true"
+                aria-hidden="true"
+                className="absolute inset-x-0 bottom-0 z-50 bg-input-bg"
+                style={{ height: bottomOffset }}
+            />
+        ) : null}
         <div
             data-session-input-panel="true"
             className={`absolute left-0 right-0 z-50 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgb(var(--c-black)_/_0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
@@ -998,6 +1016,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                 )}
             </div>
         </div>
+        </>
     );
 };
 

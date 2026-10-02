@@ -216,6 +216,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
       onTouchStart: (e: any) => dnd.handleTouchStart(e, colId),
       onTouchMove: dnd.handleTouchMove,
       onTouchEnd: dnd.handleTouchEnd,
+      onTouchCancel: dnd.handleTouchCancel,
     };
   };
 
@@ -243,6 +244,13 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
         isInitialSimpleScorepad ? 'h-full flex flex-col overflow-hidden pb-0' : 'overflow-auto pb-32'
       }`} 
       ref={scrollContainerRef}
+      onDragOver={(e) => {
+        // Rows handle their own targets; other grid areas keep the shown line.
+        if (isEditMode && !e.defaultPrevented) dnd.handleDragOver(e);
+      }}
+      onDrop={(e) => {
+        if (isEditMode && !e.defaultPrevented) dnd.handleDrop(e);
+      }}
       >
         <div
           id="live-grid-container"

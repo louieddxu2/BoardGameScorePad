@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
+import { touchGestureGuard } from '../utils/touchGesture';
 
 interface ToolboxTouchState {
+  round: number;
   startX: number;
   startY: number;
   startScrollTop: number;
@@ -69,6 +71,7 @@ export const useToolboxBoundaryGesture = ({
       const touch = event.touches[0];
       const startScrollTop = scrollContainer.scrollTop;
       touchRef.current = {
+        round: touchGestureGuard.getState().round,
         startX: touch.clientX,
         startY: touch.clientY,
         startScrollTop,
@@ -81,7 +84,11 @@ export const useToolboxBoundaryGesture = ({
 
     const handleTouchMove = (event: TouchEvent) => {
       const state = touchRef.current;
-      if (!state || event.touches.length !== 1) return;
+      if (!state) return;
+      if (event.touches.length !== 1 || !touchGestureGuard.isAllowed(state.round)) {
+        touchRef.current = null;
+        return;
+      }
 
       state.minScrollTop = Math.min(state.minScrollTop, scrollContainer.scrollTop);
       state.maxScrollTop = Math.max(state.maxScrollTop, scrollContainer.scrollTop);
@@ -102,7 +109,7 @@ export const useToolboxBoundaryGesture = ({
     const handleTouchEnd = (event: TouchEvent) => {
       const state = touchRef.current;
       touchRef.current = null;
-      if (!state) return;
+      if (!state || event.touches.length !== 0 || !touchGestureGuard.isAllowed(state.round)) return;
 
       state.maxScrollTop = Math.max(state.maxScrollTop, scrollContainer.scrollTop);
       state.minScrollTop = Math.min(state.minScrollTop, scrollContainer.scrollTop);

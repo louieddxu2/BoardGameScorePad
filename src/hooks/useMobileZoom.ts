@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { getTouchDistance } from '../utils/ui';
+import { touchGestureGuard } from '../utils/touchGesture';
 
 const MOBILE_ZOOM_IGNORE_SELECTOR = '[data-mobile-zoom-ignore="true"]';
+
+export const getMobileZoomGestureState = touchGestureGuard.getState;
 
 const shouldIgnoreMobileZoomEvent = (event: TouchEvent): boolean => {
   const target = event.target;
@@ -29,12 +32,14 @@ export const useMobileZoom = () => {
 
   useEffect(() => {
     document.documentElement.style.fontSize = `${16 * zoomLevel}px`;
+    document.documentElement.style.setProperty('--app-zoom-level', String(zoomLevel));
     localStorage.setItem('app_zoom_level', String(zoomLevel));
     zoomLevelRef.current = zoomLevel;
   }, [zoomLevel]);
 
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
+      touchGestureGuard.start(e.touches.length);
       if (shouldIgnoreMobileZoomEvent(e)) {
         isZooming.current = false;
         touchStartDist.current = 0;
@@ -43,24 +48,29 @@ export const useMobileZoom = () => {
 
       if (e.touches.length === 2) {
         isZooming.current = true;
-        e.preventDefault();
+        if (e.cancelable) e.preventDefault();
         touchStartDist.current = getTouchDistance(e.touches);
         initialZoomRef.current = zoomLevelRef.current;
-      } else {
+      } else if (!touchGestureGuard.getState().active) {
         isZooming.current = false;
+        touchStartDist.current = 0;
+      } else {
+        touchStartDist.current = 0;
       }
     };
 
     const handleTouchMove = (e: TouchEvent) => {
+      touchGestureGuard.move(e.touches.length);
       if (shouldIgnoreMobileZoomEvent(e)) {
         isZooming.current = false;
         touchStartDist.current = 0;
         return;
       }
 
-      if (isZooming.current && e.touches.length === 2) {
-        e.preventDefault();
-        if (touchStartDist.current > 0) {
+      if (isZooming.current) {
+        // The remaining single finger still belongs to the pinch gesture.
+        if (e.cancelable) e.preventDefault();
+        if (e.touches.length === 2 && touchStartDist.current > 0) {
           const currentDist = getTouchDistance(e.touches);
           const scale = currentDist / touchStartDist.current;
           setZoomLevel(Math.max(0.75, Math.min(1.3, initialZoomRef.current * scale)));
@@ -68,21 +78,39 @@ export const useMobileZoom = () => {
       }
     };
 
-    const handleTouchEnd = () => {
-      isZooming.current = false;
-      touchStartDist.current = 0;
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (touchGestureGuard.getState().active && isZooming.current && !shouldIgnoreMobileZoomEvent(e) && e.cancelable) {
+        e.preventDefault();
+      }
+      touchGestureGuard.end(e.touches.length, e.type === 'touchcancel');
+      if (e.touches.length === 0) {
+        isZooming.current = false;
+        touchStartDist.current = 0;
+      } else if (e.touches.length !== 2) {
+        touchStartDist.current = 0;
+      }
     };
+    const handlePointerDown = (e: PointerEvent) => touchGestureGuard.pointerDown(e);
+    const handleKeyDown = (e: KeyboardEvent) => touchGestureGuard.keyDown(e);
 
-    window.addEventListener('touchstart', handleTouchStart, { passive: false });
-    window.addEventListener('touchmove', handleTouchMove, { passive: false });
-    window.addEventListener('touchend', handleTouchEnd);
-    window.addEventListener('touchcancel', handleTouchEnd);
+    // Capture sees both targets before React's button handlers, including the
+    // final lift whose local handler may stop bubbling to the window.
+    const listenerOptions = { passive: false, capture: true };
+    window.addEventListener('touchstart', handleTouchStart, listenerOptions);
+    window.addEventListener('touchmove', handleTouchMove, listenerOptions);
+    window.addEventListener('touchend', handleTouchEnd, listenerOptions);
+    window.addEventListener('touchcancel', handleTouchEnd, listenerOptions);
+    window.addEventListener('pointerdown', handlePointerDown, true);
+    window.addEventListener('keydown', handleKeyDown, true);
 
     return () => {
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
-      window.removeEventListener('touchcancel', handleTouchEnd);
+      window.removeEventListener('touchstart', handleTouchStart, listenerOptions);
+      window.removeEventListener('touchmove', handleTouchMove, listenerOptions);
+      window.removeEventListener('touchend', handleTouchEnd, listenerOptions);
+      window.removeEventListener('touchcancel', handleTouchEnd, listenerOptions);
+      window.removeEventListener('pointerdown', handlePointerDown, true);
+      window.removeEventListener('keydown', handleKeyDown, true);
+      touchGestureGuard.reset();
     };
   }, []);
 
