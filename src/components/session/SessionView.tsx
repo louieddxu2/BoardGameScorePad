@@ -278,27 +278,17 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   const canAutoOpenToolbox = !!baseImage || template.columns.length >= 5;
 
-  const handleAutoOpenToolbox = useCallback(() => {
-    setUiState(prev => ({
-      ...prev,
-      isToolboxOpen: true,
-      editingCell: null,
-      editingPlayerId: null,
-      previewValue: 0,
-    }));
-  }, [setUiState]);
-
-  const handleAutoCloseToolbox = useCallback(() => {
-    setUiState(prev => ({ ...prev, isToolboxOpen: false }));
-  }, [setUiState]);
+  React.useEffect(() => {
+    if (!isToolboxOpen) setIsToolboxInputFocused(false);
+  }, [isToolboxOpen]);
 
   useToolboxBoundaryGesture({
     scrollContainerRef: sessionState.tableContainerRef,
     isToolboxOpen,
     canAutoOpenToolbox,
     isInputInterfaceOpen,
-    onAutoOpen: handleAutoOpenToolbox,
-    onAutoClose: handleAutoCloseToolbox,
+    onAutoOpen: eventHandlers.handleOpenToolbox,
+    onAutoClose: eventHandlers.handleCloseToolbox,
   });
 
   const sessionSurfaceRef = useRef<HTMLDivElement>(null);

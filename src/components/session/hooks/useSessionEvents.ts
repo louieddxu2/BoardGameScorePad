@@ -93,8 +93,17 @@ export const useSessionEvents = (
   });
 
   // --- Back Button Logic (History Stack Managed UI) ---
+  // The explicit toolbox is below score/player input, never the short-board default layout.
+  const { triggerClose: closeToolboxHistory } = useModalBackHandler(
+    uiState.isToolboxOpen && !sessionState.isShortList,
+    () => setUiState(p => ({ ...p, isToolboxOpen: false })),
+    'session-toolbox',
+    { immediate: true },
+  );
+  const pendingToolboxHistoryRef = useRef<Promise<void> | null>(null);
+
   // 1. Input Panel (Score Cell / Player Name)
-  useModalBackHandler(
+  const { triggerClose: closeInputHistory } = useModalBackHandler(
     uiState.editingCell !== null || uiState.editingPlayerId !== null,
     () => setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null, previewValue: 0 })),
     'session-input-panel'
@@ -409,19 +418,40 @@ export const useSessionEvents = (
     }
   };
 
-  // [New] Toolbox Toggle
-  const handleToggleToolbox = () => {
-    setUiState(p => {
-      const willOpen = !p.isToolboxOpen;
-      return {
-        ...p,
-        isToolboxOpen: willOpen,
-        // If opening toolbox, clear selection so the toolbox content shows up
-        // If closing, we just update the flag.
-        ...(willOpen ? { editingCell: null, editingPlayerId: null, previewValue: 0 } : {})
-      };
-    });
-  };
+  // Buttons and boundary gestures share these actions and their history lifecycle.
+  const handleOpenToolbox = useCallback(async () => {
+    if (pendingToolboxHistoryRef.current) await pendingToolboxHistoryRef.current;
+    const currentUi = uiStateRef.current;
+    if (currentUi.editingCell !== null || currentUi.editingPlayerId !== null) {
+      const pending = closeInputHistory(1, { waitForPopstate: true });
+      pendingToolboxHistoryRef.current = pending;
+      setUiState(p => ({ ...p, editingCell: null, editingPlayerId: null, previewValue: 0 }));
+      await pending;
+      if (pendingToolboxHistoryRef.current === pending) pendingToolboxHistoryRef.current = null;
+    }
+    setUiState(p => p.isToolboxOpen ? p : ({
+      ...p, isToolboxOpen: true, editingCell: null, editingPlayerId: null, previewValue: 0,
+    }));
+  }, [closeInputHistory, setUiState]);
+
+  const handleCloseToolbox = useCallback(() => {
+    const currentUi = uiStateRef.current;
+    if (!currentUi.isToolboxOpen) return;
+    if (!sessionState.isShortList) {
+      const steps = currentUi.editingCell !== null || currentUi.editingPlayerId !== null ? 2 : 1;
+      const pending = closeToolboxHistory(steps);
+      pendingToolboxHistoryRef.current = pending;
+      void pending.then(() => {
+        if (pendingToolboxHistoryRef.current === pending) pendingToolboxHistoryRef.current = null;
+      });
+    }
+    setUiState(p => ({ ...p, isToolboxOpen: false, editingCell: null, editingPlayerId: null, previewValue: 0 }));
+  }, [closeToolboxHistory, sessionState.isShortList, setUiState]);
+
+  const handleToggleToolbox = useCallback(() => {
+    if (uiStateRef.current.isToolboxOpen) handleCloseToolbox();
+    else void handleOpenToolbox();
+  }, [handleCloseToolbox, handleOpenToolbox]);
 
   return {
     handleGlobalClick,
@@ -438,6 +468,8 @@ export const useSessionEvents = (
     handleOpenGameSettings,
     handleSaveGameSettings,
     handleToggleToolbox, // Export new handler
+    handleOpenToolbox,
+    handleCloseToolbox,
     // [Updated] Expose unified moveNext
     moveToNext: () => navigation.moveNext(),
     // [New] Expose Joystick Actions

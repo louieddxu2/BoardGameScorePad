@@ -1,6 +1,6 @@
 import React from 'react';
-import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import SessionView from './SessionView';
 import { ConfirmationProvider } from '../../hooks/useConfirm';
 import { ToastProvider } from '../../hooks/useToast';
@@ -9,6 +9,7 @@ import { GameSession, GameTemplate } from '../../types';
 import { createMultiplayerSessionManager } from '../../features/multiplayer/multiplayerSessionManager';
 import { createPlayerSessionCapabilities } from '../../features/multiplayer/sessionCapabilities';
 import { useMobileZoom } from '../../hooks/useMobileZoom';
+import { _resetActiveCountForTesting } from '../../hooks/useModalBackHandler';
 
 vi.mock('../../features/ai-generator/hooks/useAiGenerator', () => ({
   useAiGenerator: () => ({
@@ -204,6 +205,178 @@ const swipeOn = (
     });
   });
 };
+
+describe('SessionView toolbox browser history', () => {
+  let entries: unknown[];
+  let historyIndex: number;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    _resetActiveCountForTesting();
+    localStorage.setItem('app_language', 'en');
+    entries = [{ page: 'score-sheet' }];
+    historyIndex = 0;
+    vi.spyOn(window.history, 'pushState').mockImplementation(state => {
+      entries.splice(historyIndex + 1);
+      entries.push(state);
+      historyIndex += 1;
+    });
+    vi.spyOn(window.history, 'back').mockImplementation(() => {
+      window.setTimeout(() => {
+        historyIndex = Math.max(0, historyIndex - 1);
+        window.dispatchEvent(new PopStateEvent('popstate', { state: entries[historyIndex] }));
+      }, 0);
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.runAllTimers();
+    _resetActiveCountForTesting();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  const toggleToolbox = () => {
+    const button = document.querySelector('[title="Toggle Toolbox"]') as HTMLButtonElement | null;
+    if (!button) throw new Error('toolbox button not found');
+    fireEvent.click(button);
+  };
+
+  const openToolbox = (source: 'button' | 'swipe') => {
+    if (source === 'button') toggleToolbox();
+    else {
+      const scroller = getGridScroller();
+      setScrollTop(scroller, 700);
+      swipeOn(scroller, { startY: 200, endY: 130 });
+    }
+  };
+
+  it.each(['button', 'swipe'] as const)('adds exactly one history entry when opened by %s', source => {
+    renderSession();
+    openToolbox(source);
+    openToolbox('swipe');
+
+    expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
+    expect(entries).toEqual([{ page: 'score-sheet' }, { modal: 'session-toolbox' }]);
+    expect(historyIndex).toBe(1);
+    expect(window.history.pushState).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['button', 'swipe'] as const)('closes only the toolbox on immediate browser Back after %s opening', source => {
+    const onExit = vi.fn();
+    renderSession({ onExit });
+    openToolbox(source);
+
+    act(() => {
+      historyIndex -= 1;
+      window.dispatchEvent(new PopStateEvent('popstate', { state: entries[historyIndex] }));
+    });
+
+    expect(screen.queryByText('Game Toolbox')).not.toBeInTheDocument();
+    expect(onExit).not.toHaveBeenCalled();
+    expect(window.history.back).not.toHaveBeenCalled();
+    expect((window as any).__modalStack).toEqual([]);
+    expect(historyIndex).toBe(0);
+  });
+
+  it.each(['button', 'top-scroll', 'down-swipe'] as const)('consumes its history entry once when closed by %s', async source => {
+    renderSession();
+    openToolbox('swipe');
+    if (source === 'button') toggleToolbox();
+    else {
+      const scroller = getGridScroller();
+      if (source === 'top-scroll') scrollTo(scroller, 0);
+      else {
+        setScrollTop(scroller, 0);
+        swipeOn(scroller, { startY: 130, endY: 200 });
+      }
+    }
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+
+    expect(screen.queryByText('Game Toolbox')).not.toBeInTheDocument();
+    expect(window.history.back).toHaveBeenCalledTimes(1);
+    expect((window as any).__modalStack).toEqual([]);
+    expect(historyIndex).toBe(0);
+  });
+
+  it.each([0, 250])('waits for a pending close (%i ms) before registering a quickly reopened toolbox', async delay => {
+    vi.mocked(window.history.back).mockImplementationOnce(() => {
+      window.setTimeout(() => {
+        historyIndex = Math.max(0, historyIndex - 1);
+        window.dispatchEvent(new PopStateEvent('popstate', { state: entries[historyIndex] }));
+      }, delay);
+    });
+    renderSession();
+    openToolbox('button');
+    toggleToolbox();
+    toggleToolbox();
+
+    if (delay > 100) {
+      await act(async () => { await vi.advanceTimersByTimeAsync(100); });
+      expect(window.history.pushState).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText('Game Toolbox')).not.toBeInTheDocument();
+    }
+    await act(async () => { await vi.advanceTimersByTimeAsync(delay); });
+
+    expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
+    expect(entries).toEqual([{ page: 'score-sheet' }, { modal: 'session-toolbox' }]);
+    expect(historyIndex).toBe(1);
+    expect(window.history.pushState).toHaveBeenCalledTimes(2);
+    expect(window.history.back).toHaveBeenCalledTimes(1);
+  });
+
+  it('finishes closing score input before a manual toolbox open adds its history entry', async () => {
+    renderSession();
+    fireEvent.click(getFirstScoreCell());
+    expect(historyIndex).toBe(1);
+    expect(entries[historyIndex]).toEqual({ modal: 'session-input-panel' });
+
+    toggleToolbox();
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+
+    expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
+    expect(entries).toEqual([{ page: 'score-sheet' }, { modal: 'session-toolbox' }]);
+    expect(historyIndex).toBe(1);
+    expect(window.history.back).toHaveBeenCalledTimes(1);
+    expect((window as any).__modalStack).toEqual(['session-toolbox']);
+  });
+
+  it('returns from score input to the toolbox before closing the toolbox itself', async () => {
+    renderSession();
+    openToolbox('button');
+    fireEvent.click(getFirstScoreCell());
+    act(() => { vi.advanceTimersByTime(300); });
+
+    act(() => {
+      historyIndex -= 1;
+      window.dispatchEvent(new PopStateEvent('popstate', { state: entries[historyIndex] }));
+    });
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+
+    expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
+    expect(historyIndex).toBe(1);
+
+    act(() => {
+      historyIndex -= 1;
+      window.dispatchEvent(new PopStateEvent('popstate', { state: entries[historyIndex] }));
+    });
+
+    expect(screen.queryByText('Game Toolbox')).not.toBeInTheDocument();
+    expect(historyIndex).toBe(0);
+    expect(window.history.back).not.toHaveBeenCalled();
+  });
+
+  it('does not add a toolbox history entry for the short-board default layout', () => {
+    const template = { ...makeTemplate(), columns: makeTemplate().columns.slice(0, 2) };
+    renderSession({ template });
+
+    expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
+    expect(window.history.pushState).not.toHaveBeenCalled();
+    expect(historyIndex).toBe(0);
+  });
+});
 
 describe('SessionView toolbox scroll behavior', () => {
   it('shows session photos in the toolbox and opens a thumbnail directly in the lightbox', () => {

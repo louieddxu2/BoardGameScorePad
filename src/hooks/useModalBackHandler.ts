@@ -9,6 +9,30 @@ const setModalStack = (stack: string[]) => { (window as any).__modalStack = stac
 /** 供 App.tsx 查詢：是否有 modal 正在管理歷史紀錄？ */
 export const hasActiveModals = () => getModalStack().length > 0;
 
+/** Allow toolbox transitions to await navigation; keep legacy timing for other modals. */
+const navigateBackSilently = (steps: number, waitForPopstate: boolean): Promise<void> => new Promise(resolve => {
+  (window as any).__silentBack = ((window as any).__silentBack || 0) + 1;
+  let settled = false;
+  const settleHistory = (event?: PopStateEvent) => {
+    if (settled) return;
+    settled = true;
+    window.removeEventListener('popstate', settleHistory);
+    window.clearTimeout(timer);
+    const finish = () => {
+      (window as any).__silentBack = Math.max(0, ((window as any).__silentBack || 0) - 1);
+      resolve();
+    };
+    // Every listener for this popstate must still see it as a silent return.
+    if (event) queueMicrotask(finish);
+    else finish();
+  };
+  if (waitForPopstate) window.addEventListener('popstate', settleHistory, { once: true });
+  // A coordinated toolbox reopen must not overtake a slow native traversal.
+  const timer = waitForPopstate ? undefined : window.setTimeout(settleHistory, steps * 100);
+  if (steps === 1) window.history.back();
+  else window.history.go(-steps);
+});
+
 /**
  * Programmatic view changes (for example, another tab taking over a live
  * multiplayer room) can unmount several history-managed controls at once.
@@ -52,18 +76,28 @@ export const _resetActiveCountForTesting = () => {
  * 使用 ID 堆疊而非計數器，能更精確地決定哪個彈窗該回應返回鍵，
  * 並解決巢狀或快速連續開關彈窗時的同步問題。
  */
-export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalId: string) => {
+export const useModalBackHandler = (
+  isOpen: boolean,
+  onClose: () => void,
+  modalId: string,
+  { immediate = false }: { immediate?: boolean } = {},
+) => {
   const onCloseRef = useRef(onClose);
   const isPoppedRef = useRef(false);
   const [order, setOrder] = useState(0);
   const [isReady, setIsReady] = useState(false);
+  const immediateRef = useRef(immediate);
+  immediateRef.current = immediate;
 
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
 
   // [Coordinated Close] Support dynamic steps back and stack synchronization
-  const triggerClose = useRef((steps: number = 1) => {
+  const triggerClose = useRef((
+    steps: number = 1,
+    { waitForPopstate = immediateRef.current }: { waitForPopstate?: boolean } = {},
+  ): Promise<void> => {
     const stack = getModalStack();
     const startIdx = Math.max(0, stack.length - steps);
     const newStack = stack.slice(0, startIdx);
@@ -72,17 +106,7 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
     // Notify App that the modal stack has changed
     window.dispatchEvent(new CustomEvent('modal-stack-changed'));
 
-    (window as any).__silentBack = ((window as any).__silentBack || 0) + 1;
-
-    if (steps === 1) {
-      window.history.back();
-    } else {
-      window.history.go(-steps);
-    }
-
-    setTimeout(() => {
-      (window as any).__silentBack = Math.max(0, ((window as any).__silentBack || 0) - 1);
-    }, steps * 100);
+    return navigateBackSilently(steps, waitForPopstate);
   }).current;
 
   useEffect(() => {
@@ -105,7 +129,7 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
       window.history.pushState({ modal: modalId }, '');
 
       // Defer Phase 2: Wait for previous modal's back event to settle
-      const timer = setTimeout(() => setIsReady(true), 300);
+      const timer = immediate ? undefined : setTimeout(() => setIsReady(true), 300);
 
       return () => {
         clearTimeout(timer);
@@ -125,23 +149,20 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
 
         if (isPoppedRef.current || isRemovedByCoordinator) {
           // [Popstate or Coordinated UI triggered] skip back, just clean memory
-          setTimeout(cleanupStack, 0);
+          if (immediate) cleanupStack();
+          else setTimeout(cleanupStack, 0);
         } else {
           // [Passive/Direct Single UI triggered] Clean memory and back
           cleanupStack();
-          (window as any).__silentBack = ((window as any).__silentBack || 0) + 1;
-          window.history.back();
-          setTimeout(() => {
-            (window as any).__silentBack = Math.max(0, ((window as any).__silentBack || 0) - 1);
-          }, 100);
+          void navigateBackSilently(1, immediate);
         }
       };
     }
-  }, [isOpen, modalId]);
+  }, [isOpen, modalId, immediate]);
 
-  // Phase 2: Attach popstate listener (Delayed)
+  // Toolbox history is already coordinated, so it can listen without the legacy delay.
   useEffect(() => {
-    if (isOpen && isReady) {
+    if (isOpen && (isReady || immediate)) {
       const handlePopState = (e: PopStateEvent) => {
         if ((window as any).__silentBack) return;
 
@@ -151,6 +172,7 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
         if (topId !== modalId) return;
 
         isPoppedRef.current = true;
+        if (immediate) e.stopImmediatePropagation();
         onCloseRef.current();
       };
 
@@ -159,7 +181,7 @@ export const useModalBackHandler = (isOpen: boolean, onClose: () => void, modalI
         window.removeEventListener('popstate', handlePopState);
       };
     }
-  }, [isOpen, isReady, modalId]);
+  }, [isOpen, isReady, modalId, immediate]);
 
   return {
     order,

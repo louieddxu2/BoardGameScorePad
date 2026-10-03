@@ -77,7 +77,9 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
         return !baseImage && template.columns.length < 5;
     }, [baseImage, template.columns.length]);
 
-    const [isToolboxOpen, setIsToolboxOpen] = useState(isShortList);
+    const [isToolboxOpen, setIsToolboxOpen] = useState(false);
+    const isToolboxVisible = isShortList || isToolboxOpen;
+    const toolboxRef = useRef<HTMLDivElement>(null);
     const { showToast } = useToast();
     const { offset: keyboardOffset, isKeyboardOpen } = useKeyboardStatus();
     const stableKeyboardOffset = useLatchedViewportOffset(keyboardOffset, isToolboxInputFocused);
@@ -167,6 +169,43 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
     // This decouples navigation state from cloud logic as requested.
     useModalBackHandler(true, handleExitAndSync, 'history-root');
 
+    const closeToolboxState = useCallback(() => {
+        const activeElement = document.activeElement;
+        if (activeElement instanceof HTMLElement && toolboxRef.current?.contains(activeElement)) {
+            activeElement.blur();
+        }
+        setIsToolboxOpen(false);
+        setIsToolboxInputFocused(false);
+    }, []);
+    const { triggerClose: closeToolboxHistory } = useModalBackHandler(
+        isToolboxOpen && !isShortList,
+        closeToolboxState,
+        'history-toolbox',
+        { immediate: true },
+    );
+    const pendingToolboxHistoryRef = useRef<Promise<void> | null>(null);
+
+    const handleOpenToolbox = useCallback(async () => {
+        if (pendingToolboxHistoryRef.current) await pendingToolboxHistoryRef.current;
+        setIsToolboxOpen(true);
+    }, []);
+
+    const handleCloseToolbox = useCallback(() => {
+        if (!isShortList) {
+            const pending = closeToolboxHistory();
+            pendingToolboxHistoryRef.current = pending;
+            void pending.then(() => {
+                if (pendingToolboxHistoryRef.current === pending) pendingToolboxHistoryRef.current = null;
+            });
+        }
+        closeToolboxState();
+    }, [closeToolboxHistory, closeToolboxState, isShortList]);
+
+    const handleToggleToolbox = useCallback(() => {
+        if (isToolboxOpen) handleCloseToolbox();
+        else void handleOpenToolbox();
+    }, [handleCloseToolbox, handleOpenToolbox, isToolboxOpen]);
+
     // Keep the history share popover in the same browser-back stack used by
     // the active score sheet, so Back closes the popover before leaving.
     const { zIndex: shareMenuZIndex } = useModalBackHandler(
@@ -211,21 +250,13 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
         photos.isCameraOpen ||
         isToolboxInputFocused;
 
-    const handleAutoOpenToolbox = useCallback(() => {
-        setIsToolboxOpen(true);
-    }, []);
-
-    const handleAutoCloseToolbox = useCallback(() => {
-        setIsToolboxOpen(false);
-    }, []);
-
     useToolboxBoundaryGesture({
         scrollContainerRef: tableContainerRef,
-        isToolboxOpen,
+        isToolboxOpen: isToolboxVisible,
         canAutoOpenToolbox,
         isInputInterfaceOpen,
-        onAutoOpen: handleAutoOpenToolbox,
-        onAutoClose: handleAutoCloseToolbox,
+        onAutoOpen: handleOpenToolbox,
+        onAutoClose: handleCloseToolbox,
     });
 
     useEffect(() => {
@@ -365,7 +396,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
         stableKeyboardOffset,
         isKeyboardOpen && isToolboxInputFocused,
     );
-    const occupiedBottom = isToolboxOpen
+    const occupiedBottom = isToolboxVisible
         ? `calc(40vh + ${panelDockOffset})`
         : panelDockOffset;
 
@@ -446,8 +477,8 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                     isEditMode={false}
                     zoomLevel={zoomLevel}
                     previewValue={0}
-                    onToggleToolbox={() => setIsToolboxOpen(!isToolboxOpen)}
-                    isToolboxOpen={isToolboxOpen}
+                    onToggleToolbox={handleToggleToolbox}
+                    isToolboxOpen={isToolboxVisible}
                     panelDockOffset={panelDockOffset}
                 />
             </div>
@@ -481,7 +512,9 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
 
             {/* History Toolbox Drawer - No backdrop, matches Session InputPanel feel */}
             <div
-                className={`absolute left-0 right-0 z-40 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgb(var(--c-black)_/_0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isToolboxOpen ? 'translate-y-0' : 'translate-y-full'}`}
+                ref={toolboxRef}
+                data-history-toolbox="true"
+                className={`absolute left-0 right-0 z-40 bg-modal-bg backdrop-blur-sm border-t border-surface-border shadow-[0_-8px_30px_rgb(var(--c-black)_/_0.2)] transition-all duration-300 ease-in-out flex flex-col overflow-hidden ${isToolboxVisible ? 'translate-y-0' : 'translate-y-full'}`}
                 style={{ height: '40vh', bottom: panelDockOffset }}
             >
                 <div className="flex-1 min-h-0 bg-modal-bg relative">
@@ -491,7 +524,6 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                         template={template}
                         onTakePhoto={photos.openCamera}
                         onScreenshot={() => {
-                            setIsToolboxOpen(false);
                             setShowScreenshotModal(true);
                         }}
                         onUpdateSession={handleUpdateNote}
