@@ -20,12 +20,7 @@ const column = {
   quickActions: [{ id: 'one', label: 'One', value: 1 }],
 } satisfies ScoreColumn;
 
-const zoomCases = [
-  { name: 'minimum', distance: 50, rootFontSize: '12px' },
-  { name: 'default', distance: 100, rootFontSize: '16px' },
-  { name: 'maximum', distance: 180, rootFontSize: '20.8px' },
-];
-const fallbackZoomCases = [zoomCases[0], zoomCases[2]];
+const maximumZoom = { distance: 180, rootFontSize: '20.8px' };
 
 const pinch = (target: HTMLElement, distance: number) => {
   fireEvent.touchStart(target, {
@@ -89,8 +84,8 @@ describe('input controls with app zoom', () => {
     else localStorage.setItem('app_zoom_level', previousZoom);
   });
 
-  // One list and one grid cover the two fallback-font branches at both zoom
-  // limits. Per-column sizing belongs in QuickButtonPad.sizing.test.tsx;
+  // One list and one grid cover the two fallback-font branches at maximum zoom.
+  // Per-column sizing and both zoom limits belong in QuickButtonPad.sizing.test.tsx;
   // gesture ownership and genuine next taps belong in InputControls.pinch.test.tsx.
   describe.each([
     { cols: 1, labelFontSize: '1.25rem', badgeFontSize: '1rem' },
@@ -99,7 +94,8 @@ describe('input controls with app zoom', () => {
     // Both display modes use the same fallback label classes. The standard
     // variant also verifies badge sizing; label-only height budgets and pinch
     // ownership remain covered in the sizing and pinch suites.
-    it.each(fallbackZoomCases)('keeps standard fallback labels and badges root-relative at $name zoom', ({ distance, rootFontSize }) => {
+    it('keeps standard fallback labels and badges root-relative at maximum zoom', () => {
+      const { distance, rootFontSize } = maximumZoom;
       renderHook(() => useMobileZoom());
       render(
         <LanguageProvider>
@@ -135,7 +131,8 @@ describe('input controls with app zoom', () => {
     expect(button.parentElement).toHaveStyle({ gridAutoRows: 'minmax(4.5rem, auto)' });
   });
 
-  it.each(zoomCases)('preserves fixed keypad digit and minus sizes at $name zoom', ({ distance, rootFontSize }) => {
+  it('preserves fixed keypad digit and minus sizes at maximum zoom', () => {
+    const { distance, rootFontSize } = maximumZoom;
     renderHook(() => useMobileZoom());
     render(<NumericKeypad {...makeNumericProps()} />);
     const digit = screen.getByRole('button', { name: '1' });
@@ -149,7 +146,7 @@ describe('input controls with app zoom', () => {
   });
 
   it('keeps +/- on the same fixed font size as the digits at maximum zoom', () => {
-    const { distance, rootFontSize } = zoomCases[2];
+    const { distance, rootFontSize } = maximumZoom;
     renderHook(() => useMobileZoom());
     render(<NumericKeypad {...makeNumericProps(1)} />);
     const sign = screen.getByRole('button', { name: '+/-' });

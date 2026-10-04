@@ -1,5 +1,59 @@
 # Input-control zoom test review
 
+## 2026-10-04: isolated-failure redundancy follow-up
+
+This approved follow-up removes eight cases from five files: the focused scope goes from 118 to 110, and the core suite from 979 to 971 in the same 128 files. Each removed case either repeats the same input or implementation branch, or cannot distinguish the behavior it claims to verify. The preceding audit found no meaningful isolated failure for these candidates under the current implementation; that is a pruning rationale, not proof about all future implementations. No production code, styles, dependencies, CI, database, service worker or built-in templates change.
+
+| Reviewed file | Severity | Before / after | Finding and disposition |
+| --- | --- | ---: | --- |
+| `src/components/shared/InputControls.zoom.test.tsx` | Low, addressed | 9 / 5 | Keep one maximum-zoom case per list/grid fallback branch and one fixed digit/minus case at maximum zoom; remove four repeated zoom permutations. Keep multiline bounds and the separate +/- case. Actual zoom limits remain covered by sizing tests. |
+| `src/components/shared/NumericKeypad.test.tsx` | Low, addressed | 19 / 18 | Remove only the negative nonzero style row: it shares typography/theme with positive nonzero input. The separate negative sign-activation test still checks the +/- label and resulting positive payload. Keep decimal, negative-zero and both product-factor cases. |
+| `src/components/shared/QuickButtonPad.sizing.test.tsx` | Low, addressed | 43 / 42 | Remove only the full-layout four-column 375px fixture. Panel width is an arithmetic-model input, not a production prop or actual viewport. The retained 320/768px four-column cases cover width-bound and height-bound sizes; both layouts, column counts and zoom limits remain represented. |
+| `src/components/shared/quickButtonTypography.test.ts` | Low, addressed | 38 / 37 | Merge the exact duplicate two-paragraph table row into its comparison test. Move the original text and width assertions there; keep the unbroken-paragraph control and per-paragraph line-count assertion. |
+| `src/hooks/useMobileZoom.test.tsx` | Low, addressed | 9 / 8 | Remove saved zoom 1, which also passes with restoration disabled because the initial value is already 1. Keep saved 0.75/1.3, which distinguish restoration, and all gesture ownership, photo-editor and cleanup cases. |
+
+### Readability
+
+Replace unused zoom permutations with one named maximum-zoom fixture and update the representative-case comments. The saved-zoom test explains why its inputs must differ from the initial value.
+
+### Reliability
+
+The final 110-case scope passed three independent Vitest runs with zero skipped cases and unhandled errors. Per-test JSON timing was captured; the slowest cases were approximately 90ms, 88ms and 124ms. Existing DOM, localStorage, root-style and listener cleanup is unchanged.
+
+### Diagnostic value
+
+The consolidated paragraph test retains every assertion from the removed row, so an incorrect display string, uncapped width or combined paragraph remainder still fails. Negative sign activation remains independently tested. No test is skipped or excluded by a name filter.
+
+### Design
+
+Only redundant case registration changes. Narrow/wide geometry is still checked against the real components' spacing declarations; it is not a device measurement. Default zoom initialization remains exercised by normal hook use and the photo-editor isolation case. Gesture, memoization and the positive iOS parent-height contract are not weakened or redesigned.
+
+### AI-generated
+
+The exact edited scope was verified with thirteen targeted faults using the installed Vitest/Vite API. Faults were applied only to in-memory module inputs, including matching regular and raw inputs; none was saved to production files. Each fault run executed all 110 cases with zero skipped cases or unhandled errors.
+
+| Injected fault | Retained failing cases |
+| --- | ---: |
+| List fallback text becomes fixed pixels | 1 |
+| Grid fallback text becomes fixed pixels | 1 |
+| Keypad's fixed font becomes zoom-dependent | 5 |
+| Negative nonzero input loses the +/- label | 1 |
+| Minimum zoom becomes 50% instead of 75% | 12 |
+| Maximum zoom becomes 150% instead of 130% | 18 |
+| Quick-option padding starts scaling | 12 |
+| Input-layout padding starts scaling | 8 |
+| Container-font app zoom factor is removed | 16 |
+| Long paragraphs incorrectly share line remainders | 1 |
+| Label width is no longer capped by line capacity | 7 |
+| Text analysis is no longer memoized | 1 |
+| Saved zoom is never restored | 6 |
+
+All thirteen sampled faults remain detected (13/13), as in the preceding pre-pruning audit. This is targeted evidence, not an exhaustive mutation score or a guarantee of equivalent detection for every possible bug. The temporary verification harness was removed; no additional framework, dependency, CI gate or recurring check is warranted.
+
+### Coverage
+
+The full core suite passed 971/971 cases in 128 files; type-check and diff checks passed. Unicode, manual-line boundaries, negative-zero decimals, pinch completion, rapid genuine taps, drag/drop, scoring, persistence, multiplayer, toolbox history and the actual 100% parent-height chain retain their existing regression checks. Browser/device verification was not run. Application behavior and runtime performance are unchanged because this follow-up edits only tests and this review record.
+
 ## 2026-10-04: behavior-focused pruning and the iOS parent-height contract
 
 This test-only change reduces the core suite from 1016 to 979 cases in the same 128 files. It removes equivalent display/theme combinations and stale implementation blacklists, not scoring, persistence, multiplayer, drag/drop, or browser-history behaviors. No application code, dependencies, CI, database version, service worker, or built-in templates change.

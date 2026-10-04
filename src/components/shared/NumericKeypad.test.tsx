@@ -99,7 +99,6 @@ describe('NumericKeypad', () => {
   it.each([
     { value: 0, overwrite: false, name: '-' },
     { value: 12, overwrite: false, name: '+/-' },
-    { value: -12, overwrite: false, name: '+/-' },
     { value: 12, overwrite: true, name: '-' },
   ])('uses the digit typography and theme for $name with value $value and overwrite $overwrite', ({ value, overwrite, name }) => {
     render(<NumericKeypad {...makeProps()} value={value} overwrite={overwrite} />);

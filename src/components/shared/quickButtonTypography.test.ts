@@ -16,7 +16,6 @@ describe('quick-option label typography', () => {
     { columns: 3, text: '山', widthUnits: 1, lineCount: 1 },
     { columns: 3, text: '森林', widthUnits: 2, lineCount: 1 },
     { columns: 3, text: '森林\n山谷', widthUnits: 2, lineCount: 2 },
-    { columns: 3, text: '一二三四五\n六七八九十', widthUnits: 4, lineCount: 4 },
     { columns: 3, text: '山\n一二三四五', widthUnits: 4, lineCount: 3 },
     { columns: 3, text: '\n森林', widthUnits: 2, lineCount: 2 },
     { columns: 3, text: '森林\n\n山谷', widthUnits: 2, lineCount: 3 },
@@ -60,6 +59,8 @@ describe('quick-option label typography', () => {
     const withoutBreak = getQuickButtonTypography('一二三四五六七八九十', 3);
     const withBreak = getQuickButtonTypography('一二三四五\n六七八九十', 3);
     expect(withoutBreak.lineCount).toBe(3);
+    expect(withBreak.text).toBe('一二三四五\n六七八九十');
+    expect(withBreak.widthUnits).toBeCloseTo(4);
     expect(withBreak.lineCount).toBe(4);
   });
 

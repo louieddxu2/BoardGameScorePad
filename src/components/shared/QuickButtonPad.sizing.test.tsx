@@ -377,13 +377,12 @@ describe('QuickButtonPad available-space typography', () => {
     expect(button.style.getPropertyValue('--quick-button-line-capacity')).toBe('3');
   });
 
-  // Cover the narrow/wide limits for both layouts and column counts, plus the
-  // original four-column 375px reproduction. Intermediate widths add no branch.
+  // Cover narrow/wide sizes in both layouts and column counts. Four-column
+  // cases exercise width and height bounds; 375px repeats the narrow branch.
   it.each([
     { isCompact: false, cols: 3, panelWidth: 320 },
     { isCompact: false, cols: 3, panelWidth: 768 },
     { isCompact: false, cols: 4, panelWidth: 320 },
-    { isCompact: false, cols: 4, panelWidth: 375 },
     { isCompact: false, cols: 4, panelWidth: 768 },
     { isCompact: true, cols: 3, panelWidth: 320 },
     { isCompact: true, cols: 3, panelWidth: 768 },

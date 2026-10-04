@@ -39,7 +39,8 @@ describe('useMobileZoom', () => {
     else localStorage.setItem('app_zoom_level', previousSavedZoom);
   });
 
-  it.each([0.75, 1, 1.3])('restores the saved %s zoom to both font size and CSS factor', (zoom) => {
+  // Non-default values distinguish saved-zoom restoration from initial zoom 1.
+  it.each([0.75, 1.3])('restores the saved %s zoom to both font size and CSS factor', (zoom) => {
     localStorage.setItem('app_zoom_level', String(zoom));
     const { result } = renderHook(() => useMobileZoom());
 
