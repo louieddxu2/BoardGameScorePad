@@ -121,7 +121,7 @@ export const buildTemplateFromTextureMap = (
       // If the row is empty in mapping mode, create a hidden placeholder column.
       if (isMappingMode) {
         const newCol: ScoreColumn = {
-          id: crypto.randomUUID(),
+          id: generateId(),
           name: slotNameTemplate.replace('{n}', String(i + 1)),
           isScoring: false,
           formula: 'a1',
@@ -140,7 +140,7 @@ export const buildTemplateFromTextureMap = (
     for (let i = 0; i < rowCount; i++) {
       const targetRowIdx = itemRowsStartIdx + i;
       const newCol: ScoreColumn = {
-        id: crypto.randomUUID(),
+        id: generateId(),
         name: itemNameTemplate.replace('{n}', String(i + 1)),
         isScoring: true,
         formula: 'a1',

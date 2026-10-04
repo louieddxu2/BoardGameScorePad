@@ -1,6 +1,7 @@
 
 import React, { createContext, useState, useCallback, useContext, ReactNode } from 'react';
 import ToastContainer from '../components/shared/ToastContainer';
+import { generateId } from '../utils/idGenerator';
 
 export interface ToastMessage {
   id: string;
@@ -20,7 +21,7 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const showToast = useCallback((options: Omit<ToastMessage, 'id'>) => {
-    const id = crypto.randomUUID();
+    const id = generateId();
     const newToast: ToastMessage = { id, type: 'info', ...options };
     
     // 將新 toast 放在陣列最前面，使其顯示在最上方

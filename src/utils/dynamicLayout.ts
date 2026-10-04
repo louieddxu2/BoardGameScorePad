@@ -1,3 +1,16 @@
+let containerFontSizingSupported: boolean | undefined;
+
+const supportsContainerFontSizing = (): boolean => {
+  if (containerFontSizingSupported === undefined) {
+    // Detect once, not once per score cell or render. Older browsers retain a
+    // readable rem baseline without adding layout reads or ResizeObservers.
+    containerFontSizingSupported = typeof CSS !== 'undefined'
+      && typeof CSS.supports === 'function'
+      && CSS.supports('container-type', 'size')
+      && CSS.supports('font-size', 'min(1cqh, 1cqw)');
+  }
+  return containerFontSizingSupported;
+};
 
 /**
  * 計算基於容器尺寸 (Container Query) 的動態字體大小。
@@ -9,6 +22,7 @@ export const calculateDynamicFontSize = (
   input: string | number | string[] | undefined | null
 ): string => {
   if (input === undefined || input === null || input === '') return '1rem';
+  if (!supportsContainerFontSizing()) return '1rem';
 
   // 1. 標準化為字串陣列 (Lines)
   let lines: string[] = [];
