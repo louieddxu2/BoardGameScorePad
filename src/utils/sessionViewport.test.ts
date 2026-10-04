@@ -23,11 +23,4 @@ describe('session viewport layout', () => {
       'calc(220px + var(--bottom-ui-safe-gap))',
     );
   });
-
-  it('does not add a guessed toolbar reserve to the idle iOS layout', () => {
-    expect(getSessionPanelDockOffset(64, false)).toBe('var(--bottom-ui-safe-gap)');
-    expect(getSessionOccupiedBottom('40vh', 64, false)).toBe(
-      'calc(40vh + var(--bottom-ui-safe-gap))',
-    );
-  });
 });

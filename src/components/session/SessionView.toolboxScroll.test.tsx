@@ -399,11 +399,13 @@ describe('SessionView toolbox scroll behavior', () => {
       renderSession();
       fireEvent.click(getFirstScoreCell());
 
+      const surface = document.querySelector('[data-session-surface="true"]');
+      expect(surface).toHaveClass('h-full', 'relative', 'overflow-hidden');
+      expect(getInputPanel().parentElement).toBe(surface);
+      expect(document.getElementById('live-totals-bar')?.parentElement?.closest('.relative, .absolute, .fixed, .sticky')).toBe(surface);
       expect(getInputPanel()).toHaveClass('absolute', 'left-0', 'right-0');
-      expect(getInputPanel()).not.toHaveClass('fixed', 'inset-0');
       expect(getInputPanel().style.height).toBe('40vh');
       expect(getInputPanel().style.bottom).toBe('var(--bottom-ui-safe-gap)');
-      expect(document.querySelector('[data-ios-browser-reserve="true"]')).toBeNull();
       const bottomFill = document.querySelector('[data-input-panel-bottom-fill="true"]') as HTMLElement;
       expect(bottomFill).toHaveClass('absolute', 'inset-x-0', 'bottom-0', 'z-50', 'bg-input-bg');
       expect(bottomFill).not.toHaveClass('pointer-events-none');
@@ -431,7 +433,6 @@ describe('SessionView toolbox scroll behavior', () => {
 
       expect(getInputPanel()).toHaveClass('absolute', 'left-0', 'right-0');
       expect(getInputPanel().style.bottom).toBe('var(--app-safe-area-bottom)');
-      expect(document.querySelector('[data-ios-browser-reserve="true"]')).toBeNull();
       const bottomFill = document.querySelector('[data-input-panel-bottom-fill="true"]') as HTMLElement;
       expect(bottomFill).toHaveClass('bg-input-bg');
       expect(bottomFill.style.height).toBe(getInputPanel().style.bottom);
@@ -456,7 +457,6 @@ describe('SessionView toolbox scroll behavior', () => {
 
       expect(getInputPanel()).toHaveClass('absolute', 'left-0', 'right-0');
       expect(getInputPanel().style.bottom).toBe('var(--bottom-ui-safe-gap)');
-      expect(document.querySelector('[data-ios-browser-reserve="true"]')).toBeNull();
       expect(document.querySelector('[data-input-panel-bottom-fill="true"]')).toBeNull();
     } finally {
       if (previousAndroid === undefined) delete document.documentElement.dataset.android;

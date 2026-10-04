@@ -63,30 +63,33 @@ describe('QuickButtonPad', () => {
     expect(onAction).not.toHaveBeenCalled();
   });
 
-  describe.each([1, 3])('label-only mode with %i button columns', (buttonGridColumns) => {
-    it.each([0, -7, 42])('hides value %i while preserving the label and action', (value) => {
-      const action = { id: 'stage', label: 'Stage 2', value };
-      const onAction = vi.fn();
-      render(
-        <LanguageProvider>
-          <QuickButtonPad
-            column={{ ...column, buttonGridColumns, renderMode: 'label_only', quickActions: [action] }}
-            onAction={onAction}
-          />
-        </LanguageProvider>,
-      );
-      const button = screen.getByRole('button');
+  // List and grid have different badge placement, but the value's sign does
+  // not affect label-only rendering. Keep one representative per structure.
+  it.each([
+    { buttonGridColumns: 1, value: 0 },
+    { buttonGridColumns: 3, value: -7 },
+  ])('hides value $value in $buttonGridColumns columns while preserving the action', ({ buttonGridColumns, value }) => {
+    const action = { id: 'stage', label: 'Stage 2', value };
+    const onAction = vi.fn();
+    render(
+      <LanguageProvider>
+        <QuickButtonPad
+          column={{ ...column, buttonGridColumns, renderMode: 'label_only', quickActions: [action] }}
+          onAction={onAction}
+        />
+      </LanguageProvider>,
+    );
+    const button = screen.getByRole('button');
 
-      expect(button).toHaveAccessibleName('Stage 2');
-      expect(within(button).queryByText(String(value))).not.toBeInTheDocument();
-      expect(within(button).getByText('Stage 2').parentElement).not.toHaveClass('mb-[4px]');
+    expect(button).toHaveAccessibleName('Stage 2');
+    expect(within(button).queryByText(String(value))).not.toBeInTheDocument();
+    expect(within(button).getByText('Stage 2').parentElement).not.toHaveClass('mb-[4px]');
 
-      fireEvent.click(button);
+    fireEvent.click(button);
 
-      expect(onAction).toHaveBeenCalledTimes(1);
-      expect(onAction.mock.calls[0][0]).toBe(action);
-      expect(action.value).toBe(value);
-    });
+    expect(onAction).toHaveBeenCalledTimes(1);
+    expect(onAction.mock.calls[0][0]).toBe(action);
+    expect(action.value).toBe(value);
   });
 
   it.each([undefined, 'standard', 'value_only'] as const)('keeps numeric badges in %s mode', (renderMode) => {
@@ -157,10 +160,17 @@ describe('QuickButtonPad fixed-background contrast', () => {
     { name: 'default white background', backgroundColor: 'rgb(var(--c-white))', textColor: 'rgb(var(--c-slate-900))' },
   ];
 
-  describe.each(['dark', 'light'])('%s theme', (theme) => {
+  // Exercise every palette/parser/fallback case once. Only the two contrast
+  // branches need a second theme; the live theme-switch case remains below.
+  describe.each([
+    { theme: 'dark', cases: contrastCases },
+    { theme: 'light', cases: contrastCases.filter(testCase =>
+      testCase.actionColor === 'rgb(var(--c-p-black))'
+      || testCase.actionColor === 'rgb(var(--c-p-white))') },
+  ])('$theme theme', ({ theme, cases }) => {
     beforeEach(() => { document.documentElement.setAttribute('data-theme', theme); });
 
-    it.each(contrastCases)('uses fixed text contrast for $name', ({ actionColor, columnColor, backgroundColor, textColor }) => {
+    it.each(cases)('uses fixed text contrast for $name', ({ actionColor, columnColor, backgroundColor, textColor }) => {
       const action = { ...column.quickActions[0], color: actionColor };
       render(
         <LanguageProvider>

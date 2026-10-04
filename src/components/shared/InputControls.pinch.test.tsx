@@ -94,7 +94,10 @@ describe('pinch gesture ownership across touch targets', () => {
     else localStorage.setItem('app_zoom_level', previousSavedZoom);
   });
 
-  describe.each<ControlKind>(['standard', 'label_only', 'keypad', 'score-cell'])('%s control', (kind) => {
+  // QuickButtonPad's standard and label-only variants share the same
+  // QuickActionButton/useTouchAction handlers. Run the full event matrix once
+  // for that component, plus the keypad and independently handled score cell.
+  describe.each<ControlKind>(['standard', 'keypad', 'score-cell'])('%s control', (kind) => {
     it.each([
       { firstEndsFirst: false, localMove: 0 }, { firstEndsFirst: false, localMove: 4 },
       { firstEndsFirst: true, localMove: 0 }, { firstEndsFirst: true, localMove: 4 },
@@ -209,6 +212,18 @@ describe('pinch gesture ownership across touch targets', () => {
         expect(activate).toHaveBeenCalledTimes(index);
       }
     });
+  });
+
+  it.each([false, true])('keeps label-only pinch release inert with firstEndsFirst=%s', (firstEndsFirst) => {
+    const { activate, target, other } = makeControl('label_only');
+    const { first, second } = beginPinch(target, other);
+    endPinch(first, second, firstEndsFirst);
+    fireEvent.click(target, { detail: 1 });
+    expect(activate).not.toHaveBeenCalled();
+    tap(target);
+    fireEvent.click(target, { detail: 1 });
+    expect(activate).toHaveBeenCalledTimes(1);
+    expect(activate).toHaveBeenCalledWith(column.quickActions[0]);
   });
 
   it('rejects a pinch click retargeted to a different keypad key', () => {

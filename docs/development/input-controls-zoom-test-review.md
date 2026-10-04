@@ -1,5 +1,61 @@
 # Input-control zoom test review
 
+## 2026-10-04: behavior-focused pruning and the iOS parent-height contract
+
+This test-only change reduces the core suite from 1016 to 979 cases in the same 128 files. It removes equivalent display/theme combinations and stale implementation blacklists, not scoring, persistence, multiplayer, drag/drop, or browser-history behaviors. No application code, dependencies, CI, database version, service worker, or built-in templates change.
+
+| Reviewed file | Severity | Before / after | Finding and disposition |
+| --- | --- | ---: | --- |
+| `src/components/shared/QuickButtonPad.test.tsx` | Medium, addressed | 44 / 29 | Keep list/grid label-only actions, all 13 contrast inputs, both contrast branches in the second theme, and live theme switching. Remove the value-sign/layout product and eleven repeated second-theme color cases. |
+| `src/components/shared/InputControls.pinch.test.tsx` | Medium, addressed | 59 / 47 | Standard and label-only modes share `QuickActionButton` and its touch handlers. Keep the full matrix for quick buttons, keypad and score cells, plus two label-only release-order/next-tap checks. Keep cancellation, touch replacement, click-source variants, rapid taps and retargeted clicks. |
+| `src/components/shared/InputControls.zoom.test.tsx` | Medium, addressed | 15 / 9 | Keep list/grid fallback labels and badges at both zoom limits, multiline scroll bounds, keypad digits/minus at all zoom levels, and +/- at maximum zoom. Remove the same fallback-label class tested again without a badge and two duplicate fixed +/- sizes. |
+| `src/utils/fullHeightLayout.test.ts` | Medium, addressed | 6 / 3 | Replace four broad historical child-class blacklists with the actual root-height chain: compile the production root's 100% fallback and dynamic viewport declaration, then check full-height positioned AppWorkspace and SessionView roots. Keep app-surface overlays and safe-area actions. |
+| `src/utils/sessionViewport.test.ts` | Low, addressed | 4 / 3 | Remove the duplicate idle-iOS assertion. The remaining non-keyboard viewport-delta case exercises the same function and branch; real keyboard compensation remains separate. |
+| `src/components/session/parts/InputPanelLayout.test.tsx` | Low, addressed | 3 / 3 | Use a full-height content parent and retain bounded compact/full layout plus sidebar checks. Remove the blanket prohibition on `h-full`; percentage height is not inherently incorrect. |
+| `src/components/session/SessionView.toolboxScroll.test.tsx` | Low, addressed | 37 / 37 | Replace removed toolbar-reserve marker checks with the full-height session surface and shared positioning ancestor for the input panel and totals. Preserve platform dock, bottom-fill, touch navigation, keyboard and toolbox history cases. |
+| `src/components/shared/QuickButtonPad.sizing.test.tsx` | Low | 43 / 43 | Unchanged. Preserve real spacing-chain three/four-column regressions in both input layouts, per-column capacities, manual lines and memoization. |
+
+### Readability
+
+Representative tables and comments explain the shared implementation branch being pruned. Historical `100svh` and guessed-toolbar experiments were already reverted in `77c909d`; tests must protect definite parent sizing, not treat all percentage-height descendants as invalid.
+
+### Reliability
+
+The eight-file review scope passed 174/174 cases in three independent runs with no skipped cases. The slowest cases were approximately 124ms, 126ms and 129ms. A draft assertion incorrectly required the totals bar's immediate DOM parent to be the session root; it was corrected to its nearest positioned ancestor before these runs, without changing production code. Existing timer, localStorage and root-style isolation remains in place.
+
+### Diagnostic value
+
+Retained tests check callback counts/payloads, root-relative font units, production spacing declarations and actual DOM relationships. The new parent-chain contract uses class tokens rather than exact class ordering and compiles only the relevant CSS root rule. It checks declared layout constraints, not rendered iOS geometry.
+
+### Design
+
+Cases are genuinely removed, not merged into a large loop, skipped or hidden by name filters. Display modes sharing the same event handler no longer multiply every event sequence. Different components and meaningful event orders remain separate. The positive root-height contract replaces old source-string bans that could pass after a harmless class reordering or reject legitimate 100% sizing.
+
+### AI-generated
+
+Ten targeted faults were applied only to Vite's in-memory module inputs using the installed Vitest API. Regular and `?raw` inputs were changed consistently. Every fault run executed its complete selected case set with zero skipped cases and zero unhandled errors.
+
+| Injected fault | Cases run | Failing cases |
+| --- | ---: | ---: |
+| Remove the root's 100% height fallback | 3 | 1 |
+| Remove AppWorkspace's full height | 3 | 1 |
+| Remove SessionView's full height | 40 | 2 |
+| Restore unbounded input layouts | 3 | 2 |
+| Restore fixed-pixel fallback labels | 128 | 4 |
+| Show numeric badges in label-only mode | 128 | 27 |
+| Remove final-touch pinch qualification | 47 | 23 |
+| Bypass compatibility-click suppression | 47 | 34 |
+| Reject the next genuine touch after a handled gesture | 47 | 30 |
+| Use a theme-dependent quick-button foreground | 128 | 16 |
+
+All ten sampled faults were detected (10/10). This is not an exhaustive mutation score or a guarantee of equal detection for every future bug. The temporary harness was removed; no mutation framework, dependency or additional CI gate is warranted for this scoped pruning. Existing core CI already runs the retained regressions.
+
+### Coverage
+
+The full core suite passed 979/979 cases in 128 files; type-check, production build and diff checks passed. Gesture ownership, quick repeated taps, drag/drop, manual labels, scoring, persistence, multiplayer and toolbox browser history retain their independent regression protection. No production-performance change follows from these test-only edits.
+
+Physical-device verification was not run, as it requires explicit authorization. JSDOM cannot establish real WebKit height resolution, typography, keyboard behavior or browser compatibility-click synthesis; the parent-height tests must not be presented as proof of actual iOS rendering.
+
 ## 2026-10-01: first-stage test-matrix pruning
 
 This change removes 42 redundant cases from two existing typography regression files. It does not change application behavior, production styles, dependencies, database versions, or built-in templates. A separate 14-case color/keypad-style candidate remains deferred; no tests are skipped or hidden behind a runtime name filter.

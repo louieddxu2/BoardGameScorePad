@@ -5,10 +5,10 @@ import InputPanelLayout from './InputPanelLayout';
 
 describe('InputPanelLayout', () => {
   it.each([false, true])(
-    'fills the remaining input content box without percentage-height resolution (compact: %s)',
+    'fills its bounded full-height content parent (compact: %s)',
     (isCompact) => {
       const { container } = render(
-        <div className="relative">
+        <div className="relative h-full">
           <InputPanelLayout onNext={vi.fn()} isCompact={isCompact}>
             <div>content</div>
           </InputPanelLayout>
@@ -18,13 +18,12 @@ describe('InputPanelLayout', () => {
       const layout = container.querySelector('[data-input-panel-layout="true"]');
 
       expect(layout).toHaveClass('absolute', 'inset-0');
-      expect(layout).not.toHaveClass('h-full');
     },
   );
 
   it('gives the right-side panel a definite flex content area', () => {
     const { container } = render(
-      <div className="relative">
+      <div className="relative h-full">
         <InputPanelLayout onNext={vi.fn()} sidebarContent={<div>sidebar</div>}>
           <div>content</div>
         </InputPanelLayout>

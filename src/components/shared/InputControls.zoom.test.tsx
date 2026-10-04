@@ -96,22 +96,9 @@ describe('input controls with app zoom', () => {
     { cols: 1, labelFontSize: '1.25rem', badgeFontSize: '1rem' },
     { cols: 3, labelFontSize: '1rem', badgeFontSize: '0.875rem' },
   ])('$cols quick-button columns', ({ cols, labelFontSize, badgeFontSize }) => {
-    it.each(fallbackZoomCases)('keeps label-only fallback text root-relative at $name zoom', ({ distance, rootFontSize }) => {
-      renderHook(() => useMobileZoom());
-      render(
-        <LanguageProvider>
-          <QuickButtonPad column={{ ...column, buttonGridColumns: cols, renderMode: 'label_only' }} onAction={vi.fn()} />
-        </LanguageProvider>,
-      );
-      const label = screen.getByText('One');
-
-      pinch(label, distance);
-
-      expect(document.documentElement.style.fontSize).toBe(rootFontSize);
-      expect(window.getComputedStyle(label).fontSize).toBe(labelFontSize);
-      expect(screen.getByText('One')).toBe(label);
-    });
-
+    // Both display modes use the same fallback label classes. The standard
+    // variant also verifies badge sizing; label-only height budgets and pinch
+    // ownership remain covered in the sizing and pinch suites.
     it.each(fallbackZoomCases)('keeps standard fallback labels and badges root-relative at $name zoom', ({ distance, rootFontSize }) => {
       renderHook(() => useMobileZoom());
       render(
@@ -161,7 +148,8 @@ describe('input controls with app zoom', () => {
     expect(digit.closest('[data-numeric-keypad="true"]')).toHaveClass('flex-1', 'min-h-0', 'grid-rows-4');
   });
 
-  it.each(zoomCases)('keeps +/- on the same fixed font size as the digits at $name zoom', ({ distance, rootFontSize }) => {
+  it('keeps +/- on the same fixed font size as the digits at maximum zoom', () => {
+    const { distance, rootFontSize } = zoomCases[2];
     renderHook(() => useMobileZoom());
     render(<NumericKeypad {...makeNumericProps(1)} />);
     const sign = screen.getByRole('button', { name: '+/-' });
