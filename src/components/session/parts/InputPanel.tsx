@@ -39,6 +39,7 @@ interface InputPanelProps {
     savedPlayers: SavedListItem[]; // Renamed from playerHistory
     allSavedPlayers?: SavedListItem[];
     onUpdateSession: (session: GameSession) => void;
+    isMultiplayerRoomActive?: boolean;
     onUpdateSavedPlayer: (name: string) => void; // Renamed from onUpdatePlayerHistory
     // [New Props for SmartSpacer]
     onTakePhoto?: () => void;
@@ -237,7 +238,7 @@ const TotalAdjustmentSidebar: React.FC<{
 
 
 const InputPanel: React.FC<InputPanelProps> = (props) => {
-    const { sessionState, eventHandlers, session, template, savedPlayers, allSavedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice, bottomOffset, canEditScore = () => true, canEditTotal = () => true, canEditPlayers = true, mediaOnlyTools = false, onToolboxInputFocusChange, toolboxTopContent } = props;
+    const { sessionState, eventHandlers, session, template, savedPlayers, allSavedPlayers, onUpdateSession, isMultiplayerRoomActive = false, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice, bottomOffset, canEditScore = () => true, canEditTotal = () => true, canEditPlayers = true, mediaOnlyTools = false, onToolboxInputFocusChange, toolboxTopContent } = props;
     const { uiState, setUiState, panelHeight, isShortList } = sessionState;
     const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue, isEditingTitle, isToolboxOpen } = uiState;
     const { t } = useSessionTranslation();
@@ -387,6 +388,11 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             return { ...p, scores: newScores };
         });
         const nextSession = { ...session, players };
+        if (isMultiplayerRoomActive) {
+            // The host runtime calculates and persists authoritative totals.
+            onUpdateSession(nextSession);
+            return;
+        }
         const nextPlayer = nextSession.players.find((p: any) => p.id === playerId);
         const scoreValue = nextPlayer?.scores[colId] ?? null;
         const result = applyScoreValuePatch(session, template, {

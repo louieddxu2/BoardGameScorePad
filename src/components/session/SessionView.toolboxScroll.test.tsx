@@ -8,6 +8,10 @@ import { LanguageProvider } from '../../i18n';
 import { GameSession, GameTemplate } from '../../types';
 import { createMultiplayerSessionManager } from '../../features/multiplayer/multiplayerSessionManager';
 import { createPlayerSessionCapabilities } from '../../features/multiplayer/sessionCapabilities';
+import { createMultiplayerHostRoomRuntime } from '../../features/multiplayer/multiplayerRoomRuntime';
+import type { MultiplayerPlayerRoomRuntime } from '../../features/multiplayer/multiplayerRoomRuntime';
+import { multiplayerDeliveryStore } from '../../features/multiplayer/multiplayerDeliveryStore';
+import * as scoring from '../../utils/scoring';
 import { useMobileZoom } from '../../hooks/useMobileZoom';
 import { _resetActiveCountForTesting } from '../../hooks/useModalBackHandler';
 
@@ -379,6 +383,8 @@ describe('SessionView toolbox browser history', () => {
 });
 
 describe('SessionView toolbox scroll behavior', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
   it('shows session photos in the toolbox and opens a thumbnail directly in the lightbox', () => {
     const session = { ...makeSession(), photos: ['photo-1'] };
     renderSession({ session });
@@ -520,6 +526,78 @@ describe('SessionView toolbox scroll behavior', () => {
     expect(screen.getByRole('button', { name: 'Multiplayer test: host' })).toBeInTheDocument();
   });
 
+  it('calculates, persists and publishes a host keypad input once before adopting the saved result', async () => {
+    const manager = createMultiplayerSessionManager();
+    const template = makeTemplate();
+    const session = makeSession();
+    const putSession = vi.fn(async () => undefined);
+    const updateRoomRevision = vi.fn(async () => undefined);
+    const broadcastMessage = vi.fn(() => true);
+    const runtime = await createMultiplayerHostRoomRuntime({
+      roomId: 'room-1', hostDeviceId: 'host-1', template, session,
+      store: {
+        getTemplate: async () => template,
+        putTemplate: async () => undefined,
+        putSession,
+        putRoom: async () => undefined,
+        persistBootstrap: async () => undefined,
+        updateRoomRevision,
+      },
+      deliveryStore: multiplayerDeliveryStore,
+      transport: {
+        sendToHost: () => false,
+        sendToConnection: () => false,
+        broadcastLocalChanges: async () => undefined,
+        broadcastMessage,
+      },
+      onSessionSnapshot: manager.createRuntimeCallbacks('room-1').onSessionSnapshot,
+    });
+    manager.register('room-1', runtime);
+    const onUpdateSession = vi.fn();
+    renderSession({ multiplayerRoomId: 'room-1', multiplayerManager: manager, onUpdateSession });
+    fireEvent.click(getFirstScoreCell());
+    const calculate = vi.spyOn(scoring, 'calculatePlayerTotal');
+    const publish = vi.spyOn(manager, 'publishSession');
+
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '1' })); });
+
+    expect(calculate).toHaveBeenCalledTimes(session.players.length);
+    expect(putSession).toHaveBeenCalledTimes(1);
+    expect(updateRoomRevision).toHaveBeenCalledTimes(1);
+    expect(publish).toHaveBeenCalledTimes(1);
+    expect(broadcastMessage).toHaveBeenCalledTimes(1);
+    expect(runtime.session.revision).toBe(2);
+    expect(runtime.session.session.players[0]).toMatchObject({ scores: { 'col-1': { parts: [1] } }, totalScore: 1 });
+    expect(onUpdateSession).toHaveBeenCalledExactlyOnceWith(runtime.session.session, { alreadyPersisted: true });
+  });
+
+  it('queues a participant keypad input without calculating or saving a local authoritative result', async () => {
+    const manager = createMultiplayerSessionManager();
+    const queueScoreValuePatch = vi.fn(async () => undefined);
+    const runtime = {
+      role: 'player', session: { session: makeSession() },
+      controller: { queueScoreValuePatch, queueTotalAdjustment: vi.fn() },
+      start: vi.fn(), stop: vi.fn(),
+    } as unknown as MultiplayerPlayerRoomRuntime;
+    manager.register('room-1', runtime);
+    const onUpdateSession = vi.fn();
+    renderSession({
+      multiplayerRoomId: 'room-1', multiplayerManager: manager,
+      multiplayerCapabilities: createPlayerSessionCapabilities('p1'), onUpdateSession,
+    });
+    fireEvent.click(getFirstScoreCell());
+    const calculate = vi.spyOn(scoring, 'calculatePlayerTotal');
+
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '1' })); });
+
+    expect(queueScoreValuePatch).toHaveBeenCalledExactlyOnceWith({
+      actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1',
+      colId: 'col-1', scoreValue: { parts: [1], optionId: undefined, multiOptionIds: undefined },
+    });
+    expect(calculate).not.toHaveBeenCalled();
+    expect(onUpdateSession).not.toHaveBeenCalled();
+  });
+
   it('only opens the active participant score cell in multiplayer preview', () => {
     renderSession();
     fireEvent.click(screen.getByRole('button', { name: 'Multiplayer test: host' }));
@@ -550,6 +628,7 @@ describe('SessionView toolbox scroll behavior', () => {
     });
 
     const keypadButton = screen.getByRole('button', { name: '1' });
+    const calculate = vi.spyOn(scoring, 'calculatePlayerTotal');
     fireEvent.touchStart(keypadButton, {
       touches: [{ clientX: 100, clientY: 100 }],
     });
@@ -561,6 +640,7 @@ describe('SessionView toolbox scroll behavior', () => {
     const latestSession = latestCall?.[0] as GameSession | undefined;
     expect(latestSession?.players.find(player => player.id === 'p1')?.scores['col-1']?.parts ?? []).toEqual([]);
     expect(latestSession?.players.find(player => player.id === 'p2')?.scores['col-1']?.parts).toEqual([1]);
+    expect(calculate).toHaveBeenCalledTimes(makeSession().players.length);
   });
 
   it('does not turn a vertical-first panel gesture into player navigation', () => {

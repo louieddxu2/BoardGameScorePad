@@ -2,6 +2,7 @@ import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useSessionManager } from './useSessionManager';
 import type { GameTemplate, GameSession, HistoryRecord } from '../types';
+import * as scoring from '../utils/scoring';
 
 type SessionStore = Map<string, GameSession>;
 type HistoryStore = Map<string, HistoryRecord>;
@@ -257,6 +258,50 @@ describe('useSessionManager', () => {
 
       expect(hoisted.sessionStore.has(sessionId!)).toBe(false);
     } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('adopts an already-persisted snapshot without recalculation or autosave, then resumes normal local saves', async () => {
+    vi.useFakeTimers();
+    const calculate = vi.spyOn(scoring, 'calculatePlayerTotal');
+    try {
+      const template: GameTemplate = {
+        id: 'tpl_snapshot', name: 'Snapshot', createdAt: 1,
+        columns: [{ id: 'score', name: 'Score', formula: 'a1', inputType: 'keypad', isScoring: true }],
+      };
+      const { result } = renderHook(() => useSessionManager({
+        getTemplate: async () => template, activeSessions: [], isCloudEnabled: () => false, pinnedIds: [],
+      }));
+      await act(async () => { await result.current.startSession(template, 1); });
+      const current = result.current.currentSession!;
+      const persisted: GameSession = {
+        ...current, lastUpdatedAt: 17, winnerIds: [current.players[0].id],
+        players: [{ ...current.players[0], scores: { score: { parts: [7] } }, totalScore: 7 }],
+      };
+      hoisted.sessionStore.set(persisted.id, persisted);
+      hoisted.dbMock.sessions.put.mockClear();
+      calculate.mockClear();
+
+      act(() => { result.current.updateSession(persisted, { alreadyPersisted: true }); });
+
+      expect(result.current.currentSession).toBe(persisted);
+      expect(calculate).not.toHaveBeenCalled();
+      await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+      expect(hoisted.dbMock.sessions.put).not.toHaveBeenCalled();
+      expect(hoisted.sessionStore.get(persisted.id)).toBe(persisted);
+
+      act(() => {
+        result.current.updateSession({
+          ...persisted, players: [{ ...persisted.players[0], scores: { score: { parts: [9] } } }],
+        });
+      });
+      expect(calculate).toHaveBeenCalledTimes(1);
+      expect(result.current.currentSession?.players[0].totalScore).toBe(9);
+      await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+      expect(hoisted.dbMock.sessions.put).toHaveBeenCalledExactlyOnceWith(result.current.currentSession);
+    } finally {
+      calculate.mockRestore();
       vi.useRealTimers();
     }
   });

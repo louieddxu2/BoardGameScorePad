@@ -8,6 +8,7 @@ import { useSessionMedia } from './hooks/useSessionMedia';
 import { installTouchDiagnostics, recordScoreHandlerDecision } from './touchDiagnostics';
 import type { TouchDiagnosticState } from './touchDiagnostics';
 import { useToast } from '../../hooks/useToast';
+import type { SessionUpdateOptions } from '../../hooks/useSessionManager';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useSessionTranslation } from '../../i18n/session';
 import { useCommonTranslation } from '../../i18n/common';
@@ -52,7 +53,7 @@ interface SessionViewProps {
   savedLocations?: SavedListItem[]; // Renamed from locationHistory
   zoomLevel: number;
   baseImage: string | null;
-  onUpdateSession: (session: GameSession) => void;
+  onUpdateSession: (session: GameSession, options?: SessionUpdateOptions) => void;
   onUpdateTemplate: (template: GameTemplate) => Promise<{ template: GameTemplate; session: GameSession | null }>;
   onUpdateSavedPlayer: (name: string) => void; // Renamed from onUpdatePlayerHistory
   onUpdateImage: (img: string | Blob | null) => void;
@@ -233,10 +234,9 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       claimedPlayerIds,
     });
     if (canonical) {
-      manager.publishSession(roomId, canonical);
-      props.onUpdateSession(canonical);
+      props.onUpdateSession(canonical, { alreadyPersisted: true });
     }
-  }, [managedRoomState?.runtime, manager, props.multiplayerCapabilities, props.multiplayerRoomId, props.onUpdateSession, session]);
+  }, [managedRoomState?.runtime, props.multiplayerCapabilities, props.multiplayerRoomId, props.onUpdateSession, session]);
 
   const {
     editingCell,
@@ -936,6 +936,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         savedPlayers={props.savedPlayers} // Updated Prop Name
         allSavedPlayers={props.allSavedPlayers}
         onUpdateSession={handleSessionUpdate}
+        isMultiplayerRoomActive={Boolean(managedRoomState?.runtime)}
         onUpdateSavedPlayer={props.onUpdateSavedPlayer} // Updated Prop Name
         onTakePhoto={capabilities.canUseMediaTools ? media.openScoreCamera : undefined}
         onScreenshotRequest={capabilities.canUseMediaTools ? handleScreenshotRequest : undefined}

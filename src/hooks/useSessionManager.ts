@@ -24,6 +24,11 @@ interface UseSessionManagerProps {
     pinnedIds: string[];
 }
 
+export interface SessionUpdateOptions {
+    /** Adopt the canonical result only after the multiplayer controller has saved it. */
+    alreadyPersisted?: boolean;
+}
+
 export const useSessionManager = ({
     getTemplate,
     activeSessions,
@@ -44,6 +49,7 @@ export const useSessionManager = ({
     const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const autosaveInFlightRef = useRef<Promise<unknown> | null>(null);
     const autosaveGenerationRef = useRef(0);
+    const persistedSessionRef = useRef<GameSession | null>(null);
 
     useEffect(() => {
         return () => {
@@ -54,7 +60,7 @@ export const useSessionManager = ({
     }, [sessionImage]);
 
     useEffect(() => {
-        if (!currentSession) return;
+        if (!currentSession || currentSession === persistedSessionRef.current) return;
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
         const generation = autosaveGenerationRef.current;
         saveTimeoutRef.current = setTimeout(() => {
@@ -309,7 +315,14 @@ export const useSessionManager = ({
         }
     };
 
-    const updateSession = (updatedSession: GameSession) => {
+    const updateSession = (updatedSession: GameSession, options?: SessionUpdateOptions) => {
+        if (options?.alreadyPersisted) {
+            cancelPendingAutosave();
+            persistedSessionRef.current = updatedSession;
+            setCurrentSession(updatedSession);
+            return;
+        }
+        persistedSessionRef.current = null;
         const sessionWithTimestamp = { ...updatedSession, lastUpdatedAt: Date.now() };
 
         if (activeTemplate) {
