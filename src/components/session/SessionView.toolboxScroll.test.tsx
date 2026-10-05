@@ -572,6 +572,70 @@ describe('SessionView toolbox scroll behavior', () => {
     expect(onUpdateSession).toHaveBeenCalledExactlyOnceWith(runtime.session.session, { alreadyPersisted: true });
   });
 
+  it('adopts the persisted host board edit without losing input received before or during the template save', async () => {
+    const manager = createMultiplayerSessionManager();
+    const template = makeTemplate();
+    const session = makeSession();
+    const putSession = vi.fn(async (_session: GameSession) => undefined);
+    const runtime = await createMultiplayerHostRoomRuntime({
+      roomId: 'room-1', hostDeviceId: 'host-1', template, session,
+      store: {
+        getTemplate: async () => template, putTemplate: async () => undefined,
+        putSession, putRoom: async () => undefined, persistBootstrap: async () => undefined,
+        updateRoomRevision: async () => undefined,
+      },
+      deliveryStore: {
+        ...multiplayerDeliveryStore,
+        getSequence: async () => undefined, putSequence: async () => undefined,
+        getReceipt: async () => undefined, putReceipt: async () => undefined,
+      },
+      transport: { sendToHost: () => false, sendToConnection: () => true, broadcastLocalChanges: async () => undefined },
+      onSessionSnapshot: manager.createRuntimeCallbacks('room-1').onSessionSnapshot,
+    });
+    manager.register('room-1', runtime);
+    const baseline = session;
+    const incomingPatch: ScoreValuePatchMessage = {
+      type: 'score:valuePatch', roomId: 'room-1', sessionId: session.id,
+      opId: 'remote-first', deviceId: 'participant-1', sequence: 1, updatedAt: 2,
+      patch: { actor: { role: 'player', playerId: 'p2' }, targetPlayerId: 'p2', colId: 'col-1', scoreValue: { parts: [5] } },
+    };
+    await runtime.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: session.id, deviceId: 'participant-1', playerId: 'p2' }, 'connection-1');
+    await runtime.receive(incomingPatch, 'connection-1');
+    let finishTemplate!: (result: { template: GameTemplate; session: GameSession }) => void;
+    const templateSave = new Promise<{ template: GameTemplate; session: GameSession }>(resolve => { finishTemplate = resolve; });
+    const onUpdateTemplate = vi.fn(() => templateSave);
+    const onUpdateSession = vi.fn();
+    localStorage.setItem('app_edit_mode', 'false');
+    renderSession({ template, session, multiplayerRoomId: 'room-1', multiplayerManager: manager, onUpdateTemplate, onUpdateSession });
+
+    fireEvent.click(screen.getByTitle('Unlock Edit (Switch to Edit Mode)'));
+    fireEvent.click(screen.getByText(template.name));
+    const titleInput = screen.getByDisplayValue(template.name);
+    fireEvent.change(titleInput, { target: { value: 'Changed board' } });
+    fireEvent.blur(titleInput);
+    expect(onUpdateTemplate).toHaveBeenCalledExactlyOnceWith({ ...template, name: 'Changed board' });
+
+    await act(async () => {
+      await runtime.receive({
+        ...incomingPatch, opId: 'remote-second', sequence: 2,
+        patch: { ...incomingPatch.patch, scoreValue: { parts: [7] } },
+      }, 'connection-1');
+    });
+    const applyBoard = vi.spyOn(runtime.controller, 'applyLocalBoard');
+    const changedTemplate = { ...template, name: 'Changed board' };
+    const staleResult = { ...baseline, name: changedTemplate.name };
+    await act(async () => { finishTemplate({ template: changedTemplate, session: staleResult }); });
+
+    expect(applyBoard).toHaveBeenCalledExactlyOnceWith(changedTemplate, staleResult, baseline);
+    expect(runtime.session.session).toMatchObject({ name: changedTemplate.name, winnerIds: ['p2'] });
+    expect(runtime.session.session.players[1]).toMatchObject({ scores: { 'col-1': { parts: [7] } }, totalScore: 7 });
+    expect(putSession).toHaveBeenCalledTimes(3);
+    expect(putSession).toHaveBeenLastCalledWith(runtime.session.session);
+    expect(onUpdateSession).toHaveBeenCalledExactlyOnceWith(runtime.session.session, { alreadyPersisted: true });
+    expect(manager.get('room-1')?.hasUnpublishedBoardUpdate).toBe(true);
+    expect(document.querySelector('#live-totals-bar .player-col-p2')).toHaveTextContent('7');
+  });
+
   it('updates participant totals locally before the host replies, without saving or echoing the input', async () => {
     const manager = createMultiplayerSessionManager();
     const template = makeTemplate();

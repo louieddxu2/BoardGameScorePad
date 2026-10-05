@@ -1,8 +1,40 @@
 import { describe, expect, it, vi } from 'vitest';
 import { db } from '../../db';
 import { multiplayerLocalStore } from './multiplayerLocalStore';
+import { multiplayerDeliveryStore } from './multiplayerDeliveryStore';
+import { persistAcceptedMultiplayerSnapshot } from './multiplayerPersistence';
+import { SessionSnapshotMessage } from './protocol';
 
 describe('multiplayerLocalStore purgeRoomData & deleteRoom', () => {
+  it('commits an accepted snapshot, revision, watermark and receipt in one transaction', async () => {
+    const putSession = vi.spyOn(db.sessions, 'put').mockResolvedValue('session-1');
+    const updateRoom = vi.spyOn(db.multiplayerRooms, 'update').mockResolvedValue(1);
+    const putSequence = vi.spyOn(db.multiplayerSequences, 'put').mockResolvedValue('watermark');
+    const putReceipt = vi.spyOn(db.multiplayerPatchReceipts, 'put').mockResolvedValue('receipt');
+    const transaction = vi.spyOn(db, 'transaction').mockImplementation(((mode: unknown, tables: unknown, callback: () => Promise<unknown>) => {
+      expect(mode).toBe('rw');
+      expect(tables).toEqual([db.sessions, db.multiplayerRooms, db.multiplayerPatchReceipts, db.multiplayerSequences]);
+      return callback();
+    }) as any);
+    const snapshot: SessionSnapshotMessage = {
+      type: 'session:snapshot', roomId: 'room-1', sessionId: 'session-1', revision: 2, updatedAt: 20,
+      session: { id: 'session-1', templateId: 'template-1', name: 'Test', startTime: 1, status: 'active', players: [] },
+    };
+    const sequence = { id: 'room-1:accepted:session-1:device:p1:p1:score:points', nextSequence: 3, updatedAt: 20 };
+    const receipt = { id: 'room-1:device:op-1', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device', opId: 'op-1', acceptedRevision: 2, updatedAt: 20 };
+    try {
+      await persistAcceptedMultiplayerSnapshot(snapshot, multiplayerLocalStore, multiplayerDeliveryStore, receipt, sequence);
+      expect(transaction).toHaveBeenCalledTimes(1);
+      expect(putSession).toHaveBeenCalledExactlyOnceWith(snapshot.session);
+      expect(updateRoom).toHaveBeenCalledExactlyOnceWith('room-1', { revision: 2, updatedAt: 20 });
+      expect(putSequence).toHaveBeenCalledExactlyOnceWith(sequence);
+      expect(putReceipt).toHaveBeenCalledExactlyOnceWith(receipt);
+      putReceipt.mockRejectedValueOnce(new Error('receipt write failed'));
+      await expect(persistAcceptedMultiplayerSnapshot(snapshot, multiplayerLocalStore, multiplayerDeliveryStore, receipt, sequence)).rejects.toThrow('receipt write failed');
+    } finally {
+      for (const spy of [transaction, putSession, updateRoom, putSequence, putReceipt]) spy.mockRestore();
+    }
+  });
   it('returns room ownership and purges room data in one transaction', async () => {
     const putSessionSpy = vi.spyOn(db.sessions, 'put').mockResolvedValue('session-1' as any);
     const deleteRoomSpy = vi.spyOn(db.multiplayerRooms, 'delete').mockResolvedValue(undefined as any);

@@ -97,6 +97,7 @@ export const createMultiplayerHostRoomRuntime = async (options: {
     start: () => { options.transport.startHost?.(hostSession.room.roomId); },
     stop: () => { options.transport.stop?.(); },
     receive: (message, connection) => controller.receive(message, connection),
+    whenIdle: controller.whenIdle,
     getConnectionCount: () => options.transport.getConnectionCount?.() ?? 0,
     getParticipantClaims: () => controller.getParticipantClaims(),
   };

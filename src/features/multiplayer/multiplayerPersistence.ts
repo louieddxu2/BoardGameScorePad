@@ -1,5 +1,5 @@
 import { db } from '../../db';
-import { GameSession, GameTemplate, HistoryRecord, MultiplayerRoomRecord } from '../../types';
+import { GameSession, GameTemplate, HistoryRecord, MultiplayerPatchReceiptRecord, MultiplayerRoomRecord, MultiplayerSequenceRecord } from '../../types';
 import { createHistoryRecordFromFinalSnapshot } from './multiplayerHistory';
 import {
   BootstrapPackageMessage,
@@ -10,6 +10,7 @@ import {
   isSessionSnapshotMessage,
 } from './protocol';
 import { resolveBootstrapImport, TemplateImportDecision } from './sessionBootstrap';
+import type { MultiplayerDeliveryStore } from './multiplayerDeliveryStore';
 
 export interface MultiplayerBootstrapStore {
   getTemplate(id: string): Promise<GameTemplate | undefined>;
@@ -45,6 +46,14 @@ export interface MultiplayerSnapshotStore {
     roomId: string;
     revision: number;
     updatedAt: number;
+  }): Promise<unknown>;
+  persistAcceptedSnapshot?(options: {
+    session: GameSession;
+    roomId: string;
+    revision: number;
+    updatedAt: number;
+    receipt: MultiplayerPatchReceiptRecord;
+    sequence: MultiplayerSequenceRecord;
   }): Promise<unknown>;
 }
 
@@ -173,6 +182,28 @@ export const persistMultiplayerSnapshot = async (
     await store.updateRoomRevision(message.roomId, message.revision, message.updatedAt);
   }
   return session;
+};
+
+/** The production store atomically commits inputs, revision, receipt and watermark. */
+export const persistAcceptedMultiplayerSnapshot = async (
+  message: SessionSnapshotMessage,
+  store: MultiplayerSnapshotStore,
+  delivery: MultiplayerDeliveryStore,
+  receipt: MultiplayerPatchReceiptRecord,
+  sequence: MultiplayerSequenceRecord,
+): Promise<void> => {
+  if (!isSessionSnapshotMessage(message)) throw new Error('invalid_session_snapshot');
+  if (store.persistAcceptedSnapshot) {
+    await store.persistAcceptedSnapshot({
+      session: cloneJson(message.session), roomId: message.roomId, revision: message.revision,
+      updatedAt: message.updatedAt, receipt, sequence,
+    });
+  } else {
+    // Custom/in-memory stores used outside IndexedDB retain the same write order.
+    await persistMultiplayerSnapshot(message, store);
+    await delivery.putSequence(sequence);
+    await delivery.putReceipt(receipt);
+  }
 };
 
 /** Saves a final snapshot for every participant and clears its active-session copy. */

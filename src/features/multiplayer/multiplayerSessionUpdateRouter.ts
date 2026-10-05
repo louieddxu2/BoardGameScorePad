@@ -11,7 +11,7 @@ export const routeMultiplayerSessionUpdate = async (options: {
   claimedPlayerIds?: string[];
 }): Promise<GameSession | null> => {
   if (options.runtime.role === 'host') {
-    const snapshot = await options.runtime.controller.applyLocalSession(options.next);
+    const snapshot = await options.runtime.controller.applyLocalSession(options.next, options.previous);
     return snapshot?.session ?? null;
   }
 

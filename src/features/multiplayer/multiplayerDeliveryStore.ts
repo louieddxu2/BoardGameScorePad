@@ -53,6 +53,14 @@ export const scorePatchSequenceKey = (message: Pick<ScoreValuePatchMessage, 'roo
 
 export const scorePatchOperationKey = (roomId: string, deviceId: string, opId: string): string => `${roomId}:${deviceId}:${opId}`;
 
+/** Host receive watermarks share the sequence table, but never sender reservations. */
+export const acceptedScoreSequenceKey = (message: ScoreValuePatchMessage | TotalAdjustmentPatchMessage): string => {
+  const actor = message.type === 'score:valuePatch' ? message.patch.actor : message.actor;
+  const target = message.type === 'score:valuePatch' ? message.patch.targetPlayerId : message.targetPlayerId;
+  const column = message.type === 'score:valuePatch' ? `score:${message.patch.colId}` : 'total';
+  return `${message.roomId}:accepted:${message.sessionId}:${message.deviceId}:${actor.role === 'player' ? actor.playerId : 'host'}:${target}:${column}`;
+};
+
 export const createOutboxRecord = (message: ScoreValuePatchMessage | TotalAdjustmentPatchMessage): MultiplayerOutboxRecord => ({
   id: scorePatchOperationKey(message.roomId, message.deviceId, message.opId),
   roomId: message.roomId,

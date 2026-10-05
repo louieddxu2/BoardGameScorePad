@@ -1,4 +1,4 @@
-import { GameSession, ScoreValue } from '../../types';
+import { GameSession, GameTemplate, ScoreValue } from '../../types';
 import { generateId } from '../../utils/idGenerator';
 import {
   MultiplayerHostSession,
@@ -23,14 +23,15 @@ import {
   SessionSnapshotMessage,
   TotalAdjustmentPatchMessage,
 } from './protocol';
-import { ScorePatchActor } from './scoreValuePatch';
+import { mergeSessionInputChanges, ScorePatchActor } from './scoreValuePatch';
 import {
   MultiplayerDeliveryStore,
+  acceptedScoreSequenceKey,
   reserveSequenceAndPutOutbox,
   scorePatchOperationKey,
   scorePatchSequenceKey,
 } from './multiplayerDeliveryStore';
-import { MultiplayerSnapshotStore, persistMultiplayerSnapshot } from './multiplayerPersistence';
+import { MultiplayerSnapshotStore, persistAcceptedMultiplayerSnapshot, persistMultiplayerSnapshot } from './multiplayerPersistence';
 
 export interface MultiplayerRoomTransport {
   sendToHost(message: unknown): boolean;
@@ -58,6 +59,13 @@ export const createMultiplayerRoomController = (options: {
 }) => {
   const now = options.now ?? Date.now;
   const bindings = new Map<unknown, { deviceId: string; playerIds: Set<string> }>();
+  const acceptedSequences = new Map<string, number>();
+  let operationQueue = Promise.resolve();
+  const enqueue = <T,>(operation: () => Promise<T>): Promise<T> => {
+    const task = operationQueue.then(operation);
+    operationQueue = task.then(() => undefined, () => undefined);
+    return task;
+  };
   const getParticipantClaims = (): ParticipantClaimCounts => {
     const claims: ParticipantClaimCounts = {};
     for (const binding of bindings.values()) {
@@ -165,6 +173,17 @@ export const createMultiplayerRoomController = (options: {
         return true;
       }
 
+      const sequenceKey = acceptedScoreSequenceKey(message);
+      let acceptedSequence = acceptedSequences.get(sequenceKey);
+      if (acceptedSequence === undefined) {
+        acceptedSequence = (await options.deliveryStore.getSequence(sequenceKey))?.nextSequence ?? 1;
+        acceptedSequences.set(sequenceKey, acceptedSequence);
+      }
+      if (message.sequence < acceptedSequence) {
+        options.transport.sendToConnection(connection, makeResult(message, false, undefined, 'outdated_player_update'));
+        return true;
+      }
+
       const result = isScoreValuePatchMessage(message)
         ? options.hostSession.receiveScoreValuePatch(message)
         : options.hostSession.receiveTotalAdjustmentPatch(message);
@@ -173,23 +192,25 @@ export const createMultiplayerRoomController = (options: {
         return true;
       }
 
-      await persistMultiplayerSnapshot(result.snapshot, options.snapshotStore);
-      await options.onSnapshot?.(result.snapshot);
-      await options.deliveryStore.putReceipt({
+      // A retry of a previously applied but failed write must persist current
+      // inputs, not the old snapshot cached for that operation.
+      const snapshot = result.snapshot.revision === options.hostSession.revision ? result.snapshot : {
+        ...result.snapshot, session: options.hostSession.session, revision: options.hostSession.revision, updatedAt: now(),
+      };
+      await persistAcceptedMultiplayerSnapshot(snapshot, options.snapshotStore, options.deliveryStore, {
         id: receiptId, roomId: message.roomId, sessionId: message.sessionId, deviceId: message.deviceId,
-        opId: message.opId, acceptedRevision: result.snapshot.revision, updatedAt: now(),
-      });
-      options.transport.sendToConnection(connection, makeResult(message, true, result.snapshot));
+        opId: message.opId, acceptedRevision: snapshot.revision, updatedAt: now(),
+      }, { id: sequenceKey, nextSequence: message.sequence + 1, updatedAt: now() });
+      acceptedSequences.set(sequenceKey, message.sequence + 1);
+      await options.onSnapshot?.(snapshot);
+      options.transport.sendToConnection(connection, makeResult(message, true, snapshot));
       // The source already receives this full snapshot in its acknowledgement.
-      broadcastSnapshot(result.snapshot, connection);
+      broadcastSnapshot(snapshot, connection);
       return true;
   };
-  let receiveQueue = Promise.resolve();
   return {
     receive(message: unknown, connection: unknown) {
-      const next = receiveQueue.then(() => receiveOne(message, connection));
-      receiveQueue = next.then(() => undefined, () => undefined);
-      return next;
+      return enqueue(() => receiveOne(message, connection));
     },
     async releaseConnection(connection: unknown) {
       if (!bindings.delete(connection)) return false;
@@ -199,7 +220,7 @@ export const createMultiplayerRoomController = (options: {
     getParticipantClaims,
     async complete() {
       if (completionPromise) return completionPromise;
-      completionPromise = (async () => {
+      completionPromise = enqueue(async () => {
         const message = options.hostSession.complete();
         await persistMultiplayerSnapshot({
           type: 'session:snapshot',
@@ -217,32 +238,44 @@ export const createMultiplayerRoomController = (options: {
           else completionTimeout = window.setTimeout(resolve, 1000);
         });
         options.transport.broadcastMessage?.(message);
+        return { message, acknowledged, completionTimeout };
+      }).then(async ({ message, acknowledged, completionTimeout }) => {
         await acknowledged;
         if (completionTimeout !== null) window.clearTimeout(completionTimeout);
         completionWaiter = null;
         return message;
-      })();
+      });
       return completionPromise;
     },
-    async applyLocalSession(session: import('../../types').GameSession) {
-      const snapshot = options.hostSession.applyLocalSession(session);
-      if (!snapshot) return null;
-      await persistMultiplayerSnapshot(snapshot, options.snapshotStore);
-      await options.onSnapshot?.(snapshot);
-      broadcastSnapshot(snapshot);
-      return snapshot;
+    applyLocalSession(session: GameSession, previous = options.hostSession.session) {
+      return enqueue(async () => {
+        if (session.id !== options.hostSession.session.id || previous.id !== session.id || session.status !== 'active') return null;
+        const merged = mergeSessionInputChanges(options.hostSession.session, previous, session);
+        const snapshot = options.hostSession.applyLocalSession(merged);
+        if (!snapshot) return null;
+        await persistMultiplayerSnapshot(snapshot, options.snapshotStore);
+        await options.onSnapshot?.(snapshot);
+        broadcastSnapshot(snapshot);
+        return snapshot;
+      });
     },
-    async applyLocalBoard(template: import('../../types').GameTemplate, session: import('../../types').GameSession) {
-      const snapshot = options.hostSession.applyLocalBoard(template, session);
-      if (!snapshot) return null;
-      await options.snapshotStore.putTemplate?.(options.hostSession.template);
-      await persistMultiplayerSnapshot(snapshot, options.snapshotStore);
-      await options.onSnapshot?.(snapshot);
-      return snapshot;
+    applyLocalBoard(template: GameTemplate, session: GameSession, previous = options.hostSession.session) {
+      return enqueue(async () => {
+        if (session.id !== options.hostSession.session.id || previous.id !== session.id || session.status !== 'active' || session.templateId !== template.id) return null;
+        const merged = mergeSessionInputChanges(options.hostSession.session, previous, session);
+        const snapshot = options.hostSession.applyLocalBoard(template, merged);
+        if (!snapshot) return null;
+        await options.snapshotStore.putTemplate?.(options.hostSession.template);
+        await persistMultiplayerSnapshot(snapshot, options.snapshotStore);
+        await options.onSnapshot?.(snapshot);
+        return snapshot;
+      });
     },
     async publishBoard() {
+      await operationQueue;
       await options.transport.broadcastLocalChanges();
     },
+    whenIdle: () => operationQueue,
   };
 };
 
@@ -334,15 +367,22 @@ export const createMultiplayerPlayerRoomController = (options: {
     for (const opId of settledOpIds) settledOutboxIds.add(scorePatchOperationKey(options.playerSession.room.roomId, options.deviceId, opId));
     if (snapshot) unpersistedSnapshot = { ...snapshot, session: options.playerSession.confirmedSession };
     const write = unpersistedSnapshot;
-    if (write) {
-      // Persist locally derived confirmed data, never unconfirmed optimistic inputs.
-      // A failed write must remain retryable even though the model accepted its revision.
-      await persistMultiplayerSnapshot(write, options.snapshotStore);
-      unpersistedSnapshot = null;
-    }
-    for (const id of settledOutboxIds) {
-      await options.deliveryStore.deleteOutbox(id);
-      settledOutboxIds.delete(id);
+    // A single ACK must recover transient local failures without another network
+    // message. Retry persistence only, at most three attempts; never reapply inputs.
+    for (let attempt = 0; ; attempt++) {
+      try {
+        if (unpersistedSnapshot) {
+          await persistMultiplayerSnapshot(unpersistedSnapshot, options.snapshotStore);
+          unpersistedSnapshot = null;
+        }
+        for (const id of settledOutboxIds) {
+          await options.deliveryStore.deleteOutbox(id);
+          settledOutboxIds.delete(id);
+        }
+        break;
+      } catch (error) {
+        if (attempt >= 2) throw error;
+      }
     }
     if (write) {
       // Use the latest projection: a local input may have arrived during the write.

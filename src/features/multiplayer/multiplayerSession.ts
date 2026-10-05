@@ -177,7 +177,7 @@ export const createMultiplayerHostSession = (options: {
     },
 
     applyLocalSession(session) {
-      if (session.id !== state.session.id || session.status !== 'active') return null;
+      if (state.session.status !== 'active' || session.id !== state.session.id || session.status !== 'active') return null;
       state.session = recalculateScoreSession(cloneJson(session), state.template);
       state.revision += 1;
       return {
@@ -187,7 +187,7 @@ export const createMultiplayerHostSession = (options: {
     },
 
     applyLocalBoard(template, session) {
-      if (session.id !== state.session.id || session.status !== 'active' || session.templateId !== template.id) return null;
+      if (state.session.status !== 'active' || session.id !== state.session.id || session.status !== 'active' || session.templateId !== template.id) return null;
       state.template = cloneJson(template);
       state.session = recalculateScoreSession(cloneJson(session), state.template);
       state.revision += 1;

@@ -92,6 +92,42 @@ export const recalculateScoreSession = (session: GameSession, template: GameTemp
   ...calculateScoreSession(session, template), lastUpdatedAt: Date.now(),
 });
 
+const mergeChangedFields = <T extends object>(current: T, previous: T, next: T, ignored: Array<keyof T>): T => {
+  const result = { ...current };
+  const keys = new Set([...Object.keys(previous), ...Object.keys(next)] as Array<keyof T>);
+  for (const key of keys) {
+    if (ignored.includes(key) || previous[key] === next[key] || JSON.stringify(previous[key]) === JSON.stringify(next[key])) continue;
+    if (Object.prototype.hasOwnProperty.call(next, key)) result[key] = next[key];
+    else delete result[key];
+  }
+  return result;
+};
+
+/** Rebase an explicit local edit onto current inputs, never onto stale totals. */
+export const mergeSessionInputChanges = (current: GameSession, previous: GameSession, next: GameSession): GameSession => {
+  const previousPlayers = new Map(previous.players.map(player => [player.id, player]));
+  const nextPlayers = new Map(next.players.map(player => [player.id, player]));
+  const currentPlayers = new Map(current.players.map(player => [player.id, player]));
+  const sameOrder = previous.players.length === next.players.length &&
+    previous.players.every((player, index) => player.id === next.players[index].id);
+  const ids = sameOrder ? current.players.map(player => player.id) : [
+    ...next.players.filter(player => currentPlayers.has(player.id) || !previousPlayers.has(player.id)).map(player => player.id),
+    ...current.players.filter(player => !previousPlayers.has(player.id) && !nextPlayers.has(player.id)).map(player => player.id),
+  ];
+  const players = ids.flatMap(id => {
+    const local = nextPlayers.get(id);
+    const base = previousPlayers.get(id);
+    const latest = currentPlayers.get(id);
+    if (!local) return latest ? [latest] : [];
+    if (!base) return [local];
+    if (!latest) return [];
+    if (base === local) return [latest];
+    const merged = mergeChangedFields(latest, base, local, ['id', 'scores', 'totalScore']);
+    return [{ ...merged, scores: mergeChangedFields(latest.scores, base.scores, local.scores, []) }];
+  });
+  return { ...mergeChangedFields(current, previous, next, ['id', 'players', 'winnerIds', 'lastUpdatedAt']), players };
+};
+
 /** Validation and raw inputs only, so several pending inputs can be derived once. */
 export const applyScoreValueInputs = (
   session: GameSession,

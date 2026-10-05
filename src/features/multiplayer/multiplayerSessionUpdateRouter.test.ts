@@ -20,6 +20,6 @@ describe('multiplayer session update router', () => {
     const previous = session(); const next = { ...previous, name: 'Changed' };
     const applyLocalSession = vi.fn(async () => ({ session: next }));
     await expect(routeMultiplayerSessionUpdate({ previous, next, runtime: { role: 'host', controller: { applyLocalSession } } as any })).resolves.toEqual(next);
-    expect(applyLocalSession).toHaveBeenCalledWith(next);
+    expect(applyLocalSession).toHaveBeenCalledWith(next, previous);
   });
 });

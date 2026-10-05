@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GameSession, GameTemplate, Player, ScoreColumn } from '../../types';
-import { applyScoreValuePatch, isValidScoreValue } from './scoreValuePatch';
+import { applyScoreValuePatch, isValidScoreValue, mergeSessionInputChanges } from './scoreValuePatch';
 
 const createColumn = (overrides: Partial<ScoreColumn> = {}): ScoreColumn => ({
   id: 'points',
@@ -38,6 +38,32 @@ const createSession = (players: Player[] = [createPlayer('p1'), createPlayer('p2
 });
 
 describe('applyScoreValuePatch', () => {
+  it('rebases local clearing and player reorder without restoring stale scores, removed players, or derived results', () => {
+    const previous = createSession([
+      { ...createPlayer('p1', { points: { parts: [5] } }), bonusScore: 3 },
+      createPlayer('p2', { points: { parts: [2] } }), createPlayer('p3'),
+    ]);
+    const current: GameSession = {
+      ...previous, note: 'remote note', winnerIds: ['p2'],
+      players: [
+        { ...previous.players[0], color: '#123456', scores: { points: { parts: [6] }, extra: { parts: [4] } }, totalScore: 10 },
+        createPlayer('p2', { points: { parts: [9] } }), createPlayer('p4'),
+      ],
+    };
+    const { bonusScore: _removed, ...localPlayer } = previous.players[0];
+    const next: GameSession = {
+      ...previous, winnerIds: ['incorrect'],
+      players: [previous.players[1], { ...localPlayer, name: 'Renamed', scores: {}, totalScore: 999 }, previous.players[2], createPlayer('p5')],
+    };
+    const merged = mergeSessionInputChanges(current, previous, next);
+    expect(merged.players.map(value => value.id)).toEqual(['p2', 'p1', 'p5', 'p4']);
+    expect(merged.players[0].scores.points).toEqual({ parts: [9] });
+    expect(merged.players[1]).toMatchObject({ name: 'Renamed', color: '#123456', totalScore: 10, scores: { extra: { parts: [4] } } });
+    expect(merged.players[1].scores.points).toBeUndefined();
+    expect(merged.players[1]).not.toHaveProperty('bonusScore');
+    expect(merged).toMatchObject({ note: 'remote note', winnerIds: ['p2'] });
+    expect(previous.players[0].scores.points).toEqual({ parts: [5] });
+  });
   it('lets a player update their own non-shared score value', () => {
     const result = applyScoreValuePatch(createSession(), createTemplate(), {
       actor: { role: 'player', playerId: 'p1' },

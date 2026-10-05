@@ -118,13 +118,44 @@ describe('multiplayer room runtime', () => {
     expect(host.session.revision).toBe(2);
   });
 
-  it('restores a host runtime with the original room identity and revision', async () => {
+  it('restores accepted score and total sequences and does not let older replayed inputs overwrite them', async () => {
     const store = createRuntimeStore(); const delivery = createDeliveryStore();
-    const transport: MultiplayerRoomRuntimeTransport = { sendToHost: () => false, sendToConnection: () => false, broadcastLocalChanges: async () => undefined };
-    await createMultiplayerHostRoomRuntime({ roomId: 'room-1', hostDeviceId: 'host-1', template, session, revision: 7, store, deliveryStore: delivery, transport, now: () => 10 });
+    const reply = vi.fn(); const broadcast = vi.fn(() => true); const connection = {};
+    const transport: MultiplayerRoomRuntimeTransport = {
+      sendToHost: () => false, sendToConnection: (_connection, message) => { reply(message); return true; },
+      broadcastLocalChanges: async () => undefined, broadcastMessage: broadcast,
+    };
+    const host = await createMultiplayerHostRoomRuntime({ roomId: 'room-1', hostDeviceId: 'host-1', template, session, revision: 7, store, deliveryStore: delivery, transport, now: () => 10 });
+    const claim = { type: 'room:claim-player', roomId: 'room-1', sessionId: 'session-1', deviceId: 'remote', playerId: 'p1' };
+    const score = {
+      type: 'score:valuePatch', roomId: 'room-1', sessionId: 'session-1', deviceId: 'remote', opId: 'score-new', sequence: 2, updatedAt: 12,
+      patch: { actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [12] } },
+    };
+    const total = {
+      type: 'player:total-adjustment', roomId: 'room-1', sessionId: 'session-1', deviceId: 'remote', opId: 'total-new', sequence: 2, updatedAt: 13,
+      actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', targetTotal: 16,
+    };
+    await host.receive(claim, connection);
+    await host.receive(score, connection);
+    await host.receive(total, connection);
     const restored = await restoreMultiplayerHostRoomRuntime({ roomId: 'room-1', store, deliveryStore: delivery, transport, now: () => 20 });
     expect(restored?.session.room).toEqual({ roomId: 'room-1', hostDeviceId: 'host-1', createdAt: 10 });
-    expect(restored?.session.revision).toBe(7);
+    expect(restored?.session.revision).toBe(9);
+    const readSequence = vi.spyOn(delivery, 'getSequence');
+    await restored!.receive(claim, connection);
+    await restored!.receive({ ...score, opId: 'score-old', sequence: 1, patch: { ...score.patch, scoreValue: { parts: [7] } } }, connection);
+    expect(reply).toHaveBeenLastCalledWith(expect.objectContaining({ accepted: false, reason: 'outdated_player_update' }));
+    await restored!.receive({ ...total, opId: 'total-old', sequence: 1, targetTotal: 8 }, connection);
+    expect(reply).toHaveBeenLastCalledWith(expect.objectContaining({ accepted: false, reason: 'outdated_player_update' }));
+    await restored!.receive(score, connection);
+    await restored!.receive(total, connection);
+    expect(reply).toHaveBeenLastCalledWith(expect.objectContaining({ accepted: true, snapshot: expect.objectContaining({ revision: 9 }) }));
+    expect(restored!.session.session.players[0]).toMatchObject({ totalScore: 16, bonusScore: 4, scores: { points: { parts: [12] } } });
+    expect(broadcast).toHaveBeenCalledTimes(2);
+    await restored!.receive({ ...score, opId: 'score-later', sequence: 3, patch: { ...score.patch, scoreValue: { parts: [13] } } }, connection);
+    expect(restored!.session.session.players[0].totalScore).toBe(17);
+    expect(readSequence).toHaveBeenCalledTimes(2);
+    readSequence.mockRestore();
   });
 
   it('restores a player runtime with stored room, session, template, and binding', async () => {
