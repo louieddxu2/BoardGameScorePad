@@ -73,10 +73,13 @@ const AppWorkspace: React.FC<AppWorkspaceProps> = ({
     pendingMultiplayerClaimIds,
     isJoiningMultiplayer,
     isMultiplayerRoomModalOpen,
-    setIsMultiplayerRoomModalOpen,
+    isOpeningMultiplayerRoom,
+    hasMultiplayerRoomOpenError,
+    handleCloseMultiplayerRoomModal,
     isMultiplayerParticipantRoomModalOpen,
     setIsMultiplayerParticipantRoomModalOpen,
     handleOpenMultiplayerRoom,
+    handleCreateMultiplayerRoom,
     handleConfirmMultiplayerPlayers,
     handleRequestMultiplayerPlayerClaim,
     handleConfirmMultiplayerPlayerClaims,
@@ -237,15 +240,18 @@ const AppWorkspace: React.FC<AppWorkspaceProps> = ({
         <div className="modal-backdrop z-[10000]"><Loader2 className="w-8 h-8 text-brand-primary animate-spin" /></div>
       )}
 
-      {isMultiplayerRoomModalOpen && activeMultiplayerRoom?.role === 'host' && (
+      {isMultiplayerRoomModalOpen && activeMultiplayerRoom?.role !== 'player' && (
         <MultiplayerRoomModal
           isOpen
           joinUrl={multiplayerJoinUrl}
           connectionCount={multiplayerRoomState?.connectionCount ?? 0}
           hasUnpublishedBoardUpdate={multiplayerRoomState?.hasUnpublishedBoardUpdate ?? false}
+          isOpeningRoom={isOpeningMultiplayerRoom}
+          hasOpenError={hasMultiplayerRoomOpenError}
+          onOpenRoom={handleCreateMultiplayerRoom}
           onPublishBoardUpdate={handlePublishMultiplayerBoardUpdate}
           onCloseRoom={actions.handleCloseMultiplayerRoom}
-          onClose={() => setIsMultiplayerRoomModalOpen(false)}
+          onClose={handleCloseMultiplayerRoomModal}
         />
       )}
 

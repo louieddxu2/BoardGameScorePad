@@ -9,6 +9,7 @@ import MultiplayerRoomModal from './MultiplayerRoomModal';
 describe('MultiplayerPlayerClaimModal', () => {
   beforeEach(() => {
     _resetActiveCountForTesting();
+    localStorage.setItem('app_language', 'en');
     vi.useFakeTimers();
   });
 
@@ -79,5 +80,58 @@ describe('MultiplayerPlayerClaimModal', () => {
     expect(screen.getByRole('heading', { name: 'Score together' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sync score sheet status' })).toHaveClass('text-base', 'min-h-12');
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('explains the purpose before creating a room, and supports immediate Back without confirmation', () => {
+    const onClose = vi.fn();
+    const onOpenRoom = vi.fn();
+    render(
+      <LanguageProvider>
+        <MultiplayerRoomModal isOpen joinUrl="" connectionCount={0} hasUnpublishedBoardUpdate={false}
+          onOpenRoom={onOpenRoom} onPublishBoardUpdate={vi.fn()} onClose={onClose} />
+      </LanguageProvider>
+    );
+
+    expect(screen.getByText(/use their own phones.*share the scoring work/)).toBeInTheDocument();
+    expect(screen.getByText(/scan it to join.*choose whose scores/)).toBeInTheDocument();
+    expect(screen.getByText(/Scores sync automatically/)).toBeInTheDocument();
+    expect(screen.getByText(/host needs to sync.*settings manually/)).toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Sync score sheet status' })).not.toBeInTheDocument();
+    act(() => { window.dispatchEvent(new PopStateEvent('popstate')); });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onOpenRoom).not.toHaveBeenCalled();
+  });
+
+  it('keeps one history entry through opening, failure and QR states, with explicit actions only', () => {
+    const pushState = vi.spyOn(window.history, 'pushState');
+    const onClose = vi.fn();
+    const onOpenRoom = vi.fn();
+    const onPublishBoardUpdate = vi.fn();
+    const props = { isOpen: true, joinUrl: '', connectionCount: 0, hasUnpublishedBoardUpdate: false,
+      onOpenRoom, onPublishBoardUpdate, onClose };
+    const modal = (updates: Partial<React.ComponentProps<typeof MultiplayerRoomModal>> = {}) => (
+      <LanguageProvider><MultiplayerRoomModal {...props} {...updates} /></LanguageProvider>
+    );
+    const { rerender } = render(modal());
+    fireEvent.click(screen.getByRole('button', { name: 'Open room' }));
+    expect(onOpenRoom).toHaveBeenCalledTimes(1);
+    rerender(modal({ isOpeningRoom: true }));
+    expect(screen.getByRole('button', { name: 'Opening…' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Opening…' }));
+    expect(onOpenRoom).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
+    rerender(modal({ hasOpenError: true }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not open the room. Please try again.');
+    expect(screen.getByRole('button', { name: 'Open room' })).toBeEnabled();
+    rerender(modal({ joinUrl: 'https://example.test/?room=room-1', connectionCount: 2, hasUnpublishedBoardUpdate: true }));
+
+    expect(screen.getByRole('img')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open room' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sync score sheet status' })).toBeInTheDocument();
+    expect(pushState).toHaveBeenCalledTimes(1);
+    expect(onPublishBoardUpdate).not.toHaveBeenCalled();
   });
 });

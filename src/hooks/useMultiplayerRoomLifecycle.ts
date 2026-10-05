@@ -70,6 +70,8 @@ export const useMultiplayerRoomLifecycle = ({
 }: UseMultiplayerRoomLifecycleOptions) => {
   const [activeMultiplayerRoom, setActiveMultiplayerRoom] = useState<ActiveMultiplayerRoom | null>(null);
   const [isMultiplayerRoomModalOpen, setIsMultiplayerRoomModalOpen] = useState(false);
+  const [isOpeningMultiplayerRoom, setIsOpeningMultiplayerRoom] = useState(false);
+  const [hasMultiplayerRoomOpenError, setHasMultiplayerRoomOpenError] = useState(false);
   const [isMultiplayerParticipantRoomModalOpen, setIsMultiplayerParticipantRoomModalOpen] = useState(false);
   const [pendingMultiplayerJoin, setPendingMultiplayerJoin] = useState<PendingMultiplayerJoin | null>(null);
   const [pendingMultiplayerClaimIds, setPendingMultiplayerClaimIds] = useState<string[] | null>(null);
@@ -86,7 +88,8 @@ export const useMultiplayerRoomLifecycle = ({
   const multiplayerJoinTimeoutRef = useRef<number | null>(null);
   const completionRelayTimeoutsRef = useRef(new Map<string, number>());
   const isJoiningMultiplayerRef = useRef(false);
-  const isOpeningRoomRef = useRef(false);
+  const roomModalSessionIdRef = useRef<string | null>(null);
+  const roomOpeningRef = useRef<{ sessionId: string; cancelled: boolean } | null>(null);
   const participantTransportRef = useRef<ReturnType<typeof createMultiplayerP2PRuntimeTransport> | null>(null);
   const tabCoordinatorRef = useRef<ReturnType<typeof createMultiplayerTabCoordinator> | null>(null);
   const activeTabClaimRef = useRef<MultiplayerTabClaim | null>(null);
@@ -106,6 +109,13 @@ export const useMultiplayerRoomLifecycle = ({
   const setPendingJoin = useCallback((join: PendingMultiplayerJoin | null) => {
     pendingMultiplayerJoinRef.current = join;
     setPendingMultiplayerJoin(join);
+  }, []);
+
+  const handleCloseMultiplayerRoomModal = useCallback(() => {
+    roomModalSessionIdRef.current = null;
+    if (roomOpeningRef.current) roomOpeningRef.current.cancelled = true;
+    setIsMultiplayerRoomModalOpen(false);
+    setHasMultiplayerRoomOpenError(false);
   }, []);
 
   const clearMultiplayerJoinTimeout = useCallback(() => {
@@ -209,7 +219,11 @@ export const useMultiplayerRoomLifecycle = ({
     };
   }, [clearMultiplayerJoinTimeout, clearPendingRoomJoin, clearRoomUrlQuery, returnToDashboard, setActiveRoom, setPendingJoin]);
 
-  useEffect(() => () => clearMultiplayerJoinTimeout(), [clearMultiplayerJoinTimeout]);
+  useEffect(() => () => {
+    clearMultiplayerJoinTimeout();
+    if (roomOpeningRef.current) roomOpeningRef.current.cancelled = true;
+    roomOpeningRef.current = null;
+  }, [clearMultiplayerJoinTimeout]);
 
   useEffect(() => () => {
     for (const timeoutId of completionRelayTimeoutsRef.current.values()) window.clearTimeout(timeoutId);
@@ -226,11 +240,11 @@ export const useMultiplayerRoomLifecycle = ({
   useEffect(() => {
     const scorePadWindow = window as ScorePadWindow;
     scorePadWindow.__boardGameScorePadMultiplayerActive = Boolean(
-      activeMultiplayerRoom || pendingMultiplayerJoin || isJoiningMultiplayer || isMultiplayerTransitioning
+      activeMultiplayerRoom || pendingMultiplayerJoin || isJoiningMultiplayer || isMultiplayerTransitioning || isOpeningMultiplayerRoom
     );
     scorePadWindow.__boardGameScorePadMultiplayerJoinPending = Boolean(pendingMultiplayerJoin || isJoiningMultiplayer);
     window.dispatchEvent(new Event(MULTIPLAYER_STATE_CHANGE_EVENT));
-  }, [activeMultiplayerRoom, isJoiningMultiplayer, isMultiplayerTransitioning, pendingMultiplayerJoin]);
+  }, [activeMultiplayerRoom, isJoiningMultiplayer, isMultiplayerTransitioning, isOpeningMultiplayerRoom, pendingMultiplayerJoin]);
 
   useEffect(() => {
     if (!activeMultiplayerRoom || activeMultiplayerRoom.role !== 'player') return;
@@ -465,41 +479,83 @@ export const useMultiplayerRoomLifecycle = ({
     });
   }, [applyRemoteBootstrapToPlayerRuntime, claimParticipantTab, notifyParticipantCompletion, releaseParticipantTabClaim, setActiveRoom]);
 
-  const handleOpenMultiplayerRoom = useCallback(async () => {
-    if (isOpeningRoomRef.current) return;
-    if (activeMultiplayerRoom?.role === 'host') {
-      setIsMultiplayerRoomModalOpen(true);
-      return;
-    }
-    if (!appDataRef.current.currentSession || !appDataRef.current.activeTemplate) return;
+  const handleOpenMultiplayerRoom = useCallback(() => {
+    if (activeMultiplayerRoomRef.current?.role === 'player' || isMultiplayerTransitioning) return;
+    const { currentSession, activeTemplate } = appDataRef.current;
+    if (!currentSession || currentSession.status !== 'active' || !activeTemplate) return;
 
-    isOpeningRoomRef.current = true;
+    roomModalSessionIdRef.current = currentSession.id;
+    setHasMultiplayerRoomOpenError(false);
+    setIsMultiplayerRoomModalOpen(true);
+  }, [isMultiplayerTransitioning]);
+
+  const handleCreateMultiplayerRoom = useCallback(async () => {
+    const { currentSession, activeTemplate } = appDataRef.current;
+    if (roomOpeningRef.current || activeMultiplayerRoomRef.current || pendingMultiplayerJoinRef.current
+      || isJoiningMultiplayerRef.current || isMultiplayerTransitioning
+      || !currentSession || currentSession.status !== 'active' || !activeTemplate
+      || roomModalSessionIdRef.current !== currentSession.id) return;
+
+    const request = { sessionId: currentSession.id, cancelled: false };
+    roomOpeningRef.current = request;
+    setIsOpeningMultiplayerRoom(true);
+    setHasMultiplayerRoomOpenError(false);
+    const isCurrentRequest = () => roomOpeningRef.current === request && !request.cancelled
+      && roomModalSessionIdRef.current === request.sessionId
+      && appDataRef.current.currentSession?.id === request.sessionId
+      && appDataRef.current.currentSession.status === 'active'
+      && !activeMultiplayerRoomRef.current && !pendingMultiplayerJoinRef.current;
+    let roomId: string | undefined;
+    let transport: ReturnType<typeof createMultiplayerP2PRuntimeTransport> | undefined;
+    let registered = false;
+    let opened = false;
     try {
-      const roomId = `scorepad-${generateId(12)}`;
       const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
+      const { currentSession: roomSession, activeTemplate: roomTemplate } = appDataRef.current;
+      if (!isCurrentRequest() || !roomSession || !roomTemplate) return;
+
+      roomId = `scorepad-${generateId(12)}`;
+      const createdRoomId = roomId;
       const adapter = createLocalScoreStateSyncAdapter(roomId, 'host');
-      const transport = createMultiplayerP2PRuntimeTransport({ Peer, adapter, logger: (message) => console.info('[multiplayer]', message) });
+      transport = createMultiplayerP2PRuntimeTransport({ Peer, adapter, logger: (message) => console.info('[multiplayer]', message) });
       const callbacks = multiplayerSessionManager.createRuntimeCallbacks(roomId);
       const runtime = await createMultiplayerHostRoomRuntime({
         roomId,
         hostDeviceId: deviceId,
-        template: appDataRef.current.activeTemplate,
-        session: appDataRef.current.currentSession,
+        template: roomTemplate,
+        session: roomSession,
         store: multiplayerLocalStore,
         deliveryStore: multiplayerDeliveryStore,
         transport,
         onSessionSnapshot: callbacks.onSessionSnapshot,
-        onParticipantClaims: (claims) => multiplayerSessionManager.setParticipantClaims(roomId, claims),
+        onParticipantClaims: (claims) => multiplayerSessionManager.setParticipantClaims(createdRoomId, claims),
       });
+      // Closing or leaving during bootstrap must not start a late room.
+      if (!isCurrentRequest()) return;
       multiplayerSessionManager.register(roomId, runtime, 'connecting');
-      transport.setConnectionChangeHandler?.((connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount));
+      registered = true;
+      transport.setConnectionChangeHandler?.((connectionCount) => multiplayerSessionManager.setConnectionCount(createdRoomId, connectionCount));
       runtime.start();
       setActiveRoom({ roomId, role: 'host' });
-      setIsMultiplayerRoomModalOpen(true);
+      opened = true;
+    } catch (error) {
+      console.warn('[multiplayer] Failed to open room:', error);
+      if (isCurrentRequest()) setHasMultiplayerRoomOpenError(true);
     } finally {
-      isOpeningRoomRef.current = false;
+      if (!opened && roomId) {
+        try {
+          if (!registered) transport?.stop?.();
+          await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
+        } catch (error) {
+          console.warn('[multiplayer] Failed to clean up unopened room:', error);
+        }
+      }
+      if (roomOpeningRef.current === request) {
+        roomOpeningRef.current = null;
+        setIsOpeningMultiplayerRoom(false);
+      }
     }
-  }, [activeMultiplayerRoom?.role, setActiveRoom]);
+  }, [isMultiplayerTransitioning, setActiveRoom]);
 
   const handleConfirmMultiplayerPlayers = useCallback(async (playerIds: string[]) => {
     const pendingJoin = pendingMultiplayerJoinRef.current;
@@ -566,12 +622,13 @@ export const useMultiplayerRoomLifecycle = ({
     // Remove the QR join route before any persistence or transport work. This
     // makes an in-flight SW update or page reload land on the dashboard rather
     // than replaying the room join.
+    handleCloseMultiplayerRoomModal();
     clearRoomUrlQuery();
     clearPendingRoomJoin();
     multiplayerJoinStartedRef.current = null;
     clearMultiplayerJoinTimeout();
     setIsMultiplayerTransitioning(true);
-  }, [clearMultiplayerJoinTimeout, clearPendingRoomJoin, clearRoomUrlQuery]);
+  }, [clearMultiplayerJoinTimeout, clearPendingRoomJoin, clearRoomUrlQuery, handleCloseMultiplayerRoomModal]);
 
   const finalizeMultiplayerSessionExit = useCallback(() => {
     const activeRoom = activeMultiplayerRoomRef.current;
@@ -727,11 +784,14 @@ export const useMultiplayerRoomLifecycle = ({
     pendingMultiplayerClaimIds,
     isJoiningMultiplayer,
     isMultiplayerRoomModalOpen,
-    setIsMultiplayerRoomModalOpen,
+    isOpeningMultiplayerRoom,
+    hasMultiplayerRoomOpenError,
+    handleCloseMultiplayerRoomModal,
     isMultiplayerParticipantRoomModalOpen,
     setIsMultiplayerParticipantRoomModalOpen,
     tryRestoreMultiplayerRoom,
     handleOpenMultiplayerRoom,
+    handleCreateMultiplayerRoom,
     handleConfirmMultiplayerPlayers,
     handleRequestMultiplayerPlayerClaim,
     handleConfirmMultiplayerPlayerClaims,

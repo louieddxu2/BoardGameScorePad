@@ -50,7 +50,6 @@ const App: React.FC = () => {
     pendingMultiplayerClaimIds,
     isJoiningMultiplayer,
     isMultiplayerRoomModalOpen,
-    setIsMultiplayerRoomModalOpen,
     isMultiplayerParticipantRoomModalOpen,
     setIsMultiplayerParticipantRoomModalOpen,
     tryRestoreMultiplayerRoom,
