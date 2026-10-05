@@ -37,7 +37,7 @@ export interface MultiplayerRoomTransport {
   sendToConnection(connection: unknown, message: unknown): boolean;
   closeConnection?(connection: unknown): boolean;
   broadcastLocalChanges(): Promise<void>;
-  broadcastMessage?(message: unknown): boolean;
+  broadcastMessage?(message: unknown, exceptConnection?: unknown): boolean;
 }
 
 export type ParticipantClaimCounts = Record<string, number>;
@@ -73,7 +73,9 @@ export const createMultiplayerRoomController = (options: {
       options.transport.closeConnection?.(existingConnection);
     }
   };
-  const broadcastSnapshot = (snapshot: SessionSnapshotMessage) => { options.transport.broadcastMessage?.(snapshot); };
+  const broadcastSnapshot = (snapshot: SessionSnapshotMessage, exceptConnection?: unknown) => {
+    options.transport.broadcastMessage?.(snapshot, exceptConnection);
+  };
   let completionWaiter: { roomId: string; sessionId: string; pendingDeviceIds: Set<string>; resolve: () => void } | null = null;
   let completionPromise: Promise<import('./protocol').SessionCompletedMessage> | null = null;
   const acknowledgeCompletion = (deviceId: string) => {
@@ -178,7 +180,8 @@ export const createMultiplayerRoomController = (options: {
         opId: message.opId, acceptedRevision: result.snapshot.revision, updatedAt: now(),
       });
       options.transport.sendToConnection(connection, makeResult(message, true, result.snapshot));
-      broadcastSnapshot(result.snapshot);
+      // The source already receives this full snapshot in its acknowledgement.
+      broadcastSnapshot(result.snapshot, connection);
       return true;
   };
   let receiveQueue = Promise.resolve();

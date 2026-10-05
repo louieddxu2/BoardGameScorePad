@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { P2PDataConnection, P2PPeer, createP2PHandshakeSync } from './p2pHandshakeSync';
+import { createMultiplayerP2PRuntimeTransport } from './multiplayerP2PRuntimeTransport';
 
 class FakeConnection implements P2PDataConnection {
   open = false;
@@ -75,6 +76,38 @@ describe('createP2PHandshakeSync reconnect lifecycle', () => {
   afterEach(() => {
     vi.useRealTimers();
     FakePeer.instances = [];
+  });
+
+  it('forwards source exclusion through the runtime transport without changing ordinary broadcasts', async () => {
+    const transport = createMultiplayerP2PRuntimeTransport({ Peer: FakePeer, adapter: createAdapter() });
+    transport.startHost?.('room-1');
+    const source = new FakeConnection('source');
+    const other = new FakeConnection('other');
+    for (const connection of [source, other]) {
+      FakePeer.instances[0].emit('connection', connection);
+      connection.open = true;
+      connection.emit('open');
+    }
+    await Promise.resolve();
+    source.sent.length = 0;
+    other.sent.length = 0;
+    const snapshot = { type: 'session:snapshot', revision: 2 };
+    const acknowledgement = { type: 'score:patch-result', opId: 'op-1', accepted: true, snapshot };
+
+    expect(transport.sendToConnection(source, acknowledgement)).toBe(true);
+    expect(transport.broadcastMessage?.(snapshot, source)).toBe(true);
+    expect(source.sent).toEqual([acknowledgement]);
+    expect(other.sent).toEqual([snapshot]);
+
+    const hostSnapshot = { ...snapshot, revision: 3 };
+    expect(transport.broadcastMessage?.(hostSnapshot)).toBe(true);
+    expect(source.sent).toEqual([acknowledgement, hostSnapshot]);
+    expect(other.sent).toEqual([snapshot, hostSnapshot]);
+
+    other.close();
+    expect(transport.broadcastMessage?.(snapshot, source)).toBe(false);
+    expect(source.sent).toEqual([acknowledgement, hostSnapshot]);
+    transport.stop?.();
   });
 
   it('reconnects a client, repeats HELLO, and preserves raw message routing', async () => {

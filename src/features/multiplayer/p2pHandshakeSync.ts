@@ -30,7 +30,7 @@ export interface P2PHandshakeSync {
   setupConnection(connection: P2PDataConnection): void;
   closeConnection(connection: P2PDataConnection): boolean;
   broadcastLocalChanges(): Promise<void>;
-  broadcast(message: unknown): boolean;
+  broadcast(message: unknown, exceptConnection?: P2PDataConnection): boolean;
   sendToHost(message: unknown): boolean;
   sendToConnection(connection: P2PDataConnection, message: unknown): boolean;
   getConnectionCount(): number;
@@ -439,9 +439,12 @@ export const createP2PHandshakeSync = (options: {
         if (sentToAll) broadcastedVersions.set(meta.id, meta.version);
       }
     },
-    broadcast(message) {
+    broadcast(message, exceptConnection) {
       let sent = false;
-      for (const connection of connections) sent = send(connection, message) || sent;
+      for (const connection of connections) {
+        if (connection === exceptConnection) continue;
+        sent = send(connection, message) || sent;
+      }
       return sent;
     },
     sendToHost(message) {

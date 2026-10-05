@@ -40,7 +40,7 @@ export const createMultiplayerP2PRuntimeTransport = (options: {
     sendToConnection: (connection, message) => handshake.sendToConnection(connection as P2PDataConnection, message),
     closeConnection: (connection) => handshake.closeConnection(connection as P2PDataConnection),
     broadcastLocalChanges: () => handshake.broadcastLocalChanges(),
-    broadcastMessage: (message) => handshake.broadcast(message),
+    broadcastMessage: (message, exceptConnection) => handshake.broadcast(message, exceptConnection as P2PDataConnection | undefined),
     setMessageReceiver: (nextReceiver) => { receiver = nextReceiver; },
     setConnectionOpenHandler: (nextHandler) => { connectionOpenHandler = nextHandler; },
     setConnectionChangeHandler: (nextHandler) => {

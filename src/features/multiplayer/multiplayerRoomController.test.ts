@@ -243,7 +243,7 @@ describe('multiplayer room controller', () => {
     expect(calculate).not.toHaveBeenCalled();
   });
 
-  it('relays a claimed participant score and total edit through the host to another participant', async () => {
+  it('acknowledges participant edits once, relays them to others, and broadcasts host edits to everyone', async () => {
     const sharedSession = {
       ...session,
       players: [player, { ...player, id: 'p2', name: 'P2' }],
@@ -273,8 +273,11 @@ describe('multiplayer room controller', () => {
       transport: { sendToHost: () => true, sendToConnection: () => false, broadcastLocalChanges: async () => undefined },
       onSnapshot: onPlayerBSnapshot,
     });
-    const broadcast = vi.fn((message: unknown) => {
-      inFlightDeliveries.push(playerA.receive(message), playerB.receive(message));
+    const receiveA = vi.fn((message: unknown) => { inFlightDeliveries.push(playerA.receive(message)); });
+    const receiveB = vi.fn((message: unknown) => { inFlightDeliveries.push(playerB.receive(message)); });
+    const broadcast = vi.fn((message: unknown, exceptConnection?: unknown) => {
+      if (exceptConnection !== connectionA) receiveA(message);
+      if (exceptConnection !== connectionB) receiveB(message);
       return true;
     });
     const host = createMultiplayerRoomController({
@@ -283,7 +286,7 @@ describe('multiplayer room controller', () => {
       transport: {
         sendToHost: () => false,
         sendToConnection: (connection, message) => {
-          inFlightDeliveries.push((connection === connectionA ? playerA : playerB).receive(message));
+          (connection === connectionA ? receiveA : receiveB)(message);
           return true;
         },
         broadcastLocalChanges: async () => undefined,
@@ -294,6 +297,8 @@ describe('multiplayer room controller', () => {
     await host.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-a', playerId: 'p1' }, connectionA);
     await host.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device-b', playerId: 'p2' }, connectionB);
     await Promise.all(inFlightDeliveries.splice(0));
+    receiveA.mockClear();
+    receiveB.mockClear();
 
     await playerA.queueScoreValuePatch({ actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [7] } });
     await host.receive(sentByA.shift(), connectionA);
@@ -301,6 +306,11 @@ describe('multiplayer room controller', () => {
     expect(hostSession.session.players[0].scores.points).toEqual({ parts: [7] });
     expect(playerBSession.session.players[0].scores.points).toEqual({ parts: [7] });
     expect(playerBSession.revision).toBe(2);
+    expect(playerASession.revision).toBe(2);
+    expect(receiveA).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      type: 'score:patch-result', accepted: true, snapshot: expect.objectContaining({ revision: 2, session: hostSession.session }),
+    }));
+    expect(receiveB).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ type: 'session:snapshot', revision: 2 }));
     expect(onPlayerBSnapshot).toHaveBeenCalledWith(expect.objectContaining({ revision: 2 }));
     expect(putPlayerASession).toHaveBeenCalledTimes(1);
     expect(onPlayerASnapshot).toHaveBeenCalledTimes(1);
@@ -312,10 +322,31 @@ describe('multiplayer room controller', () => {
     expect(hostSession.session.players[0].totalScore).toBe(11);
     expect(playerBSession.session.players[0].totalScore).toBe(11);
     expect(playerBSession.revision).toBe(3);
+    expect(playerASession.revision).toBe(3);
+    expect(receiveA).toHaveBeenCalledTimes(2);
+    expect(receiveA).toHaveBeenLastCalledWith(expect.objectContaining({
+      type: 'score:patch-result', accepted: true, snapshot: expect.objectContaining({ revision: 3, session: hostSession.session }),
+    }));
+    expect(receiveB).toHaveBeenCalledTimes(2);
+    expect(receiveB).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'session:snapshot', revision: 3 }));
     expect(onPlayerBSnapshot).toHaveBeenCalledWith(expect.objectContaining({ revision: 3 }));
     expect(putPlayerASession).toHaveBeenCalledTimes(2);
     expect(onPlayerASnapshot).toHaveBeenCalledTimes(2);
+    expect(await playerADelivery.listOutbox('room-1', 'session-1')).toHaveLength(0);
     expect(broadcast).toHaveBeenCalledTimes(2);
+
+    await host.applyLocalSession({
+      ...hostSession.session,
+      players: hostSession.session.players.map((value) => value.id === 'p2'
+        ? { ...value, scores: { points: { parts: [3] } } } : value),
+    });
+    await Promise.all(inFlightDeliveries.splice(0));
+    for (const receive of [receiveA, receiveB]) {
+      expect(receive).toHaveBeenCalledTimes(3);
+      expect(receive).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'session:snapshot', revision: 4 }));
+    }
+    expect(playerASession.session.players[1].totalScore).toBe(3);
+    expect(playerBSession.session.players[1].totalScore).toBe(3);
   });
 
   it('uses a durable host receipt to make a retried operation harmless', async () => {
@@ -331,8 +362,11 @@ describe('multiplayer room controller', () => {
     await controller.receive(patch, connection);
     await controller.receive(patch, connection);
     expect(host.revision).toBe(2);
-    expect(broadcast).toHaveBeenCalledWith(expect.objectContaining({ type: 'session:snapshot', revision: 2 }));
+    expect(broadcast).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ type: 'session:snapshot', revision: 2 }), connection);
     expect(reply).toHaveBeenCalledTimes(3);
+    for (const [message] of reply.mock.calls.slice(1)) {
+      expect(message).toMatchObject({ accepted: true, opId: 'op-1', snapshot: { revision: 2, session: host.session } });
+    }
   });
 
   it('requires a claim and accepts a claimed player total adjustment', async () => {
