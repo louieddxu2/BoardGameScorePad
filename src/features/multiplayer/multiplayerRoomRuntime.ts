@@ -149,13 +149,12 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
   now?: () => number;
 }): Promise<MultiplayerPlayerRoomRuntime> => {
   const now = options.now ?? Date.now;
-  const localTemplate = await options.store.getTemplate(options.bootstrapMessage.package.template.id);
+  const resolvedBootstrap = await persistMultiplayerBootstrap(options.bootstrapMessage, options.store, 'player');
   const playerSession = createMultiplayerPlayerSessionFromBootstrap({
     bootstrapMessage: options.bootstrapMessage,
-    localTemplate,
+    resolvedBootstrap,
     now,
   });
-  await persistMultiplayerBootstrap(options.bootstrapMessage, options.store, 'player');
 
   let pendingReplayClaims = new Set<string>();
   const pendingRuntimeTasks = new Set<Promise<unknown>>();
@@ -220,6 +219,7 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
       // connected to a room that the host has already closed.
       stopRuntime();
       await options.onCompletionReceived?.();
+      await controller.waitForPendingWrites();
       const resolved = resolveBootstrapImport({
         version: MULTIPLAYER_PROTOCOL_VERSION,
         room: playerSession.room,
@@ -227,12 +227,12 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
         session: message.finalSession,
         revision: message.revision,
         exportedAt: message.completedAt,
-      }, await options.store.getTemplate(message.template.id));
+      }, await options.store.getTemplate(message.template.id), playerSession);
       await options.store.putTemplate(resolved.templateForSession);
       const localSession = await releaseMultiplayerRoomOwnership({
         store: options.store,
         roomId: playerSession.room.roomId,
-        session: { ...message.finalSession, templateId: resolved.templateForSession.id },
+        session: resolved.session,
         completedAt: message.completedAt,
       });
       const pending = await options.deliveryStore.listOutbox(playerSession.room.roomId, playerSession.session.id);
@@ -241,7 +241,11 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
       await options.onOwnershipReturned?.(localSession);
     },
     onSnapshot: async (snapshot) => { await options.onSessionSnapshot?.(snapshot.session); },
+    onLocalSession: (session) => { void options.onSessionSnapshot?.(session); },
   });
+  // Recover local optimistic inputs before the runtime is registered or reconnects.
+  // Recovery does not send anything until claims have been accepted.
+  await controller.restorePendingPatches();
   const restoreParticipantBinding = async () => {
     if (stopped) return false;
     const binding = await options.bindingStore.get(participantBindingKey(playerSession.room.roomId, options.deviceId));
@@ -269,6 +273,7 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
     while (pendingRuntimeTasks.size > 0) {
       await Promise.all([...pendingRuntimeTasks]);
     }
+    await controller.waitForPendingWrites();
   };
 
   options.transport.setMessageReceiver?.(async (message) => {

@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as scoring from '../../utils/scoring';
 import { GameSession, GameTemplate, Player, ScoreColumn } from '../../types';
 import { createMultiplayerHostSession, createMultiplayerPlayerSessionFromBootstrap } from './multiplayerSession';
 import { createMultiplayerRoomController, createMultiplayerPlayerRoomController } from './multiplayerRoomController';
@@ -22,6 +23,7 @@ const createDeliveryStore = (): MultiplayerDeliveryStore => {
 };
 
 describe('multiplayer room controller', () => {
+  afterEach(() => vi.restoreAllMocks());
   it('sends a complete claim set and accepts an empty permission set', async () => {
     const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
     const playerSession = createMultiplayerPlayerSessionFromBootstrap({ bootstrapMessage: host.createBootstrapMessage(), now: () => 10 });
@@ -68,15 +70,20 @@ describe('multiplayer room controller', () => {
     const putSession = vi.fn(async () => undefined);
     const updateRoomRevision = vi.fn(async () => undefined);
     const onSnapshot = vi.fn();
+    const sendToHost = vi.fn(() => true);
     const controller = createMultiplayerPlayerRoomController({
       playerSession, deviceId: 'device-1', deliveryStore,
       snapshotStore: { putSession, updateRoomRevision },
-      transport: { sendToHost: () => true, sendToConnection: () => false, broadcastLocalChanges: async () => undefined },
+      transport: { sendToHost, sendToConnection: () => false, broadcastLocalChanges: async () => undefined },
       onSnapshot,
     });
+    const calculate = vi.spyOn(scoring, 'calculatePlayerTotal');
     const patch = await controller.queueScoreValuePatch({
       actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [7] },
     });
+    expect(playerSession.session.players[0].totalScore).toBe(7);
+    expect(playerSession.session.winnerIds).toEqual(['p1']);
+    expect(calculate).toHaveBeenCalledTimes(1);
     const updatedSession = { ...session, players: [{ ...player, scores: { points: { parts: [7] } }, totalScore: 7 }] };
     const snapshot = { type: 'session:snapshot' as const, roomId: 'room-1', sessionId: 'session-1', session: updatedSession, revision: 2, updatedAt: 20 };
     const acknowledgement = { type: 'score:patch-result' as const, roomId: 'room-1', sessionId: 'session-1', opId: patch.opId, accepted: true, snapshot };
@@ -90,23 +97,150 @@ describe('multiplayer room controller', () => {
     expect(putSession).toHaveBeenCalledTimes(1);
     expect(updateRoomRevision).toHaveBeenCalledTimes(1);
     expect(onSnapshot).toHaveBeenCalledTimes(1);
+    expect(calculate).toHaveBeenCalledTimes(1);
+    expect(sendToHost).toHaveBeenCalledTimes(1);
     expect(await deliveryStore.listOutbox('room-1', 'session-1')).toHaveLength(0);
   });
 
-  it('applies a broadcast session snapshot without requesting a new board package', async () => {
+  it('calculates a broadcast locally before persistence, retaining manual winner rules without echoing it', async () => {
     const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
     const playerSession = createMultiplayerPlayerSessionFromBootstrap({ bootstrapMessage: host.createBootstrapMessage(), now: () => 10 });
+    const putSession = vi.fn(async () => undefined);
+    const sendToHost = vi.fn(() => false);
     const controller = createMultiplayerPlayerRoomController({
       playerSession, deviceId: 'device-1', deliveryStore: createDeliveryStore(),
-      snapshotStore: { putSession: async () => undefined, updateRoomRevision: async () => undefined },
-      transport: { sendToHost: () => false, sendToConnection: () => true, broadcastLocalChanges: async () => undefined }, now: () => 20,
+      snapshotStore: { putSession, updateRoomRevision: async () => undefined },
+      transport: { sendToHost, sendToConnection: () => true, broadcastLocalChanges: async () => undefined }, now: () => 20,
     });
-    const updatedSession = { ...session, players: [{ ...player, scores: { points: { parts: [8] } }, totalScore: 8 }] };
+    const updatedSession: GameSession = { ...session, lastUpdatedAt: 18, scoringRule: 'LOWEST_WINS', winnerIds: ['wrong'], players: [
+      { ...player, scores: { points: { parts: [8] } }, bonusScore: 2, tieBreaker: true, totalScore: 999 },
+      { ...player, id: 'p2', scores: { points: { parts: [10] } }, totalScore: -999 },
+      { ...player, id: 'p3', isForceLost: true, totalScore: -999 },
+    ] };
 
     await controller.receive({ type: 'session:snapshot', roomId: 'room-1', sessionId: 'session-1', session: updatedSession, revision: 2, updatedAt: 20 });
 
     expect(playerSession.session.players[0].scores.points).toEqual({ parts: [8] });
+    expect(playerSession.session.players.map(p => p.totalScore)).toEqual([10, 10, 0]);
+    expect(playerSession.session.winnerIds).toEqual(['p1']);
+    expect(playerSession.session.lastUpdatedAt).toBe(18);
+    expect(putSession).toHaveBeenCalledExactlyOnceWith(playerSession.session);
+    expect(sendToHost).not.toHaveBeenCalled();
     expect(playerSession.revision).toBe(2);
+  });
+
+  it('keeps a newer local input while its outbox write and an older acknowledgement are in flight', async () => {
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session });
+    const playerSession = createMultiplayerPlayerSessionFromBootstrap({ bootstrapMessage: host.createBootstrapMessage() });
+    const delivery = createDeliveryStore();
+    const originalPutOutbox = delivery.putOutbox;
+    let finishSecond!: () => void;
+    const secondWrite = new Promise<void>(resolve => { finishSecond = resolve; });
+    let writes = 0;
+    delivery.putOutbox = async record => { if (++writes === 2) await secondWrite; await originalPutOutbox(record); };
+    const persisted: GameSession[] = [];
+    let finishFirstSnapshot!: () => void;
+    const firstSnapshotWrite = new Promise<void>(resolve => { finishFirstSnapshot = resolve; });
+    let snapshotWrites = 0;
+    const sendToHost = vi.fn((_message: unknown) => true);
+    const onLocalSession = vi.fn();
+    const controller = createMultiplayerPlayerRoomController({
+      playerSession, deviceId: 'device-1', deliveryStore: delivery,
+      snapshotStore: { putSession: async value => { if (++snapshotWrites === 1) await firstSnapshotWrite; persisted.push(value); }, updateRoomRevision: async () => undefined },
+      transport: { sendToHost, sendToConnection: () => false, broadcastLocalChanges: async () => undefined },
+      onLocalSession, now: () => 20,
+    });
+    const input = (value: number) => ({ actor: { role: 'player' as const, playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [value] } });
+    const first = await controller.queueScoreValuePatch(input(7));
+    const secondPending = controller.queueScoreValuePatch(input(12));
+    // Calculation/notification does not wait for IndexedDB or for the host.
+    expect(playerSession.session.players[0].totalScore).toBe(12);
+    expect(onLocalSession).toHaveBeenCalledTimes(2);
+    const firstAccepted = host.receiveScoreValuePatch(first);
+    if (!firstAccepted.accepted) throw new Error('first input rejected');
+    const firstAck = { type: 'score:patch-result' as const, roomId: 'room-1', sessionId: 'session-1', opId: first.opId, accepted: true, snapshot: firstAccepted.snapshot };
+    const receivingFirst = controller.receive(firstAck);
+    await vi.waitFor(() => expect(snapshotWrites).toBe(1));
+    expect(playerSession.session.players[0].totalScore).toBe(12);
+    expect(playerSession.confirmedSession.players[0].totalScore).toBe(7);
+    finishSecond();
+    const second = await secondPending;
+    expect(second.sequence).toBeGreaterThan(first.sequence);
+    expect(second.updatedAt).toBeGreaterThan(first.updatedAt);
+    const secondAccepted = host.receiveScoreValuePatch(second);
+    if (!secondAccepted.accepted) throw new Error('second input rejected');
+    const receivingSecond = controller.receive({ ...firstAck, opId: second.opId, snapshot: secondAccepted.snapshot });
+    expect(snapshotWrites).toBe(1);
+    finishFirstSnapshot();
+    await Promise.all([receivingFirst, receivingSecond]);
+    const calculate = vi.spyOn(scoring, 'calculatePlayerTotal');
+    await controller.receive(firstAck);
+    await controller.receive(firstAccepted.snapshot);
+    await controller.receive(secondAccepted.snapshot);
+    expect(playerSession.session.players[0].totalScore).toBe(12);
+    expect(playerSession.session.winnerIds).toEqual(['p1']);
+    expect(persisted.map(value => value.players[0].totalScore)).toEqual([7, 12]);
+    expect(await delivery.listOutbox('room-1', 'session-1')).toEqual([]);
+    expect(sendToHost).toHaveBeenCalledTimes(2);
+    expect(calculate).not.toHaveBeenCalled();
+  });
+
+  it('rolls back only the failed local reservation or rejected operation, leaving later inputs intact', async () => {
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session });
+    const playerSession = createMultiplayerPlayerSessionFromBootstrap({ bootstrapMessage: host.createBootstrapMessage() });
+    const delivery = createDeliveryStore();
+    const putOutbox = delivery.putOutbox;
+    let writes = 0;
+    delivery.putOutbox = async record => { if (++writes === 1) throw new Error('disk full'); await putOutbox(record); };
+    const sendToHost = vi.fn((_message: unknown) => true);
+    const putSession = vi.fn(async () => undefined);
+    const controller = createMultiplayerPlayerRoomController({
+      playerSession, deviceId: 'device-1', deliveryStore: delivery,
+      snapshotStore: { putSession, updateRoomRevision: async () => undefined },
+      transport: { sendToHost, sendToConnection: () => false, broadcastLocalChanges: async () => undefined },
+    });
+    const input = (value: number) => ({ actor: { role: 'player' as const, playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [value] } });
+    const failed = controller.queueScoreValuePatch(input(7));
+    const failure = expect(failed).rejects.toThrow('disk full');
+    const later = controller.queueScoreValuePatch(input(12));
+    await failure;
+    const message = await later;
+    expect(playerSession.session.players[0].totalScore).toBe(12);
+    expect(sendToHost).toHaveBeenCalledExactlyOnceWith(message);
+    await controller.receive({ type: 'score:patch-result', roomId: 'room-1', sessionId: 'session-1', opId: message.opId, accepted: false, reason: 'participant_not_claimed' });
+    expect(playerSession.session.players[0].totalScore).toBe(0);
+    expect(await delivery.listOutbox('room-1', 'session-1')).toEqual([]);
+    expect(putSession).not.toHaveBeenCalled();
+  });
+
+  it('retries failed confirmed persistence before clearing the outbox, without recalculating or sending again', async () => {
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session });
+    const playerSession = createMultiplayerPlayerSessionFromBootstrap({ bootstrapMessage: host.createBootstrapMessage() });
+    const delivery = createDeliveryStore();
+    const putSession = vi.fn(async (_value: GameSession) => undefined).mockRejectedValueOnce(new Error('write failed'));
+    const sendToHost = vi.fn((_message: unknown) => true);
+    const onSnapshot = vi.fn();
+    const controller = createMultiplayerPlayerRoomController({
+      playerSession, deviceId: 'device-1', deliveryStore: delivery,
+      snapshotStore: { putSession, updateRoomRevision: async () => undefined },
+      transport: { sendToHost, sendToConnection: () => false, broadcastLocalChanges: async () => undefined },
+      onSnapshot,
+    });
+    const patch = await controller.queueScoreValuePatch({ actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [7] } });
+    const accepted = host.receiveScoreValuePatch(patch);
+    if (!accepted.accepted) throw new Error('input rejected');
+    const ack = { type: 'score:patch-result' as const, roomId: 'room-1', sessionId: 'session-1', opId: patch.opId, accepted: true, snapshot: accepted.snapshot };
+    await expect(controller.receive(ack)).rejects.toThrow('write failed');
+    expect(await delivery.listOutbox('room-1', 'session-1')).toHaveLength(1);
+    const calculate = vi.spyOn(scoring, 'calculatePlayerTotal');
+    await controller.receive(ack);
+    await controller.receive(accepted.snapshot);
+    expect(putSession).toHaveBeenCalledTimes(2);
+    expect(putSession).toHaveBeenLastCalledWith(expect.objectContaining({ players: [expect.objectContaining({ totalScore: 7 })] }));
+    expect(await delivery.listOutbox('room-1', 'session-1')).toEqual([]);
+    expect(onSnapshot).toHaveBeenCalledTimes(1);
+    expect(sendToHost).toHaveBeenCalledTimes(1);
+    expect(calculate).not.toHaveBeenCalled();
   });
 
   it('relays a claimed participant score and total edit through the host to another participant', async () => {

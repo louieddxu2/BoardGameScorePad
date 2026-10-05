@@ -223,6 +223,8 @@ describe('multiplayer bootstrap infrastructure', () => {
     });
 
     expect(newer.sequence).toBeGreaterThan(older.sequence);
+    player.applyPendingOperation(older);
+    player.applyPendingOperation(newer);
     const accepted = host.receiveScoreValuePatch(newer);
     expect(accepted.accepted).toBe(true);
     const revisionAfterNewer = host.revision;
@@ -234,5 +236,10 @@ describe('multiplayer bootstrap infrastructure', () => {
     const retry = host.receiveScoreValuePatch(newer);
     expect(retry).toEqual(accepted);
     expect(host.revision).toBe(revisionAfterNewer);
+    if (!accepted.accepted) throw new Error('newer input rejected');
+    player.applyPatchResult({ type: 'score:patch-result', roomId: 'room-1', sessionId: 'session-1', opId: newer.opId, accepted: true, snapshot: accepted.snapshot });
+    player.applyPatchResult({ type: 'score:patch-result', roomId: 'room-1', sessionId: 'session-1', opId: older.opId, accepted: false, reason: 'outdated_player_update' });
+    expect(player.session.players[0].totalScore).toBe(6);
+    expect(player.confirmedSession.players[0].totalScore).toBe(6);
   });
 });

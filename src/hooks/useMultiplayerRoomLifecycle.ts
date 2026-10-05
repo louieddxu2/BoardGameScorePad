@@ -272,7 +272,7 @@ export const useMultiplayerRoomLifecycle = ({
       session: persisted.session,
       revision: bootstrapMessage.package.revision,
     })) return true;
-    multiplayerSessionManager.publishSession(roomId, persisted.session);
+    multiplayerSessionManager.publishSession(roomId, runtime.session.session);
     if (templateChanged) await appDataRef.current.resumeSessionById(persisted.session.id);
     return true;
   }, []);

@@ -389,7 +389,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
         });
         const nextSession = { ...session, players };
         if (isMultiplayerRoomActive) {
-            // The host runtime calculates and persists authoritative totals.
+            // Each room runtime calculates locally; participants send only raw inputs.
             onUpdateSession(nextSession);
             return;
         }

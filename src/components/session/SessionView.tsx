@@ -140,7 +140,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     }
   }, [aiSimpleGenerator.simpleStatus, aiGenerator.status]);
 
-  const sessionState = useSessionState({ ...props, onUpdateTemplate: handleTemplateUpdate });
+  const sessionState = useSessionState({ ...props, session, onUpdateTemplate: handleTemplateUpdate });
   const [isToolboxInputFocused, setIsToolboxInputFocused] = useState(false);
   const capabilities = useMemo(() => {
     if (props.multiplayerCapabilities) return props.multiplayerCapabilities;
@@ -170,6 +170,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   // No special local state needed for photo preview anymore
   const eventHandlers = useSessionEvents({
     ...props,
+    session,
     onUpdateTemplate: handleTemplateUpdate,
     isMultiplayerRoomActive: Boolean(props.multiplayerRoomId),
   }, sessionState);

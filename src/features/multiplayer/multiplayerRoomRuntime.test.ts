@@ -104,9 +104,13 @@ describe('multiplayer room runtime', () => {
     await player.controller.queueScoreValuePatch({ actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [8] } });
     expect((await playerDelivery.listOutbox('room-1', 'session-1'))).toHaveLength(1);
     expect(host.session.session.players[0].scores.points).toBeUndefined();
+    expect(player.session.session.players[0].totalScore).toBe(8);
 
     connected = true;
     player = await createMultiplayerPlayerRoomRuntime({ bootstrapMessage: bootstrap, deviceId: 'player-device', store: playerStore, bindingStore, deliveryStore: playerDelivery, transport: playerTransport, now: () => 30 });
+    expect(player.session.session.players[0].totalScore).toBe(8);
+    // The optimistic value is recovered from the durable outbox, not saved as confirmed data.
+    expect((await playerStore.getSession('session-1'))?.players[0].totalScore).toBe(0);
     expect(await player.restoreParticipantBinding()).toBe(true);
 
     await vi.waitFor(async () => expect(await playerDelivery.listOutbox('room-1', 'session-1')).toHaveLength(0));
@@ -200,10 +204,16 @@ describe('multiplayer room runtime', () => {
       return originalPutTemplate(value);
     };
 
-    const receiving = player.receive(host.session.complete());
+    const completion = host.session.complete();
+    completion.finalSession.players[0] = { ...session.players[0], scores: { points: { parts: [9] } }, bonusScore: 2, totalScore: 999 };
+    completion.finalSession.winnerIds = ['incorrect'];
+    const receiving = player.receive(completion);
     await vi.waitFor(() => expect(stop).toHaveBeenCalledTimes(1));
     finishPersistence();
     await receiving;
+    expect((await playerStore.getSession('session-1'))?.players[0].totalScore).toBe(11);
+    expect((await playerStore.getSession('session-1'))?.winnerIds).toEqual(['p1']);
+    expect(await player.receive(completion)).toBe(false);
   });
 
   it('ignores a late completion after the participant has left the room', async () => {

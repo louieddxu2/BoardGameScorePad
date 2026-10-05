@@ -8,9 +8,10 @@ import { LanguageProvider } from '../../i18n';
 import { GameSession, GameTemplate } from '../../types';
 import { createMultiplayerSessionManager } from '../../features/multiplayer/multiplayerSessionManager';
 import { createPlayerSessionCapabilities } from '../../features/multiplayer/sessionCapabilities';
-import { createMultiplayerHostRoomRuntime } from '../../features/multiplayer/multiplayerRoomRuntime';
-import type { MultiplayerPlayerRoomRuntime } from '../../features/multiplayer/multiplayerRoomRuntime';
+import { createMultiplayerHostRoomRuntime, createMultiplayerPlayerRoomRuntime } from '../../features/multiplayer/multiplayerRoomRuntime';
+import { createMultiplayerHostSession } from '../../features/multiplayer/multiplayerSession';
 import { multiplayerDeliveryStore } from '../../features/multiplayer/multiplayerDeliveryStore';
+import type { ScoreValuePatchMessage } from '../../features/multiplayer/protocol';
 import * as scoring from '../../utils/scoring';
 import { useMobileZoom } from '../../hooks/useMobileZoom';
 import { _resetActiveCountForTesting } from '../../hooks/useModalBackHandler';
@@ -571,17 +572,42 @@ describe('SessionView toolbox scroll behavior', () => {
     expect(onUpdateSession).toHaveBeenCalledExactlyOnceWith(runtime.session.session, { alreadyPersisted: true });
   });
 
-  it('queues a participant keypad input without calculating or saving a local authoritative result', async () => {
+  it('updates participant totals locally before the host replies, without saving or echoing the input', async () => {
     const manager = createMultiplayerSessionManager();
-    const queueScoreValuePatch = vi.fn(async () => undefined);
-    const runtime = {
-      role: 'player', session: { session: makeSession() },
-      controller: { queueScoreValuePatch, queueTotalAdjustment: vi.fn() },
-      start: vi.fn(), stop: vi.fn(),
-    } as unknown as MultiplayerPlayerRoomRuntime;
+    const template = makeTemplate();
+    template.columns.push({
+      id: 'derived', name: 'Derived', inputType: 'auto', isAuto: true, isScoring: true,
+      formula: 'a*2+b', rounding: 'none',
+      variableMap: { a: { id: 'col-1', name: 'Points', mode: 'value' }, b: { id: 'col-1', name: 'All points', mode: 'sum_all' } },
+    });
+    const session = makeSession();
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host-1', template, session });
+    const putSession = vi.fn(async () => undefined);
+    const sendToHost = vi.fn((_message: unknown) => true);
+    const pending = new Map<string, any>();
+    const runtime = await createMultiplayerPlayerRoomRuntime({
+      bootstrapMessage: host.createBootstrapMessage(), deviceId: 'participant-ui',
+      store: {
+        getTemplate: async () => template, putTemplate: async () => undefined,
+        putSession, putRoom: async () => undefined, persistBootstrap: async () => undefined,
+        updateRoomRevision: async () => undefined, deleteRoom: async () => undefined,
+      },
+      bindingStore: { get: async () => undefined, put: async () => undefined, delete: async () => undefined },
+      deliveryStore: {
+        ...multiplayerDeliveryStore,
+        getSequence: async () => undefined, putSequence: async () => undefined,
+        listOutbox: async () => [...pending.values()],
+        putOutbox: async record => { pending.set(record.id, record); },
+        deleteOutbox: async id => { pending.delete(id); },
+      },
+      transport: { sendToHost, sendToConnection: () => false, broadcastLocalChanges: async () => undefined },
+      onSessionSnapshot: manager.createRuntimeCallbacks('room-1').onSessionSnapshot,
+    });
+    const queueScoreValuePatch = vi.spyOn(runtime.controller, 'queueScoreValuePatch');
     manager.register('room-1', runtime);
     const onUpdateSession = vi.fn();
     renderSession({
+      template,
       multiplayerRoomId: 'room-1', multiplayerManager: manager,
       multiplayerCapabilities: createPlayerSessionCapabilities('p1'), onUpdateSession,
     });
@@ -594,8 +620,26 @@ describe('SessionView toolbox scroll behavior', () => {
       actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1',
       colId: 'col-1', scoreValue: { parts: [1], optionId: undefined, multiOptionIds: undefined },
     });
-    expect(calculate).not.toHaveBeenCalled();
+    expect(calculate).toHaveBeenCalledTimes(session.players.length);
+    expect(runtime.session.session.players.map(player => player.totalScore)).toEqual([4, 1]);
+    expect(manager.get('room-1')?.session?.winnerIds).toEqual(['p1']);
+    expect(document.querySelector('#live-totals-bar .player-col-p1')).toHaveTextContent('4');
+    expect(putSession).not.toHaveBeenCalled();
     expect(onUpdateSession).not.toHaveBeenCalled();
+    const patch = sendToHost.mock.calls[0][0] as ScoreValuePatchMessage;
+    const result = host.receiveScoreValuePatch(patch);
+    expect(result.accepted).toBe(true);
+    if (result.accepted) {
+      await act(async () => {
+        await runtime.receive({ type: 'score:patch-result', roomId: 'room-1', sessionId: session.id,
+          opId: patch.opId, accepted: true, snapshot: result.snapshot });
+        await runtime.receive(result.snapshot);
+      });
+    }
+    expect(sendToHost).toHaveBeenCalledTimes(1);
+    // The only additional calculation above belongs to the host's accepted input.
+    expect(calculate).toHaveBeenCalledTimes(session.players.length * 2);
+    expect(putSession).toHaveBeenCalledTimes(1);
   });
 
   it('only opens the active participant score cell in multiplayer preview', () => {

@@ -1,4 +1,5 @@
 import { GameSession, GameTemplate } from '../../types';
+import { calculateScoreSession } from './scoreValuePatch';
 import {
   MULTIPLAYER_PROTOCOL_VERSION,
   MultiplayerRoomInfo,
@@ -74,7 +75,8 @@ export const decideTemplateImport = (
 
 export const resolveBootstrapImport = (
   bootstrap: SessionBootstrapPackage,
-  localTemplate?: GameTemplate | null
+  localTemplate?: GameTemplate | null,
+  calculated?: { template: GameTemplate; session: GameSession },
 ): ResolvedBootstrapImport => {
   if (!isSessionBootstrapPackage(bootstrap)) {
     throw new Error('invalid_bootstrap_package');
@@ -95,12 +97,13 @@ export const resolveBootstrapImport = (
   return {
     decision,
     templateForSession,
-    session: {
+    session: calculateScoreSession({
       ...cloneJson(bootstrap.session),
       templateId: templateForSession.id,
       name: bootstrap.session.name || templateForSession.name,
       bggId: bootstrap.session.bggId ?? templateForSession.bggId,
       status: 'active',
-    },
+    }, templateForSession, calculated && JSON.stringify(calculated.template.columns) === JSON.stringify(templateForSession.columns)
+      ? calculated.session : undefined),
   };
 };

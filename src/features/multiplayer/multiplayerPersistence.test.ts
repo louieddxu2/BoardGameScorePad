@@ -28,7 +28,11 @@ describe('multiplayer local persistence', () => {
     const putTemplate = vi.fn<(template: GameTemplate) => Promise<void>>(async () => undefined);
     const putSession = vi.fn<(session: GameSession) => Promise<void>>(async () => undefined);
     const putRoom = vi.fn<(room: MultiplayerRoomRecord) => Promise<void>>(async () => undefined);
-    const result = await persistMultiplayerBootstrap(createMessage(), {
+    const message = createMessage();
+    message.package.session.players[0] = { ...createPlayer(), scores: { points: { parts: [8] } }, totalScore: 999 };
+    message.package.session.winnerIds = ['incorrect'];
+    message.package.session.lastUpdatedAt = 15;
+    const result = await persistMultiplayerBootstrap(message, {
       getTemplate: async () => createTemplate(100), putTemplate, putSession, putRoom,
       persistBootstrap: async ({ template, session, room }) => {
         if (template) await putTemplate(template);
@@ -40,6 +44,10 @@ describe('multiplayer local persistence', () => {
     expect(result.decision.action).toBe('reuse-local');
     expect(putTemplate).not.toHaveBeenCalled();
     expect(putSession).toHaveBeenCalledWith(expect.objectContaining({ id: 'session-1' }));
+    expect(result.session.players[0].totalScore).toBe(8);
+    expect(result.session.winnerIds).toEqual(['p1']);
+    expect(result.session.lastUpdatedAt).toBe(15);
+    expect(putSession).toHaveBeenCalledExactlyOnceWith(result.session);
     expect(putRoom).toHaveBeenCalledWith(expect.objectContaining({
       roomId: 'room-1', sessionId: 'session-1', role: 'player', revision: 1,
     }));

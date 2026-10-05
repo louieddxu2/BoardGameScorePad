@@ -1,4 +1,4 @@
-import { ScoreValue } from '../../types';
+import { GameSession, ScoreValue } from '../../types';
 import { generateId } from '../../utils/idGenerator';
 import {
   MultiplayerHostSession,
@@ -253,10 +253,121 @@ export const createMultiplayerPlayerRoomController = (options: {
   onClaimsAccepted?: (playerIds: string[]) => void | Promise<void>;
   onCompleted?: (message: import('./protocol').SessionCompletedMessage) => void | Promise<void>;
   onSnapshot?: (snapshot: SessionSnapshotMessage) => void | Promise<void>;
+  onLocalSession?: (session: GameSession) => void;
   now?: () => number;
 }) => {
   const now = options.now ?? Date.now;
   const send = (message: unknown) => options.transport.sendToHost(message);
+  const publishLocalChange = (previous: GameSession) => {
+    if (options.playerSession.session !== previous) options.onLocalSession?.(options.playerSession.session);
+  };
+  let lastQueuedAt = 0;
+  const nextInputTime = () => (lastQueuedAt = Math.max(now(), lastQueuedAt + 1));
+  let outboxQueue = Promise.resolve();
+  const queueOperation = async <T extends ScoreValuePatchMessage | TotalAdjustmentPatchMessage>(draft: T, key: string): Promise<T> => {
+    const previous = options.playerSession.session;
+    if (!options.playerSession.applyPendingOperation(draft)) throw new Error('invalid_local_score_operation');
+    publishLocalChange(previous);
+    // Local calculation is synchronous. Only durable reservations/sends are serialized,
+    // retaining input order even while IndexedDB or the host is slow.
+    const task = outboxQueue.then(async () => {
+      if (options.playerSession.session.status !== 'active') throw new Error('room_completed');
+      const message = await reserveSequenceAndPutOutbox({
+        store: options.deliveryStore, key, now,
+        createMessage: (sequence) => ({ ...draft, sequence }),
+      });
+      options.playerSession.applyPendingOperation(message);
+      return message;
+    });
+    outboxQueue = task.then(() => undefined, () => undefined);
+    let message: T;
+    try {
+      message = await task;
+    } catch (error) {
+      const current = options.playerSession.session;
+      options.playerSession.applyPatchResult({ type: 'score:patch-result', roomId: draft.roomId, sessionId: draft.sessionId,
+        opId: draft.opId, accepted: false, reason: 'local_outbox_failed' });
+      publishLocalChange(current);
+      throw error;
+    }
+    // A transport failure is not a durable-write failure: keep the pending edit for replay.
+    if (options.playerSession.session.status === 'active') send(message);
+    return message;
+  };
+  let unpersistedSnapshot: SessionSnapshotMessage | null = null;
+  const settledOutboxIds = new Set<string>();
+  const receiveOne = async (message: unknown) => {
+    if (isSessionCompletedMessage(message)) {
+      if (!options.playerSession.applyCompleted(message)) return false;
+      unpersistedSnapshot = null;
+      settledOutboxIds.clear();
+      send({ type: 'session:completed:ack', roomId: message.roomId, sessionId: message.sessionId, deviceId: options.deviceId });
+      await options.onCompleted?.({ ...message, finalSession: options.playerSession.confirmedSession });
+      return true;
+    }
+    if (isParticipantClaimResultMessage(message)) {
+      if (message.roomId !== options.playerSession.room.roomId || message.sessionId !== options.playerSession.session.id) return false;
+      if (message.accepted && message.playerId) await options.onClaimAccepted?.(message.playerId);
+      return true;
+    }
+    if (isParticipantClaimsUpdateResultMessage(message)) {
+      if (message.roomId !== options.playerSession.room.roomId || message.sessionId !== options.playerSession.session.id) return false;
+      if (message.accepted && message.playerIds) await options.onClaimsAccepted?.(message.playerIds);
+      return true;
+    }
+    const previous = options.playerSession.session;
+    let snapshot: SessionSnapshotMessage | undefined;
+    let settledOpIds: string[] = [];
+    if (isSessionSnapshotMessage(message)) {
+      if (options.playerSession.applySnapshot(message)) snapshot = message;
+      else if (!unpersistedSnapshot || message.roomId !== options.playerSession.room.roomId || message.sessionId !== options.playerSession.session.id) return false;
+    } else if (isScorePatchResultMessage(message)) {
+      if (message.roomId !== options.playerSession.room.roomId || message.sessionId !== options.playerSession.session.id) return false;
+      const result = options.playerSession.applyPatchResult(message);
+      if (result.snapshotApplied && message.accepted) snapshot = message.snapshot;
+      settledOpIds = result.settledOpIds;
+    } else return false;
+
+    for (const opId of settledOpIds) settledOutboxIds.add(scorePatchOperationKey(options.playerSession.room.roomId, options.deviceId, opId));
+    if (snapshot) unpersistedSnapshot = { ...snapshot, session: options.playerSession.confirmedSession };
+    const write = unpersistedSnapshot;
+    if (write) {
+      // Persist locally derived confirmed data, never unconfirmed optimistic inputs.
+      // A failed write must remain retryable even though the model accepted its revision.
+      await persistMultiplayerSnapshot(write, options.snapshotStore);
+      unpersistedSnapshot = null;
+    }
+    for (const id of settledOutboxIds) {
+      await options.deliveryStore.deleteOutbox(id);
+      settledOutboxIds.delete(id);
+    }
+    if (write) {
+      // Use the latest projection: a local input may have arrived during the write.
+      await options.onSnapshot?.({ ...write, session: options.playerSession.session });
+    } else publishLocalChange(previous);
+    return true;
+  };
+  let receiveQueue = Promise.resolve();
+  let pendingRestored = false;
+  const readPendingMessages = async () => {
+    await outboxQueue;
+    const records = await options.deliveryStore.listOutbox(options.playerSession.room.roomId, options.playerSession.session.id);
+    return records.filter(record => record.deviceId === options.deviceId)
+      .sort((a, b) => a.createdAt - b.createdAt)
+      .map(record => record.message).filter((message): message is ScoreValuePatchMessage | TotalAdjustmentPatchMessage =>
+        isScoreValuePatchMessage(message) || isTotalAdjustmentPatchMessage(message));
+  };
+  const restorePendingPatches = async () => {
+    const messages = await readPendingMessages();
+    if (!pendingRestored) {
+      pendingRestored = true;
+      const previous = options.playerSession.session;
+      options.playerSession.restorePendingOperations(messages);
+      for (const message of messages) lastQueuedAt = Math.max(lastQueuedAt, message.updatedAt);
+      publishLocalChange(previous);
+    }
+    return messages;
+  };
   return {
     async queueScoreValuePatch(input: {
       actor: ScorePatchActor;
@@ -264,15 +375,8 @@ export const createMultiplayerPlayerRoomController = (options: {
       colId: string;
       scoreValue: ScoreValue | null;
     }): Promise<ScoreValuePatchMessage> {
-      const draft = options.playerSession.createScoreValuePatchMessage({ ...input, deviceId: options.deviceId, opId: generateId(), sequence: 1 });
-      const message = await reserveSequenceAndPutOutbox({
-        store: options.deliveryStore,
-        key: scorePatchSequenceKey(draft),
-        now,
-        createMessage: (sequence) => ({ ...draft, sequence, updatedAt: now() }),
-      });
-      send(message);
-      return message;
+      const draft = { ...options.playerSession.createScoreValuePatchMessage({ ...input, deviceId: options.deviceId, opId: generateId(), sequence: 1 }), updatedAt: nextInputTime() };
+      return queueOperation(draft, scorePatchSequenceKey(draft));
     },
 
     claimPlayer(playerId: string) {
@@ -302,61 +406,22 @@ export const createMultiplayerPlayerRoomController = (options: {
       const draft: TotalAdjustmentPatchMessage = {
         type: 'player:total-adjustment', roomId: options.playerSession.room.roomId, sessionId: options.playerSession.session.id,
         opId: generateId(), deviceId: options.deviceId, sequence: 1, actor: { role: 'player', playerId: input.playerId },
-        targetPlayerId: input.playerId, targetTotal: input.targetTotal, updatedAt: now(),
+        targetPlayerId: input.playerId, targetTotal: input.targetTotal, updatedAt: nextInputTime(),
       };
-      const message = await reserveSequenceAndPutOutbox({
-        store: options.deliveryStore,
-        key: `${draft.roomId}:${draft.deviceId}:${input.playerId}:__TOTAL__`,
-        now,
-        createMessage: (sequence) => ({ ...draft, sequence, updatedAt: now() }),
-      });
-      send(message);
-      return message;
+      return queueOperation(draft, `${draft.roomId}:${draft.deviceId}:${input.playerId}:__TOTAL__`);
     },
 
-    async receive(message: unknown) {
-      if (isSessionCompletedMessage(message)) {
-        if (!options.playerSession.applyCompleted(message)) return false;
-        send({ type: 'session:completed:ack', roomId: message.roomId, sessionId: message.sessionId, deviceId: options.deviceId });
-        await options.onCompleted?.(message);
-        return true;
-      }
-      if (isParticipantClaimResultMessage(message)) {
-        if (message.roomId !== options.playerSession.room.roomId || message.sessionId !== options.playerSession.session.id) return false;
-        if (message.accepted && message.playerId) await options.onClaimAccepted?.(message.playerId);
-        return true;
-      }
-      if (isParticipantClaimsUpdateResultMessage(message)) {
-        if (message.roomId !== options.playerSession.room.roomId || message.sessionId !== options.playerSession.session.id) return false;
-        if (message.accepted && message.playerIds) await options.onClaimsAccepted?.(message.playerIds);
-        return true;
-      }
-      if (isSessionSnapshotMessage(message)) {
-        if (!options.playerSession.applySnapshot(message)) return false;
-        await persistMultiplayerSnapshot(message, options.snapshotStore);
-        await options.onSnapshot?.(message);
-        return true;
-      }
-      if (!isScorePatchResultMessage(message)) return false;
-      if (message.roomId !== options.playerSession.room.roomId || message.sessionId !== options.playerSession.session.id) return false;
-      const outboxId = scorePatchOperationKey(message.roomId, options.deviceId, message.opId);
-      if (!message.accepted) {
-        await options.deliveryStore.deleteOutbox(outboxId);
-        return true;
-      }
-      if (message.snapshot && options.playerSession.applySnapshot(message.snapshot)) {
-        await persistMultiplayerSnapshot(message.snapshot, options.snapshotStore);
-        await options.onSnapshot?.(message.snapshot);
-      }
-      await options.deliveryStore.deleteOutbox(outboxId);
-      return true;
+    receive(message: unknown) {
+      const task = receiveQueue.then(() => receiveOne(message));
+      receiveQueue = task.then(() => undefined, () => undefined);
+      return task;
     },
 
+    restorePendingPatches,
+    waitForPendingWrites: () => outboxQueue,
     async replayPendingPatches() {
-      const records = await options.deliveryStore.listOutbox(options.playerSession.room.roomId, options.playerSession.session.id);
-      for (const record of records) {
-        if (isScoreValuePatchMessage(record.message) || isTotalAdjustmentPatchMessage(record.message)) send(record.message);
-      }
+      const messages = await restorePendingPatches();
+      for (const message of messages) send(message);
     },
   };
 };
