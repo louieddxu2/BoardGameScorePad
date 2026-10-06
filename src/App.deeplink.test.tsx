@@ -211,9 +211,9 @@ describe('App multiplayer modal history', () => {
   });
 
   it.each([
-    { action: 'Cancel', nested: false },
+    { action: 'Close', nested: false },
     { action: 'Back', nested: false },
-    { action: 'Cancel', nested: true },
+    { action: 'Close', nested: true },
     { action: 'Back', nested: true },
   ])('closes with $action without closing the underlying view, nested=$nested', async ({ action, nested }) => {
     const sessionBack = vi.fn();
@@ -230,7 +230,7 @@ describe('App multiplayer modal history', () => {
       const back = vi.spyOn(window.history, 'back');
       fireEvent.click(screen.getByRole('button', { name: 'Multiplayer' }));
       expect(window.history.state).toEqual({ modal: 'multiplayer-room' });
-      if (action === 'Cancel') fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      if (action === 'Close') fireEvent.click(screen.getByRole('button', { name: 'Close' }));
       else {
         // Use the same listener-readiness guard as the gallery and lightbox.
         await act(async () => { await new Promise(resolve => window.setTimeout(resolve, 300)); });

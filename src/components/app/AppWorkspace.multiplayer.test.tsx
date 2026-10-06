@@ -63,7 +63,7 @@ it('routes the entry to the introduction without a host room, then shows QR in t
   const pushState = vi.spyOn(window.history, 'pushState');
   props.multiplayer = { ...multiplayer, isMultiplayerRoomModalOpen: true };
   rerender(workspace());
-  const dialog = screen.getByRole('dialog', { name: 'Score together' });
+  const dialog = screen.getByRole('dialog', { name: 'Multiplayer score entry' });
   fireEvent.click(screen.getByRole('button', { name: 'Open room' }));
   expect(handleCreateMultiplayerRoom).toHaveBeenCalledTimes(1);
   props.multiplayer = { ...props.multiplayer, isOpeningMultiplayerRoom: true };
