@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createMultiplayerHostSession } from './multiplayerSession';
 import { GameSession, GameTemplate, MultiplayerParticipantBindingRecord, MultiplayerRoomRecord, ScoreColumn } from '../../types';
 import { MultiplayerDeliveryStore } from './multiplayerDeliveryStore';
 import { MultiplayerParticipantBindingStore, saveParticipantBinding } from './multiplayerParticipantBinding';
@@ -48,6 +49,69 @@ const createBindingStore = (): MultiplayerParticipantBindingStore => {
 };
 
 describe('multiplayer room runtime', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('cancels a pending automatic template transfer when the host runtime stops', async () => {
+    vi.useFakeTimers();
+    const broadcast = vi.fn(async () => undefined);
+    const stop = vi.fn();
+    const runtime = await createMultiplayerHostRoomRuntime({ roomId: 'room-1', hostDeviceId: 'host', template, session,
+      store: createRuntimeStore(), deliveryStore: createDeliveryStore(),
+      transport: { sendToHost: () => false, sendToConnection: () => false, broadcastLocalChanges: broadcast, stop },
+    });
+    await runtime.controller.applyLocalBoard({ ...template, name: 'Changed' }, session);
+    runtime.stop();
+    await vi.advanceTimersByTimeAsync(1000);
+    await runtime.whenIdle?.();
+    expect(broadcast).not.toHaveBeenCalled();
+    expect(stop).toHaveBeenCalledTimes(1);
+  });
+
+  it('applies a delayed template without rolling back newer confirmed or pending inputs', async () => {
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
+    const store = createRuntimeStore();
+    const delivery = createDeliveryStore();
+    const sendToHost = vi.fn(() => false);
+    const runtime = await createMultiplayerPlayerRoomRuntime({ bootstrapMessage: host.createBootstrapMessage(), deviceId: 'device',
+      store, deliveryStore: delivery, bindingStore: createBindingStore(),
+      transport: { sendToHost, sendToConnection: () => false, broadcastLocalChanges: async () => undefined },
+    });
+    host.applyLocalBoard({ ...template, columns: [{ ...column, formula: 'a1×c1', constants: { c1: 2 } }], updatedAt: 2 }, host.session);
+    const delayedTemplate = host.createBootstrapMessage();
+    const newerScore = host.applyLocalSession({ ...host.session, players: [{ ...session.players[0], scores: { points: { parts: [4] } } }] })!;
+    await runtime.receive(newerScore);
+    const pending = await runtime.controller.queueScoreValuePatch({ actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [7] } });
+    sendToHost.mockClear();
+    const persistBootstrap = store.persistBootstrap;
+    const persisted = vi.spyOn(store, 'persistBootstrap');
+    let finishWrite!: () => void;
+    const writing = new Promise<void>(resolve => { finishWrite = resolve; });
+    persisted.mockImplementationOnce(async (records) => { await writing; await persistBootstrap(records); });
+    // Same timestamp but stale local content must not hide the live host structure.
+    await store.putTemplate({ ...template, updatedAt: 2 });
+    const apply = runtime.receive(delayedTemplate);
+    await vi.waitFor(() => expect(persisted).toHaveBeenCalledTimes(1));
+    const latestScore = host.applyLocalSession({ ...host.session, players: [{ ...session.players[0], scores: { points: { parts: [5] } } }] })!;
+    const newer = runtime.receive(latestScore);
+    finishWrite();
+    await Promise.all([apply, newer]);
+
+    expect(runtime.session.revision).toBe(latestScore.revision);
+    expect(runtime.session.session.players[0]).toMatchObject({ scores: { points: { parts: [7] } }, totalScore: 14 });
+    expect(await store.getSession('session-1')).toMatchObject({ players: [{ scores: { points: { parts: [5] } }, totalScore: 10 }] });
+    expect(await store.getRoom('room-1')).toMatchObject({ revision: latestScore.revision });
+    expect(await store.getTemplate('template-1')).toMatchObject({ columns: [{ formula: 'a1×c1', constants: { c1: 2 } }] });
+    expect(await delivery.listOutbox('room-1', 'session-1')).toHaveLength(1);
+    expect(sendToHost).not.toHaveBeenCalled();
+
+    const obsoleteTemplate = { ...delayedTemplate, package: { ...delayedTemplate.package, revision: 1, template } };
+    expect(await runtime.receive(obsoleteTemplate)).toBe(false);
+    expect(persisted).toHaveBeenCalledTimes(1);
+    await runtime.receive({ type: 'score:patch-result', roomId: 'room-1', sessionId: 'session-1', opId: pending.opId, accepted: false, reason: 'test_rejected' });
+    expect(runtime.session.session.players[0].totalScore).toBe(10);
+    expect(await delivery.listOutbox('room-1', 'session-1')).toHaveLength(0);
+    runtime.stop();
+  });
   it('persists a complete permission set and removes it when all permissions are cleared', async () => {
     const hostStore = createRuntimeStore(); const playerStore = createRuntimeStore();
     const hostDelivery = createDeliveryStore(); const playerDelivery = createDeliveryStore(); const bindingStore = createBindingStore();

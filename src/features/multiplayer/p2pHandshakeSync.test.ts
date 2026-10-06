@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { P2PDataConnection, P2PPeer, createP2PHandshakeSync } from './p2pHandshakeSync';
 import { createMultiplayerP2PRuntimeTransport } from './multiplayerP2PRuntimeTransport';
+import { SyncItem } from './scoreStateSyncAdapter';
 
 class FakeConnection implements P2PDataConnection {
   open = false;
@@ -75,7 +76,61 @@ const openClientConnection = async (peer: FakePeer) => {
 describe('createP2PHandshakeSync reconnect lifecycle', () => {
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
     FakePeer.instances = [];
+  });
+
+  it('reports a partial transfer failure and retries the same frozen revision without rereading the adapter', async () => {
+    const adapter = { ...createAdapter(), getItem: vi.fn(async () => null) };
+    const sync = createP2PHandshakeSync({ Peer: FakePeer, adapter });
+    sync.startHost('room-1');
+    const failed = new FakeConnection('failed');
+    const healthy = new FakeConnection('healthy');
+    for (const connection of [failed, healthy]) {
+      sync.setupConnection(connection);
+      connection.open = true;
+      connection.emit('open');
+    }
+    await Promise.resolve();
+    const item: SyncItem = { id: 'session-1', version: 2, payload: Object.assign(new Blob(), { arrayBuffer: async () => new ArrayBuffer(1) }) };
+    const send = vi.spyOn(failed, 'send').mockImplementationOnce(() => { throw new Error('channel failure'); });
+    await expect(sync.broadcastLocalChanges(item)).rejects.toThrow('score_state_broadcast_failed');
+    expect(healthy.sent).toContainEqual(expect.objectContaining({ type: 'ITEM_CHUNK' }));
+    await sync.broadcastLocalChanges(item);
+    expect(failed.sent).toContainEqual(expect.objectContaining({ type: 'ITEM_CHUNK' }));
+    const sentCount = healthy.sent.length;
+    await sync.broadcastLocalChanges(item);
+    expect(healthy.sent).toHaveLength(sentCount);
+    expect(adapter.getItem).not.toHaveBeenCalled();
+    send.mockRestore();
+    sync.stop();
+  });
+
+  it('finishes initial template chunks before an automatic transfer while allowing ordinary score messages', async () => {
+    vi.useFakeTimers();
+    const item = (version: number): SyncItem => ({ id: 'session-1', version,
+      payload: Object.assign(new Blob(), { arrayBuffer: async () => new ArrayBuffer(12) }),
+    });
+    const sync = createP2PHandshakeSync({ Peer: FakePeer, adapter: { ...createAdapter(), getItem: async () => item(1) }, chunkSize: 2 });
+    sync.startHost('room-1');
+    const connection = new FakeConnection('player');
+    sync.setupConnection(connection);
+    connection.open = true;
+    connection.emit('open');
+    await Promise.resolve();
+    connection.sent.length = 0;
+    connection.emit('data', { type: 'REQUEST_ITEMS', ids: ['session-1'] });
+    await vi.advanceTimersByTimeAsync(0);
+    const automatic = sync.broadcastLocalChanges(item(2));
+    sync.broadcast({ type: 'session:snapshot', revision: 3 });
+    expect(connection.sent).toContainEqual({ type: 'session:snapshot', revision: 3 });
+    await vi.advanceTimersByTimeAsync(100);
+    await automatic;
+    const packets = connection.sent.filter(message => (message as { type: string }).type.startsWith('ITEM_')) as Array<{ type: string; index?: number; metadata?: { version: number } }>;
+    expect(packets.map(packet => packet.type === 'ITEM_START' ? `start:${packet.metadata!.version}` : packet.index)).toEqual([
+      'start:1', 0, 1, 2, 3, 4, 5, 'start:2', 0, 1, 2, 3, 4, 5,
+    ]);
+    sync.stop();
   });
 
   it('forwards source exclusion through the runtime transport without changing ordinary broadcasts', async () => {

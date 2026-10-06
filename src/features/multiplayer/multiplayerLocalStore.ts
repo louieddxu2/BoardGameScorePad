@@ -107,12 +107,14 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
 };
 
 export const createLocalScoreStateSyncAdapter = (roomId: string, role: 'host' | 'player', options?: {
+  applyRemoteBootstrap?: (message: Parameters<typeof persistMultiplayerBootstrap>[0]) => boolean | Promise<boolean>;
   onRemoteBootstrap?: (
     message: Parameters<typeof persistMultiplayerBootstrap>[0],
     persisted: PersistedBootstrapImport,
   ) => void | Promise<void>;
   onRemoteCompletion?: (message: SessionCompletedMessage) => void | Promise<void>;
 }) => {
+  let bootstrapQueue = Promise.resolve();
   return createScoreStateSyncAdapter({
     roomId,
     role,
@@ -120,9 +122,16 @@ export const createLocalScoreStateSyncAdapter = (roomId: string, role: 'host' | 
       getRoom: (id) => db.multiplayerRooms.get(id),
       getSession: (id) => db.sessions.get(id),
       getTemplate: (id) => multiplayerLocalStore.getTemplate(id),
-      async applyRemoteBootstrap(message) {
-        const persisted = await persistMultiplayerBootstrap(message, multiplayerLocalStore, 'player');
-        await options?.onRemoteBootstrap?.(message, persisted);
+      applyRemoteBootstrap(message) {
+        const task = bootstrapQueue.then(async () => {
+          // Finish the first join before processing another template. Once joined,
+          // the runtime serializes imports with score/ACK writes itself.
+          if (await options?.applyRemoteBootstrap?.(message)) return;
+          const persisted = await persistMultiplayerBootstrap(message, multiplayerLocalStore, 'player');
+          await options?.onRemoteBootstrap?.(message, persisted);
+        });
+        bootstrapQueue = task.catch(() => undefined);
+        return task;
       },
     },
     onRemoteCompletion: options?.onRemoteCompletion,

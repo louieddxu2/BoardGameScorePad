@@ -229,6 +229,7 @@ export const createMultiplayerPlayerSessionFromBootstrap = (options: {
     session: resolved.session,
     confirmedSession: resolved.session,
     revision: options.bootstrapMessage.package.revision,
+    templateRevision: options.bootstrapMessage.package.revision,
     nextSequences: new Map<string, number>(),
     pending: new Map<string, PendingInput>(),
     pendingByCell: new Map<string, PendingInput>(),
@@ -378,13 +379,17 @@ export const createMultiplayerPlayerSessionFromBootstrap = (options: {
     },
 
     applyBootstrap(input) {
-      if (state.session.status !== 'active' || input.session.id !== state.session.id || input.session.templateId !== input.template.id || input.revision < state.revision) {
+      if (state.session.status !== 'active' || input.session.id !== state.session.id || input.session.templateId !== input.template.id || input.revision < state.templateRevision) {
         return false;
       }
       const sameTemplate = JSON.stringify(state.template) === JSON.stringify(input.template);
+      // Session-only snapshots can overtake a chunked template transfer. Keep their
+      // newer inputs while still accepting the missing scoring structure.
+      const confirmed = input.revision < state.revision ? state.confirmedSession : input.session;
       state.template = cloneJson(input.template);
-      state.confirmedSession = calculateScoreSession(cloneJson(input.session), state.template, sameTemplate ? state.session : undefined);
-      state.revision = input.revision;
+      state.confirmedSession = calculateScoreSession({ ...cloneJson(confirmed), templateId: state.template.id }, state.template, sameTemplate ? state.session : undefined);
+      state.revision = Math.max(state.revision, input.revision);
+      state.templateRevision = input.revision;
       if (!sameTemplate) state.session = state.confirmedSession;
       refreshSession();
       return true;

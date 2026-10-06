@@ -4,12 +4,13 @@ import { Loader2, LogOut, Send, UsersRound, X } from 'lucide-react';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useCommonTranslation } from '../../../i18n/common';
+import type { BoardSyncStatus } from '../../../features/multiplayer/multiplayerRoomController';
 
 interface MultiplayerRoomModalProps {
   isOpen: boolean;
   joinUrl: string;
   connectionCount: number;
-  hasUnpublishedBoardUpdate: boolean;
+  boardSyncStatus: BoardSyncStatus;
   isOpeningRoom?: boolean;
   hasOpenError?: boolean;
   onOpenRoom?: () => void | Promise<void>;
@@ -18,22 +19,17 @@ interface MultiplayerRoomModalProps {
   onClose: () => void;
 }
 
-const MultiplayerRoomModal: React.FC<MultiplayerRoomModalProps> = ({ isOpen, joinUrl, connectionCount, hasUnpublishedBoardUpdate, isOpeningRoom = false, hasOpenError = false, onOpenRoom, onPublishBoardUpdate, onCloseRoom, onClose }) => {
+const MultiplayerRoomModal: React.FC<MultiplayerRoomModalProps> = ({ isOpen, joinUrl, connectionCount, boardSyncStatus, isOpeningRoom = false, hasOpenError = false, onOpenRoom, onPublishBoardUpdate, onCloseRoom, onClose }) => {
   const { t } = useSessionTranslation();
   const { t: tCommon } = useCommonTranslation();
   const { zIndex } = useModalBackHandler(isOpen, onClose, 'multiplayer-room');
   const hasRoom = Boolean(joinUrl);
-  const [isPublishing, setIsPublishing] = React.useState(false);
-
   const handlePublish = async () => {
-    if (!hasUnpublishedBoardUpdate || isPublishing) return;
-    setIsPublishing(true);
+    if (boardSyncStatus !== 'error') return;
     try {
       await onPublishBoardUpdate();
     } catch {
-      // Keep the pending action available for retry after a failed publication.
-    } finally {
-      setIsPublishing(false);
+      // The controller retains the error status and owns the single in-flight send.
     }
   };
 
@@ -56,12 +52,19 @@ const MultiplayerRoomModal: React.FC<MultiplayerRoomModalProps> = ({ isOpen, joi
             <div className="flex justify-center rounded-lg bg-white p-4">
               <QRCodeSVG value={joinUrl} size={224} level="M" includeMargin className="h-auto w-full max-w-[224px]" role="img" aria-label={t('multiplayer_room_desc')} />
             </div>
-            {hasUnpublishedBoardUpdate && (
+            {boardSyncStatus !== 'synced' && (
               <div className="mt-3">
-                <button type="button" onClick={() => { void handlePublish(); }} disabled={isPublishing} className="btn-action-primary min-h-12 w-full justify-center gap-2 whitespace-normal text-base leading-relaxed disabled:opacity-70">
-                  {isPublishing ? <Loader2 size={16} className="shrink-0 animate-spin" /> : <Send size={16} className="shrink-0" />}
-                  <span>{t(isPublishing ? 'multiplayer_publish_publishing' : 'multiplayer_publish_update')}</span>
-                </button>
+                {boardSyncStatus === 'error' ? (
+                  <button type="button" onClick={() => { void handlePublish(); }} className="btn-action-primary min-h-12 w-full justify-center gap-2 whitespace-normal text-base leading-relaxed">
+                    <Send size={16} className="shrink-0" />
+                    <span>{t('multiplayer_publish_update')}</span>
+                  </button>
+                ) : (
+                  <p role="status" className="flex items-center justify-center gap-2 text-sm text-txt-secondary">
+                    <Loader2 size={16} className="shrink-0 animate-spin" />
+                    <span>{t('multiplayer_publish_publishing')}</span>
+                  </p>
+                )}
               </div>
             )}
             <div className="mt-4 flex items-center gap-2 rounded-lg border border-surface-border bg-surface-recessed px-3 py-2.5 text-sm font-medium text-txt-secondary">

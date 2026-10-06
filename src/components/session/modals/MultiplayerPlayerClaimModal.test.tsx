@@ -68,7 +68,7 @@ describe('MultiplayerPlayerClaimModal', () => {
           isOpen
           joinUrl="https://example.test/?room=room-1"
           connectionCount={0}
-          hasUnpublishedBoardUpdate={false}
+          boardSyncStatus="synced"
           onPublishBoardUpdate={vi.fn()}
           onCloseRoom={onCloseRoom}
           onClose={onClose}
@@ -77,7 +77,7 @@ describe('MultiplayerPlayerClaimModal', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Multiplayer score entry' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Score sheet structure changed. Tap to sync.' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Score sheet sync failed. Tap to retry.' })).not.toBeInTheDocument();
     const closeRoom = screen.getByRole('button', { name: 'Close room' });
     const buttons = screen.getAllByRole('button');
     expect(buttons[buttons.length - 1]).toBe(closeRoom);
@@ -96,7 +96,7 @@ describe('MultiplayerPlayerClaimModal', () => {
     const onOpenRoom = vi.fn();
     render(
       <LanguageProvider>
-        <MultiplayerRoomModal isOpen joinUrl="" connectionCount={0} hasUnpublishedBoardUpdate={false}
+        <MultiplayerRoomModal isOpen joinUrl="" connectionCount={0} boardSyncStatus="synced"
           onOpenRoom={onOpenRoom} onPublishBoardUpdate={vi.fn()} onClose={onClose} />
       </LanguageProvider>
     );
@@ -107,7 +107,7 @@ describe('MultiplayerPlayerClaimModal', () => {
     expect(screen.getAllByRole('button')).toHaveLength(2);
     expect(screen.getByRole('button', { name: '開啟房間' })).toHaveClass('w-full');
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '偵測到計分板架構更動，按此同步' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '計分板同步失敗，按此重試' })).not.toBeInTheDocument();
     act(() => { vi.advanceTimersByTime(300); });
     act(() => { window.dispatchEvent(new PopStateEvent('popstate')); });
 
@@ -120,7 +120,7 @@ describe('MultiplayerPlayerClaimModal', () => {
     const onClose = vi.fn();
     const onOpenRoom = vi.fn();
     const onPublishBoardUpdate = vi.fn();
-    const props = { isOpen: true, joinUrl: '', connectionCount: 0, hasUnpublishedBoardUpdate: false,
+    const props = { isOpen: true, joinUrl: '', connectionCount: 0, boardSyncStatus: 'synced' as const,
       onOpenRoom, onPublishBoardUpdate, onClose };
     const modal = (updates: Partial<React.ComponentProps<typeof MultiplayerRoomModal>> = {}) => (
       <LanguageProvider><MultiplayerRoomModal {...props} {...updates} /></LanguageProvider>
@@ -136,48 +136,49 @@ describe('MultiplayerPlayerClaimModal', () => {
     rerender(modal({ hasOpenError: true }));
     expect(screen.getByRole('alert')).toHaveTextContent('Could not open the room. Please try again.');
     expect(screen.getByRole('button', { name: 'Open room' })).toBeEnabled();
-    rerender(modal({ joinUrl: 'https://example.test/?room=room-1', connectionCount: 2, hasUnpublishedBoardUpdate: true }));
+    rerender(modal({ joinUrl: 'https://example.test/?room=room-1', connectionCount: 2, boardSyncStatus: 'syncing' }));
 
     expect(screen.getByRole('img')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Open room' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Score sheet structure changed. Tap to sync.' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Automatically syncing score sheet...');
     expect(pushState).toHaveBeenCalledTimes(1);
     expect(onPublishBoardUpdate).not.toHaveBeenCalled();
   });
 
-  it('shows sync only for pending changes, supports retry, and hides it once synchronized', async () => {
-    let rejectPublish!: (reason: Error) => void;
+  it('shows automatic progress without an action and offers manual retry only after failure', async () => {
     const onPublishBoardUpdate = vi.fn()
-      .mockImplementationOnce(() => new Promise<void>((_, reject) => { rejectPublish = reject; }))
+      .mockRejectedValueOnce(new Error('offline'))
       .mockResolvedValue(undefined);
     const props = { isOpen: true, joinUrl: 'https://example.test/?room=room-1', connectionCount: 1,
       onPublishBoardUpdate, onClose: vi.fn() };
-    const modal = (pending: boolean) => (
-      <LanguageProvider><MultiplayerRoomModal {...props} hasUnpublishedBoardUpdate={pending} /></LanguageProvider>
+    const modal = (status: React.ComponentProps<typeof MultiplayerRoomModal>['boardSyncStatus']) => (
+      <LanguageProvider><MultiplayerRoomModal {...props} boardSyncStatus={status} /></LanguageProvider>
     );
-    const syncName = 'Score sheet structure changed. Tap to sync.';
-    const { rerender } = render(modal(false));
+    const syncName = 'Score sheet sync failed. Tap to retry.';
+    const { rerender } = render(modal('synced'));
     expect(screen.queryByRole('button', { name: syncName })).not.toBeInTheDocument();
 
-    rerender(modal(true));
+    rerender(modal('pending'));
+    expect(screen.getByRole('status')).toHaveTextContent('Automatically syncing score sheet...');
+    expect(screen.queryByRole('button', { name: syncName })).not.toBeInTheDocument();
+    rerender(modal('syncing'));
+    expect(screen.queryByRole('button', { name: syncName })).not.toBeInTheDocument();
+    expect(onPublishBoardUpdate).not.toHaveBeenCalled();
+
+    rerender(modal('error'));
     const sync = screen.getByRole('button', { name: syncName });
     expect(screen.getByRole('img').compareDocumentPosition(sync) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
     expect(onPublishBoardUpdate).not.toHaveBeenCalled();
-    fireEvent.click(sync);
-    const publishing = screen.getByRole('button', { name: 'Syncing...' });
-    expect(publishing).toBeDisabled();
-    fireEvent.click(publishing);
+    await act(async () => { fireEvent.click(sync); });
     expect(onPublishBoardUpdate).toHaveBeenCalledTimes(1);
-    await act(async () => { rejectPublish(new Error('offline')); });
     expect(screen.getByRole('button', { name: syncName })).toBeEnabled();
 
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: syncName })); });
     expect(onPublishBoardUpdate).toHaveBeenCalledTimes(2);
-    rerender(modal(false));
+    rerender(modal('synced'));
     expect(screen.queryByRole('button', { name: syncName })).not.toBeInTheDocument();
-    rerender(modal(true));
-    expect(screen.getByRole('button', { name: syncName })).toBeEnabled();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
     expect(onPublishBoardUpdate).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,11 +1,37 @@
 import { describe, expect, it, vi } from 'vitest';
 import { db } from '../../db';
-import { multiplayerLocalStore } from './multiplayerLocalStore';
+import { createLocalScoreStateSyncAdapter, multiplayerLocalStore } from './multiplayerLocalStore';
 import { multiplayerDeliveryStore } from './multiplayerDeliveryStore';
 import { persistAcceptedMultiplayerSnapshot } from './multiplayerPersistence';
 import { SessionSnapshotMessage } from './protocol';
+import { createScoreStateSyncItem } from './scoreStateSyncAdapter';
 
 describe('multiplayerLocalStore purgeRoomData & deleteRoom', () => {
+  it('lets an active runtime consume template updates before standalone persistence and recovers after a failed import', async () => {
+    const getTemplate = vi.spyOn(multiplayerLocalStore, 'getTemplate').mockResolvedValue(undefined);
+    const persistBootstrap = vi.spyOn(multiplayerLocalStore, 'persistBootstrap').mockResolvedValue(undefined);
+    const applyRemoteBootstrap = vi.fn().mockRejectedValueOnce(new Error('temporary import failure')).mockResolvedValue(true);
+    const onRemoteBootstrap = vi.fn();
+    const adapter = createLocalScoreStateSyncAdapter('room-1', 'player', { applyRemoteBootstrap, onRemoteBootstrap });
+    const item = createScoreStateSyncItem({
+      room: { roomId: 'room-1', hostDeviceId: 'host', createdAt: 1 },
+      template: { id: 'template-1', name: 'Test', columns: [], createdAt: 1 },
+      session: { id: 'session-1', templateId: 'template-1', name: 'Test', startTime: 1, players: [], status: 'active' },
+      revision: 2, exportedAt: 2,
+    });
+    try {
+      await expect(adapter.upsertRemoteItem(item)).rejects.toThrow('temporary import failure');
+      await adapter.upsertRemoteItem(item);
+      expect(applyRemoteBootstrap).toHaveBeenCalledTimes(2);
+      expect(getTemplate).not.toHaveBeenCalled();
+      expect(persistBootstrap).not.toHaveBeenCalled();
+      expect(onRemoteBootstrap).not.toHaveBeenCalled();
+    } finally {
+      getTemplate.mockRestore();
+      persistBootstrap.mockRestore();
+    }
+  });
+
   it('commits an accepted snapshot, revision, watermark and receipt in one transaction', async () => {
     const putSession = vi.spyOn(db.sessions, 'put').mockResolvedValue('session-1');
     const updateRoom = vi.spyOn(db.multiplayerRooms, 'update').mockResolvedValue(1);

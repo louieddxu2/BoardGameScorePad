@@ -4,6 +4,7 @@ import { GameSession, GameTemplate, Player, ScoreColumn } from '../../types';
 import { createMultiplayerHostSession, createMultiplayerPlayerSessionFromBootstrap } from './multiplayerSession';
 import { createMultiplayerRoomController, createMultiplayerPlayerRoomController } from './multiplayerRoomController';
 import { MultiplayerDeliveryStore } from './multiplayerDeliveryStore';
+import { readSyncItemPayload, SyncItem } from './scoreStateSyncAdapter';
 
 const column: ScoreColumn = { id: 'points', name: 'Points', formula: 'a1', inputType: 'keypad', isScoring: true, rounding: 'none' };
 const template: GameTemplate = { id: 'template-1', name: 'Template', columns: [column], createdAt: 1, updatedAt: 1 };
@@ -23,7 +24,7 @@ const createDeliveryStore = (): MultiplayerDeliveryStore => {
 };
 
 describe('multiplayer room controller', () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
   it('sends a complete claim set and accepts an empty permission set', async () => {
     const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
     const playerSession = createMultiplayerPlayerSessionFromBootstrap({ bootstrapMessage: host.createBootstrapMessage(), now: () => 10 });
@@ -530,17 +531,19 @@ describe('multiplayer room controller', () => {
     expect(closeConnection).toHaveBeenCalledWith(connection);
   });
 
-  it('persists and broadcasts a host template change with its active session', async () => {
+  it('automatically coalesces committed template edits into one frozen board transfer', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
     const store = createDeliveryStore(); const templates: GameTemplate[] = []; const snapshots: GameSession[] = [];
-    const broadcast = vi.fn(async () => undefined);
+    const broadcast = vi.fn(async (_item?: SyncItem) => undefined);
+    const syncStatus = vi.fn();
     const controller = createMultiplayerRoomController({ role: 'host', hostSession: host, deliveryStore: store,
       snapshotStore: {
         putTemplate: async (nextTemplate) => { templates.push(nextTemplate); },
         putSession: async (nextSession) => { snapshots.push(nextSession); },
         updateRoomRevision: async () => undefined,
       },
-      transport: { sendToHost: () => false, sendToConnection: () => true, broadcastLocalChanges: broadcast }, now: () => 20,
+      transport: { sendToHost: () => false, sendToConnection: () => true, broadcastLocalChanges: broadcast }, onBoardSyncStatus: syncStatus, now: () => 20,
     });
     const updatedTemplate = { ...template, columns: [...template.columns, { ...column, id: 'bonus', name: 'Bonus' }], updatedAt: 20 };
 
@@ -551,8 +554,71 @@ describe('multiplayer room controller', () => {
     expect(templates).toEqual([updatedTemplate]);
     expect(snapshots).toEqual([snapshot?.session]);
     expect(broadcast).not.toHaveBeenCalled();
-    await controller.publishBoard();
+    await vi.advanceTimersByTimeAsync(200);
+    const latestTemplate = { ...updatedTemplate, name: 'Latest', updatedAt: 30 };
+    await controller.applyLocalBoard(latestTemplate, host.session);
+    await vi.advanceTimersByTimeAsync(249);
+    expect(broadcast).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
     expect(broadcast).toHaveBeenCalledTimes(1);
+    const item = broadcast.mock.calls[0][0]!;
+    expect(JSON.parse(await readSyncItemPayload(item.payload))).toMatchObject({ template: latestTemplate, session: host.session, revision: 3 });
+    expect(syncStatus.mock.calls.map(([status]) => status)).toEqual(['pending', 'syncing', 'synced']);
+    await controller.applyLocalSession({ ...host.session, players: [{ ...player, scores: { points: { parts: [9] } } }] });
+    await vi.advanceTimersByTimeAsync(500);
+    expect(broadcast).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(await readSyncItemPayload(item.payload)).session.players[0].scores).toEqual({});
+    controller.stop();
+  });
+
+  it('keeps a newer template pending during a slow send without blocking local score inputs', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
+    let finishSend!: () => void;
+    const sending = new Promise<void>(resolve => { finishSend = resolve; });
+    const broadcast = vi.fn(async (_item?: SyncItem): Promise<void> => undefined).mockImplementationOnce(() => sending);
+    const syncStatus = vi.fn();
+    const controller = createMultiplayerRoomController({ role: 'host', hostSession: host, deliveryStore: createDeliveryStore(),
+      snapshotStore: { putTemplate: async () => undefined, putSession: async () => undefined, updateRoomRevision: async () => undefined },
+      transport: { sendToHost: () => false, sendToConnection: () => true, broadcastLocalChanges: broadcast }, onBoardSyncStatus: syncStatus,
+    });
+    await controller.applyLocalBoard({ ...template, name: 'First' }, session);
+    await vi.advanceTimersByTimeAsync(250);
+    expect(broadcast).toHaveBeenCalledTimes(1);
+    await controller.applyLocalBoard({ ...template, name: 'Second' }, host.session);
+    await controller.applyLocalSession({ ...host.session, players: [{ ...player, scores: { points: { parts: [7] } } }] });
+    expect(host.session.players[0].totalScore).toBe(7);
+    await vi.advanceTimersByTimeAsync(250);
+    expect(broadcast).toHaveBeenCalledTimes(1);
+    const firstSend = controller.publishBoard();
+    finishSend();
+    await firstSend;
+    expect(syncStatus).toHaveBeenLastCalledWith('pending');
+    await vi.advanceTimersByTimeAsync(250);
+    expect(broadcast).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(await readSyncItemPayload(broadcast.mock.calls[1][0]!.payload))).toMatchObject({ template: { name: 'Second' }, session: { players: [{ scores: { points: { parts: [7] } } }] } });
+    expect(syncStatus).toHaveBeenLastCalledWith('synced');
+    controller.stop();
+  });
+
+  it('leaves a failed automatic send for explicit retry instead of looping', async () => {
+    vi.useFakeTimers();
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session });
+    const broadcast = vi.fn().mockRejectedValueOnce(new Error('send failed')).mockResolvedValue(undefined);
+    const syncStatus = vi.fn();
+    const controller = createMultiplayerRoomController({ role: 'host', hostSession: host, deliveryStore: createDeliveryStore(),
+      snapshotStore: { putSession: async () => undefined, updateRoomRevision: async () => undefined },
+      transport: { sendToHost: () => false, sendToConnection: () => true, broadcastLocalChanges: broadcast }, onBoardSyncStatus: syncStatus,
+    });
+    await controller.applyLocalBoard({ ...template, name: 'Changed' }, session);
+    await vi.advanceTimersByTimeAsync(250);
+    expect(syncStatus).toHaveBeenLastCalledWith('error');
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(broadcast).toHaveBeenCalledTimes(1);
+    await Promise.all([controller.publishBoard(), controller.publishBoard()]);
+    expect(broadcast).toHaveBeenCalledTimes(2);
+    expect(syncStatus).toHaveBeenLastCalledWith('synced');
+    controller.stop();
   });
 
   it('serializes received, local, and template edits while merging only changes from the UI baseline', async () => {
@@ -586,6 +652,7 @@ describe('multiplayer room controller', () => {
     expect(host.session.players[0].scores.points).toEqual({ parts: [2] });
     expect(host.session.players[1]).toMatchObject({ color: '#123456', bonusScore: 2, totalScore: 5 });
     expect(host.session).toMatchObject({ name: 'Changed', scoringRule: 'LOWEST_WINS', winnerIds: ['p1'] });
+    controller.stop();
   });
 
   it('rejects player patches after the host has completed the room', async () => {

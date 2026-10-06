@@ -14,7 +14,6 @@ import type { MultiplayerPlayerRoomRuntime } from '../features/multiplayer/multi
 import { multiplayerSessionManager } from '../features/multiplayer/multiplayerSessionManager';
 import type { BootstrapPackageMessage } from '../features/multiplayer/protocol';
 import { releaseMultiplayerRoomOwnership, retainMultiplayerCompletionRelay } from '../features/multiplayer/multiplayerPersistence';
-import type { PersistedBootstrapImport } from '../features/multiplayer/multiplayerPersistence';
 import type { EnterActiveSession } from '../utils/activeSessionNavigation';
 import { createMultiplayerTabCoordinator, MultiplayerTabClaim } from '../features/multiplayer/multiplayerTabCoordinator';
 import { subscribeToSessionDeletion } from '../features/multiplayer/sessionDeletionEvents';
@@ -274,20 +273,16 @@ export const useMultiplayerRoomLifecycle = ({
   const applyRemoteBootstrapToPlayerRuntime = useCallback(async (
     roomId: string,
     bootstrapMessage: BootstrapPackageMessage,
-    persisted: PersistedBootstrapImport,
   ) => {
     const managedRoom = multiplayerSessionManager.get(roomId);
+    if (managedRoom?.status === 'ownership-returned') return true;
     if (managedRoom?.runtime?.role !== 'player') return false;
 
     const runtime = managedRoom.runtime;
-    const templateChanged = JSON.stringify(runtime.session.template) !== JSON.stringify(persisted.templateForSession);
-    if (!runtime.applyBootstrap({
-      template: persisted.templateForSession,
-      session: persisted.session,
-      revision: bootstrapMessage.package.revision,
-    })) return true;
-    multiplayerSessionManager.publishSession(roomId, runtime.session.session);
-    if (templateChanged) await appDataRef.current.resumeSessionById(persisted.session.id);
+    const previousTemplate = runtime.session.template;
+    if (!await runtime.receive(bootstrapMessage)) return true;
+    const templateChanged = JSON.stringify(previousTemplate) !== JSON.stringify(runtime.session.template);
+    if (templateChanged) await appDataRef.current.resumeSessionById(runtime.session.session.id);
     return true;
   }, []);
 
@@ -419,7 +414,7 @@ export const useMultiplayerRoomLifecycle = ({
           activeTransport = transport;
           participantTransportRef.current = transport;
         },
-        applyExistingBootstrap: (message, persisted) => applyRemoteBootstrapToPlayerRuntime(roomId, message, persisted),
+        applyExistingBootstrap: (message) => applyRemoteBootstrapToPlayerRuntime(roomId, message),
         onInitialBootstrap: async (bootstrapMessage, transport) => {
           // The runtime takes ownership of the QR transport before player selection.
           const runtime = await ensurePlayerRuntime(roomId, bootstrapMessage, transport, isCurrentJoin);
@@ -528,6 +523,7 @@ export const useMultiplayerRoomLifecycle = ({
         deliveryStore: multiplayerDeliveryStore,
         transport,
         onSessionSnapshot: callbacks.onSessionSnapshot,
+        onBoardSyncStatus: callbacks.onBoardSyncStatus,
         onParticipantClaims: (claims) => multiplayerSessionManager.setParticipantClaims(createdRoomId, claims),
       });
       // Closing or leaving during bootstrap must not start a late room.
@@ -655,7 +651,6 @@ export const useMultiplayerRoomLifecycle = ({
     const managedRoom = multiplayerSessionManager.get(activeMultiplayerRoom.roomId);
     if (managedRoom?.runtime?.role !== 'host') return;
     await managedRoom.runtime.controller.publishBoard();
-    multiplayerSessionManager.setUnpublishedBoardUpdate(activeMultiplayerRoom.roomId, false);
   }, [activeMultiplayerRoom]);
 
   const releaseHostMultiplayerRoom = useCallback(async () => {

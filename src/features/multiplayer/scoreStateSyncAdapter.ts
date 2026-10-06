@@ -52,6 +52,14 @@ const serializePayload = (payload: ScoreStatePayload | SessionCompletedMessage):
   return new Blob([JSON.stringify(payload)], { type: 'application/json' });
 };
 
+/** Freeze one coherent controller revision before the asynchronous chunk transfer. */
+export const createScoreStateSyncItem = ({ room, template, session, revision, exportedAt }: ScoreStatePayload): SyncItem => ({
+  id: session.id,
+  version: revision,
+  meta: { kind: 'score-state' },
+  payload: serializePayload({ room, template, session, revision, exportedAt }),
+});
+
 export const readSyncItemPayload = async (blob: Blob): Promise<string> => {
   if (typeof (blob as Blob & { text?: () => Promise<string> }).text === 'function') {
     return (blob as Blob & { text: () => Promise<string> }).text();
@@ -160,22 +168,17 @@ export const createScoreStateSyncAdapter = (options: {
     ]);
     if (!session || !template) return null;
 
-    return {
-      id: session.id,
-      version: room.revision,
-      meta: { kind: 'score-state' },
-      payload: serializePayload({
-        room: {
-          roomId: room.roomId,
-          hostDeviceId: room.hostDeviceId,
-          createdAt: room.createdAt,
-        },
-        template,
-        session,
-        revision: room.revision,
-        exportedAt: room.updatedAt,
-      }),
-    };
+    return createScoreStateSyncItem({
+      room: {
+        roomId: room.roomId,
+        hostDeviceId: room.hostDeviceId,
+        createdAt: room.createdAt,
+      },
+      template,
+      session,
+      revision: room.revision,
+      exportedAt: room.updatedAt,
+    });
   },
 
   async upsertRemoteItem(item) {

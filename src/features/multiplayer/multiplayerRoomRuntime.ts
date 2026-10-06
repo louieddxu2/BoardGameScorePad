@@ -2,7 +2,7 @@ import { GameSession, GameTemplate, MultiplayerRoomRecord } from '../../types';
 import { MultiplayerDeliveryStore } from './multiplayerDeliveryStore';
 import { MultiplayerParticipantBindingStore, participantBindingKey, saveParticipantBinding } from './multiplayerParticipantBinding';
 import { MultiplayerBootstrapStore, MultiplayerCompletionReleaseStore, MultiplayerSnapshotStore, createMultiplayerRoomRecord, persistMultiplayerBootstrap, persistMultiplayerBootstrapRecords, releaseMultiplayerRoomOwnership } from './multiplayerPersistence';
-import { MultiplayerRoomTransport, ParticipantClaimCounts, createMultiplayerPlayerRoomController, createMultiplayerRoomController } from './multiplayerRoomController';
+import { BoardSyncStatus, MultiplayerRoomTransport, ParticipantClaimCounts, createMultiplayerPlayerRoomController, createMultiplayerRoomController } from './multiplayerRoomController';
 import { createMultiplayerHostSession, createMultiplayerPlayerSessionFromBootstrap } from './multiplayerSession';
 import { BootstrapPackageMessage, MULTIPLAYER_PROTOCOL_VERSION } from './protocol';
 import { resolveBootstrapImport } from './sessionBootstrap';
@@ -52,7 +52,6 @@ export interface MultiplayerPlayerRoomRuntime {
   /** Reclaims the previously selected player; pending edits replay only after acceptance. */
   restoreParticipantBinding(): Promise<boolean>;
   receive(message: unknown): Promise<boolean>;
-  applyBootstrap(input: { template: GameTemplate; session: GameSession; revision: number }): boolean;
   getConnectionCount(): number;
   getParticipantClaims(): ParticipantClaimCounts;
 }
@@ -69,6 +68,7 @@ export const createMultiplayerHostRoomRuntime = async (options: {
   transport: MultiplayerRoomRuntimeTransport;
   onSessionSnapshot?: (session: GameSession) => void | Promise<void>;
   onParticipantClaims?: (claims: ParticipantClaimCounts) => void | Promise<void>;
+  onBoardSyncStatus?: (status: BoardSyncStatus) => void;
   now?: () => number;
 }): Promise<MultiplayerHostRoomRuntime> => {
   const now = options.now ?? Date.now;
@@ -89,13 +89,14 @@ export const createMultiplayerHostRoomRuntime = async (options: {
     snapshotStore: options.store, transport: options.transport, now,
     onSnapshot: async (snapshot) => { await options.onSessionSnapshot?.(snapshot.session); },
     onParticipantClaims: options.onParticipantClaims,
+    onBoardSyncStatus: options.onBoardSyncStatus,
   });
   options.transport.setMessageReceiver?.(async (message, connection) => { await controller.receive(message, connection); });
   options.transport.setConnectionCloseHandler?.(async (connection) => { await controller.releaseConnection(connection); });
   return {
     role: 'host', session: hostSession, controller,
     start: () => { options.transport.startHost?.(hostSession.room.roomId); },
-    stop: () => { options.transport.stop?.(); },
+    stop: () => { controller.stop(); options.transport.stop?.(); },
     receive: (message, connection) => controller.receive(message, connection),
     whenIdle: controller.whenIdle,
     getConnectionCount: () => options.transport.getConnectionCount?.() ?? 0,
@@ -111,6 +112,7 @@ export const restoreMultiplayerHostRoomRuntime = async (options: {
   transport: MultiplayerRoomRuntimeTransport;
   onSessionSnapshot?: (session: GameSession) => void | Promise<void>;
   onParticipantClaims?: (claims: ParticipantClaimCounts) => void | Promise<void>;
+  onBoardSyncStatus?: (status: BoardSyncStatus) => void;
   now?: () => number;
 }): Promise<MultiplayerHostRoomRuntime | null> => {
   const room = await options.store.getRoom(options.roomId);
@@ -132,6 +134,7 @@ export const restoreMultiplayerHostRoomRuntime = async (options: {
     transport: options.transport,
     onSessionSnapshot: options.onSessionSnapshot,
     onParticipantClaims: options.onParticipantClaims,
+    onBoardSyncStatus: options.onBoardSyncStatus,
     now: options.now,
   });
 };
@@ -171,6 +174,7 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
     deviceId: options.deviceId,
     deliveryStore: options.deliveryStore,
     snapshotStore: options.store,
+    bootstrapStore: options.store,
     transport: options.transport,
     now,
     onClaimAccepted: async (playerId) => {
@@ -296,7 +300,6 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
       }
       return sent;
     },
-    applyBootstrap: (input) => playerSession.applyBootstrap(input),
     restoreParticipantBinding,
     receive,
     whenIdle,

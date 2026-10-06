@@ -2,7 +2,6 @@ import Peer from 'peerjs';
 import { createLocalScoreStateSyncAdapter } from './multiplayerLocalStore';
 import { createMultiplayerP2PRuntimeTransport } from './multiplayerP2PRuntimeTransport';
 import { multiplayerSessionManager } from './multiplayerSessionManager';
-import type { PersistedBootstrapImport } from './multiplayerPersistence';
 import type { BootstrapPackageMessage, SessionCompletedMessage } from './protocol';
 
 type JoinTransport = ReturnType<typeof createMultiplayerP2PRuntimeTransport>;
@@ -15,7 +14,7 @@ export const startMultiplayerQrJoin = async (options: {
   onRoomClosed: () => void;
   onJoining: () => void;
   onTransportCreated: (transport: JoinTransport) => void;
-  applyExistingBootstrap: (message: BootstrapPackageMessage, persisted: PersistedBootstrapImport) => Promise<boolean>;
+  applyExistingBootstrap: (message: BootstrapPackageMessage) => Promise<boolean>;
   onInitialBootstrap: (message: BootstrapPackageMessage, transport: JoinTransport) => Promise<void>;
   onJoinCompleted: () => void;
   onStartFailed: () => void;
@@ -32,8 +31,11 @@ export const startMultiplayerQrJoin = async (options: {
   options.onJoining();
   let transport: JoinTransport | null = null;
   const adapter = createLocalScoreStateSyncAdapter(options.roomId, 'player', {
-    onRemoteBootstrap: async (message, persisted) => {
-      if (await options.applyExistingBootstrap(message, persisted)) return;
+    applyRemoteBootstrap: async (message) => {
+      if (await options.applyExistingBootstrap(message)) return true;
+      return !options.isCurrent();
+    },
+    onRemoteBootstrap: async (message) => {
       if (!options.isJoining() || !options.isCurrent() || !transport) return;
       await options.onInitialBootstrap(message, transport);
     },

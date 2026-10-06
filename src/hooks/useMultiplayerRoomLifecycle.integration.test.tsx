@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => {
     start: vi.fn(),
     leaveRoom: vi.fn(),
     restoreParticipantBinding: vi.fn(async () => true),
+    receive: vi.fn(async () => true),
   };
   const hostRuntime = {
     role: 'host',
@@ -148,6 +149,7 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     mocks.runtime.start.mockReset();
     mocks.runtime.leaveRoom.mockReset();
     mocks.runtime.restoreParticipantBinding.mockReset().mockResolvedValue(true);
+    mocks.runtime.receive.mockReset().mockResolvedValue(true);
     mocks.hostRuntime.start.mockReset();
     mocks.hostRuntime.stop.mockReset();
     vi.mocked(createMultiplayerHostRoomRuntime).mockReset().mockResolvedValue(mocks.hostRuntime);
@@ -474,7 +476,7 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     }
   });
 
-  it('shows the player picker when bootstrap arrives before the three-second deadline', async () => {
+  it('shows the player picker before the deadline and continues accepting automatic templates after the QR join ends', async () => {
     window.history.replaceState({}, '', '/?room=room-1');
     const { result } = renderLifecycle();
     await waitFor(() => expect(mocks.transport.joinRoom).toHaveBeenCalledWith('room-1'));
@@ -490,6 +492,16 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     expect(mocks.register).toHaveBeenCalledWith('room-1', mocks.runtime, 'connected');
     await waitFor(() => expect(result.current.pendingMultiplayerJoin?.roomId).toBe('room-1'));
     expect(mocks.transport.stop).not.toHaveBeenCalled();
+    appData.resumeSessionById.mockClear();
+    mocks.runtime.receive.mockImplementationOnce(async () => {
+      mocks.runtime.session.template = { id: 'template-1', name: 'Updated' };
+      return true;
+    });
+    const update = { type: 'room:bootstrap', roomId: 'room-1', package: { revision: 2 } };
+    await act(async () => { expect(await mocks.adapterOptions.applyRemoteBootstrap(update)).toBe(true); });
+    expect(mocks.runtime.receive).toHaveBeenCalledWith(update);
+    expect(appData.resumeSessionById).toHaveBeenCalledWith('session-1');
+    expect(createMultiplayerPlayerRoomRuntime).toHaveBeenCalledTimes(1);
   });
 
   it('creates and registers only one player runtime when bootstrap delivery overlaps', async () => {

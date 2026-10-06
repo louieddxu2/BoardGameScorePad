@@ -144,12 +144,16 @@ describe('multiplayer session manager', () => {
     expect(manager.get('room-1')?.participantClaims).toEqual({ p1: 2, p2: 1 });
   });
 
-  it('tracks unpublished board updates for a host room', () => {
+  it('derives the host pending marker from controller sync status', () => {
     const manager = createMultiplayerSessionManager(); const runtime = createRuntime('host');
     manager.register('room-1', runtime);
-    manager.setUnpublishedBoardUpdate('room-1', true);
+    const callbacks = manager.createRuntimeCallbacks('room-1');
+    callbacks.onBoardSyncStatus('pending');
     expect(manager.get('room-1')?.hasUnpublishedBoardUpdate).toBe(true);
-    manager.setUnpublishedBoardUpdate('room-1', false);
+    callbacks.onBoardSyncStatus('error');
+    expect(manager.get('room-1')?.boardSyncStatus).toBe('error');
+    expect(manager.get('room-1')?.hasUnpublishedBoardUpdate).toBe(true);
+    callbacks.onBoardSyncStatus('synced');
     expect(manager.get('room-1')?.hasUnpublishedBoardUpdate).toBe(false);
   });
 

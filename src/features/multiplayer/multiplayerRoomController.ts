@@ -6,6 +6,7 @@ import {
 } from './multiplayerSession';
 import {
   isScorePatchResultMessage,
+  isBootstrapPackageMessage,
   isScoreValuePatchMessage,
   isParticipantClaimMessage,
   isParticipantClaimResultMessage,
@@ -31,17 +32,20 @@ import {
   scorePatchOperationKey,
   scorePatchSequenceKey,
 } from './multiplayerDeliveryStore';
-import { MultiplayerSnapshotStore, persistAcceptedMultiplayerSnapshot, persistMultiplayerSnapshot } from './multiplayerPersistence';
+import { MultiplayerBootstrapStore, MultiplayerSnapshotStore, createMultiplayerRoomRecord, persistAcceptedMultiplayerSnapshot, persistMultiplayerSnapshot } from './multiplayerPersistence';
+import { createScoreStateSyncItem, SyncItem } from './scoreStateSyncAdapter';
+import { resolveBootstrapImport } from './sessionBootstrap';
 
 export interface MultiplayerRoomTransport {
   sendToHost(message: unknown): boolean;
   sendToConnection(connection: unknown, message: unknown): boolean;
   closeConnection?(connection: unknown): boolean;
-  broadcastLocalChanges(): Promise<void>;
+  broadcastLocalChanges(item?: SyncItem): Promise<void>;
   broadcastMessage?(message: unknown, exceptConnection?: unknown): boolean;
 }
 
 export type ParticipantClaimCounts = Record<string, number>;
+export type BoardSyncStatus = 'synced' | 'pending' | 'syncing' | 'error';
 
 /**
  * Domain coordinator only. UI and a concrete WebRTC/PeerJS constructor are
@@ -55,6 +59,7 @@ export const createMultiplayerRoomController = (options: {
   transport: MultiplayerRoomTransport;
   onSnapshot?: (snapshot: SessionSnapshotMessage) => void | Promise<void>;
   onParticipantClaims?: (claims: ParticipantClaimCounts) => void | Promise<void>;
+  onBoardSyncStatus?: (status: BoardSyncStatus) => void;
   now?: () => number;
 }) => {
   const now = options.now ?? Date.now;
@@ -86,6 +91,57 @@ export const createMultiplayerRoomController = (options: {
   };
   let completionWaiter: { roomId: string; sessionId: string; pendingDeviceIds: Set<string>; resolve: () => void } | null = null;
   let completionPromise: Promise<import('./protocol').SessionCompletedMessage> | null = null;
+  let stopped = false;
+  let boardGeneration = 0;
+  let boardSyncStatus: BoardSyncStatus = 'synced';
+  let boardSyncTimer: number | null = null;
+  let boardSyncTask: Promise<void> | null = null;
+  const setBoardSyncStatus = (status: BoardSyncStatus) => {
+    if (stopped || status === boardSyncStatus) return;
+    boardSyncStatus = status;
+    options.onBoardSyncStatus?.(status);
+  };
+  const clearBoardSyncTimer = () => {
+    if (boardSyncTimer !== null) window.clearTimeout(boardSyncTimer);
+    boardSyncTimer = null;
+  };
+  const scheduleBoardSync = () => {
+    clearBoardSyncTimer();
+    if (stopped || completionPromise) return;
+    setBoardSyncStatus('pending');
+    boardSyncTimer = window.setTimeout(() => {
+      boardSyncTimer = null;
+      void publishBoard().catch(() => { /* The failure remains available for manual retry. */ });
+    }, 250);
+  };
+  const publishBoard = (): Promise<void> => {
+    clearBoardSyncTimer();
+    if (stopped || completionPromise) return Promise.resolve();
+    if (boardSyncTask) return boardSyncTask;
+    let sentGeneration = boardGeneration;
+    // Capture inside the existing commit queue; sending chunks must not block typing.
+    const task = enqueue(async () => {
+      if (stopped || completionPromise) return null;
+      sentGeneration = boardGeneration;
+      setBoardSyncStatus('syncing');
+      return createScoreStateSyncItem(options.hostSession.createBootstrapMessage().package);
+    }).then(async (item) => {
+      if (!item || stopped || completionPromise) return;
+      try {
+        await options.transport.broadcastLocalChanges(item);
+        if (sentGeneration === boardGeneration) setBoardSyncStatus('synced');
+      } catch (error) {
+        if (sentGeneration === boardGeneration) setBoardSyncStatus('error');
+        throw error;
+      }
+    }).finally(() => {
+      boardSyncTask = null;
+      // An old transfer can never clear a more recent committed template edit.
+      if (sentGeneration !== boardGeneration) scheduleBoardSync();
+    });
+    boardSyncTask = task;
+    return task;
+  };
   const acknowledgeCompletion = (deviceId: string) => {
     if (!completionWaiter) return;
     completionWaiter.pendingDeviceIds.delete(deviceId);
@@ -220,6 +276,7 @@ export const createMultiplayerRoomController = (options: {
     getParticipantClaims,
     async complete() {
       if (completionPromise) return completionPromise;
+      clearBoardSyncTimer();
       completionPromise = enqueue(async () => {
         const message = options.hostSession.complete();
         await persistMultiplayerSnapshot({
@@ -268,14 +325,20 @@ export const createMultiplayerRoomController = (options: {
         await options.snapshotStore.putTemplate?.(options.hostSession.template);
         await persistMultiplayerSnapshot(snapshot, options.snapshotStore);
         await options.onSnapshot?.(snapshot);
+        boardGeneration++;
+        scheduleBoardSync();
         return snapshot;
       });
     },
-    async publishBoard() {
-      await operationQueue;
-      await options.transport.broadcastLocalChanges();
+    publishBoard,
+    stop() {
+      stopped = true;
+      clearBoardSyncTimer();
     },
-    whenIdle: () => operationQueue,
+    whenIdle: async () => {
+      await operationQueue;
+      await boardSyncTask?.catch(() => undefined);
+    },
   };
 };
 
@@ -284,6 +347,7 @@ export const createMultiplayerPlayerRoomController = (options: {
   deviceId: string;
   deliveryStore: MultiplayerDeliveryStore;
   snapshotStore: MultiplayerSnapshotStore;
+  bootstrapStore?: MultiplayerBootstrapStore;
   transport: MultiplayerRoomTransport;
   onClaimAccepted?: (playerId: string) => void | Promise<void>;
   onClaimsAccepted?: (playerIds: string[]) => void | Promise<void>;
@@ -333,6 +397,35 @@ export const createMultiplayerPlayerRoomController = (options: {
   let unpersistedSnapshot: SessionSnapshotMessage | null = null;
   const settledOutboxIds = new Set<string>();
   const receiveOne = async (message: unknown) => {
+    if (isBootstrapPackageMessage(message)) {
+      const store = options.bootstrapStore;
+      if (!store || message.roomId !== options.playerSession.room.roomId || message.package.session.id !== options.playerSession.session.id || options.playerSession.session.status !== 'active') return false;
+      const resolved = resolveBootstrapImport(message.package, await store.getTemplate(message.package.template.id));
+      // Keep the existing local/newer-template import policy, but within a live
+      // room the host's structure is authoritative even for equal timestamps.
+      const template = { ...message.package.template, id: resolved.templateForSession.id };
+      if (!options.playerSession.applyBootstrap({ template, session: resolved.session, revision: message.package.revision })) return false;
+      const session = options.playerSession.confirmedSession;
+      const updatedAt = Math.max(message.package.exportedAt, session.lastUpdatedAt ?? 0);
+      const records = {
+        template: options.playerSession.template,
+        session,
+        room: createMultiplayerRoomRecord({ room: options.playerSession.room, session, revision: options.playerSession.revision, role: 'player', updatedAt }),
+      };
+      // Use the same receive queue as ACKs/snapshots, and persist confirmed inputs
+      // only. A delayed template must not roll IndexedDB back or consume the outbox.
+      for (let attempt = 0; ; attempt++) {
+        try {
+          await store.persistBootstrap(records);
+          break;
+        } catch (error) {
+          if (attempt >= 2) throw error;
+        }
+      }
+      unpersistedSnapshot = null;
+      await options.onSnapshot?.({ type: 'session:snapshot', roomId: message.roomId, sessionId: session.id, session: options.playerSession.session, revision: options.playerSession.revision, updatedAt });
+      return true;
+    }
     if (isSessionCompletedMessage(message)) {
       if (!options.playerSession.applyCompleted(message)) return false;
       unpersistedSnapshot = null;

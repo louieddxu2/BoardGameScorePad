@@ -103,7 +103,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     if (snapshot) {
       props.onUpdateSession(snapshot.session, { alreadyPersisted: true });
       manager.publishSession(roomId, snapshot.session);
-      manager.setUnpublishedBoardUpdate(roomId, true);
       return { ...result, session: snapshot.session };
     }
     return result;

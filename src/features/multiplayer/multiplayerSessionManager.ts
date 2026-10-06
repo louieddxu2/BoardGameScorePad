@@ -1,6 +1,6 @@
 import { GameSession } from '../../types';
 import { MultiplayerHostRoomRuntime, MultiplayerPlayerRoomRuntime } from './multiplayerRoomRuntime';
-import { ParticipantClaimCounts } from './multiplayerRoomController';
+import { BoardSyncStatus, ParticipantClaimCounts } from './multiplayerRoomController';
 import { multiplayerLocalStore } from './multiplayerLocalStore';
 
 export type MultiplayerConnectionStatus =
@@ -24,6 +24,7 @@ export interface MultiplayerRoomState {
   connectionCount: number;
   participantClaims: ParticipantClaimCounts;
   hasUnpublishedBoardUpdate: boolean;
+  boardSyncStatus: BoardSyncStatus;
 }
 
 export interface MultiplayerSessionManager {
@@ -34,10 +35,11 @@ export interface MultiplayerSessionManager {
   setConnectionStatus(roomId: string, status: Exclude<MultiplayerConnectionStatus, 'ownership-returned'>): void;
   setConnectionCount(roomId: string, connectionCount: number): void;
   setParticipantClaims(roomId: string, claims: ParticipantClaimCounts): void;
-  setUnpublishedBoardUpdate(roomId: string, hasUnpublishedBoardUpdate: boolean): void;
+  setBoardSyncStatus(roomId: string, status: BoardSyncStatus): void;
   publishSession(roomId: string, session: GameSession): void;
   createRuntimeCallbacks(roomId: string): {
     onSessionSnapshot: (session: GameSession) => void;
+    onBoardSyncStatus: (status: BoardSyncStatus) => void;
     onOwnershipReturned: (session: GameSession) => void;
   };
   returnOwnership(roomId: string, session: GameSession): void;
@@ -98,7 +100,7 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
       const runtimeSession = runtime.role === 'host' ? runtime.session.session : runtime.session.session;
       const connectionCount = (runtime as Partial<ManagedMultiplayerRuntime>).getConnectionCount?.() ?? 0;
       const participantClaims = (runtime as Partial<ManagedMultiplayerRuntime>).getParticipantClaims?.() ?? {};
-      const state: MultiplayerRoomState = { roomId, role: runtime.role, status, isViewAttached: false, runtime, session: runtimeSession, connectionCount, participantClaims, hasUnpublishedBoardUpdate: false };
+      const state: MultiplayerRoomState = { roomId, role: runtime.role, status, isViewAttached: false, runtime, session: runtimeSession, connectionCount, participantClaims, hasUnpublishedBoardUpdate: false, boardSyncStatus: 'synced' };
       rooms.set(roomId, state);
       notify();
       return snapshot(state);
@@ -140,10 +142,11 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
       state.participantClaims = { ...claims };
       notify();
     },
-    setUnpublishedBoardUpdate(roomId, hasUnpublishedBoardUpdate) {
+    setBoardSyncStatus(roomId, status) {
       const state = rooms.get(roomId);
-      if (!state || !state.runtime || state.role !== 'host') return;
-      state.hasUnpublishedBoardUpdate = hasUnpublishedBoardUpdate;
+      if (!state || !state.runtime || state.role !== 'host' || state.boardSyncStatus === status) return;
+      state.boardSyncStatus = status;
+      state.hasUnpublishedBoardUpdate = status !== 'synced';
       notify();
     },
     publishSession(roomId, session) {
@@ -155,6 +158,7 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
     createRuntimeCallbacks(roomId) {
       return {
         onSessionSnapshot: (session) => { this.publishSession(roomId, session); },
+        onBoardSyncStatus: (status) => { this.setBoardSyncStatus(roomId, status); },
         onOwnershipReturned: (session) => { this.returnOwnership(roomId, session); },
       };
     },

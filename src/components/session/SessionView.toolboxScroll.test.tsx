@@ -598,6 +598,7 @@ describe('SessionView toolbox scroll behavior', () => {
       },
       transport: { sendToHost: () => false, sendToConnection: () => true, broadcastLocalChanges: async () => undefined },
       onSessionSnapshot: manager.createRuntimeCallbacks('room-1').onSessionSnapshot,
+      onBoardSyncStatus: manager.createRuntimeCallbacks('room-1').onBoardSyncStatus,
     });
     manager.register('room-1', runtime);
     const baseline = session;
@@ -641,6 +642,7 @@ describe('SessionView toolbox scroll behavior', () => {
     expect(onUpdateSession).toHaveBeenCalledExactlyOnceWith(runtime.session.session, { alreadyPersisted: true });
     expect(manager.get('room-1')?.hasUnpublishedBoardUpdate).toBe(true);
     expect(document.querySelector('#live-totals-bar .player-col-p2')).toHaveTextContent('7');
+    runtime.stop();
   });
 
   it('updates participant totals locally before the host replies, without saving or echoing the input', async () => {

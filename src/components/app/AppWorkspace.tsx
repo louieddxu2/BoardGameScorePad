@@ -245,7 +245,7 @@ const AppWorkspace: React.FC<AppWorkspaceProps> = ({
           isOpen
           joinUrl={multiplayerJoinUrl}
           connectionCount={multiplayerRoomState?.connectionCount ?? 0}
-          hasUnpublishedBoardUpdate={multiplayerRoomState?.hasUnpublishedBoardUpdate ?? false}
+          boardSyncStatus={multiplayerRoomState?.boardSyncStatus ?? 'synced'}
           isOpeningRoom={isOpeningMultiplayerRoom}
           hasOpenError={hasMultiplayerRoomOpenError}
           onOpenRoom={handleCreateMultiplayerRoom}

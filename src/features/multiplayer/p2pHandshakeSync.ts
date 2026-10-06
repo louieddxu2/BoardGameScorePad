@@ -29,7 +29,7 @@ export interface P2PHandshakeSync {
   stop(): void;
   setupConnection(connection: P2PDataConnection): void;
   closeConnection(connection: P2PDataConnection): boolean;
-  broadcastLocalChanges(): Promise<void>;
+  broadcastLocalChanges(item?: SyncItem): Promise<void>;
   broadcast(message: unknown, exceptConnection?: P2PDataConnection): boolean;
   sendToHost(message: unknown): boolean;
   sendToConnection(connection: P2PDataConnection, message: unknown): boolean;
@@ -117,7 +117,8 @@ export const createP2PHandshakeSync = (options: {
     }
   };
 
-  const sendItem = async (connection: P2PDataConnection, item: SyncItem): Promise<boolean> => {
+  const itemSendQueues = new Map<P2PDataConnection, Promise<void>>();
+  const transferItem = async (connection: P2PDataConnection, item: SyncItem): Promise<boolean> => {
     if (!connection.open) return false;
     const buffer = await item.payload.arrayBuffer();
     const total = Math.max(1, Math.ceil(buffer.byteLength / chunkSize));
@@ -139,6 +140,16 @@ export const createP2PHandshakeSync = (options: {
       if (index % 5 === 0) await new Promise<void>((resolve) => window.setTimeout(resolve, 10));
     }
     return true;
+  };
+
+  const sendItem = (connection: P2PDataConnection, item: SyncItem): Promise<boolean> => {
+    // Initial/reconnect handshakes and automatic publishing share the same item
+    // ID. Never interleave their chunks on a peer; score messages stay immediate.
+    const task = (itemSendQueues.get(connection) ?? Promise.resolve()).then(() => transferItem(connection, item));
+    const idle = task.then(() => undefined, () => undefined);
+    itemSendQueues.set(connection, idle);
+    void idle.then(() => { if (itemSendQueues.get(connection) === idle) itemSendQueues.delete(connection); });
+    return task;
   };
 
   const requestMissing = async (connection: P2PDataConnection, remote: Array<{ id: string; version: number }>) => {
@@ -420,11 +431,12 @@ export const createP2PHandshakeSync = (options: {
       }
       return true;
     },
-    async broadcastLocalChanges() {
-      const metas = await options.adapter.listMetas();
+    async broadcastLocalChanges(frozenItem) {
+      const metas = frozenItem ? [{ id: frozenItem.id, version: frozenItem.version }] : await options.adapter.listMetas();
+      let failed = false;
       for (const meta of metas) {
         if ((broadcastedVersions.get(meta.id) ?? 0) >= meta.version) continue;
-        const item = await options.adapter.getItem(meta.id);
+        const item = frozenItem ?? await options.adapter.getItem(meta.id);
         if (!item) continue;
         let sentToAll = true;
         for (const connection of connections) {
@@ -436,8 +448,10 @@ export const createP2PHandshakeSync = (options: {
             log(`Broadcast failed for ${item.id}: ${String(error)}`, 'error');
           }
         }
-        if (sentToAll) broadcastedVersions.set(meta.id, meta.version);
+        if (sentToAll) broadcastedVersions.set(item.id, item.version);
+        else failed = true;
       }
+      if (failed) throw new Error('score_state_broadcast_failed');
     },
     broadcast(message, exceptConnection) {
       let sent = false;

@@ -8,7 +8,6 @@ import type { MultiplayerPlayerRoomRuntime } from './multiplayerRoomRuntime';
 import { multiplayerSessionManager } from './multiplayerSessionManager';
 import type { MultiplayerTabClaim } from './multiplayerTabCoordinator';
 import type { BootstrapPackageMessage } from './protocol';
-import type { PersistedBootstrapImport } from './multiplayerPersistence';
 
 type RestoredRoom = { roomId: string; role: 'host' | 'player'; playerIds?: string[] };
 
@@ -20,7 +19,7 @@ export const restoreMultiplayerRoomForSession = async (options: {
   isCurrentParticipantClaim: (claim: MultiplayerTabClaim) => boolean;
   releaseParticipantTabClaim: (roomId: string) => void;
   onRoomRestored: (room: RestoredRoom) => void;
-  applyRemoteBootstrap: (roomId: string, message: BootstrapPackageMessage, persisted: PersistedBootstrapImport) => Promise<boolean>;
+  applyRemoteBootstrap: (roomId: string, message: BootstrapPackageMessage) => Promise<boolean>;
   onParticipantCompletion: (roomId: string) => void;
 }): Promise<boolean> => {
   let participantClaim: MultiplayerTabClaim | null = null;
@@ -68,6 +67,7 @@ export const restoreMultiplayerRoomForSession = async (options: {
         deliveryStore: multiplayerDeliveryStore,
         transport,
         onSessionSnapshot: callbacks.onSessionSnapshot,
+        onBoardSyncStatus: callbacks.onBoardSyncStatus,
         onParticipantClaims: (claims) => multiplayerSessionManager.setParticipantClaims(room.roomId, claims),
       });
       if (runtime) {
@@ -85,9 +85,7 @@ export const restoreMultiplayerRoomForSession = async (options: {
     if (!isCurrentParticipantRestore()) return false;
     const playerIds = binding?.playerIds ?? (binding?.playerId ? [binding.playerId] : []);
     const adapter = createLocalScoreStateSyncAdapter(room.roomId, 'player', {
-      onRemoteBootstrap: async (message, persisted) => {
-        await options.applyRemoteBootstrap(room.roomId, message, persisted);
-      },
+      applyRemoteBootstrap: (message) => !isCurrentParticipantRestore() || options.applyRemoteBootstrap(room.roomId, message),
       onRemoteCompletion: async (message) => {
         const managedRoom = multiplayerSessionManager.get(room.roomId);
         if (managedRoom?.runtime?.role === 'player') await managedRoom.runtime.receive(message);
