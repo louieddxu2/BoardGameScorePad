@@ -3,17 +3,29 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const severityRank = { info: 0, low: 1, moderate: 2, high: 3, critical: 4 };
-const exception = {
-  package: 'braces',
-  version: '3.0.3',
-  url: 'https://github.com/advisories/GHSA-vfj7-8cjw-p6xm',
-  expiresAt: '2026-11-03T00:00:00.000Z',
-};
-
-// Temporary risk acceptance, NOT a vulnerability fix. This dependency only
-// processes fixed build/watch globs. Its suggested Tailwind 4 upgrade would
-// drop older mobile browser support. Reassess the advisory by the fixed expiry;
-// do not extend the date automatically or exempt braces from other advisories.
+// Reviewed risk acceptances, NOT vulnerability fixes or a blanket dev exemption.
+// Keep Tailwind 3 for older mobile browsers. Reassess by each fixed expiry; never
+// extend dates automatically. New advisories, versions or runtime use must fail.
+const reviewedExceptions = [
+  {
+    package: 'braces',
+    version: '3.0.3',
+    severity: 'high',
+    url: 'https://github.com/advisories/GHSA-vfj7-8cjw-p6xm',
+    expiresAt: '2026-11-03T00:00:00.000Z',
+    reason: 'Only fixed build/watch globs are processed; no patched version is available.',
+  },
+  {
+    package: 'postcss-selector-parser',
+    version: '6.1.4',
+    severity: 'moderate',
+    url: 'https://github.com/advisories/GHSA-rj75-hqrm-r3gf',
+    expiresAt: '2026-11-03T00:00:00.000Z',
+    // The advisory explicitly excludes trusted build-time sources. Tailwind 3
+    // and postcss-nested require parser 6; do not force a major-version override.
+    reason: 'Only trusted repository CSS is parsed during builds; no untrusted request input.',
+  },
+];
 export function evaluateAuditReport(report, lockfile, now = new Date()) {
   if (report?.error || report?.auditReportVersion !== 2
     || !report.vulnerabilities || typeof report.vulnerabilities !== 'object'
@@ -45,15 +57,15 @@ export function evaluateAuditReport(report, lockfile, now = new Date()) {
     });
   };
 
-  const isAccepted = ({ advisory, vulnerability }) =>
+  const isAccepted = ({ advisory, vulnerability }) => reviewedExceptions.some(exception =>
     now.getTime() < Date.parse(exception.expiresAt)
     && advisory.url === exception.url
     && advisory.name === exception.package
     && advisory.dependency === exception.package
-    && advisory.severity === 'high'
+    && advisory.severity === exception.severity
     && vulnerability.name === exception.package
     && isBuildOnly(vulnerability)
-    && vulnerability.nodes.every(node => lockfile.packages[node].version === exception.version);
+    && vulnerability.nodes.every(node => lockfile.packages[node].version === exception.version));
 
   const blocking = [];
   const acceptedPackages = [];
@@ -73,7 +85,8 @@ export function evaluateAuditReport(report, lockfile, now = new Date()) {
         advisories: [...new Set(causes.map(({ advisory }) => advisory.url))] });
     }
   }
-  return { blocking, acceptedPackages, expiresAt: exception.expiresAt };
+  return { blocking, acceptedPackages,
+    acceptedAdvisories: reviewedExceptions.filter(exception => acceptedPackages.includes(exception.package)) };
 }
 
 function main() {
@@ -90,15 +103,16 @@ function main() {
   const report = JSON.parse(audit.stdout);
   const lockfile = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'));
   const result = evaluateAuditReport(report, lockfile);
+  for (const exception of result.acceptedAdvisories) {
+    console.log(`Reviewed build-only advisory accepted until ${exception.expiresAt}: ${exception.url}`);
+    console.log(`  ${exception.package}@${exception.version}: ${exception.reason}`);
+  }
   if (result.blocking.length > 0) {
     for (const item of result.blocking) {
       console.error(`${item.name}: ${item.severity} — ${item.advisories.join(', ')}`);
     }
     process.exitCode = 1;
     return;
-  }
-  if (result.acceptedPackages.length > 0) {
-    console.log(`Known build-only advisory temporarily accepted until ${result.expiresAt}: ${exception.url}`);
   }
   console.log('Dependency audit passed; all other moderate-or-higher advisories remain blocking.');
 }

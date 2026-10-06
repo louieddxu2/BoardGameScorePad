@@ -2,56 +2,72 @@ import { describe, expect, it } from 'vitest';
 import { evaluateAuditReport } from './audit-dependencies.mjs';
 
 const knownUrl = 'https://github.com/advisories/GHSA-vfj7-8cjw-p6xm';
-const withinException = new Date('2026-10-04T00:00:00Z');
+const selectorUrl = 'https://github.com/advisories/GHSA-rj75-hqrm-r3gf';
+const withinException = new Date('2026-10-06T00:00:00Z');
 const fixture = () => {
   const via = {
     braces: [{ name: 'braces', dependency: 'braces', severity: 'high', url: knownUrl }],
     chokidar: ['braces'], micromatch: ['braces'], 'fast-glob': ['micromatch'],
-    tailwindcss: ['chokidar', 'fast-glob', 'micromatch'],
+    'postcss-selector-parser': [{ name: 'postcss-selector-parser', dependency: 'postcss-selector-parser', severity: 'moderate', url: selectorUrl }],
+    'postcss-nested': ['postcss-selector-parser'],
+    tailwindcss: ['chokidar', 'fast-glob', 'micromatch', 'postcss-nested', 'postcss-selector-parser'],
   };
+  const versions = { braces: '3.0.3', 'postcss-selector-parser': '6.1.4' };
   return {
     report: { auditReportVersion: 2, vulnerabilities: Object.fromEntries(
       Object.entries(via).map(([name, causes]) => [name,
-        { name, severity: 'high', via: causes, nodes: [`node_modules/${name}`] }]),
+        { name, severity: name.startsWith('postcss-') ? 'moderate' : 'high', via: causes, nodes: [`node_modules/${name}`] }]),
     ) },
     lockfile: { packages: Object.fromEntries(Object.keys(via).map(name =>
-      [`node_modules/${name}`, { version: name === 'braces' ? '3.0.3' : '1.0.0', dev: true }])) },
+      [`node_modules/${name}`, { version: versions[name] ?? '1.0.0', dev: true }])) },
   };
 };
 
-describe('temporary build dependency audit exception', () => {
-  it('accepts only the known advisory and its propagated build-only findings', () => {
+describe('reviewed build dependency audit exceptions', () => {
+  it('accepts reviewed advisories and dependents with multiple reviewed causes', () => {
     const { report, lockfile } = fixture();
     const result = evaluateAuditReport(report, lockfile, withinException);
     expect(result.blocking).toEqual([]);
-    expect(result.acceptedPackages.sort()).toEqual(['braces', 'chokidar', 'fast-glob', 'micromatch', 'tailwindcss']);
+    expect(result.acceptedPackages.sort()).toEqual(['braces', 'chokidar', 'fast-glob', 'micromatch', 'postcss-nested', 'postcss-selector-parser', 'tailwindcss']);
+    expect(result.acceptedAdvisories.map(item => item.url)).toEqual([knownUrl, selectorUrl]);
   });
 
   it('blocks the same findings at the expiry boundary', () => {
     const { report, lockfile } = fixture();
-    expect(evaluateAuditReport(report, lockfile, new Date('2026-11-03T00:00:00Z')).blocking).toHaveLength(5);
+    expect(evaluateAuditReport(report, lockfile, new Date('2026-11-03T00:00:00Z')).blocking).toHaveLength(7);
   });
 
-  it('does not hide a new advisory on the exempted dependency', () => {
+  it.each(['braces', 'postcss-selector-parser'])('does not hide a new advisory on %s or its dependents', name => {
     const { report, lockfile } = fixture();
-    report.vulnerabilities.braces.via.push({ name: 'braces', dependency: 'braces', severity: 'moderate', url: 'https://github.com/advisories/GHSA-other' });
+    report.vulnerabilities[name].via.push({ name, dependency: name, severity: 'moderate', url: 'https://github.com/advisories/GHSA-other' });
     const result = evaluateAuditReport(report, lockfile, withinException);
-    expect(result.blocking).toHaveLength(5);
-    expect(result.acceptedPackages).toEqual([]);
+    expect(result.blocking.map(item => item.name)).toEqual(name === 'braces'
+      ? ['braces', 'chokidar', 'micromatch', 'fast-glob', 'tailwindcss']
+      : ['postcss-selector-parser', 'postcss-nested', 'tailwindcss']);
+    expect(result.acceptedAdvisories.map(item => item.package)).not.toContain(name);
   });
 
-  it.each(['braces', 'tailwindcss'])('blocks %s if it becomes a production dependency', name => {
+  it.each(['braces', 'postcss-selector-parser', 'tailwindcss'])('blocks %s if it becomes a production dependency', name => {
     const { report, lockfile } = fixture();
     lockfile.packages[`node_modules/${name}`].dev = false;
     expect(evaluateAuditReport(report, lockfile, withinException).blocking.map(item => item.name)).toContain(name);
   });
 
-  it('requires every installed braces copy to be the reviewed dev-only version', () => {
+  it.each(['braces', 'postcss-selector-parser'])('requires every installed %s copy to be the reviewed version', name => {
     const { report, lockfile } = fixture();
-    const node = 'node_modules/other/node_modules/braces';
-    report.vulnerabilities.braces.nodes.push(node);
-    lockfile.packages[node] = { version: '3.0.2', dev: true };
-    expect(evaluateAuditReport(report, lockfile, withinException).blocking).toHaveLength(5);
+    const node = `node_modules/other/node_modules/${name}`;
+    report.vulnerabilities[name].nodes.push(node);
+    lockfile.packages[node] = { version: '0.0.0', dev: true };
+    const blocked = evaluateAuditReport(report, lockfile, withinException).blocking.map(item => item.name);
+    expect(blocked).toContain(name);
+    expect(blocked).toContain('tailwindcss');
+  });
+
+  it('blocks critical findings even if their underlying causes were reviewed', () => {
+    const { report, lockfile } = fixture();
+    report.vulnerabilities.tailwindcss.severity = 'critical';
+    expect(evaluateAuditReport(report, lockfile, withinException).blocking.map(item => item.name))
+      .toEqual(['tailwindcss']);
   });
 
   it.each(['moderate', 'critical'])('keeps unrelated %s advisories blocking', severity => {

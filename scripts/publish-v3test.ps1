@@ -77,6 +77,10 @@ try {
         return
     }
 
+    # Use the same reviewed-risk policy as CI, before changing SW or pushing.
+    Write-Host "Running dependency audit..." -ForegroundColor White
+    Invoke-CheckedCommand "npm.cmd" @("run", "audit:ci")
+
     Write-Host "Running TypeScript type-check..." -ForegroundColor White
     Invoke-CheckedCommand "npx.cmd" @("tsc", "--noEmit")
 
