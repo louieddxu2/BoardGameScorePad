@@ -119,8 +119,10 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - `src/components/session/modals/SessionExitModal.tsx`
 - `src/components/session/modals/ShareMenu.tsx`
 - `src/components/session/parts/AutoScorePanel.tsx`
+- `src/components/session/parts/buildColumnInputView.tsx`
 - `src/components/session/parts/GridFooter.tsx`
 - `src/components/session/parts/InputPanel.tsx`
+- `src/components/session/parts/InputPanelHeader.tsx`
 - `src/components/session/parts/InputPanelLayout.tsx`
 - `src/components/session/parts/PhotoLightbox.tsx`
 - `src/components/session/parts/PlayerEditor.tsx`
@@ -140,11 +142,10 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - `src/components/session/parts/TexturedScoreCell.tsx`
 - `src/components/session/parts/TexturedScreenshotView.tsx`
 - `src/components/session/parts/TexturedTotalCell.tsx`
+- `src/components/session/parts/TotalAdjustmentSidebar.tsx`
 - `src/components/session/parts/TotalsBar.tsx`
 - `src/components/session/SessionImageFlow.tsx`
 - `src/components/session/SessionUI.test.tsx`
-- `src/components/session/SessionView.toolboxScroll.test.tsx`
-- `src/components/session/SessionView.tsx`
 <!-- AUTO:session:end -->
 
 ### Player Selector

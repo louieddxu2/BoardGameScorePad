@@ -1,35 +1,21 @@
-
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { GameSession, GameTemplate, Player, ScoreColumn, QuickAction, ScoreValue, SavedListItem } from '../../../types';
+import { GameSession, GameTemplate, Player, ScoreColumn, SavedListItem } from '../../../types';
 import { useSessionState } from '../hooks/useSessionState';
 import { useSessionEvents } from '../hooks/useSessionEvents';
 import NumericKeypad from '../../shared/NumericKeypad';
-import ScoreInfoPanel from './ScoreInfoPanel';
-import QuickButtonPad from '../../shared/QuickButtonPad';
 import PlayerEditor, { PlayerSettingsPanel } from './PlayerEditor';
-import AutoScorePanel from './AutoScorePanel';
+import InputPanelHeader from './InputPanelHeader';
+import TotalAdjustmentSidebar from './TotalAdjustmentSidebar';
+import { buildColumnInputView } from './buildColumnInputView';
 import InputPanelLayout from './InputPanelLayout';
 import SmartSpacer from './SmartSpacer';
-import { Eraser, ArrowRight, ArrowDown, Edit, Plus, ArrowUpToLine, ListPlus, Calculator, Scale, X, Check, MousePointerClick } from 'lucide-react';
-import { isColorDark, getContrastTextStyles } from '../../../utils/ui';
-import { ContrastText } from '../../shared/ContrastText';
+import { Check } from 'lucide-react';
 import { getScoreHistory, getRawValue, syncPartsFromIds } from '../../../utils/scoring';
 import { useSessionTranslation } from '../../../i18n/session';
-import { getEffectiveIds } from '../../../utils/scoreDisplay';
 import { colorRecommendationEngine } from '../../../features/recommendation/ColorRecommendationEngine';
 import { applyScoreValuePatch } from '../../../features/multiplayer/scoreValuePatch';
-import { voiceService } from '../../../services/voiceService';
 import { getInitialScoreInputPreviewValue } from '../scoreInputPreview';
 import { touchGestureGuard } from '../../../utils/touchGesture';
-
-// Helper for extracting factors from score value
-const getFactors = (value: any): [string | number, string | number] => {
-    if (value && Array.isArray(value.parts)) return [value.parts[0] ?? 0, value.parts[1] ?? 1];
-    if (typeof value === 'object' && value !== null && 'factors' in value && Array.isArray(value.factors)) {
-        return [value.factors[0] ?? 0, value.factors[1] ?? 1];
-    }
-    return [0, 1];
-};
 
 interface InputPanelProps {
     sessionState: ReturnType<typeof useSessionState>;
@@ -54,188 +40,6 @@ interface InputPanelProps {
     onToolboxInputFocusChange?: (focused: boolean) => void;
     toolboxTopContent?: React.ReactNode;
 }
-
-import { injectSoftHyphens } from '../../../utils/text';
-
-const PanelHeader: React.FC<{
-    player: Player;
-    col?: ScoreColumn;
-    isEditingPlayer: boolean;
-    onClear: () => void;
-    onDirectionToggle: () => void;
-    direction: 'horizontal' | 'vertical';
-    isTotalMode?: boolean; // New prop
-    isVoiceEnabled?: boolean;
-    onToggleVoice?: () => void;
-    showSwipeHint?: boolean;
-}> = ({ player, col, isEditingPlayer, onClear, onDirectionToggle, direction, isTotalMode, isVoiceEnabled, onToggleVoice, showSwipeHint }) => {
-
-    // Handle transparent color fallback
-    const isTransparent = player.color === 'transparent';
-    const displayColor = isTransparent ? 'rgb(var(--c-txt-muted))' : player.color; // Theme-aware fallback
-    const bgColor = isTransparent ? 'rgb(var(--c-surface-recessed))' : `${player.color}20`;
-    const borderColor = isTransparent ? 'rgb(var(--c-surface-border))' : `${player.color}40`;
-
-    // Auto columns cannot be cleared manually
-    const isAuto = col?.inputType === 'auto';
-    const { t } = useSessionTranslation();
-
-    return (
-        <div
-            className="border-b border-surface-border h-10 flex items-center px-4 gap-2 shrink-0 transition-colors overflow-hidden relative"
-            style={{ backgroundColor: bgColor, borderColor: borderColor }}
-        >
-            {/* Swipe Hint Overlay */}
-            {showSwipeHint && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-modal-backdrop/90 animate-swipe-hint-enter">
-                    <span className="text-xs font-bold text-brand-primary flex items-center gap-2">
-                        <span className="animate-swipe-hint-left">←</span>
-                        <span>{t('input_swipe_hint')}</span>
-                        <span className="animate-swipe-hint-right">→</span>
-                    </span>
-                    {/* Downward chevron pointing to swipeable area */}
-                    <span className="text-brand-primary/60 text-[10px] leading-none mt-0.5">▼</span>
-                </div>
-            )}
-            {/* Left Section: Info (Flexible) */}
-            <div className="flex items-center min-w-0 flex-1 gap-1.5">
-                {isEditingPlayer ? (
-                    <>
-                        <Edit size={12} className="shrink-0" style={{ color: displayColor }} />
-                        <span className="text-[10px] shrink-0 font-bold opacity-70 uppercase tracking-tighter" style={{ color: displayColor }}>
-                            {t('input_edit_player')}
-                        </span>
-                        <div className="w-px h-3 bg-[rgb(var(--c-white)_/_0.1)] shrink-0" />
-                        <ContrastText
-                            key={player.id}
-                            className="text-sm font-bold truncate animate-slide-in-right-shallow"
-                            color={displayColor}
-                        >
-                            {player.name}
-                        </ContrastText>
-                    </>
-                ) : (
-                    <>
-                        <ContrastText
-                            key={player.id}
-                            className="text-sm font-bold truncate animate-slide-in-right-shallow max-w-[40%]"
-                            color={displayColor}
-                        >
-                            {player.name}
-                        </ContrastText>
-                        <div className="w-px h-3 bg-surface-border shrink-0" />
-                        <span className="text-xs font-bold opacity-70 truncate" style={{ color: displayColor }}>
-                            {isTotalMode ? t('input_total_adjust') : injectSoftHyphens(col?.name || '')}
-                        </span>
-                    </>
-                )}
-            </div>
-
-            {/* Right Section: Actions (Fixed) */}
-            <div className="flex items-center gap-4 shrink-0">
-                {/* Voice Toggle */}
-                <button
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                        if (!isVoiceEnabled) {
-                            voiceService.playActivationTone();
-                        }
-                        onToggleVoice?.();
-                    }}
-                    className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all border shrink-0 ${isVoiceEnabled 
-                        ? 'bg-status-success/20 border-status-success/50 text-status-success' 
-                        : 'bg-surface-recessed border-surface-border text-txt-muted hover:text-txt-primary'}`}
-                    title={isVoiceEnabled ? t('input_voice_on') : t('input_voice_off')}
-                >
-                    {isVoiceEnabled ? (
-                        <div className="relative">
-                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
-                                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                            </svg>
-                        </div>
-                    ) : (
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
-                            <line x1="23" y1="9" x2="17" y2="15"></line>
-                            <line x1="17" y1="9" x2="23" y2="15"></line>
-                        </svg>
-                    )}
-                </button>
-
-                {!isAuto && (
-                    <button
-                        onMouseDown={(e) => e.preventDefault()} // Keep focus on input
-                        onClick={onClear}
-                        className="bg-status-danger/10 text-status-danger h-8 px-2.5 rounded-lg border border-status-danger/30 hover:bg-status-danger/20 flex items-center gap-1 shrink-0 transition-colors"
-                    >
-                        <Eraser size={14} />
-                        <span className="text-xs font-bold hidden xs:inline">{isTotalMode ? t('input_reset') : t('input_clear')}</span>
-                    </button>
-                )}
-                {/* [Modified] Show direction toggle even in Total Mode */}
-                <button
-                    onMouseDown={(e) => e.preventDefault()} // Keep focus on input
-                    onClick={onDirectionToggle}
-                    className="bg-surface-recessed hover:bg-surface-hover text-txt-secondary h-8 px-3 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition-colors shrink-0 border border-surface-border shadow-sm"
-                >
-                    <span className="text-status-success hidden xs:inline">{t('input_next')}</span>
-                    <div className="flex font-mono text-[10px] items-center">
-                        <span className={`transition-colors ${direction === 'vertical' ? 'text-status-success scale-125' : 'text-txt-muted'}`}>↓</span>
-                        <span className={`mx-0.5 opacity-20`}>/</span>
-                        <span className={`transition-colors ${direction === 'horizontal' ? 'text-status-success scale-125' : 'text-txt-muted'}`}>→</span>
-                    </div>
-                </button>
-            </div>
-        </div>
-    );
-};
-
-
-// Sidebar for Total Mode
-const TotalAdjustmentSidebar: React.FC<{
-    player: Player;
-    onUpdatePlayer: (updates: Partial<Player>) => void;
-}> = ({ player, onUpdatePlayer }) => {
-    const { t } = useSessionTranslation();
-    return (
-        <div className="flex flex-col flex-1 min-h-0 p-2 gap-2">
-            <div className="text-[10px] text-txt-primary font-bold uppercase pb-1 border-b border-surface-border flex items-center justify-center gap-1 shrink-0">
-                {t('input_total_adjust')}
-            </div>
-            <div className="flex-1 flex flex-col gap-2 overflow-y-auto no-scrollbar pt-1">
-                {/* Tie Breaker Toggle */}
-                <button
-                    onClick={() => onUpdatePlayer({ tieBreaker: !player.tieBreaker })}
-                    className={`flex-1 rounded-xl border-2 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 p-1
-                        ${player.tieBreaker
-                            ? 'bg-brand-secondary/20 border-brand-secondary text-brand-secondary shadow-lg'
-                            : 'bg-surface-recessed border-surface-border text-txt-muted hover:border-surface-border-hover hover:text-txt-secondary'
-                        }
-                    `}
-                >
-                    <Scale size={24} className={player.tieBreaker ? "fill-current" : ""} />
-                    <span className="font-bold text-[10px] leading-none">{t('input_tie_breaker')}</span>
-                </button>
-
-                {/* Force Loss Toggle */}
-                <button
-                    onClick={() => onUpdatePlayer({ isForceLost: !player.isForceLost })}
-                    className={`flex-1 rounded-xl border-2 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 p-1
-                        ${player.isForceLost
-                            ? 'bg-status-danger/20 border-status-danger text-status-danger shadow-lg'
-                            : 'bg-surface-recessed border-surface-border text-txt-muted hover:border-surface-border-hover hover:text-txt-secondary'
-                        }
-                    `}
-                >
-                    <X size={24} className={player.isForceLost ? "stroke-[3px]" : ""} />
-                    <span className="font-bold text-[10px] leading-none">{t('input_force_loss')}</span>
-                </button>
-            </div>
-        </div>
-    );
-};
-
 
 const InputPanel: React.FC<InputPanelProps> = (props) => {
     const { sessionState, eventHandlers, session, template, savedPlayers, allSavedPlayers, onUpdateSession, isMultiplayerRoomActive = false, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice, bottomOffset, canEditScore = () => true, canEditTotal = () => true, canEditPlayers = true, mediaOnlyTools = false, onToolboxInputFocusChange, toolboxTopContent } = props;
@@ -577,7 +381,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
         touchAxisRef.current = null;
     };
 
-    let mainContentNode = null;
+    let mainContentNode: React.ReactNode = null;
     let sidebarContentNode: React.ReactNode = null;
     let onNextAction = () => { };
     let nextButtonContent: React.ReactNode = undefined;
@@ -678,224 +482,21 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             activeColumn = template.columns.find((c: any) => c.id === editingCell.colId);
 
             if (activeColumn && activePlayer) {
-                const isProductMode = activeColumn.formula.includes('×a2');
-                const isSumPartsMode = (activeColumn.formula || '').includes('+next');
-                const isProductSumPartsMode = isSumPartsMode && isProductMode;
-                const constant = activeColumn.constants?.c1 ?? 1;
-                const hasMultiplier = constant !== 1;
-
-                const cellScoreObject = activePlayer.scores[activeColumn.id];
-
-                onNextAction = () => {
-                    eventHandlers.moveToNext();
-                };
-
-                const handleDeleteLastPart = () => {
-                    if (!activePlayer || !activeColumn) return;
-                    const currentHistory = getScoreHistory(cellScoreObject);
-                    if (currentHistory.length > 0) {
-                        const newHistory = currentHistory.slice(0, -1);
-                        const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
-                        updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
-                    }
-                };
-
-                const handleQuickButtonAction = (action: QuickAction) => {
-                    if (!activePlayer || !activeColumn) return;
-
-                    if (isProductSumPartsMode) {
-                        let currentFactors = [0, 1];
-                        if (previewValue && typeof previewValue === 'object' && previewValue.factors) {
-                            currentFactors = previewValue.factors.slice();
-                        }
-
-                        if (activeFactorIdx === 0) {
-                            currentFactors[0] = action.value;
-                            setPreview({ factors: currentFactors });
-                            setActiveFactorIdx(1);
-                            setUiState((p: any) => ({ ...p, overwriteMode: true }));
-                        } else {
-                            const n1 = parseFloat(String(currentFactors[0])) || 0;
-                            const n2 = action.value;
-                            const product = n1 * n2;
-
-                            const currentHistory = getScoreHistory(cellScoreObject);
-                            const newHistory = [...currentHistory, String(product)];
-                            const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
-                            updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
-
-                            setPreview({ factors: [0, 1] });
-                            setActiveFactorIdx(0);
-                            setUiState((p: any) => ({ ...p, overwriteMode: true }));
-                        }
-                    } else if (isSumPartsMode) {
-                        const currentHistory = getScoreHistory(cellScoreObject);
-                        let newHistory = [...currentHistory];
-                        const valToAdd = hasMultiplier ? action.value * constant : action.value;
-
-                        if (action.isModifier && newHistory.length > 0) {
-                            newHistory[newHistory.length - 1] = String(parseFloat(newHistory[newHistory.length - 1]) + valToAdd);
-                        } else {
-                            newHistory.push(String(valToAdd));
-                        }
-                        const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
-                        updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
-                    } else {
-                        // Priority 1: Multi-select Toggle Logic
-                        if (activeColumn.isMultiSelect) {
-                            const currentIds = cellScoreObject?.multiOptionIds || [];
-                            const isSelected = currentIds.includes(action.id);
-                            const newIds = isSelected
-                                ? currentIds.filter(id => id !== action.id)
-                                : [...currentIds, action.id];
-
-                            updateScore(activePlayer.id, activeColumn.id, { multiOptionIds: newIds });
-                        }
-                        // Priority 2: Standard Single-select
-                        else {
-                            updateScore(activePlayer.id, activeColumn.id, { optionId: action.id });
-                        }
-                    }
-                };
-
-                if (activeColumn.inputType === 'auto') {
-                    mainContentNode = (
-                        <div className="flex-1 min-h-0 flex items-center justify-center bg-surface-recessed/50 rounded-xl border border-surface-border p-4">
-                            <AutoScorePanel
-                                column={activeColumn}
-                                player={activePlayer}
-                                allColumns={template.columns}
-                                allPlayers={session.players}
-                            />
-                        </div>
-                    );
-                    sidebarContentNode = (
-                        <div className="flex flex-col flex-1 min-h-0 p-2 text-txt-secondary text-xs">
-                            <div className="flex items-center gap-1 text-[10px] text-txt-muted font-bold uppercase pb-1 border-b border-surface-border shrink-0">
-                                <Calculator size={12} /> {t('input_auto_calc')}
-                            </div>
-                            <div className="flex-1 overflow-y-auto pt-2 space-y-2">
-                                <p>{t('input_auto_desc')}</p>
-                            </div>
-                        </div>
-                    );
-                } else if (activeColumn.inputType === 'clicker') {
-                    const effectiveIds = getEffectiveIds(activeColumn, cellScoreObject);
-                    const currentOptionId = !activeColumn.isMultiSelect ? effectiveIds[0] : undefined;
-                    const currentMultiOptionIds = activeColumn.isMultiSelect ? effectiveIds : undefined;
-
-                    mainContentNode = (
-                        <QuickButtonPad
-                            column={activeColumn}
-                            onAction={handleQuickButtonAction}
-                            currentOptionId={currentOptionId}
-                            currentMultiOptionIds={currentMultiOptionIds}
-                        />
-                    );
-
-                    if (isProductSumPartsMode) {
-                        sidebarContentNode = <ScoreInfoPanel
-                            column={activeColumn}
-                            value={cellScoreObject}
-                            activeFactorIdx={activeFactorIdx}
-                            setActiveFactorIdx={setActiveFactorIdx}
-                            localKeypadValue={previewValue}
-                            onDeleteLastPart={handleDeleteLastPart}
-                            setOverwrite={(v) => setUiState((p: any) => ({ ...p, overwriteMode: v }))}
-                        />;
-                    } else if (isSumPartsMode) {
-                        sidebarContentNode = <ScoreInfoPanel column={activeColumn} value={cellScoreObject} onDeleteLastPart={handleDeleteLastPart} />;
-                    } else {
-                        sidebarContentNode = (<div className="flex flex-col flex-1 min-h-0 p-2 text-txt-secondary text-xs"><div className="flex items-center gap-1 text-[10px] text-txt-muted font-bold uppercase pb-1 border-b border-surface-border shrink-0"><ListPlus size={12} /> {t('input_list_menu')}</div><div className="flex-1"></div></div>);
-                    }
-                } else {
-                    if (isSumPartsMode) {
-                        if (isProductSumPartsMode) {
-                            let currentFactors = [0, 1];
-                            if (previewValue && typeof previewValue === 'object' && previewValue.factors) {
-                                currentFactors = previewValue.factors;
-                            }
-                            const n1 = parseFloat(String(currentFactors[0])) || 0;
-
-                            if (n1 !== 0) {
-                                if (activeFactorIdx === 0) {
-                                    nextButtonContent = (<div className="flex flex-col items-center leading-none"><span className="text-xs">{t('input_btn_enter')} {activeColumn.subUnits?.[1] || 'B'}</span><ArrowDown size={16} /></div>);
-                                    onNextAction = () => {
-                                        setActiveFactorIdx(1);
-                                        setUiState((p: any) => ({ ...p, overwriteMode: true }));
-                                    };
-                                } else {
-                                    nextButtonContent = <ArrowUpToLine size={28} />;
-                                    onNextAction = () => {
-                                        const product = (parseFloat(String(currentFactors[0])) || 0) * (parseFloat(String(currentFactors[1])) || 0);
-                                        if (product !== 0 || n1 !== 0) {
-                                            const currentHistory = getScoreHistory(cellScoreObject);
-                                            const newHistory = [...currentHistory, String(product)];
-                                            const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
-                                            updateScore(activePlayer!.id, activeColumn!.id, { value: newSum, history: newHistory });
-
-                                            setPreview({ factors: [0, 1] });
-                                            setActiveFactorIdx(0);
-                                            setUiState((p: any) => ({ ...p, overwriteMode: true }));
-                                        } else {
-                                            eventHandlers.moveToNext();
-                                        }
-                                    };
-                                }
-                            }
-                        } else {
-                            const inputPart = parseFloat(String(getRawValue(previewValue))) || 0;
-                            if (inputPart !== 0) nextButtonContent = <ArrowUpToLine size={28} />;
-
-                            onNextAction = () => {
-                                const input = parseFloat(String(getRawValue(previewValue))) || 0;
-                                if (input !== 0) {
-                                    const valToAdd = hasMultiplier ? input * constant : input;
-                                    const currentHistory = getScoreHistory(cellScoreObject);
-                                    const newHistory = [...currentHistory, String(valToAdd)];
-                                    const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
-                                    updateScore(activePlayer!.id, activeColumn!.id, { value: newSum, history: newHistory });
-                                    setPreview(0);
-                                    setUiState((p: any) => ({ ...p, overwriteMode: true }));
-                                } else {
-                                    eventHandlers.moveToNext();
-                                }
-                            };
-                        }
-                    } else if (isProductMode) {
-                        const n1 = parseFloat(String(getFactors(previewValue)[0])) || 0;
-                        if (n1 !== 0 && activeFactorIdx === 0) {
-                            nextButtonContent = (<div className="flex flex-col items-center leading-none"><span className="text-xs">{t('input_btn_enter')} {activeColumn.subUnits?.[1] || 'B'}</span><ArrowDown size={16} /></div>);
-                            onNextAction = () => {
-                                setActiveFactorIdx(1);
-                                setUiState((p: any) => ({ ...p, overwriteMode: true }));
-                            }
-                        }
-                    }
-
-                    // [Updated] Always pass previewValue to keypad to enable real-time reflection of input
-                    const keypadValue = previewValue;
-
-                    mainContentNode = <NumericKeypad
-                        value={keypadValue}
-                        onChange={(val: any) => {
-                            setPreview(val);
-                            // [Fix] In Standard/Product Mode, we update DB immediately for "Real-time" feel
-                            if (!isSumPartsMode) {
-                                updateScore(activePlayer!.id, activeColumn!.id, val);
-                            }
-                        }}
-                        column={activeColumn} overwrite={overwriteMode} setOverwrite={(v: boolean) => setUiState((p: any) => ({ ...p, overwriteMode: v }))}
-                        onNext={onNextAction} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={setActiveFactorIdx} playerId={activePlayer.id}
-                    />;
-
-                    sidebarContentNode = <ScoreInfoPanel
-                        column={activeColumn} value={cellScoreObject} activeFactorIdx={activeFactorIdx} setActiveFactorIdx={setActiveFactorIdx}
-                        localKeypadValue={previewValue}
-                        onDeleteLastPart={isSumPartsMode ? handleDeleteLastPart : undefined}
-                        setOverwrite={(v) => setUiState((p: any) => ({ ...p, overwriteMode: v }))}
-                    />;
-                }
+                ({ mainContentNode, sidebarContentNode, onNextAction, nextButtonContent } = buildColumnInputView({
+                    player: activePlayer,
+                    column: activeColumn,
+                    allColumns: template.columns,
+                    allPlayers: session.players,
+                    previewValue,
+                    activeFactorIdx,
+                    overwriteMode,
+                    setPreview,
+                    setActiveFactorIdx,
+                    setOverwrite: (overwrite) => setUiState(p => ({ ...p, overwriteMode: overwrite })),
+                    updateScore,
+                    moveToNext: eventHandlers.moveToNext,
+                    t,
+                }));
             }
         }
     }
@@ -986,7 +587,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             onTouchCancel={handleTouchCancel}
         >
             {activePlayer && !isPlaceholderMode && (
-                <PanelHeader
+                <InputPanelHeader
                     player={activePlayer}
                     col={activeColumn}
                     isEditingPlayer={isEditingPlayerName}
