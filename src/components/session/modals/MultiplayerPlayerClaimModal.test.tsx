@@ -78,7 +78,7 @@ describe('MultiplayerPlayerClaimModal', () => {
     act(() => { window.dispatchEvent(new PopStateEvent('popstate')); });
 
     expect(screen.getByRole('heading', { name: 'Score together' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Sync score sheet status' })).toHaveClass('text-base', 'min-h-12');
+    expect(screen.getByRole('button', { name: 'Sync score sheet settings' })).toHaveClass('text-base', 'min-h-12');
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -92,12 +92,12 @@ describe('MultiplayerPlayerClaimModal', () => {
       </LanguageProvider>
     );
 
-    expect(screen.getByText(/use their own phones.*share the scoring work/)).toBeInTheDocument();
-    expect(screen.getByText(/scan it to join.*choose whose scores/)).toBeInTheDocument();
-    expect(screen.getByText(/Scores sync automatically/)).toBeInTheDocument();
-    expect(screen.getByText(/host needs to sync.*settings manually/)).toBeInTheDocument();
+    expect(screen.getByText(/use their own phones.*same game/)).toBeInTheDocument();
+    expect(screen.getByText(/scan the QR code to join.*choose whose scores/)).toBeInTheDocument();
+    expect(screen.getByText(/Score entries sync automatically/)).toBeInTheDocument();
+    expect(screen.getByText(/After changing scoring items.*press.*Sync score sheet settings/)).toBeInTheDocument();
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Sync score sheet status' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Sync score sheet settings' })).not.toBeInTheDocument();
     act(() => { window.dispatchEvent(new PopStateEvent('popstate')); });
 
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -130,7 +130,7 @@ describe('MultiplayerPlayerClaimModal', () => {
     expect(screen.getByRole('img')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Open room' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Sync score sheet status' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sync score sheet settings' })).toBeInTheDocument();
     expect(pushState).toHaveBeenCalledTimes(1);
     expect(onPublishBoardUpdate).not.toHaveBeenCalled();
   });

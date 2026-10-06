@@ -323,7 +323,11 @@ describe('SessionView toolbox browser history', () => {
       expect(window.history.pushState).toHaveBeenCalledTimes(1);
       expect(screen.queryByText('Game Toolbox')).not.toBeInTheDocument();
     }
-    await act(async () => { await vi.advanceTimersByTimeAsync(delay); });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(delay);
+      // A zero-delay traversal queues its cleanup in the next task.
+      if (delay === 0) await vi.advanceTimersToNextTimerAsync();
+    });
 
     expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
     expect(entries).toEqual([{ page: 'score-sheet' }, { modal: 'session-toolbox' }]);
@@ -339,7 +343,10 @@ describe('SessionView toolbox browser history', () => {
     expect(entries[historyIndex]).toEqual({ modal: 'session-input-panel' });
 
     toggleToolbox();
-    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersToNextTimerAsync();
+    });
 
     expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
     expect(entries).toEqual([{ page: 'score-sheet' }, { modal: 'session-toolbox' }]);

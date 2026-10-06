@@ -179,7 +179,10 @@ describe('HistoryReviewView toolbox browser history', () => {
     toggleToolbox();
     toggleToolbox();
 
-    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersToNextTimerAsync();
+    });
 
     expect(toolbox()).toHaveClass('translate-y-0');
     expect(entries).toEqual([

@@ -22,8 +22,9 @@ const navigateBackSilently = (steps: number, waitForPopstate: boolean): Promise<
       (window as any).__silentBack = Math.max(0, ((window as any).__silentBack || 0) - 1);
       resolve();
     };
-    // Every listener for this popstate must still see it as a silent return.
-    if (event) queueMicrotask(finish);
+    // Native events can drain microtasks between listeners. Keep the guard
+    // through the whole popstate dispatch, including a re-bound App listener.
+    if (event) window.setTimeout(finish, 0);
     else finish();
   };
   if (waitForPopstate) window.addEventListener('popstate', settleHistory, { once: true });
