@@ -26,7 +26,7 @@ beforeEach(() => {
 
 afterEach(() => vi.restoreAllMocks());
 
-it('routes the entry to the introduction without a host room, then shows QR in the same dialog after confirmation', () => {
+it('routes the entry to the introduction without a host room, then shows QR in the same dialog after confirmation', async () => {
   type Props = React.ComponentProps<typeof AppWorkspace>;
   const handleOpenMultiplayerRoom = vi.fn();
   const handleCreateMultiplayerRoom = vi.fn();
@@ -80,6 +80,7 @@ it('routes the entry to the introduction without a host room, then shows QR in t
   expect(screen.getByRole('dialog')).toBe(dialog);
   expect(screen.getByRole('img')).toBeInTheDocument();
   expect(pushState).toHaveBeenCalledTimes(1);
+  await act(async () => { await new Promise(resolve => window.setTimeout(resolve, 300)); });
   act(() => { window.dispatchEvent(new PopStateEvent('popstate')); });
   expect(handleCloseMultiplayerRoomModal).toHaveBeenCalledTimes(1);
   expect(props.actions.handleCloseMultiplayerRoom).not.toHaveBeenCalled();

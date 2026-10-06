@@ -21,7 +21,7 @@ interface MultiplayerRoomModalProps {
 const MultiplayerRoomModal: React.FC<MultiplayerRoomModalProps> = ({ isOpen, joinUrl, connectionCount, hasUnpublishedBoardUpdate, isOpeningRoom = false, hasOpenError = false, onOpenRoom, onPublishBoardUpdate, onCloseRoom, onClose }) => {
   const { t } = useSessionTranslation();
   const { t: tCommon } = useCommonTranslation();
-  const { zIndex } = useModalBackHandler(isOpen, onClose, 'multiplayer-room', { immediate: true });
+  const { zIndex } = useModalBackHandler(isOpen, onClose, 'multiplayer-room');
   const hasRoom = Boolean(joinUrl);
   const [publishState, setPublishState] = React.useState<'idle' | 'publishing' | 'published'>('idle');
   const publishedTimerRef = React.useRef<number | null>(null);

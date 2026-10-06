@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import App from './App';
 import type { GameTemplate } from './types';
 import { LanguageProvider } from './i18n';
-import { _resetActiveCountForTesting } from './hooks/useModalBackHandler';
+import { _resetActiveCountForTesting, useModalBackHandler } from './hooks/useModalBackHandler';
 import { multiplayerLocalStore } from './features/multiplayer/multiplayerLocalStore';
 
 const hoisted = vi.hoisted(() => {
@@ -116,11 +116,17 @@ vi.mock('./components/editor/TemplateEditor', () => ({
 }));
 
 vi.mock('./components/session/SessionView', () => ({
-  default: ({ onOpenMultiplayerRoom }: { onOpenMultiplayerRoom?: () => void }) => (
-    <div data-testid="session-view">session
-      <button onClick={onOpenMultiplayerRoom}>Multiplayer</button>
-    </div>
-  ),
+  default: function SessionView({ onOpenMultiplayerRoom }: { onOpenMultiplayerRoom?: () => void }) {
+    const [isParentOpen, setIsParentOpen] = React.useState(false);
+    useModalBackHandler(isParentOpen, () => setIsParentOpen(false), 'underlying-modal-test');
+    return (
+      <div data-testid="session-view">session
+        <button onClick={() => setIsParentOpen(true)}>Open underlying modal</button>
+        {isParentOpen && <div data-testid="underlying-modal">Underlying modal</div>}
+        <button onClick={onOpenMultiplayerRoom}>Multiplayer</button>
+      </div>
+    );
+  },
 }));
 
 vi.mock('./components/history/HistoryReviewView', () => ({
@@ -204,59 +210,46 @@ describe('App multiplayer modal history', () => {
     vi.restoreAllMocks();
   });
 
-  it.each(['Cancel', 'Back'] as const)('closes with %s without returning from the score sheet', async (action) => {
+  it.each([
+    { action: 'Cancel', nested: false },
+    { action: 'Back', nested: false },
+    { action: 'Cancel', nested: true },
+    { action: 'Back', nested: true },
+  ])('closes with $action without closing the underlying view, nested=$nested', async ({ action, nested }) => {
     const sessionBack = vi.fn();
     window.addEventListener('app-back-press', sessionBack);
     try {
       render(<LanguageProvider><App /></LanguageProvider>);
       fireEvent.click(screen.getByRole('button', { name: 'Resume game' }));
       await screen.findByTestId('session-view');
-      const scoreSheetHistory = window.history.state;
+      if (nested) {
+        fireEvent.click(screen.getByRole('button', { name: 'Open underlying modal' }));
+        await act(async () => { await new Promise(resolve => window.setTimeout(resolve, 300)); });
+      }
+      const underlyingHistory = window.history.state;
       const back = vi.spyOn(window.history, 'back');
       fireEvent.click(screen.getByRole('button', { name: 'Multiplayer' }));
       expect(window.history.state).toEqual({ modal: 'multiplayer-room' });
       if (action === 'Cancel') fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-      else act(() => window.history.back());
+      else {
+        // Use the same listener-readiness guard as the gallery and lightbox.
+        await act(async () => { await new Promise(resolve => window.setTimeout(resolve, 300)); });
+        act(() => window.history.back());
+      }
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-      await waitFor(() => expect(window.history.state).toEqual(scoreSheetHistory));
+      await waitFor(() => expect(window.history.state).toEqual(underlyingHistory));
+      await waitFor(() => expect((window as any).__silentBack || 0).toBe(0));
 
       expect(back).toHaveBeenCalledTimes(1);
       expect(sessionBack).not.toHaveBeenCalled();
       expect(screen.getByTestId('session-view')).toBeInTheDocument();
-    } finally {
-      window.removeEventListener('app-back-press', sessionBack);
-    }
-  });
-
-  it('does not treat modal cleanup as session Back when native listeners have a microtask checkpoint between them', async () => {
-    const sessionBack = vi.fn();
-    window.addEventListener('app-back-press', sessionBack);
-    try {
-      render(<LanguageProvider><App /></LanguageProvider>);
-      fireEvent.click(screen.getByRole('button', { name: 'Resume game' }));
-      await screen.findByTestId('session-view');
-      const scoreSheetHistory = window.history.state;
-      fireEvent.click(screen.getByRole('button', { name: 'Multiplayer' }));
-      const registrations = vi.spyOn(window, 'addEventListener');
-      vi.spyOn(window.history, 'back').mockImplementation(() => undefined);
-      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-      const navigationListener = registrations.mock.calls.find(([name, , options]) =>
-        name === 'popstate' && typeof options === 'object' && options?.once
-      )?.[1] as EventListener;
-      expect(navigationListener).toBeTypeOf('function');
-      window.history.replaceState(scoreSheetHistory, '');
-      const event = new PopStateEvent('popstate', { state: scoreSheetHistory });
-      // JSDOM dispatch is synchronous. Native event callbacks can drain microtasks
-      // before the next listener, so deliver the two phases explicitly.
-      await act(async () => {
-        navigationListener.call(window, event);
-        await Promise.resolve();
-        window.dispatchEvent(event);
-      });
-
-      expect(sessionBack).not.toHaveBeenCalled();
-      expect(screen.getByTestId('session-view')).toBeInTheDocument();
-      await waitFor(() => expect((window as any).__silentBack || 0).toBe(0));
+      if (nested) {
+        expect(screen.getByTestId('underlying-modal')).toBeInTheDocument();
+        act(() => window.history.back());
+        await waitFor(() => expect(screen.queryByTestId('underlying-modal')).not.toBeInTheDocument());
+        expect(back).toHaveBeenCalledTimes(2);
+        expect(sessionBack).not.toHaveBeenCalled();
+      }
     } finally {
       window.removeEventListener('app-back-press', sessionBack);
     }

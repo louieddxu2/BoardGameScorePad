@@ -62,4 +62,38 @@ describe('immediate modal history navigation', () => {
       window.removeEventListener('popstate', laterListener);
     }
   });
+
+  it('keeps toolbox cleanup silent across a microtask checkpoint between native listeners', async () => {
+    const { result } = renderToolbox();
+    act(() => result.current.setIsOpen(true));
+    const registrations = vi.spyOn(window, 'addEventListener');
+    vi.spyOn(window.history, 'back').mockImplementation(() => undefined);
+    let returned!: Promise<void>;
+    act(() => {
+      returned = result.current.triggerClose();
+      result.current.setIsOpen(false);
+    });
+    const navigationListener = registrations.mock.calls.find(([name, , options]) =>
+      name === 'popstate' && typeof options === 'object' && options?.once
+    )?.[1] as EventListener;
+    expect(navigationListener).toBeTypeOf('function');
+    const laterListener = vi.fn(() => Boolean((window as any).__silentBack));
+    window.addEventListener('popstate', laterListener);
+    try {
+      // JSDOM dispatch is synchronous. Deliver the native callback phases
+      // explicitly so a microtask cannot release the guard between them.
+      const event = new PopStateEvent('popstate');
+      await act(async () => {
+        navigationListener.call(window, event);
+        await Promise.resolve();
+        window.dispatchEvent(event);
+      });
+
+      expect(laterListener).toHaveReturnedWith(true);
+      await act(async () => { await returned; });
+      expect((window as any).__silentBack).toBe(0);
+    } finally {
+      window.removeEventListener('popstate', laterListener);
+    }
+  });
 });

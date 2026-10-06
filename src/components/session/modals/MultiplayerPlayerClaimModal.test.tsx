@@ -82,7 +82,7 @@ describe('MultiplayerPlayerClaimModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('explains the purpose before creating a room, and supports immediate Back without confirmation', () => {
+  it('explains the purpose before creating a room, and uses the standard modal Back handler', () => {
     const onClose = vi.fn();
     const onOpenRoom = vi.fn();
     render(
@@ -98,6 +98,7 @@ describe('MultiplayerPlayerClaimModal', () => {
     expect(screen.getByText(/After changing scoring items.*press.*Sync score sheet settings/)).toBeInTheDocument();
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Sync score sheet settings' })).not.toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(300); });
     act(() => { window.dispatchEvent(new PopStateEvent('popstate')); });
 
     expect(onClose).toHaveBeenCalledTimes(1);
