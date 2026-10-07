@@ -5,11 +5,8 @@ import ScoreCell from './ScoreCell';
 import TexturedBlock from './TexturedBlock';
 import { GripVertical, Settings } from 'lucide-react';
 import { ContrastText } from '../../shared/ContrastText';
-import { calculateColumnScore, resolveSelectOption } from '../../../utils/scoring';
-import { calculateDynamicFontSize } from '../../../utils/dynamicLayout';
 import { injectSoftHyphens } from '../../../utils/text';
-import { formatDisplayNumber } from '../../../utils/scoreDisplay';
-import TouchActionTarget from '../../shared/TouchActionTarget';
+import { buildScoreGridOverlay } from './buildScoreGridOverlay';
 
 type ProcessedScoreColumn = ScoreColumn & { resolvedDisplayMode: string; overlayColumns: ScoreColumn[] };
 
@@ -164,83 +161,11 @@ export function buildScoreGridRows({
                 isEditable={false}
               />
               {/* 疊加的 Overlay 也一併在此渲染 (例如公式、文字顯示) */}
-              {col.overlayColumns.map((overlayCol) => {
-                const isOverlayActive = editingCell?.colId === overlayCol.id;
-                const scoreData = session.players[0].scores[overlayCol.id];
-                const parts = scoreData?.parts || [];
-
-                // 略過複雜的顯示層次計算，因為這整段都是照抄原版玩家 Overlay，只是對應到共用欄位
-                const overlayContext = {
-                  allColumns: template.columns,
-                  playerScores: session.players[0].scores,
-                  allPlayers: session.players
-                };
-                const displayScore = calculateColumnScore(overlayCol, parts, overlayContext, scoreData);
-
-                let displayText = '';
-                const hasInput = overlayCol.isAuto ? true : parts.length > 0;
-                const isSelectList = overlayCol.inputType === 'clicker' && !(overlayCol.formula || '').includes('+next');
-
-                if (hasInput) {
-                  if (isSelectList && parts.length > 0) {
-                    const option = resolveSelectOption(overlayCol, scoreData);
-                    const renderMode = overlayCol.renderMode || 'standard';
-                    if (option && (renderMode === 'label_only' || renderMode === 'standard')) {
-                      displayText = option.label;
-                    } else {
-                      displayText = formatDisplayNumber(displayScore);
-                    }
-                  } else {
-                    displayText = formatDisplayNumber(displayScore);
-                  }
-                }
-
-                const dynamicFontSize = calculateDynamicFontSize([displayText]);
-                const defaultTextColor = isTextureMode ? 'rgb(var(--c-black) / 0.9)' : 'rgb(var(--c-txt-primary))';
-                const displayColor = (isEditMode && overlayCol.color) ? overlayCol.color : defaultTextColor;
-
-
-                // 如果沒有設定框選區域，我們依然允許它渲染，只是寬高預設為 100% (真的重疊上去)
-
-                return (
-                  <div key={overlayCol.id} className="absolute inset-0 pointer-events-none">
-                    <TouchActionTarget
-                      onActivate={(event) => { event.stopPropagation(); onCellClick(session.players[0].id, overlayCol.id, event as unknown as React.MouseEvent); }}
-                      moveThreshold={10}
-                      className={`
-                                    absolute flex items-center justify-center
-                                    border-2 rounded-md cursor-pointer transition-all pointer-events-auto
-                                    ${isOverlayActive
-                          ? 'border-brand-primary bg-brand-primary/20 ring-1 ring-brand-primary'
-                          : (isEditMode
-                            ? 'border-dashed border-txt-primary/40 hover:border-txt-primary/60 hover:bg-txt-primary/5'
-                            : (!isTextureMode
-                              ? 'border-dashed border-txt-primary/20 hover:border-txt-primary/40 hover:bg-txt-primary/5'
-                              : 'border-transparent hover:border-black/10 hover:bg-black/5')
-                          )
-                        }
-                                `}
-                      style={{
-                        left: overlayCol.contentLayout ? `${overlayCol.contentLayout.x}%` : undefined,
-                        top: overlayCol.contentLayout ? `${overlayCol.contentLayout.y}%` : undefined,
-                        width: overlayCol.contentLayout ? `${overlayCol.contentLayout.width}%` : '100%',
-                        height: overlayCol.contentLayout ? `${overlayCol.contentLayout.height}%` : '100%',
-                        borderColor: (!isOverlayActive && isEditMode && overlayCol.color) ? `${overlayCol.color}60` : undefined,
-                        containerType: 'size',
-                      } as React.CSSProperties}
-                    >
-                      <ContrastText
-                        className="font-bold tracking-tight w-full text-center truncate px-1"
-                        color={hasInput ? (displayScore < 0 ? 'rgb(var(--c-status-danger))' : displayColor) : 'rgb(var(--c-txt-muted))'}
-                        style={{ fontSize: dynamicFontSize }}
-                        isTextureMode={isTextureMode}
-                      >
-                        {displayText}
-                      </ContrastText>
-                    </TouchActionTarget>
-                  </div>
-                );
-              })}
+              {col.overlayColumns.map(overlayCol => buildScoreGridOverlay({
+                overlayCol, player: session.players[0], template, allPlayers: session.players,
+                isOverlayActive: editingCell?.colId === overlayCol.id,
+                isTextureMode, isEditMode, onCellClick
+              }))}
             </div>
           </div>
         ) : (
@@ -283,83 +208,11 @@ export function buildScoreGridRows({
                     />
                   </>
                 )}
-                {col.overlayColumns.map(overlayCol => {
-                  const isOverlayActive = editingCell?.playerId === p.id && editingCell?.colId === overlayCol.id;
-                  const scoreData = p.scores[overlayCol.id];
-                  const parts = scoreData?.parts || [];
-
-                  const overlayContext = {
-                    allColumns: template.columns,
-                    playerScores: p.scores,
-                    allPlayers: session.players
-                  };
-                  const displayScore = calculateColumnScore(overlayCol, parts, overlayContext, p.scores[overlayCol.id]);
-
-                  let displayText = '';
-                  const hasInput = overlayCol.isAuto ? true : parts.length > 0;
-                  const isSelectList = overlayCol.inputType === 'clicker' && !(overlayCol.formula || '').includes('+next');
-
-                  if (hasInput) {
-                    if (isSelectList && parts.length > 0) {
-                      const option = resolveSelectOption(overlayCol, scoreData);
-                      const renderMode = overlayCol.renderMode || 'standard';
-                      if (option && (renderMode === 'label_only' || renderMode === 'standard')) {
-                        displayText = option.label;
-                      } else {
-                        displayText = formatDisplayNumber(displayScore);
-                      }
-                    } else {
-                      displayText = formatDisplayNumber(displayScore);
-                    }
-                  }
-
-                  const dynamicFontSize = calculateDynamicFontSize([displayText]);
-
-                  const defaultTextColor = isTextureMode ? 'rgb(var(--c-black) / 0.9)' : 'rgb(var(--c-txt-primary))';
-                  const displayColor = (isEditMode && overlayCol.color) ? overlayCol.color : defaultTextColor;
-
-
-                  // 如果沒有設定框選區域，我們依然允許它渲染，只是寬高預設為 100% (真的重疊上去)
-
-                  return (
-                    <div key={overlayCol.id} className="absolute inset-0 pointer-events-none">
-                      <TouchActionTarget
-                        onActivate={(event) => { event.stopPropagation(); onCellClick(p.id, overlayCol.id, event as unknown as React.MouseEvent); }}
-                        moveThreshold={10}
-                        className={`
-                                    absolute flex items-center justify-center
-                                    border-2 rounded-md cursor-pointer transition-all pointer-events-auto
-                                    ${isOverlayActive
-                            ? 'border-brand-primary bg-brand-primary/20 ring-1 ring-brand-primary'
-                            : (isEditMode
-                              ? 'border-dashed border-txt-primary/40 hover:border-txt-primary/60 hover:bg-txt-primary/5'
-                              : (!isTextureMode
-                                ? 'border-dashed border-txt-primary/20 hover:border-txt-primary/40 hover:bg-txt-primary/5'
-                                : 'border-transparent hover:border-black/10 hover:bg-black/5')
-                            )
-                          }
-                                `}
-                        style={{
-                          left: overlayCol.contentLayout ? `${overlayCol.contentLayout.x}%` : undefined,
-                          top: overlayCol.contentLayout ? `${overlayCol.contentLayout.y}%` : undefined,
-                          width: overlayCol.contentLayout ? `${overlayCol.contentLayout.width}%` : '100%',
-                          height: overlayCol.contentLayout ? `${overlayCol.contentLayout.height}%` : '100%',
-                          borderColor: (!isOverlayActive && isEditMode && overlayCol.color) ? `${overlayCol.color}60` : undefined,
-                          containerType: 'size',
-                        } as React.CSSProperties}
-                      >
-                        <ContrastText
-                          className="font-bold tracking-tight w-full text-center truncate px-1"
-                          color={hasInput ? (displayScore < 0 ? 'rgb(var(--c-status-danger))' : displayColor) : 'rgb(var(--c-txt-muted))'}
-                          style={{ fontSize: dynamicFontSize }}
-                          isTextureMode={isTextureMode}
-                        >
-                          {displayText}
-                        </ContrastText>
-                      </TouchActionTarget>
-                    </div>
-                  );
-                })}
+                {col.overlayColumns.map(overlayCol => buildScoreGridOverlay({
+                  overlayCol, player: p, template, allPlayers: session.players,
+                  isOverlayActive: editingCell?.playerId === p.id && editingCell?.colId === overlayCol.id,
+                  isTextureMode, isEditMode, onCellClick
+                }))}
               </div>
             );
           })

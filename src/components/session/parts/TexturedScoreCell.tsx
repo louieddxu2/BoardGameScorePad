@@ -114,6 +114,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
         const isPartsOnly = isSumParts && column.showPartsInGrid === 'parts_only';
         const isSelectList = column.inputType === 'clicker' && !isSumParts;
         const isLabelOnly = isSelectList && column.renderMode === 'label_only';
+        const options = hasInput && isLabelOnly && !autoError ? resolveSelectedOptions(column, scoreValue) : [];
 
         // [Dynamic Layout] Prepare content for calculation
         let contentForCalc: string[] = [];
@@ -124,7 +125,6 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                 contentForCalc = parts.map(formatDisplayNumber);
             } else if (isLabelOnly) {
                 // Label Only Mode
-                const options = resolveSelectedOptions(column, scoreValue);
                 contentForCalc = options.flatMap(opt => opt.label.split(/\r\n|\r|\n/));
             } else {
                 contentForCalc = [formatDisplayNumber(displayScore)];
@@ -150,7 +150,6 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                 );
             } else if (isLabelOnly) {
                 // Label Only Mode
-                const options = resolveSelectedOptions(column, scoreValue);
                 const labelColorBase = column.color || 'rgb(var(--c-txt-on-dark))';
                 layoutContent = (
                     <div className="flex flex-col items-center justify-center w-full h-full leading-tight overflow-hidden">

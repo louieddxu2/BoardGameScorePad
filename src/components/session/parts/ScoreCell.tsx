@@ -501,6 +501,7 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
                 const isSelectList = column.inputType === 'clicker' && !isSumParts;
                 const isPartsOnly = isSumParts && column.showPartsInGrid === 'parts_only';
                 const isLabelOnly = isSelectList && column.renderMode === 'label_only';
+                const options = hasInput && isLabelOnly ? resolveSelectedOptions(column, scoreData) : [];
 
                 if (hasInput) {
                     if (autoError) {
@@ -508,7 +509,6 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
                     } else if (isPartsOnly) {
                         contentForCalc = parts.map(formatDisplayNumber);
                     } else if (isLabelOnly) {
-                        const options = resolveSelectedOptions(column, scoreData);
                         contentForCalc = options.flatMap(opt => opt.label.split(/\r\n|\r|\n/));
                     } else {
                         contentForCalc = [formatDisplayNumber(displayScore)];
@@ -530,7 +530,6 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
                 }
 
                 if (hasInput && isLabelOnly) {
-                    const options = resolveSelectedOptions(column, scoreData);
                     return (
                         <div className="flex flex-col items-center justify-center w-full h-full leading-tight overflow-hidden">
                             {options.map((opt, optIdx) => {

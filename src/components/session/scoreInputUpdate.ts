@@ -40,16 +40,31 @@ export const applyScoreInputValue = (
     column: ScoreColumn,
     playerId: string,
     value: ScoreInputValue | null | undefined,
-): GameSession => ({
-    ...session,
-    players: session.players.map(player => {
-        if (!column.isShared && player.id !== playerId) return player;
-        const scores = { ...player.scores };
-        if (value === undefined || value === null) {
-            delete scores[column.id];
-        } else {
-            scores[column.id] = toScoreValue(column, value);
-        }
-        return { ...player, scores };
-    }),
-});
+): GameSession => {
+    // Normalize only after finding a target, and only once for shared input.
+    let normalizedValue: ScoreValue | undefined;
+    let needsOwnMultiOptionIds = false;
+    return {
+        ...session,
+        players: session.players.map(player => {
+            if (!column.isShared && player.id !== playerId) return player;
+            const scores = { ...player.scores };
+            if (value === undefined || value === null) {
+                delete scores[column.id];
+            } else if (!normalizedValue) {
+                normalizedValue = toScoreValue(column, value);
+                // Supplied IDs were already shared; fallback empty lists were player-owned.
+                needsOwnMultiOptionIds = normalizedValue.multiOptionIds !== undefined
+                    && !(typeof value === 'object' && value.multiOptionIds);
+                scores[column.id] = normalizedValue;
+            } else {
+                // Each player must still own a separate score and parts array.
+                scores[column.id] = {
+                    ...normalizedValue, parts: [...normalizedValue.parts],
+                    multiOptionIds: needsOwnMultiOptionIds ? [] : normalizedValue.multiOptionIds
+                };
+            }
+            return { ...player, scores };
+        }),
+    };
+};

@@ -72,4 +72,37 @@ describe('applyScoreInputValue', () => {
         expect(next.players.map(player => player.scores.points.parts)).toEqual([[4], [4]]);
         expect(session.players.map(player => player.scores.points.parts)).toEqual([[3], [7]]);
     });
+
+    it('normalizes shared option input once per update, lazily, while retaining separate score ownership', () => {
+        let reads = 0;
+        let optionValue = 2;
+        const shared: ScoreColumn = {
+            ...column, isShared: true, inputType: 'clicker', isMultiSelect: true,
+            quickActions: [{ id: 'a', label: 'A', get value() { reads++; return optionValue; } }]
+        };
+        const session = makeSession();
+        const input = { multiOptionIds: ['a'] };
+        const next = applyScoreInputValue(session, shared, 'p1', input);
+        expect(reads).toBe(1);
+        expect(next.players.map(player => player.scores.points.parts)).toEqual([[2], [2]]);
+        expect(next.players[0].scores.points).not.toBe(next.players[1].scores.points);
+        expect(next.players[0].scores.points.multiOptionIds).toBe(input.multiOptionIds);
+        next.players[0].scores.points.parts[0] = 99;
+        expect(next.players[1].scores.points.parts).toEqual([2]);
+        expect(session.players[0].scores.points.parts).toEqual([3]);
+
+        optionValue = 6;
+        expect(applyScoreInputValue(next, shared, 'p1', input).players.map(player => player.scores.points.parts))
+            .toEqual([[6], [6]]);
+        expect(reads).toBe(2); // No cache may survive between separate updates.
+
+        const ignored = applyScoreInputValue(session, { ...shared, isShared: false }, 'missing-player', input);
+        expect(ignored.players[0]).toBe(session.players[0]);
+        expect(ignored.players[1]).toBe(session.players[1]);
+        expect(reads).toBe(2);
+
+        const empty = applyScoreInputValue(session, shared, 'p1', {});
+        expect(empty.players.map(player => player.scores.points.multiOptionIds)).toEqual([[], []]);
+        expect(empty.players[0].scores.points.multiOptionIds).not.toBe(empty.players[1].scores.points.multiOptionIds);
+    });
 });

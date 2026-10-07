@@ -26,6 +26,7 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 ## Scoring Update Patterns
 
 - `src/components/session/scoreInputUpdate.ts` normalizes keypad, accumulated, product, and option inputs and updates stored cell values only. `InputPanel` owns permissions, draft state, and commit timing, not totals or winners.
+- Shared input is normalized lazily once per update, but each player retains a separate score object and parts array. Do not keep that normalization cache across updates or calculate for nonexistent target players.
 - `src/utils/sessionScoring.ts` is the shared pure total/winner derivation. Single-player updates are derived once by `useSessionManager` and keep its existing timestamp and autosave flow; room runtimes still calculate independently on each device.
 - `src/utils/sessionTemplateUpdate.ts` migrates stored single/multi-select input when template attributes change, then derives the updated session. `useSessionManager` still owns saving the template, adopting the session, and starting background cloud backup.
 - Do not use `alreadyPersisted` to skip single-player calculation. That option is reserved for canonical snapshots already saved by the multiplayer controller, and also suppresses autosave.
@@ -37,6 +38,7 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - `SessionView.tsx` still owns room synchronization, gestures, AI generator lifetime, and modal state/render order. Splitting the supporting workflows must not add a DOM/component wrapper or duplicate listeners, observers, or timers.
 - `buildSessionDialogViews.tsx` returns individual modal slots, not a component or array wrapper; keep each slot in its original position in `SessionView`. `useSessionTouchDiagnostics.ts` and `useSessionAiFeedback.ts` remain hooks of that same mounted owner, at the original call positions.
 - `buildScoreGridRows.tsx` builds the existing keyed rows without a component boundary. Drag ownership, width synchronization, and observers remain in `ScoreGrid`; preserve all row/score-cell markers and shared/individual overlay activation rules.
+- `buildScoreGridOverlay.tsx` shares the existing overlay JSX and display calculation without a new mounted component. Callers retain shared-column versus individual-player activation decisions; label-only custom cells reuse their option resolution within one render, not across renders.
 
 ## Refactoring Boundaries
 
@@ -165,6 +167,7 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - `src/components/session/modals/ShareMenu.tsx`
 - `src/components/session/parts/AutoScorePanel.tsx`
 - `src/components/session/parts/buildColumnInputView.tsx`
+- `src/components/session/parts/buildScoreGridOverlay.tsx`
 - `src/components/session/parts/buildScoreGridRows.tsx`
 - `src/components/session/parts/buildSessionDialogViews.tsx`
 - `src/components/session/parts/GridFooter.tsx`
@@ -173,7 +176,9 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - `src/components/session/parts/InputPanelLayout.tsx`
 - `src/components/session/parts/PhotoLightbox.tsx`
 - `src/components/session/parts/PlayerEditor.tsx`
+- `src/components/session/parts/ScoreCell.layout.test.tsx`
 - `src/components/session/parts/ScoreCell.tsx`
+- `src/components/session/parts/ScoreGrid.overlay.test.tsx`
 - `src/components/session/parts/ScoreGrid.tsx`
 - `src/components/session/parts/ScoreInfoPanel.tsx`
 - `src/components/session/parts/ScoreOverlayGenerator.tsx`
@@ -182,9 +187,6 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - `src/components/session/parts/SessionHeader.tsx`
 - `src/components/session/parts/SimpleScorepadPromo.tsx`
 - `src/components/session/parts/SmartSpacer.tsx`
-- `src/components/session/parts/SmartTextureLayer.tsx`
-- `src/components/session/parts/StickerElement.tsx`
-- `src/components/session/parts/TexturedBlock.tsx`
 <!-- AUTO:session:end -->
 
 ### Player Selector
