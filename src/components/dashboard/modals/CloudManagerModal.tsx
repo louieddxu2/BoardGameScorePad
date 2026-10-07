@@ -5,7 +5,8 @@ import { DownloadCloud, X, FolderOpen, Trash2, RefreshCw, UploadCloud, Download,
 import { CloudFile, CloudResourceType } from '../../../services/googleDrive';
 import { useToast } from '../../../hooks/useToast';
 import { useConfirm } from '../../../hooks/useConfirm';
-import { calculateCloudScanStats, extractCloudLocalId } from './cloudSyncScan';
+import { calculateCloudScanStats } from './cloudSyncScan';
+import { extractCloudLocalId } from '../../../services/cloud/cloudMetadata';
 import SyncDashboard from './SyncDashboard';
 import { db } from '../../../db';
 import { useCommonTranslation } from '../../../i18n/common';

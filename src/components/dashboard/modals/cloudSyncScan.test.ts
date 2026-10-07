@@ -27,4 +27,42 @@ describe('cloud sync metadata scan', () => {
         });
         expect(JSON.stringify(local)).toBe(before);
     });
+
+    it('retains first-local/last-cloud duplicate precedence and ignores folders without usable IDs', () => {
+        const local = { data: {
+            templates: [{ id: 'same', updatedAt: 300 }, { id: 'missing-time' }],
+            overrides: [{ id: 'same', updatedAt: 100 }],
+            sessions: [{ id: 'missing-time' }],
+            history: [{ id: 'missing-time' }]
+        } };
+        expect(calculateCloudScanStats(
+            local as any,
+            [cloudFile('same', 400), cloudFile('same', 200), cloudFile('missing-time', 10),
+                { ...cloudFile('unencoded', 10), name: 'NoSeparator' },
+                { ...cloudFile('empty', 10), name: 'Game_' }],
+            [cloudFile('missing-time', 10)],
+            [cloudFile('missing-time', 10)]
+        )).toEqual({
+            upload: { templates: 1, sessions: 0, history: 0 },
+            download: { templates: 2, sessions: 1, history: 0 }
+        });
+    });
+
+    it('indexes local IDs once instead of searching every local row for each cloud file', () => {
+        const size = 128;
+        let idReads = 0;
+        const templates = Array.from({ length: size }, (_, index) => ({
+            get id() { idReads++; return `game-${index}`; },
+            updatedAt: 100
+        }));
+        expect(calculateCloudScanStats(
+            { data: { templates } } as any,
+            Array.from({ length: size }, (_, index) => cloudFile(`game-${index}`, 100)), [], []
+        )).toEqual({
+            upload: { templates: 0, sessions: 0, history: 0 },
+            download: { templates: 0, sessions: 0, history: 0 }
+        });
+        // A small constant allowance keeps this about linear work, not exact implementation details.
+        expect(idReads).toBeLessThanOrEqual(size * 3);
+    });
 });

@@ -1,4 +1,6 @@
-import { googleDriveService, type CloudFile } from '../googleDrive';
+import { googleDriveService } from '../googleDrive';
+import type { CloudFile } from './types';
+import { extractCloudLocalId, getCloudUpdatedAt } from './cloudMetadata';
 
 export interface GoogleDriveRestoreOptions {
     localMeta: { templates: Map<string, number>; history: Map<string, number>; sessions: Map<string, number> };
@@ -53,18 +55,9 @@ export async function runGoogleDriveRestore({
             }
         }
 
-        // Helper to extract ID using lastUnderscore logic
-        const getId = (name: string) => {
-            const lastSep = name.lastIndexOf('_');
-            if (lastSep !== -1) {
-                return name.substring(lastSep + 1);
-            }
-            return null;
-        };
-
         const processItem = async (file: CloudFile, type: 'template' | 'history') => {
-            const id = getId(file.name);
-            const cloudTime = Number(file.appProperties?.originalUpdatedAt || 0);
+            const id = extractCloudLocalId(file.name);
+            const cloudTime = getCloudUpdatedAt(file);
             let shouldDownload = true;
 
             // Check vs Local
@@ -117,22 +110,12 @@ export async function runGoogleDriveRestore({
 
         const CHUNK_SIZE = 3;
 
-        // Process Templates
-        const templateChunks = [];
-        for (let i = 0; i < cloudTemplates.length; i += CHUNK_SIZE) {
-            templateChunks.push(cloudTemplates.slice(i, i + CHUNK_SIZE));
-        }
-        for (const chunk of templateChunks) {
-            await Promise.all(chunk.map(f => processItem(f, 'template')));
-        }
-
-        // Process History
-        const historyChunks = [];
-        for (let i = 0; i < cloudHistory.length; i += CHUNK_SIZE) {
-            historyChunks.push(cloudHistory.slice(i, i + CHUNK_SIZE));
-        }
-        for (const chunk of historyChunks) {
-            await Promise.all(chunk.map(f => processItem(f, 'history')));
+        // Keep templates before history, awaiting every three-item batch.
+        // Only retain the current batch instead of allocating all chunks up front.
+        for (const [type, files] of [['template', cloudTemplates], ['history', cloudHistory]] as const) {
+            for (let i = 0; i < files.length; i += CHUNK_SIZE) {
+                await Promise.all(files.slice(i, i + CHUNK_SIZE).map(file => processItem(file, type)));
+            }
         }
 
         // [EXCLUDE ACTIVE SESSIONS LOOP]

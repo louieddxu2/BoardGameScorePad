@@ -44,6 +44,7 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - History stats view builders render the game details, player details, and overview without owning state or recomputing aggregates. `HistoryStatsPanel` retains filters, memos, scroll restoration, and the single detail history layer.
 - `historyPhotoGridModel.ts` holds crop/tile models and helpers; `HistoryPhotoGridCanvas.tsx` holds the existing canvas/image components. Photo loading, URL ownership, cancellation generations, and crop gestures remain in `HistoryPhotoGridShareModal`.
 - `cloudSyncScan.ts` only compares already-loaded metadata. `googleDriveRestore.ts` keeps the original three-item restore batches, skip policy, progress throttle, and exclusion of active sessions; `useGoogleDrive` retains connection and error handling.
+- `cloudMetadata.ts` owns the shared folder-ID and timestamp parsing rules; full backup retains its stricter non-empty-name policy. Cloud scan shares one linear indexed comparison across templates, sessions, and history, keeping first-local/last-cloud duplicate precedence and each category's timestamp fallback.
 - `googleDrivePhotos.ts` owns photo upload/cleanup and ID-based hydration, using the existing client and image service. Folder caches, authorization, and JSON/metadata save ordering remain in `googleDriveService`.
 
 ## Multiplayer Lifecycle Patterns

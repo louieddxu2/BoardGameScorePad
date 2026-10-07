@@ -2,6 +2,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { googleDriveService, CloudFile, CloudResourceType, getAutoConnectPreference, setAutoConnectPreference } from '../services/googleDrive';
 import { runGoogleDriveRestore } from '../services/cloud/googleDriveRestore';
+import { extractCloudLocalId, getCloudUpdatedAt } from '../services/cloud/cloudMetadata';
 import { systemSyncService } from '../services/systemSyncService';
 import { useToast } from './useToast';
 import { useCloudTranslation } from '../i18n/cloud';
@@ -307,12 +308,8 @@ export const useGoogleDrive = () => {
             const createMap = (files: CloudFile[]) => {
                 const map = new Map<string, CloudFile>();
                 files.forEach(f => {
-                    const lastSep = f.name.lastIndexOf('_');
-                    // Ensure underscore exists and is not the first character
-                    if (lastSep > 0) {
-                        const uuid = f.name.substring(lastSep + 1);
-                        map.set(uuid, f);
-                    }
+                    const uuid = extractCloudLocalId(f.name, true);
+                    if (uuid !== null) map.set(uuid, f);
                 });
                 return map;
             };
@@ -390,7 +387,7 @@ export const useGoogleDrive = () => {
                 // Skip Logic: If cloud exists AND cloud ts >= local ts
                 let isUpToDate = false;
                 if (cloudInfo && t.updatedAt) {
-                    const cloudTime = Number(cloudInfo.appProperties?.originalUpdatedAt || 0);
+                    const cloudTime = getCloudUpdatedAt(cloudInfo);
                     if (cloudTime >= t.updatedAt) {
                         isUpToDate = true;
                     }
@@ -420,7 +417,7 @@ export const useGoogleDrive = () => {
                 let isUpToDate = false;
                 const localTime = h.updatedAt || h.endTime;
                 if (cloudInfo && localTime) {
-                    const cloudTime = Number(cloudInfo.appProperties?.originalUpdatedAt || 0);
+                    const cloudTime = getCloudUpdatedAt(cloudInfo);
                     if (cloudTime >= localTime) {
                         isUpToDate = true;
                     }
@@ -462,7 +459,7 @@ export const useGoogleDrive = () => {
                 let isUpToDate = false;
                 const localTime = s.lastUpdatedAt || s.startTime;
                 if (cloudInfo && localTime) {
-                    const cloudTime = Number(cloudInfo.appProperties?.originalUpdatedAt || 0);
+                    const cloudTime = getCloudUpdatedAt(cloudInfo);
                     if (cloudTime >= localTime) {
                         isUpToDate = true;
                     }
