@@ -28,7 +28,7 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - `src/components/session/scoreInputUpdate.ts` normalizes keypad, accumulated, product, and option inputs and updates stored cell values only. `InputPanel` owns permissions, draft state, and commit timing, not totals or winners.
 - Shared input is normalized lazily once per update, but each player retains a separate score object and parts array. Do not keep that normalization cache across updates or calculate for nonexistent target players.
 - `src/utils/sessionScoring.ts` is the shared pure total/winner derivation. Single-player updates are derived once by `useSessionManager` and keep its existing timestamp and autosave flow; room runtimes still calculate independently on each device.
-- `src/utils/sessionTemplateUpdate.ts` migrates stored single/multi-select input when template attributes change, then derives the updated session. `useSessionManager` still owns saving the template, adopting the session, and starting background cloud backup.
+- `src/utils/sessionTemplateUpdate.ts` migrates stored single/multi-select input when template attributes change, then derives the updated session. Finish migration for every player before using that full player set to derive cross-player sums, ranks, totals, and winners once. `useSessionManager` still owns saving the template, adopting the session, and starting background cloud backup.
 - Do not use `alreadyPersisted` to skip single-player calculation. That option is reserved for canonical snapshots already saved by the multiplayer controller, and also suppresses autosave.
 
 ## Session View Boundaries

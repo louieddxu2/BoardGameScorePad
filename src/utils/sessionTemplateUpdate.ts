@@ -1,8 +1,7 @@
 import type { GameSession, GameTemplate } from '../types';
-import { calculatePlayerTotal } from './scoring';
-import { calculateWinners } from './templateUtils';
+import { recalculateScoreSession } from './sessionScoring';
 
-/** Migrate input values and recalculate using the existing session's scoring context. */
+/** Finish every input migration before deriving cross-player totals and winners. */
 export function applyTemplateToSession(
     session: GameSession,
     oldTemplate: GameTemplate | null,
@@ -19,11 +18,12 @@ export function applyTemplateToSession(
         });
     }
 
-    const updatedPlayers = session.players.map(player => {
+    const migrationEntries = Object.entries(migrations);
+    const migratedPlayers = migrationEntries.length === 0 ? session.players : session.players.map(player => {
         const processedScores = { ...player.scores };
         let hasChanges = false;
 
-        Object.entries(migrations).forEach(([colId, config]) => {
+        migrationEntries.forEach(([colId, config]) => {
             const score = processedScores[colId];
             if (!score) return;
 
@@ -44,23 +44,15 @@ export function applyTemplateToSession(
             if (hasChanges) processedScores[colId] = newScore;
         });
 
-        const playerWithMigratedScores = hasChanges ? { ...player, scores: processedScores } : player;
-
-        return {
-            ...playerWithMigratedScores,
-            totalScore: calculatePlayerTotal(playerWithMigratedScores, finalTemplate, session.players)
-        };
+        return hasChanges ? { ...player, scores: processedScores } : player;
     });
 
-    const winnerIds = calculateWinners(updatedPlayers, session.scoringRule);
-
-    return {
+    // All players must use the same fully migrated scoring context.
+    return recalculateScoreSession({
         ...session,
         templateId: finalTemplate.id,
         name: finalTemplate.name,
         bggId: finalTemplate.bggId,
-        players: updatedPlayers,
-        winnerIds: winnerIds,
-        lastUpdatedAt: Date.now()
-    };
+        players: migratedPlayers
+    }, finalTemplate);
 }
