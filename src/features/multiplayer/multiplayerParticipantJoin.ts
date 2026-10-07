@@ -3,6 +3,8 @@ import { multiplayerLocalStore } from './multiplayerLocalStore';
 import { multiplayerParticipantBindingStore, saveParticipantBinding } from './multiplayerParticipantBinding';
 import type { createMultiplayerP2PRuntimeTransport } from './multiplayerP2PRuntimeTransport';
 import { createMultiplayerPlayerRoomRuntime } from './multiplayerRoomRuntime';
+import type { MultiplayerPlayerRoomRuntime } from './multiplayerRoomRuntime';
+import { createPostBootstrapConnectionCountHandler } from './multiplayerConnectionCountHandoff';
 import { multiplayerSessionManager } from './multiplayerSessionManager';
 import type { BootstrapPackageMessage } from './protocol';
 
@@ -27,6 +29,73 @@ export const createMultiplayerParticipantRuntime = (options: {
     onOwnershipReturned: callbacks.onOwnershipReturned,
     onCompletionReceived: () => options.onParticipantCompletion(options.roomId),
   });
+};
+
+/** Apply bootstrap through the existing runtime, reloading only changed templates. */
+export const applyMultiplayerParticipantBootstrap = async (options: {
+  roomId: string;
+  bootstrapMessage: BootstrapPackageMessage;
+  resumeSession: (sessionId: string) => Promise<boolean>;
+}): Promise<boolean> => {
+  const { roomId, bootstrapMessage, resumeSession } = options;
+  const managedRoom = multiplayerSessionManager.get(roomId);
+  if (managedRoom?.status === 'ownership-returned') return true;
+  if (managedRoom?.runtime?.role !== 'player') return false;
+
+  const runtime = managedRoom.runtime;
+  const previousTemplate = runtime.session.template;
+  if (!await runtime.receive(bootstrapMessage)) return true;
+  const templateChanged = JSON.stringify(previousTemplate) !== JSON.stringify(runtime.session.template);
+  if (templateChanged) await resumeSession(runtime.session.session.id);
+  return true;
+};
+
+/** Share in-flight runtime creation; the caller owns the map and join generation. */
+export const ensureMultiplayerParticipantRuntime = (options: {
+  creations: Map<string, Promise<MultiplayerPlayerRoomRuntime | null>>;
+  roomId: string;
+  bootstrapMessage: BootstrapPackageMessage;
+  transport: JoinTransport;
+  isStillCurrent: () => boolean;
+  onParticipantCompletion: (roomId: string) => void;
+}): Promise<MultiplayerPlayerRoomRuntime | null> => {
+  const { creations, roomId, bootstrapMessage, transport, isStillCurrent, onParticipantCompletion } = options;
+  const existingRuntime = multiplayerSessionManager.get(roomId)?.runtime;
+  if (existingRuntime?.role === 'player') return Promise.resolve(existingRuntime);
+
+  const inFlight = creations.get(roomId);
+  if (inFlight) return inFlight;
+
+  const creation = (async () => {
+    const runtimeAfterLock = multiplayerSessionManager.get(roomId)?.runtime;
+    if (runtimeAfterLock?.role === 'player') return runtimeAfterLock;
+
+    const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
+    const runtime = await createMultiplayerParticipantRuntime({
+      roomId, bootstrapMessage, deviceId, transport,
+      onParticipantCompletion,
+    });
+    if (!isStillCurrent()) {
+      runtime.stop();
+      return null;
+    }
+    multiplayerSessionManager.register(roomId, runtime, 'connected');
+    transport.setConnectionChangeHandler?.(createPostBootstrapConnectionCountHandler(
+      (connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount),
+    ));
+    return runtime;
+  })();
+
+  creations.set(roomId, creation);
+  const clearCreation = () => {
+    if (creations.get(roomId) === creation) {
+      creations.delete(roomId);
+    }
+  };
+  // Handle both outcomes without hiding the original rejection from callers.
+  // An ignored finally() would create another rejected promise.
+  void creation.then(clearCreation, clearCreation);
+  return creation;
 };
 
 /** Completes player selection without owning React state or changing the QR deadline. */

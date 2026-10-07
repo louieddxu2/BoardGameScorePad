@@ -23,6 +23,13 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - The photo-grid crop editor uses a two-zone flow: large crop surface above, horizontal photo thumbnails below. Image zoom/pan is implemented with uniform transform scaling so aspect ratio stays intact and the image may overflow the crop frame.
 - Photo-grid crop gestures must be a local exception to `useMobileZoom()`: pinch should update only the image crop zoom and must not change the app-wide font-size zoom.
 
+## Multiplayer Lifecycle Patterns
+
+- `src/hooks/useMultiplayerRoomLifecycle.ts` owns shared React state, tab ownership, room restoration, session exits, and session-deletion subscriptions. Keep its public return contract stable when splitting workflows.
+- `src/hooks/useMultiplayerQrJoinLifecycle.ts` owns only the existing QR-join effect. Preserve its dependency identities, three-second deadline, one-time URL consumption, and stale-join guards; do not duplicate shared state or transport ownership inside it.
+- `src/features/multiplayer/multiplayerHostRoomLifecycle.ts` owns host bootstrap and completion persistence. The caller still owns UI transitions, cancellation tokens, and the five-minute completion-relay cleanup timer.
+- `src/features/multiplayer/multiplayerParticipantJoin.ts` owns participant bootstrap application, in-flight runtime deduplication, and player-selection confirmation. The in-flight map remains per hook instance, and cleanup must handle rejection without swallowing the promise returned to callers.
+
 ## Data Aggregation Patterns
 - Game search uses `useGameOptionAggregator` to merge `savedGames`, `templates`, and `bggGames` into unique `GameOption` objects before filtering or rendering.
 - The game selector merge order is base saved game, overlay template, then BGG dictionary enrichment; matching prefers `bggId`, then normalized name or BGG aliases.

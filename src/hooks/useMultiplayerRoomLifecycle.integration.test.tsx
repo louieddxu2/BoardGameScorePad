@@ -7,6 +7,7 @@ import { createLocalScoreStateSyncAdapter } from '../features/multiplayer/multip
 import { createMultiplayerP2PRuntimeTransport } from '../features/multiplayer/multiplayerP2PRuntimeTransport';
 import { multiplayerSessionManager } from '../features/multiplayer/multiplayerSessionManager';
 import { saveParticipantBinding } from '../features/multiplayer/multiplayerParticipantBinding';
+import { releaseMultiplayerRoomOwnership, retainMultiplayerCompletionRelay } from '../features/multiplayer/multiplayerPersistence';
 
 const mocks = vi.hoisted(() => {
   const transport = {
@@ -28,6 +29,7 @@ const mocks = vi.hoisted(() => {
     session: runtime.session,
     start: vi.fn(),
     stop: vi.fn(),
+    controller: { complete: vi.fn() },
   };
   const state: any = {
     adapterOptions: null as any,
@@ -57,7 +59,10 @@ vi.mock('../features/multiplayer/multiplayerLocalStore', () => ({
     mocks.adapterOptions = options;
     return {};
   }),
-  multiplayerLocalStore: { getRoomBySessionId: vi.fn(async () => mocks.roomRecord) },
+  multiplayerLocalStore: {
+    getRoomBySessionId: vi.fn(async () => mocks.roomRecord),
+    getRoom: vi.fn(async () => mocks.roomRecord),
+  },
 }));
 vi.mock('../features/multiplayer/multiplayerDeliveryStore', () => ({
   getOrCreateMultiplayerDeviceId: vi.fn(async () => 'device-1'),
@@ -152,6 +157,9 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     mocks.runtime.receive.mockReset().mockResolvedValue(true);
     mocks.hostRuntime.start.mockReset();
     mocks.hostRuntime.stop.mockReset();
+    mocks.hostRuntime.controller.complete.mockReset();
+    vi.mocked(releaseMultiplayerRoomOwnership).mockReset();
+    vi.mocked(retainMultiplayerCompletionRelay).mockReset();
     vi.mocked(createMultiplayerHostRoomRuntime).mockReset().mockResolvedValue(mocks.hostRuntime);
     vi.mocked(getOrCreateMultiplayerDeviceId).mockReset().mockResolvedValue('device-1');
     vi.mocked(createLocalScoreStateSyncAdapter).mockClear();
@@ -320,6 +328,45 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
       expect(createMultiplayerHostRoomRuntime).toHaveBeenCalledTimes(2);
       warning.mockRestore();
     });
+  });
+
+  it.each([false, true])('completes a host room with the existing cleanup policy, persistedRoom=%s', async (persistedRoom) => {
+    vi.useFakeTimers();
+    try {
+      appData.currentSession = { id: 'session-1', status: 'active', templateId: 'template-1', players: [] };
+      appData.activeTemplate = { id: 'template-1', name: 'Game', columns: [] };
+      appData.activeSessions = [appData.currentSession];
+      mocks.hostRuntime.session = { template: appData.activeTemplate, session: appData.currentSession };
+      const completed = {
+        finalSession: appData.currentSession, template: appData.activeTemplate, revision: 2, completedAt: 2,
+      };
+      mocks.hostRuntime.controller.complete.mockResolvedValue(completed);
+      const ownedSession = { ...appData.currentSession, name: 'Returned local session' };
+      vi.mocked(releaseMultiplayerRoomOwnership).mockResolvedValue(ownedSession);
+      const { result } = renderLifecycle();
+      act(() => result.current.handleOpenMultiplayerRoom());
+      await act(async () => { await result.current.handleCreateMultiplayerRoom(); });
+      const roomId = result.current.activeMultiplayerRoom!.roomId;
+      mocks.roomRecord = persistedRoom ? { roomId, role: 'host' } : null;
+
+      await act(async () => {
+        expect(await result.current.releaseHostMultiplayerRoom()).toBe(persistedRoom ? completed.finalSession : ownedSession);
+      });
+      expect(result.current.activeMultiplayerRoom).toBeNull();
+      expect(result.current.isMultiplayerRoomModalOpen).toBe(false);
+      expect(mocks.hostRuntime.controller.complete).toHaveBeenCalledTimes(1);
+      expect(retainMultiplayerCompletionRelay).toHaveBeenCalledTimes(persistedRoom ? 1 : 0);
+      expect(releaseMultiplayerRoomOwnership).toHaveBeenCalledTimes(persistedRoom ? 0 : 1);
+      expect(mocks.closeRoom).toHaveBeenCalledTimes(persistedRoom ? 0 : 1);
+
+      act(() => vi.advanceTimersByTime(5 * 60 * 1000 - 1));
+      expect(mocks.closeRoom).toHaveBeenCalledTimes(persistedRoom ? 0 : 1);
+      act(() => vi.advanceTimersByTime(1));
+      expect(mocks.closeRoom).toHaveBeenCalledTimes(1);
+      expect(mocks.closeRoom).toHaveBeenCalledWith(roomId, { deleteLocalRoom: true });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('confirms a player once without creating another runtime after bootstrap', async () => {
@@ -521,6 +568,26 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     expect(createMultiplayerPlayerRoomRuntime).toHaveBeenCalledTimes(1);
     expect(mocks.register).toHaveBeenCalledTimes(1);
     expect(mocks.transport.stop).not.toHaveBeenCalled();
+  });
+
+  it('clears a rejected player runtime creation and accepts another bootstrap without an unhandled rejection', async () => {
+    const error = new Error('player runtime creation failed');
+    vi.mocked(createMultiplayerPlayerRoomRuntime).mockRejectedValueOnce(error);
+    window.history.replaceState({}, '', '/?room=room-1');
+    const { result } = renderLifecycle();
+    await waitFor(() => expect(mocks.transport.joinRoom).toHaveBeenCalledWith('room-1'));
+
+    const bootstrap = { package: { revision: 1 } };
+    await act(async () => {
+      await expect(mocks.adapterOptions.onRemoteBootstrap(bootstrap)).rejects.toBe(error);
+    });
+    expect(result.current.pendingMultiplayerJoin).toBeNull();
+    expect(mocks.register).not.toHaveBeenCalled();
+
+    await act(async () => { await mocks.adapterOptions.onRemoteBootstrap(bootstrap); });
+    expect(createMultiplayerPlayerRoomRuntime).toHaveBeenCalledTimes(2);
+    expect(mocks.register).toHaveBeenCalledTimes(1);
+    expect(result.current.pendingMultiplayerJoin?.roomId).toBe('room-1');
   });
 
   it('marks an active participant disconnected and reports room completion immediately', async () => {
