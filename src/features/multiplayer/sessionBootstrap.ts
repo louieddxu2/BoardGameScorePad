@@ -1,5 +1,5 @@
 import { GameSession, GameTemplate } from '../../types';
-import { calculateScoreSession } from './scoreValuePatch';
+import { calculateScoreSession } from '../../utils/sessionScoring';
 import {
   MULTIPLAYER_PROTOCOL_VERSION,
   MultiplayerRoomInfo,

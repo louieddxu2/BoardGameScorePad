@@ -5,6 +5,7 @@ import { GameTemplate, GameSession, Player, ScoringRule, HistoryRecord } from '.
 import { generateId } from '../utils/idGenerator';
 import { migrateTemplate, migrateScores } from '../utils/dataMigration';
 import { calculatePlayerTotal } from '../utils/scoring';
+import { calculateScoreSession } from '../utils/sessionScoring';
 import { imageService } from '../services/imageService';
 import { googleDriveService } from '../services/googleDrive';
 import { cleanupService } from '../services/cleanupService';
@@ -326,18 +327,7 @@ export const useSessionManager = ({
         const sessionWithTimestamp = { ...updatedSession, lastUpdatedAt: Date.now() };
 
         if (activeTemplate) {
-            const playersWithTotal = sessionWithTimestamp.players.map(p => ({
-                ...p, totalScore: calculatePlayerTotal(p, activeTemplate, sessionWithTimestamp.players)
-            }));
-            
-            // [New] Pre-calculate winners to stabilize reference in SessionView
-            const winnerIds = calculateWinners(playersWithTotal, sessionWithTimestamp.scoringRule);
-            
-            setCurrentSession({ 
-                ...sessionWithTimestamp, 
-                players: playersWithTotal,
-                winnerIds: winnerIds
-            });
+            setCurrentSession(calculateScoreSession(sessionWithTimestamp, activeTemplate));
         } else {
             setCurrentSession(sessionWithTimestamp);
         }

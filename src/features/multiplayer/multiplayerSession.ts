@@ -1,5 +1,6 @@
 import { GameSession, GameTemplate, ScoreValue } from '../../types';
 import { calculatePlayerTotal } from '../../utils/scoring';
+import { calculateScoreSession, recalculateScoreSession } from '../../utils/sessionScoring';
 import {
   BootstrapPackageMessage,
   MultiplayerRoomInfo,
@@ -9,7 +10,7 @@ import {
   SessionCompletedMessage,
   SessionSnapshotMessage,
 } from './protocol';
-import { applyScoreValueInputs, applyScoreValuePatch, calculateScoreSession, recalculateScoreSession, ScorePatchActor } from './scoreValuePatch';
+import { applyScoreValueInputs, applyScoreValuePatch, ScorePatchActor } from './scoreValuePatch';
 import { createSessionBootstrapPackage, resolveBootstrapImport, ResolvedBootstrapImport } from './sessionBootstrap';
 
 export interface MultiplayerHostSession {

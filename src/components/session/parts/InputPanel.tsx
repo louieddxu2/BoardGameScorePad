@@ -10,10 +10,10 @@ import { buildColumnInputView } from './buildColumnInputView';
 import InputPanelLayout from './InputPanelLayout';
 import SmartSpacer from './SmartSpacer';
 import { Check } from 'lucide-react';
-import { getScoreHistory, getRawValue, syncPartsFromIds } from '../../../utils/scoring';
+import { getScoreHistory, getRawValue } from '../../../utils/scoring';
 import { useSessionTranslation } from '../../../i18n/session';
 import { colorRecommendationEngine } from '../../../features/recommendation/ColorRecommendationEngine';
-import { applyScoreValuePatch } from '../../../features/multiplayer/scoreValuePatch';
+import { applyScoreInputValue } from '../scoreInputUpdate';
 import { getInitialScoreInputPreviewValue } from '../scoreInputPreview';
 import { touchGestureGuard } from '../../../utils/touchGesture';
 
@@ -25,7 +25,6 @@ interface InputPanelProps {
     savedPlayers: SavedListItem[]; // Renamed from playerHistory
     allSavedPlayers?: SavedListItem[];
     onUpdateSession: (session: GameSession) => void;
-    isMultiplayerRoomActive?: boolean;
     onUpdateSavedPlayer: (name: string) => void; // Renamed from onUpdatePlayerHistory
     // [New Props for SmartSpacer]
     onTakePhoto?: () => void;
@@ -42,7 +41,7 @@ interface InputPanelProps {
 }
 
 const InputPanel: React.FC<InputPanelProps> = (props) => {
-    const { sessionState, eventHandlers, session, template, savedPlayers, allSavedPlayers, onUpdateSession, isMultiplayerRoomActive = false, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice, bottomOffset, canEditScore = () => true, canEditTotal = () => true, canEditPlayers = true, mediaOnlyTools = false, onToolboxInputFocusChange, toolboxTopContent } = props;
+    const { sessionState, eventHandlers, session, template, savedPlayers, allSavedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice, bottomOffset, canEditScore = () => true, canEditTotal = () => true, canEditPlayers = true, mediaOnlyTools = false, onToolboxInputFocusChange, toolboxTopContent } = props;
     const { uiState, setUiState, panelHeight, isShortList } = sessionState;
     const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue, isEditingTitle, isToolboxOpen } = uiState;
     const { t } = useSessionTranslation();
@@ -153,60 +152,9 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     const isPanelOpen = editingCell !== null || editingPlayerId !== null;
 
     const updateScore = (playerId: string, colId: string, value: any) => {
-        const col = template.columns.find((c: any) => c.id === colId);
-        if (!col || !canEditScore(playerId, col)) return;
-
-        const players = session.players.map((p: any) => {
-            if (!col.isShared && p.id !== playerId) return p;
-            const newScores = { ...p.scores };
-
-            if (value === undefined || value === null) {
-                delete newScores[colId];
-            } else {
-                let parts: number[] = [];
-                let optionId: string | undefined = undefined;
-                let multiOptionIds: string[] | undefined = undefined;
-
-                if ((col.formula || '').includes('+next')) {
-                    parts = (value.history || []).map((s: string) => parseFloat(s)).filter((n: number) => !isNaN(n));
-                } else if (col.formula === 'a1×a2') {
-                    parts = (value.factors || []).map((f: any) => parseFloat(String(f))).filter((n: number) => !isNaN(n));
-                } else if (col.isMultiSelect) {
-                    // [New] Multi-select Logic
-                    const ids = value.multiOptionIds || [];
-                    multiOptionIds = ids;
-                    parts = syncPartsFromIds(col, ids);
-                } else if (col.inputType === 'clicker') {
-                    // [Consistency] Option-driven Single-select sync
-                    optionId = value.optionId;
-                    parts = optionId ? syncPartsFromIds(col, [optionId]) : [];
-                } else {
-                    // Standard Numeric
-                    const rawVal = (typeof value === 'object' && value.value !== undefined) ? value.value : value;
-                    const num = parseFloat(String(rawVal));
-                    if (!isNaN(num)) parts = [num];
-                }
-
-                newScores[colId] = { parts, optionId, multiOptionIds };
-            }
-            return { ...p, scores: newScores };
-        });
-        const nextSession = { ...session, players };
-        if (isMultiplayerRoomActive) {
-            // Each room runtime calculates locally; participants send only raw inputs.
-            onUpdateSession(nextSession);
-            return;
-        }
-        const nextPlayer = nextSession.players.find((p: any) => p.id === playerId);
-        const scoreValue = nextPlayer?.scores[colId] ?? null;
-        const result = applyScoreValuePatch(session, template, {
-            actor: { role: 'host' },
-            targetPlayerId: playerId,
-            colId,
-            scoreValue
-        });
-
-        onUpdateSession(result.ok ? result.session : nextSession);
+        const column = template.columns.find(candidate => candidate.id === colId);
+        if (!column || !canEditScore(playerId, column)) return;
+        onUpdateSession(applyScoreInputValue(session, column, playerId, value));
     };
 
     const updatePlayerMeta = (playerId: string, updates: Partial<Player>) => {

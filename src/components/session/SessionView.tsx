@@ -941,7 +941,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         savedPlayers={props.savedPlayers} // Updated Prop Name
         allSavedPlayers={props.allSavedPlayers}
         onUpdateSession={handleSessionUpdate}
-        isMultiplayerRoomActive={Boolean(managedRoomState?.runtime)}
         onUpdateSavedPlayer={props.onUpdateSavedPlayer} // Updated Prop Name
         onTakePhoto={capabilities.canUseMediaTools ? media.openScoreCamera : undefined}
         onScreenshotRequest={capabilities.canUseMediaTools ? handleScreenshotRequest : undefined}

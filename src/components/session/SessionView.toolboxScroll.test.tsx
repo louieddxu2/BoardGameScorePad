@@ -727,7 +727,7 @@ describe('SessionView toolbox scroll behavior', () => {
     expect(getScoreCell('p1').className).toContain('ring-2');
   });
 
-  it('keeps immediate swipe navigation and accepts a touch keypad input afterwards', () => {
+  it('keeps immediate swipe navigation and submits raw keypad input without deriving it in the panel', () => {
     const onUpdateSession = vi.fn();
     renderSession({ onUpdateSession });
 
@@ -757,7 +757,9 @@ describe('SessionView toolbox scroll behavior', () => {
     const latestSession = latestCall?.[0] as GameSession | undefined;
     expect(latestSession?.players.find(player => player.id === 'p1')?.scores['col-1']?.parts ?? []).toEqual([]);
     expect(latestSession?.players.find(player => player.id === 'p2')?.scores['col-1']?.parts).toEqual([1]);
-    expect(calculate).toHaveBeenCalledTimes(makeSession().players.length);
+    expect(calculate).not.toHaveBeenCalled();
+    expect(latestSession?.players.map(player => player.totalScore)).toEqual([0, 0]);
+    expect(latestSession?.winnerIds).toEqual([]);
   });
 
   it('does not turn a vertical-first panel gesture into player navigation', () => {

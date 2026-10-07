@@ -187,6 +187,9 @@ describe('useSessionManager', () => {
       result.current.updateSession(updatedSession);
     });
 
+    expect(result.current.currentSession?.players.map(player => player.totalScore)).toEqual([10, 0]);
+    expect(result.current.currentSession?.winnerIds).toEqual([started.players[0].id]);
+
     await act(async () => {
       await result.current.saveToHistory('Office');
     });

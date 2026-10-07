@@ -23,6 +23,12 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - The photo-grid crop editor uses a two-zone flow: large crop surface above, horizontal photo thumbnails below. Image zoom/pan is implemented with uniform transform scaling so aspect ratio stays intact and the image may overflow the crop frame.
 - Photo-grid crop gestures must be a local exception to `useMobileZoom()`: pinch should update only the image crop zoom and must not change the app-wide font-size zoom.
 
+## Scoring Update Patterns
+
+- `src/components/session/scoreInputUpdate.ts` normalizes keypad, accumulated, product, and option inputs and updates stored cell values only. `InputPanel` owns permissions, draft state, and commit timing, not totals or winners.
+- `src/utils/sessionScoring.ts` is the shared pure total/winner derivation. Single-player updates are derived once by `useSessionManager` and keep its existing timestamp and autosave flow; room runtimes still calculate independently on each device.
+- Do not use `alreadyPersisted` to skip single-player calculation. That option is reserved for canonical snapshots already saved by the multiplayer controller, and also suppresses autosave.
+
 ## Multiplayer Lifecycle Patterns
 
 - `src/hooks/useMultiplayerRoomLifecycle.ts` owns shared React state, tab ownership, room restoration, session exits, and session-deletion subscriptions. Keep its public return contract stable when splitting workflows.
@@ -151,8 +157,8 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - `src/components/session/parts/TexturedTotalCell.tsx`
 - `src/components/session/parts/TotalAdjustmentSidebar.tsx`
 - `src/components/session/parts/TotalsBar.tsx`
-- `src/components/session/SessionImageFlow.tsx`
-- `src/components/session/SessionUI.test.tsx`
+- `src/components/session/scoreInputUpdate.test.ts`
+- `src/components/session/scoreInputUpdate.ts`
 <!-- AUTO:session:end -->
 
 ### Player Selector
