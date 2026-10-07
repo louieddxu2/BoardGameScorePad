@@ -29,6 +29,12 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - `src/utils/sessionScoring.ts` is the shared pure total/winner derivation. Single-player updates are derived once by `useSessionManager` and keep its existing timestamp and autosave flow; room runtimes still calculate independently on each device.
 - Do not use `alreadyPersisted` to skip single-player calculation. That option is reserved for canonical snapshots already saved by the multiplayer controller, and also suppresses autosave.
 
+## Session View Boundaries
+
+- `useSessionTemplateApplication.ts` owns applying community and AI columns to the current board. Keep template save before cleared-input session submission, preserve the local template/session identity, and do not await the background preference write.
+- `useSessionGridLayout.ts` owns item-width sizing, screenshot measurements, and grid/totals alignment. Keep the sizing and alignment hooks at their original call positions in `SessionView`; screenshot measurements remain on demand, not a new observer.
+- `SessionView.tsx` still owns room synchronization, gestures, AI generator lifetime, and modal state/render order. Splitting the supporting workflows must not add a DOM/component wrapper or duplicate listeners, observers, or timers.
+
 ## Multiplayer Lifecycle Patterns
 
 - `src/hooks/useMultiplayerRoomLifecycle.ts` owns shared React state, tab ownership, room restoration, session exits, and session-deletion subscriptions. Keep its public return contract stable when splitting workflows.
@@ -121,9 +127,13 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 <!-- AUTO:session:start -->
 - `src/components/session/hooks/useColumnDragAndDrop.ts`
 - `src/components/session/hooks/useSessionEvents.ts`
+- `src/components/session/hooks/useSessionGridLayout.test.tsx`
+- `src/components/session/hooks/useSessionGridLayout.ts`
 - `src/components/session/hooks/useSessionMedia.ts`
 - `src/components/session/hooks/useSessionNavigation.ts`
 - `src/components/session/hooks/useSessionState.ts`
+- `src/components/session/hooks/useSessionTemplateApplication.test.tsx`
+- `src/components/session/hooks/useSessionTemplateApplication.ts`
 - `src/components/session/hooks/useVoiceAnnouncements.ts`
 - `src/components/session/modals/AddColumnModal.tsx`
 - `src/components/session/modals/PhotoGalleryModal.tsx`
@@ -155,10 +165,6 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - `src/components/session/parts/TexturedScoreCell.tsx`
 - `src/components/session/parts/TexturedScreenshotView.tsx`
 - `src/components/session/parts/TexturedTotalCell.tsx`
-- `src/components/session/parts/TotalAdjustmentSidebar.tsx`
-- `src/components/session/parts/TotalsBar.tsx`
-- `src/components/session/scoreInputUpdate.test.ts`
-- `src/components/session/scoreInputUpdate.ts`
 <!-- AUTO:session:end -->
 
 ### Player Selector
@@ -254,9 +260,13 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - `src/components/scanner/hooks/useScannerInteractions.ts`
 - `src/components/session/hooks/useColumnDragAndDrop.ts`
 - `src/components/session/hooks/useSessionEvents.ts`
+- `src/components/session/hooks/useSessionGridLayout.test.tsx`
+- `src/components/session/hooks/useSessionGridLayout.ts`
 - `src/components/session/hooks/useSessionMedia.ts`
 - `src/components/session/hooks/useSessionNavigation.ts`
 - `src/components/session/hooks/useSessionState.ts`
+- `src/components/session/hooks/useSessionTemplateApplication.test.tsx`
+- `src/components/session/hooks/useSessionTemplateApplication.ts`
 - `src/components/session/hooks/useVoiceAnnouncements.ts`
 - `src/features/ai-generator/hooks/useAiGenerator.ts`
 - `src/features/ai-generator/hooks/useAiSimpleGenerator.test.tsx`

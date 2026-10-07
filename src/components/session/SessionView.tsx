@@ -2,7 +2,9 @@
 import React, { useCallback, useRef, useMemo, useState } from 'react';
 import { ArrowDown } from 'lucide-react';
 import { GameSession, GameTemplate, SavedListItem } from '../../types';
-import { useSessionState, ScreenshotLayout } from './hooks/useSessionState';
+import { useSessionState } from './hooks/useSessionState';
+import { useSessionTemplateApplication } from './hooks/useSessionTemplateApplication';
+import { measureSessionScreenshotLayout, useSessionGridAlignment, useSessionItemWidth } from './hooks/useSessionGridLayout';
 import { useSessionEvents } from './hooks/useSessionEvents';
 import { useSessionMedia } from './hooks/useSessionMedia';
 import { installTouchDiagnostics, recordScoreHandlerDecision } from './touchDiagnostics';
@@ -12,7 +14,6 @@ import type { SessionUpdateOptions } from '../../hooks/useSessionManager';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useSessionTranslation } from '../../i18n/session';
 import { useCommonTranslation } from '../../i18n/common';
-import { calculateWinners } from '../../utils/templateUtils'; // [Refactor]
 
 // Parts
 import SessionHeader from './parts/SessionHeader';
@@ -34,9 +35,7 @@ import SearchTemplateOnlineModal from '../dashboard/modals/SearchTemplateOnlineM
 import AiPromptModal from '../../features/ai-generator/components/AiPromptModal';
 import AiSimplePromptModal from '../../features/ai-generator/components/AiSimplePromptModal';
 import { useAiSimpleGenerator } from '../../features/ai-generator/hooks/useAiSimpleGenerator';
-import { db } from '../../db';
 import { useAiGenerator } from '../../features/ai-generator/hooks/useAiGenerator';
-import { markPendingAiShare } from '../../utils/pendingAiShare';
 import { getSessionOccupiedBottom, getSessionPanelDockOffset } from '../../utils/sessionViewport';
 import { useLatchedViewportOffset } from '../../hooks/useVisualViewportOffset';
 import HistoryPhotoStrip from '../history/HistoryPhotoStrip';
@@ -334,127 +333,18 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     });
   }, [session.players]);
 
-  const isInitialSimpleScorepad = template.columns.length === 0 && isScoresEmpty;
+  const leftColWidth = useSessionItemWidth(session.players.length);
 
-  const [containerWidth, setContainerWidth] = React.useState(0);
-  React.useEffect(() => {
-    const handleResize = () => {
-      setContainerWidth(window.innerWidth);
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const leftColWidth = useMemo(() => {
-    if (containerWidth > 0) {
-      return Math.max(70, containerWidth / (session.players.length + 2));
-    }
-    return 70;
-  }, [containerWidth, session.players.length]);
-
-
-
-  // 安全套用社群範本 (重置分數格，更新 columns，安全原地刷新)
-  const handleApplyTemplate = useCallback(async (fetched: any) => {
-    let payloadObj: any = null;
-    try {
-      payloadObj = typeof fetched.payload === 'string'
-        ? JSON.parse(fetched.payload)
-        : fetched.payload;
-    } catch (e) {
-      console.error("Failed to parse template payload", e);
-      return;
-    }
-
-    if (!payloadObj) return;
-
-    // 1. 複製玩家並清空所有輸入分數 (原地清空)
-    const newPlayers = session.players.map(p => ({
-      ...p,
-      scores: {}
-    }));
-
-    // 2. 原地覆寫模板屬性
-    const updatedTemplate: GameTemplate = {
-      ...template,
-      columns: payloadObj.columns || [],
-      defaultScoringRule: payloadObj.defaultScoringRule || template.defaultScoringRule,
-      supportedColors: payloadObj.supportedColors || template.supportedColors,
-      globalVisuals: payloadObj.globalVisuals || template.globalVisuals,
-      imageId: payloadObj.imageId || template.imageId,
-      cloudImageId: payloadObj.cloudImageId || template.cloudImageId,
-      hasImage: payloadObj.hasImage !== undefined ? payloadObj.hasImage : template.hasImage,
-      description: payloadObj.description || template.description,
-      updatedAt: Date.now()
-    };
-
-    // 3. 重新建立會話物件，並重設 winners
-    const updatedSession: GameSession = {
-      ...session,
-      players: newPlayers,
-      winnerIds: [], // 清空 winners
-      scoringRule: updatedTemplate.defaultScoringRule,
-    };
-
-    // 4. 原地驅動 React 狀態流更新（IndexedDB 寫入由上層 onUpdate 自動非同步完成）
-    await handleTemplateUpdate(updatedTemplate);
-    await handleSessionUpdate(updatedSession);
-
-    // 5. 標記偏好，記錄此範本以防止重覆推薦
-    try {
-      db.templatePrefs.put({
-        templateId: updatedTemplate.id,
-        lastPlayerCount: session.players.length,
-        updatedAt: Date.now()
-      });
-    } catch (e) {
-      console.error("Failed to record prefs", e);
-    }
-
-    // 6. 關閉彈窗並彈出提示
-    setIsOnlineSearchOpen(false);
-    showToast({ message: tSession('toast_apply_template_success'), type: 'success' });
-  }, [handleSessionUpdate, handleTemplateUpdate, session, template, showToast, tSession]);
-
-  // 安全套用 AI 產生之範本
-  const handleAiSuccess = useCallback(async (result: Partial<GameTemplate>) => {
-    if (!result.columns || result.columns.length === 0) return;
-
-    // 1. 複製玩家並清空所有輸入分數 (原地清空)
-    const newPlayers = session.players.map(p => ({
-      ...p,
-      scores: {}
-    }));
-
-    // 2. 原地覆寫模板欄位
-    const updatedTemplate: GameTemplate = {
-      ...template,
-      columns: result.columns,
-      defaultScoringRule: result.defaultScoringRule || template.defaultScoringRule,
-      updatedAt: Date.now(),
-    };
-
-    // 3. 重新建立會話物件，並重設 winners
-    const updatedSession: GameSession = {
-      ...session,
-      players: newPlayers,
-      winnerIds: [],
-      scoringRule: updatedTemplate.defaultScoringRule,
-    };
-
-    // 4. 原地驅動 React 狀態更新
-    await handleTemplateUpdate(updatedTemplate);
-    await handleSessionUpdate(updatedSession);
-
-    // 5. 記憶體標記：待首次結束遊戲 Save to History 時詢問分享
-    markPendingAiShare(template.id);
-
-    // 6. 關閉彈窗與拍照介面，彈出提示
-    setIsAiPromptOpen(false);
-    setIsOnlineSearchOpen(false);
-    showToast({ message: tSession('toast_ai_apply_success'), type: 'success' });
-  }, [handleSessionUpdate, handleTemplateUpdate, session, template, showToast, tSession]);
+  const { handleApplyTemplate, handleAiSuccess } = useSessionTemplateApplication({
+    session,
+    template,
+    onUpdateTemplate: handleTemplateUpdate,
+    onUpdateSession: handleSessionUpdate,
+    setIsOnlineSearchOpen,
+    setIsAiPromptOpen,
+    showToast,
+    tSession,
+  });
 
   React.useEffect(() => {
     if (aiGenerator.status === 'error') {
@@ -539,33 +429,11 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   }), [session.name, template.name, session.startTime, session.players, winners, session.scoringRule]);
 
   const handleScreenshotRequest = useCallback((mode: 'full' | 'simple') => {
-    const playerHeaderRowEl = document.querySelector('#live-player-header-row') as HTMLElement;
-    const itemHeaderEl = playerHeaderRowEl?.querySelector('div:first-child') as HTMLElement;
-    const playerHeaderEls = playerHeaderRowEl?.querySelectorAll('[data-player-header-id]');
-    const totalsRowEl = document.querySelector('#live-totals-bar') as HTMLElement;
-
-    if (!playerHeaderRowEl || !itemHeaderEl || !playerHeaderEls || playerHeaderEls.length === 0) {
+    const measuredLayout = measureSessionScreenshotLayout(template.columns);
+    if (!measuredLayout) {
       showToast({ message: tSession('photo_msg_capture_fail'), type: 'error' });
       return;
     }
-
-    const measuredLayout: ScreenshotLayout = {
-      itemWidth: itemHeaderEl.offsetWidth,
-      playerWidths: {},
-      playerHeaderHeight: playerHeaderRowEl.offsetHeight,
-      rowHeights: {},
-      totalRowHeight: totalsRowEl ? totalsRowEl.offsetHeight : undefined
-    };
-
-    playerHeaderEls.forEach(el => {
-      const playerId = el.getAttribute('data-player-header-id');
-      if (playerId) measuredLayout.playerWidths[playerId] = (el as HTMLElement).offsetWidth;
-    });
-
-    template.columns.forEach(col => {
-      const rowEl = document.getElementById(`row-${col.id}`) as HTMLElement;
-      if (rowEl) measuredLayout.rowHeights[col.id] = rowEl.offsetHeight;
-    });
 
     setUiState(p => ({
       ...p,
@@ -577,36 +445,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   }, [setUiState, showToast, template.columns]);
 
-  // Sync Scroll & Width Observers (same as before)
-  React.useEffect(() => {
-    const grid = sessionState.tableContainerRef.current;
-    const bar = sessionState.totalBarScrollRef.current;
-    if (!grid || !bar) return;
-    const handleScroll = () => { if (bar.scrollLeft !== grid.scrollLeft) bar.scrollLeft = grid.scrollLeft; };
-    grid.addEventListener('scroll', handleScroll, { passive: true });
-    return () => grid.removeEventListener('scroll', handleScroll);
-  }, [sessionState.tableContainerRef, sessionState.totalBarScrollRef]);
-
-  React.useEffect(() => {
-    const gridContent = sessionState.gridContentRef.current;
-    const totalContent = sessionState.totalContentRef.current;
-    if (!gridContent || !totalContent) return;
-    const observer = new ResizeObserver((entries) => {
-      window.requestAnimationFrame(() => {
-        for (const entry of entries) {
-          if (entry.target === gridContent) {
-            const gridWidth = gridContent.offsetWidth;
-            const stickyHeader = document.querySelector('#live-player-header-row > div:first-child') as HTMLElement;
-            const headerOffset = stickyHeader ? stickyHeader.offsetWidth : 70;
-            const newTotalWidth = `${Math.max(0, gridWidth - headerOffset)}px`;
-            if (totalContent.style.width !== newTotalWidth) totalContent.style.width = newTotalWidth;
-          }
-        }
-      });
-    });
-    observer.observe(gridContent);
-    return () => observer.disconnect();
-  }, [sessionState.gridContentRef, sessionState.totalContentRef]);
+  useSessionGridAlignment(sessionState);
 
   // [New] Check if we are in "Score Camera" mode (Single Shot)
   // This mode is triggered when galleryParams.mode is 'lightbox_overlay'
