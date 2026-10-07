@@ -1,16 +1,17 @@
 
-import React, { useCallback, useRef, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ArrowDown } from 'lucide-react';
-import { GameSession, GameTemplate, SavedListItem } from '../../types';
+import { GameSession, GameTemplate } from '../../types';
 import { useSessionState } from './hooks/useSessionState';
 import { useSessionTemplateApplication } from './hooks/useSessionTemplateApplication';
 import { measureSessionScreenshotLayout, useSessionGridAlignment, useSessionItemWidth } from './hooks/useSessionGridLayout';
 import { useSessionEvents } from './hooks/useSessionEvents';
 import { useSessionMedia } from './hooks/useSessionMedia';
-import { installTouchDiagnostics, recordScoreHandlerDecision } from './touchDiagnostics';
-import type { TouchDiagnosticState } from './touchDiagnostics';
+import { useSessionTouchDiagnostics, useSessionScoreHandlers } from './hooks/useSessionTouchDiagnostics';
+import { useSessionAiFeedback } from './hooks/useSessionAiFeedback';
+import { buildSessionDialogViews } from './parts/buildSessionDialogViews';
+import type { SessionViewProps } from './sessionViewTypes';
 import { useToast } from '../../hooks/useToast';
-import type { SessionUpdateOptions } from '../../hooks/useSessionManager';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useSessionTranslation } from '../../i18n/session';
 import { useCommonTranslation } from '../../i18n/common';
@@ -23,52 +24,15 @@ import SessionViewportDiagnostics from './parts/SessionViewportDiagnostics';
 import InputPanel from './parts/InputPanel';
 // Modals
 import ScreenshotModal from './modals/ScreenshotModal';
-import ColumnConfigEditor from '../shared/ColumnConfigEditor';
-import AddColumnModal from './modals/AddColumnModal';
-import SessionExitModal from './modals/SessionExitModal';
-import PhotoGalleryModal from './modals/PhotoGalleryModal';
-import SessionBackgroundModal from './modals/SessionBackgroundModal';
-import SessionImageFlow from './SessionImageFlow';
-import CameraView from '../scanner/CameraView';
-import GameSettingsEditor from '../shared/GameSettingsEditor';
-import SearchTemplateOnlineModal from '../dashboard/modals/SearchTemplateOnlineModal';
-import AiPromptModal from '../../features/ai-generator/components/AiPromptModal';
-import AiSimplePromptModal from '../../features/ai-generator/components/AiSimplePromptModal';
 import { useAiSimpleGenerator } from '../../features/ai-generator/hooks/useAiSimpleGenerator';
 import { useAiGenerator } from '../../features/ai-generator/hooks/useAiGenerator';
 import { getSessionOccupiedBottom, getSessionPanelDockOffset } from '../../utils/sessionViewport';
 import { useLatchedViewportOffset } from '../../hooks/useVisualViewportOffset';
 import HistoryPhotoStrip from '../history/HistoryPhotoStrip';
 import { useToolboxBoundaryGesture } from '../../hooks/useToolboxBoundaryGesture';
-import { createPlayerSessionCapabilities, hostSessionCapabilities, SessionCapabilities } from '../../features/multiplayer/sessionCapabilities';
-import { MultiplayerSessionManager, multiplayerSessionManager } from '../../features/multiplayer/multiplayerSessionManager';
+import { createPlayerSessionCapabilities, hostSessionCapabilities } from '../../features/multiplayer/sessionCapabilities';
+import { multiplayerSessionManager } from '../../features/multiplayer/multiplayerSessionManager';
 import { routeMultiplayerSessionUpdate } from '../../features/multiplayer/multiplayerSessionUpdateRouter';
-
-interface SessionViewProps {
-  session: GameSession;
-  template: GameTemplate;
-  savedPlayers: SavedListItem[]; // Renamed from playerHistory
-  allSavedPlayers?: SavedListItem[];
-  savedLocations?: SavedListItem[]; // Renamed from locationHistory
-  zoomLevel: number;
-  baseImage: string | null;
-  onUpdateSession: (session: GameSession, options?: SessionUpdateOptions) => void;
-  onUpdateTemplate: (template: GameTemplate) => Promise<{ template: GameTemplate; session: GameSession | null }>;
-  onUpdateSavedPlayer: (name: string) => void; // Renamed from onUpdatePlayerHistory
-  onUpdateImage: (img: string | Blob | null) => void;
-  onExit: (location?: string) => void;
-  onResetScores: () => void;
-  onSaveToHistory: (location?: string) => void;
-  onDiscard: () => void;
-  isVoiceEnabled?: boolean;
-  onToggleVoice?: () => void;
-  multiplayerCapabilities?: SessionCapabilities;
-  multiplayerRoomId?: string;
-  multiplayerManager?: MultiplayerSessionManager;
-  onOpenMultiplayerRoom?: () => void;
-  onOpenMultiplayerParticipantRoom?: () => void;
-  onRequestMultiplayerPlayerClaim?: (playerId: string) => void;
-}
 
 const SessionView: React.FC<SessionViewProps> = (props) => {
   const { template, zoomLevel, baseImage } = props;
@@ -247,7 +211,6 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     editingPlayerId,
     editingColumn,
     isEditingTitle,
-    isSessionExitModalOpen,
     isAddColumnModalOpen,
     showShareMenu,
     screenshotModal,
@@ -295,30 +258,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     onAutoClose: eventHandlers.handleCloseToolbox,
   });
 
-  const sessionSurfaceRef = useRef<HTMLDivElement>(null);
-  const touchDiagnosticStateRef = useRef<TouchDiagnosticState>({
-    editingCell: null,
-    editingPlayerId: null,
-    isInputFocused: false,
-    isToolboxOpen: false,
-    isEditMode: false,
-  });
-
-  React.useEffect(() => {
-    touchDiagnosticStateRef.current = {
-      editingCell: editingCell ? `${editingCell.playerId}:${editingCell.colId}` : null,
-      editingPlayerId,
-      isInputFocused,
-      isToolboxOpen,
-      isEditMode,
-    };
-  }, [editingCell, editingPlayerId, isInputFocused, isToolboxOpen, isEditMode]);
-
-  React.useEffect(() => {
-    const surface = sessionSurfaceRef.current;
-    if (!surface) return undefined;
-    return installTouchDiagnostics(surface, () => touchDiagnosticStateRef.current);
-  }, []);
+  const { sessionSurfaceRef, touchDiagnosticStateRef } = useSessionTouchDiagnostics(sessionState.uiState);
 
   // Winners Logic - Use pre-calculated winners from session to stabilize references
   const winners = useMemo(() => session.winnerIds || [], [session.winnerIds]);
@@ -346,78 +286,12 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     tSession,
   });
 
-  React.useEffect(() => {
-    if (aiGenerator.status === 'error') {
-      if (!isAiPromptOpen) {
-        showToast({ message: tSession('toast_ai_generation_failed') || 'AI generation failed, please try again.', type: 'error' });
-        aiGenerator.reset();
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aiGenerator.status, showToast, tSession, aiGenerator.reset]);
+  useSessionAiFeedback({ aiGenerator, aiSimpleGenerator, isAiPromptOpen, showToast, tSession });
 
-  const aiStatusRef = React.useRef(aiGenerator.status);
-  React.useEffect(() => {
-    aiStatusRef.current = aiGenerator.status;
-  }, [aiGenerator.status]);
-
-  // 元件卸載監聽：AI 生成中若按「上一頁」回到 Dashboard 則彈出中斷提示 Toast 並重置 (0 歷史堆疊風險)
-  React.useEffect(() => {
-    const currentReset = aiGenerator.reset;
-    const currentSimpleReset = aiSimpleGenerator.resetSimple;
-    return () => {
-      if (aiStatusRef.current === 'compressing' || aiStatusRef.current === 'generating') {
-        showToast({ message: tSession('toast_ai_generation_interrupted') || '🔮 AI scoreboard generation aborted.', type: 'info' });
-        currentReset();
-      }
-      currentSimpleReset();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleCellClickSafe = useCallback((playerId: string, colId: string, e: React.MouseEvent) => {
-    if (isAiWorking) {
-      recordScoreHandlerDecision({
-        event: e.nativeEvent,
-        state: touchDiagnosticStateRef.current,
-        playerId,
-        columnId: colId,
-        accepted: false,
-        reason: 'ai-working',
-      });
-      return;
-    }
-    const column = template.columns.find((item) => item.id === colId);
-    const canEdit = capabilities.canEditScore(playerId, column);
-    if (!canEdit) {
-      recordScoreHandlerDecision({
-        event: e.nativeEvent,
-        state: touchDiagnosticStateRef.current,
-        playerId,
-        columnId: colId,
-        accepted: false,
-        reason: 'capability-rejected',
-      });
-      return;
-    }
-    recordScoreHandlerDecision({
-      event: e.nativeEvent,
-      state: touchDiagnosticStateRef.current,
-      playerId,
-      columnId: colId,
-      accepted: true,
-      reason: 'accepted',
-    });
-    eventHandlers.handleCellClick(playerId, colId, e);
-  }, [isAiWorking, eventHandlers.handleCellClick, template.columns, capabilities, props.onRequestMultiplayerPlayerClaim]);
-
-  const handleColumnHeaderClickSafe = useCallback((e: React.MouseEvent, col: any) => {
-    if (isAiWorking) {
-      return;
-    }
-    if (!capabilities.canEditTemplate) return;
-    eventHandlers.handleColumnHeaderClick(e, col);
-  }, [isAiWorking, eventHandlers.handleColumnHeaderClick, capabilities]);
+  const { handleCellClickSafe, handleColumnHeaderClickSafe } = useSessionScoreHandlers({
+    touchDiagnosticStateRef, isAiWorking, template, capabilities, eventHandlers,
+    onRequestMultiplayerPlayerClaim: props.onRequestMultiplayerPlayerClaim
+  });
 
   // Prepare Overlay Data for Photo Gallery
   const overlayData = useMemo(() => ({
@@ -447,9 +321,12 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
 
   useSessionGridAlignment(sessionState);
 
-  // [New] Check if we are in "Score Camera" mode (Single Shot)
-  // This mode is triggered when galleryParams.mode is 'lightbox_overlay'
-  const isScoreCameraMode = sessionState.uiState.galleryParams?.mode === 'lightbox_overlay';
+  const dialogViews = buildSessionDialogViews({
+    props, session, template, baseImage, sessionState, setUiState, eventHandlers, media,
+    isOnlineSearchOpen, setIsOnlineSearchOpen, isAiPromptOpen, setIsAiPromptOpen, isAdvancedAiOpen,
+    setIsAdvancedAiOpen, advancedInitialFiles, setAdvancedInitialFiles, aiSimpleGenerator, aiGenerator,
+    elapsedTime, handleApplyTemplate, handleAiSuccess, handleTemplateUpdate, overlayData, confirm, tSession, tCommon
+  });
 
   return (
     <div 
@@ -463,148 +340,27 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     >
       {/* --- Modals --- */}
 
-      {/* Search Template Online Modal */}
-      <SearchTemplateOnlineModal
-        isOpen={isOnlineSearchOpen}
-        onClose={() => setIsOnlineSearchOpen(false)}
-        gameName={session.name || template.name}
-        onDirectStart={() => setIsOnlineSearchOpen(false)}
-        onAiClick={() => {
-          setIsOnlineSearchOpen(false);
-          setIsAiPromptOpen(true);
-        }}
-        onSelectTemplate={handleApplyTemplate}
-      />
+      {dialogViews.onlineSearch}
 
-      {/* AI Simple Prompt Scan Modal (全新新建獨立極簡彈窗) */}
-      <AiSimplePromptModal
-        isOpen={isAiPromptOpen}
-        onClose={() => setIsAiPromptOpen(false)}
-        onDirectStart={() => setIsAiPromptOpen(false)}
-        onAiSuccess={handleAiSuccess}
-        gameName={session.name || template.name}
-        aiSimpleGenerator={aiSimpleGenerator}
-        onSwitchToAdvanced={(files) => {
-          setAdvancedInitialFiles(files);
-          setIsAiPromptOpen(false);
-          // 🛡️ 延遲 200ms 開啟進階彈窗，結清前一個 modal 的非同步 history.back()，確保歷史紀錄堆疊 100% 穩定流暢
-          setTimeout(() => {
-            setIsAdvancedAiOpen(true);
-          }, 200);
-        }}
-      />
+      {dialogViews.simpleAiPrompt}
 
-      {/* AI Advanced Prompt Scan Modal (100% 原裝進階彈窗，不改動任何 props 屬性) */}
-      <AiPromptModal
-        isOpen={isAdvancedAiOpen}
-        onClose={() => setIsAdvancedAiOpen(false)}
-        onDirectStart={() => setIsAdvancedAiOpen(false)}
-        onAiSuccess={handleAiSuccess}
-        gameName={session.name || template.name}
-        aiGenerator={aiGenerator}
-        elapsedTime={elapsedTime}
-        initialFiles={advancedInitialFiles}
-        onInitialFilesConsumed={() => setAdvancedInitialFiles([])}
-      />
+      {dialogViews.advancedAiPrompt}
 
-      {/* Exit Modal */}
-      <SessionExitModal
-        isOpen={isSessionExitModalOpen}
-        onClose={() => setUiState(p => ({ ...p, isSessionExitModalOpen: false }))}
-        onSaveActive={(loc) => props.onExit(loc)} // Pass location back
-        onSaveHistory={props.onSaveToHistory}
-        onDiscard={props.onDiscard}
-        savedLocations={props.savedLocations} // Updated Prop Name
-        initialLocation={session.location} // Pass current session location
-        gameName={session.name}
-        bggId={session.bggId}
-        playerCount={session.players.length}
-      />
+      {dialogViews.exit}
 
-      {/* Photo Gallery Modal */}
-      <PhotoGalleryModal
-        isOpen={isPhotoGalleryOpen}
-        onClose={() => setUiState(p => ({ ...p, isPhotoGalleryOpen: false, galleryParams: { mode: 'default' } }))}
-        photoIds={session.photos || []}
-        onUploadPhoto={media.openPhotoLibrary}
-        onTakePhoto={media.openCamera} // Standard camera (from within gallery)
-        onDeletePhoto={media.handleDeletePhoto}
-        overlayData={overlayData} // Pass context for score overlay
-        autoEnterMode={sessionState.uiState.galleryParams?.mode} // [New] Pass auto-open mode
-        initialPhotoId={sessionState.uiState.galleryParams?.initialPhotoId}
-        entryMode={sessionState.uiState.galleryParams?.entryMode ?? 'gallery'}
-      />
+      {dialogViews.photoGallery}
 
-      {/* [New] General Camera Overlay */}
-      {media.isCameraOpen && (
-        <CameraView
-          onCapture={media.handleCameraBatchCapture}
-          onClose={() => media.closeCamera()}
-          singleShot={isScoreCameraMode} // [FIXED] Pass dynamic singleShot prop
-        />
-      )}
+      {dialogViews.camera}
 
-      {/* Image Processing Flow (Scanner & Texture Mapper) */}
-      <SessionImageFlow
-        uiState={sessionState.uiState}
-        setUiState={setUiState}
-        template={template}
-        baseImage={baseImage}
-        onScannerConfirm={media.handleScannerConfirm}
-        onUpdateTemplate={handleTemplateUpdate}
-      />
+      {dialogViews.imageFlow}
 
-      {/* Background Settings Modal */}
-      <SessionBackgroundModal
-        isOpen={isImageUploadModalOpen && !isScannerOpen && !isTextureMapperOpen}
-        onClose={() => setUiState(p => ({ ...p, isImageUploadModalOpen: false }))}
-        hasCloudImage={!!template.cloudImageId}
-        isConnected={media.isConnected}
-        onCloudDownload={media.handleCloudDownload}
-        onScannerCamera={media.openScannerCamera}
-        onUploadClick={media.openBackgroundUpload}
-        onRemoveBackground={media.handleRemoveBackground}
-        fileInputRef={media.fileInputRef}
-        onFileChange={media.handleFileUpload}
-      />
+      {dialogViews.background}
 
-      {/* Game Settings Editor (New) */}
-      <GameSettingsEditor
-        isOpen={isGameSettingsOpen}
-        template={template}
-        onSave={eventHandlers.handleSaveGameSettings}
-        onClose={() => setUiState(p => ({ ...p, isGameSettingsOpen: false }))}
-      />
+      {dialogViews.gameSettings}
 
-      {editingColumn && (
-        <ColumnConfigEditor
-          column={editingColumn}
-          allColumns={template.columns}
-          onSave={eventHandlers.handleSaveColumn}
-          onDelete={async () => {
-            if (await confirm({
-              title: tSession('session_delete_col_title'),
-              message: tSession('session_delete_col_msg'),
-              confirmText: tCommon('delete'),
-              isDangerous: true
-            })) {
-              const newCols = template.columns.filter(c => c.id !== editingColumn.id);
-              void handleTemplateUpdate({ ...template, columns: newCols });
-              setUiState(p => ({ ...p, editingColumn: null }));
-            }
-          }}
-          onClose={() => setUiState(prev => ({ ...prev, editingColumn: null }))}
-          baseImage={baseImage || undefined}
-        />
-      )}
+      {dialogViews.columnEditor}
 
-      <AddColumnModal
-        isOpen={isAddColumnModalOpen}
-        columns={template.columns}
-        onClose={() => setUiState(prev => ({ ...prev, isAddColumnModalOpen: false }))}
-        onAddBlank={eventHandlers.handleAddBlankColumn}
-        onCopy={eventHandlers.handleCopyColumns}
-      />
+      {dialogViews.addColumn}
 
       {/* Hidden inputs for photos */}
       <input ref={media.photoInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={media.handlePhotoSelect} />

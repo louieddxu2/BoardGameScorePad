@@ -39,6 +39,13 @@ For `C:\board-game-score-pad`:
 
 - Do not open a browser or run browser-based visual verification unless the user explicitly asks for it.
 
+# Production Code Size and Refactoring
+
+- Keep each TypeScript/JavaScript file implementing core functionality or UI at 600 physical lines or fewer, including comments and blank lines. Tests, static datasets, and translation dictionaries are excluded; executable logic is not exempt merely because it is under a data directory.
+- Split by cohesive responsibilities. Do not compress formatting, remove useful documentation, or introduce a new framework just to meet the limit.
+- Preserve runtime ownership, Hook/effect ordering, DOM nesting, reconciliation keys, gesture handlers, and cleanup. A file split must not introduce extra database/network reads, repeated calculations, observers, timers, or animation loops.
+- Recheck source-file lengths, relevant tests, type-check, and production build after refactoring.
+
 # Sub-Agent Delegation Rules
 
 - When invoking sub-agents via `invoke_subagent` or defining sub-agents via `define_subagent`, always explicitly set `Model` to `"flash"` (or `"flash_lite"`) for routine or background tasks (e.g., searching, reading files, generating boilerplate, running unit tests) unless deep complex reasoning is strictly required.
