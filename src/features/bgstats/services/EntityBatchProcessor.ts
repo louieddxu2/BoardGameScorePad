@@ -3,6 +3,9 @@ import { BgStatsGame, BgStatsLocation, BgStatsPlayer, ManualLink } from '../type
 import { importStrategies } from './importStrategies';
 import { db } from '../../../db';
 import { bgStatsEntityService } from './bgStatsEntityService';
+import { normalizeBggId } from './bgStatsBggData';
+import { enrichBggDictionary } from './bgStatsBggDictionary';
+import { loadBgStatsGameMatcher } from './bgStatsGameMatching';
 
 /**
  * 實體批次處理器
@@ -114,52 +117,45 @@ export class EntityBatchProcessor {
         options: { backfillHistory: boolean } = { backfillHistory: false }
     ): Promise<Map<number, string>> {
         const idMap = new Map<number, string>();
-
-        // 1. Batch Check Existence & Fetch Meta for Comparison
-        const uuids = games.map(g => g.uuid).filter(u => !!u);
-        const existingData = new Map<string, { bggId?: string }>(); // Map<UUID, { bggId }>
-        
-        try {
-            // Fetch items to check current state
-            const existingItems = await db.savedGames.where('id').anyOf(uuids).toArray();
-            existingItems.forEach(item => {
-                existingData.set(item.id, { bggId: item.bggId });
-            });
-        } catch (e) {
-            console.warn("[EntityBatchProcessor] Batch check failed for games", e);
-        }
+        if (!games.length) return idMap;
+        const matcher = await loadBgStatsGameMatcher(games);
+        const localNames = new Map<number, string>();
+        const writeOptions = { ...options, deferDictionary: true };
 
         for (const g of games) {
             try {
                 const link = links.get(g.id);
+                const match = link ? undefined : await matcher.find(g);
+                const targetId = link?.targetId ?? match?.id;
+                const sourceBggId = normalizeBggId(g.bggId);
 
-                if (link) {
-                    // A. Manual Link
-                    const localId = await importStrategies.resolveGame(g, link, options);
-                    idMap.set(g.id, localId);
-                } else if (existingData.has(g.uuid)) {
-                    // B. Fast Path (Found by ID)
-                    const localId = g.uuid;
-                    const localData = existingData.get(localId);
-                    const sourceBggId = (g.bggId && g.bggId > 0) ? g.bggId.toString() : undefined;
-                    
-                    // [Optimization] Only call bindGame if BGG ID needs update or differs
-                    // This avoids redundant DB writes for fully existing games
-                    if (sourceBggId && (!localData || localData.bggId !== sourceBggId)) {
-                        await bgStatsEntityService.bindGame(localId, g, options);
+                if (targetId) {
+                    if (sourceBggId && (link || matcher.needsBggFill(targetId))) {
+                        const name = await bgStatsEntityService.bindGame(targetId, g, writeOptions);
+                        if (name) {
+                            localNames.set(g.id, name);
+                            matcher.rememberSaved({
+                                id: targetId, name, bggId: sourceBggId, lastUsed: 0, usageCount: 0
+                            });
+                        }
                     }
-                    // Else: Strictly skip to save time
-                    
-                    idMap.set(g.id, localId);
+                    if (!localNames.has(g.id) && match && sourceBggId && normalizeBggId(match.bggId) === sourceBggId) {
+                        localNames.set(g.id, match.name);
+                    }
+                    idMap.set(g.id, targetId);
                 } else {
-                    // C. Slow Path (Name Match or Create)
-                    const localId = await importStrategies.resolveGame(g, undefined, options);
+                    const localId = await bgStatsEntityService.createGame(g, writeOptions);
+                    matcher.rememberSaved({
+                        id: localId, name: g.name.trim(), bggId: sourceBggId, lastUsed: 0, usageCount: 0
+                    });
                     idMap.set(g.id, localId);
                 }
             } catch (e) {
                 console.warn(`[EntityBatchProcessor] Failed to sync game ${g.name}`, e);
             }
         }
+        // One missing-only dictionary merge per BGG ID, independent of the UUID fast path.
+        await enrichBggDictionary(games, localNames);
         return idMap;
     }
 }

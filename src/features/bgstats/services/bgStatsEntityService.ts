@@ -1,7 +1,14 @@
 
 import { db } from '../../../db';
 import { BgStatsGame } from '../types';
-import { SavedListItem, BggGame } from '../../../types';
+import { SavedListItem } from '../../../types';
+import { fillHistoryBggId, normalizeBggId } from './bgStatsBggData';
+import { enrichBggDictionary } from './bgStatsBggDictionary';
+
+export interface BgStatsGameWriteOptions {
+  backfillHistory?: boolean;
+  deferDictionary?: boolean;
+}
 
 /**
  * BG Stats Entity Service
@@ -21,8 +28,8 @@ export class BgStatsEntityService {
       try {
           return await db.history
               .where('templateId').equals(templateId)
-              .filter(r => !r.bggId) // 只更新還沒有 BGG ID 的
-              .modify({ bggId, updatedAt: Date.now() });
+              .filter(record => !normalizeBggId(record.bggId))
+              .modify(record => fillHistoryBggId(record, bggId, Date.now()) || false);
       } catch (e) {
           console.error(`[Backfill] Failed for Template ${templateId}`, e);
           return 0;
@@ -66,12 +73,12 @@ export class BgStatsEntityService {
           // 若歷史紀錄量大，這可能會稍慢，但在匯入操作中可接受。
           return await db.history
               .filter(r => {
-                  if (r.bggId) return false; // 已有 ID 則跳過
+                  if (normalizeBggId(r.bggId)) return false;
                   if (!r.gameName) return false;
                   const hName = r.gameName.trim().toLowerCase();
                   return searchNames.includes(hName);
               })
-              .modify({ bggId, updatedAt: Date.now() });
+              .modify(record => fillHistoryBggId(record, bggId, Date.now()) || false);
               
       } catch (e) {
           console.error(`[Backfill] Failed for SavedGame ${savedGameId}`, e);
@@ -122,70 +129,51 @@ export class BgStatsEntityService {
 
   // --- Games ---
 
-  async bindGame(localId: string, sourceGame: BgStatsGame, options: { backfillHistory?: boolean } = {}): Promise<void> {
-    const bggIdStr = (sourceGame.bggId && sourceGame.bggId > 0) ? sourceGame.bggId.toString() : undefined;
-    
-    // Only BGG ID updates are relevant now
-    const updates: any = {};
-    if (bggIdStr) {
-      updates.bggId = bggIdStr;
-    } else {
-      return; // Nothing to update
-    }
+  async bindGame(localId: string, sourceGame: BgStatsGame, options: BgStatsGameWriteOptions = {}): Promise<string | undefined> {
+    const bggId = normalizeBggId(sourceGame.bggId);
+    if (!bggId) return;
 
-    try {
-      // 1. 更新 Template (如果存在)
-      await db.templates.update(localId, updates).catch(() => {});
-      
-      // 2. 更新 SavedGame (如果存在)
-      const existingGame = await db.savedGames.get(localId);
-      let localName = existingGame?.name;
-      
-      if (existingGame) {
-          await db.savedGames.update(localId, updates);
+    let localName: string | undefined;
+    let compatible = true;
+    await db.transaction('rw', db.savedGames, db.templates, db.builtins, async () => {
+      const [game, template, builtin] = await Promise.all([
+        db.savedGames.get(localId), db.templates.get(localId), db.builtins.get(localId)
+      ]);
+      const rows = [game, template, builtin].filter(row => !!row);
+      compatible = rows.every(row => !normalizeBggId(row?.bggId) || normalizeBggId(row?.bggId) === bggId);
+      if (!compatible) return; // A known conflicting ID is not a missing field.
+      localName = game?.name || template?.name || builtin?.name || sourceGame.name.trim();
+
+      if (game) {
+        if (!normalizeBggId(game.bggId)) await db.savedGames.update(localId, { bggId });
       } else {
-          // If binding to an ID that is not a SavedGame (e.g. a Template ID), we might want to create a SavedGame for it
-          // But only if we are treating this as a game record.
-          if (!localName) {
-             const tmpl = await db.templates.get(localId);
-             const builtin = await db.builtins.get(localId);
-             localName = tmpl?.name || builtin?.name || sourceGame.name.trim();
-          }
-
-          const newGameRecord: SavedListItem = {
-              id: localId,
-              name: localName,
-              lastUsed: 0,
-              usageCount: 0,
-              bggId: bggIdStr,
-              meta: { relations: {}, confidence: {} }
-          };
-          await db.savedGames.put(newGameRecord);
+        await db.savedGames.put({
+          id: localId, name: localName, bggId, lastUsed: 0, usageCount: 0,
+          meta: { relations: {}, confidence: {} }
+        });
       }
-      
-      // [單一操作時] 立即觸發歷史補完
-      if (options.backfillHistory !== false && bggIdStr) {
-          await this.upsertBggData(sourceGame, localName);
-          
-          // 嘗試兩條路徑更新歷史
-          // A. 透過 Template ID (如果 localId 其實是 Template)
-          await this.updateHistoryByTemplateId(bggIdStr, localId);
-          
-          // B. 透過 SavedGame (如果 localId 是 SavedGame)
-          await this.updateHistoryBySavedGame(bggIdStr, localId);
-      } else if (bggIdStr) {
-          // 批次匯入時，只更新 BGG 字典，不跑歷史掃描
-          await this.upsertBggData(sourceGame, localName);
+      const now = Date.now();
+      if (template && !normalizeBggId(template.bggId)) {
+        await db.templates.update(localId, { bggId, updatedAt: now });
       }
+      if (builtin && !normalizeBggId(builtin.bggId)) {
+        await db.builtins.update(localId, { bggId, updatedAt: now });
+      }
+    });
 
-    } catch (e) {
-      console.warn(`[Binding] Failed to bind game ${localId}`, e);
+    if (!options.deferDictionary) {
+      await enrichBggDictionary([sourceGame], localName ? new Map([[sourceGame.id, localName]]) : undefined);
     }
+    if (compatible && options.backfillHistory !== false) {
+      await this.updateHistoryByTemplateId(bggId, localId);
+      await this.updateHistoryBySavedGame(bggId, localId);
+    }
+    return localName;
   }
 
-  async createGame(sourceGame: BgStatsGame, options: { backfillHistory?: boolean } = {}): Promise<string> {
-    const newId = sourceGame.uuid; // Use Source UUID as Primary Key
-    const bggIdStr = (sourceGame.bggId && sourceGame.bggId > 0) ? sourceGame.bggId.toString() : undefined;
+  async createGame(sourceGame: BgStatsGame, options: BgStatsGameWriteOptions = {}): Promise<string> {
+    const newId = sourceGame.uuid;
+    const bggIdStr = normalizeBggId(sourceGame.bggId);
 
     const newGame: SavedListItem = {
         id: newId,
@@ -198,7 +186,7 @@ export class BgStatsEntityService {
     await db.savedGames.put(newGame);
 
     if (bggIdStr) {
-        await this.upsertBggData(sourceGame);
+        if (!options.deferDictionary) await enrichBggDictionary([sourceGame]);
 
         // [單一操作時] 立即觸發歷史補完
         if (options.backfillHistory !== false) {
@@ -209,43 +197,6 @@ export class BgStatsEntityService {
     return newId;
   }
 
-  // Helper: 更新 BGG 資料表 (Dictionary)
-  private async upsertBggData(sourceGame: BgStatsGame, localNameAlias?: string) {
-      if (!sourceGame.bggId) return;
-      const id = sourceGame.bggId.toString();
-
-      const existing = await db.bggGames.get(id);
-      const altNames = new Set<string>(existing?.altNames || []);
-      
-      const primaryName = sourceGame.bggName || existing?.name || sourceGame.name;
-      
-      if (sourceGame.name && sourceGame.name !== primaryName) {
-          altNames.add(sourceGame.name);
-      }
-      if (localNameAlias && localNameAlias !== primaryName) {
-          altNames.add(localNameAlias);
-      }
-
-      const bggData: BggGame = {
-          id: id,
-          name: primaryName,
-          altNames: Array.from(altNames),
-          year: sourceGame.bggYear ?? existing?.year,
-          designers: sourceGame.designers || existing?.designers,
-          minPlayers: sourceGame.minPlayerCount || existing?.minPlayers,
-          maxPlayers: sourceGame.maxPlayerCount || existing?.maxPlayers,
-          playingTime: sourceGame.maxPlayTime || existing?.playingTime, 
-          minAge: sourceGame.minAge || existing?.minAge,
-          complexity: sourceGame.averageWeight || existing?.complexity,
-          rank: sourceGame.rank || existing?.rank,
-          bestPlayers: existing?.bestPlayers,
-          mechanisms: (sourceGame as any).mechanisms || existing?.mechanisms,
-          categories: (sourceGame as any).categories || existing?.categories,
-          cooperative: typeof sourceGame.cooperative === 'boolean' ? sourceGame.cooperative : existing?.cooperative,
-          updatedAt: Date.now()
-      };
-      await db.bggGames.put(bggData);
-  }
 }
 
 export const bgStatsEntityService = new BgStatsEntityService();

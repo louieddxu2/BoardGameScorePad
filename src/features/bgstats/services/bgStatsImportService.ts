@@ -1,12 +1,11 @@
 
-import { BgStatsExport, BgStatsGame, BgStatsPlayer, BgStatsLocation, ImportAnalysisReport, ImportCategoryData, ManualLink, ImportManualLinks } from '../types';
-import { HistoryRecord, GameTemplate, Player, SavedListItem, ScoringRule, BggGame } from '../../../types';
-import { generateId } from '../../../utils/idGenerator';
+import { BgStatsExport, ImportAnalysisReport, ImportCategoryData, ImportManualLinks } from '../types';
+import { SavedListItem } from '../../../types';
 import { db } from '../../../db';
-import { importStrategies } from './importStrategies';
-import { bgStatsEntityService } from './bgStatsEntityService';
 import { HistoryBatchProcessor } from './historyBatchUtils';
 import { entityBatchProcessor } from './EntityBatchProcessor';
+import { loadBgStatsGameMatcher } from './bgStatsGameMatching';
+import { fillHistoryBggId, normalizeBggId } from './bgStatsBggData';
 
 class BgStatsImportService {
 
@@ -20,30 +19,21 @@ class BgStatsImportService {
 
         // [New] 讀取 BGG 字典以支援別名匹配
         const bggDict = await db.bggGames.toArray();
-        const aliasToBggId = new Map<string, string>();
-
-        bggDict.forEach(entry => {
-            // 將主名稱與所有別名都映射到 BGG ID
-            const id = entry.id;
-            if (entry.name) aliasToBggId.set(entry.name.toLowerCase().trim(), id);
-            if (entry.altNames) {
-                entry.altNames.forEach(alt => aliasToBggId.set(alt.toLowerCase().trim(), id));
+        const gameMatcher = await loadBgStatsGameMatcher(data.games || [], savedGames, bggDict);
+        const matchedImportIds = new Set<number>();
+        const matchedLocalIds = new Set<string>();
+        for (const game of data.games || []) {
+            const match = await gameMatcher.find(game);
+            if (match) {
+                matchedImportIds.add(game.id);
+                matchedLocalIds.add(match.id);
             }
-        });
-
-        // 2. 準備遊戲候選清單 (Game Identities)
-        const gameIdentityMap = new Map<string, SavedListItem>();
-
-        savedGames.forEach(g => {
-            gameIdentityMap.set(g.name.trim().toLowerCase(), g);
-        });
-
-        const localGameCandidates = Array.from(gameIdentityMap.values());
+        }
 
         const analyzeCategory = <TLocal extends SavedListItem, TImport extends { id: number, uuid: string, name: string, bggId?: number }>(
             localItems: TLocal[],
             importItems: TImport[] = [],
-            type: 'game' | 'player' | 'location'
+            type: 'player' | 'location'
         ): ImportCategoryData => {
 
             const matchedImportIds = new Set<number>();
@@ -51,12 +41,10 @@ class BgStatsImportService {
 
             // Index by ID (Primary Key)
             const localById = new Map<string, TLocal>();
-            const localByBggId = new Map<string, TLocal>();
             const localByName = new Map<string, TLocal>();
 
             localItems.forEach(local => {
                 localById.set(local.id, local);
-                if (type === 'game' && local.bggId) localByBggId.set(local.bggId.toString(), local);
 
                 const cleanName = local.name.trim().toLowerCase();
                 if (cleanName) localByName.set(cleanName, local);
@@ -76,16 +64,6 @@ class BgStatsImportService {
                     }
                 }
 
-                // 2. BGG ID Match (Explicit)
-                if (!matchFound && type === 'game' && imp.bggId && imp.bggId > 0) {
-                    const match = localByBggId.get(imp.bggId.toString());
-                    if (match) {
-                        matchedImportIds.add(imp.id);
-                        matchedLocalIds.add(match.id);
-                        matchFound = true;
-                    }
-                }
-
                 // 3. Name Match (Exact)
                 if (!matchFound && imp.name) {
                     const match = localByName.get(imp.name.trim().toLowerCase());
@@ -96,22 +74,6 @@ class BgStatsImportService {
                     }
                 }
 
-                // 4. [New] Dictionary Alias Match (Indirect via BGG Dictionary)
-                // 邏輯：ImportName -> BGG Dictionary -> BGG ID -> Local Game (w/ BGG ID)
-                if (!matchFound && type === 'game' && imp.name) {
-                    const cleanName = imp.name.trim().toLowerCase();
-                    const dictBggId = aliasToBggId.get(cleanName);
-
-                    if (dictBggId) {
-                        // 字典說這個名字對應到某個 BGG ID，檢查本地是否有遊戲綁定此 ID
-                        const match = localByBggId.get(dictBggId);
-                        if (match) {
-                            matchedImportIds.add(imp.id);
-                            matchedLocalIds.add(match.id);
-                            matchFound = true;
-                        }
-                    }
-                }
             });
 
             const localUnmatched = localItems.filter(l => {
@@ -127,7 +89,11 @@ class BgStatsImportService {
         const validSourcePlayers = (data.players || []).filter(p => !p.isAnonymous);
 
         return {
-            games: analyzeCategory(localGameCandidates, data.games, 'game'),
+            games: {
+                localUnmatched: savedGames.filter(game => !matchedLocalIds.has(game.id)),
+                importUnmatched: (data.games || []).filter(game => !matchedImportIds.has(game.id)),
+                matchedCount: matchedImportIds.size
+            },
             players: analyzeCategory(savedPlayers, validSourcePlayers, 'player'),
             locations: analyzeCategory(savedLocations, data.locations, 'location'),
             sourceData: data
@@ -164,7 +130,6 @@ class BgStatsImportService {
         );
 
         // --- Phase 2: History Processing (Batch Optimized) ---
-        const plays = data.plays || [];
         if (onProgress) onProgress('msg_importing_plays'); // Parameterization will be handled in the caller if needed, but for now just the key
 
         const batchProcessor = new HistoryBatchProcessor(data);
@@ -178,6 +143,7 @@ class BgStatsImportService {
         );
 
         const newRecords = batchProcessor.processPlays();
+        await batchProcessor.fillExistingBggIds();
 
         if (newRecords.length > 0) {
             // Bulk insert for performance
@@ -202,50 +168,62 @@ class BgStatsImportService {
             const builtins = await db.builtins.toArray();
             const savedGames = await db.savedGames.toArray();
 
-            const gameBggMap = new Map<string, string>();
+            const gameBggMap = new Map<string, Set<string>>();
+            const addName = (name: string, id: string) => {
+                const key = name.trim().toLowerCase();
+                if (!key) return;
+                const ids = gameBggMap.get(key) ?? new Set<string>();
+                ids.add(id);
+                gameBggMap.set(key, ids);
+            };
             savedGames.forEach(g => {
-                if (g.bggId && g.name) gameBggMap.set(g.name.trim().toLowerCase(), g.bggId);
+                const id = normalizeBggId(g.bggId);
+                if (id && g.name) addName(g.name, id);
             });
 
-            const updates: Promise<any>[] = [];
-
-            for (const t of templates) {
-                if (!t.bggId) {
-                    const cleanName = t.name.trim().toLowerCase();
-
-                    let matchBggId = gameBggMap.get(cleanName);
-
-                    if (!matchBggId) {
-                        const bggMatch = await db.bggGames.where('name').equalsIgnoreCase(t.name.trim()).first();
-                        if (bggMatch) matchBggId = bggMatch.id;
-                    }
-
-                    if (!matchBggId) {
-                        const bggAltMatch = await db.bggGames.where('altNames').equals(t.name.trim()).first();
-                        if (bggAltMatch) matchBggId = bggAltMatch.id;
-                    }
-
-                    if (matchBggId) {
-                        updates.push(db.templates.update(t.id, { bggId: matchBggId }));
-                        updates.push(bgStatsEntityService.updateHistoryByTemplateId(matchBggId, t.id));
-                    }
+            // Load aliases once only when a custom template needs dictionary fallback.
+            const needsDictionary = templates.some(t => !normalizeBggId(t.bggId) &&
+                !gameBggMap.has(t.name.trim().toLowerCase()));
+            if (needsDictionary) {
+                for (const entry of await db.bggGames.toArray()) {
+                    const id = normalizeBggId(entry.id);
+                    if (!id) continue;
+                    for (const name of [entry.name, ...(entry.altNames ?? [])]) addName(name, id);
                 }
             }
 
-            for (const t of builtins) {
-                if (!t.bggId) {
-                    const matchBggId = gameBggMap.get(t.name.trim().toLowerCase());
-                    if (matchBggId) {
-                        updates.push(db.builtins.update(t.id, { bggId: matchBggId }));
-                    }
+            for (const [table, rows] of [[db.templates, templates], [db.builtins, builtins]] as const) {
+                const targetIds = new Map<string, string>();
+                for (const t of rows) {
+                    if (normalizeBggId(t.bggId)) continue;
+                    const ids = gameBggMap.get(t.name.trim().toLowerCase());
+                    if (ids?.size !== 1) continue; // Never guess between same-name BGG identities.
+                    targetIds.set(t.id, [...ids][0]);
                 }
-            }
-
-            if (updates.length > 0) {
-                await Promise.all(updates);
+                const templateIds = [...targetIds.keys()];
+                const CHUNK_SIZE = 500;
+                for (let i = 0; i < templateIds.length; i += CHUNK_SIZE) {
+                    const chunk = templateIds.slice(i, i + CHUNK_SIZE);
+                    await db.transaction('rw', table, db.history, async () => {
+                        const now = Date.now();
+                        const changedIds: string[] = [];
+                        await table.where('id').anyOf(chunk).modify(row => {
+                            if (normalizeBggId(row.bggId)) return false;
+                            row.bggId = targetIds.get(row.id)!;
+                            row.updatedAt = now;
+                            changedIds.push(row.id);
+                        });
+                        if (changedIds.length) {
+                            await db.history.where('templateId').anyOf(changedIds)
+                                .filter(record => !normalizeBggId(record.bggId))
+                                .modify(record => fillHistoryBggId(record, targetIds.get(record.templateId)!, now) || false);
+                        }
+                    });
+                }
             }
         } catch (e) {
             console.warn("Failed to propagate BGG IDs", e);
+            throw e;
         }
     }
 }

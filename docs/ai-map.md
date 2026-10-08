@@ -59,6 +59,10 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - `src/features/multiplayer/multiplayerParticipantJoin.ts` owns participant bootstrap application, in-flight runtime deduplication, and player-selection confirmation. The in-flight map remains per hook instance, and cleanup must handle rejection without swallowing the promise returned to callers.
 
 ## Data Aggregation Patterns
+- BG Stats import patches existing plays by play UUID with missing BGG IDs only; do not replace scores, players, photos, dates, or the original template ID. Preserve valid record/snapshot IDs, and do not reconstruct absent/legacy disposable snapshots.
+- `bgStatsGameMatching.ts` shares game identity matching between preview and import: UUID, BGG ID, unambiguous normalized name, then dictionary alias/template fallback. Same-name games with conflicting IDs must not be guessed or collapsed.
+- `bgStatsBggDictionary.ts` enriches incoming BGG IDs during import, including unchanged saved-game UUIDs. Batch reads and writes by distinct BGG ID; keep existing metadata and unchanged timestamps. No rescan or online BGG lookup is required.
+- BG Stats export takes the BGG ID from the historical record/snapshot even when the dictionary entry is absent. Dictionary metadata is optional enrichment, not the source of the identifier.
 - Game search uses `useGameOptionAggregator` to merge `savedGames`, `templates`, and `bggGames` into unique `GameOption` objects before filtering or rendering.
 - The game selector merge order is base saved game, overlay template, then BGG dictionary enrichment; matching prefers `bggId`, then normalized name or BGG aliases.
 - Keep search/sort/filter logic downstream of aggregation. UI components should consume merged options instead of resolving template/game/BGG compatibility themselves.

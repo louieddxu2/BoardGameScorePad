@@ -1,8 +1,9 @@
 
 import { db } from '../../../db';
 import { entityService } from '../../../services/entityService';
-import { bgStatsEntityService } from './bgStatsEntityService';
+import { bgStatsEntityService, BgStatsGameWriteOptions } from './bgStatsEntityService';
 import { BgStatsGame, ManualLink } from '../types';
+import { loadBgStatsGameMatcher } from './bgStatsGameMatching';
 
 /**
  * Import Strategies (Unified UUID Version)
@@ -12,7 +13,7 @@ import { BgStatsGame, ManualLink } from '../types';
  */
 export const importStrategies = {
 
-  async resolveGame(sourceGame: BgStatsGame, link?: ManualLink, options: { backfillHistory?: boolean } = {}): Promise<string> {
+  async resolveGame(sourceGame: BgStatsGame, link?: ManualLink, options: BgStatsGameWriteOptions = {}): Promise<string> {
     let targetId: string | undefined = undefined;
 
     // --- Phase 1: Decision ---
@@ -20,28 +21,8 @@ export const importStrategies = {
         // A. 使用者手動連結
         targetId = link.targetId;
     } else {
-        // B. 自動配對嘗試 (Fallback)
-        const analysis = await entityService.analyzeEntity(
-            db.savedGames, 
-            sourceGame.name,
-            'game',
-            { 
-                bggId: sourceGame.bggId?.toString(), 
-                bgStatsId: sourceGame.uuid // Will check if ID == uuid
-            }
-        );
-
-        if (analysis.status !== 'NEW' && analysis.match) {
-            targetId = analysis.match.id;
-        } 
-        
-        // C. 補強檢查：Templates (Name Match)
-        if (!targetId) {
-            const templateMatch = await db.templates.where('name').equals(sourceGame.name.trim()).first();
-            if (templateMatch) {
-                targetId = templateMatch.id;
-            }
-        }
+        const matcher = await loadBgStatsGameMatcher([sourceGame]);
+        targetId = (await matcher.find(sourceGame))?.id;
     }
 
     // --- Phase 2: Execution ---

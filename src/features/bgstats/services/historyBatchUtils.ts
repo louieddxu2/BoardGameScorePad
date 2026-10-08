@@ -3,6 +3,7 @@ import { db } from '../../../db';
 import { HistoryRecord, GameTemplate, Player, ScoringRule, SavedListItem } from '../../../types';
 import { generateId } from '../../../utils/idGenerator';
 import { BgStatsExport, BgStatsGame } from '../types';
+import { fillHistoryBggId, normalizeBggId } from './bgStatsBggData';
 
 export class HistoryBatchProcessor {
     private existingIds: Set<string> = new Set();
@@ -38,9 +39,9 @@ export class HistoryBatchProcessor {
         this.sourceLocationIdToLocalId = sourceLocationIdToLocalId;
 
         // 1. Bulk load existing history IDs (Batch Check with Chunking)
-        const playUuids = (this.data.plays || [])
+        const playUuids = [...new Set((this.data.plays || [])
             .map(p => p.uuid)
-            .filter(u => !!u) as string[];
+            .filter(u => !!u))] as string[];
         
         if (playUuids.length > 0) {
             // [Optimization] Split into chunks to avoid "Transaction too large" or slow indexed queries
@@ -69,12 +70,50 @@ export class HistoryBatchProcessor {
         const builtins = await db.builtins.where('id').anyOf([...neededGameIds]).toArray();
         
         savedGames.forEach(g => this.localGameMap.set(g.id, g));
-        templates.forEach(t => this.localGameMap.set(t.id, t));
-        builtins.forEach(t => this.localGameMap.set(t.id, t));
+        for (const t of [...templates, ...builtins]) {
+            const bggId = normalizeBggId(t.bggId) ?? normalizeBggId(this.localGameMap.get(t.id)?.bggId);
+            this.localGameMap.set(t.id, { ...t, bggId });
+        }
 
         // Load Locations
         const savedLocations = await db.savedLocations.where('id').anyOf([...neededLocationIds]).toArray();
         savedLocations.forEach(l => this.localLocationMap.set(l.id, l));
+    }
+
+    /** Patch existing plays by their play UUID, not by a name or a surviving template. */
+    public async fillExistingBggIds(): Promise<void> {
+        const idsByUuid = new Map<string, Set<string>>();
+        const localIdsByUuid = new Map<string, Set<string>>();
+        for (const play of this.data.plays || []) {
+            if (!this.existingIds.has(play.uuid)) continue;
+            const bggId = normalizeBggId(this.sourceGames.get(play.gameRefId)?.bggId);
+            if (!bggId) continue;
+            const ids = idsByUuid.get(play.uuid) ?? new Set<string>();
+            ids.add(bggId);
+            idsByUuid.set(play.uuid, ids);
+            const localId = this.sourceGameIdToLocalId.get(play.gameRefId);
+            const localBggId = normalizeBggId(localId ? this.localGameMap.get(localId)?.bggId : undefined);
+            if (localBggId) {
+                const localIds = localIdsByUuid.get(play.uuid) ?? new Set<string>();
+                localIds.add(localBggId);
+                localIdsByUuid.set(play.uuid, localIds);
+            }
+        }
+        // Conflicting copies of a UUID within one file are not a reliable source of a new ID.
+        const incomingIds = new Map([...idsByUuid]
+            .filter(([uuid, ids]) => ids.size === 1 && (localIdsByUuid.get(uuid)?.size ?? 0) <= 1)
+            .map(([uuid, ids]) => [uuid, [...(localIdsByUuid.get(uuid) ?? ids)][0]]));
+        const uuids = [...incomingIds.keys()];
+        const CHUNK_SIZE = 500;
+        for (let i = 0; i < uuids.length; i += CHUNK_SIZE) {
+            const chunk = uuids.slice(i, i + CHUNK_SIZE);
+            await db.transaction('rw', db.history, async () => {
+                const now = Date.now();
+                await db.history.where('id').anyOf(chunk).modify(record =>
+                    fillHistoryBggId(record, incomingIds.get(record.id)!, now) || false
+                );
+            });
+        }
     }
 
     /**
@@ -82,10 +121,11 @@ export class HistoryBatchProcessor {
      */
     public processPlays(): HistoryRecord[] {
         const result: HistoryRecord[] = [];
+        const seenIds = new Set(this.existingIds);
         
         for (const play of (this.data.plays || [])) {
             // Skip existing records
-            if (play.uuid && this.existingIds.has(play.uuid)) continue;
+            if (play.uuid && seenIds.has(play.uuid)) continue;
 
             const sourceGame = this.sourceGames.get(play.gameRefId);
             if (!sourceGame) continue;
@@ -96,6 +136,7 @@ export class HistoryBatchProcessor {
             // Resolve Game Name
             const localGame = this.localGameMap.get(localGameId);
             const gameName = localGame?.name || sourceGame.name;
+            const bggId = normalizeBggId(localGame?.bggId) ?? normalizeBggId(sourceGame.bggId);
 
             // Resolve Location
             let localLocationName: string | undefined;
@@ -155,6 +196,7 @@ export class HistoryBatchProcessor {
             }
 
             const snapshotTemplate = this.createEmptySnapshot(sourceGame);
+            snapshotTemplate.bggId = bggId;
             
             let scoringRule: ScoringRule = 'HIGHEST_WINS';
             if (sourceGame.cooperative) {
@@ -169,7 +211,7 @@ export class HistoryBatchProcessor {
                 id: play.uuid || generateId(),
                 templateId: localGameId,
                 gameName: gameName,
-                bggId: (sourceGame.bggId && sourceGame.bggId > 0) ? sourceGame.bggId.toString() : undefined,
+                bggId,
                 startTime: this.parseDate(play.playDate),
                 endTime: this.parseDate(play.playDate) + (play.durationMin || 0) * 60000,
                 updatedAt: Date.now(),
@@ -183,6 +225,7 @@ export class HistoryBatchProcessor {
             };
 
             result.push(record);
+            seenIds.add(record.id);
         }
 
         return result;
@@ -209,7 +252,7 @@ export class HistoryBatchProcessor {
         return {
             id: generateId(), 
             name: sourceGame.name,
-            bggId: (sourceGame.bggId && sourceGame.bggId > 0) ? sourceGame.bggId.toString() : undefined, 
+            bggId: normalizeBggId(sourceGame.bggId),
             columns: [], 
             createdAt: Date.now(),
             updatedAt: Date.now(),

@@ -4,7 +4,8 @@ import { BgStatsExport, BgStatsGame, BgStatsPlayer, BgStatsLocation } from '../t
 import { HistoryRecord, BggGame } from '../../../types';
 import { getScoreRank } from '../../../utils/ranking';
 import { generateId } from '../../../utils/idGenerator';
-import { getRecordScoringRule, getRecordBggId } from '../../../utils/historyUtils';
+import { getRecordScoringRule } from '../../../utils/historyUtils';
+import { getHistoryBggId } from './bgStatsBggData';
 
 // Helper class to map UUIDs (strings) to Integer IDs (required by BG Stats)
 class IntIdMapper {
@@ -66,7 +67,7 @@ class BgStatsExportService {
         // 2. Process History Records -> Plays
         for (const record of allHistory) {
             // --- Game Resolution ---
-            const bggId = getRecordBggId(record);
+            const bggId = getHistoryBggId(record);
             // Use Template Name as unique key for Game unless BGG ID is present
             const gameKey = bggId 
                 ? `bgg:${bggId}` 
@@ -90,7 +91,7 @@ class BgStatsExportService {
                     id: gameRefId,
                     uuid: originalUuid, 
                     name: record.gameName,
-                    bggId: bggData ? parseInt(bggData.id) : undefined,
+                    bggId: bggId ? Number(bggId) : undefined,
                     bggName: bggData?.name,
                     bggYear: bggData?.year,
                     designers: bggData?.designers,
