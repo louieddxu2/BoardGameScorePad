@@ -43,10 +43,14 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
     badgeBackgroundClass,
     onAction,
 }) => {
+    const valueText = `${isStandardSumParts && action.value > 0 ? '+' : ''}${action.value}`;
+    const showValueOnly = showActionValue && action.label.trim().length === 0;
+    const showValueBadge = showActionValue && !showValueOnly;
+    const primaryText = showValueOnly ? valueText : action.label;
     const typography = useMemo(() => {
-        const metrics = getQuickButtonTypography(action.label, columns);
-        return { ...metrics, displayText: injectSoftHyphens(metrics.text) };
-    }, [action.label, columns]);
+        const metrics = getQuickButtonTypography(primaryText, columns, showValueOnly ? 'number' : 'label');
+        return { ...metrics, displayText: showValueOnly ? metrics.text : injectSoftHyphens(metrics.text) };
+    }, [primaryText, columns, showValueOnly]);
     const touchHandlers = useTouchAction<HTMLButtonElement>(() => {
         if (navigator.vibrate) navigator.vibrate(10);
         onAction(action);
@@ -57,7 +61,7 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
     // badge reserves 21px line height + 4px padding + 4px label gap at 100%.
     const borderHeight = borderClass.includes('border-2') ? 4 : 2;
     const labelHeight = (isListMode ? 56 : 72) - 16 - borderHeight
-        - (!isListMode && showActionValue ? 29 : 0);
+        - (!isListMode && showValueBadge ? 29 : 0);
     return (
         <button
             {...touchHandlers}
@@ -83,21 +87,21 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
             )}
 
             <span
-                className={`quick-button-label pointer-events-none ${!showActionValue ? 'quick-button-label-only' : ''} ${isListMode ? 'text-left flex-1 min-w-0' : 'text-center w-full'} ${!isListMode && showActionValue ? 'mb-[4px]' : ''}`}
+                className={`quick-button-label pointer-events-none ${!showActionValue ? 'quick-button-label-only' : ''} ${isListMode && !showValueOnly ? 'text-left flex-1 min-w-0' : 'text-center w-full'} ${!isListMode && showValueBadge ? 'mb-[4px]' : ''}`}
             >
                 <span
-                    className={`quick-button-label-text block font-bold leading-tight break-words whitespace-pre-wrap pointer-events-none hyphenate ${isListMode ? 'text-[1.25rem]' : 'text-[1rem]'}`}
+                    className={`quick-button-label-text block font-bold leading-tight break-words whitespace-pre-wrap pointer-events-none ${showValueOnly ? 'font-mono text-[1.5rem]' : `hyphenate ${isListMode ? 'text-[1.25rem]' : 'text-[1rem]'}`}`}
                     style={{ color: textColor }}
                 >
                     {typography.displayText}
                 </span>
             </span>
-            {showActionValue && (
+            {showValueBadge && (
                 <span
                     className={`font-mono font-bold leading-normal rounded-full flex items-center justify-center shrink-0 pointer-events-none ${isListMode ? 'text-[1rem] px-[12px] py-[4px] ml-[8px]' : 'text-[0.875rem] px-[8px] py-[2px]'} ${badgeBackgroundClass}`}
                     style={{ color: textColor }}
                 >
-                    {isStandardSumParts && action.value > 0 ? '+' : ''}{action.value}
+                    {valueText}
                 </span>
             )}
         </button>

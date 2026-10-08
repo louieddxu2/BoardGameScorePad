@@ -22,6 +22,7 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 - The photo-grid recap currently exports 8 photo tiles with stats at the top, not a 9-tile-only layout. Keep this vertical-share layout in mind before changing tile count or export proportions.
 - The photo-grid crop editor uses a two-zone flow: large crop surface above, horizontal photo thumbnails below. Image zoom/pan is implemented with uniform transform scaling so aspect ratio stays intact and the image may overflow the crop frame.
 - Photo-grid crop gestures must be a local exception to `useMobileZoom()`: pinch should update only the image crop zoom and must not change the app-wide font-size zoom.
+- `QuickButtonPad` reuses its full-content typography for numeric options with blank/whitespace labels: do not reserve label or badge space. Monospace width budgets include signs and decimal points without the label's wrap-capacity cap; app zoom still applies last. Named options retain their badges, and `label_only` still hides numbers even when its label is empty.
 
 ## Scoring Update Patterns
 

@@ -47,8 +47,13 @@ const paragraphWidth = (paragraph: string): number => {
   return width;
 };
 
-export const getQuickButtonTypography = (label: string, columns: number) => {
+export const getQuickButtonTypography = (label: string, columns: number, content: 'label' | 'number' = 'label') => {
   const lineCapacity = columns <= 1 ? 8 : columns === 2 ? 5 : columns === 3 ? 4 : 3;
+  if (content === 'number') {
+    // Monospace signs and decimal points occupy the same width as digits.
+    // Budget the entire value on one line, not the label's wrap capacity.
+    return { text: label, lineCapacity, widthUnits: Math.max(1, label.length) * 0.65, lineCount: 1 };
+  }
   const capacityTicks = lineCapacity * 20;
   const text = label.replace(/\r\n?/g, '\n');
   const paragraphs = text.split('\n');

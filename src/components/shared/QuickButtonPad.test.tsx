@@ -103,6 +103,21 @@ describe('QuickButtonPad', () => {
     expect(within(two).getByText('2')).toBeInTheDocument();
   });
 
+  it('does not replace an empty label with a number when label-only mode explicitly hides values', () => {
+    render(
+      <LanguageProvider>
+        <QuickButtonPad column={{ ...column, renderMode: 'label_only', quickActions: [
+          { id: 'empty', label: '', value: 12 },
+          { id: 'whitespace', label: ' \n\t', value: 34 },
+        ] }} onAction={vi.fn()} />
+      </LanguageProvider>,
+    );
+    for (const button of screen.getAllByRole('button')) {
+      expect(button.querySelector('.quick-button-label-text')!.textContent!.trim()).toBe('');
+      expect(button.querySelector('.font-mono')).toBeNull();
+    }
+  });
+
   it.each([
     { name: 'single-select', currentOptionId: 'one', currentMultiOptionIds: undefined, isMultiSelect: false },
     { name: 'multi-select', currentOptionId: undefined, currentMultiOptionIds: ['one'], isMultiSelect: true },

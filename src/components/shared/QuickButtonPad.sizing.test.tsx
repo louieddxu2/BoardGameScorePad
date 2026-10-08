@@ -313,6 +313,85 @@ describe('QuickButtonPad available-space typography', () => {
     expect(shortFont * 2).toBeLessThanOrEqual(64 * 0.96 + 0.001);
   });
 
+  it.each([1, 3])('uses the full button for blank-label numbers in %i columns without changing named options', (cols) => {
+    const actions = [
+      { id: 'zero', label: '', value: 0 },
+      { id: 'negative', label: ' \n\t', value: -2.5 },
+      column.quickActions[0],
+    ];
+    const onAction = vi.fn();
+    render(
+      <LanguageProvider>
+        <InputPanelLayout isCompact={false} onNext={vi.fn()}>
+          <QuickButtonPad column={{ ...column, buttonGridColumns: cols, quickActions: actions }}
+            currentMultiOptionIds={['zero', 'negative']} onAction={onAction} />
+        </InputPanelLayout>
+      </LanguageProvider>,
+    );
+    for (const action of actions.slice(0, 2)) {
+      const button = screen.getByRole('button', { name: String(action.value) });
+      const number = within(button).getByText(String(action.value));
+      const wrapper = number.parentElement!;
+      expect(number).toHaveClass('quick-button-label-text', 'font-mono', 'text-[1.5rem]');
+      expect(wrapper).toHaveClass('quick-button-label', 'w-full', 'text-center');
+      expect(wrapper).not.toHaveClass('mb-[4px]', 'flex-1');
+      expect(button.querySelector('.rounded-full.font-mono')).toBeNull();
+      expect(button.style.getPropertyValue('--quick-button-label-height')).toBe(cols === 1 ? '38px' : '54px');
+      expect(button).toHaveClass('ring-2');
+      const width = modelPanelLabelWidth(button, 375, cols, 16);
+      expect(modelFontSize(number, 16, width)).toBeGreaterThan(cols === 1 ? 16 : 14);
+      fireEvent.click(button);
+    }
+    expect(onAction.mock.calls.map(call => call[0])).toEqual(actions.slice(0, 2));
+    const named = screen.getByRole('button', { name: /^One\s*1$/ });
+    expect(within(named).getByText('1')).toHaveClass('rounded-full', 'font-mono');
+    expect(named.style.getPropertyValue('--quick-button-label-height')).toBe(cols === 1 ? '38px' : '25px');
+  });
+
+  it('budgets every monospace sign and decimal digit even beyond the four-column label capacity', () => {
+    const analyze = vi.spyOn(typographyUtils, 'getQuickButtonTypography');
+    const pad = (value: number, selected = false) => (
+      <LanguageProvider>
+        <QuickButtonPad column={{ ...column, formula: 'a1+next', buttonGridColumns: 4, quickActions: [
+          { id: 'number', label: '', value, isModifier: true },
+        ] }} currentOptionId={selected ? 'number' : undefined} onAction={vi.fn()} />
+      </LanguageProvider>
+    );
+    const { rerender } = render(pad(0));
+    const button = screen.getByRole('button');
+    const number = within(button).getByText('0');
+    for (const [value, text] of [[0, '0'], [12.5, '+12.5'], [-12.5, '-12.5'], [12345678, '+12345678']] as const) {
+      rerender(pad(value));
+      expect(screen.getByRole('button', { name: text })).toBe(button);
+      expect(within(button).getByText(text)).toBe(number);
+      expect(button.style.getPropertyValue('--quick-button-label-width-units')).toBe(String(text.length * 0.65));
+      expect(button.style.getPropertyValue('--quick-button-label-lines')).toBe('1');
+      expect(button.style.getPropertyValue('--quick-button-label-height')).toBe('52px');
+      expect(modelFontSize(number, 16, 40) * text.length * 0.65).toBeLessThanOrEqual(40 * 0.96 + 0.001);
+    }
+    const calls = analyze.mock.calls.length;
+    rerender(pad(12345678, true));
+    expect(analyze).toHaveBeenCalledTimes(calls);
+    expect(button).toHaveClass('ring-2');
+  });
+
+  it('enlarges a blank-label number on pinch without activating it or scaling padding', () => {
+    renderHook(() => useMobileZoom());
+    const { button, label: number, onAction } = renderPad(4, 'standard', {
+      quickActions: [{ id: 'number', label: '', value: 12 }],
+    });
+    const baseline = modelFontSize(number, 16, 40);
+    fireEvent.touchStart(button, { touches: [{ clientX: 0, clientY: 0 }, { clientX: 100, clientY: 0 }] });
+    fireEvent.touchMove(button, { touches: [{ clientX: 0, clientY: 0 }, { clientX: 180, clientY: 0 }] });
+    fireEvent.touchEnd(button, { touches: [], changedTouches: [{ clientX: 0, clientY: 0 }, { clientX: 180, clientY: 0 }] });
+    expect(document.documentElement.style.fontSize).toBe('20.8px');
+    expect(modelFontSize(number, 20.8, 40)).toBeCloseTo(baseline * 1.3);
+    expect(horizontalPadding(button, 20.8)).toBe(16);
+    expect(number).toHaveClass('break-words');
+    expect(number).not.toHaveClass('truncate', 'whitespace-nowrap');
+    expect(onAction).not.toHaveBeenCalled();
+  });
+
   it('budgets manual lines separately and keeps the original action unchanged', () => {
     const action = { id: 'manual', label: '森林\r\n\r\n山谷\r\n', value: 1 };
     const { button, label, onAction } = renderPad(3, 'label_only', { quickActions: [action] });
