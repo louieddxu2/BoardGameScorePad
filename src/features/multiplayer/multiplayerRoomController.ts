@@ -1,5 +1,6 @@
 import { GameSession, GameTemplate, ScoreValue } from '../../types';
 import { generateId } from '../../utils/idGenerator';
+import { createTemplateSelectionMigration } from '../../utils/sessionTemplateUpdate';
 import {
   MultiplayerHostSession,
   MultiplayerPlayerSession,
@@ -316,10 +317,19 @@ export const createMultiplayerRoomController = (options: {
         return snapshot;
       });
     },
-    applyLocalBoard(template: GameTemplate, session: GameSession, previous = options.hostSession.session) {
+    applyLocalBoard(
+      template: GameTemplate, session: GameSession,
+      previous = options.hostSession.session, previousTemplate = options.hostSession.template,
+    ) {
       return enqueue(async () => {
         if (session.id !== options.hostSession.session.id || previous.id !== session.id || session.status !== 'active' || session.templateId !== template.id) return null;
-        const merged = mergeSessionInputChanges(options.hostSession.session, previous, session);
+        // Generated selection IDs are not explicit host edits. Compare all three
+        // inputs in the new schema, retaining the UI's original schema baseline.
+        const migrateBaseline = createTemplateSelectionMigration(previousTemplate, template);
+        const migrateCurrent = createTemplateSelectionMigration(options.hostSession.template, template);
+        const merged = mergeSessionInputChanges(
+          migrateCurrent(options.hostSession.session), migrateBaseline(previous), migrateBaseline(session),
+        );
         const snapshot = options.hostSession.applyLocalBoard(template, merged);
         if (!snapshot) return null;
         await options.snapshotStore.putTemplate?.(options.hostSession.template);

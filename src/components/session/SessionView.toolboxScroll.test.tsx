@@ -634,7 +634,7 @@ describe('SessionView toolbox scroll behavior', () => {
     const staleResult = { ...baseline, name: changedTemplate.name };
     await act(async () => { finishTemplate({ template: changedTemplate, session: staleResult }); });
 
-    expect(applyBoard).toHaveBeenCalledExactlyOnceWith(changedTemplate, staleResult, baseline);
+    expect(applyBoard).toHaveBeenCalledExactlyOnceWith(changedTemplate, staleResult, baseline, template);
     expect(runtime.session.session).toMatchObject({ name: changedTemplate.name, winnerIds: ['p2'] });
     expect(runtime.session.session.players[1]).toMatchObject({ scores: { 'col-1': { parts: [7] } }, totalScore: 7 });
     expect(putSession).toHaveBeenCalledTimes(3);

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as scoring from '../../utils/scoring';
-import { GameSession, GameTemplate, Player, ScoreColumn } from '../../types';
+import { GameSession, GameTemplate, Player, ScoreColumn, ScoreValue } from '../../types';
+import { applyTemplateToSession } from '../../utils/sessionTemplateUpdate';
 import { createMultiplayerHostSession, createMultiplayerPlayerSessionFromBootstrap } from './multiplayerSession';
 import { createMultiplayerRoomController, createMultiplayerPlayerRoomController } from './multiplayerRoomController';
 import { MultiplayerDeliveryStore } from './multiplayerDeliveryStore';
@@ -652,6 +653,97 @@ describe('multiplayer room controller', () => {
     expect(host.session.players[0].scores.points).toEqual({ parts: [2] });
     expect(host.session.players[1]).toMatchObject({ color: '#123456', bonusScore: 2, totalScore: 5 });
     expect(host.session).toMatchObject({ name: 'Changed', scoringRule: 'LOWEST_WINS', winnerIds: ['p1'] });
+    controller.stop();
+  });
+
+  it('rebases selection-mode migrations onto acknowledged inputs while preserving explicit host edits and clears', async () => {
+    vi.useFakeTimers();
+    const calculate = vi.spyOn(scoring, 'calculatePlayerTotal');
+    for (const wasMultiSelect of [false, true]) {
+      for (const guestClears of [false, true]) {
+        const choice = (id: string, value: number): ScoreValue => ({
+          parts: [value], ...(wasMultiSelect ? { multiOptionIds: [id] } : { optionId: id }),
+        });
+        const oldTemplate: GameTemplate = { ...template, columns: [
+          { ...column, inputType: 'clicker', isMultiSelect: wasMultiSelect,
+            quickActions: [{ id: 'a', label: 'A', value: 3 }, { id: 'b', label: 'B', value: 5 }, { id: 'c', label: 'C', value: 7 }] },
+          { ...column, id: 'sum', inputType: 'auto', isAuto: true, formula: 'x',
+            variableMap: { x: { id: 'points', name: 'Points', mode: 'sum_all' } } },
+        ] };
+        const baseline: GameSession = { ...session, players: [
+          { ...player, scores: { points: choice('a', 3) } },
+          { ...player, id: 'p2', scores: { points: choice('a', 3) } },
+        ] };
+        const nextTemplate = { ...oldTemplate, columns: oldTemplate.columns.map(col => col.id === 'points'
+          ? { ...col, isMultiSelect: !wasMultiSelect } : col) };
+        const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template: oldTemplate, session: baseline });
+        const putSession = vi.fn(async () => undefined);
+        const putTemplate = vi.fn(async () => undefined);
+        const reply = vi.fn(() => true);
+        const broadcast = vi.fn(async () => undefined);
+        const controller = createMultiplayerRoomController({ role: 'host', hostSession: host, deliveryStore: createDeliveryStore(),
+          snapshotStore: { putSession, putTemplate, updateRoomRevision: async () => undefined },
+          transport: { sendToHost: () => false, sendToConnection: reply, broadcastLocalChanges: broadcast },
+        });
+        const connection = {};
+        await controller.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: session.id, deviceId: 'guest', playerId: 'p1' }, connection);
+        await controller.receive({ type: 'score:valuePatch', roomId: 'room-1', sessionId: session.id,
+          opId: 'guest-input', deviceId: 'guest', sequence: 1, updatedAt: 20,
+          patch: { actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points',
+            scoreValue: guestClears ? null : choice('b', 5) },
+        }, connection);
+        expect(reply).toHaveBeenLastCalledWith(connection, expect.objectContaining({ accepted: true, type: 'score:patch-result' }));
+
+        const migrated = applyTemplateToSession(baseline, oldTemplate, nextTemplate);
+        const explicitHostChoice: ScoreValue = { parts: [7], ...(!wasMultiSelect ? { multiOptionIds: ['c'] } : { optionId: 'c' }) };
+        const local = { ...migrated, players: migrated.players.map(p => p.id === 'p2'
+          ? { ...p, scores: guestClears ? { points: explicitHostChoice } : {} } : p) };
+        const original = JSON.stringify({ baseline, oldTemplate, nextTemplate, local });
+        calculate.mockClear();
+        const snapshot = await controller.applyLocalBoard(nextTemplate, local, baseline, oldTemplate);
+
+        const context = `${wasMultiSelect ? 'multi to single' : 'single to multi'}, guest ${guestClears ? 'clear' : 'select B'}`;
+        expect(snapshot?.session.players[0].scores.points, context).toEqual(guestClears ? undefined : {
+          parts: [5], optionId: 'b', multiOptionIds: ['b'],
+        });
+        expect(snapshot?.session.players[1].scores.points, context).toEqual(guestClears ? explicitHostChoice : undefined);
+        expect(snapshot?.session.players.map(p => p.totalScore), context).toEqual(guestClears ? [7, 14] : [10, 5]);
+        expect(snapshot?.session.winnerIds, context).toEqual([guestClears ? 'p2' : 'p1']);
+        expect(calculate).toHaveBeenCalledTimes(2);
+        expect(putSession).toHaveBeenCalledTimes(2); // Guest input and board edit only.
+        expect(putSession).toHaveBeenLastCalledWith(snapshot?.session);
+        expect(putTemplate).toHaveBeenCalledTimes(1);
+        expect(JSON.stringify({ baseline, oldTemplate, nextTemplate, local })).toBe(original);
+        await vi.advanceTimersByTimeAsync(250);
+        expect(broadcast).toHaveBeenCalledTimes(1);
+        controller.stop();
+      }
+    }
+  });
+
+  it('retains the original UI schema baseline when another board edit commits before a delayed save', async () => {
+    const oldTemplate: GameTemplate = { ...template, columns: [{ ...column, inputType: 'clicker',
+      quickActions: [{ id: 'a', label: 'A', value: 3 }, { id: 'b', label: 'B', value: 5 }] }] };
+    const baseline: GameSession = { ...session, players: [{ ...player, scores: { points: { parts: [3], optionId: 'a' } } }] };
+    const nextTemplate = { ...oldTemplate, columns: oldTemplate.columns.map(col => ({ ...col, isMultiSelect: true })) };
+    const local = applyTemplateToSession(baseline, oldTemplate, nextTemplate);
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template: oldTemplate, session: baseline });
+    const controller = createMultiplayerRoomController({ role: 'host', hostSession: host, deliveryStore: createDeliveryStore(),
+      snapshotStore: { putSession: async () => undefined, updateRoomRevision: async () => undefined },
+      transport: { sendToHost: () => false, sendToConnection: () => true, broadcastLocalChanges: async () => undefined },
+    });
+    await controller.applyLocalBoard(nextTemplate, local, baseline, oldTemplate);
+    const connection = {};
+    await controller.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: session.id, deviceId: 'guest', playerId: 'p1' }, connection);
+    await controller.receive({ type: 'score:valuePatch', roomId: 'room-1', sessionId: session.id,
+      opId: 'guest-input', deviceId: 'guest', sequence: 1, updatedAt: 20,
+      patch: { actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [5], multiOptionIds: ['b'] } },
+    }, connection);
+    const renamed = { ...nextTemplate, name: 'Delayed edit' };
+    const snapshot = await controller.applyLocalBoard(renamed, { ...local, name: renamed.name }, baseline, oldTemplate);
+
+    expect(snapshot?.session.players[0]).toMatchObject({ scores: { points: { parts: [5], multiOptionIds: ['b'] } }, totalScore: 5 });
+    expect(snapshot?.session.name).toBe(renamed.name);
     controller.stop();
   });
 

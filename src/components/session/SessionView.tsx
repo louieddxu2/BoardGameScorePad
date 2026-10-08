@@ -57,19 +57,20 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     // The parent template save derives its session result from props.session,
     // which may lag behind the managed room's latest participant inputs.
     const previousSession = props.session;
+    const previousTemplate = template;
     const result = await props.onUpdateTemplate(nextTemplate);
     const roomId = props.multiplayerRoomId;
     const runtime = managedRoomState?.runtime;
     if (!roomId || !runtime || runtime.role !== 'host' || !result.session) return result;
 
-    const snapshot = await runtime.controller.applyLocalBoard(result.template, result.session, previousSession);
+    const snapshot = await runtime.controller.applyLocalBoard(result.template, result.session, previousSession, previousTemplate);
     if (snapshot) {
       props.onUpdateSession(snapshot.session, { alreadyPersisted: true });
       manager.publishSession(roomId, snapshot.session);
       return { ...result, session: snapshot.session };
     }
     return result;
-  }, [managedRoomState?.runtime, manager, props.multiplayerRoomId, props.onUpdateTemplate, props.onUpdateSession, props.session]);
+  }, [managedRoomState?.runtime, manager, props.multiplayerRoomId, props.onUpdateTemplate, props.onUpdateSession, props.session, template]);
 
   const isAiWorking = aiGenerator.status === 'compressing' || 
                       aiGenerator.status === 'generating' || 
