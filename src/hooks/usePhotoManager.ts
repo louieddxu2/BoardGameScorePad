@@ -2,6 +2,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { imageService } from '../services/imageService';
 import { compressAndResizeImage } from '../utils/imageProcessing';
+import { saveRotatedPhoto } from '../services/photoEdits';
+import type { LocalImage } from '../types';
 
 type PhotoSource = 'camera' | 'upload';
 type PhotoErrorType = 'save' | 'compress' | 'delete';
@@ -9,12 +11,14 @@ type PhotoErrorType = 'save' | 'compress' | 'delete';
 interface UsePhotoManagerProps {
   /** 照片關聯的容器 ID（session.id 或 record.id） */
   contextId: string;
+  ownerType?: 'session' | 'history';
   /** 當前所有照片 ID 清單 */
   currentPhotoIds: string[];
   /** 照片新增後回調（含完整清單與來源） */
   onPhotosAdded: (updatedIds: string[], source: PhotoSource) => void;
   /** 照片刪除後回調（含更新後的完整清單） */
   onPhotoDeleted: (updatedIds: string[]) => void;
+  onPhotoRotated?: (image: LocalImage) => void;
   /** 操作失敗時回調（由呼叫端決定如何提示使用者） */
   onError?: (type: PhotoErrorType) => void;
 }
@@ -27,9 +31,11 @@ interface UsePhotoManagerProps {
  */
 export const usePhotoManager = ({
   contextId,
+  ownerType = 'session',
   currentPhotoIds,
   onPhotosAdded,
   onPhotoDeleted,
+  onPhotoRotated,
   onError,
 }: UsePhotoManagerProps) => {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -37,12 +43,19 @@ export const usePhotoManager = ({
   // 使用 Ref 避免非同步操作中的過時閉包
   const contextIdRef = useRef(contextId);
   const currentIdsRef = useRef(currentPhotoIds);
-  const callbacksRef = useRef({ onPhotosAdded, onPhotoDeleted, onError });
+  const callbacksRef = useRef({ onPhotosAdded, onPhotoDeleted, onPhotoRotated, onError });
   const isSavingCameraBatchRef = useRef(false);
 
   useEffect(() => { contextIdRef.current = contextId; }, [contextId]);
   useEffect(() => { currentIdsRef.current = currentPhotoIds; }, [currentPhotoIds]);
-  useEffect(() => { callbacksRef.current = { onPhotosAdded, onPhotoDeleted, onError }; });
+  useEffect(() => { callbacksRef.current = { onPhotosAdded, onPhotoDeleted, onPhotoRotated, onError }; });
+
+  const handleRotatePhoto = useCallback(async (image: LocalImage, expectedContentId?: string) => {
+    const context = contextIdRef.current;
+    if (!currentIdsRef.current.includes(image.id)) throw new Error('Photo is no longer in this album');
+    await saveRotatedPhoto(image, expectedContentId, context, ownerType);
+    if (contextIdRef.current === context) callbacksRef.current.onPhotoRotated?.(image);
+  }, [ownerType]);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -154,6 +167,7 @@ export const usePhotoManager = ({
     handleCameraBatchCapture,
     handlePhotoSelect,
     handleDeletePhoto,
+    handleRotatePhoto,
     openPhotoLibrary,
     photoInputRef,
     galleryInputRef,

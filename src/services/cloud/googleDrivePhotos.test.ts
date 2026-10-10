@@ -65,4 +65,47 @@ describe('cloud photo transfer contracts', () => {
         expect(imageService.getImage).not.toHaveBeenCalled();
         expect(googleDriveClient.downloadBlob).not.toHaveBeenCalled();
     });
+
+    it('uploads an edited blob under a new version, then reuses that version without rereading any image', async () => {
+        const blob = new Blob(['real rotated pixels'], { type: 'image/jpeg' });
+        vi.mocked(imageService.getImage).mockResolvedValue({ blob, mimeType: blob.type, contentId: 'v2' } as any);
+        vi.mocked(googleDriveClient.uploadFileToFolder).mockResolvedValue({ id: 'new-cloud' } as any);
+        vi.mocked(googleDriveClient.fetchAllItems).mockResolvedValue([
+            { id: 'old-cloud', name: 'photo.jpg' },
+            { id: 'new-cloud', name: 'photo_v2.jpg' },
+        ] as any);
+        const map = await backupSessionPhotos('folder', ['photo'], { photo: 'old-cloud' }, { photo: 'v2' });
+        expect(map).toEqual({ 'photo@v2': 'new-cloud' });
+        expect(googleDriveClient.uploadFileToFolder).toHaveBeenCalledExactlyOnceWith('folder', 'photo_v2.jpg', blob.type, blob);
+        expect(googleDriveClient.trashFile).not.toHaveBeenCalled(); // session.json has not confirmed v2 yet.
+        vi.mocked(imageService.getImage).mockClear();
+        vi.mocked(googleDriveClient.uploadFileToFolder).mockClear();
+        expect(await backupSessionPhotos('folder', ['photo'], map, { photo: 'v2' })).toEqual(map);
+        expect(imageService.getImage).not.toHaveBeenCalled();
+        expect(googleDriveClient.uploadFileToFolder).not.toHaveBeenCalled();
+        expect(googleDriveClient.trashFile).toHaveBeenCalledExactlyOnceWith('old-cloud');
+    });
+
+    it('keeps the last good cloud photo and aborts replacement if uploading an edited version fails', async () => {
+        vi.mocked(imageService.getImage).mockResolvedValue({ blob: new Blob(['rotated']), contentId: 'v2' } as any);
+        vi.mocked(googleDriveClient.uploadFileToFolder).mockRejectedValue(new Error('Offline'));
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        await expect(backupSessionPhotos('folder', ['photo'], { photo: 'old-cloud' }, { photo: 'v2' })).rejects.toThrow('Offline');
+        expect(googleDriveClient.fetchAllItems).not.toHaveBeenCalled();
+        expect(googleDriveClient.trashFile).not.toHaveBeenCalled();
+        warn.mockRestore();
+    });
+
+    it('replaces an older local blob when restoring an edited cloud version, without changing the photo ID', async () => {
+        vi.mocked(imageService.getImage).mockResolvedValue({ id: 'photo', contentId: 'v1' } as any);
+        const blob = new Blob(['rotated cloud image']);
+        vi.mocked(googleDriveClient.downloadBlob).mockResolvedValue(blob);
+        await restoreSessionPhotos(['photo'], { 'photo@v2': 'new-cloud' }, 'record', { photo: 'v2' });
+        expect(googleDriveClient.downloadBlob).toHaveBeenCalledExactlyOnceWith('new-cloud');
+        expect(imageService.saveImage).toHaveBeenCalledExactlyOnceWith(blob, 'record', 'session', 'photo', 'v2');
+        vi.mocked(imageService.getImage).mockResolvedValue({ id: 'photo', contentId: 'v2' } as any);
+        vi.mocked(googleDriveClient.downloadBlob).mockClear();
+        await restoreSessionPhotos(['photo'], { 'photo@v2': 'new-cloud' }, 'record', { photo: 'v2' });
+        expect(googleDriveClient.downloadBlob).not.toHaveBeenCalled();
+    });
 });

@@ -264,6 +264,9 @@ export const sessionTranslations = {
 
     // --- Lightbox ---
     lightbox_generating: '正在合成計分表...',
+    lightbox_rotate: '順時針旋轉 90°',
+    lightbox_rotating: '正在旋轉照片...',
+    lightbox_rotate_failed: '照片旋轉失敗，請再試一次',
     lightbox_anon_hint: '點擊以隱藏玩家姓名',
     lightbox_show_score: '顯示分數',
     lightbox_hide_score: '隱藏分數',
@@ -556,6 +559,9 @@ export const sessionTranslations = {
 
     // --- Lightbox ---
     lightbox_generating: 'Composing score sheet...',
+    lightbox_rotate: 'Rotate 90° clockwise',
+    lightbox_rotating: 'Rotating photo...',
+    lightbox_rotate_failed: 'Could not rotate photo. Please try again.',
     lightbox_anon_hint: 'Click to hide player names',
     lightbox_show_score: 'Show Score',
     lightbox_hide_score: 'Hide Score',

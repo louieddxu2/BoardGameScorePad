@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Camera, Image as ImageIcon, Loader2, Upload, Trash2 } from 'lucide-react';
-import { imageService } from '../../../services/imageService';
+import { usePhotoImages } from '../../../hooks/usePhotoImages';
+import type { LocalImage, PhotoContentIds } from '../../../types';
 import PhotoLightbox from '../parts/PhotoLightbox';
 import { OverlayData } from '../parts/ScoreOverlayGenerator';
 import { useSessionTranslation } from '../../../i18n/session';
@@ -13,9 +14,11 @@ interface PhotoGalleryModalProps {
     isOpen: boolean;
     onClose: () => void;
     photoIds: string[];
+    photoContentIds?: PhotoContentIds;
     onUploadPhoto: () => void;
     onTakePhoto: () => void;
     onDeletePhoto: (id: string) => void;
+    onRotatePhoto?: (image: LocalImage, expectedContentId?: string) => Promise<void>;
     overlayData?: OverlayData; // [New] Data context for lightbox overlay
     autoEnterMode?: 'default' | 'lightbox_overlay'; // [New] Mode prop
     initialPhotoId?: string | null;
@@ -27,78 +30,29 @@ export interface LoadedImage {
     url: string;
 }
 
-const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, photoIds, onUploadPhoto, onTakePhoto, onDeletePhoto, overlayData, autoEnterMode = 'default', initialPhotoId = null, entryMode = 'gallery' }) => {
-    const [images, setImages] = useState<LoadedImage[]>([]);
-    const [loading, setLoading] = useState(false);
+const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, photoIds, photoContentIds, onUploadPhoto, onTakePhoto, onDeletePhoto, onRotatePhoto, overlayData, autoEnterMode = 'default', initialPhotoId = null, entryMode = 'gallery' }) => {
+    const { images, loading, rotatePhoto } = usePhotoImages(photoIds, photoContentIds, isOpen);
+    const rotateHandlerRef = useRef(onRotatePhoto);
+    useEffect(() => { rotateHandlerRef.current = onRotatePhoto; }, [onRotatePhoto]);
     const [initialIndex, setInitialIndex] = useState<number | null>(null); // Changed: Store index instead of object
     const { t } = useSessionTranslation();
     const { t: tCommon } = useCommonTranslation();
     const { confirm } = useConfirm();
     const isDirectLightbox = entryMode === 'direct-lightbox';
 
-    // Load images when IDs change or modal opens
+    // Image direction changes must not create/close a modal history layer.
     useEffect(() => {
         if (!isOpen) {
-            setImages([]);
             setInitialIndex(null);
-            setLoading(false);
             return;
         }
-
-        let active = true;
-        const generatedUrls: string[] = [];
-
-        const loadImages = async () => {
-            setLoading(true);
-            const loaded: LoadedImage[] = [];
-
-            // Photo IDs are typically chronological (oldest first) or whatever order they are saved
-            // We usually want newest first for gallery view? 
-            // The previous code did `[...photoIds].reverse()`. Let's keep that consistency.
-            const reversedIds = [...photoIds].reverse();
-
-            for (const id of reversedIds) {
-                if (!active) break;
-                try {
-                    const localImg = await imageService.getImage(id);
-                    if (localImg) {
-                        const url = URL.createObjectURL(localImg.blob);
-                        generatedUrls.push(url);
-                        loaded.push({
-                            id: id,
-                            url: url
-                        });
-                    }
-                } catch (e) {
-                    console.error(`Failed to load image ${id}`, e);
-                }
-            }
-
-            if (active) {
-                setImages(loaded);
-                setLoading(false);
-
-                // [Feature] Auto-Enter Lightbox logic
-                // Trigger only if mode matches AND we have images.
-                // This is safe because this effect runs after a camera capture updates photoIds.
-                if (isDirectLightbox && initialPhotoId) {
-                    const selectedIndex = loaded.findIndex(image => image.id === initialPhotoId);
-                    setInitialIndex(selectedIndex >= 0 ? selectedIndex : null);
-                } else if (autoEnterMode === 'lightbox_overlay' && loaded.length > 0) {
-                    setInitialIndex(0); // Open the first (newest) image
-                }
-            } else {
-                generatedUrls.forEach(url => URL.revokeObjectURL(url));
-            }
-        };
-
-        loadImages();
-
-        return () => {
-            active = false;
-            generatedUrls.forEach(url => URL.revokeObjectURL(url));
-        };
-    }, [isOpen, photoIds, initialPhotoId, isDirectLightbox]);
+        if (isDirectLightbox && initialPhotoId) {
+            const selectedIndex = images.findIndex(image => image.id === initialPhotoId);
+            setInitialIndex(selectedIndex >= 0 ? selectedIndex : null);
+        } else if (autoEnterMode === 'lightbox_overlay' && images.length > 0) {
+            setInitialIndex(0);
+        }
+    }, [isOpen, images, initialPhotoId, isDirectLightbox, autoEnterMode]);
 
     // [Logic] Unified handler for closing Lightbox
     // If in 'lightbox_overlay' mode (Score Camera), closing lightbox means finishing the task -> Close Modal.
@@ -160,6 +114,10 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
                     initialIndex={initialIndex}
                     onClose={handleCloseLightbox} // Use unified handler
                     onDelete={handleDeletePhotoClick}
+                    onRotate={onRotatePhoto ? id => rotatePhoto(id, (image, expectedContentId) => {
+                        if (!rotateHandlerRef.current) throw new Error('Photo rotation is unavailable');
+                        return rotateHandlerRef.current(image, expectedContentId);
+                    }) : undefined}
                     overlayData={overlayData} // Pass the context
                     initialShowOverlay={autoEnterMode === 'lightbox_overlay'} // Enable overlay if mode matches
                     manageBackHistory={!isDirectLightbox}

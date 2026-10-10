@@ -14,7 +14,7 @@ export class ImageService {
      * @param relatedType Type of relation
      * @param forcedId (Optional) Force a specific UUID. Used during cloud restoration to maintain consistency.
      */
-    async saveImage(blob: Blob, relatedId: string, relatedType: 'template' | 'session', forcedId?: string): Promise<LocalImage> {
+    async saveImage(blob: Blob, relatedId: string, relatedType: 'template' | 'session', forcedId?: string, contentId?: string): Promise<LocalImage> {
         const id = forcedId || generateId();
         const image: LocalImage = {
             id,
@@ -23,6 +23,7 @@ export class ImageService {
             blob,
             mimeType: blob.type,
             createdAt: Date.now(),
+            ...(contentId ? { contentId } : {}),
             isSynced: false
         };
         // Use put instead of add to handle potential overwrites gracefully (idempotency)

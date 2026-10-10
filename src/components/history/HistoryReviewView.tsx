@@ -87,6 +87,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
     // === 照片管理（與計分板共用 usePhotoManager） ===
     const photos = usePhotoManager({
         contextId: record.id,
+        ownerType: 'history',
         currentPhotoIds: record.photos || [],
         onPhotosAdded: async (ids) => {
             const updated = { ...record, photos: ids, updatedAt: Date.now() };
@@ -103,6 +104,10 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
             setRecord(updated);
             isDirtyRef.current = true;
             showToast({ message: t('history_photo_delete_success'), type: 'info' });
+        },
+        onPhotoRotated: image => {
+            setRecord({ ...record, photoContentIds: { ...record.photoContentIds, [image.id]: image.contentId! }, updatedAt: Date.now() });
+            isDirtyRef.current = true;
         },
         onError: (type) => {
             if (type === 'save' || type === 'compress') {
@@ -531,6 +536,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                         topContent={
                             <HistoryPhotoStrip
                                 photoIds={record.photos || []}
+                                photoContentIds={record.photoContentIds}
                                 onPhotoClick={handleOpenPhoto}
                             />
                         }
@@ -542,9 +548,11 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
                 isOpen={showPhotoGallery}
                 onClose={handleClosePhotoGallery}
                 photoIds={record.photos || []}
+                photoContentIds={record.photoContentIds}
                 onUploadPhoto={photos.openPhotoLibrary}
                 onTakePhoto={photos.openCamera}
                 onDeletePhoto={photos.handleDeletePhoto}
+                onRotatePhoto={photos.handleRotatePhoto}
                 overlayData={overlayData} // Pass context
                 initialPhotoId={directPhotoId}
                 entryMode={directPhotoId ? 'direct-lightbox' : 'gallery'}

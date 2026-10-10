@@ -148,6 +148,8 @@ export interface LocalImage {
   createdAt: number;
   cloudId?: string;    // Google Drive File ID (for sync mapping)
   isSynced?: boolean;  // Whether it has been uploaded
+  contentId?: string; // Revision of the actual photo blob, not a display transform
+  rotationSource?: { blob: Blob; quarterTurns: 1 | 2 | 3 }; // Avoid cumulative JPEG loss while rotating
 }
 
 /**
@@ -184,6 +186,9 @@ export interface GameTemplate extends GameIdentity {
   sourceTemplateId?: string;
 }
 
+export type PhotoQuarterTurns = 0 | 1 | 2 | 3;
+export type PhotoContentIds = Record<string, string>;
+
 export interface GameSession extends GameIdentity {
   id: string;
   templateId: string;
@@ -198,7 +203,8 @@ export interface GameSession extends GameIdentity {
   scoringRule?: ScoringRule; // 當次遊戲的勝利條件
   winnerIds?: string[]; // [New] 預計算的贏家列表，用於穩定渲染引用與防止無窮重新渲染
   photos?: string[]; // List of LocalImage IDs (Session Photos)
-  photoCloudIds?: Record<string, string>; // [New] Map<LocalUUID, CloudFileID> for direct access
+  photoContentIds?: PhotoContentIds; // Photo blob revisions, used for cloud backup/restore
+  photoCloudIds?: Record<string, string>; // Map<photo ID (or ID@content revision), CloudFileID>
   cloudFolderId?: string; // [Cloud] 在 Google Drive 上的資料夾 ID (位於 _Active 或 _History)
   location?: string; // [New] 進行中遊戲的地點
   locationId?: string; // [New] 地點 ID
@@ -287,7 +293,8 @@ export interface HistoryRecord {
   locationId?: string; // [New] 地點 ID (用於關聯分析)
   note?: string; // 筆記
   photos?: string[]; // List of LocalImage IDs
-  photoCloudIds?: Record<string, string>; // [New] Map<LocalUUID, CloudFileID>
+  photoContentIds?: PhotoContentIds;
+  photoCloudIds?: Record<string, string>; // Map<photo ID (or ID@content revision), CloudFileID>
   cloudFolderId?: string; // [Cloud] 備份資料夾 ID
 
   // [v25 Migration] 提升為頂層屬性，減少對 snapshotTemplate 的依賴

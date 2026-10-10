@@ -149,7 +149,7 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
     const renderDynamicFields = () => {
         // Define known priority fields that we want to show with specific UI
         const priorityKeys = ['gameName', 'location', 'startTime', 'endTime', 'note', 'scoringRule', 'bggId'];
-        const hiddenKeys = ['id', 'templateId', 'players', 'winnerIds', 'snapshotTemplate', 'locationId', 'bgStatsId', 'photoCloudIds', 'photos', 'cloudFolderId'];
+        const hiddenKeys = ['id', 'templateId', 'players', 'winnerIds', 'snapshotTemplate', 'locationId', 'bgStatsId', 'photoCloudIds', 'photoContentIds', 'photos', 'cloudFolderId'];
 
         // 1. Render Priority Fields (Specific UI)
         return (

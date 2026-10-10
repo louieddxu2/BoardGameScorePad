@@ -57,6 +57,9 @@ export const useSessionMedia = ({
             onUpdateSession({ ...session, photos: ids });
             showToast({ message: t('toast_photo_deleted'), type: 'info' });
         },
+        onPhotoRotated: image => {
+            onUpdateSession({ ...session, photoContentIds: { ...session.photoContentIds, [image.id]: image.contentId! } });
+        },
         onError: (type) => {
             if (type === 'save' || type === 'compress') {
                 showToast({ message: t('toast_save_failed'), type: 'error' });

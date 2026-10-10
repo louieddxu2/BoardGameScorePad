@@ -29,6 +29,7 @@ export const createHistoryRecordFromFinalSnapshot = (options: {
     locationId: options.session.locationId,
     note: options.session.note || '',
     photos: cloneJson(options.session.photos || []),
+    photoContentIds: cloneJson(options.session.photoContentIds || {}),
     photoCloudIds: cloneJson(options.session.photoCloudIds || {}),
     cloudFolderId: options.session.cloudFolderId,
     scoringRule: rule,

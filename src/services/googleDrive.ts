@@ -278,7 +278,7 @@ class GoogleDriveService {
         }
 
         // [NEW] Backup Photos and Get Updated Map
-        const updatedCloudMap = await backupSessionPhotos(folderId, record.photos, record.photoCloudIds);
+        const updatedCloudMap = await backupSessionPhotos(folderId, record.photos, record.photoCloudIds, record.photoContentIds);
 
         // Update record with the new map before saving JSON
         const recordToSave = { ...record, photoCloudIds: updatedCloudMap };
@@ -316,7 +316,7 @@ class GoogleDriveService {
         }
 
         // [NEW] Backup Photos and Get Updated Map
-        const updatedCloudMap = await backupSessionPhotos(folderId, session.photos, session.photoCloudIds);
+        const updatedCloudMap = await backupSessionPhotos(folderId, session.photos, session.photoCloudIds, session.photoContentIds);
 
         // Update session with the new map before saving JSON
         const sessionToSave = { ...session, photoCloudIds: updatedCloudMap };
@@ -469,7 +469,7 @@ class GoogleDriveService {
         // --- Enhanced Restore Logic for Session/History Photos ---
         // We check for `photos` array AND `photoCloudIds` in the JSON and restore them if needed
         if (data.id && (filename === 'session.json')) {
-            await restoreSessionPhotos(data.photos, data.photoCloudIds, data.id);
+            await restoreSessionPhotos(data.photos, data.photoCloudIds, data.id, data.photoContentIds);
         }
 
         if (filename === 'data.json') {

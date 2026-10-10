@@ -551,6 +551,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         toolboxTopContent={session.photos?.length ? (
           <HistoryPhotoStrip
             photoIds={session.photos}
+            photoContentIds={session.photoContentIds}
             onPhotoClick={(photoId) => setUiState(p => ({
               ...p,
               isPhotoGalleryOpen: true,

@@ -176,6 +176,9 @@ describe('useSessionManager', () => {
     const started = result.current.currentSession!;
     const updatedSession: GameSession = {
       ...started,
+      photos: ['photo-1'],
+      photoContentIds: { 'photo-1': 'revision-1' },
+      photoCloudIds: { 'photo-1@revision-1': 'cloud-photo-1' },
       players: started.players.map((p, i) =>
         i === 0
           ? { ...p, scores: { score: { parts: [10] } } }
@@ -206,6 +209,9 @@ describe('useSessionManager', () => {
 
     const saved = hoisted.historyStore.get(sessionId!)!;
     expect(saved.location).toBe('Office');
+    expect(saved.photos).toEqual(['photo-1']);
+    expect(saved.photoContentIds).toEqual({ 'photo-1': 'revision-1' });
+    expect(saved.photoCloudIds).toEqual({ 'photo-1@revision-1': 'cloud-photo-1' });
     expect(saved.players[0].scores.score.parts[0]).toBe(10);
     expect(hoisted.processGameEndMock).toHaveBeenCalledTimes(1);
     expect(hoisted.cleanupDisposableTemplateMock).toHaveBeenCalledTimes(1);

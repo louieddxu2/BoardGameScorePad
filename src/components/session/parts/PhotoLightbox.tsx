@@ -1,32 +1,33 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { X, Trash2, Maximize, Share2, ReceiptText, Loader2, Download, ChevronLeft, ChevronRight, VenetianMask, Check, EyeOff } from 'lucide-react';
+import { X, Trash2, Maximize, Share2, ReceiptText, Loader2, Download, ChevronLeft, ChevronRight, VenetianMask, Check, EyeOff, RotateCw } from 'lucide-react';
 import { getTouchDistance, isColorDark } from '../../../utils/ui';
 import { useToast } from '../../../hooks/useToast';
-import { toBlob } from 'html-to-image';
 import ScoreOverlayGenerator, { OverlayData } from './ScoreOverlayGenerator';
 import { LoadedImage } from '../modals/PhotoGalleryModal';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
+import { usePhotoComposition } from '../hooks/usePhotoComposition';
 
 interface PhotoLightboxProps {
     images: LoadedImage[];
     initialIndex: number;
     onClose: () => void;
     onDelete: (id: string, triggerCloseLightbox?: (steps?: number) => void) => void;
+    onRotate?: (id: string) => Promise<void>;
     overlayData?: OverlayData;
     initialShowOverlay?: boolean;
     manageBackHistory?: boolean;
 }
 
-const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onClose, onDelete, overlayData, initialShowOverlay = false, manageBackHistory = true }) => {
-    const { t } = useSessionTranslation();
+const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onClose, onDelete, onRotate, overlayData, initialShowOverlay = false, manageBackHistory = true }) => {
+    const { t, language } = useSessionTranslation();
     const { triggerClose } = useModalBackHandler(manageBackHistory, onClose, 'photo-lightbox');
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
     const [showOverlay, setShowOverlay] = useState(initialShowOverlay);
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [composedImageUrl, setComposedImageUrl] = useState<string | null>(null);
+    const [isRotating, setIsRotating] = useState(false);
+    const rotationPending = useRef(false);
 
     // Anonymous Feature State
     const [isAnonPanelOpen, setIsAnonPanelOpen] = useState(false);
@@ -50,17 +51,9 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
     // Reset transform when index changes
     useEffect(() => {
         setTransform({ x: 0, y: 0, scale: 1 });
-        setComposedImageUrl(null);
         setSwipeOffset(0);
         // Don't reset anonymous state per image, keep it persistent for session flow
-    }, [currentIndex]);
-
-    // Cleanup object URL
-    useEffect(() => {
-        return () => {
-            if (composedImageUrl) URL.revokeObjectURL(composedImageUrl);
-        };
-    }, [composedImageUrl]);
+    }, [currentIndex, currentImage.url]);
 
     // Prepare Data for Generator (Masking Names)
     const displayOverlayData = useMemo(() => {
@@ -74,52 +67,37 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                 name: anonymousPlayerIds.has(p.id) ? t('lightbox_player_n', { n: i + 1 }) : p.name
             }))
         };
-    }, [overlayData, anonymousPlayerIds]);
+    }, [overlayData, anonymousPlayerIds, language]);
 
-    // --- Generation Logic ---
-    useEffect(() => {
-        if (showOverlay && displayOverlayData && !isGenerating) {
+    const { composedImageUrl, isGenerating } = usePhotoComposition(
+        showOverlay, currentImage.url, displayOverlayData, generatorRef,
+        () => {
+            showToast({ message: t('share_composite_failed'), type: 'error' });
+            setShowOverlay(false);
+        },
+    );
+    const isBusy = isGenerating || isRotating;
 
-            const generate = async () => {
-                setIsGenerating(true);
-                // Wait for DOM render & Image load inside generator
-                await new Promise(r => setTimeout(r, 600));
-
-                if (generatorRef.current) {
-                    try {
-                        const blob = await toBlob(generatorRef.current, {
-                            pixelRatio: 1,
-                            backgroundColor: 'rgb(var(--c-app-bg))',
-                            skipFonts: true
-                        });
-                        if (blob) {
-                            const newUrl = URL.createObjectURL(blob);
-                            setComposedImageUrl(prev => {
-                                if (prev) URL.revokeObjectURL(prev);
-                                return newUrl;
-                            });
-                        } else {
-                            throw new Error("Blob generation returned null");
-                        }
-                    } catch (e) {
-                        console.error("Overlay generation failed", e);
-                        showToast({ message: t('share_composite_failed'), type: 'error' });
-                        setShowOverlay(false);
-                    }
-                }
-                setIsGenerating(false);
-            };
-            generate();
+    const handleRotate = async () => {
+        if (!onRotate || rotationPending.current || isGenerating) return;
+        rotationPending.current = true;
+        setIsRotating(true);
+        try {
+            await onRotate(currentImage.id);
+        } catch (error) {
+            console.error('Photo rotation failed', error);
+            showToast({ message: t('lightbox_rotate_failed'), type: 'error' });
+        } finally {
+            rotationPending.current = false;
+            setIsRotating(false);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [showOverlay, displayOverlayData]);
-    // Removed isGenerating from deps to prevent infinite loop.
-    // When setIsGenerating(false) happens, it triggers re-render, but since isGenerating is not in deps, effect won't re-run.
+    };
 
     const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
         e.preventDefault();
         e.stopPropagation();
         if (e.nativeEvent) e.nativeEvent.stopPropagation();
+        if (isBusy) return;
 
         // Close anon panel if clicking background
         if (isAnonPanelOpen) setIsAnonPanelOpen(false);
@@ -142,6 +120,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
         e.preventDefault();
         e.stopPropagation();
         if (e.nativeEvent) e.nativeEvent.stopPropagation();
+        if (isBusy) return;
 
         if ('touches' in e && e.touches.length === 2) {
             const dist = getTouchDistance(e.touches);
@@ -177,7 +156,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
         isDragging.current = false;
         startPinchDist.current = 0;
 
-        if (transform.scale <= 1.05) {
+        if (!isBusy && transform.scale <= 1.05) {
             const SWIPE_THRESHOLD = 80;
             if (swipeOffset > SWIPE_THRESHOLD && currentIndex > 0) {
                 setCurrentIndex(p => p - 1);
@@ -204,6 +183,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
     };
 
     const handleShare = async () => {
+        if (isBusy) return;
         const targetSrc = (showOverlay && composedImageUrl) ? composedImageUrl : currentImage.url;
         try {
             const response = await fetch(targetSrc);
@@ -236,11 +216,13 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
 
     const handlePrev = (e?: React.MouseEvent) => {
         e?.stopPropagation();
+        if (isBusy) return;
         if (currentIndex > 0) setCurrentIndex(i => i - 1);
     };
 
     const handleNext = (e?: React.MouseEvent) => {
         e?.stopPropagation();
+        if (isBusy) return;
         if (currentIndex < images.length - 1) setCurrentIndex(i => i + 1);
     };
 
@@ -295,10 +277,17 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                 )}
 
                 <div className="flex items-center gap-2">
-                    <button onClick={() => onDelete(currentImage.id, triggerClose)} className="p-2 bg-surface-recessed rounded-full text-status-danger hover:text-status-danger/80 border border-surface-border transition-colors active:scale-95">
+                    {onRotate && (
+                        <button type="button" onClick={handleRotate} disabled={isBusy}
+                            title={t('lightbox_rotate')} aria-label={t('lightbox_rotate')}
+                            className="p-2 bg-surface-recessed rounded-full text-txt-muted hover:text-txt-title border border-surface-border transition-colors active:scale-95 disabled:opacity-40">
+                            {isRotating ? <Loader2 size={24} className="animate-spin" /> : <RotateCw size={24} />}
+                        </button>
+                    )}
+                    <button onClick={() => onDelete(currentImage.id, triggerClose)} disabled={isRotating} className="p-2 bg-surface-recessed rounded-full text-status-danger hover:text-status-danger/80 border border-surface-border transition-colors active:scale-95 disabled:opacity-40">
                         <Trash2 size={24} />
                     </button>
-                    <button onClick={handleShare} disabled={isGenerating} className="p-2 bg-surface-recessed rounded-full text-brand-secondary hover:text-brand-secondary/80 border border-surface-border transition-colors active:scale-95">
+                    <button onClick={handleShare} disabled={isBusy} className="p-2 bg-surface-recessed rounded-full text-brand-secondary hover:text-brand-secondary/80 border border-surface-border transition-colors active:scale-95 disabled:opacity-40">
                         {typeof navigator.share === 'function' ? <Share2 size={24} /> : <Download size={24} />}
                     </button>
                 </div>
@@ -317,10 +306,10 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                 onMouseLeave={handlePointerUp}
                 onWheel={handleWheel}
             >
-                {isGenerating ? (
+                {isBusy ? (
                     <div className="flex flex-col items-center gap-3 text-brand-primary z-20">
                         <Loader2 size={48} className="animate-spin" />
-                        <span className="text-sm font-bold animate-pulse">{t('lightbox_generating')}</span>
+                        <span className="text-sm font-bold animate-pulse">{t(isRotating ? 'lightbox_rotating' : 'lightbox_generating')}</span>
                     </div>
                 ) : (
                     <div
@@ -399,7 +388,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                         <>
                             <button
                                 onClick={() => setIsAnonPanelOpen(!isAnonPanelOpen)}
-                                disabled={isGenerating}
+                                disabled={isBusy}
                                 className={`p-3 rounded-xl border transition-all active:scale-95 ${isAnonPanelOpen ? 'bg-surface-recessed-hover border-brand-primary text-txt-title' : 'bg-surface-recessed border-surface-border text-txt-muted'}`}
                                 title={t('lightbox_anon_setting')}
                             >
@@ -408,7 +397,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
 
                             <button
                                 onClick={handleToggleOverlay}
-                                disabled={isGenerating}
+                                disabled={isBusy}
                                 className={`flex items-center gap-2 px-4 py-3 rounded-xl border transition-all active:scale-95 font-bold text-sm min-w-[110px] justify-center
                             ${showOverlay
                                         ? 'bg-brand-primary text-txt-on-dark border-brand-primary shadow-lg shadow-brand-primary/20'

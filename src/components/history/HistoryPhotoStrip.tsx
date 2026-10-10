@@ -1,53 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { imageService } from '../../services/imageService';
+import React from 'react';
+import { usePhotoImages } from '../../hooks/usePhotoImages';
+import type { PhotoContentIds } from '../../types';
 
 interface HistoryPhotoStripProps {
     photoIds: string[];
+    photoContentIds?: PhotoContentIds;
     onPhotoClick: (photoId: string) => void;
 }
 
-interface Thumbnail {
-    id: string;
-    url: string;
-}
-
-const HistoryPhotoStrip: React.FC<HistoryPhotoStripProps> = ({ photoIds, onPhotoClick }) => {
-    const [thumbnails, setThumbnails] = useState<Thumbnail[]>([]);
-
-    useEffect(() => {
-        let active = true;
-        const generatedUrls: string[] = [];
-
-        const loadThumbnails = async () => {
-            const loaded: Thumbnail[] = [];
-            setThumbnails([]);
-
-            for (const id of [...photoIds].reverse()) {
-                if (!active) break;
-                try {
-                    const image = await imageService.getImage(id);
-                    if (image) {
-                        const url = URL.createObjectURL(image.blob);
-                        generatedUrls.push(url);
-                        loaded.push({ id, url });
-                    }
-                } catch (error) {
-                    console.error(`Failed to load history thumbnail ${id}`, error);
-                }
-            }
-
-            if (active) {
-                setThumbnails(loaded);
-            }
-        };
-
-        loadThumbnails();
-
-        return () => {
-            active = false;
-            generatedUrls.forEach(url => URL.revokeObjectURL(url));
-        };
-    }, [photoIds]);
+const HistoryPhotoStrip: React.FC<HistoryPhotoStripProps> = ({ photoIds, photoContentIds, onPhotoClick }) => {
+    const { images: thumbnails } = usePhotoImages(photoIds, photoContentIds);
 
     if (thumbnails.length === 0) return null;
 

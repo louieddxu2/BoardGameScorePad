@@ -141,7 +141,7 @@ describe('multiplayer bootstrap infrastructure', () => {
 
     const history = createHistoryRecordFromFinalSnapshot({
       template: player.template,
-      session: player.session,
+      session: { ...player.session, photos: ['photo-1'], photoContentIds: { 'photo-1': 'revision-1' } },
       completedAt: completed.completedAt,
     });
 
@@ -149,6 +149,8 @@ describe('multiplayer bootstrap infrastructure', () => {
     expect(history.players[0].scores.points).toEqual({ parts: [12] });
     expect(history.winnerIds).toEqual(['p1']);
     expect(history.snapshotTemplate?.id).toBe('template-1');
+    expect(history.photos).toEqual(['photo-1']);
+    expect(history.photoContentIds).toEqual({ 'photo-1': 'revision-1' });
   });
 
   it('applies a newer host board package without changing the session template identity', () => {

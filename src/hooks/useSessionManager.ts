@@ -458,6 +458,8 @@ export const useSessionManager = ({
                 locationId: currentSession.locationId,
                 note: currentSession.note || '',
                 photos: currentSession.photos || [],
+                photoContentIds: currentSession.photoContentIds,
+                photoCloudIds: currentSession.photoCloudIds,
                 cloudFolderId: currentSession.cloudFolderId,
                 scoringRule: rule
             };

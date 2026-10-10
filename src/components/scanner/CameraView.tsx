@@ -5,6 +5,7 @@ import { X, SwitchCamera, Check, RotateCcw, Loader2, Camera } from 'lucide-react
 import { useToast } from '../../hooks/useToast';
 import { useScannerTranslation } from '../../i18n/scanner';
 import { useModalBackHandler } from '../../hooks/useModalBackHandler';
+import { detectCameraRotation } from '../../utils/cameraRotation';
 
 interface CameraViewProps {
     onCapture: (blobs: Blob[]) => void;
@@ -26,6 +27,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
     const [isFlashing, setIsFlashing] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const submitRef = useRef(false);
+    const motionPermissionRequested = useRef(false);
 
     // Rotation State (Sensor): 0 (Portrait), 90 (CCW Tilt/Right Icon), -90 (CW Tilt/Left Icon)
     // This tracks the PHYSICAL orientation of the device gravity.
@@ -69,19 +71,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
     useEffect(() => {
         const handleMotion = (event: DeviceMotionEvent) => {
             const { x, y } = event.accelerationIncludingGravity || {};
-            if (x === null || y === null || x === undefined || y === undefined) return;
-
-            // Threshold to prevent jitter (approx 5 m/s^2)
-            const threshold = 5;
-            const portraitThreshold = 7;
-
-            if (x > threshold) {
-                setRotation(90);  // Tilted Left -> Physical Bottom is Right
-            } else if (x < -threshold) {
-                setRotation(-90); // Tilted Right -> Physical Bottom is Left
-            } else if (Math.abs(y) > portraitThreshold) {
-                setRotation(0);    // Portrait -> Physical Bottom is Bottom
-            }
+            setRotation(previous => detectCameraRotation(previous, x, y));
         };
 
         // Attempt to listen passively
@@ -91,7 +81,8 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
 
     const handleManualRotate = async () => {
         // 1. If on iOS, this click can trigger permission request
-        if (typeof (DeviceMotionEvent as any) !== 'undefined' && typeof (DeviceMotionEvent as any).requestPermission === 'function') {
+        if (!motionPermissionRequested.current && typeof (DeviceMotionEvent as any) !== 'undefined' && typeof (DeviceMotionEvent as any).requestPermission === 'function') {
+            motionPermissionRequested.current = true;
             try {
                 const permission = await (DeviceMotionEvent as any).requestPermission();
                 if (permission === 'granted') {
