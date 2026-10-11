@@ -10,13 +10,12 @@ interface PhotoSwipePreviewProps {
     transform: { x: number; y: number; scale: number };
 }
 
-/** Reveal the entire adjacent photo in the space vacated by the current photo. */
+/** Slide adjacent photos at normal viewing size, clipped by the viewport. */
 const PhotoSwipePreview: React.FC<PhotoSwipePreviewProps> = ({
     currentSrc, previousSrc, nextSrc, offset, viewportWidth, isDragging, transform,
 }) => {
     const canSwipe = transform.scale <= 1.05 && viewportWidth > 0;
     const visibleOffset = canSwipe ? Math.max(-viewportWidth, Math.min(viewportWidth, offset)) : 0;
-    const progress = canSwipe ? Math.abs(visibleOffset) / viewportWidth : 0;
     const transition = isDragging ? 'transition-none will-change-transform' : 'transition-transform duration-200 ease-out motion-reduce:transition-none';
 
     return (
@@ -38,18 +37,18 @@ const PhotoSwipePreview: React.FC<PhotoSwipePreviewProps> = ({
             </div>
             {/* Source keys avoid animating a different neighbour after navigation. */}
             {[
-                { src: previousSrc, side: 'previous', active: visibleOffset > 0, origin: 'left center' },
-                { src: nextSrc, side: 'next', active: visibleOffset < 0, origin: 'right center' },
-            ].map(({ src, side, active, origin }) => src ? (
+                { src: previousSrc, side: 'previous', position: '-100%' },
+                { src: nextSrc, side: 'next', position: '100%' },
+            ].map(({ src, side, position }) => src ? (
                 <div
                     key={`${side}:${src}`}
                     data-photo-preview={side}
                     aria-hidden="true"
                     className={`absolute inset-0 flex items-center justify-center pointer-events-none ${transition}`}
-                    style={{ transform: `scale(${active ? progress : 0})`, transformOrigin: origin }}
+                    style={{ transform: `translateX(${position}) translateX(${visibleOffset}px)` }}
                 >
                     <img src={src} alt="" draggable={false}
-                        className="w-full h-full object-contain select-none" />
+                        className="max-w-full max-h-full object-contain select-none" />
                 </div>
             ) : null)}
         </>

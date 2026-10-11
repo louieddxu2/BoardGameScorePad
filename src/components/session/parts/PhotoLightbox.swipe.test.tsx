@@ -22,6 +22,7 @@ const start = (viewport: HTMLElement) => fireEvent.touchStart(viewport, { touche
 const move = (viewport: HTMLElement, offset: number) => fireEvent.touchMove(viewport, { touches: [finger(offset)] });
 const end = (viewport: HTMLElement) => fireEvent.touchEnd(viewport, { touches: [] });
 const preview = (viewport: HTMLElement, side: string) => viewport.querySelector<HTMLDivElement>(`[data-photo-preview="${side}"]`);
+const position = (side: string, offset = 0) => `translateX(${side === 'previous' ? '-100%' : '100%'}) translateX(${offset}px)`;
 const renderViewer = (initialIndex = 2, overlayData?: OverlayData) => {
     const { container } = render(<LanguageProvider><ToastProvider><PhotoLightbox
         images={images} initialIndex={initialIndex} onClose={vi.fn()} onDelete={vi.fn()}
@@ -35,28 +36,34 @@ const renderViewer = (initialIndex = 2, overlayData?: OverlayData) => {
 
 describe('photo swipe preview', () => {
     it.each([
-        { side: 'previous', other: 'next', sign: 1, target: 1, origin: 'left center' },
-        { side: 'next', other: 'previous', sign: -1, target: 3, origin: 'right center' },
-    ])('reveals the $side photo proportionally and commits the latest move on release', ({ side, other, sign, target, origin }) => {
+        { side: 'previous', other: 'next', sign: 1, target: 1 },
+        { side: 'next', other: 'previous', sign: -1, target: 3 },
+    ])('reveals part of the full-size $side photo and commits the latest move on release', ({ side, other, sign, target }) => {
         const viewport = renderViewer();
         const current = screen.getByAltText('Full view');
+        expect(preview(viewport, side)!.style.transform).toBe(position(side));
+        expect(preview(viewport, other)!.style.transform).toBe(position(other));
         start(viewport);
         move(viewport, sign * 40);
         expect(current).toHaveAttribute('src', images[2].url);
         expect(current.parentElement!.style.transform).toBe(`translateX(${sign * 40}px)`);
-        expect(preview(viewport, side)!.style.transform).toBe(`scale(${40 / width})`);
-        expect(preview(viewport, side)!.style.transformOrigin).toBe(origin);
+        expect(preview(viewport, side)!.style.transform).toBe(position(side, sign * 40));
+        // Preview and viewer use the same contain sizing, including small photos.
+        expect(preview(viewport, side)!.querySelector('img')!.className).toBe(current.className);
         expect(preview(viewport, side)!.querySelector('img')).toHaveAttribute('src', images[target].url);
         expect(preview(viewport, side)).toHaveAttribute('aria-hidden', 'true');
-        expect(preview(viewport, other)!.style.transform).toBe('scale(0)');
+        expect(preview(viewport, other)!.style.transform).toBe(position(other, sign * 40));
         expect(viewport.querySelectorAll('img')).toHaveLength(3); // Not the entire album.
         move(viewport, sign * 70);
-        expect(preview(viewport, side)!.style.transform).toBe(`scale(${70 / width})`);
+        expect(preview(viewport, side)!.style.transform).toBe(position(side, sign * 70));
+        move(viewport, sign * 80);
+        expect(preview(viewport, side)!.style.transform).toBe(position(side, sign * 80));
+        expect(preview(viewport, side)!.style.transform).not.toContain('scale(');
         // A fast final move/release can be batched before the new offset renders.
         act(() => { move(viewport, sign * 100); end(viewport); });
         expect(screen.getByAltText('Full view')).toHaveAttribute('src', images[target].url);
         expect(screen.getByText(`${target + 1} / 5`)).toBeInTheDocument();
-        expect(preview(viewport, side)!.style.transform).toBe('scale(0)');
+        expect(preview(viewport, side)!.style.transform).toBe(position(side));
     });
 
     it('returns at the existing threshold and cancels a reversed swipe without changing photos', () => {
@@ -68,18 +75,18 @@ describe('photo swipe preview', () => {
         expect(current).toHaveAttribute('src', images[2].url);
         expect(current.parentElement!.style.transform).toBe('translateX(0px)');
         expect(current.parentElement).toHaveClass('motion-reduce:transition-none');
-        expect(preview(viewport, 'next')!.style.transform).toBe('scale(0)');
+        expect(preview(viewport, 'next')!.style.transform).toBe(position('next'));
 
         start(viewport);
         move(viewport, -120);
         move(viewport, 100);
-        expect(preview(viewport, 'next')!.style.transform).toBe('scale(0)');
-        expect(preview(viewport, 'previous')!.style.transform).toBe(`scale(${100 / width})`);
+        expect(preview(viewport, 'next')!.style.transform).toBe(position('next', 100));
+        expect(preview(viewport, 'previous')!.style.transform).toBe(position('previous', 100));
         fireEvent.touchCancel(viewport, { touches: [] });
         end(viewport);
         expect(current).toHaveAttribute('src', images[2].url);
         expect(current.parentElement!.style.transform).toBe('translateX(0px)');
-        expect(preview(viewport, 'previous')!.style.transform).toBe('scale(0)');
+        expect(preview(viewport, 'previous')!.style.transform).toBe(position('previous'));
     });
 
     it.each([
@@ -90,7 +97,7 @@ describe('photo swipe preview', () => {
         fireEvent.mouseDown(viewport, { clientX: 180, clientY: 100 });
         fireEvent.mouseMove(viewport, { clientX: 180 + offset, clientY: 100 });
         expect(preview(viewport, missing)).toBeNull();
-        expect(preview(viewport, available)!.style.transform).toBe('scale(0)');
+        expect(preview(viewport, available)!.style.transform).toBe(position(available, Math.sign(offset) * width));
         expect(screen.getByAltText('Full view').parentElement!.style.transform).toBe(`translateX(${Math.sign(offset) * width}px)`);
         fireEvent.mouseUp(viewport);
         expect(screen.getByAltText('Full view')).toHaveAttribute('src', images[initialIndex].url);
@@ -104,7 +111,7 @@ describe('photo swipe preview', () => {
         const second = { identifier: 2, clientX: 180, clientY: 100 };
         fireEvent.touchStart(viewport, { touches: [first, second] });
         fireEvent.touchMove(viewport, { touches: [first, second] }); // Scale stays 1, not a zoom-based veto.
-        expect(preview(viewport, 'next')!.style.transform).toBe('scale(0)');
+        expect(preview(viewport, 'next')!.style.transform).toBe(position('next'));
         fireEvent.touchEnd(viewport, { touches: [first] });
         move(viewport, -200);
         end(viewport);
@@ -117,7 +124,7 @@ describe('photo swipe preview', () => {
         end(viewport);
         expect(current.style.transform).toBe('translate(-100px, 0px) scale(2)');
         expect(current).toHaveAttribute('src', images[2].url);
-        expect(preview(viewport, 'next')!.style.transform).toBe('scale(0)');
+        expect(preview(viewport, 'next')!.style.transform).toBe(position('next'));
         fireEvent.click(screen.getByTitle('Reset View'));
         start(viewport);
         move(viewport, -100);
