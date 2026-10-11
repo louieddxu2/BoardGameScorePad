@@ -35,6 +35,11 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
     const rotateHandlerRef = useRef(onRotatePhoto);
     useEffect(() => { rotateHandlerRef.current = onRotatePhoto; }, [onRotatePhoto]);
     const [initialIndex, setInitialIndex] = useState<number | null>(null); // Changed: Store index instead of object
+    const lastViewedPhoto = useRef<string | null>(null);
+    const [returnPhotoId, setReturnPhotoId] = useState<string | null>(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const photoButtons = useRef(new Map<string, HTMLButtonElement>());
+    const rememberPhoto = useCallback((id: string) => { lastViewedPhoto.current = id; }, []);
     const { t } = useSessionTranslation();
     const { t: tCommon } = useCommonTranslation();
     const { confirm } = useConfirm();
@@ -44,6 +49,8 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
     useEffect(() => {
         if (!isOpen) {
             setInitialIndex(null);
+            lastViewedPhoto.current = null;
+            setReturnPhotoId(null);
             return;
         }
         if (isDirectLightbox && initialPhotoId) {
@@ -61,9 +68,23 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
         if (autoEnterMode === 'lightbox_overlay' || isDirectLightbox) {
             onClose();
         } else {
+            setReturnPhotoId(lastViewedPhoto.current);
             setInitialIndex(null);
         }
     }, [autoEnterMode, isDirectLightbox, onClose]);
+
+    useEffect(() => {
+        if (!isOpen || initialIndex !== null || !returnPhotoId) return;
+        const button = photoButtons.current.get(returnPhotoId);
+        const scroll = scrollRef.current;
+        if (!button || !scroll) return;
+        const photoRect = button.getBoundingClientRect();
+        const viewportRect = scroll.getBoundingClientRect();
+        // Scroll only this album, and only far enough to reveal the viewed photo.
+        if (photoRect.top < viewportRect.top) scroll.scrollTop += photoRect.top - viewportRect.top;
+        else if (photoRect.bottom > viewportRect.bottom) scroll.scrollTop += photoRect.bottom - viewportRect.bottom;
+        button.focus({ preventScroll: true });
+    }, [isOpen, initialIndex, returnPhotoId]);
 
     // [Refactored] Unified Back Button Interception
     // Now photo-lightbox handles its own history entry, so photo-gallery only manages its own close logic.
@@ -121,6 +142,7 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
                     overlayData={overlayData} // Pass the context
                     initialShowOverlay={autoEnterMode === 'lightbox_overlay'} // Enable overlay if mode matches
                     manageBackHistory={!isDirectLightbox}
+                    onCurrentPhotoChange={rememberPhoto}
                 />
             )}
 
@@ -139,24 +161,26 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
                 <div className="flex items-center gap-2">
                     <button
                         onClick={onUploadPhoto}
+                        aria-label={t('gallery_upload')}
                         className="flex items-center gap-1.5 px-3 py-2 bg-modal-bg-elevated hover:bg-surface-hover text-txt-primary rounded-lg text-xs font-bold border border-surface-border transition-colors"
                     >
                         <Upload size={14} /> <span className="hidden sm:inline">{t('gallery_upload')}</span>
                     </button>
                     <button
                         onClick={onTakePhoto}
+                        aria-label={t('gallery_camera')}
                         className="flex items-center gap-1.5 px-3 py-2 bg-brand-primary hover:bg-brand-primary-deep text-white rounded-lg text-xs font-bold shadow-md transition-colors"
                     >
                         <Camera size={14} /> <span className="hidden sm:inline">{t('gallery_camera')}</span>
                     </button>
-                    <button onClick={onClose} className="p-2 text-txt-secondary hover:text-txt-title bg-modal-bg-elevated/50 hover:bg-modal-bg-elevated rounded-full transition-colors ml-1">
+                    <button onClick={onClose} aria-label={tCommon('close')} className="p-2 text-txt-secondary hover:text-txt-title bg-modal-bg-elevated/50 hover:bg-modal-bg-elevated rounded-full transition-colors ml-1">
                         <X size={20} />
                     </button>
                 </div>
             </div>
 
             {/* Grid Content */}
-            <div className="flex-1 overflow-y-auto p-4 safe-area-bottom-padding">
+            <div ref={scrollRef} data-photo-gallery-scroll="true" className="flex-1 overflow-y-auto p-4 safe-area-bottom-padding">
                 {loading && images.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 text-txt-muted gap-2">
                         <Loader2 size={32} className="animate-spin text-brand-secondary" />
@@ -166,14 +190,28 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
                     <div className="grid grid-cols-3 gap-1 auto-rows-fr">
                         {/* Image Tiles */}
                         {images.map((img, idx) => (
-                            <div
+                            <button
                                 key={img.id}
-                                onClick={() => setInitialIndex(idx)}
-                                className="aspect-square bg-surface-recessed rounded-lg overflow-hidden relative cursor-pointer group active:scale-95 transition-transform border border-surface-border"
+                                ref={button => {
+                                    if (button) photoButtons.current.set(img.id, button);
+                                    else photoButtons.current.delete(img.id);
+                                }}
+                                type="button"
+                                data-photo-id={img.id}
+                                aria-label={`${t('share_title')} ${idx + 1}`}
+                                onClick={() => {
+                                    rememberPhoto(img.id);
+                                    setReturnPhotoId(null);
+                                    setInitialIndex(idx);
+                                }}
+                                onAnimationEnd={event => {
+                                    if (event.target === event.currentTarget && returnPhotoId === img.id) setReturnPhotoId(null);
+                                }}
+                                className={`aspect-square bg-surface-recessed rounded-lg overflow-hidden relative cursor-pointer group active:scale-95 transition-transform border border-surface-border focus-visible:ring-2 focus-visible:ring-brand-secondary ${returnPhotoId === img.id ? 'photo-return-highlight' : ''}`}
                             >
                                 <img src={img.url} className="w-full h-full object-cover" alt="Session Photo" loading="lazy" />
                                 <div className="absolute inset-0 bg-txt-primary/0 group-hover:bg-txt-primary/5 transition-colors" />
-                            </div>
+                            </button>
                         ))}
                     </div>
                 )}

@@ -521,6 +521,22 @@ html[data-theme='light'] {
   .animate-slide-in-right-shallow { animation: slide-in-right-shallow 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
   /* Swipe Hints */
+  @keyframes photo-return-highlight {
+    0%, 60% { outline-color: rgb(var(--c-brand-secondary) / 0.9); }
+    100% { outline-color: transparent; }
+  }
+  .photo-return-highlight {
+    outline: 2px solid transparent;
+    outline-offset: -2px;
+    animation: photo-return-highlight 0.9s ease-out;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .photo-return-highlight {
+      animation: none;
+      outline-color: rgb(var(--c-brand-secondary) / 0.9);
+    }
+  }
+
   @keyframes swipe-hint-left { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-6px); } }
   @keyframes swipe-hint-right { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(6px); } }
   @keyframes swipe-hint-fade-in { from { opacity: 0; } to { opacity: 1; } }

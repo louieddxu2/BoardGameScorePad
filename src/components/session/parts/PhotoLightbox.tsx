@@ -1,13 +1,15 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { X, Trash2, Maximize, Share2, ReceiptText, Loader2, Download, ChevronLeft, ChevronRight, VenetianMask, Check, EyeOff, RotateCw } from 'lucide-react';
-import { getTouchDistance, isColorDark } from '../../../utils/ui';
+import { isColorDark } from '../../../utils/ui';
 import { useToast } from '../../../hooks/useToast';
 import ScoreOverlayGenerator, { OverlayData } from './ScoreOverlayGenerator';
 import { LoadedImage } from '../modals/PhotoGalleryModal';
 import { useSessionTranslation } from '../../../i18n/session';
-import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
+import { useCommonTranslation } from '../../../i18n/common';
+import { getTopModalId, useModalBackHandler } from '../../../hooks/useModalBackHandler';
 import { usePhotoComposition } from '../hooks/usePhotoComposition';
+import { usePhotoViewerGestures } from '../hooks/usePhotoViewerGestures';
 import PhotoSwipePreview from './PhotoSwipePreview';
 
 interface PhotoLightboxProps {
@@ -19,13 +21,14 @@ interface PhotoLightboxProps {
     overlayData?: OverlayData;
     initialShowOverlay?: boolean;
     manageBackHistory?: boolean;
+    onCurrentPhotoChange?: (id: string) => void;
 }
 
-const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onClose, onDelete, onRotate, overlayData, initialShowOverlay = false, manageBackHistory = true }) => {
+const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onClose, onDelete, onRotate, overlayData, initialShowOverlay = false, manageBackHistory = true, onCurrentPhotoChange }) => {
     const { t, language } = useSessionTranslation();
+    const { t: tCommon } = useCommonTranslation();
     const { triggerClose } = useModalBackHandler(manageBackHistory, onClose, 'photo-lightbox');
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
-    const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
     const [showOverlay, setShowOverlay] = useState(initialShowOverlay);
     const [isRotating, setIsRotating] = useState(false);
     const rotationPending = useRef(false);
@@ -34,33 +37,11 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
     const [isAnonPanelOpen, setIsAnonPanelOpen] = useState(false);
     const [anonymousPlayerIds, setAnonymousPlayerIds] = useState<Set<string>>(new Set());
 
-    // Swipe State
-    const [swipeOffset, setSwipeOffset] = useState(0);
-    // Release decisions must use the latest move, even before React renders it.
-    const swipeOffsetRef = useRef(0);
-    const swipeViewportWidth = useRef(0);
-
-    const containerRef = useRef<HTMLDivElement>(null);
+    const rootRef = useRef<HTMLDivElement>(null);
     const generatorRef = useRef<HTMLDivElement>(null);
     const { showToast } = useToast();
 
-    // Interaction Refs
-    const isDragging = useRef(false);
-    const lastPos = useRef({ x: 0, y: 0 });
-    const startPinchDist = useRef(0);
-    const startPinchScale = useRef(1);
-
     const currentImage = images[currentIndex];
-
-    // Reset transform when index changes
-    useEffect(() => {
-        setTransform({ x: 0, y: 0, scale: 1 });
-        setSwipeOffset(0);
-        swipeOffsetRef.current = 0;
-        isDragging.current = false;
-        startPinchDist.current = 0;
-        // Don't reset anonymous state per image, keep it persistent for session flow
-    }, [currentIndex, currentImage.url]);
 
     // Prepare Data for Generator (Masking Names)
     const displayOverlayData = useMemo(() => {
@@ -84,9 +65,28 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
         },
     );
     const isBusy = isGenerating || isRotating;
+    const {
+        containerRef, transform, motion, resetView, navigate, finishSlide,
+        handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel, handleWheel,
+    } = usePhotoViewerGestures({
+        currentId: currentImage.id,
+        imageKey: currentImage.url,
+        previousId: images[currentIndex - 1]?.id,
+        nextId: images[currentIndex + 1]?.id,
+        busy: isBusy,
+        onNavigate: id => {
+            const index = images.findIndex(image => image.id === id);
+            if (index >= 0) setCurrentIndex(index);
+        },
+        onInteract: () => { if (isAnonPanelOpen) setIsAnonPanelOpen(false); },
+    });
+    const controlsBusy = isBusy || motion.settling;
+
+    useEffect(() => { rootRef.current?.focus({ preventScroll: true }); }, []);
+    useEffect(() => { onCurrentPhotoChange?.(currentImage.id); }, [currentImage.id, onCurrentPhotoChange]);
 
     const handleRotate = async () => {
-        if (!onRotate || rotationPending.current || isGenerating) return;
+        if (!onRotate || rotationPending.current || isGenerating || motion.settling) return;
         rotationPending.current = true;
         setIsRotating(true);
         try {
@@ -100,114 +100,8 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
         }
     };
 
-    const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.nativeEvent) e.nativeEvent.stopPropagation();
-        if (isBusy) return;
-
-        // Close anon panel if clicking background
-        if (isAnonPanelOpen) setIsAnonPanelOpen(false);
-
-        const isTouch = 'touches' in e;
-
-        if (isTouch && (e as React.TouchEvent).touches.length >= 2) {
-            startPinchDist.current = getTouchDistance((e as React.TouchEvent).touches);
-            startPinchScale.current = transform.scale;
-            isDragging.current = false;
-            swipeOffsetRef.current = 0;
-            setSwipeOffset(0);
-        } else {
-            isDragging.current = true;
-            swipeOffsetRef.current = 0;
-            setSwipeOffset(0);
-            // Measure once per gesture, not on every move or through an observer.
-            swipeViewportWidth.current = containerRef.current?.clientWidth ?? 0;
-            const clientX = isTouch ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
-            const clientY = isTouch ? (e as React.TouchEvent).touches[0].clientY : (e as React.MouseEvent).clientY;
-            lastPos.current = { x: clientX, y: clientY };
-        }
-    };
-
-    const handlePointerMove = (e: React.MouseEvent | React.TouchEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.nativeEvent) e.nativeEvent.stopPropagation();
-        if (isBusy) return;
-
-        if ('touches' in e && e.touches.length >= 2) {
-            const dist = getTouchDistance(e.touches);
-            if (startPinchDist.current > 0) {
-                const scaleFactor = dist / startPinchDist.current;
-                const newScale = Math.max(1, Math.min(5, startPinchScale.current * scaleFactor));
-                setTransform(prev => ({ ...prev, scale: newScale }));
-            }
-            return;
-        }
-
-        if (isDragging.current) {
-            const clientX = 'touches' in e ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
-            const clientY = 'touches' in e ? (e as React.TouchEvent).touches[0].clientY : (e as React.MouseEvent).clientY;
-
-            const dx = clientX - lastPos.current.x;
-            const dy = clientY - lastPos.current.y;
-
-            if (transform.scale > 1.05) {
-                setTransform(prev => ({ ...prev, x: prev.x + dx, y: prev.y + dy }));
-            } else {
-                swipeOffsetRef.current += dx;
-                setSwipeOffset(swipeOffsetRef.current);
-            }
-            lastPos.current = { x: clientX, y: clientY };
-        }
-    };
-
-    const handlePointerUp = (e: React.MouseEvent | React.TouchEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.nativeEvent) e.nativeEvent.stopPropagation();
-
-        isDragging.current = false;
-        startPinchDist.current = 0;
-
-        if (!isBusy && transform.scale <= 1.05) {
-            const SWIPE_THRESHOLD = 80;
-            if (swipeOffsetRef.current > SWIPE_THRESHOLD && currentIndex > 0) {
-                setCurrentIndex(p => p - 1);
-            } else if (swipeOffsetRef.current < -SWIPE_THRESHOLD && currentIndex < images.length - 1) {
-                setCurrentIndex(p => p + 1);
-            }
-            setTransform({ x: 0, y: 0, scale: 1 });
-        } else {
-            if (transform.scale <= 1) {
-                setTransform({ x: 0, y: 0, scale: 1 });
-            }
-        }
-        swipeOffsetRef.current = 0;
-        setSwipeOffset(0);
-    };
-
-    const handlePointerCancel = (e: React.TouchEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        isDragging.current = false;
-        startPinchDist.current = 0;
-        swipeOffsetRef.current = 0;
-        setSwipeOffset(0);
-    };
-
-    const handleWheel = (e: React.WheelEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.nativeEvent) e.nativeEvent.stopPropagation();
-
-        const scaleChange = -e.deltaY * 0.001;
-        const newScale = Math.max(1, Math.min(5, transform.scale * (1 + scaleChange)));
-        setTransform(prev => ({ ...prev, scale: newScale }));
-    };
-
     const handleShare = async () => {
-        if (isBusy) return;
+        if (controlsBusy) return;
         const targetSrc = (showOverlay && composedImageUrl) ? composedImageUrl : currentImage.url;
         try {
             const response = await fetch(targetSrc);
@@ -240,14 +134,35 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
 
     const handlePrev = (e?: React.MouseEvent) => {
         e?.stopPropagation();
-        if (isBusy) return;
-        if (currentIndex > 0) setCurrentIndex(i => i - 1);
+        navigate(-1);
     };
 
     const handleNext = (e?: React.MouseEvent) => {
         e?.stopPropagation();
-        if (isBusy) return;
-        if (currentIndex < images.length - 1) setCurrentIndex(i => i + 1);
+        navigate(1);
+    };
+
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        const topModalId = getTopModalId();
+        if (topModalId && topModalId !== (manageBackHistory ? 'photo-lightbox' : 'photo-direct-lightbox')) return;
+        if (event.key === 'Tab' && !event.defaultPrevented) {
+            const buttons = Array.from(rootRef.current?.querySelectorAll<HTMLButtonElement>('button:not([disabled])') ?? [])
+                .filter(button => button.getClientRects().length > 0);
+            const first = buttons[0];
+            const last = buttons[buttons.length - 1];
+            if (first && (event.target === event.currentTarget
+                || event.target === (event.shiftKey ? first : last))) {
+                event.preventDefault();
+                (event.shiftKey ? last : first).focus();
+            }
+            return;
+        }
+        if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey
+            || (event.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"]')) return;
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        event.preventDefault();
+        event.stopPropagation();
+        navigate(event.key === 'ArrowLeft' ? -1 : 1);
     };
 
     const toggleAnonymous = (playerId: string) => {
@@ -275,7 +190,9 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
     const currentDisplayImage = (showOverlay && composedImageUrl) ? composedImageUrl : currentImage.url;
 
     return (
-        <div className="fixed inset-0 z-[100] bg-app-bg flex flex-col animate-in fade-in duration-300">
+        <div ref={rootRef} role="dialog" aria-modal="true" aria-label={t('gallery_title')} tabIndex={-1}
+            onKeyDown={handleKeyDown}
+            className="fixed inset-0 z-[100] bg-app-bg flex flex-col animate-in fade-in duration-300 outline-none">
 
             {/* Hidden Generator */}
             {showOverlay && displayOverlayData && (
@@ -290,7 +207,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
 
             {/* Header Toolbar */}
             <div className="safe-area-top-padding flex-none flex justify-between items-center p-4 bg-surface-recessed border-b border-surface-border z-10 min-h-16">
-                <button onClick={onClose} className="p-2 bg-surface-recessed rounded-full text-txt-muted hover:text-txt-title border border-surface-border transition-colors">
+                <button onClick={onClose} aria-label={tCommon('close')} className="p-2 bg-surface-recessed rounded-full text-txt-muted hover:text-txt-title border border-surface-border transition-colors">
                     <X size={24} />
                 </button>
 
@@ -302,16 +219,16 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
 
                 <div className="flex items-center gap-2">
                     {onRotate && (
-                        <button type="button" onClick={handleRotate} disabled={isBusy}
+                        <button type="button" onClick={handleRotate} disabled={controlsBusy}
                             title={t('lightbox_rotate')} aria-label={t('lightbox_rotate')}
                             className="p-2 bg-surface-recessed rounded-full text-txt-muted hover:text-txt-title border border-surface-border transition-colors active:scale-95 disabled:opacity-40">
                             {isRotating ? <Loader2 size={24} className="animate-spin" /> : <RotateCw size={24} />}
                         </button>
                     )}
-                    <button onClick={() => onDelete(currentImage.id, triggerClose)} disabled={isRotating} className="p-2 bg-surface-recessed rounded-full text-status-danger hover:text-status-danger/80 border border-surface-border transition-colors active:scale-95 disabled:opacity-40">
+                    <button onClick={() => onDelete(currentImage.id, triggerClose)} aria-label={tCommon('delete')} disabled={isRotating || motion.settling} className="p-2 bg-surface-recessed rounded-full text-status-danger hover:text-status-danger/80 border border-surface-border transition-colors active:scale-95 disabled:opacity-40">
                         <Trash2 size={24} />
                     </button>
-                    <button onClick={handleShare} disabled={isBusy} className="p-2 bg-surface-recessed rounded-full text-brand-secondary hover:text-brand-secondary/80 border border-surface-border transition-colors active:scale-95 disabled:opacity-40">
+                    <button onClick={handleShare} aria-label={tCommon(typeof navigator.share === 'function' ? 'share' : 'download')} disabled={controlsBusy} className="p-2 bg-surface-recessed rounded-full text-brand-secondary hover:text-brand-secondary/80 border border-surface-border transition-colors active:scale-95 disabled:opacity-40">
                         {typeof navigator.share === 'function' ? <Share2 size={24} /> : <Download size={24} />}
                     </button>
                 </div>
@@ -320,7 +237,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
             <div
                 ref={containerRef}
                 data-mobile-zoom-ignore="true"
-                className="flex-1 w-full min-h-0 overflow-hidden touch-none flex items-center justify-center bg-app-bg-deep relative"
+                className="flex-1 w-full min-h-0 overflow-hidden touch-none flex items-center justify-center bg-black relative"
                 onMouseDown={handlePointerDown}
                 onTouchStart={handlePointerDown}
                 onMouseMove={handlePointerMove}
@@ -339,23 +256,23 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                 ) : (
                     <PhotoSwipePreview
                         currentSrc={currentDisplayImage}
-                        previousSrc={images[currentIndex - 1]?.url}
-                        nextSrc={images[currentIndex + 1]?.url}
-                        offset={swipeOffset}
-                        viewportWidth={swipeViewportWidth.current}
-                        isDragging={isDragging.current}
+                        images={images}
+                        currentIndex={currentIndex}
+                        offset={motion.offset}
+                        settling={motion.settling}
                         transform={transform}
+                        onSettled={() => finishSlide(true)}
                     />
                 )}
 
                 {/* Navigation Arrows */}
                 {currentIndex > 0 && transform.scale <= 1.05 && (
-                    <button onClick={handlePrev} className="absolute left-2 top-1/2 -translate-y-1/2 p-3 bg-surface-recessed/30 hover:bg-surface-recessed/60 text-txt-primary rounded-full backdrop-blur-sm z-20 hidden sm:block">
+                    <button onClick={handlePrev} aria-label={t('lightbox_previous_photo')} disabled={controlsBusy} className="absolute left-2 top-1/2 -translate-y-1/2 p-3 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-sm z-20 hidden sm:block disabled:opacity-40">
                         <ChevronLeft size={32} />
                     </button>
                 )}
                 {currentIndex < images.length - 1 && transform.scale <= 1.05 && (
-                    <button onClick={handleNext} className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-surface-recessed/30 hover:bg-surface-recessed/60 text-txt-primary rounded-full backdrop-blur-sm z-20 hidden sm:block">
+                    <button onClick={handleNext} aria-label={t('lightbox_next_photo')} disabled={controlsBusy} className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-sm z-20 hidden sm:block disabled:opacity-40">
                         <ChevronRight size={32} />
                     </button>
                 )}
@@ -366,7 +283,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                 <div className="absolute left-4 right-4 bg-modal-bg-elevated/95 backdrop-blur-md border border-surface-border rounded-2xl p-4 z-30 shadow-2xl animate-in slide-in-from-bottom-5" style={{ bottom: 'calc(6rem + var(--app-safe-area-bottom))' }}>
                     <div className="flex justify-between items-center mb-3">
                         <span className="text-xs font-bold text-txt-muted uppercase">{t('lightbox_anon_hint')}</span>
-                        <button onClick={() => setIsAnonPanelOpen(false)} className="p-1 bg-surface-recessed rounded-full text-txt-secondary"><X size={14} /></button>
+                        <button onClick={() => setIsAnonPanelOpen(false)} aria-label={tCommon('close')} className="p-1 bg-surface-recessed rounded-full text-txt-secondary"><X size={14} /></button>
                     </div>
                     <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
                         {overlayData.players.map((p, i) => {
@@ -407,16 +324,17 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                         <>
                             <button
                                 onClick={() => setIsAnonPanelOpen(!isAnonPanelOpen)}
-                                disabled={isBusy}
+                                disabled={controlsBusy}
                                 className={`p-3 rounded-xl border transition-all active:scale-95 ${isAnonPanelOpen ? 'bg-surface-recessed-hover border-brand-primary text-txt-title' : 'bg-surface-recessed border-surface-border text-txt-muted'}`}
                                 title={t('lightbox_anon_setting')}
+                                aria-label={t('lightbox_anon_setting')}
                             >
                                 <VenetianMask size={20} />
                             </button>
 
                             <button
                                 onClick={handleToggleOverlay}
-                                disabled={isBusy}
+                                disabled={controlsBusy}
                                 className={`flex items-center gap-2 px-4 py-3 rounded-xl border transition-all active:scale-95 font-bold text-sm min-w-[110px] justify-center
                             ${showOverlay
                                         ? 'bg-brand-primary text-txt-on-dark border-brand-primary shadow-lg shadow-brand-primary/20'
@@ -433,9 +351,10 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                 {/* Center: Reset View */}
                 <div className="flex-1 flex justify-center">
                     <button
-                        onClick={() => setTransform({ x: 0, y: 0, scale: 1 })}
+                        onClick={resetView}
                         className="p-3 rounded-full bg-surface-recessed text-txt-muted border border-surface-border active:scale-95 hover:text-txt-title"
                         title={t('lightbox_view_reset')}
+                        aria-label={t('lightbox_view_reset')}
                     >
                         <Maximize size={20} />
                     </button>

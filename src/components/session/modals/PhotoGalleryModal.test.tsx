@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../../../i18n';
 import { imageService } from '../../../services/imageService';
@@ -128,5 +128,34 @@ describe('PhotoGalleryModal entry modes', () => {
         expect(mocks.lightboxProps.mock.lastCall![0].images[1]).toMatchObject({ id: 'middle', url: 'blob:14', contentId: expect.any(String) });
         expect(new Set(mocks.backHandler.mock.calls.map(call => call[2]))).toEqual(new Set(['photo-direct-lightbox']));
         expect(defaultProps.onClose).not.toHaveBeenCalled();
+    });
+
+    it('returns to the last viewed thumbnail without reloading photos or closing the album', async () => {
+        const { container } = render(<LanguageProvider><PhotoGalleryModal {...defaultProps} /></LanguageProvider>);
+        await waitFor(() => expect(screen.getAllByRole('img', { name: 'Session Photo' })).toHaveLength(3));
+        const scroll = container.querySelector<HTMLDivElement>('[data-photo-gallery-scroll="true"]')!;
+        const oldest = container.querySelector<HTMLButtonElement>('[data-photo-id="oldest"]')!;
+        vi.spyOn(scroll, 'getBoundingClientRect').mockReturnValue({ top: 0, bottom: 300 } as DOMRect);
+        const rect = vi.spyOn(oldest, 'getBoundingClientRect').mockReturnValue({ top: 500, bottom: 600 } as DOMRect);
+        fireEvent.click(container.querySelector('[data-photo-id="newest"]')!);
+        act(() => {
+            mocks.lightboxProps.mock.lastCall![0].onCurrentPhotoChange('oldest');
+            mocks.lightboxProps.mock.lastCall![0].onClose();
+        });
+        expect(screen.queryByTestId('photo-lightbox')).not.toBeInTheDocument();
+        expect(scroll.scrollTop).toBe(300);
+        expect(oldest).toHaveFocus();
+        expect(oldest).toHaveClass('photo-return-highlight');
+        expect(defaultProps.onClose).not.toHaveBeenCalled();
+        expect(imageService.getImage).toHaveBeenCalledTimes(3);
+        expect(new Set(mocks.backHandler.mock.calls.map(call => call[2]))).toEqual(new Set(['photo-gallery']));
+        // Returning to an already visible thumbnail must not move the album.
+        rect.mockReturnValue({ top: 100, bottom: 200 } as DOMRect);
+        fireEvent.click(oldest);
+        act(() => { mocks.lightboxProps.mock.lastCall![0].onClose(); });
+        expect(scroll.scrollTop).toBe(300);
+        fireEvent.animationEnd(oldest);
+        expect(oldest).not.toHaveClass('photo-return-highlight');
+        expect(imageService.getImage).toHaveBeenCalledTimes(3);
     });
 });

@@ -271,6 +271,8 @@ export const sessionTranslations = {
     lightbox_show_score: '顯示分數',
     lightbox_hide_score: '隱藏分數',
     lightbox_view_reset: '重置視角',
+    lightbox_previous_photo: '上一張照片',
+    lightbox_next_photo: '下一張照片',
     lightbox_anon_setting: '匿名設定',
     lightbox_player_n: '玩家 {n}',
 
@@ -566,6 +568,8 @@ export const sessionTranslations = {
     lightbox_show_score: 'Show Score',
     lightbox_hide_score: 'Hide Score',
     lightbox_view_reset: 'Reset View',
+    lightbox_previous_photo: 'Previous photo',
+    lightbox_next_photo: 'Next photo',
     lightbox_anon_setting: 'Anonymous Settings',
     lightbox_player_n: 'Player {n}',
 

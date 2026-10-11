@@ -6,6 +6,12 @@ import { useEffect, useRef, useState } from 'react';
 const getModalStack = (): string[] => (window as any).__modalStack || [];
 const setModalStack = (stack: string[]) => { (window as any).__modalStack = stack; };
 
+/** Read the existing stack without adding another keyboard/modal registry. */
+export const getTopModalId = (): string | undefined => {
+  const stack = getModalStack();
+  return stack[stack.length - 1];
+};
+
 /** 供 App.tsx 查詢：是否有 modal 正在管理歷史紀錄？ */
 export const hasActiveModals = () => getModalStack().length > 0;
 
