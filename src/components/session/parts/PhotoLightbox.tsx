@@ -8,6 +8,7 @@ import { LoadedImage } from '../modals/PhotoGalleryModal';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 import { usePhotoComposition } from '../hooks/usePhotoComposition';
+import PhotoSwipePreview from './PhotoSwipePreview';
 
 interface PhotoLightboxProps {
     images: LoadedImage[];
@@ -35,6 +36,9 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
 
     // Swipe State
     const [swipeOffset, setSwipeOffset] = useState(0);
+    // Release decisions must use the latest move, even before React renders it.
+    const swipeOffsetRef = useRef(0);
+    const swipeViewportWidth = useRef(0);
 
     const containerRef = useRef<HTMLDivElement>(null);
     const generatorRef = useRef<HTMLDivElement>(null);
@@ -52,6 +56,9 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
     useEffect(() => {
         setTransform({ x: 0, y: 0, scale: 1 });
         setSwipeOffset(0);
+        swipeOffsetRef.current = 0;
+        isDragging.current = false;
+        startPinchDist.current = 0;
         // Don't reset anonymous state per image, keep it persistent for session flow
     }, [currentIndex, currentImage.url]);
 
@@ -104,12 +111,18 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
 
         const isTouch = 'touches' in e;
 
-        if (isTouch && (e as React.TouchEvent).touches.length === 2) {
+        if (isTouch && (e as React.TouchEvent).touches.length >= 2) {
             startPinchDist.current = getTouchDistance((e as React.TouchEvent).touches);
             startPinchScale.current = transform.scale;
             isDragging.current = false;
+            swipeOffsetRef.current = 0;
+            setSwipeOffset(0);
         } else {
             isDragging.current = true;
+            swipeOffsetRef.current = 0;
+            setSwipeOffset(0);
+            // Measure once per gesture, not on every move or through an observer.
+            swipeViewportWidth.current = containerRef.current?.clientWidth ?? 0;
             const clientX = isTouch ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
             const clientY = isTouch ? (e as React.TouchEvent).touches[0].clientY : (e as React.MouseEvent).clientY;
             lastPos.current = { x: clientX, y: clientY };
@@ -122,7 +135,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
         if (e.nativeEvent) e.nativeEvent.stopPropagation();
         if (isBusy) return;
 
-        if ('touches' in e && e.touches.length === 2) {
+        if ('touches' in e && e.touches.length >= 2) {
             const dist = getTouchDistance(e.touches);
             if (startPinchDist.current > 0) {
                 const scaleFactor = dist / startPinchDist.current;
@@ -142,7 +155,8 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
             if (transform.scale > 1.05) {
                 setTransform(prev => ({ ...prev, x: prev.x + dx, y: prev.y + dy }));
             } else {
-                setSwipeOffset(prev => prev + dx);
+                swipeOffsetRef.current += dx;
+                setSwipeOffset(swipeOffsetRef.current);
             }
             lastPos.current = { x: clientX, y: clientY };
         }
@@ -158,18 +172,28 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
 
         if (!isBusy && transform.scale <= 1.05) {
             const SWIPE_THRESHOLD = 80;
-            if (swipeOffset > SWIPE_THRESHOLD && currentIndex > 0) {
+            if (swipeOffsetRef.current > SWIPE_THRESHOLD && currentIndex > 0) {
                 setCurrentIndex(p => p - 1);
-            } else if (swipeOffset < -SWIPE_THRESHOLD && currentIndex < images.length - 1) {
+            } else if (swipeOffsetRef.current < -SWIPE_THRESHOLD && currentIndex < images.length - 1) {
                 setCurrentIndex(p => p + 1);
             }
-            setSwipeOffset(0);
             setTransform({ x: 0, y: 0, scale: 1 });
         } else {
             if (transform.scale <= 1) {
                 setTransform({ x: 0, y: 0, scale: 1 });
             }
         }
+        swipeOffsetRef.current = 0;
+        setSwipeOffset(0);
+    };
+
+    const handlePointerCancel = (e: React.TouchEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        isDragging.current = false;
+        startPinchDist.current = 0;
+        swipeOffsetRef.current = 0;
+        setSwipeOffset(0);
     };
 
     const handleWheel = (e: React.WheelEvent) => {
@@ -303,6 +327,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                 onTouchMove={handlePointerMove}
                 onMouseUp={handlePointerUp}
                 onTouchEnd={handlePointerUp}
+                onTouchCancel={handlePointerCancel}
                 onMouseLeave={handlePointerUp}
                 onWheel={handleWheel}
             >
@@ -312,21 +337,15 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                         <span className="text-sm font-bold animate-pulse">{t(isRotating ? 'lightbox_rotating' : 'lightbox_generating')}</span>
                     </div>
                 ) : (
-                    <div
-                        className="w-full h-full flex items-center justify-center transition-transform duration-75 will-change-transform"
-                        style={{ transform: `translateX(${swipeOffset}px)` }}
-                    >
-                        <img
-                            src={currentDisplayImage}
-                            alt="Full view"
-                            className="max-w-full max-h-full object-contain select-none"
-                            style={{
-                                transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-                                cursor: transform.scale > 1 ? 'grab' : 'default'
-                            }}
-                            draggable={false}
-                        />
-                    </div>
+                    <PhotoSwipePreview
+                        currentSrc={currentDisplayImage}
+                        previousSrc={images[currentIndex - 1]?.url}
+                        nextSrc={images[currentIndex + 1]?.url}
+                        offset={swipeOffset}
+                        viewportWidth={swipeViewportWidth.current}
+                        isDragging={isDragging.current}
+                        transform={transform}
+                    />
                 )}
 
                 {/* Navigation Arrows */}
