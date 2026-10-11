@@ -232,9 +232,10 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   const headerRowWidth = containerWidth ? Math.max(containerWidth, requiredRowWidth) : '100%';
 
   return (
+    // Keep native panning on the viewport, including its empty background.
     <div 
-      className={`absolute inset-0 z-0 bg-app-bg no-scrollbar ${
-        isInitialSimpleScorepad ? 'h-full flex flex-col overflow-hidden pb-0' : 'overflow-auto pb-32'
+      className={`absolute inset-0 z-0 bg-app-bg no-scrollbar touch-pan-x touch-pan-y ${
+        isInitialSimpleScorepad ? 'h-full flex flex-col overflow-x-auto overflow-y-hidden pb-0' : 'overflow-auto pb-32'
       }`} 
       ref={scrollContainerRef}
       onDragOver={(e) => {
