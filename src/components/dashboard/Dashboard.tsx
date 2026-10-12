@@ -33,6 +33,7 @@ import type { RecentGameTemplateIdentity } from '../../utils/recentTemplateResol
 import { useGameLauncher } from '../../features/game-selector/hooks/useGameLauncher';
 import { useDashboardModals } from './hooks/useDashboardModals';
 import { useDebugGestures } from './hooks/useDebugGestures';
+import { useDashboardScrollPosition } from './hooks/useDashboardScrollPosition';
 import { useDashboardActions } from './hooks/useDashboardActions';
 
 interface DashboardProps {
@@ -312,6 +313,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
 
   // Refs for UI
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const handleScroll = useDashboardScrollPosition(scrollContainerRef, viewMode, searchQuery);
   const setupPanelRef = useRef<HTMLDivElement>(null);
   const statsPanelRef = useRef<HTMLDivElement>(null);
 
@@ -376,10 +378,11 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
       <div
         className="flex-1 overflow-y-auto no-scrollbar relative"
         ref={scrollContainerRef}
+        onScroll={handleScroll}
         onTouchStart={debugGestures.handleDebugTouchStart}
         onTouchMove={debugGestures.handleDebugTouchMove}
         onTouchEnd={debugGestures.handleDebugTouchEnd}
-        onTouchCancel={debugGestures.handleDebugTouchEnd}
+        onTouchCancel={debugGestures.handleDebugTouchCancel}
       >
         <PullActionIsland
           pullY={pullY}

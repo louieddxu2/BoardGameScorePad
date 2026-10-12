@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { touchGestureGuard } from '../utils/touchGesture';
 
 interface SwipeHandlers {
   onSwipeLeft?: () => void;
@@ -23,7 +24,7 @@ export const useSwipe = (
     flickThreshold = 0.2 
   } = options;
   
-  const touchStart = useRef<{ x: number, y: number } | null>(null);
+  const touchStart = useRef<{ x: number, y: number, round: number } | null>(null);
   const touchStartTime = useRef<number>(0);
   const currentOffset = useRef(0);
   const [swipeOffset, setSwipeOffset] = useState(0);
@@ -32,24 +33,34 @@ export const useSwipe = (
   // null: 尚未決定, 'h': 水平滑動中, 'v': 垂直捲動中
   const axisLock = useRef<'h' | 'v' | null>(null);
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches?.[0] || e.targetTouches?.[0];
-    if (!touch) return;
-    touchStart.current = {
-      x: touch.clientX,
-      y: touch.clientY
-    };
-    touchStartTime.current = Date.now();
+  const reset = () => {
+    touchStart.current = null;
     axisLock.current = null;
     currentOffset.current = 0;
     setSwipeOffset(0);
   };
 
+  const onTouchStart = (e: React.TouchEvent) => {
+    reset();
+    const round = touchGestureGuard.getState().round;
+    const touch = e.touches[0];
+    if (e.touches.length !== 1 || !touchGestureGuard.isAllowed(round)) return;
+    touchStart.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      round,
+    };
+    touchStartTime.current = Date.now();
+  };
+
   const onTouchMove = (e: React.TouchEvent) => {
     if (!touchStart.current) return;
+    if (e.touches.length !== 1 || !touchGestureGuard.isAllowed(touchStart.current.round)) {
+      reset();
+      return;
+    }
 
-    const touch = e.touches?.[0] || e.targetTouches?.[0];
-    if (!touch) return;
+    const touch = e.touches[0];
 
     const currentX = touch.clientX;
     const currentY = touch.clientY;
@@ -82,8 +93,12 @@ export const useSwipe = (
     }
   };
 
-  const onTouchEnd = () => {
+  const onTouchEnd = (e: React.TouchEvent) => {
     if (!touchStart.current) return;
+    if (e.touches.length !== 0 || !touchGestureGuard.isAllowed(touchStart.current.round)) {
+      reset();
+      return;
+    }
     
     // 計算滑動時間與速度
     const timeDiff = Date.now() - touchStartTime.current;
@@ -92,27 +107,31 @@ export const useSwipe = (
     const velocity = Math.abs(finalOffset) / timeDiff; // px per ms
     const isFlick = velocity > flickThreshold && Math.abs(finalOffset) > minFlickDistance;
 
+    let action: (() => void) | undefined;
     // 只有在鎖定為水平滑動時才觸發切換
     if (axisLock.current === 'h') {
         // 觸發條件：(距離足夠) 或者 (速度夠快且有一定距離)
         if (finalOffset > minSwipeDistance || (isFlick && finalOffset > 0)) {
-            onSwipeRight && onSwipeRight();
+            action = onSwipeRight;
         } else if (finalOffset < -minSwipeDistance || (isFlick && finalOffset < 0)) {
-            onSwipeLeft && onSwipeLeft();
+            action = onSwipeLeft;
         }
     }
 
-    // 重置
-    touchStart.current = null;
-    axisLock.current = null;
-    currentOffset.current = 0;
-    setSwipeOffset(0);
+    const round = touchStart.current.round;
+    reset();
+    if (action) {
+      if (e.cancelable) e.preventDefault();
+      touchGestureGuard.markHandled(round);
+      action();
+    }
   };
 
   return {
     onTouchStart,
     onTouchMove,
     onTouchEnd,
+    onTouchCancel: reset,
     swipeOffset
   };
 };

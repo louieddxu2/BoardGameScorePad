@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { touchGestureGuard } from '../utils/touchGesture';
 
 export type PullActionState = 'neutral' | 'search' | 'cloud';
 
@@ -33,9 +34,25 @@ export const usePullAction = (
   const startXRef = useRef(0);
   const activeStateRef = useRef<PullActionState>('neutral');
   const pullYRef = useRef(0); 
+  const touchRoundRef = useRef(0);
+  // Visual updates must not detach the listeners or cancel the active round.
+  const callbacksRef = useRef({ onTriggerSearch, onTriggerCloud });
+  callbacksRef.current = { onTriggerSearch, onTriggerCloud };
   
   // [New] 軸向鎖定 Ref ('h' = Horizontal, 'v' = Vertical, null = 未定)
   const axisLockRef = useRef<'h' | 'v' | null>(null);
+
+  const reset = useCallback(() => {
+    isTouchingRef.current = false;
+    isPullingRef.current = false;
+    axisLockRef.current = null;
+    activeStateRef.current = 'neutral';
+    pullYRef.current = 0;
+    setIsPulling(false);
+    setPullY(0);
+    setPullX(0);
+    setActiveState('neutral');
+  }, []);
 
   const triggerHaptic = useCallback(() => {
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -48,7 +65,10 @@ export const usePullAction = (
     if (!container || disabled) return;
 
     const handleTouchStart = (e: TouchEvent) => {
-      if (e.touches.length !== 1) return;
+      reset();
+      const round = touchGestureGuard.getState().round;
+      if (e.touches.length !== 1 || !touchGestureGuard.isAllowed(round)) return;
+      touchRoundRef.current = round;
 
       const touch = e.touches[0];
       startYRef.current = touch.clientY;
@@ -57,16 +77,15 @@ export const usePullAction = (
       
       // 檢查是否從頂部開始
       isTopStartRef.current = container.scrollTop < 1;
-      
-      // 重置狀態
-      isPullingRef.current = false;
-      axisLockRef.current = null; // 重置軸向鎖定
-      activeStateRef.current = 'neutral';
-      pullYRef.current = 0;
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (!isTouchingRef.current || !isTopStartRef.current) return;
+      if (!isTouchingRef.current) return;
+      if (e.touches.length !== 1 || !touchGestureGuard.isAllowed(touchRoundRef.current)) {
+        reset();
+        return;
+      }
+      if (!isTopStartRef.current) return;
 
       const touch = e.touches[0];
       const deltaY = touch.clientY - startYRef.current;
@@ -143,46 +162,37 @@ export const usePullAction = (
       }
     };
 
-    const handleTouchEnd = () => {
+    const handleTouchEnd = (e: TouchEvent) => {
       if (!isTouchingRef.current) return;
-      isTouchingRef.current = false;
-
-      if (isPullingRef.current) {
-        // 觸發動作
-        // 需同時滿足：下拉深度足夠 + 當前狀態非 neutral
-        if (pullYRef.current > thresholdY) {
-            if (activeStateRef.current === 'search') {
-                triggerHaptic();
-                onTriggerSearch();
-            } else if (activeStateRef.current === 'cloud') {
-                triggerHaptic();
-                onTriggerCloud();
-            }
-        }
+      if (e.touches.length !== 0 || !touchGestureGuard.isAllowed(touchRoundRef.current)) {
+        reset();
+        return;
       }
 
-      // 清理與重置
-      isPullingRef.current = false;
-      axisLockRef.current = null;
-      activeStateRef.current = 'neutral';
-      setIsPulling(false);
-      setPullY(0);
-      setPullX(0);
-      setActiveState('neutral');
+      const action = isPullingRef.current && pullYRef.current > thresholdY ? activeStateRef.current : 'neutral';
+      const round = touchRoundRef.current;
+      reset();
+      if (action === 'neutral') return;
+      if (e.cancelable) e.preventDefault();
+      touchGestureGuard.markHandled(round);
+      triggerHaptic();
+      if (action === 'search') callbacksRef.current.onTriggerSearch();
+      else callbacksRef.current.onTriggerCloud();
     };
 
     container.addEventListener('touchstart', handleTouchStart, { passive: true });
     container.addEventListener('touchmove', handleTouchMove, { passive: false });
     container.addEventListener('touchend', handleTouchEnd);
-    container.addEventListener('touchcancel', handleTouchEnd);
+    container.addEventListener('touchcancel', reset);
 
     return () => {
       container.removeEventListener('touchstart', handleTouchStart);
       container.removeEventListener('touchmove', handleTouchMove);
       container.removeEventListener('touchend', handleTouchEnd);
-      container.removeEventListener('touchcancel', handleTouchEnd);
+      container.removeEventListener('touchcancel', reset);
+      reset();
     };
-  }, [scrollContainerRef, onTriggerSearch, onTriggerCloud, thresholdY, thresholdX, damping, triggerHaptic, disabled]);
+  }, [scrollContainerRef, thresholdY, thresholdX, damping, triggerHaptic, disabled, reset]);
 
   return {
     pullY,

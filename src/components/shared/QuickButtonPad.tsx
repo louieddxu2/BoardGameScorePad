@@ -8,12 +8,14 @@ import { useTouchAction } from './useTouchAction';
 
 import { injectSoftHyphens } from '../../utils/text';
 import { getQuickButtonTypography } from './quickButtonTypography';
+import { useQuickButtonScroll, type QuickButtonScrollPositions } from './useQuickButtonScroll';
 
 interface QuickButtonPadProps {
     column: ScoreColumn;
     onAction: (action: QuickAction) => void;
     currentOptionId?: string; // New prop for highlighting
     currentMultiOptionIds?: string[];
+    scrollPositions?: QuickButtonScrollPositions;
 }
 
 interface QuickActionButtonProps {
@@ -65,6 +67,7 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
     return (
         <button
             {...touchHandlers}
+            data-quick-action-selected={isSelected || undefined}
             className={`
                     rounded-xl flex items-center p-[8px] shadow-sm transition-all relative h-full
                     ${isListMode ? 'flex-row justify-between px-[16px]' : 'flex-col justify-center'}
@@ -108,9 +111,10 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
     );
 };
 
-const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, currentOptionId, currentMultiOptionIds }) => {
+const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, currentOptionId, currentMultiOptionIds, scrollPositions }) => {
     const { t } = useSessionTranslation();
     const actions = column.quickActions || [];
+    const { containerRef, onScroll } = useQuickButtonScroll(column.id, actions.length > 0, scrollPositions);
 
     if (actions.length === 0) {
         return (
@@ -126,7 +130,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
     const minRowHeight = isListMode ? '3.5rem' : '4.5rem';
 
     return (
-        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar p-[8px]">
+        <div ref={containerRef} onScroll={onScroll} className="flex-1 min-h-0 overflow-y-auto no-scrollbar p-[8px]">
             <div
                 className="grid gap-[8px] relative"
                 style={{

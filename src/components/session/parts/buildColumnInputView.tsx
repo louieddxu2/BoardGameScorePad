@@ -5,6 +5,7 @@ import type { UIState } from '../hooks/useSessionState';
 import type { SessionTranslationKey } from '../../../i18n/session';
 import NumericKeypad from '../../shared/NumericKeypad';
 import QuickButtonPad from '../../shared/QuickButtonPad';
+import type { QuickButtonScrollPositions } from '../../shared/useQuickButtonScroll';
 import AutoScorePanel from './AutoScorePanel';
 import ScoreInfoPanel from './ScoreInfoPanel';
 import { getScoreHistory, getRawValue } from '../../../utils/scoring';
@@ -23,6 +24,7 @@ interface ColumnInputViewOptions {
     setOverwrite: (overwrite: boolean) => void;
     updateScore: (playerId: string, columnId: string, value: UIState['previewValue']) => void;
     moveToNext: () => void;
+    quickButtonScrollPositions: QuickButtonScrollPositions;
     t: (key: SessionTranslationKey, params?: Record<string, string | number>) => string;
 }
 
@@ -57,6 +59,7 @@ export const buildColumnInputView = ({
     setOverwrite,
     updateScore,
     moveToNext,
+    quickButtonScrollPositions,
     t,
 }: ColumnInputViewOptions): ColumnInputView => {
     let mainContentNode: React.ReactNode = null;
@@ -173,6 +176,7 @@ export const buildColumnInputView = ({
                 onAction={handleQuickButtonAction}
                 currentOptionId={currentOptionId}
                 currentMultiOptionIds={currentMultiOptionIds}
+                scrollPositions={quickButtonScrollPositions}
             />
         );
 

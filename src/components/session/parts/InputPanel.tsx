@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { GameSession, GameTemplate, Player, ScoreColumn, SavedListItem } from '../../../types';
 import { useSessionState } from '../hooks/useSessionState';
 import { useSessionEvents } from '../hooks/useSessionEvents';
@@ -48,6 +48,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     const [activeFactorIdx, setActiveFactorIdx] = useState<0 | 1>(0);
     const [showSwipeHint, setShowSwipeHint] = useState(false);
     const [recommendedColors, setRecommendedColors] = useState<string[]>([]);
+    const quickButtonScrollPositions = useMemo(() => new Map<string, number>(), [session.id]);
 
     const editingPlayer = session.players.find(p => p.id === editingPlayerId);
     const currentName = editingPlayer?.name;
@@ -443,6 +444,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     setOverwrite: (overwrite) => setUiState(p => ({ ...p, overwriteMode: overwrite })),
                     updateScore,
                     moveToNext: eventHandlers.moveToNext,
+                    quickButtonScrollPositions,
                     t,
                 }));
             }
