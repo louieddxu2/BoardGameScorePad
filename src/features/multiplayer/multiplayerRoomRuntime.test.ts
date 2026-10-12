@@ -4,6 +4,7 @@ import { GameSession, GameTemplate, MultiplayerParticipantBindingRecord, Multipl
 import { MultiplayerDeliveryStore } from './multiplayerDeliveryStore';
 import { MultiplayerParticipantBindingStore, saveParticipantBinding } from './multiplayerParticipantBinding';
 import { MultiplayerPlayerRoomStore, MultiplayerRoomRecoveryStore, MultiplayerRoomRuntimeTransport, createMultiplayerHostRoomRuntime, createMultiplayerPlayerRoomRuntime, restoreMultiplayerHostRoomRuntime, restoreMultiplayerPlayerRoomRuntime } from './multiplayerRoomRuntime';
+import { routeMultiplayerSessionUpdate } from './multiplayerSessionUpdateRouter';
 
 const column: ScoreColumn = { id: 'points', name: 'Points', formula: 'a1', inputType: 'keypad', isScoring: true, rounding: 'none' };
 const template: GameTemplate = { id: 'template-1', name: 'Template', columns: [column], createdAt: 1, updatedAt: 1 };
@@ -50,6 +51,36 @@ const createBindingStore = (): MultiplayerParticipantBindingStore => {
 
 describe('multiplayer room runtime', () => {
   afterEach(() => vi.useRealTimers());
+
+  it.each(['host', 'player'] as const)('drains admitted %s photo writes but rejects late callbacks without overwriting newer local scores', async role => {
+    const store = createRuntimeStore();
+    const onSessionSnapshot = vi.fn();
+    const options = {
+      store, deliveryStore: createDeliveryStore(), onSessionSnapshot,
+      transport: { sendToHost: () => false, sendToConnection: () => false, broadcastLocalChanges: async () => undefined },
+    };
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session });
+    const runtime = role === 'host'
+      ? await createMultiplayerHostRoomRuntime({ ...options, roomId: 'room-1', hostDeviceId: 'host', template, session })
+      : await createMultiplayerPlayerRoomRuntime({ ...options, bootstrapMessage: host.createBootstrapMessage(), deviceId: 'device', bindingStore: createBindingStore() });
+    const previous = runtime.session.session;
+    const admitted = routeMultiplayerSessionUpdate({ previous,
+      next: { ...previous, photos: ['photo'], photoContentIds: { photo: 'before-stop' } }, runtime, mediaOnly: true });
+    runtime.stop();
+    await runtime.whenIdle?.();
+    expect(await admitted).toMatchObject({ photoContentIds: { photo: 'before-stop' } });
+    expect(await store.getSession(session.id)).toMatchObject({ photoContentIds: { photo: 'before-stop' } });
+    onSessionSnapshot.mockClear();
+    const newer = { ...previous, players: [{ ...previous.players[0], scores: { points: { parts: [9] } }, totalScore: 9 }] };
+    await store.putSession(newer);
+    const putSession = vi.spyOn(store, 'putSession');
+    const result = await routeMultiplayerSessionUpdate({ previous,
+      next: { ...previous, photos: ['photo'], photoContentIds: { photo: 'v2' } }, runtime, mediaOnly: true });
+    expect(result).toBeNull();
+    expect(await store.getSession(session.id)).toEqual(newer);
+    expect(putSession).not.toHaveBeenCalled();
+    expect(onSessionSnapshot).not.toHaveBeenCalled();
+  });
 
   it('cancels a pending automatic template transfer when the host runtime stops', async () => {
     vi.useFakeTimers();

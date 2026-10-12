@@ -425,7 +425,9 @@ export const useGoogleDrive = () => {
                 }
 
                 return processItem(async () => {
-                    const { updatedRecord } = await googleDriveService.backupHistoryRecord(h, cloudInfo?.id, cloudInfo?.name);
+                    const backup = await googleDriveService.backupHistoryRecord(h, cloudInfo?.id, cloudInfo?.name);
+                    if (!backup) return;
+                    const { updatedRecord } = backup;
                     
                     // [Update] Consolidate metadata updates
                     const updateData: any = {};
@@ -467,7 +469,9 @@ export const useGoogleDrive = () => {
                 }
 
                 return processItem(async () => {
-                    const { updatedSession } = await googleDriveService.backupActiveSession(s, templateName, cloudInfo?.id, cloudInfo?.name);
+                    const backup = await googleDriveService.backupActiveSession(s, templateName, cloudInfo?.id, cloudInfo?.name);
+                    if (!backup) return;
+                    const { updatedSession } = backup;
                     
                     const updateData: any = {};
                     if (updatedSession.photoCloudIds && Object.keys(updatedSession.photoCloudIds).length > 0) {

@@ -3,11 +3,13 @@ import type { GameSession, HistoryRecord } from '../../types';
 import { db } from '../../db';
 import { googleDriveService } from '../googleDrive';
 import { googleDriveClient } from './googleDriveClient';
+import { imageService } from '../imageService';
 
 vi.mock('../../db', () => ({ db: { sessions: { get: vi.fn() }, history: { get: vi.fn() } } }));
 vi.mock('./googleAuth', () => ({ googleAuth: { isAuthorized: true } }));
 vi.mock('./googleDriveClient', () => ({ googleDriveClient: {
     uploadFileToFolder: vi.fn(), fetchAllItems: vi.fn(), trashFile: vi.fn(), updateFileMetadata: vi.fn(),
+    findFile: vi.fn(), createFolder: vi.fn(),
 } }));
 vi.mock('../imageService', () => ({ imageService: { getImage: vi.fn() } }));
 
@@ -36,6 +38,63 @@ describe('whole-record cloud backup ordering', () => {
     });
     afterEach(() => vi.restoreAllMocks());
 
+    it('keeps completed history JSON intact when an older active backup is waiting for the same record', async () => {
+        vi.mocked(db.history.get).mockResolvedValue(history);
+        vi.mocked(db.sessions.get).mockResolvedValue(undefined);
+        let release!: () => void;
+        let started!: () => void;
+        const blocked = new Promise<void>(resolve => { release = resolve; });
+        const uploading = new Promise<void>(resolve => { started = resolve; });
+        vi.mocked(googleDriveClient.uploadFileToFolder).mockImplementationOnce(async () => {
+            started(); await blocked; return { id: 'json' } as any;
+        });
+        const completed = googleDriveService.backupHistoryRecord(history, 'folder');
+        await uploading;
+        const obsolete = googleDriveService.backupActiveSession(session, 'Game', 'folder');
+        release();
+        await completed;
+        expect(await obsolete).toBeNull();
+        expect(uploadedJson()).toHaveLength(1);
+        expect(uploadedJson()[0]).toMatchObject({ gameName: history.gameName, snapshotTemplate: history.snapshotTemplate });
+        expect(googleDriveClient.trashFile).not.toHaveBeenCalled();
+    });
+
+    it('skips a deleted history record before creating a new cloud folder', async () => {
+        vi.mocked(db.history.get).mockResolvedValue(undefined);
+        vi.mocked(googleDriveClient.findFile).mockResolvedValue(null);
+        vi.mocked(googleDriveClient.createFolder).mockResolvedValue({ id: 'recreated-folder' } as any);
+        expect(await googleDriveService.backupHistoryRecord(history)).toBeNull();
+        expect(googleDriveService.ensureAppStructure).not.toHaveBeenCalled();
+        expect(googleDriveClient.createFolder).not.toHaveBeenCalled();
+        expect(googleDriveClient.uploadFileToFolder).not.toHaveBeenCalled();
+    });
+
+    it.each(['active', 'history'] as const)('does not commit or delete photos if the %s record disappears during photo upload', async kind => {
+        const record = kind === 'active' ? session : history;
+        const get = vi.mocked(kind === 'active' ? db.sessions.get : db.history.get);
+        get.mockResolvedValue(record);
+        vi.mocked(imageService.getImage).mockResolvedValue({ contentId: 'v2', blob: new Blob(['photo']) } as any);
+        let release!: () => void;
+        let started!: () => void;
+        const blocked = new Promise<void>(resolve => { release = resolve; });
+        const uploading = new Promise<void>(resolve => { started = resolve; });
+        vi.mocked(googleDriveClient.uploadFileToFolder).mockImplementationOnce(async () => {
+            started(); await blocked; return { id: 'cloud-v2' } as any;
+        });
+        const edited = { ...record, photoContentIds: { photo: 'v2' } };
+        get.mockResolvedValue(edited);
+        const backup = kind === 'active'
+            ? googleDriveService.backupActiveSession(edited as GameSession, 'Game', 'folder')
+            : googleDriveService.backupHistoryRecord(edited as HistoryRecord, 'folder');
+        await uploading;
+        get.mockResolvedValue(undefined);
+        release();
+        expect(await backup).toBeNull();
+        expect(uploadedJson()).toEqual([]);
+        expect(googleDriveClient.updateFileMetadata).not.toHaveBeenCalled();
+        expect(googleDriveClient.trashFile).not.toHaveBeenCalled();
+    });
+
     it.each(['active', 'history'] as const)('serializes %s JSON writes and refreshes a queued stale snapshot only when it starts', async kind => {
         const stale = kind === 'active' ? session : history;
         const latest = { ...stale, lastUpdatedAt: 2, updatedAt: 2,
@@ -55,11 +114,11 @@ describe('whole-record cloud backup ordering', () => {
         const first = backup(latest);
         await uploading;
         const second = backup(stale);
-        expect(get).toHaveBeenCalledTimes(1);
+        expect(get).toHaveBeenCalledTimes(2);
         expect(uploadedJson()).toHaveLength(1);
         release();
         await Promise.all([first, second]);
-        expect(get).toHaveBeenCalledTimes(2);
+        expect(get).toHaveBeenCalledTimes(4);
         expect(uploadedJson().map(record => record.photoContentIds)).toEqual([{ photo: 'v2' }, { photo: 'v2' }]);
         expect(googleDriveClient.trashFile).not.toHaveBeenCalled();
     });

@@ -42,19 +42,27 @@ export const usePhotoManager = ({
 
   // 使用 Ref 避免非同步操作中的過時閉包
   const contextIdRef = useRef(contextId);
+  const lifetimeRef = useRef({ active: false });
   const currentIdsRef = useRef(currentPhotoIds);
   const callbacksRef = useRef({ onPhotosAdded, onPhotoDeleted, onPhotoRotated, onError });
   const isSavingCameraBatchRef = useRef(false);
 
-  useEffect(() => { contextIdRef.current = contextId; }, [contextId]);
+  useEffect(() => {
+    contextIdRef.current = contextId;
+    const lifetime = { active: true };
+    lifetimeRef.current = lifetime;
+    return () => { lifetime.active = false; };
+  }, [contextId, ownerType]);
   useEffect(() => { currentIdsRef.current = currentPhotoIds; }, [currentPhotoIds]);
   useEffect(() => { callbacksRef.current = { onPhotosAdded, onPhotoDeleted, onPhotoRotated, onError }; });
 
   const handleRotatePhoto = useCallback(async (image: LocalImage, expectedContentId?: string) => {
+    const lifetime = lifetimeRef.current;
+    if (!lifetime.active) return;
     const context = contextIdRef.current;
     if (!currentIdsRef.current.includes(image.id)) throw new Error('Photo is no longer in this album');
     await saveRotatedPhoto(image, expectedContentId, context, ownerType);
-    if (contextIdRef.current === context) await callbacksRef.current.onPhotoRotated?.(image);
+    if (lifetime.active && contextIdRef.current === context) await callbacksRef.current.onPhotoRotated?.(image);
   }, [ownerType]);
 
   const photoInputRef = useRef<HTMLInputElement>(null);

@@ -78,6 +78,7 @@ describe('cloud photo transfer contracts', () => {
             { id: 'new-cloud', name: 'photo_v2.jpg' },
         ] as any);
         const map = await backupSessionPhotos('folder', ['photo'], { photo: 'old-cloud' }, { photo: 'v2' }, commitRecord);
+        if (!map) throw new Error('Expected the live photo backup to commit');
         expect(map).toEqual({ 'photo@v2': 'new-cloud' });
         expect(googleDriveClient.uploadFileToFolder).toHaveBeenCalledExactlyOnceWith('folder', 'photo_v2.jpg', blob.type, blob);
         expect(googleDriveClient.trashFile).toHaveBeenCalledExactlyOnceWith('old-cloud');

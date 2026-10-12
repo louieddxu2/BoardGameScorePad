@@ -16,7 +16,8 @@ export const latestBackupRecord = async <T>(
     snapshot: T,
     readLatest: () => Promise<T | undefined>,
     version: (record: T) => number,
-): Promise<T> => {
+): Promise<T | undefined> => {
     const stored = await readLatest();
-    return stored && version(stored) >= version(snapshot) ? stored : snapshot;
+    if (!stored) return undefined; // Deleted/moved records must not be recreated from a snapshot.
+    return version(stored) >= version(snapshot) ? stored : snapshot;
 };

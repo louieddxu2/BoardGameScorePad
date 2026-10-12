@@ -8,7 +8,7 @@ import TotalsBar from '../session/parts/TotalsBar';
 import ScreenshotModal from '../session/modals/ScreenshotModal';
 import HistorySettingsModal from './modals/HistorySettingsModal';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
-import { googleDriveService } from '../../services/googleDrive'; // Import service directly for actions
+import { backupHistoryRecordToCloud } from '../../hooks/sessionCloudBackup';
 import { ScreenshotLayout } from '../session/hooks/useSessionState';
 import { db } from '../../db';
 import { useAppData } from '../../hooks/useAppData';
@@ -133,30 +133,7 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
             setTimeout(() => {
                 const backgroundBackup = async () => {
                     try {
-                        let folderId = record.cloudFolderId;
-                        let isNewFolder = false;
-
-                        // If legacy record without folder ID, create one
-                        if (!folderId) {
-                            // This creates the folder in _ActiveSessions initially
-                            folderId = await googleDriveService.createActiveSessionFolder(record.gameName, record.id);
-                            // Update local DB immediately
-                            await db.history.update(record.id, { cloudFolderId: folderId });
-                            isNewFolder = true;
-                        }
-
-                        if (folderId) {
-                            const { updatedRecord } = await googleDriveService.backupHistoryRecord(record, folderId);
-
-                            if (updatedRecord.photoCloudIds && Object.keys(updatedRecord.photoCloudIds).length > 0) {
-                                await db.history.update(record.id, { photoCloudIds: updatedRecord.photoCloudIds });
-                            }
-
-                            // If we just created this folder, it is currently in _ActiveSessions.
-                            // We must move it to _History.
-                            if (isNewFolder) {
-                                await googleDriveService.moveSessionToHistory(folderId);
-                            }
+                        if (await backupHistoryRecordToCloud(record)) {
                             console.log("History auto-backup successful (background)");
                         }
                     } catch (e) {

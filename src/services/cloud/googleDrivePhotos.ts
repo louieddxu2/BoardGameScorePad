@@ -16,8 +16,8 @@ export async function backupSessionPhotos(
     photoIds: string[] | undefined,
     existingCloudIds: Record<string, string> | undefined,
     contentIds: PhotoContentIds | undefined,
-    commitRecord: (cloudIds: Record<string, string>) => Promise<void>,
-): Promise<Record<string, string>> {
+    commitRecord: (cloudIds: Record<string, string>) => Promise<void | false>,
+): Promise<Record<string, string> | null> {
     const resultCloudIds: Record<string, string> = {};
     const validFiles = new Map<string, string>();
     for (const id of photoIds || []) {
@@ -77,7 +77,7 @@ export async function backupSessionPhotos(
     }
 
     // A failed JSON/metadata write must leave every previously referenced photo intact.
-    await commitRecord(resultCloudIds);
+    if (await commitRecord(resultCloudIds) === false) return null;
     const previousIds = new Set(Object.values(existingCloudIds || {}));
     const currentIds = new Set(Object.values(resultCloudIds));
     const protectedFiles = new Set(['data.json', 'session.json', 'background.jpg']);

@@ -8,6 +8,7 @@ import { applyTemplateToSession } from '../utils/sessionTemplateUpdate';
 import { calculateScoreSession } from '../utils/sessionScoring';
 import { imageService } from '../services/imageService';
 import { googleDriveService } from '../services/googleDrive';
+import { backupActiveSessionToCloud, backupHistoryRecordToCloud } from './sessionCloudBackup';
 import { cleanupService } from '../services/cleanupService';
 import { relationshipService } from '../services/relationshipService';
 import { applyRecommendationsToPlayers } from '../features/recommendation/SessionPlayerInitializer'; // [Refactor] New Import
@@ -388,23 +389,8 @@ export const useSessionManager = ({
             await db.sessions.put(finalSession);
 
             if (isCloudEnabled()) {
-                const backgroundCloudBackup = async () => {
-                    let folderId = finalSession.cloudFolderId;
-                    const folderName = finalSession.name || activeTemplate?.name || "Unknown Game";
-
-                    if (!folderId) {
-                        folderId = await googleDriveService.createActiveSessionFolder(folderName, finalSession.id);
-                        await db.sessions.update(finalSession.id, { cloudFolderId: folderId });
-                    }
-
-                    if (folderId) {
-                        const { updatedSession } = await googleDriveService.backupActiveSession(finalSession, folderName, folderId);
-                        if (updatedSession.photoCloudIds && Object.keys(updatedSession.photoCloudIds).length > 0) {
-                            await db.sessions.update(finalSession.id, { photoCloudIds: updatedSession.photoCloudIds });
-                        }
-                    }
-                };
-                backgroundCloudBackup().catch(e => console.warn("Background session backup failed", e));
+                const folderName = finalSession.name || activeTemplate?.name || "Unknown Game";
+                backupActiveSessionToCloud(finalSession, folderName).catch(e => console.warn("Background session backup failed", e));
             }
         }
 
@@ -477,22 +463,7 @@ export const useSessionManager = ({
             }
 
             if (isCloudEnabled()) {
-                const backgroundHistoryBackup = async () => {
-                    let folderId = record.cloudFolderId;
-                    if (!folderId) {
-                        folderId = await googleDriveService.createActiveSessionFolder(record.gameName, currentSession.id);
-                        await db.history.update(record.id, { cloudFolderId: folderId });
-                    }
-
-                    if (folderId) {
-                        const { updatedRecord } = await googleDriveService.backupHistoryRecord(record, folderId);
-                        if (updatedRecord.photoCloudIds && Object.keys(updatedRecord.photoCloudIds).length > 0) {
-                            await db.history.update(record.id, { photoCloudIds: updatedRecord.photoCloudIds });
-                        }
-                        await googleDriveService.moveSessionToHistory(folderId);
-                    }
-                };
-                backgroundHistoryBackup().catch(e => console.warn("Background history backup failed", e));
+                backupHistoryRecordToCloud(record, { moveFromActive: true }).catch(e => console.warn("Background history backup failed", e));
             }
 
             if (activeTemplate) {

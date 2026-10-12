@@ -259,9 +259,12 @@ class GoogleDriveService {
         return updatedTemplate;
     }
 
-    public async backupHistoryRecord(record: HistoryRecord, knownFolderId?: string, existingFolderName?: string): Promise<{ folderId: string, updatedRecord: HistoryRecord }> {
+    public async backupHistoryRecord(record: HistoryRecord, knownFolderId?: string, existingFolderName?: string): Promise<{ folderId: string, updatedRecord: HistoryRecord } | null> {
         return queueRecordBackup(record.id, async () => {
-            record = await latestBackupRecord(record, () => db.history.get(record.id), value => value.updatedAt ?? value.endTime);
+            const readLatest = () => db.history.get(record.id);
+            const latest = await latestBackupRecord(record, readLatest, value => value.updatedAt ?? value.endTime);
+            if (!latest) return null;
+            record = latest;
             if (!this.isAuthorized) await this.signIn();
             await this.ensureAppStructure();
             if (!this.historyFolderId) throw new Error("History folder not found");
@@ -280,7 +283,8 @@ class GoogleDriveService {
             }
             const targetFolderId = folderId;
             let recordToSave = record;
-            await backupSessionPhotos(targetFolderId, record.photos, record.photoCloudIds, record.photoContentIds, async cloudIds => {
+            const cloudIds = await backupSessionPhotos(targetFolderId, record.photos, record.photoCloudIds, record.photoContentIds, async cloudIds => {
+                if (!await readLatest()) return false;
                 recordToSave = { ...record, photoCloudIds: cloudIds };
                 await googleDriveClient.uploadFileToFolder(targetFolderId, 'session.json', 'application/json', JSON.stringify(recordToSave, null, 2));
                 await googleDriveClient.updateFileMetadata(targetFolderId, {
@@ -288,13 +292,20 @@ class GoogleDriveService {
                 });
             });
 
+            if (!cloudIds) return null;
             return { folderId: targetFolderId, updatedRecord: recordToSave };
         });
     }
 
-    public async backupActiveSession(session: GameSession, templateName: string, knownFolderId?: string, existingFolderName?: string): Promise<{ folderId: string, updatedSession: GameSession }> {
+    public async backupActiveSession(session: GameSession, templateName: string, knownFolderId?: string, existingFolderName?: string): Promise<{ folderId: string, updatedSession: GameSession } | null> {
         return queueRecordBackup(session.id, async () => {
-            session = await latestBackupRecord(session, () => db.sessions.get(session.id), value => value.lastUpdatedAt ?? value.startTime);
+            const readLatest = async () => {
+                const stored = await db.sessions.get(session.id);
+                return stored?.status === 'active' ? stored : undefined;
+            };
+            const latest = await latestBackupRecord(session, readLatest, value => value.lastUpdatedAt ?? value.startTime);
+            if (!latest) return null;
+            session = latest;
             if (!this.isAuthorized) await this.signIn();
             await this.ensureAppStructure();
             if (!this.activeFolderId) throw new Error("Active folder not found");
@@ -313,7 +324,8 @@ class GoogleDriveService {
             }
             const targetFolderId = folderId;
             let sessionToSave = session;
-            await backupSessionPhotos(targetFolderId, session.photos, session.photoCloudIds, session.photoContentIds, async cloudIds => {
+            const cloudIds = await backupSessionPhotos(targetFolderId, session.photos, session.photoCloudIds, session.photoContentIds, async cloudIds => {
+                if (!await readLatest()) return false;
                 sessionToSave = { ...session, photoCloudIds: cloudIds };
                 await googleDriveClient.uploadFileToFolder(targetFolderId, 'session.json', 'application/json', JSON.stringify(sessionToSave, null, 2));
                 await googleDriveClient.updateFileMetadata(targetFolderId, {
@@ -321,6 +333,7 @@ class GoogleDriveService {
                 });
             });
 
+            if (!cloudIds) return null;
             return { folderId: targetFolderId, updatedSession: sessionToSave };
         });
     }

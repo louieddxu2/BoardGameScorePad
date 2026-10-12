@@ -171,6 +171,7 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
   };
   const controller = createMultiplayerPlayerRoomController({
     playerSession,
+    isActive: () => !stopped,
     deviceId: options.deviceId,
     deliveryStore: options.deliveryStore,
     snapshotStore: options.store,

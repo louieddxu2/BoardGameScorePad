@@ -306,6 +306,7 @@ export const createMultiplayerRoomController = (options: {
       return completionPromise;
     },
     applyLocalSession(session: GameSession, previous = options.hostSession.session) {
+      if (stopped) return Promise.resolve(null);
       return enqueue(async () => {
         if (session.id !== options.hostSession.session.id || previous.id !== session.id || session.status !== 'active') return null;
         const merged = mergeSessionInputChanges(options.hostSession.session, previous, session);
@@ -364,6 +365,7 @@ export const createMultiplayerPlayerRoomController = (options: {
   onCompleted?: (message: import('./protocol').SessionCompletedMessage) => void | Promise<void>;
   onSnapshot?: (snapshot: SessionSnapshotMessage) => void | Promise<void>;
   onLocalSession?: (session: GameSession) => void;
+  isActive?: () => boolean;
   now?: () => number;
 }) => {
   const now = options.now ?? Date.now;
@@ -569,6 +571,7 @@ export const createMultiplayerPlayerRoomController = (options: {
     },
 
     applyLocalSessionMedia(session: GameSession) {
+      if (options.isActive?.() === false) return Promise.resolve(null);
       const task = receiveQueue.then(async () => {
         if (!options.playerSession.applyLocalSessionMedia(session)) return null;
         unpersistedSnapshot = {
