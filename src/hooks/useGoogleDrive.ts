@@ -346,12 +346,13 @@ export const useGoogleDrive = () => {
                 await Promise.all(executing);
             };
 
-            const processItem = async (task: () => Promise<void>, name: string, isSkipped: boolean = false) => {
+            const processItem = async (task: () => Promise<void | false>, name: string, isSkipped: boolean = false) => {
                 try {
-                    if (isSkipped) {
+                    // false means a queued record was retired, not a successful write.
+                    if (isSkipped || (await task()) === false) {
+                        isSkipped = true;
                         skippedCount++;
                     } else {
-                        await task();
                         successCount++;
                     }
                 } catch (e) {
@@ -426,7 +427,7 @@ export const useGoogleDrive = () => {
 
                 return processItem(async () => {
                     const backup = await googleDriveService.backupHistoryRecord(h, cloudInfo?.id, cloudInfo?.name);
-                    if (!backup) return;
+                    if (!backup) return false;
                     const { updatedRecord } = backup;
                     
                     // [Update] Consolidate metadata updates
@@ -441,13 +442,11 @@ export const useGoogleDrive = () => {
                         await db.history.update(h.id, updateData);
                     }
 
-                    // [Fix] Logic to cleanup stale Active Session in Cloud
-                    if (activeMap.has(h.id)) {
-                        const staleActiveFile = activeMap.get(h.id);
-                        if (staleActiveFile) {
-                            googleDriveService.softDeleteFolder(staleActiveFile.id, 'active')
-                                .catch(err => console.warn("Failed to cleanup stale active session", err));
-                        }
+                    // An old Active listing may now refer to the retained History folder.
+                    const staleActiveFile = activeMap.get(h.id);
+                    if (staleActiveFile) {
+                        await googleDriveService.cleanupStaleActiveSessionFolder(staleActiveFile.id, backup.folderId)
+                            .catch(err => console.warn("Failed to cleanup stale active session", err));
                     }
                 }, `${h.gameName} (${new Date(h.endTime).toLocaleDateString()})`, isUpToDate);
             });
@@ -470,7 +469,7 @@ export const useGoogleDrive = () => {
 
                 return processItem(async () => {
                     const backup = await googleDriveService.backupActiveSession(s, templateName, cloudInfo?.id, cloudInfo?.name);
-                    if (!backup) return;
+                    if (!backup) return false;
                     const { updatedSession } = backup;
                     
                     const updateData: any = {};

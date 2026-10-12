@@ -11,6 +11,7 @@ export interface DriveFile {
   name: string;
   mimeType: string;
   parents?: string[];
+  trashed?: boolean;
   appProperties?: { [key: string]: string };
 }
 

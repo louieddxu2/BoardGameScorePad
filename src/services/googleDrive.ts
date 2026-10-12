@@ -366,6 +366,22 @@ class GoogleDriveService {
         await googleDriveClient.moveFile(sessionFolderId, this.activeFolderId, this.historyFolderId);
     }
 
+    /** Cleanup uses physical IDs and a live parent check, never a cached category. */
+    public async cleanupStaleActiveSessionFolder(folderId: string, retainedHistoryFolderId: string): Promise<void> {
+        if (folderId === retainedHistoryFolderId || !this.isAuthorized) return;
+        await this.ensureAppStructure();
+        const activeFolderId = this.activeFolderId;
+        if (!activeFolderId) return;
+
+        const folder = await googleDriveClient.getFile(folderId, 'id, parents, trashed');
+        if (folder.trashed || !folder.parents?.includes(activeFolderId)) return;
+
+        const trashId = await this.getTrashFolder('active');
+        // Do not auto-resolve/remove a newly acquired History parent during a move.
+        await googleDriveClient.moveFile(folderId, activeFolderId, trashId);
+        this.cleanupTrashLimit(trashId);
+    }
+
     public async softDeleteFolder(folderId: string, type: CloudResourceType): Promise<void> {
         if (!this.isAuthorized) return;
         await this.ensureAppStructure();
