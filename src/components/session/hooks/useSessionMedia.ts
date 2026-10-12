@@ -13,7 +13,7 @@ interface UseSessionMediaProps {
     session: GameSession;
     template: GameTemplate;
     baseImage: string | null;
-    onUpdateSession: (session: GameSession) => void;
+    onUpdateSession: (session: GameSession) => void | Promise<void>;
     onUpdateTemplate: (template: GameTemplate) => void; // Added for removing image ref
     onUpdateImage: (img: string | Blob | null) => void; // Allow null to clear
     setUiState: React.Dispatch<React.SetStateAction<UIState>>;
@@ -38,8 +38,8 @@ export const useSessionMedia = ({
     const photoManager = usePhotoManager({
         contextId: session.id,
         currentPhotoIds: session.photos || [],
-        onPhotosAdded: (ids, source) => {
-            onUpdateSession({ ...session, photos: ids });
+        onPhotosAdded: async (ids, source) => {
+            await onUpdateSession({ ...session, photos: ids });
             if (source === 'camera') {
                 // Camera capture: 開啟相簿，但不重設 galleryParams（Score Camera 依賴其持久化）
                 setUiState(p => ({ ...p, isPhotoGalleryOpen: true }));
@@ -53,13 +53,13 @@ export const useSessionMedia = ({
                 }));
             }
         },
-        onPhotoDeleted: (ids) => {
-            onUpdateSession({ ...session, photos: ids });
+        onPhotoDeleted: async (ids) => {
+            await onUpdateSession({ ...session, photos: ids });
             showToast({ message: t('toast_photo_deleted'), type: 'info' });
         },
-        onPhotoRotated: image => {
-            onUpdateSession({ ...session, photoContentIds: { ...session.photoContentIds, [image.id]: image.contentId! } });
-        },
+        onPhotoRotated: image => onUpdateSession({
+            ...session, photoContentIds: { ...session.photoContentIds, [image.id]: image.contentId! }
+        }),
         onError: (type) => {
             if (type === 'save' || type === 'compress') {
                 showToast({ message: t('toast_save_failed'), type: 'error' });

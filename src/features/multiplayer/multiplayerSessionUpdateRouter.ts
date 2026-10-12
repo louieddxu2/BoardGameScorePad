@@ -9,11 +9,14 @@ export const routeMultiplayerSessionUpdate = async (options: {
   next: GameSession;
   runtime: MultiplayerHostRoomRuntime | MultiplayerPlayerRoomRuntime;
   claimedPlayerIds?: string[];
+  mediaOnly?: boolean;
 }): Promise<GameSession | null> => {
   if (options.runtime.role === 'host') {
     const snapshot = await options.runtime.controller.applyLocalSession(options.next, options.previous);
     return snapshot?.session ?? null;
   }
+
+  if (options.mediaOnly) return options.runtime.controller.applyLocalSessionMedia(options.next);
 
   const claimed = new Set(options.claimedPlayerIds ?? []);
   for (const nextPlayer of options.next.players) {

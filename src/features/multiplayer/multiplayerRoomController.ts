@@ -406,6 +406,30 @@ export const createMultiplayerPlayerRoomController = (options: {
   };
   let unpersistedSnapshot: SessionSnapshotMessage | null = null;
   const settledOutboxIds = new Set<string>();
+  const persistConfirmedChanges = async () => {
+    const write = unpersistedSnapshot;
+    // Retry persistence only, at most three attempts; never reapply inputs.
+    for (let attempt = 0; ; attempt++) {
+      try {
+        if (unpersistedSnapshot) {
+          await persistMultiplayerSnapshot(unpersistedSnapshot, options.snapshotStore);
+          unpersistedSnapshot = null;
+        }
+        for (const id of settledOutboxIds) {
+          await options.deliveryStore.deleteOutbox(id);
+          settledOutboxIds.delete(id);
+        }
+        break;
+      } catch (error) {
+        if (attempt >= 2) throw error;
+      }
+    }
+    if (write) {
+      // A local input may have arrived during the write: publish its latest projection.
+      await options.onSnapshot?.({ ...write, session: options.playerSession.session });
+    }
+    return Boolean(write);
+  };
   const receiveOne = async (message: unknown) => {
     if (isBootstrapPackageMessage(message)) {
       const store = options.bootstrapStore;
@@ -469,28 +493,9 @@ export const createMultiplayerPlayerRoomController = (options: {
 
     for (const opId of settledOpIds) settledOutboxIds.add(scorePatchOperationKey(options.playerSession.room.roomId, options.deviceId, opId));
     if (snapshot) unpersistedSnapshot = { ...snapshot, session: options.playerSession.confirmedSession };
-    const write = unpersistedSnapshot;
     // A single ACK must recover transient local failures without another network
-    // message. Retry persistence only, at most three attempts; never reapply inputs.
-    for (let attempt = 0; ; attempt++) {
-      try {
-        if (unpersistedSnapshot) {
-          await persistMultiplayerSnapshot(unpersistedSnapshot, options.snapshotStore);
-          unpersistedSnapshot = null;
-        }
-        for (const id of settledOutboxIds) {
-          await options.deliveryStore.deleteOutbox(id);
-          settledOutboxIds.delete(id);
-        }
-        break;
-      } catch (error) {
-        if (attempt >= 2) throw error;
-      }
-    }
-    if (write) {
-      // Use the latest projection: a local input may have arrived during the write.
-      await options.onSnapshot?.({ ...write, session: options.playerSession.session });
-    } else publishLocalChange(previous);
+    // message. Local media writes use the same persistence/notification policy.
+    if (!await persistConfirmedChanges()) publishLocalChange(previous);
     return true;
   };
   let receiveQueue = Promise.resolve();
@@ -563,8 +568,24 @@ export const createMultiplayerPlayerRoomController = (options: {
       return task;
     },
 
+    applyLocalSessionMedia(session: GameSession) {
+      const task = receiveQueue.then(async () => {
+        if (!options.playerSession.applyLocalSessionMedia(session)) return null;
+        unpersistedSnapshot = {
+          type: 'session:snapshot', roomId: options.playerSession.room.roomId,
+          sessionId: session.id, session: options.playerSession.confirmedSession,
+          revision: options.playerSession.revision, updatedAt: now(),
+        };
+        await persistConfirmedChanges();
+        return options.playerSession.session;
+      });
+      receiveQueue = task.then(() => undefined, () => undefined);
+      return task;
+    },
+
     restorePendingPatches,
     waitForPendingWrites: () => outboxQueue,
+    waitForReceivedWrites: () => receiveQueue,
     async replayPendingPatches() {
       const messages = await restorePendingPatches();
       for (const message of messages) send(message);

@@ -26,6 +26,74 @@ const createDeliveryStore = (): MultiplayerDeliveryStore => {
 
 describe('multiplayer room controller', () => {
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+  it('queues a local photo edit behind an in-flight snapshot and drains both before releasing the room', async () => {
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session });
+    const playerSession = createMultiplayerPlayerSessionFromBootstrap({ bootstrapMessage: host.createBootstrapMessage() });
+    let release!: () => void;
+    let started!: () => void;
+    const blocked = new Promise<void>(resolve => { release = resolve; });
+    const writing = new Promise<void>(resolve => { started = resolve; });
+    const putSession = vi.fn(async (_session: GameSession) => undefined)
+      .mockImplementationOnce(async () => { started(); await blocked; });
+    const controller = createMultiplayerPlayerRoomController({
+      playerSession, deviceId: 'device-1', deliveryStore: createDeliveryStore(),
+      snapshotStore: { putSession, updateRoomRevision: async () => undefined },
+      transport: { sendToHost: () => false, sendToConnection: () => false, broadcastLocalChanges: async () => undefined },
+    });
+    const snapshot = host.applyLocalSession({ ...session, players: [{ ...player, scores: { points: { parts: [5] } } }] })!;
+    const receive = controller.receive(snapshot);
+    await writing;
+    const media = { photos: ['photo'], photoContentIds: { photo: 'v2' } };
+    const edit = controller.applyLocalSessionMedia({ ...session, ...media }); // Stale UI inputs must not replace 5.
+    const drained = vi.fn();
+    const idle = controller.waitForReceivedWrites().then(drained);
+    await Promise.resolve();
+    expect(playerSession.session.photos).toBeUndefined();
+    expect(putSession).toHaveBeenCalledTimes(1);
+    expect(drained).not.toHaveBeenCalled();
+    release();
+    await Promise.all([receive, edit, idle]);
+    expect(drained).toHaveBeenCalledOnce();
+    expect(playerSession.session).toMatchObject({ ...media, players: [{ totalScore: 5 }] });
+    expect(putSession.mock.calls[1][0]).toMatchObject({ ...media, players: [{ totalScore: 5 }] });
+  });
+
+  it.each(['snapshot', 'bootstrap', 'completed'] as const)('keeps participant-local photo revisions through %s without confirming pending scores', async kind => {
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
+    const playerSession = createMultiplayerPlayerSessionFromBootstrap({ bootstrapMessage: host.createBootstrapMessage(), now: () => 20 });
+    const putSession = vi.fn(async (_session: GameSession) => undefined);
+    const persistBootstrap = vi.fn(async (_records: any) => undefined);
+    const onCompleted = vi.fn();
+    const sendToHost = vi.fn(() => true);
+    const controller = createMultiplayerPlayerRoomController({
+      playerSession, deviceId: 'device-1', deliveryStore: createDeliveryStore(),
+      snapshotStore: { putSession, updateRoomRevision: async () => undefined },
+      bootstrapStore: { getTemplate: async () => template, putTemplate: async () => undefined,
+        putSession, putRoom: async () => undefined, persistBootstrap },
+      transport: { sendToHost, sendToConnection: () => false, broadcastLocalChanges: async () => undefined },
+      onCompleted, now: () => 20,
+    });
+    await controller.queueScoreValuePatch({ actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [7] } });
+    sendToHost.mockClear();
+    const calculate = vi.spyOn(scoring, 'calculatePlayerTotal');
+    const media = { photos: ['local-photo'], photoContentIds: { 'local-photo': 'rotated-v2' } };
+    await controller.applyLocalSessionMedia({ ...playerSession.session, ...media });
+    expect(calculate).not.toHaveBeenCalled();
+    expect(playerSession.session.players[0].totalScore).toBe(7);
+    expect(putSession.mock.calls[0][0]).toMatchObject({ ...media, players: [{ scores: {}, totalScore: 0 }] });
+    expect(sendToHost).not.toHaveBeenCalled();
+
+    const hostSnapshot = host.applyLocalSession({ ...host.session, photos: ['host-photo'] })!;
+    if (kind === 'snapshot') await controller.receive(hostSnapshot);
+    if (kind === 'bootstrap') await controller.receive(host.createBootstrapMessage());
+    if (kind === 'completed') await controller.receive(host.complete());
+    expect(playerSession.confirmedSession).toMatchObject(media);
+    expect(playerSession.session).toMatchObject(media);
+    const persisted = kind === 'completed' ? onCompleted.mock.calls[0][0].finalSession
+      : kind === 'bootstrap' ? persistBootstrap.mock.calls[0][0].session : putSession.mock.calls[putSession.mock.calls.length - 1][0];
+    expect(persisted).toMatchObject({ ...media, players: [{ scores: {}, totalScore: 0 }] });
+  });
+
   it('sends a complete claim set and accepts an empty permission set', async () => {
     const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session, now: () => 10 });
     const playerSession = createMultiplayerPlayerSessionFromBootstrap({ bootstrapMessage: host.createBootstrapMessage(), now: () => 10 });

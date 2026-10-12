@@ -279,6 +279,7 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
       await Promise.all([...pendingRuntimeTasks]);
     }
     await controller.waitForPendingWrites();
+    await controller.waitForReceivedWrites();
   };
 
   options.transport.setMessageReceiver?.(async (message) => {

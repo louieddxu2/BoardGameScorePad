@@ -1,0 +1,22 @@
+const pendingBackups = new Map<string, Promise<void>>();
+
+/** Serialize the entire backup, including session.json, across active/history views. */
+export const queueRecordBackup = <T>(recordId: string, backup: () => Promise<T>): Promise<T> => {
+    const task = (pendingBackups.get(recordId) ?? Promise.resolve()).then(backup);
+    const tail = task.then(() => undefined, () => undefined);
+    pendingBackups.set(recordId, tail);
+    void tail.then(() => {
+        if (pendingBackups.get(recordId) === tail) pendingBackups.delete(recordId);
+    });
+    return task;
+};
+
+/** Re-read only when the queued job starts; a captured UI snapshot may be stale. */
+export const latestBackupRecord = async <T>(
+    snapshot: T,
+    readLatest: () => Promise<T | undefined>,
+    version: (record: T) => number,
+): Promise<T> => {
+    const stored = await readLatest();
+    return stored && version(stored) >= version(snapshot) ? stored : snapshot;
+};

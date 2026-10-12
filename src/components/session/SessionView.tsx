@@ -148,7 +148,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     session,
     template,
     baseImage,
-    onUpdateSession: props.onUpdateSession,
+    onUpdateSession: next => handleSessionUpdate(next, true),
     onUpdateTemplate: handleTemplateUpdate,
     onUpdateImage: props.onUpdateImage,
     setUiState,
@@ -187,7 +187,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     };
   }, [manager, props.multiplayerRoomId]);
 
-  const handleSessionUpdate = useCallback(async (nextSession: GameSession) => {
+  const handleSessionUpdate = useCallback(async (nextSession: GameSession, mediaOnly = false) => {
     const roomId = props.multiplayerRoomId;
     const runtime = managedRoomState?.runtime;
     if (!roomId || !runtime) {
@@ -201,6 +201,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       next: nextSession,
       runtime,
       claimedPlayerIds,
+      mediaOnly,
     });
     if (canonical) {
       props.onUpdateSession(canonical, { alreadyPersisted: true });

@@ -8,29 +8,22 @@ const photoFilename = (id: string, contentId?: string) => contentId ? `${id}_${c
 /**
  * Helper: Backup Photos for Session/History
  * 1. Uploads missing photos and collects their Cloud IDs.
- * 2. Cleans up stale photos (files in cloud that are not in the current list).
+ * 2. Commits the referencing JSON before cleaning known obsolete photos.
  * Returns the updated photoCloudIds map.
  */
 export async function backupSessionPhotos(
     folderId: string,
     photoIds: string[] | undefined,
     existingCloudIds: Record<string, string> | undefined,
-    contentIds?: PhotoContentIds,
+    contentIds: PhotoContentIds | undefined,
+    commitRecord: (cloudIds: Record<string, string>) => Promise<void>,
 ): Promise<Record<string, string>> {
     const resultCloudIds: Record<string, string> = {};
     const validFiles = new Map<string, string>();
-    const previousBackupIds = new Set<string>();
-    const pendingPhotoIds = new Set<string>();
     for (const id of photoIds || []) {
         const key = photoCloudKey(id, contentIds?.[id]);
         validFiles.set(photoFilename(id, contentIds?.[id]), key);
         if (existingCloudIds?.[key]) resultCloudIds[key] = existingCloudIds[key];
-        else pendingPhotoIds.add(id);
-    }
-    // One pass over the old map, not one scan per photo. Keep the last
-    // referenced version until a later backup confirms the new session.json.
-    for (const [oldKey, fileId] of Object.entries(existingCloudIds || {})) {
-        if (pendingPhotoIds.has(oldKey.split('@', 1)[0])) previousBackupIds.add(fileId);
     }
 
     // 1. Upload Missing Photos & Capture IDs
@@ -66,36 +59,37 @@ export async function backupSessionPhotos(
         }
     }
 
-    // 2. Cleanup Stale Photos (Hygiene)
-    // We list ALL files in the folder to ensure we don't leave orphans.
-    // This listing is acceptable during backup (write op) to save storage.
+    // Keep one folder listing, both to recover missing IDs and to identify
+    // known obsolete files. An unknown revision may belong to another device.
+    let cloudFiles: Awaited<ReturnType<typeof googleDriveClient.fetchAllItems>> = [];
     try {
-        const cloudFiles = await googleDriveClient.fetchAllItems(
+        cloudFiles = await googleDriveClient.fetchAllItems(
             `'${folderId}' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false`,
             'files(id, name)'
         );
 
-        // Protected files that shouldn't be deleted
-        const protectedFiles = new Set(['data.json', 'session.json', 'background.jpg']);
-
         for (const file of cloudFiles) {
-            if (protectedFiles.has(file.name)) continue;
-            if (previousBackupIds.has(file.id)) continue;
+            const key = validFiles.get(file.name);
+            if (key && !resultCloudIds[key]) resultCloudIds[key] = file.id;
+        }
+    } catch (e) {
+        console.warn('Failed to list session photos', e);
+    }
 
-            // Check if it's an image associated with this session
-            if (file.name.endsWith('.jpg')) {
-                const key = validFiles.get(file.name);
-                if (!key) {
-                    await googleDriveClient.trashFile(file.id);
-                } else {
-                    if (!resultCloudIds[key]) {
-                        resultCloudIds[key] = file.id;
-                    }
-                }
+    // A failed JSON/metadata write must leave every previously referenced photo intact.
+    await commitRecord(resultCloudIds);
+    const previousIds = new Set(Object.values(existingCloudIds || {}));
+    const currentIds = new Set(Object.values(resultCloudIds));
+    const protectedFiles = new Set(['data.json', 'session.json', 'background.jpg']);
+    try {
+        for (const file of cloudFiles) {
+            if (file.name.endsWith('.jpg') && !protectedFiles.has(file.name) &&
+                previousIds.has(file.id) && !currentIds.has(file.id)) {
+                await googleDriveClient.trashFile(file.id);
             }
         }
     } catch (e) {
-        console.warn("Failed to cleanup stale session photos", e);
+        console.warn('Failed to cleanup stale session photos', e);
     }
 
     return resultCloudIds;

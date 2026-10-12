@@ -16,6 +16,10 @@ import * as scoring from '../../utils/scoring';
 import { useMobileZoom } from '../../hooks/useMobileZoom';
 import { _resetActiveCountForTesting } from '../../hooks/useModalBackHandler';
 
+const mediaHook = vi.hoisted(() => ({
+  options: null as { session: GameSession; onUpdateSession: (session: GameSession) => Promise<void> } | null,
+}));
+
 vi.mock('../../features/ai-generator/hooks/useAiGenerator', () => ({
   useAiGenerator: () => ({
     status: 'idle',
@@ -35,7 +39,9 @@ vi.mock('../../features/ai-generator/hooks/useAiSimpleGenerator', () => ({
 vi.mock('./hooks/useSessionMedia', async () => {
   const React = await import('react');
   return {
-    useSessionMedia: () => ({
+    useSessionMedia: (options: NonNullable<typeof mediaHook.options>) => {
+      mediaHook.options = options;
+      return {
       fileInputRef: React.createRef<HTMLInputElement>(),
       photoInputRef: React.createRef<HTMLInputElement>(),
       galleryInputRef: React.createRef<HTMLInputElement>(),
@@ -54,7 +60,8 @@ vi.mock('./hooks/useSessionMedia', async () => {
       handleScannerConfirm: vi.fn(),
       handleDeletePhoto: vi.fn(),
       handleRemoveBackground: vi.fn(),
-    }),
+      };
+    },
   };
 });
 
@@ -577,6 +584,62 @@ describe('SessionView toolbox scroll behavior', () => {
     expect(runtime.session.revision).toBe(2);
     expect(runtime.session.session.players[0]).toMatchObject({ scores: { 'col-1': { parts: [1] } }, totalScore: 1 });
     expect(onUpdateSession).toHaveBeenCalledExactlyOnceWith(runtime.session.session, { alreadyPersisted: true });
+  });
+
+  it.each(['host', 'player'] as const)('routes %s media updates through the room before adopting later score inputs', async role => {
+    const manager = createMultiplayerSessionManager();
+    const template = makeTemplate();
+    const session = makeSession();
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host-1', template, session });
+    const putSession = vi.fn(async (_session: GameSession) => undefined);
+    const store = {
+      getTemplate: async () => template, putTemplate: async () => undefined, putSession,
+      putRoom: async () => undefined, persistBootstrap: async () => undefined,
+      updateRoomRevision: async () => undefined, deleteRoom: async () => undefined,
+    };
+    const options = {
+      store, deliveryStore: { ...multiplayerDeliveryStore,
+        getSequence: async () => undefined, putSequence: async () => undefined,
+        getReceipt: async () => undefined, putReceipt: async () => undefined,
+        listOutbox: async () => [],
+      },
+      transport: { sendToHost: () => false, sendToConnection: () => true, broadcastLocalChanges: async () => undefined },
+      onSessionSnapshot: manager.createRuntimeCallbacks('room-1').onSessionSnapshot,
+    };
+    const runtime = role === 'host'
+      ? await createMultiplayerHostRoomRuntime({ ...options, roomId: 'room-1', hostDeviceId: 'host-1', template, session })
+      : await createMultiplayerPlayerRoomRuntime({ ...options, bootstrapMessage: host.createBootstrapMessage(), deviceId: 'participant-media',
+        bindingStore: { get: async () => undefined, put: async () => undefined, delete: async () => undefined },
+      });
+    manager.register('room-1', runtime);
+    const onUpdateSession = vi.fn();
+    renderSession({ multiplayerRoomId: 'room-1', multiplayerManager: manager, onUpdateSession });
+    const media = { photos: ['photo'], photoContentIds: { photo: 'rotated-v2' } };
+    const calculate = vi.spyOn(scoring, 'calculatePlayerTotal');
+    await act(async () => { await mediaHook.options!.onUpdateSession({ ...mediaHook.options!.session, ...media }); });
+    expect(calculate).not.toHaveBeenCalled();
+    expect(runtime.session.session).toMatchObject(media);
+    expect(onUpdateSession).toHaveBeenCalledExactlyOnceWith(runtime.session.session, { alreadyPersisted: true });
+
+    const patch: ScoreValuePatchMessage = {
+      type: 'score:valuePatch', roomId: 'room-1', sessionId: session.id, deviceId: 'remote-player',
+      opId: 'after-photo', sequence: 1, updatedAt: 2,
+      patch: { actor: { role: 'player', playerId: 'p2' }, targetPlayerId: 'p2', colId: 'col-1', scoreValue: { parts: [5] } },
+    };
+    await act(async () => {
+      if (runtime.role === 'host') {
+        await runtime.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: session.id, deviceId: 'remote-player', playerId: 'p2' }, 'connection');
+        await runtime.receive(patch, 'connection');
+      } else {
+        const result = host.receiveScoreValuePatch(patch);
+        if (!result.accepted) throw new Error(result.reason);
+        await runtime.receive(result.snapshot);
+      }
+    });
+    expect(runtime.session.session.players[1].totalScore).toBe(5);
+    expect(runtime.session.session).toMatchObject(media);
+    expect(putSession.mock.calls[putSession.mock.calls.length - 1][0]).toMatchObject(media);
+    runtime.stop();
   });
 
   it('adopts the persisted host board edit without losing input received before or during the template save', async () => {

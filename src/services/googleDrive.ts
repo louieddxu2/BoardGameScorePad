@@ -6,6 +6,8 @@ import { CloudFile, CloudResourceType } from './cloud/types';
 import { imageService } from './imageService';
 import { backupSessionPhotos, restoreSessionPhotos } from './cloud/googleDrivePhotos';
 import { DATA_LIMITS } from '../dataLimits';
+import { db } from '../db';
+import { latestBackupRecord, queueRecordBackup } from './cloud/recordBackupQueue';
 
 export type { CloudFile, CloudResourceType };
 
@@ -258,80 +260,69 @@ class GoogleDriveService {
     }
 
     public async backupHistoryRecord(record: HistoryRecord, knownFolderId?: string, existingFolderName?: string): Promise<{ folderId: string, updatedRecord: HistoryRecord }> {
-        if (!this.isAuthorized) await this.signIn();
-        await this.ensureAppStructure();
-        if (!this.historyFolderId) throw new Error("History folder not found");
+        return queueRecordBackup(record.id, async () => {
+            record = await latestBackupRecord(record, () => db.history.get(record.id), value => value.updatedAt ?? value.endTime);
+            if (!this.isAuthorized) await this.signIn();
+            await this.ensureAppStructure();
+            if (!this.historyFolderId) throw new Error("History folder not found");
 
-        const targetFolderName = `${record.gameName.trim()}_${record.id}`;
-        let folderId = knownFolderId;
+            const targetFolderName = `${record.gameName.trim()}_${record.id}`;
+            let folderId = knownFolderId;
 
-        if (!folderId) {
-            let folder = await googleDriveClient.findFile(targetFolderName, this.historyFolderId, 'application/vnd.google-apps.folder');
-            if (!folder) {
-                folder = await googleDriveClient.createFolder(targetFolderName, this.historyFolderId);
-            }
-            folderId = folder.id;
-        } else {
-            if (existingFolderName && existingFolderName !== targetFolderName) {
+            if (!folderId) {
+                let folder = await googleDriveClient.findFile(targetFolderName, this.historyFolderId, 'application/vnd.google-apps.folder');
+                if (!folder) {
+                    folder = await googleDriveClient.createFolder(targetFolderName, this.historyFolderId);
+                }
+                folderId = folder.id;
+            } else if (existingFolderName && existingFolderName !== targetFolderName) {
                 await googleDriveClient.updateFileMetadata(folderId, { name: targetFolderName });
             }
-        }
+            const targetFolderId = folderId;
+            let recordToSave = record;
+            await backupSessionPhotos(targetFolderId, record.photos, record.photoCloudIds, record.photoContentIds, async cloudIds => {
+                recordToSave = { ...record, photoCloudIds: cloudIds };
+                await googleDriveClient.uploadFileToFolder(targetFolderId, 'session.json', 'application/json', JSON.stringify(recordToSave, null, 2));
+                await googleDriveClient.updateFileMetadata(targetFolderId, {
+                    appProperties: { originalUpdatedAt: String(record.updatedAt ?? record.endTime), localUuid: record.id }
+                });
+            });
 
-        // [NEW] Backup Photos and Get Updated Map
-        const updatedCloudMap = await backupSessionPhotos(folderId, record.photos, record.photoCloudIds, record.photoContentIds);
-
-        // Update record with the new map before saving JSON
-        const recordToSave = { ...record, photoCloudIds: updatedCloudMap };
-
-        const jsonContent = JSON.stringify(recordToSave, null, 2);
-        await googleDriveClient.uploadFileToFolder(folderId, 'session.json', 'application/json', jsonContent);
-
-        // [Update] Use updatedAt if available, fallback to endTime
-        const timestamp = record.updatedAt || record.endTime;
-        await googleDriveClient.updateFileMetadata(folderId, {
-            appProperties: { originalUpdatedAt: String(timestamp), localUuid: record.id }
+            return { folderId: targetFolderId, updatedRecord: recordToSave };
         });
-
-        return { folderId, updatedRecord: recordToSave };
     }
 
     public async backupActiveSession(session: GameSession, templateName: string, knownFolderId?: string, existingFolderName?: string): Promise<{ folderId: string, updatedSession: GameSession }> {
-        if (!this.isAuthorized) await this.signIn();
-        await this.ensureAppStructure();
-        if (!this.activeFolderId) throw new Error("Active folder not found");
+        return queueRecordBackup(session.id, async () => {
+            session = await latestBackupRecord(session, () => db.sessions.get(session.id), value => value.lastUpdatedAt ?? value.startTime);
+            if (!this.isAuthorized) await this.signIn();
+            await this.ensureAppStructure();
+            if (!this.activeFolderId) throw new Error("Active folder not found");
 
-        const targetFolderName = `${templateName.trim()}_${session.id}`;
-        let folderId = knownFolderId;
+            const targetFolderName = `${templateName.trim()}_${session.id}`;
+            let folderId = knownFolderId;
 
-        if (!folderId) {
-            let folder = await googleDriveClient.findFile(targetFolderName, this.activeFolderId, 'application/vnd.google-apps.folder');
-            if (!folder) {
-                folder = await googleDriveClient.createFolder(targetFolderName, this.activeFolderId);
-            }
-            folderId = folder.id;
-        } else {
-            if (existingFolderName && existingFolderName !== targetFolderName) {
+            if (!folderId) {
+                let folder = await googleDriveClient.findFile(targetFolderName, this.activeFolderId, 'application/vnd.google-apps.folder');
+                if (!folder) {
+                    folder = await googleDriveClient.createFolder(targetFolderName, this.activeFolderId);
+                }
+                folderId = folder.id;
+            } else if (existingFolderName && existingFolderName !== targetFolderName) {
                 await googleDriveClient.updateFileMetadata(folderId, { name: targetFolderName });
             }
-        }
+            const targetFolderId = folderId;
+            let sessionToSave = session;
+            await backupSessionPhotos(targetFolderId, session.photos, session.photoCloudIds, session.photoContentIds, async cloudIds => {
+                sessionToSave = { ...session, photoCloudIds: cloudIds };
+                await googleDriveClient.uploadFileToFolder(targetFolderId, 'session.json', 'application/json', JSON.stringify(sessionToSave, null, 2));
+                await googleDriveClient.updateFileMetadata(targetFolderId, {
+                    appProperties: { originalUpdatedAt: String(session.lastUpdatedAt ?? session.startTime), localUuid: session.id }
+                });
+            });
 
-        // [NEW] Backup Photos and Get Updated Map
-        const updatedCloudMap = await backupSessionPhotos(folderId, session.photos, session.photoCloudIds, session.photoContentIds);
-
-        // Update session with the new map before saving JSON
-        const sessionToSave = { ...session, photoCloudIds: updatedCloudMap };
-
-        const jsonContent = JSON.stringify(sessionToSave, null, 2);
-        await googleDriveClient.uploadFileToFolder(folderId, 'session.json', 'application/json', jsonContent);
-
-        // [Update] Use lastUpdatedAt for metadata to allow correct syncing comparison
-        // Fallback to startTime if lastUpdatedAt is missing (legacy data)
-        const timestamp = session.lastUpdatedAt || session.startTime || Date.now();
-        await googleDriveClient.updateFileMetadata(folderId, {
-            appProperties: { originalUpdatedAt: String(timestamp), localUuid: session.id }
+            return { folderId: targetFolderId, updatedSession: sessionToSave };
         });
-
-        return { folderId, updatedSession: sessionToSave };
     }
 
     // --- Utility Methods ---

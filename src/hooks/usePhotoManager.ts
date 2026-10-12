@@ -15,10 +15,10 @@ interface UsePhotoManagerProps {
   /** 當前所有照片 ID 清單 */
   currentPhotoIds: string[];
   /** 照片新增後回調（含完整清單與來源） */
-  onPhotosAdded: (updatedIds: string[], source: PhotoSource) => void;
+  onPhotosAdded: (updatedIds: string[], source: PhotoSource) => void | Promise<void>;
   /** 照片刪除後回調（含更新後的完整清單） */
-  onPhotoDeleted: (updatedIds: string[]) => void;
-  onPhotoRotated?: (image: LocalImage) => void;
+  onPhotoDeleted: (updatedIds: string[]) => void | Promise<void>;
+  onPhotoRotated?: (image: LocalImage) => void | Promise<void>;
   /** 操作失敗時回調（由呼叫端決定如何提示使用者） */
   onError?: (type: PhotoErrorType) => void;
 }
@@ -54,7 +54,7 @@ export const usePhotoManager = ({
     const context = contextIdRef.current;
     if (!currentIdsRef.current.includes(image.id)) throw new Error('Photo is no longer in this album');
     await saveRotatedPhoto(image, expectedContentId, context, ownerType);
-    if (contextIdRef.current === context) callbacksRef.current.onPhotoRotated?.(image);
+    if (contextIdRef.current === context) await callbacksRef.current.onPhotoRotated?.(image);
   }, [ownerType]);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -94,11 +94,14 @@ export const usePhotoManager = ({
       }
 
       if (newPhotoIds.length > 0) {
-        callbacksRef.current.onPhotosAdded(
+        await callbacksRef.current.onPhotosAdded(
           [...currentIdsRef.current, ...newPhotoIds],
           'camera'
         );
       }
+    } catch (err) {
+      console.error('Photo batch save failed', err);
+      callbacksRef.current.onError?.('save');
     } finally {
       isSavingCameraBatchRef.current = false;
       setIsCameraOpen(false);
@@ -123,7 +126,7 @@ export const usePhotoManager = ({
                 contextIdRef.current,
                 'session'
               );
-              callbacksRef.current.onPhotosAdded(
+              await callbacksRef.current.onPhotosAdded(
                 [...currentIdsRef.current, savedImg.id],
                 'upload'
               );
@@ -153,7 +156,7 @@ export const usePhotoManager = ({
     try {
       await imageService.deleteImage(id);
       const updatedIds = currentIdsRef.current.filter((pid) => pid !== id);
-      callbacksRef.current.onPhotoDeleted(updatedIds);
+      await callbacksRef.current.onPhotoDeleted(updatedIds);
     } catch (err) {
       console.error('Photo delete failed', err);
       callbacksRef.current.onError?.('delete');

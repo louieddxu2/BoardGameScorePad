@@ -12,6 +12,7 @@ import {
 } from './protocol';
 import { applyScoreValueInputs, applyScoreValuePatch, ScorePatchActor } from './scoreValuePatch';
 import { createSessionBootstrapPackage, resolveBootstrapImport, ResolvedBootstrapImport } from './sessionBootstrap';
+import { getSessionMedia, preserveLocalSessionMedia } from './sessionMedia';
 
 export interface MultiplayerHostSession {
   role: 'host';
@@ -45,6 +46,7 @@ export interface MultiplayerPlayerSession {
     sequence?: number;
   }): ScoreValuePatchMessage;
   applySnapshot(message: SessionSnapshotMessage): boolean;
+  applyLocalSessionMedia(session: GameSession): boolean;
   applyPendingOperation(message: ScoreValuePatchMessage | TotalAdjustmentPatchMessage): boolean;
   restorePendingOperations(messages: (ScoreValuePatchMessage | TotalAdjustmentPatchMessage)[]): void;
   applyPatchResult(message: ScorePatchResultMessage): { snapshotApplied: boolean; settledOpIds: string[] };
@@ -179,7 +181,7 @@ export const createMultiplayerHostSession = (options: {
 
     applyLocalSession(session) {
       if (state.session.status !== 'active' || session.id !== state.session.id || session.status !== 'active') return null;
-      state.session = recalculateScoreSession(cloneJson(session), state.template);
+      state.session = { ...calculateScoreSession(cloneJson(session), state.template, state.session), lastUpdatedAt: Date.now() };
       state.revision += 1;
       return {
         type: 'session:snapshot', roomId: state.room.roomId, sessionId: state.session.id,
@@ -293,7 +295,9 @@ export const createMultiplayerPlayerSessionFromBootstrap = (options: {
   const acceptSnapshot = (message: SessionSnapshotMessage) => {
     if (message.type !== 'session:snapshot' || message.roomId !== state.room.roomId || message.sessionId !== state.session.id ||
         message.session.id !== state.session.id || message.revision <= state.revision || state.session.status !== 'active') return false;
-    state.confirmedSession = calculateScoreSession({ ...cloneJson(message.session), templateId: state.template.id }, state.template, state.session);
+    state.confirmedSession = calculateScoreSession(preserveLocalSessionMedia(
+      { ...cloneJson(message.session), templateId: state.template.id }, state.confirmedSession,
+    ), state.template, state.session);
     state.revision = message.revision;
     return true;
   };
@@ -325,6 +329,15 @@ export const createMultiplayerPlayerSessionFromBootstrap = (options: {
           scoreValue: input.scoreValue,
         },
       };
+    },
+
+    applyLocalSessionMedia(session) {
+      if (session.id !== state.session.id || state.session.status !== 'active') return false;
+      const media = { ...getSessionMedia(session), ...cloneJson(getSessionMedia(session)), lastUpdatedAt: now() };
+      // Do not recalculate or persist optimistic inputs as confirmed inputs.
+      state.confirmedSession = { ...state.confirmedSession, ...media };
+      state.session = { ...state.session, ...media };
+      return true;
     },
 
     applySnapshot(message) {
@@ -388,7 +401,9 @@ export const createMultiplayerPlayerSessionFromBootstrap = (options: {
       // newer inputs while still accepting the missing scoring structure.
       const confirmed = input.revision < state.revision ? state.confirmedSession : input.session;
       state.template = cloneJson(input.template);
-      state.confirmedSession = calculateScoreSession({ ...cloneJson(confirmed), templateId: state.template.id }, state.template, sameTemplate ? state.session : undefined);
+      state.confirmedSession = calculateScoreSession(preserveLocalSessionMedia(
+        { ...cloneJson(confirmed), templateId: state.template.id }, state.confirmedSession,
+      ), state.template, sameTemplate ? state.session : undefined);
       state.revision = Math.max(state.revision, input.revision);
       state.templateRevision = input.revision;
       if (!sameTemplate) state.session = state.confirmedSession;
@@ -404,7 +419,9 @@ export const createMultiplayerPlayerSessionFromBootstrap = (options: {
 
       const sameTemplate = JSON.stringify(state.template) === JSON.stringify(message.template);
       state.template = cloneJson(message.template);
-      state.confirmedSession = calculateScoreSession(cloneJson(message.finalSession), state.template, sameTemplate ? state.session : undefined);
+      state.confirmedSession = calculateScoreSession(preserveLocalSessionMedia(
+        cloneJson(message.finalSession), state.confirmedSession,
+      ), state.template, sameTemplate ? state.session : undefined);
       state.session = state.confirmedSession;
       state.pending.clear();
       state.pendingByCell.clear();
