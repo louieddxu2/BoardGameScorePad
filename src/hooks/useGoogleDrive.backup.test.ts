@@ -7,6 +7,7 @@ import { googleDriveClient } from '../services/cloud/googleDriveClient';
 import { googleAuth } from '../services/cloud/googleAuth';
 import type { CloudFile } from '../services/cloud/types';
 import { useGoogleDrive } from './useGoogleDrive';
+import { systemSyncService } from '../services/systemSyncService';
 
 const ui = vi.hoisted(() => ({ showToast: vi.fn(), t: vi.fn() }));
 vi.mock('./useToast', () => ({ useToast: () => ({ showToast: ui.showToast }) }));
@@ -84,7 +85,7 @@ describe('full backup cleanup and result reporting', () => {
     it('protects the newly saved history folder even when a stale Active list contains the same ID, without an extra lookup', async () => {
         activeFolders = [historyFolder];
         const { summary } = await backup();
-        expect(googleDriveClient.uploadFileToFolder).toHaveBeenCalledWith(historyFolder.id, 'session.json', 'application/json', expect.any(String));
+        expect(googleDriveClient.uploadFileToFolder).toHaveBeenCalledWith(historyFolder.id, 'session.json', 'application/json', expect.any(String), null);
         expect(googleDriveClient.moveFile).not.toHaveBeenCalled();
         expect(googleDriveClient.getFile).not.toHaveBeenCalled();
         expect(summary).toEqual({ success: 2, skipped: 0, failed: 0 });
@@ -136,5 +137,13 @@ describe('full backup cleanup and result reporting', () => {
         expect(onError).toHaveBeenCalledExactlyOnceWith([expect.any(String)]);
         expect(onProgress).toHaveBeenLastCalledWith(2, 2);
         expect(googleDriveClient.moveFile).not.toHaveBeenCalled();
+    });
+
+    it('counts unchanged system settings as skipped without losing completed progress', async () => {
+        vi.mocked(systemSyncService.mergeAndBackupSystemSettings).mockResolvedValue(false);
+        const { summary, onProgress, onError } = await backup([], []);
+        expect(summary).toEqual({ success: 0, skipped: 1, failed: 0 });
+        expect(onProgress).toHaveBeenLastCalledWith(1, 1);
+        expect(onError).not.toHaveBeenCalled();
     });
 });

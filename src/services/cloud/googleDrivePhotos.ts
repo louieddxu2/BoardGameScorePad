@@ -1,6 +1,7 @@
 import { googleDriveClient } from './googleDriveClient';
 import { imageService } from '../imageService';
 import type { PhotoContentIds } from '../../types';
+import { readBackupFolderFiles, type BackupFolderFiles } from './backupFolderFiles';
 
 const photoCloudKey = (id: string, contentId?: string) => contentId ? `${id}@${contentId}` : id;
 const photoFilename = (id: string, contentId?: string) => contentId ? `${id}_${contentId}.jpg` : `${id}.jpg`;
@@ -16,7 +17,7 @@ export async function backupSessionPhotos(
     photoIds: string[] | undefined,
     existingCloudIds: Record<string, string> | undefined,
     contentIds: PhotoContentIds | undefined,
-    commitRecord: (cloudIds: Record<string, string>) => Promise<void | false>,
+    commitRecord: (cloudIds: Record<string, string>, jsonFileId?: string | null) => Promise<void | false>,
 ): Promise<Record<string, string> | null> {
     const resultCloudIds: Record<string, string> = {};
     const validFiles = new Map<string, string>();
@@ -24,6 +25,23 @@ export async function backupSessionPhotos(
         const key = photoCloudKey(id, contentIds?.[id]);
         validFiles.set(photoFilename(id, contentIds?.[id]), key);
         if (existingCloudIds?.[key]) resultCloudIds[key] = existingCloudIds[key];
+    }
+
+    // Share one complete listing with photo uploads, the JSON write and cleanup.
+    // Failed/incomplete listings remain unknown, not an empty-folder assumption.
+    let folderFiles: BackupFolderFiles | undefined;
+    try {
+        folderFiles = await readBackupFolderFiles(folderId);
+        const revisionNames = new Set((photoIds || [])
+            .filter(id => contentIds?.[id]).map(id => photoFilename(id, contentIds?.[id])));
+        for (const file of folderFiles.files) {
+            const key = validFiles.get(file.name);
+            if (key && revisionNames.has(file.name) && file.mimeType?.startsWith('image/') && !resultCloudIds[key]) {
+                resultCloudIds[key] = file.id;
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to list session photos', e);
     }
 
     // 1. Upload Missing Photos & Capture IDs
@@ -42,8 +60,9 @@ export async function backupSessionPhotos(
                 const mimeType = localImg.mimeType || 'image/jpeg';
                 const filename = photoFilename(photoId, contentId);
 
-                // Note: uploadFileToFolder performs a find-or-create logic
-                const uploadedFile = await googleDriveClient.uploadFileToFolder(folderId, filename, mimeType, localImg.blob);
+                const uploadedFile = await googleDriveClient.uploadFileToFolder(
+                    folderId, filename, mimeType, localImg.blob, folderFiles?.idFor(filename, mimeType),
+                );
 
                 if (uploadedFile && uploadedFile.id) {
                     resultCloudIds[key] = uploadedFile.id;
@@ -59,30 +78,19 @@ export async function backupSessionPhotos(
         }
     }
 
-    // Keep one folder listing, both to recover missing IDs and to identify
-    // known obsolete files. An unknown revision may belong to another device.
-    let cloudFiles: Awaited<ReturnType<typeof googleDriveClient.fetchAllItems>> = [];
-    try {
-        cloudFiles = await googleDriveClient.fetchAllItems(
-            `'${folderId}' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false`,
-            'files(id, name)'
-        );
-
-        for (const file of cloudFiles) {
-            const key = validFiles.get(file.name);
-            if (key && !resultCloudIds[key]) resultCloudIds[key] = file.id;
-        }
-    } catch (e) {
-        console.warn('Failed to list session photos', e);
+    // Recover legacy IDs only after retaining their original upload behavior.
+    for (const file of folderFiles?.files || []) {
+        const key = validFiles.get(file.name);
+        if (key && file.mimeType?.startsWith('image/') && !resultCloudIds[key]) resultCloudIds[key] = file.id;
     }
 
     // A failed JSON/metadata write must leave every previously referenced photo intact.
-    if (await commitRecord(resultCloudIds) === false) return null;
+    if (await commitRecord(resultCloudIds, folderFiles?.idFor('session.json', 'application/json')) === false) return null;
     const previousIds = new Set(Object.values(existingCloudIds || {}));
     const currentIds = new Set(Object.values(resultCloudIds));
     const protectedFiles = new Set(['data.json', 'session.json', 'background.jpg']);
     try {
-        for (const file of cloudFiles) {
+        for (const file of folderFiles?.files || []) {
             if (file.name.endsWith('.jpg') && !protectedFiles.has(file.name) &&
                 previousIds.has(file.id) && !currentIds.has(file.id)) {
                 await googleDriveClient.trashFile(file.id);

@@ -485,8 +485,9 @@ export const useGoogleDrive = () => {
 
             // 2d. Process System Settings (Merge & Upload via Service)
             try {
-                await systemSyncService.mergeAndBackupSystemSettings(localData);
-                successCount++;
+                const uploaded = await systemSyncService.mergeAndBackupSystemSettings(localData);
+                if (uploaded === false) skippedCount++;
+                else successCount++;
             } catch (e) {
                 console.warn("Settings backup failed", e);
                 failedItems.push(tCloud('cloud_system_settings'));

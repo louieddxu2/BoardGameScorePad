@@ -14,7 +14,7 @@ vi.mock('../imageService', () => ({
 }));
 
 describe('cloud photo transfer contracts', () => {
-    const commitRecord = vi.fn(async (_cloudIds: Record<string, string>) => {});
+    const commitRecord = vi.fn(async (_cloudIds: Record<string, string>, _jsonFileId?: string | null) => {});
     beforeEach(() => vi.resetAllMocks());
 
     it('reuses known IDs, uploads missing photos and cleans only orphan photos before returning the map', async () => {
@@ -24,28 +24,29 @@ describe('cloud photo transfer contracts', () => {
         ));
         vi.mocked(googleDriveClient.uploadFileToFolder).mockResolvedValue({ id: 'new-cloud' } as any);
         vi.mocked(googleDriveClient.fetchAllItems).mockResolvedValue([
-            { id: 'known-cloud', name: 'known.jpg' },
-            { id: 'new-cloud', name: 'new.jpg' },
-            { id: 'healed-cloud', name: 'healed.jpg' },
-            { id: 'orphan-cloud', name: 'orphan.jpg' },
-            ...['session.json', 'data.json', 'background.jpg', 'notes.txt'].map(name => ({ id: name, name }))
+            { id: 'known-cloud', name: 'known.jpg', mimeType: 'image/jpeg' },
+            { id: 'healed-cloud', name: 'healed.jpg', mimeType: 'image/jpeg' },
+            { id: 'orphan-cloud', name: 'orphan.jpg', mimeType: 'image/jpeg' },
+            ...['session.json', 'data.json', 'background.jpg', 'notes.txt'].map(name => ({ id: name, name,
+                mimeType: name.endsWith('.json') ? 'application/json' : name.endsWith('.jpg') ? 'image/jpeg' : 'text/plain' }))
         ] as any);
         const existing = { known: 'known-cloud', orphan: 'orphan-cloud' };
         const result = await backupSessionPhotos('folder', ['known', 'new', 'healed'], existing, undefined, commitRecord);
         expect(imageService.getImage).not.toHaveBeenCalledWith('known');
-        expect(googleDriveClient.uploadFileToFolder).toHaveBeenCalledWith('folder', 'new.jpg', 'image/png', blob);
+        expect(googleDriveClient.uploadFileToFolder).toHaveBeenCalledWith('folder', 'new.jpg', 'image/png', blob, null);
         expect(googleDriveClient.uploadFileToFolder).toHaveBeenCalledTimes(1);
         expect(googleDriveClient.fetchAllItems).toHaveBeenCalledTimes(1);
         expect(vi.mocked(googleDriveClient.trashFile).mock.calls).toEqual([['orphan-cloud']]);
         expect(result).toEqual({ known: 'known-cloud', new: 'new-cloud', healed: 'healed-cloud' });
-        expect(commitRecord).toHaveBeenCalledExactlyOnceWith(result);
+        expect(commitRecord).toHaveBeenCalledExactlyOnceWith(result, 'session.json');
         expect(commitRecord.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(googleDriveClient.trashFile).mock.invocationCallOrder[0]);
         expect(existing).toEqual({ known: 'known-cloud', orphan: 'orphan-cloud' });
     });
 
     it('still removes stale photos when the saved photo list is empty', async () => {
         vi.mocked(googleDriveClient.fetchAllItems).mockResolvedValue([
-            { id: 'old-cloud', name: 'old.jpg' }, { id: 'board', name: 'background.jpg' }
+            { id: 'old-cloud', name: 'old.jpg', mimeType: 'image/jpeg' },
+            { id: 'board', name: 'background.jpg', mimeType: 'image/jpeg' }
         ] as any);
         expect(await backupSessionPhotos('folder', [], { old: 'old-cloud' }, undefined, commitRecord)).toEqual({});
         expect(imageService.getImage).not.toHaveBeenCalled();
@@ -74,13 +75,12 @@ describe('cloud photo transfer contracts', () => {
         vi.mocked(imageService.getImage).mockResolvedValue({ blob, mimeType: blob.type, contentId: 'v2' } as any);
         vi.mocked(googleDriveClient.uploadFileToFolder).mockResolvedValue({ id: 'new-cloud' } as any);
         vi.mocked(googleDriveClient.fetchAllItems).mockResolvedValue([
-            { id: 'old-cloud', name: 'photo.jpg' },
-            { id: 'new-cloud', name: 'photo_v2.jpg' },
+            { id: 'old-cloud', name: 'photo.jpg', mimeType: 'image/jpeg' },
         ] as any);
         const map = await backupSessionPhotos('folder', ['photo'], { photo: 'old-cloud' }, { photo: 'v2' }, commitRecord);
         if (!map) throw new Error('Expected the live photo backup to commit');
         expect(map).toEqual({ 'photo@v2': 'new-cloud' });
-        expect(googleDriveClient.uploadFileToFolder).toHaveBeenCalledExactlyOnceWith('folder', 'photo_v2.jpg', blob.type, blob);
+        expect(googleDriveClient.uploadFileToFolder).toHaveBeenCalledExactlyOnceWith('folder', 'photo_v2.jpg', blob.type, blob, null);
         expect(googleDriveClient.trashFile).toHaveBeenCalledExactlyOnceWith('old-cloud');
         expect(commitRecord.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(googleDriveClient.trashFile).mock.invocationCallOrder[0]);
         vi.mocked(imageService.getImage).mockClear();
@@ -98,23 +98,25 @@ describe('cloud photo transfer contracts', () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
         await expect(backupSessionPhotos('folder', ['photo'], { photo: 'old-cloud' }, { photo: 'v2' }, commitRecord)).rejects.toThrow('Offline');
         expect(commitRecord).not.toHaveBeenCalled();
-        expect(googleDriveClient.fetchAllItems).not.toHaveBeenCalled();
+        expect(googleDriveClient.fetchAllItems).toHaveBeenCalledTimes(1);
         expect(googleDriveClient.trashFile).not.toHaveBeenCalled();
         warn.mockRestore();
     });
 
     it('does not trash a newer unknown revision when backing up an older snapshot', async () => {
         vi.mocked(googleDriveClient.fetchAllItems).mockResolvedValue([
-            { id: 'v1-cloud', name: 'photo_v1.jpg' }, { id: 'v2-cloud', name: 'photo_v2.jpg' },
+            { id: 'v1-cloud', name: 'photo_v1.jpg', mimeType: 'image/jpeg' },
+            { id: 'v2-cloud', name: 'photo_v2.jpg', mimeType: 'image/jpeg' },
         ] as any);
         await backupSessionPhotos('folder', ['photo'], { 'photo@v1': 'v1-cloud' }, { photo: 'v1' }, commitRecord);
-        expect(commitRecord).toHaveBeenCalledExactlyOnceWith({ 'photo@v1': 'v1-cloud' });
+        expect(commitRecord).toHaveBeenCalledExactlyOnceWith({ 'photo@v1': 'v1-cloud' }, null);
         expect(googleDriveClient.trashFile).not.toHaveBeenCalled();
     });
 
     it('leaves the last good photos intact when committing the replacement JSON fails', async () => {
         vi.mocked(googleDriveClient.fetchAllItems).mockResolvedValue([
-            { id: 'old-cloud', name: 'photo.jpg' }, { id: 'new-cloud', name: 'photo_v2.jpg' },
+            { id: 'old-cloud', name: 'photo.jpg', mimeType: 'image/jpeg' },
+            { id: 'new-cloud', name: 'photo_v2.jpg', mimeType: 'image/jpeg' },
         ] as any);
         commitRecord.mockRejectedValueOnce(new Error('JSON write failed'));
         await expect(backupSessionPhotos('folder', ['photo'], { photo: 'old-cloud', 'photo@v2': 'new-cloud' },

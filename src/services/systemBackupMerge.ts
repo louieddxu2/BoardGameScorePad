@@ -114,3 +114,31 @@ export const getSessionContextWeightUpdates = (weights?: SessionContextWeights) 
       typeof entry.value === 'number' && Number.isFinite(entry.value)
     );
 };
+
+/** Compare JSON-shaped content in linear time, ignoring only the top-level backup timestamp. */
+export const hasSameSystemBackupContent = (
+  left: Record<string, unknown>, right: Record<string, unknown>,
+): boolean => {
+  const equal = (a: unknown, b: unknown): boolean => {
+    if (Object.is(a, b)) return true;
+    if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+    if (Array.isArray(a) || Array.isArray(b)) {
+      if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+      for (let index = 0; index < a.length; index++) {
+        if (!equal(a[index], b[index])) return false;
+      }
+      return true;
+    }
+    // Non-JSON objects are not assumed equal merely because they have no enumerable keys.
+    const isPlain = (value: object) => [Object.prototype, null].includes(Object.getPrototypeOf(value));
+    if (!isPlain(a) || !isPlain(b)) return false;
+    const aObject = a as Record<string, unknown>;
+    const bObject = b as Record<string, unknown>;
+    const keys = Object.keys(aObject).filter(key => aObject[key] !== undefined);
+    return keys.length === Object.keys(bObject).filter(key => bObject[key] !== undefined).length &&
+      keys.every(key => Object.prototype.hasOwnProperty.call(bObject, key) && equal(aObject[key], bObject[key]));
+  };
+  const { timestamp: _leftTimestamp, ...leftContent } = left;
+  const { timestamp: _rightTimestamp, ...rightContent } = right;
+  return equal(leftContent, rightContent);
+};

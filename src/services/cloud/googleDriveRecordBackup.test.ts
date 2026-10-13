@@ -33,7 +33,8 @@ describe('whole-record cloud backup ordering', () => {
         googleDriveService.historyFolderId = 'history';
         vi.spyOn(googleDriveService, 'ensureAppStructure').mockResolvedValue();
         vi.mocked(googleDriveClient.fetchAllItems).mockResolvedValue([
-            { id: 'cloud-v1', name: 'photo_v1.jpg' }, { id: 'cloud-v2', name: 'photo_v2.jpg' },
+            { id: 'cloud-v1', name: 'photo_v1.jpg', mimeType: 'image/jpeg' },
+            { id: 'cloud-v2', name: 'photo_v2.jpg', mimeType: 'image/jpeg' },
         ] as any);
     });
     afterEach(() => vi.restoreAllMocks());
@@ -83,6 +84,9 @@ describe('whole-record cloud backup ordering', () => {
         });
         const edited = { ...record, photoContentIds: { photo: 'v2' } };
         get.mockResolvedValue(edited);
+        vi.mocked(googleDriveClient.fetchAllItems).mockResolvedValue([
+            { id: 'cloud-v1', name: 'photo_v1.jpg', mimeType: 'image/jpeg' },
+        ] as any);
         const backup = kind === 'active'
             ? googleDriveService.backupActiveSession(edited as GameSession, 'Game', 'folder')
             : googleDriveService.backupHistoryRecord(edited as HistoryRecord, 'folder');

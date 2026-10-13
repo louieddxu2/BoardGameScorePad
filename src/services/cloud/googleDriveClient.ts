@@ -3,7 +3,13 @@ import { googleAuth } from './googleAuth';
 import { CloudFile, DriveFile } from './types';
 
 class GoogleDriveClient {
-  
+
+  private async assertSuccess(response: Response, fallback: string): Promise<void> {
+    if (response.ok) return;
+    const data = await response.json().catch(() => ({}));
+    throw Object.assign(new Error(data.error?.message || fallback), { status: response.status });
+  }
+
   private async fetchDrive(url: string, options: RequestInit = {}) {
     if (!googleAuth.isAuthorized) {
         throw new Error('Unauthorized');
@@ -16,12 +22,7 @@ class GoogleDriveClient {
     
     const response = await fetch(url, { ...options, headers });
     
-    if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        const error: any = new Error(err.error?.message || `Drive API Error: ${response.status}`);
-        error.status = response.status;
-        throw error;
-    }
+    await this.assertSuccess(response, `Drive API Error: ${response.status}`);
     return response.json();
   }
 
@@ -30,8 +31,9 @@ class GoogleDriveClient {
       let pageToken: string | null = null;
       
       do {
-          const url: string = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&pageSize=1000&fields=nextPageToken,${fields}${pageToken ? `&pageToken=${pageToken}` : ''}`;
+          const url: string = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&pageSize=1000&fields=nextPageToken,incompleteSearch,${fields}${pageToken ? `&pageToken=${pageToken}` : ''}`;
           const data: any = await this.fetchDrive(url);
+          if (data.incompleteSearch) throw new Error('Drive file listing is incomplete');
           
           if (data.files) {
               allFiles = allFiles.concat(data.files);
@@ -86,14 +88,34 @@ class GoogleDriveClient {
       });
   }
 
-  public async uploadFileToFolder(folderId: string, name: string, mimeType: string, body: Blob | string): Promise<DriveFile> {
-    const existing = await this.findFile(name, folderId, mimeType);
-    
+  /** undefined searches; null is confirmed absent; a string updates the known file. */
+  public async uploadFileToFolder(
+    folderId: string, name: string, mimeType: string, body: Blob | string,
+    knownFileId?: string | null, retryMissingFile: boolean = true,
+  ): Promise<DriveFile> {
+    if (!googleAuth.isAuthorized) throw new Error('Unauthorized');
+    const fileId = knownFileId === undefined
+      ? (await this.findFile(name, folderId, mimeType))?.id ?? null
+      : knownFileId;
+    try {
+      return await this.uploadFile(folderId, name, mimeType, body, fileId);
+    } catch (error) {
+      // A stale ID gets one fresh lookup. Permission/network errors never create a replacement.
+      if (!retryMissingFile || !knownFileId || (error as { status?: number }).status !== 404) throw error;
+      const refreshed = await this.findFile(name, folderId, mimeType);
+      return this.uploadFile(folderId, name, mimeType, body, refreshed?.id ?? null);
+    }
+  }
+
+  private async uploadFile(
+    folderId: string, name: string, mimeType: string, body: Blob | string,
+    fileId: string | null,
+  ): Promise<DriveFile> {
     // Construct proper multipart/related body
     const metadata = { 
         name, 
         mimeType, 
-        parents: existing ? undefined : [folderId] 
+        parents: fileId ? undefined : [folderId]
     };
 
     const boundary = '-------314159265358979323846';
@@ -123,9 +145,9 @@ class GoogleDriveClient {
     requestBody.set(contentBuffer, p1.length);
     requestBody.set(p3, p1.length + contentBuffer.length);
 
-    const method = existing ? 'PATCH' : 'POST';
-    const endpoint = existing 
-        ? `https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=multipart`
+    const method = fileId ? 'PATCH' : 'POST';
+    const endpoint = fileId
+        ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
         : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
 
     const response = await fetch(endpoint, {
@@ -137,7 +159,7 @@ class GoogleDriveClient {
       body: requestBody,
     });
     
-    if (!response.ok) throw new Error('File upload failed');
+    await this.assertSuccess(response, 'File upload failed');
     return response.json();
   }
 
@@ -187,7 +209,7 @@ class GoogleDriveClient {
       const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
           headers: { 'Authorization': `Bearer ${googleAuth.token}` }
       });
-      if (!response.ok) throw new Error("下載失敗");
+      await this.assertSuccess(response, "下載失敗");
       return response.json();
   }
 

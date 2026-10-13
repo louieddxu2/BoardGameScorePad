@@ -3,6 +3,7 @@ export interface CloudFile {
   id: string;
   name: string;
   createdTime: string; // ISO string
+  mimeType?: string;
   appProperties?: { [key: string]: string }; // Custom metadata
 }
 

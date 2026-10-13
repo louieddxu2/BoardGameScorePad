@@ -8,6 +8,7 @@ import { backupSessionPhotos, restoreSessionPhotos } from './cloud/googleDrivePh
 import { DATA_LIMITS } from '../dataLimits';
 import { db } from '../db';
 import { latestBackupRecord, queueRecordBackup } from './cloud/recordBackupQueue';
+import { readBackupFolderFiles, type BackupFolderFiles } from './cloud/backupFolderFiles';
 
 export type { CloudFile, CloudResourceType };
 
@@ -184,76 +185,72 @@ class GoogleDriveService {
                 gameFolder = await googleDriveClient.createFolder(targetFolderName, parentId);
             }
             gameFolderId = gameFolder.id;
-        } else {
-            if (existingFolderName && existingFolderName !== targetFolderName) {
-                await googleDriveClient.updateFileMetadata(gameFolderId, { name: targetFolderName });
-            }
         }
 
+        let folderFiles: BackupFolderFiles | undefined;
+        try {
+            folderFiles = await readBackupFolderFiles(gameFolderId);
+        } catch (e) {
+            console.warn('Failed to list template backup files', e);
+        }
+        const imageFiles = (folderFiles?.files || []).filter(file => file.mimeType?.startsWith('image/'));
         let uploadedImageId = template.cloudImageId;
+        let canCleanupImages = folderFiles !== undefined;
 
-        // [CLEANUP & UPLOAD] Handle Background Image
+        // Resolve/upload the replacement first; old images remain until JSON and metadata commit.
         if (template.imageId) {
             try {
                 const currentFilename = `${template.imageId}.jpg`;
-
-                // 1. List all JPGs in the folder to identify orphans
-                const existingFiles = await googleDriveClient.fetchAllItems(`'${gameFolderId}' in parents and mimeType contains 'image/' and trashed = false`, 'files(id, name)');
-
                 let alreadyExists = false;
-
-                // 2. Trash old images that don't match current ID
-                // Also clean up legacy 'background.jpg' if a new UUID image is taking over
-                for (const file of existingFiles) {
-                    if (file.name !== currentFilename) {
-                        await googleDriveClient.trashFile(file.id);
-                    } else {
+                for (const file of imageFiles) {
+                    if (file.name === currentFilename) {
                         alreadyExists = true;
                         uploadedImageId = file.id;
                     }
                 }
-
-                // 3. Upload new image if missing
                 if (!alreadyExists) {
                     const localImg = await imageService.getImage(template.imageId);
                     if (localImg && localImg.blob) {
                         const mimeType = localImg.mimeType || 'image/jpeg';
-                        const uploadedFile = await googleDriveClient.uploadFileToFolder(gameFolderId, currentFilename, mimeType, localImg.blob);
+                        const uploadedFile = await googleDriveClient.uploadFileToFolder(
+                            gameFolderId, currentFilename, mimeType, localImg.blob,
+                            folderFiles?.idFor(currentFilename, mimeType),
+                        );
+                        if (!uploadedFile.id) throw new Error('Template image upload returned no file ID');
                         uploadedImageId = uploadedFile.id;
+                    } else {
+                        canCleanupImages = false;
                     }
                 }
             } catch (e) {
+                canCleanupImages = false;
                 console.warn("Failed to manage template background image", e);
             }
-        } else {
-            // If template has NO image, but folder has images, trash them
-            try {
-                const existingFiles = await googleDriveClient.fetchAllItems(`'${gameFolderId}' in parents and mimeType contains 'image/' and trashed = false`, 'files(id, name)');
-                for (const file of existingFiles) {
-                    await googleDriveClient.trashFile(file.id);
-                }
-                uploadedImageId = undefined;
-            } catch (e) {
-                console.warn("Failed to cleanup old images", e);
-            }
+        } else if (folderFiles) {
+            uploadedImageId = undefined;
         }
 
         const updatedTemplate = { ...template, cloudImageId: uploadedImageId };
         const jsonContent = JSON.stringify(updatedTemplate, null, 2);
-        await googleDriveClient.uploadFileToFolder(gameFolderId, 'data.json', 'application/json', jsonContent);
-
-        if (template.updatedAt) {
-            await googleDriveClient.updateFileMetadata(gameFolderId, {
-                appProperties: { 
-                    originalUpdatedAt: String(template.updatedAt),
-                    localUuid: template.id
+        await googleDriveClient.uploadFileToFolder(
+            gameFolderId, 'data.json', 'application/json', jsonContent,
+            folderFiles?.idFor('data.json', 'application/json'),
+        );
+        await googleDriveClient.updateFileMetadata(gameFolderId, {
+            ...(existingFolderName && existingFolderName !== targetFolderName ? { name: targetFolderName } : {}),
+            appProperties: {
+                ...(template.updatedAt ? { originalUpdatedAt: String(template.updatedAt) } : {}),
+                localUuid: template.id,
+            },
+        });
+        if (canCleanupImages) {
+            try {
+                for (const file of imageFiles) {
+                    if (file.id !== uploadedImageId) await googleDriveClient.trashFile(file.id);
                 }
-            });
-        } else {
-            // Even if no updatedAt, still tag it with the ID
-            await googleDriveClient.updateFileMetadata(gameFolderId, {
-                appProperties: { localUuid: template.id }
-            });
+            } catch (e) {
+                console.warn('Failed to cleanup old template images', e);
+            }
         }
 
         return updatedTemplate;
@@ -278,16 +275,15 @@ class GoogleDriveService {
                     folder = await googleDriveClient.createFolder(targetFolderName, this.historyFolderId);
                 }
                 folderId = folder.id;
-            } else if (existingFolderName && existingFolderName !== targetFolderName) {
-                await googleDriveClient.updateFileMetadata(folderId, { name: targetFolderName });
             }
             const targetFolderId = folderId;
             let recordToSave = record;
-            const cloudIds = await backupSessionPhotos(targetFolderId, record.photos, record.photoCloudIds, record.photoContentIds, async cloudIds => {
+            const cloudIds = await backupSessionPhotos(targetFolderId, record.photos, record.photoCloudIds, record.photoContentIds, async (cloudIds, jsonFileId) => {
                 if (!await readLatest()) return false;
                 recordToSave = { ...record, photoCloudIds: cloudIds };
-                await googleDriveClient.uploadFileToFolder(targetFolderId, 'session.json', 'application/json', JSON.stringify(recordToSave, null, 2));
+                await googleDriveClient.uploadFileToFolder(targetFolderId, 'session.json', 'application/json', JSON.stringify(recordToSave, null, 2), jsonFileId);
                 await googleDriveClient.updateFileMetadata(targetFolderId, {
+                    ...(existingFolderName && existingFolderName !== targetFolderName ? { name: targetFolderName } : {}),
                     appProperties: { originalUpdatedAt: String(record.updatedAt ?? record.endTime), localUuid: record.id }
                 });
             });
@@ -319,16 +315,15 @@ class GoogleDriveService {
                     folder = await googleDriveClient.createFolder(targetFolderName, this.activeFolderId);
                 }
                 folderId = folder.id;
-            } else if (existingFolderName && existingFolderName !== targetFolderName) {
-                await googleDriveClient.updateFileMetadata(folderId, { name: targetFolderName });
             }
             const targetFolderId = folderId;
             let sessionToSave = session;
-            const cloudIds = await backupSessionPhotos(targetFolderId, session.photos, session.photoCloudIds, session.photoContentIds, async cloudIds => {
+            const cloudIds = await backupSessionPhotos(targetFolderId, session.photos, session.photoCloudIds, session.photoContentIds, async (cloudIds, jsonFileId) => {
                 if (!await readLatest()) return false;
                 sessionToSave = { ...session, photoCloudIds: cloudIds };
-                await googleDriveClient.uploadFileToFolder(targetFolderId, 'session.json', 'application/json', JSON.stringify(sessionToSave, null, 2));
+                await googleDriveClient.uploadFileToFolder(targetFolderId, 'session.json', 'application/json', JSON.stringify(sessionToSave, null, 2), jsonFileId);
                 await googleDriveClient.updateFileMetadata(targetFolderId, {
+                    ...(existingFolderName && existingFolderName !== targetFolderName ? { name: targetFolderName } : {}),
                     appProperties: { originalUpdatedAt: String(session.lastUpdatedAt ?? session.startTime), localUuid: session.id }
                 });
             });
@@ -340,11 +335,12 @@ class GoogleDriveService {
 
     // --- Utility Methods ---
 
-    public async saveSystemData(filename: string, data: any): Promise<void> {
+    public async saveSystemData(filename: string, data: any, knownFileId?: string | null): Promise<void> {
         await this.ensureAppStructure();
         if (!this.systemFolderId) throw new Error("System folder not found");
         const jsonContent = JSON.stringify(data, null, 2);
-        await googleDriveClient.uploadFileToFolder(this.systemFolderId, filename, 'application/json', jsonContent);
+        // A settings union belongs to the file that was read, not a newly replaced file.
+        await googleDriveClient.uploadFileToFolder(this.systemFolderId, filename, 'application/json', jsonContent, knownFileId, false);
     }
 
     public async createActiveSessionFolder(sessionName: string, sessionId: string): Promise<string> {
