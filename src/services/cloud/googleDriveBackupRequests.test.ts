@@ -6,7 +6,8 @@ import { systemSyncService } from '../systemSyncService';
 import { imageService } from '../imageService';
 import { googleDriveClient } from './googleDriveClient';
 
-vi.mock('../../db', () => ({ db: { sessions: { get: vi.fn() }, history: { get: vi.fn() } } }));
+vi.mock('../../db', () => ({ db: { sessions: { get: vi.fn() }, history: { get: vi.fn() },
+    templates: { get: vi.fn() }, builtins: { get: vi.fn() } } }));
 vi.mock('./googleAuth', () => ({ googleAuth: { isAuthorized: true, token: 'test-token', signOut: vi.fn() } }));
 vi.mock('../imageService', () => ({ imageService: { getImage: vi.fn() } }));
 
@@ -29,7 +30,8 @@ const acceptBackupRequests = (files: Array<{ id: string; name: string; mimeType:
         const url = new URL(String(input));
         if (url.pathname === '/drive/v3/files') return json({ files });
         if (url.pathname.startsWith('/upload/drive/v3/files')) {
-            return json({ id: options?.method === 'POST' ? `uploaded-${++created}` : url.pathname.split('/').pop() });
+            return json({ id: options?.method === 'POST' ? `uploaded-${++created}` : url.pathname.split('/').pop(),
+                parents: ['folder'], trashed: false });
         }
         if (options?.method === 'PATCH') return json({ id: url.pathname.split('/').pop() });
         throw new Error(`Unexpected test request: ${url.pathname}`);
@@ -49,7 +51,7 @@ const acceptSettingsRequests = (remote: ReturnType<typeof settings> | undefined)
             return json({ files: remote ? [{ id: 'settings-file' }] : [] });
         }
         if (url.searchParams.get('alt') === 'media') return json(remote);
-        if (url.pathname.startsWith('/upload/drive/v3/files')) return json({ id: 'settings-file' });
+        if (url.pathname.startsWith('/upload/drive/v3/files')) return json({ id: 'settings-file', parents: ['system'], trashed: false });
         throw new Error(`Unexpected test request: ${options?.method || 'GET'} ${url.pathname}`);
     };
 
@@ -64,6 +66,7 @@ describe('backup API request budgets and recovery', () => {
         for (const method of ['log', 'warn', 'error'] as const) vi.spyOn(console, method).mockImplementation(() => {});
         vi.mocked(imageService.getImage).mockResolvedValue(image as any);
         vi.mocked(db.history.get).mockResolvedValue(record);
+        vi.mocked(db.templates.get).mockResolvedValue(template);
     });
     afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -138,6 +141,24 @@ describe('backup API request budgets and recovery', () => {
         expect(fetchMock.mock.calls[2][1]?.method).toBe('PATCH');
     });
 
+    it('completes a paginated JSON absence recheck before choosing update versus create', async () => {
+        fetchMock.mockResolvedValueOnce(json({ files: [], nextPageToken: 'page-2' }))
+            .mockResolvedValueOnce(json({ files: [jsonFile] }))
+            .mockImplementation(acceptBackupRequests([jsonFile]));
+        await googleDriveClient.uploadFileToFolder('folder', 'session.json', 'application/json', '{}', null);
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+        expect(fetchMock.mock.calls[1][0]).toContain('pageToken=page-2');
+        expect(fetchMock.mock.calls[2][0]).toContain('/upload/drive/v3/files/json-file');
+        expect(fetchMock.mock.calls[2][1]?.method).toBe('PATCH');
+    });
+
+    it('does not create JSON from an incomplete absence recheck', async () => {
+        fetchMock.mockResolvedValue(json({ files: [], incompleteSearch: true }));
+        await expect(googleDriveClient.uploadFileToFolder('folder', 'session.json', 'application/json', '{}', null))
+            .rejects.toThrow('incomplete');
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
     it.each(['permission', 'network'] as const)('does not search or create a replacement after a %s upload error', async kind => {
         if (kind === 'permission') fetchMock.mockResolvedValue(json({ error: { message: 'Forbidden' } }, 403));
         else fetchMock.mockRejectedValue(new Error('Offline'));
@@ -158,7 +179,7 @@ describe('backup API request budgets and recovery', () => {
             { ...jsonFile, name: 'data.json' }, { id: 'old-image', name: 'old.jpg', mimeType: 'image/jpeg' },
         ]));
         const updated = await googleDriveService.backupTemplate(template, null, 'folder', 'Old_template');
-        expect(updated.cloudImageId).toBe('uploaded-1');
+        expect(updated?.cloudImageId).toBe('uploaded-1');
         expect(fetchMock).toHaveBeenCalledTimes(5);
         expect(fetchMock.mock.calls[2][0]).toContain('/upload/drive/v3/files/json-file');
         expect(JSON.parse(fetchMock.mock.calls[3][1]!.body as string)).toEqual({
@@ -205,11 +226,11 @@ describe('backup API request budgets and recovery', () => {
         expect(fetchMock.mock.calls.every(([, init]) => !init?.method || init.method === 'GET')).toBe(true);
     });
 
-    it('creates first-time settings directly after a confirmed missing-file result', async () => {
+    it('rechecks missing settings before creating them without overwriting another device', async () => {
         fetchMock.mockImplementation(acceptSettingsRequests(undefined));
         expect(await systemSyncService.mergeAndBackupSystemSettings(settings())).toBe(true);
-        expect(fetchMock).toHaveBeenCalledTimes(2);
-        expect(fetchMock.mock.calls[1][1]?.method).toBe('POST');
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+        expect(fetchMock.mock.calls[2][1]?.method).toBe('POST');
     });
 
     it('does not overwrite settings after a failed download', async () => {

@@ -91,7 +91,7 @@ export const systemSyncService = {
 
       if (cloudSettings && hasSameSystemBackupContent(payload, cloudSettings)) return false;
 
-      // 5. 直接更新已知 ID，或建立查詢已確認不存在的檔案。
+      // 5. 更新原先讀取的 ID；首次備份在提交前再次確認不存在，避免覆寫另一端新建的聯集。
       await googleDriveService.saveSystemData('settings_backup.json', payload, cloudFile?.id ?? null);
       return true;
 

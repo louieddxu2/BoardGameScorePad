@@ -199,7 +199,19 @@ class GoogleDriveService {
         return template;
     }
 
-    public async backupTemplate(template: GameTemplate, _unused?: any, knownFolderId?: string, existingFolderName?: string): Promise<GameTemplate> {
+    public async backupTemplate(template: GameTemplate, _unused?: any, knownFolderId?: string, existingFolderName?: string): Promise<GameTemplate | null> {
+        return queueRecordBackup(`template:${template.id}`, async () => {
+            const readLatest = async () => await db.templates.get(template.id) || await db.builtins.get(template.id);
+            const latest = await latestBackupRecord(template, readLatest, value => value.updatedAt ?? value.createdAt);
+            if (!latest) return null;
+            return this.backupTemplateNow(latest, knownFolderId, existingFolderName, readLatest);
+        });
+    }
+
+    private async backupTemplateNow(
+        template: GameTemplate, knownFolderId: string | undefined, existingFolderName: string | undefined,
+        readLatest: () => Promise<GameTemplate | undefined>,
+    ): Promise<GameTemplate | null> {
         if (!this.isAuthorized) await this.signIn();
         await this.ensureAppStructure();
         const parentId = this.templatesFolderId || await this.getAppRoot();
@@ -260,6 +272,7 @@ class GoogleDriveService {
 
         const updatedTemplate = { ...template, cloudImageId: uploadedImageId };
         const jsonContent = JSON.stringify(updatedTemplate, null, 2);
+        if (!await readLatest()) return null;
         await googleDriveClient.uploadFileToFolder(
             gameFolderId, 'data.json', 'application/json', jsonContent,
             folderFiles?.idFor('data.json', 'application/json'),

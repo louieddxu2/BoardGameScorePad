@@ -50,10 +50,8 @@ class GoogleDriveClient {
     let query = `name = '${safeName}' and '${parentId}' in parents and trashed = false`;
     if (mimeType) query += ` and mimeType = '${mimeType}'`;
     
-    const data = await this.fetchDrive(
-      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id, name, mimeType, parents)`
-    );
-    return data.files && data.files.length > 0 ? data.files[0] : null;
+    const files = await this.fetchAllItems(query, 'files(id, name, mimeType, parents)');
+    return files.length > 0 ? files[0] as DriveFile : null;
   }
 
   public async findFileByProperty(key: string, value: string, parentId: string = 'root'): Promise<DriveFile | null> {
@@ -88,20 +86,28 @@ class GoogleDriveClient {
       });
   }
 
-  /** undefined searches; null is confirmed absent; a string updates the known file. */
+  /** A missing JSON hint must be refreshed at commit time; binary hints can reuse the listing. */
   public async uploadFileToFolder(
     folderId: string, name: string, mimeType: string, body: Blob | string,
-    knownFileId?: string | null, retryMissingFile: boolean = true,
+    knownFileId?: string | null, allowTargetRefresh: boolean = true,
   ): Promise<DriveFile> {
     if (!googleAuth.isAuthorized) throw new Error('Unauthorized');
-    const fileId = knownFileId === undefined
-      ? (await this.findFile(name, folderId, mimeType))?.id ?? null
-      : knownFileId;
+    let fileId = knownFileId ?? null;
+    if (knownFileId === undefined || (knownFileId === null && mimeType === 'application/json')) {
+      const existing = await this.findFile(name, folderId, mimeType);
+      // Settings were merged against absence: do not overwrite a newly appeared remote union.
+      if (knownFileId === null && !allowTargetRefresh && existing) {
+        throw new Error('Backup file appeared after it was read; retry with fresh cloud data');
+      }
+      fileId = existing?.id ?? null;
+    }
     try {
       return await this.uploadFile(folderId, name, mimeType, body, fileId);
     } catch (error) {
-      // A stale ID gets one fresh lookup. Permission/network errors never create a replacement.
-      if (!retryMissingFile || !knownFileId || (error as { status?: number }).status !== 404) throw error;
+      // Refresh once for a removed/moved/trashed target, never for permission/network failures.
+      const failure = error as { status?: number; code?: string } | null;
+      const invalidTarget = failure?.status === 404 || failure?.code === 'INVALID_BACKUP_TARGET';
+      if (!allowTargetRefresh || !knownFileId || !invalidTarget) throw error;
       const refreshed = await this.findFile(name, folderId, mimeType);
       return this.uploadFile(folderId, name, mimeType, body, refreshed?.id ?? null);
     }
@@ -146,9 +152,10 @@ class GoogleDriveClient {
     requestBody.set(p3, p1.length + contentBuffer.length);
 
     const method = fileId ? 'PATCH' : 'POST';
-    const endpoint = fileId
+    const uploadEndpoint = fileId
         ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
         : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+    const endpoint = `${uploadEndpoint}&fields=id,name,mimeType,parents,trashed`;
 
     const response = await fetch(endpoint, {
       method,
@@ -160,7 +167,13 @@ class GoogleDriveClient {
     });
     
     await this.assertSuccess(response, 'File upload failed');
-    return response.json();
+    const file: DriveFile = await response.json();
+    if (!file.id || file.trashed !== false || !file.parents?.includes(folderId)) {
+      throw Object.assign(new Error('Uploaded file is not available in the backup folder'), {
+        code: 'INVALID_BACKUP_TARGET',
+      });
+    }
+    return file;
   }
 
   public async moveFile(fileId: string, previousParentId: string | undefined, newParentId: string): Promise<void> {

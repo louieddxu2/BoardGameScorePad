@@ -115,6 +115,7 @@ export const useGoogleDrive = () => {
             await ensureConnection();
             showToast({ message: tCloud('cloud_toast_backing_up'), type: 'info' });
             const updatedTemplate = await googleDriveService.backupTemplate(template);
+            if (!updatedTemplate) return null;
             setIsConnected(true);
             showToast({ message: tCloud('cloud_toast_backup_success'), type: 'success' });
             return updatedTemplate;
@@ -401,6 +402,7 @@ export const useGoogleDrive = () => {
 
                 return processItem(async () => {
                     const updatedT = await googleDriveService.backupTemplate(t, null, cloudInfo?.id, cloudInfo?.name);
+                    if (!updatedT) return false;
                     // [Fix] Update lastSyncedAt locally to hide the pending upload icon
                     await db.templates.update(t.id, { lastSyncedAt: Date.now() });
                     if (onItemSuccess) onItemSuccess('template', updatedT);

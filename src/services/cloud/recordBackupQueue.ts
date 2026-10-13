@@ -1,6 +1,6 @@
 const pendingBackups = new Map<string, Promise<void>>();
 
-/** Serialize the entire backup, including session.json, across active/history views. */
+/** Serialize whole backups; active/history share record IDs, templates use a separate key prefix. */
 export const queueRecordBackup = <T>(recordId: string, backup: () => Promise<T>): Promise<T> => {
     const task = (pendingBackups.get(recordId) ?? Promise.resolve()).then(backup);
     const tail = task.then(() => undefined, () => undefined);

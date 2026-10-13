@@ -1,6 +1,6 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { GameSession, HistoryRecord } from '../types';
+import type { GameSession, GameTemplate, HistoryRecord } from '../types';
 import { db } from '../db';
 import { googleDriveService } from '../services/googleDrive';
 import { googleDriveClient } from '../services/cloud/googleDriveClient';
@@ -72,18 +72,19 @@ describe('full backup cleanup and result reporting', () => {
     });
     afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
-    const backup = async (records: HistoryRecord[] = [record], sessions: GameSession[] = []) => {
+    const backup = async (records: HistoryRecord[] = [record], sessions: GameSession[] = [], templates: GameTemplate[] = []) => {
         const { result } = renderHook(() => useGoogleDrive());
         const onProgress = vi.fn();
         const onError = vi.fn();
+        const onItemSuccess = vi.fn();
         let summary!: { success: number; skipped: number; failed: number };
         await act(async () => {
             summary = await result.current.performFullBackup(async () => ({ data: {
-                templates: [], overrides: [], history: records, sessions,
-            } }), onProgress, onError);
+                templates, overrides: [], history: records, sessions,
+            } }), onProgress, onError, onItemSuccess);
             await Promise.all(pendingCleanup);
         });
-        return { summary, onProgress, onError };
+        return { summary, onProgress, onError, onItemSuccess };
     };
 
     it('protects the newly saved history folder even when a stale Active list contains the same ID, without an extra lookup', async () => {
@@ -142,6 +143,28 @@ describe('full backup cleanup and result reporting', () => {
         expect(onError).toHaveBeenCalledExactlyOnceWith([expect.any(String)]);
         expect(onProgress).toHaveBeenLastCalledWith(2, 2);
         expect(googleDriveClient.moveFile).not.toHaveBeenCalled();
+    });
+
+    it('counts a cancelled template as skipped without marking it synced or invoking success', async () => {
+        const template: GameTemplate = { ...record.snapshotTemplate, hasImage: true };
+        vi.spyOn(googleDriveService, 'backupTemplate').mockResolvedValue(null);
+        const { summary, onProgress, onError, onItemSuccess } = await backup([], [], [template]);
+        expect(googleDriveService.backupTemplate).toHaveBeenCalledTimes(1);
+        expect(summary).toEqual({ success: 1, skipped: 1, failed: 0 });
+        expect(db.templates.update).not.toHaveBeenCalled();
+        expect(onItemSuccess).not.toHaveBeenCalled();
+        expect(onError).not.toHaveBeenCalled();
+        expect(onProgress).toHaveBeenLastCalledWith(2, 2);
+    });
+
+    it('does not show a success toast when a single template backup is cancelled', async () => {
+        vi.spyOn(googleDriveService, 'backupTemplate').mockResolvedValue(null);
+        const { result } = renderHook(() => useGoogleDrive());
+        await act(async () => {
+            expect(await result.current.handleBackup(record.snapshotTemplate)).toBeNull();
+        });
+        expect(ui.showToast).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+        expect(result.current.isSyncing).toBe(false);
     });
 
     it('counts unchanged system settings as skipped without losing completed progress', async () => {
