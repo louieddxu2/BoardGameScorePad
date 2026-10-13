@@ -72,16 +72,26 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
   },
   persistSnapshot({ session, roomId, revision, updatedAt }) {
     return db.transaction('rw', [db.sessions, db.multiplayerRooms], async () => {
-      await db.sessions.put(session);
+      // A snapshot updates an existing owner, unlike first-join bootstrap.
+      // Replace the whole row atomically, but never upsert a deleted session.
+      const count = await db.sessions.where('id').equals(session.id).modify(function (this: { value: GameSession }) {
+        this.value = session;
+      });
+      if (count === 0) return false;
       await db.multiplayerRooms.update(roomId, { revision, updatedAt });
+      return true;
     });
   },
   persistAcceptedSnapshot({ session, roomId, revision, updatedAt, receipt, sequence }) {
     return db.transaction('rw', [db.sessions, db.multiplayerRooms, db.multiplayerPatchReceipts, db.multiplayerSequences], async () => {
-      await db.sessions.put(session);
+      const count = await db.sessions.where('id').equals(session.id).modify(function (this: { value: GameSession }) {
+        this.value = session;
+      });
+      if (count === 0) return false;
       await db.multiplayerRooms.update(roomId, { revision, updatedAt });
       await db.multiplayerSequences.put(sequence);
       await db.multiplayerPatchReceipts.put(receipt);
+      return true;
     });
   },
   putHistory(record: HistoryRecord) {

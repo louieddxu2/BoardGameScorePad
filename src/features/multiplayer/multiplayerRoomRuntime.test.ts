@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createMultiplayerHostSession } from './multiplayerSession';
-import { GameSession, GameTemplate, MultiplayerParticipantBindingRecord, MultiplayerRoomRecord, ScoreColumn } from '../../types';
+import { GameSession, GameTemplate, MultiplayerParticipantBindingRecord, MultiplayerRoomRecord, ScoreColumn, ScoreValue } from '../../types';
+import { getEffectiveIds } from '../../utils/scoring';
 import { MultiplayerDeliveryStore } from './multiplayerDeliveryStore';
 import { MultiplayerParticipantBindingStore, saveParticipantBinding } from './multiplayerParticipantBinding';
 import { MultiplayerPlayerRoomStore, MultiplayerRoomRecoveryStore, MultiplayerRoomRuntimeTransport, createMultiplayerHostRoomRuntime, createMultiplayerPlayerRoomRuntime, restoreMultiplayerHostRoomRuntime, restoreMultiplayerPlayerRoomRuntime } from './multiplayerRoomRuntime';
@@ -50,9 +51,9 @@ const createBindingStore = (): MultiplayerParticipantBindingStore => {
 };
 
 describe('multiplayer room runtime', () => {
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
-  it.each(['host', 'player'] as const)('drains admitted %s photo writes but rejects late callbacks without overwriting newer local scores', async role => {
+  it.each(['host', 'player'] as const)('drains already-started %s photo writes but rejects late callbacks without overwriting newer local scores', async role => {
     const store = createRuntimeStore();
     const onSessionSnapshot = vi.fn();
     const options = {
@@ -63,13 +64,36 @@ describe('multiplayer room runtime', () => {
     const runtime = role === 'host'
       ? await createMultiplayerHostRoomRuntime({ ...options, roomId: 'room-1', hostDeviceId: 'host', template, session })
       : await createMultiplayerPlayerRoomRuntime({ ...options, bootstrapMessage: host.createBootstrapMessage(), deviceId: 'device', bindingStore: createBindingStore() });
+    let started!: () => void;
+    let release!: () => void;
+    const writing = new Promise<void>(resolve => { started = resolve; });
+    const blocked = new Promise<void>(resolve => { release = resolve; });
+    const save = store.putSession;
+    const saveSpy = vi.spyOn(store, 'putSession').mockImplementationOnce(async value => {
+      started();
+      await blocked;
+      await save(value);
+    });
     const previous = runtime.session.session;
     const admitted = routeMultiplayerSessionUpdate({ previous,
       next: { ...previous, photos: ['photo'], photoContentIds: { photo: 'before-stop' } }, runtime, mediaOnly: true });
+    await writing;
     runtime.stop();
-    await runtime.whenIdle?.();
-    expect(await admitted).toMatchObject({ photoContentIds: { photo: 'before-stop' } });
+    const drained = vi.fn();
+    const idle = runtime.whenIdle?.().then(drained);
+    await Promise.resolve();
+    expect(drained).not.toHaveBeenCalled();
+    release();
+    await idle;
+    expect(drained).toHaveBeenCalledOnce();
+    if (role === 'host') {
+      expect(await admitted).toBeNull();
+      expect(onSessionSnapshot).not.toHaveBeenCalled();
+    } else {
+      expect(await admitted).toMatchObject({ photoContentIds: { photo: 'before-stop' } });
+    }
     expect(await store.getSession(session.id)).toMatchObject({ photoContentIds: { photo: 'before-stop' } });
+    saveSpy.mockRestore();
     onSessionSnapshot.mockClear();
     const newer = { ...previous, players: [{ ...previous.players[0], scores: { points: { parts: [9] } }, totalScore: 9 }] };
     await store.putSession(newer);
@@ -96,6 +120,61 @@ describe('multiplayer room runtime', () => {
     await runtime.whenIdle?.();
     expect(broadcast).not.toHaveBeenCalled();
     expect(stop).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([false, true])('adapts pending, restored and late inputs after a selection mode change (was multi: %s)', async wasMultiSelect => {
+    vi.useFakeTimers();
+    const oldTemplate: GameTemplate = { ...template, columns: [{ ...column, inputType: 'clicker', isMultiSelect: wasMultiSelect,
+      quickActions: [{ id: 'a', label: 'A', value: 3 }, { id: 'b', label: 'B', value: 5 }] }] };
+    const reply = vi.fn((_connection: unknown, _message: unknown) => true);
+    const host = await createMultiplayerHostRoomRuntime({ roomId: 'room-1', hostDeviceId: 'host', template: oldTemplate, session,
+      store: createRuntimeStore(), deliveryStore: createDeliveryStore(),
+      transport: { sendToHost: () => false, sendToConnection: reply, broadcastLocalChanges: async () => undefined },
+    });
+    const playerStore = createRuntimeStore();
+    const delivery = createDeliveryStore();
+    const bindingStore = createBindingStore();
+    const playerOptions = { store: playerStore, deliveryStore: delivery, bindingStore, deviceId: 'guest',
+      transport: { sendToHost: vi.fn(() => false), sendToConnection: () => false, broadcastLocalChanges: async () => undefined } };
+    const participant = await createMultiplayerPlayerRoomRuntime({ ...playerOptions, bootstrapMessage: host.session.createBootstrapMessage() });
+    const scoreValue: ScoreValue = wasMultiSelect ? { parts: [3, 5], multiOptionIds: ['a', 'b'] } : { parts: [3], optionId: 'a' };
+    const patch = await participant.controller.queueScoreValuePatch({
+      actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue,
+    });
+    expect(participant.session.session.players[0].totalScore).toBe(wasMultiSelect ? 8 : 3);
+    const original = JSON.stringify(patch);
+    const nextTemplate = { ...oldTemplate, updatedAt: 2, columns: [{ ...oldTemplate.columns[0], isMultiSelect: !wasMultiSelect,
+      quickActions: [{ id: 'a', label: 'A', value: 10 }, { id: 'b', label: 'B', value: 20 }] }] };
+    await host.controller.applyLocalBoard(nextTemplate, host.session.session);
+    const bootstrap = host.session.createBootstrapMessage();
+    await participant.receive(bootstrap);
+    expect(getEffectiveIds(participant.session.template.columns[0], participant.session.session.players[0].scores.points)).toEqual(['a']);
+    expect(participant.session.session.players[0].totalScore).toBe(10);
+    expect((await delivery.listOutbox('room-1', session.id)).map(item => item.message)).toEqual([patch]);
+
+    // Restart with the same durable outbox: recovery must use the new schema,
+    // while replay still sends the original operation ID, sequence and payload.
+    participant.stop();
+    const restored = await createMultiplayerPlayerRoomRuntime({ ...playerOptions, bootstrapMessage: bootstrap });
+    expect(getEffectiveIds(restored.session.template.columns[0], restored.session.session.players[0].scores.points)).toEqual(['a']);
+    expect(restored.session.session.players[0].totalScore).toBe(10);
+    playerOptions.transport.sendToHost.mockClear();
+    await restored.controller.replayPendingPatches();
+    expect(playerOptions.transport.sendToHost).toHaveBeenCalledExactlyOnceWith(patch);
+
+    const connection = {};
+    await host.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: session.id, deviceId: 'guest', playerId: 'p1' }, connection);
+    expect(await host.receive(patch, connection)).toBe(true);
+    expect(getEffectiveIds(host.session.template.columns[0], host.session.session.players[0].scores.points)).toEqual(['a']);
+    expect(host.session.session.players[0].totalScore).toBe(10);
+    const ack = reply.mock.calls[reply.mock.calls.length - 1]?.[1];
+    expect(ack).toMatchObject({ type: 'score:patch-result', accepted: true, opId: patch.opId });
+    await restored.receive(ack);
+    expect(restored.session.session.players[0].totalScore).toBe(10);
+    expect(await delivery.listOutbox('room-1', session.id)).toHaveLength(0);
+    expect(JSON.stringify(patch)).toBe(original);
+    host.stop();
+    restored.stop();
   });
 
   it('applies a delayed template without rolling back newer confirmed or pending inputs', async () => {

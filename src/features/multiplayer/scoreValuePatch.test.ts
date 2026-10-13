@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GameSession, GameTemplate, Player, ScoreColumn } from '../../types';
+import { GameSession, GameTemplate, Player, ScoreColumn, ScoreValue } from '../../types';
 import { applyScoreValuePatch, isValidScoreValue, mergeSessionInputChanges } from './scoreValuePatch';
 
 const createColumn = (overrides: Partial<ScoreColumn> = {}): ScoreColumn => ({
@@ -153,6 +153,45 @@ describe('applyScoreValuePatch', () => {
 
     expect(result.session.players[0].scores.points).toBeUndefined();
     expect(result.session.players[0].totalScore).toBe(0);
+  });
+
+  it('honors explicit current-mode clears rather than restoring an inactive selection field', () => {
+    for (const isMultiSelect of [false, true]) {
+      const template = createTemplate([createColumn({ inputType: 'clicker', isMultiSelect,
+        quickActions: [{ id: 'a', label: 'A', value: 10 }] })]);
+      for (const scoreValue of [null, isMultiSelect
+        ? { parts: [], multiOptionIds: [], optionId: 'a' }
+        : { parts: [], optionId: '', multiOptionIds: ['a'] }]) {
+        const result = applyScoreValuePatch(createSession(), template, {
+          actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue,
+        });
+        expect(result.ok).toBe(true);
+        if (!result.ok) continue;
+        expect(result.session.players[0].scores.points).toEqual(scoreValue ?? undefined);
+        expect(result.session.players[0].totalScore).toBe(0);
+      }
+    }
+  });
+
+  it('does not convert sum-parts clickers or number-only inputs into selection mode', () => {
+    const scoreValue: ScoreValue = { parts: [3, 5], optionId: 'a' };
+    const original = JSON.stringify(scoreValue);
+    for (const column of [createColumn({ inputType: 'clicker', formula: 'a1+next', isMultiSelect: true }), createColumn()]) {
+      const result = applyScoreValuePatch(createSession(), createTemplate([column]), {
+        actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue,
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) continue;
+      expect(result.session.players[0].scores.points).toEqual(scoreValue);
+      expect(result.session.players[0].scores.points.parts).not.toBe(scoreValue.parts);
+      expect(result.session.players[0].totalScore).toBe(column.inputType === 'clicker' ? 8 : 3);
+    }
+    const result = applyScoreValuePatch(createSession(), createTemplate([createColumn({ inputType: 'clicker', isMultiSelect: true })]), {
+      actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [7] },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.session.players[0].scores.points).toEqual({ parts: [7] });
+    expect(JSON.stringify(scoreValue)).toBe(original);
   });
 
   it('rejects unknown players, unknown columns, auto columns, and malformed score values', () => {

@@ -41,12 +41,14 @@ export interface MultiplayerSnapshotStore {
   putSession(session: GameSession): Promise<unknown>;
   putTemplate?(template: GameTemplate): Promise<unknown>;
   updateRoomRevision(roomId: string, revision: number, updatedAt: number): Promise<unknown>;
+  /** Atomic updates may return false when the session owner no longer exists. */
   persistSnapshot?(options: {
     session: GameSession;
     roomId: string;
     revision: number;
     updatedAt: number;
   }): Promise<unknown>;
+  /** A false result must not commit a receipt, sequence, or room revision. */
   persistAcceptedSnapshot?(options: {
     session: GameSession;
     roomId: string;
@@ -164,19 +166,20 @@ export const persistMultiplayerBootstrap = async (
 export const persistMultiplayerSnapshot = async (
   message: SessionSnapshotMessage,
   store: MultiplayerSnapshotStore
-): Promise<GameSession> => {
+): Promise<GameSession | null> => {
   if (!isSessionSnapshotMessage(message)) {
     throw new Error('invalid_session_snapshot');
   }
 
   const session = cloneJson(message.session);
   if (store.persistSnapshot) {
-    await store.persistSnapshot({
+    const persisted = await store.persistSnapshot({
       session,
       roomId: message.roomId,
       revision: message.revision,
       updatedAt: message.updatedAt,
     });
+    if (persisted === false) return null; // The local record was retired; never recreate it.
   } else {
     await store.putSession(session);
     await store.updateRoomRevision(message.roomId, message.revision, message.updatedAt);
@@ -191,18 +194,20 @@ export const persistAcceptedMultiplayerSnapshot = async (
   delivery: MultiplayerDeliveryStore,
   receipt: MultiplayerPatchReceiptRecord,
   sequence: MultiplayerSequenceRecord,
-): Promise<void> => {
+): Promise<boolean> => {
   if (!isSessionSnapshotMessage(message)) throw new Error('invalid_session_snapshot');
   if (store.persistAcceptedSnapshot) {
-    await store.persistAcceptedSnapshot({
+    const persisted = await store.persistAcceptedSnapshot({
       session: cloneJson(message.session), roomId: message.roomId, revision: message.revision,
       updatedAt: message.updatedAt, receipt, sequence,
     });
+    return persisted !== false;
   } else {
     // Custom/in-memory stores used outside IndexedDB retain the same write order.
-    await persistMultiplayerSnapshot(message, store);
+    if (!await persistMultiplayerSnapshot(message, store)) return false;
     await delivery.putSequence(sequence);
     await delivery.putReceipt(receipt);
+    return true;
   }
 };
 

@@ -26,6 +26,125 @@ const createDeliveryStore = (): MultiplayerDeliveryStore => {
 
 describe('multiplayer room controller', () => {
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+  it('cancels queued host edits, patches and completion after deletion without recreating the session', async () => {
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session });
+    const delivery = createDeliveryStore();
+    const getReceipt = vi.spyOn(delivery, 'getReceipt');
+    let saved: GameSession | undefined = session;
+    let started!: () => void;
+    let release!: () => void;
+    const writing = new Promise<void>(resolve => { started = resolve; });
+    const blocked = new Promise<void>(resolve => { release = resolve; });
+    const putSession = vi.fn(async (value: GameSession) => {
+      saved = value;
+      started();
+      await blocked;
+    });
+    const putTemplate = vi.fn(async () => undefined);
+    const onSnapshot = vi.fn();
+    const reply = vi.fn(() => true);
+    const broadcastMessage = vi.fn(() => true);
+    const controller = createMultiplayerRoomController({ role: 'host', hostSession: host, deliveryStore: delivery,
+      snapshotStore: { putSession, putTemplate, updateRoomRevision: async () => undefined }, onSnapshot,
+      transport: { sendToHost: () => false, sendToConnection: reply, broadcastMessage, broadcastLocalChanges: async () => undefined },
+    });
+    const connection = {};
+    await controller.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: session.id, deviceId: 'guest', playerId: 'p1' }, connection);
+    reply.mockClear();
+    const edit = (value: number): GameSession => ({ ...session, players: [{ ...player, scores: { points: { parts: [value] } } }] });
+    const first = controller.applyLocalSession(edit(1));
+    await writing;
+    const queued = controller.applyLocalSession(edit(2), session);
+    const board = controller.applyLocalBoard({ ...template, name: 'Changed' }, session, session);
+    const remote = controller.receive({ type: 'score:valuePatch', roomId: 'room-1', sessionId: session.id,
+      opId: 'queued', deviceId: 'guest', sequence: 1, updatedAt: 20,
+      patch: { actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [3] } },
+    }, connection);
+    const completion = controller.complete().catch(error => error.message);
+    saved = undefined; // Deletion happens before its room-deletion listener stops the runtime.
+    controller.stop();
+    release();
+    expect(await Promise.all([first, queued, board, remote, completion])).toEqual([null, null, null, false, 'room_stopped']);
+    await controller.whenIdle();
+    expect(saved).toBeUndefined();
+    expect(putSession).toHaveBeenCalledOnce();
+    expect(putTemplate).not.toHaveBeenCalled();
+    expect(getReceipt).not.toHaveBeenCalled();
+    expect(host.revision).toBe(2);
+    for (const publish of [onSnapshot, reply, broadcastMessage]) expect(publish).not.toHaveBeenCalled();
+  });
+
+  it.each(['receipt', 'sequence'] as const)('abandons a received patch if the host stops during its %s lookup', async kind => {
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session });
+    const delivery = createDeliveryStore();
+    const putSession = vi.fn(async () => undefined);
+    const reply = vi.fn(() => true);
+    const controller = createMultiplayerRoomController({ role: 'host', hostSession: host, deliveryStore: delivery,
+      snapshotStore: { putSession, updateRoomRevision: async () => undefined },
+      transport: { sendToHost: () => false, sendToConnection: reply, broadcastLocalChanges: async () => undefined },
+    });
+    const connection = {};
+    await controller.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: session.id, deviceId: 'guest', playerId: 'p1' }, connection);
+    reply.mockClear();
+    let started!: () => void;
+    let release!: () => void;
+    const reading = new Promise<void>(resolve => { started = resolve; });
+    const blocked = new Promise<void>(resolve => { release = resolve; });
+    const lookup = kind === 'receipt' ? vi.spyOn(delivery, 'getReceipt') : vi.spyOn(delivery, 'getSequence');
+    lookup.mockImplementationOnce(async () => { started(); await blocked; return undefined; });
+    const receive = controller.receive({ type: 'score:valuePatch', roomId: 'room-1', sessionId: session.id,
+      opId: 'op-1', deviceId: 'guest', sequence: 1, updatedAt: 20,
+      patch: { actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [4] } },
+    }, connection);
+    await reading;
+    controller.stop();
+    release();
+    expect(await receive).toBe(false);
+    expect(host.revision).toBe(1);
+    expect(putSession).not.toHaveBeenCalled();
+    expect(reply).not.toHaveBeenCalled();
+  });
+
+  it('does not acknowledge, notify or fall back to upserts when snapshot persistence finds a deleted owner', async () => {
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session });
+    const delivery = createDeliveryStore();
+    const putReceipt = vi.spyOn(delivery, 'putReceipt');
+    const putSequence = vi.spyOn(delivery, 'putSequence');
+    const putSession = vi.fn(async () => undefined);
+    const persistSnapshot = vi.fn(async () => false);
+    const persistAcceptedSnapshot = vi.fn(async () => false);
+    const onSnapshot = vi.fn();
+    const reply = vi.fn(() => true);
+    const broadcastMessage = vi.fn(() => true);
+    const controller = createMultiplayerRoomController({ role: 'host', hostSession: host, deliveryStore: delivery,
+      snapshotStore: { putSession, persistSnapshot, persistAcceptedSnapshot, updateRoomRevision: async () => undefined }, onSnapshot,
+      transport: { sendToHost: () => false, sendToConnection: reply, broadcastMessage, broadcastLocalChanges: async () => undefined },
+    });
+    const connection = {};
+    await controller.receive({ type: 'room:claim-player', roomId: 'room-1', sessionId: session.id, deviceId: 'guest', playerId: 'p1' }, connection);
+    reply.mockClear();
+    expect(await controller.receive({ type: 'score:valuePatch', roomId: 'room-1', sessionId: session.id,
+      opId: 'op-1', deviceId: 'guest', sequence: 1, updatedAt: 20,
+      patch: { actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [4] } },
+    }, connection)).toBe(false);
+    expect(await controller.applyLocalSession({ ...host.session, note: 'Local edit' })).toBeNull();
+    expect(persistAcceptedSnapshot).toHaveBeenCalledOnce();
+    expect(persistSnapshot).toHaveBeenCalledOnce();
+    for (const write of [putSession, putReceipt, putSequence, onSnapshot, reply, broadcastMessage]) expect(write).not.toHaveBeenCalled();
+    controller.stop();
+
+    const playerSession = createMultiplayerPlayerSessionFromBootstrap({ bootstrapMessage: host.createBootstrapMessage() });
+    const onLocalSession = vi.fn();
+    const playerController = createMultiplayerPlayerRoomController({ playerSession, deviceId: 'device', deliveryStore: delivery,
+      snapshotStore: { putSession, persistSnapshot, updateRoomRevision: async () => undefined }, onSnapshot, onLocalSession,
+      transport: { sendToHost: () => false, sendToConnection: () => false, broadcastLocalChanges: async () => undefined },
+    });
+    await playerController.receive(host.applyLocalSession({ ...host.session, note: 'Remote edit' })!);
+    expect(persistSnapshot).toHaveBeenCalledTimes(2);
+    expect(onSnapshot).not.toHaveBeenCalled();
+    expect(onLocalSession).not.toHaveBeenCalled();
+  });
+
   it('queues a local photo edit behind an in-flight snapshot and drains both before releasing the room', async () => {
     const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session });
     const playerSession = createMultiplayerPlayerSessionFromBootstrap({ bootstrapMessage: host.createBootstrapMessage() });

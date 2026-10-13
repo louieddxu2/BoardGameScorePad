@@ -1,4 +1,4 @@
-import { GameSession, GameTemplate, Player, ScoreValue } from '../../types';
+import { GameSession, GameTemplate, Player, ScoreColumn, ScoreValue } from '../../types';
 import { recalculateScoreSession } from '../../utils/sessionScoring';
 
 export type ScorePatchActor =
@@ -48,6 +48,20 @@ const cloneScoreValue = (value: ScoreValue): ScoreValue => ({
   ...(value.optionId !== undefined ? { optionId: value.optionId } : {}),
   ...(value.multiOptionIds !== undefined ? { multiOptionIds: [...value.multiOptionIds] } : {}),
 });
+
+/** Late/offline inputs keep their operation identity; adapt only the selection representation. */
+const normalizeSelectionInput = (column: ScoreColumn, value: ScoreValue): ScoreValue => {
+  const normalized = cloneScoreValue(value);
+  if (column.inputType !== 'clicker' || column.formula?.includes('+next')) return normalized;
+  if (column.isMultiSelect && value.multiOptionIds === undefined && value.optionId !== undefined) {
+    normalized.multiOptionIds = value.optionId ? [value.optionId] : [];
+    delete normalized.optionId;
+  } else if (!column.isMultiSelect && value.optionId === undefined && value.multiOptionIds !== undefined) {
+    if (value.multiOptionIds.length) normalized.optionId = value.multiOptionIds[0];
+    delete normalized.multiOptionIds;
+  }
+  return normalized;
+};
 
 const mergeChangedFields = <T extends object>(current: T, previous: T, next: T, ignored: Array<keyof T>): T => {
   const result = { ...current };
@@ -124,7 +138,7 @@ export const applyScoreValueInputs = (
     if (patch.scoreValue === null) {
       delete scores[patch.colId];
     } else {
-      scores[patch.colId] = cloneScoreValue(patch.scoreValue);
+      scores[patch.colId] = normalizeSelectionInput(column, patch.scoreValue);
     }
 
     return { ...player, scores };
