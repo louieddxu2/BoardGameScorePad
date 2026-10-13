@@ -7,7 +7,7 @@ import { imageService } from '../imageService';
 import { googleDriveClient } from './googleDriveClient';
 
 vi.mock('../../db', () => ({ db: { sessions: { get: vi.fn() }, history: { get: vi.fn() } } }));
-vi.mock('./googleAuth', () => ({ googleAuth: { isAuthorized: true, token: 'test-token' } }));
+vi.mock('./googleAuth', () => ({ googleAuth: { isAuthorized: true, token: 'test-token', signOut: vi.fn() } }));
 vi.mock('../imageService', () => ({ imageService: { getImage: vi.fn() } }));
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -54,9 +54,10 @@ const acceptSettingsRequests = (remote: ReturnType<typeof settings> | undefined)
     };
 
 describe('backup API request budgets and recovery', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.resetAllMocks();
         vi.stubGlobal('fetch', fetchMock);
+        await googleDriveService.signOut();
         Object.assign(googleDriveService, { systemFolderId: 'system', templatesFolderId: 'templates',
             activeFolderId: 'active', historyFolderId: 'history' });
         vi.spyOn(googleDriveService, 'ensureAppStructure').mockResolvedValue();
@@ -227,5 +228,96 @@ describe('backup API request budgets and recovery', () => {
             ? Promise.resolve(json({ error: { message: 'Settings replaced' } }, 404)) : normal(input, init));
         await expect(systemSyncService.mergeAndBackupSystemSettings(local)).rejects.toThrow('Settings replaced');
         expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+
+    const enableInitialization = () => {
+        vi.mocked(googleDriveService.ensureAppStructure).mockRestore();
+        Object.assign(googleDriveService, { systemFolderId: null, templatesFolderId: null,
+            activeFolderId: null, historyFolderId: null });
+    };
+    const appFolders = ['_System', '_Active', '_History', '_Templates'].map(name => ({
+        id: `new${name}`, name, mimeType: 'application/vnd.google-apps.folder',
+    }));
+    const acceptInitialization: typeof fetch = async input => {
+        const query = new URL(String(input)).searchParams.get('q') || '';
+        return json({ files: query.includes("name = 'BoardGameScorePad'") ? [{ id: 'new-root' }] : appFolders });
+    };
+
+    it('shares concurrent initialization and resolves four existing directories with two requests including the root', async () => {
+        enableInitialization();
+        fetchMock.mockImplementation(acceptInitialization);
+        await Promise.all(Array.from({ length: 3 }, () => googleDriveService.ensureAppStructure()));
+        await googleDriveService.ensureAppStructure();
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(googleDriveService.templatesFolderId).toBe('new_Templates');
+        expect(new URL(String(fetchMock.mock.calls[1][0])).searchParams.get('q')).toContain("'_System'");
+    });
+
+    it('creates only a genuinely missing system directory after the shared lookup', async () => {
+        enableInitialization();
+        fetchMock.mockImplementation(async (input, init) => {
+            if (init?.method === 'POST') return json({ id: 'created-templates' });
+            const query = new URL(String(input)).searchParams.get('q') || '';
+            if (query.includes("name = 'BoardGameScorePad'")) return json({ files: [{ id: 'new-root' }] });
+            return json({ files: appFolders.filter(folder => folder.name !== '_Templates') });
+        });
+        await googleDriveService.ensureAppStructure();
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+        expect(JSON.parse(fetchMock.mock.calls[2][1]!.body as string)).toEqual({
+            name: '_Templates', mimeType: 'application/vnd.google-apps.folder', parents: ['new-root'],
+        });
+        expect(googleDriveService.templatesFolderId).toBe('created-templates');
+    });
+
+    it('does not create directories from an incomplete listing and releases failed initialization for retry', async () => {
+        enableInitialization();
+        fetchMock.mockImplementationOnce(async () => json({ files: [{ id: 'new-root' }] }))
+            .mockImplementationOnce(async () => json({ files: [appFolders[0]], incompleteSearch: true }))
+            .mockImplementation(acceptInitialization);
+        await expect(googleDriveService.ensureAppStructure()).rejects.toThrow('incomplete');
+        expect(googleDriveService.systemFolderId).toBeNull();
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        await googleDriveService.ensureAppStructure();
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+        expect(googleDriveService.systemFolderId).toBe('new_System');
+    });
+
+    it('rejects an old initialization after logout without overwriting the new connection root or folders', async () => {
+        enableInitialization();
+        let releaseOld!: (response: Response) => void;
+        fetchMock.mockImplementationOnce(() => new Promise<Response>(resolve => { releaseOld = resolve; }))
+            .mockImplementation(acceptInitialization);
+        const pending = googleDriveService.ensureAppStructure();
+        const rejected = expect(pending).rejects.toThrow('Drive connection changed');
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+        await googleDriveService.signOut();
+        await googleDriveService.ensureAppStructure();
+        releaseOld(json({ files: [{ id: 'old-root' }] }));
+        await rejected;
+        expect(googleDriveService.systemFolderId).toBe('new_System');
+        fetchMock.mockImplementationOnce(async () => json({ files: [{ id: 'trash' }] }))
+            .mockImplementationOnce(async () => json({ files: [] }));
+        await googleDriveService.emptyTrash('template');
+        const trashLookup = new URL(String(fetchMock.mock.calls[3][0])).searchParams.get('q');
+        expect(trashLookup).toContain("'new-root' in parents");
+        expect(trashLookup).not.toContain("'old-root' in parents");
+    });
+
+    it('groups all three backup categories by parent ID across a merged paginated query', async () => {
+        const folder = (id: string, parent: string) => ({ id, name: `Game_${id}`, createdTime: '', parents: [parent] });
+        fetchMock.mockResolvedValueOnce(json({ files: [folder('t', 'templates'), folder('h', 'history')], nextPageToken: 'page-2' }))
+            .mockResolvedValueOnce(json({ files: [folder('s', 'active')] }));
+        const groups = await googleDriveService.listBackupFolders();
+        expect(groups.templates.map(file => file.id)).toEqual(['t']);
+        expect(groups.history.map(file => file.id)).toEqual(['h']);
+        expect(groups.active.map(file => file.id)).toEqual(['s']);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        const query = new URL(String(fetchMock.mock.calls[0][0])).searchParams.get('q');
+        for (const parent of ['templates', 'history', 'active']) expect(query).toContain(`'${parent}' in parents`);
+    });
+
+    it('rejects a grouped listing without parent metadata instead of silently dropping records', async () => {
+        fetchMock.mockResolvedValue(json({ files: [{ id: 'folder', name: 'Game_play' }] }));
+        await expect(googleDriveService.listBackupFolders()).rejects.toThrow('parent is missing');
     });
 });

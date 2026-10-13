@@ -4,6 +4,7 @@ export interface CloudFile {
   name: string;
   createdTime: string; // ISO string
   mimeType?: string;
+  parents?: string[];
   appProperties?: { [key: string]: string }; // Custom metadata
 }
 

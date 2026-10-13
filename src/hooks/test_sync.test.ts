@@ -26,7 +26,7 @@ vi.mock('../services/googleDrive', () => ({
         activeFolderId: 'activeFolderId',
         systemFolderId: 'systemFolderId',
         
-        listFoldersInParent: vi.fn(),
+        listBackupFolders: vi.fn(),
         backupTemplate: vi.fn(),
         backupHistoryRecord: vi.fn(),
         backupActiveSession: vi.fn(),
@@ -58,11 +58,9 @@ describe('useGoogleDrive Skip Logic Debug', () => {
         const { result } = renderHook(() => useGoogleDrive());
         
         // Mock a cloud item that exists and has a timestamp
-        (googleDriveService.listFoldersInParent as any).mockImplementation((parentId: string) => {
-             if (parentId === 'templatesFolderId') {
-                 return Promise.resolve([ { id: 'cloud_t1', name: 'Test_t1', appProperties: { originalUpdatedAt: '2000' } } ]);
-             }
-             return Promise.resolve([]);
+        vi.mocked(googleDriveService.listBackupFolders).mockResolvedValue({
+            templates: [{ id: 'cloud_t1', name: 'Test_t1', createdTime: '', appProperties: { originalUpdatedAt: '2000' } }],
+            history: [], active: [],
         });
         
         (googleDriveService.backupTemplate as any).mockResolvedValue({ id: 't1' });
@@ -92,7 +90,7 @@ describe('useGoogleDrive Skip Logic Debug', () => {
     it('should SKIP upload if template is disposable (has no columns/images)', async () => {
         const { result } = renderHook(() => useGoogleDrive());
         
-        (googleDriveService.listFoldersInParent as any).mockResolvedValue([]);
+        vi.mocked(googleDriveService.listBackupFolders).mockResolvedValue({ templates: [], history: [], active: [] });
         (googleDriveService.backupTemplate as any).mockResolvedValue({ id: 't1' });
 
         // Local item is disposable (no columns)
@@ -112,11 +110,9 @@ describe('useGoogleDrive Skip Logic Debug', () => {
     it('should SKIP upload if local timestamp is <= cloud timestamp', async () => {
          const { result } = renderHook(() => useGoogleDrive());
         
-        (googleDriveService.listFoldersInParent as any).mockImplementation((parentId: string) => {
-             if (parentId === 'historyFolderId') {
-                 return Promise.resolve([ { id: 'cloud_h1', name: 'Hist_h1', appProperties: { originalUpdatedAt: '5000' } } ]);
-             }
-             return Promise.resolve([]);
+        vi.mocked(googleDriveService.listBackupFolders).mockResolvedValue({
+            templates: [], active: [],
+            history: [{ id: 'cloud_h1', name: 'Hist_h1', createdTime: '', appProperties: { originalUpdatedAt: '5000' } }],
         });
         
         // Mock returning photoCloudIds
@@ -143,7 +139,7 @@ describe('useGoogleDrive Skip Logic Debug', () => {
     it('should upload and then update local DB with photo IDs if successful', async () => {
          const { result } = renderHook(() => useGoogleDrive());
         
-        (googleDriveService.listFoldersInParent as any).mockResolvedValue([]);
+        vi.mocked(googleDriveService.listBackupFolders).mockResolvedValue({ templates: [], history: [], active: [] });
         
         (googleDriveService.backupHistoryRecord as any).mockResolvedValue({
              folderId: 'f1', updatedRecord: { id: 'h1', photoCloudIds: { 'p1': 'cloud_p1' } }

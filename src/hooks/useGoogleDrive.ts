@@ -299,11 +299,8 @@ export const useGoogleDrive = () => {
             const sessions: GameSession[] = localData.data.sessions || [];
             const overrides: GameTemplate[] = localData.data.overrides || [];
 
-            const [cloudTemplates, cloudHistory, cloudActive] = await Promise.all([
-                googleDriveService.listFoldersInParent(googleDriveService.templatesFolderId!),
-                googleDriveService.listFoldersInParent(googleDriveService.historyFolderId!),
-                googleDriveService.listFoldersInParent(googleDriveService.activeFolderId!)
-            ]);
+            const { templates: cloudTemplates, history: cloudHistory, active: cloudActive } =
+                await googleDriveService.listBackupFolders();
 
             const createMap = (files: CloudFile[]) => {
                 const map = new Map<string, CloudFile>();

@@ -53,6 +53,10 @@ describe('full backup cleanup and result reporting', () => {
         vi.mocked(googleDriveClient.uploadFileToFolder).mockResolvedValue({ id: 'json' } as any);
         vi.mocked(googleDriveClient.findFileByProperty).mockResolvedValue(null);
         vi.mocked(googleDriveClient.fetchAllItems).mockImplementation(async query => {
+            if (query.includes(' or ')) return [
+                { ...historyFolder, parents: ['history'] },
+                ...activeFolders.map(folder => ({ ...folder, parents: ['active'] })),
+            ];
             if (query.includes("'history' in parents")) return [historyFolder];
             if (query.includes("'active' in parents") && !query.includes('name contains')) return activeFolders;
             return [];
@@ -88,6 +92,7 @@ describe('full backup cleanup and result reporting', () => {
         expect(googleDriveClient.uploadFileToFolder).toHaveBeenCalledWith(historyFolder.id, 'session.json', 'application/json', expect.any(String), null);
         expect(googleDriveClient.moveFile).not.toHaveBeenCalled();
         expect(googleDriveClient.getFile).not.toHaveBeenCalled();
+        expect(vi.mocked(googleDriveClient.fetchAllItems).mock.calls.filter(([query]) => query.includes(' or '))).toHaveLength(1);
         expect(summary).toEqual({ success: 2, skipped: 0, failed: 0 });
     });
 

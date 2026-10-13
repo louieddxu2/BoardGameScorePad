@@ -9,6 +9,7 @@ import { DATA_LIMITS } from '../dataLimits';
 import { db } from '../db';
 import { latestBackupRecord, queueRecordBackup } from './cloud/recordBackupQueue';
 import { readBackupFolderFiles, type BackupFolderFiles } from './cloud/backupFolderFiles';
+import { resolveDriveAppFolders, listDriveFoldersInParents } from './cloud/driveFolderQueries';
 
 export type { CloudFile, CloudResourceType };
 
@@ -30,6 +31,8 @@ class GoogleDriveService {
 
     // Folder ID Cache
     private appRootId: string | null = null;
+    private structureTask: Promise<void> | null = null;
+    private connectionRevision = 0;
     private trashIds: Record<CloudResourceType, string | null> = {
         template: null,
         active: null,
@@ -50,28 +53,38 @@ class GoogleDriveService {
     }
 
     public async signOut(): Promise<void> {
-        await googleAuth.signOut();
         // Clear Cache
+        this.connectionRevision++;
+        this.structureTask = null;
         this.appRootId = null;
         this.trashIds = { template: null, active: null, history: null };
         this.systemFolderId = null;
         this.activeFolderId = null;
         this.historyFolderId = null;
         this.templatesFolderId = null;
+        await googleAuth.signOut();
     }
 
     // --- Folder Management ---
 
+    private assertConnection(revision: number): void {
+        if (revision !== this.connectionRevision) throw new Error('Drive connection changed');
+    }
+
     private async getAppRoot(): Promise<string> {
         if (this.appRootId) return this.appRootId;
+        const revision = this.connectionRevision;
         let root = await googleDriveClient.findFile('BoardGameScorePad', 'root', 'application/vnd.google-apps.folder');
+        this.assertConnection(revision);
         if (!root) root = await googleDriveClient.createFolder('BoardGameScorePad');
+        this.assertConnection(revision);
         this.appRootId = root.id;
         return root.id;
     }
 
     private async getTrashFolder(type: CloudResourceType): Promise<string> {
         if (this.trashIds[type]) return this.trashIds[type]!;
+        const revision = this.connectionRevision;
 
         const rootId = await this.getAppRoot();
 
@@ -81,31 +94,34 @@ class GoogleDriveService {
         if (type === 'history') folderName = '_Trash_History';
 
         let trash = await googleDriveClient.findFile(folderName, rootId, 'application/vnd.google-apps.folder');
+        this.assertConnection(revision);
         if (!trash) trash = await googleDriveClient.createFolder(folderName, rootId);
-
+        this.assertConnection(revision);
         this.trashIds[type] = trash.id;
         return trash.id;
     }
 
     public async ensureAppStructure(): Promise<void> {
         if (this.systemFolderId && this.activeFolderId && this.historyFolderId && this.templatesFolderId) return;
-        if (!this.isAuthorized) await this.signIn();
-
-        const rootId = await this.getAppRoot();
-
-        const folders = ['_System', '_Active', '_History', '_Templates'];
-        const results = await Promise.all(folders.map(async name => {
-            let folder = await googleDriveClient.findFile(name, rootId, 'application/vnd.google-apps.folder');
-            if (!folder) folder = await googleDriveClient.createFolder(name, rootId);
-            return { name, id: folder.id };
-        }));
-
-        results.forEach(r => {
-            if (r.name === '_System') this.systemFolderId = r.id;
-            if (r.name === '_Active') this.activeFolderId = r.id;
-            if (r.name === '_History') this.historyFolderId = r.id;
-            if (r.name === '_Templates') this.templatesFolderId = r.id;
-        });
+        if (this.structureTask) return this.structureTask;
+        const revision = this.connectionRevision;
+        const task = (async () => {
+            if (!this.isAuthorized) await this.signIn();
+            this.assertConnection(revision);
+            const rootId = await this.getAppRoot();
+            const folders = await resolveDriveAppFolders(rootId, () => this.assertConnection(revision));
+            this.assertConnection(revision);
+            this.systemFolderId = folders._System;
+            this.activeFolderId = folders._Active;
+            this.historyFolderId = folders._History;
+            this.templatesFolderId = folders._Templates;
+        })();
+        this.structureTask = task;
+        try {
+            await task;
+        } finally {
+            if (this.structureTask === task) this.structureTask = null;
+        }
     }
 
     // --- App Business Logic ---
@@ -140,6 +156,18 @@ class GoogleDriveService {
     public async listFoldersInParent(parentId: string): Promise<CloudFile[]> {
         const query = `'${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
         return googleDriveClient.fetchAllItems(query, 'files(id, name, createdTime, appProperties)');
+    }
+
+    public async listBackupFolders(): Promise<{ templates: CloudFile[], history: CloudFile[], active: CloudFile[] }> {
+        await this.ensureAppStructure();
+        const { templatesFolderId, historyFolderId, activeFolderId } = this;
+        if (!templatesFolderId || !historyFolderId || !activeFolderId) throw new Error('Directories not initialized');
+        const groups = await listDriveFoldersInParents([templatesFolderId, historyFolderId, activeFolderId]);
+        return {
+            templates: groups.get(templatesFolderId)!,
+            history: groups.get(historyFolderId)!,
+            active: groups.get(activeFolderId)!,
+        };
     }
 
     /**
