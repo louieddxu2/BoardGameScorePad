@@ -53,6 +53,9 @@ BoardGameScorePad is an offline-first board-game scoring, history, stats, and sh
 
 ## Multiplayer Lifecycle Patterns
 
+- First host creation may precede debounced autosave, and the first participant import may create its local game. Runtime attachment after that import, live board updates, restoration, completion handoff and host relay retention are existing-owner writes: use `requireExistingSession` inside the current transaction, never a separate existence read followed by upsert.
+- The transport stops its sync adapter; its borrowed `isActive` callback also cancels queued imports and delayed template reads. Player runtimes cancel remote messages after stop, but already-admitted local media may finish against an existing owner. Keep synchronous local calculation, durable input order, replay IDs and the normal completion disconnect/handoff unchanged.
+- Completion saves its session/template and room cleanup atomically. Missing-owner cancellation returns no local session and must not resume a deleted game or schedule a completion relay. Dexie 3 `modify()` reports matched keys even for skipped callbacks; the existing-row helper must track whether replacement actually happened.
 - `src/hooks/useMultiplayerRoomLifecycle.ts` owns shared React state, tab ownership, room restoration, session exits, and session-deletion subscriptions. Keep its public return contract stable when splitting workflows.
 - `src/hooks/useMultiplayerQrJoinLifecycle.ts` owns only the existing QR-join effect. Preserve its dependency identities, three-second deadline, one-time URL consumption, and stale-join guards; do not duplicate shared state or transport ownership inside it.
 - `src/features/multiplayer/multiplayerHostRoomLifecycle.ts` owns host bootstrap and completion persistence. The caller still owns UI transitions, cancellation tokens, and the five-minute completion-relay cleanup timer.

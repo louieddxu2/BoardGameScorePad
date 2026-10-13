@@ -33,9 +33,10 @@ export const createMultiplayerPlayerRoomController = (options: {
   now?: () => number;
 }) => {
   const now = options.now ?? Date.now;
-  const send = (message: unknown) => options.transport.sendToHost(message);
+  const isActive = () => options.isActive?.() !== false;
+  const send = (message: unknown) => isActive() && options.transport.sendToHost(message);
   const publishLocalChange = (previous: GameSession) => {
-    if (options.playerSession.session !== previous) options.onLocalSession?.(options.playerSession.session);
+    if (isActive() && options.playerSession.session !== previous) options.onLocalSession?.(options.playerSession.session);
   };
   let lastQueuedAt = 0;
   const nextInputTime = () => (lastQueuedAt = Math.max(now(), lastQueuedAt + 1));
@@ -91,17 +92,20 @@ export const createMultiplayerPlayerRoomController = (options: {
         if (attempt >= 2) throw error;
       }
     }
-    if (write) {
+    if (write && isActive()) {
       // A local input may have arrived during the write: publish its latest projection.
       await options.onSnapshot?.({ ...write, session: options.playerSession.session });
     }
     return Boolean(write);
   };
   const receiveOne = async (message: unknown) => {
+    if (!isActive()) return false;
     if (isBootstrapPackageMessage(message)) {
       const store = options.bootstrapStore;
       if (!store || message.roomId !== options.playerSession.room.roomId || message.package.session.id !== options.playerSession.session.id || options.playerSession.session.status !== 'active') return false;
-      const resolved = resolveBootstrapImport(message.package, await store.getTemplate(message.package.template.id));
+      const localTemplate = await store.getTemplate(message.package.template.id);
+      if (!isActive()) return false;
+      const resolved = resolveBootstrapImport(message.package, localTemplate);
       // Keep the existing local/newer-template import policy, but within a live
       // room the host's structure is authoritative even for equal timestamps.
       const template = { ...message.package.template, id: resolved.templateForSession.id };
@@ -112,20 +116,24 @@ export const createMultiplayerPlayerRoomController = (options: {
         template: options.playerSession.template,
         session,
         room: createMultiplayerRoomRecord({ room: options.playerSession.room, session, revision: options.playerSession.revision, role: 'player', updatedAt }),
+        requireExistingSession: true,
+        shouldPersist: isActive,
       };
       // Use the same receive queue as ACKs/snapshots, and persist confirmed inputs
       // only. A delayed template must not roll IndexedDB back or consume the outbox.
       for (let attempt = 0; ; attempt++) {
+        if (!isActive()) return false;
         try {
-          await store.persistBootstrap(records);
+          if (await store.persistBootstrap(records) === false) return false;
           break;
         } catch (error) {
           if (attempt >= 2) throw error;
         }
       }
+      if (!isActive()) return false;
       unpersistedSnapshot = null;
       await options.onSnapshot?.({ type: 'session:snapshot', roomId: message.roomId, sessionId: session.id, session: options.playerSession.session, revision: options.playerSession.revision, updatedAt });
-      return true;
+      return isActive();
     }
     if (isSessionCompletedMessage(message)) {
       if (!options.playerSession.applyCompleted(message)) return false;
@@ -162,7 +170,9 @@ export const createMultiplayerPlayerRoomController = (options: {
     if (snapshot) unpersistedSnapshot = { ...snapshot, session: options.playerSession.confirmedSession };
     // A single ACK must recover transient local failures without another network
     // message. Local media writes use the same persistence/notification policy.
-    if (await persistConfirmedChanges() === false) publishLocalChange(previous);
+    const persisted = await persistConfirmedChanges();
+    if (!isActive() || persisted === null) return false;
+    if (persisted === false) publishLocalChange(previous);
     return true;
   };
   let receiveQueue = Promise.resolve();

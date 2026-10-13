@@ -330,7 +330,11 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     });
   });
 
-  it.each([false, true])('completes a host room with the existing cleanup policy, persistedRoom=%s', async (persistedRoom) => {
+  it.each([
+    { persistedRoom: false, retained: true },
+    { persistedRoom: true, retained: true },
+    { persistedRoom: true, retained: false },
+  ])('completes a host room with the existing cleanup policy, persistedRoom=$persistedRoom, retained=$retained', async ({ persistedRoom, retained }) => {
     vi.useFakeTimers();
     try {
       appData.currentSession = { id: 'session-1', status: 'active', templateId: 'template-1', players: [] };
@@ -343,6 +347,7 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
       mocks.hostRuntime.controller.complete.mockResolvedValue(completed);
       const ownedSession = { ...appData.currentSession, name: 'Returned local session' };
       vi.mocked(releaseMultiplayerRoomOwnership).mockResolvedValue(ownedSession);
+      vi.mocked(retainMultiplayerCompletionRelay).mockResolvedValue(retained ? ownedSession : null);
       const { result } = renderLifecycle();
       act(() => result.current.handleOpenMultiplayerRoom());
       await act(async () => { await result.current.handleCreateMultiplayerRoom(); });
@@ -350,17 +355,17 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
       mocks.roomRecord = persistedRoom ? { roomId, role: 'host' } : null;
 
       await act(async () => {
-        expect(await result.current.releaseHostMultiplayerRoom()).toBe(persistedRoom ? completed.finalSession : ownedSession);
+        expect(await result.current.releaseHostMultiplayerRoom()).toBe(!retained ? undefined : persistedRoom ? completed.finalSession : ownedSession);
       });
       expect(result.current.activeMultiplayerRoom).toBeNull();
       expect(result.current.isMultiplayerRoomModalOpen).toBe(false);
       expect(mocks.hostRuntime.controller.complete).toHaveBeenCalledTimes(1);
       expect(retainMultiplayerCompletionRelay).toHaveBeenCalledTimes(persistedRoom ? 1 : 0);
       expect(releaseMultiplayerRoomOwnership).toHaveBeenCalledTimes(persistedRoom ? 0 : 1);
-      expect(mocks.closeRoom).toHaveBeenCalledTimes(persistedRoom ? 0 : 1);
+      expect(mocks.closeRoom).toHaveBeenCalledTimes(persistedRoom && retained ? 0 : 1);
 
       act(() => vi.advanceTimersByTime(5 * 60 * 1000 - 1));
-      expect(mocks.closeRoom).toHaveBeenCalledTimes(persistedRoom ? 0 : 1);
+      expect(mocks.closeRoom).toHaveBeenCalledTimes(persistedRoom && retained ? 0 : 1);
       act(() => vi.advanceTimersByTime(1));
       expect(mocks.closeRoom).toHaveBeenCalledTimes(1);
       expect(mocks.closeRoom).toHaveBeenCalledWith(roomId, { deleteLocalRoom: true });

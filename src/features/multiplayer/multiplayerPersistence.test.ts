@@ -24,6 +24,32 @@ const createMessage = (template = createTemplate(100)) => ({
 });
 
 describe('multiplayer local persistence', () => {
+  it('uses the existing-only atomic writer for host relays, without falling back when the game was deleted', async () => {
+    const persistBootstrap = vi.fn().mockResolvedValue(false);
+    const putSession = vi.fn();
+    const putRoom = vi.fn();
+    const message = createMessage();
+    const room: MultiplayerRoomRecord = { roomId: 'room-1', sessionId: 'session-1', templateId: 'template-1', hostDeviceId: 'host',
+      role: 'host', status: 'active', revision: 1, createdAt: 1, updatedAt: 1 };
+    expect(await retainMultiplayerCompletionRelay({ store: { persistBootstrap, putSession, putRoom }, room,
+      session: message.package.session, template: message.package.template, revision: 2, completedAt: 30 })).toBeNull();
+    expect(persistBootstrap).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ requireExistingSession: true,
+      session: expect.objectContaining({ id: 'session-1', status: 'active' }),
+      room: expect.objectContaining({ status: 'completed', revision: 2 }) }));
+    expect(putSession).not.toHaveBeenCalled();
+    expect(putRoom).not.toHaveBeenCalled();
+  });
+
+  it('does not report returned ownership or upsert again when the atomic handoff detects deletion', async () => {
+    const releaseRoomOwnership = vi.fn().mockResolvedValue(false);
+    const putSession = vi.fn();
+    const deleteRoom = vi.fn();
+    expect(await releaseMultiplayerRoomOwnership({ store: { releaseRoomOwnership, putSession, deleteRoom }, roomId: 'room-1',
+      session: createSession(), completedAt: 30 })).toBeNull();
+    expect(releaseRoomOwnership).toHaveBeenCalledOnce();
+    expect(putSession).not.toHaveBeenCalled();
+    expect(deleteRoom).not.toHaveBeenCalled();
+  });
   it('reuses an equal local template and only persists the session', async () => {
     const putTemplate = vi.fn<(template: GameTemplate) => Promise<void>>(async () => undefined);
     const putSession = vi.fn<(session: GameSession) => Promise<void>>(async () => undefined);
@@ -41,6 +67,7 @@ describe('multiplayer local persistence', () => {
       },
     });
 
+    if (!result) throw new Error('Initial bootstrap must be persisted');
     expect(result.decision.action).toBe('reuse-local');
     expect(putTemplate).not.toHaveBeenCalled();
     expect(putSession).toHaveBeenCalledWith(expect.objectContaining({ id: 'session-1' }));
@@ -66,6 +93,7 @@ describe('multiplayer local persistence', () => {
       },
     });
 
+    if (!result) throw new Error('Initial bootstrap must be persisted');
     expect(result.decision.action).toBe('overwrite-local');
     expect(putTemplate).toHaveBeenCalledWith(expect.objectContaining({ id: 'template-1', updatedAt: 200 }));
   });
@@ -84,6 +112,7 @@ describe('multiplayer local persistence', () => {
       persistBootstrap,
     });
 
+    if (!result) throw new Error('Initial bootstrap must be persisted');
     expect(result.decision.action).toBe('add-new');
     expect(persistBootstrap).toHaveBeenCalledWith({
       template: expect.objectContaining({ id: 'template-1' }),
@@ -108,6 +137,7 @@ describe('multiplayer local persistence', () => {
       },
     });
 
+    if (!result) throw new Error('Initial bootstrap must be persisted');
     expect(result.decision).toEqual({
       action: 'add-session-copy',
       templateId: 'Multiplayer-session-1',
@@ -222,7 +252,7 @@ describe('multiplayer local persistence', () => {
       store: { putSession, putRoom }, room, template: createTemplate(200), session: finalSession, revision: 3, completedAt: 30,
     });
 
-    expect(localSession.status).toBe('active');
+    expect(localSession?.status).toBe('active');
     expect(putSession).toHaveBeenCalledWith(expect.objectContaining({ id: 'session-1', status: 'active' }));
     expect(putRoom).toHaveBeenCalledWith(expect.objectContaining({
       roomId: 'room-1', status: 'completed', revision: 3, completedAt: 30,

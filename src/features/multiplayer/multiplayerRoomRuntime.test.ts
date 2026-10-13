@@ -14,8 +14,13 @@ const session: GameSession = {
   players: [{ id: 'p1', name: 'P1', color: '#fff', scores: {}, totalScore: 0 }],
 };
 
-const createRuntimeStore = (): MultiplayerRoomRecoveryStore & MultiplayerPlayerRoomStore => {
-  const templates = new Map<string, GameTemplate>(); const sessions = new Map<string, GameSession>(); const rooms = new Map<string, MultiplayerRoomRecord>();
+const createRuntimeStore = (withSession = false): MultiplayerRoomRecoveryStore & MultiplayerPlayerRoomStore & {
+  deleteSession(id: string): Promise<void>;
+  releaseRoomOwnership(options: { roomId: string; session: GameSession; template?: GameTemplate }): Promise<boolean>;
+} => {
+  const templates = new Map<string, GameTemplate>();
+  const sessions = new Map<string, GameSession>(withSession ? [[session.id, session]] : []);
+  const rooms = new Map<string, MultiplayerRoomRecord>();
   return {
     getTemplate: async (id) => templates.get(id),
     getRoom: async (id) => rooms.get(id),
@@ -23,11 +28,23 @@ const createRuntimeStore = (): MultiplayerRoomRecoveryStore & MultiplayerPlayerR
     putTemplate: async (value) => { templates.set(value.id, value); },
     putSession: async (value) => { sessions.set(value.id, value); },
     putRoom: async (value) => { rooms.set(value.roomId, value); },
-    persistBootstrap: async ({ template: bootstrapTemplate, session: bootstrapSession, room: bootstrapRoom }) => {
+    persistBootstrap: async ({ template: bootstrapTemplate, session: bootstrapSession, room: bootstrapRoom, requireExistingSession, shouldPersist }) => {
+      if (shouldPersist?.() === false || (requireExistingSession && !sessions.has(bootstrapSession.id))) return false;
       if (bootstrapTemplate) templates.set(bootstrapTemplate.id, bootstrapTemplate);
       sessions.set(bootstrapSession.id, bootstrapSession);
       rooms.set(bootstrapRoom.roomId, bootstrapRoom);
+      return true;
     },
+    releaseRoomOwnership: async ({ roomId, session: value, template: nextTemplate }) => {
+      const exists = sessions.has(value.id);
+      if (exists) {
+        sessions.set(value.id, value);
+        if (nextTemplate) templates.set(nextTemplate.id, nextTemplate);
+      }
+      rooms.delete(roomId);
+      return exists;
+    },
+    deleteSession: async (id) => { sessions.delete(id); },
     updateRoomRevision: async (roomId, revision, updatedAt) => { const room = rooms.get(roomId); if (room) rooms.set(roomId, { ...room, revision, updatedAt }); },
     deleteRoom: async (id) => { rooms.delete(id); },
   };
@@ -52,6 +69,157 @@ const createBindingStore = (): MultiplayerParticipantBindingStore => {
 
 describe('multiplayer room runtime', () => {
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+
+  it('permits fresh hosting before autosave and a first participant import into an empty store', async () => {
+    const hostStore = createRuntimeStore();
+    const transport = { sendToHost: () => false, sendToConnection: () => false, broadcastLocalChanges: async () => undefined };
+    const host = await createMultiplayerHostRoomRuntime({ roomId: 'room-1', hostDeviceId: 'host', template, session,
+      store: hostStore, transport, deliveryStore: createDeliveryStore() });
+    expect(await hostStore.getSession(session.id)).toMatchObject({ id: session.id, status: 'active' });
+    const store = createRuntimeStore();
+    const participant = await createMultiplayerPlayerRoomRuntime({ bootstrapMessage: host.session.createBootstrapMessage(), deviceId: 'guest',
+      store, transport, deliveryStore: createDeliveryStore(), bindingStore: createBindingStore() });
+    expect(await store.getSession(session.id)).toMatchObject({ id: session.id, status: 'active' });
+    host.stop();
+    participant.stop();
+  });
+
+  it.each(['host', 'player'] as const)('does not recreate a %s game deleted after restoration reads but before its transaction', async role => {
+    const store = createRuntimeStore();
+    const transport = { sendToHost: () => false, sendToConnection: () => false, broadcastLocalChanges: async () => undefined };
+    const deliveryStore = createDeliveryStore();
+    const host = await createMultiplayerHostRoomRuntime({ roomId: 'room-1', hostDeviceId: 'host', template, session, store, transport, deliveryStore });
+    host.stop();
+    const bindingStore = createBindingStore();
+    if (role === 'player') {
+      const participant = await createMultiplayerPlayerRoomRuntime({ bootstrapMessage: host.session.createBootstrapMessage(), deviceId: 'guest',
+        store, transport, deliveryStore, bindingStore });
+      participant.stop();
+    }
+    const persist = store.persistBootstrap;
+    vi.spyOn(store, 'persistBootstrap').mockImplementationOnce(async records => {
+      await store.deleteSession(session.id);
+      return persist(records);
+    });
+    const restoring = role === 'host' ? restoreMultiplayerHostRoomRuntime({ roomId: 'room-1', store, transport, deliveryStore })
+      : restoreMultiplayerPlayerRoomRuntime({ roomId: 'room-1', deviceId: 'guest', store, transport, deliveryStore, bindingStore });
+    await expect(restoring).rejects.toThrow(role === 'host' ? 'room_session_missing' : 'room_stopped');
+    expect(await store.getSession(session.id)).toBeUndefined();
+  });
+
+  it('does not read or import data when participant creation is already cancelled', async () => {
+    const store = createRuntimeStore();
+    const getTemplate = vi.spyOn(store, 'getTemplate');
+    const persistBootstrap = vi.spyOn(store, 'persistBootstrap');
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session });
+    await expect(createMultiplayerPlayerRoomRuntime({ bootstrapMessage: host.createBootstrapMessage(), shouldPersist: () => false,
+      deviceId: 'guest', store, bindingStore: createBindingStore(), deliveryStore: createDeliveryStore(),
+      transport: { sendToHost: () => false, sendToConnection: () => false, broadcastLocalChanges: async () => undefined } })).rejects.toThrow('room_stopped');
+    expect(getTemplate).not.toHaveBeenCalled();
+    expect(persistBootstrap).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('does not recreate a deleted game during template reads (runtime stopped: %s)', async stopped => {
+    const store = createRuntimeStore();
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session });
+    const onSessionSnapshot = vi.fn();
+    const participant = await createMultiplayerPlayerRoomRuntime({ bootstrapMessage: host.createBootstrapMessage(), deviceId: 'guest',
+      store, deliveryStore: createDeliveryStore(), bindingStore: createBindingStore(), onSessionSnapshot,
+      transport: { sendToHost: () => false, sendToConnection: () => false, broadcastLocalChanges: async () => undefined } });
+    const readTemplate = store.getTemplate;
+    let started!: () => void;
+    let release!: () => void;
+    const reading = new Promise<void>(resolve => { started = resolve; });
+    const blocked = new Promise<void>(resolve => { release = resolve; });
+    vi.spyOn(store, 'getTemplate').mockImplementationOnce(async id => { started(); await blocked; return readTemplate(id); });
+    const persist = vi.spyOn(store, 'persistBootstrap');
+    host.applyLocalBoard({ ...template, name: 'Changed', updatedAt: 2 }, { ...host.session, name: 'Changed' });
+    const receiving = participant.receive(host.createBootstrapMessage());
+    await reading;
+    await store.deleteSession(session.id);
+    if (stopped) participant.stop();
+    release();
+    expect(await receiving).toBe(false);
+    await participant.whenIdle?.();
+    expect(await store.getSession(session.id)).toBeUndefined();
+    expect(await store.getTemplate(template.id)).toMatchObject({ name: 'Template' });
+    expect(persist).toHaveBeenCalledTimes(stopped ? 0 : 1);
+    expect(onSessionSnapshot).not.toHaveBeenCalled();
+    participant.stop();
+  });
+
+  it('cancels queued remote messages while draining already-admitted local media on participant exit', async () => {
+    const store = createRuntimeStore();
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session });
+    const onSessionSnapshot = vi.fn();
+    const onOwnershipReturned = vi.fn();
+    const sendToHost = vi.fn(() => false);
+    const participant = await createMultiplayerPlayerRoomRuntime({ bootstrapMessage: host.createBootstrapMessage(), deviceId: 'guest',
+      store, deliveryStore: createDeliveryStore(), bindingStore: createBindingStore(), onSessionSnapshot, onOwnershipReturned,
+      transport: { sendToHost, sendToConnection: () => false, broadcastLocalChanges: async () => undefined } });
+    let started!: () => void;
+    let release!: () => void;
+    const writing = new Promise<void>(resolve => { started = resolve; });
+    const blocked = new Promise<void>(resolve => { release = resolve; });
+    const save = store.putSession;
+    const putSession = vi.spyOn(store, 'putSession').mockImplementationOnce(async value => { started(); await blocked; await save(value); });
+    const firstSnapshot = host.applyLocalSession({ ...host.session, players: [{ ...session.players[0], scores: { points: { parts: [1] } } }] })!;
+    const first = participant.receive(firstSnapshot);
+    await writing;
+    const media = participant.controller.applyLocalSessionMedia({ ...session, photos: ['local-photo'] });
+    host.applyLocalBoard({ ...template, name: 'Changed' }, host.session);
+    const queued = [participant.receive(firstSnapshot), participant.receive(host.createBootstrapMessage()), participant.receive(host.complete())];
+    participant.stop();
+    release();
+    expect(await first).toBe(false);
+    expect(await Promise.all(queued)).toEqual([false, false, false]);
+    expect(await media).toMatchObject({ photos: ['local-photo'], players: [{ totalScore: 1 }] });
+    await participant.whenIdle?.();
+    expect(await store.getSession(session.id)).toMatchObject({ status: 'active', photos: ['local-photo'], players: [{ totalScore: 1 }] });
+    expect(putSession).toHaveBeenCalledTimes(2);
+    expect(onSessionSnapshot).not.toHaveBeenCalled();
+    expect(onOwnershipReturned).not.toHaveBeenCalled();
+    expect(sendToHost).not.toHaveBeenCalled();
+  });
+
+  it('does not report a live template import after its notification closes the room', async () => {
+    const store = createRuntimeStore();
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session });
+    let participant!: Awaited<ReturnType<typeof createMultiplayerPlayerRoomRuntime>>;
+    const onSessionSnapshot = vi.fn(() => { participant.stop(); });
+    participant = await createMultiplayerPlayerRoomRuntime({ bootstrapMessage: host.createBootstrapMessage(), deviceId: 'guest',
+      store, deliveryStore: createDeliveryStore(), bindingStore: createBindingStore(), onSessionSnapshot,
+      transport: { sendToHost: () => false, sendToConnection: () => false, broadcastLocalChanges: async () => undefined } });
+    host.applyLocalBoard({ ...template, name: 'Changed' }, { ...host.session, name: 'Changed' });
+    expect(await participant.receive(host.createBootstrapMessage())).toBe(false);
+    expect(onSessionSnapshot).toHaveBeenCalledOnce();
+    // The already-committed update remains valid; only a late UI resume is cancelled.
+    expect(await store.getSession(session.id)).toMatchObject({ name: 'Changed' });
+  });
+
+  it('does not return deleted game ownership when completion was already awaiting local template data', async () => {
+    const store = createRuntimeStore();
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session });
+    const onOwnershipReturned = vi.fn();
+    const participant = await createMultiplayerPlayerRoomRuntime({ bootstrapMessage: host.createBootstrapMessage(), deviceId: 'guest',
+      store, deliveryStore: createDeliveryStore(), bindingStore: createBindingStore(), onOwnershipReturned,
+      transport: { sendToHost: () => false, sendToConnection: () => false, broadcastLocalChanges: async () => undefined } });
+    let started!: () => void;
+    let release!: () => void;
+    const reading = new Promise<void>(resolve => { started = resolve; });
+    const blocked = new Promise<void>(resolve => { release = resolve; });
+    const readTemplate = store.getTemplate;
+    vi.spyOn(store, 'getTemplate').mockImplementationOnce(async id => { started(); await blocked; return readTemplate(id); });
+    const receiving = participant.receive(host.complete());
+    await reading;
+    await store.deleteSession(session.id);
+    release();
+    await receiving;
+    await participant.whenIdle?.();
+    expect(await store.getSession(session.id)).toBeUndefined();
+    expect(await store.getRoom('room-1')).toBeUndefined();
+    expect(onOwnershipReturned).not.toHaveBeenCalled();
+  });
 
   it.each(['host', 'player'] as const)('drains already-started %s photo writes but rejects late callbacks without overwriting newer local scores', async role => {
     const store = createRuntimeStore();
@@ -396,7 +564,7 @@ describe('multiplayer room runtime', () => {
     });
     let finishPersistence!: () => void;
     const persistenceGate = new Promise<void>((resolve) => { finishPersistence = resolve; });
-    const originalPutTemplate = playerStore.putTemplate;
+    const originalRelease = playerStore.releaseRoomOwnership;
     const stop = vi.fn();
     const player = await createMultiplayerPlayerRoomRuntime({
       bootstrapMessage: host.session.createBootstrapMessage(), deviceId: 'player-device',
@@ -404,9 +572,9 @@ describe('multiplayer room runtime', () => {
       transport: { sendToHost: () => true, sendToConnection: () => false, broadcastLocalChanges: async () => undefined, stop },
       now: () => 20,
     });
-    playerStore.putTemplate = async (value) => {
+    playerStore.releaseRoomOwnership = async (records) => {
       await persistenceGate;
-      return originalPutTemplate(value);
+      return originalRelease(records);
     };
 
     const completion = host.session.complete();

@@ -45,7 +45,7 @@ describe('score-state sync adapter', () => {
   });
 
   it('lets a player import a valid remote item without publishing one itself', async () => {
-    const applyRemoteBootstrap = vi.fn(async () => undefined);
+    const applyRemoteBootstrap = vi.fn(async (_message: unknown, _isActive: () => boolean) => undefined);
     const player = createScoreStateSyncAdapter({
       roomId: 'room-1', role: 'player', store: createStore({ applyRemoteBootstrap }),
     });
@@ -57,7 +57,11 @@ describe('score-state sync adapter', () => {
     expect(applyRemoteBootstrap).toHaveBeenCalledWith(expect.objectContaining({
       type: 'room:bootstrap', roomId: 'room-1',
       package: expect.objectContaining({ session, template, revision: 3 }),
-    }));
+    }), expect.any(Function));
+    const isActive = applyRemoteBootstrap.mock.calls[0][1];
+    expect(isActive()).toBe(true);
+    player.stop?.();
+    expect(isActive()).toBe(false);
   });
 
   it('publishes a terminal completion item and lets a player receive it after reconnecting', async () => {

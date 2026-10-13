@@ -24,6 +24,10 @@ export interface MultiplayerBootstrapRecords {
   template?: GameTemplate;
   session: GameSession;
   room: MultiplayerRoomRecord;
+  /** Live updates and handoffs must never recreate a deleted local owner. */
+  requireExistingSession?: boolean;
+  /** The transport owns cancellation; no extra observer or request generation. */
+  shouldPersist?: () => boolean;
 }
 
 export interface MultiplayerHistoryStore {
@@ -34,7 +38,8 @@ export interface MultiplayerHistoryStore {
 
 export interface MultiplayerCompletionReleaseStore extends MultiplayerHistoryStore {
   putSession(session: GameSession): Promise<unknown>;
-  releaseRoomOwnership?(options: { roomId: string; session: GameSession }): Promise<unknown>;
+  putTemplate?(template: GameTemplate): Promise<unknown>;
+  releaseRoomOwnership?(options: { roomId: string; session: GameSession; template?: GameTemplate }): Promise<unknown>;
 }
 
 export interface MultiplayerSnapshotStore {
@@ -86,10 +91,10 @@ export const createMultiplayerRoomRecord = (options: {
 });
 
 export const persistMultiplayerBootstrapRecords = async (
-  store: MultiplayerBootstrapStore,
+  store: Pick<MultiplayerBootstrapStore, 'persistBootstrap'>,
   records: MultiplayerBootstrapRecords,
-): Promise<void> => {
-  await store.persistBootstrap(records);
+): Promise<boolean> => {
+  return await store.persistBootstrap(records) !== false;
 };
 
 /**
@@ -97,21 +102,21 @@ export const persistMultiplayerBootstrapRecords = async (
  * participant can receive the terminal snapshot after reconnecting.
  */
 export const retainMultiplayerCompletionRelay = async (options: {
-  store: Pick<MultiplayerCompletionReleaseStore, 'putSession'> & Pick<MultiplayerBootstrapStore, 'putRoom'>;
+  store: Pick<MultiplayerCompletionReleaseStore, 'putSession'> & Pick<MultiplayerBootstrapStore, 'putRoom'>
+    & Partial<Pick<MultiplayerBootstrapStore, 'persistBootstrap'>>;
   room: MultiplayerRoomRecord;
   template: GameTemplate;
   session: GameSession;
   revision: number;
   completedAt: number;
-}): Promise<GameSession> => {
+}): Promise<GameSession | null> => {
   const localSession: GameSession = {
     ...cloneJson(options.session),
     status: 'active',
     lastUpdatedAt: options.completedAt,
   };
 
-  await options.store.putSession(localSession);
-  await options.store.putRoom({
+  const room: MultiplayerRoomRecord = {
     ...cloneJson(options.room),
     status: 'completed',
     revision: options.revision,
@@ -119,7 +124,16 @@ export const retainMultiplayerCompletionRelay = async (options: {
     completedSession: cloneJson(options.session),
     completedTemplate: cloneJson(options.template),
     updatedAt: options.completedAt,
-  });
+  };
+  if (options.store.persistBootstrap) {
+    const persisted = await options.store.persistBootstrap({
+      session: localSession, room, requireExistingSession: true,
+    });
+    if (persisted === false) return null;
+  } else {
+    await options.store.putSession(localSession);
+    await options.store.putRoom(room);
+  }
   return localSession;
 };
 
@@ -127,13 +141,17 @@ export const retainMultiplayerCompletionRelay = async (options: {
 export const persistMultiplayerBootstrap = async (
   message: BootstrapPackageMessage,
   store: MultiplayerBootstrapStore,
-  role: MultiplayerRole = 'player'
-): Promise<PersistedBootstrapImport> => {
+  role: MultiplayerRole = 'player',
+  shouldPersist?: () => boolean,
+  requireExistingSession = false,
+): Promise<PersistedBootstrapImport | null> => {
   if (!isBootstrapPackageMessage(message)) {
     throw new Error('invalid_bootstrap_message');
   }
 
+  if (shouldPersist?.() === false) return null;
   const localTemplate = await store.getTemplate(message.package.template.id);
+  if (shouldPersist?.() === false) return null;
   const resolved = resolveBootstrapImport(message.package, localTemplate);
 
   const templateToPersist = (
@@ -150,11 +168,13 @@ export const persistMultiplayerBootstrap = async (
     role,
     updatedAt: message.package.exportedAt,
   });
-  await persistMultiplayerBootstrapRecords(store, {
+  if (!await persistMultiplayerBootstrapRecords(store, {
     template: templateToPersist,
     session: sessionToPersist,
     room: roomToPersist,
-  });
+    ...(shouldPersist ? { shouldPersist } : {}),
+    ...(requireExistingSession ? { requireExistingSession: true } : {}),
+  })) return null;
 
   return {
     decision: resolved.decision,
@@ -264,19 +284,22 @@ export const persistMultiplayerCompletion = async (options: {
 
 /** Returns ownership of a completed room session to the local device. */
 export const releaseMultiplayerRoomOwnership = async (options: {
-  store: Pick<MultiplayerCompletionReleaseStore, 'putSession' | 'deleteRoom' | 'releaseRoomOwnership'>;
+  store: Pick<MultiplayerCompletionReleaseStore, 'putSession' | 'putTemplate' | 'deleteRoom' | 'releaseRoomOwnership'>;
   roomId: string;
   session: GameSession;
+  template?: GameTemplate;
   completedAt: number;
-}): Promise<GameSession> => {
+}): Promise<GameSession | null> => {
   const localSession: GameSession = {
     ...cloneJson(options.session),
     status: 'active',
     lastUpdatedAt: options.completedAt,
   };
   if (options.store.releaseRoomOwnership) {
-    await options.store.releaseRoomOwnership({ roomId: options.roomId, session: localSession });
+    if (await options.store.releaseRoomOwnership({ roomId: options.roomId, session: localSession,
+      ...(options.template ? { template: options.template } : {}) }) === false) return null;
   } else {
+    if (options.template) await options.store.putTemplate?.(options.template);
     await options.store.putSession(localSession);
     await options.store.deleteRoom(options.roomId);
   }

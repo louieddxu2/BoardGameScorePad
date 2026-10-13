@@ -16,10 +16,15 @@ export const createMultiplayerParticipantRuntime = (options: {
   deviceId: string;
   transport: JoinTransport;
   onParticipantCompletion: (roomId: string) => void;
+  shouldPersist?: () => boolean;
 }) => {
   const callbacks = multiplayerSessionManager.createRuntimeCallbacks(options.roomId);
   return createMultiplayerPlayerRoomRuntime({
     bootstrapMessage: options.bootstrapMessage,
+    // The handshake has already imported this game. Runtime attachment is an
+    // update, not permission to recreate a row deleted during the join.
+    requireExistingSession: true,
+    shouldPersist: options.shouldPersist,
     deviceId: options.deviceId,
     store: multiplayerLocalStore,
     bindingStore: multiplayerParticipantBindingStore,
@@ -71,10 +76,15 @@ export const ensureMultiplayerParticipantRuntime = (options: {
     if (runtimeAfterLock?.role === 'player') return runtimeAfterLock;
 
     const deviceId = await getOrCreateMultiplayerDeviceId(multiplayerDeliveryStore);
-    const runtime = await createMultiplayerParticipantRuntime({
-      roomId, bootstrapMessage, deviceId, transport,
-      onParticipantCompletion,
-    });
+    if (!isStillCurrent()) return null;
+    let runtime: MultiplayerPlayerRoomRuntime;
+    try {
+      runtime = await createMultiplayerParticipantRuntime({ roomId, bootstrapMessage, deviceId, transport,
+        onParticipantCompletion, shouldPersist: isStillCurrent });
+    } catch (error) {
+      if (!isStillCurrent()) return null;
+      throw error;
+    }
     if (!isStillCurrent()) {
       runtime.stop();
       return null;
@@ -115,10 +125,18 @@ export const confirmMultiplayerParticipantJoin = async (options: {
   const managedRuntime = multiplayerSessionManager.get(roomId)?.runtime;
   let runtime = managedRuntime?.role === 'player' ? managedRuntime : null;
   if (!runtime) {
-    runtime = await createMultiplayerParticipantRuntime({
-      roomId, bootstrapMessage, deviceId, transport,
-      onParticipantCompletion: options.onParticipantCompletion,
-    });
+    try {
+      runtime = await createMultiplayerParticipantRuntime({ roomId, bootstrapMessage, deviceId, transport,
+        onParticipantCompletion: options.onParticipantCompletion, shouldPersist: options.isCurrent });
+    } catch (error) {
+      if (!options.isCurrent()) return;
+      throw error;
+    }
+    if (!options.isCurrent()) {
+      runtime.stop();
+      await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
+      return;
+    }
     multiplayerSessionManager.register(roomId, runtime, 'connecting');
     transport.setConnectionChangeHandler?.((connectionCount) => multiplayerSessionManager.setConnectionCount(roomId, connectionCount));
   }

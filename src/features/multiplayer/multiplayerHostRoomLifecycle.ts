@@ -88,10 +88,10 @@ export const completeMultiplayerHostRoom = async ({
     });
     await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
     onReleased(false);
-    return localSession;
+    return localSession ?? undefined;
   }
 
-  await retainMultiplayerCompletionRelay({
+  const relay = await retainMultiplayerCompletionRelay({
     store: multiplayerLocalStore,
     room: roomRecord,
     template: completed.template,
@@ -99,6 +99,11 @@ export const completeMultiplayerHostRoom = async ({
     revision: completed.revision,
     completedAt: completed.completedAt,
   });
+  if (!relay) {
+    await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true });
+    onReleased(false);
+    return;
+  }
   onReleased(true);
   return completed.finalSession;
 };

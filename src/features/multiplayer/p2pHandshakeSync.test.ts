@@ -134,7 +134,8 @@ describe('createP2PHandshakeSync reconnect lifecycle', () => {
   });
 
   it('forwards source exclusion through the runtime transport without changing ordinary broadcasts', async () => {
-    const transport = createMultiplayerP2PRuntimeTransport({ Peer: FakePeer, adapter: createAdapter() });
+    const adapter = { ...createAdapter(), stop: vi.fn() };
+    const transport = createMultiplayerP2PRuntimeTransport({ Peer: FakePeer, adapter });
     transport.startHost?.('room-1');
     const source = new FakeConnection('source');
     const other = new FakeConnection('other');
@@ -163,6 +164,7 @@ describe('createP2PHandshakeSync reconnect lifecycle', () => {
     expect(transport.broadcastMessage?.(snapshot, source)).toBe(false);
     expect(source.sent).toEqual([acknowledgement, hostSnapshot]);
     transport.stop?.();
+    expect(adapter.stop).toHaveBeenCalledOnce();
   });
 
   it('reconnects a client, repeats HELLO, and preserves raw message routing', async () => {

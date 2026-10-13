@@ -63,6 +63,7 @@ export const createMultiplayerHostRoomRuntime = async (options: {
   session: GameSession;
   revision?: number;
   createdAt?: number;
+  requireExistingSession?: boolean;
   store: MultiplayerRoomRuntimeStore;
   deliveryStore: MultiplayerDeliveryStore;
   transport: MultiplayerRoomRuntimeTransport;
@@ -73,7 +74,7 @@ export const createMultiplayerHostRoomRuntime = async (options: {
 }): Promise<MultiplayerHostRoomRuntime> => {
   const now = options.now ?? Date.now;
   const hostSession = createMultiplayerHostSession(options);
-  await persistMultiplayerBootstrapRecords(options.store, {
+  const persisted = await persistMultiplayerBootstrapRecords(options.store, {
     template: hostSession.template,
     session: hostSession.session,
     room: createMultiplayerRoomRecord({
@@ -83,7 +84,9 @@ export const createMultiplayerHostRoomRuntime = async (options: {
       role: 'host',
       updatedAt: now(),
     }),
+    ...(options.requireExistingSession ? { requireExistingSession: true } : {}),
   });
+  if (!persisted) throw new Error('room_session_missing');
   const controller = createMultiplayerRoomController({
     role: 'host', hostSession, deliveryStore: options.deliveryStore,
     snapshotStore: options.store, transport: options.transport, now,
@@ -129,6 +132,7 @@ export const restoreMultiplayerHostRoomRuntime = async (options: {
     session,
     revision: room.revision,
     createdAt: room.createdAt,
+    requireExistingSession: true,
     store: options.store,
     deliveryStore: options.deliveryStore,
     transport: options.transport,
@@ -141,6 +145,8 @@ export const restoreMultiplayerHostRoomRuntime = async (options: {
 
 export const createMultiplayerPlayerRoomRuntime = async (options: {
   bootstrapMessage: BootstrapPackageMessage;
+  requireExistingSession?: boolean;
+  shouldPersist?: () => boolean;
   deviceId: string;
   store: MultiplayerPlayerRoomStore;
   bindingStore: MultiplayerParticipantBindingStore;
@@ -153,7 +159,9 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
   now?: () => number;
 }): Promise<MultiplayerPlayerRoomRuntime> => {
   const now = options.now ?? Date.now;
-  const resolvedBootstrap = await persistMultiplayerBootstrap(options.bootstrapMessage, options.store, 'player');
+  const resolvedBootstrap = await persistMultiplayerBootstrap(options.bootstrapMessage, options.store, 'player',
+    options.shouldPersist, options.requireExistingSession);
+  if (!resolvedBootstrap) throw new Error('room_stopped');
   const playerSession = createMultiplayerPlayerSessionFromBootstrap({
     bootstrapMessage: options.bootstrapMessage,
     resolvedBootstrap,
@@ -234,13 +242,14 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
         revision: message.revision,
         exportedAt: message.completedAt,
       }, await options.store.getTemplate(message.template.id), playerSession);
-      await options.store.putTemplate(resolved.templateForSession);
       const localSession = await releaseMultiplayerRoomOwnership({
         store: options.store,
         roomId: playerSession.room.roomId,
         session: resolved.session,
+        template: resolved.templateForSession,
         completedAt: message.completedAt,
       });
+      if (!localSession) return;
       const pending = await options.deliveryStore.listOutbox(playerSession.room.roomId, playerSession.session.id);
       await Promise.all(pending.map((record) => options.deliveryStore.deleteOutbox(record.id)));
       await options.bindingStore.delete(participantBindingKey(playerSession.room.roomId, options.deviceId));
@@ -351,6 +360,7 @@ export const restoreMultiplayerPlayerRoomRuntime = async (options: {
 
   return createMultiplayerPlayerRoomRuntime({
     bootstrapMessage,
+    requireExistingSession: true,
     deviceId: options.deviceId,
     store: options.store,
     bindingStore: options.bindingStore,

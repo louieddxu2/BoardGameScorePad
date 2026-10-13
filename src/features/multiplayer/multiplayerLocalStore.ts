@@ -29,6 +29,18 @@ const purgeMultiplayerRoomData = async (roomId: string): Promise<void> => {
   await db.multiplayerSequences.where('id').equals(roomId).delete();
 };
 
+/** Replace the complete row by primary key, without adding an upsert or table scan. */
+const replaceExistingSession = async (session: GameSession, shouldPersist?: () => boolean) => {
+  let replaced = false;
+  const count = await db.sessions.where('id').equals(session.id).modify(function (this: { value: GameSession }) {
+    if (shouldPersist?.() === false) return false;
+    this.value = session;
+    replaced = true;
+  });
+  // Dexie 3 returns matched keys even when a modify callback returns false.
+  return replaced ? count : 0;
+};
+
 export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHistoryStore & MultiplayerSnapshotStore & MultiplayerCompletionReleaseStore & {
   getRoom(roomId: string): Promise<MultiplayerRoomRecord | undefined>;
   getRoomBySessionId(sessionId: string): Promise<MultiplayerRoomRecord | undefined>;
@@ -48,14 +60,20 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
   putRoom(room: MultiplayerRoomRecord) {
     return db.multiplayerRooms.put(room);
   },
-  persistBootstrap({ template, session, room }: MultiplayerBootstrapRecords) {
+  persistBootstrap({ template, session, room, requireExistingSession, shouldPersist }: MultiplayerBootstrapRecords) {
     const tables = template
       ? [db.templates, db.sessions, db.multiplayerRooms]
       : [db.sessions, db.multiplayerRooms];
     return db.transaction('rw', tables, async () => {
+      if (shouldPersist?.() === false) return false;
+      if (requireExistingSession) {
+        if (!await replaceExistingSession(session, shouldPersist)) return false;
+      } else {
+        await db.sessions.put(session);
+      }
       if (template) await db.templates.put(template);
-      await db.sessions.put(session);
       await db.multiplayerRooms.put(room);
+      return true;
     });
   },
   getRoom(roomId: string) {
@@ -74,9 +92,7 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
     return db.transaction('rw', [db.sessions, db.multiplayerRooms], async () => {
       // A snapshot updates an existing owner, unlike first-join bootstrap.
       // Replace the whole row atomically, but never upsert a deleted session.
-      const count = await db.sessions.where('id').equals(session.id).modify(function (this: { value: GameSession }) {
-        this.value = session;
-      });
+      const count = await replaceExistingSession(session);
       if (count === 0) return false;
       await db.multiplayerRooms.update(roomId, { revision, updatedAt });
       return true;
@@ -84,9 +100,7 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
   },
   persistAcceptedSnapshot({ session, roomId, revision, updatedAt, receipt, sequence }) {
     return db.transaction('rw', [db.sessions, db.multiplayerRooms, db.multiplayerPatchReceipts, db.multiplayerSequences], async () => {
-      const count = await db.sessions.where('id').equals(session.id).modify(function (this: { value: GameSession }) {
-        this.value = session;
-      });
+      const count = await replaceExistingSession(session);
       if (count === 0) return false;
       await db.multiplayerRooms.update(roomId, { revision, updatedAt });
       await db.multiplayerSequences.put(sequence);
@@ -102,10 +116,13 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
     // transactional cleanup; external deletion paths use sessionDeletionEvents.
     return db.sessions.delete(sessionId);
   },
-  async releaseRoomOwnership({ roomId, session }: { roomId: string; session: GameSession }): Promise<void> {
-    await db.transaction('rw', [db.sessions, ...multiplayerRoomCleanupTables], async () => {
-      await db.sessions.put(session);
+  async releaseRoomOwnership({ roomId, session, template }: { roomId: string; session: GameSession; template?: GameTemplate }): Promise<boolean> {
+    const tables = [db.sessions, ...multiplayerRoomCleanupTables, ...(template ? [db.templates] : [])];
+    return db.transaction('rw', tables, async () => {
+      const count = await replaceExistingSession(session);
+      if (count > 0 && template) await db.templates.put(template);
       await purgeMultiplayerRoomData(roomId);
+      return count > 0;
     });
   },
   async purgeRoomData(roomId: string): Promise<void> {
@@ -132,13 +149,15 @@ export const createLocalScoreStateSyncAdapter = (roomId: string, role: 'host' | 
       getRoom: (id) => db.multiplayerRooms.get(id),
       getSession: (id) => db.sessions.get(id),
       getTemplate: (id) => multiplayerLocalStore.getTemplate(id),
-      applyRemoteBootstrap(message) {
+      applyRemoteBootstrap(message, isActive) {
         const task = bootstrapQueue.then(async () => {
+          if (!isActive()) return;
           // Finish the first join before processing another template. Once joined,
           // the runtime serializes imports with score/ACK writes itself.
           if (await options?.applyRemoteBootstrap?.(message)) return;
-          const persisted = await persistMultiplayerBootstrap(message, multiplayerLocalStore, 'player');
-          await options?.onRemoteBootstrap?.(message, persisted);
+          if (!isActive()) return;
+          const persisted = await persistMultiplayerBootstrap(message, multiplayerLocalStore, 'player', isActive);
+          if (persisted && isActive()) await options?.onRemoteBootstrap?.(message, persisted);
         });
         bootstrapQueue = task.catch(() => undefined);
         return task;

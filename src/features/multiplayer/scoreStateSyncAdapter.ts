@@ -30,7 +30,7 @@ export interface ScoreStateSyncStore {
   getRoom(roomId: string): Promise<MultiplayerRoomRecord | undefined>;
   getSession(sessionId: string): Promise<GameSession | undefined>;
   getTemplate(templateId: string): Promise<GameTemplate | undefined>;
-  applyRemoteBootstrap(message: BootstrapPackageMessage): Promise<void>;
+  applyRemoteBootstrap(message: BootstrapPackageMessage, isActive: () => boolean): Promise<void>;
 }
 
 export interface ScoreStateSyncAdapter {
@@ -38,6 +38,7 @@ export interface ScoreStateSyncAdapter {
   listMetas(): Promise<SyncItemMeta[]>;
   getItem(id: string): Promise<SyncItem | null>;
   upsertRemoteItem(item: SyncItem): Promise<void>;
+  stop?(): void;
 }
 
 interface ScoreStatePayload {
@@ -116,78 +117,84 @@ export const createScoreStateSyncAdapter = (options: {
   role: MultiplayerRole;
   store: ScoreStateSyncStore;
   onRemoteCompletion?: (message: SessionCompletedMessage) => void | Promise<void>;
-}): ScoreStateSyncAdapter => ({
-  getScope() {
-    return { sessionStart: 0, roomKey: options.roomId };
-  },
+}): ScoreStateSyncAdapter => {
+  let active = true;
+  return {
+    stop() { active = false; },
+    getScope() {
+      return { sessionStart: 0, roomKey: options.roomId };
+    },
 
-  async listMetas() {
-    const room = await options.store.getRoom(options.roomId);
-    if (!room) return [];
-    return [{ id: room.sessionId, version: room.revision }];
-  },
+    async listMetas() {
+      if (!active) return [];
+      const room = await options.store.getRoom(options.roomId);
+      if (!active || !room) return [];
+      return [{ id: room.sessionId, version: room.revision }];
+    },
 
-  async getItem(id) {
-    if (options.role !== 'host') return null;
+    async getItem(id) {
+      if (!active || options.role !== 'host') return null;
 
-    const room = await options.store.getRoom(options.roomId);
-    if (!room || room.sessionId !== id) return null;
+      const room = await options.store.getRoom(options.roomId);
+      if (!active || !room || room.sessionId !== id) return null;
 
-    if (room.status === 'completed') {
+      if (room.status === 'completed') {
+        const [session, template] = await Promise.all([
+          Promise.resolve(room.completedSession ?? options.store.getSession(room.sessionId)),
+          Promise.resolve(room.completedTemplate ?? options.store.getTemplate(room.templateId)),
+        ]);
+        if (!active || !session || !template) return null;
+        const completedAt = room.completedAt ?? room.updatedAt;
+        const finalSession: GameSession = {
+          ...session,
+          status: 'completed',
+          lastUpdatedAt: completedAt,
+        };
+        const completion: SessionCompletedMessage = {
+          type: 'session:completed',
+          roomId: room.roomId,
+          sessionId: session.id,
+          template,
+          finalSession,
+          revision: room.revision,
+          completedAt,
+        };
+        return {
+          id: session.id,
+          version: room.revision,
+          meta: { kind: 'session-completion' },
+          payload: serializePayload(completion),
+        };
+      }
+
       const [session, template] = await Promise.all([
-        Promise.resolve(room.completedSession ?? options.store.getSession(room.sessionId)),
-        Promise.resolve(room.completedTemplate ?? options.store.getTemplate(room.templateId)),
+        options.store.getSession(room.sessionId),
+        options.store.getTemplate(room.templateId),
       ]);
-      if (!session || !template) return null;
-      const completedAt = room.completedAt ?? room.updatedAt;
-      const finalSession: GameSession = {
-        ...session,
-        status: 'completed',
-        lastUpdatedAt: completedAt,
-      };
-      const completion: SessionCompletedMessage = {
-        type: 'session:completed',
-        roomId: room.roomId,
-        sessionId: session.id,
+      if (!active || !session || !template) return null;
+
+      return createScoreStateSyncItem({
+        room: {
+          roomId: room.roomId,
+          hostDeviceId: room.hostDeviceId,
+          createdAt: room.createdAt,
+        },
         template,
-        finalSession,
+        session,
         revision: room.revision,
-        completedAt,
-      };
-      return {
-        id: session.id,
-        version: room.revision,
-        meta: { kind: 'session-completion' },
-        payload: serializePayload(completion),
-      };
-    }
+        exportedAt: room.updatedAt,
+      });
+    },
 
-    const [session, template] = await Promise.all([
-      options.store.getSession(room.sessionId),
-      options.store.getTemplate(room.templateId),
-    ]);
-    if (!session || !template) return null;
-
-    return createScoreStateSyncItem({
-      room: {
-        roomId: room.roomId,
-        hostDeviceId: room.hostDeviceId,
-        createdAt: room.createdAt,
-      },
-      template,
-      session,
-      revision: room.revision,
-      exportedAt: room.updatedAt,
-    });
-  },
-
-  async upsertRemoteItem(item) {
-    if (options.role !== 'player') return;
-    const payload = await parsePayload(item, options.roomId);
-    if (isSessionCompletedMessage(payload)) {
-      await options.onRemoteCompletion?.(payload);
-      return;
-    }
-    await options.store.applyRemoteBootstrap(payload);
-  },
-});
+    async upsertRemoteItem(item) {
+      if (!active || options.role !== 'player') return;
+      const payload = await parsePayload(item, options.roomId);
+      if (!active) return;
+      if (isSessionCompletedMessage(payload)) {
+        await options.onRemoteCompletion?.(payload);
+        return;
+      }
+      await options.store.applyRemoteBootstrap(payload, () => active);
+    },
+  };
+};

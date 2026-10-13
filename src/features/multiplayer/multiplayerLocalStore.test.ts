@@ -9,6 +9,70 @@ import { createScoreStateSyncItem } from './scoreStateSyncAdapter';
 
 describe('multiplayerLocalStore purgeRoomData & deleteRoom', () => {
   afterEach(() => vi.restoreAllMocks());
+
+  it('cancels queued and in-flight initial sync after its transport stops, without falling back to another import', async () => {
+    let started!: () => void;
+    let release!: () => void;
+    const reading = new Promise<void>(resolve => { started = resolve; });
+    const blocked = new Promise<void>(resolve => { release = resolve; });
+    const getTemplate = vi.spyOn(multiplayerLocalStore, 'getTemplate').mockImplementation(async () => {
+      started(); await blocked; return undefined;
+    });
+    const persistBootstrap = vi.spyOn(multiplayerLocalStore, 'persistBootstrap').mockResolvedValue(true);
+    const onRemoteBootstrap = vi.fn();
+    const adapter = createLocalScoreStateSyncAdapter('room-1', 'player', { onRemoteBootstrap });
+    const item = createScoreStateSyncItem({ room: { roomId: 'room-1', hostDeviceId: 'host', createdAt: 1 },
+      template: { id: 'template-1', name: 'Test', columns: [], createdAt: 1 },
+      session: { id: 'session-1', templateId: 'template-1', name: 'Test', startTime: 1, players: [], status: 'active' },
+      revision: 2, exportedAt: 2 });
+    const first = adapter.upsertRemoteItem(item);
+    await reading;
+    const queued = adapter.upsertRemoteItem(item);
+    adapter.stop?.();
+    release();
+    await Promise.all([first, queued]);
+    await adapter.upsertRemoteItem(item);
+    expect(getTemplate).toHaveBeenCalledOnce();
+    expect(persistBootstrap).not.toHaveBeenCalled();
+    expect(onRemoteBootstrap).not.toHaveBeenCalled();
+  });
+
+  it('requires an existing session for live bootstrap and skips all related writes when its owner is missing', async () => {
+    const modify = vi.fn().mockResolvedValue(0);
+    vi.spyOn(db.sessions, 'where').mockReturnValue({ equals: vi.fn().mockReturnValue({ modify }) } as any);
+    const putSession = vi.spyOn(db.sessions, 'put').mockResolvedValue('session-1');
+    const putTemplate = vi.spyOn(db.templates, 'put').mockResolvedValue('template-1');
+    const putRoom = vi.spyOn(db.multiplayerRooms, 'put').mockResolvedValue('room-1');
+    vi.spyOn(db, 'transaction').mockImplementation(((mode: unknown, tables: unknown, callback: () => Promise<unknown>) => {
+      expect(mode).toBe('rw');
+      expect(tables).toEqual([db.templates, db.sessions, db.multiplayerRooms]);
+      return callback();
+    }) as any);
+    expect(await multiplayerLocalStore.persistBootstrap({ requireExistingSession: true,
+      template: { id: 'template-1' } as any, session: { id: 'session-1' } as any,
+      room: { roomId: 'room-1' } as any })).toBe(false);
+    expect(modify).toHaveBeenCalledOnce();
+    for (const write of [putSession, putTemplate, putRoom]) expect(write).not.toHaveBeenCalled();
+  });
+
+  it('does not treat Dexie matched keys as a committed bootstrap if cancellation happens before modification', async () => {
+    const row: { value: GameSession } = { value: { id: 'session-1', name: 'Old' } as GameSession };
+    const shouldPersist = vi.fn().mockReturnValueOnce(true).mockReturnValue(false);
+    const modify = vi.fn(async (replace: (this: { value: GameSession }) => unknown) => {
+      expect(replace.call(row)).toBe(false);
+      return 1; // Actual Dexie 3 behavior: one matched key, but no mutation.
+    });
+    vi.spyOn(db.sessions, 'where').mockReturnValue({ equals: vi.fn().mockReturnValue({ modify }) } as any);
+    const putSession = vi.spyOn(db.sessions, 'put').mockResolvedValue('session-1');
+    const putTemplate = vi.spyOn(db.templates, 'put').mockResolvedValue('template-1');
+    const putRoom = vi.spyOn(db.multiplayerRooms, 'put').mockResolvedValue('room-1');
+    vi.spyOn(db, 'transaction').mockImplementation(((_mode: unknown, _tables: unknown, callback: () => Promise<unknown>) => callback()) as any);
+    expect(await multiplayerLocalStore.persistBootstrap({ requireExistingSession: true, shouldPersist,
+      session: { id: 'session-1', name: 'Changed' } as GameSession, template: { id: 'template-1' } as any,
+      room: { roomId: 'room-1' } as any })).toBe(false);
+    expect(row.value.name).toBe('Old');
+    for (const write of [putSession, putTemplate, putRoom]) expect(write).not.toHaveBeenCalled();
+  });
   it('lets an active runtime consume template updates before standalone persistence and recovers after a failed import', async () => {
     const getTemplate = vi.spyOn(multiplayerLocalStore, 'getTemplate').mockResolvedValue(undefined);
     const persistBootstrap = vi.spyOn(multiplayerLocalStore, 'persistBootstrap').mockResolvedValue(undefined);
@@ -105,7 +169,14 @@ describe('multiplayerLocalStore purgeRoomData & deleteRoom', () => {
     expect(modify).toHaveBeenCalledOnce();
     for (const write of [putSession, updateRoom, putSequence, putReceipt]) expect(write).not.toHaveBeenCalled();
   });
-  it('returns room ownership and purges room data in one transaction', async () => {
+  it.each([true, false])('purges room data atomically without recreating a missing session (owner exists: %s)', async ownerExists => {
+    const replacement: { value: GameSession } = { value: { id: 'session-1' } as GameSession };
+    const modify = vi.fn(async (replace: (this: { value: GameSession }) => void) => {
+      if (!ownerExists) return 0;
+      replace.call(replacement);
+      return 1;
+    });
+    const sessionsWhere = vi.spyOn(db.sessions, 'where').mockReturnValue({ equals: vi.fn().mockReturnValue({ modify }) } as any);
     const putSessionSpy = vi.spyOn(db.sessions, 'put').mockResolvedValue('session-1' as any);
     const deleteRoomSpy = vi.spyOn(db.multiplayerRooms, 'delete').mockResolvedValue(undefined as any);
     const outboxWhereSpy = vi.spyOn(db.multiplayerOutbox, 'where').mockReturnValue({ equals: vi.fn().mockReturnValue({ delete: vi.fn().mockResolvedValue(1) }) } as any);
@@ -129,9 +200,12 @@ describe('multiplayerLocalStore purgeRoomData & deleteRoom', () => {
     }) as any);
 
     try {
-      await multiplayerLocalStore.releaseRoomOwnership!({ roomId: 'room-1', session: { id: 'session-1' } as any });
+      expect(await multiplayerLocalStore.releaseRoomOwnership!({ roomId: 'room-1', session: { id: 'session-1' } as any })).toBe(ownerExists);
 
-      expect(putSessionSpy).toHaveBeenCalledWith(expect.objectContaining({ id: 'session-1' }));
+      expect(sessionsWhere).toHaveBeenCalledExactlyOnceWith('id');
+      expect(modify).toHaveBeenCalledOnce();
+      expect(replacement.value.id).toBe('session-1');
+      expect(putSessionSpy).not.toHaveBeenCalled();
       expect(deleteRoomSpy).toHaveBeenCalledWith('room-1');
       expect(outboxWhereSpy).toHaveBeenCalledWith('roomId');
       expect(bindingWhereSpy).toHaveBeenCalledWith('roomId');
@@ -139,6 +213,7 @@ describe('multiplayerLocalStore purgeRoomData & deleteRoom', () => {
       expect(sequenceWhereSpy).toHaveBeenCalledWith('id');
     } finally {
       transactionSpy.mockRestore();
+      sessionsWhere.mockRestore();
       putSessionSpy.mockRestore();
       deleteRoomSpy.mockRestore();
       outboxWhereSpy.mockRestore();
