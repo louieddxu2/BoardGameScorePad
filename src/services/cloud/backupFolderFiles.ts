@@ -1,5 +1,6 @@
 import { googleDriveClient } from './googleDriveClient';
 import type { CloudFile } from './types';
+import { preferBackupJsonFile } from './backupJsonSelection';
 
 export interface BackupFolderFiles {
     files: readonly CloudFile[];
@@ -10,11 +11,16 @@ export interface BackupFolderFiles {
 export const readBackupFolderFiles = async (folderId: string): Promise<BackupFolderFiles> => {
     const files = await googleDriveClient.fetchAllItems(
         `'${folderId}' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false`,
-        'files(id, name, mimeType)',
+        'files(id, name, mimeType, modifiedTime)',
     );
-    const ids = new Map(files.map(file => [JSON.stringify([file.name, file.mimeType]), file.id]));
+    const selected = new Map<string, CloudFile>();
+    for (const file of files) {
+        const key = JSON.stringify([file.name, file.mimeType]);
+        selected.set(key, file.mimeType === 'application/json'
+            ? preferBackupJsonFile(selected.get(key), file) : file);
+    }
     return {
         files,
-        idFor: (name, mimeType) => ids.get(JSON.stringify([name, mimeType])) ?? null,
+        idFor: (name, mimeType) => selected.get(JSON.stringify([name, mimeType]))?.id ?? null,
     };
 };

@@ -1,12 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { GameTemplate } from '../../types';
+import type { GameTemplate, HistoryRecord } from '../../types';
 import { db } from '../../db';
 import { googleDriveService } from '../googleDrive';
 import { imageService } from '../imageService';
 import { systemSyncService } from '../systemSyncService';
+import { readBackupFolderFiles } from './backupFolderFiles';
+import { googleDriveClient } from './googleDriveClient';
 
 vi.mock('../../db', () => ({ db: {
     templates: { get: vi.fn() }, builtins: { get: vi.fn() },
+    history: { get: vi.fn() },
 } }));
 vi.mock('./googleAuth', () => ({ googleAuth: {
     isAuthorized: true, token: 'test-token', signOut: vi.fn(),
@@ -25,6 +28,7 @@ interface StoredFile {
     mimeType: string;
     parents: string[];
     trashed: boolean;
+    modifiedTime?: string;
     content?: any;
     appProperties?: Record<string, string>;
 }
@@ -33,8 +37,9 @@ interface StoredFile {
 const fakeDrive = () => {
     const files = new Map<string, StoredFile>();
     let nextId = 0;
+    let revision = 0;
     const put = (id: string, name: string, mimeType: string, parent = 'folder', content?: any) => {
-        const file = { id, name, mimeType, parents: [parent], trashed: false, content };
+        const file: StoredFile = { id, name, mimeType, parents: [parent], trashed: false, content };
         files.set(id, file);
         return file;
     };
@@ -49,9 +54,11 @@ const fakeDrive = () => {
             const parent = query.match(/'([^']+)' in parents/)?.[1];
             const name = query.match(/name = '([^']+)'/)?.[1];
             const mimeType = query.match(/mimeType = '([^']+)'/)?.[1];
-            return json({ files: [...files.values()].filter(file => !file.trashed &&
+            const fields = url.searchParams.get('fields')!.match(/files\(([^)]+)\)/)![1].split(',').map(field => field.trim());
+            const matches = [...files.values()].filter(file => !file.trashed &&
                 (!parent || file.parents.includes(parent)) && (!name || file.name === name) &&
-                (!mimeType || file.mimeType === mimeType)) });
+                (!mimeType || file.mimeType === mimeType));
+            return json({ files: matches.map(file => Object.fromEntries(fields.map(field => [field, file[field as keyof StoredFile]]))) });
         }
         const id = url.pathname.split('/').pop()!;
         if (url.pathname.startsWith('/upload/drive/v3/files')) {
@@ -63,6 +70,7 @@ const fakeDrive = () => {
                 : files.get(id);
             if (!file) return json({ error: { message: 'Not found' } }, 404);
             Object.assign(file, metadata);
+            file.modifiedTime = new Date(Date.UTC(2026, 9, 13, 20, 0, ++revision)).toISOString();
             if (metadata.mimeType === 'application/json') {
                 file.content = JSON.parse(parts[2].split('\r\n\r\n')[1].trim());
             }
@@ -120,6 +128,84 @@ describe('backup races and commit safety', () => {
         return task;
     };
     const waitForImage = () => vi.waitFor(() => expect(imageService.getImage).toHaveBeenCalledTimes(1));
+
+    it.each(['template', 'history'] as const)('updates and restores the same newest duplicate JSON for %s regardless of listing order', async kind => {
+        latest = { ...template, imageId: undefined, cloudImageId: undefined };
+        drive.files.delete('old-image');
+        const record: HistoryRecord = { id: 'play', templateId: 'template', gameName: 'Game', startTime: 1,
+            endTime: 3, updatedAt: 3, players: [], winnerIds: [], photos: [], snapshotTemplate: latest };
+        vi.mocked(db.history.get).mockResolvedValue(record);
+        const filename = kind === 'template' ? 'data.json' : 'session.json';
+        const source = kind === 'template' ? latest : record;
+        const oldJson = drive.put('a-old', filename, 'application/json', 'folder', { ...source, updatedAt: 1 });
+        oldJson.modifiedTime = '2026-10-13T13:00:00Z';
+        const newestJson = drive.put('z-newest', filename, 'application/json', 'folder', { ...source, updatedAt: 2 });
+        newestJson.modifiedTime = '2026-10-13T14:00:00Z';
+        const otherMime = drive.put('other-mime', filename, 'text/plain', 'folder', 'Unrelated file');
+        otherMime.modifiedTime = '2026-10-13T15:00:00Z';
+        const transport = drive.fetch.getMockImplementation()!;
+        drive.fetch.mockImplementation(async (input, init) => {
+            const response = await transport(input, init);
+            const query = new URL(String(input)).searchParams.get('q');
+            if (query && !query.includes('name =')) {
+                const body = await response.json();
+                return json({ ...body, files: body.files.reverse() });
+            }
+            return response;
+        });
+        expect((await googleDriveService.getFileContent('folder', filename)).updatedAt).toBe(2);
+        drive.fetch.mockClear();
+        if (kind === 'template') await backup(latest);
+        else await googleDriveService.backupHistoryRecord(record, 'folder');
+        expect(drive.fetch).toHaveBeenCalledTimes(3); // One listing, one JSON update, one metadata update.
+        expect(drive.fetch.mock.calls[1][0]).toContain('/upload/drive/v3/files/z-newest');
+        expect((await googleDriveService.getFileContent('folder', filename)).updatedAt).toBe(3);
+        expect(oldJson.content.updatedAt).toBe(1);
+        expect(oldJson.trashed).toBe(false);
+        expect(newestJson.trashed).toBe(false);
+        expect(otherMime.content).toBe('Unrelated file');
+    });
+
+    it.each(['same time', 'missing time'] as const)('resolves duplicate JSON across pages consistently when modification metadata has %s', async time => {
+        const smaller = drive.put('A-file', 'data.json', 'application/json');
+        const larger = drive.put('z-file', 'data.json', 'application/json');
+        if (time === 'same time') {
+            smaller.modifiedTime = '2026-10-13T14:00:00Z';
+            larger.modifiedTime = '2026-10-13T14:00:00Z';
+        }
+        const transport = drive.fetch.getMockImplementation()!;
+        drive.fetch.mockImplementation(async (input, init) => {
+            const url = new URL(String(input));
+            const response = await transport(input, init);
+            if (url.pathname !== '/drive/v3/files') return response;
+            const body = await response.json();
+            const duplicateFiles = body.files.filter((file: StoredFile) => file.name === 'data.json');
+            const firstId = url.searchParams.get('q')!.includes('name =') ? 'z-file' : 'A-file';
+            return json(url.searchParams.has('pageToken')
+                ? { files: duplicateFiles.filter((file: StoredFile) => file.id !== firstId) }
+                : { files: duplicateFiles.filter((file: StoredFile) => file.id === firstId), nextPageToken: 'page-2' });
+        });
+        const index = await readBackupFolderFiles('folder');
+        expect(index.idFor('data.json', 'application/json')).toBe('A-file');
+        expect((await googleDriveClient.findFile('data.json', 'folder', 'application/json'))?.id).toBe('A-file');
+        expect(drive.fetch).toHaveBeenCalledTimes(4); // Two pages for each existing lookup, no extra searches.
+    });
+
+    it('merges settings from the newest duplicate and writes back to that same ID', async () => {
+        const local = { preferences: {}, library: { players: [{ name: 'Local' }], locations: [] }, system: {} };
+        const old = drive.put('a-old', 'settings_backup.json', 'application/json', 'system',
+            { ...local, library: { players: [{ name: 'Old cloud' }], locations: [] } });
+        old.modifiedTime = '2026-10-13T13:00:00Z';
+        const newest = drive.put('z-newest', 'settings_backup.json', 'application/json', 'system',
+            { ...local, library: { players: [{ name: 'Newest cloud' }], locations: [] } });
+        newest.modifiedTime = '2026-10-13T14:00:00Z';
+        expect(await systemSyncService.mergeAndBackupSystemSettings(local)).toBe(true);
+        expect(newest.content.library.players).toEqual([{ name: 'Newest cloud' }, { name: 'Local' }]);
+        expect(old.content.library.players).toEqual([{ name: 'Old cloud' }]);
+        expect(old.trashed).toBe(false);
+        expect(drive.fetch).toHaveBeenCalledTimes(3);
+        expect(drive.fetch.mock.calls[2][0]).toContain('/upload/drive/v3/files/z-newest');
+    });
 
     it('refreshes cached absence after photo upload and updates JSON created meanwhile by another device', async () => {
         pauseFirstImage();

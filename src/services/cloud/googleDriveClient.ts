@@ -1,6 +1,7 @@
 
 import { googleAuth } from './googleAuth';
 import { CloudFile, DriveFile } from './types';
+import { preferBackupJsonFile } from './backupJsonSelection';
 
 class GoogleDriveClient {
 
@@ -50,8 +51,13 @@ class GoogleDriveClient {
     let query = `name = '${safeName}' and '${parentId}' in parents and trashed = false`;
     if (mimeType) query += ` and mimeType = '${mimeType}'`;
     
-    const files = await this.fetchAllItems(query, 'files(id, name, mimeType, parents)');
-    return files.length > 0 ? files[0] as DriveFile : null;
+    const fields = mimeType === 'application/json'
+      ? 'files(id, name, mimeType, parents, modifiedTime)' : 'files(id, name, mimeType, parents)';
+    const files = await this.fetchAllItems(query, fields);
+    const file = mimeType === 'application/json'
+      ? files.reduce<CloudFile | undefined>((current, candidate) => preferBackupJsonFile(current, candidate), undefined)
+      : files[0];
+    return file ? file as DriveFile : null;
   }
 
   public async findFileByProperty(key: string, value: string, parentId: string = 'root'): Promise<DriveFile | null> {
