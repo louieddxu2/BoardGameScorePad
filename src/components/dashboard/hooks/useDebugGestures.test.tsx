@@ -1,15 +1,21 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDebugGestures } from './useDebugGestures';
 import { useMobileZoom } from '../../../hooks/useMobileZoom';
+import { suppressInvalidTouchClick } from '../../../utils/touchGesture';
 
-const GestureHarness = ({ initialMode = 'library', inspect = vi.fn() }: {
-    initialMode?: 'library' | 'history'; inspect?: () => void;
+const GestureHarness = ({ initialMode = 'library', inspect = vi.fn(), activate = vi.fn() }: {
+    initialMode?: 'library' | 'history'; inspect?: () => void; activate?: () => void;
 }) => {
     useMobileZoom();
     const [viewMode, setViewMode] = useState(initialMode);
     const gestures = useDebugGestures({ viewMode, setViewMode, onTriggerInspector: inspect });
+
+    useEffect(() => {
+        window.addEventListener('click', suppressInvalidTouchClick, true);
+        return () => window.removeEventListener('click', suppressInvalidTouchClick, true);
+    }, []);
 
     return (
         <><div
@@ -18,19 +24,19 @@ const GestureHarness = ({ initialMode = 'library', inspect = vi.fn() }: {
             onTouchEnd={gestures.handleDebugTouchEnd}
             onTouchCancel={gestures.handleDebugTouchCancel}
         >
-            <button type="button" className="touch-pan-y">Game row</button>
+            <button key={viewMode} type="button" className="touch-pan-y" onClick={activate}>Game row</button>
             <output>{viewMode}</output>
         </div><div data-testid="outside" onTouchStart={event => event.stopPropagation()}
             onTouchEnd={event => event.stopPropagation()}>Outside</div></>
     );
 };
 
-const swipeLeftOn = (button: HTMLElement, endEvent: 'touchEnd' | 'touchCancel' = 'touchEnd') => {
-    const start = { clientX: 120, clientY: 80 };
-    const end = { clientX: 60, clientY: 80 };
+const swipeOn = (button: HTMLElement, endEvent: 'touchEnd' | 'touchCancel' = 'touchEnd', direction = -1) => {
+    const start = { identifier: 1, clientX: 120, clientY: 80 };
+    const end = { ...start, clientX: start.clientX + direction * 60 };
     fireEvent.touchStart(button, { touches: [start], targetTouches: [start] });
     fireEvent.touchMove(button, { touches: [end], targetTouches: [end] });
-    fireEvent[endEvent](button, { changedTouches: [end] });
+    return fireEvent[endEvent](button, { touches: [], changedTouches: [end], cancelable: true });
 };
 
 describe('dashboard swipe from compact game rows', () => {
@@ -48,26 +54,38 @@ describe('dashboard swipe from compact game rows', () => {
         if (previousZoom === null) localStorage.removeItem('app_zoom_level');
         else localStorage.setItem('app_zoom_level', previousZoom);
     });
-    it('switches to history when a left swipe starts on the row button', () => {
-        render(<GestureHarness />);
+    it.each(['library', 'history'] as const)('switches from %s without suppressing the next click-only activation', initialMode => {
+        const activate = vi.fn();
+        render(<GestureHarness initialMode={initialMode} activate={activate} />);
+        const previousButton = screen.getByRole('button', { name: 'Game row' });
 
-        swipeLeftOn(screen.getByRole('button', { name: 'Game row' }));
+        // Cancel the swipe's own default click, rather than leaving a global
+        // handled flag that requires the next tap to deliver a touchstart.
+        expect(swipeOn(previousButton, 'touchEnd', initialMode === 'library' ? -1 : 1)).toBe(false);
 
-        expect(screen.getByText('history')).toBeInTheDocument();
+        expect(screen.getByText(initialMode === 'library' ? 'history' : 'library')).toBeInTheDocument();
+        expect(activate).not.toHaveBeenCalled();
+        const nextButton = screen.getByRole('button', { name: 'Game row' });
+        expect(nextButton).not.toBe(previousButton);
+        fireEvent.click(nextButton); // No new touch stream or waiting period.
+        expect(activate).toHaveBeenCalledTimes(1);
+        fireEvent.click(nextButton);
+        expect(activate).toHaveBeenCalledTimes(2);
     });
 
     it('cancels without changing views and accepts the next swipe immediately', () => {
         render(<GestureHarness />);
 
-        swipeLeftOn(screen.getByRole('button', { name: 'Game row' }), 'touchCancel');
+        swipeOn(screen.getByRole('button', { name: 'Game row' }), 'touchCancel');
 
         expect(screen.getByText('library')).toBeInTheDocument();
-        swipeLeftOn(screen.getByRole('button', { name: 'Game row' }));
+        swipeOn(screen.getByRole('button', { name: 'Game row' }));
         expect(screen.getByText('history')).toBeInTheDocument();
     });
 
     it('rejects a pinch whose second finger starts outside the swipe container', () => {
-        render(<GestureHarness />);
+        const activate = vi.fn();
+        render(<GestureHarness activate={activate} />);
         const button = screen.getByRole('button', { name: 'Game row' });
         const outside = screen.getByTestId('outside');
         const first = { identifier: 1, clientX: 120, clientY: 80 };
@@ -79,7 +97,13 @@ describe('dashboard swipe from compact game rows', () => {
         fireEvent.touchEnd(outside, { touches: [moved], changedTouches: [second] });
         fireEvent.touchEnd(button, { touches: [], changedTouches: [moved] });
         expect(screen.getByText('library')).toBeInTheDocument();
-        swipeLeftOn(button);
+        fireEvent.click(button);
+        expect(activate).not.toHaveBeenCalled();
+        fireEvent.touchStart(button, { touches: [first] });
+        fireEvent.touchEnd(button, { touches: [], changedTouches: [first] });
+        fireEvent.click(button);
+        expect(activate).toHaveBeenCalledTimes(1);
+        swipeOn(button);
         expect(screen.getByText('history')).toBeInTheDocument();
     });
 

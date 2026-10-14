@@ -118,11 +118,11 @@ export const useSwipe = (
         }
     }
 
-    const round = touchStart.current.round;
     reset();
     if (action) {
+      // Cancel this release's compatibility click without leaving a global
+      // handled flag that can reject a later tap in the newly mounted view.
       if (e.cancelable) e.preventDefault();
-      touchGestureGuard.markHandled(round);
       action();
     }
   };
