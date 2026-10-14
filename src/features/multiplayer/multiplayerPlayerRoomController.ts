@@ -2,7 +2,7 @@ import { GameSession, ScoreValue } from '../../types';
 import { generateId } from '../../utils/idGenerator';
 import type { MultiplayerPlayerSession } from './multiplayerSession';
 import type { MultiplayerRoomTransport } from './multiplayerRoomController';
-import type { ScorePatchActor } from './scoreValuePatch';
+import { cloneScoreValue, type ScorePatchActor } from './scoreValuePatch';
 import {
   isBootstrapPackageMessage, isSessionCompletedMessage, isParticipantClaimResultMessage,
   isParticipantClaimsUpdateResultMessage, isSessionSnapshotMessage, isScorePatchResultMessage,
@@ -183,7 +183,12 @@ export const createMultiplayerPlayerRoomController = (options: {
     return records.filter(record => record.deviceId === options.deviceId)
       .sort((a, b) => a.createdAt - b.createdAt)
       .map(record => record.message).filter((message): message is ScoreValuePatchMessage | TotalAdjustmentPatchMessage =>
-        isScoreValuePatchMessage(message) || isTotalAdjustmentPatchMessage(message));
+        isScoreValuePatchMessage(message) || isTotalAdjustmentPatchMessage(message))
+      // Old durable inputs may still contain undefined option properties. Keep
+      // their operation/sequence identities, but normalize before replaying them.
+      .map(message => message.type === 'score:valuePatch' && message.patch.scoreValue !== null
+        ? { ...message, patch: { ...message.patch, scoreValue: cloneScoreValue(message.patch.scoreValue) } }
+        : message);
   };
   const restorePendingPatches = async () => {
     const messages = await readPendingMessages();

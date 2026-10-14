@@ -120,11 +120,15 @@ export const restoreMultiplayerHostRoomRuntime = async (options: {
 }): Promise<MultiplayerHostRoomRuntime | null> => {
   const room = await options.store.getRoom(options.roomId);
   if (!room || room.role !== 'host' || room.status === 'completed') return null;
-  const [session, template] = await Promise.all([
+  const [session, roomTemplate] = await Promise.all([
     options.store.getSession(room.sessionId),
     options.store.getTemplate(room.templateId),
   ]);
-  if (!session || !template || session.status !== 'active') return null;
+  if (!session || session.status !== 'active') return null;
+  // Legacy room metadata may still point to a builtin after an edit forked it.
+  // Normal restores retain their parallel reads; only inconsistent rows need this lookup.
+  const template = session.templateId === room.templateId ? roomTemplate : await options.store.getTemplate(session.templateId);
+  if (!template) return null;
   return createMultiplayerHostRoomRuntime({
     roomId: room.roomId,
     hostDeviceId: room.hostDeviceId,
@@ -335,11 +339,13 @@ export const restoreMultiplayerPlayerRoomRuntime = async (options: {
 }): Promise<MultiplayerPlayerRoomRuntime | null> => {
   const room = await options.store.getRoom(options.roomId);
   if (!room || room.role !== 'player') return null;
-  const [session, template] = await Promise.all([
+  const [session, roomTemplate] = await Promise.all([
     options.store.getSession(room.sessionId),
     options.store.getTemplate(room.templateId),
   ]);
-  if (!session || !template || session.status !== 'active') return null;
+  if (!session || session.status !== 'active') return null;
+  const template = session.templateId === room.templateId ? roomTemplate : await options.store.getTemplate(session.templateId);
+  if (!template) return null;
 
   const bootstrapMessage: BootstrapPackageMessage = {
     type: 'room:bootstrap',

@@ -10,7 +10,7 @@ import {
   SessionCompletedMessage,
   SessionSnapshotMessage,
 } from './protocol';
-import { applyScoreValueInputs, applyScoreValuePatch, ScorePatchActor } from './scoreValuePatch';
+import { applyScoreValueInputs, applyScoreValuePatch, cloneScoreValue, ScorePatchActor } from './scoreValuePatch';
 import { createSessionBootstrapPackage, resolveBootstrapImport, ResolvedBootstrapImport } from './sessionBootstrap';
 import { getSessionMedia, preserveLocalSessionMedia } from './sessionMedia';
 
@@ -326,7 +326,7 @@ export const createMultiplayerPlayerSessionFromBootstrap = (options: {
           actor: input.actor,
           targetPlayerId: input.targetPlayerId,
           colId: input.colId,
-          scoreValue: input.scoreValue,
+          scoreValue: input.scoreValue === null ? null : cloneScoreValue(input.scoreValue),
         },
       };
     },

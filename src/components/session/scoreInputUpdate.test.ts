@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { util } from 'peerjs';
 import type { GameSession, ScoreColumn, ScoreValue } from '../../types';
 import { applyScoreInputValue } from './scoreInputUpdate';
 
@@ -17,7 +18,7 @@ const makeSession = (): GameSession => ({
 });
 
 describe('applyScoreInputValue', () => {
-    it('preserves numeric, accumulated, product, and option input formats without changing other players', () => {
+    it('preserves numeric, accumulated, product, and option formats through PeerJS without changing other players', async () => {
         const cases: Array<{
             name: string;
             column?: Partial<ScoreColumn>;
@@ -47,15 +48,16 @@ describe('applyScoreInputValue', () => {
         for (const testCase of cases) {
             const session = makeSession();
             const next = applyScoreInputValue(session, { ...column, ...testCase.column }, 'p1', testCase.value);
-            expect(next.players[0].scores.points, testCase.name).toEqual({
-                optionId: undefined, multiOptionIds: undefined, ...testCase.expected,
-            });
+            const score = next.players[0].scores.points;
+            expect(score, testCase.name).toStrictEqual(testCase.expected);
+            const bytes = await util.pack(score as unknown as Parameters<typeof util.pack>[0]);
+            expect(util.unpack(bytes as ArrayBuffer), testCase.name).toStrictEqual(testCase.expected);
             expect(next.players[1], testCase.name).toBe(session.players[1]);
             expect(session.players[0].scores.points, testCase.name).toEqual({ parts: [3] });
         }
     });
 
-    it('updates or clears shared inputs without aliasing score parts or changing derived data', () => {
+    it('updates or clears shared inputs without wire-only fields, aliasing score parts, or changing derived data', async () => {
         const session = makeSession();
         const shared = { ...column, isShared: true };
         const next = applyScoreInputValue(session, shared, 'p1', { value: 4 });
@@ -64,6 +66,10 @@ describe('applyScoreInputValue', () => {
         expect(next.players.map(player => player.totalScore)).toEqual([3, 7]);
         expect(next.winnerIds).toBe(session.winnerIds);
         expect(next.lastUpdatedAt).toBe(17);
+        for (const player of next.players) {
+            const bytes = await util.pack(player.scores.points as unknown as Parameters<typeof util.pack>[0]);
+            expect(util.unpack(bytes as ArrayBuffer)).toStrictEqual({ parts: [4] });
+        }
 
         for (const empty of [null, undefined]) {
             const cleared = applyScoreInputValue(next, shared, 'p2', empty);

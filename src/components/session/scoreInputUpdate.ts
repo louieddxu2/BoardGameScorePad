@@ -31,7 +31,12 @@ const toScoreValue = (column: ScoreColumn, value: ScoreInputValue): ScoreValue =
         if (!isNaN(number)) parts = [number];
     }
 
-    return { parts, optionId, multiOptionIds };
+    // PeerJS encodes present undefined properties as null, not as missing keys.
+    return {
+        parts,
+        ...(optionId !== undefined ? { optionId } : {}),
+        ...(multiOptionIds !== undefined ? { multiOptionIds } : {}),
+    };
 };
 
 /** Change stored inputs only; the session manager or room runtime derives the result. */
@@ -61,7 +66,7 @@ export const applyScoreInputValue = (
                 // Each player must still own a separate score and parts array.
                 scores[column.id] = {
                     ...normalizedValue, parts: [...normalizedValue.parts],
-                    multiOptionIds: needsOwnMultiOptionIds ? [] : normalizedValue.multiOptionIds
+                    ...(needsOwnMultiOptionIds ? { multiOptionIds: [] } : {}),
                 };
             }
             return { ...player, scores };

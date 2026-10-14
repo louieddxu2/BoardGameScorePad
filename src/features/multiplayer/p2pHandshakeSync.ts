@@ -37,13 +37,23 @@ export interface P2PHandshakeSync {
 }
 
 type IncomingTransfer = {
-  chunks: ArrayBuffer[];
+  chunks: BlobPart[];
   total: number;
   metadata: { id: string; version: number; meta?: Record<string, unknown> };
   timeoutId: number;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object';
+
+const asBinaryChunk = (value: unknown): BlobPart | null => {
+  if (value instanceof ArrayBuffer) return value;
+  // PeerJS rejoins large packets as byte views. Preserve the view's exact
+  // byte range without copying or including its surrounding backing buffer.
+  if (ArrayBuffer.isView(value) && value.buffer instanceof ArrayBuffer) {
+    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  }
+  return null;
+};
 
 /**
  * Metadata-first P2P handshake with the reconnect lifecycle from
@@ -317,7 +327,7 @@ export const createP2PHandshakeSync = (options: {
           const key = keyFor(connection, message.itemId);
           clearIncoming(key);
           incoming.set(key, {
-            chunks: new Array<ArrayBuffer>(totalChunks),
+            chunks: new Array<BlobPart>(totalChunks),
             total: totalChunks,
             metadata: message.metadata as IncomingTransfer['metadata'],
             timeoutId: window.setTimeout(() => {
@@ -328,11 +338,12 @@ export const createP2PHandshakeSync = (options: {
           return;
         }
         const chunkIndex = message.type === 'ITEM_CHUNK' && typeof message.index === 'number' ? message.index : null;
-        if (message.type === 'ITEM_CHUNK' && typeof message.itemId === 'string' && chunkIndex !== null && Number.isInteger(chunkIndex) && message.chunk instanceof ArrayBuffer) {
+        const chunk = message.type === 'ITEM_CHUNK' ? asBinaryChunk(message.chunk) : null;
+        if (message.type === 'ITEM_CHUNK' && typeof message.itemId === 'string' && chunkIndex !== null && Number.isInteger(chunkIndex) && chunk !== null) {
           const key = keyFor(connection, message.itemId);
           const state = incoming.get(key);
           if (!state || chunkIndex < 0 || chunkIndex >= state.total || state.chunks[chunkIndex]) return;
-          state.chunks[chunkIndex] = message.chunk;
+          state.chunks[chunkIndex] = chunk;
           if (state.chunks.filter(Boolean).length === state.total) {
             clearIncoming(key);
             await options.adapter.upsertRemoteItem({

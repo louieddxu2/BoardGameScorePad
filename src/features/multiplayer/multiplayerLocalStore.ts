@@ -94,7 +94,7 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
       // Replace the whole row atomically, but never upsert a deleted session.
       const count = await replaceExistingSession(session);
       if (count === 0) return false;
-      await db.multiplayerRooms.update(roomId, { revision, updatedAt });
+      await db.multiplayerRooms.update(roomId, { templateId: session.templateId, revision, updatedAt });
       return true;
     });
   },
@@ -102,7 +102,7 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
     return db.transaction('rw', [db.sessions, db.multiplayerRooms, db.multiplayerPatchReceipts, db.multiplayerSequences], async () => {
       const count = await replaceExistingSession(session);
       if (count === 0) return false;
-      await db.multiplayerRooms.update(roomId, { revision, updatedAt });
+      await db.multiplayerRooms.update(roomId, { templateId: session.templateId, revision, updatedAt });
       await db.multiplayerSequences.put(sequence);
       await db.multiplayerPatchReceipts.put(receipt);
       return true;

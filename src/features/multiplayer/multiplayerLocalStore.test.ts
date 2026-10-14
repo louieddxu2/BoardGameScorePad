@@ -98,12 +98,12 @@ describe('multiplayerLocalStore purgeRoomData & deleteRoom', () => {
     }
   });
 
-  it('commits an accepted snapshot, revision, watermark and receipt in one transaction', async () => {
+  it.each(['local', 'accepted'] as const)('commits the %s snapshot and its forked template identity in the existing transaction', async kind => {
     const snapshot: SessionSnapshotMessage = {
       type: 'session:snapshot', roomId: 'room-1', sessionId: 'session-1', revision: 2, updatedAt: 20,
-      session: { id: 'session-1', templateId: 'template-1', name: 'Test', startTime: 1, status: 'active', players: [] },
+      session: { id: 'session-1', templateId: 'forked-template', name: 'Test', startTime: 1, status: 'active', players: [] },
     };
-    const row: { value: GameSession } = { value: { ...snapshot.session, note: 'removed note' } };
+    const row: { value: GameSession } = { value: { ...snapshot.session, templateId: 'template-1', note: 'removed note' } };
     const modify = vi.fn(async (replace: (this: { value: GameSession }) => void) => {
       replace.call(row);
       return 1;
@@ -116,13 +116,18 @@ describe('multiplayerLocalStore purgeRoomData & deleteRoom', () => {
     const putReceipt = vi.spyOn(db.multiplayerPatchReceipts, 'put').mockResolvedValue('receipt');
     const transaction = vi.spyOn(db, 'transaction').mockImplementation(((mode: unknown, tables: unknown, callback: () => Promise<unknown>) => {
       expect(mode).toBe('rw');
-      expect(tables).toEqual([db.sessions, db.multiplayerRooms, db.multiplayerPatchReceipts, db.multiplayerSequences]);
+      expect(tables).toEqual(kind === 'accepted'
+        ? [db.sessions, db.multiplayerRooms, db.multiplayerPatchReceipts, db.multiplayerSequences]
+        : [db.sessions, db.multiplayerRooms]);
       return callback();
     }) as any);
     const sequence = { id: 'room-1:accepted:session-1:device:p1:p1:score:points', nextSequence: 3, updatedAt: 20 };
     const receipt = { id: 'room-1:device:op-1', roomId: 'room-1', sessionId: 'session-1', deviceId: 'device', opId: 'op-1', acceptedRevision: 2, updatedAt: 20 };
     try {
-      expect(await persistAcceptedMultiplayerSnapshot(snapshot, multiplayerLocalStore, multiplayerDeliveryStore, receipt, sequence)).toBe(true);
+      const result = kind === 'accepted'
+        ? await persistAcceptedMultiplayerSnapshot(snapshot, multiplayerLocalStore, multiplayerDeliveryStore, receipt, sequence)
+        : await persistMultiplayerSnapshot(snapshot, multiplayerLocalStore);
+      expect(result).toEqual(kind === 'accepted' ? true : snapshot.session);
       expect(transaction).toHaveBeenCalledTimes(1);
       expect(where).toHaveBeenCalledExactlyOnceWith('id');
       expect(equals).toHaveBeenCalledExactlyOnceWith('session-1');
@@ -130,11 +135,16 @@ describe('multiplayerLocalStore purgeRoomData & deleteRoom', () => {
       expect(row.value).toEqual(snapshot.session);
       expect(row.value).not.toHaveProperty('note');
       expect(putSession).not.toHaveBeenCalled();
-      expect(updateRoom).toHaveBeenCalledExactlyOnceWith('room-1', { revision: 2, updatedAt: 20 });
-      expect(putSequence).toHaveBeenCalledExactlyOnceWith(sequence);
-      expect(putReceipt).toHaveBeenCalledExactlyOnceWith(receipt);
-      putReceipt.mockRejectedValueOnce(new Error('receipt write failed'));
-      await expect(persistAcceptedMultiplayerSnapshot(snapshot, multiplayerLocalStore, multiplayerDeliveryStore, receipt, sequence)).rejects.toThrow('receipt write failed');
+      expect(updateRoom).toHaveBeenCalledExactlyOnceWith('room-1', { templateId: 'forked-template', revision: 2, updatedAt: 20 });
+      if (kind === 'accepted') {
+        expect(putSequence).toHaveBeenCalledExactlyOnceWith(sequence);
+        expect(putReceipt).toHaveBeenCalledExactlyOnceWith(receipt);
+        putReceipt.mockRejectedValueOnce(new Error('receipt write failed'));
+        await expect(persistAcceptedMultiplayerSnapshot(snapshot, multiplayerLocalStore, multiplayerDeliveryStore, receipt, sequence)).rejects.toThrow('receipt write failed');
+      } else {
+        expect(putSequence).not.toHaveBeenCalled();
+        expect(putReceipt).not.toHaveBeenCalled();
+      }
     } finally {
       for (const spy of [transaction, where, putSession, updateRoom, putSequence, putReceipt]) spy.mockRestore();
     }

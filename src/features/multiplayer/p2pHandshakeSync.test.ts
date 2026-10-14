@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { util } from 'peerjs';
 import { P2PDataConnection, P2PPeer, createP2PHandshakeSync } from './p2pHandshakeSync';
 import { createMultiplayerP2PRuntimeTransport } from './multiplayerP2PRuntimeTransport';
-import { SyncItem } from './scoreStateSyncAdapter';
+import { readSyncItemPayload, SyncItem } from './scoreStateSyncAdapter';
 
 class FakeConnection implements P2PDataConnection {
   open = false;
@@ -78,6 +79,53 @@ describe('createP2PHandshakeSync reconnect lifecycle', () => {
     vi.useRealTimers();
     vi.restoreAllMocks();
     FakePeer.instances = [];
+  });
+
+  it('receives large transfers after real PeerJS decoding turns internally reassembled chunks into byte views', async () => {
+    const text = JSON.stringify({ name: 'Large board', inputs: 'x'.repeat(40_000) });
+    const payload = Uint8Array.from(new TextEncoder().encode(text)).buffer;
+    const item: SyncItem = { id: 'session-1', version: 2,
+      payload: Object.assign(new Blob(), { arrayBuffer: async () => payload }) };
+    let receivedText: string | undefined;
+    const upsertRemoteItem = vi.fn(async (received: SyncItem) => {
+      receivedText = await readSyncItemPayload(received.payload);
+    });
+    const sender = createP2PHandshakeSync({ Peer: FakePeer, adapter: createAdapter() });
+    const receiver = createP2PHandshakeSync({ Peer: FakePeer, adapter: { ...createAdapter(), upsertRemoteItem } });
+    const outgoing = new FakeConnection('player');
+    const incoming = new FakeConnection('host');
+    sender.setupConnection(outgoing);
+    receiver.setupConnection(incoming);
+    outgoing.open = true;
+    incoming.open = true;
+    try {
+      await sender.broadcastLocalChanges(item);
+      let byteViewChunks = 0;
+      for (const packet of outgoing.sent) {
+        const bytes = await util.pack(packet as Parameters<typeof util.pack>[0]);
+        // PeerJS's binary connection rejoins packets above its 16,300-byte MTU
+        // as Uint8Array, then passes that view to this same public unpacker.
+        const wire = bytes.byteLength > 16_300 ? new Uint8Array(bytes) : bytes;
+        const decoded = util.unpack(wire as ArrayBuffer) as unknown as { type: string; chunk?: unknown };
+        if (decoded.type === 'ITEM_CHUNK' && decoded.chunk instanceof Uint8Array) {
+          byteViewChunks++;
+          if (byteViewChunks === 1) {
+            // A view must not import unrelated bytes from its backing buffer.
+            const padded = new Uint8Array(decoded.chunk.byteLength + 4).fill(255);
+            padded.set(decoded.chunk, 2);
+            decoded.chunk = padded.subarray(2, -2);
+          }
+        }
+        incoming.emit('data', decoded);
+      }
+      expect(byteViewChunks).toBe(2); // The last, smaller chunk stays ArrayBuffer.
+      await vi.waitFor(() => expect(receivedText).toBeDefined(), { timeout: 500 });
+      expect(receivedText === text, 'Every payload byte must survive both binary decoding paths').toBe(true);
+      expect(upsertRemoteItem).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: item.id, version: item.version }));
+    } finally {
+      sender.stop();
+      receiver.stop();
+    }
   });
 
   it('reports a partial transfer failure and retries the same frozen revision without rereading the adapter', async () => {

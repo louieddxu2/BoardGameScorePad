@@ -43,7 +43,8 @@ export const isValidScoreValue = (value: unknown): value is ScoreValue => {
   return true;
 };
 
-const cloneScoreValue = (value: ScoreValue): ScoreValue => ({
+/** Copy raw inputs, omitting absent option keys before storage/network encoding. */
+export const cloneScoreValue = (value: ScoreValue): ScoreValue => ({
   parts: [...value.parts],
   ...(value.optionId !== undefined ? { optionId: value.optionId } : {}),
   ...(value.multiOptionIds !== undefined ? { multiOptionIds: [...value.multiOptionIds] } : {}),

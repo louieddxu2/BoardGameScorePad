@@ -1,4 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { util } from 'peerjs';
+import { DEFAULT_TEMPLATES } from '../../data/templates';
+import { migrateTemplate } from '../../utils/dataMigration';
+import { applyScoreInputValue } from '../../components/session/scoreInputUpdate';
 import { createMultiplayerHostSession } from './multiplayerSession';
 import { GameSession, GameTemplate, MultiplayerParticipantBindingRecord, MultiplayerRoomRecord, ScoreColumn, ScoreValue } from '../../types';
 import { getEffectiveIds } from '../../utils/scoring';
@@ -6,6 +10,7 @@ import { MultiplayerDeliveryStore } from './multiplayerDeliveryStore';
 import { MultiplayerParticipantBindingStore, saveParticipantBinding } from './multiplayerParticipantBinding';
 import { MultiplayerPlayerRoomStore, MultiplayerRoomRecoveryStore, MultiplayerRoomRuntimeTransport, createMultiplayerHostRoomRuntime, createMultiplayerPlayerRoomRuntime, restoreMultiplayerHostRoomRuntime, restoreMultiplayerPlayerRoomRuntime } from './multiplayerRoomRuntime';
 import { routeMultiplayerSessionUpdate } from './multiplayerSessionUpdateRouter';
+import { isScoreValuePatchMessage } from './protocol';
 
 const column: ScoreColumn = { id: 'points', name: 'Points', formula: 'a1', inputType: 'keypad', isScoring: true, rounding: 'none' };
 const template: GameTemplate = { id: 'template-1', name: 'Template', columns: [column], createdAt: 1, updatedAt: 1 };
@@ -67,8 +72,118 @@ const createBindingStore = (): MultiplayerParticipantBindingStore => {
   return { get: async (id) => records.get(id), put: async (record) => { records.set(record.id, record); }, delete: async (id) => { records.delete(id); } };
 };
 
+// These JSON-shaped fixtures use PeerJS's real binary codec, not a transport
+// mock which accidentally preserves undefined properties across the network.
+const throughPeerJs = <T,>(message: T): T => {
+  const bytes = util.pack(message as Parameters<typeof util.pack>[0]);
+  if (!(bytes instanceof ArrayBuffer)) throw new Error('Unexpected async codec fixture');
+  return util.unpack(bytes) as unknown as T;
+};
+
 describe('multiplayer room runtime', () => {
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+
+  it('relays four-player Sweet Lands UI inputs and locally derives totals across real PeerJS serialization', async () => {
+    const board = migrateTemplate(JSON.parse(JSON.stringify(DEFAULT_TEMPLATES.find(row => row.id === 'Built-in-Sweet-Lands'))));
+    const boardSession: GameSession = { ...session, templateId: board.id, name: board.name,
+      scoringRule: 'HIGHEST_WINS', players: Array.from({ length: 4 }, (_, index) => ({
+        id: `p${index + 1}`, name: `P${index + 1}`, color: '#fff', scores: {}, totalScore: 0,
+      })) };
+    const hostStore = createRuntimeStore();
+    const clients = new Map<object, Awaited<ReturnType<typeof createMultiplayerPlayerRoomRuntime>>>();
+    const deliveries: MultiplayerDeliveryStore[] = [];
+    const clientStores: ReturnType<typeof createRuntimeStore>[] = [];
+    const transfers: Promise<unknown>[] = [];
+    const deliver = (message: unknown, receiver: (message: unknown) => Promise<unknown>) => {
+      const packet = throughPeerJs(message);
+      const task = Promise.resolve().then(() => receiver(packet));
+      transfers.push(task);
+      void task.catch(() => undefined); // The original rejection is checked by flush.
+      return true;
+    };
+    const flush = async () => {
+      for (let wave = 0; transfers.length; wave++) {
+        if (wave > 50) throw new Error('Unexpected sync loop');
+        await Promise.all(transfers.splice(0));
+      }
+    };
+    const host = await createMultiplayerHostRoomRuntime({ roomId: 'room-1', hostDeviceId: 'host',
+      template: board, session: boardSession, store: hostStore, deliveryStore: createDeliveryStore(),
+      transport: { sendToHost: () => false, broadcastLocalChanges: async () => undefined,
+        sendToConnection: (connection, message) => deliver(message, packet => clients.get(connection as object)!.receive(packet)),
+        broadcastMessage: (message, exceptConnection) => {
+          for (const [connection, client] of clients) {
+            if (connection !== exceptConnection) deliver(message, packet => client.receive(packet));
+          }
+          return true;
+        },
+      } });
+    try {
+      for (let index = 1; index < 4; index++) {
+        const connection = {};
+        const deliveryStore = createDeliveryStore();
+        const store = createRuntimeStore();
+        const client = await createMultiplayerPlayerRoomRuntime({
+          bootstrapMessage: host.session.createBootstrapMessage(), deviceId: `device-${index}`,
+          store, deliveryStore, bindingStore: createBindingStore(),
+          transport: { sendToConnection: () => false, broadcastLocalChanges: async () => undefined,
+            sendToHost: message => deliver(message, packet => host.receive(packet, connection)),
+          },
+        });
+        clients.set(connection, client);
+        deliveries.push(deliveryStore);
+        clientStores.push(store);
+        client.controller.claimPlayer(`p${index + 1}`);
+      }
+      await flush();
+      expect(host.getParticipantClaims()).toEqual({ p2: 1, p3: 1, p4: 1 });
+
+      const ends = [host, ...clients.values()];
+      await Promise.all(ends.map(async (runtime, index) => {
+        const playerId = `p${index + 1}`;
+        const inputs: Array<[string, Parameters<typeof applyScoreInputValue>[3]]> = [
+          ['當前分數', (index + 1) * 10],
+          ['地形軌', { optionId: board.columns.find(col => col.name === '地形軌')!.quickActions!
+            .find(action => action.label === ['2個1分', '1個1分', '3個1分', '2個1分'][index])!.id }],
+          ['地形板塊', [5, 7, 8, 9][index]],
+          ['餅乾兔軌', { optionId: board.columns.find(col => col.name === '餅乾兔軌')!.quickActions!
+            .find(action => action.label === ['1個4分', '1個5分', '1個7分', '1個4分'][index])!.id }],
+          ['餅乾兔', index + 2],
+          ['5座帳篷', { optionId: board.columns.find(col => col.name === '5座帳篷')!.quickActions!
+            .find(action => action.label === (index % 2 === 0 ? '達成' : '未滿'))!.id }],
+        ];
+        for (const [name, value] of inputs) {
+          const col = board.columns.find(row => row.name === name)!;
+          const previous = runtime.session.session;
+          const next = applyScoreInputValue(previous, col, playerId, value);
+          // Exercise the message boundary independently of the now-clean UI
+          // producer, as callers may still hold an older score object.
+          if (index === 1 && name === '當前分數') {
+            next.players[index].scores[col.id] = { ...next.players[index].scores[col.id],
+              optionId: undefined, multiOptionIds: undefined };
+          }
+          await routeMultiplayerSessionUpdate({ previous,
+            next, runtime, claimedPlayerIds: [playerId] });
+        }
+      }));
+      await flush();
+      // Independently expected: current score + terrain + rabbits + tent bonus.
+      const expectedTotals = [24, 42, 68, 64];
+      for (const runtime of ends) {
+        expect(runtime.session.session.players.map(player => player.totalScore)).toEqual(expectedTotals);
+        expect(runtime.session.session.winnerIds).toEqual(['p3']);
+        expect(runtime.session.session.players.map(player => player.scores))
+          .toStrictEqual(host.session.session.players.map(player => player.scores));
+      }
+      for (let index = 0; index < deliveries.length; index++) {
+        expect(await deliveries[index].listOutbox('room-1', boardSession.id)).toHaveLength(0);
+        expect((await clientStores[index].getSession(boardSession.id))!.players.map(player => player.totalScore)).toEqual(expectedTotals);
+      }
+    } finally {
+      host.stop();
+      for (const client of clients.values()) client.stop();
+    }
+  });
 
   it('permits fresh hosting before autosave and a first participant import into an empty store', async () => {
     const hostStore = createRuntimeStore();
@@ -418,7 +533,7 @@ describe('multiplayer room runtime', () => {
     expect(host.getParticipantClaims()).toEqual({});
   });
 
-  it('reclaims the bound player before replaying a disconnected edit', async () => {
+  it('reclaims the bound player and replays legacy undefined input fields through PeerJS', async () => {
     const hostStore = createRuntimeStore(); const playerStore = createRuntimeStore();
     const hostDelivery = createDeliveryStore(); const playerDelivery = createDeliveryStore(); const bindingStore = createBindingStore();
     const connection = {};
@@ -427,11 +542,11 @@ describe('multiplayer room runtime', () => {
     let player: Awaited<ReturnType<typeof createMultiplayerPlayerRoomRuntime>>;
     const hostTransport: MultiplayerRoomRuntimeTransport = {
       sendToHost: () => false,
-      sendToConnection: (_connection, message) => { void player.receive(message); return true; },
+      sendToConnection: (_connection, message) => { void player.receive(throughPeerJs(message)); return true; },
       broadcastLocalChanges: vi.fn(async () => undefined),
     };
     const playerTransport: MultiplayerRoomRuntimeTransport = {
-      sendToHost: (message) => { if (!connected) return false; void host.receive(message, connection); return true; },
+      sendToHost: (message) => { if (!connected) return false; void host.receive(throughPeerJs(message), connection); return true; },
       sendToConnection: () => false,
       broadcastLocalChanges: async () => undefined,
     };
@@ -444,6 +559,12 @@ describe('multiplayer room runtime', () => {
 
     connected = false;
     await player.controller.queueScoreValuePatch({ actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [8] } });
+    const [legacy] = await playerDelivery.listOutbox('room-1', 'session-1');
+    const message = legacy.message;
+    if (!isScoreValuePatchMessage(message)) throw new Error('Unexpected pending operation');
+    await playerDelivery.putOutbox({ ...legacy, message: { ...message,
+      patch: { ...message.patch, scoreValue: { parts: [8], optionId: undefined, multiOptionIds: undefined } },
+    } });
     expect((await playerDelivery.listOutbox('room-1', 'session-1'))).toHaveLength(1);
     expect(host.session.session.players[0].scores.points).toBeUndefined();
     expect(player.session.session.players[0].totalScore).toBe(8);
@@ -460,7 +581,7 @@ describe('multiplayer room runtime', () => {
     expect(host.session.revision).toBe(2);
   });
 
-  it('restores accepted score and total sequences and does not let older replayed inputs overwrite them', async () => {
+  it('restores a forked host template with accepted sequences despite legacy stale room metadata', async () => {
     const store = createRuntimeStore(); const delivery = createDeliveryStore();
     const reply = vi.fn(); const broadcast = vi.fn(() => true); const connection = {};
     const transport: MultiplayerRoomRuntimeTransport = {
@@ -480,7 +601,13 @@ describe('multiplayer room runtime', () => {
     await host.receive(claim, connection);
     await host.receive(score, connection);
     await host.receive(total, connection);
+    const forkedTemplate = { ...template, id: 'forked-template', sourceTemplateId: template.id };
+    await store.putTemplate(forkedTemplate);
+    await store.putSession({ ...host.session.session, templateId: forkedTemplate.id });
+    // Older releases saved the new session identity but left room.templateId behind.
     const restored = await restoreMultiplayerHostRoomRuntime({ roomId: 'room-1', store, deliveryStore: delivery, transport, now: () => 20 });
+    expect(restored?.session.template.id).toBe(forkedTemplate.id);
+    expect((await store.getRoom('room-1'))?.templateId).toBe(forkedTemplate.id);
     expect(restored?.session.room).toEqual({ roomId: 'room-1', hostDeviceId: 'host-1', createdAt: 10 });
     expect(restored?.session.revision).toBe(9);
     const readSequence = vi.spyOn(delivery, 'getSequence');
@@ -500,7 +627,7 @@ describe('multiplayer room runtime', () => {
     readSequence.mockRestore();
   });
 
-  it('restores a player runtime with stored room, session, template, and binding', async () => {
+  it('restores a player binding with its forked session template despite legacy stale room metadata', async () => {
     const hostStore = createRuntimeStore(); const playerStore = createRuntimeStore();
     const hostDelivery = createDeliveryStore(); const playerDelivery = createDeliveryStore(); const bindingStore = createBindingStore();
     const transport: MultiplayerRoomRuntimeTransport = { sendToHost: () => false, sendToConnection: () => false, broadcastLocalChanges: async () => undefined };
@@ -509,6 +636,9 @@ describe('multiplayer room runtime', () => {
     const bootstrap = host.session.createBootstrapMessage();
     const player = await createMultiplayerPlayerRoomRuntime({ bootstrapMessage: bootstrap, deviceId: 'player-device', store: playerStore, bindingStore, deliveryStore: playerDelivery, transport, now: () => 20 });
     await saveParticipantBinding({ store: bindingStore, roomId: 'room-1', sessionId: 'session-1', deviceId: 'player-device', playerIds: ['p1'] });
+    const forkedTemplate = { ...template, id: 'forked-template', sourceTemplateId: template.id };
+    await playerStore.putTemplate(forkedTemplate);
+    await playerStore.putSession({ ...player.session.session, templateId: forkedTemplate.id });
 
     const restored = await restoreMultiplayerPlayerRoomRuntime({
       roomId: 'room-1',
@@ -520,6 +650,8 @@ describe('multiplayer room runtime', () => {
       now: () => 30,
     });
     expect(restored).not.toBeNull();
+    expect(restored?.session.template.id).toBe(forkedTemplate.id);
+    expect((await playerStore.getRoom('room-1'))?.templateId).toBe(forkedTemplate.id);
     expect(restored?.session.room).toEqual({ roomId: 'room-1', hostDeviceId: 'host-1', createdAt: 10 });
     expect(await restored?.restoreParticipantBinding()).toBe(true);
   });
